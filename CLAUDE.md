@@ -55,7 +55,25 @@ por orden, para soportar una WH partida entre dos baños confirmados). Solo lo
 confirmado ocupa máquina/día real (`P.banos`). "Deshacer" quita la confirmación
 y la WH vuelve a la lista de espera.
 
+**Calidad de tintorería (después del baño):** al registrar "salió" en Control de
+piso → Tintorería, `banoListo()` marca `avance.tinturada` y pone la orden en fase
+`1Calidad Tintoreria`. La orden queda "en calidad" (`enCalidad(o)`) hasta que
+Calidad la apruebe (`calidadAprobar` → `avance.calidadOk`, fase `2Planificacion`)
+o la rechace (`calidadRechazar` → reproceso, fase `1Tintoreria`). **Liberar a
+corte (producción) exige `calidadOk`** para tela propia (`puedeLiberar`); si la
+fase de Odoo ya es ≥2 se considera aprobada. El panel "Calidad de tintorería"
+vive al final de Control de piso → Tintorería.
+
+**Baños confirmados a mano al programarse:** llevan `grupo:bc.id` (cada uno
+elige su propia máquina) y solo consideran máquinas donde cabe el baño
+(`capOf(r)*tolGrande >= kg`); sin eso, todos caían en la misma máquina o en
+STUART (45 kg) con 250 kg.
+
 ## Convenciones de desarrollo
+- **Simulador de pruebas** en `test/` (ver `test/README.md`): `node test/build.js`
+  y `node test/server.js`, abrir http://127.0.0.1:8765/ y revisar `__R` en la
+  consola. Recorre todas las páginas, el flujo completo de tintorería y pulsa
+  todos los botones. Correrlo antes de publicar cambios grandes.
 - Antes de cualquier cambio: `node --check app3.js`-equivalente (revisar sintaxis
   del `<script>` extraído) y correr las pruebas relevantes si existen.
 - Los tests viven como scripts `test*.js` sueltos (no hay carpeta formal de

@@ -875,9 +875,11 @@ function programar(){
       const lead=(o.ruta||[]).length?leadDias(o):5;const r2=dsum(o.fecha,-(lead+S.params.diasTintBodega));if(!req||r2<req)req=r2;
       desde=maxD(desde,res.ordenes[oid].telaDesde||ini);if((S.avance[oid]||{}).reproc)reproc=true});
     if(kg<=0)return;
-    const capOf=r=>tRef.pique?(r.capPique||0):r.cap;const r0=cand[0];
-    banos.push({id:bc.id,gk:bc.id,confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
-      pool:cand.map(r=>r.id),telas,telasKg,opsKg,kg,cap:capOf(r0),fill:kg/capOf(r0),est:'ok',reproc,rec:bc.rec&&cand.some(r=>r.id===bc.rec)?bc.rec:r0.id,
+    const capOf=r=>tRef.pique?(r.capPique||0):r.cap;const tolGc=1+(S.params.tolGrande||5)/100;
+    // solo máquinas donde cabe el baño (con tolerancia); si en ninguna cabe, la más grande
+    let poolC=cand.filter(r=>capOf(r)*tolGc>=kg-1e-6);if(!poolC.length)poolC=[cand.reduce((m,r)=>capOf(r)>capOf(m)?r:m,cand[0])];const r0=poolC[0];
+    banos.push({id:bc.id,gk:bc.id,grupo:bc.id,confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
+      pool:poolC.map(r=>r.id),telas,telasKg,opsKg,kg,cap:capOf(r0),fill:kg/capOf(r0),est:'ok',reproc,rec:bc.rec&&poolC.some(r=>r.id===bc.rec)?bc.rec:r0.id,
       horas:reproc?(S.params.hReproceso||10):horasBano(bc.color,telas[0]),req,desde,ops,oids:oidsBc.slice()});
   });
   banos.forEach(b=>{if(b.error)return;if(!b.confirmado){b.pendiente=true;b.oids.forEach(id=>{const ro=res.ordenes[id];if(ro){ro.banoPend=true}})}});
@@ -1256,7 +1258,7 @@ function vPlan(el){
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Las horas de confección son la demanda bruta del mes de entrega; la capacidad, la de los módulos con el calendario de ese mes.</p></div></div>
   ${(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&o.fecha&&o.fecha.startsWith(ym));const libs=enMes.filter(o=>!(P.ordenes[o.id]||{}).bloqueo),porLib=enMes.filter(o=>(P.ordenes[o.id]||{}).bloqueo);
     const usdL=libs.reduce((a,o)=>a+(o.precio||0)*o.cant,0),usdP=porLib.reduce((a,o)=>a+(o.precio||0)*o.cant,0);
-    return `<div class="panel"><h3>Base del plan: lo liberado <span class="note">el plan mensual trabaja sobre lo que planificación ha liberado</span></h3><div class="body"><div class="kpis"><div class="kpi"><div class="v">${libs.length}</div><div class="k">Órdenes del mes liberadas y con fecha · ${num(libs.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdL)}</div></div><div class="kpi ${porLib.length?'warn':''}"><div class="v">${porLib.length}</div><div class="k">Del mes sin liberar o sin decidir · ${num(porLib.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdP)} <a style="cursor:pointer" onclick="LIB.mes='${ym}';ir('liberacion')">ir a Liberación</a></div></div></div></div></div>`})()}
+    return `<div class="panel"><h3>Base del plan: lo liberado <span class="note">el plan mensual trabaja sobre lo que planificación ha liberado</span></h3><div class="body"><div class="kpis"><div class="kpi"><div class="v">${libs.length}</div><div class="k">Órdenes del mes liberadas y con fecha · ${num(libs.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdL)}</div></div><div class="kpi ${porLib.length?'warn':''}"><div class="v">${porLib.length}</div><div class="k">Del mes sin liberar o sin decidir · ${num(porLib.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdP)} <a style="cursor:pointer" onclick="LIB.mes=new Set(['${ym}']);ir('liberacion')">ir a Liberación</a></div></div></div></div></div>`})()}
   ${(()=>{const meta=((S.params.metas||{})[ym])||0;const esp=S.ordenes.filter(o=>abierta(o)&&o.fecha&&o.fecha.startsWith(ym)&&!(P.ordenes[o.id]||{}).bloqueo).reduce((a,o)=>a+(o.precio||0)*o.cant,0);const brecha=meta-esp;
     const cand=S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&o.fecha&&o.fecha.startsWith(ym)).filter(o=>(P.ordenes[o.id]||{}).bloqueo||o.estado==='prevision').map(o=>({o,usd:(o.precio||0)*o.cant,h:minPendiente(o)/60,bl:(P.ordenes[o.id]||{}).bloqueo||'sin WH'})).sort((a,b)=>b.usd-a.usd);
     const capLibre=Math.max(0,((c.areas.find(a=>a.a==='pro')||{}).cap-(c.areas.find(a=>a.a==='pro')||{}).carga)/60);let acum=0,hAcum=0;const prop=[];for(const x of cand){if(brecha>0&&acum>=brecha)break;prop.push(Object.assign({cabe:hAcum+x.h<=capLibre},x));acum+=x.usd;hAcum+=x.h}
@@ -2186,8 +2188,8 @@ function vControl(el){
     cuerpo=`<div class="panel"><h3>Tintorería <span class="note">${bs.length} baños${CTL.todo?'':' de hoy y los dos días siguientes'}</span></h3><div class="scroll"><table><thead><tr><th>Día</th><th>Máquina</th><th>Color</th><th>Telas</th><th class="num">Kg crudo</th><th class="num">Llenado</th><th class="num">Sale (kg)</th><th>Estado</th><th>Órdenes</th><th>Tinturada</th><th>Reproceso</th></tr></thead><tbody>
      ${bs.slice(0,200).map(b=>{const reproc=b.oids.some(id=>(S.avance[id]||{}).reproc);return `<tr><td>${fmtDia(b.dia)}</td><td>${esc(nRec(b.rec))}</td><td><b>${esc(b.colorN)}</b>${reproc?' <span class="tag t-alerta">reproceso</span>':''}</td><td style="font-size:var(--fs-xs)">${b.telas.map(nTela).map(esc).join(' + ')}</td><td class="num">${num(b.kg)}</td><td class="num">${Math.round(b.fill*100)}%</td><td class="num mut">${num(banoAcabado(b))}</td>
        <td>${b.est==='ok'?'<span class="tag t-ok">ok</span>':b.est==='aprob'?'<span class="tag t-aviso">aprobación</span>':'<span class="tag t-alerta">bajo</span>'}</td><td style="font-size:var(--fs-xs)">${b.ops.map(esc).join(', ')}</td>
-       <td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mSalioBano('${b.oids.join(',')}','${esc(b.rec)}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}')">salió</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&!liberadaCorte(o)&&puedeLiberar(o)})?`<button class="btn sm" ${ok?'':'disabled'} onclick="${b.oids.map(id=>`liberarCorte('${id}')`).join(';')}">liberar a corte</button>`:''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'quitar':'reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div>
-     <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">"Salió" pide los kg reales del baño y marca la tela como tinturada en todas las órdenes del baño; queda en el registro "Tintorería entregados" al final de la página de Tintorería. "Reprocesar" vuelve a programar el baño desde hoy con 10 horas y lo deja marcado hasta que se dé por listo.</p></div>`;
+       <td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mSalioBano('${b.oids.join(',')}','${esc(b.rec)}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}')">salió</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&enCalidad(o)})?'<span class="tag t-aviso" title="Esperando la revisión de calidad">en calidad</span>':b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&!liberadaCorte(o)&&puedeLiberar(o)})?`<button class="btn sm" ${ok?'':'disabled'} onclick="${b.oids.map(id=>`liberarCorte('${id}')`).join(';')}">liberar a corte</button>`:''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'quitar':'reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div>
+     <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">"Salió" pide los kg reales del baño, marca la tela como tinturada y pasa las órdenes a Calidad de tintorería (abajo); queda en el registro "Tintorería entregados" al final de la página de Tintorería. "Reprocesar" vuelve a programar el baño desde hoy con 10 horas y lo deja marcado hasta que se dé por listo.</p></div>`+calidadTinHTML(ok);
   }else{
     const cens=S.centros.filter(c=>c.area==='pro'&&(!CTL.centro||c.id===CTL.centro)).sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id));
     const hoyOps={};P.pro.filter(x=>x.dia===h).forEach(x=>{hoyOps[x.centro+'|'+x.op]=(hoyOps[x.centro+'|'+x.op]||0)+(x.pz||0)});
@@ -2237,9 +2239,9 @@ function liberarA(ids,et){const et_n={tela:'tela (tejeduría y tintorería)',tej
     o.lib=o.lib||{};o.lib[et]={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
 function retirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];bitacora('Retirada liberación '+et+' '+o.op);save();render()}
-function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):(a.tinturada||fe.tinturada||a.lista);return telaOk&&(o.telas||[]).length>0&&(o.insumos||[]).every(x=>x.ok)}
+function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0&&(o.insumos||[]).every(x=>x.ok)}
 function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);if(!(o.telas||[]).length)f.push('sin telas en la receta');
-  if(!(a.tinturada||fe.tinturada||a.lista))f.push(etapas(o).provStep?'tela externa no recibida':'tela no tinturada');if(!(C(o.color)||{}).cod)f.push('color sin Pantone');const ins=(o.insumos||[]).filter(x=>!x.ok);if(ins.length)f.push('insumos sin confirmar: '+ins.map(x=>x.n).join(', '));return f}
+  if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');const ins=(o.insumos||[]).filter(x=>!x.ok);if(ins.length)f.push('insumos sin confirmar: '+ins.map(x=>x.n).join(', '));return f}
 function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberar(o)){alert('No se puede liberar: '+faltaLiberar(o).join(', '));return}
   if(!confirm('¿Liberar '+o.op+' a corte? Confirmas que la tela está completa y en bodega.'))return;
   o.lib=o.lib||{};o.lib.corte={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;bitacora('Liberada a corte '+o.op);save();render()}
@@ -2254,7 +2256,31 @@ function guardarParada(){const g=x=>document.getElementById(x).value;const rec=g
   bitacora('Novedad '+nRec(rec)+' desde '+d1+(d2?' hasta '+d2:'')+': '+g('pa-m'));save();cerrar();render()}
 function cerrarParada(id){const t=(S.turnos||[]).find(x=>x.id===id);if(!t)return;t.hasta=dsum(hoy(),-1);bitacora('Novedad resuelta '+nRec(t.rec));save();cerrar();render()}
 function setPrio(id,v){const o=S.ordenes.find(x=>x.id===id);if(!o)return;o.prio=v?1:3;save();render()}
-function banoListo(ids){ids.split(',').forEach(id=>{if(!S.avance[id])S.avance[id]={};S.avance[id].tinturada=true;S.avance[id].tinturadaF=hoy();S.avance[id].reproc=false});save();render()}
+function banoListo(ids){ids.split(',').forEach(id=>{if(!S.avance[id])S.avance[id]={};const a=S.avance[id];a.tinturada=true;a.tinturadaF=hoy();a.reproc=false;a.calidadOk=false;
+  const o=S.ordenes.find(x=>x.id===id);if(o&&faseNum(o.fase)<=1)o.fase=FASE_CALIDAD});save();render()}
+/* ---------- Calidad de tintorería: al salir del baño la tela pasa a calidad; solo lo aprobado se libera a corte ---------- */
+const FASE_CALIDAD='1Calidad Tintoreria',FASE_PLAN='2Planificacion',FASE_TIN='1Tintoreria';
+function enCalidad(o){const a=S.avance[o.id]||{};if(a.lista||a.calidadOk)return false;const fe=faseEstado(o.fase);if(fe.lista)return false;
+  const propia=(o.telas||[]).some(t=>!t.ext);if(!propia)return false;return !!(a.tinturada||fe.tinturada)}
+function quienFirma(){return (PERFIL&&(PERFIL.nombre||PERFIL.email))||''}
+function calidadAprobar(ids){const lista=ids.split(',');let n=0;
+  lista.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]=S.avance[id]||{};if(a.calidadOk)return;
+    a.calidadOk=true;a.calidadOkF=hoy();a.calidadU=quienFirma();a.reproc=false;
+    if(normTxt(o.fase||'')===normTxt(FASE_CALIDAD)||faseNum(o.fase)<=1)o.fase=FASE_PLAN;n++});
+  if(n)bitacora('Calidad tintorería aprobó '+n+' órdenes');save();render()}
+function calidadRechazar(ids){if(!confirm('¿Rechazar en calidad? El baño vuelve a programarse como reproceso desde hoy.'))return;const lista=ids.split(',');let n=0;
+  lista.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]=S.avance[id]||{};
+    a.calidadOk=false;a.calidadRechF=hoy();a.calidadU=quienFirma();a.tinturada=false;a.reproc=true;a.reprocF=hoy();
+    if(normTxt(o.fase||'')===normTxt(FASE_CALIDAD))o.fase=FASE_TIN;n++});
+  if(n)bitacora('Calidad tintorería rechazó '+n+' órdenes (reproceso)');save();render()}
+function calidadTinHTML(ok){const pend=S.ordenes.filter(abierta).filter(enCalidad).sort((a,b)=>((S.avance[a.id]||{}).tinturadaF||'')<((S.avance[b.id]||{}).tinturadaF||'')?-1:1);
+  return `<div class="panel"><h3>Calidad de tintorería <span class="note">${pend.length} ${pend.length===1?'orden':'órdenes'} con tela tinturada esperando la revisión final</span></h3>
+   ${pend.length?`<div class="scroll" style="max-height:420px"><table><thead><tr><th>Salió</th><th>WH</th><th>Categoría</th><th>Color</th><th>Telas</th><th class="num">Kg</th><th>Fase</th><th></th></tr></thead><tbody>
+    ${pend.map(o=>{const a=S.avance[o.id]||{};const kg=(o.telas||[]).filter(t=>!t.ext).reduce((s,t)=>s+(+t.kg||0),0);
+      return `<tr><td>${a.tinturadaF?fmtDia(a.tinturadaF):'—'}</td><td><b>${esc(o.op)}</b>${a.reproc?' <span class="tag t-alerta">reproceso</span>':''}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td>
+       <td style="font-size:var(--fs-xs)">${(o.telas||[]).filter(t=>!t.ext).map(t=>nTela(t.tela)).map(esc).join(' + ')}</td><td class="num">${num(kg)}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(faseNombre(o.fase)||'—')}</td>
+       <td style="white-space:nowrap"><button class="btn sm" ${ok?'':'disabled'} onclick="calidadAprobar('${o.id}')">Aprobar calidad</button> <button class="btn ghost sm" ${ok?'':'disabled'} onclick="calidadRechazar('${o.id}')">Rechazar → reproceso</button></td></tr>`}).join('')}</tbody></table></div>
+    <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">Calidad da la última revisada a la tela tinturada. Al aprobar, la orden pasa a fase Planificación y ya puede liberarse a corte (producción). Al rechazar, el baño vuelve al programa como reproceso.</p>`:'<div class="body mut">Nada en calidad: todo lo que salió de tintorería ya fue revisado.</div>'}</div>`}
 function mSalioBano(ids,rec,colorN,telas,kgProg,ops){abrir(`<h3>Baño terminado</h3><div class="body">
    <p class="lede" style="margin-top:0"><b>${esc(colorN)}</b> · ${esc(telas)} · ${esc(nRec(rec))}</p>
    <p class="mut" style="font-size:var(--fs-s)">Órdenes: ${esc(ops)}</p>
