@@ -483,7 +483,7 @@ async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;retur
 async function _save(){
   const errs=[];
   const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push(t+': '+error.message);return}}};
-  const del=async(t,ids)=>{if(!ids.length)return;const {error}=await sb.from(t).delete().in('id',ids);if(error)errs.push(t+': '+error.message)};
+  const del=async(t,ids)=>{for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push(t+': '+error.message);return}}};
   for(const t of TABLAS){
     const cur=S[t],base=BASE[t]||{};
     const rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
@@ -2061,7 +2061,7 @@ function vOrdenes(el){
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${filtros}
   <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
-    <span class="spacer"></span>${S.ordenes.length&&puede('ordenes')?'<button class="btn ghost sm" onclick="vaciar()">Vaciar</button>':''}</h3>
+    <span class="spacer"></span>${S.ordenes.length&&puede('ordenes')?'<button class="btn ghost sm" onclick="vaciar()">Vaciar</button>':''}${puede('config')?' <button class="btn ghost sm" style="color:var(--alerta)" onclick="borrarOperativo()">Borrar datos operativos</button>':''}</h3>
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
     <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()">Cargar ejemplo</button>`:''}</div>`}</div>
@@ -2071,6 +2071,17 @@ function vOrdenes(el){
   </div></div>`:''}`;
 }
 function delOrden(id){S.ordenes=S.ordenes.filter(o=>o.id!==id);save();render()}
+/* borra por lotes TODOS los datos operativos (órdenes, avance, baños, salidas, programas, novedades, bitácora…); conserva configuración, maestros, categorías y operaciones */
+const TABLAS_OPERATIVAS=['ordenes','avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','bitacora','planes'];
+async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return}
+  if(!confirm('Vas a borrar TODOS los datos operativos: órdenes, avances, baños confirmados, salidas de tintorería, reprocesos, programas guardados, novedades y bitácora.\n\nSe conservan centros, recursos, telas, colores, categorías, operaciones, parámetros y usuarios.\n\n¿Continuar?'))return;
+  if((prompt('Escribe BORRAR para confirmar')||'').trim().toUpperCase()!=='BORRAR')return;
+  const st=document.getElementById('saved');const errs=[];
+  for(const t of TABLAS_OPERATIVAS){let {data,error}=await sb.from(t).select('id');if(error){errs.push(t+': '+error.message);continue}
+    const ids=(data||[]).map(r=>r.id);for(let i=0;i<ids.length;i+=200){if(st)st.textContent='Borrando '+t+' '+Math.min(i+200,ids.length)+'/'+ids.length;const {error:e2}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(e2){errs.push(t+': '+e2.message);break}}}
+  if(errs.length){alert('No se pudo borrar todo:\n'+errs.join('\n'));}
+  await cargarTodo();PLAN=null;PLAN_ALL=null;render();if(st)st.textContent='Datos operativos borrados';
+  if(!errs.length)alert('Listo: datos operativos borrados. Ya puedes cargar el archivo desde Órdenes.')}
 function vaciar(){if(confirm('¿Quitar todas las órdenes?')){S.ordenes=[];save();render()}}
 
 /* ---------- Tejeduría ---------- */
