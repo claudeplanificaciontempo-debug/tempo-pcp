@@ -124,6 +124,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .bath.b-oscuro{background:var(--oscuro)}
 .bath.b-lavado{background:var(--lavado);color:#1B2A2D}
 .bath{position:relative}
+.mgrid td.dd-over{outline:2px dashed var(--ink);outline-offset:-3px;background:var(--field)}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
 .bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
 .bath.low{box-shadow:inset 0 0 0 2px var(--alerta)}
@@ -886,6 +887,7 @@ function programar(){
     // si el baño cabe en una máquina pequeña (remanente del color), va directo a ella y no ocupa una grande
     const chicasC=poolC.filter(r=>r.cap<(S.params.granMin||120)*1.2);if(chicasC.length&&kg<=Math.max(...chicasC.map(capOf))*tolGc+1e-6)poolC=chicasC;
     if(bc.recFijo&&bc.rec&&cand.some(r=>r.id===bc.rec))poolC=[R(bc.rec)]; // movido a mano a esa máquina
+    if(bc.diaFijo)desde=bc.diaFijo; // arrastrado a ese día
     const r0=poolC[0];
     banos.push({id:bc.id,gk:bc.id,grupo:bc.id,cod:bc.cod||'',confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
       pool:poolC.map(r=>r.id),telas,telasKg,opsKg,kg,cap:capOf(r0),fill:kg/capOf(r0),est:'ok',reproc,rec:bc.rec&&poolC.some(r=>r.id===bc.rec)?bc.rec:r0.id,
@@ -2112,14 +2114,14 @@ function vTin(el){
   const banos=P.banos.filter(b=>!b.error),errs=P.banos.filter(b=>b.error);
   const bajos=(P.banosPend||[]).filter(b=>b.est==='bajo'),aprob=(P.banosPend||[]).filter(b=>b.est==='aprob'),tarde=banos.filter(b=>b.tarde);
   const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');
-  const dias=[...new Set(banos.map(b=>b.dia))].sort();
-  const grid=dias.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>
+  const diasBase=[...new Set(banos.map(b=>b.dia))].sort();const ultimo=diasBase.length?diasBase[diasBase.length-1]:hoy();const dias=[...diasBase];for(let d=hoy();d<=dsum(ultimo,3);d=dsum(d,1))if(!dias.includes(d))dias.push(d);dias.sort();
+  const grid=diasBase.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
-      return `<td>${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" style="background:${bg};color:${textoSobre(bg)}" title="${esc(b.ops.join(', '))}">
+      return `<td data-rec="${r.id}" data-dia="${d}" ondragover="ddOver(event)" ondragleave="ddOut(event)" ondrop="soltarBano(event,'${r.id}','${d}')" style="min-width:150px">${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" ${b.confirmado?`draggable="true" ondragstart="arrastrarBano(event,'${b.id}')" ondragend="this.style.opacity=1"`:''} style="background:${bg};color:${textoSobre(bg)};${b.confirmado?'cursor:grab':''}" title="${esc(b.ops.join(', '))}${b.confirmado?' · arrastra para mover de máquina o día':''}">
         <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${selMaquinaBano(b)}${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · el selector de la tarjeta lo mueve a otra máquina.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
+    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · arrastra una tarjeta a otra máquina o día para moverla (el selector también sirve; "auto" vuelve a lo automático).</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día.</p>
   ${errs.length?`<div class="warn">${errs.map(b=>`<b>${esc(b.colorN)}</b> en ${b.telas.map(nTela).map(esc).join(' + ')}: no hay máquina activa apta para esa tela.`).join('<br>')}</div>`:''}
@@ -2303,11 +2305,17 @@ function estadoTinHTML(){const ords=S.ordenes.filter(abierta).filter(o=>etapas(o
    ${bloque('Tela en stock',"Tela ya tinturada en bodega según Odoo: se toma como lista y entra directo a la cola de liberación a producción.",g.stock)}
   </div></div>`}
 /* ---------- Mover un baño confirmado de máquina · albarán por id (con código) · resumen por WH ---------- */
-function moverBano(id,rec){const bc=(S.banos_conf||[]).find(b=>b.id===id);if(!bc)return;
-  if(!rec){delete bc.recFijo;delete bc.rec;bitacora('Baño '+(bc.cod||bc.colorN)+' vuelve a máquina automática')}
+/* arrastrar y soltar baños confirmados entre máquinas y días (Gantt) */
+function arrastrarBano(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';ev.currentTarget.style.opacity='.5'}
+function soltarBano(ev,rec,dia){ev.preventDefault();const id=ev.dataTransfer.getData('text/plain');if(!id)return;document.querySelectorAll('.mgrid td.dd-over').forEach(x=>x.classList.remove('dd-over'));moverBano(id,rec,dia)}
+function ddOver(ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';ev.currentTarget.classList.add('dd-over')}
+function ddOut(ev){ev.currentTarget.classList.remove('dd-over')}
+function moverBano(id,rec,dia){const bc=(S.banos_conf||[]).find(b=>b.id===id);if(!bc)return;
+  if(dia&&/^d{4}-d{2}-d{2}$/.test(dia))bc.diaFijo=dia;
+  if(!rec){delete bc.recFijo;delete bc.rec;delete bc.diaFijo;bitacora('Baño '+(bc.cod||bc.colorN)+' vuelve a máquina y día automáticos')}
   else{const r=R(rec);const tRef=T((bc.telas||[]).find(t=>T(t)&&T(t).pique))||{};const cap=tRef.pique?(r.capPique||0):(r.cap||0);const kg=Object.values(bc.opsKg||{}).reduce((a,k)=>a+k,0);
     if(cap&&kg>cap*(1+(S.params.tolGrande||5)/100)+1e-6&&!confirm('El baño tiene '+num(kg)+' kg y '+r.n+' admite '+num(cap)+' kg. ¿Moverlo igual?'))return;
-    bc.rec=rec;bc.recFijo=true;bitacora('Baño '+(bc.cod||bc.colorN)+' movido a '+r.n)}
+    bc.rec=rec;bc.recFijo=true;bitacora('Baño '+(bc.cod||bc.colorN)+' movido a '+r.n+(dia?' el '+fmtDia(dia):''))}
   PLAN=null;PLAN_ALL=null;save();render()}
 function selMaquinaBano(b){if(!b.confirmado)return'';const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&(b.telas||[]).every(t=>compatible(r,t)));
   const bc=(S.banos_conf||[]).find(x=>x.id===b.id)||{};
