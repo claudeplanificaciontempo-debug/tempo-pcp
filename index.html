@@ -123,6 +123,9 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .bath.b-medio{background:var(--medio)}
 .bath.b-oscuro{background:var(--oscuro)}
 .bath.b-lavado{background:var(--lavado);color:#1B2A2D}
+.bath{position:relative}
+.bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
+.bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
 .bath.low{box-shadow:inset 0 0 0 2px var(--alerta)}
 .bath.aprob{box-shadow:inset 0 0 0 2px var(--aviso)}
 .kpi.warn .v{color:var(--aviso)}
@@ -1680,9 +1683,7 @@ function armGrupos(P){
       it.kg=kg;it.op=o?o.op:it.oid;tot+=kg});
     grp.kgTotal=tot});
   return map}
-function armSelDefault(grp){const s=new Set(Object.values(grp.items).filter(it=>it.enPrimero).map(it=>it.oid));
-  if(!s.size&&Object.keys(grp.items).length)return new Set(Object.keys(grp.items)); // si no se pudo sugerir nada, mejor marcar todas que dejar el botón sin uso
-  return s}
+function armSelDefault(grp){return new Set()} // por defecto nada marcado: el usuario elige qué WH van al baño
 function armGet(gk,grp){if(!ARM.sel[gk])ARM.sel[gk]=armSelDefault(grp);return ARM.sel[gk]}
 function armToggle(gk,oid){const s=ARM.sel[gk];if(!s)return;if(s.has(oid))s.delete(oid);else s.add(oid);render()}
 function armTodas(gk,on,grp){ARM.sel[gk]=on?new Set(Object.keys(grp.items)):new Set();render()}
@@ -2092,10 +2093,9 @@ function vTin(el){
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
       return `<td>${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" style="background:${bg};color:${textoSobre(bg)}" title="${esc(b.ops.join(', '))}">
-        <span class="c">${esc(b.colorN)}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">imprimir</a>${b.confirmado?` <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">quitar</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span></div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
+        <span class="c">${esc(b.colorN)}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span></div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día)</span>
-    <span style="color:var(--alerta)">Borde rojo: baño bajo (no cumple llenado)</span><span style="color:var(--aviso)">Borde ámbar: grande entre ${S.params.granMin} y ${S.params.granOk} kg, con aprobación</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
+    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día.</p>
   ${errs.length?`<div class="warn">${errs.map(b=>`<b>${esc(b.colorN)}</b> en ${b.telas.map(nTela).map(esc).join(' + ')}: no hay máquina activa apta para esa tela.`).join('<br>')}</div>`:''}
