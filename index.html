@@ -1683,7 +1683,6 @@ function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){t
 function togFaseLib(f){togSet(LIB,'fases',f)}
 function togLib(id,on){if(on)LIB.sel.add(id);else LIB.sel.delete(id)}
 /* ---------- Armar baños a mano: el algoritmo propone (marca por defecto), el usuario ajusta y confirma ---------- */
-let ARM={sel:{}};
 function armGrupos(P){
   const pend=(P.banosPend||[]).filter(b=>!b.error);
   const map={};
@@ -1698,95 +1697,87 @@ function armGrupos(P){
       it.kg=kg;it.op=o?o.op:it.oid;tot+=kg});
     grp.kgTotal=tot});
   return map}
-function armSelDefault(grp){return new Set()} // por defecto nada marcado: el usuario elige qué WH van al baño
-function armGet(gk,grp){if(!ARM.sel[gk])ARM.sel[gk]=armSelDefault(grp);return ARM.sel[gk]}
-function armToggle(gk,oid){const s=ARM.sel[gk];if(!s)return;if(s.has(oid))s.delete(oid);else s.add(oid);render()}
-function armTodas(gk,on,grp){ARM.sel[gk]=on?new Set(Object.keys(grp.items)):new Set();render()}
-function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
-  if(!grupos.length)return'<p class="mut">Nada esperando armar baño.</p>';
-  // agrupar por color: un bloque por color, con cada tela (gk) como subsección adentro
-  const porColor={};grupos.forEach(g=>{const k=g.color;(porColor[k]=porColor[k]||{color:g.color,colorN:g.colorN,req:null,subs:[]}).subs.push(g);
-    if(g.req&&(!porColor[k].req||g.req<porColor[k].req))porColor[k].req=g.req});
-  const colores=Object.values(porColor).sort((a,b)=>(a.req||'9')<(b.req||'9')?-1:1);
-  // barra de accesos rápidos: un pantone por color con su total, clic y salta a su tarjeta
-  const idColor=c=>'arm-color-'+normTxt(c).replace(/[^a-z0-9]/g,'');
+/* ---------- Armado por color: todas las WH del mismo Pantone juntas, llenando baños consecutivos (240 kg; 200 kg si el baño lleva piqué) ---------- */
+function armItemsColor(P,color){const m={};Object.values(armGrupos(P)).filter(g=>g.color===color).forEach(g=>{Object.values(g.items).forEach(it=>{if(it.kg<=0)return;const o=S.ordenes.find(x=>x.id===it.oid);const r=m[it.oid]=m[it.oid]||{oid:it.oid,op:it.op,kg:0,telas:new Set(),pique:false,fecha:o?o.fecha:'',cat:o?nombreCat(K(o.cat)):''};
+    r.kg+=it.kg;g.telas.forEach(t=>{r.telas.add(t);const tt=T(t);if(tt&&(tt.pique||tt.fam==='IND'&&tt.pique))r.pique=true})})});
+  return Object.values(m)}
+function capsTin(){const PP=S.params;const bigs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&r.cap>=(PP.granMin||120)*1.2);
+  const capN=Math.max(0,...bigs.map(r=>r.cap))||240;const capP=Math.max(0,...bigs.map(r=>r.capPique||0))||capN;return{capN,capP,tol:1+(PP.tolGrande||5)/100}}
+/* primero por fecha requerida y luego las WH más grandes; cada WH entra entera en el primer baño donde cabe (sin partir) */
+function propuestaBanos(items){const {capN,capP,tol}=capsTin();const capDe=p=>p?capP:capN;const banos=[];
+  items.slice().sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:(a.fecha||'9')>(b.fecha||'9')?1:b.kg-a.kg).forEach(it=>{
+    let b=banos.find(x=>x.kg+it.kg<=capDe(x.pique||it.pique)*tol+1e-6);
+    if(!b){b={items:[],kg:0,pique:false,telas:new Set()};banos.push(b)}
+    b.items.push(it);b.kg+=it.kg;b.pique=b.pique||it.pique;it.telas.forEach(t=>b.telas.add(t))});
+  banos.forEach(b=>{b.cap=capDe(b.pique);b.pct=b.cap?Math.round(100*b.kg/b.cap):0});return banos}
+let ARM={sel:{}};
+function armSel(color,items){if(!ARM.sel[color])ARM.sel[color]=new Set(items.map(it=>it.oid));return ARM.sel[color]}
+function armToggle(color,oid){const s=ARM.sel[color];if(!s)return;if(s.has(oid))s.delete(oid);else s.add(oid);render()}
+function armTodas(color,on){const P=programar();ARM.sel[color]=on?new Set(armItemsColor(P,color).map(it=>it.oid)):new Set();render()}
+function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));if(!grupos.length)return'<p class="mut">Nada esperando armar baño.</p>';
+  const porColor={};grupos.forEach(g=>{const k=g.color;(porColor[k]=porColor[k]||{color:g.color,colorN:g.colorN,req:null});if(g.req&&(!porColor[k].req||g.req<porColor[k].req))porColor[k].req=g.req});
+  const colores=Object.values(porColor).sort((a,b)=>(a.req||'9')<(b.req||'9')?-1:1);const {capN,capP}=capsTin();
+  const idColor=c=>'arm-color-'+normTxt(c).replace(/[^a-z0-9]/g,'');const idSel=(c,i)=>'maqb-'+normTxt(c).replace(/[^a-z0-9]/g,'')+'-'+i;
   const indice=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--rule2)">
-    ${colores.map(pc=>{const kgTot=pc.subs.reduce((a,g)=>a+g.kgTotal,0);
-      return `<span class="chip" style="cursor:pointer" onclick="document.getElementById('${idColor(pc.color)}').scrollIntoView({behavior:'smooth',block:'start'})">${dotColor(pc.color)}${esc(pc.colorN)} <b>${num(kgTot)} kg</b></span>`}).join('')}</div>`;
-  return indice+colores.map(pc=>{
-    let kgTotalSel=0,kgTotalTot=0;
-    const subsHTML=pc.subs.sort((a,b)=>b.kgTotal-a.kgTotal).map(grp=>{
-      const sel=armGet(grp.gk,grp);let kgSel=0;Object.values(grp.items).forEach(it=>{if(sel.has(it.oid))kgSel+=it.kg});
-      kgTotalSel+=kgSel;kgTotalTot+=grp.kgTotal;
-      const items=Object.values(grp.items).sort((a,b)=>b.kg-a.kg);
-      const capTol=(grp.cap||0)*(1+(S.params.tolGrande||5)/100);
-      let nLlenos=capTol?Math.floor(kgSel/capTol+1e-9):0,restoKg=kgSel-nLlenos*capTol;
-      if(restoKg<1e-6)restoKg=0;const nBanos=restoKg>1e-6?nLlenos+1:nLlenos;
-      const pct=!grp.cap?0:restoKg>1e-6?Math.round(100*restoKg/grp.cap):(nLlenos>0?100:0);
-      const barColor= pct>=(S.params.pctBueno||90)?'var(--ok)':pct>=(S.params.pctAprob||70)?'var(--aviso)':'var(--ink3)';
-      return `<div style="border-top:1px solid var(--rule2);padding-top:10px;margin-top:10px">
-       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px">
-        <div style="flex:1;min-width:200px"><b>${esc(grp.telas.map(nTela).join(' + '))}</b> <span class="mut" style="font-size:var(--fs-xs)">cap. ${num(grp.cap||0)} kg</span></div>
-        <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
-         <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(kgSel)}</b> kg seleccionados${nBanos?` · <b>${nBanos}</b> baño${nBanos===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',restoKg>0?num(restoKg)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}${restoKg>0?tagArm(restoKg,grp.cap,grp.telas):''}</div></div>
-        <div><button class="btn ghost sm" onclick="armTodas('${grp.gk}',true,armGrupos(programar())['${grp.gk}'])">Todas</button> <button class="btn ghost sm" onclick="armTodas('${grp.gk}',false,armGrupos(programar())['${grp.gk}'])">Ninguna</button>
-         ${puede('programa')?`<br>${selMaqArm('maq-'+grp.gk.replace(/[^a-z0-9]/gi,'_'),grp.telas,true)}<button class="btn sm" onclick="confirmarArm('${grp.gk}')">Confirmar${nBanos>1?' '+nBanos+' baños':' baño'}</button>`:''}</div></div>
-       <div class="scroll" style="max-height:180px"><table><thead><tr><th style="width:26px"></th><th>WH</th><th class="num">Kg</th></tr></thead><tbody>
-        ${items.map(it=>`<tr><td><input type="checkbox" ${sel.has(it.oid)?'checked':''} onchange="armToggle('${grp.gk}','${it.oid}')"></td><td>${esc(it.op)}</td><td class="num">${num(it.kg)}</td></tr>`).join('')}
-        <tr style="font-weight:600;background:var(--field)"><td></td><td>Total ${esc(grp.telas.map(nTela).join(' + '))} · ${items.length} WH · marcados ${num(kgSel)} kg</td><td class="num">${num(grp.kgTotal)} kg</td></tr>
-       </tbody></table></div></div>`}).join('');
-    // estimación de cuántos baños hacen falta para el total de este color (con la capacidad más grande disponible como referencia)
-    const capRef=Math.max(1,...S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>r.cap||0));
-    const banosEst=Math.ceil(kgTotalTot/capRef);
+    ${colores.map(pc=>{const kgTot=armItemsColor(P,pc.color).reduce((a,it)=>a+it.kg,0);return `<span class="chip" style="cursor:pointer" onclick="document.getElementById('${idColor(pc.color)}').scrollIntoView({behavior:'smooth',block:'start'})">${dotColor(pc.color)}${esc(pc.colorN)} <b>${num(kgTot)} kg</b></span>`}).join('')}</div>
+   <p class="mut" style="font-size:var(--fs-xs);margin:0 0 12px">Regla: todas las WH del mismo Pantone se juntan y se van llenando baños consecutivos de ${num(capN)} kg (${num(capP)} kg cuando el baño lleva piqué), sin partir WH. Desmarca una WH para sacarla y las demás se reacomodan. Elige la máquina de cada baño y confírmalo.</p>`;
+  return indice+colores.map(pc=>{const items=armItemsColor(P,pc.color);const sel=armSel(pc.color,items);const marcados=items.filter(it=>sel.has(it.oid)),sinMarcar=items.filter(it=>!sel.has(it.oid));
+    const banos=propuestaBanos(marcados);const kgTot=items.reduce((a,it)=>a+it.kg,0),kgSel=marcados.reduce((a,it)=>a+it.kg,0);
+    const telasN=[...new Set(items.flatMap(it=>[...it.telas]))];
+    const tagB=b=>{const PP=S.params;if(b.pct>=(PP.pctBueno||90))return'<span class="tag t-ok">baño lleno</span>';if(b.kg>=(PP.granOk||180))return'<span class="tag t-aviso">previo aprobación</span>';return tagArm(b.kg,b.cap,[...b.telas])};
     return `<div class="panel" id="${idColor(pc.color)}" style="scroll-margin-top:16px"><div class="body">
      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px"><b style="font-size:var(--fs-m)">${dotColor(pc.color)}${esc(pc.colorN)}</b>
        ${pc.req?`<div class="mut" style="font-size:var(--fs-xs)">necesita antes de ${fmtDia(pc.req)}${pc.req<dsum(hoy(),3)?' <span class="tag t-alerta">urgente</span>':''}</div>`:''}</div>
-      <div class="mut" style="font-size:var(--fs-s)">Total del color: <b style="color:var(--ink)">${num(kgTotalTot)} kg</b> en ${pc.subs.length} ${pc.subs.length===1?'tela':'telas'} · aprox. <b style="color:var(--ink)">${banosEst}</b> ${banosEst===1?'baño':'baños'} necesarios</div></div>
-     ${puede('programa')?colorSelHTML(pc):''}
-     ${subsHTML}
+      <div class="mut" style="font-size:var(--fs-s)">Total del color: <b style="color:var(--ink)">${num(kgTot)} kg</b> en ${items.length} WH · ${telasN.map(nTela).map(esc).join(' + ')} · <b style="color:var(--ink)">${banos.length}</b> ${banos.length===1?'baño':'baños'} propuestos</div>
+      <div><button class="btn ghost sm" onclick="armTodas('${pc.color}',true)">Todas</button> <button class="btn ghost sm" onclick="armTodas('${pc.color}',false)">Ninguna</button></div></div>
+     ${puede('programa')?colorSelHTML(pc,marcados):''}
+     ${banos.map((b,i)=>`<div style="border-top:1px solid var(--rule2);padding-top:10px;margin-top:10px">
+       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="flex:1;min-width:200px"><b>Baño ${i+1}</b> <span class="mut" style="font-size:var(--fs-xs)">${[...b.telas].map(nTela).map(esc).join(' + ')}${b.pique?' · lleva piqué: cap. '+num(b.cap)+' kg':' · cap. '+num(b.cap)+' kg'}</span></div>
+        <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,b.pct)}%;background:${b.pct>=(S.params.pctBueno||90)?'var(--ok)':b.kg>=(S.params.granOk||180)?'var(--aviso)':'var(--ink3)'}"></i></div>
+         <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(b.kg)}</b> kg de ${num(b.cap)} · ${b.pct}% ${tagB(b)}</div></div>
+        ${puede('programa')?`<div>${selMaqArm(idSel(pc.color,i),[...b.telas],true)}<button class="btn sm" onclick="confirmarBanoProp('${pc.color}',${i})">Confirmar baño ${i+1}</button></div>`:''}</div>
+       <table><thead><tr><th style="width:26px"></th><th>WH</th><th>Categoría</th><th>Telas</th><th class="num">Kg</th></tr></thead><tbody>
+        ${b.items.map(it=>`<tr><td><input type="checkbox" checked onchange="armToggle('${pc.color}','${it.oid}')"></td><td>${esc(it.op)}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(it.cat)}</td><td style="font-size:var(--fs-xs)">${[...it.telas].map(nTela).map(esc).join(' + ')}${it.pique?' <span class="tag">piqué</span>':''}</td><td class="num">${num(it.kg)}</td></tr>`).join('')}
+        <tr style="font-weight:600;background:var(--field)"><td></td><td colspan="3">Total baño ${i+1} · ${b.items.length} WH</td><td class="num">${num(b.kg)} kg</td></tr></tbody></table></div>`).join('')}
+     ${sinMarcar.length?`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Sin marcar · ${sinMarcar.length} WH · ${num(sinMarcar.reduce((a,it)=>a+it.kg,0))} kg</summary><table><tbody>${sinMarcar.map(it=>`<tr><td style="width:26px"><input type="checkbox" onchange="armToggle('${pc.color}','${it.oid}')"></td><td>${esc(it.op)}</td><td style="font-size:var(--fs-xs)">${[...it.telas].map(nTela).map(esc).join(' + ')}</td><td class="num">${num(it.kg)}</td></tr>`).join('')}</tbody></table></details>`:''}
+     <div class="mut" style="font-size:var(--fs-xs);margin-top:8px">Marcados ${num(kgSel)} kg de ${num(kgTot)} kg del color.</div>
     </div></div>`}).join('')}
-function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp){alert('Este grupo ya no existe (puede que ya se haya confirmado o cambiado). Actualiza la página.');return}const sel=[...armGet(gk,grp)];if(!sel.length){alert('Marca al menos una WH.');return}
-  const items=sel.map(oid=>({id:oid,kg:grp.items[oid]?grp.items[oid].kg:0}));
-  const recA=maqElegida('maq-'+gk.replace(/[^a-z0-9]/gi,'_'));if(!recA){alert('Elige la máquina a la que va este baño (junto al botón Confirmar).');return}const rA=R(recA);const tRefA=T((grp.telas||[]).find(t=>T(t)&&T(t).pique))||{};const capA=tRefA.pique?(rA.capPique||0):rA.cap;
-  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(capA||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
-  if(!confirm(resumenConfirm(grp.colorN,grp.telas,bins)+(rA?'\nMáquina: '+rA.n:'')))return;
-  S.banos_conf=S.banos_conf||[];
-  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(grp.colorN,grp.req),rec:rA?rA.id:undefined,recFijo:!!rA,telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
-  delete ARM.sel[gk];PLAN=null;PLAN_ALL=null;save();render();
-  if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
-/* ---- juntar en un baño lo marcado en varias telas del mismo color (si la máquina tiene capacidad) ---- */
-function colorSelInfo(pc){const items={},telas=new Set();let kg=0;
-  pc.subs.forEach(grp=>{const sel=armGet(grp.gk,grp);Object.values(grp.items).forEach(it=>{if(!sel.has(it.oid)||it.kg<=0)return;items[it.oid]=(items[it.oid]||0)+it.kg;kg+=it.kg;grp.telas.forEach(t=>telas.add(t))})});
-  const tl=[...telas];const tRef=T(tl.find(t=>T(t)&&T(t).pique)||tl.find(t=>T(t)&&T(t).fam==='IND')||tl[0])||{};
-  const cand=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&tl.every(t=>compatible(r,t))&&(!tRef.pique||(r.capPique||0)>0));
-  const capOf=r=>tRef.pique?(r.capPique||0):r.cap;const cap=cand.length?Math.max(...cand.map(capOf)):0;
-  const propias=tl.filter(t=>T(t)&&(T(t).pique||T(t).fam==='IND'));
-  const mezclaPropia=propias.length>0&&tl.length>1;
-  const nTelas=pc.subs.filter(g=>Object.values(g.items).some(it=>armGet(g.gk,g).has(it.oid)&&it.kg>0)).length;
-  return{items,telas:tl,kg,cap,cand,mezclaPropia,nTelas}}
-function colorSelHTML(pc){if(pc.subs.length<2)return'';const i=colorSelInfo(pc);if(!i.kg)return'';
+function confirmarBanoProp(color,idx){const P=programar();const items=armItemsColor(P,color);if(!items.length){alert('Este color ya no tiene nada esperando. Actualiza la página.');return}
+  const sel=armSel(color,items);const banos=propuestaBanos(items.filter(it=>sel.has(it.oid)));const b=banos[idx];if(!b){alert('Ese baño ya no existe. Actualiza la página.');return}
+  const idSel='maqb-'+normTxt(color).replace(/[^a-z0-9]/g,'')+'-'+idx;const recA=maqElegida(idSel);if(!recA){alert('Elige la máquina a la que va el baño '+(idx+1)+'.');return}
+  const rA=R(recA);const cap=b.pique?(rA.capPique||0):rA.cap;const tol=1+(S.params.tolGrande||5)/100;
+  if(cap&&b.kg>cap*tol+1e-6&&!confirm('El baño tiene '+num(b.kg)+' kg y '+rA.n+' admite '+num(cap)+' kg'+(b.pique?' con piqué':'')+'. ¿Confirmar igual?'))return;
+  const colorN=(C(color)||{}).n||'?';const opsKg={};b.items.forEach(it=>opsKg[it.oid]=(opsKg[it.oid]||0)+it.kg);
+  const bins=[{kg:b.kg,opsKg}];if(!confirm(resumenConfirm(colorN,[...b.telas],bins)+'\nMáquina: '+rA.n))return;
+  const req=b.items.map(it=>it.fecha).filter(Boolean).sort()[0]||null;
+  S.banos_conf=S.banos_conf||[];S.banos_conf.push({id:uid(),cod:codBano(colorN,req),rec:rA.id,recFijo:true,telas:[...b.telas],color,colorN,opsKg,ts:new Date().toISOString(),u:quienFirma()});
+  b.items.forEach(it=>sel.delete(it.oid));PLAN=null;PLAN_ALL=null;save();render()}
+/* juntar todo lo marcado del color (máquina automática o elegida): reparte con llenarBins, partiendo WH si hace falta para llenar */
+function colorSelInfo(pc,marcados){const items={};const telas=new Set();let kg=0;let pique=false;
+  marcados.forEach(it=>{items[it.oid]=(items[it.oid]||0)+it.kg;kg+=it.kg;it.telas.forEach(t=>telas.add(t));if(it.pique)pique=true});
+  const tl=[...telas];const cand=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&tl.every(t=>compatible(r,t))&&(!pique||(r.capPique||0)>0));
+  const capOf=r=>pique?(r.capPique||0):r.cap;const cap=cand.length?Math.max(...cand.map(capOf)):0;
+  return{items,telas:tl,kg,cap,cand,pique,nTelas:tl.length}}
+function colorSelHTML(pc,marcados){const i=colorSelInfo(pc,marcados);if(!i.kg)return'';
   const capTol=i.cap*(1+(S.params.tolGrande||5)/100);let nLlenos=capTol?Math.floor(i.kg/capTol+1e-9):0,resto=i.kg-nLlenos*capTol;if(resto<1e-6)resto=0;const n=resto>0?nLlenos+1:nLlenos;
   const pct=!i.cap?0:resto>0?Math.round(100*resto/i.cap):(nLlenos?100:0);
-  const barColor=pct>=(S.params.pctBueno||90)?'var(--ok)':pct>=(S.params.pctAprob||70)?'var(--aviso)':'var(--ink3)';
   return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:var(--field);border-radius:8px">
-    <div style="flex:1;min-width:200px"><b>Todo lo marcado del color</b> <span class="mut" style="font-size:var(--fs-xs)">${i.nTelas} ${i.nTelas===1?'tela':'telas'} juntas · cap. ${num(i.cap)} kg${i.mezclaPropia?' · <span class="tag t-alerta">mezcla baño propio</span>':''}${!i.cand.length?' · <span class="tag t-alerta">sin máquina apta</span>':''}</span></div>
-    <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--panel,#fff);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
-     <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(i.kg)}</b> kg marcados${n?` · <b>${n}</b> baño${n===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',resto>0?num(resto)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}</div></div>
+    <div style="flex:1;min-width:200px"><b>Juntar todo lo marcado del color</b> <span class="mut" style="font-size:var(--fs-xs)">${i.nTelas} ${i.nTelas===1?'tela':'telas'} · cap. ${num(i.cap)} kg${i.pique?' (con piqué)':''}${!i.cand.length?' · <span class="tag t-alerta">sin máquina apta</span>':''} · parte WH si hace falta para llenar</span></div>
+    <div style="min-width:200px;font-size:var(--fs-s)"><b>${num(i.kg)}</b> kg marcados${n?` · <b>${n}</b> baño${n===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',resto>0?num(resto)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}</div>
     <div>${selMaqArm('maqc-'+String(pc.color).replace(/[^a-z0-9]/gi,'_'),i.telas)}<button class="btn sm" ${i.cand.length?'':'disabled'} onclick="confirmarArmColor('${pc.color}')">Juntar y confirmar${n>1?' '+n+' baños':' baño'}</button></div></div>`}
-function confirmarArmColor(colorId){const P=programar();const subs=Object.values(armGrupos(P)).filter(g=>g.color===colorId);
-  if(!subs.length){alert('Este color ya no tiene nada esperando. Actualiza la página.');return}
-  const pc={color:colorId,colorN:subs[0].colorN,subs};const i=colorSelInfo(pc);
+function confirmarArmColor(colorId){const P=programar();const itemsAll=armItemsColor(P,colorId);if(!itemsAll.length){alert('Este color ya no tiene nada esperando. Actualiza la página.');return}
+  const sel=armSel(colorId,itemsAll);const marcados=itemsAll.filter(it=>sel.has(it.oid));const pc={color:colorId,colorN:(C(colorId)||{}).n||'?'};const i=colorSelInfo(pc,marcados);
   const items=Object.entries(i.items).map(([id,kg])=>({id,kg}));if(!items.length){alert('Marca al menos una WH.');return}
   if(!i.cand.length){alert('No hay una máquina de tintorería activa apta para todas las telas marcadas juntas.');return}
-  if(i.mezclaPropia&&!confirm('Estás juntando una tela de baño propio (piqué) con otras telas. La regla normal es que vaya sola.\n\n¿Confirmar igual?'))return;
-  const recA=maqElegida('maqc-'+String(colorId).replace(/[^a-z0-9]/gi,'_'));const rA=recA?R(recA):null;const tRefA=T((i.telas||[]).find(t=>T(t)&&T(t).pique))||{};const capA=rA?(tRefA.pique?(rA.capPique||0):rA.cap):i.cap;
+  const recA=maqElegida('maqc-'+String(colorId).replace(/[^a-z0-9]/gi,'_'));const rA=recA?R(recA):null;const capA=rA?(i.pique?(rA.capPique||0):rA.cap):i.cap;
   const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(capA||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
   if(!confirm(resumenConfirm(pc.colorN,i.telas,bins)+(rA?'\nMáquina: '+rA.n:'')))return;
+  const reqC=marcados.map(it=>it.fecha).filter(Boolean).sort()[0]||null;
   S.banos_conf=S.banos_conf||[];
-  const reqC=subs.map(g=>g.req).filter(Boolean).sort()[0]||null;
-  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(pc.colorN,reqC),rec:rA?rA.id:undefined,recFijo:!!rA,telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
-  subs.forEach(g=>{delete ARM.sel[g.gk]});PLAN=null;PLAN_ALL=null;save();render();
+  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(pc.colorN,reqC),rec:rA?rA.id:undefined,recFijo:!!rA,telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:quienFirma()}));
+  delete ARM.sel[colorId];PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 function deshacerBanoConf(id){if(!confirm('¿Deshacer este baño? Las órdenes vuelven a la lista de espera.'))return;
   S.banos_conf=(S.banos_conf||[]).filter(b=>b.id!==id);PLAN=null;PLAN_ALL=null;save();render()}

@@ -24,14 +24,23 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   liberarA(S.ordenes.map(o=>o.id),'tela');await __p(50);__check('órdenes liberadas a tela',S.ordenes.every(o=>liberada(o,'tin')),S.ordenes.filter(o=>!liberada(o,'tin')).map(o=>o.op+': '+faltaLiberarA(o,'tela').join('/')).join('; '));
   PLAN=null;let P=programar();const grupos=Object.values(armGrupos(P));
   __check('hay grupos por armar',grupos.length>0,grupos.length+' grupos');
-  __check('nada marcado por defecto',grupos.every(g=>armGet(g.gk,g).size===0));
-  {grupos.forEach(g=>{ARM.sel[g.gk]=new Set(Object.keys(g.items))});page='tintoreria';render();const html=document.getElementById('p-tintoreria').innerHTML;__check('armar: etiquetas lleno / previo aprobación / pendiente',/baño lleno|previo aprobación|pendiente/.test(html));grupos.forEach(g=>{delete ARM.sel[g.gk]})}
-  const colores=[...new Set(grupos.map(g=>g.color))];
-  colores.forEach(col=>{grupos.filter(g=>g.color===col).forEach(g=>{ARM.sel[g.gk]=new Set(Object.keys(g.items))});confirmarArmColor(col)});
+  const coloresArm=[...new Set(grupos.map(g=>g.color))];
+  __check('propuesta: todas las WH del color marcadas por defecto',coloresArm.every(c=>armSel(c,armItemsColor(P,c)).size===armItemsColor(P,c).length));
+  {page='tintoreria';render();const html=document.getElementById('p-tintoreria').innerHTML;__check('armar: etiquetas lleno / previo aprobación / pendiente',/baño lleno|previo aprobación|pendiente/.test(html));
+   __check('propuesta por color: baños consecutivos con capacidad 240/200',coloresArm.every(c=>propuestaBanos(armItemsColor(P,c)).every(b=>b.cap===(b.pique?200:240)&&b.kg<=b.cap*1.05+1e-6||b.items.length===1)));
+   const c0=coloresArm.find(c=>propuestaBanos(armItemsColor(P,c)).length>0);const idSel0='maqb-'+normTxt(c0).replace(/[^a-z0-9]/g,'')+'-0';const selEl=document.getElementById(idSel0);
+   __check('cada baño propuesto tiene selector de máquina obligatorio',!!selEl&&selEl.options[0].value===''&&selEl.options.length>1);
+   const nAl=__R.alerts.length;confirmarBanoProp(c0,0);__check('confirmar baño sin máquina: pide elegirla',__R.alerts.length===nAl+1&&__R.alerts[nAl].msg.includes('Elige la máquina')&&(S.banos_conf||[]).length===0);
+   const b0p=propuestaBanos(armItemsColor(P,c0).filter(it=>armSel(c0,armItemsColor(P,c0)).has(it.oid)))[0];const recOk=[...selEl.options].map(o=>o.value).filter(Boolean).find(v=>{const r=R(v);return (b0p.pique?(r.capPique||0):r.cap)>=b0p.kg})||[...selEl.options].map(o=>o.value).filter(Boolean)[0];
+   selEl.value=recOk;confirmarBanoProp(c0,0);await __p(50);const bc0=(S.banos_conf||[])[0];
+   __check('confirmar baño propuesto: queda con máquina fijada y kg exactos',!!bc0&&bc0.rec===recOk&&bc0.recFijo===true&&Math.abs(Object.values(bc0.opsKg).reduce((a,k)=>a+k,0)-b0p.kg)<1e-6,bc0?JSON.stringify(bc0).slice(0,120):'sin baño');
+   PLAN=null;P=programar();}
+  const colores=[...new Set(Object.values(armGrupos(P)).map(g=>g.color))];
+  page='tintoreria';render();colores.forEach(col=>{delete ARM.sel[col];confirmarArmColor(col)});
   await __p(100);PLAN=null;P=programar();
   const conf=P.banos.filter(b=>b.confirmado&&!b.error);
   __check('baños confirmados programados',conf.length>0&&conf.every(b=>b.dia&&b.rec),conf.map(b=>b.colorN+'@'+b.rec+' '+b.dia+' '+Math.round(b.kg)+'kg').join('; '));
-  __check('máquina apta por rol de color (claro→DANITECH 1, oscuro→DANITECH 2)',conf.every(b=>{const r=R(b.rec);const claro=profColor(C(b.color))==='claro';return !r.rolColor||r.rolColor==='ambos'||(r.rolColor==='claro')===claro}),conf.map(b=>b.colorN+'→'+nRec(b.rec)).join('; '));
+  __check('máquina apta por rol de color (claro→DANITECH 1, oscuro→DANITECH 2)',conf.every(b=>{const bc=(S.banos_conf||[]).find(x=>x.id===b.id);if(bc&&bc.recFijo)return true;const r=R(b.rec);const claro=profColor(C(b.color))==='claro';return !r.rolColor||r.rolColor==='ambos'||(r.rolColor==='claro')===claro}),conf.map(b=>b.colorN+'→'+nRec(b.rec)).join('; '));
   __check('cada baño confirmado tiene código interno único',conf.every(b=>/^T[A-Z]{3}\d{2}-[A-Z0-9]+-\d{2}$/.test(b.cod))&&new Set(conf.map(b=>b.cod)).size===conf.length,conf.map(b=>b.cod).join(', '));
   page='tintoreria';render();__check('cuadro muestra el código del baño y reparto de WH partidas',document.getElementById('p-tintoreria').innerHTML.includes(conf[0].cod)&&(document.getElementById('p-tintoreria').innerHTML.includes('% aquí · resto:')||!conf.some(b=>b.oids.some(oid=>conf.filter(x=>x.opsKg[oid]>0).length>1))));
   __check('tintorería: resumen por WH',document.getElementById('p-tintoreria').innerHTML.includes('Resumen por WH')&&document.getElementById('p-tintoreria').innerHTML.includes(conf[0].cod));

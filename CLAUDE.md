@@ -50,14 +50,20 @@ para calcular cuánto sale acabado del baño (`kgAcabado`).
 viceversa; la profundidad del color se detecta por código Pantone TCX
 (`prefijoTCX`) y, si falta, por el nombre (`profColor`).
 
-**Armado manual de baños ("Armar baños" en Tintorería):** el algoritmo
-YA NO programa baños automáticamente. Solo genera PROPUESTAS (`P.banosPend`),
-agrupadas por color (una tarjeta por color, con las telas como subsecciones).
-El usuario marca/desmarca WH (nunca se parte una WH al armar a mano) y confirma
-con el botón — eso crea una o más entradas en `S.banos_conf` (con `opsKg` exacto
-por orden, para soportar una WH partida entre dos baños confirmados). Solo lo
-confirmado ocupa máquina/día real (`P.banos`). "Deshacer" quita la confirmación
-y la WH vuelve a la lista de espera.
+**Armado manual de baños ("Armar baños" en Tintorería) — regla vigente desde
+el 12-sep-2026 (decisión del usuario, reemplaza "piqué siempre solo"):**
+por color (Pantone) se juntan TODAS las WH, sin importar la tela, y se llenan
+baños consecutivos: `propuestaBanos()` ordena por fecha requerida y kg, mete
+cada WH entera en el primer baño donde cabe (sin partir), con capacidad 240 kg
+(`capN`) o 200 kg (`capPique`) en cuanto el baño lleva piqué. `armGrupos()`
+sigue siendo la fuente de datos (`armItemsColor()` funde sus grupos por WH).
+Selección por color en `ARM.sel[color]` (todo marcado por defecto; desmarcar
+reacomoda). Cada baño propuesto exige elegir máquina (`selMaqArm(...,true)`) y
+se confirma con `confirmarBanoProp(color,i)` → una entrada en `S.banos_conf`
+con `cod`, `rec`, `recFijo`, `opsKg` exacto. "Juntar y confirmar" (barra del
+color, máquina automática opcional) usa `llenarBins` y sí parte WH para llenar.
+Solo lo confirmado ocupa máquina/día real (`P.banos`). "Deshacer" quita la
+confirmación y la WH vuelve a la lista.
 
 **Calidad de tintorería (después del baño):** al registrar "salió" en Control de
 piso → Tintorería, `banoListo()` marca `avance.tinturada` y pone la orden en fase
