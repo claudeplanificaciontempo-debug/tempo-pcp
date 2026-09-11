@@ -116,7 +116,8 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .mgrid{border-collapse:separate;border-spacing:0;min-width:100%}
 .mgrid th{background:var(--paper);font-size:var(--fs-xs);padding:6px 8px;border-bottom:1px solid var(--rule)}
 .mgrid td{border-bottom:1px solid var(--rule2);padding:5px 5px;vertical-align:top;min-width:150px}
-.mgrid td.mname{min-width:112px;font-size:var(--fs-s);font-weight:500;background:var(--field);white-space:nowrap;border-right:1px solid var(--rule)}
+.mgrid td.mname{width:1%;min-width:0;max-width:150px;font-size:var(--fs-s);font-weight:500;background:var(--field);white-space:nowrap;border-right:1px solid var(--rule);padding-right:12px}
+.mgrid th:first-child{width:1%}
 .bath{border-radius:2px;padding:5px 7px;margin-bottom:4px;color:#fff;font-size:var(--fs-xs);line-height:1.35;cursor:default}
 .bath .c{font-weight:600;display:block}
 .bath.b-claro{background:var(--claro);color:#3D3110}
@@ -2132,7 +2133,6 @@ function vTin(el){
     <div class="kpi"><div class="v">${banos.length?Math.round(banos.reduce((a,b)=>a+b.fill,0)/banos.length*100):0}%</div><div class="k">Llenado promedio</div></div>
     <div class="kpi ${(P.banosPend||[]).length?'warn':''}"><div class="v">${Object.keys(armGrupos(P)).length}</div><div class="k">Grupos esperando armar baño</div></div>
     <div class="kpi ${tarde.length?'bad':''}"><div class="v">${tarde.length}</div><div class="k">Fuera de fecha</div></div></div>
-  ${estadoTinHTML()}
   <div class="panel"><h3>Máquina × día</h3>${grid}</div>
   <div class="panel"><h3>Armar baños <span class="note">el sistema propone marcado por defecto lo que ya calculó; ajusta las W y confirma. Nada se programa hasta que confirmes</span></h3><div class="body">
    <p class="mut" style="font-size:var(--fs-s);margin:0 0 12px">Capacidad de las máquinas: ${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>esc(r.n)+' '+num(r.cap)+' kg'+(r.capPique?' (piqué '+num(r.capPique)+' kg)':'')).join(' · ')||'sin máquinas activas'}. <a style="cursor:pointer" onclick="CONF.tab='recursos';ir('config')">Cambiar en Configuración →</a></p>
@@ -2141,6 +2141,7 @@ function vTin(el){
     ${S.banos_conf.map(bc=>{const oidsBc=bc.opsKg?Object.keys(bc.opsKg):(bc.oids||[]);
       const kgTotal=oidsBc.reduce((a,id)=>a+(bc.opsKg&&bc.opsKg[id]!=null?bc.opsKg[id]:0),0);
       return `<tr><td style="white-space:nowrap">${dotColor(bc.color)}${esc(bc.colorN||'')}${bc.cod?'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(bc.cod)+'</span>':''}</td><td style="font-size:var(--fs-xs)">${(bc.telas||[]).map(nTela).map(esc).join(' + ')}</td><td class="num">${num(kgTotal)}</td><td class="mut" style="font-size:var(--fs-xs)">${oidsBc.map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?esc(o.op):id}).join(', ')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(bc.u||'')}</td><td><button class="btn ghost sm" onclick="deshacerBanoConf('${bc.id}')">Deshacer</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
+  ${estadoTinHTML()}
   ${resumenWHHTML(P)}
   ${tablaCarga('tin','Carga de tintorería')}
   ${S.programas.length?`<div class="panel"><h3>Programas guardados</h3><div class="body"><table><thead><tr><th>Guardado</th><th class="num">Baños</th><th class="num">Kg</th><th class="num">Llenado</th></tr></thead><tbody>
