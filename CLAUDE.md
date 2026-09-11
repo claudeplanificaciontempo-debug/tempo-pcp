@@ -85,6 +85,24 @@ cuyas órdenes ya están `tinturada/calidadOk/lista` (y no en `reproc`) **sale d
 programa** (`programar()` lo omite) y la máquina queda libre. El rechazo de
 calidad pide qué telas tienen el problema (`reprocesos[].telas`).
 
+**Código interno de baño:** `codBano(colorN,req)` → `T<MES><AA>-<COLOR>-<NN>`
+(ej. `TOCT26-DARKBLACK-03`; mes = del requerido más temprano del grupo, o del
+día de confirmación). Se guarda en `banos_conf[].cod`, viaja en `P.banos[].cod`
+y `salidas_tin[].cod`, y se ve en el cuadro, Control de piso, confirmados y el
+modal "hecho". Tejeduría aún no tiene código propio (pendiente parametrizar).
+
+**Armado, remanentes y máquina pequeña:** `tagArm()` etiqueta el resto de un
+grupo como "baño lleno" (≥ pctBueno), "previo aprobación" (≥ granOk, se puede
+soltar con aprobación) o "pendiente"; si el resto cabe en una máquina pequeña
+(cap < granMin·1.2, p. ej. STUART) lo dice, y al programar un baño confirmado
+que cabe en una pequeña, `programar()` lo manda solo a las pequeñas (no ocupa
+una grande ni se fragmenta más). `lineaReparto()` escribe en la tarjeta, por
+cada WH partida, "% aquí · resto: código 30% (COLOR), …" en una sola línea,
+incluso si el resto está en baños de otros colores.
+
+**Tejeduría:** `resumenTelasHTML()` (arriba del cuadro) suma por tipo de tela
+todo lo cargado: kg, liberados, tejidos, por tejer. Se teje por volumen.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

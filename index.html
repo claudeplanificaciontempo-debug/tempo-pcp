@@ -864,7 +864,7 @@ function programar(){
     if(!telas.length||!oidsBc.length)return;
     const tRef=T(telas.find(t=>T(t)&&T(t).pique)||telas.find(t=>T(t)&&T(t).fam==='IND')||telas[0])||{};
     const cand=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&telas.every(t=>compatible(r,t))&&(!tRef.pique||(r.capPique||0)>0));
-    if(!cand.length){banos.push({id:bc.id,gk:bc.id,error:'sin máquina compatible',confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',telas,kg:0,ops:[],oids:oidsBc});return}
+    if(!cand.length){banos.push({id:bc.id,gk:bc.id,cod:bc.cod||'',error:'sin máquina compatible',confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',telas,kg:0,ops:[],oids:oidsBc});return}
     let kg=0;const telasKg={},opsKg={},ops=[];let req=null,desde=ini,reproc=false;
     oidsBc.forEach(oid=>{const o=S.ordenes.find(x=>x.id===oid);if(!o||!res.ordenes[oid])return;const avc=S.avance[oid]||{};if(!avc.reproc&&(avc.tinturada||avc.calidadOk||avc.lista))return;
       // kg total real de la orden para las telas de este grupo; si lo confirmado fue parcial (WH partida entre 2 baños), se reparte proporcional
@@ -880,8 +880,11 @@ function programar(){
     if(kg<=0)return;
     const capOf=r=>tRef.pique?(r.capPique||0):r.cap;const tolGc=1+(S.params.tolGrande||5)/100;
     // solo máquinas donde cabe el baño (con tolerancia); si en ninguna cabe, la más grande
-    let poolC=cand.filter(r=>capOf(r)*tolGc>=kg-1e-6);if(!poolC.length)poolC=[cand.reduce((m,r)=>capOf(r)>capOf(m)?r:m,cand[0])];const r0=poolC[0];
-    banos.push({id:bc.id,gk:bc.id,grupo:bc.id,confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
+    let poolC=cand.filter(r=>capOf(r)*tolGc>=kg-1e-6);if(!poolC.length)poolC=[cand.reduce((m,r)=>capOf(r)>capOf(m)?r:m,cand[0])];
+    // si el baño cabe en una máquina pequeña (remanente del color), va directo a ella y no ocupa una grande
+    const chicasC=poolC.filter(r=>r.cap<(S.params.granMin||120)*1.2);if(chicasC.length&&kg<=Math.max(...chicasC.map(capOf))*tolGc+1e-6)poolC=chicasC;
+    const r0=poolC[0];
+    banos.push({id:bc.id,gk:bc.id,grupo:bc.id,cod:bc.cod||'',confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
       pool:poolC.map(r=>r.id),telas,telasKg,opsKg,kg,cap:capOf(r0),fill:kg/capOf(r0),est:'ok',reproc,rec:bc.rec&&poolC.some(r=>r.id===bc.rec)?bc.rec:r0.id,
       horas:reproc?(S.params.hReproceso||10):horasBano(bc.color,telas[0]),req,desde,ops,oids:oidsBc.slice()});
   });
@@ -1718,7 +1721,7 @@ function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px">
         <div style="flex:1;min-width:200px"><b>${esc(grp.telas.map(nTela).join(' + '))}</b> <span class="mut" style="font-size:var(--fs-xs)">cap. ${num(grp.cap||0)} kg</span></div>
         <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
-         <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(kgSel)}</b> kg seleccionados${nBanos?` · <b>${nBanos}</b> baño${nBanos===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',restoKg>0?num(restoKg)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}</div></div>
+         <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(kgSel)}</b> kg seleccionados${nBanos?` · <b>${nBanos}</b> baño${nBanos===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',restoKg>0?num(restoKg)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}${restoKg>0?tagArm(restoKg,grp.cap,grp.telas):''}</div></div>
         <div><button class="btn ghost sm" onclick="armTodas('${grp.gk}',true,armGrupos(programar())['${grp.gk}'])">Todas</button> <button class="btn ghost sm" onclick="armTodas('${grp.gk}',false,armGrupos(programar())['${grp.gk}'])">Ninguna</button>
          ${puede('programa')?`<button class="btn sm" onclick="confirmarArm('${grp.gk}')">Confirmar${nBanos>1?' '+nBanos+' baños':' baño'}</button>`:''}</div></div>
        <div class="scroll" style="max-height:180px"><table><thead><tr><th style="width:26px"></th><th>WH</th><th class="num">Kg</th></tr></thead><tbody>
@@ -1740,7 +1743,7 @@ function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp
   const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(grp.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
   if(!confirm(resumenConfirm(grp.colorN,grp.telas,bins)))return;
   S.banos_conf=S.banos_conf||[];
-  bins.forEach(b=>S.banos_conf.push({id:uid(),telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
+  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(grp.colorN,grp.req),telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   delete ARM.sel[gk];PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 /* ---- juntar en un baño lo marcado en varias telas del mismo color (si la máquina tiene capacidad) ---- */
@@ -1771,7 +1774,8 @@ function confirmarArmColor(colorId){const P=programar();const subs=Object.values
   const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(i.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
   if(!confirm(resumenConfirm(pc.colorN,i.telas,bins)))return;
   S.banos_conf=S.banos_conf||[];
-  bins.forEach(b=>S.banos_conf.push({id:uid(),telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
+  const reqC=subs.map(g=>g.req).filter(Boolean).sort()[0]||null;
+  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(pc.colorN,reqC),telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   subs.forEach(g=>{delete ARM.sel[g.gk]});PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 function deshacerBanoConf(id){if(!confirm('¿Deshacer este baño? Las órdenes vuelven a la lista de espera.'))return;
@@ -2084,7 +2088,7 @@ function vTej(el){
     </tbody></table></div>`:'<div class="empty">Carga órdenes con telas para ver el programa de tejeduría.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tejeduría</h2><span class="spacer"></span>${puedeArea('tej')||puede('programa')?`<button class="btn tint to" onclick="mParada('tej')">Reportar novedad</button>`:''}</div>
   <p class="lede">Todos los kilos pendientes de una misma tela se tejen como una sola corrida en una máquina, y la máquina se queda calibrada para esa tela al menos ${S.params.tejBloqueDias||0} días; cada cambio de tela cuesta ${S.params.tejCambioHoras||0} h (ambos en Parámetros). Los kilos son en crudo. Pasa el cursor sobre un bloque para ver las órdenes.</p>
-  <div class="panel"><h3>Máquina × día</h3>${grid}</div>${tablaCarga('tej','Carga de tejeduría')}`;
+  ${resumenTelasHTML()}<div class="panel"><h3>Máquina × día</h3>${grid}</div>${tablaCarga('tej','Carga de tejeduría')}`;
 }
 
 /* ---------- Tintorería ---------- */
@@ -2098,7 +2102,7 @@ function vTin(el){
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
       return `<td>${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" style="background:${bg};color:${textoSobre(bg)}" title="${esc(b.ops.join(', '))}">
-        <span class="c">${esc(b.colorN)}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span></div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
+        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
     <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
@@ -2116,7 +2120,7 @@ function vTin(el){
   ${(S.banos_conf||[]).length?`<div class="panel"><h3>Baños confirmados <span class="note">ya están en el programa; deshacer los devuelve a la lista de espera</span></h3><div class="body"><table><thead><tr><th>Color</th><th>Telas</th><th class="num">Kg</th><th>Órdenes</th><th>Confirmado por</th><th></th></tr></thead><tbody>
     ${S.banos_conf.map(bc=>{const oidsBc=bc.opsKg?Object.keys(bc.opsKg):(bc.oids||[]);
       const kgTotal=oidsBc.reduce((a,id)=>a+(bc.opsKg&&bc.opsKg[id]!=null?bc.opsKg[id]:0),0);
-      return `<tr><td style="white-space:nowrap">${dotColor(bc.color)}${esc(bc.colorN||'')}</td><td style="font-size:var(--fs-xs)">${(bc.telas||[]).map(nTela).map(esc).join(' + ')}</td><td class="num">${num(kgTotal)}</td><td class="mut" style="font-size:var(--fs-xs)">${oidsBc.map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?esc(o.op):id}).join(', ')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(bc.u||'')}</td><td><button class="btn ghost sm" onclick="deshacerBanoConf('${bc.id}')">Deshacer</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
+      return `<tr><td style="white-space:nowrap">${dotColor(bc.color)}${esc(bc.colorN||'')}${bc.cod?'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(bc.cod)+'</span>':''}</td><td style="font-size:var(--fs-xs)">${(bc.telas||[]).map(nTela).map(esc).join(' + ')}</td><td class="num">${num(kgTotal)}</td><td class="mut" style="font-size:var(--fs-xs)">${oidsBc.map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?esc(o.op):id}).join(', ')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(bc.u||'')}</td><td><button class="btn ghost sm" onclick="deshacerBanoConf('${bc.id}')">Deshacer</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
   ${tablaCarga('tin','Carga de tintorería')}
   ${S.programas.length?`<div class="panel"><h3>Programas guardados</h3><div class="body"><table><thead><tr><th>Guardado</th><th class="num">Baños</th><th class="num">Kg</th><th class="num">Llenado</th></tr></thead><tbody>
     ${S.programas.slice().reverse().map(p=>`<tr><td>${p.ts}</td><td class="num">${p.n}</td><td class="num">${num(p.kg)}</td><td class="num">${p.fill}%</td></tr>`).join('')}</tbody></table></div></div>`:''}
@@ -2230,6 +2234,32 @@ function vReporteria(el){
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
    ${resumen()}`;
 }
+/* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
+const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+/* T + mes del proyecto + año + bloque de color + secuencia: TOCT26-DARKBLACK-03 */
+function codBano(colorN,req){const d=(req&&/^\d{4}-\d{2}/.test(req))?req:hoy();const m=MES_ABR[+d.slice(5,7)-1]||'';const yy=d.slice(2,4);
+  const col=normTxt(colorN||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10)||'COLOR';const pref='T'+m+yy+'-'+col+'-';
+  const usados=new Set((S.banos_conf||[]).map(b=>b.cod||''));let n=1;while(usados.has(pref+String(n).padStart(2,'0')))n++;return pref+String(n).padStart(2,'0')}
+function repartoWH(oid,P){const bs=(P.banos||[]).filter(b=>!b.error&&b.opsKg&&b.opsKg[oid]>0);const tot=bs.reduce((a,b)=>a+b.opsKg[oid],0);return{bs,tot}}
+/* una línea por WH partida: "WH 49% aquí · resto: TOCT26-DARKBLACK-03 30%, TOCT26-TRUERED-01 21% (TRUE RED)" */
+function lineaReparto(b,P){const parts=[];(b.oids||[]).forEach(oid=>{const {bs,tot}=repartoWH(oid,P);if(bs.length<2||!tot)return;const o=S.ordenes.find(x=>x.id===oid);const aqui=Math.round(100*((b.opsKg||{})[oid]||0)/tot);
+  const resto=bs.filter(x=>x.id!==b.id).map(x=>(x.cod||(nRec(x.rec)+' '+fmtDia(x.dia)))+' '+Math.round(100*x.opsKg[oid]/tot)+'%'+(x.color!==b.color?' ('+esc(x.colorN)+')':'')).join(', ');
+  parts.push('<b>'+esc(o?o.op:oid)+'</b> '+aqui+'% aquí · resto: '+resto)});
+  return parts.length?'<br><span style="opacity:.85;font-size:10px">'+parts.join('<br>')+'</span>':''}
+/* etiqueta de un grupo al armar: lleno · previo aprobación (≥ granOk) · pendiente (y si cabe, va a la máquina pequeña) */
+function tagArm(kg,cap,telas){if(kg<=1e-6)return'';const PP=S.params;const tol=1+(PP.tolGrande||5)/100;
+  const chica=Math.max(0,...S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&r.cap<(PP.granMin||120)*1.2&&(telas||[]).every(t=>compatible(r,t))).map(r=>r.cap));
+  if(cap&&kg>=cap*(PP.pctBueno||90)/100-1e-6)return' <span class="tag t-ok">baño lleno</span>';
+  if(kg>=(PP.granOk||180)-1e-6)return' <span class="tag t-aviso" title="Se puede soltar con aprobación">previo aprobación</span>';
+  if(chica&&kg<=chica*tol+1e-6)return' <span class="tag" title="Sin más volumen del color: no se fragmenta, va directo a la máquina pequeña">pendiente · va a máquina pequeña ('+num(chica)+' kg)</span>';
+  return' <span class="tag t-alerta">pendiente · bajo mínimo</span>'}
+function resumenTelasHTML(){const m={};S.ordenes.filter(abierta).forEach(o=>{const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);const tej=a.tejida||fe.tejida;const lib=liberada(o,'tej');
+  (o.telas||[]).forEach(t=>{if(t.ext||!(t.kg>0))return;const k=kgCrudo(t.tela,t.kg);const r=m[t.tela]=m[t.tela]||{kg:0,lib:0,tej:0,pend:0,ords:new Set(),cols:new Set()};r.kg+=k;if(lib)r.lib+=k;if(tej)r.tej+=k;else if(lib)r.pend+=k;r.ords.add(o.id);r.cols.add(t.color||o.color)})});
+  const filas=Object.entries(m).sort((a,b)=>b[1].kg-a[1].kg);if(!filas.length)return'';const T=filas.reduce((acc,[,r])=>{acc.kg+=r.kg;acc.lib+=r.lib;acc.tej+=r.tej;acc.pend+=r.pend;return acc},{kg:0,lib:0,tej:0,pend:0});
+  return `<div class="panel"><h3>Resumen por tipo de tela <span class="note">todo lo cargado, en kg crudo · para entregar el plan a tejeduría</span></h3><div class="body"><table><thead><tr><th>Tela</th><th class="num">Órdenes</th><th class="num">Colores</th><th class="num">Kg cargados</th><th class="num">Kg liberados</th><th class="num">Ya tejidos</th><th class="num">Por tejer (liberado)</th></tr></thead><tbody>
+   ${filas.map(([t,r])=>`<tr><td>${esc(nTela(t))}</td><td class="num">${r.ords.size}</td><td class="num">${r.cols.size}</td><td class="num">${num(r.kg)}</td><td class="num">${num(r.lib)}</td><td class="num">${num(r.tej)}</td><td class="num"><b>${num(r.pend)}</b></td></tr>`).join('')}
+   <tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${new Set(Object.values(m).flatMap(r=>[...r.ords])).size}</td><td></td><td class="num">${num(T.kg)}</td><td class="num">${num(T.lib)}</td><td class="num">${num(T.tej)}</td><td class="num">${num(T.pend)}</td></tr></tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Se teje por volumen, no orden por orden: esta tabla suma los kilos por tela de todas las órdenes abiertas para proyectar las corridas. "Por tejer" = liberado y todavía no tejido.</p></div></div>`}
 let OPV={abierta:null,q:''};
 let CTL={area:null,centro:null,q:'',todo:false};
 function vControl(el){
@@ -2258,7 +2288,7 @@ function vControl(el){
   }else if(CTL.area==='tin'){
     const bs=P.banos.filter(b=>!b.error&&b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&filtro(o)})).filter(b=>CTL.todo||b.dia<=dsum(h,2)).sort((x,y)=>x.dia<y.dia?-1:x.dia>y.dia?1:ORDEN_FAM[x.fam]-ORDEN_FAM[y.fam]);
     cuerpo=`<div class="panel"><h3>Tintorería <span class="note">${bs.length} baños${CTL.todo?'':' de hoy y los dos días siguientes'}</span></h3><div class="scroll"><table><thead><tr><th>Día</th><th>Máquina</th><th>Color</th><th>Telas</th><th class="num">Kg crudo</th><th class="num">Llenado</th><th class="num">Sale (kg)</th><th>Estado</th><th>Órdenes</th><th>Hecho</th><th>Reproceso</th></tr></thead><tbody>
-     ${bs.slice(0,200).map(b=>{const reproc=b.oids.some(id=>(S.avance[id]||{}).reproc);return `<tr><td>${fmtDia(b.dia)}</td><td>${esc(nRec(b.rec))}</td><td><b>${esc(b.colorN)}</b>${reproc?' <span class="tag t-alerta">reproceso</span>':''}</td><td style="font-size:var(--fs-xs)">${b.telas.map(nTela).map(esc).join(' + ')}</td><td class="num">${num(b.kg)}</td><td class="num">${Math.round(b.fill*100)}%</td><td class="num mut">${num(banoAcabado(b))}</td>
+     ${bs.slice(0,200).map(b=>{const reproc=b.oids.some(id=>(S.avance[id]||{}).reproc);return `<tr><td>${fmtDia(b.dia)}</td><td>${esc(nRec(b.rec))}</td><td><b>${esc(b.colorN)}</b>${b.cod?'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(b.cod)+'</span>':''}${reproc?' <span class="tag t-alerta">reproceso</span>':''}</td><td style="font-size:var(--fs-xs)">${b.telas.map(nTela).map(esc).join(' + ')}</td><td class="num">${num(b.kg)}</td><td class="num">${Math.round(b.fill*100)}%</td><td class="num mut">${num(banoAcabado(b))}</td>
        <td>${b.est==='ok'?'<span class="tag t-ok">ok</span>':b.est==='aprob'?'<span class="tag t-aviso">aprobación</span>':'<span class="tag t-alerta">bajo</span>'}</td><td style="font-size:var(--fs-xs)">${b.ops.map(esc).join(', ')}</td>
        <td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mBanoHecho('${b.id}')">hecho</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&enCalidad(o)})?'<span class="tag t-aviso" title="Esperando la revisión de calidad">en calidad</span>':b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&(S.avance[id]||{}).calidadOk&&!liberadaCorte(o)})?'<span class="tag t-ok" title="Calidad aprobó; planificación la libera en Liberación a producción">calidad ok · en cola de liberación</span>':''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'quitar':'reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div>
      <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">"Hecho" pide los kg reales de cada tela del baño, lo saca del programa (la máquina queda libre) y pasa las órdenes a Calidad de tintorería (abajo); queda en el registro "Tintorería entregados" al final de la página de Tintorería. "Reprocesar" vuelve a programar el baño desde hoy con 10 horas y lo deja marcado hasta que se dé por listo.</p></div>`+calidadTinHTML(ok)+reprocesosTinHTML();
@@ -2306,7 +2336,7 @@ function liberadaCorte(o){return liberada(o,'corte')}
 function puedeLiberarA(o,et){if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
 function faltaLiberarA(o,et){const f=[];if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
   else return faltaLiberar(o);return f}
-function liberarA(ids,et){const et_n={tela:'tela (tejeduría y tintorería)',tej:'tela',tin:'tela',corte:'producción'}[et];let n=0,no=[];if(et==='tej'||et==='tin')et='tela';
+function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids.length+(ids.length===1?' orden':' órdenes')+' a producción?\n\nConfirmas que revisaste los insumos (BOM) de cada una. La tela y la calidad ya vienen validadas por tintorería y calidad.'))return;const et_n={tela:'tela (tejeduría y tintorería)',tej:'tela',tin:'tela',corte:'producción'}[et];let n=0,no=[];if(et==='tej'||et==='tin')et='tela';
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
     o.lib=o.lib||{};o.lib[et]={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
@@ -2315,7 +2345,7 @@ function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);
 function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);if(!(o.telas||[]).length)f.push('sin telas en la receta');
   if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');return f}
 function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberar(o)){alert('No se puede liberar: '+faltaLiberar(o).join(', '));return}
-  if(!confirm('¿Liberar '+o.op+' a corte? Confirmas que la tela está completa y en bodega.'))return;
+  if(!confirm('¿Liberar '+o.op+' a producción? Confirmas que la tela está en bodega con calidad aprobada y que revisaste los insumos (BOM).'))return;
   o.lib=o.lib||{};o.lib.corte={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;bitacora('Liberada a corte '+o.op);save();render()}
 function mParada(area,centros){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&(centros?centros.includes(r.centro):CE(r.centro).area===area));
   abrir(`<h3>Reportar novedad de máquina o recurso</h3><div class="body"><p class="lede" style="margin-top:0">La máquina queda fuera del programa entre esas fechas y todo lo que tenía se reprograma en las demás, solo con órdenes liberadas.</p>
@@ -2380,7 +2410,7 @@ function banoDe(id){const P=programar();return (P.banos||[]).find(b=>b.id===id)}
 function mBanoHecho(bId){const b=banoDe(bId);if(!b){alert('Este baño ya no está en el programa. Actualiza la página.');return}
   const telas=Object.entries(b.telasKg||{}).filter(([t,k])=>k>0).sort((x,y)=>y[1]-x[1]);
   abrir(`<h3>Baño hecho</h3><div class="body">
-   <p class="lede" style="margin-top:0"><b>${esc(b.colorN)}</b> · ${esc(nRec(b.rec))} · ${fmtDia(b.dia)}</p>
+   <p class="lede" style="margin-top:0"><b>${esc(b.colorN)}</b>${b.cod?' · '+esc(b.cod):''} · ${esc(nRec(b.rec))} · ${fmtDia(b.dia)}</p>
    <p class="mut" style="font-size:var(--fs-s)">Órdenes: ${esc(b.ops.join(', '))}</p>
    <table><thead><tr><th>Tela</th><th class="num">Kg programados (crudo)</th><th class="num">Kg reales que salieron</th></tr></thead><tbody>
     ${telas.map(([t,k],i)=>`<tr><td>${esc(nTela(t))}</td><td class="num">${num(k,1)}</td><td class="num"><input type="number" step="0.1" min="0" class="bh-kg" data-tela="${t}" value="${(+k).toFixed(1)}" style="width:110px" oninput="bhTotal()"></td></tr>`).join('')}
@@ -2393,7 +2423,7 @@ function confirmarBanoHecho(bId){const b=banoDe(bId);if(!b){cerrar();return}
   if(!Object.keys(detalle).length)kgReal=b.kg;
   const obs=((document.getElementById('bh-obs')||{}).value||'').trim();
   const telasTxt=Object.entries(detalle).map(([t,k])=>nTela(t)+' '+num(k,1)+' kg').join(' + ')||b.telas.map(nTela).join(' + ');
-  S.salidas_tin=S.salidas_tin||[];S.salidas_tin.push({id:uid(),ts:new Date().toISOString(),d:hoy(),rec:b.rec,colorN:b.colorN,color:b.color,telas:telasTxt,detalle,kgProg:+b.kg,kgReal,ops:b.ops.join(', '),oids:b.oids.slice(),obs,u:quienFirma()});
+  S.salidas_tin=S.salidas_tin||[];S.salidas_tin.push({id:uid(),ts:new Date().toISOString(),d:hoy(),rec:b.rec,cod:b.cod||'',colorN:b.colorN,color:b.color,telas:telasTxt,detalle,kgProg:+b.kg,kgReal,ops:b.ops.join(', '),oids:b.oids.slice(),obs,u:quienFirma()});
   if(S.salidas_tin.length>500)S.salidas_tin=S.salidas_tin.slice(-500);
   bitacora('Baño hecho '+b.colorN+' · '+nRec(b.rec)+' · '+num(kgReal,1)+' kg ('+telasTxt+')');
   banoListo(b.oids.join(','));cerrar()}

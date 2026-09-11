@@ -25,12 +25,16 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   PLAN=null;let P=programar();const grupos=Object.values(armGrupos(P));
   __check('hay grupos por armar',grupos.length>0,grupos.length+' grupos');
   __check('nada marcado por defecto',grupos.every(g=>armGet(g.gk,g).size===0));
+  {grupos.forEach(g=>{ARM.sel[g.gk]=new Set(Object.keys(g.items))});page='tintoreria';render();const html=document.getElementById('p-tintoreria').innerHTML;__check('armar: etiquetas lleno / previo aprobación / pendiente',/baño lleno|previo aprobación|pendiente/.test(html));grupos.forEach(g=>{delete ARM.sel[g.gk]})}
   const colores=[...new Set(grupos.map(g=>g.color))];
   colores.forEach(col=>{grupos.filter(g=>g.color===col).forEach(g=>{ARM.sel[g.gk]=new Set(Object.keys(g.items))});confirmarArmColor(col)});
   await __p(100);PLAN=null;P=programar();
   const conf=P.banos.filter(b=>b.confirmado&&!b.error);
   __check('baños confirmados programados',conf.length>0&&conf.every(b=>b.dia&&b.rec),conf.map(b=>b.colorN+'@'+b.rec+' '+b.dia+' '+Math.round(b.kg)+'kg').join('; '));
   __check('máquina apta por rol de color (claro→DANITECH 1, oscuro→DANITECH 2)',conf.every(b=>{const r=R(b.rec);const claro=profColor(C(b.color))==='claro';return !r.rolColor||r.rolColor==='ambos'||(r.rolColor==='claro')===claro}),conf.map(b=>b.colorN+'→'+nRec(b.rec)).join('; '));
+  __check('cada baño confirmado tiene código interno único',conf.every(b=>/^T[A-Z]{3}\d{2}-[A-Z0-9]+-\d{2}$/.test(b.cod))&&new Set(conf.map(b=>b.cod)).size===conf.length,conf.map(b=>b.cod).join(', '));
+  page='tintoreria';render();__check('cuadro muestra el código del baño y reparto de WH partidas',document.getElementById('p-tintoreria').innerHTML.includes(conf[0].cod)&&(document.getElementById('p-tintoreria').innerHTML.includes('% aquí · resto:')||!conf.some(b=>b.oids.some(oid=>conf.filter(x=>x.opsKg[oid]>0).length>1))));
+  page='tejeduria';render();__check('tejeduría: resumen por tipo de tela',document.getElementById('p-tejeduria').innerHTML.includes('Resumen por tipo de tela')&&document.getElementById('p-tejeduria').innerHTML.includes('Jersey 24/1'));
   __check('baño confirmado cabe en su máquina',conf.every(b=>b.kg<=(b.cap||0)*1.05+1e-6),conf.map(b=>Math.round(b.kg)+'kg en '+nRec(b.rec)+' ('+b.cap+')').join('; '));
   __check('sin grupos pendientes tras confirmar',Object.keys(armGrupos(P)).length===0,Object.keys(armGrupos(P)).join(','));
   const b0=conf[0];const oid0=b0.oids[0];const o0=S.ordenes.find(o=>o.id===oid0);
