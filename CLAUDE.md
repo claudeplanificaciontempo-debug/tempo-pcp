@@ -16,7 +16,11 @@ botones, plancha).
   maquinas, categorias, ordenes, programas, cargas, propuestas, paros, turnos,
   bitacora, planes, salidas_tin, banos_conf` — todas con esquema
   `id text primary key, data jsonb, actualizado timestamptz, actualizado_por uuid`.
-- Publicado en Netlify desde este repo (rama `main`), se actualiza solo al hacer push.
+- Publicado desde este repo (rama `main`) en dos sitios que se actualizan solos al hacer push:
+  **GitHub Pages** https://claudeplanificaciontempo-debug.github.io/tempo-pcp/ (siempre al día)
+  y Netlify https://tempo-pcp.netlify.app (solo publica si la cuenta tiene crédito;
+  en sept-2026 quedó bloqueado por crédito agotado). `test/` y `netlify.toml` se publican
+  también; no poner ahí nada sensible.
 
 ## Reglas de negocio clave (tintorería — lo más delicado del sistema)
 
