@@ -3,6 +3,7 @@
 window.__R={errors:[],alerts:[],checks:[],log:[]};
 window.addEventListener('error',e=>{__R.errors.push({page:(typeof page!=='undefined'?page:''),msg:e.message,src:(e.filename||'')+':'+e.lineno,stack:(e.error&&e.error.stack||'').split('\n').slice(0,3).join(' | ')})});
 window.addEventListener('unhandledrejection',e=>{__R.errors.push({page:(typeof page!=='undefined'?page:''),msg:'PROMISE: '+(e.reason&&e.reason.message||e.reason),stack:(e.reason&&e.reason.stack||'').split('\n').slice(0,3).join(' | ')})});
+window.print=()=>{__R.log.push('print bloqueado en '+(typeof page!=='undefined'?page:''))};window.open=()=>null;
 window.alert=m=>{__R.alerts.push({page:(typeof page!=='undefined'?page:''),msg:String(m)})};window.confirm=()=>true;window.prompt=()=>'';
 const DB={perfiles:[{id:'u1',email:'prueba@tempo.local',rol:'admin',nombre:'Usuario de prueba',area:null}]};
 const tabla=t=>DB[t]=DB[t]||[];
