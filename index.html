@@ -1722,6 +1722,7 @@ function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
       <div style="flex:1;min-width:220px"><b style="font-size:var(--fs-m)">${dotColor(pc.color)}${esc(pc.colorN)}</b>
        ${pc.req?`<div class="mut" style="font-size:var(--fs-xs)">necesita antes de ${fmtDia(pc.req)}${pc.req<dsum(hoy(),3)?' <span class="tag t-alerta">urgente</span>':''}</div>`:''}</div>
       <div class="mut" style="font-size:var(--fs-s)">Total del color: <b style="color:var(--ink)">${num(kgTotalTot)} kg</b> en ${pc.subs.length} ${pc.subs.length===1?'tela':'telas'} · aprox. <b style="color:var(--ink)">${banosEst}</b> ${banosEst===1?'baño':'baños'} necesarios</div></div>
+     ${puede('programa')?colorSelHTML(pc):''}
      ${subsHTML}
     </div></div>`}).join('')}
 function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp){alert('Este grupo ya no existe (puede que ya se haya confirmado o cambiado). Actualiza la página.');return}const sel=[...armGet(gk,grp)];if(!sel.length){alert('Marca al menos una WH.');return}
@@ -1730,6 +1731,36 @@ function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp
   S.banos_conf=S.banos_conf||[];
   bins.forEach(b=>S.banos_conf.push({id:uid(),telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   delete ARM.sel[gk];PLAN=null;PLAN_ALL=null;save();render();
+  if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
+/* ---- juntar en un baño lo marcado en varias telas del mismo color (si la máquina tiene capacidad) ---- */
+function colorSelInfo(pc){const items={},telas=new Set();let kg=0;
+  pc.subs.forEach(grp=>{const sel=armGet(grp.gk,grp);Object.values(grp.items).forEach(it=>{if(!sel.has(it.oid)||it.kg<=0)return;items[it.oid]=(items[it.oid]||0)+it.kg;kg+=it.kg;grp.telas.forEach(t=>telas.add(t))})});
+  const tl=[...telas];const tRef=T(tl.find(t=>T(t)&&T(t).pique)||tl.find(t=>T(t)&&T(t).fam==='IND')||tl[0])||{};
+  const cand=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&tl.every(t=>compatible(r,t))&&(!tRef.pique||(r.capPique||0)>0));
+  const capOf=r=>tRef.pique?(r.capPique||0):r.cap;const cap=cand.length?Math.max(...cand.map(capOf)):0;
+  const propias=tl.filter(t=>T(t)&&(T(t).pique||T(t).fam==='IND'));
+  const mezclaPropia=propias.length>0&&tl.length>1;
+  const nTelas=pc.subs.filter(g=>Object.values(g.items).some(it=>armGet(g.gk,g).has(it.oid)&&it.kg>0)).length;
+  return{items,telas:tl,kg,cap,cand,mezclaPropia,nTelas}}
+function colorSelHTML(pc){if(pc.subs.length<2)return'';const i=colorSelInfo(pc);if(!i.kg)return'';
+  const capTol=i.cap*(1+(S.params.tolGrande||5)/100);let nLlenos=capTol?Math.floor(i.kg/capTol+1e-9):0,resto=i.kg-nLlenos*capTol;if(resto<1e-6)resto=0;const n=resto>0?nLlenos+1:nLlenos;
+  const pct=!i.cap?0:resto>0?Math.round(100*resto/i.cap):(nLlenos?100:0);
+  const barColor=pct>=(S.params.pctBueno||90)?'var(--ok)':pct>=(S.params.pctAprob||70)?'var(--aviso)':'var(--ink3)';
+  return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:var(--field);border-radius:8px">
+    <div style="flex:1;min-width:200px"><b>Todo lo marcado del color</b> <span class="mut" style="font-size:var(--fs-xs)">${i.nTelas} ${i.nTelas===1?'tela':'telas'} juntas · cap. ${num(i.cap)} kg${i.mezclaPropia?' · <span class="tag t-alerta">mezcla baño propio</span>':''}${!i.cand.length?' · <span class="tag t-alerta">sin máquina apta</span>':''}</span></div>
+    <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--panel,#fff);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
+     <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(i.kg)}</b> kg marcados${n?` · <b>${n}</b> baño${n===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',resto>0?num(resto)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}</div></div>
+    <div><button class="btn sm" ${i.cand.length?'':'disabled'} onclick="confirmarArmColor('${pc.color}')">Juntar y confirmar${n>1?' '+n+' baños':' baño'}</button></div></div>`}
+function confirmarArmColor(colorId){const P=programar();const subs=Object.values(armGrupos(P)).filter(g=>g.color===colorId);
+  if(!subs.length){alert('Este color ya no tiene nada esperando. Actualiza la página.');return}
+  const pc={color:colorId,colorN:subs[0].colorN,subs};const i=colorSelInfo(pc);
+  const items=Object.entries(i.items).map(([id,kg])=>({id,kg}));if(!items.length){alert('Marca al menos una WH.');return}
+  if(!i.cand.length){alert('No hay una máquina de tintorería activa apta para todas las telas marcadas juntas.');return}
+  if(i.mezclaPropia&&!confirm('Estás juntando una tela de baño propio (piqué) con otras telas. La regla normal es que vaya sola.\n\n¿Confirmar igual?'))return;
+  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(i.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
+  S.banos_conf=S.banos_conf||[];
+  bins.forEach(b=>S.banos_conf.push({id:uid(),telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
+  subs.forEach(g=>{delete ARM.sel[g.gk]});PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 function deshacerBanoConf(id){if(!confirm('¿Deshacer este baño? Las órdenes vuelven a la lista de espera.'))return;
   S.banos_conf=(S.banos_conf||[]).filter(b=>b.id!==id);PLAN=null;PLAN_ALL=null;save();render()}
