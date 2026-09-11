@@ -885,6 +885,7 @@ function programar(){
     let poolC=cand.filter(r=>capOf(r)*tolGc>=kg-1e-6);if(!poolC.length)poolC=[cand.reduce((m,r)=>capOf(r)>capOf(m)?r:m,cand[0])];
     // si el baño cabe en una máquina pequeña (remanente del color), va directo a ella y no ocupa una grande
     const chicasC=poolC.filter(r=>r.cap<(S.params.granMin||120)*1.2);if(chicasC.length&&kg<=Math.max(...chicasC.map(capOf))*tolGc+1e-6)poolC=chicasC;
+    if(bc.recFijo&&bc.rec&&cand.some(r=>r.id===bc.rec))poolC=[R(bc.rec)]; // movido a mano a esa máquina
     const r0=poolC[0];
     banos.push({id:bc.id,gk:bc.id,grupo:bc.id,cod:bc.cod||'',confirmado:true,color:bc.color,colorN:bc.colorN||(C(bc.color)||{}).n||'?',fam:(C(bc.color)||{}).fam||'medio',
       pool:poolC.map(r=>r.id),telas,telasKg,opsKg,kg,cap:capOf(r0),fill:kg/capOf(r0),est:'ok',reproc,rec:bc.rec&&poolC.some(r=>r.id===bc.rec)?bc.rec:r0.id,
@@ -1383,9 +1384,10 @@ function imprimirAlbaranBano(recId,dia,colorN,telas,kg,opsCsv,oidsCsv){const oid
   ALB={titulo:'Albarán de tintorería',sub:nRec(recId)+' · '+fmtDia(dia),tela:telas,color:colorN,kg:+kg,detalle:detalle.length?detalle:oids.map(id=>{const o=S.ordenes.find(x=>x.id===id);return{op:o?o.op:id,tela:'',kg:null}}),porTela:true,volver:'tintoreria'};page='albaran';render()}
 function vAlbaran(el){
   if(!ALB){el.innerHTML='<div class="pagehead"><h2>Albarán</h2></div><div class="panel"><div class="empty">Nada para imprimir todavía.</div></div>';return}
-  el.innerHTML=`<div class="pagehead"><h2>${esc(ALB.titulo)}</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button> <button class="btn ghost no-print" onclick="ir('${ALB.volver}')">Volver</button></div>
+  el.innerHTML=`<div class="pagehead"><h2>${esc(ALB.titulo)}${ALB.cod?' <span style="font-weight:500;color:var(--ink2)">· '+esc(ALB.cod)+'</span>':''}</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button> <button class="btn ghost no-print" onclick="ir('${ALB.volver}')">Volver</button></div>
    <section class="imp"><div class="imp-cab"><div><b>${esc(ALB.sub)}</b></div><div class="mut">TEMPOCODECA · generado ${new Date().toLocaleString('es-EC')}</div></div>
    <table><tbody>
+    ${ALB.cod?`<tr><td style="width:160px"><b>Código del baño</b></td><td><b>${esc(ALB.cod)}</b></td></tr>`:''}
     <tr><td style="width:160px"><b>Tela</b></td><td>${esc(ALB.tela)}</td></tr>
     ${ALB.color?`<tr><td><b>Color</b></td><td>${esc(ALB.color)}</td></tr>`:''}
     <tr><td><b>Total</b></td><td>${num(ALB.kg)} kg</td></tr>
@@ -2115,9 +2117,9 @@ function vTin(el){
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
       return `<td>${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" style="background:${bg};color:${textoSobre(bg)}" title="${esc(b.ops.join(', '))}">
-        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
+        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${selMaquinaBano(b)}${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
+    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · el selector de la tarjeta lo mueve a otra máquina.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día.</p>
   ${errs.length?`<div class="warn">${errs.map(b=>`<b>${esc(b.colorN)}</b> en ${b.telas.map(nTela).map(esc).join(' + ')}: no hay máquina activa apta para esa tela.`).join('<br>')}</div>`:''}
@@ -2135,6 +2137,7 @@ function vTin(el){
     ${S.banos_conf.map(bc=>{const oidsBc=bc.opsKg?Object.keys(bc.opsKg):(bc.oids||[]);
       const kgTotal=oidsBc.reduce((a,id)=>a+(bc.opsKg&&bc.opsKg[id]!=null?bc.opsKg[id]:0),0);
       return `<tr><td style="white-space:nowrap">${dotColor(bc.color)}${esc(bc.colorN||'')}${bc.cod?'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(bc.cod)+'</span>':''}</td><td style="font-size:var(--fs-xs)">${(bc.telas||[]).map(nTela).map(esc).join(' + ')}</td><td class="num">${num(kgTotal)}</td><td class="mut" style="font-size:var(--fs-xs)">${oidsBc.map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?esc(o.op):id}).join(', ')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(bc.u||'')}</td><td><button class="btn ghost sm" onclick="deshacerBanoConf('${bc.id}')">Deshacer</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
+  ${resumenWHHTML(P)}
   ${tablaCarga('tin','Carga de tintorería')}
   ${S.programas.length?`<div class="panel"><h3>Programas guardados</h3><div class="body"><table><thead><tr><th>Guardado</th><th class="num">Baños</th><th class="num">Kg</th><th class="num">Llenado</th></tr></thead><tbody>
     ${S.programas.slice().reverse().map(p=>`<tr><td>${p.ts}</td><td class="num">${p.n}</td><td class="num">${num(p.kg)}</td><td class="num">${p.fill}%</td></tr>`).join('')}</tbody></table></div></div>`:''}
@@ -2299,6 +2302,31 @@ function estadoTinHTML(){const ords=S.ordenes.filter(abierta).filter(o=>etapas(o
    ${bloque('Completos: esperando calidad',"Salieron completos de tintorería; Calidad los aprueba o rechaza en Control de piso → Tintorería.",g.calidad)}
    ${bloque('Tela en stock',"Tela ya tinturada en bodega según Odoo: se toma como lista y entra directo a la cola de liberación a producción.",g.stock)}
   </div></div>`}
+/* ---------- Mover un baño confirmado de máquina · albarán por id (con código) · resumen por WH ---------- */
+function moverBano(id,rec){const bc=(S.banos_conf||[]).find(b=>b.id===id);if(!bc)return;
+  if(!rec){delete bc.recFijo;delete bc.rec;bitacora('Baño '+(bc.cod||bc.colorN)+' vuelve a máquina automática')}
+  else{const r=R(rec);const tRef=T((bc.telas||[]).find(t=>T(t)&&T(t).pique))||{};const cap=tRef.pique?(r.capPique||0):(r.cap||0);const kg=Object.values(bc.opsKg||{}).reduce((a,k)=>a+k,0);
+    if(cap&&kg>cap*(1+(S.params.tolGrande||5)/100)+1e-6&&!confirm('El baño tiene '+num(kg)+' kg y '+r.n+' admite '+num(cap)+' kg. ¿Moverlo igual?'))return;
+    bc.rec=rec;bc.recFijo=true;bitacora('Baño '+(bc.cod||bc.colorN)+' movido a '+r.n)}
+  PLAN=null;PLAN_ALL=null;save();render()}
+function selMaquinaBano(b){if(!b.confirmado)return'';const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&(b.telas||[]).every(t=>compatible(r,t)));
+  const bc=(S.banos_conf||[]).find(x=>x.id===b.id)||{};
+  return ` <select class="no-print" title="Mover este baño a otra máquina" style="font-size:10px;padding:1px 3px;border-radius:4px;color:inherit;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)" onclick="event.stopPropagation()" onchange="moverBano('${b.id}',this.value)"><option value="" ${bc.recFijo?'':'selected'} style="color:#000">auto</option>${recs.map(r=>`<option value="${r.id}" ${bc.recFijo&&bc.rec===r.id?'selected':''} style="color:#000">→ ${esc(r.n)}</option>`).join('')}</select>`}
+function imprimirAlbaranBanoId(bId){const b=banoDe(bId);if(!b){alert('Este baño ya no está en el programa.');return}
+  const detalle=[];Object.entries(b.opsKg||{}).forEach(([oid,kgOrd])=>{const o=S.ordenes.find(x=>x.id===oid);if(!o||kgOrd<=0)return;
+    const porTela=[];let tot=0;(o.telas||[]).forEach(tl=>{if(tl.ext||tl.kg<=0)return;if(!(b.telas||[]).includes(tl.tela))return;if((tl.color||o.color)!==b.color)return;const k=kgTelaTin(o,tl);if(k<=0)return;porTela.push({tela:tl.tela,k});tot+=k});
+    if(!porTela.length){detalle.push({op:o.op,tela:'',telaId:'',kg:kgOrd});return}
+    porTela.forEach(pt=>detalle.push({op:o.op,tela:nTela(pt.tela),telaId:pt.tela,kg:kgOrd*pt.k/tot}))});
+  detalle.sort((a,b2)=>a.op<b2.op?-1:a.op>b2.op?1:b2.kg-a.kg);
+  ALB={titulo:'Albarán de tintorería',cod:b.cod||'',sub:nRec(b.rec)+' · '+fmtDia(b.dia),tela:b.telas.map(nTela).join(' + '),color:b.colorN,kg:+b.kg,detalle,porTela:true,volver:'tintoreria'};page='albaran';render()}
+function resumenWHHTML(P){const porWH={};(P.banos||[]).filter(b=>!b.error).forEach(b=>Object.entries(b.opsKg||{}).forEach(([oid,kg])=>{if(kg<=0)return;(porWH[oid]=porWH[oid]||[]).push({b,kg})}));
+  const filas=Object.entries(porWH).map(([oid,l])=>{const o=S.ordenes.find(x=>x.id===oid);return{oid,o,l,kg:l.reduce((a,x)=>a+x.kg,0),colores:new Set(l.map(x=>x.b.color)).size}}).filter(f=>f.o)
+    .sort((a,b)=>(b.l.length-a.l.length)||(b.colores-a.colores)||a.o.op.localeCompare(b.o.op));
+  if(!filas.length)return'';const multi=filas.filter(f=>f.l.length>1).length;
+  return `<div class="panel"><h3>Resumen por WH <span class="note">en qué baños y colores está cada orden · ${filas.length} WH · ${multi} en más de un baño</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>WH</th><th>Categoría</th><th class="num">Baños</th><th class="num">Colores</th><th>Baños en los que está</th><th class="num">Kg total</th></tr></thead><tbody>
+   ${filas.map(f=>`<tr ${f.l.length>1?'style="background:var(--field)"':''}><td><b>${esc(f.o.op)}</b></td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${f.l.length}</td><td class="num">${f.colores}</td>
+     <td style="font-size:var(--fs-xs)">${f.l.map(x=>`${dotColor(x.b.color)}<b>${esc(x.b.cod||'')}</b> ${esc(x.b.colorN)} · ${esc(nRec(x.b.rec))} ${fmtDia(x.b.dia)} · ${num(x.kg,1)} kg (${Math.round(100*x.kg/f.kg)}%)`).join('<br>')}</td><td class="num">${num(f.kg,1)}</td></tr>`).join('')}</tbody></table></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Una misma WH puede ir en varios baños porque tiene telas de distintos colores o porque se partió para llenar un baño. El código de cada baño lleva el mes y el color.</p></div></div>`}
 let OPV={abierta:null,q:''};
 let CTL={area:null,centro:null,q:'',todo:false};
 function vControl(el){

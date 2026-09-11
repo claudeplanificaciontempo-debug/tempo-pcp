@@ -112,6 +112,14 @@ una grande ni se fragmenta más). `lineaReparto()` escribe en la tarjeta, por
 cada WH partida, "% aquí · resto: código 30% (COLOR), …" en una sola línea,
 incluso si el resto está en baños de otros colores.
 
+**Mover baño de máquina:** cada tarjeta confirmada tiene un `<select>`
+(`selMaquinaBano`) → `moverBano(id,rec)` guarda `banos_conf[].rec` +
+`recFijo:true` y `programar()` restringe el pool a esa máquina; "auto" lo quita.
+**Albarán:** `imprimirAlbaranBanoId(bId)` usa `b.opsKg` (kg exactos por orden,
+repartidos por tela) y muestra el código del baño (`ALB.cod`). **Resumen por
+WH** (`resumenWHHTML`, al final de Tintorería): por cada WH, los baños/colores
+en que está con código, máquina, día, kg y %.
+
 **Tejeduría:** `resumenTelasHTML()` (arriba del cuadro) suma por tipo de tela
 todo lo cargado: kg, liberados, tejidos, por tejer. Se teje por volumen.
 
