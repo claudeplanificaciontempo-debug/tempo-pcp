@@ -586,6 +586,10 @@ const COLOR_NOMBRES=[[/negro|black|onyx|carbon|ebony|jet/,'#1d1f24'],[/blanco|wh
   [/naranja|orange|coral|terra|papaya|apricot|peach|salmon/,'#e08a4a'],[/amarillo|yellow|sunlight|lemon|gold|mustard|chanterelle|sun/,'#e6c34a'],[/verde oliva|olive|olivine|covert|khaki|kaki|army/,'#6f7a3f'],[/verde|green|gables|forest|hunter|emerald|mint|lime/,'#3d7c4f'],
   [/cafe|café|brown|chocolate|coffee|java|mocha|tobacco|caviar/,'#6b4a34'],[/beige|arena|sand|camel|doeskin|almond|oat|khaki|tan|birch|nomad/,'#c9b18e'],[/gris|grey|gray|lhg|heather|smoked|pearl|flint|charcoal|silver|porpoise/,'#9aa0a8'],[/morado|purple|violet|lila|grape|concord|plum/,'#6b4a8e'],[/plomo|graphite|steel|iron/,'#5c636c']];
 function hexColor(id){const c=C(id);if(!c)return'#c9ced6';if(c.hex)return c.hex;const n=normTxt(c.n);for(const [re,h] of COLOR_NOMBRES){if(re.test(n))return h}const seed=[...(c.n||'')].reduce((a,ch)=>a+ch.charCodeAt(0),0);const base={claro:[214,206,190],medio:[104,138,192],oscuro:[52,66,100],lavado:[168,176,184]}[c.fam]||[150,150,150];const v=seed%36-18;return `rgb(${base[0]+v},${base[1]+v},${base[2]-v})`}
+function textoSobre(bg){let r,g,b;const m=/^#([0-9a-f]{6})$/i.exec(bg||'');if(m){r=parseInt(m[1].slice(0,2),16);g=parseInt(m[1].slice(2,4),16);b=parseInt(m[1].slice(4,6),16)}else{const n=/rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(bg||'');if(!n)return'#fff';r=+n[1];g=+n[2];b=+n[3]}
+  return (0.299*r+0.587*g+0.114*b)>150?'#1c1c1c':'#fff'}
+function resumenConfirm(colorN,telas,bins){const kg=bins.reduce((a,b)=>a+b.kg,0);const whs=[...new Set(bins.flatMap(b=>Object.keys(b.opsKg)))].map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?o.op:id});
+  return 'Vas a confirmar en '+colorN+':\n\n'+telas.map(nTela).join(' + ')+'\nTOTAL: '+num(kg)+' kg en '+bins.length+(bins.length===1?' baño':' baños')+(bins.length>1?' ('+bins.map(b=>num(b.kg)+' kg').join(' + ')+')':'')+'\nWH: '+whs.join(', ')+'\n\n¿Enviar al programa?'}
 function dotColor(id){return `<i class="dot" style="background:${hexColor(id)}"></i>`}
 function tecnicaT(o){const t=TEC(o.tecnica);return t?+t.t||0:0}
 function kgCrudo(telaId,kg){return +kg||0} // los kg cargados ya son crudos (sin merma); esto entra tal cual a tejeduría y a la tina
@@ -1727,7 +1731,8 @@ function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
     </div></div>`}).join('')}
 function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp){alert('Este grupo ya no existe (puede que ya se haya confirmado o cambiado). Actualiza la página.');return}const sel=[...armGet(gk,grp)];if(!sel.length){alert('Marca al menos una WH.');return}
   const items=sel.map(oid=>({id:oid,kg:grp.items[oid]?grp.items[oid].kg:0}));
-  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(grp.cap||9e9)*tolG);if(!bins.length)return;
+  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(grp.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
+  if(!confirm(resumenConfirm(grp.colorN,grp.telas,bins)))return;
   S.banos_conf=S.banos_conf||[];
   bins.forEach(b=>S.banos_conf.push({id:uid(),telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   delete ARM.sel[gk];PLAN=null;PLAN_ALL=null;save();render();
@@ -1758,6 +1763,7 @@ function confirmarArmColor(colorId){const P=programar();const subs=Object.values
   if(!i.cand.length){alert('No hay una máquina de tintorería activa apta para todas las telas marcadas juntas.');return}
   if(i.mezclaPropia&&!confirm('Estás juntando una tela de baño propio (piqué) con otras telas. La regla normal es que vaya sola.\n\n¿Confirmar igual?'))return;
   const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(i.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
+  if(!confirm(resumenConfirm(pc.colorN,i.telas,bins)))return;
   S.banos_conf=S.banos_conf||[];
   bins.forEach(b=>S.banos_conf.push({id:uid(),telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   subs.forEach(g=>{delete ARM.sel[g.gk]});PLAN=null;PLAN_ALL=null;save();render();
@@ -2085,11 +2091,10 @@ function vTin(el){
   const grid=dias.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
-      return `<td>${bs.map(b=>`<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" title="${esc(b.ops.join(', '))}">
-        <span class="c">${esc(b.colorN)}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">imprimir</a>${b.confirmado?` <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">quitar</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span></div>`).join('')}</td>`}).join('')}</tr>`).join('')}
+      return `<td>${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" style="background:${bg};color:${textoSobre(bg)}" title="${esc(b.ops.join(', '))}">
+        <span class="c">${esc(b.colorN)}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();imprimirAlbaranBano('${b.rec}','${b.dia}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}','${b.oids.join(',')}')">imprimir</a>${b.confirmado?` <a class="no-print" style="color:#fff;opacity:.75;text-decoration:underline;cursor:pointer;font-size:10px" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">quitar</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span></div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <div class="legend"><span><span class="sw" style="background:var(--lavado)"></span>Lavado</span><span><span class="sw" style="background:var(--claro)"></span>Claro</span>
-    <span><span class="sw" style="background:var(--medio)"></span>Medio</span><span><span class="sw" style="background:var(--oscuro)"></span>Oscuro</span>
+    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día)</span>
     <span style="color:var(--alerta)">Borde rojo: baño bajo (no cumple llenado)</span><span style="color:var(--aviso)">Borde ámbar: grande entre ${S.params.granMin} y ${S.params.granOk} kg, con aprobación</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día.</p>
