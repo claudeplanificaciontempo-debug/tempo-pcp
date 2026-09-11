@@ -2950,9 +2950,8 @@ function vConfig(el){
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>
     <div class="row">${inp('hLavado','Horas lavado')}${inp('hClaro','Horas claro')}${inp('hMedio','Horas medio')}${inp('hOscuro','Horas oscuro')}${inp('hReproceso','Reproceso')}</div></div></div>
 
-  <div class="panel"><h3>Calendario por área <span class="note">días base por semana y excepciones puntuales</span></h3><div class="body">
+  <div class="panel"><h3>Días de trabajo por área <span class="note">días base por semana y excepciones puntuales · el calendario del mes se marca en Dirección → Plan mensual</span></h3><div class="body">
    <div class="row">${['tej','tin','pro'].map(a=>`<div><label>${AREAS[a]} · días por semana</label><select onchange="setCal('${a}',this.value)">${[5,6,7].map(d=>`<option value="${d}" ${(p.cal||{})[a]==d?'selected':''}>${d===5?'5 · lunes a viernes':d===6?'6 · lunes a sábado':'7 · todos los días'}</option>`).join('')}</select></div>`).join('')}</div>
-   ${planMesHTML()}
    <h4 style="margin:12px 0 6px">Excepciones</h4>
    <div class="row" style="align-items:flex-end">
      <div><label>Desde</label><input type="date" id="ex-d1"></div><div><label>Hasta (opcional)</label><input type="date" id="ex-d2"></div>
