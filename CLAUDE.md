@@ -52,16 +52,23 @@ viceversa; la profundidad del color se detecta por código Pantone TCX
 
 **Armado manual de baños ("Armar baños" en Tintorería) — regla vigente desde
 el 12-sep-2026 (decisión del usuario, reemplaza "piqué siempre solo"):**
-por color (Pantone) se juntan TODAS las WH, sin importar la tela, y se llenan
-baños consecutivos: `propuestaBanos()` ordena por fecha requerida y kg, mete
-cada WH entera en el primer baño donde cabe (sin partir), con capacidad 240 kg
-(`capN`) o 200 kg (`capPique`) en cuanto el baño lleva piqué. `armGrupos()`
-sigue siendo la fuente de datos (`armItemsColor()` funde sus grupos por WH).
-Selección por color en `ARM.sel[color]` (todo marcado por defecto; desmarcar
-reacomoda). Cada baño propuesto exige elegir máquina (`selMaqArm(...,true)`) y
-se confirma con `confirmarBanoProp(color,i)` → una entrada en `S.banos_conf`
-con `cod`, `rec`, `recFijo`, `opsKg` exacto. "Juntar y confirmar" (barra del
-color, máquina automática opcional) usa `llenarBins` y sí parte WH para llenar.
+por color (Pantone), `propuestaColor(P,color,sel)` sugiere baños así:
+1) dentro de cada **familia de tela** (los grupos de `armGrupos`: A, B o cada
+tela de baño propio) se juntan las WH ordenadas por fecha requerida y kg y se
+llenan baños consecutivos con `llenarEnOrden` — **la WH se parte** cuando no
+cabe y el resto pasa al siguiente baño (la fila muestra "% aquí · resto en
+Baño N"); 2) el último baño de cada familia, si no llega a `pctBueno`, es un
+remanente y **los remanentes de todas las familias se mezclan** en baños
+finales (`tipo:'mezcla'`). Capacidad 240 kg (`capN`) o 200 kg (`capPique`) en
+cuanto el baño lleva piqué. Piezas de una misma WH que caen en el mismo baño se
+funden en una fila. Selección por color en `ARM.sel[color]` (todo marcado por
+defecto; desmarcar reacomoda; es la opción manual). La máquina se elige SOLO
+en la barra del color (`maqc-…`, aparece cuando hay kg marcados, obligatoria)
+y vale para "Confirmar baño N" (`confirmarBanoProp`) y para "Juntar todo lo
+marcado" (`confirmarArmColor`, `llenarBins`; sin máquina = automática).
+Lo confirmado se descuenta **por línea de tela** (`kgRestanteTela`: el `opsKg`
+del baño se reparte entre las telas del baño en proporción), así el resto de
+una WH partida sigue apareciendo en Armar baños.
 Solo lo confirmado ocupa máquina/día real (`P.banos`). "Deshacer" quita la
 confirmación y la WH vuelve a la lista.
 
