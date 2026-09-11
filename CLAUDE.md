@@ -78,6 +78,21 @@ elige su propia máquina) y solo consideran máquinas donde cabe el baño
 (`capOf(r)*tolGrande >= kg`); sin eso, todos caían en la misma máquina o en
 STUART (45 kg) con 250 kg.
 
+**Perfiles (tabla `perfiles` en Supabase):** `rol`, `area` (piso: tej/tin/pro),
+`subarea` (piso en producción: corte = corte+estampado+bordado · confeccion =
+modulos · terminados = etiquetas+botones+lavado+plancha · empaque) y `modo`
+(`editar` | `ver`). `puede()` devuelve false con `modo:'ver'`. `veArea/veCentro`
+= puede mirar; `puedeArea/puedeCentro` = puede registrar. Control de piso y los
+módulos por centro filtran por `veCentro` y habilitan por `puedeCentro`. Las
+columnas `subarea` y `modo` deben existir como texto en Supabase.
+
+**Reportería (`vReporteria`, página `reporteria`, estado `REP`):** vista
+"textil" (tejeduría y tintorería: carga h vs capacidad por máquina y semana, kg,
+baños, salidas, en calidad, reprocesos) y vista "producción" (una sección por
+sub-área: min vs capacidad por recurso, plan vs real por semana, paros). Al final
+siempre "Resumen de todos los procesos" por centro, filtrado por lo que el
+perfil puede ver. Enlaces en el menú: "Reportería textil" y "Reportería por área".
+
 ## Convenciones de desarrollo
 - **Simulador de pruebas** en `test/` (ver `test/README.md`): `node test/build.js`
   y `node test/server.js`, abrir http://127.0.0.1:8765/ y revisar `__R` en la

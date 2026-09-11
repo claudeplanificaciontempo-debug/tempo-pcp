@@ -275,6 +275,7 @@ tbody tr:hover td{background:var(--field)}
     <div class="gbody" data-g="tex">
       <a data-p="tejeduria">Tejeduría</a>
       <a data-p="tintoreria">Tintorería <span class="n" id="n-ban"></span></a>
+      <a data-p="reporteria" data-rep="textil">Reportería textil</a>
     </div>
     <div class="grp" data-g="prod">Planificación de producción <span class="car">▾</span></div>
     <div class="gbody" data-g="prod">
@@ -289,6 +290,7 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="costura">Costura: secuencia y rebalanceo</a>
       <a data-p="balanceo">Balanceo</a>
       <a data-p="imprimir">Programa del día</a>
+      <a data-p="reporteria" data-rep="produccion">Reportería por área</a>
     </div>
     <div class="grp" data-g="piso">Piso <span class="car">▾</span></div>
     <div class="gbody" data-g="piso">
@@ -319,7 +321,8 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
-    <section class="page" id="p-tintoreria"></section>
+    <section class="page" id="p-reporteria"></section>
+<section class="page" id="p-tintoreria"></section>
     <section class="page" id="p-produccion"></section>
     <section class="page" id="p-control"></section>
     <section class="page" id="p-costura"></section>
@@ -448,7 +451,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
 const ROLES={admin:'Administrador',planificacion:'Planificación',carga:'Carga de órdenes',piso:'Piso',consulta:'Consulta'};
 const PERM={admin:['config','usuarios','ordenes','programa','categorias','avance'],
             planificacion:['ordenes','programa','categorias','avance'],carga:['ordenes'],piso:['avance'],consulta:[]};
-const puede=x=>!!PERFIL&&(PERM[PERFIL.rol]||[]).includes(x);
+const puede=x=>!!PERFIL&&PERFIL.modo!=='ver'&&(PERM[PERFIL.rol]||[]).includes(x);
 const puedeArea=a=>puede('avance')&&(PERFIL.rol!=='piso'||!PERFIL.area||PERFIL.area===a);
 
 /* ---------- estado ---------- */
@@ -972,11 +975,11 @@ function setGran(g){GRAN=g;render()}
 
 /* ================= VISTAS ================= */
 function render(){
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if(need&&!puede(need))page='ordenes';
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,tintoreria:vTin,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -1789,7 +1792,7 @@ function vCentro(el){
   const cid=CEN.id;const cens=CENTROS_PROD[cid]||[cid];const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
   const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
   const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
-  const okPiso=puedeArea('pro')||puede('programa');const q=normTxt(CEN.q);
+  const okPiso=puede('programa')||cens.some(puedeCentro);const q=normTxt(CEN.q);
   const tabs=[['plan','Planificación'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']];
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
@@ -2159,9 +2162,77 @@ function tablaMezcla(){
   </tbody></table></div></div>`}
 
 /* ---------- Control ---------- */
+/* ---------- Perfiles por sub-área de producción y permiso ver/editar ---------- */
+const SUBAREAS={corte:{n:'Corte, estampado y bordado',centros:['corte','estampado','bordado']},confeccion:{n:'Confección',centros:['modulos']},
+  terminados:{n:'Terminados: etiquetas, botones, lavado y plancha',centros:['etiquetas','botones','lavado','plancha']},empaque:{n:'Empaque',centros:['empaque']}};
+const MODOS={editar:'Registra y edita',ver:'Solo ve (sin editar)'};
+/* ve: puede mirar el área/centro · puede: además puede registrar (según rol, área, sub-área y permiso) */
+const veArea=a=>!!PERFIL&&(PERFIL.rol!=='piso'||!PERFIL.area||PERFIL.area===a);
+const veCentro=c=>{const ce=CE(c);if(!ce||!veArea(ce.area))return false;if(PERFIL.rol==='piso'&&ce.area==='pro'&&PERFIL.subarea&&SUBAREAS[PERFIL.subarea])return SUBAREAS[PERFIL.subarea].centros.includes(c);return true};
+const puedeCentro=c=>veCentro(c)&&puedeArea((CE(c)||{}).area);
+
+/* ---------- Reportería: carga y avance de tejeduría, tintorería y de cada área de producción ---------- */
+let REP={vista:'textil',sem:4};
+function vReporteria(el){
+  const P=S.ordenes.length?programar():{ordenes:{},tej:[],banos:[],pro:[],carga:{}};const h=hoy();
+  const lun=lunesDe(h);const sems=[];for(let i=0;i<REP.sem;i++)sems.push(dsum(lun,7*i));
+  const diasSem=w=>{const d=[];for(let i=0;i<7;i++)d.push(dsum(w,i));return d};
+  const capSem=(r,w)=>diasSem(w).reduce((a,d)=>a+(labR(d,r)?capDia(r,d):0),0);
+  const cargaSem=(r,w)=>diasSem(w).reduce((a,d)=>a+(((P.carga||{})[r.id]||{})[d]||0),0);
+  const pct=(a,b)=>b?Math.round(a/b*100):0;
+  const celda=(a,b,u)=>{const p=pct(a,b);return `<td class="num" style="${p>102?'color:var(--alerta);font-weight:600':p>=85?'color:var(--ok)':''}">${num(a)}${u?' '+u:''}<br><span class="mut" style="font-size:var(--fs-xs)">${p}% de ${num(b)}</span></td>`};
+  const tablaRec=(recs,u,extra)=>recs.length?`<div class="scroll"><table><thead><tr><th>Recurso</th>${sems.map(w=>`<th class="num">Sem ${fmtDia(w)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+    ${recs.map(r=>{const tot=sems.reduce((a,w)=>a+cargaSem(r,w),0),capT=sems.reduce((a,w)=>a+capSem(r,w),0);return `<tr><td>${esc(r.n)}${extra?extra(r):''}</td>${sems.map(w=>celda(cargaSem(r,w),capSem(r,w),u)).join('')}${celda(tot,capT,u)}</tr>`}).join('')}</tbody></table></div>`:'<div class="mut">Sin recursos activos.</div>';
+  const kpi=(v,k,cls)=>`<div class="kpi ${cls||''}"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  const ords=S.ordenes.filter(abierta);
+  const secTej=()=>{const recs=S.recursos.filter(r=>r.activa&&r.centro==='tej');
+    const porTejer=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida));
+    const kgPorTejer=porTejer.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);
+    const tejSem=w=>ords.filter(o=>{const a=S.avance[o.id]||{};return a.tejida&&a.tejidaF&&lunesDe(a.tejidaF)===w});
+    const kgTej=(P.tej||[]).filter(x=>!x.cambio);const kgProgSem=w=>kgTej.filter(x=>lunesDe(x.dia)===w).reduce((a,x)=>a+x.kg,0);
+    const kgPorRec=r=>{const m={};kgTej.filter(x=>x.rec===r.id).forEach(x=>{const w=lunesDe(x.dia);m[w]=(m[w]||0)+x.kg});return m};
+    return `<div class="panel"><h3>Tejeduría <span class="note">carga por máquina y avance</span></h3><div class="body">
+      <div class="kpis">${kpi(porTejer.length,'Órdenes por tejer')}${kpi(num(kgPorTejer)+' kg','Kg crudo por tejer')}${kpi(num(kgProgSem(sems[0]))+' kg','Programado esta semana')}${kpi(tejSem(sems[0]).length,'Órdenes tejidas esta semana')}${kpi(recs.length,'Máquinas activas')}</div>
+      ${tablaRec(recs,'h',r=>{const m=kgPorRec(r);return '<br><span class="mut" style="font-size:var(--fs-xs)">'+sems.map(w=>num(m[w]||0)+' kg').join(' · ')+'</span>'})}
+      <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Horas de máquina programadas contra la capacidad de cada semana; debajo del nombre, los kg de cada semana. Rojo: sobrecarga · verde: bien ocupada.</p></div></div>`};
+  const secTin=()=>{const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');
+    const banos=(P.banos||[]).filter(b=>!b.error);const enCal=ords.filter(enCalidad).length;const reproc=ords.filter(o=>(S.avance[o.id]||{}).reproc).length;
+    const salidasSem=w=>(S.salidas_tin||[]).filter(s=>lunesDe(s.d)===w);const bSem=(r,w)=>banos.filter(b=>b.rec===r.id&&lunesDe(b.dia)===w);
+    return `<div class="panel"><h3>Tintorería <span class="note">carga por máquina y avance</span></h3><div class="body">
+      <div class="kpis">${kpi(banos.length,'Baños programados')}${kpi(num(banos.reduce((a,b)=>a+b.kg,0))+' kg','Kg a tinturar')}${kpi(Object.keys(armGrupos(P)).length,'Grupos por armar',(P.banosPend||[]).length?'warn':'')}${kpi(salidasSem(sems[0]).length+' · '+num(salidasSem(sems[0]).reduce((a,s)=>a+s.kgReal,0))+' kg','Baños salidos esta semana')}${kpi(enCal,'En calidad',enCal?'warn':'')}${kpi(reproc,'Reprocesos en plan',reproc?'bad':'')}</div>
+      ${tablaRec(recs,'h',r=>'<br><span class="mut" style="font-size:var(--fs-xs)">'+sems.map(w=>{const bs=bSem(r,w);return bs.length+' baños · '+num(bs.reduce((a,b)=>a+b.kg,0))+' kg'}).join(' · ')+'</span>')}
+      <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Horas de baño programadas contra la capacidad semanal; debajo del nombre, baños y kg por semana.</p></div></div>`};
+  const secPro=(sa)=>{const cens=sa.centros.filter(veCentro);if(!cens.length)return'';
+    const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro));
+    const filas=[];ords.forEach(o=>{cens.forEach(c=>{if(!(o.ruta||[]).some(p=>p.centro===c))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase).hechos.includes(c)||(ac[c]||0)>=o.cant)return;filas.push({o,c,hechas:ac[c]||0,atraso:(P.ordenes[o.id]||{}).atraso})})});
+    const pzPend=filas.reduce((a,f)=>a+(f.o.cant-f.hechas),0);const atras=filas.filter(f=>f.atraso).length;
+    const pzSem=w=>(P.pro||[]).filter(x=>cens.includes(x.centro)&&lunesDe(x.dia)===w).reduce((a,x)=>a+(x.pz||0),0);
+    const realSem=w=>(S.turnos||[]).filter(t=>t.d&&lunesDe(t.d)===w&&recs.some(r=>r.id===t.rec)).reduce((a,t)=>a+(t.pz||0),0);
+    const parosSem=w=>(S.paros||[]).filter(p=>p.d&&lunesDe(p.d)===w&&recs.some(r=>r.id===p.rec)).reduce((a,p)=>a+ +p.min,0);
+    return `<div class="panel"><h3>${esc(sa.n)} <span class="note">${cens.map(nCen).map(esc).join(' · ')}</span></h3><div class="body">
+      <div class="kpis">${kpi(filas.length,'Órdenes con trabajo pendiente')}${kpi(num(pzPend),'Prendas pendientes')}${kpi(num(pzSem(sems[0])),'Prendas planificadas esta semana')}${kpi(num(realSem(sems[0])),'Prendas reales esta semana')}${kpi(atras,'Órdenes atrasadas',atras?'bad':'')}${kpi(num(parosSem(sems[0]))+' min','Paros esta semana')}</div>
+      ${tablaRec(recs,'min',r=>' <span class="mut" style="font-size:var(--fs-xs)">· '+esc(nCen(r.centro))+'</span>')}
+      <table style="margin-top:12px"><thead><tr><th>Semana</th><th class="num">Plan (pz)</th><th class="num">Real (pz)</th><th class="num">Cumpl.</th><th class="num">Paros (min)</th></tr></thead><tbody>${sems.map(w=>`<tr><td>${fmtDia(w)}</td><td class="num">${num(pzSem(w))}</td><td class="num">${w<=lun?num(realSem(w)):'<span class="mut">—</span>'}</td><td class="num">${w<=lun&&pzSem(w)?pct(realSem(w),pzSem(w))+'%':'<span class="mut">—</span>'}</td><td class="num">${num(parosSem(w))}</td></tr>`).join('')}</tbody></table></div></div>`};
+  const resumen=()=>{const cens=S.centros.filter(c=>['tej','tin','pro'].includes(c.area)&&veCentro(c.id)).sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+    const rows=cens.map(c=>{const recs=S.recursos.filter(r=>r.activa&&r.centro===c.id);
+      const carga=recs.reduce((a,r)=>a+sems.reduce((s,w)=>s+cargaSem(r,w),0),0),cap=recs.reduce((a,r)=>a+sems.reduce((s,w)=>s+capSem(r,w),0),0);
+      let nOrd=0,pend=0,atras=0,u='';
+      if(c.area==='tej'){const l=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida));nOrd=l.length;pend=l.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);u='kg';atras=l.filter(o=>(P.ordenes[o.id]||{}).atraso).length}
+      else if(c.area==='tin'){const l=ords.filter(o=>etapas(o).tin&&!((S.avance[o.id]||{}).calidadOk||faseEstado(o.fase).lista));nOrd=l.length;pend=(P.banos||[]).filter(b=>!b.error).reduce((a,b)=>a+b.kg,0);u='kg';atras=(P.banos||[]).filter(b=>b.tarde).length}
+      else{ords.forEach(o=>{if(!(o.ruta||[]).some(p=>p.centro===c.id))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant)return;nOrd++;pend+=o.cant-(ac[c.id]||0);if((P.ordenes[o.id]||{}).atraso)atras++});u='pz'}
+      const p=pct(carga,cap);
+      return `<tr><td><b>${esc(c.n)}</b> <span class="mut" style="font-size:var(--fs-xs)">${esc(AREAS[c.area]||c.area)}</span></td><td class="num">${nOrd}</td><td class="num">${num(pend)} ${u}</td><td class="num">${recs.length}</td><td class="num" style="${p>102?'color:var(--alerta);font-weight:600':''}">${p}%</td><td class="num" style="${atras?'color:var(--alerta);font-weight:600':''}">${atras}</td></tr>`}).join('');
+    return `<div class="panel"><h3>Resumen de todos los procesos <span class="note">próximas ${REP.sem} semanas</span></h3><div class="body"><table><thead><tr><th>Centro</th><th class="num">Órdenes con trabajo</th><th class="num">Pendiente</th><th class="num">Recursos</th><th class="num">Ocupación</th><th class="num">Atrasadas</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="mut">Nada que mostrar para tu perfil.</td></tr>'}</tbody></table></div></div>`};
+  const vistas=[['textil','Textil: tejeduría y tintorería'],['produccion','Producción por área']].filter(([k])=>k==='textil'?(veArea('tej')||veArea('tin')):veArea('pro'));
+  if(!vistas.some(([k])=>k===REP.vista))REP.vista=(vistas[0]||['textil'])[0];
+  el.innerHTML=`<div class="pagehead"><h2>Reportería</h2><span class="spacer"></span><div class="chips">${vistas.map(([k,v])=>`<span class="chip ${REP.vista===k?'on':''}" onclick="REP.vista='${k}';render()">${v}</span>`).join('')}<span class="chip" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
+   <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${PERFIL.rol==='piso'?' <span class="mut">Ves solo lo de tu área.</span>':''}</p>
+   ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
+   ${resumen()}`;
+}
 let CTL={area:null,centro:null,q:'',todo:false};
 function vControl(el){
-  const areasOK=['tej','tin','pro'].filter(a=>puedeArea(a)||PERFIL.rol==='consulta');
+  const areasOK=['tej','tin','pro'].filter(veArea);
   if(!CTL.area||!areasOK.includes(CTL.area))CTL.area=areasOK[0]||'pro';
   const P=S.ordenes.length?programar():{ordenes:{},tej:[],banos:[],pro:[]};const h=hoy();const q=normTxt(CTL.q);
   const filtro=o=>!q||normTxt(o.op).includes(q)||normTxt(nombreCat(K(o.cat))).includes(q)||normTxt((C(o.color)||{}).n).includes(q)||normTxt(o.ref).includes(q);
@@ -2191,13 +2262,13 @@ function vControl(el){
        <td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mSalioBano('${b.oids.join(',')}','${esc(b.rec)}','${esc(b.colorN).replace(/'/g,"\\'")}','${esc(b.telas.map(nTela).join(' + ')).replace(/'/g,"\\'")}',${b.kg},'${esc(b.ops.join(', ')).replace(/'/g,"\\'")}')">salió</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&enCalidad(o)})?'<span class="tag t-aviso" title="Esperando la revisión de calidad">en calidad</span>':b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&(S.avance[id]||{}).calidadOk&&!liberadaCorte(o)})?'<span class="tag t-ok" title="Calidad aprobó; planificación la libera en Liberación → 2 · A producción">calidad ok · en cola de liberación</span>':''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'quitar':'reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div>
      <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">"Salió" pide los kg reales del baño, marca la tela como tinturada y pasa las órdenes a Calidad de tintorería (abajo); queda en el registro "Tintorería entregados" al final de la página de Tintorería. "Reprocesar" vuelve a programar el baño desde hoy con 10 horas y lo deja marcado hasta que se dé por listo.</p></div>`+calidadTinHTML(ok)+reprocesosTinHTML();
   }else{
-    const cens=S.centros.filter(c=>c.area==='pro'&&(!CTL.centro||c.id===CTL.centro)).sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id));
+    const cens=S.centros.filter(c=>c.area==='pro'&&veCentro(c.id)&&(!CTL.centro||c.id===CTL.centro)).sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id));
     const hoyOps={};P.pro.filter(x=>x.dia===h).forEach(x=>{hoyOps[x.centro+'|'+x.op]=(hoyOps[x.centro+'|'+x.op]||0)+(x.pz||0)});
     const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);
     const asistencia=(!CTL.centro||CTL.centro==='modulos')?`<div class="panel"><h3>Asistencia de hoy por módulo <span class="note">manda sobre las personas teóricas en la capacidad del día</span></h3><div class="body"><div class="chips">
       ${mods.map(r=>{const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===h);return `<span class="chip" style="cursor:default">${esc(r.n)} <input type="number" min="0" max="60" style="width:48px;margin-left:6px;padding:2px 4px" value="${t?t.pers:''}" placeholder="${r.pers}" ${ok?'':'disabled'} onchange="setAsist('${r.id}',this.value)"></span>`}).join('')}</div>
       <div style="margin-top:10px"><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mParo()">Registrar paro</button> ${(S.paros||[]).filter(p=>p.d===h).length?`<span class="mut" style="font-size:var(--fs-s)">${(S.paros||[]).filter(p=>p.d===h).length} paros hoy · ${num((S.paros||[]).filter(p=>p.d===h).reduce((a,p)=>a+ +p.min,0))} min</span>`:''}</div></div></div>`:'';
-    cuerpo=asistencia+cens.map(c=>{const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=faseEstado(o.fase).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant;
+    cuerpo=asistencia+cens.map(c=>{const ok=puedeCentro(c.id);const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=faseEstado(o.fase).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant;
         const r=P.ordenes[o.id]||{};const paso=(r.pasos||[]).find(p=>p.centro===c.id)||{};const enHoy=hoyOps[c.id+'|'+o.op]||0;return{o,a,ac,hecho,paso,enHoy}})
         .filter(x=>CTL.todo||(!x.hecho&&(x.enHoy||(x.paso.ini&&x.paso.ini<=dsum(h,1))||(x.ac[c.id]||0)>0)));
       if(!lista.length&&!CTL.centro)return'';
@@ -2334,19 +2405,24 @@ async function vUsuarios(el){
   <div class="panel"><div class="empty">Cargando…</div></div>`;
   const {data,error}=await sb.from('perfiles').select('*').order('email');
   if(error){el.querySelector('.panel').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
-  el.querySelector('.panel').innerHTML=`<h3>Cuentas <span class="note">${data.length}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Área (solo piso)</th></tr></thead><tbody>
+  el.querySelector('.panel').innerHTML=`<h3>Cuentas <span class="note">${data.length}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Área (solo piso)</th><th>Sub-área de producción (solo piso)</th><th>Permiso</th></tr></thead><tbody>
   ${data.map(u=>`<tr><td>${esc(u.email)}</td><td><input type="text" value="${esc(u.nombre||'')}" onchange="setPerfil('${u.id}','nombre',this.value)"></td>
     <td><select onchange="setPerfil('${u.id}','rol',this.value)">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${u.rol===k?'selected':''}>${v}</option>`).join('')}</select></td>
-    <td><select onchange="setPerfil('${u.id}','area',this.value)"><option value="">Todas</option>${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${u.area===k?'selected':''}>${v}</option>`).join('')}</select></td></tr>`).join('')}
+    <td><select onchange="setPerfil('${u.id}','area',this.value)"><option value="">Todas</option>${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${u.area===k?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><select onchange="setPerfil('${u.id}','subarea',this.value)"><option value="">Toda producción</option>${Object.entries(SUBAREAS).map(([k,v])=>`<option value="${k}" ${u.subarea===k?'selected':''}>${v.n}</option>`).join('')}</select></td>
+    <td><select onchange="setPerfil('${u.id}','modo',this.value)">${Object.entries(MODOS).map(([k,v])=>`<option value="${k}" ${(u.modo||'editar')===k?'selected':''}>${v}</option>`).join('')}</select></td></tr>`).join('')}
   </tbody></table>
   <table style="margin-top:18px"><thead><tr><th>Rol</th><th>Qué puede hacer</th></tr></thead><tbody>
    <tr><td>Administrador</td><td>Todo: centros, recursos, telas, colores, parámetros y usuarios.</td></tr>
    <tr><td>Planificación</td><td>Órdenes, categorías y rutas, correr y guardar el programa, registrar estados.</td></tr>
    <tr><td>Carga de órdenes</td><td>Crear y editar órdenes.</td></tr>
    <tr><td>Piso</td><td>Marcar estados y unidades de su área.</td></tr>
-   <tr><td>Consulta</td><td>Ver todo, sin cambiar nada.</td></tr></tbody></table></div>`;
+   <tr><td>Consulta</td><td>Ver todo, sin cambiar nada.</td></tr>
+   <tr><td>Sub-área (piso en producción)</td><td>Limita lo que ve y registra a esos centros: Corte + estampado + bordado · Confección · Terminados (etiquetas, botones, lavado, plancha) · Empaque.</td></tr>
+   <tr><td>Permiso "solo ve"</td><td>Puede abrir sus pantallas y la reportería de su área, pero no registra ni edita nada.</td></tr></tbody></table>
+  <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los usuarios se crean en Supabase (Authentication → Users). La tabla <code>perfiles</code> necesita las columnas de texto <code>subarea</code> y <code>modo</code>; si al cambiarlas sale un error, créalas en Supabase → Table editor → perfiles.</p></div>`;
 }
-async function setPerfil(id,k,v){const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);if(error)alert('No se pudo actualizar: '+error.message)}
+async function setPerfil(id,k,v){const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);if(error)alert('No se pudo actualizar: '+error.message+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''))}
 
 /* ---------- Categorías y rutas ---------- */
 function vCategorias(el){
@@ -3248,6 +3324,7 @@ iniciar();
 document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',()=>{g.classList.toggle('cerrado');const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');if(b)b.classList.toggle('cerrado')}));
 document.querySelectorAll('nav a[data-lib]').forEach(a=>a.addEventListener('click',()=>{LIB.et=a.dataset.lib;LIB.sel=new Set();setTimeout(render,0)},true));
 document.querySelectorAll('nav a[data-cen]').forEach(a=>a.addEventListener('click',()=>{CEN.id=a.dataset.cen;CEN.q='';setTimeout(render,0)},true));
+document.querySelectorAll('nav a[data-rep]').forEach(a=>a.addEventListener('click',()=>{REP.vista=a.dataset.rep;setTimeout(render,0)},true));
 document.addEventListener('click',e=>{document.querySelectorAll('details[open]').forEach(d=>{if(!d.contains(e.target))d.removeAttribute('open')})});
 </script>
 </body>
