@@ -666,7 +666,8 @@ const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
    8Lavanderia, 8Botones, 8Servicios y Terminados → en terminados · 8Empaque → empacando · 8Empaque Terminado, 8Cross, 8Centro Distribucion, 8Exportacion, 8Novedades, 8Embodegado → todo hecho · Facturado → cerrada */
 function faseEstado(f){const n=faseNum(f),t=normTxt(f);
   const tejida=n>=2||(n===1&&!t.includes('tejeduria'));
-  const tinturada=n>=2||(n===1&&t.includes('calidad'));const lista=n>=2;
+  const stock=n===1&&t.includes('stock');
+  const tinturada=n>=2||stock||(n===1&&t.includes('calidad'));const lista=n>=2||stock;
   let hechos=[];
   if(n>=8){hechos=['corte','estampado','bordado','modulos','lavado'];if(t.includes('empaque terminado')||t.includes('cross')||t.includes('distribucion')||t.includes('exportacion')||t.includes('novedades')||t.includes('embodegado'))hechos.push('empaque','botones','plancha','etiquetas');
     else if(t.includes('boton'))hechos.push('lavado');else if(t.includes('servicios')||t.includes('terminados'))hechos.push('botones','lavado')}
@@ -772,12 +773,13 @@ function programar(){
     if(!etapas(o).tin)return;
     const avo=S.avance[o.id]||{};const roT=res.ordenes[o.id];
     if(avo.tinturada||(faseEstado(o.fase).tinturada&&!avo.reproc)){roT.finTin=dsum(ini,-1);roT.tinturadaHecha=true;return}
+    if(estadoTin(o)==='maquina'){roT.finTin=dsum(ini,+S.params.diasEnMaquina||1);roT.enMaquinaTin=true;return} // ya está en las máquinas (fase Tintorería en Odoo): no se vuelve a armar
     if(roT.sinLib==='tela')return; // sin liberar tela: ni se teje ni se tiñe
     if(!liberada(o,'tin')){roT.sinLib='tela';return} // tela ya tejida pero sin liberar: espera la firma para entrar a baños
     (o.telas||[]).forEach(tl=>{
       const t=T(tl.tela);if(!t||tl.kg<=0||tl.ext)return;
       if(estaConfirmado(o.id,tl.tela))return; // ya está en un baño confirmado a mano; no se vuelve a proponer
-      const colId=tl.color||o.color;const kg=kgCrudo(tl.tela,tl.kg);
+      const colId=tl.color||o.color;const kg=kgTelaTin(o,tl);if(kg<=0)return;
       if(!porColor[colId])porColor[colId]={M:nuevoG(colId),A:nuevoG(colId),B:nuevoG(colId),IND:{},extra:[]};
       const pc=porColor[colId];
       // fuera del horizonte: se guarda aparte y solo entra si hace falta para completar un baño ("si no llego con el mes, jalo lo siguiente")
@@ -870,7 +872,7 @@ function programar(){
       // kg total real de la orden para las telas de este grupo; si lo confirmado fue parcial (WH partida entre 2 baños), se reparte proporcional
       let kgFull=0;const porTela={};
       (o.telas||[]).forEach(tl=>{if(tl.ext||tl.kg<=0)return;if(!telas.includes(tl.tela))return;if((tl.color||o.color)!==bc.color)return;
-        const k=kgCrudo(tl.tela,tl.kg);kgFull+=k;porTela[tl.tela]=(porTela[tl.tela]||0)+k});
+        const k=kgTelaTin(o,tl);if(k<=0)return;kgFull+=k;porTela[tl.tela]=(porTela[tl.tela]||0)+k});
       if(kgFull<=0)return;
       const kgConf=opsKgIn[oid]!=null?Math.min(opsKgIn[oid],kgFull):kgFull;if(kgConf<=0)return;
       const frac=kgConf/kgFull;Object.entries(porTela).forEach(([t,k])=>{telasKg[t]=(telasKg[t]||0)+k*frac});
@@ -1687,7 +1689,7 @@ function armGrupos(P){
   // kg REAL y completo de cada WH para las telas de este grupo (deshace cualquier partido que hiciera el algoritmo entre bins)
   Object.values(map).forEach(grp=>{grp.telasSet=new Set(grp.telas);let tot=0;
     Object.values(grp.items).forEach(it=>{const o=S.ordenes.find(x=>x.id===it.oid);let kg=0;
-      if(o)(o.telas||[]).forEach(tl=>{if(tl.ext||tl.kg<=0)return;if(!grp.telasSet.has(tl.tela))return;if((tl.color||o.color)!==grp.color)return;kg+=kgCrudo(tl.tela,tl.kg)});
+      if(o)(o.telas||[]).forEach(tl=>{if(tl.ext||tl.kg<=0)return;if(!grp.telasSet.has(tl.tela))return;if((tl.color||o.color)!==grp.color)return;kg+=kgTelaTin(o,tl)});
       it.kg=kg;it.op=o?o.op:it.oid;tot+=kg});
     grp.kgTotal=tot});
   return map}
@@ -2124,6 +2126,7 @@ function vTin(el){
     <div class="kpi"><div class="v">${banos.length?Math.round(banos.reduce((a,b)=>a+b.fill,0)/banos.length*100):0}%</div><div class="k">Llenado promedio</div></div>
     <div class="kpi ${(P.banosPend||[]).length?'warn':''}"><div class="v">${Object.keys(armGrupos(P)).length}</div><div class="k">Grupos esperando armar baño</div></div>
     <div class="kpi ${tarde.length?'bad':''}"><div class="v">${tarde.length}</div><div class="k">Fuera de fecha</div></div></div>
+  ${estadoTinHTML()}
   <div class="panel"><h3>Máquina × día</h3>${grid}</div>
   <div class="panel"><h3>Armar baños <span class="note">el sistema propone marcado por defecto lo que ya calculó; ajusta las W y confirma. Nada se programa hasta que confirmes</span></h3><div class="body">
    <p class="mut" style="font-size:var(--fs-s);margin:0 0 12px">Capacidad de las máquinas: ${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>esc(r.n)+' '+num(r.cap)+' kg'+(r.capPique?' (piqué '+num(r.capPique)+' kg)':'')).join(' · ')||'sin máquinas activas'}. <a style="cursor:pointer" onclick="CONF.tab='recursos';ir('config')">Cambiar en Configuración →</a></p>
@@ -2271,6 +2274,31 @@ function resumenTelasHTML(){const m={};S.ordenes.filter(abierta).forEach(o=>{con
    ${filas.map(([t,r])=>`<tr><td>${esc(nTela(t))}</td><td class="num">${r.ords.size}</td><td class="num">${r.cols.size}</td><td class="num">${num(r.kg)}</td><td class="num">${num(r.lib)}</td><td class="num">${num(r.tej)}</td><td class="num"><b>${num(r.pend)}</b></td></tr>`).join('')}
    <tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${new Set(Object.values(m).flatMap(r=>[...r.ords])).size}</td><td></td><td class="num">${num(T.kg)}</td><td class="num">${num(T.lib)}</td><td class="num">${num(T.tej)}</td><td class="num">${num(T.pend)}</td></tr></tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Se teje por volumen, no orden por orden: esta tabla suma los kilos por tela de todas las órdenes abiertas para proyectar las corridas. "Por tejer" = liberado y todavía no tejido.</p></div></div>`}
+/* ---------- Estado de tintorería según Odoo y piso: en máquina · incompletos (faltan kg) · completos en calidad · tela en stock ---------- */
+function estadoTin(o){const a=S.avance[o.id]||{};const t=normTxt(o.fase||'');const n=faseNum(o.fase);
+  if(n===1&&t.includes('stock')&&!a.lista)return 'stock';
+  if(a.lista||faseEstado(o.fase).lista)return null;
+  if(a.reproc)return null;
+  if(n<=1&&t.includes('incomplet'))return 'incompleto';
+  if(enCalidad(o))return 'calidad';
+  if(n===1&&t.includes('tintoreria')&&!t.includes('cd')&&!t.includes('calidad')&&!a.tinturada)return 'maquina';
+  return null}
+/* kg crudo que aún hay que tinturar de una línea de tela: para incompletos, solo lo que falta (avance.faltaKg) */
+function kgTelaTin(o,tl){if(estadoTin(o)==='incompleto'){const f=((S.avance[o.id]||{}).faltaKg||{})[tl.tela];return f>0?+f:0}return kgCrudo(tl.tela,tl.kg)}
+function setFaltaKg(oid,tela,v){const a=S.avance[oid]=S.avance[oid]||{};a.faltaKg=a.faltaKg||{};const n=+v||0;if(n>0)a.faltaKg[tela]=n;else delete a.faltaKg[tela];PLAN=null;PLAN_ALL=null;save();render()}
+function estadoTinHTML(){const ords=S.ordenes.filter(abierta).filter(o=>etapas(o).tin);const g={maquina:[],incompleto:[],calidad:[],stock:[]};ords.forEach(o=>{const e=estadoTin(o);if(e)g[e].push(o)});
+  if(!Object.values(g).some(l=>l.length))return'';const ok=puedeArea('tin')||puede('programa');
+  const kgO=o=>(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0);
+  const fila=(o,extra)=>`<tr><td><b>${esc(o.op)}</b></td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td style="font-size:var(--fs-xs)">${(o.telas||[]).filter(t=>!t.ext&&t.kg>0).map(t=>esc(nTela(t.tela))+' '+num(kgCrudo(t.tela,t.kg))+' kg').join(' + ')}</td><td class="num">${num(kgO(o))}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(faseNombre(o.fase))}</td>${extra||''}</tr>`;
+  const cab=(extra)=>`<thead><tr><th>WH</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th class="num">Kg</th><th>Fase Odoo</th>${extra||''}</tr></thead>`;
+  const bloque=(tit,nota,lista,cabExtra,filaExtra)=>`<details ${lista.length?'open':''} style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:600">${tit} <span class="mut" style="font-weight:400">· ${lista.length} ${lista.length===1?'orden':'órdenes'} · ${num(lista.reduce((a,o)=>a+kgO(o),0))} kg</span></summary>
+    <p class="mut" style="font-size:var(--fs-xs);margin:4px 0 6px">${nota}</p>${lista.length?`<div class="scroll" style="max-height:260px"><table>${cab(cabExtra)}<tbody>${lista.map(o=>fila(o,filaExtra?filaExtra(o):'')).join('')}</tbody></table></div>`:'<div class="mut" style="font-size:var(--fs-s)">Nada.</div>'}</details>`;
+  return `<div class="panel"><h3>Estado de tintorería <span class="note">según la fase de Odoo al cargar y lo registrado en piso</span></h3><div class="body">
+   ${bloque('En máquina ahora',"Fase Tintorería en Odoo: ya están en las máquinas, no se vuelven a armar. Cuando salgan, márcalas hechas para que pasen a Calidad.",g.maquina,ok?'<th></th>':'',o=>ok?`<td><button class="btn sm" onclick="banoListo('${o.id}')">Hecho → calidad</button></td>`:'')}
+   ${bloque('Incompletos: tinturados, faltan kilos',"Ya salieron tinturados pero falta tela. Anota los kg crudo que faltan por tela; solo eso entra a Armar baños como complemento y, al salir, la orden pasa a Calidad.",g.incompleto,'<th>Kg que faltan por tela</th>',o=>`<td style="white-space:nowrap">${(o.telas||[]).filter(t=>!t.ext&&t.kg>0).map(t=>`<label style="display:inline-block;margin-right:8px;font-size:var(--fs-xs)">${esc(nTela(t.tela))} <input type="number" min="0" step="0.1" style="width:70px" value="${((S.avance[o.id]||{}).faltaKg||{})[t.tela]||''}" ${ok?'':'disabled'} onchange="setFaltaKg('${o.id}','${t.tela}',this.value)"></label>`).join('')}</td>`)}
+   ${bloque('Completos: esperando calidad',"Salieron completos de tintorería; Calidad los aprueba o rechaza en Control de piso → Tintorería.",g.calidad)}
+   ${bloque('Tela en stock',"Tela ya tinturada en bodega según Odoo: se toma como lista y entra directo a la cola de liberación a producción.",g.stock)}
+  </div></div>`}
 let OPV={abierta:null,q:''};
 let CTL={area:null,centro:null,q:'',todo:false};
 function vControl(el){

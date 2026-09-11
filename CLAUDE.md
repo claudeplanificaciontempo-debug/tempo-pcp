@@ -85,6 +85,18 @@ cuyas órdenes ya están `tinturada/calidadOk/lista` (y no en `reproc`) **sale d
 programa** (`programar()` lo omite) y la máquina queda libre. El rechazo de
 calidad pide qué telas tienen el problema (`reprocesos[].telas`).
 
+**Estado de tintorería según la fase de Odoo (`estadoTin(o)`):**
+- `1Tintoreria` = **en máquina ahora**: no se vuelve a armar; `programar()` da la
+  tela por llegar en `params.diasEnMaquina` (1) días (`ro.enMaquinaTin`). Botón
+  "Hecho → calidad" en el panel "Estado de tintorería" de la página Tintorería.
+- fase 1 con "incomplet" = **incompleto**: tinturado pero faltan kg. El usuario
+  anota `avance.faltaKg{tela:kg}` y **solo esos kg** entran a Armar baños
+  (`kgTelaTin(o,tl)` reemplaza a `kgCrudo` en programar/armGrupos/banos_conf).
+- fase 1 con "stock" = **tela en stock**: `faseEstado` la da por tinturada y
+  lista → cola de liberación a producción.
+- `enCalidad` = **completos** esperando calidad.
+Los cuatro bloques se ven en Tintorería → "Estado de tintorería".
+
 **Código interno de baño:** `codBano(colorN,req)` → `T<MES><AA>-<COLOR>-<NN>`
 (ej. `TOCT26-DARKBLACK-03`; mes = del requerido más temprano del grupo, o del
 día de confirmación). Se guarda en `banos_conf[].cod`, viaja en `P.banos[].cod`
