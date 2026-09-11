@@ -45,13 +45,26 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';localStorage.__f
   calidadAprobar(b0.oids.join(','));await __p(50);
   __check('tras aprobar: fase 2Planificacion',o0.fase==='2Planificacion',o0.fase);
   __check('tras aprobar: liberable a corte',puedeLiberar(o0),faltaLiberar(o0).join(', '));
-  __check('tras aprobar: aparece botón liberar a corte',document.querySelector('main').innerHTML.includes('liberar a corte'));
+  o0.insumos=[{n:'Etiqueta',ok:false}];__check('insumos ya no bloquean la liberación',puedeLiberar(o0)&&!faltaLiberar(o0).length,faltaLiberar(o0).join(', '));delete o0.insumos;
+  page='liberacion';LIB.et='corte';render();__check('pestaña 2 · A producción sin insumos',document.querySelector('main').innerHTML.includes('2 · A producción<')&&!document.querySelector('main').innerHTML.includes('(insumos)'));
+  __check('tras aprobar: fila del baño dice en cola de liberación',document.querySelector('main').innerHTML.includes('en cola de liberación'));
+  __check('control tin ya no tiene botón liberar a corte',!document.querySelector('main').innerHTML.includes('liberarCorte('));
   liberarCorte(oid0);await __p(50);
   __check('liberada a corte',liberadaCorte(o0)&&(S.avance[oid0]||{}).lista===true);
   const b1=conf.find(b=>b.id!==b0.id&&!b.oids.includes(oid0));
-  if(b1){banoListo(b1.oids.join(','));calidadRechazar(b1.oids.join(','));await __p(50);const o1=S.ordenes.find(o=>o.id===b1.oids[0]);const a1=S.avance[o1.id]||{};
+  if(b1){banoListo(b1.oids.join(','));calidadRechazar(b1.oids.join(','));await __p(50);
+    __check('rechazo abre modal de reproceso',!!document.getElementById('rp-accion'));
+    guardarReproceso(b1.oids.join(','),true);__check('reproceso sin acción no se guarda',__R.alerts.some(a=>a.msg.includes('qué se va a hacer')));
+    document.getElementById('rp-accion').value='Reteñir al mismo tono';guardarReproceso(b1.oids.join(','),true);await __p(50);const o1=S.ordenes.find(o=>o.id===b1.oids[0]);const a1=S.avance[o1.id]||{};
+    __check('reproceso registrado pendiente',(a1.reprocesos||[]).length===1&&a1.reprocesos[0].estado==='pendiente'&&a1.reprocesos[0].origen==='calidad',JSON.stringify(a1.reprocesos));
+    page='control';CTL.area='tin';render();__check('panel de control de reprocesos lo muestra',document.querySelector('main').innerHTML.includes('Control de reprocesos')&&document.querySelector('main').innerHTML.includes('Reteñir al mismo tono'));
     __check('rechazo: marcada reproceso y fase 1Tintoreria',a1.reproc===true&&!a1.tinturada&&o1.fase==='1Tintoreria',o1.fase);
-    PLAN=null;P=programar();__check('rechazo: baño reprogramado como reproceso',P.banos.some(b=>b.oids.includes(o1.id)&&b.reproc));}
+    PLAN=null;P=programar();__check('rechazo: baño reprogramado como reproceso',P.banos.some(b=>b.oids.includes(o1.id)&&b.reproc));
+    banoListo(b1.oids.join(','));await __p(50);__check('al volver a salir, el reproceso queda hecho',a1.reprocesos[0].estado==='hecho'&&!!a1.reprocesos[0].hechoF&&enCalidad(o1),a1.reprocesos[0].estado);
+    render();__check('calidad muestra reproceso N°1',document.querySelector('main').innerHTML.includes('reproceso N°1'));
+    banoReproceso(b1.oids.join(','),false);__check('reprocesar desde piso abre el modal',!!document.getElementById('rp-accion'));document.getElementById('rp-accion').value='Sobreteñir';guardarReproceso(b1.oids.join(','),false);await __p(50);
+    __check('segundo reproceso desde piso',(a1.reprocesos||[]).length===2&&a1.reprocesos[1].origen==='piso'&&a1.reproc===true);
+    banoReproceso(b1.oids.join(','),true);await __p(50);__check('quitar reproceso lo anula',a1.reproc===false&&a1.reprocesos[1].estado==='anulado');}
   else __check('segundo baño para probar rechazo',false,'solo había un baño');
   for(const et of ['tela','corte']){const antes=__R.errors.length;page='liberacion';LIB.et=et;try{render()}catch(e){__R.errors.push({page:'liberacion/'+et,msg:e.message})}__check('liberación '+et,__R.errors.length===antes)}
   for(const p of ['panorama','tintoreria','produccion','control','plan','cumplimiento','entregas','wip','gerencia']){const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p+'(2)',msg:e.message})}__check('re-render '+p,__R.errors.length===antes)}

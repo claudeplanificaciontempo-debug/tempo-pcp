@@ -59,10 +59,19 @@ y la WH vuelve a la lista de espera.
 piso → Tintorería, `banoListo()` marca `avance.tinturada` y pone la orden en fase
 `1Calidad Tintoreria`. La orden queda "en calidad" (`enCalidad(o)`) hasta que
 Calidad la apruebe (`calidadAprobar` → `avance.calidadOk`, fase `2Planificacion`)
-o la rechace (`calidadRechazar` → reproceso, fase `1Tintoreria`). **Liberar a
-corte (producción) exige `calidadOk`** para tela propia (`puedeLiberar`); si la
-fase de Odoo ya es ≥2 se considera aprobada. El panel "Calidad de tintorería"
-vive al final de Control de piso → Tintorería.
+o la rechace (`calidadRechazar` → modal `mReproceso` → `guardarReproceso`:
+registra `avance.reprocesos[]` con motivo, qué se va a hacer, quién y origen
+calidad/piso; marca `reproc` y fase `1Tintoreria`; el baño vuelve al plan).
+Cuando ese baño vuelve a salir, `banoListo` cierra el reproceso pendiente
+(`estado:'hecho'`). "Reprocesar" desde piso usa el mismo modal; "quitar" lo anula.
+**Calidad NO libera a corte**: solo aprueba la tela. **Liberar a producción
+exige `calidadOk`** para tela propia (`puedeLiberar`) y la hace planificación
+en Liberación → "2 · A producción"; si la fase de Odoo ya es ≥2 se considera
+aprobada. **Los insumos ya no bloquean la liberación** (se quitó de
+`puedeLiberar`/`faltaLiberar`; la lista de insumos en la orden es solo
+informativa). Los paneles "Calidad de tintorería" y "Control de reprocesos"
+viven al final de Control de piso → Tintorería; en Control de piso no hay
+botones de liberar.
 
 **Baños confirmados a mano al programarse:** llevan `grupo:bc.id` (cada uno
 elige su propia máquina) y solo consideran máquinas donde cabe el baño
