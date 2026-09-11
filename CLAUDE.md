@@ -78,6 +78,26 @@ elige su propia máquina) y solo consideran máquinas donde cabe el baño
 (`capOf(r)*tolGrande >= kg`); sin eso, todos caían en la misma máquina o en
 STUART (45 kg) con 250 kg.
 
+**Baño "hecho" (Control de piso → Tintorería):** `mBanoHecho(bId)` muestra los
+kg programados por tela (`b.telasKg`) y pide los kg reales por tela; guarda en
+`salidas_tin` con `detalle:{tela:kg}` y llama `banoListo`. Un baño confirmado
+cuyas órdenes ya están `tinturada/calidadOk/lista` (y no en `reproc`) **sale del
+programa** (`programar()` lo omite) y la máquina queda libre. El rechazo de
+calidad pide qué telas tienen el problema (`reprocesos[].telas`).
+
+**Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
+pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
+a producción" (Planificación de producción, `LIB.et='corte'`).
+
+**Operaciones:** el catálogo se muestra por categoría padre (`o.catP`) →
+familia de operación (`o.famOp`) → operaciones (sección, máquina, sec, tiempo),
+con buscador (`OPV`). `LMO_BASE` lleva incorporada la hoja LMO de
+OPERACIONES.xlsx (11-sep-2026, 595 filas); `cargarLMOBase()` la aplica con
+`planLMO()`/`aplicarLMO()` (reemplaza todas las operaciones). `centroLMO()`
+mapea los códigos COR/CON/EMP/SER/BOR/TER a centros PCP (TER → terminados,
+plancha, botones… el primero que exista). "Subir otro Excel" usa el mismo
+parser y elige la hoja que tenga columnas Operación y Centro.
+
 **Perfiles (tabla `perfiles` en Supabase):** `rol`, `area` (piso: tej/tin/pro),
 `subarea` (piso en producción: corte = corte+estampado+bordado · confeccion =
 modulos · terminados = etiquetas+botones+lavado+plancha · empaque) y `modo`

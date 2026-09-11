@@ -36,18 +36,19 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   const b0=conf[0];const oid0=b0.oids[0];const o0=S.ordenes.find(o=>o.id===oid0);
   __check('antes de salir: no liberable a corte',!puedeLiberar(o0),faltaLiberar(o0).join(', '));
   page='control';CTL.area='tin';CTL.todo=true;render();
-  __check('control tin muestra botón salió',document.querySelector('main button[onclick^="mSalioBano"]')!=null);
+  __check('control tin muestra botón hecho',document.querySelector('#p-control button[onclick^="mBanoHecho"]')!=null);
+  mBanoHecho(b0.id);__check('modal hecho lista kg por tela',document.querySelectorAll('.bh-kg').length>0);cerrar();
   banoListo(b0.oids.join(','));await __p(50);
+  PLAN=null;__check('baño hecho sale del programa (máquina libre)',!programar().banos.some(b=>b.id===b0.id));
   __check('tras salió: orden en calidad',enCalidad(o0),'fase='+o0.fase);
   __check('tras salió: fase 1Calidad Tintoreria',o0.fase==='1Calidad Tintoreria',o0.fase);
   __check('tras salió: aún no liberable (falta calidad)',!puedeLiberar(o0)&&faltaLiberar(o0).some(x=>x.includes('calidad')),faltaLiberar(o0).join(', '));
   render();__check('panel calidad lista la orden',document.getElementById('p-'+page).innerHTML.includes('Aprobar calidad'));
-  __check('fila del baño marca en calidad',document.getElementById('p-'+page).innerHTML.includes('>en calidad<'));
   calidadAprobar(b0.oids.join(','));await __p(50);
   __check('tras aprobar: fase 2Planificacion',o0.fase==='2Planificacion',o0.fase);
   __check('tras aprobar: liberable a corte',puedeLiberar(o0),faltaLiberar(o0).join(', '));
   o0.insumos=[{n:'Etiqueta',ok:false}];__check('insumos ya no bloquean la liberación',puedeLiberar(o0)&&!faltaLiberar(o0).length,faltaLiberar(o0).join(', '));delete o0.insumos;
-  page='liberacion';LIB.et='corte';render();__check('pestaña 2 · A producción sin insumos',document.getElementById('p-'+page).innerHTML.includes('2 · A producción<')&&!document.getElementById('p-'+page).innerHTML.includes('(insumos)'));
+  page='liberacion';LIB.et='corte';render();__check('Liberación a producción propia y sin insumos',document.getElementById('p-'+page).innerHTML.includes('Liberación a producción')&&!document.getElementById('p-'+page).innerHTML.includes('(insumos)')&&!document.getElementById('p-'+page).innerHTML.includes('1 · Liberación principal'));
   page='liberacion';LIB.et='corte';render();__check('tras aprobar: aparece en Liberación → A producción lista para firmar',document.getElementById('p-liberacion').innerHTML.includes(o0.op));page='control';CTL.area='tin';render();
   __check('control tin ya no tiene botón liberar a corte',!document.getElementById('p-'+page).innerHTML.includes('liberarCorte('));
   liberarCorte(oid0);await __p(50);
@@ -57,7 +58,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     __check('rechazo abre modal de reproceso',!!document.getElementById('rp-accion'));
     guardarReproceso(b1.oids.join(','),true);__check('reproceso sin acción no se guarda',__R.alerts.some(a=>a.msg.includes('qué se va a hacer')));
     document.getElementById('rp-accion').value='Reteñir al mismo tono';guardarReproceso(b1.oids.join(','),true);await __p(50);const o1=S.ordenes.find(o=>o.id===b1.oids[0]);const a1=S.avance[o1.id]||{};
-    __check('reproceso registrado pendiente',(a1.reprocesos||[]).length===1&&a1.reprocesos[0].estado==='pendiente'&&a1.reprocesos[0].origen==='calidad',JSON.stringify(a1.reprocesos));
+    __check('reproceso registrado pendiente con telas',(a1.reprocesos||[]).length===1&&a1.reprocesos[0].estado==='pendiente'&&a1.reprocesos[0].origen==='calidad'&&(a1.reprocesos[0].telas||[]).length>0,JSON.stringify(a1.reprocesos));
     page='control';CTL.area='tin';render();__check('panel de control de reprocesos lo muestra',document.getElementById('p-'+page).innerHTML.includes('Control de reprocesos')&&document.getElementById('p-'+page).innerHTML.includes('Reteñir al mismo tono'));
     __check('rechazo: marcada reproceso y fase 1Tintoreria',a1.reproc===true&&!a1.tinturada&&o1.fase==='1Tintoreria',o1.fase);
     PLAN=null;P=programar();__check('rechazo: baño reprogramado como reproceso',P.banos.some(b=>b.oids.includes(o1.id)&&b.reproc));
@@ -69,6 +70,14 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   else __check('segundo baño para probar rechazo',false,'solo había un baño');
   for(const et of ['tela','corte']){const antes=__R.errors.length;page='liberacion';LIB.et=et;try{render()}catch(e){__R.errors.push({page:'liberacion/'+et,msg:e.message})}__check('liberación '+et,__R.errors.length===antes)}
   for(const p of ['panorama','tintoreria','produccion','control','plan','cumplimiento','entregas','wip','gerencia']){const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p+'(2)',msg:e.message})}__check('re-render '+p,__R.errors.length===antes)}
+  /* 8) operaciones: base OPERACIONES.xlsx incorporada y catálogo por categoría */
+  {const antes=__R.errors.length;cargarLMOBase();await __p(100);
+   __check('base LMO cargada (595 operaciones)',S.operaciones.length===595,S.operaciones.length);
+   __check('todas las operaciones con centro PCP válido',S.operaciones.every(o=>CE(o.centro)),[...new Set(S.operaciones.filter(o=>!CE(o.centro)).map(o=>o.centro))].join(','));
+   __check('categorías y familias de operación leídas',[...new Set(S.operaciones.map(o=>o.catP))].length===18&&[...new Set(S.operaciones.map(o=>o.famOp))].length===9,[...new Set(S.operaciones.map(o=>o.famOp))].join(','));
+   page='operaciones';OPV.abierta=null;OPV.q='';render();const html=document.getElementById('p-operaciones').innerHTML;
+   __check('catálogo por categoría renderiza',__R.errors.length===antes&&html.includes('Camiseta')&&html.includes('Ensamble')&&html.includes('Tendido'));
+   OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-operaciones').innerHTML.includes('Pegar Bolsillo')||document.getElementById('p-operaciones').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';}
   try{localStorage.__fase="fuzz"}catch(e){}
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
   window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear/;
