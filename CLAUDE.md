@@ -90,9 +90,11 @@ programa** (`programar()` lo omite) y la máquina queda libre. El rechazo de
 calidad pide qué telas tienen el problema (`reprocesos[].telas`).
 
 **Estado de tintorería según la fase de Odoo (`estadoTin(o)`):**
-- `1Tintoreria` = **en máquina ahora**: no se vuelve a armar; `programar()` da la
-  tela por llegar en `params.diasEnMaquina` (1) días (`ro.enMaquinaTin`). Botón
-  "Hecho → calidad" en el panel "Estado de tintorería" de la página Tintorería.
+- `1Tintoreria` = **en tintorería según Odoo**: solo informativo
+  (`ro.enMaquinaTin`); **sigue disponible para armar baños** (el usuario arma
+  justamente esas órdenes). Botón "Hecho → calidad" en el panel "Estado de
+  tintorería". No volver a excluirlas del armado: el 12-sep-2026 esa exclusión
+  hizo que al deshacer un baño las órdenes no regresaran a la lista.
 - fase 1 con "incomplet" = **incompleto**: tinturado pero faltan kg. El usuario
   anota `avance.faltaKg{tela:kg}` y **solo esos kg** entran a Armar baños
   (`kgTelaTin(o,tl)` reemplaza a `kgCrudo` en programar/armGrupos/banos_conf).
