@@ -1729,7 +1729,7 @@ function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
         <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
          <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(kgSel)}</b> kg seleccionados${nBanos?` · <b>${nBanos}</b> baño${nBanos===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',restoKg>0?num(restoKg)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}${restoKg>0?tagArm(restoKg,grp.cap,grp.telas):''}</div></div>
         <div><button class="btn ghost sm" onclick="armTodas('${grp.gk}',true,armGrupos(programar())['${grp.gk}'])">Todas</button> <button class="btn ghost sm" onclick="armTodas('${grp.gk}',false,armGrupos(programar())['${grp.gk}'])">Ninguna</button>
-         ${puede('programa')?`<button class="btn sm" onclick="confirmarArm('${grp.gk}')">Confirmar${nBanos>1?' '+nBanos+' baños':' baño'}</button>`:''}</div></div>
+         ${puede('programa')?`<br>${selMaqArm('maq-'+grp.gk.replace(/[^a-z0-9]/gi,'_'),grp.telas)}<button class="btn sm" onclick="confirmarArm('${grp.gk}')">Confirmar${nBanos>1?' '+nBanos+' baños':' baño'}</button>`:''}</div></div>
        <div class="scroll" style="max-height:180px"><table><thead><tr><th style="width:26px"></th><th>WH</th><th class="num">Kg</th></tr></thead><tbody>
         ${items.map(it=>`<tr><td><input type="checkbox" ${sel.has(it.oid)?'checked':''} onchange="armToggle('${grp.gk}','${it.oid}')"></td><td>${esc(it.op)}</td><td class="num">${num(it.kg)}</td></tr>`).join('')}
        </tbody></table></div></div>`}).join('');
@@ -1746,10 +1746,11 @@ function armarBanosHTML(P){const grupos=Object.values(armGrupos(P));
     </div></div>`}).join('')}
 function confirmarArm(gk){const P=programar();const grp=armGrupos(P)[gk];if(!grp){alert('Este grupo ya no existe (puede que ya se haya confirmado o cambiado). Actualiza la página.');return}const sel=[...armGet(gk,grp)];if(!sel.length){alert('Marca al menos una WH.');return}
   const items=sel.map(oid=>({id:oid,kg:grp.items[oid]?grp.items[oid].kg:0}));
-  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(grp.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
-  if(!confirm(resumenConfirm(grp.colorN,grp.telas,bins)))return;
+  const recA=maqElegida('maq-'+gk.replace(/[^a-z0-9]/gi,'_'));const rA=recA?R(recA):null;const tRefA=T((grp.telas||[]).find(t=>T(t)&&T(t).pique))||{};const capA=rA?(tRefA.pique?(rA.capPique||0):rA.cap):grp.cap;
+  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(capA||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
+  if(!confirm(resumenConfirm(grp.colorN,grp.telas,bins)+(rA?'\nMáquina: '+rA.n:'')))return;
   S.banos_conf=S.banos_conf||[];
-  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(grp.colorN,grp.req),telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
+  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(grp.colorN,grp.req),rec:rA?rA.id:undefined,recFijo:!!rA,telas:grp.telas,color:grp.color,colorN:grp.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   delete ARM.sel[gk];PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 /* ---- juntar en un baño lo marcado en varias telas del mismo color (si la máquina tiene capacidad) ---- */
@@ -1770,18 +1771,19 @@ function colorSelHTML(pc){if(pc.subs.length<2)return'';const i=colorSelInfo(pc);
     <div style="flex:1;min-width:200px"><b>Todo lo marcado del color</b> <span class="mut" style="font-size:var(--fs-xs)">${i.nTelas} ${i.nTelas===1?'tela':'telas'} juntas · cap. ${num(i.cap)} kg${i.mezclaPropia?' · <span class="tag t-alerta">mezcla baño propio</span>':''}${!i.cand.length?' · <span class="tag t-alerta">sin máquina apta</span>':''}</span></div>
     <div style="min-width:240px"><div class="bar" style="height:12px;background:var(--panel,#fff);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,pct)}%;background:${barColor}"></i></div>
      <div style="font-size:var(--fs-s);margin-top:2px"><b>${num(i.kg)}</b> kg marcados${n?` · <b>${n}</b> baño${n===1?'':'s'} (${[nLlenos?nLlenos+' lleno'+(nLlenos===1?'':'s'):'',resto>0?num(resto)+' kg al '+pct+'%':''].filter(Boolean).join(' + ')})`:''}</div></div>
-    <div><button class="btn sm" ${i.cand.length?'':'disabled'} onclick="confirmarArmColor('${pc.color}')">Juntar y confirmar${n>1?' '+n+' baños':' baño'}</button></div></div>`}
+    <div>${selMaqArm('maqc-'+String(pc.color).replace(/[^a-z0-9]/gi,'_'),i.telas)}<button class="btn sm" ${i.cand.length?'':'disabled'} onclick="confirmarArmColor('${pc.color}')">Juntar y confirmar${n>1?' '+n+' baños':' baño'}</button></div></div>`}
 function confirmarArmColor(colorId){const P=programar();const subs=Object.values(armGrupos(P)).filter(g=>g.color===colorId);
   if(!subs.length){alert('Este color ya no tiene nada esperando. Actualiza la página.');return}
   const pc={color:colorId,colorN:subs[0].colorN,subs};const i=colorSelInfo(pc);
   const items=Object.entries(i.items).map(([id,kg])=>({id,kg}));if(!items.length){alert('Marca al menos una WH.');return}
   if(!i.cand.length){alert('No hay una máquina de tintorería activa apta para todas las telas marcadas juntas.');return}
   if(i.mezclaPropia&&!confirm('Estás juntando una tela de baño propio (piqué) con otras telas. La regla normal es que vaya sola.\n\n¿Confirmar igual?'))return;
-  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(i.cap||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
-  if(!confirm(resumenConfirm(pc.colorN,i.telas,bins)))return;
+  const recA=maqElegida('maqc-'+String(colorId).replace(/[^a-z0-9]/gi,'_'));const rA=recA?R(recA):null;const tRefA=T((i.telas||[]).find(t=>T(t)&&T(t).pique))||{};const capA=rA?(tRefA.pique?(rA.capPique||0):rA.cap):i.cap;
+  const tolG=1+(S.params.tolGrande||5)/100;const bins=llenarBins(items,(capA||9e9)*tolG);if(!bins.length){alert('Lo marcado no tiene kilos.');return}
+  if(!confirm(resumenConfirm(pc.colorN,i.telas,bins)+(rA?'\nMáquina: '+rA.n:'')))return;
   S.banos_conf=S.banos_conf||[];
   const reqC=subs.map(g=>g.req).filter(Boolean).sort()[0]||null;
-  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(pc.colorN,reqC),telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
+  bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(pc.colorN,reqC),rec:rA?rA.id:undefined,recFijo:!!rA,telas:i.telas,color:colorId,colorN:pc.colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}));
   subs.forEach(g=>{delete ARM.sel[g.gk]});PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
 function deshacerBanoConf(id){if(!confirm('¿Deshacer este baño? Las órdenes vuelven a la lista de espera.'))return;
@@ -2266,6 +2268,9 @@ function lineaReparto(b,P){const parts=[];(b.oids||[]).forEach(oid=>{const {bs,t
   parts.push('<b>'+esc(o?o.op:oid)+'</b> '+aqui+'% aquí · resto: '+resto)});
   return parts.length?'<br><span style="opacity:.85;font-size:10px">'+parts.join('<br>')+'</span>':''}
 /* etiqueta de un grupo al armar: lleno · previo aprobación (≥ granOk) · pendiente (y si cabe, va a la máquina pequeña) */
+function selMaqArm(id,telas){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&(telas||[]).every(t=>compatible(r,t)));
+  return `<select id="${id}" title="Máquina a la que va el baño" style="width:auto;font-size:var(--fs-xs);padding:3px 6px"><option value="">máquina automática</option>${recs.map(r=>`<option value="${r.id}">→ ${esc(r.n)} (${num(r.cap)} kg)</option>`).join('')}</select> `}
+function maqElegida(id){const el=document.getElementById(id);return el?el.value:''}
 function tagArm(kg,cap,telas){if(kg<=1e-6)return'';const PP=S.params;const tol=1+(PP.tolGrande||5)/100;
   const chica=Math.max(0,...S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&r.cap<(PP.granMin||120)*1.2&&(telas||[]).every(t=>compatible(r,t))).map(r=>r.cap));
   if(cap&&kg>=cap*(PP.pctBueno||90)/100-1e-6)return' <span class="tag t-ok">baño lleno</span>';
