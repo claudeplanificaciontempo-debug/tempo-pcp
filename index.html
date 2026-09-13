@@ -2742,6 +2742,60 @@ function defMapaCatLMO(){return {
   porHija:{'SHORT PLANOS|Short Cargo':'SHORT CARGO','PANTALONES PLANOS|Pantalon Cargo':'PANTALON'}
 }}
 function mapaCatLMO(){if(!S.params.mapaCatLMO)S.params.mapaCatLMO=defMapaCatLMO();return S.params.mapaCatLMO}
+
+/* ==================== RECARGA PARTE 2: tablas de configuración (sembradas, sin cargar nada todavía) ==================== */
+/* ---------- PASO 3: Fase del archivo -> fase del sistema. Sembrado por el agrupamiento del prefijo numérico;
+   todo lo sembrado queda "pendiente de validar" hasta que el usuario lo confirme con el archivo real delante. ---------- */
+const SISTEMA_FASES=['previo a producción','textil','planificación','preparación de corte','corte','maquila externa','bordado/etiquetado','confección','terminados y despacho','cerrada'];
+function defFaseMapeo(){const rows=[];const add=(sistema,fases)=>fases.forEach(fase=>rows.push({fase,sistema,pendiente:true}));
+  add('previo a producción',['0Adquisición','0Macro','0Ord Compras','0Reproceso diseño']);
+  add('textil',['1Tejeduria','1CD Tintoreria','1Tintoreria','1INCOMPLETOS TIN']);
+  add('planificación',['2Planificacion']);
+  add('preparación de corte',['3Trazos','3CD CORTE','3AEROPUERTO']);
+  add('corte',['4Corte Planta','4CD Ensamble','4Preparacion Insumos','4Incompletos']);
+  add('maquila externa',['5Maquila Conf','5Maquila Recepción','5CD Maquila','5Corte Maquila Ibarra']);
+  add('bordado/etiquetado',['6Bordado','6 Etiquetado']);
+  add('confección',['7Confección','7Pulido']);
+  add('terminados y despacho',['8Empaque','8Botones','8Lavanderia','8Servicios y Terminados','8Exportacion','8Embodegado','8Cross','8Centro Distribucion','8Novedades','8Empaque Terminado']);
+  add('cerrada',['Facturado']);
+  return rows}
+function faseMapeo(){if(!S.params.faseMapeo||!S.params.faseMapeo.length)S.params.faseMapeo=defFaseMapeo();return S.params.faseMapeo}
+/* resuelve la fase del sistema para un valor de Fase del archivo; null si no está en la tabla (se carga la orden igual y se reporta, no se asigna por parecido) */
+function faseSistemaDe(faseArchivo){const r=faseMapeo().find(x=>normTxt(x.fase)===normTxt(faseArchivo||''));return r?r.sistema:null}
+
+/* ---------- PASO 5: segundo nivel de categoría de material -> clasificación ---------- */
+function defClasifMaterial(){return [
+  {nivel2:'MP',clasificacion:'tela',pendiente:true},
+  {nivel2:'INSUMOS',clasificacion:'insumo',pendiente:true},
+  {nivel2:'PT',clasificacion:'producto terminado',pendiente:true},
+  {nivel2:'GASTOS MAQUILA',clasificacion:'servicio externo de confección',pendiente:true},
+  {nivel2:'LAVANDERIA INDUSTRIAL',clasificacion:'servicio externo de lavado',pendiente:true},
+  {nivel2:'TINTURADO INDUSTRIAL',clasificacion:'servicio externo de tintura',pendiente:true}]}
+function clasifMaterial(){if(!S.params.clasifMaterial||!S.params.clasifMaterial.length)S.params.clasifMaterial=defClasifMaterial();return S.params.clasifMaterial}
+function clasifDe(nivel2){const r=clasifMaterial().find(x=>normTxt(x.nivel2)===normTxt(nivel2||''));return r?r.clasificacion:null}
+
+/* ---------- PASO 6: tercer nivel de MP -> origen de tela (PROPIA / EXTERNA / EXTERNA TEÑIDA / SIN CLASIFICAR).
+   porCuarto son excepciones que miran el cuarto nivel y anulan lo que diga porTercero (ej. NUEVOS TEMPO
+   normalmente PROPIA, pero "NUEVOS TEMPO / SERVICIO TINTURADO" es EXTERNA TEÑIDA). ---------- */
+const ORIGENES_TELA=['PROPIA','EXTERNA','EXTERNA TEÑIDA','SIN CLASIFICAR'];
+function defOrigenTela(){
+  const porTercero=[];
+  const add=(origen,tipos)=>tipos.forEach(nivel3=>porTercero.push({nivel3,origen,pendiente:true}));
+  add('PROPIA',['NUEVOS TEMPO','FLECCE TEMPO','PIQUE TEMPO','PIQUE LYCRA TEMPO','PIQUE TEMPO OXFORD','TEJIDOS TEMPO A COLOR']);
+  add('EXTERNA',['PLANA IMPORTACION','JEAN IMPORTADOS','TELA TEJIDA']);
+  add('SIN CLASIFICAR',['RIB','JERSEY','PLANA','PUÑOS','CUELLOS','LYCRA','SPANDEX','FLECCE S','FLECCE SIN PERCHAR','FLECCE PERCHADO','JEANS','FAJON','CUELLOS DISEÑOS','PIQUE','INTERLOCK']);
+  const porCuarto=[
+    {nivel3:'NUEVOS TEMPO',nivel4:'SERVICIO TINTURADO',origen:'EXTERNA TEÑIDA',pendiente:true},
+    {nivel3:'NUEVOS TEMPO',nivel4:'TELA IMPORTADA TINTURADA',origen:'EXTERNA TEÑIDA',pendiente:true}];
+  return {porTercero,porCuarto}}
+function origenTela(){if(!S.params.origenTela||!(S.params.origenTela.porTercero||[]).length)S.params.origenTela=defOrigenTela();return S.params.origenTela}
+/* resuelve el origen de una tela: excepción por cuarto nivel primero, si no la regla del tercer nivel; null = SIN CLASIFICAR real (no está en ninguna tabla) */
+function origenDeTela(nivel3,nivel4){const M=origenTela();
+  const exc=(M.porCuarto||[]).find(x=>normTxt(x.nivel3)===normTxt(nivel3||'')&&normTxt(x.nivel4)===normTxt(nivel4||''));
+  if(exc)return exc.origen;
+  const e=(M.porTercero||[]).find(x=>normTxt(x.nivel3)===normTxt(nivel3||''));
+  return e?e.origen:null}
+
 /* resuelve la categoría LMO de una hija: excepción (padre|hija) primero, si no la del padre */
 function categoriaLMODe(k){if(!k)return null;const M=mapaCatLMO();const padre=k.padre?K(k.padre):k;const nombrePadre=padre?padre.n:k.n;
   const keyHija=nombrePadre+'|'+k.n;if(M.porHija&&M.porHija[keyHija])return M.porHija[keyHija];
@@ -2942,7 +2996,7 @@ function procesarPasteFamOps(){const txt=document.getElementById('f-paste').valu
 
 /* ---------- Configuración ---------- */
 let CONF={tab:'recursos'};
-const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros']];
+const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros'],['ordenes2','Órdenes y materiales (Parte 2)']];
 function vConfig(el){
   const p=S.params;
   const inp=(k,l,step='1')=>`<div><label>${l}</label><input type="number" step="${step}" value="${p[k]}" onchange="setParam('${k}',this.value)"></div>`;
@@ -3074,6 +3128,46 @@ function vConfig(el){
   </div></div>
 
 `:''}
+  ${CONF.tab==='ordenes2'?`
+  <div class="warn" style="margin-bottom:12px">Tablas de la Recarga Parte 2 (órdenes y materiales). Todavía no se ha cargado ningún archivo: estas tablas están sembradas con valores iniciales dados por el usuario, marcados <b>pendiente de validar</b>. Edítalas aquí antes o después de cargar el archivo.</div>
+
+  <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">PASO 3</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
+   <div class="body"><table><thead><tr><th>Fase (archivo)</th><th>Fase del sistema</th><th></th><th></th></tr></thead><tbody>
+    ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
+      <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${SISTEMA_FASES.map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togFaseMapeoRow(${i})" style="margin-left:6px">${r.pendiente?'marcar validado':'marcar pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delFaseMapeoRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">La hoja real trae 36 valores de Fase distintos; aquí solo están los agrupados por el usuario a partir de los prefijos. Un valor de Fase que no esté en esta tabla se carga igual y se reporta — no se asigna por parecido.</p></div></div>
+
+  <div class="panel"><h3>2 · Segundo nivel de categoría de material → clasificación <span class="note">PASO 5</span><span class="spacer"></span><button class="btn ghost sm" onclick="addClasifMaterialRow()">+ Nivel</button></h3>
+   <div class="body"><table><thead><tr><th>Segundo nivel (Categoria Producto)</th><th>Clasificación</th><th></th><th></th></tr></thead><tbody>
+    ${clasifMaterial().map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.nivel2)}" onchange="setClasifMaterialRow(${i},'nivel2',this.value)"></td>
+      <td><input type="text" style="width:260px" value="${esc(r.clasificacion)}" onchange="setClasifMaterialRow(${i},'clasificacion',this.value)"></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togClasifMaterialRow(${i})" style="margin-left:6px">${r.pendiente?'marcar validado':'marcar pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delClasifMaterialRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Un segundo nivel que no esté en esta tabla se reporta, no se clasifica por parecido.</p></div></div>
+
+  <div class="panel"><h3>3 · Tercer nivel de MP → origen de tela <span class="note">PASO 6 — decisión pendiente del usuario</span><span class="spacer"></span><button class="btn ghost sm" onclick="addOrigenTelaRow()">+ Tipo</button></h3>
+   <div class="body">
+   <table><thead><tr><th>Tercer nivel (dentro de MP)</th><th>Origen</th><th></th><th></th></tr></thead><tbody>
+    ${origenTela().porTercero.map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.nivel3)}" onchange="setOrigenTelaRow(${i},'nivel3',this.value)"></td>
+      <td><select onchange="setOrigenTelaRow(${i},'origen',this.value)">${ORIGENES_TELA.map(o=>`<option ${r.origen===o?'selected':''}>${esc(o)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togOrigenTelaRow(${i})" style="margin-left:6px">${r.pendiente?'marcar validado':'marcar pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delOrigenTelaRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table>
+   <h4 style="margin:14px 0 6px">Excepciones por cuarto nivel <span class="mut" style="font-weight:400">— anulan la regla del tercer nivel de arriba</span></h4>
+   <table><thead><tr><th>Tercer nivel</th><th>Cuarto nivel</th><th>Origen</th><th></th><th></th></tr></thead><tbody>
+    ${origenTela().porCuarto.map((r,i)=>`<tr><td><input type="text" style="width:180px" value="${esc(r.nivel3)}" onchange="setOrigenTelaCuartoRow(${i},'nivel3',this.value)"></td>
+      <td><input type="text" style="width:200px" value="${esc(r.nivel4)}" onchange="setOrigenTelaCuartoRow(${i},'nivel4',this.value)"></td>
+      <td><select onchange="setOrigenTelaCuartoRow(${i},'origen',this.value)">${ORIGENES_TELA.map(o=>`<option ${r.origen===o?'selected':''}>${esc(o)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togOrigenTelaCuartoRow(${i})" style="margin-left:6px">${r.pendiente?'marcar validado':'marcar pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delOrigenTelaCuartoRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table>
+   <button class="btn ghost sm" style="margin-top:8px" onclick="addOrigenTelaCuartoRow()">+ Excepción</button>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los tipos marcados SIN CLASIFICAR no se asignan a tejeduría ni tintorería: la orden que los use va a la bandeja "origen de tela sin definir" (Parte 2, todavía sin construir). No se adivina.</p></div></div>
+`:''}
 `;
 }
 function resumenMaq(){if(!S.maquinas.length)return'';const mods=S.recursos.filter(r=>r.centro==='modulos');const tipos=[...new Set(S.maquinas.map(m=>m.tipo))].sort();
@@ -3144,6 +3238,23 @@ function setCosto(k,v){S.params.costos=S.params.costos||{};S.params.costos[k]=+v
 function costoMin(centro){const c=S.params.costos||{};return centro==='corte'?c.minCorte||0:centro==='empaque'?c.minEmp||0:centro==='modulos'?c.minConf||0:c.minConf||0}
 function setPoli(rid,kid,v){const r=R(rid);if(!r)return;r.poli=r.poli||{};if(v===''||v==null)delete r.poli[kid];else r.poli[kid]=Math.max(0,+v);save();render()}
 function setCal(a,v){if(!S.params.cal)S.params.cal={};S.params.cal[a]=+v;save();render()}
+/* ---------- Recarga Parte 2: edición de las 3 tablas sembradas (Configuración → Órdenes y materiales) ---------- */
+function addFaseMapeoRow(){faseMapeo().push({fase:'',sistema:SISTEMA_FASES[0],pendiente:true});save();render()}
+function setFaseMapeoRow(i,k,v){faseMapeo()[i][k]=v;save()}
+function togFaseMapeoRow(i){const r=faseMapeo()[i];r.pendiente=!r.pendiente;save();render()}
+function delFaseMapeoRow(i){faseMapeo().splice(i,1);save();render()}
+function addClasifMaterialRow(){clasifMaterial().push({nivel2:'',clasificacion:'',pendiente:true});save();render()}
+function setClasifMaterialRow(i,k,v){clasifMaterial()[i][k]=v;save()}
+function togClasifMaterialRow(i){const r=clasifMaterial()[i];r.pendiente=!r.pendiente;save();render()}
+function delClasifMaterialRow(i){clasifMaterial().splice(i,1);save();render()}
+function addOrigenTelaRow(){origenTela().porTercero.push({nivel3:'',origen:'SIN CLASIFICAR',pendiente:true});save();render()}
+function setOrigenTelaRow(i,k,v){origenTela().porTercero[i][k]=v;save()}
+function togOrigenTelaRow(i){const r=origenTela().porTercero[i];r.pendiente=!r.pendiente;save();render()}
+function delOrigenTelaRow(i){origenTela().porTercero.splice(i,1);save();render()}
+function addOrigenTelaCuartoRow(){origenTela().porCuarto.push({nivel3:'',nivel4:'',origen:'EXTERNA TEÑIDA',pendiente:true});save();render()}
+function setOrigenTelaCuartoRow(i,k,v){origenTela().porCuarto[i][k]=v;save()}
+function togOrigenTelaCuartoRow(i){const r=origenTela().porCuarto[i];r.pendiente=!r.pendiente;save();render()}
+function delOrigenTelaCuartoRow(i){origenTela().porCuarto.splice(i,1);save();render()}
 function addExc(){const g=x=>document.getElementById(x).value;const d1=g('ex-d1'),d2=g('ex-d2')||d1;if(!d1){alert('Falta la fecha.');return}
   if(!S.params.excepciones)S.params.excepciones=[];const area=g('ex-a'),tipo=g('ex-t'),motivo=g('ex-m');
   for(let d=d1;d<=d2;d=dsum(d,1)){S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===area));S.params.excepciones.push({fecha:d,area,tipo,motivo});if(S.params.excepciones.length>2000)break}
