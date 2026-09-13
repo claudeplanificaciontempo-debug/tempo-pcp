@@ -3211,10 +3211,14 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Una orden da por hechos los centros cuya etapa (tabla 4) tiene orden anterior al grupo de su fase. Tejida / tinturada / lista: grupo posterior a textil = sí; grupo textil = columna "tela" de la fila; anterior = no. La firma humana de Liberación sigue mandando para las órdenes cuyo grupo no tiene marcada la liberación.</p></div></div>
 
   <div class="panel"><h3>6 · Centro de trabajo de Odoo → centro TEMPO <span class="note">órdenes de trabajo (mrp.workorder)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroOTRow()">+ Centro</button></h3>
-   <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th></th><th></th></tr></thead><tbody>
-    ${centroOT().map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.odoo)}" onchange="setCentroOTRow(${i},'odoo',this.value)"></td>
+   <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th title="si la columna Operaciones contiene este texto, manda esta fila">operación contiene</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th title="baja de materiales, no producción: se cuenta y se ignora">ignorar</th><th title="el recurso de esta fila no es confiable para atribuir trabajo por módulo">histórico</th><th title="si Operaciones trae el nombre de un módulo existente, ese es el real">módulo desde operación</th><th></th><th></th></tr></thead><tbody>
+    ${centroOT().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.odoo)}" onchange="setCentroOTRow(${i},'odoo',this.value)"></td>
+      <td><input type="text" style="width:110px" value="${esc(r.operacion||'')}" placeholder="—" onchange="setCentroOTRow(${i},'operacion',this.value)"></td>
       <td><select onchange="setCentroOTRow(${i},'centro',this.value)"><option value="">— sin centro (se reporta) —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
       <td><select onchange="setCentroOTRow(${i},'recurso',this.value)"><option value="">—</option>${S.recursos.filter(x=>x.centro===r.centro).map(x=>`<option value="${x.id}" ${r.recurso===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}</select></td>
+      <td style="text-align:center"><input type="checkbox" ${r.ignorar?'checked':''} onchange="setCentroOTRow(${i},'ignorar',this.checked)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.historico?'checked':''} onchange="setCentroOTRow(${i},'historico',this.checked)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.moduloDeOperacion?'checked':''} onchange="setCentroOTRow(${i},'moduloDeOperacion',this.checked)"></td>
       <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togCentroOTRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
       <td><button class="btn ghost sm" onclick="delCentroOTRow(${i})">×</button></td></tr>`).join('')}
    </tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Comparación tolerante a mayúsculas, tildes y espacios. Un centro de trabajo del archivo que no esté aquí se reporta; con fila pero sin centro TEMPO también.</p></div></div>
@@ -3379,23 +3383,34 @@ function vStock(el){const req=requeridoTela();const st=stockTela();const meses=[
    secuenciales (textil, corte, terminados). Todo por tablas editables: 6 (centro de trabajo Odoo → centro TEMPO) y 7 (valores
    de Estado → significado). Se puede recargar cuando se quiera sin volver a cargar las órdenes: el archivo es la verdad
    para las órdenes que trae. Nada se asigna por parecido: lo que no calza se reporta. */
+/* columnas: odoo (centro de trabajo), operacion (si el texto de la columna Operaciones contiene esto, manda esta fila: se evalúa antes
+   que la fila sin operación), centro TEMPO, recurso (módulo real), ignorar (baja de materiales: no es producción), historico
+   (el recurso de esta fila NO es confiable para atribuir trabajo a un módulo), moduloDeOperacion (si Operaciones trae el nombre
+   de un módulo existente, ese es el real). Confirmado por la usuaria el 2026-09-13. */
 function defCentroOT(){const rows=[
-  {odoo:'Corte y Bodega',centro:'corte',pendiente:true},{odoo:'Serigrafia',centro:'estampado',pendiente:true},{odoo:'Sublimado',centro:'estampado',pendiente:true},
-  {odoo:'Bordado',centro:'bordado',pendiente:true},{odoo:'Empaque',centro:'empaque',pendiente:true},{odoo:'Maquila',centro:'modulos',recurso:'maquila',pendiente:true},
-  {odoo:'Pulido',centro:'',pendiente:true},{odoo:'Servicios y Terminados',centro:'',pendiente:true}];
-  S.recursos.filter(r=>r.centro==='modulos'&&/^m[oó]dulo\s*\d+$/i.test(r.n)).forEach(r=>rows.push({odoo:r.n,centro:'modulos',recurso:r.id,pendiente:true}));
-  return rows}
+  {odoo:'CORTE Y BODEGA',operacion:'',centro:'corte'},
+  {odoo:'SERIGRAFIA',operacion:'ETIQUET',centro:'etiquetas'},{odoo:'SERIGRAFIA',operacion:'',centro:'estampado'},{odoo:'SUBLIMADO',operacion:'',centro:'estampado'},
+  {odoo:'BORDADO',operacion:'',centro:'bordado'},{odoo:'EMPAQUE',operacion:'',centro:'empaque'},
+  {odoo:'MAQUILA',operacion:'',centro:'modulos',recurso:'maquila'},
+  {odoo:'PLANTA',operacion:'',centro:'modulos',recurso:'',historico:true,moduloDeOperacion:true},
+  {odoo:'MODULO 1',operacion:'',centro:'modulos',recurso:'mod1',historico:true,moduloDeOperacion:true},
+  {odoo:'PULIDO',operacion:'',centro:''},{odoo:'SERVICIOS Y TERMINADOS',operacion:'',centro:''},
+  {odoo:'BODEGA INSUMOS',operacion:'',centro:'',ignorar:true},{odoo:'BODEGA MP',operacion:'',centro:'',ignorar:true}];
+  for(let i=2;i<=11;i++)rows.push({odoo:'MODULO '+i,operacion:'',centro:'modulos',recurso:'mod'+i});
+  return rows.map(r=>Object.assign({operacion:'',recurso:'',ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true},r))}
 function centroOT(){if(!Array.isArray(S.params.centroOT))S.params.centroOT=defCentroOT();return S.params.centroOT}
-function filaCentroOT(nombre){const n=normFase(nombre);return centroOT().find(r=>normFase(r.odoo)===n)||null}
-function addCentroOTRow(){centroOT().push({odoo:'',centro:'',recurso:'',pendiente:true});save();render()}
+/* fila para un centro de trabajo y (si viene) el texto de Operaciones: primero las filas con "operación contiene" que calcen, después la fila sin operación */
+function filaCentroOT(nombre,oper){const n=normFase(nombre),op=normFase(oper||'');const filas=centroOT().filter(r=>normFase(r.odoo)===n);
+  if(op){const f=filas.find(r=>r.operacion&&op.includes(normFase(r.operacion)));if(f)return f}
+  return filas.find(r=>!r.operacion)||null}
+function addCentroOTRow(){centroOT().push({odoo:'',operacion:'',centro:'',recurso:'',ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true});save();render()}
 function setCentroOTRow(i,k,v){centroOT()[i][k]=v;save()}
 function togCentroOTRow(i){const r=centroOT()[i];r.pendiente=!r.pendiente;save();render()}
 function delCentroOTRow(i){centroOT().splice(i,1);save();render()}
-const OT_SIGNIFICA=['terminado','en proceso','para hacer','cancelado'];
-function defEstadoOT(){return [{valor:'done',significa:'terminado'},{valor:'terminado',significa:'terminado'},{valor:'finalizado',significa:'terminado'},{valor:'hecho',significa:'terminado'},
-  {valor:'progress',significa:'en proceso'},{valor:'en proceso',significa:'en proceso'},{valor:'en progreso',significa:'en proceso'},
-  {valor:'ready',significa:'para hacer'},{valor:'pending',significa:'para hacer'},{valor:'waiting',significa:'para hacer'},{valor:'para hacer',significa:'para hacer'},{valor:'listo',significa:'para hacer'},{valor:'pendiente',significa:'para hacer'},{valor:'en espera',significa:'para hacer'},
-  {valor:'cancel',significa:'cancelado'},{valor:'cancelado',significa:'cancelado'}].map(x=>Object.assign(x,{pendiente:true}))}
+const OT_SIGNIFICA=['terminado','en proceso','para hacer','bloqueado por material','esperando','cancelado'];
+function defEstadoOT(){return [{valor:'Terminado',significa:'terminado'},{valor:'En progreso',significa:'en proceso'},{valor:'Preparado',significa:'para hacer'},
+  {valor:'Esperando componentes',significa:'bloqueado por material'},{valor:'Esperando a otra orden de trabajo',significa:'esperando'},{valor:'Cancelado',significa:'cancelado'},
+  {valor:'done',significa:'terminado'},{valor:'progress',significa:'en proceso'},{valor:'ready',significa:'para hacer'},{valor:'waiting',significa:'esperando'},{valor:'pending',significa:'esperando'},{valor:'cancel',significa:'cancelado'}].map(x=>Object.assign(x,{pendiente:true}))}
 function estadoOT(){if(!Array.isArray(S.params.estadoOT))S.params.estadoOT=defEstadoOT();return S.params.estadoOT}
 function significaOT(valor){const n=normFase(valor);const r=estadoOT().find(x=>normFase(x.valor)===n);return r?r.significa:null}
 function addEstadoOTRow(){estadoOT().push({valor:'',significa:'terminado',pendiente:true});save();render()}
@@ -3420,27 +3435,36 @@ function planOT(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));
     ini:col('fecha de inicio','inicio real','date start','fecha inicial'),fin:col('fecha de fin','fecha final','finalizacion','date finished','fecha de finalizacion'),oper:col('operacion','operation','nombre'),cant:col('cantidad producida','qty produced','producido'),dur:col('duracion','duration')};
   if(I.op<0||I.centro<0||I.estado<0)return null;
   const porOp={};S.ordenes.forEach(o=>{if(o.op)porOp[normFase(o.op)]=o});
-  const plan={archivo:nombre,filas:0,porOrden:{},ordenesNoEncontradas:{},centrosNoMapeados:{},centrosSinCentro:{},estadosNoReconocidos:{},cancelados:0,cont:{terminado:0,'en proceso':0,'para hacer':0},columnas:{inicio:I.ini>=0,fin:I.fin>=0,operacion:I.oper>=0,cantidad:I.cant>=0}};
-  rows.slice(1).forEach(r=>{const op=String(r[I.op]==null?'':r[I.op]).trim();if(!op)return;plan.filas++;
-    const o=porOp[normFase(op)];if(!o){plan.ordenesNoEncontradas[op]=(plan.ordenesNoEncontradas[op]||0)+1;return}
-    const cOdoo=String(r[I.centro]==null?'':r[I.centro]).trim();const fila=filaCentroOT(cOdoo);
+  const plan={archivo:nombre,filas:0,ordenesArchivo:new Set(),porOrden:{},ordenesNoEncontradas:{},centrosNoMapeados:{},centrosSinCentro:{},ignoradas:{},estadosNoReconocidos:{},cancelados:0,cont:{terminado:0,'en proceso':0,'para hacer':0,'bloqueado por material':0,'esperando':0},moduloDesdeOperacion:0,noTerminadaConFin:0,columnas:{inicio:I.ini>=0,fin:I.fin>=0,operacion:I.oper>=0,cantidad:I.cant>=0}};
+  rows.slice(1).forEach(r=>{const op=String(r[I.op]==null?'':r[I.op]).trim();if(!op)return;plan.filas++;plan.ordenesArchivo.add(normFase(op));
+    const cOdoo=String(r[I.centro]==null?'':r[I.centro]).trim();const operTxt=I.oper>=0?String(r[I.oper]||'').trim():'';const fila=filaCentroOT(cOdoo,operTxt);
+    if(fila&&fila.ignorar){plan.ignoradas[cOdoo]=(plan.ignoradas[cOdoo]||0)+1;return}
+    // lo que no calza con las tablas se cuenta sobre TODO el archivo, esté o no la orden en el sistema
     if(!fila){plan.centrosNoMapeados[cOdoo||'(vacío)']=(plan.centrosNoMapeados[cOdoo||'(vacío)']||0)+1;return}
     if(!fila.centro||!CE(fila.centro)){plan.centrosSinCentro[cOdoo]=(plan.centrosSinCentro[cOdoo]||0)+1;return}
     const est=String(r[I.estado]==null?'':r[I.estado]).trim();const sig=significaOT(est);
     if(!sig){plan.estadosNoReconocidos[est||'(vacío)']=(plan.estadosNoReconocidos[est||'(vacío)']||0)+1;return}
+    const finTxt=I.fin>=0?excelFecha(r[I.fin]):null;if(finTxt&&sig!=='terminado'&&sig!=='cancelado')plan.noTerminadaConFin++;
+    if(fila.moduloDeOperacion&&operTxt&&S.recursos.some(x=>x.centro===fila.centro&&x.id!==fila.recurso&&normFase(operTxt).includes(normFase(x.n))))plan.moduloDesdeOperacion++;
+    const o=porOp[normFase(op)];if(!o){plan.ordenesNoEncontradas[op]=(plan.ordenesNoEncontradas[op]||0)+1;return}
     if(sig==='cancelado'){plan.cancelados++;return}
     plan.cont[sig]++;
     const po=plan.porOrden[o.id]=plan.porOrden[o.id]||{o,centros:{}};const c=fila.centro;const prev=po.centros[c];
-    const reg={estado:sig,ini:I.ini>=0?excelFecha(r[I.ini]):null,fin:I.fin>=0?excelFecha(r[I.fin]):null,odoo:cOdoo,recurso:fila.recurso||null,oper:I.oper>=0?String(r[I.oper]||'').trim():'',cant:I.cant>=0?(+r[I.cant]||0):null};
+    let recurso=fila.recurso||null,recursoConfiable=!fila.historico;
+    if(fila.moduloDeOperacion&&operTxt){const rm=S.recursos.find(x=>x.centro===fila.centro&&normFase(operTxt).includes(normFase(x.n)));if(rm&&rm.id!==recurso){recurso=rm.id;recursoConfiable=true}}
+    const fin=finTxt;
+    const reg={estado:sig,ini:I.ini>=0?excelFecha(r[I.ini]):null,fin,odoo:cOdoo,recurso,recursoConfiable,oper:operTxt,cant:I.cant>=0?(+r[I.cant]||0):null};
     // varias OT del mismo centro en una orden (p. ej. varias operaciones de confección): el centro está terminado solo si TODAS lo están
-    if(!prev)po.centros[c]=reg;else{const rango={'terminado':3,'en proceso':2,'para hacer':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin}});
+    if(!prev)po.centros[c]=reg;else{const rango={'terminado':5,'en proceso':4,'para hacer':3,'esperando':2,'bloqueado por material':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin;if(reg.recursoConfiable&&!prev.recursoConfiable){prev.recurso=reg.recurso;prev.recursoConfiable=true}}});
+  plan.cruce={enArchivo:S.ordenes.filter(o=>o.op&&plan.ordenesArchivo.has(normFase(o.op))).length,total:S.ordenes.length};
+  plan.esperandoMaterial=[];Object.values(plan.porOrden).forEach(({o,centros})=>{const cs=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);if(cs.length)plan.esperandoMaterial.push({op:o.op,fase:o.fase,cant:o.cant,centros:cs})});
   // contradicciones con la fase: lo que la fase da por hecho y la OT dice que no (o al revés)
   plan.contradicciones=[];Object.values(plan.porOrden).forEach(({o,centros})=>{const fe=faseEstado(o.fase,null);Object.entries(centros).forEach(([c,reg])=>{const faseHecho=fe.hechos.includes(c);
     if(faseHecho&&reg.estado!=='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'hecho',otDice:reg.estado});
     if(!faseHecho&&reg.estado==='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'pendiente',otDice:'terminado'})})});
   return plan}
 function resumenOTHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';const ords=Object.keys(p.porOrden).length;
-  return `<table><tbody>${li(p.filas,'filas de órdenes de trabajo leídas')}${li(ords,'órdenes del sistema con información de centros')}
+  return `<table><tbody>${li(p.filas,'filas de órdenes de trabajo leídas ('+p.ordenesArchivo.size+' órdenes en el archivo)')}${li(p.cruce.enArchivo,'órdenes del sistema que cruzan con el archivo (de '+p.cruce.total+')')}${li(ords,'órdenes del sistema con información de centros')}${li(Object.values(p.ignoradas).reduce((a,b)=>a+b,0),'filas de bodegas (baja de materiales) ignoradas: '+esc(Object.entries(p.ignoradas).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(p.cont['bloqueado por material'],'OT esperando componentes (bloqueadas por material) en '+p.esperandoMaterial.length+' órdenes')}${li(p.cont['esperando'],'esperando a otra orden de trabajo')}${li(p.moduloDesdeOperacion,'módulo real tomado de la columna Operaciones (MODULO 1 / PLANTA)')}${li(p.noTerminadaConFin,'OT no terminadas que traen fecha final')}
    ${li(p.cont.terminado,'OT terminadas (cierran el centro en la orden)')}${li(p.cont['en proceso'],'en proceso')}${li(p.cont['para hacer'],'para hacer')}${li(p.cancelados,'canceladas (se ignoran)')}
    ${li(Object.keys(p.ordenesNoEncontradas).length,'órdenes del archivo que no están en el sistema (se ignoran): '+esc(Object.keys(p.ordenesNoEncontradas).slice(0,12).join(', '))+(Object.keys(p.ordenesNoEncontradas).length>12?'…':''))}
    ${li(Object.keys(p.centrosNoMapeados).length,'centros de trabajo de Odoo que NO están en la tabla 6 (no se asignan por parecido): '+esc(Object.entries(p.centrosNoMapeados).map(([k,v])=>k+' ('+v+')').join(', ')))}
@@ -3456,9 +3480,10 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
     o.ot={};a.centrosOT={};
     Object.entries(centros).forEach(([c,reg])=>{o.ot[c]={estado:reg.estado,ini:reg.ini,fin:reg.fin,odoo:reg.odoo};
       if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
-      if(reg.recurso&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
+      if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
+    o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
     o.otTs=ts});
-  S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
+  S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
   S.cargas.push({id:uid(),ts,usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',archivo:p.archivo,tipo:'ot',nuevas:0,act:Object.keys(p.porOrden).length,cerradas:0,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
   if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
   OT=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
@@ -3467,6 +3492,7 @@ function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha c
   const porCentro={};C.contradicciones.forEach(x=>{const k=nCen(x.centro)+': fase '+x.faseDice+' / OT '+x.otDice;porCentro[k]=(porCentro[k]||0)+1});
   abrir(`<h3>Reporte de órdenes de trabajo · ${esc(C.archivo)}</h3><div class="body" style="max-height:70vh;overflow:auto">
    <p class="mut" style="margin-top:0">Cargado ${new Date(C.fecha).toLocaleString('es-EC')} · ${C.filas} filas · ${C.ordenes} órdenes · terminadas ${C.cont.terminado}, en proceso ${C.cont['en proceso']}, para hacer ${C.cont['para hacer']}, canceladas ${C.cancelados}.</p>
+   <h4>Esperando componentes (${(C.esperandoMaterial||[]).length} órdenes bloqueadas por material)</h4><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th class="num">Prendas</th><th>Centros esperando</th></tr></thead><tbody>${(C.esperandoMaterial||[]).slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td class="num">${x.cant}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>
    <h4>Contradicciones fase vs OT (${C.contradicciones.length}) — gana la OT</h4><p style="font-size:var(--fs-s)">${Object.entries(porCentro).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')||'ninguna'}</p>
    <div class="scroll" style="max-height:220px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th>Centro</th><th>Fase dice</th><th>OT dice</th></tr></thead><tbody>${C.contradicciones.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td>${esc(nCen(x.centro))}</td><td>${x.faseDice}</td><td>${x.otDice}</td></tr>`).join('')}</tbody></table></div>
    <h4>No reconocido (no se asignó por parecido)</h4>

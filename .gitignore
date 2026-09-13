@@ -4,3 +4,4 @@
 test/.out/
 # datos de clientes: no publicar
 test/fixtures/tarea_rows.json
+test/fixtures/ot_rows.json

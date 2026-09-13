@@ -118,6 +118,19 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   __check('planTarea: origen PROPIA → tej+tin; EXTERNA TEÑIDA → solo proveedor; SIN CLASIFICAR → sin textil',planT.ordenes.filter(o=>o.origenTela==='PROPIA').every(o=>o.rutaCompleta[0].centro==='tej'&&o.rutaCompleta[1].centro==='tin')&&planT.ordenes.filter(o=>o.origenTela==='EXTERNA TEÑIDA').every(o=>o.rutaCompleta[0].centro==='proveedor'&&!o.rutaCompleta.some(p=>p.centro==='tin'))&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))));
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
   TAREA=planT;aplicarTarea();await __p(100);
+  /* OT reales contra las órdenes reales (fixture local, no publicado) */
+  {const otRows=await (await fetch('fixtures/ot_rows.json')).json();__check('fixture OT: 27.336 filas incl. header',otRows.length===27336,otRows.length);
+   const po=planOT(otRows,'Orden_de_trabajo.xlsx');
+   __check('planOT real: 27.335 filas, 3.987 órdenes en el archivo',po&&po.filas===27335&&po.ordenesArchivo.size===3987,po&&po.filas+'/'+po.ordenesArchivo.size);
+   __check('planOT real: bodegas ignoradas = 5.768 filas (BODEGA INSUMOS 3.218 + BODEGA MP 2.550)',Object.values(po.ignoradas).reduce((a,b)=>a+b,0)===5768,JSON.stringify(po.ignoradas));
+   __check('planOT real: estados todos reconocidos (6 valores en la tabla 7)',Object.keys(po.estadosNoReconocidos).length===0,JSON.stringify(po.estadosNoReconocidos));
+   __check('planOT real: ETIQUETADO (centro no listado) se reporta, no se asigna',Object.keys(po.centrosNoMapeados).join(',')==='ETIQUETADO',JSON.stringify(po.centrosNoMapeados));
+   __check('planOT real: PULIDO y SERVICIOS Y TERMINADOS con fila pero sin centro TEMPO se reportan',Object.keys(po.centrosSinCentro).sort().join(',')==='PULIDO,SERVICIOS Y TERMINADOS',JSON.stringify(po.centrosSinCentro));
+   __check('planOT real: SERIGRAFIA con operación ETIQUETADO va a etiquetas',Object.values(po.porOrden).some(x=>x.centros.etiquetas&&x.centros.etiquetas.odoo==='SERIGRAFIA'));
+   __check('planOT real: módulo real tomado de Operaciones en filas MODULO 1 (>0)',po.moduloDesdeOperacion>0,po.moduloDesdeOperacion);
+   __check('planOT real: esperando componentes reportado por orden',po.esperandoMaterial.length>0&&po.cont['bloqueado por material']>0,po.esperandoMaterial.length);
+   __check('planOT real: ninguna OT de producción no terminada trae fecha final (las 2 del archivo son bodegas canceladas, ignoradas)',po.noTerminadaConFin===0,po.noTerminadaConFin);
+   window.__PO={filas:po.filas,cruce:po.cruce,cont:po.cont,ignoradas:po.ignoradas,noMap:po.centrosNoMapeados,sinCentro:po.centrosSinCentro,esperando:po.esperandoMaterial.length,contr:po.contradicciones.length,modOp:po.moduloDesdeOperacion};}
   __check('aplicarTarea: órdenes cargadas = cabeceras − cancel − sin fecha − fuera de rango',S.ordenes.length===planT.cabeceras-planT.excluidas.cancel.length-planT.sinFecha.length-planT.excluidas.fueraRango.length,S.ordenes.length);
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
