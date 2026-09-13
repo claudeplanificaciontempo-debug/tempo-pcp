@@ -165,6 +165,9 @@ textarea{min-height:190px;font-size:var(--fs-s);line-height:1.5;resize:vertical}
 .chips{display:flex;flex-wrap:wrap;gap:4px;max-width:420px}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);color:var(--ink2);border:1px solid var(--rule);border-radius:2px;padding:2px 7px;cursor:pointer;margin:0;background:var(--paper);user-select:none}
 .chip input{margin:0;width:12px;height:12px}
+/* ningún campo numérico puede mostrar menos dígitos de los que guarda: ancho mínimo para 7 dígitos con las flechas del control */
+input[type=number]{min-width:92px}
+.chip input[type=number]{min-width:0}
 .chip.on{background:#E7EEF7;border-color:#B9CBE2;color:#2C4C77}
 .chip:first-child.on{background:var(--ink);border-color:var(--ink);color:#fff}
 /* ---------- impresión ---------- */
@@ -3108,7 +3111,7 @@ function vConfig(el){
   ${CONF.tab==='bordado'?`  <div class="panel"><h3>Máquinas de bordado y estampado <span class="note">cada máquina con su capacidad</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRecEsp('bordado')">Agregar bordadora</button> <button class="btn ghost sm" onclick="addRecEsp('estampado')">Agregar máquina de estampado</button></h3>
    <div class="body"><table><thead><tr><th>Máquina</th><th>Centro</th><th>Capacidad propia</th><th class="num">Personas</th><th class="num">Min/día</th><th class="num">Efic. %</th><th class="num">Min efectivos</th><th>Rinde</th><th>Activa</th><th></th></tr></thead><tbody>
    ${S.recursos.filter(r=>r.centro==='bordado'||r.centro==='estampado').sort((a,b)=>a.centro.localeCompare(b.centro)||a.n.localeCompare(b.n)).map(r=>{const bor=r.centro==='bordado';
-     const capProp=bor?`<span style="white-space:nowrap">cabezas <input type="number" style="width:50px" value="${r.cabezas||1}" onchange="setRec('${r.id}','cabezas',this.value)"> · puntadas/min <input type="number" style="width:65px" value="${r.ppm||''}" placeholder="${velBordado()||'sin velocidad'}" onchange="setRec('${r.id}','ppm',this.value)"></span>`
+     const capProp=bor?`<span style="white-space:nowrap">cabezas <input type="number" style="width:50px" value="${r.cabezas||1}" onchange="setRec('${r.id}','cabezas',this.value)"> · puntadas/min <input type="number" style="width:110px" value="${r.ppm||''}" placeholder="${velBordado()||'sin velocidad'}" onchange="setRec('${r.id}','ppm',this.value)"></span>`
        :`${tecSel(r)}<div style="white-space:nowrap;margin-top:4px">estaciones en paralelo <input type="number" style="width:50px" value="${r.mult||1}" onchange="setRec('${r.id}','mult',this.value)"> · factor de tiempo <input type="number" step="0.05" style="width:60px" value="${r.vel||1}" title="1 = el tiempo de la técnica; 0,4 = tarda el 40 % (automático)" onchange="setRec('${r.id}','vel',this.value)"></div>`;
      const rinde=bor?`${num(((+r.ppm>0?+r.ppm:velBordado())||0)*(r.cabezas||1)*capDia(r)/1000)} mil puntadas/día`:`${num((r.mult||1)/(r.vel||1),2)}× la técnica`;
      return `<tr><td><input type="text" value="${esc(r.n)}" onchange="setRec('${r.id}','n',this.value)"></td><td>${esc(nCen(r.centro))}</td><td style="font-size:var(--fs-xs)">${capProp}</td>

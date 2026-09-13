@@ -178,6 +178,14 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     setStockTela('t1','200');render();__check('a tejer nunca negativo (stock 200 > requerido 120 → 0)',/<b>0<\/b>/.test(document.getElementById('p-stock').innerHTML));
     setStockTela('t1','');__check('borrar el stock vuelve a desconocido',!S.params.stockTela.t1);}
    S.ordenes=bakO;S.params.stockTela=bakSt;S.params.tejAnticipSem=bakAnt;PLAN=null;PLAN_ALL=null;}
+  /* ===== los campos numéricos muestran el valor completo (r7 mostraba 9216 teniendo 921600 guardado) ===== */
+  {const bakP=S.recursos.find(r=>r.id==='r7');const bakPpm=bakP?bakP.ppm:undefined;if(bakP){bakP.ppm=921600;bakP.cabezas=24}
+   CONF.tab='bordado';page='config';render();
+   const inp=[...document.querySelectorAll('#p-config input[type=number]')].find(i=>i.value==='921600');
+   const anchos=[...document.querySelectorAll('#p-config input[type=number]')].map(i=>i.getBoundingClientRect().width);
+   __check('el campo puntadas/min existe con el valor guardado completo',!!inp&&inp.value==='921600');
+   __check('ningún campo numérico de Configuración mide menos de 90 px (7 dígitos visibles)',anchos.length>0&&anchos.every(w=>w>=90),Math.min(...anchos));
+   if(bakP){bakP.ppm=bakPpm}CONF.tab='recursos';}
   // mMapeoOps no debe romper al renderizar
   {const antes=__R.errors.length;mMapeoOps();__check('mMapeoOps renderiza sin errores',__R.errors.length===antes);cerrar()}
   try{localStorage.__fase="lmo parte1 fin"}catch(e){}
