@@ -3211,11 +3211,13 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Una orden da por hechos los centros cuya etapa (tabla 4) tiene orden anterior al grupo de su fase. Tejida / tinturada / lista: grupo posterior a textil = sí; grupo textil = columna "tela" de la fila; anterior = no. La firma humana de Liberación sigue mandando para las órdenes cuyo grupo no tiene marcada la liberación.</p></div></div>
 
   <div class="panel"><h3>6 · Centro de trabajo de Odoo → centro TEMPO <span class="note">órdenes de trabajo (mrp.workorder)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroOTRow()">+ Centro</button></h3>
-   <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th title="si la columna Operaciones contiene este texto, manda esta fila">operación contiene</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th title="baja de materiales, no producción: se cuenta y se ignora">ignorar</th><th title="el recurso de esta fila no es confiable para atribuir trabajo por módulo">histórico</th><th title="si Operaciones trae el nombre de un módulo existente, ese es el real">módulo desde operación</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th title="si la columna Operaciones contiene este texto, manda esta fila">operación contiene</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th title="otros centros TEMPO que esta OT también cierra (ids separados por coma, p. ej. botones)">cierra también</th><th title="solo una OT terminada cuenta; en proceso / para hacer no reabren el centro (pulido, servicios y terminados)">solo cierra</th><th title="baja de materiales, no producción: se cuenta y se ignora">ignorar</th><th title="el recurso de esta fila no es confiable para atribuir trabajo por módulo">histórico</th><th title="si Operaciones trae el nombre de un módulo existente, ese es el real">módulo desde operación</th><th></th><th></th></tr></thead><tbody>
     ${centroOT().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.odoo)}" onchange="setCentroOTRow(${i},'odoo',this.value)"></td>
       <td><input type="text" style="width:110px" value="${esc(r.operacion||'')}" placeholder="—" onchange="setCentroOTRow(${i},'operacion',this.value)"></td>
       <td><select onchange="setCentroOTRow(${i},'centro',this.value)"><option value="">— sin centro (se reporta) —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
       <td><select onchange="setCentroOTRow(${i},'recurso',this.value)"><option value="">—</option>${S.recursos.filter(x=>x.centro===r.centro).map(x=>`<option value="${x.id}" ${r.recurso===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}</select></td>
+      <td><input type="text" style="width:110px" value="${esc(r.cierraTambien||'')}" placeholder="—" onchange="setCentroOTRow(${i},'cierraTambien',this.value)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.soloCierra?'checked':''} onchange="setCentroOTRow(${i},'soloCierra',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.ignorar?'checked':''} onchange="setCentroOTRow(${i},'ignorar',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.historico?'checked':''} onchange="setCentroOTRow(${i},'historico',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.moduloDeOperacion?'checked':''} onchange="setCentroOTRow(${i},'moduloDeOperacion',this.checked)"></td>
@@ -3394,16 +3396,17 @@ function defCentroOT(){const rows=[
   {odoo:'MAQUILA',operacion:'',centro:'modulos',recurso:'maquila'},
   {odoo:'PLANTA',operacion:'',centro:'modulos',recurso:'',historico:true,moduloDeOperacion:true},
   {odoo:'MODULO 1',operacion:'',centro:'modulos',recurso:'mod1',historico:true,moduloDeOperacion:true},
-  {odoo:'PULIDO',operacion:'',centro:''},{odoo:'SERVICIOS Y TERMINADOS',operacion:'',centro:''},
+  {odoo:'ETIQUETADO',operacion:'',centro:'etiquetas'},
+  {odoo:'PULIDO',operacion:'',centro:'modulos',soloCierra:true},{odoo:'SERVICIOS Y TERMINADOS',operacion:'',centro:'plancha',cierraTambien:'botones',soloCierra:true},
   {odoo:'BODEGA INSUMOS',operacion:'',centro:'',ignorar:true},{odoo:'BODEGA MP',operacion:'',centro:'',ignorar:true}];
   for(let i=2;i<=11;i++)rows.push({odoo:'MODULO '+i,operacion:'',centro:'modulos',recurso:'mod'+i});
-  return rows.map(r=>Object.assign({operacion:'',recurso:'',ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true},r))}
+  return rows.map(r=>Object.assign({operacion:'',recurso:'',cierraTambien:'',soloCierra:false,ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true},r))}
 function centroOT(){if(!Array.isArray(S.params.centroOT))S.params.centroOT=defCentroOT();return S.params.centroOT}
 /* fila para un centro de trabajo y (si viene) el texto de Operaciones: primero las filas con "operación contiene" que calcen, después la fila sin operación */
 function filaCentroOT(nombre,oper){const n=normFase(nombre),op=normFase(oper||'');const filas=centroOT().filter(r=>normFase(r.odoo)===n);
   if(op){const f=filas.find(r=>r.operacion&&op.includes(normFase(r.operacion)));if(f)return f}
   return filas.find(r=>!r.operacion)||null}
-function addCentroOTRow(){centroOT().push({odoo:'',operacion:'',centro:'',recurso:'',ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true});save();render()}
+function addCentroOTRow(){centroOT().push({odoo:'',operacion:'',centro:'',recurso:'',cierraTambien:'',soloCierra:false,ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true});save();render()}
 function setCentroOTRow(i,k,v){centroOT()[i][k]=v;save()}
 function togCentroOTRow(i){const r=centroOT()[i];r.pendiente=!r.pendiente;save();render()}
 function delCentroOTRow(i){centroOT().splice(i,1);save();render()}
@@ -3449,13 +3452,16 @@ function planOT(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));
     const o=porOp[normFase(op)];if(!o){plan.ordenesNoEncontradas[op]=(plan.ordenesNoEncontradas[op]||0)+1;return}
     if(sig==='cancelado'){plan.cancelados++;return}
     plan.cont[sig]++;
-    const po=plan.porOrden[o.id]=plan.porOrden[o.id]||{o,centros:{}};const c=fila.centro;const prev=po.centros[c];
+    if(fila.soloCierra&&sig!=='terminado')return; // esta OT solo cierra: en proceso / para hacer no reabren el centro
+    const po=plan.porOrden[o.id]=plan.porOrden[o.id]||{o,centros:{}};
+    const centrosFila=[fila.centro,...String(fila.cierraTambien||'').split(',').map(s=>s.trim()).filter(s=>s&&CE(s))];
+    centrosFila.forEach(c=>{const prev=po.centros[c];
     let recurso=fila.recurso||null,recursoConfiable=!fila.historico;
     if(fila.moduloDeOperacion&&operTxt){const rm=S.recursos.find(x=>x.centro===fila.centro&&normFase(operTxt).includes(normFase(x.n)));if(rm&&rm.id!==recurso){recurso=rm.id;recursoConfiable=true}}
     const fin=finTxt;
     const reg={estado:sig,ini:I.ini>=0?excelFecha(r[I.ini]):null,fin,odoo:cOdoo,recurso,recursoConfiable,oper:operTxt,cant:I.cant>=0?(+r[I.cant]||0):null};
     // varias OT del mismo centro en una orden (p. ej. varias operaciones de confección): el centro está terminado solo si TODAS lo están
-    if(!prev)po.centros[c]=reg;else{const rango={'terminado':5,'en proceso':4,'para hacer':3,'esperando':2,'bloqueado por material':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin;if(reg.recursoConfiable&&!prev.recursoConfiable){prev.recurso=reg.recurso;prev.recursoConfiable=true}}});
+    if(!prev)po.centros[c]=Object.assign({},reg);else{const rango={'terminado':5,'en proceso':4,'para hacer':3,'esperando':2,'bloqueado por material':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin;if(reg.recursoConfiable&&!prev.recursoConfiable){prev.recurso=reg.recurso;prev.recursoConfiable=true}}})});
   plan.cruce={enArchivo:S.ordenes.filter(o=>o.op&&plan.ordenesArchivo.has(normFase(o.op))).length,total:S.ordenes.length};
   plan.esperandoMaterial=[];Object.values(plan.porOrden).forEach(({o,centros})=>{const cs=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);if(cs.length)plan.esperandoMaterial.push({op:o.op,fase:o.fase,cant:o.cant,centros:cs})});
   // contradicciones con la fase: lo que la fase da por hecho y la OT dice que no (o al revés)
