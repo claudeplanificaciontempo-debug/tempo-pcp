@@ -138,3 +138,43 @@ pendiente de baño. Con esto la pantalla "Stock de tela cruda" deja de salir vac
 - `faseNum` sigue usado en Panorama, Gerencia (pesoFase), Familias, terminadaF y la agrupación de fases de los
   selectores (C11/A46/A47 de la auditoría).
 - Capacidades, descuento de stock en tejeduría, lavado/plancha, pantallas pendientes de la Parte 1.
+
+---
+
+## 8 · Ajuste posterior (solo tablas, sin código) — 2026-09-13, 15:48
+
+Aplicado en producción y verificado con recarga desde la nube:
+- **Tabla 5**: "libera corte" desde **planificación** (antes desde preparación de corte). Liberación textil sin cambio.
+- **Tabla 1, "carga desde: servicios"** (corte ya hecho): 4CD Ensamble, 4Preparacion Insumos, 4Incompletos, 4 Calidad
+  Produccion. **"carga desde: terminados"**: 7Pulido (ya salió de confección). Sin cambios: 2Planificacion, 3AEROPUERTO,
+  3Trazos, 3CD CORTE, 4Corte Planta siguen cargando corte.
+- **Tabla 4**: etiquetas → **terminados** (después de confección, junto con botones).
+
+**Liberación:** tela 408 (igual), corte 279 → **293** (+14: las de 2Planificacion). **Ninguna orden perdió liberación**
+respecto al código viejo ni respecto al paso anterior (0 y 0).
+
+**Carga por centro (minutos que programa el motor), tres estados:**
+
+| Centro | Sep: viejo → tabla → ajustado | Oct | Nov |
+|---|---:|---:|---:|
+| Confección | 523.437 → 524.231 → **523.437** | 104.743 → 122.165 → **104.743** | 7.838 → 9.476 → **7.838** |
+| Corte | 12.640 → 20.709 → **12.027** | 0 | 0 |
+| Botones | 21.751 → 22.817 → **22.817** | 406 | 0 |
+| Empaque | 21.334 → 20.581 → **21.334** | 3.606 → 4.358 → **3.606** | 345 |
+| Etiquetas | 992 → 992 → **992** | 0 | 0 |
+| Estampado | 3.833 → 4.194 → **4.194** | 992 | 0 |
+| Bordado / Lavado / Plancha | 0 (velocidad y minutos vacíos, fuera de alcance) | 0 | 0 |
+
+Por fase, lo que hoy carga cada grupo: 4CD Ensamble y 4Preparacion Insumos → confección, botones, empaque (sin corte);
+7Pulido → solo empaque; 5Maquila Conf / 5CD Maquila → botones, empaque, etiquetas, estampado (sin módulos); 2Planificacion,
+3Trazos, 3AEROPUERTO → corte + confección + resto. Tejeduría sin cambio (90 corridas, 53 órdenes, 267 h).
+
+**Dos cosas que debes saber:**
+1. **La ruta guardada de cada orden es una foto del momento de la carga.** La Parte 2 grabó en `ruta` solo los pasos
+   pendientes según la tabla de ese día; `faseEstado` solo puede dar por hechos pasos que están en esa ruta, no puede
+   agregar pasos. Por eso quitar "excluye: modulos" a 5Maquila Conf no cambia nada hoy (esas órdenes ya no tienen el paso).
+   Si en el futuro una edición de tabla debe **añadir** carga a órdenes ya cargadas, hay que volver a correr la Parte 2.
+2. **Bandeja "avance incierto" para 4 Calidad Produccion (1 orden / 224 prendas):** hoy carga todo lo de producción
+   después de corte, como pediste, pero **no existe una bandeja donde marcarla**; eso requiere código (una columna
+   "avance incierto" en la tabla 1 y un bloque en Órdenes, con corrección manual por orden). No lo hice por tu
+   instrucción de no tocar código; queda pendiente de tu OK.
