@@ -640,7 +640,7 @@ function centrosDeCategoria(k){const cs=new Set();if(k)opsDe(k).forEach(x=>{if(x
 /* de los centros que dependen de la orden, cuáles aplican hoy según los campos propios de la orden (técnica, puntadas).
    lavado/plancha no entran aquí: su default sigue viniendo de la marca de categoría (lavaPlanchaDefault). */
 function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=centrosPorOrden();
-  if(cpo.includes('estampado')&&o.tecnica)out.add('estampado');
+  if(cpo.includes('estampado')&&(o.tecnica||o.tecnicaTxt))out.add('estampado');
   if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
   return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
@@ -2096,7 +2096,7 @@ function vOrdenes(el){
   else rows=lista.slice(0,600).map(filaOrden).join('');
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
-    ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
+    ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${filtros}
   <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
@@ -2743,25 +2743,34 @@ function defMapaCatLMO(){return {
 }}
 function mapaCatLMO(){if(!S.params.mapaCatLMO)S.params.mapaCatLMO=defMapaCatLMO();return S.params.mapaCatLMO}
 
-/* ==================== RECARGA PARTE 2: tablas de configuración (sembradas, sin cargar nada todavía) ==================== */
-/* ---------- PASO 3: Fase del archivo -> fase del sistema. Sembrado por el agrupamiento del prefijo numérico;
-   todo lo sembrado queda "pendiente de validar" hasta que el usuario lo confirme con el archivo real delante. ---------- */
-const SISTEMA_FASES=['previo a producción','textil','planificación','preparación de corte','corte','maquila externa','bordado/etiquetado','confección','terminados y despacho','cerrada'];
-function defFaseMapeo(){const rows=[];const add=(sistema,fases)=>fases.forEach(fase=>rows.push({fase,sistema,pendiente:true}));
-  add('previo a producción',['0Adquisición','0Macro','0Ord Compras','0Reproceso diseño']);
-  add('textil',['1Tejeduria','1CD Tintoreria','1Tintoreria','1INCOMPLETOS TIN']);
+/* ==================== RECARGA PARTE 2: tablas de configuración ==================== */
+/* ---------- BLOQUE A/B: Fase del archivo -> fase del sistema (tabla definitiva, versión 2).
+   Columnas por fila: fase (texto del archivo), sistema (grupo), esCola (fases "CD": el centro siguiente aún no empezó),
+   sinCarga (prenda terminada / cerrada: cuentan como demanda y facturación pero cero minutos), bloqueo (falta material:
+   carga igual, marcada), excluye (centros que NO carga aunque estén pendientes, ej. maquila), desde (grupo desde el que
+   empieza a cargar, cuando no es el propio), pendiente (de validar).
+   La siembra es idempotente: solo se escribe si no existe o si la guardada es de una versión anterior; las ediciones
+   posteriores no se pisan. ---------- */
+const FASE_MAPEO_VER=2;
+const SISTEMA_FASES=['previo a producción','textil','planificación','preparación de corte','corte','maquila externa','servicios','confección','terminados','prenda terminada','cerrada'];
+const normFase=s=>normTxt(s).replace(/\s+/g,''); // sin espacios: "6 CD SERIGRAFIA", "6CD Serigrafía" y "6 cd serigrafia" son la misma fila (BLOQUE B2)
+function defFaseMapeo(){const rows=[];const add=(sistema,fases,extra)=>fases.forEach(fase=>rows.push(Object.assign({fase,sistema,esCola:false,sinCarga:false,bloqueo:false,excluye:'',desde:'',pendiente:true},extra||{},(extra&&extra.por&&extra.por[fase])||{})));
+  add('previo a producción',['0Diseño','0Reproceso diseño','0Recetas Insumos','0Adquisición','0Macro','0Ord Compras']);
+  add('textil',['1Tejeduria','1CD Tintoreria','1Tintoreria','1INCOMPLETOS TIN'],{por:{'1CD Tintoreria':{esCola:true},'1INCOMPLETOS TIN':{bloqueo:true}}});
   add('planificación',['2Planificacion']);
-  add('preparación de corte',['3Trazos','3CD CORTE','3AEROPUERTO']);
-  add('corte',['4Corte Planta','4CD Ensamble','4Preparacion Insumos','4Incompletos']);
-  add('maquila externa',['5Maquila Conf','5Maquila Recepción','5CD Maquila','5Corte Maquila Ibarra']);
-  add('bordado/etiquetado',['6Bordado','6 Etiquetado']);
+  add('preparación de corte',['3AEROPUERTO','3Trazos','3CD CORTE'],{por:{'3CD CORTE':{esCola:true}}});
+  add('corte',['4Corte Planta','4Incompletos','4Preparacion Insumos','4CD Ensamble','4 Calidad Produccion'],{por:{'4CD Ensamble':{esCola:true},'4Incompletos':{bloqueo:true}}});
+  add('maquila externa',['5Corte Maquila Ibarra','5CD Maquila','5Maquila Conf','5Maquila Recepción'],{por:{'5Corte Maquila Ibarra':{excluye:'corte'},'5CD Maquila':{esCola:true,excluye:'modulos'},'5Maquila Conf':{excluye:'modulos'},'5Maquila Recepción':{desde:'terminados'}}});
+  add('servicios',['6 CD BORDADO','6 CD SERIGRAFIA','6Bordado','6Serigrafia','6 Etiquetado'],{por:{'6 CD BORDADO':{esCola:true},'6 CD SERIGRAFIA':{esCola:true}}});
   add('confección',['7Confección','7Pulido']);
-  add('terminados y despacho',['8Empaque','8Botones','8Lavanderia','8Servicios y Terminados','8Exportacion','8Embodegado','8Cross','8Centro Distribucion','8Novedades','8Empaque Terminado']);
-  add('cerrada',['Facturado']);
-  return rows}
-function faseMapeo(){if(!S.params.faseMapeo||!S.params.faseMapeo.length)S.params.faseMapeo=defFaseMapeo();return S.params.faseMapeo}
-/* resuelve la fase del sistema para un valor de Fase del archivo; null si no está en la tabla (se carga la orden igual y se reporta, no se asigna por parecido) */
-function faseSistemaDe(faseArchivo){const r=faseMapeo().find(x=>normTxt(x.fase)===normTxt(faseArchivo||''));return r?r.sistema:null}
+  add('terminados',['8Lavanderia','8Lavanderia Quito','8Botones','8Servicios y Terminados','8Empaque']);
+  add('prenda terminada',['8Empaque Terminado','8Cross','8Centro Distribucion','8Novedades','8Embodegado','8Exportacion'],{sinCarga:true});
+  add('cerrada',['Facturado','Stand by'],{sinCarga:true});
+  rows.forEach(r=>delete r.por);return rows}
+function faseMapeo(){if(!S.params.faseMapeo||!S.params.faseMapeo.length||(S.params.faseMapeoVer||1)<FASE_MAPEO_VER){S.params.faseMapeo=defFaseMapeo();S.params.faseMapeoVer=FASE_MAPEO_VER}return S.params.faseMapeo}
+/* BLOQUE B2: comparación tolerante (mayúsculas, tildes, espacios repetidos o en los bordes). null si no calza: se carga igual y se reporta, no se asigna por parecido */
+function filaFaseDe(faseArchivo){const n=normFase(faseArchivo);return faseMapeo().find(x=>normFase(x.fase)===n)||null}
+function faseSistemaDe(faseArchivo){const r=filaFaseDe(faseArchivo);return r?r.sistema:null}
 
 /* ---------- PASO 5: segundo nivel de categoría de material -> clasificación ---------- */
 function defClasifMaterial(){return [
@@ -3131,14 +3140,27 @@ function vConfig(el){
   ${CONF.tab==='ordenes2'?`
   <div class="warn" style="margin-bottom:12px">Tablas de la Recarga Parte 2 (órdenes y materiales). Todavía no se ha cargado ningún archivo: estas tablas están sembradas con valores iniciales dados por el usuario, marcados <b>pendiente de validar</b>. Edítalas aquí antes o después de cargar el archivo.</div>
 
-  <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">PASO 3</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
-   <div class="body"><table><thead><tr><th>Fase (archivo)</th><th>Fase del sistema</th><th></th><th></th></tr></thead><tbody>
-    ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
+  <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th></th><th></th></tr></thead><tbody>
+    ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${SISTEMA_FASES.map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
-      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togFaseMapeoRow(${i})" style="margin-left:6px">${r.pendiente?'marcar validado':'marcar pendiente'}</button></td>
+      <td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.sinCarga?'checked':''} onchange="setFaseMapeoRow(${i},'sinCarga',this.checked)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.bloqueo?'checked':''} onchange="setFaseMapeoRow(${i},'bloqueo',this.checked)"></td>
+      <td><input type="text" style="width:110px" value="${esc(r.excluye||'')}" placeholder="—" onchange="setFaseMapeoRow(${i},'excluye',this.value)"></td>
+      <td><select onchange="setFaseMapeoRow(${i},'desde',this.value)"><option value="">(el propio)</option>${SISTEMA_FASES.map(s=>`<option ${r.desde===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togFaseMapeoRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
       <td><button class="btn ghost sm" onclick="delFaseMapeoRow(${i})">×</button></td></tr>`).join('')}
-   </tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">La hoja real trae 36 valores de Fase distintos; aquí solo están los agrupados por el usuario a partir de los prefijos. Un valor de Fase que no esté en esta tabla se carga igual y se reporta — no se asigna por parecido.</p></div></div>
+   </tbody></table></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">La comparación con la columna Fase del archivo ignora mayúsculas, tildes y espacios repetidos o en los bordes. Un valor que no calce con ninguna fila se carga con su ruta completa y se reporta — no se asigna por parecido. Los grupos van en orden de flujo: una orden carga solo los centros cuya etapa (tabla 4) es igual o posterior a la de su grupo.</p></div></div>
+
+  <div class="panel"><h3>4 · Centro TEMPO → etapa del flujo <span class="note">BLOQUE E — qué queda pendiente desde cada fase</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroEtapaRow()">+ Centro</button></h3>
+   <div class="body"><table><thead><tr><th>Centro</th><th>Etapa (grupo de fase)</th><th></th><th></th></tr></thead><tbody>
+    ${centroEtapa().map((r,i)=>`<tr><td><select onchange="setCentroEtapaRow(${i},'centro',this.value)">${S.centros.map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
+      <td><select onchange="setCentroEtapaRow(${i},'etapa',this.value)">${SISTEMA_FASES.map(s=>`<option ${r.etapa===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togCentroEtapaRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delCentroEtapaRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table></div></div>
 
   <div class="panel"><h3>2 · Segundo nivel de categoría de material → clasificación <span class="note">PASO 5</span><span class="spacer"></span><button class="btn ghost sm" onclick="addClasifMaterialRow()">+ Nivel</button></h3>
    <div class="body"><table><thead><tr><th>Segundo nivel (Categoria Producto)</th><th>Clasificación</th><th></th><th></th></tr></thead><tbody>
@@ -3272,7 +3294,9 @@ function addRec(area){const c=S.centros.find(x=>x.area===area);if(!c)return;
   const b={id:uid(),n:'Nuevo recurso',centro:c.id,dias:6,activa:true,telas:[]};
   if(area==='tej')Object.assign(b,{kgh:10,horas:24});else if(area==='tin')Object.assign(b,{cap:100,capPique:0,horas:24});else Object.assign(b,{pers:10,min:480,efic:85});
   S.recursos.push(b);save();render()}
-function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;save();render()}
+function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;
+  if(k==='puntMin'&&id==='bordado')S.params.puntadasMin=+v||S.params.puntadasMin; // el motor (minPrenda) lee la velocidad de aquí: una sola fuente
+  save();render()}
 function addCentro(){S.centros.push({id:uid(),n:'Nuevo centro',area:'pro',medida:'min'});save();render()}
 function delCentro(id){if(S.recursos.some(r=>r.centro===id)){alert('Primero quita o mueve los recursos de este centro.');return}S.centros=S.centros.filter(c=>c.id!==id);save();render()}
 /* al escribir el código TCX, la profundidad y las horas se actualizan en el momento; se guarda al salir del campo */
@@ -3447,10 +3471,16 @@ function rearmar(){const k=K((document.getElementById('f-cat')||{}).value);ED.ru
    bordado, que se mide por puntadas (PASO CORRECCIÓN: estampado/bordado por orden). Si el centro bordado tiene
    configurada su velocidad (puntadas por minuto), la carga sale de las puntadas de la orden; si no, se usa el SAM
    plano de la categoría como hoy y la orden queda marcada como pendiente ("sin velocidad de bordado configurada"). */
-function spcParaCentro(p,k,spc){if(p.centro==='bordado'){const c=CE('bordado'),punt=+ED.puntadas||0;
-    if(c&&c.puntMin>0&&punt>0)return{centro:'bordado',t:+(punt/c.puntMin).toFixed(3)};
-    if(spc&&spc.bordado!=null)return{centro:'bordado',t:+spc.bordado.toFixed(3)};
-    return p}
+function spcParaCentro(p,k,spc,punt){return tiempoPaso(p,k,spc,punt==null?(+ED.puntadas||0):punt)}
+/* tiempo estándar de un paso de ruta, en la UNIDAD que el motor espera para ese centro (minPrenda la convierte):
+   - bordado (medida puntadas): t = puntadas por prenda; el motor divide por la velocidad (puntadas/min). Si el centro
+     no tiene velocidad configurada (puntMin vacío) se guarda igual en puntadas y la orden queda marcada
+     "sin velocidad de bordado configurada" (el motor usa su valor por defecto — ver reporte, no se toca aquí).
+   - lavado (medida prendas/hora): t = 60/minEstandar del centro; plancha (min): t = minEstandar.
+   - resto: SAM de la categoría (spc). Sin dato → t = 0 y se reporta. */
+function tiempoPaso(p,k,spc,punt){const c=CE(p.centro);
+  if(p.centro==='bordado'){if(punt>0)return{centro:'bordado',t:+punt};return{centro:'bordado',t:0}}
+  if(c&&(p.centro==='lavado'||p.centro==='plancha')){const m=+c.minEstandar||0;if(!m)return{centro:p.centro,t:0};return{centro:p.centro,t:c.medida==='prendas_h'?+(60/m).toFixed(3):+m.toFixed(3)}}
   return spc&&spc[p.centro]!=null?{centro:p.centro,t:+spc[p.centro].toFixed(3)}:p}
 function guardarOrden(id){const g=x=>document.getElementById(x).value;
   if(!g('f-op')||!+g('f-cant')){alert('Falta la OP o las prendas.');return}
@@ -3462,6 +3492,186 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
   o.pendBordadoVel=!!(bordadoAplica&&(!cBor||!(cBor.puntMin>0)));
   if(id)Object.assign(S.ordenes.find(x=>x.id===id),o);else S.ordenes.push(Object.assign({id:uid()},o));
   save();cerrar();render()}
+
+/* ==================== RECARGA PARTE 2: carga de órdenes y materiales desde la exportación de tareas (Tarea__project_task) ==================== */
+/* Principio: ninguna regla de negocio aquí; todo sale de las tablas editables de Configuración → Órdenes y materiales.
+   Nada de fallbacks silenciosos: lo que no calza con una regla se carga marcado y se reporta. No se toca programar(). */
+const ESTADOS_OP_ABIERTOS=['draft','progress','confirmed','to_close'];
+/* ---------- tabla 4 (editable): centro TEMPO -> etapa del flujo (grupo de fase). Con esto se sabe qué centros quedan
+   pendientes desde la fase actual hacia adelante (BLOQUE E). ---------- */
+function defCentroEtapa(){return [
+  {centro:'tej',etapa:'textil',pendiente:true},{centro:'tin',etapa:'textil',pendiente:true},{centro:'proveedor',etapa:'textil',pendiente:true},
+  {centro:'corte',etapa:'corte',pendiente:true},
+  {centro:'estampado',etapa:'servicios',pendiente:true},{centro:'bordado',etapa:'servicios',pendiente:true},{centro:'etiquetas',etapa:'servicios',pendiente:true},
+  {centro:'modulos',etapa:'confección',pendiente:true},
+  {centro:'botones',etapa:'terminados',pendiente:true},{centro:'lavado',etapa:'terminados',pendiente:true},{centro:'plancha',etapa:'terminados',pendiente:true},{centro:'empaque',etapa:'terminados',pendiente:true}]}
+function centroEtapa(){if(!S.params.centroEtapa||!S.params.centroEtapa.length)S.params.centroEtapa=defCentroEtapa();return S.params.centroEtapa}
+function centroEtapaDe(centro){const r=centroEtapa().find(x=>x.centro===centro);return r?r.etapa:null}
+function addCentroEtapaRow(){centroEtapa().push({centro:'',etapa:SISTEMA_FASES[0],pendiente:true});save();render()}
+function setCentroEtapaRow(i,k,v){centroEtapa()[i][k]=v;save()}
+function togCentroEtapaRow(i){const r=centroEtapa()[i];r.pendiente=!r.pendiente;save();render()}
+function delCentroEtapaRow(i){centroEtapa().splice(i,1);save();render()}
+
+/* pasos de la ruta completa que siguen pendientes según la fila de fase (BLOQUE E). Sin fila (fase que no calza) → ruta completa. */
+function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice();
+  if(fila.sinCarga)return [];
+  const ig=g=>SISTEMA_FASES.indexOf(g);let desde=ig(fila.sistema);if(fila.desde&&ig(fila.desde)>=0)desde=ig(fila.desde);
+  const excl=String(fila.excluye||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return rutaCompleta.filter(p=>{if(excl.includes(p.centro))return false;const i=ig(centroEtapaDe(p.centro));if(i<0)return true;return i>=desde})}
+
+/* ---------- lectura del archivo ---------- */
+let TAREA=null;
+function mCargarTarea(){abrir(`<h3>Recarga Parte 2 · Órdenes y materiales</h3><div class="body">
+   <p class="lede" style="margin-top:0">Sube la exportación de tareas (<b>Tarea__project_task</b>, hoja Sheet1). Cabecera = fila con "Orden de producción"; sus componentes van debajo hasta la siguiente cabecera. Alcance: entrega ≥ hoy, o entrega vencida con Estado OP abierto (carga vencida). Se excluye cancel; done se carga como historia sin carga. Todo lo que no calce con las tablas de Configuración → Órdenes y materiales se carga marcado y se reporta.</p>
+   <input type="file" id="f-tarea" accept=".xlsx,.xls"><div id="tarea-res" style="margin-top:14px"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar (reemplaza las órdenes)</button></div>`);
+  document.getElementById('f-tarea').addEventListener('change',leerTarea)}
+async function leerTarea(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('tarea-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  const plan=planTarea(rows,f.name);if(!plan){res.innerHTML='No encuentro las columnas clave ("Orden de producción", "Fase", "Fecha Entrega", "Componentes/Producto").';return}
+  TAREA=plan;res.innerHTML=resumenTareaHTML(plan);document.getElementById('tarea-ok').disabled=!plan.ordenes.length}
+function excelFecha(v){if(v==null||v==='')return null;if(v instanceof Date)return isNaN(v)?null:new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10);
+  const s=String(v).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');return null}
+function planTarea(rows,nombre){
+  const h=(rows[0]||[]).map(x=>normTxt(x));const col=n=>h.findIndex(x=>x===normTxt(n));
+  const I={op:col('Orden de producción'),proy:col('Proyecto'),cli:col('Cliente'),tit:col('Título'),odc:col('ODC'),stilo:col('Stilo'),dep:col('Departamento'),catP:col('Categoría Padre'),catH:col('Categoría Hija'),color:col('Color'),estado:col('Estado OP'),fase:col('Fase'),pedido:col('Pedido'),total:col('Total $'),
+    prod:col('Orden de producción/Componentes/Producto'),costo:col('Orden de producción/Componentes/Costo'),dem:col('Orden de producción/Componentes/Demanda'),catProd:col('Orden de producción/Componentes/Categoria Producto'),udm:col('Orden de producción/Componentes/UdM'),fecha:col('Fecha Entrega'),tec:col('Tecnica'),punt:col('Numero Puntadas')};
+  if(I.op<0||I.fase<0||I.fecha<0||I.prod<0)return null;
+  const HOY=hoy();const str=v=>v==null?'':String(v).trim();
+  // 1) agrupar cabeceras y componentes
+  const cab=[];let cur=null;let nLineasComp=0;
+  for(let r=1;r<rows.length;r++){const x=rows[r];if(!x)continue;
+    if(str(x[I.op])){cur={fila:r+1,op:str(x[I.op]),proyecto:str(x[I.proy]),cliente:str(x[I.cli]),titulo:str(x[I.tit]),odc:str(x[I.odc]),stilo:str(x[I.stilo]),depto:str(x[I.dep]),catP:str(x[I.catP]),catH:str(x[I.catH]),colorN:str(x[I.color]).toUpperCase(),
+      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur)}
+    else nLineasComp++;
+    if(cur&&str(x[I.prod]))cur.comp.push({prod:str(x[I.prod]),costo:+x[I.costo]||0,dem:+x[I.dem]||0,ruta:str(x[I.catProd]),udm:str(x[I.udm])})}
+  const plan={archivo:nombre,hoy:HOY,filas:rows.length-1,cabeceras:cab.length,lineasComp:nLineasComp,componentes:cab.reduce((a,o)=>a+o.comp.length,0),
+    ordenes:[],excluidas:{cancel:[],fueraRango:[]},sinFecha:[],duplicados:[],fasesNoCalzan:{},fasesTablaSinUso:[],nivel2NoRec:{},nivel3NoRec:{},coloresNuevos:[],tecnicasNoEncontradas:{},porFase:{},porEstadoOP:{},catSinMapeo:{},telaSinClasificar:{},contradicciones:[],devoluciones:0,bloqueadas:0,vencidas:0,historia:0};
+  const fasesVistas=new Set();const vistos={};
+  // pasada previa sobre TODO el archivo (dentro o fuera del alcance): números repetidos y niveles de material no reconocidos
+  const cuentaOp={};cab.forEach(d=>{cuentaOp[d.op]=(cuentaOp[d.op]||0)+1});
+  plan.duplicados=cab.filter(d=>cuentaOp[d.op]>1).map(d=>({op:d.op,fila:d.fila,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,fecha:d.fecha,total:d.total,catP:d.catP,catH:d.catH,cliente:d.cliente}));
+  cab.forEach(d=>d.comp.forEach(c=>{const niv=c.ruta.split("/").map(s=>s.trim());const n2=niv[1]||"",n3=niv[2]||"",n4=niv[3]||"";
+    if(!clasifDe(n2)){const key=n2||"(vacío: "+(niv[0]||"")+")";plan.nivel2NoRec[key]=(plan.nivel2NoRec[key]||0)+1}
+    else if(clasifDe(n2)==="tela"&&!origenDeTela(n3,n4))plan.nivel3NoRec[n3||"(vacío)"]=(plan.nivel3NoRec[n3||"(vacío)"]||0)+1}));
+  const mapaTela=cat=>{const c=normTxt(cat);for(const [k,v] of MAPA_TELA){if(c.includes(normTxt(k)))return v}return 'EXT'};
+  const colorDe=n=>{let c=S.colores.find(x=>normTxt(x.n)===normTxt(n));if(!c){c={id:uid(),n:n||'SIN COLOR',cod:''};S.colores.push(c);plan.coloresNuevos.push(c.n)}return c};
+  cab.forEach(d=>{
+    const fila=faseMapeo().find(x=>normFase(x.fase)===normFase(d.fase))||null;if(fila)fasesVistas.add(normFase(fila.fase));
+    plan.porFase[d.fase]=plan.porFase[d.fase]||{n:0,prendas:0,sistema:fila?fila.sistema:null};plan.porFase[d.fase].n++;plan.porFase[d.fase].prendas+=d.cant;
+    plan.porEstadoOP[d.estadoOP||'(vacío)']=(plan.porEstadoOP[d.estadoOP||'(vacío)']||0)+1;
+    // BLOQUE C: alcance
+    if(d.estadoOP==='cancel'){plan.excluidas.cancel.push(d.op);return}
+    if(!d.fecha){plan.sinFecha.push({op:d.op,cliente:d.cliente,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,catP:d.catP,catH:d.catH});return}
+    let vencida=false;
+    if(d.fecha<HOY){if(ESTADOS_OP_ABIERTOS.includes(d.estadoOP))vencida=true;else{plan.excluidas.fueraRango.push({op:d.op,fecha:d.fecha,estadoOP:d.estadoOP||'(vacío)',fase:d.fase});return}}
+    if(!fila)plan.fasesNoCalzan[d.fase]=(plan.fasesNoCalzan[d.fase]||0)+1;
+    // categoría (BLOQUE D) contra el catálogo y el mapeo de la Parte 1
+    const k=S.categorias.find(x=>x.padre&&normTxt(x.n)===normTxt(d.catH)&&normTxt((K(x.padre)||{}).n)===normTxt(d.catP))||null;
+    const catSinOps=!k||!opsDe(k).length;if(catSinOps){const key=d.catP+' / '+d.catH;plan.catSinMapeo[key]=plan.catSinMapeo[key]||{n:0,prendas:0,existe:!!k};plan.catSinMapeo[key].n++;plan.catSinMapeo[key].prendas+=d.cant}
+    const tec=d.tecnicaTxt?S.tecnicas.find(t=>normTxt(t.n)===normTxt(d.tecnicaTxt))||null:null;if(d.tecnicaTxt&&!tec)plan.tecnicasNoEncontradas[d.tecnicaTxt]=(plan.tecnicasNoEncontradas[d.tecnicaTxt]||0)+1;
+    // BLOQUE F/G/H: materiales
+    const materiales=d.comp.map(c=>{const niv=c.ruta.split('/').map(s=>s.trim());const n2=niv[1]||'',n3=niv[2]||'',n4=niv[3]||'';const clasif=clasifDe(n2);
+      let origen=null;if(clasif==='tela'){origen=origenDeTela(n3,n4)||'SIN CLASIFICAR'}
+      const m=c.prod.match(/^\[([^\]]*)\]\s*(.*)$/);
+      return{cod:m?m[1]:'',prod:m?m[2]:c.prod,costo:c.costo,dem:c.dem,udm:c.udm,ruta:c.ruta,n2,clasif,n3,n4,origen}});
+    const telasKg=materiales.filter(m=>m.clasif==='tela'&&normTxt(m.udm)==='kg'&&m.dem>0);
+    const origs=[...new Set(telasKg.map(m=>m.origen))];
+    const sinClas=telasKg.filter(m=>m.origen==='SIN CLASIFICAR');if(sinClas.length){[...new Set(sinClas.map(m=>m.n3))].forEach(n3=>{plan.telaSinClasificar[n3]=plan.telaSinClasificar[n3]||{ordenes:0};plan.telaSinClasificar[n3].ordenes++})}
+    const origen=origs.includes('PROPIA')?'PROPIA':origs.includes('EXTERNA')?'EXTERNA':origs.includes('EXTERNA TEÑIDA')?'EXTERNA TEÑIDA':origs.length?'SIN CLASIFICAR':null;
+    const kgTej=telasKg.filter(m=>m.origen==='PROPIA').reduce((a,m)=>a+m.dem,0),kgTin=telasKg.filter(m=>m.origen==='PROPIA'||m.origen==='EXTERNA').reduce((a,m)=>a+m.dem,0);
+    // telas para el motor (mismo mapeo que el importador Odoo: MAPA_TELA sigue en código, ver reporte)
+    const acc={};telasKg.forEach(m=>{const t=mapaTela(m.ruta);const key=t+'|'+m.origen;acc[key]=(acc[key]||0)+m.dem});
+    const telas=Object.entries(acc).sort((a,b)=>b[1]-a[1]).map(([key,kg],i)=>{const [t,org]=key.split('|');return{tela:t==='EXT'||t==='UDS'||t==='SERV'?'t12':t,kg:+kg.toFixed(3),rol:i?'complemento':'base',ext:org==='PROPIA'?null:'ext',origen:org,color:null}});
+    // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
+    const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
+    const spc=k?samPorCentro(k):{};
+    const pro=armarRuta('propia',0,opts,[],k?k.id:null).filter(p=>!['tej','tin','proveedor'].includes(p.centro)).map(p=>tiempoPaso(p,k,spc,d.puntadas));
+    const textil=origen==='PROPIA'?[{centro:'tej',t:0},{centro:'tin',t:0}]:origen==='EXTERNA'?[{centro:'proveedor',t:15},{centro:'tin',t:0}]:origen==='EXTERNA TEÑIDA'?[{centro:'proveedor',t:15}]:[];
+    const rutaCompleta=[...textil,...pro];
+    const historia=d.estadoOP==='done';
+    const ruta=historia?[]:pasosPendientes(rutaCompleta,fila);
+    const sistema=fila?fila.sistema:null;
+    let estado='plan';if(historia||sistema==='cerrada'){estado=normFase(d.fase).startsWith('stand')?'standby':'cerrada'}
+    let contradiccion=null;
+    if(d.estadoOP==='done'&&fila&&!['terminados','prenda terminada','cerrada'].includes(sistema))contradiccion='done en '+d.fase;
+    if(fila&&sistema==='cerrada'&&ESTADOS_OP_ABIERTOS.includes(d.estadoOP))contradiccion=d.fase+' con Estado OP '+d.estadoOP;
+    const devolucion=!!(fila&&['previo a producción','textil'].includes(sistema)&&d.estadoOP==='progress');
+    const bloqueada=!!(fila&&fila.bloqueo);
+    let id='op_'+d.op.toLowerCase().replace(/[^a-z0-9]+/g,'_');vistos[id]=(vistos[id]||0)+1;const dup=vistos[id]>1;if(dup){id+='_dup'+vistos[id]}
+    const o={id,op:d.op,cliente:d.cliente,ref:d.stilo,desc:d.titulo,odc:d.odc,depto:d.depto,proyecto:d.proyecto,cat:k?k.id:null,catTxt:d.catP+' / '+d.catH,color:colorDe(d.colorN).id,colorOdoo:d.colorN,
+      cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
+      tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
+      vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
+      pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!((CE('bordado')||{}).puntMin>0),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+    if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
+    plan.ordenes.push(o)});
+  plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
+  return plan}
+function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';
+  return `<table><tbody>${li(p.cabeceras,'cabeceras de orden en el archivo ('+p.componentes+' líneas de componentes)')}${li(p.ordenes.length,'órdenes que se cargan (incluye '+p.historia+' done como historia y '+p.vencidas+' vencidas abiertas)')}
+   ${li(p.excluidas.cancel.length,'excluidas por Estado OP = cancel')}${li(p.excluidas.fueraRango.length,'excluidas: entrega pasada y no abiertas (done o sin estado)')}${li(p.sinFecha.length,'sin Fecha Entrega → bandeja "órdenes sin fecha" (no se cargan, no se inventa fecha)')}
+   ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con número de orden repetido (se cargan aparte, sin fusionar)')}
+   ${li(Object.keys(p.nivel2NoRec).length,'segundos niveles de material no reconocidos: '+esc(Object.keys(p.nivel2NoRec).join(', ')))}${li(Object.keys(p.telaSinClasificar).length,'tipos de tela SIN CLASIFICAR con órdenes: '+esc(Object.keys(p.telaSinClasificar).join(', ')))}
+   ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
+   <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar se <b>reemplazan todas las órdenes</b> del sistema por las del archivo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
+function aplicarTarea(){if(!TAREA)return;const p=TAREA;
+  S.ordenes=p.ordenes.slice();S.avance={};
+  S.params.tareaCarga={archivo:p.archivo,fecha:new Date().toISOString(),hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
+    excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
+    nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
+    devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia};
+  TAREA=null;save();cerrar();render();alert('Cargadas '+p.ordenes.length+' órdenes ('+p.historia+' historia, '+p.vencidas+' vencidas abiertas). '+p.sinFecha.length+' sin fecha en bandeja. Revisa Órdenes → Reporte Parte 2.')}
+
+/* ---------- reporte (BLOQUE K): se calcula desde las órdenes cargadas + lo guardado en la carga; la carga por centro se
+   calcula aquí directamente (cant × minPrenda del motor, por mes de entrega; vencidas al mes en curso), NO con programar(). ---------- */
+function reporteTarea(){const C0=S.params.tareaCarga;if(!C0)return null;const HOY=C0.hoy||hoy();const mesHoy=HOY.slice(0,7);
+  const ords=S.ordenes.filter(o=>o.origenParte2);
+  const meses=['2026-09','2026-10','2026-11','2026-12'];const mesDe=o=>o.vencida?mesHoy:(o.fecha||'').slice(0,7);
+  const cuentaMes={};meses.forEach(m=>cuentaMes[m]={n:0,prendas:0,total:0});ords.forEach(o=>{const m=(o.fecha||'').slice(0,7);if(cuentaMes[m]){cuentaMes[m].n++;cuentaMes[m].prendas+=o.cant;cuentaMes[m].total+=o.total||0}});
+  const noHist=ords.filter(o=>!o.historia);
+  const venc=noHist.filter(o=>o.vencida);const minRuta=(o,r)=>(r||[]).reduce((a,p)=>a+(CE(p.centro)&&CE(p.centro).area==='pro'?o.cant*minPrenda(p.centro,p.t):0),0);
+  const vencPorCentro={};venc.forEach(o=>(o.ruta||[]).forEach(p=>{if(CE(p.centro)&&CE(p.centro).area==='pro')vencPorCentro[p.centro]=(vencPorCentro[p.centro]||0)+o.cant*minPrenda(p.centro,p.t)}));
+  const sinCargaG=ords.filter(o=>o.sinCarga||o.faseSistema==='cerrada');const porGrupo={};sinCargaG.forEach(o=>{const g=o.faseSistema;porGrupo[g]=porGrupo[g]||{n:0,prendas:0};porGrupo[g].n++;porGrupo[g].prendas+=o.cant});
+  const conTec=noHist.filter(o=>o.tecnicaTxt).length,conPunt=noHist.filter(o=>o.puntadas>0).length;
+  const catSin={n:0,prendas:0};noHist.forEach(o=>{if(o.catSinOps){catSin.n++;catSin.prendas+=o.cant}});
+  const telaSin={};noHist.forEach(o=>(o.telaSinClasificar||[]).forEach(t=>{telaSin[t]=telaSin[t]||{ordenes:0};telaSin[t].ordenes++}));
+  // capacidad por centro y mes (minutos): recursos activos × días laborables del recurso en el mes
+  const cens=S.centros.filter(c=>c.area==='pro');const capMes={};
+  meses.slice(0,3).forEach(m=>{const [y,mo]=m.split('-').map(Number);const nd=new Date(y,mo,0).getDate();const dias=[];for(let d=1;d<=nd;d++)dias.push(m+'-'+String(d).padStart(2,'0'));
+    capMes[m]={};cens.forEach(c=>{let tot=0,sinMaq=0;S.recursos.filter(r=>r.activa&&r.centro===c.id).forEach(r=>{const cap=dias.reduce((a,d)=>a+(labR(d,r)?capDia(r,d):0),0);tot+=cap;if(!/maquila/i.test(r.n))sinMaq+=cap});capMes[m][c.id]={cap:tot,capSinMaquila:sinMaq}})});
+  const carga=(modo)=>{const out={};meses.slice(0,3).forEach(m=>{out[m]={};cens.forEach(c=>out[m][c.id]=0)});
+    noHist.forEach(o=>{const m=mesDe(o);if(!out[m])return;(modo==='pendiente'?o.ruta:o.rutaCompleta||[]).forEach(p=>{if(out[m][p.centro]!=null)out[m][p.centro]+=o.cant*minPrenda(p.centro,p.t)})});return out};
+  const kg=(modo)=>{const out={};meses.slice(0,3).forEach(m=>out[m]={tej:0,tin:0,ordTej:0,ordTin:0});
+    noHist.forEach(o=>{const m=mesDe(o);if(!out[m])return;const r=modo==='pendiente'?o.ruta:o.rutaCompleta;if((r||[]).some(p=>p.centro==='tej')){out[m].tej+=o.kgTej||0;out[m].ordTej++}if((r||[]).some(p=>p.centro==='tin')){out[m].tin+=o.kgTin||0;out[m].ordTin++}});return out};
+  const sinTiempo={};noHist.forEach(o=>(o.sinTiempo||[]).forEach(c=>{sinTiempo[c]=(sinTiempo[c]||0)+1}));
+  return{carga:C0,mesHoy,totales:{cargadas:ords.length,historia:ords.filter(o=>o.historia).length,vencidas:venc.length,vencidasPrendas:venc.reduce((a,o)=>a+o.cant,0),vencidasMin:venc.reduce((a,o)=>a+minRuta(o,o.ruta),0),vencPorCentro,
+    sinCargaPorGrupo:porGrupo,conTecnica:conTec,conPuntadas:conPunt,catSinMapeo:catSin,catSinMapeoDetalle:C0.catSinMapeo,telaSinClasificar:telaSin,sinTelaKg:noHist.filter(o=>o.sinTelaKg).length,origenTela:cuentaPor(noHist,o=>o.origenTela||'(sin tela en kg)'),
+    contradicciones:C0.contradicciones,devoluciones:noHist.filter(o=>o.devolucion).length,bloqueadas:noHist.filter(o=>o.bloqueada).length,pendBordadoVel:noHist.filter(o=>o.pendBordadoVel).length,sinTiempo,tecnicasNoEncontradas:C0.tecnicasNoEncontradas,
+    esCola:noHist.filter(o=>o.esCola).length},
+    porMes:cuentaMes,porEstadoOP:C0.porEstadoOP,porFase:C0.porFase,fasesNoCalzan:C0.fasesNoCalzan,fasesTablaSinUso:C0.fasesTablaSinUso,nivel2NoRec:C0.nivel2NoRec,nivel3NoRec:C0.nivel3NoRec,duplicados:C0.duplicados,sinFecha:C0.sinFecha,excluidas:C0.excluidas,
+    capMes,cargaCompleta:carga('completa'),cargaPendiente:carga('pendiente'),kgCompleta:kg('completa'),kgPendiente:kg('pendiente'),puntadasMin:S.params.puntadasMin,puntMinCentro:(CE('bordado')||{}).puntMin||null}}
+function cuentaPor(arr,f){const m={};arr.forEach(x=>{const k=f(x);m[k]=(m[k]||0)+1});return m}
+function mReporteTarea(){const R=reporteTarea();if(!R){alert('Todavía no se ha cargado el archivo de la Parte 2.');return}
+  const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';const cens=S.centros.filter(c=>c.area==='pro');const meses=Object.keys(R.capMes);
+  const tabla=(titulo,cg)=>`<h4 style="margin:12px 0 4px">${titulo}</h4><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th>${meses.map(m=>`<th class="num">${m} min</th><th class="num">cap.</th><th class="num">uso</th>`).join('')}</tr></thead><tbody>
+    ${cens.map(c=>`<tr><td>${esc(c.n)}</td>${meses.map(m=>{const v=cg[m][c.id]||0,cp=R.capMes[m][c.id].cap;return `<td class="num">${num(v)}</td><td class="num mut">${num(cp)}</td><td class="num" style="${v>cp?'color:var(--alerta);font-weight:600':''}">${pct(v,cp)}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>`;
+  abrir(`<h3>Reporte Parte 2 · ${esc(R.carga.archivo||'')}</h3><div class="body" style="max-height:70vh;overflow:auto">
+   <p class="mut" style="margin-top:0">Cargadas ${R.totales.cargadas} órdenes (${R.totales.historia} historia done, ${R.totales.vencidas} vencidas abiertas). Excluidas: cancel ${R.excluidas.cancel}, fuera de rango ${R.excluidas.fueraRango}. Sin fecha: ${R.sinFecha.length}. Duplicadas: ${R.duplicados.length} filas.</p>
+   ${tabla('Carga por centro — solo lo PENDIENTE según la fase (BLOQUE E)',R.cargaPendiente)}
+   ${tabla('Carga por centro — ruta COMPLETA de cada orden (comparación)',R.cargaCompleta)}
+   <h4 style="margin:12px 0 4px">Tejeduría y tintorería en kg (pendiente)</h4><table style="font-size:var(--fs-xs)"><thead><tr><th>Mes</th><th class="num">kg tejeduría</th><th class="num">órdenes</th><th class="num">kg tintorería</th><th class="num">órdenes</th></tr></thead><tbody>${meses.map(m=>`<tr><td>${m}</td><td class="num">${num(R.kgPendiente[m].tej)}</td><td class="num">${R.kgPendiente[m].ordTej}</td><td class="num">${num(R.kgPendiente[m].tin)}</td><td class="num">${R.kgPendiente[m].ordTin}</td></tr>`).join('')}</tbody></table>
+   <h4 style="margin:12px 0 4px">Bandejas</h4>
+   <p style="font-size:var(--fs-s)"><b>Órdenes sin fecha (${R.sinFecha.length})</b>: ${R.sinFecha.map(x=>esc(x.op)+' ('+esc(x.fase)+')').join(', ')||'ninguna'}</p>
+   <p style="font-size:var(--fs-s)"><b>Origen de tela sin definir</b>: ${Object.entries(R.totales.telaSinClasificar).map(([t,v])=>esc(t)+' ('+v.ordenes+' órdenes)').join(', ')||'ninguna'}</p>
+   <p style="font-size:var(--fs-s)"><b>Contradicciones Estado OP vs Fase (${R.totales.contradicciones.length})</b>: ${R.totales.contradicciones.slice(0,40).map(x=>esc(x.op)+': '+esc(x.detalle)).join(' · ')}${R.totales.contradicciones.length>40?' …':''}</p>
+   <p style="font-size:var(--fs-s)"><b>Fases que no calzan</b>: ${Object.entries(R.fasesNoCalzan).map(([f,n])=>esc(f)+' ('+n+')').join(', ')||'ninguna'} · <b>Filas de la tabla sin órdenes en el archivo</b>: ${R.fasesTablaSinUso.map(esc).join(', ')||'ninguna'}</p>
+   <p style="font-size:var(--fs-s)"><b>Segundos niveles de material no reconocidos</b>: ${Object.entries(R.nivel2NoRec).map(([f,n])=>esc(f)+' ('+n+' líneas)').join(', ')||'ninguno'}</p>
+   <p style="font-size:var(--fs-s)"><b>Categorías sin operaciones (órdenes abiertas)</b>: ${R.totales.catSinMapeo.n} órdenes, ${num(R.totales.catSinMapeo.prendas)} prendas · <b>Técnica (estampado)</b>: ${R.totales.conTecnica} · <b>Puntadas &gt; 0 (bordado)</b>: ${R.totales.conPuntadas} · <b>Sin velocidad de bordado configurada</b>: ${R.totales.pendBordadoVel}</p>
+   </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`,true)}
 
 /* ---------- actualización desde la exportación de tareas de Odoo ---------- */
 const MAPA_TELA=[['HILO PARA','SERV'],['INSUMOS','SERV'],['JERSEY TEMPO ESMERILADO','t1'],['RIBB TEMPO ESMERILADO','t2'],['RIBB TEMPO 2X2','t5'],['RIBB TEMPO ALGODON','tn_ra'],['RIBB TEMPO','t2'],['JERSEY TEMPO ALGODON','tn_jam'],

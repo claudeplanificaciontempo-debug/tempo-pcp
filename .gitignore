@@ -2,3 +2,5 @@
 .netlify
 .netlify/
 test/.out/
+# datos de clientes: no publicar
+test/fixtures/tarea_rows.json
