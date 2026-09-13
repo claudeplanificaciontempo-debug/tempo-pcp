@@ -628,9 +628,21 @@ function generarRutas(){const out=[];let i=0;
   return out}
 const FIJOS_PRO=['corte','modulos','empaque'];
 function ordenPaso(c){const i=RUTA_ORDEN.indexOf(c);return i<0?RUTA_ORDEN.indexOf('empaque')-0.5:i}
+/* centros que dependen de la ORDEN, no de la categoría (editable, no fijo en código). Aunque la categoría tenga
+   operación con SAM para uno de estos centros (ej. bordado en la familia CAMISETA), eso solo da el tiempo estándar
+   a usar SI el centro aplica; que aplique o no lo decide la orden (técnica, puntadas, marca de categoría, o manual). */
+function defCentrosPorOrden(){return ['estampado','bordado','lavado','plancha']}
+function centrosPorOrden(){if(!S.params.centrosPorOrden||!S.params.centrosPorOrden.length)S.params.centrosPorOrden=defCentrosPorOrden();return S.params.centrosPorOrden}
 /* construye los pasos de una orden a partir del origen de tela y los centros opcionales marcados, conservando tiempos ya escritos */
-/* centros de producción de una categoría = los de sus propias operaciones (opsDe, con herencia padre→hija ya resuelta) */
-function centrosDeCategoria(k){const cs=new Set();if(k)opsDe(k).forEach(x=>{if(x.centro)cs.add(x.centro)});return cs}
+/* centros de producción de una categoría = los de sus propias operaciones (opsDe, con herencia padre→hija ya resuelta),
+   EXCLUYENDO los que están en centrosPorOrden(): esos nunca entran solo por tener operación en la categoría. */
+function centrosDeCategoria(k){const cs=new Set();if(k)opsDe(k).forEach(x=>{if(x.centro)cs.add(x.centro)});const cpo=centrosPorOrden();cpo.forEach(c=>cs.delete(c));return cs}
+/* de los centros que dependen de la orden, cuáles aplican hoy según los campos propios de la orden (técnica, puntadas).
+   lavado/plancha no entran aquí: su default sigue viniendo de la marca de categoría (lavaPlanchaDefault). */
+function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=centrosPorOrden();
+  if(cpo.includes('estampado')&&o.tecnica)out.add('estampado');
+  if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
+  return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
 function lavaPlanchaDefault(k){if(!k)return{lavado:false,plancha:false};
   const propia=k.lavaDefault!=null||k.planchaDefault!=null;const eff=propia?k:(k.padre?K(k.padre):k);
@@ -2725,7 +2737,8 @@ function centroPorFamilia(famOp,operacion){const f=normTxt(famOp),op=normTxt(ope
 function defMapaCatLMO(){return {
   porPadre:{CAMISETAS:'CAMISETA',POLOS:'POLO',CAMISAS:'CAMISA',SHORT_PLANOS:'SHORT PLANO','SHORT PLANOS':'SHORT PLANO',
     PANTALONES_PLANOS:'PANTALON PLANO','PANTALONES PLANOS':'PANTALON PLANO','SHORT FLECCE':'SHORT FLEECE',DENIM:'JEANS',
-    BODY:'BODY',BOMBER:'BOMBER',BVD:'BVD',CHOMPA:'CHOMPA',FITS:'FITS',HENLEY:'HENLEY',HODDIE:'HODDIE',VESTIDOS:'VESTIDOS'},
+    BODY:'BODY',BOMBER:'BOMBER',BVD:'BVD',CHOMPA:'CHOMPA',FITS:'FITS',HENLEY:'HENLEY',HODDIE:'HODDIE',VESTIDOS:'VESTIDOS',
+    BOXER:'BOXER',JEANS:'JEANS'},
   porHija:{'SHORT PLANOS|Short Cargo':'SHORT CARGO','PANTALONES PLANOS|Pantalon Cargo':'PANTALON'}
 }}
 function mapaCatLMO(){if(!S.params.mapaCatLMO)S.params.mapaCatLMO=defMapaCatLMO();return S.params.mapaCatLMO}
@@ -2961,15 +2974,17 @@ function vConfig(el){
 
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
-   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th></th></tr></thead><tbody>
-   ${S.centros.map(c=>{const esLavPla=c.id==='lavado'||c.id==='plancha';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
+   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
+   ${S.centros.map(c=>{const esLavPla=c.id==='lavado'||c.id==='plancha';const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
      <td><select onchange="setCentro('${c.id}','area',this.value)">${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${c.area===k?'selected':''}>${v}</option>`).join('')}</select></td>
      <td>${c.area==='pro'?`<select onchange="setCentro('${c.id}','medida',this.value)">${Object.entries(MEDIDAS).filter(([k])=>k!=='dias').map(([k,v])=>`<option value="${k}" ${c.medida===k?'selected':''}>${v}</option>`).join('')}</select>`:'<span class="mut">'+({tej:'kg por hora',tin:'kg por baño',ext:'días de entrega'}[c.area]||'')+'</span>'}</td>
      <td class="num"><a href="#bloque-${c.area}" style="color:var(--medio)">${S.recursos.filter(r=>r.centro===c.id).length}</a></td>
      <td class="num">${esLavPla?`<input type="number" step="0.01" style="width:70px" value="${c.minEstandar||''}" placeholder="0" onchange="setCentro('${c.id}','minEstandar',this.value)">`:'<span class="mut">—</span>'}</td>
      <td class="num">${esLavPla?`<input type="number" min="0" max="100" style="width:60px" value="${c.pctEstimado!=null?c.pctEstimado:''}" placeholder="0" onchange="setCentro('${c.id}','pctEstimado',this.value)">%${c.pctReal!=null?` <span class="mut" style="font-size:var(--fs-xs)">real ${num(c.pctReal,0)}%</span>`:''}`:'<span class="mut">—</span>'}</td>
+     <td class="num">${esBordado?`<input type="number" step="0.01" style="width:70px" value="${c.puntMin||''}" placeholder="sin config." onchange="setCentro('${c.id}','puntMin',this.value)">`:'<span class="mut">—</span>'}</td>
      <td>${['tej','tin','proveedor'].includes(c.id)?'':`<button class="btn ghost sm" onclick="delCentro('${c.id}')">×</button>`}</td></tr>`}).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lavado y plancha no salen de las operaciones (PASO 7): el minutaje y el % de prendas que realmente pasan se estiman aquí; la categoría decide si entra firme o solo como reserva (Categorías → editar).</p></div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lavado y plancha no salen de las operaciones (PASO 7): el minutaje y el % de prendas que realmente pasan se estiman aquí; la categoría decide si entra firme o solo como reserva (Categorías → editar).
+   Bordado se mide en puntadas: si "Puntadas/min" tiene valor, la carga de cada orden sale de sus puntadas; si está vacío, se usa el SAM de la categoría como respaldo y la orden queda marcada "sin velocidad de bordado configurada".</p></div></div>
 
   <div class="panel" id="bloque-tej"><h3>Máquinas de tejeduría <span class="spacer"></span><button class="btn ghost sm" onclick="addRec('tej')">Agregar máquina</button></h3>
    <div class="body"><table><thead><tr><th>Máquina</th><th>Centro</th><th class="num">Kg/hora</th><th class="num">Horas/día</th><th class="num">Kg/día</th><th>Telas que teje</th><th class="num">Días/sem <span class="mut" title="Lo fija el calendario del área">(calendario)</span></th><th>Activa</th><th></th></tr></thead><tbody>${recRows('tej')}</tbody></table></div></div>
@@ -3146,7 +3161,7 @@ function addRec(area){const c=S.centros.find(x=>x.area===area);if(!c)return;
   const b={id:uid(),n:'Nuevo recurso',centro:c.id,dias:6,activa:true,telas:[]};
   if(area==='tej')Object.assign(b,{kgh:10,horas:24});else if(area==='tin')Object.assign(b,{cap:100,capPique:0,horas:24});else Object.assign(b,{pers:10,min:480,efic:85});
   S.recursos.push(b);save();render()}
-function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado')?(+v||0):v;save();render()}
+function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;save();render()}
 function addCentro(){S.centros.push({id:uid(),n:'Nuevo centro',area:'pro',medida:'min'});save();render()}
 function delCentro(id){if(S.recursos.some(r=>r.centro===id)){alert('Primero quita o mueve los recursos de este centro.');return}S.centros=S.centros.filter(c=>c.id!==id);save();render()}
 /* al escribir el código TCX, la profundidad y las horas se actualizan en el momento; se guarda al salir del campo */
@@ -3204,15 +3219,33 @@ function edTiemposHTML(){return `<table><thead><tr><th>#</th><th>Paso</th><th cl
     <td class="num">${interno?'<span class="mut">—</span>':prov?`<span class="mut">${p.t} días</span>`:`<input type="number" step="0.01" style="width:90px" value="${p.t||''}" onchange="ED.ruta[${i}].t=+this.value||0">`}</td>
     <td class="mut">${interno?'según kilos y máquinas':prov?'entrega del proveedor':(MEDIDAS[c.medida]||'')}</td></tr>`}).join('')}</tbody></table>`}
 function edMove(i,d){const j=i+d;if(j<0||j>=ED.ruta.length)return;[ED.ruta[i],ED.ruta[j]]=[ED.ruta[j],ED.ruta[i]];edRefresh()}
+/* aplica el cambio (seguir, que ya actualizó ED.opts/ED.ruta) y avisa si mueve la fecha de fin estimada.
+   Nada se guarda todavía (eso sigue exigiendo "Guardar orden"): esto solo informa el impacto antes de confirmar,
+   igual que se pidió para lavado/plancha (esa vista previa propia todavía no existe — ver PASO 8, pendiente). */
+function confirmarImpactoOrden(id,seguir){
+  const antes=id?((programar().ordenes[id]||{}).finPro):null;
+  seguir();
+  if(!id)return;
+  const idx=S.ordenes.findIndex(x=>x.id===id);if(idx<0)return;
+  const orig=S.ordenes[idx];let despues;
+  try{S.ordenes[idx]=Object.assign({},orig,{ruta:ED.ruta,tecnica:ED.tecnica,puntadas:ED.puntadas});
+    despues=(programar().ordenes[id]||{}).finPro;
+  }finally{S.ordenes[idx]=orig}
+  if(antes&&despues&&antes!==despues){
+    const atraso=despues>orig.fecha;
+    alert('Este cambio mueve el fin estimado de '+fmtDia(antes)+' a '+fmtDia(despues)+(atraso?' — quedaría DESPUÉS de la entrega comprometida ('+orig.fecha+').':'.')+' Todavía no se guardó nada: usa "Guardar orden" para confirmar, o ajusta antes.')
+  }
+}
 function edRefresh(){const a=document.getElementById('ed-telas'),b=document.getElementById('ed-ruta'),c=document.getElementById('ed-insumos'),p=document.getElementById('ed-prov'),d=document.getElementById('ed-centros');
   if(a)a.innerHTML=edTelasHTML(a.dataset.u);if(b)b.innerHTML=edRutaHTML();if(c)c.innerHTML=edInsumosHTML();if(p)p.innerHTML=provRutaHTML();if(d)d.innerHTML=centrosRutaHTML()}
 
 function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
   const ruta=o?JSON.parse(JSON.stringify(o.ruta||[])):[];const cs=ruta.map(p=>p.centro);
-  ED={telas:JSON.parse(JSON.stringify(o?(o.telas||[]):[])),ruta,tecnica:o?(o.tecnica||null):null,insumos:JSON.parse(JSON.stringify(o?(o.insumos||[]):[])),
+  ED={telas:JSON.parse(JSON.stringify(o?(o.telas||[]):[])),ruta,tecnica:o?(o.tecnica||null):null,puntadas:o?(+o.puntadas||0):0,insumos:JSON.parse(JSON.stringify(o?(o.insumos||[]):[])),
       origen:cs.includes('proveedor')?'externa':'propia',provDias:(ruta.find(p=>p.centro==='proveedor')||{}).t||15,
       opts:new Set(cs.filter(c=>CE(c)&&CE(c).area==='pro'&&!FIJOS_PRO.includes(c)))};
-  if(!ruta.length)ED.ruta=armarRuta(ED.origen,ED.provDias,[],[],o?o.cat:null);
+  ordenCentrosAuto(o).forEach(c=>ED.opts.add(c));
+  if(!ruta.length)ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],[],o?o.cat:null);
   ED.cantBase=o?+o.cant||0:0;
   const faseVal=o?o.fase:null;const faseEnLista=faseVal&&FASES.some(f=>normTxt(f)===normTxt(faseVal));
   const PRIOS=[[1,'Urgente','#C4402F'],[3,'Normal','#2C8A5C'],[2,'Alta','#B8862B']];
@@ -3235,6 +3268,10 @@ function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
      <span class="mut">${!liberada(o,'tela')?'sin liberar':liberada(o,'corte')?'liberada a producción':'liberada; falta producción'}</span></div>`})():''}
    <label>Telas de la orden (kg crudos, sin merma) <span class="mut">— al elegir categoría se llenan con el consumo por prenda × prendas; el color por defecto es el de la orden. La merma se descuenta después para saber cuánto sale del baño.</span></label>
    <div id="ed-telas" data-u="kg crudo">${edTelasHTML('kg crudo')}</div>
+   <div class="row" style="margin-top:16px">
+    <div><label>Técnica <span class="mut">— si tiene, pasa por estampado</span></label><select id="f-tec" onchange="ED.tecnica=this.value||null;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!ED.tecnica)ED.opts.delete('estampado');confirmarImpactoOrden('${id||''}',()=>rearmar())"><option value="">— ninguna —</option>${S.tecnicas.map(t=>`<option value="${t.id}" ${ED.tecnica===t.id?'selected':''}>${esc(t.n)}</option>`).join('')}</select></div>
+    <div><label>Puntadas <span class="mut">— si es &gt; 0, pasa por bordado</span></label><input type="number" min="0" id="f-punt" value="${ED.puntadas||''}" onchange="ED.puntadas=+this.value||0;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!(ED.puntadas>0))ED.opts.delete('bordado');confirmarImpactoOrden('${id||''}',()=>rearmar())"></div>
+   </div>
    <div class="row" style="align-items:flex-start;margin-top:16px">
     <div style="flex:1;min-width:260px"><label>Proveeduría <span class="mut">— de dónde viene la tela</span></label><div id="ed-prov">${provRutaHTML()}</div></div>
     <div style="flex:2;min-width:340px"><label>Centros de producción <span class="mut">— los fijos ya están; marca los demás</span></label><div id="ed-centros">${centrosRutaHTML()}</div></div>
@@ -3287,18 +3324,31 @@ function recalcKg(cant){const k=K(document.getElementById('f-cat').value),cons=k
 function desdeHoja(){const k=K(document.getElementById('f-cat').value);if(!k)return;
   const cant=+document.getElementById('f-cant').value||0,cons=telasDe(k);
   if(cons.length){ED.telas=cons.map(t=>({tela:t.tela,kg:+(t.kg*cant).toFixed(3),rol:t.rol||'base',color:null}));ED.cantBase=cant;edRefresh()}
-  const spc=samPorCentro(k);const lp=lavaPlanchaDefault(k);
-  ED.opts=new Set(Object.keys(spc).filter(c=>!FIJOS_PRO.includes(c)));
+  const spc=samPorCentro(k);const lp=lavaPlanchaDefault(k);const cpo=centrosPorOrden();
+  ED.opts=new Set(Object.keys(spc).filter(c=>!FIJOS_PRO.includes(c)&&!cpo.includes(c)));
   if(lp.lavado)ED.opts.add('lavado');if(lp.plancha)ED.opts.add('plancha'); // lavado/plancha no salen de las operaciones: se marcan por defecto de la categoría (PASO 7)
-  if(!Object.keys(spc).length&&!lp.lavado&&!lp.plancha)return;
-  ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],[],k.id).map(p=>spc[p.centro]!=null?{centro:p.centro,t:+spc[p.centro].toFixed(3)}:p);
+  ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c)); // estampado/bordado: los decide la orden (técnica, puntadas), no la categoría
+  if(!Object.keys(spc).length&&!lp.lavado&&!lp.plancha&&!ED.opts.size)return;
+  ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],[],k.id).map(p=>spcParaCentro(p,k,spc));
   edRefresh()}
-function rearmar(){const k=K((document.getElementById('f-cat')||{}).value);ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],ED.ruta,k?k.id:null);edRefresh()}
+function rearmar(){const k=K((document.getElementById('f-cat')||{}).value);ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],ED.ruta,k?k.id:null).map(p=>spcParaCentro(p,k,samPorCentro(k)));edRefresh()}
+/* tiempo estándar a usar para un paso de ruta cuando SÍ aplica: normalmente el SAM de la categoría (spc), salvo
+   bordado, que se mide por puntadas (PASO CORRECCIÓN: estampado/bordado por orden). Si el centro bordado tiene
+   configurada su velocidad (puntadas por minuto), la carga sale de las puntadas de la orden; si no, se usa el SAM
+   plano de la categoría como hoy y la orden queda marcada como pendiente ("sin velocidad de bordado configurada"). */
+function spcParaCentro(p,k,spc){if(p.centro==='bordado'){const c=CE('bordado'),punt=+ED.puntadas||0;
+    if(c&&c.puntMin>0&&punt>0)return{centro:'bordado',t:+(punt/c.puntMin).toFixed(3)};
+    if(spc&&spc.bordado!=null)return{centro:'bordado',t:+spc.bordado.toFixed(3)};
+    return p}
+  return spc&&spc[p.centro]!=null?{centro:p.centro,t:+spc[p.centro].toFixed(3)}:p}
 function guardarOrden(id){const g=x=>document.getElementById(x).value;
   if(!g('f-op')||!+g('f-cant')){alert('Falta la OP o las prendas.');return}
   const col=buscarColor(g('f-col'));if(!col){alert('Elige un color del catálogo.');return}
-  const o={op:g('f-op'),ref:g('f-ref'),cat:g('f-cat'),color:col.id,cant:+g('f-cant'),fecha:g('f-fec'),prio:+g('f-prio'),fase:g('f-fase')||null,telas:ED.telas.filter(t=>t.kg>0),ruta:ED.ruta,samProv:false,telasManual:true,tecnica:ED.tecnica||null,insumos:(ED.insumos||[]).filter(x=>x.n)};
-  if(o){['cliente','depto','odc','proyecto','colorOdoo','precio','prodTot','estado','lib','recursoFijo','terminadaF'].forEach(k=>{if(o[k]!==undefined&&d[k]===undefined)d[k]=o[k]})}if(!d.estado)d.estado='plan';
+  const o={op:g('f-op'),ref:g('f-ref'),cat:g('f-cat'),color:col.id,cant:+g('f-cant'),fecha:g('f-fec'),prio:+g('f-prio'),fase:g('f-fase')||null,telas:ED.telas.filter(t=>t.kg>0),ruta:ED.ruta,samProv:false,telasManual:true,tecnica:ED.tecnica||null,puntadas:+ED.puntadas||0,insumos:(ED.insumos||[]).filter(x=>x.n)};
+  if(id){const ex=S.ordenes.find(x=>x.id===id);if(ex)['cliente','depto','odc','proyecto','colorOdoo','precio','prodTot','estado','lib','recursoFijo','terminadaF'].forEach(k=>{if(ex[k]!==undefined&&o[k]===undefined)o[k]=ex[k]})}
+  if(!o.estado)o.estado='plan';
+  const bordadoAplica=(o.ruta||[]).some(p=>p.centro==='bordado');const cBor=CE('bordado');
+  o.pendBordadoVel=!!(bordadoAplica&&(!cBor||!(cBor.puntMin>0)));
   if(id)Object.assign(S.ordenes.find(x=>x.id===id),o);else S.ordenes.push(Object.assign({id:uid()},o));
   save();cerrar();render()}
 
