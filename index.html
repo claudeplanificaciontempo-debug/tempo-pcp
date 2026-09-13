@@ -276,6 +276,7 @@ tbody tr:hover td{background:var(--field)}
     <div class="grp" data-g="tex">Planificación textil <span class="car">▾</span></div>
     <div class="gbody" data-g="tex">
       <a data-p="tejeduria">Tejeduría</a>
+      <a data-p="stock">Stock de tela cruda</a>
       <a data-p="tintoreria">Tintorería <span class="n" id="n-ban"></span></a>
       <a data-p="reporteria" data-rep="textil">Reportería textil</a>
     </div>
@@ -323,6 +324,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
+    <section class="page" id="p-stock"></section>
     <section class="page" id="p-reporteria"></section>
 <section class="page" id="p-tintoreria"></section>
     <section class="page" id="p-produccion"></section>
@@ -357,7 +359,7 @@ const FAMS={claro:'Claro (11)',medio:'Medio (12–17)',oscuro:'Oscuro (18–19)'
 const ORDEN_FAM={lavado:0,claro:1,medio:2,oscuro:3};
 
 function seed(){return{
-  params:{inicio:hoy(),umbral:80,granMin:140,granOk:180,pctBueno:90,pctAprob:70,tol:15,tolGrande:5,diasTintBodega:1,puntadasMin:600,cal:{tej:6,tin:6,pro:5},excepciones:[],tejBloqueDias:6,tejCambioHoras:4,tinHorizonteDias:45,ventanaColor:0,costos:{minCorte:0.2252,minConf:0.1649,minEmp:0.313,minMaquila:0.25,bano:120,kgTela:6.48,atrasoDiaPz:0.05},tiposParo:['Mecánico','Falta de material','Calidad / reproceso','Falta de personal','Energía / servicios'],
+  params:{inicio:hoy(),umbral:80,granMin:140,granOk:180,pctBueno:90,pctAprob:70,tol:15,tolGrande:5,diasTintBodega:1,cal:{tej:6,tin:6,pro:5},excepciones:[],tejBloqueDias:6,tejCambioHoras:4,tinHorizonteDias:45,ventanaColor:0,costos:{minCorte:0.2252,minConf:0.1649,minEmp:0.313,minMaquila:0.25,bano:120,kgTela:6.48,atrasoDiaPz:0.05},tiposParo:['Mecánico','Falta de material','Calidad / reproceso','Falta de personal','Energía / servicios'],
           hClaro:4,hMedio:7,hOscuro:8,hLavado:3,hDesencolado:2,hReproceso:10},
   centros:[
     {id:'tej',n:'Tejeduría',area:'tej',medida:'kg'},
@@ -574,12 +576,15 @@ function capDia(r,d){const c=CE(r.centro);if(!c)return 0;if(d&&paradaDe(r,d))ret
   return pers*(r.min||0)*((r.efic||0)/100);}
 /* polivalencia: rendimiento % del módulo en cada familia (padre). Sin dato = 100; 0 = no la hace */
 function poliPct(r,k){if(!r||!k)return 100;const p=K(k.padre)||k;const v=(r.poli||{})[p.id];return v==null||v===''?100:+v}
+/* velocidad de bordado configurada (puntadas/min por cabeza): campo del centro Bordado, si no el parámetro; sin dato → null */
+function velBordado(){const c=CE('bordado');if(c&&+c.puntMin>0)return +c.puntMin;const p=S.params?S.params.puntadasMin:null;return (+p>0)?+p:null}
+function sinVelBordado(o){return (o.ruta||[]).some(p=>p.centro==='bordado')&&!velBordado()}
 function minPrenda(centroId,t){const c=CE(centroId);if(!c||!t||c.area!=='pro')return 0;
-  if(c.medida==='puntadas')return t/(prm('puntadasMin',600));
+  if(c.medida==='puntadas'){const v=velBordado();return v?t/v:0} // sin velocidad configurada: 0 minutos y la orden queda en la bandeja; no se inventa
   if(c.medida==='prendas_h')return 60/t; return t;}
 /* minutos por prenda en un recurso concreto: bordadoras por cabezas y puntadas/min, estampado por prendas en paralelo */
 function minPrendaR(r,centroId,t){const c=CE(centroId);if(!c||!t||c.area!=='pro')return 0;
-  if(c.medida==='puntadas')return t/((r.ppm||prm('puntadasMin',600))*(r.cabezas||1));
+  if(c.medida==='puntadas'){const v=(+r.ppm>0?+r.ppm:velBordado());return v?t/(v*(r.cabezas||1)):0}
   return minPrenda(centroId,t)*(r.vel||1)/(r.mult||1)}
 function etapaOrden(o){const n=faseNum(o.fase);if(n<=0)return'Antes de producir (diseño, compras)';if(n>=8)return'Terminados / empaque';
   const a=S.avance[o.id]||{},fe=faseEstado(o.fase);
@@ -680,7 +685,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box'};
+const ICO_NAV={reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -1017,7 +1022,7 @@ function render(){
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if(need&&!puede(need))page='ordenes';
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -2103,12 +2108,13 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
+  ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}
   ${filtros}
   <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
     <span class="spacer"></span>${S.ordenes.length&&puede('ordenes')?'<button class="btn ghost sm" onclick="vaciar()">Vaciar</button>':''}${puede('config')?' <button class="btn ghost sm" style="color:var(--alerta)" onclick="borrarOperativo()">Borrar datos operativos</button>':''}</h3>
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
     <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-  :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()">Cargar ejemplo</button>`:''}</div>`}</div>
+  :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas desde Odoo <span class="note">qué cambió en cada actualización</span></h3><div class="body">
     ${S.cargas.slice().reverse().slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${c.tipo==='ot'?`órdenes de trabajo: ${c.act} órdenes con centros cerrados${(c.samReal||[]).length?', '+c.samReal.length+' tiempos reales medidos':''}`:`${c.nuevas} nuevas, ${c.act} actualizadas, ${c.cerradas} cerradas`}${(c.coloresNuevos||[]).length?', '+c.coloresNuevos.length+' colores nuevos':''}${(c.catsNuevas||[]).length?', '+c.catsNuevas.length+' categorías nuevas':''}</div>
       ${(c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--alerta);font-size:var(--fs-s)">${c.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${c.alertas.map(esc).join('<br>')}</div></details>`:'<span class="mut" style="font-size:var(--fs-s)">sin alertas</span>'}</div>`).join('')}
@@ -3102,9 +3108,9 @@ function vConfig(el){
   ${CONF.tab==='bordado'?`  <div class="panel"><h3>Máquinas de bordado y estampado <span class="note">cada máquina con su capacidad</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRecEsp('bordado')">Agregar bordadora</button> <button class="btn ghost sm" onclick="addRecEsp('estampado')">Agregar máquina de estampado</button></h3>
    <div class="body"><table><thead><tr><th>Máquina</th><th>Centro</th><th>Capacidad propia</th><th class="num">Personas</th><th class="num">Min/día</th><th class="num">Efic. %</th><th class="num">Min efectivos</th><th>Rinde</th><th>Activa</th><th></th></tr></thead><tbody>
    ${S.recursos.filter(r=>r.centro==='bordado'||r.centro==='estampado').sort((a,b)=>a.centro.localeCompare(b.centro)||a.n.localeCompare(b.n)).map(r=>{const bor=r.centro==='bordado';
-     const capProp=bor?`<span style="white-space:nowrap">cabezas <input type="number" style="width:50px" value="${r.cabezas||1}" onchange="setRec('${r.id}','cabezas',this.value)"> · puntadas/min <input type="number" style="width:65px" value="${r.ppm||''}" placeholder="${prm('puntadasMin',600)}" onchange="setRec('${r.id}','ppm',this.value)"></span>`
+     const capProp=bor?`<span style="white-space:nowrap">cabezas <input type="number" style="width:50px" value="${r.cabezas||1}" onchange="setRec('${r.id}','cabezas',this.value)"> · puntadas/min <input type="number" style="width:65px" value="${r.ppm||''}" placeholder="${velBordado()||'sin velocidad'}" onchange="setRec('${r.id}','ppm',this.value)"></span>`
        :`${tecSel(r)}<div style="white-space:nowrap;margin-top:4px">estaciones en paralelo <input type="number" style="width:50px" value="${r.mult||1}" onchange="setRec('${r.id}','mult',this.value)"> · factor de tiempo <input type="number" step="0.05" style="width:60px" value="${r.vel||1}" title="1 = el tiempo de la técnica; 0,4 = tarda el 40 % (automático)" onchange="setRec('${r.id}','vel',this.value)"></div>`;
-     const rinde=bor?`${num((r.ppm||prm('puntadasMin',600))*(r.cabezas||1)*capDia(r)/1000)} mil puntadas/día`:`${num((r.mult||1)/(r.vel||1),2)}× la técnica`;
+     const rinde=bor?`${num(((+r.ppm>0?+r.ppm:velBordado())||0)*(r.cabezas||1)*capDia(r)/1000)} mil puntadas/día`:`${num((r.mult||1)/(r.vel||1),2)}× la técnica`;
      return `<tr><td><input type="text" value="${esc(r.n)}" onchange="setRec('${r.id}','n',this.value)"></td><td>${esc(nCen(r.centro))}</td><td style="font-size:var(--fs-xs)">${capProp}</td>
        <td class="num"><input type="number" style="width:55px" value="${r.pers}" onchange="setRec('${r.id}','pers',this.value)"></td><td class="num"><input type="number" style="width:60px" value="${r.min}" onchange="setRec('${r.id}','min',this.value)"></td><td class="num"><input type="number" style="width:55px" value="${r.efic}" onchange="setRec('${r.id}','efic',this.value)"></td>
        <td class="num mut">${num(capDia(r))}</td><td class="mut" style="font-size:var(--fs-xs)">${rinde}</td><td><input type="checkbox" ${r.activa?'checked':''} onchange="setRec('${r.id}','activa',this.checked)"></td><td><button class="btn ghost sm" onclick="delRec('${r.id}')">×</button></td></tr>`}).join('')}
@@ -3122,7 +3128,7 @@ function vConfig(el){
 `:''}
   ${CONF.tab==='cal'?`  <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
-    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}</div>
+    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>
@@ -3202,7 +3208,7 @@ function resumenMaq(){if(!S.maquinas.length)return'';const mods=S.recursos.filte
   return `<div class="scroll" style="margin-bottom:12px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Módulo</th>${tipos.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
    ${mods.concat([{id:'',n:'Sin asignar (stock)'}]).map(r=>{const tot=S.maquinas.filter(m=>(m.rec||'')===r.id&&(m.estado||'operativa')==='operativa').length;if(!tot&&r.id)return'';
      return `<tr><td>${esc(r.n)}</td>${tipos.map(t=>`<td class="num">${cnt(r.id,t)||'<span class="mut">·</span>'}</td>`).join('')}<td class="num"><b>${tot}</b></td></tr>`}).join('')}</tbody></table></div>`}
-function addRecEsp(c){S.recursos.push(c==='bordado'?{id:uid(),n:'Bordadora nueva',centro:'bordado',pers:1,min:480,efic:85,dias:5,activa:true,cabezas:1,ppm:prm('puntadasMin',600)}:{id:uid(),n:'Pulpo nuevo',centro:'estampado',pers:2,min:480,efic:85,dias:5,activa:true,mult:1,vel:1,tecnicas:[]});save();render()}
+function addRecEsp(c){S.recursos.push(c==='bordado'?{id:uid(),n:'Bordadora nueva',centro:'bordado',pers:1,min:480,efic:85,dias:5,activa:true,cabezas:1,ppm:null}:{id:uid(),n:'Pulpo nuevo',centro:'estampado',pers:2,min:480,efic:85,dias:5,activa:true,mult:1,vel:1,tecnicas:[]});save();render()}
 function addTec(){S.tecnicas.push({id:uid(),n:'Nueva técnica',t:1,maq:''});save();render()}
 function tecSel(r){return `<div class="chips" style="max-width:260px">${S.tecnicas.map(t=>`<span class="chip ${(r.tecnicas||[]).includes(t.id)?'on':''}" onclick="togTec('${r.id}','${t.id}')">${esc(t.n)}</span>`).join('')||'<span class="mut">sin técnicas</span>'}</div>`}
 function togTec(rid,tid){const r=R(rid);r.tecnicas=r.tecnicas||[];const i=r.tecnicas.indexOf(tid);if(i>=0)r.tecnicas.splice(i,1);else r.tecnicas.push(tid);save();render()}
@@ -3265,6 +3271,47 @@ function setCosto(k,v){S.params.costos=S.params.costos||{};S.params.costos[k]=+v
 function costoMin(centro){const c=S.params.costos||{};return centro==='corte'?c.minCorte||0:centro==='empaque'?c.minEmp||0:centro==='modulos'?c.minConf||0:c.minConf||0}
 function setPoli(rid,kid,v){const r=R(rid);if(!r)return;r.poli=r.poli||{};if(v===''||v==null)delete r.poli[kid];else r.poli[kid]=Math.max(0,+v);save();render()}
 function setCal(a,v){if(!S.params.cal)S.params.cal={};S.params.cal[a]=+v;save();render()}
+/* ---------- Stock de tela cruda (Planificación textil): requerido por tela y mes de las órdenes liberadas, stock a mano, a tejer ---------- */
+let STK={mes:null};
+function stockTela(){if(!S.params.stockTela)S.params.stockTela={};return S.params.stockTela}
+function setStockTela(tid,v){const st=stockTela();const s=String(v==null?'':v).trim();
+  if(s===''){delete st[tid]}else{st[tid]={kg:+s.replace(',','.')||0,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}}
+  save();render()}
+/* fecha en que la orden entra a corte: la programada si el motor la tiene; si no, estimada = entrega − lead (la misma regla que
+   usa el motor para la fecha requerida de tela), y se marca como estimada */
+function fechaCorte(o,P){const ro=(P&&P.ordenes[o.id])||{};const pc=(ro.pasos||[]).find(p=>p.centro==='corte');if(pc&&pc.ini)return{f:pc.ini,est:false};
+  if(!o.fecha)return null;return{f:dsum(o.fecha,-((o.ruta||[]).length?leadDias(o):5)),est:true}}
+/* requerido de tela cruda: órdenes abiertas, liberadas a tela, con etapa de tejeduría y todavía no tejidas. El mes es el de
+   (entrada a corte − semanas de anticipación de tejeduría), parámetro editable en Configuración */
+function requeridoTela(){const P=S.ordenes.length?programar():null;const ant=prm('tejAnticipSem',2)*7;const out={};
+  S.ordenes.filter(o=>abierta(o)&&liberada(o,'tela')&&etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida)).forEach(o=>{
+    const fc=fechaCorte(o,P);if(!fc)return;const mes=dsum(fc.f,-ant).slice(0,7);
+    (o.telas||[]).filter(t=>!t.ext&&t.kg>0&&T(t.tela)).forEach(t=>{const k=out[t.tela]=out[t.tela]||{};const m=k[mes]=k[mes]||{kg:0,ords:new Set(),est:0};m.kg+=kgCrudo(t.tela,t.kg);m.ords.add(o.id);if(fc.est)m.est++})});
+  return out}
+function vStock(el){const req=requeridoTela();const st=stockTela();const meses=[...new Set(Object.values(req).flatMap(k=>Object.keys(k)))].sort();
+  const mes=STK.mes||(meses.includes(hoy().slice(0,7))?hoy().slice(0,7):(meses[0]||hoy().slice(0,7)));
+  const ant=prm('tejAnticipSem',2);const hoyMs=Date.now();
+  const filas=S.telas.filter(t=>req[t.id]&&req[t.id][mes]).map(t=>{const r=req[t.id][mes];const s=st[t.id];const dias=s?Math.floor((hoyMs-new Date(s.ts).getTime())/864e5):null;
+    return{t,req:r.kg,ords:r.ords.size,est:r.est,stock:s?s.kg:null,ts:s?s.ts:null,dias,u:s?s.u:'',aTejer:s?Math.max(0,r.kg-s.kg):null}}).sort((a,b)=>b.req-a.req);
+  const conStock=filas.filter(f=>f.stock!=null),sinStock=filas.filter(f=>f.stock==null);
+  const fmtTs=ts=>new Date(ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=`<div class="pagehead"><h2>Stock de tela cruda</h2><span class="spacer"></span>
+    <div class="row" style="align-items:center"><label style="margin:0">Mes</label><select onchange="STK.mes=this.value;render()">${(meses.length?meses:[mes]).map(m=>`<option value="${m}" ${m===mes?'selected':''}>${m}</option>`).join('')}</select></div></div>
+  <p class="lede">Kilos crudos que piden las órdenes <b>liberadas a tela</b> que entran a corte con <b>${ant} semana${ant===1?'':'s'} de anticipación</b> (parámetro en Configuración → Calendario y parámetros). Escribe el stock que tienes por tela; "a tejer" = requerido − stock, nunca negativo. Stock sin escribir = desconocido (no cero): esas telas van aparte.</p>
+  <div class="panel"><h3>Telas con stock registrado <span class="note">${conStock.length} telas · a tejer ${num(conStock.reduce((a,f)=>a+f.aTejer,0))} kg</span></h3><div class="body">
+   ${conStock.length?`<table><thead><tr><th>Tela</th><th class="num">Requerido (kg)</th><th class="num">Órdenes</th><th class="num">Stock (kg)</th><th>Registrado</th><th class="num">A tejer (kg)</th></tr></thead><tbody>
+   ${conStock.map(f=>`<tr><td>${esc(f.t.n)}</td><td class="num">${num(f.req)}${f.est?` <span class="mut" title="${f.est} orden(es) sin fecha de corte programada: se estimó entrega − lead">≈</span>`:''}</td><td class="num">${f.ords}</td>
+     <td class="num"><input type="number" step="0.1" style="width:90px" value="${f.stock}" onchange="setStockTela('${f.t.id}',this.value)"></td>
+     <td class="mut" style="font-size:var(--fs-xs)">${fmtTs(f.ts)}${f.u?' · '+esc(f.u):''}${f.dias>7?` <span class="tag t-alerta" title="Stock registrado hace ${f.dias} días">dato viejo · ${f.dias} d</span>`:''}</td>
+     <td class="num"><b>${num(f.aTejer)}</b></td></tr>`).join('')}</tbody></table>`:'<p class="mut">Ninguna tela requerida este mes tiene stock registrado.</p>'}</div></div>
+  <div class="panel"><h3>Telas sin stock registrado <span class="note">${sinStock.length} telas · requerido ${num(sinStock.reduce((a,f)=>a+f.req,0))} kg — no se asume que haya que tejerlo todo</span></h3><div class="body">
+   ${sinStock.length?`<table><thead><tr><th>Tela</th><th class="num">Requerido (kg)</th><th class="num">Órdenes</th><th class="num">Stock (kg)</th><th></th></tr></thead><tbody>
+   ${sinStock.map(f=>`<tr><td>${esc(f.t.n)}</td><td class="num">${num(f.req)}${f.est?' <span class="mut">≈</span>':''}</td><td class="num">${f.ords}</td>
+     <td class="num"><input type="number" step="0.1" style="width:90px" placeholder="desconocido" onchange="setStockTela('${f.t.id}',this.value)"></td><td class="mut" style="font-size:var(--fs-xs)">escribe el stock para calcular a tejer</td></tr>`).join('')}</tbody></table>`:'<p class="mut">Todas las telas requeridas este mes tienen stock registrado.</p>'}</div></div>
+  ${meses.length>1?`<div class="panel"><h3>Requerido por tela y mes <span class="note">kg crudos, todas las órdenes liberadas</span></h3><div class="body scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Tela</th>${meses.map(m=>`<th class="num">${m}</th>`).join('')}</tr></thead><tbody>
+   ${S.telas.filter(t=>req[t.id]).map(t=>`<tr><td>${esc(t.n)}</td>${meses.map(m=>`<td class="num">${req[t.id][m]?num(req[t.id][m].kg):'<span class="mut">·</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`:''}
+  <p class="mut" style="font-size:var(--fs-xs)">Solo entran órdenes liberadas a tela (Dirección → Liberación, o fase de Odoo 2 en adelante) que aún no están tejidas. El motor de programación sigue tejiendo los kg completos de cada orden: el "a tejer" de esta pantalla todavía no descuenta el stock en el programa de tejeduría (pendiente de decisión).</p>`}
+
 /* ---------- Recarga Parte 2: edición de las 3 tablas sembradas (Configuración → Órdenes y materiales) ---------- */
 function addFaseMapeoRow(){faseMapeo().push({fase:'',sistema:SISTEMA_FASES[0],pendiente:true});save();render()}
 function setFaseMapeoRow(i,k,v){faseMapeo()[i][k]=v;save()}
@@ -3300,7 +3347,7 @@ function addRec(area){const c=S.centros.find(x=>x.area===area);if(!c)return;
   if(area==='tej')Object.assign(b,{kgh:10,horas:24});else if(area==='tin')Object.assign(b,{cap:100,capPique:0,horas:24});else Object.assign(b,{pers:10,min:480,efic:85});
   S.recursos.push(b);save();render()}
 function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;
-  if(k==='puntMin'&&id==='bordado')S.params.puntadasMin=+v||S.params.puntadasMin; // el motor (minPrenda) lee la velocidad de aquí: una sola fuente
+  if(k==='puntMin'&&id==='bordado')S.params.puntadasMin=(+v>0)?+v:null; // una sola fuente; vaciar el centro vacía también el parámetro // el motor (minPrenda) lee la velocidad de aquí: una sola fuente
   save();render()}
 function addCentro(){S.centros.push({id:uid(),n:'Nuevo centro',area:'pro',medida:'min'});save();render()}
 function delCentro(id){if(S.recursos.some(r=>r.centro===id)){alert('Primero quita o mueve los recursos de este centro.');return}S.centros=S.centros.filter(c=>c.id!==id);save();render()}
@@ -3494,7 +3541,7 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
   if(id){const ex=S.ordenes.find(x=>x.id===id);if(ex)['cliente','depto','odc','proyecto','colorOdoo','precio','prodTot','estado','lib','recursoFijo','terminadaF'].forEach(k=>{if(ex[k]!==undefined&&o[k]===undefined)o[k]=ex[k]})}
   if(!o.estado)o.estado='plan';
   const bordadoAplica=(o.ruta||[]).some(p=>p.centro==='bordado');const cBor=CE('bordado');
-  o.pendBordadoVel=!!(bordadoAplica&&(!cBor||!(cBor.puntMin>0)));
+  o.pendBordadoVel=!!(bordadoAplica&&!velBordado());
   if(id)Object.assign(S.ordenes.find(x=>x.id===id),o);else S.ordenes.push(Object.assign({id:uid()},o));
   save();cerrar();render()}
 
@@ -3611,7 +3658,7 @@ function planTarea(rows,nombre){
       cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
       tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
       vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
-      pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!((CE('bordado')||{}).puntMin>0),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+      pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
@@ -3655,7 +3702,7 @@ function reporteTarea(){const C0=S.params.tareaCarga;if(!C0)return null;const HO
   const sinTiempo={};noHist.forEach(o=>(o.sinTiempo||[]).forEach(c=>{sinTiempo[c]=(sinTiempo[c]||0)+1}));
   return{carga:C0,mesHoy,totales:{cargadas:ords.length,historia:ords.filter(o=>o.historia).length,vencidas:venc.length,vencidasPrendas:venc.reduce((a,o)=>a+o.cant,0),vencidasMin:venc.reduce((a,o)=>a+minRuta(o,o.ruta),0),vencPorCentro,
     sinCargaPorGrupo:porGrupo,conTecnica:conTec,conPuntadas:conPunt,catSinMapeo:catSin,catSinMapeoDetalle:C0.catSinMapeo,telaSinClasificar:telaSin,sinTelaKg:noHist.filter(o=>o.sinTelaKg).length,origenTela:cuentaPor(noHist,o=>o.origenTela||'(sin tela en kg)'),
-    contradicciones:C0.contradicciones,devoluciones:noHist.filter(o=>o.devolucion).length,bloqueadas:noHist.filter(o=>o.bloqueada).length,pendBordadoVel:noHist.filter(o=>o.pendBordadoVel).length,sinTiempo,tecnicasNoEncontradas:C0.tecnicasNoEncontradas,
+    contradicciones:C0.contradicciones,devoluciones:noHist.filter(o=>o.devolucion).length,bloqueadas:noHist.filter(o=>o.bloqueada).length,pendBordadoVel:noHist.filter(o=>sinVelBordado(o)).length,sinTiempo,tecnicasNoEncontradas:C0.tecnicasNoEncontradas,
     esCola:noHist.filter(o=>o.esCola).length},
     porMes:cuentaMes,porEstadoOP:C0.porEstadoOP,porFase:C0.porFase,fasesNoCalzan:C0.fasesNoCalzan,fasesTablaSinUso:C0.fasesTablaSinUso,nivel2NoRec:C0.nivel2NoRec,nivel3NoRec:C0.nivel3NoRec,duplicados:C0.duplicados,sinFecha:C0.sinFecha,excluidas:C0.excluidas,
     capMes,cargaCompleta:carga('completa'),cargaPendiente:carga('pendiente'),kgCompleta:kg('completa'),kgPendiente:kg('pendiente'),puntadasMin:S.params.puntadasMin,puntMinCentro:(CE('bordado')||{}).puntMin||null}}
@@ -3923,7 +3970,7 @@ function procesarPaste(){const txt=document.getElementById('f-paste').value.trim
     S.ordenes.push({id:uid(),op,ref,cat:k.id,color:cc.id,cant:q,fecha:/^\d{4}-\d{2}-\d{2}$/.test(fec)?fec:dsum(hoy(),21),prio:+prio||3,telas,ruta,estado:'plan'});n++});
   save();cerrar();render();
   alert(n+' órdenes cargadas.'+(nuevos.length?' Se crearon y hay que completar: '+nuevos.join(', ')+'.':''))}
-function demo(){if(!puede('ordenes'))return;
+function demo(){if(!puede('ordenes'))return;if(S.ordenes.length){alert('El ejemplo solo se puede cargar con la base sin órdenes.');return}if(!confirm('Esto carga 5 órdenes FICTICIAS de ejemplo (OP-1001 a OP-1005) en la base. ¿Seguro? Solo para probar; no usar en producción.'))return;
   const hija=n=>S.categorias.find(k=>k.padre&&k.n===n)||S.categorias.find(k=>k.padre)||S.categorias[0];const col=n=>S.colores.find(c=>c.n===n)||S.colores[0];
   const mk=(origen,dias,opts,sam)=>armarRuta(origen,dias,opts,[]).map(p=>sam[p.centro]!=null?{centro:p.centro,t:sam[p.centro]}:p);
   const cam={corte:0.9,modulos:4.1,empaque:0.8},polo={corte:1.1,modulos:7.5,botones:0.5,empaque:0.9},hood={corte:1.6,modulos:11,bordado:2.2,empaque:1.2};
