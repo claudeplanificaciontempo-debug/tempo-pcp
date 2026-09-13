@@ -114,7 +114,9 @@ corte (5) → maquila externa (6) → servicios (7) → confección (8) → term
 - **Tintorería sí trabaja por orden** (baño = órdenes + color + kilos), pero se registra en el armado de baños del
   sistema, no en las OT. Solo los baños confirmados consumen máquina. Tolerancias `tol`/`tolGrande` están en 0 (ahora sí
   se respetan). Cola 100 órdenes / 6.784 kg en "Armar baños" tras las liberaciones.
-- Las OT solo mandan sobre corte, estampado, etiquetas, bordado, confección y empaque. Corte terminado implica tela
+- Las OT solo mandan sobre corte, estampado, etiquetas, bordado, confección, plancha, botones y empaque (tabla 6:
+  PULIDO cierra confección; SERVICIOS Y TERMINADOS cierra plancha y botones; ETIQUETADO → etiquetas; columnas
+  "cierra también" y "solo cierra"). Corte terminado implica tela
   lista.
 
 ## 7 · Datos operativos declarados por la usuaria (pendientes de configurar donde se indica)
@@ -143,10 +145,10 @@ corte (5) → maquila externa (6) → servicios (7) → confección (8) → term
   fecha en bandeja, 3 números duplicados en 7 filas reportados, 3.036 fuera de rango), con materiales, origen de tela
   y ruta pendiente. Recargada el 13-sep tras apagar "secuencial".
 - Órdenes de trabajo: 666 órdenes cruzan, 771 centros cerrados, 204 contradicciones (gana la OT), 418 órdenes con OT
-  "esperando componentes", 5.768 filas de bodegas ignoradas, ETIQUETADO (16) no mapeado, PULIDO y SERVICIOS Y TERMINADOS
-  sin centro. Ver `CARGA_ORDENES_DE_TRABAJO_REPORTE.md`.
+  "esperando componentes", 5.768 filas de bodegas ignoradas. Tras asignar ETIQUETADO, PULIDO y SERVICIOS Y TERMINADOS:
+  1.003 centros cerrados, 216 contradicciones. Ver `CARGA_ORDENES_DE_TRABAJO_REPORTE.md`.
 - Carga programada por el motor (sep, minutos): confección 475.898 · corte 10.837 · estampado 3.167 · etiquetas 1.406 ·
-  botones 22.817 · empaque 22.589 · bordado 0 · lavado/plancha 0. Liberadas: 408 tela / 293 corte. Tejeduría 90 corridas.
+  botones 21.759 · empaque 22.589 · bordado 0 · lavado/plancha 0. Liberadas: 408 tela / 293 corte. Tejeduría 90 corridas.
 
 ## 9 · Auditoría de reglas fijas (`AUDITORIA_REGLAS_FIJAS.md`, 187 puntos) y qué se corrigió
 
@@ -167,7 +169,8 @@ vacían (solo la de fases está protegida), `ESTADOS_OP_ABIERTOS` y contradicci�
    `pctEstimado` intervenga; pantallas del Paso 8 (agregar/quitar por orden con impacto) y 8b (% real).
 3. Bandejas pendientes de la Parte 1 (Paso 9 categorías sin operaciones, Paso 10 plan mensual con bases explícitas y
    "pendiente de liberar", Paso 11 confirmación de ruta antes de liberar) y "avance incierto" (4 Calidad Produccion).
-4. Tabla 6: decidir ETIQUETADO, PULIDO y SERVICIOS Y TERMINADOS. Tiempos a mano de las 14 categorías sin operaciones.
+4. Tiempos a mano de las 14 categorías sin operaciones. Decidir si las 1.846 OT de SERIGRAFIA sin operación son estampado
+   o etiquetado (impacto 687 min). Las 7 órdenes Stand by de PRICE CLUB sin rastro de producción.
 5. Tejeduría: descontar stock en el programa; carga de stock por Excel. Método de la macro.
 6. Resto de la auditoría (sección 9) según prioridad de la usuaria; documentar qué sistema usa "esperando componentes".
 
