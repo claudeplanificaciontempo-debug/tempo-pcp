@@ -109,3 +109,50 @@ La lista por orden está en Órdenes → Reporte OT; cada orden guarda `esperand
 3. **SERIGRAFIA sin texto en Operaciones** (1.846 filas): quedaron como estampado por la fila por defecto; con la
    columna vacía no hay forma de saber si eran etiquetado.
 4. Bordado sigue en 0 minutos hasta la ficha de velocidad.
+
+---
+
+## 8 · Ajuste de la tabla 6 (asignaciones de la usuaria) — 2026-09-13, 18:50
+
+Aplicado en producción y verificado con recarga desde la nube. Se volvió a cargar el mismo archivo de OT (el archivo es
+la verdad; reemplaza lo anterior): 666 órdenes, **1.003 centros cerrados** (antes 771), 216 contradicciones (antes 204).
+
+| Centro de trabajo Odoo | Ahora | Cómo |
+|---|---|---|
+| ETIQUETADO (16 filas) | → etiquetas | 1 orden del sistema con etiquetas terminadas por esta vía |
+| PULIDO (3.427 filas) | **cierra confección** (centro modulos), "solo cierra" | una OT de pulido terminada da la confección por hecha; una en proceso no reabre nada. **5 órdenes** cerraron confección por pulido |
+| SERVICIOS Y TERMINADOS (1.416 filas) | **cierra plancha y botones** ("cierra también: botones", "solo cierra") | **116 órdenes** con plancha y botones terminados |
+
+Columnas nuevas en la tabla 6: **cierra también** (una OT cierra varios centros) y **solo cierra** (solo la OT terminada
+cuenta; en proceso / para hacer no reabren el centro). Ya no queda ningún centro de trabajo del archivo sin fila ni
+sin centro.
+
+**Recomendación sobre PULIDO** (pregunta de la usuaria): dejarlo **solo como cierre de confección**, sin crear centro
+propio. Un centro sin tiempo estándar añadiría a cada ruta un paso de 0 minutos que no carga nada y que el motor
+tendría que secuenciar; lo que aporta pulido es saber que la prenda ya salió de confección, y eso lo da el cierre. Si
+algún día se quiere medir pulido, se crea con su minuto estándar y una fila propia en la tabla 6.
+
+**Carga por centro antes → después de este ajuste (minutos, motor):** botones septiembre **22.817 → 21.759** (−1.058, las
+116 órdenes con botones terminados por servicios); plancha 0 → 0 (sin minuto estándar); confección, corte, estampado,
+etiquetas y empaque sin cambio (las 5 órdenes cerradas por pulido no tenían confección pendiente en el programa).
+
+## 9 · Correcciones a este reporte
+
+- **Stand by**: en la sección 3 dice "21 son Stand by" contando **centros**; son **7 órdenes** (tres centros por orden),
+  las 7 en Stand by que hay en el sistema. Todas de **PRICE CLUB**, Estado OP `draft`, entrega mayo–junio 2026, y todas
+  sus OT en "esperando componentes": la fase dice facturada y no hay rastro de producción (posible borrado de datos):
+
+| Orden | Categoría | Prendas | Entrega |
+|---|---|---:|---|
+| WH/MO/27097 | CHOMPA / Capucha Cierre | 37 | 2026-05-21 |
+| WH/MO/27129 | CHOMPA / Capucha Cierre | 21 | 2026-05-21 |
+| WH/MO/27131 | CAMISETAS / Level 1 | 3 | 2026-05-21 |
+| WH/MO/27160 | CAMISETAS / Level 1 | 68 | 2026-05-21 |
+| WH/MO/27169 | JOGGER / Jogger | 9 | 2026-05-21 |
+| WH/MO/27480 | POLOS / Polo Moda | 2 | 2026-06-05 |
+| WH/MO/28076 | POLOS / Polo Basica | 15 | 2026-06-22 |
+
+- **SERIGRAFIA sin texto en Operaciones (1.846 filas)**, hoy tratadas como estampado — impacto si fueran etiquetado (no
+  se cambió): tocan 331 órdenes del sistema, 100 con esa OT terminada, 31 de ellas abiertas. 11 órdenes recuperarían el
+  paso de estampado (**687 minutos** volverían a la carga) y 1 orden cerraría etiquetas (22 minutos). De las 31, 13
+  traen técnica (probable estampado real) y 18 no (probable etiquetado). Con la columna vacía no hay forma de saberlo.
