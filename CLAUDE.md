@@ -146,14 +146,22 @@ todo lo cargado: kg, liberados, tejidos, por tejer. Se teje por volumen.
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).
 
-**Operaciones:** el catálogo se muestra por categoría padre (`o.catP`) →
-familia de operación (`o.famOp`) → operaciones (sección, máquina, sec, tiempo),
-con buscador (`OPV`). `LMO_BASE` lleva incorporada la hoja LMO de
-OPERACIONES.xlsx (11-sep-2026, 595 filas); `cargarLMOBase()` la aplica con
-`planLMO()`/`aplicarLMO()` (reemplaza todas las operaciones). `centroLMO()`
-mapea los códigos COR/CON/EMP/SER/BOR/TER a centros PCP (TER → terminados,
-plancha, botones… el primero que exista). "Subir otro Excel" usa el mismo
-parser y elige la hoja que tenga columnas Operación y Centro.
+**Operaciones (desde el 12-sep-2026):** se cargan desde la hoja LMO de
+OPERACIONES.xlsx con `mCargarLMO()`/`planLMO()`/`aplicarLMO()`; el centro
+TEMPO de cada fila sale de la tabla editable familia de operación → centro
+(`reglasFamCentro`, Configuración → Operaciones → Mapeo) y las categorías se
+vinculan con la tabla padre/hija → categoría LMO (`mapaCatLMO`). Ya no existe
+`LMO_BASE` ni `cargarLMOBase()`.
+
+**LEER PRIMERO `TRASPASO_TEMPO_PCP.md`** (versión 2026-09-13): principio
+"lo configurado manda sobre el código", las 7 tablas de Configuración →
+Órdenes y materiales, las 42 fases y sus grupos (CD = colas, línea del corte),
+las dos liberaciones (textil desde el grupo textil, producción desde
+planificación), el tramo estampado/bordado/confección NO secuencial resuelto
+por las órdenes de trabajo de Odoo, tejeduría contra stock con 2 semanas de
+anticipación, tintorería por armado de baños, lavado/plancha/bordado
+pendientes de configurar, la auditoría de 187 reglas fijas y los pendientes.
+Donde este archivo contradiga al traspaso, manda el traspaso.
 
 **Perfiles (tabla `perfiles` en Supabase):** `rol`, `area` (piso: tej/tin/pro),
 `subarea` (piso en producción: corte = corte+estampado+bordado · confeccion =
