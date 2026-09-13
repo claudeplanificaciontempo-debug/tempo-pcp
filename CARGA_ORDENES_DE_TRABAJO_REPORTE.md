@@ -18,9 +18,9 @@ Datos que quedaron guardados: tablas 6 y 7 con la siembra confirmada por ti; `o.
 
 | | Órdenes |
 |---|---:|
-| Órdenes del sistema (Parte 2) | 691 |
+| Órdenes del sistema (Parte 2) | 691 (mismo número que en todos los reportes: 101 historia + 590 abiertas) |
 | **Cruzan con el archivo** | **666** |
-| No cruzan (no tienen OT en el archivo) | 25 |
+| No cruzan (no tienen OT en el archivo) | 25 — son WH/MO/29251 a 29274 y 29277, todas en 8Empaque, las más nuevas del sistema: el export de OT parece anterior a su creación; para ellas sigue mandando solo la fase |
 | Órdenes del archivo que no están en el sistema (cerradas o fuera del alcance de la Parte 2) | 3.320 |
 | Órdenes con al menos un centro **terminado** | 305 |
 
