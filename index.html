@@ -590,7 +590,7 @@ function minPrendaR(r,centroId,t){const c=CE(centroId);if(!c||!t||c.area!=='pro'
   if(c.medida==='puntadas'){const v=(+r.ppm>0?+r.ppm:velBordado());return v?t/(v*(r.cabezas||1)):0}
   return minPrenda(centroId,t)*(r.vel||1)/(r.mult||1)}
 function etapaOrden(o){const n=faseNum(o.fase);if(n<=0)return'Antes de producir (diseño, compras)';if(n>=8)return'Terminados / empaque';
-  const a=S.avance[o.id]||{},fe=faseEstado(o.fase);
+  const a=S.avance[o.id]||{},fe=faseEstado(o.fase,o);
   if(!(a.tejida||fe.tejida))return'Tejeduría';
   if(!(a.tinturada||fe.tinturada))return'Tintorería';
   return n<=3?'Tela lista, esperando corte':n===4?'Corte':n===5?'Maquila':'Confección y servicios'}
@@ -598,8 +598,8 @@ const ETAPA_IR={'Antes de producir (diseño, compras)':'ordenes','Tejeduría':'t
 function irEtapa(e){const c=ETAPA_IR[e];if(!c)return;if(c==='liberacion'){LIB.et='corte';ir('liberacion')}else if(c==='tejeduria'||c==='tintoreria'||c==='ordenes'){ir(c)}else{CEN.id=c;ir('centro')}}
 function prioCentro(o){const p=o.progCentro||{};let m=3;Object.values(p).forEach(x=>{if(x&&x.pri&&x.pri<m)m=x.pri});return m}
 /* lo que falta por hacer de una orden según fase y avance */
-function kgPendiente(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);if(a.tejida||fe.tejida||a.tinturada||fe.tinturada||a.lista)return 0;return (o.telas||[]).filter(t=>!t.ext).reduce((x,t)=>x+kgCrudo(t.tela,t.kg),0)}
-function minPendiente(o){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase);return (o.ruta||[]).reduce((x,p)=>{const c=CE(p.centro);if(!c||c.area!=='pro')return x;const hechas=fe.hechos.includes(p.centro)?o.cant:(ac[p.centro]||0);return x+Math.max(0,o.cant-hechas)*minPrenda(p.centro,p.t)},0)}
+function kgPendiente(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(a.tejida||fe.tejida||a.tinturada||fe.tinturada||a.lista)return 0;return (o.telas||[]).filter(t=>!t.ext).reduce((x,t)=>x+kgCrudo(t.tela,t.kg),0)}
+function minPendiente(o){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);return (o.ruta||[]).reduce((x,p)=>{const c=CE(p.centro);if(!c||c.area!=='pro')return x;const hechas=fe.hechos.includes(p.centro)?o.cant:(ac[p.centro]||0);return x+Math.max(0,o.cant-hechas)*minPrenda(p.centro,p.t)},0)}
 function TEC(id){return S.tecnicas.find(t=>t.id===id)}
 const COLOR_NOMBRES=[[/negro|black|onyx|carbon|ebony|jet/,'#1d1f24'],[/blanco|white|bleach|snow|marshmallow|crudo|egret|birch|tofu|natural|ivory|ivor/,'#ece7dc'],[/navy|marino|naval|midnight|indigo|dark sapphire|black iris|azul marino/,'#20315a'],
   [/celeste|light blue|sky|blue light|surf spray|pastel blue|vapor|azul claro/,'#9cc4e0'],[/azul|blue|cadet|cobalt|denim|ocean|kentucky|french blue|suede blue|loch/,'#3a63a8'],[/turquesa|turquoise|teal|aqua|seafoam|celestial/,'#2f8f98'],
@@ -703,7 +703,17 @@ const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
    más los centros que la fila excluye. Tejida / tinturada / lista: grupo posterior a textil = todo hecho; grupo textil =
    columna "tela" de la fila; grupo anterior = nada. Sin fila en la tabla → nada hecho y sinFila:true (se reporta; no hay
    fallback por dígito ni por texto). */
-function faseEstado(f){const fila=filaFaseDe(f);const og=fila?ordenGrupo(fila.sistema):-1;
+/* un centro está hecho "por fase" solo si hay un tramo SECUENCIAL entre su etapa y la fase: si su propio grupo es secuencial
+   (haberlo pasado significa que terminó) o si un grupo secuencial posterior a su etapa ya se alcanzó. Los grupos no
+   secuenciales (tabla 5, casilla "secuencial" apagada: p. ej. estampado/bordado/confección, cuyo orden varía por orden)
+   no dan nada por hecho: eso solo lo dice la orden de trabajo de Odoo. */
+function hechoPorFase(oe,desde){if(oe<0||oe>=desde)return false;const gs=faseGrupos();const sec=g=>g&&g.secuencial!==false;
+  const propio=gs.find(g=>g.orden===oe);if(sec(propio))return true;return gs.some(g=>sec(g)&&g.orden>oe&&g.orden<=desde)}
+function faseEstado(f,o){const base=faseEstadoTabla(f);if(!o||!o.ot)return base;
+  // la orden de trabajo manda: terminado → hecho aunque la fase no lo diga; en proceso / para hacer → pendiente aunque la fase lo diera por hecho
+  const hechos=new Set(base.hechos);Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else hechos.delete(c)});
+  return Object.assign({},base,{hechos:[...hechos]})}
+function faseEstadoTabla(f){const fila=filaFaseDe(f);const og=fila?ordenGrupo(fila.sistema):-1;
   if(!fila||og<0)return{tejida:false,tinturada:false,lista:false,hechos:[],sinFila:true};
   const oTex=ordenGrupo('textil');const post=og>oTex;const tela=fila.tela||'';
   const tejida=post||(og===oTex&&(tela==='tejida'||tela==='tinturada'||tela==='lista'));
@@ -713,7 +723,7 @@ function faseEstado(f){const fila=filaFaseDe(f);const og=fila?ordenGrupo(fila.si
   if(fila.sinCarga)return{tejida,tinturada,lista,hechos:pro,sinFila:false};
   const desde=(fila.desde&&ordenGrupo(fila.desde)>=0)?ordenGrupo(fila.desde):og;
   const excl=String(fila.excluye||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const hechos=pro.filter(cid=>{if(excl.includes(cid))return true;const oe=ordenGrupo(centroEtapaDe(cid));return oe>=0&&oe<desde});
+  const hechos=pro.filter(cid=>{if(excl.includes(cid))return true;const oe=ordenGrupo(centroEtapaDe(cid));return hechoPorFase(oe,desde)});
   return{tejida,tinturada,lista,hechos,sinFila:false}}
 
 /* qué etapas previas lleva la orden según su ruta; sin ruta = tejeduría y tintorería propias */
@@ -768,7 +778,7 @@ function programar(){
 
   /* 1 · Tejeduría: una corrida por tela (todos los kilos pendientes juntos, sin cambios entre órdenes) */
   ords.forEach(o=>{const ro=res.ordenes[o.id]={finTej:null,finTin:null,finPro:null,pasos:[],telas:[]};
-    const et=etapas(o),fe=faseEstado(o.fase),av=S.avance[o.id]||{};
+    const et=etapas(o),fe=faseEstado(o.fase,o),av=S.avance[o.id]||{};
     ro.telaDesde=et.provStep?dsum(ini,et.prov):ini;
     ro.tejSkip=!et.tej||av.tejida||fe.tejida||av.reproc;
     if(ro.tejSkip&&et.tej){ro.finTej=dsum(ini,-1);ro.tejidaHecha=true;ro.telaDesde=ini}
@@ -811,7 +821,7 @@ function programar(){
   ords.forEach(o=>{
     if(!etapas(o).tin)return;
     const avo=S.avance[o.id]||{};const roT=res.ordenes[o.id];
-    if(avo.tinturada||(faseEstado(o.fase).tinturada&&!avo.reproc)){roT.finTin=dsum(ini,-1);roT.tinturadaHecha=true;return}
+    if(avo.tinturada||(faseEstado(o.fase,o).tinturada&&!avo.reproc)){roT.finTin=dsum(ini,-1);roT.tinturadaHecha=true;return}
     if(estadoTin(o)==='maquina')roT.enMaquinaTin=true; // fase Tintorería en Odoo: se informa, pero sigue disponible para armar hasta marcarla hecha
     if(roT.sinLib==='tela')return; // sin liberar tela: ni se teje ni se tiñe
     if(!liberada(o,'tin')){roT.sinLib='tela';return} // tela ya tejida pero sin liberar: espera la firma para entrar a baños
@@ -955,7 +965,7 @@ function programar(){
 
   /* 3 · Producción según ruta */
   ords.forEach(o=>{
-    const ro=res.ordenes[o.id],av=S.avance[o.id]||{},et=etapas(o),fe=faseEstado(o.fase);
+    const ro=res.ordenes[o.id],av=S.avance[o.id]||{},et=etapas(o),fe=faseEstado(o.fase,o);
     if(!liberada(o,'tela')){ro.bloqueo='sin liberar';return}
     if(!(av.lista||fe.lista)&&((et.tej&&ro.sinLib==='tela')||(et.tin&&!ro.finTin&&!ro.tinturadaHecha))){
       ro.bloqueo=ro.sinLib==='tela'?'sin liberar tela':ro.banoPend?'baño pendiente de decisión':'tela pendiente';return}
@@ -1152,7 +1162,7 @@ function vPanorama(el){
    <div class="panel"><h3>Última carga de Odoo</h3><div class="body" style="font-size:var(--fs-s)">
     ${ultima?`<div><b>${new Date(ultima.ts).toLocaleString('es-EC')}</b> · ${esc(ultima.usuario||'')}</div><div class="mut">${ultima.tipo==='ot'?'órdenes de trabajo: '+ultima.act+' órdenes con centros cerrados':ultima.nuevas+' nuevas, '+ultima.act+' actualizadas, '+ultima.cerradas+' cerradas'}</div>
       ${(ultima.alertas||[]).length?`<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--alerta)">${ultima.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${ultima.alertas.slice(0,15).map(esc).join('<br>')}</div></details>`:''}`:'<span class="mut">Todavía no se ha cargado desde Odoo.</span>'}
-    ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mOdoo()">Actualizar desde Odoo</button> <button class="btn ghost sm" onclick="mOT()">Órdenes de trabajo</button></div>`:''}</div></div>
+    ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mOdoo()">Actualizar desde Odoo</button> <button class="btn ghost sm" onclick="mOT()">Órdenes de trabajo</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button></div>`:''}</div></div>
   </div>`;
 }
 function ir(p){const a=document.querySelector('nav a[data-p="'+p+'"]');if(a)a.click()}
@@ -1519,7 +1529,7 @@ function vWIP(el){
   // producción
   const grupos=[['corte','Corte',['corte']],['estampado','Estampado y bordado',['estampado','bordado']],['confeccion','Confección',['modulos']],['terminados','Terminados',['etiquetas','botones','lavado','plancha']],['empaque','Empaque',['empaque']]];
   const agg={};grupos.forEach(([k])=>agg[k]={pz:0,min:0,ops:new Set()});
-  ords.forEach(o=>{const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase);
+  ords.forEach(o=>{const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);
     (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(!c||c.area!=='pro')return;const grp=grupos.find(g=>g[2].includes(p.centro));if(!grp)return;
       const hechas=fe.hechos.includes(p.centro)?o.cant:(ac[p.centro]||0);const pend=Math.max(0,o.cant-hechas);if(pend<=0)return;
       agg[grp[0]].pz+=pend;agg[grp[0]].min+=pend*minPrenda(p.centro,p.t);agg[grp[0]].ops.add(o.op)})});
@@ -1537,7 +1547,7 @@ function vCumplimiento(el){
     const proMod={};p.pro.filter(x=>x.centro==='modulos').forEach(x=>{proMod[x.rec]=(proMod[x.rec]||0)+x.pz});
     const realMod={};(S.turnos||[]).filter(t=>t.d>=p.desde&&t.d<=p.hasta).forEach(t=>{realMod[t.rec]=(realMod[t.rec]||0)+(t.pz||0)});
     const banosReal=p.banos.filter(b=>b.oids.some(id=>{const a=S.avance[id]||{};return a.tinturadaF&&a.tinturadaF>=p.desde&&a.tinturadaF<=p.hasta})).length;
-    const tejReal=[...new Set(p.tej.map(x=>x.op))].filter(op=>{const o=S.ordenes.find(z=>z.op===op);return o&&((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida)}).length;
+    const tejReal=[...new Set(p.tej.map(x=>x.op))].filter(op=>{const o=S.ordenes.find(z=>z.op===op);return o&&((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida)}).length;
     const preds=Object.entries(p.pred).map(([oid,v])=>{const o=byId[oid];return o&&o.terminadaF?{op:v.op,pred:v.fin,real:o.terminadaF,entrega:v.entrega}:null}).filter(Boolean);
     const err=preds.map(x=>(new Date(x.real)-new Date(x.pred))/864e5);const mae=err.length?err.reduce((a,x)=>a+Math.abs(x),0)/err.length:null;const sesgo=err.length?err.reduce((a,x)=>a+x,0)/err.length:null;
     const acierto=preds.length?preds.filter(x=>(x.pred<=x.entrega)===(x.real<=x.entrega)).length/preds.length*100:null;
@@ -1556,7 +1566,7 @@ function vLinea(el){
   const mods=S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro'&&r.activa&&r.centro==='modulos');
   if(!LIN.rec||!mods.some(r=>r.id===LIN.rec))LIN.rec=(mods[0]||{}).id;const r=R(LIN.rec);const h=hoy();const ok=puedeArea('pro');
   const P=S.ordenes.length?programar():{pro:[],ordenes:{}};
-  const activas=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos')).map(o=>{const ac=((S.avance[o.id]||{}).centros||{});const hecho=faseEstado(o.fase).hechos.includes('modulos')||(ac.modulos||0)>=o.cant;
+  const activas=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos')).map(o=>{const ac=((S.avance[o.id]||{}).centros||{});const hecho=faseEstado(o.fase,o).hechos.includes('modulos')||(ac.modulos||0)>=o.cant;
       const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro==='modulos')||{};const fijo=(o.recursoFijo||{}).modulos;const enHoy=P.pro.some(x=>x.dia===h&&x.rec===LIN.rec&&x.op===o.op);
       return{o,ac,hecho,paso,fijo,enHoy}}).filter(x=>!x.hecho&&(x.fijo===LIN.rec||x.enHoy||(x.paso.rec===LIN.rec&&x.paso.ini<=dsum(h,1)))).sort((a,b)=>(b.enHoy-a.enHoy)||((a.paso.ini||'9')<(b.paso.ini||'9')?-1:1)).slice(0,6);
   const t=(S.turnos||[]).find(x=>x.rec===LIN.rec&&x.d===h)||{};const paros=(S.paros||[]).filter(p=>p.rec===LIN.rec&&p.d===h);
@@ -1658,7 +1668,7 @@ function vLiberacion(el){
   const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
   const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
   const base=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)((o.fecha||'').slice(0,7))&&ok(LIB.fases)(o.fase||'Sin fase')&&okTela(LIB.tela)(o)&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt((C(o.color)||{}).n).includes(q)));
-  const yaHecha=o=>et==='tela'?!!((grupoDe(o.fase)||{}).libTela):faseEstado(o.fase).hechos.includes('corte');
+  const yaHecha=o=>et==='tela'?!!((grupoDe(o.fase)||{}).libTela):faseEstado(o.fase,o).hechos.includes('corte');
   const pend=base.filter(o=>!liberada(o,et)&&!yaHecha(o));const listas=pend.filter(o=>puedeLiberarA(o,et)),noListas=pend.filter(o=>!puedeLiberarA(o,et));
   const liberadas=todas.filter(o=>!yaHecha(o)&&liberada(o,et)&&(et==='tela'?!(o.lib&&o.lib.corte&&o.lib.corte.ok&&false):true));
   const sel=[...LIB.sel].map(id=>S.ordenes.find(o=>o.id===id)).filter(o=>o&&listas.includes(o));
@@ -1855,7 +1865,7 @@ function vCentro(el){
    ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}<input type="text" style="width:200px" placeholder="buscar WH, categoría, color" value="${esc(CEN.q)}" oninput="CEN.q=this.value;render()"></div>`;
   // órdenes con paso en este centro
   const filas=[];S.ordenes.filter(abierta).forEach(o=>{cens.forEach(c=>{const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c);const enRuta=(o.ruta||[]).some(p=>p.centro===c);if(!enRuta)return;
-    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase);const hecho=fe.hechos.includes(c)||(ac[c]||0)>=o.cant;
+    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hecho=fe.hechos.includes(c)||(ac[c]||0)>=o.cant;
     const pzSem=P.pro.filter(x=>x.op===o.op&&x.centro===c&&x.dia>=lun&&x.dia<=dom).reduce((s,x)=>s+(x.pz||0),0);
     if(!q||normTxt(o.op).includes(q)||normTxt(nombreCat(K(o.cat))).includes(q)||normTxt((C(o.color)||{}).n).includes(q))filas.push({o,c,paso:paso||{},hecho,pzSem,hechas:hecho?o.cant:(ac[c]||0),bloq:(P.ordenes[o.id]||{}).bloqueo})})});
   if(CEN.tab==='plan'){
@@ -2110,7 +2120,7 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
-  ${(()=>{const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase).sinFila);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · fase que no calza con la tabla (${sf.length} órdenes)</b>: el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración → Órdenes y materiales → tabla 1. ${[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")}</div>`:""})()}
+  ${(()=>{const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · fase que no calza con la tabla (${sf.length} órdenes)</b>: el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración → Órdenes y materiales → tabla 1. ${[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")}</div>`:""})()}
   ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}
   ${filtros}
   <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
@@ -2256,7 +2266,7 @@ function vReporteria(el){
   const kpi=(v,k,cls)=>`<div class="kpi ${cls||''}"><div class="v">${v}</div><div class="k">${k}</div></div>`;
   const ords=S.ordenes.filter(abierta);
   const secTej=()=>{const recs=S.recursos.filter(r=>r.activa&&r.centro==='tej');
-    const porTejer=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida));
+    const porTejer=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida));
     const kgPorTejer=porTejer.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);
     const tejSem=w=>ords.filter(o=>{const a=S.avance[o.id]||{};return a.tejida&&a.tejidaF&&lunesDe(a.tejidaF)===w});
     const kgTej=(P.tej||[]).filter(x=>!x.cambio);const kgProgSem=w=>kgTej.filter(x=>lunesDe(x.dia)===w).reduce((a,x)=>a+x.kg,0);
@@ -2274,7 +2284,7 @@ function vReporteria(el){
       <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Horas de baño programadas contra la capacidad semanal; debajo del nombre, baños y kg por semana.</p></div></div>`};
   const secPro=(sa)=>{const cens=sa.centros.filter(veCentro);if(!cens.length)return'';
     const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro));
-    const filas=[];ords.forEach(o=>{cens.forEach(c=>{if(!(o.ruta||[]).some(p=>p.centro===c))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase).hechos.includes(c)||(ac[c]||0)>=o.cant)return;filas.push({o,c,hechas:ac[c]||0,atraso:(P.ordenes[o.id]||{}).atraso})})});
+    const filas=[];ords.forEach(o=>{cens.forEach(c=>{if(!(o.ruta||[]).some(p=>p.centro===c))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase,o).hechos.includes(c)||(ac[c]||0)>=o.cant)return;filas.push({o,c,hechas:ac[c]||0,atraso:(P.ordenes[o.id]||{}).atraso})})});
     const pzPend=filas.reduce((a,f)=>a+(f.o.cant-f.hechas),0);const atras=filas.filter(f=>f.atraso).length;
     const pzSem=w=>(P.pro||[]).filter(x=>cens.includes(x.centro)&&lunesDe(x.dia)===w).reduce((a,x)=>a+(x.pz||0),0);
     const realSem=w=>(S.turnos||[]).filter(t=>t.d&&lunesDe(t.d)===w&&recs.some(r=>r.id===t.rec)).reduce((a,t)=>a+(t.pz||0),0);
@@ -2287,9 +2297,9 @@ function vReporteria(el){
     const rows=cens.map(c=>{const recs=S.recursos.filter(r=>r.activa&&r.centro===c.id);
       const carga=recs.reduce((a,r)=>a+sems.reduce((s,w)=>s+cargaSem(r,w),0),0),cap=recs.reduce((a,r)=>a+sems.reduce((s,w)=>s+capSem(r,w),0),0);
       let nOrd=0,pend=0,atras=0,u='';
-      if(c.area==='tej'){const l=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida));nOrd=l.length;pend=l.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);u='kg';atras=l.filter(o=>(P.ordenes[o.id]||{}).atraso).length}
-      else if(c.area==='tin'){const l=ords.filter(o=>etapas(o).tin&&!((S.avance[o.id]||{}).calidadOk||faseEstado(o.fase).lista));nOrd=l.length;pend=(P.banos||[]).filter(b=>!b.error).reduce((a,b)=>a+b.kg,0);u='kg';atras=(P.banos||[]).filter(b=>b.tarde).length}
-      else{ords.forEach(o=>{if(!(o.ruta||[]).some(p=>p.centro===c.id))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant)return;nOrd++;pend+=o.cant-(ac[c.id]||0);if((P.ordenes[o.id]||{}).atraso)atras++});u='pz'}
+      if(c.area==='tej'){const l=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida));nOrd=l.length;pend=l.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);u='kg';atras=l.filter(o=>(P.ordenes[o.id]||{}).atraso).length}
+      else if(c.area==='tin'){const l=ords.filter(o=>etapas(o).tin&&!((S.avance[o.id]||{}).calidadOk||faseEstado(o.fase,o).lista));nOrd=l.length;pend=(P.banos||[]).filter(b=>!b.error).reduce((a,b)=>a+b.kg,0);u='kg';atras=(P.banos||[]).filter(b=>b.tarde).length}
+      else{ords.forEach(o=>{if(!(o.ruta||[]).some(p=>p.centro===c.id))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase,o).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant)return;nOrd++;pend+=o.cant-(ac[c.id]||0);if((P.ordenes[o.id]||{}).atraso)atras++});u='pz'}
       const p=pct(carga,cap);
       return `<tr><td><b>${esc(c.n)}</b> <span class="mut" style="font-size:var(--fs-xs)">${esc(AREAS[c.area]||c.area)}</span></td><td class="num">${nOrd}</td><td class="num">${num(pend)} ${u}</td><td class="num">${recs.length}</td><td class="num" style="${p>102?'color:var(--alerta);font-weight:600':''}">${p}%</td><td class="num" style="${atras?'color:var(--alerta);font-weight:600':''}">${atras}</td></tr>`}).join('');
     return `<div class="panel"><h3>Resumen de todos los procesos <span class="note">próximas ${REP.sem} semanas</span></h3><div class="body"><table><thead><tr><th>Centro</th><th class="num">Órdenes con trabajo</th><th class="num">Pendiente</th><th class="num">Recursos</th><th class="num">Ocupación</th><th class="num">Atrasadas</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="mut">Nada que mostrar para tu perfil.</td></tr>'}</tbody></table></div></div>`};
@@ -2322,7 +2332,7 @@ function tagArm(kg,cap,telas){if(kg<=1e-6)return'';const PP=S.params;const tol=1
   if(kg>=(prm('granOk',180))-1e-6)return' <span class="tag t-aviso" title="Se puede soltar con aprobación">previo aprobación</span>';
   if(chica&&kg<=chica*tol+1e-6)return' <span class="tag" title="Sin más volumen del color: no se fragmenta, va directo a la máquina pequeña">pendiente · va a máquina pequeña ('+num(chica)+' kg)</span>';
   return' <span class="tag t-alerta">pendiente · bajo mínimo</span>'}
-function resumenTelasHTML(){const m={};S.ordenes.filter(abierta).forEach(o=>{const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);const tej=a.tejida||fe.tejida;const lib=liberada(o,'tej');
+function resumenTelasHTML(){const m={};S.ordenes.filter(abierta).forEach(o=>{const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const tej=a.tejida||fe.tejida;const lib=liberada(o,'tej');
   (o.telas||[]).forEach(t=>{if(t.ext||!(t.kg>0))return;const k=kgCrudo(t.tela,t.kg);const r=m[t.tela]=m[t.tela]||{kg:0,lib:0,tej:0,pend:0,ords:new Set(),cols:new Set()};r.kg+=k;if(lib)r.lib+=k;if(tej)r.tej+=k;else if(lib)r.pend+=k;r.ords.add(o.id);r.cols.add(t.color||o.color)})});
   const filas=Object.entries(m).sort((a,b)=>b[1].kg-a[1].kg);if(!filas.length)return'';const T=filas.reduce((acc,[,r])=>{acc.kg+=r.kg;acc.lib+=r.lib;acc.tej+=r.tej;acc.pend+=r.pend;return acc},{kg:0,lib:0,tej:0,pend:0});
   return `<div class="panel"><h3>Resumen por tipo de tela <span class="note">todo lo cargado, en kg crudo · para entregar el plan a tejeduría</span></h3><div class="body"><table><thead><tr><th>Tela</th><th class="num">Órdenes</th><th class="num">Colores</th><th class="num">Kg cargados</th><th class="num">Kg liberados</th><th class="num">Ya tejidos</th><th class="num">Por tejer (liberado)</th></tr></thead><tbody>
@@ -2332,7 +2342,7 @@ function resumenTelasHTML(){const m={};S.ordenes.filter(abierta).forEach(o=>{con
 /* ---------- Estado de tintorería según Odoo y piso: en máquina · incompletos (faltan kg) · completos en calidad · tela en stock ---------- */
 function estadoTin(o){const a=S.avance[o.id]||{};const t=normTxt(o.fase||'');const n=faseNum(o.fase);
   if(n===1&&t.includes('stock')&&!a.lista)return 'stock';
-  if(a.lista||faseEstado(o.fase).lista)return null;
+  if(a.lista||faseEstado(o.fase,o).lista)return null;
   if(a.reproc)return null;
   if(n<=1&&t.includes('incomplet'))return 'incompleto';
   if(enCalidad(o))return 'calidad';
@@ -2402,7 +2412,7 @@ function vControl(el){
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
   if(CTL.area==='tej'){
-    const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase).tejida;return{o,r,a,hecha}})
+    const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase,o).tejida;return{o,r,a,hecha}})
       .filter(x=>CTL.todo||!x.hecha).sort((x,y)=>(x.r.finTej||'9')<(y.r.finTej||'9')?-1:1);
     cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
      ${lista.slice(0,300).map(({o,r,a,hecha})=>`<tr><td>${esc(o.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td>
@@ -2424,7 +2434,7 @@ function vControl(el){
     const asistencia=(!CTL.centro||CTL.centro==='modulos')?`<div class="panel"><h3>Asistencia de hoy por módulo <span class="note">manda sobre las personas teóricas en la capacidad del día</span></h3><div class="body"><div class="chips">
       ${mods.map(r=>{const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===h);return `<span class="chip" style="cursor:default">${esc(r.n)} <input type="number" min="0" max="60" style="width:48px;margin-left:6px;padding:2px 4px" value="${t?t.pers:''}" placeholder="${r.pers}" ${ok?'':'disabled'} onchange="setAsist('${r.id}',this.value)"></span>`}).join('')}</div>
       <div style="margin-top:10px"><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mParo()">Registrar paro</button> ${(S.paros||[]).filter(p=>p.d===h).length?`<span class="mut" style="font-size:var(--fs-s)">${(S.paros||[]).filter(p=>p.d===h).length} paros hoy · ${num((S.paros||[]).filter(p=>p.d===h).reduce((a,p)=>a+ +p.min,0))} min</span>`:''}</div></div></div>`:'';
-    cuerpo=asistencia+cens.map(c=>{const ok=puedeCentro(c.id);const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=faseEstado(o.fase).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant;
+    cuerpo=asistencia+cens.map(c=>{const ok=puedeCentro(c.id);const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=faseEstado(o.fase,o).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant;
         const r=P.ordenes[o.id]||{};const paso=(r.pasos||[]).find(p=>p.centro===c.id)||{};const enHoy=hoyOps[c.id+'|'+o.op]||0;return{o,a,ac,hecho,paso,enHoy}})
         .filter(x=>CTL.todo||(!x.hecho&&(x.enHoy||(x.paso.ini&&x.paso.ini<=dsum(h,1))||(x.ac[c.id]||0)>0)));
       if(!lista.length&&!CTL.centro)return'';
@@ -2467,8 +2477,8 @@ function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids
     o.lib=o.lib||{};o.lib[et]={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
 function retirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];bitacora('Retirada liberación '+et+' '+o.op);save();render()}
-function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}
-function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase);if(!(o.telas||[]).length)f.push('sin telas en la receta');
+function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}
+function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(!(o.telas||[]).length)f.push('sin telas en la receta');
   if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');return f}
 function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberar(o)){alert('No se puede liberar: '+faltaLiberar(o).join(', '));return}
   if(!confirm('¿Liberar '+o.op+' a producción? Confirmas que la tela está en bodega con calidad aprobada y que revisaste los insumos (BOM).'))return;
@@ -2488,7 +2498,7 @@ function banoListo(ids){ids.split(',').forEach(id=>{if(!S.avance[id])S.avance[id
   const o=S.ordenes.find(x=>x.id===id);if(o&&faseNum(o.fase)<=1)o.fase=FASE_CALIDAD});save();render()}
 /* ---------- Calidad de tintorería: al salir del baño la tela pasa a calidad; solo lo aprobado se libera a corte ---------- */
 const FASE_CALIDAD='1Calidad Tintoreria',FASE_PLAN='2Planificacion',FASE_TIN='1Tintoreria';
-function enCalidad(o){const a=S.avance[o.id]||{};if(a.lista||a.calidadOk)return false;const fe=faseEstado(o.fase);if(fe.lista)return false;
+function enCalidad(o){const a=S.avance[o.id]||{};if(a.lista||a.calidadOk)return false;const fe=faseEstado(o.fase,o);if(fe.lista)return false;
   const propia=(o.telas||[]).some(t=>!t.ext);if(!propia)return false;return !!(a.tinturada||fe.tinturada)}
 function quienFirma(){return (PERFIL&&(PERFIL.nombre||PERFIL.email))||''}
 function calidadAprobar(ids){const lista=ids.split(',');let n=0;
@@ -2770,12 +2780,12 @@ const FASE_MAPEO_VER=2;
 const SISTEMA_FASES=['previo a producción','textil','planificación','preparación de corte','corte','maquila externa','servicios','confección','terminados','prenda terminada','cerrada']; // solo para sembrar la tabla 5 la primera vez
 /* ---------- tabla 5 (editable): grupos de fase con su ORDEN DE FLUJO explícito y desde qué grupo la orden cuenta como
    liberada a tela / a corte. El orden no se deduce del nombre ni del prefijo: es esta columna. ---------- */
-function defFaseGrupos(){return SISTEMA_FASES.map((g,i)=>({grupo:g,orden:i+1,libTela:i>=1,libCorte:i>=3,pendiente:true}))}
-function faseGrupos(){if(!Array.isArray(S.params.faseGrupos))S.params.faseGrupos=defFaseGrupos();return S.params.faseGrupos}
+function defFaseGrupos(){return SISTEMA_FASES.map((g,i)=>({grupo:g,orden:i+1,libTela:i>=1,libCorte:i>=3,secuencial:true,pendiente:true}))}
+function faseGrupos(){if(!Array.isArray(S.params.faseGrupos))S.params.faseGrupos=defFaseGrupos();S.params.faseGrupos.forEach(g=>{if(g.secuencial===undefined)g.secuencial=true});return S.params.faseGrupos}
 function ordenGrupo(g){const r=faseGrupos().find(x=>x.grupo===g);return r&&typeof r.orden==='number'?r.orden:-1}
 function gruposOrdenados(){return faseGrupos().slice().sort((a,b)=>a.orden-b.orden).map(x=>x.grupo)}
 function grupoDe(fase){const fila=filaFaseDe(fase);return fila?(faseGrupos().find(x=>x.grupo===fila.sistema)||null):null}
-function addFaseGrupoRow(){faseGrupos().push({grupo:'',orden:faseGrupos().length+1,libTela:false,libCorte:false,pendiente:true});save();render()}
+function addFaseGrupoRow(){faseGrupos().push({grupo:'',orden:faseGrupos().length+1,libTela:false,libCorte:false,secuencial:true,pendiente:true});save();render()}
 function setFaseGrupoRow(i,k,v){faseGrupos()[i][k]=(k==='orden')?(+v||0):v;FASE_CACHE.ver++;save();render()}
 function togFaseGrupoRow(i){const r=faseGrupos()[i];r.pendiente=!r.pendiente;save();render()}
 function delFaseGrupoRow(i){faseGrupos().splice(i,1);FASE_CACHE.ver++;save();render()}
@@ -3189,15 +3199,33 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">La comparación con la columna Fase del archivo ignora mayúsculas, tildes y espacios repetidos o en los bordes. Un valor que no calce con ninguna fila se carga con su ruta completa y se reporta — no se asigna por parecido. Los grupos van en orden de flujo: una orden carga solo los centros cuya etapa (tabla 4) es igual o posterior a la de su grupo.</p></div></div>
 
   <div class="panel"><h3>5 · Grupos de fase: orden de flujo y liberación <span class="note">el motor lee de aquí qué está hecho y qué está liberado</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseGrupoRow()">+ Grupo</button></h3>
-   <div class="body"><table><thead><tr><th>Grupo</th><th class="num" title="1 = primero en el flujo">orden de flujo</th><th title="desde este grupo la orden cuenta como liberada a tela sin firma">libera tela</th><th title="desde este grupo la orden cuenta como liberada a corte sin firma">libera corte</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><table><thead><tr><th>Grupo</th><th class="num" title="1 = primero en el flujo">orden de flujo</th><th title="desde este grupo la orden cuenta como liberada a tela sin firma">libera tela</th><th title="desde este grupo la orden cuenta como liberada a corte sin firma">libera corte</th><th title="tramo secuencial: haber pasado este grupo significa que sus centros terminaron. Apagado = el orden varía por orden (estampado/bordado/confección): solo la orden de trabajo de Odoo dice qué está hecho">secuencial</th><th></th><th></th></tr></thead><tbody>
     ${faseGrupos().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.grupo)}" onchange="setFaseGrupoRow(${i},'grupo',this.value)"></td>
       <td class="num"><input type="number" min="1" style="width:92px" value="${r.orden}" onchange="setFaseGrupoRow(${i},'orden',this.value)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.libTela?'checked':''} onchange="setFaseGrupoRow(${i},'libTela',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.libCorte?'checked':''} onchange="setFaseGrupoRow(${i},'libCorte',this.checked)"></td>
+      <td style="text-align:center"><input type="checkbox" ${r.secuencial!==false?'checked':''} onchange="setFaseGrupoRow(${i},'secuencial',this.checked)"></td>
       <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togFaseGrupoRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
       <td><button class="btn ghost sm" onclick="delFaseGrupoRow(${i})">×</button></td></tr>`).join('')}
    </tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Una orden da por hechos los centros cuya etapa (tabla 4) tiene orden anterior al grupo de su fase. Tejida / tinturada / lista: grupo posterior a textil = sí; grupo textil = columna "tela" de la fila; anterior = no. La firma humana de Liberación sigue mandando para las órdenes cuyo grupo no tiene marcada la liberación.</p></div></div>
+
+  <div class="panel"><h3>6 · Centro de trabajo de Odoo → centro TEMPO <span class="note">órdenes de trabajo (mrp.workorder)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroOTRow()">+ Centro</button></h3>
+   <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th></th><th></th></tr></thead><tbody>
+    ${centroOT().map((r,i)=>`<tr><td><input type="text" style="width:220px" value="${esc(r.odoo)}" onchange="setCentroOTRow(${i},'odoo',this.value)"></td>
+      <td><select onchange="setCentroOTRow(${i},'centro',this.value)"><option value="">— sin centro (se reporta) —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
+      <td><select onchange="setCentroOTRow(${i},'recurso',this.value)"><option value="">—</option>${S.recursos.filter(x=>x.centro===r.centro).map(x=>`<option value="${x.id}" ${r.recurso===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togCentroOTRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delCentroOTRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Comparación tolerante a mayúsculas, tildes y espacios. Un centro de trabajo del archivo que no esté aquí se reporta; con fila pero sin centro TEMPO también.</p></div></div>
+
+  <div class="panel"><h3>7 · Estado de la orden de trabajo → significado <span class="spacer"></span><button class="btn ghost sm" onclick="addEstadoOTRow()">+ Valor</button></h3>
+   <div class="body"><table><thead><tr><th>Valor en el archivo</th><th>Significa</th><th></th><th></th></tr></thead><tbody>
+    ${estadoOT().map((r,i)=>`<tr><td><input type="text" style="width:180px" value="${esc(r.valor)}" onchange="setEstadoOTRow(${i},'valor',this.value)"></td>
+      <td><select onchange="setEstadoOTRow(${i},'significa',this.value)">${OT_SIGNIFICA.map(s=>`<option ${r.significa===s?'selected':''}>${s}</option>`).join('')}</select></td>
+      <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togEstadoOTRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
+      <td><button class="btn ghost sm" onclick="delEstadoOTRow(${i})">×</button></td></tr>`).join('')}
+   </tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Solo "terminado" cambia la carga. Un valor que no esté aquí se reporta.</p></div></div>
 
   <div class="panel"><h3>4 · Centro TEMPO → etapa del flujo <span class="note">BLOQUE E — qué queda pendiente desde cada fase</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroEtapaRow()">+ Centro</button></h3>
    <div class="body"><table><thead><tr><th>Centro</th><th>Etapa (grupo de fase)</th><th></th><th></th></tr></thead><tbody>
@@ -3318,7 +3346,7 @@ function fechaCorte(o,P){const ro=(P&&P.ordenes[o.id])||{};const pc=(ro.pasos||[
 /* requerido de tela cruda: órdenes abiertas, liberadas a tela, con etapa de tejeduría y todavía no tejidas. El mes es el de
    (entrada a corte − semanas de anticipación de tejeduría), parámetro editable en Configuración */
 function requeridoTela(){const P=S.ordenes.length?programar():null;const ant=prm('tejAnticipSem',2)*7;const out={};
-  S.ordenes.filter(o=>abierta(o)&&liberada(o,'tela')&&etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase).tejida)).forEach(o=>{
+  S.ordenes.filter(o=>abierta(o)&&liberada(o,'tela')&&etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida)).forEach(o=>{
     const fc=fechaCorte(o,P);if(!fc)return;const mes=dsum(fc.f,-ant).slice(0,7);
     (o.telas||[]).filter(t=>!t.ext&&t.kg>0&&T(t.tela)).forEach(t=>{const k=out[t.tela]=out[t.tela]||{};const m=k[mes]=k[mes]||{kg:0,ords:new Set(),est:0};m.kg+=kgCrudo(t.tela,t.kg);m.ords.add(o.id);if(fc.est)m.est++})});
   return out}
@@ -3345,6 +3373,105 @@ function vStock(el){const req=requeridoTela();const st=stockTela();const meses=[
   ${meses.length>1?`<div class="panel"><h3>Requerido por tela y mes <span class="note">kg crudos, todas las órdenes liberadas</span></h3><div class="body scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Tela</th>${meses.map(m=>`<th class="num">${m}</th>`).join('')}</tr></thead><tbody>
    ${S.telas.filter(t=>req[t.id]).map(t=>`<tr><td>${esc(t.n)}</td>${meses.map(m=>`<td class="num">${req[t.id][m]?num(req[t.id][m].kg):'<span class="mut">·</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`:''}
   <p class="mut" style="font-size:var(--fs-xs)">Solo entran órdenes liberadas a tela (Dirección → Liberación, o fase de Odoo 2 en adelante) que aún no están tejidas. El motor de programación sigue tejiendo los kg completos de cada orden: el "a tejer" de esta pantalla todavía no descuenta el stock en el programa de tejeduría (pendiente de decisión).</p>`}
+
+/* ==================== Órdenes de trabajo de Odoo (mrp.workorder): qué centros ya pasó cada orden DE VERDAD ====================
+   Solo interesa lo TERMINADO. Los centros terminados mandan sobre lo que diga la fase; la fase sigue sirviendo para los tramos
+   secuenciales (textil, corte, terminados). Todo por tablas editables: 6 (centro de trabajo Odoo → centro TEMPO) y 7 (valores
+   de Estado → significado). Se puede recargar cuando se quiera sin volver a cargar las órdenes: el archivo es la verdad
+   para las órdenes que trae. Nada se asigna por parecido: lo que no calza se reporta. */
+function defCentroOT(){const rows=[
+  {odoo:'Corte y Bodega',centro:'corte',pendiente:true},{odoo:'Serigrafia',centro:'estampado',pendiente:true},{odoo:'Sublimado',centro:'estampado',pendiente:true},
+  {odoo:'Bordado',centro:'bordado',pendiente:true},{odoo:'Empaque',centro:'empaque',pendiente:true},{odoo:'Maquila',centro:'modulos',recurso:'maquila',pendiente:true},
+  {odoo:'Pulido',centro:'',pendiente:true},{odoo:'Servicios y Terminados',centro:'',pendiente:true}];
+  S.recursos.filter(r=>r.centro==='modulos'&&/^m[oó]dulo\s*\d+$/i.test(r.n)).forEach(r=>rows.push({odoo:r.n,centro:'modulos',recurso:r.id,pendiente:true}));
+  return rows}
+function centroOT(){if(!Array.isArray(S.params.centroOT))S.params.centroOT=defCentroOT();return S.params.centroOT}
+function filaCentroOT(nombre){const n=normFase(nombre);return centroOT().find(r=>normFase(r.odoo)===n)||null}
+function addCentroOTRow(){centroOT().push({odoo:'',centro:'',recurso:'',pendiente:true});save();render()}
+function setCentroOTRow(i,k,v){centroOT()[i][k]=v;save()}
+function togCentroOTRow(i){const r=centroOT()[i];r.pendiente=!r.pendiente;save();render()}
+function delCentroOTRow(i){centroOT().splice(i,1);save();render()}
+const OT_SIGNIFICA=['terminado','en proceso','para hacer','cancelado'];
+function defEstadoOT(){return [{valor:'done',significa:'terminado'},{valor:'terminado',significa:'terminado'},{valor:'finalizado',significa:'terminado'},{valor:'hecho',significa:'terminado'},
+  {valor:'progress',significa:'en proceso'},{valor:'en proceso',significa:'en proceso'},{valor:'en progreso',significa:'en proceso'},
+  {valor:'ready',significa:'para hacer'},{valor:'pending',significa:'para hacer'},{valor:'waiting',significa:'para hacer'},{valor:'para hacer',significa:'para hacer'},{valor:'listo',significa:'para hacer'},{valor:'pendiente',significa:'para hacer'},{valor:'en espera',significa:'para hacer'},
+  {valor:'cancel',significa:'cancelado'},{valor:'cancelado',significa:'cancelado'}].map(x=>Object.assign(x,{pendiente:true}))}
+function estadoOT(){if(!Array.isArray(S.params.estadoOT))S.params.estadoOT=defEstadoOT();return S.params.estadoOT}
+function significaOT(valor){const n=normFase(valor);const r=estadoOT().find(x=>normFase(x.valor)===n);return r?r.significa:null}
+function addEstadoOTRow(){estadoOT().push({valor:'',significa:'terminado',pendiente:true});save();render()}
+function setEstadoOTRow(i,k,v){estadoOT()[i][k]=v;save()}
+function togEstadoOTRow(i){const r=estadoOT()[i];r.pendiente=!r.pendiente;save();render()}
+function delEstadoOTRow(i){estadoOT().splice(i,1);save();render()}
+
+let OT=null;
+function mOT(){abrir(`<h3>Órdenes de trabajo de Odoo (mrp.workorder)</h3><div class="body">
+   <p class="lede" style="margin-top:0">Sube la exportación de órdenes de trabajo. Columnas que se leen: <b>Orden de fabricación</b> (WH/MO/…), <b>Centro de trabajo</b>, <b>Estado</b>, y si vienen, <b>Fecha de inicio</b> y <b>Fecha de fin</b>. Solo lo <b>terminado</b> cambia la carga: ese centro queda hecho en la orden y manda sobre la fase. Centros de trabajo o estados que no estén en las tablas 6 y 7 de Configuración → Órdenes y materiales se reportan, no se adivinan. Se puede recargar cuando quieras: el archivo reemplaza lo que se sabía de cada orden que trae.</p>
+   <input type="file" id="f-ot" accept=".xlsx,.xls,.csv"><div id="ot-res" style="margin-top:14px"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button></div>`);
+  document.getElementById('f-ot').addEventListener('change',leerOT)}
+async function leerOT(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('ot-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
+  const plan=planOT(rows,f.name);if(!plan){res.innerHTML='No encuentro las columnas mínimas: "Orden de fabricación" (o "Orden de producción"), "Centro de trabajo" y "Estado".';return}
+  OT=plan;res.innerHTML=resumenOTHTML(plan);document.getElementById('ot-ok').disabled=!plan.filas}
+function planOT(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));
+  const col=(...alias)=>{for(const a of alias){const i=h.findIndex(x=>x&&x.includes(normTxt(a)));if(i>=0)return i}return -1};
+  const I={op:col('orden de fabricacion','orden de produccion','production'),centro:col('centro de trabajo','centro de produccion','workcenter','centro'),estado:col('estado','state'),
+    ini:col('fecha de inicio','inicio real','date start','fecha inicial'),fin:col('fecha de fin','fecha final','finalizacion','date finished','fecha de finalizacion'),oper:col('operacion','operation','nombre'),cant:col('cantidad producida','qty produced','producido'),dur:col('duracion','duration')};
+  if(I.op<0||I.centro<0||I.estado<0)return null;
+  const porOp={};S.ordenes.forEach(o=>{if(o.op)porOp[normFase(o.op)]=o});
+  const plan={archivo:nombre,filas:0,porOrden:{},ordenesNoEncontradas:{},centrosNoMapeados:{},centrosSinCentro:{},estadosNoReconocidos:{},cancelados:0,cont:{terminado:0,'en proceso':0,'para hacer':0},columnas:{inicio:I.ini>=0,fin:I.fin>=0,operacion:I.oper>=0,cantidad:I.cant>=0}};
+  rows.slice(1).forEach(r=>{const op=String(r[I.op]==null?'':r[I.op]).trim();if(!op)return;plan.filas++;
+    const o=porOp[normFase(op)];if(!o){plan.ordenesNoEncontradas[op]=(plan.ordenesNoEncontradas[op]||0)+1;return}
+    const cOdoo=String(r[I.centro]==null?'':r[I.centro]).trim();const fila=filaCentroOT(cOdoo);
+    if(!fila){plan.centrosNoMapeados[cOdoo||'(vacío)']=(plan.centrosNoMapeados[cOdoo||'(vacío)']||0)+1;return}
+    if(!fila.centro||!CE(fila.centro)){plan.centrosSinCentro[cOdoo]=(plan.centrosSinCentro[cOdoo]||0)+1;return}
+    const est=String(r[I.estado]==null?'':r[I.estado]).trim();const sig=significaOT(est);
+    if(!sig){plan.estadosNoReconocidos[est||'(vacío)']=(plan.estadosNoReconocidos[est||'(vacío)']||0)+1;return}
+    if(sig==='cancelado'){plan.cancelados++;return}
+    plan.cont[sig]++;
+    const po=plan.porOrden[o.id]=plan.porOrden[o.id]||{o,centros:{}};const c=fila.centro;const prev=po.centros[c];
+    const reg={estado:sig,ini:I.ini>=0?excelFecha(r[I.ini]):null,fin:I.fin>=0?excelFecha(r[I.fin]):null,odoo:cOdoo,recurso:fila.recurso||null,oper:I.oper>=0?String(r[I.oper]||'').trim():'',cant:I.cant>=0?(+r[I.cant]||0):null};
+    // varias OT del mismo centro en una orden (p. ej. varias operaciones de confección): el centro está terminado solo si TODAS lo están
+    if(!prev)po.centros[c]=reg;else{const rango={'terminado':3,'en proceso':2,'para hacer':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin}});
+  // contradicciones con la fase: lo que la fase da por hecho y la OT dice que no (o al revés)
+  plan.contradicciones=[];Object.values(plan.porOrden).forEach(({o,centros})=>{const fe=faseEstado(o.fase,null);Object.entries(centros).forEach(([c,reg])=>{const faseHecho=fe.hechos.includes(c);
+    if(faseHecho&&reg.estado!=='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'hecho',otDice:reg.estado});
+    if(!faseHecho&&reg.estado==='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'pendiente',otDice:'terminado'})})});
+  return plan}
+function resumenOTHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';const ords=Object.keys(p.porOrden).length;
+  return `<table><tbody>${li(p.filas,'filas de órdenes de trabajo leídas')}${li(ords,'órdenes del sistema con información de centros')}
+   ${li(p.cont.terminado,'OT terminadas (cierran el centro en la orden)')}${li(p.cont['en proceso'],'en proceso')}${li(p.cont['para hacer'],'para hacer')}${li(p.cancelados,'canceladas (se ignoran)')}
+   ${li(Object.keys(p.ordenesNoEncontradas).length,'órdenes del archivo que no están en el sistema (se ignoran): '+esc(Object.keys(p.ordenesNoEncontradas).slice(0,12).join(', '))+(Object.keys(p.ordenesNoEncontradas).length>12?'…':''))}
+   ${li(Object.keys(p.centrosNoMapeados).length,'centros de trabajo de Odoo que NO están en la tabla 6 (no se asignan por parecido): '+esc(Object.entries(p.centrosNoMapeados).map(([k,v])=>k+' ('+v+')').join(', ')))}
+   ${li(Object.keys(p.centrosSinCentro).length,'centros de trabajo en la tabla 6 sin centro TEMPO asignado (p. ej. Pulido): '+esc(Object.entries(p.centrosSinCentro).map(([k,v])=>k+' ('+v+')').join(', ')))}
+   ${li(Object.keys(p.estadosNoReconocidos).length,'valores de Estado que NO están en la tabla 7: '+esc(Object.entries(p.estadosNoReconocidos).map(([k,v])=>k+' ('+v+')').join(', ')))}
+   ${li(p.contradicciones.length,'contradicciones fase vs OT (gana la OT, se reportan)')}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs)">Columnas encontradas: inicio ${p.columnas.inicio?'sí':'no'} · fin ${p.columnas.fin?'sí':'no'} · operación ${p.columnas.operacion?'sí':'no'} · cantidad ${p.columnas.cantidad?'sí':'no'}.</p>`}
+function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();let cierres=0;
+  Object.values(p.porOrden).forEach(({o,centros})=>{
+    // el archivo es la verdad para esta orden: se quita lo que antes dijo una OT y se vuelve a poner
+    const a=S.avance[o.id]||(S.avance[o.id]={});a.centros=a.centros||{};
+    Object.keys(o.ot||{}).forEach(c=>{if(a.centrosOT&&a.centrosOT[c])delete a.centros[c]});
+    o.ot={};a.centrosOT={};
+    Object.entries(centros).forEach(([c,reg])=>{o.ot[c]={estado:reg.estado,ini:reg.ini,fin:reg.fin,odoo:reg.odoo};
+      if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
+      if(reg.recurso&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
+    o.otTs=ts});
+  S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
+  S.cargas.push({id:uid(),ts,usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',archivo:p.archivo,tipo:'ot',nuevas:0,act:Object.keys(p.porOrden).length,cerradas:0,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
+  if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
+  OT=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
+  alert('Órdenes de trabajo aplicadas: '+Object.keys(p.porOrden).length+' órdenes, '+cierres+' centros cerrados. '+p.contradicciones.length+' contradicciones fase vs OT (ver Órdenes → Reporte OT).')}
+function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha cargado ningún archivo de órdenes de trabajo.');return}
+  const porCentro={};C.contradicciones.forEach(x=>{const k=nCen(x.centro)+': fase '+x.faseDice+' / OT '+x.otDice;porCentro[k]=(porCentro[k]||0)+1});
+  abrir(`<h3>Reporte de órdenes de trabajo · ${esc(C.archivo)}</h3><div class="body" style="max-height:70vh;overflow:auto">
+   <p class="mut" style="margin-top:0">Cargado ${new Date(C.fecha).toLocaleString('es-EC')} · ${C.filas} filas · ${C.ordenes} órdenes · terminadas ${C.cont.terminado}, en proceso ${C.cont['en proceso']}, para hacer ${C.cont['para hacer']}, canceladas ${C.cancelados}.</p>
+   <h4>Contradicciones fase vs OT (${C.contradicciones.length}) — gana la OT</h4><p style="font-size:var(--fs-s)">${Object.entries(porCentro).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')||'ninguna'}</p>
+   <div class="scroll" style="max-height:220px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th>Centro</th><th>Fase dice</th><th>OT dice</th></tr></thead><tbody>${C.contradicciones.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td>${esc(nCen(x.centro))}</td><td>${x.faseDice}</td><td>${x.otDice}</td></tr>`).join('')}</tbody></table></div>
+   <h4>No reconocido (no se asignó por parecido)</h4>
+   <p style="font-size:var(--fs-s)"><b>Centros de trabajo sin fila en la tabla 6:</b> ${Object.entries(C.centrosNoMapeados).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Con fila pero sin centro TEMPO:</b> ${Object.entries(C.centrosSinCentro).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Estados sin fila en la tabla 7:</b> ${Object.entries(C.estadosNoReconocidos).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Órdenes del archivo que no están en el sistema:</b> ${C.ordenesNoEncontradas.length}</p>
+   </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`,true)}
 
 /* ---------- Recarga Parte 2: edición de las 3 tablas sembradas (Configuración → Órdenes y materiales) ---------- */
 function addFaseMapeoRow(){faseMapeo().push({fase:'',sistema:gruposOrdenados()[0],esCola:false,sinCarga:false,bloqueo:false,excluye:'',desde:'',tela:'',pendiente:true});FASE_CACHE.ver++;save();render()}
@@ -3603,7 +3730,7 @@ function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice()
   if(fila.sinCarga)return [];
   const ig=g=>ordenGrupo(g);let desde=ig(fila.sistema);if(fila.desde&&ig(fila.desde)>=0)desde=ig(fila.desde);
   const excl=String(fila.excluye||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return rutaCompleta.filter(p=>{if(excl.includes(p.centro))return false;const i=ig(centroEtapaDe(p.centro));if(i<0)return true;return i>=desde})}
+  return rutaCompleta.filter(p=>{if(excl.includes(p.centro))return false;const i=ig(centroEtapaDe(p.centro));if(i<0)return true;return !hechoPorFase(i,desde)})}
 
 /* ---------- lectura del archivo ---------- */
 let TAREA=null;
@@ -3907,54 +4034,6 @@ function aplicarOdoo(){if(!ODOO)return;const p=ODOO;
   if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
   ODOO=null;save();cerrar();render();
   alert(`Aplicado: ${p.nuevas.length} nuevas, ${p.act.length} actualizadas, ${p.cerradas} cerradas.`+(p.prevAWh?` ${p.prevAWh} previsiones pasaron a WH.`:'')+(p.alertas.length?` ${p.alertas.length} puntos para revisar quedan en "Últimas cargas".`:''))}
-/* ---------- órdenes de trabajo de Odoo (mrp.workorder): cierre por centro, módulo real, tiempos reales ---------- */
-const MAPA_CENTRO_OT=c=>{const u=normTxt(c);if(u.startsWith('modulo'))return{centro:'modulos',rec:'mod'+u.replace(/\D/g,'')};if(u==='maquila')return{centro:'modulos',rec:'maquila'};
-  return{'corte y bodega':{centro:'corte'},'serigrafia':{centro:'estampado'},'sublimado':{centro:'estampado'},'bordado':{centro:'bordado'},'empaque':{centro:'empaque'},
-         'pulido':{centro:'pulido'},'servicios y terminados':{centro:'servicios'}}[u]||null};
-let OT=null;
-function mOT(){abrir(`<h3>Órdenes de trabajo (mrp.workorder)</h3><div class="body">
-   <p class="lede" style="margin-top:0">Sube la exportación de órdenes de trabajo de Odoo. Con las que tienen fecha final se cierra ese centro en la orden (unidades = producción total), se fija el módulo real donde se hizo o se está haciendo, y se calculan tiempos reales por familia y centro para compararlos con los estándar.</p>
-   <input type="file" id="f-ot" accept=".xlsx,.xls,.csv"><div id="ot-res" style="margin-top:14px"></div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button></div>`);
-  document.getElementById('f-ot').addEventListener('change',leerOT)}
-async function leerOT(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('ot-res');res.innerHTML='<span class="mut">Leyendo…</span>';
-  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
-  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
-  const h=rows[0].map(x=>normTxt(x));const col=n=>h.findIndex(x=>x&&x.includes(normTxt(n)));
-  const iOP=col('orden de fabricacion'),iC=col('centro'),iD=col('duracion'),iIni=col('fecha de inicio'),iFin=col('fecha final'),iEmp=col('empleados'),iPed=col('pedido'),iProd=col('produccion');
-  if(iOP<0||iC<0){res.innerHTML='No encuentro las columnas "Orden de fabricación" y "Centro de producción".';return}
-  const porOp={};S.ordenes.forEach(o=>porOp[o.op]=o);
-  const plan={cierres:[],fijos:[],noEncontradas:new Set(),faltantes:[],sinMapa:new Set(),sam:{},archivo:f.name};
-  rows.slice(1).forEach(r=>{const op=String(r[iOP]||'').trim();if(!op)return;const m=MAPA_CENTRO_OT(r[iC]);if(!m){plan.sinMapa.add(String(r[iC]));return}
-    const fin=r[iFin],ini=r[iIni],dur=+r[iD]||0,emp=+r[iEmp]||0,ped=+r[iPed]||0,prod=+r[iProd]||0;const o=porOp[op];
-    if(fin&&dur>=30&&prod>=20&&emp>0&&o){const k=K(o.cat);const fam=k?((K(k.padre)||k).n):'?';const key=fam+'|'+m.centro;(plan.sam[key]=plan.sam[key]||[]).push(dur*emp/prod)}
-    if(!o){plan.noEncontradas.add(op);return}
-    if(!CE(m.centro))return;
-    if(m.rec&&(fin||ini)){const rec=R(m.rec);if(rec)plan.fijos.push({o,centro:m.centro,rec:m.rec})}
-    if(fin){const u=Math.min(o.cant,prod||ped||o.cant);plan.cierres.push({o,centro:m.centro,u});if(prod&&ped&&prod<ped*0.97&&m.centro==='empaque')plan.faltantes.push(op+': empaque cerró con '+prod+' de '+ped)}});
-  const filas=Object.entries(plan.sam).map(([key,v])=>{const [fam,c]=key.split('|');v.sort((a,b)=>a-b);const med=v[Math.floor(v.length/2)];
-    const est=(()=>{const k=S.categorias.find(x=>!x.padre&&normTxt(x.n)===normTxt(fam));const spc=k?samPorCentro(k):{};return spc[c]})();
-    return{fam,c,n:v.length,med,est}}).filter(x=>x.n>=3).sort((a,b)=>ordenPaso(a.c)-ordenPaso(b.c)||a.fam.localeCompare(b.fam));
-  plan.samTabla=filas;OT=plan;
-  res.innerHTML=`<table><tbody>
-    <tr><td><b>${new Set(plan.cierres.map(x=>x.o.id)).size}</b></td><td>órdenes con centros cerrados (${plan.cierres.length} cierres)</td></tr>
-    <tr><td><b>${new Set(plan.fijos.map(x=>x.o.id)).size}</b></td><td>órdenes con módulo real fijado</td></tr>
-    <tr><td><b>${plan.noEncontradas.size}</b></td><td>órdenes del archivo que no están en el sistema (cerradas o no cargadas): se ignoran</td></tr>
-    ${plan.sinMapa.size?`<tr><td><b>${plan.sinMapa.size}</b></td><td>centros de Odoo sin equivalente aquí, ignorados: ${[...plan.sinMapa].map(esc).join(', ')}</td></tr>`:''}
-    ${plan.faltantes.length?`<tr><td><b>${plan.faltantes.length}</b></td><td>órdenes empacadas con menos prendas que el pedido: ${plan.faltantes.slice(0,8).map(esc).join('; ')}${plan.faltantes.length>8?'…':''}</td></tr>`:''}</tbody></table>
-    ${filas.length?`<details style="margin-top:10px" open><summary class="mut" style="cursor:pointer">Tiempos reales por familia y centro (mediana de minutos × personas ÷ prendas) frente al estándar cargado</summary>
-      <div style="max-height:260px;overflow:auto"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th><th>Familia</th><th class="num">Registros</th><th class="num">Real</th><th class="num">Estándar</th><th class="num">Real / estándar</th></tr></thead><tbody>
-      ${filas.map(x=>`<tr><td>${esc(nCen(x.c)||x.c)}</td><td>${esc(x.fam)}</td><td class="num">${x.n}</td><td class="num">${num(x.med,2)}</td><td class="num">${x.est?num(x.est,2):'<span class="mut">—</span>'}</td><td class="num">${x.est?'<span class="tag '+(x.med/x.est>1.5?'t-alerta':x.med/x.est>1.15?'t-aviso':'t-ok')+'">'+num(x.med/x.est,2)+'×</span>':''}</td></tr>`).join('')}</tbody></table></div>
-      <p class="mut" style="font-size:var(--fs-xs)">Confección y empaque incluyen esperas entre marcaciones, así que el real suele ir alto; corte y estampado son más confiables. Se guarda como referencia en el registro de cargas, no reemplaza el estándar.</p></details>`:''}`;
-  document.getElementById('ot-ok').disabled=!(plan.cierres.length||plan.fijos.length)}
-function aplicarOT(){if(!OT)return;const p=OT;let n=0;
-  p.fijos.forEach(x=>{if(!x.o.recursoFijo)x.o.recursoFijo={};x.o.recursoFijo[x.centro]=x.rec});
-  p.cierres.forEach(x=>{if(!S.avance[x.o.id])S.avance[x.o.id]={};const a=S.avance[x.o.id];if(!a.centros)a.centros={};if((a.centros[x.centro]||0)<x.u){a.centros[x.centro]=x.u;n++}
-    if(x.centro==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}});
-  S.cargas.push({id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',archivo:p.archivo,tipo:'ot',nuevas:0,act:new Set(p.cierres.map(x=>x.o.id)).size,cerradas:0,
-    alertas:p.faltantes.slice(0,60),samReal:p.samTabla.map(x=>({fam:x.fam,c:x.c,n:x.n,med:+x.med.toFixed(3),est:x.est||null}))});
-  if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
-  OT=null;save();cerrar();render();alert(`Aplicado: ${n} cierres de centro y ${p.fijos.length} módulos fijados.`)}
 function mPrecios(){abrir(`<h3>Precios por orden</h3><div class="body"><p class="lede" style="margin-top:0">Pega desde Excel: la WH y el precio unitario de venta (dólares por prenda). Si en vez del unitario pegas el total de la orden en una tercera columna, se divide entre las prendas.</p>
    <p style="font-size:var(--fs-s);background:var(--field);border:1px solid var(--rule);padding:9px 11px;border-radius:2px">WH · Precio unitario · Total (opcional)</p>
    <textarea id="f-paste" placeholder="WH/MO/28950&#9;5.85&#10;WH/MO/28951&#9;&#9;2620.80"></textarea></div>
