@@ -259,3 +259,12 @@ edición de ruta con `etapa` en `o.rutaEditada` → panel "Auditoría de ruta" e
 planificación); `S.params.motivosReproceso` y `S.params.restriccionFaltante` editables; faltante capturado en
 `confirmarBanoHecho` (`avance.faltaKg`+`faltaTinPend`, `kgTelaTin` lo respeta), panel `faltantesPanelHTML` (cola de
 planificación, restricciones), `reingresarFaltante` manual; `reporteTin`/`reporteTinPanelHTML` mensual.
+
+### Motor de programación hacia atrás (14-sep-2026)
+Ver .  atras|adelante (Configuración → Calendario). Sección 3 de 
+con dos ramas: hacia atrás desde la fecha meta con  (seco + firme; piso = inicio del programa, tela lista, 
+del centro); si no cabe, hacia adelante igual y  con , , , .
+Esperas por paso  (lavado planta 3 est., Quito denim 15, prenda tinturada sin regla). Colecciones por ODC
+(, , ). Antes/después:  (Capacidad y decisiones).
+Pendientes: confirmar qué ODC son colecciones reales; actualizar  (07-sep vs hoy); decidir si los lotes de
+tejeduría/tintorería siguen ; cómo identificar prenda tinturada; parámetro tejeduría 2 semanas.

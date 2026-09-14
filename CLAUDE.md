@@ -142,6 +142,16 @@ en que está con código, máquina, día, kg y %.
 **Tejeduría:** `resumenTelasHTML()` (arriba del cuadro) suma por tipo de tela
 todo lo cargado: kg, liberados, tejidos, por tejer. Se teje por volumen.
 
+**Motor de programación (desde el 14-sep-2026): HACIA ATRÁS.** `S.params.motor` ('atras' vigente |
+'adelante' = el de siempre, intacto), se elige en Configuración → Calendario y parámetros. En `programar()` sección 3:
+cada orden parte de `fechaMetaDe(o)` y se coloca de empaque a corte hacia atrás (`fluirAtras`), cada paso el día laborable
+anterior al siguiente menos la espera del paso (`S.params.esperasPaso`, sembrada del 14-sep); pasada en seco y luego en
+firme. Si no cabe (cruza `S.params.inicio`, la tela lista o un `desde` del centro) se programa IGUAL hacia adelante y
+queda `ro.motor='atras-no-llega'` con `diasTarde`, `atasco` (la tela cuenta como paso) y `fechaPosible` → Hoy →
+Advertencias de fecha (`noLleganHTML`). Colecciones (ODC; sin ODC cliente+fecha) van tarde juntas
+(`ro.atrasoPorColeccion`). Tejeduría y tintorería siguen por lote (no se movieron). `programarCon(modo)` corre el otro
+motor sin tocar la caché; `compararMotores` = antes/después (Capacidad y decisiones). Ver `MOTOR_HACIA_ATRAS_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).
