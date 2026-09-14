@@ -115,7 +115,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   __check('planTarea: las vencidas abiertas conservan su fecha original (no se inventa)',planT.ordenes.filter(o=>o.vencida).every(o=>o.fecha<planT.hoy&&ESTADOS_OP_ABIERTOS.includes(o.estadoOP)));
   __check('planTarea: sin técnica ni puntadas no hay estampado ni bordado en la ruta completa',planT.ordenes.filter(o=>!o.tecnicaTxt&&!(o.puntadas>0)).every(o=>!o.rutaCompleta.some(p=>p.centro==='estampado'||p.centro==='bordado')));
   __check('planTarea: con puntadas>0 el paso bordado lleva las puntadas por prenda (unidad del motor)',planT.ordenes.filter(o=>o.puntadas>0&&o.cat).every(o=>{const b=o.rutaCompleta.find(p=>p.centro==='bordado');return b&&b.t===o.puntadas}));
-  __check('planTarea: origen PROPIA → tej+tin; EXTERNA TEÑIDA → solo proveedor; SIN CLASIFICAR → sin textil',planT.ordenes.filter(o=>o.origenTela==='PROPIA').every(o=>o.rutaCompleta[0].centro==='tej'&&o.rutaCompleta[1].centro==='tin')&&planT.ordenes.filter(o=>o.origenTela==='EXTERNA TEÑIDA').every(o=>o.rutaCompleta[0].centro==='proveedor'&&!o.rutaCompleta.some(p=>p.centro==='tin'))&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))));
+  __check('planTarea: ruta textil por las tres dimensiones (propia → tej; pedir → proveedor; falta tintura/lavado → tin; sin clasificar → sin textil)',planT.ordenes.every(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))===JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})))&&planT.ordenes.filter(o=>o.origenTela==='PROPIA').every(o=>o.rutaCompleta[0]&&o.rutaCompleta[0].centro==='tej')&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))),(()=>{const m=planT.ordenes.find(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))!==JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})));return m?m.op+' '+JSON.stringify(m.rutaCompleta.slice(0,3))+' vs '+JSON.stringify(rutaTextilDe({telas:lineasTelaDe(m.materiales)}))+' telas '+JSON.stringify(m.telas.map(t=>[t.tela,t.kg,t.produce,t.disp,t.falta,t.sinConv])):''})());
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
   TAREA=planT;aplicarTarea();await __p(100);
   /* OT reales contra las órdenes reales (fixture local, no publicado) */
@@ -283,6 +283,26 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("avance: filtrar esconde y lo dice",hv2.includes('filtros: Cliente = '+cli)&&/se muestran \d+ de \d+/.test(hv2));
    let csvOk=false;const cU=URL.createObjectURL;URL.createObjectURL=b=>{csvOk=b&&b.size>50;return 'blob:x'};try{exportarAvanceCSV()}catch(e){}URL.createObjectURL=cU;__check("avance: exporta CSV con la agrupación",csvOk);
    AV.f={};window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* tela: tres dimensiones (produce, disponibilidad, qué le falta); lavado de tela como baño oscuro; sin regla jaspe */
+  {const antes=__R.errors.length;
+   const dPlana=dimensionesTela({cod:'01018728',prod:'OXFORD CHINA 100% COTTON BONE',origen:'EXTERNA'});
+   __check("tela: plana importada con MP-IN TEMPO = externa + en bodega (no es contradicción)",dPlana.produce==='externa'&&dPlana.disp==='bodega');
+   __check("tela: propuesta por palabra: TINTURADO → nada, PFD → tintura",dimensionesTela({cod:'',prod:'TWILL PEACHED - TINTURADO BLEACH',origen:'EXTERNA'}).falta==='nada'&&dimensionesTela({cod:'',prod:'GABARDINA CHINA PFD',origen:'EXTERNA'}).falta==='tintura');
+   __check("tela: propia = la tejemos → produce propia, disp teje, falta tintura",(()=>{const d=dimensionesTela({cod:'',prod:'JERSEY 24/1 CRUDO',origen:'PROPIA'});return d.produce==='propia'&&d.disp==='teje'&&d.falta==='tintura'})());
+   const oT=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).some(t=>t.produce==='propia'&&t.kg>0));
+   __check("tela: las telas cargadas traen las tres dimensiones",!!oT&&oT.telas.every(t=>t.produce&&t.disp&&t.falta));
+   const oPl=S.ordenes.find(o=>(o.telas||[]).some(t=>t.produce==='externa'&&t.disp==='bodega'));
+   __check("tela: plana importada en bodega no lleva paso de proveedor ni carga tejeduría",!oPl||(!(oPl.rutaCompleta||[]).some(p=>p.centro==='proveedor')&&(oPl.kgTej||0)===0));
+   const sinTej=S.ordenes.filter(o=>abierta(o)&&(o.telas||[]).every(t=>produceTela(t)!=='propia')&&kgPendiente(o)>0).length;__check("tela: ninguna orden sin tela propia carga tejeduría",sinTej===0,sinTej);
+   if(oT){const tl=oT.telas.find(t=>t.produce==='propia'&&t.kg>0);const i=oT.telas.indexOf(tl);const rutaTinAntes=(oT.ruta||[]).some(p=>p.centro==='tin');
+     setFaltaTela(oT.id,i,'lavado');__check("liberación: decidir lavado de tela queda registrado (quién, cuándo, antes)",tl.faltaConf&&tl.faltaConf.v==='lavado'&&!!tl.faltaConf.u&&tl.faltaConf.antes==='tintura'&&necesitaTin(tl));
+     __check("lavado de tela: va a un baño propio con horas de color oscuro",colorBano(oT,tl)===COL_LAVADO&&(C(COL_LAVADO)||{}).fam==='oscuro'&&horasBano(COL_LAVADO,tl.tela)===prm('hOscuro',null));
+     setFaltaTela(oT.id,i,'nada');__check("liberación: 'nada' saca la tela de tintorería y la ruta pierde el paso tin si ninguna otra tela lo necesita",!necesitaTin(tl)&&((oT.telas.some(x=>x!==tl&&necesitaTin(x)&&x.kg>0))||!(oT.ruta||[]).some(p=>p.centro==='tin')));
+     setFaltaTela(oT.id,i,'tintura');__check("liberación: volver a tintura restaura el paso tin",necesitaTin(tl)&&((oT.ruta||[]).some(p=>p.centro==='tin')===rutaTinAntes||faseEstado(oT.fase,oT).tinturada));
+     page='liberacion';LIB.et='tela';render();const hl=document.getElementById('p-liberacion').innerHTML;__check("liberación: casillas tintura / lavado de tela por tela",hl.includes('qué le falta')&&hl.includes('lavado de tela')&&hl.includes("setFaltaTela("));}
+   page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: ya no dice que jaspe y llano van separados",!hm.includes('se tinturan separados')&&hm.includes('pueden ir en el mismo baño'));
+   page='config';CONF.tab='ordenes2';render();__check("config: tabla 13 de propuesta 'qué le falta'",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
+   page='ordenes';render();__check("tela 3 dimensiones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
