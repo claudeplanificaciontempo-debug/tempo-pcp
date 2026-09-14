@@ -248,3 +248,14 @@ límite = fecha requerida − días. `rutaTextilDe` ya no usa 15 fijo (usa diasP
 Registrar hecho desde la cola del centro: `marcarHechoCentro`/`confirmarHechoCentro`/`deshacerHechoCentro`,
 `avance.hechoC[c]` (ts,u,pz,pedido,dif,turnoDelta), turnos con piezas reales, completo (módulos parcial preparado y
 apagado con `S.params.modulosParcial`), "Hecho hoy" en la cola, "lista para <siguiente>". No reprograma; no toca motor.
+
+### Días de proveedor · ojales/botones · dos liberaciones · tintorería (14-sep-2026)
+Ver `CUATRO_COSAS_PROVEEDOR_BOTONES_LIBERACIONES_TINTORERIA.md`. A) `S.params.diasProveedor` sembrado 15 laborables
+`estimado`; `dsumLab`/`labDiaGeneral` hacen la espera de tela externa en días laborables; `rutaTextilDe` usa
+`diasProvOrden(o)`. B) `S.params.tiemposOjalBoton` (match→ojales+botones) sobrescribe el SAM de Botones de la LMO
+(`samPorCentro`), `aplicarTiemposBotones` migra las rutas; corregir también la LMO. C) Liberación a producción una por
+una con dos casillas obligatorias (MP/insumos en bodega + fechaVerif) en `o.lib.corte`; sin masivo; `o.rutaRevGeneral`;
+edición de ruta con `etapa` en `o.rutaEditada` → panel "Auditoría de ruta" en vAuditoria. D) permiso `armarBanos` (solo
+planificación); `S.params.motivosReproceso` y `S.params.restriccionFaltante` editables; faltante capturado en
+`confirmarBanoHecho` (`avance.faltaKg`+`faltaTinPend`, `kgTelaTin` lo respeta), panel `faltantesPanelHTML` (cola de
+planificación, restricciones), `reingresarFaltante` manual; `reporteTin`/`reporteTinPanelHTML` mensual.
