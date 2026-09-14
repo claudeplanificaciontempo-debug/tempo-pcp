@@ -49,6 +49,19 @@ a propósito la pisan. Cuando algo no se puede determinar se escribe "NO DETERMI
    histórico, módulo desde operación.
 7. **Estado de la OT → significado** (terminado / en proceso / para hacer / bloqueado por material / esperando /
    cancelado).
+8. **Categoría Odoo → tela corta** (80 filas: ruta `INV / MP / n3 / n4` → nombre corto de la macro → tela del catálogo,
+   opcional). Reemplazó al `MAPA_TELA` del código (borrado). Categorías sin tela del catálogo se reportan en la Parte 2
+   (`telaSinCatalogo`) y no entran al motor textil.
+9. **Parámetros por tela**: kg/m (líneas en metros) y kg/unidad (cuellos 0,026 · puños 0,0159).
+10. **Merma de tintura** por tela corta × tipo (LLANO/JASPE); solo se usa si la tela corta no está enlazada a una tela
+    del catálogo: si lo está, manda el **`enc` de la tela (Configuración → Telas), que es la merma de tintura del sistema**.
+11. **Palabras jaspe** (JASPE, JASPEADO) → tipo de la línea; corregible por producto en el catálogo.
+12. **Catálogo de productos**: proveedor desde facturas de compra (`mFacturas`, el archivo no se guarda) + catálogo de la
+    usuaria (MP-IN). Origen por producto: facturas → COMPRADO; TEMPO en MP-IN o categoría PROPIA → PROPIO; categoría
+    EXTERNA → COMPRADO sin factura; resto SIN CLASIFICAR; contradicción cuando chocan. La tabla 3 sigue decidiendo por
+    categoría para productos sin factura ni fila.
+- Tabla 1 tiene además la columna **montado** (0Macro, 1Tejeduria, 1CD Tintoreria): son las órdenes que entran a la
+  **Macro del mes** (Planificación textil), liberadas o no. Ver `METODO_MACRO_REPORTE.md`.
 - Operaciones → Mapeo: **familia de operación → centro TEMPO** (reglas en orden, comodín `*` → confección) y
   **categoría padre/hija → categoría LMO** (excepciones por hija).
 - Centros: minuto estándar y % estimado para lavado/plancha, puntadas/min para bordado. Categorías: lleva lavado /
@@ -147,8 +160,30 @@ corte (5) → maquila externa (6) → servicios (7) → confección (8) → term
 - Órdenes de trabajo: 666 órdenes cruzan, 771 centros cerrados, 204 contradicciones (gana la OT), 418 órdenes con OT
   "esperando componentes", 5.768 filas de bodegas ignoradas. Tras asignar ETIQUETADO, PULIDO y SERVICIOS Y TERMINADOS:
   1.003 centros cerrados, 216 contradicciones. Ver `CARGA_ORDENES_DE_TRABAJO_REPORTE.md`.
+- Macro (13-sep, 08:05–08:07 p.m.): tablas 8–12 sembradas, facturas aplicadas (6.959 filas, 951 códigos, 113
+  proveedores, 52 multi), Parte 2 recargada con la tabla 8 (691 órdenes) y OT reaplicadas (666 / 1.003 / 216). Validación
+  contra los 7.905 kg de la usuaria: 26 de 30 telas exactas con la merma de su hoja; +167,4 kg en 4 telas por productos
+  que faltan en su MP-IN; 12 `enc` distintos de su hoja Memas, sin cambiar. Detalle en `METODO_MACRO_REPORTE.md`.
+- Fotos de las órdenes (código publicado el 13-sep, carga pendiente de que exista el bucket): ver sección 8b.
 - Carga programada por el motor (sep, minutos): confección 475.898 · corte 10.837 · estampado 3.167 · etiquetas 1.406 ·
   botones 21.759 · empaque 22.589 · bordado 0 · lavado/plancha 0. Liberadas: 408 tela / 293 corte. Tejeduría 90 corridas.
+
+## 8b · Fotos de las órdenes
+
+- Van al **almacenamiento de Supabase** (Storage, bucket público `fotos-ordenes`, se puede cambiar con
+  `S.params.fotosBucket`), **nunca al repo** (GitHub Pages es público y las fotos llevan referencias de clientes). La
+  orden guarda **solo el enlace** (`o.foto`, URL pública con `?v=` para que un reemplazo se vea al instante).
+- Índice `S.params.fotosIdx[op]={ts,b}`: como la recarga de la Parte 2 reemplaza todas las órdenes, `colgarFotos()`
+  vuelve a colgar el enlace por OP al aplicar la recarga. Las fotos de órdenes que aún no existen se suben igual y se
+  cuelgan cuando llegue la orden.
+- Carga: Órdenes → botón **Fotos** (`mFotos`): CSV con columnas "Orden de produccion" y "Avatar" (base64). Por tandas:
+  lo que viene reemplaza, lo demás se conserva. JPG de hasta 600 px sube tal cual; lo demás se convierte a JPG 600 px
+  calidad 0,82 (`normalizarFoto`). Reporta subidas, órdenes con/sin foto, espacio (`S.params.fotosCarga`).
+- Dónde se ve (`fotoMini`, miniatura 34 px con carga perezosa, clic = grande): lista de órdenes, ficha de la orden,
+  programación por centro (`vCentro`), liberación (tabla de la liberación; la confirmación sigue siendo un `confirm()`
+  sin imagen) y **hoja impresa del día** (54 px). No va en plan mensual, macro, stock, baños ni capacidades.
+- El bucket lo crea la usuaria en el panel de Supabase (la clave pública no puede crear buckets): público, con
+  políticas de `storage.objects` que permitan a `anon` select/insert/update en ese bucket.
 
 ## 9 · Auditoría de reglas fijas (`AUDITORIA_REGLAS_FIJAS.md`, 187 puntos) y qué se corrigió
 
@@ -171,8 +206,13 @@ vacían (solo la de fases está protegida), `ESTADOS_OP_ABIERTOS` y contradicci�
    "pendiente de liberar", Paso 11 confirmación de ruta antes de liberar) y "avance incierto" (4 Calidad Produccion).
 4. Tiempos a mano de las 14 categorías sin operaciones. Decidir si las 1.846 OT de SERIGRAFIA sin operación son estampado
    o etiquetado (impacto 687 min). Las 7 órdenes Stand by de PRICE CLUB sin rastro de producción.
-5. Tejeduría: descontar stock en el programa; carga de stock por Excel. Método de la macro.
+5. Tejeduría: descontar stock en el programa; carga de stock por Excel. Macro: decisiones de
+   `METODO_MACRO_REPORTE.md` §6 (PIQUE FANTASIA, Orchid HA, combinados, 12 `enc`, 4 contradicciones, 7 categorías sin tela).
 6. Resto de la auditoría (sección 9) según prioridad de la usuaria; documentar qué sistema usa "esperando componentes".
+7. **La recarga de la Parte 2 reemplaza todas las órdenes y con ellas se pierden `o.lib` (firmas de liberación manual),
+   `o.prio`, `o.progCentro`, `o.recursoFijo` y `S.avance`**; `o.ot` se recupera reaplicando las OT y `o.foto` con el
+   índice de fotos. Decidir si esos campos deben conservarse por OP al recargar (hoy no se conservan; no se cambió sin OK).
+8. Cargar las fotos en producción en cuanto exista el bucket (sección 8b) y reportar cifras.
 
 ## 11 · Documentos en el repo
 
@@ -180,5 +220,5 @@ vacían (solo la de fases está protegida), `ESTADOS_OP_ABIERTOS` y contradicci�
 `RECARGA_CORRECCION_RUTA_ORDEN.md`, `RECARGA_PARTE2_TABLAS_CONFIG.md`, `RECARGA_PARTE2_REPORTE.md` (nota: dice 600
 puntadas/min donde producción tenía 6.000), `AUDITORIA_REGLAS_FIJAS.md`, `ARREGLOS_PREVIOS_BLOQUE_K.md`,
 `SIGUIENTE_PASO_STOCK_BORDADO.md`, `MOTOR_FASES_LIBERACION_ANTES_DESPUES.md`, `ORDENES_DE_TRABAJO_Y_TRAMO_NO_SECUENCIAL.md`,
-`CARGA_ORDENES_DE_TRABAJO_REPORTE.md`, `LISTADO_CATEGORIAS_PRODUCCION.md/.pdf`, y este traspaso. `CLAUDE.md` tiene el
+`CARGA_ORDENES_DE_TRABAJO_REPORTE.md`, `LISTADO_CATEGORIAS_PRODUCCION.md/.pdf`, `METODO_MACRO_REPORTE.md`, y este traspaso. `CLAUDE.md` tiene el
 resumen técnico y las reglas de tintorería; donde contradiga a este documento, manda este.
