@@ -128,6 +128,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .bath.b-lavado{background:var(--lavado);color:#1B2A2D}
 .bath{position:relative}
 .mgrid td.dd-over{outline:2px dashed var(--ink);outline-offset:-3px;background:var(--field)}
+.capm td.cel{cursor:pointer;text-align:center;font-weight:600;min-width:86px}.capm td.cel.ok{background:#E8F3ED;color:var(--ok)}.capm td.cel.amb{background:#FBF3E2;color:#8A6417}.capm td.cel.rojo{background:#FBECE9;color:var(--alerta)}.capm td.cel.sel{outline:2px solid var(--ink);outline-offset:-2px}.capm td.cel small{display:block;font-weight:400;font-size:10px;opacity:.85}
 .cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
 .bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
@@ -281,6 +282,7 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="cumplimiento">Cumplimiento</a>
       <a data-p="avance">Avance del mes</a>
       <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
+      <a data-p="capacidad" data-perm="programa">Capacidad y decisiones</a>
     </div>
     <div class="grp" data-g="tex">Planificación textil <span class="car">▾</span></div>
     <div class="gbody" data-g="tex">
@@ -332,6 +334,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-cumplimiento"></section>
     <section class="page" id="p-avance"></section>
     <section class="page" id="p-auditoria"></section>
+    <section class="page" id="p-capacidad"></section>
     <section class="page" id="p-linea"></section>
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
@@ -469,7 +472,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -556,7 +559,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 12:04';
+const APP_BUILD='2026-09-14 12:15';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1099,12 +1102,17 @@ const fmtPer=w=>GRAN==='dia'?fmtDia(w):GRAN==='mes'?new Date(w+'-15T12:00:00').t
 function setGran(g){GRAN=g;render()}
 
 /* ================= VISTAS ================= */
-function render(){
+/* buscadores: el redibujo completo recreaba el input y se perdía el cursor. buscarQ guarda el campo (data-q) y el cursor, espera unos ms
+   después de la última tecla (solo si hay más de 300 órdenes) y tras render() devuelve el foco al mismo campo en la misma posición */
+let _qTimer=null;
+function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
+  const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
+function render(){CAPM=null;
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -1180,6 +1188,7 @@ function vPanorama(el){
   el.innerHTML=`<div class="pagehead"><h2>Hoy</h2><span class="spacer"></span><span class="mut">${fmt(h)}</span></div>
   <p class="lede">Lo que está programado hoy por área, lo que necesita una decisión, y cómo va el mes. La foto mensual está en el Resumen gerencial.</p>
   ${puede('programa')?panelAdvertencias():''}
+  ${puede('programa')?avisoCapacidadHTML():''}
   <div class="kpis">
    <div class="kpi"><div class="v">${num(kgHoy)} kg</div><div class="k">A tejer hoy${!kgHoy&&proxTej?' · próximo '+fmtDia(proxTej):''}</div></div>
    <div class="kpi ${(P.banosPend||[]).length?'warn':''}"><div class="v">${dBan.length}</div><div class="k">Baños hoy${(P.banosPend||[]).length?' · '+(P.banosPend||[]).length+' por decidir':''}${!dBan.length&&proxBan?' · próximo '+fmtDia(proxBan):''}</div></div>
@@ -1970,7 +1979,7 @@ function vLiberacion(el){
     ${selMulti('Familia',fams,LIB.fam,'LIB.fam','togSetFam')}${selMulti('Categoría',hijas,LIB.hija,'LIB.hija','togSetHija')}${selMulti('Tipo de tela',telasDisp,LIB.tela,'LIB.tela','togSetTela',nTela)}
     <div><label>Fases</label>${selFases(fasesAll,LIB.fases,'LIB.fases','togFaseLib',cuentasFase)}</div>
     ${selMulti('Cliente',clis,LIB.cli,'LIB.cli','togSetCli')}${selMulti('Mes de entrega',meses,LIB.mes,'LIB.mes','togSetMes')}
-    <div style="flex:1;min-width:180px"><label>Buscar</label><input type="text" value="${esc(LIB.q)}" placeholder="WH, estilo, color" oninput="LIB.q=this.value;render()"></div>
+    <div style="flex:1;min-width:180px"><label>Buscar</label><input type="text" value="${esc(LIB.q)}" placeholder="WH, estilo, color" data-q="LIB.q" oninput="buscarQ(this,v=>LIB.q=v)"></div>
     ${(LIB.fam||LIB.hija||LIB.tela||LIB.cli||LIB.mes||LIB.fases||LIB.q)?`<div><button class="btn ghost sm" onclick="LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.q='';render()">Limpiar</button></div>`:''}</div></div>
   <div class="panel"><h3>Por liberar a ${nombre} <span class="note">con estos filtros: ${listas.length} órdenes listas · ${num(rPend.pz)} prendas${noListas.length?' · '+noListas.length+' aún no pueden':''}</span><span class="spacer"></span>
     ${puedeF?`<button class="btn sm" ${listas.length?'':'disabled'} onclick="liberarA(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar todo lo filtrado (${listas.length})</button>`:''}</h3>
@@ -2168,7 +2177,7 @@ function vCentro(el){
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
-   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}<input type="text" style="width:200px" placeholder="buscar WH, categoría, color" value="${esc(CEN.q)}" oninput="CEN.q=this.value;render()"></div>`;
+   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}<input type="text" style="width:200px" placeholder="buscar WH, categoría, color" value="${esc(CEN.q)}" data-q="CEN.q" oninput="buscarQ(this,v=>CEN.q=v)"></div>`;
   // órdenes con paso en este centro
   const filas=filasDeCentros(cens,P,lun,dom,CEN.q);
   if(CEN.tab==='plan'){
@@ -2403,6 +2412,99 @@ let AUD={rec:'',u:'',cat:'',mes:''};
 function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
   S.recursos.filter(r=>r.centro==='modulos').forEach(r=>(r.objetivoHist||[]).forEach((h,i)=>out.push({id:r.id+'_obj_'+i,tipo:'objetivo',ts:h.ts,u:h.u,centro:'modulos',rec:r.id,op:'',cat:'',cant:null,antes:h.antes,despues:h.v,motivo:h.motivo||''})));
   return out.sort((a,b)=>a.ts<b.ts?1:-1)}
+/* ---------- Capacidad y decisiones (Dirección): dónde se rompe el plan por centro y mes, qué lo causa y qué se decidió ----------
+   Base: el PLAN por Proyecto (mes de Odoo), TODAS las órdenes abiertas, liberadas o no. Carga de un centro-mes = prendas pendientes ×
+   min/prenda del centro (la misma regla del motor para un paso, minRef), sin repartir por días. Capacidad = calendario del mes × recursos
+   activos (capDia), como el Plan mensual. Tejeduría y tintorería no tienen min/prenda por Proyecto: se muestran por PROGRAMA con toda la
+   cartera (programarTodo) y la celda lo dice. No se toca el motor: solo se lee. */
+let CAPD={sel:null,cen:''};let CAPM=null;
+const CAP_TEXTIL={tej:'Tejeduría',tin:'Tintorería'};
+function nombreCentroCap(c){return CAP_TEXTIL[c]||nCen(c)}
+function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hechas=fe.hechos.includes(c)?o.cant:(ac[c]||0);const pend=Math.max(0,o.cant-hechas);if(!pend)return 0;
+  return (o.ruta||[]).filter(p=>p.centro===c).reduce((x,p)=>{const t=(c==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;return x+pend*minPrenda(c,t)},0)}
+function capMesRecs(recs,ym){const [y,m]=ym.split('-').map(Number);const nd=new Date(y,m,0).getDate();let cap=0;for(let d=1;d<=nd;d++){const ds=ym+'-'+String(d).padStart(2,'0');recs.forEach(r=>{if(labR(ds,r))cap+=capDia(r,ds)})}return cap}
+function matrizCapacidad(){if(CAPM)return CAPM;
+  const ords=S.ordenes.filter(abierta);const cenPro=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  const porOrden=ords.map(o=>{const m=mesPlan(o);const cs={};(o.ruta||[]).forEach(p=>{if(cs[p.centro]!==undefined)return;const c=CE(p.centro);if(!c||c.area!=='pro')return;cs[p.centro]=minPendCentro(o,p.centro)});return{o,m,cs,lib:liberada(o,'corte')}});
+  const meses=[...new Set(porOrden.map(x=>x.m).filter(Boolean))];const sinProy=porOrden.filter(x=>!x.m&&Object.values(x.cs).some(v=>v>0)).map(x=>x.o);
+  const celdas={};
+  cenPro.forEach(c=>{meses.forEach(m=>{const det=porOrden.filter(x=>x.m===m&&x.cs[c.id]>0).map(x=>({o:x.o,min:x.cs[c.id],lib:x.lib})).sort((a,b)=>b.min-a.min);
+    const carga=det.reduce((a,x)=>a+x.min,0);if(!carga)return;const cap=capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===c.id),m);const noLib=det.filter(x=>!x.lib);
+    celdas[c.id+'|'+m]={c:c.id,m,u:'min',carga,cap,pct:cap?carga/cap*100:null,det,noLib:noLib.length,minNoLib:noLib.reduce((a,x)=>a+x.min,0),base:'proyecto'}})});
+  const PA=ords.length?programarTodo():{tej:[],banos:[]};
+  ['tej','tin'].forEach(a=>{const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area===a);const porMes={};
+    if(a==='tej')PA.tej.forEach(x=>{if(!x.dia)return;const m=x.dia.slice(0,7);const pm=porMes[m]=porMes[m]||{h:0,ops:{}};pm.h+=x.h||0;if(!x.cambio)pm.ops[x.op]=(pm.ops[x.op]||0)+(x.h||0)});
+    else PA.banos.filter(b=>!b.error&&b.dia).forEach(b=>{const m=b.dia.slice(0,7);const pm=porMes[m]=porMes[m]||{h:0,banos:[]};pm.h+=b.horas||0;pm.banos.push(b)});
+    Object.entries(porMes).forEach(([m,pm])=>{if(!pm.h)return;if(!meses.includes(m))meses.push(m);const cap=capMesRecs(recs,m);
+      const det=a==='tej'?Object.entries(pm.ops).map(([op,h])=>{const o=ords.find(z=>z.op===op);return o?{o,min:h,lib:liberada(o,'tela')}:null}).filter(Boolean).sort((x,y)=>y.min-x.min):[];
+      const noLib=det.filter(x=>!x.lib);
+      celdas[a+'|'+m]={c:a,m,u:'h',carga:pm.h,cap,pct:cap?pm.h/cap*100:null,det,banos:(pm.banos||[]).slice().sort((x,y)=>(y.horas||0)-(x.horas||0)),noLib:noLib.length,minNoLib:noLib.reduce((x,y)=>x+y.min,0),base:'programa'}})});
+  meses.sort();
+  const filas=[{id:'tej',n:'Tejeduría',area:'tej'},{id:'tin',n:'Tintorería',area:'tin'},...cenPro.map(c=>({id:c.id,n:c.n,area:'pro'}))].filter(f=>meses.some(m=>celdas[f.id+'|'+m]));
+  CAPM={meses,filas,celdas,sinProy};return CAPM}
+function estadoCel(x){if(!x)return '';if(!x.cap)return 'rojo';const amb=prm('capAmbar',undefined);if(x.carga>x.cap)return 'rojo';if(amb!==undefined&&x.pct>=amb)return 'amb';return 'ok'}
+/* registro de problemas: cada centro-mes que no alcanza se anota la primera vez que se ve (quién lo vio, cuándo, cuánto) y se cierra solo cuando vuelve a alcanzar */
+function revisarProblemasCap(){const M=matrizCapacidad();const now=new Date().toISOString();S.params.capProblemas=S.params.capProblemas||[];let cambio=false;
+  const rojos=Object.values(M.celdas).filter(x=>estadoCel(x)==='rojo');
+  rojos.forEach(x=>{const falta=x.cap?x.carga-x.cap:x.carga;let p=S.params.capProblemas.find(q=>q.c===x.c&&q.m===x.m&&!q.cerrado);
+    if(!p){S.params.capProblemas.push({id:uid(),c:x.c,m:x.m,detectado:now,detectadoPor:quienFirma(),pct:x.pct!=null?Math.round(x.pct):null,falta,u:x.u,visto:null});cambio=true;
+      bitacora('Capacidad: nuevo problema · '+nombreCentroCap(x.c)+' '+fmtMesEG(x.m)+' · '+(x.pct!=null?Math.round(x.pct)+'%':'sin capacidad')+' · faltan '+num(falta)+' '+x.u)}
+    else{p.pctHoy=x.pct!=null?Math.round(x.pct):null;p.faltaHoy=falta}});
+  S.params.capProblemas.filter(p=>!p.cerrado).forEach(p=>{if(!rojos.some(x=>x.c===p.c&&x.m===p.m)){p.cerrado=now;cambio=true;bitacora('Capacidad: '+nombreCentroCap(p.c)+' '+fmtMesEG(p.m)+' ya alcanza · problema cerrado')}});
+  if(cambio)save();return S.params.capProblemas}
+function avisoCapacidadHTML(){if(!S.ordenes.length)return '';const ps=revisarProblemasCap();const ab=ps.filter(p=>!p.cerrado);if(!ab.length)return '';const nuevos=ab.filter(p=>!p.visto);
+  return `<div class="warn"><b>Capacidad y decisiones:</b> ${ab.length} centro-mes no alcanzan${nuevos.length?` · <b>${nuevos.length} nuevos sin ver</b>: ${nuevos.slice(0,4).map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%)').join(', ')}${nuevos.length>4?'…':''}`:''}. <a href="#" onclick="page='capacidad';render();return false">Abrir</a></div>`}
+function verProblemaCap(id){const p=(S.params.capProblemas||[]).find(x=>x.id===id);if(!p)return;p.visto=new Date().toISOString();p.vistoPor=quienFirma();save();render()}
+function anotarDecisionCap(c,m){if(!puede('programa')){alert('Tu perfil no puede anotar decisiones.');return}const ta=document.getElementById('capd-txt');const txt=((ta&&ta.value)||'').trim();if(!txt){alert('Escribe la decisión antes de anotar.');return}
+  const x=matrizCapacidad().celdas[c+'|'+m]||{};S.params.capDecisiones=S.params.capDecisiones||[];
+  S.params.capDecisiones.push({id:uid(),c,m,ts:new Date().toISOString(),u:quienFirma(),txt,pct:x.pct!=null?Math.round(x.pct):null,falta:x.cap!=null?Math.max(0,(x.carga||0)-(x.cap||0)):null,unidad:x.u||'',resuelto:false});
+  const p=(S.params.capProblemas||[]).find(q=>q.c===c&&q.m===m&&!q.cerrado);if(p&&!p.visto){p.visto=new Date().toISOString();p.vistoPor=quienFirma()}
+  bitacora('Capacidad · decisión '+nombreCentroCap(c)+' '+fmtMesEG(m)+' ('+(x.pct!=null?Math.round(x.pct)+'%':'—')+'): '+txt);save();render()}
+function resolverDecisionCap(id){if(!puede('programa'))return;const d=(S.params.capDecisiones||[]).find(x=>x.id===id);if(!d)return;d.resuelto=!d.resuelto;d.resueltoTs=d.resuelto?new Date().toISOString():null;d.resueltoPor=d.resuelto?quienFirma():null;
+  bitacora('Capacidad · decisión '+nombreCentroCap(d.c)+' '+fmtMesEG(d.m)+(d.resuelto?' dada por resuelta':' reabierta')+': '+d.txt.slice(0,80));save();render()}
+function setCapAmbar(v){if(!puede('config')){alert('Solo configuración puede cambiar el umbral.');return}const n=+v;if(!(n>=0&&n<=100)){alert('Umbral entre 0 y 100.');return}const antes=S.params.capAmbar;S.params.capAmbar=n;bitacora('Capacidad · umbral ámbar: '+(antes===undefined?'—':antes)+'% → '+n+'%');save();render()}
+function fmtCarga(v,u){return u==='h'?num(v,1)+' h':num(v)+' min ('+num(v/60)+' h)'}
+function vCapacidad(el){
+  if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Capacidad y decisiones</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
+  if(S.params.capAmbar===undefined){S.params.capAmbar=85;save()} // siembra inicial (decisión 14-sep: ámbar desde 85%); editable aquí
+  CAPM=null;const M=matrizCapacidad();const ps=revisarProblemasCap();const abiertos=ps.filter(p=>!p.cerrado);const nuevos=abiertos.filter(p=>!p.visto);
+  const fmM=m=>new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'short',year:'2-digit'});const fmTs=t=>t?new Date(t).toLocaleString('es-EC',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  if(CAPD.sel&&!M.celdas[CAPD.sel])CAPD.sel=null;
+  const rojas=Object.values(M.celdas).filter(x=>estadoCel(x)==='rojo').sort((a,b)=>a.m<b.m?-1:a.m>b.m?1:0);
+  const cel=(f,m)=>{const x=M.celdas[f.id+'|'+m];if(!x)return '<td class="mut" style="text-align:center">·</td>';const k=f.id+'|'+m;const est=estadoCel(x);const p=abiertos.find(q=>q.c===f.id&&q.m===m);
+    return `<td class="cel ${est} ${CAPD.sel===k?'sel':''}" onclick="CAPD.sel='${k}';render()" title="${x.base==='programa'?'Por programa con toda la cartera (el motor reparte tela por fecha requerida)':'Por Proyecto: prendas pendientes × min/prenda del centro'} · carga ${fmtCarga(x.carga,x.u)} · capacidad ${fmtCarga(x.cap,x.u)}">${x.cap?Math.round(x.pct)+'%':'sin cap.'}${p&&!p.visto?' <span class="tag t-alerta" style="font-size:9px;padding:0 4px">nuevo</span>':''}<small>${x.noLib?x.noLib+' no lib.':'todo liberado'}${x.base==='programa'?' · programa':''}</small></td>`};
+  const sel=CAPD.sel?M.celdas[CAPD.sel]:null;
+  let detalle='';
+  if(sel){const x=sel;const n=nombreCentroCap(x.c);const falta=x.cap?Math.max(0,x.carga-x.cap):x.carga;const est=estadoCel(x);
+    const cercanos=M.meses.filter(m=>m!==x.m).map(m=>{const y=M.celdas[x.c+'|'+m];const cap=y?y.cap:(x.base==='proyecto'?capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),m):null);const carga=y?y.carga:0;return{m,cap,carga,holg:cap!=null?cap-carga:null,dist:Math.abs((+m.slice(0,4)*12+ +m.slice(5,7))-(+x.m.slice(0,4)*12+ +x.m.slice(5,7)))}}).filter(z=>z.dist<=3&&z.holg!=null&&z.holg>0).sort((a,b)=>a.dist-b.dist||(a.m<b.m?-1:1));
+    const decs=(S.params.capDecisiones||[]).filter(d=>d.c===x.c&&d.m===x.m).sort((a,b)=>a.ts<b.ts?1:-1);const prob=abiertos.find(q=>q.c===x.c&&q.m===x.m);
+    detalle=`<div class="panel" style="border-color:${est==='rojo'?'var(--alerta)':'var(--rule)'}"><h3>${esc(n)} · ${esc(fmtMesEG(x.m))} <span class="note">${x.cap?Math.round(x.pct)+'% de uso':'sin capacidad configurada'} · base: ${x.base==='programa'?'programa con toda la cartera':'plan por Proyecto, liberado o no'}</span><span class="spacer"></span>${prob&&!prob.visto&&puede('programa')?`<button class="btn ghost sm" onclick="verProblemaCap('${prob.id}')">visto</button>`:''}</h3><div class="body">
+     <div class="kpis"><div class="kpi ${est==='rojo'?'bad':''}"><div class="v">${x.cap?num(x.carga>x.cap?x.carga-x.cap:0)+(x.u==='h'?' h':' min'):'—'}</div><div class="k">${x.cap?(x.carga>x.cap?'Faltan'+(x.u==='min'?' · '+num((x.carga-x.cap)/60)+' h':''):'Alcanza · sobran '+fmtCarga(x.cap-x.carga,x.u)):'Sin recursos activos en '+esc(n)+': toda la carga queda sin capacidad'}</div></div>
+      <div class="kpi"><div class="v">${fmtCarga(x.carga,x.u)}</div><div class="k">Carga · ${x.det.length} órdenes${x.base==='proyecto'?' · prendas pendientes × min/prenda del centro (Configuración → Categorías y operaciones)':' · según el programa'}</div></div>
+      <div class="kpi"><div class="v">${fmtCarga(x.cap,x.u)}</div><div class="k">Capacidad · calendario del mes × recursos activos (Configuración → Centros y recursos · Calendario)</div></div>
+      <div class="kpi ${x.noLib?'warn':''}"><div class="v">${x.noLib}</div><div class="k">Órdenes todavía NO liberadas · ${fmtCarga(x.minNoLib,x.u)} · ahí todavía puedes decidir</div></div></div>
+     ${cercanos.length?`<p style="font-size:var(--fs-s)"><b>Meses cercanos con holgura en ${esc(n)}:</b> ${cercanos.map(z=>esc(fmtMesEG(z.m))+': caben '+fmtCarga(z.holg,x.u)+' (uso '+(z.cap?Math.round(z.carga/z.cap*100):0)+'%)').join(' · ')}</p>`:`<p class="mut" style="font-size:var(--fs-s)">Ningún mes a ±3 tiene holgura en ${esc(n)}.</p>`}
+     ${x.det.length?`<div class="scroll" style="max-height:380px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Pendientes</th><th class="num">${x.u==='h'?'Horas':'Min'}</th><th class="num">% del mes</th><th>Liberación</th><th>Entrega</th></tr></thead><tbody>
+      ${x.det.slice(0,80).map(d=>`<tr><td style="white-space:nowrap">${fotoMini(d.o)}${esc(d.o.op)}</td><td>${esc(d.o.cliente||'')}</td><td>${esc(nombreCat(K(d.o.cat)))}</td><td class="num">${num(d.o.cant)}</td><td class="num">${x.u==='h'?num(d.min,1):num(d.min)}</td><td class="num">${x.cap?Math.round(d.min/x.cap*100):'—'}%</td><td><span class="tag ${d.lib?'t-ok':'t-lavado'}">${esc(estadoLibEG(d.o))}</span></td><td>${d.o.fecha||'<span class="mut">sin fecha</span>'}</td></tr>`).join('')}${x.det.length>80?`<tr><td colspan="8" class="mut">… y ${x.det.length-80} órdenes más (ordenadas por peso)</td></tr>`:''}</tbody></table></div>`:''}
+     ${x.banos&&x.banos.length?`<div class="scroll" style="max-height:300px"><table><thead><tr><th>Baño</th><th>Color</th><th class="num">kg</th><th class="num">Horas</th><th>Máquina</th><th>Día</th><th>WH</th></tr></thead><tbody>${x.banos.slice(0,60).map(b=>`<tr><td>${esc(b.cod||'')}${b.confirmado?' <span class="tag t-ok">confirmado</span>':''}</td><td>${esc(b.colorN||'')}</td><td class="num">${num(b.kg)}</td><td class="num">${num(b.horas||0,1)}</td><td>${esc(nRec(b.rec))}</td><td>${fmtDia(b.dia)}</td><td style="font-size:var(--fs-xs)">${[...(b.ops||[])].slice(0,6).map(esc).join(', ')}</td></tr>`).join('')}</tbody></table></div>`:''}
+     <h4 style="margin:14px 0 6px">Decisiones sobre ${esc(n)} · ${esc(fmtMesEG(x.m))}</h4>
+     ${puede('programa')?`<textarea id="capd-txt" rows="2" style="width:100%" placeholder="Qué se decidió (texto libre). Aquí solo se anota: el sistema no ejecuta nada; si decides mover carga, reprogramas a mano."></textarea><div style="margin:6px 0 10px"><button class="btn sm" onclick="anotarDecisionCap('${x.c}','${x.m}')">Anotar decisión</button> <span class="mut" style="font-size:var(--fs-xs)">queda con quién, cuándo, el % y lo que faltaba en ese momento</span></div>`:''}
+     ${decs.length?`<table><thead><tr><th>Cuándo</th><th>Quién</th><th>Situación</th><th>Decisión</th><th>Estado</th><th></th></tr></thead><tbody>${decs.map(d=>`<tr><td style="white-space:nowrap">${fmTs(d.ts)}</td><td>${esc(d.u)}</td><td style="white-space:nowrap">${d.pct!=null?d.pct+'%':'—'}${d.falta?' · faltaban '+num(d.falta)+' '+esc(d.unidad):''}</td><td>${esc(d.txt)}</td><td>${d.resuelto?'<span class="tag t-ok">resuelta · '+esc(d.resueltoPor||'')+' · '+fmTs(d.resueltoTs)+'</span>':'<span class="tag t-aviso">abierta</span>'}</td><td>${puede('programa')?`<button class="btn ghost sm" onclick="resolverDecisionCap('${d.id}')">${d.resuelto?'reabrir':'dar por resuelta'}</button>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="mut" style="font-size:var(--fs-s)">Sin decisiones anotadas.</p>'}
+    </div></div>`}
+  const cens=[...new Set([...ps.map(p=>p.c),...(S.params.capDecisiones||[]).map(d=>d.c)])];
+  const hist=[...ps.map(p=>({ts:p.detectado,tipo:'problema',c:p.c,m:p.m,u:p.detectadoPor||'',txt:(p.pct!=null?p.pct+'%':'sin capacidad')+' · faltaban '+num(p.falta)+' '+p.u,estado:p.cerrado?'cerrado '+fmTs(p.cerrado):(p.pctHoy!=null?'abierto · hoy '+p.pctHoy+'%':'abierto'),visto:p.visto})),...(S.params.capDecisiones||[]).map(d=>({ts:d.ts,tipo:'decisión',c:d.c,m:d.m,u:d.u,txt:d.txt,estado:d.resuelto?'resuelta '+fmTs(d.resueltoTs)+' · '+esc(d.resueltoPor||''):'abierta'}))].filter(h=>!CAPD.cen||h.c===CAPD.cen).sort((a,b)=>a.ts<b.ts?1:-1);
+  el.innerHTML=`<div class="pagehead"><h2>Capacidad y decisiones</h2><span class="spacer"></span><div class="row" style="margin:0;align-items:flex-end"><div><label>Ámbar desde <span class="mut">(% de uso; rojo = más del 100%)</span></label><input type="number" min="0" max="100" style="width:80px" value="${prm('capAmbar',85)}" ${puede('config')?'':'disabled'} onchange="setCapAmbar(this.value)"></div></div></div>
+   <p class="lede">Dónde se rompe el plan y cuándo. Filas: centros; columnas: todos los meses con carga. Base: el <b>plan por Proyecto</b> (mes de Odoo) con <b>todas las órdenes abiertas, liberadas o no</b>; cada celda dice cuántas no están liberadas. Carga = prendas pendientes × min/prenda del centro; capacidad = calendario del mes × recursos activos. Tejeduría y tintorería van por programa (el motor reparte la tela por fecha requerida) y la celda lo marca. Aquí solo se anota lo que se decide: el sistema no ejecuta nada.</p>
+   ${nuevos.length?`<div class="warn"><b>${nuevos.length} problemas nuevos sin ver:</b> ${nuevos.map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%, detectado '+fmTs(p.detectado)+')').join(' · ')}</div>`:''}
+   ${M.sinProy.length?`<div class="warn"><b>${M.sinProy.length} órdenes con carga y sin Proyecto reconocible</b> (${num(M.sinProy.reduce((a,o)=>a+ +o.cant,0))} prendas): no caen en ningún mes de esta tabla hasta que Odoo les ponga proyecto.</div>`:''}
+   <div class="kpis"><div class="kpi ${rojas.length?'bad':''}"><div class="v">${rojas.length}</div><div class="k">Centro-mes que no alcanzan</div></div><div class="kpi"><div class="v">${Object.values(M.celdas).filter(x=>estadoCel(x)==='amb').length}</div><div class="k">Justos (≥ ${prm('capAmbar',85)}%)</div></div><div class="kpi"><div class="v">${abiertos.length}</div><div class="k">Problemas abiertos · ${(S.params.capDecisiones||[]).filter(d=>!d.resuelto).length} decisiones abiertas</div></div><div class="kpi"><div class="v">${M.meses.length}</div><div class="k">Meses con carga: ${M.meses.map(fmM).join(', ')}</div></div></div>
+   <div class="panel capm"><h3>Uso de capacidad por centro y mes <span class="note">clic en una celda para ver el detalle · verde alcanza · ámbar justo · rojo no llega</span></h3><div class="scroll"><table><thead><tr><th>Centro</th>${M.meses.map(m=>'<th style="text-align:center">'+esc(fmM(m))+'</th>').join('')}</tr></thead><tbody>
+    ${M.filas.map(f=>'<tr><td style="white-space:nowrap"><b>'+esc(f.n)+'</b>'+(f.area!=='pro'?' <span class="mut" style="font-size:var(--fs-xs)">programa</span>':'')+'</td>'+M.meses.map(m=>cel(f,m)).join('')+'</tr>').join('')||'<tr><td class="mut">Sin carga.</td></tr>'}</tbody></table></div></div>
+   ${detalle}
+   ${rojas.length&&!sel?`<div class="panel"><h3>Dónde no alcanza <span class="note">de más cercano a más lejano</span></h3><div class="body"><table><thead><tr><th>Centro</th><th>Mes</th><th class="num">Uso</th><th class="num">Faltan</th><th class="num">No liberadas</th><th>Decisiones</th><th></th></tr></thead><tbody>${rojas.map(x=>{const nd=(S.params.capDecisiones||[]).filter(d=>d.c===x.c&&d.m===x.m);return `<tr><td>${esc(nombreCentroCap(x.c))}</td><td>${esc(fmtMesEG(x.m))}</td><td class="num">${x.cap?Math.round(x.pct)+'%':'sin cap.'}</td><td class="num">${fmtCarga(x.cap?x.carga-x.cap:x.carga,x.u)}</td><td class="num">${x.noLib} · ${fmtCarga(x.minNoLib,x.u)}</td><td>${nd.length?nd.length+' ('+nd.filter(d=>!d.resuelto).length+' abiertas)':'<span class="tag t-aviso">sin decisión</span>'}</td><td><button class="btn ghost sm" onclick="CAPD.sel='${x.c}|${x.m}';render()">ver</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
+   <div class="panel"><h3>Historial <span class="note">qué problemas hubo, qué se decidió y si se resolvió</span><span class="spacer"></span><select onchange="CAPD.cen=this.value;render()"><option value="">todos los centros</option>${cens.map(c=>`<option value="${c}" ${CAPD.cen===c?'selected':''}>${esc(nombreCentroCap(c))}</option>`).join('')}</select></h3><div class="body">
+    ${hist.length?`<table><thead><tr><th>Cuándo</th><th>Tipo</th><th>Centro</th><th>Mes</th><th>Quién</th><th>Qué</th><th>Estado</th></tr></thead><tbody>${hist.slice(0,200).map(h=>`<tr><td style="white-space:nowrap">${fmTs(h.ts)}</td><td>${h.tipo==='problema'?'<span class="tag t-alerta">problema</span>':'<span class="tag t-ok">decisión</span>'}</td><td>${esc(nombreCentroCap(h.c))}</td><td>${esc(fmtMesEG(h.m))}</td><td>${esc(h.u)}</td><td>${esc(h.txt)}</td><td>${h.estado}${h.tipo==='problema'&&!h.visto&&!/cerrado/.test(h.estado)?' <span class="tag t-aviso">sin ver</span>':''}</td></tr>`).join('')}</tbody></table>`:'<span class="mut">Todavía no hay problemas registrados ni decisiones.</span>'}
+   </div></div>`}
 function vAuditoria(el){
   if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría de replanificación</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
   const todas=entradasAuditoria();const recs=[...new Set(todas.map(e=>e.rec).filter(Boolean))].map(id=>[id,nRec(id)]).sort((a,b)=>a[1].localeCompare(b[1]));
@@ -2573,7 +2675,7 @@ function vOrdenes(el){
   if(ORDF.fases&&ORDF.fases.size){const keep=new Set(fasesAll);ORDF.fases=new Set([...ORDF.fases].filter(f=>keep.has(f)))}
   const filtros=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
-    <div style="flex:1;min-width:200px"><label>Buscar</label><input type="text" style="width:100%" placeholder="WH, estilo, categoría, color, cliente" value="${esc(ORDF.q)}" oninput="ORDF.q=this.value;render()"></div>
+    <div style="flex:1;min-width:200px"><label>Buscar</label><input type="text" style="width:100%" placeholder="WH, estilo, categoría, color, cliente" value="${esc(ORDF.q)}" data-q="ORDF.q" oninput="buscarQ(this,v=>ORDF.q=v)"></div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     <div><label>Agrupar</label><div class="chips" style="margin:0"><span class="chip ${ORDF.grupo==='fase'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fase'?null:'fase';render()">Por fase</span><span class="chip ${ORDF.grupo==='fam'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fam'?null:'fam';render()">Por familia</span><span class="chip ${ORDF.grupo==='cat'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='cat'?null:'cat';render()">Por categoría</span></div></div></div></div>`;
   const filaOrden=o=>{const ro=(P&&P.ordenes[o.id])||{};
@@ -2612,7 +2714,7 @@ function vOrdenes(el){
   ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}
   ${filtros}
   <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
-    <span class="spacer"></span>${S.ordenes.length&&puede('ordenes')?'<button class="btn ghost sm" onclick="vaciar()">Vaciar</button>':''}${puede('config')?' <button class="btn ghost sm" style="color:var(--alerta)" onclick="borrarOperativo()">Borrar datos operativos</button>':''}</h3>
+    <span class="spacer"></span></h3>
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
     <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div>
@@ -2621,19 +2723,35 @@ function vOrdenes(el){
       ${(c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--alerta);font-size:var(--fs-s)">${c.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${c.alertas.map(esc).join('<br>')}</div></details>`:'<span class="mut" style="font-size:var(--fs-s)">sin alertas</span>'}</div>`).join('')}
   </div></div>`:''}`;
 }
-function delOrden(id){S.ordenes=S.ordenes.filter(o=>o.id!==id);save();render()}
+function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]||{};const pierde=[o.foto?'su foto':'',o.ot?'sus órdenes de trabajo':'',(a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada?'su avance de piso':'',(o.fases||[]).length>1?'su historial de fases':''].filter(Boolean);
+  if(!confirm('¿Borrar la orden '+o.op+' ('+num(o.cant)+' prendas, '+esc(o.cliente||'')+')?'+(pierde.length?'\nSe pierde también: '+pierde.join(', ')+'.':'')+'\nSi vuelve en la próxima carga de Odoo, entrará como nueva.'))return;
+  bitacora('Orden borrada a mano: '+o.op+' · '+num(o.cant)+' prendas · '+(o.cliente||''));S.ordenes=S.ordenes.filter(x=>x.id!==id);save();render()}
 /* borra por lotes TODOS los datos operativos (órdenes, avance, baños, salidas, programas, novedades, bitácora…); conserva configuración, maestros, categorías y operaciones */
 const TABLAS_OPERATIVAS=['ordenes','avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','bitacora','planes'];
-async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return}
-  if(!confirm('Vas a borrar TODOS los datos operativos: órdenes, avances, baños confirmados, salidas de tintorería, reprocesos, programas guardados, novedades y bitácora.\n\nSe conservan centros, recursos, telas, colores, categorías, operaciones, parámetros y usuarios.\n\n¿Continuar?'))return;
-  if((prompt('Escribe BORRAR para confirmar')||'').trim().toUpperCase()!=='BORRAR')return;
+async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return} // solo desde ejecutarBorrado (Configuración → Borrado), que ya pidió la frase
   const st=document.getElementById('saved');const errs=[];
   for(const t of TABLAS_OPERATIVAS){let {data,error}=await sb.from(t).select('id');if(error){errs.push(t+': '+error.message);continue}
     const ids=(data||[]).map(r=>r.id);for(let i=0;i<ids.length;i+=200){if(st)st.textContent='Borrando '+t+' '+Math.min(i+200,ids.length)+'/'+ids.length;const {error:e2}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(e2){errs.push(t+': '+e2.message);break}}}
   if(errs.length){alert('No se pudo borrar todo:\n'+errs.join('\n'));}
   await cargarTodo();PLAN=null;PLAN_ALL=null;render();if(st)st.textContent='Datos operativos borrados';
   if(!errs.length)alert('Listo: datos operativos borrados. Ya puedes cargar el archivo desde Órdenes.')}
-function vaciar(){if(confirm('¿Quitar todas las órdenes?')){S.ordenes=[];save();render()}}
+function cuentaBorrado(){const fotos=S.ordenes.filter(o=>o.foto).length;const av=Object.values(S.avance||{}).filter(a=>a&&((a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada||a.lista||a.calidadOk)).length;
+  return{ordenes:S.ordenes.length,fotos,avance:av,ot:S.ordenes.filter(o=>o.ot).length,fasesApp:S.ordenes.filter(o=>(o.fases||[]).some(f=>f.origen==='app')).length,banos:(S.banos_conf||[]).length,salidas:(S.salidas_tin||[]).length,programas:(S.programas||[]).length,novedades:(S.paros||[]).length+(S.turnos||[]).length,bitacora:(S.bitacora||[]).length}}
+function panelBorradoHTML(){if(!puede('config'))return '';const c=cuentaBorrado();
+  return `<div class="panel" style="border-color:var(--alerta)"><h3 style="color:var(--alerta)">Borrado <span class="note">solo administrador · estos datos son los definitivos: un clic por error borra días de trabajo</span></h3><div class="body">
+   <p style="font-size:var(--fs-s)">Hoy hay <b>${num(c.ordenes)} órdenes</b>, ${num(c.fotos)} con foto, ${num(c.ot)} con órdenes de trabajo, ${num(c.fasesApp)} con fases movidas aquí, <b>${num(c.avance)} registros de avance de piso</b>, ${c.banos} baños confirmados, ${c.salidas} salidas de tintorería, ${c.programas} programas guardados, ${c.novedades} novedades y ${num(c.bitacora)} líneas de bitácora.</p>
+   <p style="font-size:var(--fs-s)">Ninguna de estas acciones se deshace. Cada una pide escribir exactamente lo que se va a perder.</p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" style="color:var(--alerta)" onclick="mBorrar('ordenes')">Quitar todas las órdenes…</button><button class="btn ghost" style="color:var(--alerta)" onclick="mBorrar('operativo')">Borrar todos los datos operativos…</button></div></div></div>`}
+function mBorrar(tipo){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return}const c=cuentaBorrado();const frase=tipo==='ordenes'?'BORRAR '+c.ordenes+' ORDENES':'BORRAR '+c.ordenes+' ORDENES Y '+c.avance+' AVANCES';
+  abrir(`<h3 style="color:var(--alerta)">${tipo==='ordenes'?'Quitar todas las órdenes':'Borrar todos los datos operativos'}</h3>
+   <p style="font-size:var(--fs-s)">Se pierde: <b>${num(c.ordenes)} órdenes</b> (${num(c.fotos)} con foto, ${num(c.ot)} con órdenes de trabajo, ${num(c.fasesApp)} con fases movidas por supervisores)${tipo==='ordenes'?'. El avance de piso queda huérfano (sin orden) y no se recupera al recargar.':', <b>'+num(c.avance)+' registros de avance de piso</b>, '+c.banos+' baños confirmados, '+c.salidas+' salidas de tintorería, '+c.programas+' programas guardados, '+c.novedades+' novedades y toda la bitácora ('+num(c.bitacora)+' líneas).'}</p>
+   <p style="font-size:var(--fs-s)">Se conservan centros, recursos, telas, colores, categorías, operaciones, parámetros, tablas de configuración y usuarios. Las fotos en el almacén siguen ahí, pero las órdenes pierden el enlace.</p>
+   <label>Para confirmar, escribe exactamente: <b>${frase}</b></label><input type="text" id="borrar-frase" style="width:100%" autocomplete="off">
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" style="background:var(--alerta)" onclick="ejecutarBorrado('${tipo}','${frase}')">Borrar</button></div>`)}
+async function ejecutarBorrado(tipo,frase){const v=(document.getElementById('borrar-frase')||{}).value||'';if(v.trim().toUpperCase().replace(/Ó/g,'O')!==frase){alert('La frase no coincide. No se borró nada.');return}
+  const c=cuentaBorrado();cerrar();bitacora((tipo==='ordenes'?'BORRADO: todas las órdenes':'BORRADO: todos los datos operativos')+' · '+num(c.ordenes)+' órdenes, '+num(c.avance)+' avances');
+  if(tipo==='ordenes'){S.ordenes=[];await save();render();return}
+  await borrarOperativo()}
 
 /* ---------- Tejeduría ---------- */
 function vTej(el){
@@ -2894,7 +3012,7 @@ function vControl(el){
     <div class="row" style="margin:0;align-items:center">
       <div><label>Área</label><select onchange="CTL.area=this.value;CTL.centro=null;render()">${areasOK.map(a=>`<option value="${a}" ${CTL.area===a?'selected':''}>${AREAS[a]}</option>`).join('')}</select></div>
       ${CTL.area==='pro'?`<div><label>Centro</label><select onchange="CTL.centro=this.value||null;render()"><option value="">Todos</option>${S.centros.filter(c=>c.area==='pro').sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id)).map(c=>`<option value="${c.id}" ${CTL.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>`:''}
-      <div><label>Buscar</label><input type="text" style="width:160px" value="${esc(CTL.q)}" placeholder="WH, categoría, color" oninput="CTL.q=this.value;render()"></div>
+      <div><label>Buscar</label><input type="text" style="width:160px" value="${esc(CTL.q)}" placeholder="WH, categoría, color" data-q="CTL.q" oninput="buscarQ(this,v=>CTL.q=v)"></div>
       <div><label>&nbsp;</label><label class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=!CTL.todo;render()">${CTL.todo?'todas las órdenes':'solo lo activo'}</label></div></div></div>
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
@@ -3245,7 +3363,7 @@ function vOperaciones(el){
   el.innerHTML=`<div class="pagehead"><h2>Operaciones</h2><span class="spacer"></span>
     <button class="btn tint tb" onclick="mCargarLMO()">${ICO.sync} Cargar operaciones (hoja LMO)</button><button class="btn ghost" onclick="mMapeoOps()">Mapeo (familia→centro, categoría→LMO)</button><button class="btn ghost" onclick="mPegarOps()">Pegar catálogo</button><button class="btn ghost" onclick="mPegarFamOps()">Pegar familias</button><button class="btn" onclick="addOp()">Nueva operación</button></div>
   <p class="lede">El catálogo se ve por categoría (tipo de familia de prenda): cada una muestra las familias de operación que contiene (corte, subensamble, ensamble, ojales, serigrafía, bordado, pulido, empaque…) y sus operaciones con sección, máquina, secuencia y tiempo referencial. Las familias del sistema arman su hoja de operaciones desde aquí y la orden suma los tiempos por centro.</p>
-  <div class="row" style="margin:0 0 12px"><input type="text" style="width:320px" placeholder="buscar operación, categoría, familia o máquina" value="${esc(OPV.q||'')}" oninput="OPV.q=this.value;render()"></div>
+  <div class="row" style="margin:0 0 12px"><input type="text" style="width:320px" placeholder="buscar operación, categoría, familia o máquina" value="${esc(OPV.q||'')}" data-q="OPV.q" oninput="buscarQ(this,v=>OPV.q=v)"></div>
   <div class="panel"><h3>Catálogo <span class="note">${S.operaciones.length} operaciones</span></h3>
    ${S.operaciones.length?`<div class="scroll" style="max-height:640px"><table><thead><tr><th>Familia de operación</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num">Sec.</th><th class="num">Tiempo (min)</th><th class="num">Usada en</th><th></th></tr></thead><tbody>${bloques}</tbody></table></div>`
    :'<div class="empty"><p>El catálogo está vacío.</p><button class="btn" onclick="mPegarOps()">Pegar catálogo desde Excel</button></div>'}</div>
@@ -3574,7 +3692,7 @@ function procesarPasteFamOps(){const txt=document.getElementById('f-paste').valu
 
 /* ---------- Configuración ---------- */
 let CONF={tab:'recursos'};
-const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros'],['ordenes2','Órdenes y materiales (Parte 2)']];
+const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros'],['ordenes2','Órdenes y materiales (Parte 2)'],['borrado','Borrado (administrador)']];
 function vConfig(el){
   const p=S.params;
   const inp=(k,l,step='1')=>`<div><label>${l}${(p.pendienteValidar||{})[k]?' <span class="tag t-aviso" title="valor inicial dado por planificación; al cambiarlo se quita la marca">PENDIENTE DE VALIDAR</span>':''}</label><input type="number" step="${step}" value="${p[k]==null?'':p[k]}" onchange="setParam('${k}',this.value)"></div>`;
@@ -3605,6 +3723,7 @@ function vConfig(el){
   <p class="lede">Áreas, centros y recursos son abiertos: agrega máquinas o centros aquí y el programa los toma en cuenta de inmediato. Solo el administrador ve esta página.</p>
 
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
+  ${CONF.tab==='borrado'?panelBorradoHTML():''}
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
    <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
    ${S.centros.map(c=>{const esLavPla=c.id==='lavado'||c.id==='plancha';const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
@@ -3780,7 +3899,7 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Tres cosas distintas por tela: <b>quién la produce</b> (tabla 3: propia = carga tejeduría · externa = comprada o importada), <b>disponibilidad</b> (usuaria TEMPO = en bodega · proveedor de facturas = hay que pedir) y <b>qué le falta</b> (esta tabla + confirmación en Liberación = carga tintorería; el lavado de tela es un baño más, con horas de color oscuro).</p></div></div>
 
   <div class="panel"><h3>12 · Catálogo de productos <span class="note">proveedor desde facturas de compra; origen por facturas + tabla 3; tipo detectado y corregible</span><span class="spacer"></span>${puede('ordenes')?`<button class="btn ghost sm" onclick="mFacturas()">Cargar facturas</button>`:''}</h3>
-   <div class="body"><div class="row" style="margin-bottom:8px"><input type="text" style="width:320px" placeholder="buscar código o nombre" value="${esc(CONF.qProd||'')}" oninput="CONF.qProd=this.value;render()"><span class="mut" style="font-size:var(--fs-xs)">${Object.keys(catalogoProd()).length} productos con factura · ${S.params.facturasCarga?'última carga '+new Date(S.params.facturasCarga.fecha).toLocaleString('es-EC')+' ('+esc(S.params.facturasCarga.archivo)+')':'sin facturas cargadas'}</span></div>
+   <div class="body"><div class="row" style="margin-bottom:8px"><input type="text" style="width:320px" placeholder="buscar código o nombre" value="${esc(CONF.qProd||'')}" data-q="CONF.qProd" oninput="buscarQ(this,v=>CONF.qProd=v)"><span class="mut" style="font-size:var(--fs-xs)">${Object.keys(catalogoProd()).length} productos con factura · ${S.params.facturasCarga?'última carga '+new Date(S.params.facturasCarga.fecha).toLocaleString('es-EC')+' ('+esc(S.params.facturasCarga.archivo)+')':'sin facturas cargadas'}</span></div>
    ${(()=>{const q=normFase(CONF.qProd||'');const C=catalogoProd();const U=catalogoUsuaria();const codes=new Set([...Object.keys(C),...Object.keys(U)]);const prods={};S.ordenes.forEach(o=>(o.materiales||[]).forEach(m=>{if(m.cod&&!prods[m.cod])prods[m.cod]={nombre:m.prod,ruta:m.ruta}}));Object.keys(prods).forEach(c=>codes.add(c));
      const filas=[...codes].filter(c=>!q||normFase(c).includes(q)||normFase((C[c]||{}).nombre||(prods[c]||{}).nombre||'').includes(q)).slice(0,300);
      return `<div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Código</th><th>Producto</th><th>Proveedor (facturas)</th><th>Otros proveedores</th><th>Según usuaria</th><th>Origen</th><th>Tipo</th><th>Corregir tipo</th></tr></thead><tbody>
