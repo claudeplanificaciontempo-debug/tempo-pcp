@@ -278,6 +278,7 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="familias">Demanda agregada</a>
       <a data-p="escenarios">Escenarios</a>
       <a data-p="cumplimiento">Cumplimiento</a>
+      <a data-p="avance">Avance del mes</a>
       <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
     </div>
     <div class="grp" data-g="tex">Planificación textil <span class="car">▾</span></div>
@@ -328,6 +329,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-plan"></section>
     <section class="page" id="p-escenarios"></section>
     <section class="page" id="p-cumplimiento"></section>
+    <section class="page" id="p-avance"></section>
     <section class="page" id="p-auditoria"></section>
     <section class="page" id="p-linea"></section>
     <section class="page" id="p-familias"></section>
@@ -466,7 +468,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['auditoria','Auditoría de replanificación'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -553,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 08:42';
+const APP_BUILD='2026-09-14 08:49';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1091,7 +1093,7 @@ function render(){
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -1410,7 +1412,7 @@ function congelarPlan(ym){const c=calcularPlan(ym);const prev=(S.planes||[]).fil
   if(!confirm('¿Congelar el plan de '+ym+' como versión v'+ver+'? Queda guardado con la demanda, capacidades y metas de hoy.'))return;
   S.planes=S.planes||[];S.planes.push({id:'plan_'+ym+'_v'+ver,mes:ym,ver,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',
     dem:c.dem,areas:c.areas.map(a=>({a:a.a,cap:a.cap,carga:a.carga,dias:a.dias})),mods:c.mods.map(m=>({rec:m.r.id,pers:m.r.pers,cap:m.cap,carga:m.carga,pz:m.pz,fams:m.fams})),
-    metas:c.metas.map(x=>({ini:x.w.ini,fin:x.w.fin,pz:x.pz,usd:x.usd,prod:Object.fromEntries(Object.entries(x.prod).map(([k,v])=>[k,v.pz]))}))});
+    metas:c.metas.map(x=>({ini:x.w.ini,fin:x.w.fin,pz:x.pz,usd:x.usd,prod:Object.fromEntries(Object.entries(x.prod).map(([k,v])=>[k,v.pz]))})),base:planMesFilas(ym)});
   bitacora('Plan '+ym+' congelado v'+ver);save();render()}
 
 /* ---------- Escenarios: qué pasa si… (se simula sin tocar los datos) ---------- */
@@ -1696,6 +1698,67 @@ function cumplimientoFacturacionHTML(){const R=cumplimientoFacturacion();const p
    <details style="margin-top:12px"><summary class="mut" style="cursor:pointer">Referencia por referencia (${filas.length})</summary><div class="scroll" style="max-height:420px;margin-top:6px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th class="num">Prendas comprometidas</th><th>Compromiso</th><th>Llegó a Facturado</th><th>Quién la movió</th><th class="num">Días de atraso</th><th></th></tr></thead><tbody>
     ${filas.sort((a,b)=>a.fact<b.fact?1:-1).map(x=>`<tr><td>${esc(x.o.op)}</td><td>${esc(x.o.cliente||'')}</td><td>${esc(x.o.odc||'')}</td><td>${esc(nombreCat(K(x.o.cat)))}</td><td class="num">${num(x.o.cant)}</td><td>${fmtDia(x.comp)}</td><td>${fmtDia(x.fact)}</td><td class="mut">${esc(x.u||'')}</td><td class="num">${x.dias>0?x.dias:0}</td><td>${x.aTiempo?'<span class="tag t-ok">a tiempo</span>':'<span class="tag t-alerta">tarde</span>'}</td></tr>`).join('')||'<tr><td colspan="10" class="mut">Ninguna.</td></tr>'}</tbody></table></div>
     ${R.sinFecha.length?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Sin fecha exacta (no medibles): ${R.sinFecha.slice(0,40).map(x=>esc(x.o.op)).join(', ')}${R.sinFecha.length>40?' …':''}</p>`:''}</details></div></div>`}
+/* ---------- Avance del mes (Dirección / gerencia): cómo vamos contra el PLAN DEL MES, cortado por lo que se quiera ----------
+   Base: el plan congelado del mes (Plan mensual → congelar), que guarda por orden × centro las unidades y minutos programados
+   en el mes y cuántas unidades ya estaban hechas al congelar (h0). Avance = (hechas hoy − h0) contra las planificadas del mes,
+   nunca contra el total de la orden. Sin plan congelado, la base es el programa de hoy y todo parte en 0 (se avisa).
+   Hechas: control de piso (prendas por centro) y centros cerrados por orden de trabajo / fase. Sin registro = no se sabe, no es 0. */
+function hechasCentro(o,c){const fe=faseEstado(o.fase,o);const ot=(o.ot||{})[c];if((ot&&ot.estado==='terminado')||fe.hechos.includes(c))return{pz:+o.cant||0,reg:ot&&ot.estado==='terminado'?'ot':'fase'};
+  const ac=(S.avance[o.id]||{}).centros||{};if(ac[c]!=null)return{pz:+ac[c]||0,reg:'piso'};return{pz:null,reg:null}}
+function planMesFilas(ym){const P=S.ordenes.length?programar():{pro:[]};const m={};P.pro.filter(x=>(x.dia||'').startsWith(ym)&&x.pz>0).forEach(x=>{const k=x.op+'|'+x.centro;m[k]=m[k]||{op:x.op,centro:x.centro,pz:0,min:0};m[k].pz+=x.pz||0;m[k].min+=x.min||0});
+  return Object.values(m).map(f=>{const o=S.ordenes.find(z=>z.op===f.op);const h=o?hechasCentro(o,f.centro):{pz:null,reg:null};return{oid:o?o.id:null,op:f.op,centro:f.centro,pz:Math.round(f.pz),min:+f.min.toFixed(1),h0:h.pz==null?0:h.pz,reg0:h.reg}})}
+function baseAvance(ym){const planes=(S.planes||[]).filter(p=>p.mes===ym&&p.base&&p.base.length).sort((a,b)=>a.ts<b.ts?1:-1);
+  if(planes.length)return{filas:planes[0].base,ts:planes[0].ts,ver:planes[0].ver,u:planes[0].u,congelado:true};return{filas:planMesFilas(ym),ts:null,ver:null,congelado:false}}
+let AV={mes:null,niveles:null,f:{}};
+const AV_CAMPOS=[['cliente','Cliente'],['proyecto','Proyecto (mes)'],['depto','Departamento'],['cat','Categoría'],['odc','ODC'],['centro','Centro'],['ref','Estilo'],['color','Color']];
+function nivelesAV(){if(AV.niveles)return AV.niveles;try{const v=JSON.parse(localStorage.__avNiveles||'null');if(Array.isArray(v)){AV.niveles=v;return v}}catch(e){}AV.niveles=['cliente'];return AV.niveles}
+function setNivelAV(i,v){const n=nivelesAV().slice();n[i]=v;AV.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__avNiveles=JSON.stringify(AV.niveles)}catch(e){}render()}
+function togFiltroAV(campo,v){AV.f[campo]=AV.f[campo]||new Set();if(AV.f[campo].has(v))AV.f[campo].delete(v);else AV.f[campo].add(v);if(!AV.f[campo].size)delete AV.f[campo];render()}
+function claveAV(k,r){switch(k){case 'cliente':return r.cliente||'Sin cliente';case 'proyecto':return r.proyecto||'Sin proyecto';case 'depto':return r.depto||'Sin departamento';case 'cat':return r.cat||'Sin categoría';case 'odc':return r.odc||'Sin ODC';case 'centro':return r.centroN;case 'ref':return r.ref||'Sin estilo';case 'color':return r.color||'Sin color';default:return ''}}
+/* filas de avance: una por orden × centro del plan, con las unidades hechas desde que se congeló */
+function filasAvance(ym){const B=baseAvance(ym);const out=[];B.filas.forEach(f=>{const o=S.ordenes.find(z=>z.id===f.oid||z.op===f.op);if(!o)return;const h=hechasCentro(o,f.centro);const k=K(o.cat);
+    const sinReg=h.pz==null;const hechas=sinReg?0:Math.max(0,Math.min(f.pz,h.pz-(f.h0||0)));const minPz=f.pz?f.min/f.pz:0;
+    out.push({o,op:o.op,oid:o.id,centro:f.centro,centroN:nCen(f.centro),cliente:o.cliente||'',proyecto:o.proyecto||'',depto:o.depto||'',cat:k?k.n:'',odc:o.odc||'',ref:o.ref||'',color:(C(o.color)||{}).n||'',
+      pz:f.pz,min:f.min,hechas,minHechos:+(hechas*minPz).toFixed(1),sinReg,reg:h.reg,h0:f.h0||0,hTot:h.pz})});return{B,filas:out}}
+function sumAV(xs){const s={pz:0,hechas:0,min:0,minHechos:0,n:0,sinReg:0,pzSinReg:0,minSinReg:0};xs.forEach(r=>{s.n++;s.pz+=r.pz;s.min+=r.min;if(r.sinReg){s.sinReg++;s.pzSinReg+=r.pz;s.minSinReg+=r.min}else{s.hechas+=r.hechas;s.minHechos+=r.minHechos}});
+  s.faltan=s.pz-s.pzSinReg-s.hechas;s.minFaltan=s.min-s.minSinReg-s.minHechos;s.pct=(s.pz-s.pzSinReg)>0?s.hechas/(s.pz-s.pzSinReg)*100:null;return s}
+function arbolAV(filas,niveles){if(!niveles.length)return{hojas:filas};const k=niveles[0];const m={};filas.forEach(r=>{const c=claveAV(k,r);(m[c]=m[c]||[]).push(r)});
+  return{nivel:k,grupos:Object.entries(m).sort((a,b)=>{const sa=/^Sin /.test(a[0]),sb=/^Sin /.test(b[0]);if(sa!==sb)return sa?1:-1;return sumAV(b[1]).pz-sumAV(a[1]).pz}).map(([c,xs])=>({clave:c,filas:xs,s:sumAV(xs),porCentro:porCentroAV(xs),sub:arbolAV(xs,niveles.slice(1))}))}}
+function porCentroAV(xs){const m={};xs.forEach(r=>{(m[r.centro]=m[r.centro]||[]).push(r)});return Object.entries(m).sort((a,b)=>ordenPaso(a[0])-ordenPaso(b[0])).map(([c,ys])=>({centro:c,n:nCen(c),s:sumAV(ys)}))}
+const pctAV=s=>s.pct==null?'<span class="mut">—</span>':Math.round(s.pct)+' %';
+function celdasAV(s){return `<td class="num">${num(s.pz)}</td><td class="num">${num(s.hechas)}</td><td class="num">${num(s.faltan)}</td><td class="num"><b>${pctAV(s)}</b></td><td class="num">${num(s.min)}</td><td class="num">${num(s.minHechos)}</td><td class="num">${num(s.minFaltan)}</td><td class="num">${s.sinReg?`<span class="tag t-aviso" title="unidades planificadas sin ningún registro de avance: no se cuentan como hechas ni como faltantes">${num(s.pzSinReg)}</span>`:'<span class="mut">·</span>'}</td>`}
+function filasArbolAV(arbol,prof,conCentros){prof=prof||0;if(arbol.hojas)return '';
+  return arbol.grupos.map(g=>{const nomNivel=(AV_CAMPOS.find(x=>x[0]===arbol.nivel)||[])[1]||'';const hoja=!!g.sub.hojas;
+    return `<tr class="av-g av-g${prof}" style="background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><td style="padding-left:${8+prof*18}px"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nomNivel)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.s.n} orden·centro</span></td>${celdasAV(g.s)}</tr>`+
+      (conCentros&&arbol.nivel!=='centro'&&(hoja||prof===0)?g.porCentro.map(c=>`<tr class="av-c" style="font-size:var(--fs-xs)"><td style="padding-left:${26+prof*18}px" class="mut">↳ ${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join(''):'')+filasArbolAV(g.sub,prof+1,conCentros)}).join('')}
+function vAvance(el){const h=hoy();if(!AV.mes)AV.mes=h.slice(0,7);const ym=AV.mes;const {B,filas:todas}=filasAvance(ym);
+  const ok=(campo,v)=>!AV.f[campo]||!AV.f[campo].size||AV.f[campo].has(v);const filas=todas.filter(r=>AV_CAMPOS.every(([k])=>ok(k,claveAV(k,r))));
+  const niveles=nivelesAV();const arbol=arbolAV(filas,niveles);const T=sumAV(filas);const TT=sumAV(todas);
+  const meses=[...new Set([ym,...(S.planes||[]).filter(p=>p.base).map(p=>p.mes),...(S.ordenes.length?programar():{pro:[]}).pro.map(x=>(x.dia||'').slice(0,7)).filter(Boolean)])].sort();
+  const valores=k=>[...new Set(todas.map(r=>claveAV(k,r)))].sort();
+  const filtrosActivos=AV_CAMPOS.filter(([k])=>AV.f[k]&&AV.f[k].size);
+  const selN=(i)=>`<select onchange="setNivelAV(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${AV_CAMPOS.map(([k,v])=>`<option value="${k}" ${niveles[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
+  const selF=([k,v])=>selMulti(v,valores(k),AV.f[k]||null,`AV.f.${k}`,`togFiltroAV.bind(null,'${k}')`);
+  el.innerHTML=`<div class="pagehead"><h2>Avance del mes</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="exportarAvanceCSV()">Exportar (con la agrupación)</button> <button class="btn ghost no-print" onclick="window.print()">Imprimir</button></div>
+  <p class="lede"><b>Base: el plan del mes.</b> Avance = unidades hechas desde que se congeló el plan, contra las unidades <b>programadas para el mes</b> (no contra el total de la orden). ${B.congelado?`Plan congelado <b>v${B.ver}</b> el ${new Date(B.ts).toLocaleString('es-EC')} por ${esc(B.u||'')}.`:`<span class="tag t-aviso">sin plan congelado para ${esc(fmtMesEG(ym))}</span> se usa el programa de hoy como base provisional y todo parte en 0: congélalo en Plan mensual para que el avance tenga sentido.`} Hechas: control de piso (prendas por centro) y centros cerrados por orden de trabajo o fase. <b>Sin registro</b> = la orden no tiene ningún registro de avance en ese centro: no se cuenta como 0, se reporta aparte.</p>
+  <div class="panel no-print"><div class="body" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+   <div><label>Mes</label><select onchange="AV.mes=this.value;render()">${meses.map(m=>`<option value="${m}" ${m===ym?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div>
+   <div><label>Agrupar por <span class="mut" title="reordena y suma; no esconde nada">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=niveles.length).map(selN).join('')}</div></div>
+   <span style="border-left:1px solid var(--rule);height:34px"></span>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end"><span class="mut" style="font-size:var(--fs-xs);align-self:center">Filtrar <span title="esconde lo que no calza">(esconde)</span>:</span>${AV_CAMPOS.map(selF).join('')}${filtrosActivos.length?`<div><button class="btn ghost sm" onclick="AV.f={};render()">Quitar filtros</button></div>`:''}</div></div>
+   <div class="body" style="padding-top:0;font-size:var(--fs-s)"><b>Aplicado:</b> agrupado por ${niveles.length?esc(niveles.map(k=>(AV_CAMPOS.find(x=>x[0]===k)||[])[1]).join(' → ')):'nada'} · ${filtrosActivos.length?'filtros: '+filtrosActivos.map(([k,v])=>esc(v)+' = '+esc([...AV.f[k]].join(', '))).join(' · ')+` <span class="mut">(se muestran ${filas.length} de ${todas.length} orden·centro)</span>`:'sin filtros (se muestra todo)'}</div></div>
+  <div class="kpis"><div class="kpi"><div class="v">${num(T.pz)}</div><div class="k">Unidades planificadas en ${esc(fmtMesEG(ym))} · orden × centro (una prenda cuenta en cada centro que pasa)</div></div><div class="kpi"><div class="v">${num(T.hechas)}</div><div class="k">Hechas desde el plan · faltan ${num(T.faltan)}</div></div><div class="kpi"><div class="v">${pctAV(T)}</div><div class="k">Avance en unidades (sobre lo que tiene registro)</div></div><div class="kpi"><div class="v">${num(T.minHechos)} / ${num(T.min)}</div><div class="k">Minutos hechos / planificados · faltan ${num(T.minFaltan)}</div></div><div class="kpi ${T.sinReg?'warn':''}"><div class="v">${num(T.pzSinReg)}</div><div class="k">Unidades <b>sin registro</b> en ${T.sinReg} orden·centro · ${num(T.minSinReg)} min · no cuentan como hechas ni como faltantes</div></div></div>
+  ${filas.length?`<div class="panel"><h3>Por ${esc(niveles.length?niveles.map(k=>(AV_CAMPOS.find(x=>x[0]===k)||[])[1]).join(' → '):'todo')} <span class="note">debajo de cada grupo, el desglose por centro para ver dónde está el atraso</span></h3><div class="scroll"><table><thead><tr><th>Grupo</th><th class="num">Unid. plan</th><th class="num">Hechas</th><th class="num">Faltan</th><th class="num">% avance</th><th class="num">Min plan</th><th class="num">Min hechos</th><th class="num">Min faltan</th><th class="num">Sin registro (unid.)</th></tr></thead><tbody>
+   <tr style="font-weight:700;background:var(--ink);color:#fff"><td>Total${filtrosActivos.length?' (filtrado)':''}</td>${celdasAV(T).replace(/class="mut"/g,'style="opacity:.6"')}</tr>${niveles.length?filasArbolAV(arbol,0,true):porCentroAV(filas).map(c=>`<tr><td>${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join('')}</tbody></table></div></div>
+  <div class="panel"><h3>Por centro <span class="note">todo lo visible, cortado por centro</span></h3><div class="body"><table><thead><tr><th>Centro</th><th class="num">Unid. plan</th><th class="num">Hechas</th><th class="num">Faltan</th><th class="num">% avance</th><th class="num">Min plan</th><th class="num">Min hechos</th><th class="num">Min faltan</th><th class="num">Sin registro (unid.)</th></tr></thead><tbody>${porCentroAV(filas).map(c=>`<tr><td>${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join('')}</tbody></table></div></div>
+  ${T.sinReg?`<div class="panel"><h3>Sin registro de avance <span class="note">${T.sinReg} orden·centro · ${num(T.pzSinReg)} unidades planificadas · no es lo mismo no haber hecho nada que no haber registrado nada</span></h3><div class="scroll" style="max-height:360px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th>Centro</th><th class="num">Unid. plan del mes</th><th class="num">Min plan</th></tr></thead><tbody>${filas.filter(r=>r.sinReg).slice(0,400).map(r=>`<tr><td>${esc(r.op)}</td><td>${esc(r.cliente)}</td><td>${esc(r.cat)}</td><td>${esc(r.centroN)}</td><td class="num">${num(r.pz)}</td><td class="num">${num(r.min)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`:'<div class="panel"><div class="empty">Nada planificado en este mes con estos filtros.</div></div>'}`}
+function exportarAvanceCSV(){const ym=AV.mes||hoy().slice(0,7);const {filas:todas}=filasAvance(ym);const ok=(campo,v)=>!AV.f[campo]||!AV.f[campo].size||AV.f[campo].has(v);const filas=todas.filter(r=>AV_CAMPOS.every(([k])=>ok(k,claveAV(k,r))));
+  const niveles=nivelesAV();const arbol=arbolAV(filas,niveles);const rows=[['Nivel','Grupo','Centro','Unid plan','Hechas','Faltan','% avance','Min plan','Min hechos','Min faltan','Unid sin registro']];
+  const fila=(niv,grupo,centro,s)=>rows.push([niv,grupo,centro,s.pz,s.hechas,s.faltan,s.pct==null?'':Math.round(s.pct),s.min,+s.minHechos.toFixed(1),+s.minFaltan.toFixed(1),s.pzSinReg]);
+  fila('Total','Total'+(Object.keys(AV.f).length?' (filtrado)':''),'',sumAV(filas));
+  const rec=(a,prof)=>{if(a.hojas)return;a.grupos.forEach(g=>{const nom=(AV_CAMPOS.find(x=>x[0]===a.nivel)||[])[1];fila(nom,g.clave,'',g.s);g.porCentro.forEach(c=>fila(nom,g.clave,c.n,c.s));rec(g.sub,prof+1)})};rec(arbol,0);
+  const csv=rows.map(r=>r.map(v=>{const s=String(v==null?'':v);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(';')).join('\n');
+  const b=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='avance_'+ym+'_'+(niveles.join('-')||'sin_agrupar')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 function vCumplimiento(el){
   const sems=(S.programas||[]).filter(p=>p.tipo==='semana').sort((a,b)=>a.desde<b.desde?1:-1);
   const h=hoy();const byId={};S.ordenes.forEach(o=>byId[o.id]=o);

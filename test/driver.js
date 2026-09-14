@@ -266,6 +266,23 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     quitarAjusteOp(o.id,op0.op);__check("replan: volver al estándar borra el ajuste y deja rastro",!o.opsSam&&replanLog().slice(-1)[0].motivo.includes('vuelve al estándar'));
     window.prompt=promptPrev;}
    page='ordenes';render();__check("replan/auditoría sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* avance del mes contra el plan congelado */
+  {const antes=__R.errors.length;const ym=hoy().slice(0,7);const confirmPrev=window.confirm;window.confirm=()=>true;
+   const f0=filasAvance(ym);__check("avance: sin plan congelado la base es provisional y parte en 0",!f0.B.congelado&&sumAV(f0.filas).hechas===0);
+   congelarPlan(ym);const pl=(S.planes||[]).filter(p=>p.mes===ym).slice(-1)[0];__check("avance: congelar el plan guarda la base orden × centro con h0",!!(pl&&pl.base&&pl.base.length)&&pl.base.every(f=>typeof f.pz==='number'&&typeof f.h0==='number'));
+   const f1=filasAvance(ym);const r=f1.filas.find(x=>!x.sinReg&&x.pz>2&&x.centro==='corte')||f1.filas.find(x=>!x.sinReg&&x.pz>2);
+   if(r){const o=r.o;const h=hechasCentro(o,r.centro);const nuevo=(h.pz||0)+2;S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros=S.avance[o.id].centros||{};S.avance[o.id].centros[r.centro]=nuevo;
+     const f2=filasAvance(ym);const r2=f2.filas.find(x=>x.oid===r.oid&&x.centro===r.centro);__check("avance: hechas = lo registrado desde el plan, no el acumulado de la orden",!!r2&&r2.hechas===2&&r2.h0===h.pz,JSON.stringify(r2&&{hechas:r2.hechas,h0:r2.h0,hTot:r2.hTot}));
+     S.avance[o.id].centros[r.centro]=h.pz;}
+   const sr=f1.filas.find(x=>x.sinReg);__check("avance: orden×centro sin registro se marca y no cuenta como 0",!sr||(sr.hechas===0&&sumAV([sr]).pzSinReg===sr.pz&&sumAV([sr]).faltan===0));
+   AV.mes=ym;AV.niveles=['cliente','cat'];AV.f={};page='avance';render();const hv=document.getElementById('p-avance').innerHTML;
+   const T=sumAV(f1.filas);const arbol=arbolAV(f1.filas,['cliente','cat']);const sumaG=arbol.grupos.reduce((a,g)=>a+g.s.pz,0);
+   __check("avance: agrupar cliente → categoría suma igual al total (no esconde nada)",sumaG===T.pz&&arbol.grupos.every(g=>g.sub.grupos.reduce((a,x)=>a+x.s.pz,0)===g.s.pz));
+   __check("avance: pantalla declara la base (plan del mes), aplicado y desglose por centro",hv.includes('Base: el plan del mes')&&hv.includes('Aplicado:')&&hv.includes('agrupado por Cliente → Categoría')&&hv.includes('↳')&&hv.includes('Por centro'));
+   const cli=[...new Set(f1.filas.map(x=>x.cliente||'Sin cliente'))][0];AV.f={cliente:new Set([cli])};render();const hv2=document.getElementById('p-avance').innerHTML;
+   __check("avance: filtrar esconde y lo dice",hv2.includes('filtros: Cliente = '+cli)&&/se muestran \d+ de \d+/.test(hv2));
+   let csvOk=false;const cU=URL.createObjectURL;URL.createObjectURL=b=>{csvOk=b&&b.size>50;return 'blob:x'};try{exportarAvanceCSV()}catch(e){}URL.createObjectURL=cU;__check("avance: exporta CSV con la agrupación",csvOk);
+   AV.f={};window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
