@@ -566,7 +566,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 15:27';
+const APP_BUILD='2026-09-14 15:52';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -953,6 +953,66 @@ function panelODCHTML(){const pend=S.ordenes.filter(o=>abierta(o)&&esOdcPendient
    ${ok?`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>ODC para las marcadas (${sel.length})</label><input type="text" id="odc-bloque" style="width:180px" value="${esc(ODCS.bloque)}" placeholder="p. ej. 3041" oninput="ODCS.bloque=this.value"></div><div><label>&nbsp;</label><button class="btn sm" ${sel.length?'':'disabled'} onclick="asignarODC(${JSON.stringify(sel).replace(/"/g,'&quot;')},document.getElementById('odc-bloque').value)">Asignar a las ${sel.length} marcadas</button></div><div><label>&nbsp;</label><button class="btn ghost sm" onclick="ODCS.sel=new Set(${JSON.stringify(pend.map(o=>o.id)).replace(/"/g,'&quot;')});render()">Marcar todas</button> <button class="btn ghost sm" onclick="ODCS.sel=new Set();render()">Ninguna</button></div></div>`:''}
    <div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th style="width:26px"></th><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>ODC hoy</th><th>ODC nuevo</th></tr></thead><tbody>
    ${pend.map(o=>`<tr><td>${ok?`<input type="checkbox" ${ODCS.sel.has(o.id)?'checked':''} onchange="togSelODC('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${o.fecha||'<span class="mut">sin fecha</span>'}</td><td class="mut">${esc(o.odc||'—')}</td><td style="white-space:nowrap">${ok?`<input type="text" style="width:110px" id="odc-${o.id}" placeholder="ODC"> <button class="btn ghost sm" onclick="asignarODC(['${o.id}'],document.getElementById('odc-${o.id}').value)">asignar</button>`:''}</td></tr>`).join('')}</tbody></table></div></div></div>`}
+/* ---------- Asignación por orden (Carga general): separada por estado, con lo que necesita atención arriba ----------
+   Solo lee el programa (no toca el motor). Colchón = días de holgura para "llega justo": parámetro visible S.params.colchonDias. */
+let APO={niveles:null,cli:'',cen:'',mes:'',q:''};
+const APO_CAMPOS=[['cliente','Cliente'],['odc','ODC'],['fam','Familia'],['cat','Categoría'],['centro','Próximo paso (centro)'],['mes','Mes de entrega (meta)']];
+function colchonDias(){if(typeof S.params.colchonDias!=='number'||isNaN(S.params.colchonDias)){S.params.colchonDias=3;S.params.colchonEstimado=true}return S.params.colchonDias}
+function setColchon(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia el colchón.');return}const n=+String(v).replace(',','.');if(!(n>=0)){alert('Colchón inválido.');return}const antes=colchonDias();S.params.colchonDias=n;S.params.colchonEstimado=false;bitacora('Colchón de entrega: '+antes+' → '+n+' días ('+quienFirma()+')');save();render()}
+function pasosPendPro(o){const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};return (o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!fe.hechos.includes(p.centro)&&(ac[p.centro]||0)<o.cant)}
+function clasificarAsig(o,P){const ro=P.ordenes[o.id];const meta=fechaMetaDe(o);const h=hoy();const pend=pasosPendPro(o);
+  if(meta&&meta<dsum(h,-30)&&pend.length===1)return{estado:'vencidaUnPaso',paso:pend[0].centro,diasVenc:diasEntre(meta,h)};
+  if(!ro)return{estado:'sinProgramar',motivo:o.sinLanzar?'sin WH (no lanzada en Odoo)':o.sinFechaEntrega?'sin fecha de entrega':'no entra al programa'};
+  if(ro.bloqueo)return{estado:'sinProgramar',motivo:ro.bloqueo};
+  const err=(ro.pasos||[]).find(p=>p.error);
+  if(!ro.finPro||err)return{estado:'sinProgramar',motivo:err?nCen(err.centro)+': '+err.error:((o.ruta||[]).length?'sin programa':'sin ruta')};
+  if(ro.atraso){const dias=ro.diasTarde!=null?ro.diasTarde:Math.max(0,diasEntre(meta||o.fecha,ro.finPro));return{estado:'noLlega',dias,atasco:ro.atrasoPorColeccion?'por su colección ('+((ro.coleccion||{}).causantes||[]).slice(0,2).join(', ')+')':(ro.atasco?ro.atasco.nombre+' (+'+ro.atasco.dias+' d)':(ro.motor==='adelante'?'programado hacia adelante':'—'))}}
+  const holg=meta?diasEntre(ro.finPro,meta):null;if(holg!=null&&holg<=colchonDias())return{estado:'justo',holg};return{estado:'bien',holg}}
+function pasoProximoDe(o,P){const ro=P.ordenes[o.id];return ro?((ro.pasos||[]).find(p=>!p.hecho&&!p.error)||null):null}
+function claveAPO(k,o,P){switch(k){case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()||'Sin ODC';case 'fam':return padreEG(o)||'Sin familia';case 'cat':return hijaEG(o)||'Sin categoría';case 'centro':{const p=pasoProximoDe(o,P);return p?nCen(p.centro):'Sin paso pendiente'}case 'mes':{const m=fechaMetaDe(o);return m?fmtMesEG(m.slice(0,7)):'Sin fecha'}}return '—'}
+function nivelesAPO(){if(APO.niveles)return APO.niveles;try{const v=JSON.parse(localStorage.__apoNiveles||'null');if(Array.isArray(v)){APO.niveles=v;return v}}catch(e){}APO.niveles=[];return APO.niveles}
+function setNivelAPO(i,v){const n=nivelesAPO().slice();n[i]=v;APO.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__apoNiveles=JSON.stringify(APO.niveles)}catch(e){}render()}
+function arbolAPO(lista,niveles,P){if(!niveles.length)return{hojas:lista};const k=niveles[0],m={},orden=[];lista.forEach(o=>{const c=claveAPO(k,o,P);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(o)});
+  return{nivel:k,grupos:orden.sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).map(c=>({clave:c,n:m[c].length,pz:m[c].reduce((a,o)=>a+(+o.cant||0),0),sub:arbolAPO(m[c],niveles.slice(1),P)}))}}
+function filasArbolAPO(a,filaFn,nCols,prof){prof=prof||0;if(a.hojas)return a.hojas.map(filaFn).join('');const nom=(APO_CAMPOS.find(x=>x[0]===a.nivel)||[])[1]||'';
+  return a.grupos.map(g=>`<tr class="eg-g eg-g${prof}"><td colspan="${nCols}" style="padding-left:${8+prof*18}px;background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.n} ${g.n===1?'orden':'órdenes'} · ${num(g.pz)} prendas</span></td></tr>`+filasArbolAPO(g.sub,filaFn,nCols,prof+1)).join('')}
+function mDetalleAsig(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const P=programar();const ro=P.ordenes[o.id]||{};const c=clasificarAsig(o,P);const meta=fechaMetaDe(o);
+  abrir(`<h3>${esc(o.op)} <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${esc(o.cliente||'')} · ${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">
+   <p style="font-size:var(--fs-s)">Entrega meta <b>${meta?fmtDia(meta):'—'}</b>${o.fechaCompromiso?' (compromiso)':' (pedida)'} · termina <b>${ro.finPro?fmtDia(ro.finPro):'—'}</b> · tela lista ${ro.telaLista?fmtDia(ro.telaLista):'—'}${ro.coleccion?' · colección '+esc(ro.coleccion.key)+' ('+ro.coleccion.n+')':''}${c.estado==='noLlega'?' · <span class="tag t-alerta">'+c.dias+' días tarde · '+esc(c.atasco)+'</span>'+(ro.fechaPosible?' · fecha posible '+fmtDia(ro.fechaPosible):''):c.estado==='sinProgramar'?' · <span class="tag t-aviso">sin programar: '+esc(c.motivo)+'</span>':c.holg!=null?' · holgura '+c.holg+' d':''}</p>
+   <table><thead><tr><th>Paso</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Límite (para llegar)</th><th class="num">Min</th><th>Estado</th></tr></thead><tbody>
+   ${(ro.pasos||[]).map(p=>`<tr><td>${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''}</td><td>${p.rec?esc(nRec(p.rec)):'—'}</td><td>${p.ini?fmtDia(p.ini):'—'}</td><td>${p.fin?fmtDia(p.fin):'—'}</td><td>${p.limite?fmtDia(p.limite):'<span class="mut">—</span>'}</td><td class="num">${num(p.min||0)}</td><td>${p.hecho?'<span class="tag t-ok">hecho</span>':p.error?'<span class="tag t-alerta">'+esc(p.error)+'</span>':(p.limite&&p.fin>p.limite?'<span class="tag t-alerta">se pasa '+diasEntre(p.limite,p.fin)+' d</span>':'<span class="tag t-medio">programado</span>')}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin pasos programados.</td></tr>'}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div></div>`,true)}
+function asignacionPorOrdenHTML(P){const h=hoy();const q=normTxt(APO.q);const todas=S.ordenes.filter(o=>abierta(o));
+  const clis=[...new Set(todas.map(o=>o.cliente||'Sin cliente'))].sort((a,b)=>a.localeCompare(b,'es'));const cens=S.centros.filter(c=>c.area==='pro');const meses=[...new Set(todas.map(o=>(fechaMetaDe(o)||'').slice(0,7)).filter(Boolean))].sort();
+  const lista=todas.filter(o=>(!APO.cli||(o.cliente||'Sin cliente')===APO.cli)&&(!APO.mes||(fechaMetaDe(o)||'').slice(0,7)===APO.mes)&&(!APO.cen||((pasoProximoDe(o,P)||{}).centro===APO.cen))&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt(o.cliente).includes(q)||normTxt(String(o.odc||'')).includes(q)||normTxt(nombreCat(K(o.cat))).includes(q)));
+  const B={vencidaUnPaso:[],sinProgramar:[],noLlega:[],justo:[],bien:[]};const cls={};lista.forEach(o=>{const c=clasificarAsig(o,P);cls[o.id]=c;B[c.estado].push(o)});
+  const niv=nivelesAPO();const pz=l=>num(l.reduce((a,o)=>a+(+o.cant||0),0));const col=colchonDias();
+  const fila=(o)=>{const ro=P.ordenes[o.id]||{};const c=cls[o.id];const p=pasoProximoDe(o,P);const meta=fechaMetaDe(o);
+    const extra=c.estado==='vencidaUnPaso'?`<td><span class="tag t-aviso">vencida hace ${c.diasVenc} d</span> solo falta <b>${esc(nCen(c.paso))}</b> <span class="mut">· ¿entregada y mal cerrada en Odoo?</span></td>`
+      :c.estado==='sinProgramar'?`<td><span class="tag t-aviso">${esc(c.motivo)}</span></td>`
+      :c.estado==='noLlega'?`<td><span class="tag t-alerta">${c.dias} d tarde</span> <span class="mut">se atasca en</span> ${esc(c.atasco)}${ro.fechaPosible?' <span class="mut">· posible '+fmtDia(ro.fechaPosible)+'</span>':''}</td>`
+      :`<td><span class="mut">holgura</span> ${c.holg} d</td>`;
+    return `<tr><td style="white-space:nowrap">${fotoMini(o)}<a href="#" onclick="mDetalleAsig('${o.id}');return false" title="ver la ruta completa"><b>${esc(o.op)}</b></a></td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td style="white-space:nowrap">${p?`<span class="tag t-medio" title="${num(p.min)} min${(o.recursoFijo||{})[p.centro]?' · módulo fijado':''}">${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''} · ${esc(nRec(p.rec))} · ${fmtDia(p.fin)}</span>`:'<span class="mut">—</span>'}</td><td>${ro.finPro?fmtDia(ro.finPro):'—'}</td><td>${meta?fmtDia(meta):'—'}</td>${extra}</tr>`};
+  const cab=`<thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th class="num">Prendas</th><th>Próximo paso · recurso · termina</th><th>Termina todo</th><th>Entrega</th><th>Estado</th></tr></thead>`;
+  const bloque=(k,titulo,nota,cls2,abierto)=>{const l=B[k];if(!l.length)return '';const cuerpo=`<div class="scroll" style="max-height:520px"><table>${cab}<tbody>${filasArbolAPO(arbolAPO(l,niv,P),fila,9)}</tbody></table></div>`;
+    return abierto?`<div class="panel" style="${cls2||''}"><h3>${titulo} <span class="note">${l.length} ${l.length===1?'orden':'órdenes'} · ${pz(l)} prendas${nota?' · '+nota:''}</span></h3>${cuerpo}</div>`
+      :`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">${titulo} <span class="mut" style="font-weight:400">· ${l.length} órdenes · ${pz(l)} prendas${nota?' · '+nota:''}</span></summary>${cuerpo}</details>`};
+  const sel=(i)=>`<select onchange="setNivelAPO(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${APO_CAMPOS.map(([k,v])=>`<option value="${k}" ${niv[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
+  return `<div class="panel"><h3>Asignación por orden <span class="note">${lista.length} órdenes · lo que necesita atención arriba; las que van bien, plegadas</span></h3><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div><label>Agrupar por <span class="mut">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=niv.length).map(sel).join('')}</div></div>
+    <div><label>Cliente</label><select onchange="APO.cli=this.value;render()"><option value="">todos</option>${clis.map(c=>`<option value="${esc(c)}" ${APO.cli===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    <div><label>Próximo paso</label><select onchange="APO.cen=this.value;render()"><option value="">todos</option>${cens.map(c=>`<option value="${c.id}" ${APO.cen===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>
+    <div><label>Mes de entrega</label><select onchange="APO.mes=this.value;render()"><option value="">todos</option>${meses.map(m=>`<option value="${m}" ${APO.mes===m?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div>
+    <div style="flex:1;min-width:160px"><label>Buscar</label><input type="text" value="${esc(APO.q)}" placeholder="WH, estilo, cliente, ODC" data-q="APO.q" oninput="buscarQ(this,v=>APO.q=v)"></div>
+    <div><label>Colchón <span class="mut" title="días de holgura para contar una orden como 'llega justo'">(días)</span></label><input type="number" min="0" style="width:70px" value="${col}" ${(puede('config')||puede('programa'))?'':'disabled'} onchange="setColchon(this.value)">${S.params.colchonEstimado?' <span class="tag t-aviso" title="sembrado en 3 días; ajústalo">est.</span>':''}</div>
+    ${(APO.cli||APO.cen||APO.mes||APO.q)?`<div><button class="btn ghost sm" onclick="APO.cli='';APO.cen='';APO.mes='';APO.q='';render()">Limpiar</button></div>`:''}</div></div>
+  ${bloque('vencidaUnPaso','Vencidas hace más de 30 días con un solo paso pendiente','probablemente entregadas y mal cerradas en Odoo: revisar','border-color:var(--alerta)',true)}
+  ${bloque('sinProgramar','Sin programar','sin ruta, sin tela, sin liberar o sin tiempo','',true)}
+  ${bloque('noLlega','No llegan','programadas después de su fecha','border-color:var(--alerta)',true)}
+  ${bloque('justo','Llegan justo','dentro del colchón de '+col+' días','',true)}
+  ${bloque('bien','Llegan bien','','',false)}
+  ${lista.length?'':'<div class="panel"><div class="empty">Nada con estos filtros.</div></div>'}`}
 function programar(){
   if(PLAN&&!LIB_ALL)return PLAN;
   const carga={}; S.recursos.forEach(r=>carga[r.id]={});
@@ -3087,16 +3147,11 @@ function congelar(){const b=programar().banos.filter(x=>!x.error);
 /* ---------- Producción ---------- */
 function vPro(el){
   const P=S.ordenes.length?programar():null;
-  const asig=P?S.ordenes.map(o=>{const ro=P.ordenes[o.id];if(!ro)return'';
-    return `<tr><td>${esc(o.op)}</td><td class="num">${num(o.cant)}</td><td>${ro.finTin?fmtDia(dsum(ro.finTin,S.params.diasTintBodega)):'—'}</td>
-      <td>${ro.pasos.map(p=>p.error?`<span class="tag t-alerta">${esc(nCen(p.centro))}: ${p.error}</span>`:
-        `<span class="tag t-medio" title="${num(p.min)} min${(o.recursoFijo||{})[p.centro]?' · fijado por orden de trabajo':''}">${esc(nCen(p.centro))} · ${esc(nRec(p.rec))}${(o.recursoFijo||{})[p.centro]?' ⚲':''} · ${fmtDia(p.fin)}</span>`).join(' ')}</td>
-      <td>${ro.finPro?fmtDia(ro.finPro):'—'}</td><td>${o.fecha} ${ro.atraso?'<span class="tag t-alerta">atraso</span>':''}</td></tr>`}).join(''):'';
   el.innerHTML=`<div class="pagehead"><h2>Programa de producción</h2></div>
-  <p class="lede">Cada paso de la ruta se asigna al recurso de ese centro que lo termina antes, en secuencia, arrancando cuando la tela llega de tintorería. La carga se mide en minutos estándar.</p>
+  <p class="lede">Cada paso de la ruta se asigna a un recurso de su centro según el motor vigente (hacia atrás desde la fecha de entrega, o lo antes posible). La carga se mide en minutos estándar. Abajo, cada orden con su estado: lo que necesita atención primero.</p>
   ${tablaCarga('pro','Carga por centro y recurso')}
   ${tablaMezcla()}
-  <div class="panel"><h3>Asignación por orden</h3>${P?`<div class="scroll"><table><thead><tr><th>OP</th><th class="num">Prendas</th><th>Tela lista</th><th>Ruta asignada (centro · recurso · termina)</th><th>Terminada</th><th>Entrega</th></tr></thead><tbody>${asig}</tbody></table></div>`:'<div class="empty">Sin órdenes.</div>'}</div>`;
+  ${P?asignacionPorOrdenHTML(P):'<div class="panel"><div class="empty">Sin órdenes.</div></div>'}`;
 }
 
 /* qué categorías tiene cargadas cada centro, por período */
