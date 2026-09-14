@@ -303,6 +303,32 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: ya no dice que jaspe y llano van separados",!hm.includes('se tinturan separados')&&hm.includes('pueden ir en el mismo baño'));
    page='config';CONF.tab='ordenes2';render();__check("config: tabla 13 de propuesta 'qué le falta'",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
    page='ordenes';render();__check("tela 3 dimensiones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* plana en metros, tandas de plana en tintorería, excepción tabla 3, plan: días/personas y carga por tipo de producto */
+  {const antes=__R.errors.length;const confirmPrev=window.confirm;window.confirm=()=>true;
+   const L=lineasTelaDe([{clasif:'tela',udm:'m',dem:120,prod:'OXFORD CHINA PFD',cod:'',ruta:'INV / MP / PLANA IMPORTACION / ',n2:'MP',n3:'PLANA IMPORTACION',n4:'',origen:'EXTERNA'},{clasif:'tela',udm:'kg',dem:10,prod:'JERSEY',cod:'',ruta:'INV / MP / PIQUE TEMPO / ',n2:'MP',n3:'PIQUE TEMPO',n4:'',origen:'PROPIA'}]);
+   __check("plana: la línea en metros se queda en metros (m=120, kg 0), la de kg en kg; no se convierten",L[0].ud==='m'&&L[0].m===120&&L[0].kg===0&&L[1].ud==='kg'&&L[1].kg===10&&!('m' in L[1]));
+   __check("tabla 3: NUEVOS TEMPO / TELA TINTURADA (EXTERNA) → EXTERNA TEÑIDA",origenDeTela('NUEVOS TEMPO','TELA TINTURADA (EXTERNA)')==='EXTERNA TEÑIDA'&&dimensionesTela({cod:'',prod:'CUBE LYCRA - TINTURADO',origen:origenDeTela('NUEVOS TEMPO','TELA TINTURADA (EXTERNA)')}).produce==='externa');
+   const oP=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).some(t=>t.ud==='m'&&t.m>0));
+   __check("plana: hay órdenes con tela en metros aparte de las de kilos",!!oP&&oP.telas.some(t=>t.ud==='m')&&(oP.mPlana==null||oP.mPlana>=0));
+   page='ordenes';ORDF.q=oP?oP.op:'';const g0=ORDF.grupo;ORDF.grupo=null;render();const hO=document.getElementById('p-ordenes').innerHTML;ORDF.q='';ORDF.grupo=g0;__check("plana: la lista de órdenes muestra metros con la marca (plana)",!oP||/\d+ m <span class="mut">\(plana\)/.test(hO));
+   page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: tela plana en metros en tabla aparte, no sumada a los kilos",hm.includes('Tela plana · METROS')||!macroMes('').planas.length);
+   // tanda de plana: requiere máquina y horas configuradas
+   const mTin=S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&r.cap>=200);S.params.planaMaquina=mTin.id;S.params.planaHoras=8;
+   if(oP){const i=oP.telas.findIndex(t=>t.ud==='m'&&t.m>0);const tl=oP.telas[i];oP.lib=oP.lib||{};oP.lib.tela={ok:true,u:'t',ts:new Date().toISOString()};if(!necesitaTin(tl))tl.faltaConf={v:'tintura',u:'t',ts:new Date().toISOString()};
+     page='tintoreria';render();const ht=document.getElementById('p-tintoreria').innerHTML;__check("tintorería: sección de tela plana con pendientes",ht.includes('Tela plana · tandas')&&planasPendientes().some(p=>p.o.id===oP.id));
+     const k=oP.id+'|'+i;PLA={sel:{[k]:true},kg:String((mTin.cap||200)+50),m:{}};render();const ht2=document.getElementById('p-tintoreria').innerHTML;__check("tanda: avisa si los kilos superan la capacidad de la máquina grande, sin impedir",ht2.includes('superan la capacidad')&&ht2.includes('Confirmar tanda'));
+     const nb=(S.banos_conf||[]).length;confirmarTandaPlana();const b=(S.banos_conf||[]).find(x=>x.tipo==='plana');
+     __check("tanda: confirmada con metros, kilos, máquina grande fija y lote registrado",(S.banos_conf||[]).length===nb+1&&!!b&&b.m>0&&b.kg===(mTin.cap||200)+50&&b.rec===mTin.id&&b.pasa===true&&lotesPlana().some(l=>l.tanda===b.id));
+     const P=programar();const pb=P.banos.find(x=>x.id===b.id);__check("tanda: entra al programa como baño de plana con las horas configuradas en la máquina grande",!!pb&&pb.plana===true&&pb.horas===8&&pb.rec===mTin.id&&pb.kg===b.kg);
+     __check("tanda: la relación metros/kilos por tela queda guardada",!!promedioPlana(tl.tela)&&promedioPlana(tl.tela).n===1);
+     deshacerTandaPlana(b.id);__check("tanda: deshacer la quita del programa y conserva el lote",!(S.banos_conf||[]).some(x=>x.id===b.id)&&lotesPlana().some(l=>l.tanda===b.id));delete oP.lib.tela;}
+   ARM.sel={};ARM.maq={};
+   // plan mensual: días y personas junto a la capacidad; carga por tipo de producto
+   page='plan';PM.mes=hoy().slice(0,7);render();const hp=document.getElementById('p-plan').innerHTML;
+   __check("plan: capacidad por área muestra con qué se calcula (personas/máquinas y días)",hp.includes('Con qué se calcula')&&/\d+ módulos · \d+ personas/.test(hp)&&hp.includes('Min efect./día')&&hp.includes('Capacidad (min)'));
+   __check("plan: carga por tipo de producto con agrupar y filtrar",hp.includes('Carga de confección del mes por tipo de producto')&&hp.includes('Aplicado:')&&hp.includes('agrupado por Familia'));
+   PMG.niveles=['cat','rec'];render();const hp2=document.getElementById('p-plan').innerHTML;__check("plan: agrupar categoría → módulo",hp2.includes('agrupado por Categoría → Módulo'));PMG.niveles=['fam'];
+   window.confirm=confirmPrev;page='ordenes';render();__check("plana/plan sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
