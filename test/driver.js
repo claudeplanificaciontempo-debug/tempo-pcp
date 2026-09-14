@@ -532,6 +532,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    if(kShort){const ob=ojalBotonDe(kShort);__check("B: short lleva ojal 0.26 y botón NO APLICA (0)",!!ob&&Math.abs(ob.ojales-0.26)<1e-9&&+ob.botones===0&&Math.abs(samPorCentro(kShort).botones-0.26)<1e-9);}
    // migración: el paso de botones en las órdenes toma el tiempo corregido
    const oB=S.ordenes.find(x=>(x.ruta||[]).some(p=>p.centro==='botones'));if(oB){aplicarTiemposBotones();const p=oB.ruta.find(p=>p.centro==='botones');const k=K(oB.cat);__check("B: aplicarTiemposBotones deja el paso de la orden igual al SAM corregido del centro",Math.abs(p.t-samPorCentro(k).botones)<1e-9,p.t+' vs '+samPorCentro(k).botones);}
+   {const kV=S.categorias.find(k=>normFase(k.n).includes("vestido")&&samPorCentro(k).botones!=null);if(kV){const ob=ojalBotonDe(kV);__check("B: Vestidos/Jeans marcados sin confirmar → no se sobrescribe (sigue con la LMO)",!!ob&&ob.sinConfirmar===true&&samPorCentro(kV).botones===(opsDe(kV).filter(x=>x.centro==="botones").reduce((a,x)=>a+(+x.sam||0),0)));}}
    __check("A/B sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* C: las dos liberaciones */
 
