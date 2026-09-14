@@ -460,11 +460,42 @@ const SUPABASE_URL='https://bypdfogmksbxjaiydhlg.supabase.co';
 const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
 
 /* ---------- roles ---------- */
-const ROLES={admin:'Administrador',planificacion:'Planificación',carga:'Carga de órdenes',piso:'Piso',consulta:'Consulta'};
-const PERM={admin:['config','usuarios','ordenes','programa','categorias','avance'],
-            planificacion:['ordenes','programa','categorias','avance'],carga:['ordenes'],piso:['avance'],consulta:[]};
-const puede=x=>!!PERFIL&&PERFIL.modo!=='ver'&&(PERM[PERFIL.rol]||[]).includes(x);
-const puedeArea=a=>puede('avance')&&(PERFIL.rol!=='piso'||!PERFIL.area||PERFIL.area===a);
+/* ---------- perfiles: catálogo editable en Configuración → Usuarios (S.params.perfilesDef); el usuario guarda solo el id del perfil en perfiles.rol ----------
+   Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
+   centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
+const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+function defPerfiles(){return [
+  {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
+  {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
+  {id:'tintoreria',n:'Tintorería',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','reporteria','imprimir'],desc:'Registra kilos hechos, faltantes y reprocesos; por ahora también hace calidad (rechaza → reproceso; aprueba → cola de producción). Ve solo tintorería.'},
+  {id:'liberacion',n:'Liberación',permisos:['liberar'],centros:[],paginas:['liberacion','ordenes','wip'],desc:'Libera de la cola solo cuando los insumos están completos. Ve la cola de liberación y la ruta de cada orden.'},
+  {id:'corte',n:'Corte, estampado y bordado',permisos:['avance','reprogramar','ruta'],centros:['corte','estampado','bordado'],paginas:['centro','control','linea','reporteria','imprimir'],desc:'Ve y programa esas tres áreas.'},
+  {id:'modulos',n:'Módulos (confección)',permisos:['avance','reprogramar','ruta'],centros:['modulos'],paginas:['centro','control','linea','reporteria','imprimir','balanceo','costura'],desc:'Las dos personas ven los once módulos; no se reparten por módulo.'},
+  {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','linea','reporteria','imprimir'],desc:'Plancha, botones, lavado, etiquetas y empaque: los procesos finales antes de facturar.'},
+  {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
+function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();return S.params.perfilesDef}
+/* perfiles viejos (rol piso/carga con área y sub-área) se traducen al catálogo sin tocar la tabla */
+function perfilDe(p){if(!p)return null;const cat=perfilesDef();let d=cat.find(x=>x.id===p.rol);if(d)return d;
+  if(p.rol==='piso'){if(p.area==='tin')return cat.find(x=>x.id==='tintoreria')||null;if(p.area==='tej')return{id:'piso_tej',n:'Piso tejeduría',permisos:['avance'],centros:['tej'],paginas:['tejeduria','control','reporteria','imprimir']};
+    const sub=p.subarea&&SUBAREAS[p.subarea];return{id:'piso',n:'Piso',permisos:['avance'],centros:sub?sub.centros.slice():['corte','estampado','bordado','modulos','etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','linea','reporteria','imprimir']}}
+  if(p.rol==='carga')return{id:'carga',n:'Carga de órdenes',permisos:['ordenes'],centros:['*'],paginas:['ordenes']};
+  return cat.find(x=>x.id==='consulta')||null}
+const ROLES=new Proxy({},{get:(t,k)=>{const d=(typeof S!=='undefined'&&S&&S.params)?perfilesDef().find(x=>x.id===k):null;return d?d.n:k}});
+const puede=x=>{if(!PERFIL||PERFIL.modo==='ver')return false;const d=perfilDe(PERFIL);if(!d)return false;return d.permisos.includes('*')||d.permisos.includes(x)};
+const centrosPerfil=()=>{const d=perfilDe(PERFIL);return d?d.centros:[]};
+const veArea=a=>{if(!PERFIL)return false;const cs=centrosPerfil();if(cs.includes('*'))return true;return cs.some(c=>c===a||(CE(c)&&CE(c).area===a))};
+const veCentro=c=>{if(!PERFIL)return false;const cs=centrosPerfil();if(cs.includes('*'))return true;const ce=CE(c);return cs.includes(c)||(!!ce&&cs.includes(ce.area))};
+const puedeArea=a=>puede('avance')&&veArea(a);
+const puedeCentro=c=>veCentro(c)&&puedeArea((CE(c)||{}).area);
+const vePagina=p=>{const d=perfilDe(PERFIL);if(!d)return false;return d.paginas.includes('*')||d.paginas.includes(p)};
+function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||puede(need))&&vePagina(a.dataset.p);
+    if(ok&&a.dataset.cen){const cs=CENTROS_PROD[a.dataset.cen]||[a.dataset.cen];ok=cs.some(veCentro)}
+    if(ok&&a.dataset.rep){ok=a.dataset.rep==='textil'?(veArea('tej')||veArea('tin')):veArea('pro')}
+    if(ok&&a.dataset.p==='tejeduria')ok=veArea('tej');if(ok&&a.dataset.p==='tintoreria')ok=veArea('tin');
+    a.style.display=ok?'':'none'});
+  document.querySelectorAll('nav .grp').forEach(g=>{const body=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const alguna=body&&[...body.querySelectorAll('a')].some(a=>a.style.display!=='none');g.style.display=alguna?'':'none';if(body)body.style.display=alguna?'':'none'})}
+function primeraPagina(){const a=[...document.querySelectorAll('nav a[data-p]')].find(x=>x.style.display!=='none');return a?a.dataset.p:'ordenes'}
 
 /* ---------- estado ---------- */
 const TABLAS=['centros','recursos','telas','colores','rutas','operaciones','tecnicas','maquinas','categorias','ordenes','programas','cargas','propuestas','paros','turnos','bitacora','planes','salidas_tin','banos_conf'];
@@ -520,7 +551,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-13 22:36';
+const APP_BUILD='2026-09-13 22:49';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -539,8 +570,8 @@ async function entrar(user){
   document.getElementById('login').classList.remove('on');
   document.getElementById('quien').textContent=(PERFIL.nombre||user.email)+' · '+(ROLES[PERFIL.rol]||PERFIL.rol);
   await cargarTodo();
-  document.querySelectorAll('nav a').forEach(a=>{const need=a.dataset.perm;a.style.display=(!need||puede(need))?'':'none'});decorarNav();
-  page='ordenes';render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);setInterval(revisarDatos,3*60*1000);
+  aplicarNavPerfil();decorarNav();
+  page=vePagina('ordenes')?'ordenes':primeraPagina();render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);setInterval(revisarDatos,3*60*1000);
 }
 function mostrarLogin(msg){document.getElementById('login').classList.add('on');document.getElementById('login-msg').textContent=msg||''}
 async function login(){if(!sb)return;const e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value;
@@ -1056,7 +1087,7 @@ function setGran(g){GRAN=g;render()}
 function render(){
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
-  const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if(need&&!puede(need))page='ordenes';
+  const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
   ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
@@ -1133,6 +1164,7 @@ function vPanorama(el){
   const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long'});
   el.innerHTML=`<div class="pagehead"><h2>Hoy</h2><span class="spacer"></span><span class="mut">${fmt(h)}</span></div>
   <p class="lede">Lo que está programado hoy por área, lo que necesita una decisión, y cómo va el mes. La foto mensual está en el Resumen gerencial.</p>
+  ${puede('programa')?panelAdvertencias():''}
   <div class="kpis">
    <div class="kpi"><div class="v">${num(kgHoy)} kg</div><div class="k">A tejer hoy${!kgHoy&&proxTej?' · próximo '+fmtDia(proxTej):''}</div></div>
    <div class="kpi ${(P.banosPend||[]).length?'warn':''}"><div class="v">${dBan.length}</div><div class="k">Baños hoy${(P.banosPend||[]).length?' · '+(P.banosPend||[]).length+' por decidir':''}${!dBan.length&&proxBan?' · próximo '+fmtDia(proxBan):''}</div></div>
@@ -1786,7 +1818,7 @@ function vLiberacion(el){
   const fams=[...new Set(todas.map(padreDe).filter(Boolean))].sort();const hijas=[...new Set(todas.filter(o=>ok(LIB.fam)(padreDe(o))).map(hijaDe).filter(Boolean))].sort();
   const clis=[...new Set(todas.map(o=>o.cliente||'—'))].sort();const meses=[...new Set(todas.map(o=>(o.fecha||'').slice(0,7)).filter(Boolean))].sort();
   const telasDisp=[...new Set(todas.flatMap(telasOrden))].sort((a,b)=>nTela(a).localeCompare(nTela(b)));
-  const nombre=et==='tela'?'la planta':'producción';const puedeF=puede('programa')||puedeArea(et==='tela'?'tej':'tin');
+  const nombre=et==='tela'?'la planta':'producción';const puedeF=puede('programa')||puede('liberar');
   const fila=(o,check)=>{return `<tr><td>${check?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.cliente||'')}</td><td>${esc(hijaDe(o))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(kgDe(o))}</td><td>${o.fecha}</td><td>${esc(faseNombre(o.fase||'—'))}</td>
     <td>${check?'':(liberada(o,et)?((o.lib||{})[et]&&o.lib[et].ok?`<span class="tag t-ok">liberada</span> <span class="mut" style="font-size:var(--fs-xs)">${esc(o.lib[et].u||'')} · ${new Date(o.lib[et].ts).toLocaleDateString('es-EC')}</span> ${puede('programa')?`<button class="btn ghost sm" onclick="retirarLib('${o.id}','${et}')">retirar</button>`:''}`:'<span class="tag t-ok">por fase de Odoo</span>'):(puedeLiberarA(o,et)?'<span class="tag t-ok">lista</span>':'<span class="tag t-alerta">'+esc(faltaLiberarA(o,et).join(', '))+'</span>'))}</td></tr>`};
   const cab=`<thead><tr><th style="width:26px"></th><th>OP</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Kg crudo</th><th>Entrega</th><th>Fase</th><th></th></tr></thead>`;
@@ -1957,8 +1989,8 @@ function vCentro(el){
   const cid=CEN.id;const cens=CENTROS_PROD[cid]||[cid];const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
   const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
   const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
-  const okPiso=puede('programa')||cens.some(puedeCentro);const q=normTxt(CEN.q);
-  const tabs=[['plan','Planificación'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']];
+  const okPiso=puede('programa')||(puede('reprogramar')&&cens.some(veCentro));const q=normTxt(CEN.q);
+  const tabs=[['plan','Planificación'],['viene','Carga que viene'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']];
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
@@ -1979,6 +2011,7 @@ function vCentro(el){
     ${luego.length?`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Vienen después <span class="mut" style="font-weight:400">· ${luego.length} órdenes con inicio posterior</span></summary><div class="scroll" style="max-height:300px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Inicio</th><th>Entrega</th></tr></thead><tbody>${luego.sort((a,b)=>a.paso.ini<b.paso.ini?-1:1).slice(0,150).map(f=>`<tr><td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${f.o.fecha}</td></tr>`).join('')}</tbody></table></div></details>`:''}
     ${bloq.length?`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Sin fecha todavía <span class="mut" style="font-weight:400">· ${bloq.length} órdenes esperan liberación o decisión</span></summary><div class="body" style="font-size:var(--fs-s)">${Object.entries(bloq.reduce((m,f)=>{m[f.bloq]=(m[f.bloq]||0)+1;return m},{})).map(([b,n])=>n+' '+esc(b)).join(' · ')}</div></details>`:''}`;
     return}
+  if(CEN.tab==='viene'){el.innerHTML=cab+cargaQueVieneHTML(cens,nombre,P);return}
   if(CEN.tab==='prog'){
     const lista=filas.filter(f=>!f.hecho&&!f.bloq&&(f.pzSem>0||(f.paso.ini&&f.paso.ini<=dsum(dom,7)))).sort((a,b)=>(((a.o.progCentro||{})[a.c]||{}).pri||3)-(((b.o.progCentro||{})[b.c]||{}).pri||3)||((a.paso.ini||'9')<(b.paso.ini||'9')?-1:1));
     el.innerHTML=cab+`<p class="lede">Aquí el centro programa sobre la planificación: elige recurso, fija la fecha en que arranca cada orden y su prioridad dentro del centro. El programa general se recalcula respetando lo que el centro decide; si algo no se puede (falta insumo, máquina parada), se registra en la pestaña de ejecución y se corrige con rebalanceo o reestructuración.</p>
@@ -1987,7 +2020,7 @@ function vCentro(el){
        <td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
        <td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">auto (${esc(nRec(f.paso.rec))})</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
        <td><input type="date" value="${pc.desde||''}" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${(P.ordenes[f.o.id]||{}).atraso?'<span class="tag t-alerta">'+f.o.fecha+'</span>':f.o.fecha}</td>
-       <td>${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)">quitar</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="11" class="mut">Nada por programar.</td></tr>'}</tbody></table></div>
+       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)">quitar</button> `:''}${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="11" class="mut">Nada por programar.</td></tr>'}</tbody></table></div>
      <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p></div>`;
     return}
   // ejecución y desviaciones
@@ -2002,8 +2035,74 @@ function vCentro(el){
     <div class="panel"><h3>Desviaciones por orden <span class="note">hechas menos lo que el plan pedía a hoy</span></h3><div class="body"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Plan a hoy</th><th class="num">Hechas</th><th class="num">Desv.</th><th></th></tr></thead><tbody>${desv.slice(0,30).map(f=>`<tr><td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.planAcum)}</td><td class="num">${num(f.hechas)}</td><td class="num"><span class="tag t-alerta">${num(f.desv)}</span></td><td style="white-space:nowrap">${cid==='modulos'?`<button class="btn ghost sm" onclick="COS.tab='rebalanceo';COS.evalId='${f.o.id}';ir('costura')">rebalancear</button> `:''}<button class="btn ghost sm" onclick="CEN.tab='prog';CEN.q='${esc(f.o.op)}';render()">reprogramar</button></td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sin desviaciones.</td></tr>'}</tbody></table>
      <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Acciones: <a style="cursor:pointer" onclick="CTL.area='pro';CTL.centro='${cens[0]}';ir('control')">registrar en Control de piso</a> · <a style="cursor:pointer" onclick="ir('escenarios')">probar más personas o días en Escenarios</a>${cid==='modulos'?` · <a style="cursor:pointer" onclick="COS.tab='andon';ir('costura')">Andon</a>`:''}</p></div></div></div>`;
 }
-function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;o.progCentro=o.progCentro||{};if(k===null){delete o.progCentro[c]}else{o.progCentro[c]=o.progCentro[c]||{};if(v===''||v==null)delete o.progCentro[c][k];else o.progCentro[c][k]=v;if(!Object.keys(o.progCentro[c]).length)delete o.progCentro[c]}
-  bitacora('Programación '+nCen(c)+' '+o.op+(k?': '+k+' '+v:' quitada'));save();render()}
+/* ---------- cambios de un centro con impacto en la fecha: no se impiden; se registran y avisan a planificación ----------
+   Advertencia cuando, tras el cambio, la fecha estimada por el programa queda después de la fecha comprometida (o la pedida si no hay
+   compromiso) y antes no lo estaba, o se corre más. Se guarda en S.params.advertencias con quién, cuándo, qué tenía y qué queda. */
+function fechaMetaDe(o){return o.fechaCompromiso||o.fecha||null}
+function conAvisoFecha(o,accion,fn){const antes=((S.ordenes.length?programar():{ordenes:{}}).ordenes[o.id])||{};const fAntes=antes.finPro||null;
+  fn();PLAN=null;PLAN_ALL=null;
+  const despues=((S.ordenes.length?programar():{ordenes:{}}).ordenes[o.id])||{};const fDesp=despues.finPro||null;const meta=fechaMetaDe(o);
+  bitacora(accion+' · '+o.op+' · estimada '+(fAntes?fmtDia(fAntes):'—')+' → '+(fDesp?fmtDia(fDesp):'—'));
+  if(meta&&fDesp&&fDesp>meta&&(!fAntes||fAntes<=meta||fDesp>fAntes)){S.params.advertencias=S.params.advertencias||[];
+    S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',oid:o.id,op:o.op,accion,meta,metaTipo:o.fechaCompromiso?'compromiso':'pedida',antes:fAntes,despues:fDesp,atendida:false});
+    if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300)}}
+function atenderAviso(id){const a=(S.params.advertencias||[]).find(x=>x.id===id);if(!a)return;a.atendida=!a.atendida;a.atendidaPor=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';a.atendidaTs=new Date().toISOString();save();render()}
+function panelAdvertencias(){const av=(S.params.advertencias||[]).filter(a=>!a.atendida).sort((a,b)=>a.ts<b.ts?1:-1);const vistas=(S.params.advertencias||[]).filter(a=>a.atendida).length;
+  return `<div class="panel ${av.length?'':''}"><h3>Advertencias de fecha <span class="note">${av.length} pendientes${vistas?' · '+vistas+' atendidas':''} · reprogramaciones y cambios de ruta de los centros que dejan la entrega fuera de fecha</span></h3><div class="body">
+   ${av.length?`<table><thead><tr><th>Cuándo</th><th>Quién</th><th>Orden</th><th>Qué hizo</th><th>Fecha meta</th><th>Estimada antes</th><th>Estimada ahora</th><th></th></tr></thead><tbody>
+   ${av.slice(0,60).map(a=>`<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(a.u)}</td><td>${esc(a.op)}</td><td>${esc(a.accion)}</td><td>${fmtDia(a.meta)} <span class="mut">(${a.metaTipo})</span></td><td>${a.antes?fmtDia(a.antes):'—'}</td><td><span class="tag t-alerta">${fmtDia(a.despues)}</span></td><td><button class="btn ghost sm" onclick="atenderAviso('${a.id}')">atendida</button></td></tr>`).join('')}</tbody></table>`:'<span class="mut">Ninguna pendiente.</span>'}</div></div>`}
+/* reprogramación del centro: permiso "reprogramar" (o programa), queda en bitácora con antes → después y avisa si mueve la fecha */
+function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no puede reprogramar '+nCen(c)+'.');return}
+  const pcAntes=JSON.stringify((o.progCentro||{})[c]||{});
+  conAvisoFecha(o,'Reprogramación en '+nCen(c)+(k===null?' quitada':': '+k+' '+(k==='rec'?nRec(v):v)),()=>{o.progCentro=o.progCentro||{};if(k===null){delete o.progCentro[c]}else{o.progCentro[c]=o.progCentro[c]||{};if(v===''||v==null)delete o.progCentro[c][k];else o.progCentro[c][k]=v;if(!Object.keys(o.progCentro[c]).length)delete o.progCentro[c]}});
+  bitacora('Programación '+nCen(c)+' '+o.op+': '+pcAntes+' → '+JSON.stringify((o.progCentro||{})[c]||{}));save();render()}
+/* ruta editable por el centro: solo los pasos de sus centros (y los opcionales que le tocan), con motivo obligatorio; sin tiempo = se reporta */
+const RUTA_EDITABLE_POR={corte:['estampado','bordado'],estampado:['estampado','bordado'],bordado:['estampado','bordado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones'],botones:['etiquetas','lavado','plancha','botones'],lavado:['etiquetas','lavado','plancha','botones'],plancha:['etiquetas','lavado','plancha','botones'],empaque:['empaque']};
+function centrosEditablesRuta(){if(puede('programa'))return S.centros.filter(c=>c.area==='pro').map(c=>c.id);if(!puede('ruta'))return [];const set=new Set();centrosPerfil().forEach(c=>{(RUTA_EDITABLE_POR[c]||[c]).forEach(x=>set.add(x));if(c==='*')S.centros.filter(x=>x.area==='pro').forEach(x=>set.add(x.id))});return [...set]}
+function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+  const ruta=o.ruta||[];const todos=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  abrir(`<h3>Ruta de ${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Marca o desmarca los pasos de tus centros. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría; si la categoría no tiene tiempo para ese centro, el paso entra <b>sin tiempo</b> y queda en la bandeja "sin tiempo por prenda" hasta que se cargue. El motivo es obligatorio y todo queda en la bitácora.</p>
+   <table><thead><tr><th>Paso</th><th>En la ruta</th><th class="num">Min/prenda</th><th>Estado</th></tr></thead><tbody>
+   ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id);const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);
+     return `<tr><td>${esc(c.n)}</td><td><input type="checkbox" id="rc-${c.id}" ${p?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
+   <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rc-motivo" placeholder="faltaba la operación, cambio de bordado a estampado, el cliente pidió lavado…"></div></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarRutaCentro('${o.id}')">Guardar ruta</button></div>`)}
+function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}
+  const edit=centrosEditablesRuta();const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
+  S.centros.filter(c=>c.area==='pro'&&edit.includes(c.id)).forEach(c=>{const el=document.getElementById('rc-'+c.id);if(!el||el.disabled)return;const en=antes.includes(c.id);
+    if(el.checked&&!en){mas.push(c.id)}if(!el.checked&&en){menos.push(c.id)}});
+  if(!mas.length&&!menos.length){cerrar();return}
+  conAvisoFecha(o,'Ruta: '+(mas.length?'+'+mas.map(nCen).join(', '):'')+(menos.length?' −'+menos.map(nCen).join(', '):'')+' ('+motivo+')',()=>{
+    let ruta=(o.ruta||[]).filter(p=>!menos.includes(p.centro));
+    mas.forEach(c=>{const t=sam[c]||0;if(!t)sinT.push(c);const idx=ordenPaso(c);let pos=ruta.length;for(let i=0;i<ruta.length;i++){if(ordenPaso(ruta[i].centro)>idx){pos=i;break}}ruta.splice(pos,0,{centro:c,t})});
+    o.ruta=ruta;if(o.rutaCompleta){o.rutaCompleta=o.rutaCompleta.filter(p=>!menos.includes(p.centro));mas.forEach(c=>{if(!o.rutaCompleta.some(p=>p.centro===c))o.rutaCompleta.push({centro:c,t:sam[c]||0})})}
+    o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',mas,menos,motivo}])});
+  bitacora('Ruta '+o.op+': '+antes.map(nCen).join(' → ')+'  ⇒  '+(o.ruta||[]).map(p=>p.centro).map(nCen).join(' → ')+' · '+motivo+(sinT.length?' · SIN TIEMPO: '+sinT.map(nCen).join(', '):''));
+  save();cerrar();render();if(sinT.length)alert('Pasos agregados sin tiempo por prenda (la categoría no tiene operaciones de ese centro): '+sinT.map(nCen).join(', ')+'. Quedan en la bandeja "sin tiempo" y no cargan hasta que se cargue el tiempo.')}
+/* dónde está la orden ahora: primer paso pendiente de la ruta, o sin liberar, o textil */
+function dondeEsta(o,P){if(!liberada(o,'tela'))return{k:'sin_liberar',n:'Sin liberar (planificación)'};const ro=(P.ordenes||{})[o.id]||{};const fe=faseEstado(o.fase,o);const a=S.avance[o.id]||{};const ac=a.centros||{};
+  if(!liberada(o,'corte')){if(ro.bloqueo&&/tela|baño|tint/i.test(ro.bloqueo))return{k:'textil',n:'Textil: '+ro.bloqueo};return{k:'por_liberar_prod',n:'Textil lista · por liberar a producción'}}
+  const pend=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!fe.hechos.includes(p.centro)&&(ac[p.centro]||0)<o.cant);
+  if(!pend.length)return{k:'fin',n:'Terminada en producción'};return{k:pend[0].centro,n:'En '+nCen(pend[0].centro)}}
+/* pestaña "Carga que viene" del centro: qué le va a llegar y de dónde, más lo programado del mes que aún no está liberado */
+function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);const PA=S.ordenes.length?programarTodo():{pro:[],ordenes:{}};
+  const filas=[];S.ordenes.filter(abierta).forEach(o=>{const c=cens.find(x=>(o.ruta||[]).some(p=>p.centro===x));if(!c)return;const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};
+    if(fe.hechos.includes(c)||(ac[c]||0)>=o.cant)return;const d=dondeEsta(o,P);if(d.k===c||d.k==='fin')return;const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};const pasoA=((PA.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
+    filas.push({o,c,d,ini:paso.ini||null,iniTodo:pasoA.ini||null,pz:o.cant-(ac[c]||0)})});
+  const grupos={};filas.forEach(f=>{grupos[f.d.n]=grupos[f.d.n]||{n:0,pz:0,f:[]};grupos[f.d.n].n++;grupos[f.d.n].pz+=f.pz;grupos[f.d.n].f.push(f)});
+  const ordenG=k=>/^Sin liberar/.test(k)?0:/^Textil/.test(k)?1:/por liberar/.test(k)?2:3+(ordenPaso((Object.values(grupos[k].f)[0]||{}).d.k)||0);
+  // mes: programado con toda la cartera vs solo lo liberado
+  const pzMes=(PP)=>PP.pro.filter(x=>cens.includes(x.centro)&&x.dia&&x.dia.startsWith(ym)).reduce((a,x)=>a+(x.pz||0),0);
+  const opsMes=(PP)=>new Set(PP.pro.filter(x=>cens.includes(x.centro)&&x.dia&&x.dia.startsWith(ym)).map(x=>x.op));
+  const todo=pzMes(PA),lib=pzMes(P),opsT=opsMes(PA),opsL=opsMes(P);const porLib=[...opsT].filter(op=>!opsL.has(op));
+  return `<p class="lede">Lo que va a llegar a ${esc(nombre)} y dónde está ahora, para jalar a tiempo. Una orden aparece aquí si tiene paso pendiente en este centro y hoy está en un paso anterior, en textil o sin liberar. La fecha es la que el programa estima para que entre aquí.</p>
+  <div class="kpis"><div class="kpi"><div class="v">${num(todo)}</div><div class="k">Prendas programadas en ${esc(fmtMesEG(ym))} para ${esc(nombre)} · base: toda la cartera abierta, liberada o no (como Resumen gerencial)</div></div>
+   <div class="kpi"><div class="v">${num(lib)}</div><div class="k">De esas, liberadas a producción · base: solo órdenes liberadas (como Plan mensual)</div></div>
+   <div class="kpi ${todo-lib>0?'warn':''}"><div class="v">${num(Math.max(0,todo-lib))}</div><div class="k">Por liberar · ${porLib.length} órdenes que el mes necesita y planificación aún no libera</div></div>
+   <div class="kpi"><div class="v">${filas.length}</div><div class="k">Órdenes en camino · ${num(filas.reduce((a,f)=>a+f.pz,0))} prendas</div></div></div>
+  ${Object.keys(grupos).sort((a,b)=>ordenG(a)-ordenG(b)).map(g=>`<div class="panel"><h3>${esc(g)} <span class="note">${grupos[g].n} órdenes · ${num(grupos[g].pz)} prendas</span></h3><div class="scroll" style="max-height:420px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Llega aquí (programa)</th><th>Si estuviera liberada</th><th>Entrega</th><th>Liberación</th></tr></thead><tbody>
+   ${grupos[g].f.sort((a,b)=>(a.ini||a.iniTodo||'9')<(b.ini||b.iniTodo||'9')?-1:1).slice(0,300).map(f=>`<tr><td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.pz)}</td><td>${f.ini?fmtDia(f.ini):'<span class="mut">no programada</span>'}</td><td class="mut">${!f.ini&&f.iniTodo?fmtDia(f.iniTodo):''}</td><td>${f.o.fecha}</td><td><span class="tag ${liberada(f.o,'corte')?'t-ok':'t-lavado'}">${esc(estadoLibEG(f.o))}</span></td></tr>`).join('')}</tbody></table></div></div>`).join('')||'<div class="panel"><div class="empty">Nada en camino: todo lo que tiene paso aquí ya está en este centro o terminado.</div></div>'}`}
 
 /* ---------- Costura: secuencia por módulo · rebalanceo con aprobación · Andon ---------- */
 let COS={tab:'secuencia',rec:null,eval:{}};
@@ -2083,52 +2182,79 @@ function moverDirecto(oid,dest,gana,fin,finAntes){const o=S.ordenes.find(x=>x.id
   bitacora('Movida '+o.op+' → '+nRec(dest));COS.evalId=null;save();render()}
 
 /* ---------- Balanceo de módulo ---------- */
-let BAL={rec:null,orden:null,meta:null};
-function vBalanceo(el){
-  const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);
-  if(!BAL.rec||!mods.some(r=>r.id===BAL.rec))BAL.rec=(mods[0]||{}).id;
-  const rec=R(BAL.rec);const ords=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos'));
-  const o=S.ordenes.find(x=>x.id===BAL.orden)||null;
-  const sel=`<div class="row" style="margin:0 0 14px;align-items:flex-end">
-    <div><label>Módulo</label><select onchange="BAL.rec=this.value;render()">${mods.map(r=>`<option value="${r.id}" ${r.id===BAL.rec?'selected':''}>${esc(r.n)} · ${r.pers} personas</option>`).join('')}</select></div>
-    <div style="min-width:320px"><label>Orden</label><select onchange="BAL.orden=this.value;BAL.meta=null;render()"><option value="">—</option>${ords.map(x=>`<option value="${x.id}" ${x.id===BAL.orden?'selected':''}>${esc(x.op)} · ${esc(nombreCat(K(x.cat)))} · ${esc((C(x.color)||{}).n||'')} · ${num(x.cant)} pz</option>`).join('')}</select></div>
-    ${o?`<div><label>Meta prendas/día</label><input type="number" style="width:110px" value="${BAL.meta||''}" placeholder="auto" onchange="BAL.meta=+this.value||null;render()"></div>`:''}</div>`;
-  if(!rec||!o){el.innerHTML=`<div class="pagehead"><h2>Balanceo de módulo</h2></div><p class="lede">Elige un módulo y una orden. El sistema reparte las operaciones de confección entre las personas del módulo respetando el tipo de máquina, y te dice qué máquinas faltan o sobran.</p>${sel}<div class="panel"><div class="empty">${rec?'Elige una orden.':'No hay módulos activos.'}</div></div>`;return}
-  const ops=opsDe(K(o.cat)).filter(x=>x.centro==='modulos');
-  const samTot=ops.reduce((a,x)=>a+(+x.sam||0),0);
-  const dispDia=capDia(rec),porPersona=rec.pers?dispDia/rec.pers:0;const maxDia=samTot?dispDia/samTot:0;const meta=BAL.meta||Math.floor(maxDia*0.9);
-  const takt=meta?porPersona/meta:0; // ritmo: minutos que cada puesto puede dedicar a una prenda
-  // puestos: se agrupan operaciones consecutivas del mismo tipo de máquina hasta llenar el ritmo
-  const puestos=[];let cur=null;
-  ops.forEach(x=>{const req=takt?x.sam/takt:0;
+/* ---------- Balanceo de módulo: sale de lo que YA está programado en el módulo este mes, agrupado por hoja de operaciones (familia) ----------
+   Personas: las del recurso (no un número fijo). Objetivo prendas/hora: lo pone la supervisora y queda registrado (quién, cuándo, antes).
+   Al lado, el ritmo TEÓRICO que sale de las operaciones y las personas. El orden de las operaciones dentro de cada sección es PROVISIONAL
+   (el del archivo) hasta que producción llene la hoja ORDEN. */
+let BAL={rec:null,mes:null,grupo:null};
+function objetivoHora(r){return r&&r.objetivoHora&&typeof r.objetivoHora.v==='number'?r.objetivoHora:null}
+function setObjetivoHora(rid,v){const r=R(rid);if(!r)return;if(!(puede('programa')||puedeCentro('modulos'))){alert('Tu perfil no puede fijar el objetivo.');return}
+  const antes=objetivoHora(r);const n=v===''||v==null?null:+v;if(n!=null&&!(n>=0)){alert('Objetivo inválido.');return}
+  const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts=new Date().toISOString();
+  r.objetivoHist=(r.objetivoHist||[]).concat([{ts,u,antes:antes?antes.v:null,v:n}]).slice(-100);r.objetivoHora=n==null?null:{v:n,u,ts,antes:antes?antes.v:null};
+  bitacora('Objetivo prendas/hora '+r.n+': '+(antes?antes.v:'—')+' → '+(n==null?'—':n));save();render()}
+/* hoja de operaciones de confección de una categoría, con sección y orden provisional */
+function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{n:x.n,sam:+x.sam||0,maq:x.maq||'',secc:src.seccOp||'General',orden:i+1,provisional:true}})}
+/* reparto por puestos: operaciones consecutivas de la misma máquina hasta llenar el ritmo; una operación mayor que el ritmo se parte */
+function repartirPuestos(ops,takt){const puestos=[];let cur=null;ops.forEach(x=>{const req=takt?x.sam/takt:0;
     if(req>1){for(let i=0;i<Math.ceil(req);i++)puestos.push({ops:[x],maq:x.maq||'Manual',min:x.sam/Math.ceil(req),partida:true});cur=null;return}
-    if(cur&&cur.maq===(x.maq||'Manual')&&cur.min+x.sam<=takt*1.02){cur.ops.push(x);cur.min+=x.sam}
-    else{cur={ops:[x],maq:x.maq||'Manual',min:x.sam};puestos.push(cur)}});
-  const cuello=puestos.reduce((a,p)=>p.min>(a?a.min:0)?p:a,null);
-  const salidaReal=cuello?Math.floor(porPersona/cuello.min):0;
+    if(cur&&cur.maq===(x.maq||'Manual')&&cur.min+x.sam<=takt*1.02){cur.ops.push(x);cur.min+=x.sam}else{cur={ops:[x],maq:x.maq||'Manual',min:x.sam};puestos.push(cur)}});return puestos}
+function vBalanceo(el){
+  const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa&&veCentro('modulos'));const h=hoy();
+  if(!BAL.rec||!mods.some(r=>r.id===BAL.rec))BAL.rec=(mods[0]||{}).id;if(!BAL.mes)BAL.mes=h.slice(0,7);
+  const rec=R(BAL.rec);const P=S.ordenes.length?programar():{pro:[],ordenes:{}};const ym=BAL.mes;
+  const meses=[...new Set(P.pro.map(x=>(x.dia||'').slice(0,7)).filter(Boolean))].sort();if(!meses.includes(ym))meses.push(ym);meses.sort();
+  const sel=`<div class="row" style="margin:0 0 14px;align-items:flex-end">
+    <div><label>Módulo</label><select onchange="BAL.rec=this.value;BAL.grupo=null;render()">${mods.map(r=>`<option value="${r.id}" ${r.id===BAL.rec?'selected':''}>${esc(r.n)} · ${r.pers} personas</option>`).join('')}</select></div>
+    <div><label>Mes</label><select onchange="BAL.mes=this.value;BAL.grupo=null;render()">${meses.map(m=>`<option value="${m}" ${m===ym?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div></div>`;
+  if(!rec){el.innerHTML=`<div class="pagehead"><h2>Balanceo de módulo</h2></div><div class="panel"><div class="empty">No hay módulos activos que tu perfil vea.</div></div>`;return}
+  // órdenes programadas en este módulo este mes, agrupadas por hoja de operaciones (familia)
+  const ops=[...new Set(P.pro.filter(x=>x.rec===rec.id&&x.centro==='modulos'&&(x.dia||'').startsWith(ym)).map(x=>x.op))];
+  const ords=ops.map(op=>S.ordenes.find(o=>o.op===op)).filter(Boolean);
+  const byIdOp={};S.operaciones.forEach(x=>byIdOp[x.id]=x);const grupos={};ords.forEach(o=>{const k=K(o.cat);const p=k?(K(k.padre)||k):null;const os=k?opsDe(k):[];const lmo=os.length?(byIdOp[os[0].op]||{}).catP:null;const g=lmo?'lmo:'+lmo:(p?p.id:'(sin categoría)');grupos[g]=grupos[g]||{p,k0:k,lmo,ords:[],pz:0,hijas:new Set()};grupos[g].ords.push(o);grupos[g].pz+=+o.cant||0;if(k)grupos[g].hijas.add(k.n)});
+  const lista=Object.entries(grupos).sort((a,b)=>b[1].pz-a[1].pz);if(BAL.grupo&&!grupos[BAL.grupo])BAL.grupo=null;
+  const efic=(rec.efic||0)/100;const minH=60*efic;const obj=objetivoHora(rec);
+  const cab=`<div class="pagehead"><h2>Balanceo de módulo</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
+  <p class="lede">Sale de lo que <b>ya está programado</b> en el módulo en el mes (nada se elige de un catálogo). Las órdenes de la misma hoja de operaciones comparten el balanceo: se muestra una vez. Personas: las del recurso (${rec.pers}); eficiencia ${rec.efic}% → ${num(minH,1)} min efectivos por persona y hora (Configuración → Centros y recursos).</p>${sel}
+  <div class="panel"><h3>Objetivo de prendas por hora · ${esc(rec.n)} <span class="note">lo fija la supervisora; queda registrado quién, cuándo y qué valor tenía antes</span></h3><div class="body"><div class="row" style="align-items:flex-end">
+   <div><label>Objetivo (prendas/hora)</label><input type="number" style="width:110px" value="${obj?obj.v:''}" placeholder="sin fijar" ${(puede('programa')||puedeCentro('modulos'))?'':'disabled'} onchange="setObjetivoHora('${rec.id}',this.value)"></div>
+   <div class="mut" style="font-size:var(--fs-s)">${obj?'Fijado por '+esc(obj.u)+' el '+new Date(obj.ts).toLocaleString('es-EC')+(obj.antes!=null?' · antes '+obj.antes:''):'Sin objetivo fijado.'}${(rec.objetivoHist||[]).length>1?` <details style="display:inline"><summary style="cursor:pointer;display:inline">historial (${rec.objetivoHist.length})</summary>${rec.objetivoHist.slice().reverse().map(x=>'<div>'+new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.u)+' · '+(x.antes==null?'—':x.antes)+' → '+(x.v==null?'—':x.v)+'</div>').join('')}</details>`:''}</div></div></div></div>`;
+  if(!lista.length){el.innerHTML=cab+`<div class="panel"><div class="empty">Nada programado en ${esc(rec.n)} en ${esc(fmtMesEG(ym))}.</div></div>`;return}
+  const listaHTML=`<div class="panel"><h3>Órdenes programadas en ${esc(rec.n)} · ${esc(fmtMesEG(ym))} <span class="note">${ords.length} órdenes · ${num(ords.reduce((a,o)=>a+ +o.cant,0))} prendas · ${lista.length} hojas de operaciones</span></h3><div class="body"><table><thead><tr><th>Hoja de operaciones (familia)</th><th>Categorías</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Órdenes</th><th></th></tr></thead><tbody>
+   ${lista.map(([g,v])=>`<tr ${BAL.grupo===g?'style="background:var(--field)"':''}><td><b>${esc(v.lmo||(v.p?v.p.n:g))}</b>${v.lmo?'':' <span class="tag t-aviso">sin hoja</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc([...v.hijas].join(', '))}</td><td class="num">${v.ords.length}</td><td class="num">${num(v.pz)}</td><td style="font-size:var(--fs-xs)">${v.ords.slice(0,8).map(o=>fotoMini(o,22)+esc(o.op)).join(' · ')}${v.ords.length>8?' +'+(v.ords.length-8):''}</td><td><button class="btn sm ${BAL.grupo===g?'':'ghost'}" onclick="BAL.grupo='${g}';render()">balanceo</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  if(!BAL.grupo){el.innerHTML=cab+listaHTML+'<p class="mut">Haz clic en "balanceo" de una hoja para verlo.</p>';return}
+  const G=grupos[BAL.grupo];const k=G.k0;const opsC=k?opsConfeccion(k):[];const samTot=opsC.reduce((a,x)=>a+x.sam,0);
+  if(!opsC.length){el.innerHTML=cab+listaHTML+`<div class="warn">${esc(G.p?G.p.n:BAL.grupo)} no tiene hoja de operaciones de confección; el balanceo necesita las operaciones una por una.</div>`;return}
+  const teorico=samTot?rec.pers*minH/samTot:0; // prendas/hora con las personas del módulo, perfectamente balanceado
+  const objetivo=obj?obj.v:null;const base=objetivo||teorico;const takt=base?minH/base:0; // minutos de cada puesto por prenda
+  const puestos=repartirPuestos(opsC,takt);const cuello=puestos.reduce((a,p)=>p.min>(a?a.min:0)?p:a,null);const salidaReal=cuello?minH/cuello.min:0;
+  const persNec=takt?Math.ceil(samTot/takt):0;
   const necesita={};puestos.forEach(p=>{necesita[p.maq]=(necesita[p.maq]||0)+1});
   const tiene={};S.maquinas.filter(m=>m.rec===rec.id&&(m.estado||'operativa')==='operativa').forEach(m=>{tiene[m.tipo]=(tiene[m.tipo]||0)+1});
   const stock={};S.maquinas.filter(m=>!m.rec&&(m.estado||'operativa')==='operativa').forEach(m=>{stock[m.tipo]=(stock[m.tipo]||0)+1});
-  const tipos=[...new Set([...Object.keys(necesita),...Object.keys(tiene)])].filter(t=>t!=='Manual').sort();
-  const sinMaq=ops.filter(x=>!x.maq).length;
-  el.innerHTML=`<div class="pagehead"><h2>Balanceo de módulo</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
-  <p class="lede">Reparte las operaciones de confección de la orden entre las personas del módulo, respetando el tipo de máquina, y compara las máquinas que pide la prenda con las que tiene el módulo.</p>${sel}
-  ${!ops.length?`<div class="warn">La categoría ${esc(nombreCat(K(o.cat)))} no tiene hoja de operaciones de confección; el balanceo necesita las operaciones una por una, no el tiempo total.</div>`:`
-  <div class="kpis"><div class="kpi"><div class="v">${num(samTot,2)}</div><div class="k">Min/prenda en confección (${ops.length} operaciones)</div></div>
-   <div class="kpi"><div class="v">${rec.pers}</div><div class="k">Personas · ${num(dispDia)} min/día efectivos</div></div>
-   <div class="kpi"><div class="v">${num(meta)}</div><div class="k">Meta prendas/día (máx. teórico ${num(maxDia)}) · ritmo ${num(takt,2)} min</div></div>
-   <div class="kpi"><div class="v">${puestos.length}</div><div class="k">Puestos necesarios ${puestos.length>rec.pers?'<span class="tag t-alerta">faltan '+(puestos.length-rec.pers)+' personas</span>':puestos.length<rec.pers?'<span class="tag t-aviso">sobran '+(rec.pers-puestos.length)+'</span>':''}</div></div>
-   <div class="kpi ${salidaReal<meta?'warn':''}"><div class="v">${num(salidaReal)}</div><div class="k">Salida real con este reparto · cuello: ${cuello?esc(cuello.ops.map(x=>x.n).join(' + ')):'—'}</div></div></div>
-  <section class="imp"><div class="imp-cab"><div><b>${esc(rec.n)}</b> · ${esc(o.op)} · ${esc(nombreCat(K(o.cat)))} · ${esc((C(o.color)||{}).n||'')} · ${num(o.cant)} pz</div><div class="mut">${num(o.cant/Math.max(1,salidaReal),1)} días para la orden</div></div>
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
-   <div><h4 style="margin:0 0 6px">Puestos</h4><table><thead><tr><th>#</th><th>Operaciones</th><th>Máquina</th><th class="num">Min/pz</th><th style="width:140px">Carga</th></tr></thead><tbody>
-    ${puestos.map((p,i)=>{const pc=takt?p.min/takt*100:0;return `<tr><td>${i+1}</td><td>${p.ops.map(x=>esc(x.n)).join(' + ')}${p.partida?' <span class="mut">(operación repartida)</span>':''}</td><td>${esc(p.maq)}</td><td class="num">${num(p.min,2)}</td><td>${barra(p.min,takt)}</td></tr>`}).join('')}</tbody></table></div>
-   <div><h4 style="margin:0 0 6px">Máquinas</h4><table><thead><tr><th>Tipo</th><th class="num">Pide</th><th class="num">Tiene</th><th class="num">En stock</th><th>Resultado</th></tr></thead><tbody>
-    ${tipos.map(t=>{const d=(tiene[t]||0)-(necesita[t]||0);return `<tr><td>${esc(t)}</td><td class="num">${necesita[t]||0}</td><td class="num">${tiene[t]||0}</td><td class="num">${stock[t]||'<span class="mut">·</span>'}</td><td>${d<0?`<span class="tag t-alerta">faltan ${-d}${stock[t]?' · hay '+Math.min(stock[t],-d)+' en stock':''}</span>`:d>0?`<span class="tag t-aviso">sobran ${d}</span>`:'<span class="tag t-ok">justo</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin máquinas registradas en Configuración.</td></tr>'}</tbody></table>
-    ${sinMaq?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinMaq} operaciones sin tipo de máquina: se cuentan como manuales. Asígnalo en Operaciones.</p>`:''}
-    ${!S.maquinas.some(m=>m.rec===rec.id)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Este módulo no tiene máquinas registradas; regístralas en Configuración → Máquinas de confección.</p>`:''}</div>
-  </div></section>`}`;
-}
+  const tipos=[...new Set([...Object.keys(necesita),...Object.keys(tiene)])].filter(t=>t!=='Manual').sort();const sinMaq=opsC.filter(x=>!x.maq).length;
+  const secciones=[];opsC.forEach(x=>{let s=secciones.find(y=>y.n===x.secc);if(!s){s={n:x.secc,ops:[]};secciones.push(s)}s.ops.push(x)});
+  const dif=objetivo&&teorico?(objetivo-teorico)/teorico:null;
+  el.innerHTML=cab+listaHTML+`
+  <section class="imp"><div class="imp-cab"><div><b>${esc(rec.n)}</b> · balanceo de <b>${esc(G.lmo||k.n)}</b> <span class="mut">(${esc([...G.hijas].join(', '))})</span> · ${G.ords.length} ${G.ords.length===1?'orden usa':'órdenes usan'} este balanceo (${num(G.pz)} prendas)</div><div class="mut">${G.ords.map(o=>esc(o.op)).join(', ')}</div></div>
+  <div class="kpis"><div class="kpi"><div class="v">${num(samTot,2)}</div><div class="k">Minutos por prenda en confección · ${opsC.length} operaciones</div></div>
+   <div class="kpi"><div class="v">${rec.pers}</div><div class="k">Personas del módulo (recurso)</div></div>
+   <div class="kpi"><div class="v">${objetivo!=null?num(objetivo,1):'—'}</div><div class="k">Objetivo prendas/hora (supervisora)</div></div>
+   <div class="kpi ${dif!=null&&dif<-0.15?'warn':''}"><div class="v">${num(teorico,1)}</div><div class="k">Ritmo teórico prendas/hora · ${rec.pers} personas × ${num(minH,1)} min ÷ ${num(samTot,2)}${dif!=null?' · objetivo '+(dif>=0?'+':'')+Math.round(dif*100)+'% frente al teórico':''}</div></div>
+   <div class="kpi ${persNec>rec.pers?'warn':''}"><div class="v">${persNec}</div><div class="k">Operarias que hacen falta para ${objetivo!=null?'el objetivo':'el ritmo teórico'} (${num(base,1)} pz/h) ${persNec>rec.pers?'<span class="tag t-alerta">faltan '+(persNec-rec.pers)+'</span>':persNec<rec.pers?'<span class="tag t-aviso">sobran '+(rec.pers-persNec)+'</span>':''}</div></div>
+   <div class="kpi"><div class="v">${puestos.length}</div><div class="k">Puestos con el reparto · ritmo ${num(takt,2)} min por puesto · salida real ${num(salidaReal,1)} pz/h · cuello: ${cuello?esc(cuello.ops.map(x=>x.n).join(' + ')):'—'}</div></div></div>
+  <div class="warn" style="margin:8px 0">Orden de las operaciones <b>provisional</b>: dentro de cada sección va en el orden del archivo LMO, no en la secuencia real de la prenda. Producción la está llenando en la hoja ORDEN; hasta entonces el reparto por puestos es una aproximación.</div>
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
+   <div><h4 style="margin:0 0 6px">Operaciones por sección de la prenda</h4><table><thead><tr><th>#</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num">Min/pz</th></tr></thead><tbody>
+    ${secciones.map(sc=>`<tr style="background:var(--field);font-weight:600"><td colspan="4">${esc(sc.n)}</td><td class="num">${num(sc.ops.reduce((a,x)=>a+x.sam,0),2)}</td></tr>`+sc.ops.map(x=>`<tr><td class="mut">${x.orden}<span title="orden provisional (archivo)" style="color:var(--aviso)">*</span></td><td class="mut" style="font-size:var(--fs-xs)">${esc(sc.n)}</td><td>${esc(x.n)}</td><td>${esc(x.maq||'—')}</td><td class="num">${num(x.sam,2)}</td></tr>`).join('')).join('')}
+    <tr style="font-weight:600"><td colspan="4">Total</td><td class="num">${num(samTot,2)}</td></tr></tbody></table></div>
+   <div><h4 style="margin:0 0 6px">Puestos <span class="mut" style="font-weight:400">· ninguno pasa del ritmo ${num(takt,2)} min</span></h4><table><thead><tr><th>#</th><th>Operaciones</th><th>Máquina</th><th class="num">Min/pz</th><th style="width:120px">Carga</th></tr></thead><tbody>
+    ${puestos.map((p,i)=>`<tr><td>${i+1}</td><td style="font-size:var(--fs-xs)">${p.ops.map(x=>esc(x.n)).join(' + ')}${p.partida?' <span class="mut">(repartida)</span>':''}</td><td>${esc(p.maq)}</td><td class="num">${num(p.min,2)}</td><td>${barra(p.min,takt)}</td></tr>`).join('')}</tbody></table>
+    <h4 style="margin:14px 0 6px">Máquinas</h4><table><thead><tr><th>Tipo</th><th class="num">Pide</th><th class="num">Tiene</th><th class="num">En stock</th><th>Resultado</th></tr></thead><tbody>
+    ${tipos.map(t=>{const d=(tiene[t]||0)-(necesita[t]||0);return `<tr><td>${esc(t)}</td><td class="num">${necesita[t]||0}</td><td class="num">${tiene[t]||0}</td><td class="num">${stock[t]||'<span class="mut">·</span>'}</td><td>${d<0?`<span class="tag t-alerta">faltan ${-d}${stock[t]?' · hay '+Math.min(stock[t],-d)+' en stock':''}</span>`:d>0?`<span class="tag t-aviso">sobran ${d}</span>`:'<span class="tag t-ok">justo</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin máquinas registradas para este módulo.</td></tr>'}</tbody></table>
+    ${sinMaq?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinMaq} operaciones sin tipo de máquina: se cuentan como manuales.</p>`:''}
+    ${!S.maquinas.some(m=>m.rec===rec.id)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Este módulo no tiene máquinas registradas; regístralas en Configuración → Máquinas de confección para comparar el inventario.</p>`:''}</div>
+  </div></section>`}
 
 /* ---------- Programa del día para imprimir ---------- */
 let IMP={dia:null,area:'todas'};
@@ -2347,9 +2473,7 @@ const SUBAREAS={corte:{n:'Corte, estampado y bordado',centros:['corte','estampad
   terminados:{n:'Terminados: etiquetas, botones, lavado y plancha',centros:['etiquetas','botones','lavado','plancha']},empaque:{n:'Empaque',centros:['empaque']}};
 const MODOS={editar:'Registra y edita',ver:'Solo ve (sin editar)'};
 /* ve: puede mirar el área/centro · puede: además puede registrar (según rol, área, sub-área y permiso) */
-const veArea=a=>!!PERFIL&&(PERFIL.rol!=='piso'||!PERFIL.area||PERFIL.area===a);
-const veCentro=c=>{const ce=CE(c);if(!ce||!veArea(ce.area))return false;if(PERFIL.rol==='piso'&&ce.area==='pro'&&PERFIL.subarea&&SUBAREAS[PERFIL.subarea])return SUBAREAS[PERFIL.subarea].centros.includes(c);return true};
-const puedeCentro=c=>veCentro(c)&&puedeArea((CE(c)||{}).area);
+/* veArea / veCentro / puedeCentro: definidos arriba, desde el catálogo de perfiles */
 
 /* ---------- Reportería: carga y avance de tejeduría, tintorería y de cada área de producción ---------- */
 let REP={vista:'textil',sem:4};
@@ -2406,7 +2530,7 @@ function vReporteria(el){
   const vistas=[['textil','Textil: tejeduría y tintorería'],['produccion','Producción por área']].filter(([k])=>k==='textil'?(veArea('tej')||veArea('tin')):veArea('pro'));
   if(!vistas.some(([k])=>k===REP.vista))REP.vista=(vistas[0]||['textil'])[0];
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
-   <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${PERFIL.rol==='piso'?' <span class="mut">Ves solo lo de tu área.</span>':''}</p>
+   <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
    ${resumen()}`;
 }
@@ -2691,29 +2815,57 @@ function setAvance(id,c,v,max){if(!S.avance[id])S.avance[id]={};if(!S.avance[id]
 
 /* ---------- Usuarios (solo administrador) ---------- */
 async function vUsuarios(el){
-  el.innerHTML=`<div class="pagehead"><h2>Usuarios</h2><span class="spacer"></span><button class="btn ghost" onclick="render()">Actualizar</button></div>
-  <p class="lede">Los usuarios se crean en Supabase (Authentication → Users → Add user) y aparecen aquí con rol Consulta. Desde esta tabla les asignas rol y, para piso, el área que registran.</p>
-  <div class="panel"><div class="empty">Cargando…</div></div>`;
-  const {data,error}=await sb.from('perfiles').select('*').order('email');
-  if(error){el.querySelector('.panel').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
-  el.querySelector('.panel').innerHTML=`<h3>Cuentas <span class="note">${data.length}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Área (solo piso)</th><th>Sub-área de producción (solo piso)</th><th>Permiso</th></tr></thead><tbody>
-  ${data.map(u=>`<tr><td>${esc(u.email)}</td><td><input type="text" value="${esc(u.nombre||'')}" onchange="setPerfil('${u.id}','nombre',this.value)"></td>
-    <td><select onchange="setPerfil('${u.id}','rol',this.value)">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${u.rol===k?'selected':''}>${v}</option>`).join('')}</select></td>
-    <td><select onchange="setPerfil('${u.id}','area',this.value)"><option value="">Todas</option>${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${u.area===k?'selected':''}>${v}</option>`).join('')}</select></td>
-    <td><select onchange="setPerfil('${u.id}','subarea',this.value)"><option value="">Toda producción</option>${Object.entries(SUBAREAS).map(([k,v])=>`<option value="${k}" ${u.subarea===k?'selected':''}>${v.n}</option>`).join('')}</select></td>
-    <td><select onchange="setPerfil('${u.id}','modo',this.value)">${Object.entries(MODOS).map(([k,v])=>`<option value="${k}" ${(u.modo||'editar')===k?'selected':''}>${v}</option>`).join('')}</select></td></tr>`).join('')}
+  const cat=perfilesDef();
+  el.innerHTML=`<div class="pagehead"><h2>Usuarios y perfiles</h2><span class="spacer"></span><button class="btn ghost" onclick="render()">Actualizar</button> <button class="btn" onclick="mNuevoUsuario()">Nuevo usuario</button></div>
+  <p class="lede">Cada usuario tiene un <b>perfil</b>. El perfil dice qué puede hacer, qué centros ve y qué entradas del menú tiene; los perfiles se editan abajo (son datos, no código). Un usuario con permiso "solo ve" abre sus pantallas pero no registra nada.</p>
+  <div class="panel" id="pan-usuarios"><div class="empty">Cargando…</div></div>
+  <div class="panel"><h3>Perfiles <span class="note">qué puede hacer cada uno · se guarda al cambiar</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPerfilDef()">Nuevo perfil</button></h3><div class="body scroll">
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Perfil</th><th>Permisos</th><th>Centros que ve y donde registra</th><th>Menú</th><th></th></tr></thead><tbody>
+   ${cat.map(d=>{const todoP=d.permisos.includes('*'),todoC=d.centros.includes('*'),todoPg=d.paginas.includes('*');const chk=(lista,k,on,fn)=>`<label style="display:inline-block;margin:1px 8px 1px 0;white-space:nowrap"><input type="checkbox" ${on?'checked':''} ${d.id==='admin'?'disabled':''} onchange="${fn}('${d.id}','${k}',this.checked)"> ${esc(lista)}</label>`;
+     return `<tr><td style="vertical-align:top;min-width:170px"><b>${esc(d.n)}</b><br><span class="mut" style="font-size:var(--fs-xs)">${esc(d.id)}</span><br><textarea style="width:170px;height:60px;font-size:var(--fs-xs);margin-top:4px" ${d.id==='admin'?'disabled':''} onchange="setPerfilDef('${d.id}','desc',this.value)">${esc(d.desc||'')}</textarea></td>
+      <td style="vertical-align:top">${chk('todo','*',todoP,'togPermDef')}${todoP?'':'<br>'+PERMISOS_DEF.map(([k,n])=>chk(n,k,d.permisos.includes(k),'togPermDef')).join('')}</td>
+      <td style="vertical-align:top">${chk('todos','*',todoC,'togCentroDef')}${todoC?'':'<br>'+[['tej','Tejeduría (área)'],['tin','Tintorería (área)']].concat(S.centros.filter(c=>c.area==='pro').map(c=>[c.id,c.n])).map(([k,n])=>chk(n,k,d.centros.includes(k),'togCentroDef')).join('')}</td>
+      <td style="vertical-align:top">${chk('todo el menú','*',todoPg,'togPaginaDef')}${todoPg?'':'<br>'+PAGINAS_DEF.map(([k,n])=>chk(n,k,d.paginas.includes(k),'togPaginaDef')).join('')}</td>
+      <td style="vertical-align:top">${d.id==='admin'?'':`<button class="btn ghost sm" onclick="delPerfilDef('${d.id}')">×</button>`}</td></tr>`}).join('')}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los centros de producción marcados son los que el perfil ve en Control de piso, en las páginas de centro y en su reportería, y donde puede reprogramar y editar la ruta si tiene esos permisos. "Tejeduría" y "Tintorería" se marcan como área completa. Todo cambio de un usuario o de un perfil queda en la bitácora.</p></div></div>`;
+  const {data,error}=await sb.from('perfiles').select('*').order('email');const pan=document.getElementById('pan-usuarios');if(!pan)return;
+  if(error){pan.innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
+  const porPerfil={};data.forEach(u=>{const d=perfilDe(u);porPerfil[d?d.id:'?']=(porPerfil[d?d.id:'?']||0)+1});
+  pan.innerHTML=`<h3>Cuentas <span class="note">${data.length} · ${Object.entries(porPerfil).map(([k,v])=>ROLES[k]+' '+v).join(' · ')}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Perfil</th><th>Permiso</th><th>Perfil viejo (área / sub-área)</th></tr></thead><tbody>
+  ${data.map(u=>{const d=perfilDe(u);const viejo=!cat.some(x=>x.id===u.rol);return `<tr><td>${esc(u.email)}${u.id===(USER&&USER.id)?' <span class="tag t-ok">tú</span>':''}</td><td><input type="text" value="${esc(u.nombre||'')}" onchange="setPerfil('${u.id}','nombre',this.value)"></td>
+    <td><select onchange="setPerfil('${u.id}','rol',this.value)">${cat.map(x=>`<option value="${x.id}" ${u.rol===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}${viejo?`<option value="${esc(u.rol)}" selected>(viejo) ${esc(u.rol)}${u.area?' · '+esc(u.area):''}${u.subarea?' · '+esc(u.subarea):''}</option>`:''}</select></td>
+    <td><select onchange="setPerfil('${u.id}','modo',this.value)">${Object.entries(MODOS).map(([k,v])=>`<option value="${k}" ${(u.modo||'editar')===k?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td class="mut" style="font-size:var(--fs-xs)">${viejo?esc((d?d.n:'?')+' · '+(u.area||'todas')+(u.subarea?' / '+u.subarea:'')):'—'}</td></tr>`}).join('')}
   </tbody></table>
-  <table style="margin-top:18px"><thead><tr><th>Rol</th><th>Qué puede hacer</th></tr></thead><tbody>
-   <tr><td>Administrador</td><td>Todo: centros, recursos, telas, colores, parámetros y usuarios.</td></tr>
-   <tr><td>Planificación</td><td>Órdenes, categorías y rutas, correr y guardar el programa, registrar estados.</td></tr>
-   <tr><td>Carga de órdenes</td><td>Crear y editar órdenes.</td></tr>
-   <tr><td>Piso</td><td>Marcar estados y unidades de su área.</td></tr>
-   <tr><td>Consulta</td><td>Ver todo, sin cambiar nada.</td></tr>
-   <tr><td>Sub-área (piso en producción)</td><td>Limita lo que ve y registra a esos centros: Corte + estampado + bordado · Confección · Terminados (etiquetas, botones, lavado, plancha) · Empaque.</td></tr>
-   <tr><td>Permiso "solo ve"</td><td>Puede abrir sus pantallas y la reportería de su área, pero no registra ni edita nada.</td></tr></tbody></table>
-  <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los usuarios se crean en Supabase (Authentication → Users). La tabla <code>perfiles</code> necesita las columnas de texto <code>subarea</code> y <code>modo</code>; si al cambiarlas sale un error, créalas en Supabase → Table editor → perfiles.</p></div>`;
+  <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">"Nuevo usuario" crea la cuenta en Supabase con una contraseña inicial y le asigna el perfil. Si el proyecto exige confirmar el correo, la persona recibe un correo y debe confirmarlo antes de entrar. Las cuentas también se pueden crear en Supabase → Authentication → Users; aparecen aquí con perfil Consulta hasta que les asignes uno.</p></div>`;
 }
-async function setPerfil(id,k,v){const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);if(error)alert('No se pudo actualizar: '+error.message+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''))}
+async function setPerfil(id,k,v){const {data:antes}=await sb.from('perfiles').select('email,nombre,rol,modo').eq('id',id).single();const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);
+  if(error){alert('No se pudo actualizar: '+error.message+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''));return}
+  bitacora('Usuario '+((antes&&antes.email)||id)+' · '+k+': '+((antes&&antes[k])||'—')+' → '+(v||'—'));save()}
+function mNuevoUsuario(){const cat=perfilesDef();abrir(`<h3>Nuevo usuario</h3><div class="body">
+   <div class="row"><div><label>Correo</label><input type="email" id="nu-email" style="min-width:260px"></div><div><label>Nombre</label><input type="text" id="nu-nombre"></div></div>
+   <div class="row"><div><label>Perfil</label><select id="nu-perfil">${cat.filter(x=>x.id!=='admin'||puede('usuarios')).map(x=>`<option value="${x.id}">${esc(x.n)}</option>`).join('')}</select></div><div><label>Contraseña inicial</label><input type="text" id="nu-pass" placeholder="mínimo 8 caracteres"></div></div>
+   <p class="mut" style="font-size:var(--fs-s)">La persona entra con ese correo y esa contraseña y puede cambiarla luego. Si Supabase pide confirmar el correo, primero debe abrir el enlace que le llega.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="nu-ok" onclick="crearUsuario()">Crear</button></div>`)}
+async function crearUsuario(){const g=x=>document.getElementById(x).value.trim();const email=g('nu-email'),nombre=g('nu-nombre'),perfil=g('nu-perfil'),pass=g('nu-pass');
+  if(!email||!pass||pass.length<8){alert('Falta el correo o la contraseña (mínimo 8 caracteres).');return}
+  const btn=document.getElementById('nu-ok');btn.disabled=true;
+  const c2=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  const {data,error}=await c2.auth.signUp({email,password:pass,options:{data:{nombre}}});
+  if(error){alert('No se pudo crear la cuenta: '+error.message);btn.disabled=false;return}
+  const uid=data.user&&data.user.id;if(!uid){alert('Supabase no devolvió el usuario; revisa en Authentication → Users.');btn.disabled=false;return}
+  const {error:e2}=await sb.from('perfiles').upsert({id:uid,email,nombre,rol:perfil,modo:'editar'});
+  if(e2)alert('La cuenta se creó pero no se pudo guardar el perfil: '+e2.message+'\nAsígnalo desde la tabla.');
+  bitacora('Usuario creado '+email+' · perfil '+perfil);save();cerrar();render();
+  alert('Cuenta creada para '+email+(data.session?'':' (si el proyecto exige confirmación, debe abrir el correo antes de entrar)'))}
+function setPerfilDef(id,k,v){const d=perfilesDef().find(x=>x.id===id);if(!d)return;const antes=d[k];d[k]=v;bitacora('Perfil '+d.n+' · '+k+': '+(antes||'—')+' → '+(v||'—'));save()}
+function togLista(id,campo,k,on){const d=perfilesDef().find(x=>x.id===id);if(!d||d.id==='admin')return;let l=d[campo].slice();if(k==='*'){l=on?['*']:[]}else{l=l.filter(x=>x!=='*'&&x!==k);if(on)l.push(k)}
+  bitacora('Perfil '+d.n+' · '+campo+': '+(on?'+':'−')+k);d[campo]=l;save();render()}
+function togPermDef(id,k,on){togLista(id,'permisos',k,on)}function togCentroDef(id,k,on){togLista(id,'centros',k,on)}function togPaginaDef(id,k,on){togLista(id,'paginas',k,on)}
+function addPerfilDef(){const n=prompt('Nombre del perfil nuevo:');if(!n)return;const id=normTxt(n).replace(/[^a-z0-9]+/g,'_');if(perfilesDef().some(x=>x.id===id)){alert('Ya existe.');return}
+  perfilesDef().push({id,n,permisos:[],centros:[],paginas:[],desc:''});bitacora('Perfil creado '+n);save();render()}
+async function delPerfilDef(id){const d=perfilesDef().find(x=>x.id===id);if(!d||id==='admin')return;const {data}=await sb.from('perfiles').select('id').eq('rol',id);if(data&&data.length){alert('No se puede borrar: '+data.length+' usuarios tienen este perfil.');return}
+  if(!confirm('¿Borrar el perfil '+d.n+'?'))return;S.params.perfilesDef=perfilesDef().filter(x=>x.id!==id);bitacora('Perfil borrado '+d.n);save();render()}
 
 /* ---------- Categorías y rutas ---------- */
 function vCategorias(el){
