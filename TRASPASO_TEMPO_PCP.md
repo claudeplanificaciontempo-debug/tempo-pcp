@@ -239,3 +239,12 @@ calendario × recursos (mes en curso desde hoy; mes pasado = vencido); tejedurí
 `params.capAmbar` (siembra 85). Problemas (`params.capProblemas`) se registran al verse y se cierran solos; decisiones
 (`params.capDecisiones`) solo se anotan. Aviso en Hoy. Buscadores con `buscarQ` (data-q) para no perder el foco.
 Vaciar/Borrar datos operativos solo en Configuración → Borrado (administrador) con frase escrita; `delOrden` confirma.
+
+### Compras del mes + registrar hecho desde el centro (14-sep-2026)
+Ver `COMPRAS_Y_REGISTRO_CENTRO_REPORTE.md`. Página `compras` (junto a Macro): telas externas/insumos/servicios de las
+órdenes montadas por Proyecto, con merma, disponibilidad (bodega=aparte, sin dato=bandeja), agrupable por proveedor/
+tipo/mes, CSV. Tabla `S.params.diasProveedor` (prov→días, sembrada en blanco); `diasProvDe`/`diasProvOrden`; fecha
+límite = fecha requerida − días. `rutaTextilDe` ya no usa 15 fijo (usa diasProvOrden||0; aplica en la próxima recarga).
+Registrar hecho desde la cola del centro: `marcarHechoCentro`/`confirmarHechoCentro`/`deshacerHechoCentro`,
+`avance.hechoC[c]` (ts,u,pz,pedido,dif,turnoDelta), turnos con piezas reales, completo (módulos parcial preparado y
+apagado con `S.params.modulosParcial`), "Hecho hoy" en la cola, "lista para <siguiente>". No reprograma; no toca motor.
