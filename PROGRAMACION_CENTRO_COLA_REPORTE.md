@@ -1,8 +1,8 @@
 # Programación por centro: agrupar y ordenar arrastrando — reporte
 
 Fecha: 14-sep-2026. Pantalla: Planificación de producción → cada centro (Corte, Confección, Estampado, Bordado,
-Terminados, Empaque) → pestaña **Programación del centro**. Pruebas 504/504. No se tocaron capacidades ni el motor
-(`programar()`, `prioCentro`, tiempos, velocidades).
+Terminados, Empaque) → pestaña **Programación del centro**. Pruebas 531/531. No se tocaron capacidades ni el motor,
+salvo el valor por defecto de `prioCentro` (sin puesto = al final), autorizado el 14-sep.
 
 ## 1 · Qué cambió en la pantalla
 
@@ -47,9 +47,8 @@ después el **menor puesto entre todos los centros** de la orden, después la fe
 - Si otro centro le puso un puesto menor, la fila dice **"Confección la tiene en 4: manda ese"**.
 - Si nadie ha ordenado la cola, el título dice **"cola sin numerar: el motor ordena por fecha de entrega"**. En cuanto
   alguien arrastra, toda la cola queda numerada.
-- Una orden que entra después a una cola ya numerada (por una recarga o una liberación nueva) no trae puesto: la fila
-  dice **"sin puesto · el motor la toma como 3"**, que es la regla que ya tenía `prioCentro` (sin puesto = 3). Ver
-  decisión pendiente en §5.
+- Una orden que entra después a una cola ya numerada (por una recarga o una liberación nueva) no trae puesto: **va al
+  final de la cola** y la fila dice **"sin puesto · va al final"** (decisión del 14-sep, ver §5).
 
 ## 3 · Estado en producción (14-sep, 12:00)
 
@@ -97,7 +96,8 @@ baños respete un puesto, es un cambio de motor y lo hago solo con tu autorizaci
 - `filasDeCentros`, `colaCentro`, `puestoDe`, `agruparCola`, `moverEnCola` (renumera, avisa, bitácora), `arrastrarCola/
   overCola/soltarCola/finArrastreCola`, `mandaCola`, `selNivelesCEN` (niveles en `CEN.niveles`, guardados en el
   navegador), casilla `CEN.todo`.
-- Sin cambios en `programar()`, `prioCentro`, `setProgCen` (sigue sirviendo para recurso, fecha de arranque y "quitar").
+- Sin cambios en `programar()` ni `setProgCen` (sigue sirviendo para recurso, fecha de arranque y "quitar"). En
+  `prioCentro`, solo el valor por defecto: 3 → `SIN_PUESTO` (al final), autorizado el 14-sep.
 - Pruebas nuevas en `test/driver.js`: arrastre, renumeración, motor ordena por ese número, bitácora, puesto a mano,
   agrupar conserva y suma, avisos "prio global manda" / "otro centro manda", permiso por centro, cuatro colas en
   Terminados.
