@@ -160,6 +160,13 @@ nunca desaparece). Las bandejas siguen en sus pantallas. **Asignar ODC** a mano 
 la tabla 14 tiene la fila `odc` y `aplicarTarea` la conserva; forma colección con ese ODC). Ver
 `PANTALLA_MENU_PENDIENTES_ODC_REPORTE.md`.
 
+**Asignación por orden (Carga general, 14-sep-2026):** `asignacionPorOrdenHTML` separa por estado con
+`clasificarAsig(o,P)`: `vencidaUnPaso` (meta > 30 días atrás y UN solo paso de producción pendiente → probablemente
+entregada y mal cerrada en Odoo), `sinProgramar` (con motivo: bloqueo, sin WH, sin fecha, paso sin recurso/tiempo),
+`noLlega` (días tarde + atasco del motor), `justo` (holgura ≤ `S.params.colchonDias`, parámetro visible sembrado en 3 y
+marcado estimado), `bien` (plegado). Una sola ficha de **próximo paso** por fila; el detalle de la ruta al clic
+(`mDetalleAsig`). Agrupar/filtrar con `APO` (cliente, ODC, familia, categoría, próximo paso, mes). Solo lee el programa.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

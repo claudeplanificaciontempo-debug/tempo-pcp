@@ -274,3 +274,8 @@ Ver `PANTALLA_MENU_PENDIENTES_ODC_REPORTE.md`. `#app` es una sola columna (64px 
 `nav` horizontal con `.grp` y `.gbody.abierto` (desplegable), íconos completos en `ICO_NAV`. Hoy: `pendientesHoyHTML()`
 primero, con `pendientesHoy()` (13 tipos), `posponerPend`/`reactivarPend` (`S.params.pendPospuestos`). Órdenes:
 `panelODCHTML`/`asignarODC` (`o.odcManual`); tabla 14 fila `odc` conservada en la recarga con bandeja si el archivo trae otro.
+
+### Asignación por orden por estado (14-sep-2026)
+Ver `ASIGNACION_POR_ORDEN_REPORTE.md`. En Carga general: `clasificarAsig` (vencidaUnPaso / sinProgramar / noLlega / justo /
+bien), `pasosPendPro`, `pasoProximoDe`, `mDetalleAsig`, `arbolAPO`/`filasArbolAPO`, estado `APO`; colchón
+`S.params.colchonDias` (sembrado 3, `colchonEstimado` hasta que se edite; `setColchon` a bitácora). No toca el motor.
