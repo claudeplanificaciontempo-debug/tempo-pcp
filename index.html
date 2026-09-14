@@ -559,7 +559,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 12:18';
+const APP_BUILD='2026-09-14 12:21';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1567,7 +1567,7 @@ const EG_CAMPOS_GRUPO=[['odc','ODC (orden de compra)'],['cat','Categoría'],['de
 function nivelesEG(){if(EG.niveles)return EG.niveles;try{const v=JSON.parse(localStorage.__egNiveles||'null');if(Array.isArray(v)){EG.niveles=v;return v}}catch(e){}EG.niveles=['odc','cat'];return EG.niveles}
 function setNivelEG(i,v){const n=nivelesEG().slice();n[i]=v;EG.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__egNiveles=JSON.stringify(EG.niveles)}catch(e){}render()}
 function padreEG(o){const k=K(o.cat);return k?(K(k.padre)||k).n:''}function hijaEG(o){const k=K(o.cat);return k?k.n:''}
-function fmtMesEG(m){return m?new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long',year:'numeric'}):''}
+function fmtMesEG(m){if(m==='venc')return 'meses vencidos';return m?new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long',year:'numeric'}):''}
 function claveEG(k,o){switch(k){case 'odc':return o.odc||'Sin ODC';case 'cat':return hijaEG(o)||'Sin categoría';case 'depto':return o.depto||'Sin departamento';case 'fam':return padreEG(o)||'Sin familia';
   case 'mes':return fmtMesEG((o.fecha||'').slice(0,7))||'Sin fecha';case 'cliente':return o.cliente||'Sin cliente';case 'color':return (C(o.color)||{}).n||'Sin color';case 'ref':return o.ref||'Sin estilo';default:return ''}}
 /* árbol de grupos: cada nodo trae clave, conteo, prendas y sus hijos (o las órdenes en la hoja). No esconde nada: reordena y suma. */
@@ -2425,12 +2425,12 @@ function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};co
 function capMesRecs(recs,ym){const h=hoy();if(ym<h.slice(0,7))return 0;const [y,m]=ym.split('-').map(Number);const nd=new Date(y,m,0).getDate();let cap=0;for(let d=1;d<=nd;d++){const ds=ym+'-'+String(d).padStart(2,'0');if(ds<h)continue;recs.forEach(r=>{if(labR(ds,r))cap+=capDia(r,ds)})}return cap} // mes en curso: solo los días que quedan desde hoy; mes pasado: 0 (vencido)
 function matrizCapacidad(){if(CAPM)return CAPM;
   const ords=S.ordenes.filter(abierta);const cenPro=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
-  const porOrden=ords.map(o=>{const m=mesPlan(o);const cs={};(o.ruta||[]).forEach(p=>{if(cs[p.centro]!==undefined)return;const c=CE(p.centro);if(!c||c.area!=='pro')return;cs[p.centro]=minPendCentro(o,p.centro)});return{o,m,cs,lib:liberada(o,'corte')}});
+  const hm=hoy().slice(0,7);const porOrden=ords.map(o=>{let m=mesPlan(o);if(m&&m<hm)m='venc';const cs={};(o.ruta||[]).forEach(p=>{if(cs[p.centro]!==undefined)return;const c=CE(p.centro);if(!c||c.area!=='pro')return;cs[p.centro]=minPendCentro(o,p.centro)});return{o,m,cs,lib:liberada(o,'corte')}});
   const meses=[...new Set(porOrden.map(x=>x.m).filter(Boolean))];const sinProy=porOrden.filter(x=>!x.m&&Object.values(x.cs).some(v=>v>0)).map(x=>x.o);
   const celdas={};
   cenPro.forEach(c=>{meses.forEach(m=>{const det=porOrden.filter(x=>x.m===m&&x.cs[c.id]>0).map(x=>({o:x.o,min:x.cs[c.id],lib:x.lib})).sort((a,b)=>b.min-a.min);
     const carga=det.reduce((a,x)=>a+x.min,0);if(!carga)return;const cap=capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===c.id),m);const noLib=det.filter(x=>!x.lib);
-    celdas[c.id+'|'+m]={c:c.id,m,u:'min',carga,cap,pct:cap?carga/cap*100:null,det,noLib:noLib.length,minNoLib:noLib.reduce((a,x)=>a+x.min,0),base:'proyecto',vencido:m<hoy().slice(0,7)}})});
+    celdas[c.id+'|'+m]={c:c.id,m,u:'min',carga,cap,pct:cap?carga/cap*100:null,det,noLib:noLib.length,minNoLib:noLib.reduce((a,x)=>a+x.min,0),base:'proyecto',vencido:m==='venc'}})});
   const PA=ords.length?programarTodo():{tej:[],banos:[]};
   ['tej','tin'].forEach(a=>{const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area===a);const porMes={};
     if(a==='tej')PA.tej.forEach(x=>{if(!x.dia)return;const m=x.dia.slice(0,7);const pm=porMes[m]=porMes[m]||{h:0,ops:{}};pm.h+=x.h||0;if(!x.cambio)pm.ops[x.op]=(pm.ops[x.op]||0)+(x.h||0)});
@@ -2439,7 +2439,7 @@ function matrizCapacidad(){if(CAPM)return CAPM;
       const det=a==='tej'?Object.entries(pm.ops).map(([op,h])=>{const o=ords.find(z=>z.op===op);return o?{o,min:h,lib:liberada(o,'tela')}:null}).filter(Boolean).sort((x,y)=>y.min-x.min):[];
       const noLib=det.filter(x=>!x.lib);
       celdas[a+'|'+m]={c:a,m,u:'h',carga:pm.h,cap,pct:cap?pm.h/cap*100:null,det,banos:(pm.banos||[]).slice().sort((x,y)=>(y.horas||0)-(x.horas||0)),noLib:noLib.length,minNoLib:noLib.reduce((x,y)=>x+y.min,0),base:'programa'}})});
-  meses.sort();
+  meses.sort((a,b)=>a==='venc'?-1:b==='venc'?1:a<b?-1:1);
   const filas=[{id:'tej',n:'Tejeduría',area:'tej'},{id:'tin',n:'Tintorería',area:'tin'},...cenPro.map(c=>({id:c.id,n:c.n,area:'pro'}))].filter(f=>meses.some(m=>celdas[f.id+'|'+m]));
   CAPM={meses,filas,celdas,sinProy};return CAPM}
 function estadoCel(x){if(!x)return '';if(x.vencido)return 'venc';if(!x.cap)return 'rojo';const amb=prm('capAmbar',undefined);if(x.carga>x.cap)return 'rojo';if(amb!==undefined&&x.pct>=amb)return 'amb';return 'ok'}
@@ -2468,7 +2468,7 @@ function vCapacidad(el){
   if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Capacidad y decisiones</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
   if(S.params.capAmbar===undefined){S.params.capAmbar=85;save()} // siembra inicial (decisión 14-sep: ámbar desde 85%); editable aquí
   CAPM=null;const M=matrizCapacidad();const ps=revisarProblemasCap();const abiertos=ps.filter(p=>!p.cerrado);const nuevos=abiertos.filter(p=>!p.visto);
-  const fmM=m=>new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'short',year:'2-digit'});const fmTs=t=>t?new Date(t).toLocaleString('es-EC',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  const fmM=m=>m==='venc'?'vencido':new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'short',year:'2-digit'});const fmTs=t=>t?new Date(t).toLocaleString('es-EC',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   if(CAPD.sel&&!M.celdas[CAPD.sel])CAPD.sel=null;
   const rojas=Object.values(M.celdas).filter(x=>estadoCel(x)==='rojo').sort((a,b)=>a.m<b.m?-1:a.m>b.m?1:0);
   const cel=(f,m)=>{const x=M.celdas[f.id+'|'+m];if(!x)return '<td class="mut" style="text-align:center">·</td>';const k=f.id+'|'+m;const est=estadoCel(x);const p=abiertos.find(q=>q.c===f.id&&q.m===m);
@@ -2476,7 +2476,7 @@ function vCapacidad(el){
   const sel=CAPD.sel?M.celdas[CAPD.sel]:null;
   let detalle='';
   if(sel){const x=sel;const n=nombreCentroCap(x.c);const falta=x.cap?Math.max(0,x.carga-x.cap):x.carga;const est=estadoCel(x);
-    const cercanos=M.meses.filter(m=>m!==x.m).map(m=>{const y=M.celdas[x.c+'|'+m];const cap=y?y.cap:(x.base==='proyecto'?capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),m):null);const carga=y?y.carga:0;return{m,cap,carga,holg:cap!=null?cap-carga:null,dist:Math.abs((+m.slice(0,4)*12+ +m.slice(5,7))-(+x.m.slice(0,4)*12+ +x.m.slice(5,7)))}}).filter(z=>z.dist<=3&&z.holg!=null&&z.holg>0).sort((a,b)=>a.dist-b.dist||(a.m<b.m?-1:1));
+    const cercanos=M.meses.filter(m=>m!==x.m).map(m=>{const y=M.celdas[x.c+'|'+m];const cap=y?y.cap:(x.base==='proyecto'?capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),m):null);const carga=y?y.carga:0;if(m==='venc')return null;return{m,cap,carga,holg:cap!=null?cap-carga:null,dist:Math.abs((+m.slice(0,4)*12+ +m.slice(5,7))-(+x.m.slice(0,4)*12+ +x.m.slice(5,7)))}}).filter(z=>z&&z.dist<=3&&z.holg!=null&&z.holg>0).sort((a,b)=>a.dist-b.dist||(a.m<b.m?-1:1));
     const decs=(S.params.capDecisiones||[]).filter(d=>d.c===x.c&&d.m===x.m).sort((a,b)=>a.ts<b.ts?1:-1);const prob=abiertos.find(q=>q.c===x.c&&q.m===x.m);
     detalle=`<div class="panel" style="border-color:${est==='rojo'?'var(--alerta)':'var(--rule)'}"><h3>${esc(n)} · ${esc(fmtMesEG(x.m))} <span class="note">${x.cap?Math.round(x.pct)+'% de uso':'sin capacidad configurada'} · base: ${x.base==='programa'?'programa con toda la cartera':'plan por Proyecto, liberado o no'}</span><span class="spacer"></span>${prob&&!prob.visto&&puede('programa')?`<button class="btn ghost sm" onclick="verProblemaCap('${prob.id}')">visto</button>`:''}</h3><div class="body">
      <div class="kpis"><div class="kpi ${est==='rojo'?'bad':''}"><div class="v">${x.cap?num(x.carga>x.cap?x.carga-x.cap:0)+(x.u==='h'?' h':' min'):'—'}</div><div class="k">${x.vencido?'Proyecto vencido: esta carga se ejecuta en los meses siguientes':x.cap?(x.carga>x.cap?'Faltan'+(x.u==='min'?' · '+num((x.carga-x.cap)/60)+' h':''):'Alcanza · sobran '+fmtCarga(x.cap-x.carga,x.u)):'Sin recursos activos en '+esc(n)+': toda la carga queda sin capacidad'}</div></div>
@@ -2494,7 +2494,7 @@ function vCapacidad(el){
   const cens=[...new Set([...ps.map(p=>p.c),...(S.params.capDecisiones||[]).map(d=>d.c)])];
   const hist=[...ps.map(p=>({ts:p.detectado,tipo:'problema',c:p.c,m:p.m,u:p.detectadoPor||'',txt:(p.pct!=null?p.pct+'%':'sin capacidad')+' · faltaban '+num(p.falta)+' '+p.u,estado:p.cerrado?'cerrado '+fmTs(p.cerrado):(p.pctHoy!=null?'abierto · hoy '+p.pctHoy+'%':'abierto'),visto:p.visto})),...(S.params.capDecisiones||[]).map(d=>({ts:d.ts,tipo:'decisión',c:d.c,m:d.m,u:d.u,txt:d.txt,estado:d.resuelto?'resuelta '+fmTs(d.resueltoTs)+' · '+esc(d.resueltoPor||''):'abierta'}))].filter(h=>!CAPD.cen||h.c===CAPD.cen).sort((a,b)=>a.ts<b.ts?1:-1);
   el.innerHTML=`<div class="pagehead"><h2>Capacidad y decisiones</h2><span class="spacer"></span><div class="row" style="margin:0;align-items:flex-end"><div><label>Ámbar desde <span class="mut">(% de uso; rojo = más del 100%)</span></label><input type="number" min="0" max="100" style="width:80px" value="${prm('capAmbar',85)}" ${puede('config')?'':'disabled'} onchange="setCapAmbar(this.value)"></div></div></div>
-   <p class="lede">Dónde se rompe el plan y cuándo. Filas: centros; columnas: todos los meses con carga (el mes en curso solo con los días que quedan; los meses ya pasados se marcan vencidos y no cuentan como problema). Base: el <b>plan por Proyecto</b> (mes de Odoo) con <b>todas las órdenes abiertas, liberadas o no</b>; cada celda dice cuántas no están liberadas. Carga = prendas pendientes × min/prenda del centro; capacidad = calendario del mes × recursos activos. Tejeduría y tintorería van por programa (el motor reparte la tela por fecha requerida) y la celda lo marca. Aquí solo se anota lo que se decide: el sistema no ejecuta nada.</p>
+   <p class="lede">Dónde se rompe el plan y cuándo. Filas: centros; columnas: todos los meses con carga (el mes en curso solo con los días que quedan; los meses ya pasados van juntos en la columna "vencido" y no cuentan como problema). Base: el <b>plan por Proyecto</b> (mes de Odoo) con <b>todas las órdenes abiertas, liberadas o no</b>; cada celda dice cuántas no están liberadas. Carga = prendas pendientes × min/prenda del centro; capacidad = calendario del mes × recursos activos. Tejeduría y tintorería van por programa (el motor reparte la tela por fecha requerida) y la celda lo marca. Aquí solo se anota lo que se decide: el sistema no ejecuta nada.</p>
    ${nuevos.length?`<div class="warn"><b>${nuevos.length} problemas nuevos sin ver:</b> ${nuevos.map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%, detectado '+fmTs(p.detectado)+')').join(' · ')}</div>`:''}
    ${M.sinProy.length?`<div class="warn"><b>${M.sinProy.length} órdenes con carga y sin Proyecto reconocible</b> (${num(M.sinProy.reduce((a,o)=>a+ +o.cant,0))} prendas): no caen en ningún mes de esta tabla hasta que Odoo les ponga proyecto.</div>`:''}
    <div class="kpis"><div class="kpi ${rojas.length?'bad':''}"><div class="v">${rojas.length}</div><div class="k">Centro-mes que no alcanzan</div></div><div class="kpi"><div class="v">${Object.values(M.celdas).filter(x=>estadoCel(x)==='amb').length}</div><div class="k">Justos (≥ ${prm('capAmbar',85)}%)</div></div><div class="kpi"><div class="v">${abiertos.length}</div><div class="k">Problemas abiertos · ${(S.params.capDecisiones||[]).filter(d=>!d.resuelto).length} decisiones abiertas</div></div><div class="kpi"><div class="v">${M.meses.length}</div><div class="k">Meses con carga: ${M.meses.map(fmM).join(', ')}</div></div></div>

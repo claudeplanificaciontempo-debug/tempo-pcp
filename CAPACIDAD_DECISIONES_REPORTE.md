@@ -32,26 +32,29 @@ cierra solo cuando vuelve a alcanzar (también a bitácora). **Hoy** muestra un 
 no alcanzan · M nuevos sin ver" con enlace. El historial (abajo, filtrable por centro) lista problemas y decisiones con
 estado: en enero se puede ver qué se vio en septiembre y qué se decidió.
 
-### Estado en producción al abrirla (14-sep 12:15, todos los meses con carga)
+### Estado en producción (14-sep 12:18; sep = solo los días que quedan desde hoy)
 
 | Centro | sep-26 (desde hoy) | oct-26 | nov-26 | dic-26 |
 |---|---:|---:|---:|---:|
-| Corte | 13 % | 68 % | 79 % | 39 % |
-| Estampado | 5 % | 5 % | · | · |
-| Bordado | **235 %** (34 no lib. de 120) | 81 % | **175 %** (89 no lib. de 96) | 32 % |
-| Confección | 44 % | **141 %** (279 no lib. de 312) | **164 %** (221 no lib. de 228) | 81 % |
-| Etiquetas | 8 % | 11 % | 7 % | 7 % |
-| Botones | **121 %** | **149 %** | **187 %** | 78 % |
-| Empaque | 44 % | **100 %** | **111 %** | 56 % |
-| Tejeduría (programa) | 26 % | 25 % | · | · |
+| Corte | 22 % | 68 % | 79 % | 39 % |
+| Estampado | 8 % | 5 % | · | · |
+| Bordado | **385 %** (34 no lib. de 120) | 81 % | **175 %** (89 no lib. de 96) | 32 % |
+| Confección | 72 % | **141 %** (279 no lib. de 312) | **164 %** (221 no lib. de 228) | 81 % |
+| Etiquetas | 13 % | 11 % | 7 % | 7 % |
+| Botones | **199 %** | **149 %** | **187 %** | 78 % |
+| Empaque | 72 % | **100 %** (pasa por poco) | **111 %** | 56 % |
+| Tejeduría (programa) | 44 % | 25 % | · | · |
 
-Nueve centro-mes en rojo quedaron registrados como problemas (detectados por mi sesión al abrir la pantalla; están
-"sin ver" hasta que los marques). Meses vencidos con carga pendiente: dic-25 (Etiquetas 4 órdenes), may/jun/jul-26
-(1–2 órdenes de Etiquetas/Empaque), ago-26 (pocas órdenes en varios centros).
+Nueve centro-mes en rojo quedaron registrados como problemas al abrir la pantalla por primera vez (los registró mi
+sesión; están "sin ver" hasta que los marques; el % guardado al detectarlos fue con el mes completo, la pantalla
+muestra el de hoy). Columna "vencido": carga pendiente de Proyectos ya pasados (dic-25 a ago-26: Etiquetas 4+2+1
+órdenes, Empaque 1, y en ago-26 Corte 1, Estampado 3, Bordado 1, Confección 4, Botones 6, Empaque 12); es atraso, no
+problema de capacidad.
 
-Ojo con **Botones**: 121/149/187 % — hay que revisar si la capacidad configurada del centro (personas × minutos) es
+Ojo con **Botones**: 199/149/187 % — hay que revisar si la capacidad configurada del centro (personas × minutos) es
 real, porque la carga por prenda de botones es alta en la tabla de operaciones. Y **Confección** oct-nov > 140 % con
-casi todo sin liberar: es justo el caso "todavía puedo decidir".
+casi todo sin liberar: es justo el caso "todavía puedo decidir". **Tintorería** no aparece: el programa no tiene
+baños con día (nada confirmado ocupa máquina).
 
 ## 2 · Buscadores: el campo perdía el foco
 
