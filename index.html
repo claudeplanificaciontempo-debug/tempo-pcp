@@ -567,7 +567,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 18:39';
+const APP_BUILD='2026-09-14 18:42';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1018,8 +1018,8 @@ function asignacionPorOrdenHTML(P){const h=hoy();const q=normTxt(APO.q);const to
 function gruposAdvertencias(av){const g={};av.forEach(a=>{const k=a.accion+'|'+a.u+'|'+String(a.ts||'').slice(0,16);if(!g[k])g[k]={k,accion:a.accion,u:a.u,ts:a.ts,items:[]};g[k].items.push(a)});return Object.values(g).sort((a,b)=>a.ts<b.ts?1:-1)}
 function atenderGrupo(ids){const u=quienFirma(),ts=new Date().toISOString();let n=0;(S.params.advertencias||[]).forEach(a=>{if(ids.includes(a.id)&&!a.atendida){a.atendida=true;a.atendidaPor=u;a.atendidaTs=ts;n++}});if(n)bitacora('Advertencias atendidas en bloque: '+n+' ('+u+')');save();render()}
 /* ---------- C · profundidad de color: solo clasificación explícita (fam del color) o código Pantone TCX; sin eso → bandeja, nunca por parecido de nombre ---------- */
-function profundidadDe(c){if(!c)return null;if(['claro','medio','oscuro'].includes(c.fam))return c.fam;if(c.fam==='lavado')return 'claro';const p=prefijoTCX(c.cod);return p||null}
-function setProfundidadColor(id,v){const c=C(id);if(!c)return;if(!(puede('config')||puede('programa'))){alert('Tu perfil no clasifica colores.');return}const antes=c.fam||'';c.fam=v||'';bitacora('Profundidad de color '+c.n+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+function profundidadDe(c){if(!c)return null;if(c.profConf&&['claro','medio','oscuro'].includes(c.fam))return c.fam;if(c.fam==='claro'||c.fam==='oscuro')return c.fam;if(c.fam==='lavado')return 'claro';const p=prefijoTCX(c.cod);return p||null} // 'medio' sin confirmar es el valor por defecto de la carga, no una clasificación
+function setProfundidadColor(id,v){const c=C(id);if(!c)return;if(!(puede('config')||puede('programa'))){alert('Tu perfil no clasifica colores.');return}const antes=c.fam||'';c.fam=v||'';c.profConf=!!v;bitacora('Profundidad de color '+c.n+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
 function coloresSinProfundidad(P){const ids=new Set();(Object.values(armGrupos(P||programar()))||[]).forEach(g=>{if(g&&g.color)ids.add(g.color)});return [...ids].map(id=>C(id)).filter(c=>c&&!profundidadDe(c))}
 function bandejaProfundidadHTML(P){const sin=coloresSinProfundidad(P);if(!sin.length)return '';const ok=puede('config')||puede('programa');
   return `<div class="panel" style="border-color:var(--alerta)"><h3>Colores sin profundidad <span class="note">${sin.length} colores con tela esperando baño y sin clasificar CLARO / MEDIO / OSCURO · no se asignan a máquina por parecido de nombre</span></h3><div class="body"><table><thead><tr><th>Color</th><th>Pantone</th><th>Profundidad</th></tr></thead><tbody>
