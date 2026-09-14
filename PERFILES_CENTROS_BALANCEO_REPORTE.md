@@ -51,7 +51,9 @@ pediste; no se construye hasta que decidas la fuente.
   Facturado. Solo entran órdenes facturadas con compromiso y con fecha exacta (origen app); las que venían facturadas
   del archivo se listan como "sin fecha exacta, no medibles" y las sin compromiso como "no medibles". Por mes de
   compromiso, por cliente y por ODC: órdenes medidas, a tiempo, % a tiempo, tarde, atraso promedio de las tardes.
-  **Solo fecha: no mide si salió completa** (lo dice en pantalla; no hay porcentaje de prendas).
+  **Se mide por referencias, no por unidades** (decisión 14-sep): una referencia cuenta cumplida cuando llega a
+  Facturado; no se registran ni se registrarán unidades por despacho. La pantalla lo dice: "% de referencias
+  cumplidas a tiempo · no son unidades"; las prendas aparecen solo como dato informativo.
 - Hoy en producción: las 55 facturadas vienen del archivo (sin fecha exacta) y sin compromiso → 0 medibles; el
   indicador empieza a llenarse cuando los supervisores muevan fases aquí y tú pongas compromisos.
 
