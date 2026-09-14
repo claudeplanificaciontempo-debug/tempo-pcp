@@ -172,3 +172,22 @@ no una regla nueva; lo digo para que conste.
 
 Botones queda como está, problema abierto, hasta que confirmes en planta si son 3 personas o si parte de los ojales
 van en los módulos.
+
+## 7 · Bandeja de fases: aviso cuando el archivo es anterior al cambio (14-sep)
+
+Reverti las 7 de tintorería (WH/MO/29127, 29215, 28483, 28382, 28395, 28219, 28342) a **1Calidad Tintoreria**: el
+archivo traía la fase anterior a tu movimiento y piso ya tenía el baño salido (siguen `tinturada`, en calidad). Las 4
+restantes (WH/MO/28950, 28521, 28220 a 3AEROPUERTO; 28204 a 1Tintoreria) quedan con la del archivo. Todo en bitácora.
+
+Nota: el "01:06" que se veía era la **carga original del 13-sep**, no la hora de exportación del archivo. El sistema no
+guardaba la hora de exportación (el Odoo de tareas no la trae), por eso nada podía compararla. La recarga del 14-sep se
+aplicó a las 16:42, después de tus movimientos (14:11 y 15:24); por eso se conservaron y cayeron a la bandeja.
+
+Para adelante, en la bandeja de fases:
+- Un campo **"Archivo exportado de Odoo"** (fecha y hora, editable, queda en la recarga con bitácora). Por defecto el
+  inicio del día del archivo; ajústalo a la hora real. No se inventa una hora oculta: es un valor visible que tú fijas.
+- Cada fila movida aquí cuyo movimiento sea **posterior** a esa hora de exportación se marca en rojo: **"el archivo es
+  anterior a tu cambio — lo moviste aquí el DD/MM HH:MM, el archivo se exportó el DD/MM HH:MM: la del archivo es la
+  vieja, revísala antes de aceptar"**.
+- Al pulsar "Usar la fase del archivo", si alguna de las marcadas es de ese tipo, la confirmación lo dice **antes**:
+  "⚠ N de ellas las moviste DESPUÉS de exportar el archivo: la del archivo es MÁS VIEJA que tu cambio."
