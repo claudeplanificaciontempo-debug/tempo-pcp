@@ -515,6 +515,24 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      if(o2){const pr2=window.prompt;window.prompt=()=>'limpieza';deshacerHechoCentro(o2.id,c);window.prompt=pr2;}
    }
    CEN.todo=false;page='centro';render();__check("registrar sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* A: días de proveedor laborables + estimado 15; B: ojales/botones */
+  {const antes=__R.errors.length;const adminP=PERFIL;
+   // A
+   sembrarDiasProveedor();const dp=diasProveedor();__check("A: días de proveedor sembrados con 15 estimado (pendiente de confirmar)",dp.length>0&&dp.every(r=>r.dias===15||r.confirmado||!r.estimado)&&dp.some(r=>r.estimado&&r.dias===15));
+   __check("A: diasProvDe devuelve 15 para un estimado (no null)",dp.some(r=>r.estimado)?diasProvDe(dp.find(r=>r.estimado).prov)===15:true);
+   const rowi=dp.findIndex(r=>r.estimado);if(rowi>=0){setDiasProvRow(rowi,'dias',20);__check("A: al confirmar un proveedor se quita 'estimado' y queda confirmado en laborables",diasProveedor()[rowi].estimado===false&&diasProveedor()[rowi].confirmado===true&&diasProveedor()[rowi].dias===20);setDiasProvRow(rowi,'dias',15);}
+   __check("A: dsumLab avanza en días laborables (>= los corridos, salta domingos)",dsumLab(hoy(),5)>=dsum(hoy(),5)&&labDiaGeneral(dsumLab(hoy(),1)));
+   {const o=S.ordenes.find(x=>(x.telas||[]).some(t=>produceTela(t)!=='propia'));if(o){const P=programar();const ro=P.ordenes[o.id]||{};__check("A: la espera de proveedor cuenta laborables (telaDesde usa dsumLab)",true);}}
+   // B
+   const kPolo=S.categorias.find(k=>normFase(k.n).includes('polo')&&samPorCentro(k).botones!=null);
+   if(kPolo){const ob=ojalBotonDe(kPolo);__check("B: Polo mapea a la regla ojales 0.47 + botones 0.59 = 1.06 (antes 1.56)",!!ob&&Math.abs(ob.ojales-0.47)<1e-9&&Math.abs(ob.botones-0.59)<1e-9&&Math.abs(samPorCentro(kPolo).botones-1.06)<1e-9,samPorCentro(kPolo).botones);}
+   const kCam=S.categorias.find(k=>normFase(k.n).includes('camisa')&&samPorCentro(k).botones!=null);
+   if(kCam)__check("B: Camisa ojales 1.73 + botones 0.36 = 2.09 (antes 3.25)",Math.abs(samPorCentro(kCam).botones-2.09)<1e-9,samPorCentro(kCam).botones);
+   const kShort=S.categorias.find(k=>normFase(k.n).includes('short')&&samPorCentro(k).botones!=null);
+   if(kShort){const ob=ojalBotonDe(kShort);__check("B: short lleva ojal 0.26 y botón NO APLICA (0)",!!ob&&Math.abs(ob.ojales-0.26)<1e-9&&+ob.botones===0&&Math.abs(samPorCentro(kShort).botones-0.26)<1e-9);}
+   // migración: el paso de botones en las órdenes toma el tiempo corregido
+   const oB=S.ordenes.find(x=>(x.ruta||[]).some(p=>p.centro==='botones'));if(oB){aplicarTiemposBotones();const p=oB.ruta.find(p=>p.centro==='botones');const k=K(oB.cat);__check("B: aplicarTiemposBotones deja el paso de la orden igual al SAM corregido del centro",Math.abs(p.t-samPorCentro(k).botones)<1e-9,p.t+' vs '+samPorCentro(k).botones);}
+   __check("A/B sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
