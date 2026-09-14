@@ -223,12 +223,14 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const oP=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='corte'));
    if(oP){const nb=S.bitacora.length;setProgCen(oP.id,'corte','pri',1);__check("reprogramar: queda en bitácora con antes → después",S.bitacora.length>=nb+1&&S.bitacora.some(b=>/Programación Corte .*→/.test(b.t)));
      PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};setProgCen(oP.id,'corte','pri',2);__check("reprogramar: un perfil de otro centro no puede",((oP.progCentro||{}).corte||{}).pri===1);PERFIL=adminP;setProgCen(oP.id,'corte',null);}
-   // advertencias forzadas: compromiso ayer → cualquier estimada queda fuera
+   // advertencias forzadas: compromiso ayer → cualquier estimada queda fuera (mecanismo del aviso; se prueba con el motor de siempre, cuya base es lo antes posible)
+   const _mPrev=S.params.motor;S.params.motor='adelante';PLAN=null;PLAN_ALL=null;
    const oA=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='corte')&&liberada(o,'corte'));
    if(oA){const nAv=(S.params.advertencias||[]).length;const fc=oA.fechaCompromiso;oA.fechaCompromiso=dsum(hoy(),-1);setProgCen(oA.id,'corte','desde',dsum(hoy(),10));
      __check("advertencias: reprogramar fuera de la fecha meta genera aviso con quién, antes y después",(S.params.advertencias||[]).length===nAv+1&&(S.params.advertencias||[]).slice(-1)[0].op===oA.op&&!!(S.params.advertencias||[]).slice(-1)[0].u,JSON.stringify((S.params.advertencias||[]).slice(-1)[0]));
      page='panorama';render();__check("advertencias: aparecen en Hoy para planificación",document.getElementById('p-panorama').innerHTML.includes('Advertencias de fecha')&&document.getElementById('p-panorama').innerHTML.includes(oA.op));
      atenderAviso((S.params.advertencias||[]).slice(-1)[0].id);__check("advertencias: se marcan atendidas",(S.params.advertencias||[]).slice(-1)[0].atendida===true);setProgCen(oA.id,'corte',null);oA.fechaCompromiso=fc;}
+   S.params.motor=_mPrev;PLAN=null;PLAN_ALL=null;
    // balanceo desde lo programado + objetivo con registro
    {const x=programar().pro.find(x=>x.centro==='modulos'&&x.rec);if(x){BAL.rec=x.rec;BAL.mes=x.dia.slice(0,7)}else{BAL.mes=null}}page='balanceo';BAL.grupo=null;render();let hb=document.getElementById('p-balanceo').innerHTML;
    __check("balanceo: lista lo programado en el módulo por hoja de operaciones",__R.errors.length===antes&&hb.includes('Órdenes programadas en')&&hb.includes('Objetivo de prendas por hora'));
@@ -866,6 +868,40 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const R=reporteTin(hoy().slice(0,7));__check("D6: reporteTin da pedidos/entregados, faltantes, reprocesos por motivo y horas en rehacer",typeof R.pedidos==='number'&&typeof R.entregados==='number'&&Array.isArray(R.falt)&&Array.isArray(R.reproc)&&typeof R.hReproc==='number');
    page='tintoreria';render();__check("D6: panel Reporte de tintorería del mes visible",document.getElementById('p-tintoreria').innerHTML.includes('Reporte de tintorería del mes'));
    S.avance=JSON.parse(_AV);const _f=JSON.parse(_FA),_fs=JSON.parse(_FS);S.ordenes.forEach((o,i)=>{o.fase=_f[i];if(_fs[i])o.fases=_fs[i];else delete o.fases});PLAN=null;PLAN_ALL=null;__check("D sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* MOTOR hacia atrás (al final: solo lee el programa; no deja estado) */
+  {const antes=__R.errors.length;const adminP=PERFIL;const _m=S.params.motor;S.params.motor='atras';PLAN=null;PLAN_ALL=null;
+   const P=programar();__check("motor: el programa vigente corre hacia atrás",P.motor==='atras'&&S.params.motor==='atras');
+   const ordsP=S.ordenes.filter(o=>abierta(o)&&P.ordenes[o.id]&&!P.ordenes[o.id].bloqueo&&P.ordenes[o.id].finPro);
+   const feas=ordsP.filter(o=>P.ordenes[o.id].motor==='atras');const noLl=ordsP.filter(o=>P.ordenes[o.id].motor==='atras-no-llega');
+   __check("motor: cada orden programada quedó factible hacia atrás o marcada 'no llega' (nunca sin programar)",ordsP.every(o=>['atras','atras-no-llega'].includes(P.ordenes[o.id].motor)),feas.length+' / '+noLl.length);
+   if(feas.length){const bad=feas.filter(o=>{const r=P.ordenes[o.id];const meta=fechaMetaDe(o);const ps=r.pasos.filter(x=>!x.hecho&&!x.error);return r.finPro>meta||ps.some(x=>x.fin>meta)||ps.some((x,i)=>i&&ps[i-1].fin>=x.ini)||(ps.length&&r.telaLista>ps[0].ini)||r.atraso});
+     __check("motor: las factibles terminan en o antes de la meta, cada paso antes del siguiente, la tela lista antes del primero, sin atraso",bad.length===0,bad.slice(0,3).map(o=>o.op).join(','));}
+   if(noLl.length){const bad=noLl.filter(o=>{const r=P.ordenes[o.id];return !(r.atraso&&r.diasTarde>0&&r.atasco&&r.atasco.nombre&&r.fechaPosible===r.finPro&&r.finPro>fechaMetaDe(o))});
+     __check("motor: las que no llegan traen días tarde, paso atascado y fecha posible (= su fin programado hacia adelante)",bad.length===0,bad.slice(0,3).map(o=>o.op+':'+JSON.stringify(P.ordenes[o.id].atasco)).join(','));}
+   // forzar una que no llega: compromiso ayer → se programa igual, tarde, con atasco
+   {const conPend=x=>P.ordenes[x.id].pasos.some(p=>!p.hecho&&!p.error);const o=feas.find(conPend)||ordsP.find(conPend);if(o){const fc=o.fechaCompromiso;o.fechaCompromiso=dsum(S.params.inicio,-1);PLAN=null;const r=programar().ordenes[o.id];
+     __check("motor: con meta ayer no se deja sin programar: va tarde, con días, atasco y fecha posible",!!r&&!r.bloqueo&&r.motor==='atras-no-llega'&&r.diasTarde>0&&!!r.atasco&&!!r.fechaPosible&&r.finPro===r.fechaPosible,r&&(r.motor+' '+r.diasTarde+' '+JSON.stringify(r.atasco)));
+     o.fechaCompromiso=fc;PLAN=null;}}
+   // colecciones: ODC → todas juntas
+   {const P2=programar();const cols=Object.values(P2.colecciones||{});__check("motor: colecciones por ODC (o cliente+fecha) con ≥2 órdenes",cols.every(c=>c.n>=2&&Array.isArray(c.ops)));
+     const ct=cols.find(c=>c.tarde);if(ct){const ops=new Set(ct.ops);const miembros=S.ordenes.filter(o=>ops.has(o.op));__check("motor: si una orden de la colección no llega, TODA la colección va tarde junta",miembros.every(o=>P2.ordenes[o.id].atraso)&&ct.causantes.length>=1);}
+     // sintético: dos órdenes con la misma ODC, una con meta ayer → la otra queda tarde por colección
+     const a=feas.find(o=>String(o.odc||'').trim());const b=a&&feas.find(o=>o!==a&&String(o.odc||'').trim()===String(a.odc).trim());
+     if(a&&b){const fc=a.fechaCompromiso;a.fechaCompromiso=dsum(hoy(),-1);PLAN=null;const P3=programar();__check("motor: colección sintética: la hermana a fecha se marca tarde 'por su colección'",P3.ordenes[b.id].atraso===true&&P3.ordenes[b.id].atrasoPorColeccion===true&&P3.ordenes[b.id].coleccion.causantes.includes(a.op));a.fechaCompromiso=fc;PLAN=null;}}
+   // esperas: sembradas de la usuaria; denim 15, general 3, sin regla no aplica
+   {const e=esperasPaso();__check("motor: esperas sembradas (lavado planta 3 est., Quito denim 15, prenda tinturada sin regla)",e.some(r=>r.paso==='lavado'&&!r.match&&r.dias===3&&r.estimado)&&e.some(r=>/denim/.test(r.match)&&r.dias===15)&&e.some(r=>r.sinRegla));
+     const kD=S.categorias.find(k=>/denim|jean/i.test(k.n)||/denim|jean/i.test((K(k.padre)||{}).n||''));const kO=S.categorias.find(k=>!/denim|jean/i.test(k.n)&&!/denim|jean/i.test((K(k.padre)||{}).n||''));
+     __check("motor: esperaDeCentro lavado → 15 para denim, 3 general, 0 para un paso sin fila",(!kD||esperaDeCentro('lavado',{cat:kD.id})===15)&&(!kO||esperaDeCentro('lavado',{cat:kO.id})===3)&&esperaDeCentro('corte',{cat:(kO||kD||{}).id})===0);}
+   // el otro motor sigue intacto y se puede comparar sin tocar la caché
+   {const A=programarCon('adelante');__check("motor: programarCon('adelante') corre el de siempre sin pisar la caché",A.motor==='adelante'&&programar().motor==='atras'&&Object.values(A.ordenes).every(r=>r.motor!=='atras'));
+     const R=compararMotores();__check("motor: antes/después trae carga por centro y mes, a fecha vs no, cambios de mes y top 10",R.centros.length>0&&R.meses.length>0&&R.estA.prog===R.estB.prog&&R.top.length<=10&&typeof R.cambianMes==='number');}
+   // pantallas
+   page='config';CONF.tab='cal';render();__check("motor: selector en Configuración → Calendario y parámetros, con las esperas",document.getElementById('p-config').innerHTML.includes('Motor de programación')&&document.getElementById('p-config').innerHTML.includes('setMotor(')&&document.getElementById('p-config').innerHTML.includes('Esperas después de un paso'));
+   page='panorama';render();__check("motor: Advertencias de fecha muestra 'no llegan' o 'todas llegan'",/no llegan a su fecha|todas las órdenes programadas llegan/.test(document.getElementById('p-panorama').innerHTML));
+   page='capacidad';CAPD.cmp=true;render();__check("motor: Capacidad y decisiones muestra antes y después",document.getElementById('p-capacidad').innerHTML.includes('Motor de programación: antes y después')&&document.getElementById('p-capacidad').innerHTML.includes('Las 10 órdenes que más se mueven'));CAPD.cmp=false;
+   // cambiar el motor queda en bitácora y cambia el programa
+   {const nb=S.bitacora.length;setMotor('adelante');__check("motor: cambiar el criterio queda en bitácora y el programa lo obedece",programar().motor==='adelante'&&S.bitacora.slice(-3).some(b=>/Motor de programación: atras → adelante/.test(b.t)));setMotor('atras');}
+   S.params.motor=_m;PLAN=null;PLAN_ALL=null;page='ordenes';render();__check("motor sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

@@ -561,7 +561,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 14:39';
+const APP_BUILD='2026-09-14 15:01';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -830,6 +830,78 @@ function llenarBins(itemsIn,capRef){ // reparte [{id,kg}] en baños de tamaño c
     else b=addBin();}
   if(b.kg<=0)bins.pop();
   return bins}
+/* ---------- Motor de programación: hacia atrás (desde la fecha de entrega) o hacia adelante (lo antes posible) ----------
+   'atras' es el criterio vigente (decisión 14-sep-2026); 'adelante' es el de siempre y sirve para comparar antes/después.
+   Se elige en Configuración → Calendario y parámetros. MOTOR_FORZADO solo lo usa la comparación para correr el otro sin tocar la caché. */
+let MOTOR_FORZADO=null;
+function motorProgramacion(){if(S.params.motor!=='adelante'&&S.params.motor!=='atras')S.params.motor='atras';return S.params.motor}
+function setMotor(v){if(!puede('config')&&!puede('programa')){alert('Tu perfil no cambia el motor.');return}const antes=motorProgramacion();if(v===antes)return;S.params.motor=v;bitacora('Motor de programación: '+antes+' → '+v+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+/* corre el motor indicado sin usar ni pisar la caché (para "antes y después") */
+function programarCon(modo){const g=PLAN,ga=PLAN_ALL;MOTOR_FORZADO=modo;PLAN=null;try{return programar()}finally{MOTOR_FORZADO=null;PLAN=g;PLAN_ALL=ga}}
+function diasEntre(a,b){if(!a||!b)return 0;return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5)}
+/* esperas DESPUÉS de un paso (días calendario): el paso anterior debe terminar esos días antes de que empiece el siguiente.
+   No existían en el sistema: se siembran de lo dicho por la usuaria el 14-sep y se editan en Configuración. 'match' = categorías/familias
+   (lista separada por comas) a las que aplica esa fila; sin match = regla general del paso. Una fila 'sinRegla' NO se aplica: se reporta. */
+function defEsperasPaso(){return [
+  {paso:'lavado',match:'',dias:3,nota:'Lavado en planta: 2 a 3 días (sembrado de tu mensaje; ajusta)',estimado:true},
+  {paso:'lavado',match:'denim, jean',dias:15,nota:'Lavado en Quito: denim'},
+  {paso:'lavado',match:'',dias:15,nota:'Lavado en Quito: prenda tinturada — el sistema no sabe qué órdenes son prenda tinturada; dime cómo se identifican',sinRegla:true}]}
+function esperasPaso(){if(!Array.isArray(S.params.esperasPaso))S.params.esperasPaso=defEsperasPaso();return S.params.esperasPaso}
+function esperaDeCentro(centro,o){const filas=esperasPaso().filter(f=>f.paso===centro&&!f.sinRegla);if(!filas.length)return 0;
+  const k=o?K(o.cat):null;const nm=k?normFase(k.n||''):'';const pad=k?normFase((K(k.padre)||{}).n||''):'';
+  const esp=filas.find(f=>f.match&&String(f.match).split(',').map(x=>normFase(x.trim())).filter(Boolean).some(t=>nm.includes(t)||pad.includes(t)));
+  const gen=filas.find(f=>!f.match||!String(f.match).trim());const r=esp||gen;return r?(+r.dias||0):0}
+function addEsperaRow(){esperasPaso().push({paso:'lavado',match:'',dias:0,nota:''});save();render()}
+function setEsperaRow(i,k,v){const r=esperasPaso()[i];if(!r)return;const antes=r[k];r[k]=k==='dias'?(+String(v).replace(',','.')||0):(k==='sinRegla'?!!v:v);if(k==='dias')r.estimado=false;bitacora('Espera '+r.paso+(r.match?' ['+r.match+']':'')+' · '+k+': '+antes+' → '+r[k]);PLAN=null;PLAN_ALL=null;save();render()}
+function delEsperaRow(i){esperasPaso().splice(i,1);PLAN=null;PLAN_ALL=null;save();render()}
+/* colección = ODC; sin ODC, cliente + fecha meta (se entregan juntas) */
+function claveColeccion(o){const odc=String(o.odc||'').trim();return odc?'ODC '+odc:((o.cliente||'—')+' · '+(fechaMetaDe(o)||'sin fecha'))}
+/* antes y después: el motor de siempre vs el nuevo, con las mismas capacidades, tiempos y liberaciones */
+function compararMotores(){const A=programarCon('adelante'),B=programarCon('atras');const ords=S.ordenes.filter(o=>abierta(o)&&!o.sinLanzar&&!o.sinFechaEntrega);
+  const carga=P=>{const c={};P.pro.forEach(x=>{const m=x.dia.slice(0,7);c[x.centro]=c[x.centro]||{};c[x.centro][m]=(c[x.centro][m]||0)+x.min});
+    const t={};P.tej.forEach(x=>{const m=x.dia.slice(0,7);t[m]=(t[m]||0)+(x.h||0)});if(Object.keys(t).length)c.tej=t;
+    const n={};P.banos.filter(b=>!b.error&&b.dia).forEach(b=>{const m=b.dia.slice(0,7);n[m]=(n[m]||0)+(b.horas||0)});if(Object.keys(n).length)c.tin=n;return c};
+  const cA=carga(A),cB=carga(B);const meses=[...new Set([...Object.values(cA),...Object.values(cB)].flatMap(x=>Object.keys(x)))].sort();
+  const centros=[...new Set([...Object.keys(cA),...Object.keys(cB)])].sort((x,y)=>ordenPaso(x)-ordenPaso(y));
+  const est=P=>{let prog=0,ok=0,tarde=0,col=0;ords.forEach(o=>{const r=P.ordenes[o.id];if(!r||r.bloqueo||!r.finPro)return;prog++;if(r.atraso){tarde++;if(r.atrasoPorColeccion)col++}else ok++});return{prog,ok,tarde,col}};
+  const mov=[];let cambianMes=0;ords.forEach(o=>{const a=A.ordenes[o.id],b=B.ordenes[o.id];if(!a||!b||!a.finPro||!b.finPro||a.bloqueo||b.bloqueo)return;const d=diasEntre(a.finPro,b.finPro);if(a.finPro.slice(0,7)!==b.finPro.slice(0,7))cambianMes++;mov.push({o,antes:a.finPro,despues:b.finPro,dias:d,meta:fechaMetaDe(o),tardeA:!!a.atraso,tardeB:!!b.atraso,atasco:b.atasco?b.atasco.nombre:''})});
+  mov.sort((x,y)=>Math.abs(y.dias)-Math.abs(x.dias));
+  return{meses,centros,cA,cB,estA:est(A),estB:est(B),cambianMes,mov,top:mov.slice(0,10),ords:ords.length,colecciones:Object.values(B.colecciones||{}).filter(c=>c.tarde).length}}
+/* ---------- UI del motor: selector + esperas (Configuración), "no llegan" (Advertencias), antes/después (Capacidad y decisiones) ---------- */
+function motorConfigHTML(){const m=motorProgramacion();const e=esperasPaso();const cens=S.centros.filter(c=>c.area==='pro');
+  return `<div class="panel"><h3>Motor de programación <span class="note">cuándo se coloca cada paso · capacidades, tiempos y liberaciones no cambian</span></h3><div class="body">
+   <div class="row" style="align-items:flex-end"><div><label>Criterio</label><select onchange="setMotor(this.value)"><option value="atras" ${m==='atras'?'selected':''}>Hacia atrás: desde la fecha de entrega (vigente)</option><option value="adelante" ${m==='adelante'?'selected':''}>Hacia adelante: lo antes posible (el de siempre)</option></select></div>
+    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px 12px;max-width:640px">Hacia atrás: cada orden parte de su fecha comprometida (o la pedida) y se coloca de empaque hacia corte, cada paso terminando el día laborable anterior a que empiece el siguiente, menos la espera del paso. Si no cabe, se programa igual hacia adelante y queda en Advertencias de fecha con días tarde, paso atascado y fecha posible. Las órdenes de una misma colección (ODC) van tarde juntas.</p></div>
+   <h4 style="margin:12px 0 6px">Esperas después de un paso <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">· días calendario · no existían en el sistema: sembradas de tu mensaje del 14-sep</span><span class="spacer"></span><button class="btn ghost sm" onclick="addEsperaRow()">Agregar</button></h4>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Paso</th><th>Aplica a (categorías/familias, coma)</th><th class="num" style="width:90px">Días</th><th>Nota</th><th style="width:110px">Sin regla</th><th></th></tr></thead><tbody>
+   ${e.map((r,i)=>`<tr style="${r.sinRegla?'opacity:.75':''}"><td><select onchange="setEsperaRow(${i},'paso',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.paso===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td><td><input type="text" style="width:220px" value="${esc(r.match||'')}" placeholder="(general del paso)" onchange="setEsperaRow(${i},'match',this.value)"></td><td class="num"><input type="number" min="0" style="width:70px" value="${r.dias}" onchange="setEsperaRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="valor sembrado; confírmalo">est.</span>':''}</td><td><input type="text" style="width:300px" value="${esc(r.nota||'')}" onchange="setEsperaRow(${i},'nota',this.value)"></td><td><label title="una fila sin regla no se aplica: solo se reporta"><input type="checkbox" ${r.sinRegla?'checked':''} onchange="setEsperaRow(${i},'sinRegla',this.checked)"> ${r.sinRegla?'<span class="tag t-alerta">no se aplica</span>':''}</label></td><td><button class="btn ghost sm" onclick="delEsperaRow(${i})">×</button></td></tr>`).join('')}</tbody></table>
+   ${e.some(r=>r.sinRegla)?`<p class="warn" style="font-size:var(--fs-xs);margin-top:8px"><b>Esperas sin regla (no se aplican):</b> ${e.filter(r=>r.sinRegla).map(r=>esc(r.nota||r.paso)).join(' · ')}</p>`:''}
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Las esperas de tela (días del proveedor en laborables, ${S.params.diasTintBodega} día(s) de tintorería a bodega) ya viven en sus tablas y el motor las respeta. Tejeduría y tintorería se arman por tela y por color (lotes), no orden por orden: siguen con su lógica de lote.</p>
+  </div></div>`}
+/* órdenes que, según el programa, no llegan a su fecha (solo motor hacia atrás): días tarde, paso atascado, fecha posible, colección */
+function noLleganHTML(){if(!S.ordenes.length)return '';const P=programar();if(P.motor!=='atras')return '';
+  const filas=[];S.ordenes.filter(o=>abierta(o)).forEach(o=>{const r=P.ordenes[o.id];if(!r||r.bloqueo||!r.atraso)return;filas.push({o,r})});
+  if(!filas.length)return `<p class="mut" style="margin-top:10px">Según el programa (hacia atrás), todas las órdenes programadas llegan a su fecha.</p>`;
+  filas.sort((a,b)=>(b.r.diasTarde||0)-(a.r.diasTarde||0));
+  const porCausa={};filas.forEach(({r})=>{const k=r.atrasoPorColeccion?'por su colección':(r.atasco?r.atasco.nombre:'—');porCausa[k]=(porCausa[k]||0)+1});
+  const cols=Object.values(P.colecciones||{}).filter(c=>c.tarde);
+  return `<h4 style="margin:14px 0 6px">Según el programa, no llegan a su fecha <span class="mut" style="font-weight:400">· ${filas.length} órdenes${cols.length?' · '+cols.length+' colecciones completas van tarde':''} · calculado por el motor hacia atrás, no es una decisión de nadie</span></h4>
+   <p style="font-size:var(--fs-xs);margin:0 0 6px"><b>Dónde se atascan:</b> ${Object.entries(porCausa).sort((a,b)=>b[1]-a[1]).map(([k,n])=>esc(k)+' ('+n+')').join(' · ')}</p>
+   <div class="scroll" style="max-height:380px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Cliente</th><th>Colección</th><th>Fecha meta</th><th class="num">Días tarde</th><th>Se atasca en</th><th>Fecha posible</th></tr></thead><tbody>
+   ${filas.slice(0,150).map(({o,r})=>`<tr><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.cliente||'')}</td><td style="font-size:var(--fs-xs)">${r.coleccion?esc(r.coleccion.key)+' <span class="mut">('+r.coleccion.n+')</span>':'<span class="mut">—</span>'}</td><td>${fmtDia(fechaMetaDe(o))}</td><td class="num"><span class="tag t-alerta">${r.diasTarde||0}</span></td><td>${r.atrasoPorColeccion?'<span class="tag t-aviso">va tarde por su colección</span> <span class="mut">'+esc((r.coleccion.causantes||[]).join(', '))+'</span>':(r.atasco?esc(r.atasco.nombre)+' <span class="mut">(+'+r.atasco.dias+' d)</span>':'<span class="mut">—</span>')}</td><td>${r.fechaPosible?fmtDia(r.fechaPosible):'—'}</td></tr>`).join('')}${filas.length>150?`<tr><td colspan="7" class="mut">… y ${filas.length-150} más</td></tr>`:''}</tbody></table></div>`}
+/* antes y después: se calcula solo cuando se pide (corre los dos motores completos) */
+function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="body" style="display:flex;align-items:center;gap:12px"><b>Motor de programación: antes y después</b><span class="mut">carga por centro y mes, órdenes a fecha, cambios de mes y las 10 que más se mueven, con el motor de siempre (adelante) y el nuevo (hacia atrás)</span><span class="spacer"></span><button class="btn sm" onclick="CAPD.cmp=true;render()">Comparar</button></div></div>`;
+  const R=compararMotores();const f=v=>v==null?'<span class="mut">·</span>':num(Math.round(v));const nomC=c=>c==='tej'?'Tejeduría (h)':c==='tin'?'Tintorería (h)':nCen(c);
+  return `<div class="panel"><h3>Motor de programación: antes y después <span class="note">${R.ords} órdenes programables · mismas capacidades, tiempos y liberaciones · vigente: ${esc(motorProgramacion())}</span><span class="spacer"></span><button class="btn ghost sm" onclick="CAPD.cmp=false;render()">cerrar</button></h3><div class="body">
+   <div class="kpis"><div class="kpi"><div class="v">${R.estA.ok} → ${R.estB.ok}</div><div class="k">Llegan a fecha (antes → después) de ${R.estA.prog}</div></div><div class="kpi ${R.estB.tarde>R.estA.tarde?'bad':''}"><div class="v">${R.estA.tarde} → ${R.estB.tarde}</div><div class="k">No llegan · después: ${R.estB.col} solo por su colección (${R.colecciones} colecciones)</div></div><div class="kpi"><div class="v">${R.cambianMes}</div><div class="k">Órdenes que cambian de mes de terminación</div></div></div>
+   <h4 style="margin:12px 0 6px">Carga por centro y mes <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">· minutos (tejeduría y tintorería en horas) · antes → después</span></h4>
+   <div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th>${R.meses.map(m=>`<th style="text-align:center">${esc(new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'short',year:'2-digit'}))}</th>`).join('')}</tr></thead><tbody>
+   ${R.centros.map(c=>`<tr><td><b>${esc(nomC(c))}</b></td>${R.meses.map(m=>{const a=(R.cA[c]||{})[m],b=(R.cB[c]||{})[m];const d=(b||0)-(a||0);return `<td style="text-align:center;white-space:nowrap">${f(a)} → <b>${f(b)}</b>${Math.abs(d)>1?`<br><span class="${d>0?'tag t-aviso':'tag t-ok'}" style="font-size:9px">${d>0?'+':''}${num(Math.round(d))}</span>`:''}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>
+   <h4 style="margin:12px 0 6px">Las 10 órdenes que más se mueven</h4>
+   <table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Cliente</th><th>Meta</th><th>Antes</th><th>Después</th><th class="num">Días</th><th>Antes / después</th><th>Se atasca en</th></tr></thead><tbody>
+   ${R.top.map(x=>`<tr><td>${esc(x.o.op)}</td><td>${esc(x.o.cliente||'')}</td><td>${fmtDia(x.meta)}</td><td>${fmtDia(x.antes)}</td><td>${fmtDia(x.despues)}</td><td class="num"><b>${x.dias>0?'+':''}${x.dias}</b></td><td>${x.tardeA?'<span class="tag t-alerta">tarde</span>':'<span class="tag t-ok">a fecha</span>'} / ${x.tardeB?'<span class="tag t-alerta">tarde</span>':'<span class="tag t-ok">a fecha</span>'}</td><td>${esc(x.atasco||'')}</td></tr>`).join('')}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Días positivos = termina más tarde con el motor hacia atrás (se acerca a su fecha). Nada de esto cambia capacidades ni tiempos: solo el criterio de cuándo se coloca cada paso.</p>
+  </div></div>`}
 function programar(){
   if(PLAN&&!LIB_ALL)return PLAN;
   const carga={}; S.recursos.forEach(r=>carga[r.id]={});
@@ -1053,46 +1125,115 @@ function programar(){
   });
   res.banos=banos.filter(b=>!b.pendiente);
 
-  /* 3 · Producción según ruta */
-  ords.forEach(o=>{
+  /* 3 · Producción según ruta — DOS motores (decisión 14-sep-2026):
+       'atras'    = parte de la fecha comprometida (o la pedida) y camina hacia atrás por la ruta; cada paso termina el día laborable
+                    anterior a que empiece el siguiente, menos la espera del paso (tabla esperasPaso). Si no cabe entre hoy/tela lista y la
+                    meta, se programa IGUAL hacia adelante y se explica (días tarde, paso atascado, fecha posible).
+       'adelante' = lo antes posible desde que la tela está lista (el motor de siempre, intacto: sirve de "antes").
+     Solo cambia el criterio de CUÁNDO se coloca cada paso. Capacidades, tiempos, candidatos de recurso, módulo fijado, puesto en cola,
+     prioridad global y reglas de liberación son exactamente los mismos en los dos. */
+  const modoMotor=MOTOR_FORZADO||motorProgramacion();
+  const antLabR=(d,r)=>{let x=d,g=0;while(!labR(x,r)&&g++<400)x=dsum(x,-1);return x};
+  // consume capacidad HACIA ATRÁS desde 'hasta' (último día laborable ≤ hasta); dry = solo simula, no consume
+  function fluirAtras(r,q,hasta,tag,dry){let d=antLabR(hasta,r),fin=null,ini=null,det=[],rest=q,guard=0;
+    while(rest>1e-6&&guard++<400){const l=libre(r,d);if(l>1e-6){const u=Math.min(l,rest);if(!dry)usar(r,d,u);rest-=u;if(!fin)fin=d;ini=d;det.push({dia:d,q:u,tag})}if(rest>1e-6)d=antLabR(dsum(d,-1),r)}
+    return{ini:ini||d,fin:fin||d,det}}
+  const errPaso=(s)=>(s.p.centro==='estampado'&&o_.tecnica)?'sin máquina para la técnica':s.p.centro==='modulos'?'ningún módulo con polivalencia para esta familia':s.perm.length?'sin recurso habilitado para esta categoría':'sin recurso';
+  let o_=null;
+  ords.forEach(o=>{o_=o;
     const ro=res.ordenes[o.id],av=S.avance[o.id]||{},et=etapas(o),fe=faseEstado(o.fase,o);
     if(!liberada(o,'tela')){ro.bloqueo='sin liberar';return}
     if(!(av.lista||fe.lista)&&((et.tej&&ro.sinLib==='tela')||(et.tin&&!ro.finTin&&!ro.tinturadaHecha))){
       ro.bloqueo=ro.sinLib==='tela'?'sin liberar tela':ro.banoPend?'baño pendiente de decisión':'tela pendiente';return}
     let cursor=(av.lista||fe.lista)?ini:(et.tin?(ro.finTin?dsum(ro.finTin,S.params.diasTintBodega):ini):(ro.telaDesde||ini));
     ro.telaLista=cursor;
-    (o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').forEach(p=>{
+    // preparación de cada paso: pendientes, tiempo, candidatos y recurso fijo — idéntico en los dos motores
+    const prep=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>{
       const hechas=fe.hechos.includes(p.centro)?o.cant:((av.centros||{})[p.centro]||0);const pend=Math.max(0,o.cant-hechas);
       const tPaso=(p.centro==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
       const minRef=pend*minPrenda(p.centro,tPaso);
-      if(minRef<=0){if(tPaso>0)ro.pasos.push({centro:p.centro,min:0,hecho:true,fin:cursor});return}
       let cand=S.recursos.filter(r=>r.activa&&r.centro===p.centro&&capDia(r)>0);
       if(p.centro==='estampado'&&o.tecnica)cand=cand.filter(r=>!(r.tecnicas||[]).length||r.tecnicas.includes(o.tecnica));
       if(p.centro==='modulos')cand=cand.filter(r=>poliPct(r,K(o.cat))>0);
-      const pc=(o.progCentro||{})[p.centro]||{};if(pc.desde&&pc.desde>cursor)cursor=pc.desde; // el centro programó un inicio posterior
+      const pc=(o.progCentro||{})[p.centro]||{};
       const fijo=pc.rec||(o.recursoFijo||{})[p.centro];let perm=[];
       if(fijo&&cand.some(r=>r.id===fijo))cand=cand.filter(r=>r.id===fijo);
-      else{perm=recursosDe(K(o.cat));const enCentro=perm.filter(id=>cand.some(r=>r.id===id));
-      if(enCentro.length)cand=cand.filter(r=>enCentro.includes(r.id))}
-      if(!cand.length){ro.pasos.push({centro:p.centro,min:minRef,error:(p.centro==='estampado'&&o.tecnica)?'sin máquina para la técnica':p.centro==='modulos'?'ningún módulo con polivalencia para esta familia':perm.length?'sin recurso habilitado para esta categoría':'sin recurso'});return}
-      // cada recurso tarda distinto (cabezas, paralelo, polivalencia): se elige el que termina antes con su propio tiempo;
-      // en confección, si hay un módulo que ya está en el mismo color y termina dentro de la ventana, se prefiere (menos cambios de hilo)
+      else{perm=recursosDe(K(o.cat));const enCentro=perm.filter(id=>cand.some(r=>r.id===id));if(enCentro.length)cand=cand.filter(r=>enCentro.includes(r.id))}
+      return{p,pend,tPaso,minRef,cand,perm,pc,hecho:minRef<=0}});
+    const meta=fechaMetaDe(o);
+    if(modoMotor==='atras'&&meta){
+      // pasada en seco hacia atrás: desde la meta, cada paso termina cuando empieza el siguiente menos la espera
+      let hasta=meta;const plan=[];let ok=true;
+      for(let i=prep.length-1;i>=0;i--){const s=prep[i];
+        if(s.hecho){plan[i]={hecho:true};continue}
+        if(!s.cand.length){plan[i]={error:true};continue}
+        let best=null;const opts=[];
+        s.cand.forEach(r=>{const pol=s.p.centro==='modulos'?poliPct(r,K(o.cat))/100:1;const q=s.pend*minPrendaR(r,s.p.centro,s.tPaso)/(pol||1);const x=fluirAtras(r,q,hasta,o.op,true);opts.push({r,q,x});
+          if(!best||x.ini>best.x.ini||(x.ini===best.x.ini&&total(r)<total(best.r)))best={r,q,x}}); // el que puede empezar MÁS TARDE (menos anticipación)
+        const ventana=s.p.centro==='modulos'?(+prm('ventanaColor',0)):0;
+        if(ventana>0&&best){const lim=dsum(best.x.ini,-ventana);const mismo=opts.filter(x=>x.x.ini>=lim&&ultColor[x.r.id]===o.color).sort((a,b)=>a.x.ini>b.x.ini?-1:1)[0];if(mismo)best=mismo}
+        const piso=maxD(ini,s.pc.desde||null);
+        plan[i]={r:best.r,q:best.q,ini:best.x.ini,fin:best.x.fin,limite:hasta,piso};
+        if(best.x.ini<piso)ok=false; // cruzó el hoy o el inicio que fijó el centro
+        const prev=prep.slice(0,i).reverse().find(x=>!x.hecho);
+        hasta=dsum(best.x.ini,-1-(prev?esperaDeCentro(prev.p.centro,o):0)); // el paso anterior termina antes, menos su espera
+      }
+      const primero=plan.find(x=>x&&!x.hecho&&!x.error);
+      ro.reqTelaLista=primero?dsum(primero.ini,-1):null; // cuándo debía estar lista la tela para llegar
+      ro.limites=prep.map((s,i)=>{const pl=plan[i];return pl&&!pl.hecho&&!pl.error?{centro:s.p.centro,fin:pl.limite,ini:pl.ini}:null});
+      if(ok&&(!primero||cursor<=primero.ini)){
+        // factible: se consume la capacidad exactamente como en la pasada en seco (mismo recurso, mismo límite)
+        prep.forEach((s,i)=>{const pl=plan[i];
+          if(pl.hecho){if(s.tPaso>0)ro.pasos.push({centro:s.p.centro,min:0,hecho:true,fin:cursor});return}
+          if(pl.error){ro.pasos.push({centro:s.p.centro,min:s.minRef,error:errPaso(s)});return}
+          const x=fluirAtras(pl.r,pl.q,pl.limite,o.op,false);
+          if(s.p.centro==='modulos'){ultColor[pl.r.id]=o.color;(secMod[pl.r.id]=secMod[pl.r.id]||[]).push({oid:o.id,op:o.op,color:o.color,min:pl.q})}
+          x.det.forEach(d=>res.pro.push({rec:pl.r.id,centro:s.p.centro,dia:d.dia,min:d.q,pz:pl.q?d.q/pl.q*s.pend:0,op:o.op}));
+          ro.pasos.push({centro:s.p.centro,min:pl.q,rec:pl.r.id,ini:x.ini,fin:x.fin,limite:pl.limite})});
+        ro.finPro=ro.pasos.filter(x=>!x.hecho&&!x.error).reduce((m,x)=>maxD(m,x.fin),null)||cursor;
+        ro.atraso=ro.finPro>meta;ro.motor='atras';ro.holgura=diasEntre(ro.finPro,meta); // factible por construcción; si no quedaba nada pendiente, misma regla que el motor de siempre
+        return}
+      ro.motor='atras-no-llega'; // no cabe: se programa igual hacia adelante (abajo) y se explica
+    }
+    // ---- motor de siempre: lo antes posible desde la tela lista (también para las que no llegan en 'atras') ----
+    prep.forEach(s=>{const p=s.p;
+      if(s.hecho){if(s.tPaso>0)ro.pasos.push({centro:p.centro,min:0,hecho:true,fin:cursor});return}
+      if(s.pc.desde&&s.pc.desde>cursor)cursor=s.pc.desde; // el centro programó un inicio posterior
+      if(!s.cand.length){ro.pasos.push({centro:p.centro,min:s.minRef,error:errPaso(s)});return}
       const ventana=p.centro==='modulos'?(+prm('ventanaColor',0)):0;
       let best=null;const opts=[];
-      cand.forEach(r=>{const pol=p.centro==='modulos'?poliPct(r,K(o.cat))/100:1;const q=pend*minPrendaR(r,p.centro,tPaso)/(pol||1);const f=simFin(r,q,cursor);opts.push({r,q,f});
+      s.cand.forEach(r=>{const pol=p.centro==='modulos'?poliPct(r,K(o.cat))/100:1;const q=s.pend*minPrendaR(r,p.centro,s.tPaso)/(pol||1);const f=simFin(r,q,cursor);opts.push({r,q,f});
         if(!best||f<best.f||(f===best.f&&total(r)<total(best.r)))best={r,q,f}});
       if(ventana>0&&best){const lim=dsum(best.f,ventana);const mismo=opts.filter(x=>x.f<=lim&&ultColor[x.r.id]===o.color).sort((a,b)=>a.f<b.f?-1:1)[0];if(mismo)best=mismo}
       if(p.centro==='modulos'){ultColor[best.r.id]=o.color;(secMod[best.r.id]=secMod[best.r.id]||[]).push({oid:o.id,op:o.op,color:o.color,min:best.q})}
       const min=best.q;
       const x=fluir(best.r,min,cursor,o.op);
-      x.det.forEach(d=>res.pro.push({rec:best.r.id,centro:p.centro,dia:d.dia,min:d.q,pz:min?d.q/min*pend:0,op:o.op}));
-      ro.pasos.push({centro:p.centro,min,rec:best.r.id,ini:x.ini,fin:x.fin});
+      x.det.forEach(d=>res.pro.push({rec:best.r.id,centro:p.centro,dia:d.dia,min:d.q,pz:min?d.q/min*s.pend:0,op:o.op}));
+      const lim=(ro.limites||[]).find(l=>l&&l.centro===p.centro);
+      ro.pasos.push(Object.assign({centro:p.centro,min,rec:best.r.id,ini:x.ini,fin:x.fin},lim?{limite:lim.fin}:{}));
       cursor=x.fin;
     });
-    ro.finPro=cursor;ro.atraso=ro.finPro>o.fecha;
+    ro.finPro=cursor;ro.atraso=ro.finPro>(meta||o.fecha);if(!ro.motor)ro.motor='adelante';
+    if(ro.motor==='atras-no-llega'){
+      ro.diasTarde=Math.max(0,diasEntre(meta,ro.finPro));ro.fechaPosible=ro.finPro;
+      // paso atascado = el que más se pasó de su límite; la tela cuenta como paso: debía estar lista en reqTelaLista y lo estuvo en telaLista
+      const sob=[];if(ro.reqTelaLista&&ro.telaLista>ro.reqTelaLista)sob.push({centro:et.provStep?'proveedor':(et.tin?'tin':(et.tej?'tej':'tela')),nombre:et.provStep?'esperar al proveedor de tela':et.tin?'esperar la tela (tintorería)':et.tej?'esperar la tela (tejeduría)':'tela lista',dias:diasEntre(ro.reqTelaLista,ro.telaLista)});
+      ro.pasos.forEach(x=>{if(x.limite&&x.fin>x.limite)sob.push({centro:x.centro,nombre:nCen(x.centro),dias:diasEntre(x.limite,x.fin)})});
+      sob.sort((a,b)=>b.dias-a.dias);ro.atasco=sob[0]||null;ro.sobrepasos=sob;
+    }
   });
+  /* 4 · Colecciones (solo motor atrás): las órdenes de una misma colección (ODC; sin ODC, cliente + fecha meta) se entregan juntas.
+        Si una no llega, TODA la colección va tarde: se marcan juntas. Restricción dura: no se reprograma por separado. */
+  res.colecciones={};
+  if(modoMotor==='atras'){const cols={};
+    ords.forEach(o=>{const ro=res.ordenes[o.id];if(!ro||ro.bloqueo||!ro.finPro)return;const k=claveColeccion(o);(cols[k]=cols[k]||[]).push(o)});
+    Object.entries(cols).forEach(([k,os])=>{if(os.length<2)return;const tarde=os.filter(o=>res.ordenes[o.id].atraso);const fin=os.reduce((m,o)=>maxD(m,res.ordenes[o.id].finPro),null);
+      const c={key:k,n:os.length,fin,tarde:tarde.length>0,causantes:tarde.map(o=>o.op),ops:os.map(o=>o.op),diasTarde:Math.max(0,...os.map(o=>res.ordenes[o.id].diasTarde||0))};
+      res.colecciones[k]=c;os.forEach(o=>{const ro=res.ordenes[o.id];ro.coleccion=c;if(c.tarde&&!ro.atraso){ro.atraso=true;ro.atrasoPorColeccion=true;ro.diasTarde=c.diasTarde;ro.fechaPosible=ro.fechaPosible||c.fin}})})}
+  res.motor=modoMotor;
   if(!LIB_ALL)PLAN=res;return res;
 }
+
 /* días estimados de planta para una orden (sin capacidad) — para fecha requerida de tela */
 function leadDias(o){let tot=0;(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').forEach(p=>{const cand=S.recursos.filter(r=>r.activa&&r.centro===p.centro);
   const cap=cand.reduce((a,r)=>a+capDia(r),0);if(cap>0)tot+=Math.ceil(o.cant*minPrenda(p.centro,p.t)/cap)});return Math.max(3,tot+1)}
@@ -2305,7 +2446,7 @@ function atenderAviso(id){const a=(S.params.advertencias||[]).find(x=>x.id===id)
 function panelAdvertencias(){const av=(S.params.advertencias||[]).filter(a=>!a.atendida).sort((a,b)=>a.ts<b.ts?1:-1);const vistas=(S.params.advertencias||[]).filter(a=>a.atendida).length;
   return `<div class="panel ${av.length?'':''}"><h3>Advertencias de fecha <span class="note">${av.length} pendientes${vistas?' · '+vistas+' atendidas':''} · reprogramaciones y cambios de ruta de los centros que dejan la entrega fuera de fecha</span></h3><div class="body">
    ${av.length?`<table><thead><tr><th>Cuándo</th><th>Quién</th><th>Orden</th><th>Qué hizo</th><th>Fecha meta</th><th>Estimada antes</th><th>Estimada ahora</th><th></th></tr></thead><tbody>
-   ${av.slice(0,60).map(a=>`<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(a.u)}</td><td>${esc(a.op)}</td><td>${esc(a.accion)}</td><td>${fmtDia(a.meta)} <span class="mut">(${a.metaTipo})</span></td><td>${a.antes?fmtDia(a.antes):'—'}</td><td><span class="tag t-alerta">${fmtDia(a.despues)}</span></td><td><button class="btn ghost sm" onclick="atenderAviso('${a.id}')">atendida</button></td></tr>`).join('')}</tbody></table>`:'<span class="mut">Ninguna pendiente.</span>'}</div></div>`}
+   ${av.slice(0,60).map(a=>`<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(a.u)}</td><td>${esc(a.op)}</td><td>${esc(a.accion)}</td><td>${fmtDia(a.meta)} <span class="mut">(${a.metaTipo})</span></td><td>${a.antes?fmtDia(a.antes):'—'}</td><td><span class="tag t-alerta">${fmtDia(a.despues)}</span></td><td><button class="btn ghost sm" onclick="atenderAviso('${a.id}')">atendida</button></td></tr>`).join('')}</tbody></table>`:'<span class="mut">Ninguna pendiente.</span>'}${noLleganHTML()}</div></div>`}
 /* reprogramación del centro: permiso "reprogramar" (o programa), queda en bitácora con antes → después y avisa si mueve la fecha */
 function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no puede reprogramar '+nCen(c)+'.');return}
   const pcAntes=JSON.stringify((o.progCentro||{})[c]||{});
@@ -2485,7 +2626,7 @@ function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
    min/prenda del centro (la misma regla del motor para un paso, minRef), sin repartir por días. Capacidad = calendario del mes × recursos
    activos (capDia), como el Plan mensual. Tejeduría y tintorería no tienen min/prenda por Proyecto: se muestran por PROGRAMA con toda la
    cartera (programarTodo) y la celda lo dice. No se toca el motor: solo se lee. */
-let CAPD={sel:null,cen:''};let CAPM=null;
+let CAPD={sel:null,cen:'',cmp:false};let CAPM=null;
 const CAP_TEXTIL={tej:'Tejeduría',tin:'Tintorería'};
 function nombreCentroCap(c){return CAP_TEXTIL[c]||nCen(c)}
 function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hechas=fe.hechos.includes(c)?o.cant:(ac[c]||0);const pend=Math.max(0,o.cant-hechas);if(!pend)return 0;
@@ -2568,6 +2709,7 @@ function vCapacidad(el){
    ${nuevos.length?`<div class="warn"><b>${nuevos.length} problemas nuevos sin ver:</b> ${nuevos.map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%, detectado '+fmTs(p.detectado)+')').join(' · ')}</div>`:''}
    ${M.sinProy.length?`<div class="warn"><b>${M.sinProy.length} órdenes con carga y sin Proyecto reconocible</b> (${num(M.sinProy.reduce((a,o)=>a+ +o.cant,0))} prendas): no caen en ningún mes de esta tabla hasta que Odoo les ponga proyecto.</div>`:''}
    <div class="kpis"><div class="kpi ${rojas.length?'bad':''}"><div class="v">${rojas.length}</div><div class="k">Centro-mes que no alcanzan</div></div><div class="kpi"><div class="v">${Object.values(M.celdas).filter(x=>estadoCel(x)==='amb').length}</div><div class="k">Justos (≥ ${prm('capAmbar',85)}%)</div></div><div class="kpi"><div class="v">${abiertos.length}</div><div class="k">Problemas abiertos · ${(S.params.capDecisiones||[]).filter(d=>!d.resuelto).length} decisiones abiertas</div></div><div class="kpi"><div class="v">${M.meses.length}</div><div class="k">Meses con carga: ${M.meses.map(fmM).join(', ')}</div></div></div>
+   ${motorComparaHTML()}
    <div class="panel capm"><h3>Uso de capacidad por centro y mes <span class="note">clic en una celda para ver el detalle · verde alcanza · ámbar justo · rojo no llega</span></h3><div class="scroll"><table><thead><tr><th>Centro</th>${M.meses.map(m=>'<th style="text-align:center">'+esc(fmM(m))+'</th>').join('')}</tr></thead><tbody>
     ${M.filas.map(f=>'<tr><td style="white-space:nowrap"><b>'+esc(f.n)+'</b>'+(f.area!=='pro'?' <span class="mut" style="font-size:var(--fs-xs)">programa</span>':'')+'</td>'+M.meses.map(m=>cel(f,m)).join('')+'</tr>').join('')||'<tr><td class="mut">Sin carga.</td></tr>'}</tbody></table></div></div>
    ${detalle}
@@ -3929,7 +4071,8 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">En Estampado, cada máquina puede limitarse a ciertas técnicas y tener prendas en paralelo (estaciones). En Bordado, cada bordadora tiene cabezas y puntadas por minuto; el tiempo de una orden sale de sus puntadas.</p></div></div>
 
 `:''}
-  ${CONF.tab==='cal'?`  <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
+  ${CONF.tab==='cal'?`  ${motorConfigHTML()}
+  <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
     ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
