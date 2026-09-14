@@ -956,6 +956,26 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // detalle al hacer clic: la ruta completa
    {const o=todas.find(x=>P.ordenes[x.id]&&(P.ordenes[x.id].pasos||[]).length);if(o){mDetalleAsig(o.id);const m=document.getElementById('modal').innerHTML;__check("asig: clic en la orden abre el detalle con toda la ruta (paso, recurso, inicio, fin, límite)",m.includes(o.op)&&m.includes('Límite (para llegar)')&&(m.match(/<tr>/g)||[]).length>=2);cerrar();}}
    APO={niveles:null,cli:'',cen:'',mes:'',q:''};page='ordenes';render();__check("asig sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* B–G: advertencias por movimiento · profundidad de color · fotos y salida en tintorería · WIP por orden y color · Hoy en tarjetas */
+  {const antes=__R.errors.length;const adminP=PERFIL;
+   // B
+   S.params.advertencias=S.params.advertencias||[];const ts0=new Date().toISOString();const ids=[];for(let i=0;i<3;i++){const id=uid();ids.push(id);S.params.advertencias.push({id,ts:ts0,u:'X',oid:'o'+i,op:'WH/T'+i,accion:'Cola de Corte: WH/T9 al puesto 1',meta:hoy(),metaTipo:'pedida',antes:hoy(),despues:dsum(hoy(),5),atendida:false})}
+   const g=gruposAdvertencias(S.params.advertencias.filter(a=>!a.atendida));__check("B: un movimiento que atrasó 3 órdenes es UNA línea",g.some(x=>x.items.length===3&&x.accion==='Cola de Corte: WH/T9 al puesto 1'));
+   page='panorama';render();const hp=()=>document.getElementById('p-panorama').innerHTML;__check("B: la tabla de advertencias va por movimiento con 'atender las N'",hp().includes('atender las 3'));
+   atenderGrupo(ids);__check("B: atender el grupo marca las 3 atendidas",ids.every(id=>S.params.advertencias.find(a=>a.id===id).atendida));S.params.advertencias=S.params.advertencias.filter(a=>!ids.includes(a.id));
+   // C
+   const c1={id:'zz1',n:'PRUEBA CLARO',cod:'',fam:'claro'},c2={id:'zz2',n:'PRUEBA SIN',cod:'',fam:''},c3={id:'zz3',n:'PRUEBA TCX',cod:'19-4050',fam:''};
+   __check("C: profundidad = fam explícita o código TCX; sin eso null (no por nombre)",profundidadDe(c1)==='claro'&&profundidadDe(c2)===null&&['claro','medio','oscuro'].includes(profundidadDe(c3)));
+   __check("C: la bandeja de colores sin profundidad existe y la página de tintorería la muestra si hay",typeof bandejaProfundidadHTML==='function'&&Array.isArray(coloresSinProfundidad(programar())));
+   // D/E
+   page='tintoreria';render();const ht=document.getElementById('p-tintoreria').innerHTML;__check("E: baños confirmados muestran máquina y fecha estimada de salida",!(S.banos_conf||[]).length||ht.includes('Máquina · sale (est.)'));
+   page='control';CTL.area='tin';render();const hc=document.getElementById('p-control').innerHTML;__check("D/E: control de piso tintorería con 'Sale (est.)' y órdenes con foto en miniatura",hc.includes('Sale (est.)')&&(S.ordenes.some(o=>fotoDe(o))?hc.includes('foto-mini')||!/mBanoHecho/.test(hc):true));
+   // F/D2
+   page='wip';WIP.tab='pro';WIPL={niveles:['color'],q:''};render();const hw=document.getElementById('p-wip').innerHTML;__check("F: Producto en proceso lista órdenes con foto y agrupa por COLOR",hw.includes('Órdenes en proceso')&&hw.includes('Color:')&&hw.includes('setNivelWIP('));
+   WIPL={niveles:null,q:''};
+   // G
+   page='panorama';render();__check("G: Hoy en tarjetas desplegables (Pendientes, Advertencias, Otros) con conteo en el título",(hp().match(/<details class="tarj/g)||[]).length>=2&&/Pendientes<\/b><span class="mut">\d+ tipos · [\d.]+ casos/.test(hp())&&hp().includes('Advertencias de fecha</b>'));
+   page='ordenes';render();__check("B–G sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

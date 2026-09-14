@@ -6,3 +6,5 @@ test/.out/
 test/fixtures/tarea_rows.json
 test/fixtures/ot_rows.json
 test/fixtures/macro_valid.json
+
+test/fixtures/fotos_*.csv
