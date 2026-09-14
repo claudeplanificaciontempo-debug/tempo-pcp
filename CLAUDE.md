@@ -178,6 +178,18 @@ sub-área: min vs capacidad por recurso, plan vs real por semana, paros). Al fin
 siempre "Resumen de todos los procesos" por centro, filtrado por lo que el
 perfil puede ver. Enlaces en el menú: "Reportería textil" y "Reportería por área".
 
+## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
+1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
+   parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
+2. Si un número aparece en pantalla, debe verse de dónde salió y dónde se cambia (nota, tooltip o enlace).
+3. Un valor configurado se respeta aunque sea 0, vacío o raro (`prm()`, `prmCal()`; nunca `x||default`).
+4. Si falta un dato se reporta en una bandeja y se detiene; no se rellena con suposiciones ni fallbacks.
+5. Si dos lugares hablan de lo mismo, la pantalla dice cuál manda. Días: manda el calendario del mes
+   (Planificar el mes); la regla base del área (días por semana) es solo el punto de partida sin marca.
+6. Los cambios de configuración que mueven el plan quedan en la bitácora (quién, cuándo, de qué a qué).
+7. Versión: `APP_BUILD` en index.html la sella el hook `.git/hooks/pre-commit` (fecha/hora local) y la app
+   avisa en pantalla cuando la copia cargada es más vieja que la publicada (`revisarVersion`).
+
 ## Convenciones de desarrollo
 - **Simulador de pruebas** en `test/` (ver `test/README.md`): `node test/build.js`
   y `node test/server.js`, abrir http://127.0.0.1:8765/ y revisar `__R` en la

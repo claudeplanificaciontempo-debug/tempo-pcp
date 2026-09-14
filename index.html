@@ -258,6 +258,7 @@ tbody tr:hover td{background:var(--field)}
     <span class="sub">TEMPOCODECA</span>
     <span class="spacer"></span>
     <span class="saved" id="saved"></span>
+    <span class="sub" id="version" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar."></span>
     <span class="sub" id="quien"></span>
     <button onclick="refrescar()" title="Volver a leer los datos del servidor">Actualizar</button>
     <button onclick="exportJSON()">Respaldo</button>
@@ -512,6 +513,12 @@ async function _save(){
   else st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
 }
 
+/* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
+const APP_BUILD='2026-09-13 22:20';
+function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
+async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/const APP_BUILD='2026-09-13 22:20']+)'/);if(!m)return;
+    if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
+      b.innerHTML='Estás viendo una <b>versión vieja</b> (v '+esc(APP_BUILD)+'). Publicada: v '+esc(m[1])+'. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>'}}catch(e){}}
 /* ---------- sesión ---------- */
 async function iniciar(){
   if(SUPABASE_URL.startsWith('PEGA')){mostrarLogin('Falta configurar la conexión: abre el archivo y pega la URL y la clave del proyecto al inicio del script.');return}
@@ -527,7 +534,7 @@ async function entrar(user){
   document.getElementById('quien').textContent=(PERFIL.nombre||user.email)+' · '+(ROLES[PERFIL.rol]||PERFIL.rol);
   await cargarTodo();
   document.querySelectorAll('nav a').forEach(a=>{const need=a.dataset.perm;a.style.display=(!need||puede(need))?'':'none'});decorarNav();
-  page='ordenes';render();
+  page='ordenes';render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);
 }
 function mostrarLogin(msg){document.getElementById('login').classList.add('on');document.getElementById('login-msg').textContent=msg||''}
 async function login(){if(!sb)return;const e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value;
@@ -970,7 +977,7 @@ function programar(){
         if(!mejorR||d<mejorD||(d===mejorD&&total(r)<total(mejorR))){mejorR=r;mejorD=d}});maqGrupo[b.grupo]=mejorR?mejorR.id:b.rec}
     b.rec=maqGrupo[b.grupo];const r=R(b.rec);const d=primerDia(r);
     usar(r,d,b.horas);b.dia=d;b.tarde=b.req?d>b.req:false;
-    b.oids.forEach(id=>{const ro=res.ordenes[id];ro.finTin=maxD(ro.finTin,d)});
+    b.oids.forEach(id=>{const ro=res.ordenes[id];if(ro)ro.finTin=maxD(ro.finTin,d)}); // una orden del baño confirmado puede ya no existir (borrada o fuera del archivo): no rompe el programa
   });
   res.banos=banos.filter(b=>!b.pendiente);
 
@@ -3178,7 +3185,7 @@ function vConfig(el){
   <div class="panel" id="bloque-pro"><h3>Recursos de producción <span class="note">módulos, mesas, máquinas</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRec('pro')">Agregar recurso</button></h3>
    <div class="body"><table><thead><tr><th>Recurso</th><th>Centro</th><th class="num">Personas</th><th class="num">Min/día</th><th class="num">Efic. %</th><th class="num">Min efectivos/día</th><th class="num">Días/sem <span class="mut" title="Regla base del área; el calendario del mes manda">(base del área)</span></th><th>Activo</th><th></th></tr></thead><tbody>${recRows('pro')}</tbody></table></div></div>
 
-  <p class="mut" style="font-size:var(--fs-s);margin:-6px 0 14px">"Días/sem" no se edita aquí: es la <b>regla base de cada área</b> (Configuración → Calendario y parámetros → Días de trabajo por área) y sobre ella <b>manda el calendario del mes</b> (los días marcados como trabaja / no trabaja en Dirección → Plan mensual → Planificar el mes). Por eso un mes puede tener menos o más días que los que da la regla. El campo "días" propio de cada recurso ya no se usa.</p>
+  <p class="mut" style="font-size:var(--fs-s);margin:-6px 0 14px">"Días/sem" no se edita aquí. <b>Manda el calendario del mes</b> (Dirección → Plan mensual → Planificar el mes): ahí se marcan los días reales. La regla base del área (Configuración → Calendario y parámetros) es <b>solo el punto de partida</b> para los días sin marca en el calendario; por eso un mes puede tener más o menos días que los que da la regla. El campo "días" propio de cada recurso ya no se usa.</p>
   <div class="panel" id="bloque-maq"><h3>Máquinas de confección <span class="note">inventario por módulo, para balancear</span><span class="spacer"></span><button class="btn ghost sm" onclick="mPegarMaq()">Pegar desde Excel</button> <button class="btn ghost sm" onclick="addMaq()">Agregar</button></h3>
    <div class="body">${resumenMaq()}
    <table><thead><tr><th>Tipo</th><th>Código / placa</th><th>Módulo</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -3243,7 +3250,8 @@ function vConfig(el){
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>
     <div class="row">${inp('hLavado','Horas lavado')}${inp('hClaro','Horas claro')}${inp('hMedio','Horas medio')}${inp('hOscuro','Horas oscuro')}${inp('hReproceso','Reproceso')}</div></div></div>
 
-  <div class="panel" id="bloque-cal"><h3>Días de trabajo por área <span class="note">días base por semana y excepciones puntuales · el calendario del mes se marca en Dirección → Plan mensual</span></h3><div class="body">
+  <div class="panel" id="bloque-cal"><h3>Días de trabajo por área <span class="note">regla base por semana y excepciones</span></h3><div class="body">
+   <div class="warn" style="margin-bottom:12px"><b>Manda el calendario del mes</b> (Dirección → Plan mensual → Planificar el mes): ahí se marcan los días reales que trabaja cada área. La regla base de aquí ("días por semana") es <b>solo el punto de partida</b> para los días que no tienen marca en el calendario. Las excepciones de abajo son esas mismas marcas, vistas como lista. Todo cambio queda en la bitácora.</div>
    <div class="row">${['tej','tin','pro'].map(a=>`<div><label>${AREAS[a]} · días por semana</label><select onchange="setCal('${a}',this.value)">${[5,6,7].map(d=>`<option value="${d}" ${(p.cal||{})[a]==d?'selected':''}>${d===5?'5 · lunes a viernes':d===6?'6 · lunes a sábado':'7 · todos los días'}</option>`).join('')}</select></div>`).join('')}</div>
    <h4 style="margin:12px 0 6px">Excepciones</h4>
    <div class="row" style="align-items:flex-end">
@@ -3426,7 +3434,7 @@ function planMesHTML(){
     const prop=[...sab,...dom,...otros].slice(0,faltan);
     info[a]={cap,carga,capDiaA,faltan,prop,r0,ndias:dias.filter(d=>r0&&labR(d,r0)).length}});
   const fm=new Date(y,m-1,15).toLocaleDateString('es-EC',{month:'long',year:'numeric'});
-  return `<h4 style="margin:12px 0 6px">Planificar el mes <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· carga contra capacidad con los días marcados; clic en un día para cambiarlo</span></h4>
+  return `<h4 style="margin:12px 0 6px">Planificar el mes <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· <b>este calendario manda</b>: los días marcados aquí son los que trabaja cada área; la regla base del área (Configuración → Calendario y parámetros: ${['tej','tin','pro'].map(a=>AREAS[a]+' '+prmCal(a,'—')+' d/sem').join(' · ')}) es solo el punto de partida para los días sin marca. Clic en un día para cambiarlo; queda en la bitácora.</span></h4>
   <div class="row" style="align-items:flex-end"><div><label>Mes</label><input type="month" value="${ym}" onchange="MESPLAN=this.value;render()"></div>
    ${(S.params.excepciones||[]).some(e=>e.fecha.startsWith(ym))?`<div><label>&nbsp;</label><button class="btn ghost sm" onclick="limpiarMes('${ym}')">Quitar las excepciones de este mes</button></div>`:''}</div>
   <table><thead><tr><th>Área</th><th class="num">Días <span class="mut">(base del área ± excepciones)</span></th><th class="num">Capacidad</th><th class="num">Carga</th><th style="width:130px">Uso</th><th>Recomendación</th></tr></thead><tbody>
@@ -3439,24 +3447,24 @@ function planMesHTML(){
   </tbody></table></div>
   <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">La carga es la que el programa pone en ese mes con el calendario actual: si un mes no alcanza, parte de su carga se corre al siguiente, así que conviene revisar los meses en orden. Los días punteados en rojo son los que propongo agregar.</p>`;
 }
-function limpiarMes(ym){if(!confirm('¿Quitar todas las excepciones de '+ym+'? El mes vuelve a los días base por semana.'))return;S.params.excepciones=(S.params.excepciones||[]).filter(e=>!e.fecha.startsWith(ym));save();render()}
+function limpiarMes(ym){if(!confirm('¿Quitar todas las excepciones de '+ym+'? El mes vuelve a los días base por semana.'))return;const q=(S.params.excepciones||[]).filter(e=>e.fecha.startsWith(ym));S.params.excepciones=(S.params.excepciones||[]).filter(e=>!e.fecha.startsWith(ym));bitacora('Calendario · '+ym+' · quitadas '+q.length+' marcas: '+q.map(e=>fmtDia(e.fecha)+' '+(e.area==='todas'?'todas':AREAS[e.area])+' '+(e.tipo==='trabaja'?'trabaja':'no trabaja')).join(', '));save();render()}
 function togDia(a,d,on){if(!confirm((on?'Marcar como NO laborable ':'Marcar como laborable ')+fmtDia(d)+' en '+AREAS[a]+'?'))return;if(!S.params.excepciones)S.params.excepciones=[];S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===a));
-  S.params.excepciones.push({fecha:d,area:a,tipo:on?'no':'trabaja',motivo:'planificación del mes'});save();render()}
+  S.params.excepciones.push({fecha:d,area:a,tipo:on?'no':'trabaja',motivo:'planificación del mes'});bitacora('Calendario · '+AREAS[a]+' · '+fmtDia(d)+': '+(on?'laborable → NO trabaja':'no laborable → SÍ trabaja'));save();render()}
 function aplicarProp(a,ym){if(!S.params.excepciones)S.params.excepciones=[];
   const [y,m]=ym.split('-').map(Number);const nd=new Date(y,m,0).getDate();const dias=[];for(let d=1;d<=nd;d++)dias.push(ym+'-'+String(d).padStart(2,'0'));
   const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area===a);const r0=recs[0];if(!r0)return;
   const g=GRAN;GRAN='mes';const cs=cargaSemanal();GRAN=g;
   const cap=recs.reduce((x,r)=>x+capDia(r)*dias.filter(d=>labR(d,r)).length,0),carga=recs.reduce((x,r)=>x+((cs[r.id]||{})[ym]||0),0),capDiaA=recs.reduce((x,r)=>x+capDia(r),0);
-  const faltan=carga>cap&&capDiaA?Math.ceil((carga-cap)/capDiaA):0;const cand=dias.filter(d=>!labR(d,r0));
+  const faltan=carga>cap&&capDiaA?Math.ceil((carga-cap)/capDiaA):0;const cand=dias.filter(d=>!labR(d,r0));const agregados=[];
   [...cand.filter(d=>dow(d)===6),...cand.filter(d=>dow(d)===0),...cand.filter(d=>dow(d)!==0&&dow(d)!==6)].slice(0,faltan).forEach(d=>{
-    S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===a));S.params.excepciones.push({fecha:d,area:a,tipo:'trabaja',motivo:'recomendación del mes'})});
-  save();render()}
+    S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===a));S.params.excepciones.push({fecha:d,area:a,tipo:'trabaja',motivo:'recomendación del mes'});agregados.push(fmtDia(d))});
+  bitacora('Calendario · '+AREAS[a]+' · '+ym+' · aplicada la recomendación: '+agregados.length+' días marcados SÍ trabaja ('+agregados.join(', ')+')');save();render()}
 function bitacora(txt){S.bitacora.push({id:uid(),ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',t:txt});if(S.bitacora.length>500)S.bitacora=S.bitacora.slice(-500)}
 function setKgTela(rid,tid,v){const r=R(rid);if(!r)return;r.kgTela=r.kgTela||{};if(v===''||+v<=0)delete r.kgTela[tid];else r.kgTela[tid]=+v;r.telas=Object.keys(r.kgTela);save();render()}
 function setCosto(k,v){S.params.costos=S.params.costos||{};S.params.costos[k]=+v||0;save();render()}
 function costoMin(centro){const c=S.params.costos||{};return centro==='corte'?c.minCorte||0:centro==='empaque'?c.minEmp||0:centro==='modulos'?c.minConf||0:c.minConf||0}
 function setPoli(rid,kid,v){const r=R(rid);if(!r)return;r.poli=r.poli||{};if(v===''||v==null)delete r.poli[kid];else r.poli[kid]=Math.max(0,+v);save();render()}
-function setCal(a,v){if(!S.params.cal)S.params.cal={};S.params.cal[a]=+v;save();render()}
+function setCal(a,v){if(!S.params.cal)S.params.cal={};const antes=S.params.cal[a];S.params.cal[a]=+v;bitacora('Calendario · '+AREAS[a]+' · días base por semana: '+(antes==null?'(sin valor)':antes)+' → '+(+v));save();render()}
 /* ---------- Stock de tela cruda (Planificación textil): requerido por tela y mes de las órdenes liberadas, stock a mano, a tejer ---------- */
 let STK={mes:null};
 function stockTela(){if(!S.params.stockTela)S.params.stockTela={};return S.params.stockTela}
@@ -3832,9 +3840,10 @@ function togOrigenTelaCuartoRow(i){const r=origenTela().porCuarto[i];r.pendiente
 function delOrigenTelaCuartoRow(i){origenTela().porCuarto.splice(i,1);save();render()}
 function addExc(){const g=x=>document.getElementById(x).value;const d1=g('ex-d1'),d2=g('ex-d2')||d1;if(!d1){alert('Falta la fecha.');return}
   if(!S.params.excepciones)S.params.excepciones=[];const area=g('ex-a'),tipo=g('ex-t'),motivo=g('ex-m');
-  for(let d=d1;d<=d2;d=dsum(d,1)){S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===area));S.params.excepciones.push({fecha:d,area,tipo,motivo});if(S.params.excepciones.length>2000)break}
+  const antes=[];for(let d=d1;d<=d2;d=dsum(d,1)){const prev=S.params.excepciones.find(e=>e.fecha===d&&e.area===area);if(prev)antes.push(fmtDia(d)+' era '+(prev.tipo==='trabaja'?'trabaja':'no trabaja'));S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===area));S.params.excepciones.push({fecha:d,area,tipo,motivo});if(S.params.excepciones.length>2000)break}
+  bitacora('Calendario · '+(area==='todas'?'todas las áreas':AREAS[area])+' · '+fmtDia(d1)+(d2!==d1?' → '+fmtDia(d2):'')+': '+(tipo==='trabaja'?'SÍ trabaja':'NO trabaja')+(motivo?' ('+motivo+')':'')+(antes.length?' · reemplaza: '+antes.join(', '):''));
   save();render()}
-function delExc(f,a){S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===f&&e.area===a));save();render()}
+function delExc(f,a){const e=(S.params.excepciones||[]).find(x=>x.fecha===f&&x.area===a);S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===f&&e.area===a));bitacora('Calendario · '+(a==='todas'?'todas las áreas':AREAS[a])+' · '+fmtDia(f)+': quitada la marca '+(e?(e.tipo==='trabaja'?'SÍ trabaja':'NO trabaja'):'')+' (vuelve a la regla base)');save();render()}
 function setParam(k,v){S.params[k]=(k==='inicio')?v:(+v||0);save();render()}
 function setRow(tab,id,k,v){const r=S[tab].find(x=>x.id===id);if(!r)return;r[k]=(typeof v==='boolean')?v:(isNaN(v)||v===''?v:+v);save();render()}
 function setRec(id,k,v){setRow('recursos',id,k,v)}
