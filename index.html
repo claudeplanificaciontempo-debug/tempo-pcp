@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 09:21';
+const APP_BUILD='2026-09-14 09:25';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -4560,8 +4560,9 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
    ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
    <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar se <b>reemplazan todas las órdenes</b> del sistema por las del archivo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;
-  const prevFases={};S.ordenes.forEach(o=>{if(o.fases&&o.fases.length)prevFases[normTxt(o.op)]=o.fases});const prevAj={};S.ordenes.forEach(o=>{if(o.opsSam)prevAj[normTxt(o.op)]=o.opsSam});const prevFase={};S.ordenes.forEach(o=>prevFase[normTxt(o.op)]=o.fase||null);
+  const prevFases={};S.ordenes.forEach(o=>{if(o.fases&&o.fases.length)prevFases[normTxt(o.op)]=o.fases});const prevAj={};S.ordenes.forEach(o=>{if(o.opsSam)prevAj[normTxt(o.op)]=o.opsSam});const prevFalta={};S.ordenes.forEach(o=>{const c=(o.telas||[]).filter(t=>t.faltaConf);if(c.length)prevFalta[normTxt(o.op)]=c});const prevFase={};S.ordenes.forEach(o=>prevFase[normTxt(o.op)]=o.fase||null);
   S.ordenes=p.ordenes.slice();S.avance={};colgarFotos();conservarAjustes(prevAj);
+  S.ordenes.forEach(o=>{const c=prevFalta[normTxt(o.op)];if(!c)return;let n=0;(o.telas||[]).forEach(t=>{const pv=c.find(x=>x.tela===t.tela);if(pv){t.faltaConf=pv.faltaConf;n++}});if(n)aplicarRutaTextil(o)}); // lo decidido en liberación (qué le falta a la tela) viaja con la OP
   S.ordenes.forEach(o=>{const k=normTxt(o.op);const nueva=o.fase;if(prevFases[k])o.fases=prevFases[k].slice();if(k in prevFase){o.fase=prevFase[k];registrarFase(o,nueva,'archivo');o.fase=nueva}else{o.fases=[{f:nueva||null,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',origen:'archivo',antes:null}]}});
   S.params.tareaCarga={archivo:p.archivo,fecha:new Date().toISOString(),hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
