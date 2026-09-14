@@ -152,6 +152,14 @@ Advertencias de fecha (`noLleganHTML`). Colecciones (ODC; sin ODC cliente+fecha)
 (`ro.atrasoPorColeccion`). Tejeduría y tintorería siguen por lote (no se movieron). `programarCon(modo)` corre el otro
 motor sin tocar la caché; `compararMotores` = antes/después (Capacidad y decisiones). Ver `MOTOR_HACIA_ATRAS_REPORTE.md`.
 
+**Pantalla (14-sep-2026):** menú **horizontal** arriba (cinco grupos con desplegables: `navToggle`/`navCerrarTodo`; el
+`.gbody` es `position:absolute` y se abre con la clase `abierto`; ya no hay acordeón ni `style.display` en el cuerpo). Toda
+entrada de `nav` lleva ícono (`ICO_NAV` debe tener una clave por cada `data-p`). **Hoy** empieza con el índice de
+**Pendientes** (`pendientesHoy`: conteo + enlace por tipo; posponer con fecha y motivo en `S.params.pendPospuestos`,
+nunca desaparece). Las bandejas siguen en sus pantallas. **Asignar ODC** a mano en Órdenes (`asignarODC`, `o.odcManual`;
+la tabla 14 tiene la fila `odc` y `aplicarTarea` la conserva; forma colección con ese ODC). Ver
+`PANTALLA_MENU_PENDIENTES_ODC_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

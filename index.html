@@ -566,7 +566,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 15:24';
+const APP_BUILD='2026-09-14 15:27';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1397,8 +1397,8 @@ function vPanorama(el){
   const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long'});
   el.innerHTML=`<div class="pagehead"><h2>Hoy</h2><span class="spacer"></span><span class="mut">${fmt(h)}</span></div>
   <p class="lede">Lo que está programado hoy por área, lo que necesita una decisión, y cómo va el mes. La foto mensual está en el Resumen gerencial.</p>
-  ${puede('programa')?panelAdvertencias():''}
   ${pendientesHoyHTML()}
+  ${puede('programa')?panelAdvertencias():''}
   ${puede('programa')?avisoCapacidadHTML():''}
   <div class="kpis">
    <div class="kpi"><div class="v">${num(kgHoy)} kg</div><div class="k">A tejer hoy${!kgHoy&&proxTej?' · próximo '+fmtDia(proxTej):''}</div></div>

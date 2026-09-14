@@ -268,3 +268,9 @@ Esperas por paso `S.params.esperasPaso` (lavado planta 3 est., Quito denim 15, p
 (`claveColeccion`, `res.colecciones`, `atrasoPorColeccion`). Antes/después: `compararMotores` (Capacidad y decisiones).
 Pendientes: confirmar qué ODC son colecciones reales; actualizar `inicio` (07-sep vs hoy); decidir si los lotes de
 tejeduría/tintorería siguen `reqTelaLista`; cómo identificar prenda tinturada; parámetro tejeduría 2 semanas.
+
+### Menú horizontal · pendientes en Hoy · ODC a mano (14-sep-2026)
+Ver `PANTALLA_MENU_PENDIENTES_ODC_REPORTE.md`. `#app` es una sola columna (64px cabecera + 46px menú + contenido);
+`nav` horizontal con `.grp` y `.gbody.abierto` (desplegable), íconos completos en `ICO_NAV`. Hoy: `pendientesHoyHTML()`
+primero, con `pendientesHoy()` (13 tipos), `posponerPend`/`reactivarPend` (`S.params.pendPospuestos`). Órdenes:
+`panelODCHTML`/`asignarODC` (`o.odcManual`); tabla 14 fila `odc` conservada en la recarga con bandeja si el archivo trae otro.
