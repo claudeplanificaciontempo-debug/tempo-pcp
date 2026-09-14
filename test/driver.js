@@ -438,7 +438,9 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // la carga de una celda por Proyecto = suma de prendas pendientes × min/prenda (misma regla del motor) sobre TODAS las abiertas, liberadas o no
    const k=Object.keys(M.celdas).find(k=>M.celdas[k].base==='proyecto'&&!M.celdas[k].vencido);const x=M.celdas[k];const esp=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===x.m).reduce((a,o)=>a+minPendCentro(o,x.c),0);
    __check("capacidad: la celda suma prendas pendientes × min/prenda de todas las órdenes del Proyecto",Math.abs(x.carga-esp)<1e-6&&x.det.every(d=>d.min>0)&&x.det.slice(1).every((d,i)=>d.min<=x.det[i].min),x.carga+' vs '+esp);
-   __check("capacidad: la capacidad es calendario × recursos (capDia)",x.cap===capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),x.m));
+   __check("capacidad: la capacidad es calendario × recursos (capDia)",x.cap===capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),x.m,x.u==='pt'));
+   {const kb=Object.keys(M.celdas).find(k=>M.celdas[k].c==='bordado'&&!M.celdas[k].vencido);if(kb){const b=M.celdas[kb];const rB=S.recursos.filter(r=>r.activa&&r.centro==='bordado');const o1=b.det[0].o;const pt=(o1.ruta.find(p=>p.centro==='bordado')||{}).t;
+     __check("capacidad: bordado va en puntadas (pend × puntadas) contra ppm × cabezas de cada bordadora, como el motor",b.u==='pt'&&Math.abs(b.det[0].min-o1.cant*pt)<1e-6&&b.cap===capMesRecs(rB,b.m,true)&&rB.every(r=>ptDia(r)===capDia(r)*(+r.ppm>0?+r.ppm:velBordado())*(+r.cabezas||1)),kb+' '+b.u)}}
    __check("capacidad: la celda dice si incluye no liberadas",html().includes('no lib.')||html().includes('todo liberado'));
    __check("capacidad: umbral ámbar sembrado en params y editable",S.params.capAmbar===85&&/onchange="setCapAmbar/.test(html()));
    S.params.capAmbar=0;render();__check("capacidad: umbral 0 se respeta (todo lo que no es rojo es ámbar)",Object.values(matrizCapacidad()).length>=0&&!Object.values(matrizCapacidad().celdas).some(c=>estadoCel(c)==='ok'));S.params.capAmbar=85;
