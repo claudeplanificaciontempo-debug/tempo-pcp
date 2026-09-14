@@ -261,10 +261,10 @@ planificación); `S.params.motivosReproceso` y `S.params.restriccionFaltante` ed
 planificación, restricciones), `reingresarFaltante` manual; `reporteTin`/`reporteTinPanelHTML` mensual.
 
 ### Motor de programación hacia atrás (14-sep-2026)
-Ver .  atras|adelante (Configuración → Calendario). Sección 3 de 
-con dos ramas: hacia atrás desde la fecha meta con  (seco + firme; piso = inicio del programa, tela lista, 
-del centro); si no cabe, hacia adelante igual y  con , , , .
-Esperas por paso  (lavado planta 3 est., Quito denim 15, prenda tinturada sin regla). Colecciones por ODC
-(, , ). Antes/después:  (Capacidad y decisiones).
-Pendientes: confirmar qué ODC son colecciones reales; actualizar  (07-sep vs hoy); decidir si los lotes de
-tejeduría/tintorería siguen ; cómo identificar prenda tinturada; parámetro tejeduría 2 semanas.
+Ver `MOTOR_HACIA_ATRAS_REPORTE.md`. `S.params.motor` atras|adelante (Configuración → Calendario). Sección 3 de `programar()`
+con dos ramas: hacia atrás desde la fecha meta con `fluirAtras` (seco + firme; piso = inicio del programa, tela lista, `desde`
+del centro); si no cabe, hacia adelante igual y `ro.motor=atras-no-llega` con `diasTarde`, `atasco`, `fechaPosible`, `reqTelaLista`.
+Esperas por paso `S.params.esperasPaso` (lavado planta 3 est., Quito denim 15, prenda tinturada sin regla). Colecciones por ODC
+(`claveColeccion`, `res.colecciones`, `atrasoPorColeccion`). Antes/después: `compararMotores` (Capacidad y decisiones).
+Pendientes: confirmar qué ODC son colecciones reales; actualizar `inicio` (07-sep vs hoy); decidir si los lotes de
+tejeduría/tintorería siguen `reqTelaLista`; cómo identificar prenda tinturada; parámetro tejeduría 2 semanas.
