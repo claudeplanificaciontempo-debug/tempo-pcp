@@ -8,7 +8,7 @@ window.alert=m=>{__R.alerts.push({page:(typeof page!=='undefined'?page:''),msg:S
 const DB={perfiles:[{id:'u1',email:'prueba@tempo.local',rol:'admin',nombre:'Usuario de prueba',area:null}]};
 const tabla=t=>DB[t]=DB[t]||[];
 function builder(t){const st={t,op:'select',filters:[],single:false,payload:null,ids:null};
-  const b={select(){return b},order(){return b},range(){return b},eq(k,v){st.filters.push([k,v]);return b},single(){st.single=true;return b},
+  const b={select(){return b},order(){return b},range(){return b},limit(){return b},eq(k,v){st.filters.push([k,v]);return b},single(){st.single=true;return b},
     upsert(rows){st.op='upsert';st.payload=rows;return b},delete(){st.op='delete';return b},in(k,ids){st.ids=ids;return b},update(obj){st.op='update';st.payload=obj;return b},
     then(res,rej){let rows=tabla(t);try{
       if(st.op==='select'){let out=rows.filter(r=>st.filters.every(([k,v])=>r[k]===v));if(st.single){return res(out.length?{data:out[0],error:null}:{data:null,error:{message:'no rows'}})}return res({data:JSON.parse(JSON.stringify(out)),error:null})}
