@@ -551,7 +551,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-13 23:03';
+const APP_BUILD='2026-09-14 08:14';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1670,10 +1670,35 @@ function vWIP(el){
    <tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${num(Object.values(agg).reduce((a,x)=>a+x.pz,0))}</td><td class="num">${num(Object.values(agg).reduce((a,x)=>a+x.min,0))}</td><td class="num">${num(Object.values(agg).reduce((a,x)=>a+x.min,0)/60)}</td><td></td></tr></tbody></table></div></div>`;
 }
 
+/* ---------- Cumplimiento de FACTURACIÓN: fecha de compromiso vs fecha en que la orden llegó a Facturado (o Stand by) ----------
+   Se mide solo en fecha. NO mide si la orden salió completa: la fase dice que pasó, no cuántas prendas. */
+let CUF={mes:''};
+function cumplimientoFacturacion(){const fact=S.ordenes.filter(esFacturada);const filas=[];const sinComp=[],sinFecha=[];
+  fact.forEach(o=>{const ff=fechaFacturada(o);if(!o.fechaCompromiso){sinComp.push(o);return}if(!ff||!ff.exacta){sinFecha.push({o,ff});return}
+    const dias=Math.round((new Date(ff.ts+'T12:00:00')-new Date(o.fechaCompromiso+'T12:00:00'))/864e5);filas.push({o,comp:o.fechaCompromiso,fact:ff.ts,u:ff.u,dias,aTiempo:dias<=0})});
+  const resumen=(xs)=>{const n=xs.length,ok=xs.filter(x=>x.aTiempo).length,tarde=xs.filter(x=>!x.aTiempo);return{n,ok,pct:n?ok/n*100:null,atrasoProm:tarde.length?tarde.reduce((a,x)=>a+x.dias,0)/tarde.length:null,tarde:tarde.length,pz:xs.reduce((a,x)=>a+(+x.o.cant||0),0)}};
+  const por=(fn)=>{const g={};filas.forEach(x=>{const k=fn(x)||'—';(g[k]=g[k]||[]).push(x)});return Object.entries(g).map(([k,xs])=>Object.assign({k},resumen(xs))).sort((a,b)=>b.n-a.n)};
+  return{filas,sinComp,sinFecha,total:resumen(filas),porMes:por(x=>x.comp.slice(0,7)).sort((a,b)=>a.k<b.k?-1:1),porCliente:por(x=>x.o.cliente),porODC:por(x=>x.o.odc)}}
+function cumplimientoFacturacionHTML(){const R=cumplimientoFacturacion();const pct=v=>v==null?'—':Math.round(v)+' %';const d=v=>v==null?'—':num(v,1)+' d';
+  const meses=R.porMes.map(m=>m.k);const sel=CUF.mes&&meses.includes(CUF.mes)?CUF.mes:'';const filas=sel?R.filas.filter(x=>x.comp.startsWith(sel)):R.filas;const T=sel?R.porMes.find(m=>m.k===sel):R.total;
+  const tabla=(rows,tit)=>`<table><thead><tr><th>${tit}</th><th class="num">Órdenes medidas</th><th class="num">A tiempo</th><th class="num">% órdenes a tiempo</th><th class="num">Tarde</th><th class="num">Atraso promedio (de las tardes)</th><th class="num">Prendas (de las órdenes medidas)</th></tr></thead><tbody>
+   ${rows.map(r=>`<tr><td>${esc(r.k)}</td><td class="num">${r.n}</td><td class="num">${r.ok}</td><td class="num"><b>${pct(r.pct)}</b></td><td class="num">${r.tarde}</td><td class="num">${d(r.atrasoProm)}</td><td class="num">${num(r.pz)}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Nada medible todavía.</td></tr>'}</tbody></table>`;
+  return `<div class="panel"><h3>Cumplimiento de facturación <span class="note">fecha de compromiso vs fecha en que la orden llegó a Facturado / Stand by (movida aquí por el supervisor)</span><span class="spacer"></span>
+    <select onchange="CUF.mes=this.value;render()"><option value="">todos los meses de compromiso</option>${meses.map(m=>`<option value="${m}" ${sel===m?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></h3><div class="body">
+   <div class="warn" style="margin-bottom:10px"><b>Qué mide y qué no.</b> Mide solo la <b>fecha</b>: si la orden llegó a Facturado el día del compromiso o antes, cuenta "a tiempo". <b>No mide si la orden salió completa</b>: la fase dice que pasó, no cuántas prendas se facturaron (si se comprometieron 261 y se facturaron 200, aquí sale "a tiempo" igual). Para eso haría falta anotar las prendas que salieron. Solo entran órdenes con fecha de compromiso y con la fecha de facturación registrada en la app; las que venían facturadas desde el archivo de Odoo no tienen día exacto y se listan aparte. Es cumplimiento de <b>facturación</b>, no de entrega al cliente.</div>
+   <div class="kpis"><div class="kpi"><div class="v">${T.n}</div><div class="k">Órdenes medidas${sel?' · compromiso en '+esc(fmtMesEG(sel)):''} · base: facturadas, con compromiso y con fecha exacta</div></div><div class="kpi"><div class="v">${pct(T.pct)}</div><div class="k">Órdenes facturadas a tiempo (${T.ok} de ${T.n})</div></div><div class="kpi ${T.tarde?'warn':''}"><div class="v">${T.tarde}</div><div class="k">Tarde · atraso promedio ${d(T.atrasoProm)}</div></div>
+    <div class="kpi"><div class="v">${R.sinComp.length}</div><div class="k">Facturadas sin fecha de compromiso · no medibles</div></div><div class="kpi"><div class="v">${R.sinFecha.length}</div><div class="k">Con compromiso pero sin fecha exacta de facturación (venían así del archivo) · no medibles</div></div></div>
+   <h4 style="margin:12px 0 6px">Por mes de compromiso</h4>${tabla(R.porMes.map(m=>Object.assign({},m,{k:fmtMesEG(m.k)})),'Mes de compromiso')}
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px"><div><h4 style="margin:0 0 6px">Por cliente${sel?' · '+esc(fmtMesEG(sel)):''}</h4>${tabla(sel?Object.values(filas.reduce((g,x)=>{(g[x.o.cliente||'—']=g[x.o.cliente||'—']||[]).push(x);return g},{})).map(xs=>Object.assign({k:xs[0].o.cliente||'—'},{n:xs.length,ok:xs.filter(x=>x.aTiempo).length,pct:xs.filter(x=>x.aTiempo).length/xs.length*100,tarde:xs.filter(x=>!x.aTiempo).length,atrasoProm:xs.filter(x=>!x.aTiempo).length?xs.filter(x=>!x.aTiempo).reduce((a,x)=>a+x.dias,0)/xs.filter(x=>!x.aTiempo).length:null,pz:xs.reduce((a,x)=>a+(+x.o.cant||0),0)})):R.porCliente,'Cliente')}</div>
+    <div><h4 style="margin:0 0 6px">Por ODC${sel?' · '+esc(fmtMesEG(sel)):''}</h4>${tabla(sel?Object.values(filas.reduce((g,x)=>{(g[x.o.odc||'—']=g[x.o.odc||'—']||[]).push(x);return g},{})).map(xs=>Object.assign({k:xs[0].o.odc||'—'},{n:xs.length,ok:xs.filter(x=>x.aTiempo).length,pct:xs.filter(x=>x.aTiempo).length/xs.length*100,tarde:xs.filter(x=>!x.aTiempo).length,atrasoProm:xs.filter(x=>!x.aTiempo).length?xs.filter(x=>!x.aTiempo).reduce((a,x)=>a+x.dias,0)/xs.filter(x=>!x.aTiempo).length:null,pz:xs.reduce((a,x)=>a+(+x.o.cant||0),0)})):R.porODC,'ODC')}</div></div>
+   <details style="margin-top:12px"><summary class="mut" style="cursor:pointer">Orden por orden (${filas.length})</summary><div class="scroll" style="max-height:420px;margin-top:6px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th class="num">Prendas comprometidas</th><th>Compromiso</th><th>Llegó a Facturado</th><th>Quién la movió</th><th class="num">Días de atraso</th><th></th></tr></thead><tbody>
+    ${filas.sort((a,b)=>a.fact<b.fact?1:-1).map(x=>`<tr><td>${esc(x.o.op)}</td><td>${esc(x.o.cliente||'')}</td><td>${esc(x.o.odc||'')}</td><td>${esc(nombreCat(K(x.o.cat)))}</td><td class="num">${num(x.o.cant)}</td><td>${fmtDia(x.comp)}</td><td>${fmtDia(x.fact)}</td><td class="mut">${esc(x.u||'')}</td><td class="num">${x.dias>0?x.dias:0}</td><td>${x.aTiempo?'<span class="tag t-ok">a tiempo</span>':'<span class="tag t-alerta">tarde</span>'}</td></tr>`).join('')||'<tr><td colspan="10" class="mut">Ninguna.</td></tr>'}</tbody></table></div>
+    ${R.sinFecha.length?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Sin fecha exacta (no medibles): ${R.sinFecha.slice(0,40).map(x=>esc(x.o.op)).join(', ')}${R.sinFecha.length>40?' …':''}</p>`:''}</details></div></div>`}
 function vCumplimiento(el){
   const sems=(S.programas||[]).filter(p=>p.tipo==='semana').sort((a,b)=>a.desde<b.desde?1:-1);
   const h=hoy();const byId={};S.ordenes.forEach(o=>byId[o.id]=o);
   el.innerHTML=`<div class="pagehead"><h2>Cumplimiento</h2><span class="spacer"></span>${puede('programa')?`<div class="row" style="margin:0;align-items:flex-end"><div><label>Semana a congelar</label><input type="date" id="cs-d" value="${lunesDe(h)}"></div><div><label>&nbsp;</label><button class="btn" onclick="congelarSemana(document.getElementById('cs-d').value)">Congelar semana</button></div></div>`:''}</div>
+  ${cumplimientoFacturacionHTML()}
   <p class="lede">Cada semana se congela el programa de las tres áreas y las fechas que el sistema prometía. Después se compara con lo real (control de piso, baños listos, órdenes de trabajo y fases de Odoo) y con la fecha en que cada orden terminó de verdad: así se sabe qué tan bien predice y dónde se desvía.</p>
   ${sems.length?sems.slice(0,12).map(p=>{
     const proMod={};p.pro.filter(x=>x.centro==='modulos').forEach(x=>{proMod[x.rec]=(proMod[x.rec]||0)+x.pz});
@@ -2719,7 +2744,7 @@ function guardarParada(){const g=x=>document.getElementById(x).value;const rec=g
 function cerrarParada(id){const t=(S.turnos||[]).find(x=>x.id===id);if(!t)return;t.hasta=dsum(hoy(),-1);bitacora('Novedad resuelta '+nRec(t.rec));save();cerrar();render()}
 function setPrio(id,v){const o=S.ordenes.find(x=>x.id===id);if(!o)return;o.prio=v?1:3;save();render()}
 function banoListo(ids){ids.split(',').forEach(id=>{if(!S.avance[id])S.avance[id]={};const a=S.avance[id];const rp=reprocesoPendiente(a);if(rp){rp.estado='hecho';rp.hechoF=hoy()}a.tinturada=true;a.tinturadaF=hoy();a.reproc=false;a.calidadOk=false;
-  const o=S.ordenes.find(x=>x.id===id);if(o&&faseNum(o.fase)<=1)o.fase=FASE_CALIDAD});save();render()}
+  const o=S.ordenes.find(x=>x.id===id);if(o&&faseNum(o.fase)<=1)registrarFase(o,FASE_CALIDAD,'app')});save();render()}
 /* ---------- Calidad de tintorería: al salir del baño la tela pasa a calidad; solo lo aprobado se libera a corte ---------- */
 const FASE_CALIDAD='1Calidad Tintoreria',FASE_PLAN='2Planificacion',FASE_TIN='1Tintoreria';
 function enCalidad(o){const a=S.avance[o.id]||{};if(a.lista||a.calidadOk)return false;const fe=faseEstado(o.fase,o);if(fe.lista)return false;
@@ -2728,7 +2753,7 @@ function quienFirma(){return (PERFIL&&(PERFIL.nombre||PERFIL.email))||''}
 function calidadAprobar(ids){const lista=ids.split(',');let n=0;
   lista.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]=S.avance[id]||{};if(a.calidadOk)return;
     a.calidadOk=true;a.calidadOkF=hoy();a.calidadU=quienFirma();a.reproc=false;
-    if(normTxt(o.fase||'')===normTxt(FASE_CALIDAD)||faseNum(o.fase)<=1)o.fase=FASE_PLAN;n++});
+    if(normTxt(o.fase||'')===normTxt(FASE_CALIDAD)||faseNum(o.fase)<=1)registrarFase(o,FASE_PLAN,'app');n++});
   if(n)bitacora('Calidad tintorería aprobó '+n+' órdenes');save();render()}
 function calidadRechazar(ids){mReproceso(ids,true)}
 function calidadTinHTML(ok){const pend=S.ordenes.filter(abierta).filter(enCalidad).sort((a,b)=>((S.avance[a.id]||{}).tinturadaF||'')<((S.avance[b.id]||{}).tinturadaF||'')?-1:1);
@@ -2756,7 +2781,7 @@ function guardarReproceso(ids,desdeCalidad){const g=x=>((document.getElementById
   lista.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]=S.avance[id]||{};
     a.reprocesos=a.reprocesos||[];a.reprocesos.push({id:uid(),f:hoy(),motivo,accion,obs,telas:telasRech,u:quienFirma(),origen:desdeCalidad?'calidad':'piso',estado:'pendiente'});
     a.reproc=true;a.reprocF=hoy();a.tinturada=false;a.calidadOk=false;if(desdeCalidad)a.calidadRechF=hoy();
-    if(faseNum(o.fase)<=1)o.fase=FASE_TIN;n++});
+    if(faseNum(o.fase)<=1)registrarFase(o,FASE_TIN,'app');n++});
   if(n)bitacora('Reproceso tintorería ('+motivo+'): '+n+' órdenes · '+accion);save();cerrar();render()}
 function reprocesoPendiente(a){return (a.reprocesos||[]).slice().reverse().find(r=>r.estado==='pendiente')}
 function reprocesosTinHTML(){const filas=[];S.ordenes.filter(abierta).forEach(o=>{((S.avance[o.id]||{}).reprocesos||[]).forEach(r=>filas.push({o,r}))});
@@ -2801,7 +2826,15 @@ function confirmarSalioBano(ids,rec,colorN,telas,kgProg,ops){const kgReal=+((doc
   banoListo(ids);cerrar()}
 function banoReproceso(ids,quitar){if(!quitar){mReproceso(ids,false);return}
   ids.split(',').forEach(id=>{const a=S.avance[id]=S.avance[id]||{};a.reproc=false;a.reprocF=null;const r=reprocesoPendiente(a);if(r)r.estado='anulado'});save();render()}
-function setFase(id,f){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(f&&faseNum(f)>=8&&faseNum(o.fase)<8&&!o.terminadaF)o.terminadaF=hoy();o.fase=f||null;save();render()}
+/* ---------- historial de fases: cada entrada a una fase queda con fecha, quién y origen (app = movida aquí; archivo = venía así en una carga) ----------
+   Solo las entradas con origen "app" tienen fecha exacta; las de "archivo" dicen "vino así en la carga del …" (entre dos cargas no se sabe el día). */
+function registrarFase(o,f,origen){const nueva=f||null;if(normFase(nueva||'')===normFase(o.fase||''))return false;
+  o.fases=o.fases||[];o.fases.push({f:nueva,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',origen:origen||'app',antes:o.fase||null});if(o.fases.length>60)o.fases=o.fases.slice(-60);
+  if(nueva&&faseNum(nueva)>=8&&faseNum(o.fase)<8&&!o.terminadaF)o.terminadaF=hoy();o.fase=nueva;return true}
+function esFacturada(o){const fila=filaFaseDe(o.fase);if(fila)return fila.sistema==='cerrada';return (o.estado||'')==='cerrada'||(o.estado||'')==='standby'}
+/* fecha en que la orden llegó a Facturado/Stand by: exacta solo si el cambio se hizo en la app */
+function fechaFacturada(o){if(!esFacturada(o))return null;const h=(o.fases||[]).slice().reverse().find(x=>x.f&&(filaFaseDe(x.f)||{}).sistema==='cerrada');if(!h)return{exacta:false,ts:null};return{exacta:h.origen==='app',ts:h.ts.slice(0,10),origen:h.origen,u:h.u}}
+function setFase(id,f){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=o.fase;if(registrarFase(o,f,'app'))bitacora('Fase '+o.op+': '+(antes||'—')+' → '+(f||'—'));save();render()}
 function setEstado(id,k,v){if(!S.avance[id])S.avance[id]={};S.avance[id][k]=v;S.avance[id][k+'F']=v?hoy():null;save();render()}
 function setAvance(id,c,v,max){if(!S.avance[id])S.avance[id]={};if(!S.avance[id].centros)S.avance[id].centros={};
   let n=Math.max(0,Math.round(+v||0));if(max&&n>max){alert('No puede superar las '+num(max)+' prendas de la orden.');n=max}
@@ -4116,7 +4149,7 @@ function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
   ED.cantBase=o?+o.cant||0:0;
   const faseVal=o?o.fase:null;const faseEnLista=faseVal&&FASES.some(f=>normTxt(f)===normTxt(faseVal));
   const PRIOS=[[1,'Urgente','#C4402F'],[3,'Normal','#2C8A5C'],[2,'Alta','#B8862B']];
-  abrir(`<h3>${o?'Editar':'Nueva'} orden</h3><div class="body">${o&&fotoDe(o)?`<div style="float:right;margin:0 0 8px 14px">${fotoMini(o,110)}</div>`:''}<div class="row">
+  abrir(`<h3>${o?'Editar':'Nueva'} orden</h3><div class="body">${o&&fotoDe(o)?`<div style="float:right;margin:0 0 8px 14px">${fotoMini(o,110)}</div>`:''}${o&&(o.fases||[]).length?`<details style="margin-bottom:8px"><summary class="mut" style="cursor:pointer;font-size:var(--fs-s)">Historial de fases (${o.fases.length})</summary><div style="font-size:var(--fs-xs);line-height:1.7">${o.fases.slice().reverse().map(x=>new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.antes||'—')+' → '+esc(x.f||'—')+' · '+(x.origen==='app'?'movida por '+esc(x.u||''):'venía así en la carga')).join('<br>')}</div></details>`:''}<div class="row">
     <div><label>OP</label><input type="text" id="f-op" value="${esc(o?o.op:'')}"></div>
     <div><label>Referencia</label><input type="text" id="f-ref" value="${esc(o?o.ref:'')}"></div>
     <div><label>Categoría</label><select id="f-cat" onchange="desdeHoja()"><option value="">—</option>${selectCats(o?o.cat:'')}</select></div>
@@ -4350,7 +4383,9 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
    ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
    <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar se <b>reemplazan todas las órdenes</b> del sistema por las del archivo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;
+  const prevFases={};S.ordenes.forEach(o=>{if(o.fases&&o.fases.length)prevFases[normTxt(o.op)]=o.fases});const prevFase={};S.ordenes.forEach(o=>prevFase[normTxt(o.op)]=o.fase||null);
   S.ordenes=p.ordenes.slice();S.avance={};colgarFotos();
+  S.ordenes.forEach(o=>{const k=normTxt(o.op);const nueva=o.fase;if(prevFases[k])o.fases=prevFases[k].slice();if(k in prevFase){o.fase=prevFase[k];registrarFase(o,nueva,'archivo');o.fase=nueva}else{o.fases=[{f:nueva||null,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',origen:'archivo',antes:null}]}});
   S.params.tareaCarga={archivo:p.archivo,fecha:new Date().toISOString(),hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
@@ -4530,8 +4565,7 @@ function nuevaOrden(id,op,d,k){const propia=!d.telas||d.telas.some(t=>!t.ext);co
   if(o.estado==='cerrada'&&!o.terminadaF)o.terminadaF=null;return o}
 function aplicarOdoo(){if(!ODOO)return;const p=ODOO;
   p.prevQuitadas.forEach(id=>{S.ordenes=S.ordenes.filter(x=>x.id!==id)});
-  p.act.forEach(a=>{const o=a.o,d=a.datos;if(d.fase&&faseNum(d.fase)>=8&&faseNum(o.fase)<8&&!o.terminadaF)o.terminadaF=hoy();
-    o.fase=d.fase||o.fase;if(d.cant)o.cant=d.cant;if(d.fecha)o.fecha=d.fecha;if(d.color&&(C(d.color)||{}).cod||!(C(o.color)||{}).cod)o.color=d.color;o.cat=d.cat;o.colorOdoo=d.colorOdoo;o.estado=d.estado;
+  p.act.forEach(a=>{const o=a.o,d=a.datos;if(d.fase)registrarFase(o,d.fase,'archivo');if(d.cant)o.cant=d.cant;if(d.fecha)o.fecha=d.fecha;if(d.color&&(C(d.color)||{}).cod||!(C(o.color)||{}).cod)o.color=d.color;o.cat=d.cat;o.colorOdoo=d.colorOdoo;o.estado=d.estado;
     if(d.telas&&d.telas.length&&!o.telasManual)o.telas=d.telas;if(d.precio)o.precio=d.precio;if(d.prodTot!=null)o.prodTot=d.prodTot;if(d.cliente)o.cliente=d.cliente;
     if(d.tecnica){o.tecnica=d.tecnica;if(!(o.ruta||[]).some(x=>x.centro==='estampado')){const idx=RUTA_ORDEN.indexOf('estampado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'estampado',t:tecnicaT({tecnica:d.tecnica})||1})}}
     if(d.punt>0){const b=(o.ruta||[]).find(x=>x.centro==='bordado');if(b)b.t=d.punt;else{const idx=RUTA_ORDEN.indexOf('bordado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'bordado',t:d.punt})}}

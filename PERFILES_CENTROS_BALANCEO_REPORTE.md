@@ -39,6 +39,22 @@ al despachar (dato nuevo en la app); (c) usar "empaque terminó" y llamarlo por 
 mostrarían por separado (órdenes a tiempo %, prendas a tiempo %, atraso promedio; por mes, cliente y ODC), como
 pediste; no se construye hasta que decidas la fuente.
 
+### Decisión (14-sep): cumplimiento de FACTURACIÓN por fase
+
+- Facturas descartadas (van por talla y sin OP). La fuente es la **fase**: cuando una orden llega a Facturado o
+  Stand by (sistema "cerrada" en la tabla 1), se facturó.
+- **Historial de fases** (`o.fases`): cada entrada a una fase guarda fecha-hora, quién y origen. `app` = la movió un
+  supervisor aquí (fecha exacta); `archivo` = venía así en una carga de Odoo (entre dos cargas no se sabe el día).
+  Se registra en Control de piso (selector de fase), calidad de tintorería, baño listo, cargas de Odoo y la recarga
+  de la Parte 2 (el historial viaja con la OP aunque la recarga reemplace la orden). La ficha de la orden lo muestra.
+- **Cumplimiento de facturación** (página Cumplimiento, arriba): fecha de compromiso vs fecha en que llegó a
+  Facturado. Solo entran órdenes facturadas con compromiso y con fecha exacta (origen app); las que venían facturadas
+  del archivo se listan como "sin fecha exacta, no medibles" y las sin compromiso como "no medibles". Por mes de
+  compromiso, por cliente y por ODC: órdenes medidas, a tiempo, % a tiempo, tarde, atraso promedio de las tardes.
+  **Solo fecha: no mide si salió completa** (lo dice en pantalla; no hay porcentaje de prendas).
+- Hoy en producción: las 55 facturadas vienen del archivo (sin fecha exacta) y sin compromiso → 0 medibles; el
+  indicador empieza a llenarse cuando los supervisores muevan fases aquí y tú pongas compromisos.
+
 ## 2 · Usuarios y perfiles
 
 - **Catálogo de perfiles en datos** (`S.params.perfilesDef`, editable en Configuración → Usuarios): permisos,
