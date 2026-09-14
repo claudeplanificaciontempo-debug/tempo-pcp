@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 10:30';
+const APP_BUILD='2026-09-14 10:41';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3712,7 +3712,7 @@ function vConfig(el){
 
   <div class="panel"><h3>14 · Qué se conserva al recargar la Parte 2 <span class="note">decisiones de persona que no se pisan con el archivo; se cruzan por número de OP</span></h3>
    <div class="body"><table><thead><tr><th>Campo</th><th>Qué es</th><th>Conservar</th></tr></thead><tbody>${camposConservados().map((r,i)=>`<tr><td><code>${esc(r.campo)}</code></td><td>${esc(r.n)}</td><td style="text-align:center"><input type="checkbox" ${r.conservar?'checked':''} onchange="camposConservados()[${i}].conservar=this.checked;bitacora('Tabla 14 · '+'${esc(r.campo)}'+': conservar '+this.checked);save()"></td></tr>`).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lo del archivo siempre se actualiza: fase, Estado OP, cantidad, fecha, cliente, categoría, color, materiales, técnica, ruta. Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
 
   <div class="panel"><h3>13 · Qué le falta a la tela: propuesta por palabras del producto <span class="note">tintura · lavado de tela · nada; sin palabra: EXTERNA TEÑIDA → nada, lo demás → tintura. La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>
@@ -4528,7 +4528,9 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
   if(!o.estado)o.estado='plan';
   const bordadoAplica=(o.ruta||[]).some(p=>p.centro==='bordado');const cBor=CE('bordado');
   o.pendBordadoVel=!!(bordadoAplica&&!velBordado());
-  if(id)Object.assign(S.ordenes.find(x=>x.id===id),o);else S.ordenes.push(Object.assign({id:uid()},o));
+  if(id){const ex=S.ordenes.find(x=>x.id===id);if(ex&&o.fecha&&o.fecha!==ex.fecha){o.fechaManual={u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString(),antes:ex.fecha||null};bitacora('Fecha de entrega '+ex.op+': '+(ex.fecha||'—')+' → '+o.fecha+' (cambiada aquí)')}else if(ex&&ex.fechaManual)o.fechaManual=ex.fechaManual;
+    if(ex&&(o.fase||null)!==(ex.fase||null)){const nf=o.fase;o.fase=ex.fase;registrarFase(o,nf,'app');bitacora('Fase '+ex.op+': '+(ex.fase||'—')+' → '+(nf||'—')+' (ficha)')}if(ex&&ex.fases&&!o.fases)o.fases=ex.fases;
+    Object.assign(ex,o)}else S.ordenes.push(Object.assign({id:uid()},o));
   save();cerrar();render()}
 
 /* ==================== RECARGA PARTE 2: carga de órdenes y materiales desde la exportación de tareas (Tarea__project_task) ==================== */
@@ -4658,11 +4660,13 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
    ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con número de orden repetido (se cargan aparte, sin fusionar)')}
    ${li(Object.keys(p.nivel2NoRec).length,'segundos niveles de material no reconocidos: '+esc(Object.keys(p.nivel2NoRec).join(', ')))}${li(Object.keys(p.telaSinCatalogo).length,'telas en kg sin tela del catálogo en la tabla 8 (no entran al motor de tejeduría/tintorería): '+esc(Object.entries(p.telaSinCatalogo).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(Object.keys(p.telaSinClasificar).length,'tipos de tela SIN CLASIFICAR con órdenes: '+esc(Object.keys(p.telaSinClasificar).join(', ')))}${li(Object.keys(p.telaEnMetros||{}).length,'telas planas en metros (se quedan en metros; los kilos se registran por tanda en tintorería): '+esc(Object.entries(p.telaEnMetros||{}).map(([k,v])=>k+' ('+v+')').join(', ')))}
    ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
-   <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar, lo que viene del archivo se <b>actualiza</b> (fase, cantidades, fechas, materiales, ruta) y lo que decidió una persona se <b>conserva</b> por número de OP según la tabla 14 (liberación, prioridad, programación, módulo fijo, compromiso, fotos, fases, ajustes, telas, rutas editadas, OT, avance de piso). Las órdenes que ya no vienen en el archivo se eliminan y se cuentan. Lo conservado que ya no calce con el archivo nuevo sale en una bandeja; no se retira solo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
+   <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar, lo que viene del archivo se <b>actualiza</b> (cantidades, cliente, categoría, color, materiales, técnica, precio, ruta; la fecha solo si no se cambió aquí) y <b>la fase de las órdenes que ya existen no se toca</b> (la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja) y lo que decidió una persona se <b>conserva</b> por número de OP según la tabla 14 (liberación, prioridad, programación, módulo fijo, compromiso, fotos, fases, ajustes, telas, rutas editadas, OT, avance de piso). Las órdenes que ya no vienen en el archivo se eliminan y se cuentan. Lo conservado que ya no calce con el archivo nuevo sale en una bandeja; no se retira solo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
    Lo conservado que ya no calza con el archivo nuevo no se retira solo: sale en la bandeja "decisiones que ya no calzan". */
 function defCamposConservados(){return [
+  {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
+  {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},
   {campo:'recursoFijo',n:'Módulo fijado',conservar:true},{campo:'fechaCompromiso',n:'Fecha de compromiso (Entregas)',conservar:true},{campo:'foto',n:'Foto de la orden',conservar:true},
   {campo:'fases',n:'Historial de fases',conservar:true},{campo:'opsSam',n:'Tiempos ajustados por referencia (balanceo)',conservar:true},{campo:'faltaConf',n:'Qué le falta a cada tela (decidido en liberación)',conservar:true},
@@ -4670,14 +4674,19 @@ function defCamposConservados(){return [
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
 function camposConservados(){if(!S.params.camposConservados||!S.params.camposConservados.length)S.params.camposConservados=defCamposConservados();return S.params.camposConservados}
 function conserva(campo){const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
+/* aplica una fase a una orden recalculando lo que depende de ella (estado, historia, ruta pendiente) sin tocar lo del archivo */
+function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.faseSistema=fila?fila.sistema:null;o.esCola=!!(fila&&fila.esCola);o.sinCarga=!!(fila&&fila.sinCarga);o.faseNoCalza=!fila;o.bloqueada=!!(fila&&fila.bloqueo);
+  const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
   const prev={};S.ordenes.forEach(o=>{const k=normTxt(o.op);if(!prev[k])prev[k]=o});const idsNuevos=new Set(p.ordenes.map(o=>o.id));
-  const cons={lib:0,prio:0,progCentro:0,recursoFijo:0,fechaCompromiso:0,foto:0,fases:0,opsSam:0,faltaConf:0,rutaEditada:0,ot:0,terminadaF:0,avance:0};const noCalzan=[];
+  const cons={fase:0,fecha:0,lib:0,prio:0,progCentro:0,recursoFijo:0,fechaCompromiso:0,foto:0,fases:0,opsSam:0,faltaConf:0,rutaEditada:0,ot:0,terminadaF:0,avance:0};const noCalzan=[];
   const eliminadas=S.ordenes.filter(o=>!idsNuevos.has(o.id));const elimConDec=eliminadas.filter(o=>o.lib||o.prio===1||o.progCentro||o.recursoFijo||o.fechaCompromiso||o.opsSam||(S.avance[o.id]&&Object.keys(S.avance[o.id]).length));
   let actualizadas=0,nuevas=0;
   p.ordenes.forEach(o=>{const k=normTxt(o.op);const v=prev[k];const nueva=o.fase;
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];return}
     actualizadas++;
+    if(conserva('fase')&&v.fase!=null){if(normFase(v.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+v.fase,motivo:'el archivo trae '+(o.fase||'(vacía)')+'; se conserva la del sistema',tipo:'fase',sistema:v.fase,archivo:o.fase||''});aplicarFaseSistema(o,v.fase);cons.fase++}
+    if(conserva('fecha')&&v.fechaManual&&v.fecha){if(v.fecha!==o.fecha)noCalzan.push({op:o.op,decision:'fecha de entrega cambiada aquí: '+v.fecha+' ('+(v.fechaManual.u||'')+')',motivo:'el archivo trae '+(o.fecha||'(vacía)')+'; se conserva la del sistema',tipo:'fecha'});o.fecha=v.fecha;o.fechaManual=v.fechaManual;o.vencida=!!(o.fecha&&o.fecha<hoy()&&!o.historia);cons.fecha++}
     if(conserva('lib')&&v.lib){o.lib=v.lib;cons.lib++;const g=grupoDe(o.fase);const sist=(filaFaseDe(o.fase)||{}).sistema;if(v.lib.corte&&v.lib.corte.ok&&sist&&['textil','previo a producción'].includes(sist))noCalzan.push({op:o.op,decision:'liberada a producción ('+(v.lib.corte.u||'')+')',motivo:'la fase nueva es '+o.fase+' (antes de producción)'});
       if(v.lib.tela&&v.lib.tela.ok&&sist==='previo a producción')noCalzan.push({op:o.op,decision:'liberada a planta ('+(v.lib.tela.u||'')+')',motivo:'la fase nueva es '+o.fase+' (previo a producción)'})}
     if(conserva('prio')&&v.prio!=null&&v.prio!==3){o.prio=v.prio;cons.prio++}
@@ -4685,7 +4694,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.ruta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está pendiente en la ruta'})})}
     if(conserva('fechaCompromiso')&&v.fechaCompromiso){o.fechaCompromiso=v.fechaCompromiso;cons.fechaCompromiso++;if(esFacturada(o)&&!esFacturada(v))noCalzan.push({op:o.op,decision:'compromiso '+v.fechaCompromiso,motivo:'la orden llegó a '+o.fase+' según el archivo (sin fecha exacta)'})}
     if(conserva('foto')&&v.foto){o.foto=v.foto;cons.foto++}
-    if(conserva('fases')&&v.fases&&v.fases.length){o.fases=v.fases.slice();cons.fases++;const f0=o.fase;o.fase=v.fase||null;registrarFase(o,nueva,'archivo');o.fase=nueva;if(f0!==o.fase)o.fase=nueva}else o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];
+    if(conserva('fases')&&v.fases&&v.fases.length){o.fases=v.fases.slice();cons.fases++;if(!conserva('fase')){const f0=o.fase;o.fase=v.fase||null;registrarFase(o,nueva,'archivo');o.fase=nueva;if(f0!==o.fase)o.fase=nueva}}else o.fases=[{f:o.fase||null,ts,u,origen:'archivo',antes:null}];
     if(conserva('opsSam')&&v.opsSam){o.opsSam=v.opsSam;cons.opsSam++;aplicarSamOrden(o)}
     if(conserva('faltaConf')&&(v.telas||[]).some(t=>t.faltaConf)){let n=0;(o.telas||[]).forEach(t=>{const pv=(v.telas||[]).find(x=>x.tela===t.tela&&x.faltaConf);if(pv){t.faltaConf=pv.faltaConf;n++}});if(n){cons.faltaConf++;aplicarRutaTextil(o)}}
     if(conserva('rutaEditada')&&v.rutaEditada&&v.rutaEditada.length){o.rutaEditada=v.rutaEditada.slice();cons.rutaEditada++;const k2=K(o.cat);const sam=k2?(samPorCentro(k2)||{}):{};
@@ -4702,7 +4711,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,
     recarga:{actualizadas,nuevas,eliminadas:eliminadas.length,eliminadasConDecision:elimConDec.map(o=>o.op).slice(0,200),avanceEliminado:avanceEliminado.length,conservado:cons,noCalzan:noCalzan.slice(0,500)}};
   bitacora('Recarga Parte 2 '+p.archivo+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
-  TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Recarga aplicada: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
+  TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Recarga aplicada: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
 
 /* ---------- reporte (BLOQUE K): se calcula desde las órdenes cargadas + lo guardado en la carga; la carga por centro se
    calcula aquí directamente (cant × minPrenda del motor, por mes de entrega; vencidas al mes en curso), NO con programar(). ---------- */
