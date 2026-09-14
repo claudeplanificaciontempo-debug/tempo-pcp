@@ -101,7 +101,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   const tareaRows=await (await fetch('fixtures/tarea_rows.json')).json();
   __check('fixture tareas: 65.002 filas incl. header',tareaRows.length===65002,tareaRows.length);
   const bakOrd=S.ordenes;S.ordenes=[];
-  const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;
+  const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
   __check('planTarea reconoce columnas',!!planT);
   __check('planTarea: 3.733 cabeceras y 61.268 líneas sin orden',planT.cabeceras===3733&&planT.lineasComp===61268,planT.cabeceras+' / '+planT.lineasComp);
   __check('planTarea: la fase decide: los 2 Estado OP cancel son Facturado con fecha pasada → fuera de rango por la fase; 4 sin fecha en bandeja',planT.excluidas.cancel.length===0&&planT.excluidas.fueraRango.filter(x=>x.estadoOP==='cancel').length===2&&planT.sinFecha.length===4,planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
@@ -341,6 +341,24 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("la fase decide: una orden done en 8Novedades entra al plan (no es historia)",(window.__planT?window.__planT.ordenes:[]).filter(o=>o.estadoOP==='done'&&normFase(o.fase)===normFase('8Novedades')).every(o=>!o.historia&&o.estado==='plan'));
    __check("la fase decide: Facturado / Stand by siguen siendo historia",(window.__planT?window.__planT.ordenes:[]).filter(o=>(filaFaseDe(o.fase)||{}).sistema==='cerrada').every(o=>o.historia));
    page='ordenes';render();__check("prenda terminada sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* recarga Parte 2: lo del archivo se actualiza, lo de persona se conserva, lo que no calza va a bandeja */
+  {const antes=__R.errors.length;const rows0=window.__tareaRows;if(rows0){const o=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='corte')&&!x.lib);const o2=S.ordenes.find(x=>abierta(x)&&x!==o);
+    o.lib={corte:{ok:true,u:'Prueba',ts:new Date().toISOString()}};o.prio=1;o.progCentro={corte:{pri:1}};o.fechaCompromiso='2026-10-20';o.foto='https://x/f.jpg';S.avance[o.id]={centros:{corte:5}};const nFases=(o.fases||[]).length;
+    const nAntes=S.ordenes.length;const idO=o.id;const cantAntes=o.cant;
+    const rows2=JSON.parse(JSON.stringify(rows0));const H=rows2[0];const iOp=H.indexOf('Orden de producción'),iPed=H.indexOf('Pedido'),iFase=H.indexOf('Fase');
+    // cambio del archivo: la orden o tiene el doble de prendas y la orden o2 vuelve a 1Tejeduria (fase anterior a producción) conservando una liberación a producción
+    let tocada=0,tocada2=0;rows2.slice(1).forEach(r=>{if(r[iOp]===o.op&&!tocada){r[iPed]=cantAntes*2;tocada=1}if(r[iOp]===o2.op&&!tocada2){r[iFase]='1Tejeduria';tocada2=1}});o2.lib={corte:{ok:true,u:'Prueba',ts:new Date().toISOString()}};
+    const p2=planTarea(rows2,'recarga.xlsx');TAREA=p2;aplicarTarea();await __p(100);const oN=S.ordenes.find(x=>x.id===idO);const o2N=S.ordenes.find(x=>x.op===o2.op);const rc=S.params.tareaCarga.recarga;
+    __check("recarga: el archivo actualiza (cantidad al doble) y el número de órdenes se mantiene",!!oN&&oN.cant===cantAntes*2&&S.ordenes.length===nAntes,oN&&oN.cant+' vs '+cantAntes*2+' · '+S.ordenes.length+'/'+nAntes);
+    __check("recarga: se conservan liberación, prioridad, programación, compromiso, foto y avance",!!(oN.lib&&oN.lib.corte&&oN.lib.corte.ok)&&oN.prio===1&&!!(oN.progCentro&&oN.progCentro.corte)&&oN.fechaCompromiso==='2026-10-20'&&oN.foto==='https://x/f.jpg'&&((S.avance[idO]||{}).centros||{}).corte===5);
+    __check("recarga: el historial de fases se conserva y no se duplica",(oN.fases||[]).length===nFases);
+    __check("recarga: reporta actualizadas/nuevas/eliminadas y lo conservado",rc&&rc.actualizadas>0&&rc.conservado.lib>=2&&rc.conservado.fechaCompromiso>=1&&rc.conservado.avance>=1,JSON.stringify(rc&&rc.conservado));
+    __check("recarga: una liberación a producción con fase nueva anterior a producción va a la bandeja 'ya no calzan' y no se retira",!!(o2N.lib&&o2N.lib.corte)&&rc.noCalzan.some(x=>x.op===o2.op&&/liberada a producción/.test(x.decision)),JSON.stringify(rc.noCalzan.slice(0,3)));
+    page='ordenes';render();__check("recarga: la bandeja se ve en Órdenes",document.getElementById('p-ordenes').innerHTML.includes('decisiones que ya no calzan'));
+    page='config';CONF.tab='ordenes2';render();__check("recarga: tabla 14 de campos conservados",document.getElementById('p-config').innerHTML.includes('14 · Qué se conserva al recargar'));
+    // vuelve al archivo original para el resto de las pruebas
+    TAREA=planTarea(rows0,'Tarea__project_task__95_.xlsx');aplicarTarea();await __p(100);}
+   page='ordenes';render();__check("recarga sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
