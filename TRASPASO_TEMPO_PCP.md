@@ -231,3 +231,11 @@ número que usa el motor (`prioCentro` = menor puesto entre centros; la priorida
 preferencia del navegador). Tejeduría y tintorería no tienen arrastre por orden: el motor las ordena por tela/fecha
 requerida y por color/fecha requerida; tintorería arrastra baños confirmados a máquina × día. Pendiente decidir: orden
 sin puesto = 3 (hoy) o al final (cambio de motor).
+
+### Capacidad y decisiones · buscadores · borrado (14-sep-2026)
+Ver `CAPACIDAD_DECISIONES_REPORTE.md`. Página `capacidad` (Dirección, permiso `programa`): matriz centro × mes por
+Proyecto con todas las órdenes abiertas (liberadas o no), carga = pendientes × min/prenda del centro, capacidad =
+calendario × recursos (mes en curso desde hoy; mes pasado = vencido); tejeduría/tintorería por programa. Umbral ámbar
+`params.capAmbar` (siembra 85). Problemas (`params.capProblemas`) se registran al verse y se cierran solos; decisiones
+(`params.capDecisiones`) solo se anotan. Aviso en Hoy. Buscadores con `buscarQ` (data-q) para no perder el foco.
+Vaciar/Borrar datos operativos solo en Configuración → Borrado (administrador) con frase escrita; `delOrden` confirma.
