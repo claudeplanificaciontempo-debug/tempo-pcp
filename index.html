@@ -514,9 +514,9 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-13 22:20';
+const APP_BUILD='2026-09-13 22:21';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
-async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/const APP_BUILD='2026-09-13 22:20']+)'/);if(!m)return;
+async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/const APP_BUILD='2026-09-13 22:21']+)'/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
       b.innerHTML='Estás viendo una <b>versión vieja</b> (v '+esc(APP_BUILD)+'). Publicada: v '+esc(m[1])+'. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>'}}catch(e){}}
 /* ---------- sesión ---------- */
