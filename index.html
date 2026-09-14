@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 09:54';
+const APP_BUILD='2026-09-14 10:12';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3048,7 +3048,7 @@ async function vUsuarios(el){
   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">"Nuevo usuario" crea la cuenta en Supabase con una contraseña inicial y le asigna el perfil. Si el proyecto exige confirmar el correo, la persona recibe un correo y debe confirmarlo antes de entrar. Las cuentas también se pueden crear en Supabase → Authentication → Users; aparecen aquí con perfil Consulta hasta que les asignes uno.</p></div>`;
 }
 async function setPerfil(id,k,v){const {data:antes}=await sb.from('perfiles').select('email,nombre,rol,modo').eq('id',id).single();const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);
-  if(error){alert('No se pudo actualizar: '+error.message+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''));return}
+  if(error){alert('No se pudo actualizar: '+error.message+(/check constraint "perfiles_rol/i.test(error.message)?'\n\nLa tabla perfiles de Supabase todavía tiene la restricción de los roles viejos (admin, planificacion, carga, piso, consulta). Ejecuta SUPABASE_PERFILES.sql en Supabase → SQL Editor y vuelve a intentar.':'')+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''));return}
   bitacora('Usuario '+((antes&&antes.email)||id)+' · '+k+': '+((antes&&antes[k])||'—')+' → '+(v||'—'));save()}
 function mNuevoUsuario(){const cat=perfilesDef();abrir(`<h3>Nuevo usuario</h3><div class="body">
    <div class="row"><div><label>Correo</label><input type="email" id="nu-email" style="min-width:260px"></div><div><label>Nombre</label><input type="text" id="nu-nombre"></div></div>
@@ -3062,8 +3062,10 @@ async function crearUsuario(){const g=x=>document.getElementById(x).value.trim()
   const {data,error}=await c2.auth.signUp({email,password:pass,options:{data:{nombre}}});
   if(error){alert('No se pudo crear la cuenta: '+error.message);btn.disabled=false;return}
   const uid=data.user&&data.user.id;if(!uid){alert('Supabase no devolvió el usuario; revisa en Authentication → Users.');btn.disabled=false;return}
-  const {error:e2}=await sb.from('perfiles').upsert({id:uid,email,nombre,rol:perfil});
-  if(e2)alert('La cuenta se creó pero no se pudo guardar el perfil: '+e2.message+'\nAsígnalo desde la tabla.');
+  // la fila de perfiles la crea Supabase (disparador al registrar el usuario); aquí solo se actualiza: la política de la tabla no deja insertar desde la app
+  let e2=null,filas=0;for(let k=0;k<6&&!filas;k++){await new Promise(r=>setTimeout(r,k?1500:300));const r=await sb.from('perfiles').update({nombre,rol:perfil}).eq('id',uid).select('id');e2=r.error;filas=(r.data||[]).length;if(e2)break}
+  if(e2)alert('La cuenta se creó pero no se pudo guardar el perfil: '+e2.message+(/check constraint/i.test(e2.message)?'\n\nLa tabla perfiles tiene una restricción con los roles viejos: ejecuta SUPABASE_PERFILES.sql en Supabase → SQL Editor.':'')+'\nAsígnalo desde la tabla.');
+  else if(!filas)alert('La cuenta se creó, pero Supabase no creó su fila en perfiles (falta el disparador). Créala en Supabase → Table editor → perfiles con el id '+uid+' y asigna el perfil aquí.');
   bitacora('Usuario creado '+email+' · perfil '+perfil);save();cerrar();render();
   alert('Cuenta creada para '+email+(data.session?'':' (si el proyecto exige confirmación, debe abrir el correo antes de entrar)'))}
 function setPerfilDef(id,k,v){const d=perfilesDef().find(x=>x.id===id);if(!d)return;const antes=d[k];d[k]=v;bitacora('Perfil '+d.n+' · '+k+': '+(antes||'—')+' → '+(v||'—'));save()}
