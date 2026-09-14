@@ -128,6 +128,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .bath.b-lavado{background:var(--lavado);color:#1B2A2D}
 .bath{position:relative}
 .mgrid td.dd-over{outline:2px dashed var(--ink);outline-offset:-3px;background:var(--field)}
+.cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
 .bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
 .bath.low{box-shadow:inset 0 0 0 2px var(--alerta)}
@@ -555,7 +556,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 11:48';
+const APP_BUILD='2026-09-14 12:00';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -2111,7 +2112,53 @@ function listaDecisiones(P,max){const pend=(P.banosPend||[]);if(!pend.length)ret
 /* ---------- Módulo por centro de producción: planificación · programación · ejecución ---------- */
 const CENTROS_PROD={corte:['corte'],modulos:['modulos'],estampado:['estampado'],bordado:['bordado'],terminados:['etiquetas','botones','lavado','plancha'],empaque:['empaque']};
 const CENTROS_PROD_N={corte:'Corte',modulos:'Confección',estampado:'Estampado',bordado:'Bordado',terminados:'Terminados',empaque:'Empaque'};
-let CEN={id:'corte',tab:'plan',sem:0,q:''};
+let CEN={id:'corte',tab:'plan',sem:0,q:'',niveles:null,todo:false};
+/* ---------- Programación del centro: agrupar (cliente · familia · categoría · ODC, hasta 3 niveles) y ordenar arrastrando ----------
+   La cola de un centro es UNA: el puesto es progCentro[c].pri, el mismo número que ya usaba el motor (prioCentro). Arrastrar renumera
+   toda la cola 1..n; no hay otro sistema. Sin puesto = el motor la toma como 3 (regla de prioCentro, no se tocó). */
+const CEN_CAMPOS_GRUPO=[['cliente','Cliente'],['fam','Familia'],['cat','Categoría'],['odc','ODC (orden de compra)']];
+function nivelesCEN(){if(CEN.niveles)return CEN.niveles;try{const v=JSON.parse(localStorage.__cenNiveles||'null');if(Array.isArray(v)){CEN.niveles=v;return v}}catch(e){}CEN.niveles=[];return CEN.niveles}
+function setNivelCEN(i,v){const n=nivelesCEN().slice();n[i]=v;CEN.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__cenNiveles=JSON.stringify(CEN.niveles)}catch(e){}render()}
+function selNivelesCEN(){const n=nivelesCEN();const sel=(i)=>`<select onchange="setNivelCEN(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${CEN_CAMPOS_GRUPO.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
+  return `<div><label>Agrupar por <span class="mut" title="Agrupar no esconde nada: reordena y suma. Arrastrar dentro de un grupo mueve la orden en la cola completa del centro.">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
+function puestoDe(o,c){return ((o.progCentro||{})[c]||{}).pri||0}
+/* órdenes abiertas con paso en los centros dados (q = buscador; '' = todas) */
+function filasDeCentros(cens,P,lun,dom,q){q=normTxt(q||'');const filas=[];S.ordenes.filter(abierta).forEach(o=>{cens.forEach(c=>{const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c);const enRuta=(o.ruta||[]).some(p=>p.centro===c);if(!enRuta)return;
+    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hecho=fe.hechos.includes(c)||(ac[c]||0)>=o.cant;
+    const pzSem=P.pro.filter(x=>x.op===o.op&&x.centro===c&&x.dia>=lun&&x.dia<=dom).reduce((s,x)=>s+(x.pz||0),0);
+    if(!q||normTxt(o.op).includes(q)||normTxt(nombreCat(K(o.cat))).includes(q)||normTxt((C(o.color)||{}).n).includes(q)||normTxt(o.cliente).includes(q)||normTxt(o.odc).includes(q))filas.push({o,c,paso:paso||{},hecho,pzSem,hechas:hecho?o.cant:(ac[c]||0),bloq:(P.ordenes[o.id]||{}).bloqueo})})});return filas}
+/* la cola del centro: pendientes, en el orden del motor (puesto; sin puesto = 3; empate: inicio planificado, luego entrega) */
+function colaCentro(c,filas){return filas.filter(f=>f.c===c&&!f.hecho&&!f.bloq).sort((a,b)=>(puestoDe(a.o,c)||3)-(puestoDe(b.o,c)||3)||((a.paso.ini||'9')<(b.paso.ini||'9')?-1:(a.paso.ini||'9')>(b.paso.ini||'9')?1:0)||((a.o.fecha||'')<(b.o.fecha||'')?-1:1))}
+function agruparCola(lista,niveles){if(!niveles.length)return{hojas:lista};const k=niveles[0];const m={};const orden=[];lista.forEach(f=>{const c=claveEG(k,f.o);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(f)});
+  return{nivel:k,grupos:orden.map(c=>({clave:c,n:m[c].length,pz:m[c].reduce((a,f)=>a+Math.max(0,(+f.o.cant||0)-(f.hechas||0)),0),sub:agruparCola(m[c],niveles.slice(1))}))}} // grupos en orden de aparición en la cola
+function lateDe(PP){const s={};S.ordenes.forEach(x=>{if(!abierta(x))return;const r=PP.ordenes[x.id]||{};const m=fechaMetaDe(x);if(m&&r.finPro&&r.finPro>m)s[x.id]=r.finPro});return s}
+/* mover una orden en la cola del centro: destino {antes:oid} | {pos:n} | {final:true}. Renumera toda la cola, registra en bitácora y avisa (sin impedir) qué órdenes dejan de llegar a su fecha */
+function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no puede reprogramar '+nCen(c)+'.');return}
+  const P=programar();const lun=lunesDe(hoy());const cola=colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),'')).map(f=>f.o);
+  const i=cola.indexOf(o);if(i<0)return;const antes=cola.map(x=>x.id).join();
+  cola.splice(i,1);let j;if(destino&&destino.antes){j=cola.findIndex(x=>x.id===destino.antes);if(j<0)j=cola.length}else if(destino&&destino.pos!=null){if(!(destino.pos>=1)){render();return}j=Math.min(cola.length,Math.round(destino.pos)-1)}else j=cola.length;
+  cola.splice(j,0,o);
+  const lA=lateDe(P);
+  cola.forEach((x,k)=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].pri=k+1});
+  PLAN=null;PLAN_ALL=null;const P2=programar();const lD=lateDe(P2);
+  const nuevas=Object.keys(lD).filter(id=>!lA[id]).map(id=>S.ordenes.find(x=>x.id===id)).filter(Boolean);
+  const igual=cola.map(x=>x.id).join()===antes;
+  bitacora('Cola de '+nCen(c)+': '+o.op+' del puesto '+(i+1)+' al '+(j+1)+(igual?' (mismo orden; se numeró la cola)':'')+' · '+cola.length+' órdenes numeradas 1..'+cola.length+(nuevas.length?' · ya no llegan a su fecha: '+nuevas.map(x=>x.op).join(', '):''));
+  const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';S.params.advertencias=S.params.advertencias||[];
+  nuevas.forEach(x=>S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:x.id,op:x.op,accion:'Cola de '+nCen(c)+': '+o.op+' al puesto '+(j+1),meta:fechaMetaDe(x),metaTipo:x.fechaCompromiso?'compromiso':'pedida',antes:(P.ordenes[x.id]||{}).finPro||null,despues:lD[x.id],atendida:false}));
+  if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300);
+  save();render();
+  if(nuevas.length)alert('Con este orden, '+nuevas.length+(nuevas.length===1?' orden ya no llega':' órdenes ya no llegan')+' a su fecha:\n'+nuevas.slice(0,15).map(x=>x.op+' · meta '+fmtDia(fechaMetaDe(x))+' · estimada '+fmtDia(lD[x.id])).join('\n')+(nuevas.length>15?'\n…':'')+'\nNo se impidió el cambio; quedó en Advertencias de fecha.')}
+let DRAGC=null;
+function arrastrarCola(ev,oid,c){DRAGC={oid,c};try{ev.dataTransfer.setData('text/plain',oid);ev.dataTransfer.effectAllowed='move'}catch(e){}ev.currentTarget.style.opacity='.5'}
+function overCola(ev,c){if(!DRAGC||DRAGC.c!==c)return;ev.preventDefault();try{ev.dataTransfer.dropEffect='move'}catch(e){}ev.currentTarget.classList.add('dd-over')}
+function outCola(ev){ev.currentTarget.classList.remove('dd-over')}
+function finArrastreCola(ev){ev.currentTarget.style.opacity='';DRAGC=null}
+function soltarCola(ev,c,antesOid){ev.preventDefault();ev.currentTarget.classList.remove('dd-over');if(!DRAGC||DRAGC.c!==c)return;const d=DRAGC;DRAGC=null;if(d.oid===antesOid)return;moverEnCola(d.oid,c,antesOid?{antes:antesOid}:{final:true})}
+/* qué manda sobre esta orden además del puesto del centro (la pantalla lo dice) */
+function mandaCola(o,c){const t=[];const p=puestoDe(o,c);if(!p)t.push('<span class="tag t-aviso" title="Sin puesto asignado: el motor la toma como 3 (regla de prioCentro). Arrastra o escribe un puesto para numerar la cola.">sin puesto · el motor la toma como 3</span>');
+  if(o.prio&&o.prio!==3)t.push('<span class="tag t-alerta" title="La prioridad global de la orden (Órdenes) va antes que el puesto del centro en el motor.">prio global '+o.prio+' manda</span>');
+  const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');return t.join(' ')}
 function vCentro(el){
   const cid=CEN.id;const cens=CENTROS_PROD[cid]||[cid];const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
   const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
@@ -2123,10 +2170,7 @@ function vCentro(el){
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
    ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}<input type="text" style="width:200px" placeholder="buscar WH, categoría, color" value="${esc(CEN.q)}" oninput="CEN.q=this.value;render()"></div>`;
   // órdenes con paso en este centro
-  const filas=[];S.ordenes.filter(abierta).forEach(o=>{cens.forEach(c=>{const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c);const enRuta=(o.ruta||[]).some(p=>p.centro===c);if(!enRuta)return;
-    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hecho=fe.hechos.includes(c)||(ac[c]||0)>=o.cant;
-    const pzSem=P.pro.filter(x=>x.op===o.op&&x.centro===c&&x.dia>=lun&&x.dia<=dom).reduce((s,x)=>s+(x.pz||0),0);
-    if(!q||normTxt(o.op).includes(q)||normTxt(nombreCat(K(o.cat))).includes(q)||normTxt((C(o.color)||{}).n).includes(q))filas.push({o,c,paso:paso||{},hecho,pzSem,hechas:hecho?o.cant:(ac[c]||0),bloq:(P.ordenes[o.id]||{}).bloqueo})})});
+  const filas=filasDeCentros(cens,P,lun,dom,CEN.q);
   if(CEN.tab==='plan'){
     const enSem=filas.filter(f=>f.pzSem>0).sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1);
     const porDia=dias.map(d=>{const xs=P.pro.filter(x=>cens.includes(x.centro)&&x.dia===d);return{d,min:xs.reduce((a,x)=>a+x.min,0),pz:xs.reduce((a,x)=>a+(x.pz||0),0),cap:recs.reduce((a,r)=>a+(labR(d,r)?capDia(r,d):0),0)}});
@@ -2140,15 +2184,22 @@ function vCentro(el){
     return}
   if(CEN.tab==='viene'){el.innerHTML=cab+cargaQueVieneHTML(cens,nombre,P);return}
   if(CEN.tab==='prog'){
-    const lista=filas.filter(f=>!f.hecho&&!f.bloq&&(f.pzSem>0||(f.paso.ini&&f.paso.ini<=dsum(dom,7)))).sort((a,b)=>(((a.o.progCentro||{})[a.c]||{}).pri||3)-(((b.o.progCentro||{})[b.c]||{}).pri||3)||((a.paso.ini||'9')<(b.paso.ini||'9')?-1:1));
-    el.innerHTML=cab+`<p class="lede">Aquí el centro programa sobre la planificación: elige recurso, fija la fecha en que arranca cada orden y su prioridad dentro del centro. El programa general se recalcula respetando lo que el centro decide; si algo no se puede (falta insumo, máquina parada), se registra en la pestaña de ejecución y se corrige con rebalanceo o reestructuración.</p>
-    <div class="panel"><h3>Programación de ${esc(nombre)} <span class="note">${lista.length} órdenes de esta semana y la siguiente</span></h3><div class="scroll" style="max-height:560px"><table><thead><tr><th>Pri.</th><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Entrega</th><th></th></tr></thead><tbody>
-     ${lista.map(f=>{const pc=(f.o.progCentro||{})[f.c]||{};return `<tr><td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','pri',+this.value)">${[1,2,3].map(p=>`<option value="${p}" ${(pc.pri||3)===p?'selected':''}>${p===1?'1 · urgente':p===2?'2 · alta':'3 · normal'}</option>`).join('')}</select></td>
-       <td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
+    const niv=nivelesCEN();const hasta=dsum(dom,7);
+    const tablas=cens.map(c=>{const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
+      const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const sinPuesto=colaAll.filter(f=>!puestoDe(f.o,c)).length;
+      const fila=f=>{const pc=(f.o.progCentro||{})[f.c]||{};return `<tr draggable="${okPiso?'true':'false'}" ondragstart="arrastrarCola(event,'${f.o.id}','${f.c}')" ondragend="finArrastreCola(event)" ondragover="overCola(event,'${f.c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${f.c}','${f.o.id}')">
+       <td style="white-space:nowrap">${okPiso?'<span class="hand" title="arrastra para cambiar el puesto">⠿</span>':''}<input type="number" min="1" style="width:58px" value="${pc.pri||''}" placeholder="—" ${okPiso?'':'disabled'} onchange="moverEnCola('${f.o.id}','${f.c}',{pos:+this.value})" title="puesto en la cola de ${esc(nCen(f.c))}: es el número de prioridad que usa el motor"></td>
+       <td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)} ${mandaCola(f.o,f.c)}</td><td>${esc(f.o.cliente||'')}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
        <td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">auto (${esc(nRec(f.paso.rec))})</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
-       <td><input type="date" value="${pc.desde||''}" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${(P.ordenes[f.o.id]||{}).atraso?'<span class="tag t-alerta">'+f.o.fecha+'</span>':f.o.fecha}</td>
-       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)">quitar</button> `:''}${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="11" class="mut">Nada por programar.</td></tr>'}</tbody></table></div>
-     <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p></div>`;
+       <td><input type="date" value="${pc.desde||''}" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${(P.ordenes[f.o.id]||{}).atraso?'<span class="tag t-alerta">'+f.o.fecha+'</span>':(f.o.fecha||'')}</td>
+       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button>`:''}</td></tr>`};
+      return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Entrega</th><th></th></tr></thead><tbody>
+       ${filasArbolEG(agruparCola(cola,niv),fila,12)||'<tr><td colspan="12" class="mut">Nada por programar.</td></tr>'}
+       ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="12">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`}).join('');
+    el.innerHTML=cab+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
+    <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${selNivelesCEN()}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
+    ${tablas}
+    <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. Las prendas de cada grupo son las pendientes en el centro. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p>`;
     return}
   // ejecución y desviaciones
   const porDia=dias.map(d=>{const plan=P.pro.filter(x=>cens.includes(x.centro)&&x.dia===d).reduce((a,x)=>a+(x.pz||0),0);const real=(S.turnos||[]).filter(t=>t.d===d&&recs.some(r=>r.id===t.rec)).reduce((a,t)=>a+(t.pz||0),0);const paro=(S.paros||[]).filter(p=>p.d===d&&recs.some(r=>r.id===p.rec)).reduce((a,p)=>a+ +p.min,0);return{d,plan,real,paro}});

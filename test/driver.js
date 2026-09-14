@@ -384,6 +384,36 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      page='ordenes';render();__check("bandeja: tabla de fases con casillas y botón",document.getElementById('p-ordenes').innerHTML.includes('Fase en el sistema')&&document.getElementById('p-ordenes').innerHTML.includes('Usar la fase del archivo'));
      rc.noCalzan=rc.noCalzan.filter(x=>x.op!==oMov.op);}
    page='ordenes';render();__check("proyecto/bandeja sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* programación por centro: agrupar y ordenar arrastrando (cola única por centro = progCentro[c].pri) */
+  {const antes=__R.errors.length;const adminP=PERFIL;CEN.id='corte';CEN.tab='prog';CEN.q='';CEN.niveles=[];CEN.todo=true;page='centro';render();
+   const P0=programar();const lun=lunesDe(hoy());const cola=colaCentro('corte',filasDeCentros(['corte'],P0,lun,dsum(lun,6),''));
+   __check("cola: Corte tiene cola con órdenes pendientes",cola.length>=3,cola.length);
+   const html=()=>document.getElementById('p-centro').innerHTML;
+   __check("cola: la tabla es arrastrable y tiene puesto numérico y zona 'al final'",/draggable="true"/.test(html())&&/onchange="moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
+   __check("cola: sin puesto la pantalla dice que el motor la toma como 3",html().includes('el motor la toma como 3'));
+   if(cola.length>=3){const oA=cola[cola.length-1].o,oB=cola[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
+     DRAGC={oid:oA.id,c:'corte'};const ev={preventDefault(){},currentTarget:{classList:{remove(){},add(){}}},dataTransfer:{}};soltarCola(ev,'corte',oB.id);
+     const cola2=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
+     __check("cola: soltar sobre la primera pone la orden en el puesto 1 y renumera toda la cola 1..n",cola2[0].o.id===oA.id&&cola2.every((f,i)=>puestoDe(f.o,'corte')===i+1),cola2.slice(0,3).map(f=>f.o.op+':'+puestoDe(f.o,'corte')).join(' '));
+     __check("cola: el motor ordena por ese número (prioCentro)",prioCentro(oA)===1);
+     __check("cola: queda en bitácora quién movió qué y cuándo",S.bitacora.slice(nb).some(b=>b.t.startsWith('Cola de Corte: '+oA.op+' del puesto '+cola.length+' al 1')&&b.u&&b.ts));
+     __check("cola: las advertencias nuevas (si las hay) llevan la acción de la cola",(S.params.advertencias||[]).slice(nAdv).every(x=>/^Cola de Corte/.test(x.accion)));
+     moverEnCola(oA.id,'corte',{pos:cola.length});const cola3=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
+     __check("cola: escribir el puesto n la manda al final",cola3[cola3.length-1].o.id===oA.id&&cola3.every((f,i)=>puestoDe(f.o,'corte')===i+1));
+     __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · el motor/.test(html()));
+     // agrupar: reordena y suma, no esconde
+     CEN.niveles=['cliente','cat'];render();const arb=agruparCola(cola3,['cliente','cat']);const nHojas=a=>a.hojas?a.hojas.length:a.grupos.reduce((x,g)=>x+nHojas(g.sub),0);
+     __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes",nHojas(arb)===cola3.length&&arb.grupos.reduce((x,g)=>x+g.pz,0)===cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0)&&html().includes('Cliente:')&&(html().match(/draggable="true"/g)||[]).length===cola3.length);
+     // prio global manda: la pantalla lo dice
+     const pr=oA.prio;oA.prio=1;render();__check("cola: si la orden tiene prio global, la pantalla dice que manda",html().includes('prio global 1 manda'));oA.prio=pr;
+     // otro centro con menor puesto
+     oA.progCentro.modulos={pri:1};render();__check("cola: si otro centro la tiene en menor puesto, la pantalla lo dice",html().includes('la tiene en 1: manda ese'));delete oA.progCentro.modulos;
+     // perfil sin permiso no mueve
+     PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};const antesP=puestoDe(oA,'corte');moverEnCola(oA.id,'corte',{pos:1});__check("cola: un perfil de otro centro no puede mover",puestoDe(oA,'corte')===antesP);PERFIL=adminP;
+     // terminados: una cola por centro
+     CEN.id='terminados';CEN.niveles=[];render();__check("cola: Terminados muestra una cola por centro",(html().match(/Cola de /g)||[]).length===4);
+     cola3.forEach(f=>{delete f.o.progCentro.corte.pri;if(!Object.keys(f.o.progCentro.corte).length)delete f.o.progCentro.corte;if(!Object.keys(f.o.progCentro).length)delete f.o.progCentro});PLAN=null;PLAN_ALL=null;}
+   CEN.id='corte';CEN.todo=false;CEN.niveles=[];render();__check("cola sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
