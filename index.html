@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 11:16';
+const APP_BUILD='2026-09-14 11:18';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -4698,7 +4698,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
       if(v.lib.tela&&v.lib.tela.ok&&sist==='previo a producción')noCalzan.push({op:o.op,decision:'liberada a planta ('+(v.lib.tela.u||'')+')',motivo:'la fase nueva es '+o.fase+' (previo a producción)'})}
     if(conserva('prio')&&v.prio!=null&&v.prio!==3){o.prio=v.prio;cons.prio++}
     if(conserva('progCentro')&&v.progCentro){o.progCentro=v.progCentro;cons.progCentro++;Object.keys(v.progCentro).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'programación en '+nCen(c),motivo:'ese centro ya no está en la ruta'})})}
-    if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.ruta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está pendiente en la ruta'})})}
+    if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está en la ruta de la orden'})})}
     if(conserva('fechaCompromiso')&&v.fechaCompromiso){o.fechaCompromiso=v.fechaCompromiso;cons.fechaCompromiso++;if(esFacturada(o)&&!esFacturada(v))noCalzan.push({op:o.op,decision:'compromiso '+v.fechaCompromiso,motivo:'la orden llegó a '+o.fase+' según el archivo (sin fecha exacta)'})}
     if(conserva('foto')&&v.foto){o.foto=v.foto;cons.foto++}
     if(conserva('fases')&&v.fases&&v.fases.length){o.fases=v.fases.slice();cons.fases++;if(!conserva('fase')){const f0=o.fase;o.fase=v.fase||null;registrarFase(o,nueva,'archivo');o.fase=nueva;if(f0!==o.fase)o.fase=nueva}}else o.fases=[{f:o.fase||null,ts,u,origen:'archivo',antes:null}];
