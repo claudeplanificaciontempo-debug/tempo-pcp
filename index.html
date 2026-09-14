@@ -278,6 +278,7 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="familias">Demanda agregada</a>
       <a data-p="escenarios">Escenarios</a>
       <a data-p="cumplimiento">Cumplimiento</a>
+      <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
     </div>
     <div class="grp" data-g="tex">Planificación textil <span class="car">▾</span></div>
     <div class="gbody" data-g="tex">
@@ -327,6 +328,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-plan"></section>
     <section class="page" id="p-escenarios"></section>
     <section class="page" id="p-cumplimiento"></section>
+    <section class="page" id="p-auditoria"></section>
     <section class="page" id="p-linea"></section>
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
@@ -464,7 +466,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['auditoria','Auditoría de replanificación'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -551,7 +553,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 08:35';
+const APP_BUILD='2026-09-14 08:42';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1089,7 +1091,7 @@ function render(){
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -2211,15 +2213,84 @@ function moverDirecto(oid,dest,gana,fin,finAntes){const o=S.ordenes.find(x=>x.id
    Personas: las del recurso (no un número fijo). Objetivo prendas/hora: lo pone la supervisora y queda registrado (quién, cuándo, antes).
    Al lado, el ritmo TEÓRICO que sale de las operaciones y las personas. El orden de las operaciones dentro de cada sección es PROVISIONAL
    (el del archivo) hasta que producción llene la hoja ORDEN. */
-let BAL={rec:null,mes:null,grupo:null};
+/* ---------- Replanificación por referencia: un centro cambia el tiempo de una operación SOLO para esa orden ----------
+   No toca la hoja de operaciones, ni el SAM de la categoría, ni la carga de otros módulos. Queda en S.params.replan (historial de
+   auditoría, solo lectura desde Dirección) y en la orden (o.opsSam) para que su balanceo y su propia carga usen el tiempo ajustado.
+   El estándar de la fábrica lo corrige solo el administrador en Operaciones. */
+function replanLog(){if(!S.params.replan)S.params.replan=[];return S.params.replan}
+function ajustesOrden(o){return (o&&o.opsSam)||{}}
+/* hoja de confección de la categoría, con los ajustes de una orden si se pasa */
+function opsConfeccionDe(k,o){return opsConfeccion(k).map(x=>{const aj=o?ajustesOrden(o)[x.op]:null;return aj?Object.assign({},x,{sam:+aj.sam,ajustada:true,samHoja:x.sam,ajuste:aj}):x})}
+function samConfeccionOrden(o){const k=K(o.cat);if(!k)return null;const ops=opsConfeccionDe(k,o);return ops.length?ops.reduce((a,x)=>a+x.sam,0):null}
+function mAjusteOp(oid,opId){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||puedeCentro('modulos'))){alert('Tu perfil no puede ajustar tiempos.');return}
+  const k=K(o.cat);const x=opsConfeccionDe(k,o).find(y=>y.op===opId);if(!x)return;
+  abrir(`<h3>Tiempo de "${esc(x.n)}" solo para ${esc(o.op)}</h3><div class="body">
+   <p class="lede" style="margin-top:0">Este cambio vale <b>solo para esta referencia</b> (${esc(o.op)} · ${esc(nombreCat(k))} · ${num(o.cant)} prendas). No cambia la hoja de operaciones ni el tiempo de la categoría ni la carga de otros módulos. Queda en la auditoría de replanificación con tu nombre, la fecha y el motivo. Si el estándar está mal de verdad, lo corrige el administrador en Operaciones.</p>
+   <div class="row"><div><label>Hoja (estándar)</label><input type="text" value="${num(x.samHoja!=null?x.samHoja:x.sam,3)} min" disabled></div><div><label>Hoy para esta referencia</label><input type="text" value="${num(x.sam,3)} min" disabled></div><div><label>Nuevo tiempo (min/prenda)</label><input type="number" step="0.001" min="0" id="aj-sam" value="${x.sam}"></div></div>
+   <div class="row"><div style="flex:1"><label>Motivo (obligatorio)</label><input type="text" id="aj-motivo" placeholder="tela más gruesa, operación con detalle extra, máquina distinta…"></div></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>${x.ajustada?`<button class="btn ghost" onclick="quitarAjusteOp('${o.id}','${opId}')">Volver al estándar</button>`:''}<button class="btn" onclick="guardarAjusteOp('${o.id}','${opId}')">Guardar</button></div>`)}
+function aplicarSamOrden(o){const t=samConfeccionOrden(o);if(t==null)return;[o.ruta,o.rutaCompleta].forEach(r=>{const p=(r||[]).find(x=>x.centro==='modulos');if(p)p.t=+t.toFixed(4)})}
+function guardarAjusteOp(oid,opId){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const g=x=>document.getElementById(x).value;const sam=+String(g('aj-sam')).replace(',','.');const motivo=g('aj-motivo').trim();
+  if(!(sam>=0)||isNaN(sam)){alert('Tiempo inválido.');return}if(!motivo){alert('El motivo es obligatorio.');return}
+  const k=K(o.cat);const x=opsConfeccionDe(k,o).find(y=>y.op===opId);if(!x)return;const antes=x.sam;if(Math.abs(antes-sam)<1e-9){cerrar();return}
+  const P=S.ordenes.length?programar():{ordenes:{}};const rec=(((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro==='modulos')||{}).rec||null;
+  const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts=new Date().toISOString();
+  o.opsSam=o.opsSam||{};o.opsSam[opId]={sam,u,ts,motivo,hoja:x.samHoja!=null?x.samHoja:antes};
+  const tAntes=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;aplicarSamOrden(o);const tDesp=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;
+  replanLog().push({id:uid(),tipo:'op',ts,u,centro:'modulos',rec,oid:o.id,op:o.op,cat:nombreCat(k),catId:k?k.id:null,opId,opN:x.n,cant:+o.cant||0,antes,despues:sam,hoja:x.samHoja!=null?x.samHoja:antes,samOrdenAntes:tAntes,samOrdenDespues:tDesp,motivo});
+  if(replanLog().length>3000)S.params.replan=replanLog().slice(-3000);
+  bitacora('Replanificación '+o.op+' · '+x.n+': '+num(antes,3)+' → '+num(sam,3)+' min ('+motivo+')');PLAN=null;PLAN_ALL=null;save();cerrar();render()}
+function quitarAjusteOp(oid,opId){const o=S.ordenes.find(x=>x.id===oid);if(!o||!o.opsSam||!o.opsSam[opId])return;const motivo=prompt('Motivo para volver al estándar (obligatorio):');if(!motivo||!motivo.trim())return;
+  const k=K(o.cat);const x=opsConfeccionDe(k,o).find(y=>y.op===opId);const antes=x?x.sam:o.opsSam[opId].sam;const hoja=x?x.samHoja:null;delete o.opsSam[opId];if(!Object.keys(o.opsSam).length)delete o.opsSam;
+  const tAntes=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;aplicarSamOrden(o);const tDesp=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts=new Date().toISOString();
+  replanLog().push({id:uid(),tipo:'op',ts,u,centro:'modulos',rec:null,oid:o.id,op:o.op,cat:nombreCat(k),catId:k?k.id:null,opId,opN:x?x.n:opId,cant:+o.cant||0,antes,despues:hoja,hoja,samOrdenAntes:tAntes,samOrdenDespues:tDesp,motivo:motivo.trim()+' (vuelve al estándar)'});
+  bitacora('Replanificación '+o.op+' · '+(x?x.n:opId)+': vuelve al estándar ('+motivo+')');PLAN=null;PLAN_ALL=null;save();cerrar();render()}
+/* al recargar órdenes (Parte 2), los ajustes por referencia viajan con la OP */
+function conservarAjustes(prevMap){S.ordenes.forEach(o=>{const a=prevMap[normTxt(o.op)];if(a&&!o.opsSam){o.opsSam=a;aplicarSamOrden(o)}})}
+/* ---------- Auditoría de replanificación (Dirección): solo lee ---------- */
+let AUD={rec:'',u:'',cat:'',mes:''};
+function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
+  S.recursos.filter(r=>r.centro==='modulos').forEach(r=>(r.objetivoHist||[]).forEach((h,i)=>out.push({id:r.id+'_obj_'+i,tipo:'objetivo',ts:h.ts,u:h.u,centro:'modulos',rec:r.id,op:'',cat:'',cant:null,antes:h.antes,despues:h.v,motivo:h.motivo||''})));
+  return out.sort((a,b)=>a.ts<b.ts?1:-1)}
+function vAuditoria(el){
+  if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría de replanificación</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
+  const todas=entradasAuditoria();const recs=[...new Set(todas.map(e=>e.rec).filter(Boolean))].map(id=>[id,nRec(id)]).sort((a,b)=>a[1].localeCompare(b[1]));
+  const us=[...new Set(todas.map(e=>e.u).filter(Boolean))].sort();const cats=[...new Set(todas.map(e=>e.cat).filter(Boolean))].sort();const meses=[...new Set(todas.map(e=>e.ts.slice(0,7)))].sort().reverse();
+  const L=todas.filter(e=>(!AUD.rec||e.rec===AUD.rec)&&(!AUD.u||e.u===AUD.u)&&(!AUD.cat||e.cat===AUD.cat)&&(!AUD.mes||e.ts.startsWith(AUD.mes)));
+  const ops=L.filter(e=>e.tipo==='op'),objs=L.filter(e=>e.tipo==='objetivo');
+  const pctDif=e=>e.antes?((e.despues-e.antes)/e.antes*100):null;
+  const resumen=(xs,keyFn,tit)=>{const g={};xs.forEach(e=>{const k=keyFn(e)||'—';g[k]=g[k]||{n:0,sube:0,baja:0,dmin:0,pcts:[]};g[k].n++;if(e.despues>e.antes)g[k].sube++;else g[k].baja++;g[k].dmin+=(e.despues-e.antes);const p=pctDif(e);if(p!=null)g[k].pcts.push(p)});
+    const rows=Object.entries(g).sort((a,b)=>b[1].n-a[1].n);return `<table><thead><tr><th>${tit}</th><th class="num">Cambios</th><th class="num">Suben</th><th class="num">Bajan</th><th class="num">Σ minutos</th><th class="num">% promedio</th></tr></thead><tbody>${rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.sube}</td><td class="num">${v.baja}</td><td class="num">${(v.dmin>=0?'+':'')+num(v.dmin,3)}</td><td class="num">${v.pcts.length?(v.pcts.reduce((a,b)=>a+b,0)/v.pcts.length>=0?'+':'')+num(v.pcts.reduce((a,b)=>a+b,0)/v.pcts.length,1)+' %':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sin cambios.</td></tr>'}</tbody></table>`};
+  const sel=(lbl,val,items,key)=>`<div><label>${lbl}</label><select onchange="AUD.${key}=this.value;render()"><option value="">todos</option>${items.map(([v,n])=>`<option value="${esc(v)}" ${val===v?'selected':''}>${esc(n)}</option>`).join('')}</select></div>`;
+  const cuadro=e=>{const esOp=e.tipo==='op';const dif=esOp?e.despues-e.antes:null;const p=pctDif(e);
+    return `<div class="panel" style="margin-bottom:10px"><div class="body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+     <div style="border:1px solid var(--rule);border-radius:8px;padding:10px 12px"><div class="mut" style="font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Plan original</div>
+      <div><b>${esc(e.rec?nRec(e.rec):nCen(e.centro))}</b>${esOp?' · '+esc(e.op)+' <span class="mut">('+esc(e.cat)+')</span>':' · objetivo prendas/hora'}</div>
+      <div>${esOp?'Unidades: <b>'+num(e.cant)+'</b>':'Objetivo: <b>'+(e.antes==null?'sin fijar':num(e.antes,1)+' pz/h')+'</b>'}</div>
+      <div>${esOp?'Minutos/prenda "'+esc(e.opN)+'": <b>'+num(e.antes,3)+'</b>'+(e.hoja!=null&&Math.abs(e.hoja-e.antes)>1e-9?' <span class="mut">(hoja '+num(e.hoja,3)+')</span>':'')+(e.samOrdenAntes!=null?' · orden '+num(e.samOrdenAntes,2)+' min':''):''}</div></div>
+     <div style="border:1px solid var(--rule);border-radius:8px;padding:10px 12px;background:var(--field)"><div class="mut" style="font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Replanificación</div>
+      <div><b>${esc(e.rec?nRec(e.rec):nCen(e.centro))}</b>${esOp?' · '+esc(e.op)+' <span class="mut">('+esc(e.cat)+')</span>':' · objetivo prendas/hora'}</div>
+      <div>${esOp?'Unidades: <b>'+num(e.cant)+'</b>':'Objetivo: <b>'+(e.despues==null?'sin fijar':num(e.despues,1)+' pz/h')+'</b>'+(p!=null&&e.despues!=null?' · diferencia '+(p>=0?'+':'')+num(p,1)+' %':'')}</div>
+      <div>${esOp?'Minutos/prenda: <b>'+num(e.despues,3)+'</b> · diferencia <b>'+(dif>=0?'+':'')+num(dif,3)+' min</b>'+(p!=null?' ('+(p>=0?'+':'')+num(p,1)+' %)':'')+(e.samOrdenDespues!=null?' · orden '+num(e.samOrdenDespues,2)+' min':''):''}</div></div></div>
+     <div style="margin-top:8px;font-size:var(--fs-s)"><b>${esc(e.u||'—')}</b> · ${new Date(e.ts).toLocaleString('es-EC')} · Motivo: ${e.motivo?esc(e.motivo):'<span class="mut">(sin motivo: cambio anterior a la auditoría)</span>'}</div></div></div>`};
+  el.innerHTML=`<div class="pagehead"><h2>Auditoría de replanificación</h2><span class="spacer"></span><span class="mut">${L.length} cambios${AUD.rec||AUD.u||AUD.cat||AUD.mes?' (filtrados de '+todas.length+')':''}</span></div>
+  <p class="lede">Cada vez que un centro cambia el tiempo de una operación <b>para una referencia</b> (balanceo) o el objetivo de prendas por hora de un módulo, queda aquí: plan original y replanificación lado a lado, quién, cuándo y motivo. Los cambios por referencia no tocan la hoja de operaciones ni el estándar de la categoría; si el estándar está mal, lo corrige el administrador en Operaciones. Esta pantalla solo lee.</p>
+  <div class="panel"><div class="body" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">${sel('Centro / módulo',AUD.rec,recs,'rec')}${sel('Persona',AUD.u,us.map(u=>[u,u]),'u')}${sel('Categoría',AUD.cat,cats.map(c=>[c,c]),'cat')}${sel('Mes',AUD.mes,meses.map(m=>[m,fmtMesEG(m)]),'mes')}${AUD.rec||AUD.u||AUD.cat||AUD.mes?`<div><button class="btn ghost sm" onclick="AUD={rec:'',u:'',cat:'',mes:''};render()">Limpiar</button></div>`:''}</div></div>
+  <div class="kpis"><div class="kpi"><div class="v">${ops.length}</div><div class="k">Cambios de tiempo por referencia · ${ops.filter(e=>e.despues>e.antes).length} suben · ${ops.filter(e=>e.despues<e.antes).length} bajan</div></div><div class="kpi"><div class="v">${objs.length}</div><div class="k">Cambios de objetivo prendas/hora</div></div><div class="kpi"><div class="v">${new Set(ops.map(e=>e.opN)).size}</div><div class="k">Operaciones distintas tocadas</div></div><div class="kpi"><div class="v">${new Set(L.map(e=>e.u)).size}</div><div class="k">Personas</div></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px"><div class="panel"><h3>Por módulo <span class="note">quién sube tiempos seguido</span></h3><div class="body">${resumen(ops,e=>e.rec?nRec(e.rec):'(sin módulo)','Módulo')}</div></div>
+   <div class="panel"><h3>Por operación <span class="note">si siempre es la misma, el estándar está mal</span></h3><div class="body">${resumen(ops,e=>e.opN+' · '+e.cat,'Operación · categoría')}</div></div>
+   <div class="panel"><h3>Por persona</h3><div class="body">${resumen(ops,e=>e.u,'Persona')}</div></div></div>
+  <h4 style="margin:16px 0 8px">Cambios, del más reciente al más antiguo</h4>${L.slice(0,200).map(cuadro).join('')||'<div class="panel"><div class="empty">Sin cambios con estos filtros.</div></div>'}${L.length>200?`<p class="mut">Se muestran 200 de ${L.length}.</p>`:''}`}
+let BAL={rec:null,mes:null,grupo:null,ref:null};
 function objetivoHora(r){return r&&r.objetivoHora&&typeof r.objetivoHora.v==='number'?r.objetivoHora:null}
 function setObjetivoHora(rid,v){const r=R(rid);if(!r)return;if(!(puede('programa')||puedeCentro('modulos'))){alert('Tu perfil no puede fijar el objetivo.');return}
-  const antes=objetivoHora(r);const n=v===''||v==null?null:+v;if(n!=null&&!(n>=0)){alert('Objetivo inválido.');return}
+  const antes=objetivoHora(r);const n=v===''||v==null?null:+v;if(n!=null&&!(n>=0)){alert('Objetivo inválido.');return}if((antes?antes.v:null)===n)return;
+  const motivo=(prompt('Motivo del cambio de objetivo (obligatorio):')||'').trim();if(!motivo){alert('El motivo es obligatorio; no se cambió.');render();return}
   const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts=new Date().toISOString();
-  r.objetivoHist=(r.objetivoHist||[]).concat([{ts,u,antes:antes?antes.v:null,v:n}]).slice(-100);r.objetivoHora=n==null?null:{v:n,u,ts,antes:antes?antes.v:null};
-  bitacora('Objetivo prendas/hora '+r.n+': '+(antes?antes.v:'—')+' → '+(n==null?'—':n));save();render()}
+  r.objetivoHist=(r.objetivoHist||[]).concat([{ts,u,antes:antes?antes.v:null,v:n,motivo}]).slice(-100);r.objetivoHora=n==null?null:{v:n,u,ts,antes:antes?antes.v:null};
+  bitacora('Objetivo prendas/hora '+r.n+': '+(antes?antes.v:'—')+' → '+(n==null?'—':n)+' ('+motivo+')');save();render()}
 /* hoja de operaciones de confección de una categoría, con sección y orden provisional */
-function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{n:x.n,sam:+x.sam||0,maq:x.maq||'',secc:src.seccOp||'General',orden:i+1,provisional:true}})}
+function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{op:x.op,n:x.n,sam:+x.sam||0,maq:x.maq||'',secc:src.seccOp||'General',orden:i+1,provisional:true}})}
 /* reparto por puestos: operaciones consecutivas de la misma máquina hasta llenar el ritmo; una operación mayor que el ritmo se parte */
 function repartirPuestos(ops,takt){const puestos=[];let cur=null;ops.forEach(x=>{const req=takt?x.sam/takt:0;
     if(req>1){for(let i=0;i<Math.ceil(req);i++)puestos.push({ops:[x],maq:x.maq||'Manual',min:x.sam/Math.ceil(req),partida:true});cur=null;return}
@@ -2231,7 +2302,7 @@ function vBalanceo(el){
   const meses=[...new Set(P.pro.map(x=>(x.dia||'').slice(0,7)).filter(Boolean))].sort();if(!meses.includes(ym))meses.push(ym);meses.sort();
   const sel=`<div class="row" style="margin:0 0 14px;align-items:flex-end">
     <div><label>Módulo</label><select onchange="BAL.rec=this.value;BAL.grupo=null;render()">${mods.map(r=>`<option value="${r.id}" ${r.id===BAL.rec?'selected':''}>${esc(r.n)} · ${r.pers} personas</option>`).join('')}</select></div>
-    <div><label>Mes</label><select onchange="BAL.mes=this.value;BAL.grupo=null;render()">${meses.map(m=>`<option value="${m}" ${m===ym?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div></div>`;
+    <div><label>Mes</label><select onchange="BAL.mes=this.value;BAL.grupo=null;BAL.ref=null;render()">${meses.map(m=>`<option value="${m}" ${m===ym?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div></div>`;
   if(!rec){el.innerHTML=`<div class="pagehead"><h2>Balanceo de módulo</h2></div><div class="panel"><div class="empty">No hay módulos activos que tu perfil vea.</div></div>`;return}
   // órdenes programadas en este módulo este mes, agrupadas por hoja de operaciones (familia)
   const ops=[...new Set(P.pro.filter(x=>x.rec===rec.id&&x.centro==='modulos'&&(x.dia||'').startsWith(ym)).map(x=>x.op))];
@@ -2246,9 +2317,12 @@ function vBalanceo(el){
    <div class="mut" style="font-size:var(--fs-s)">${obj?'Fijado por '+esc(obj.u)+' el '+new Date(obj.ts).toLocaleString('es-EC')+(obj.antes!=null?' · antes '+obj.antes:''):'Sin objetivo fijado.'}${(rec.objetivoHist||[]).length>1?` <details style="display:inline"><summary style="cursor:pointer;display:inline">historial (${rec.objetivoHist.length})</summary>${rec.objetivoHist.slice().reverse().map(x=>'<div>'+new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.u)+' · '+(x.antes==null?'—':x.antes)+' → '+(x.v==null?'—':x.v)+'</div>').join('')}</details>`:''}</div></div></div></div>`;
   if(!lista.length){el.innerHTML=cab+`<div class="panel"><div class="empty">Nada programado en ${esc(rec.n)} en ${esc(fmtMesEG(ym))}.</div></div>`;return}
   const listaHTML=`<div class="panel"><h3>Órdenes programadas en ${esc(rec.n)} · ${esc(fmtMesEG(ym))} <span class="note">${ords.length} órdenes · ${num(ords.reduce((a,o)=>a+ +o.cant,0))} prendas · ${lista.length} hojas de operaciones</span></h3><div class="body"><table><thead><tr><th>Hoja de operaciones (familia)</th><th>Categorías</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Órdenes</th><th></th></tr></thead><tbody>
-   ${lista.map(([g,v])=>`<tr ${BAL.grupo===g?'style="background:var(--field)"':''}><td><b>${esc(v.lmo||(v.p?v.p.n:g))}</b>${v.lmo?'':' <span class="tag t-aviso">sin hoja</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc([...v.hijas].join(', '))}</td><td class="num">${v.ords.length}</td><td class="num">${num(v.pz)}</td><td style="font-size:var(--fs-xs)">${v.ords.slice(0,8).map(o=>fotoMini(o,22)+esc(o.op)).join(' · ')}${v.ords.length>8?' +'+(v.ords.length-8):''}</td><td><button class="btn sm ${BAL.grupo===g?'':'ghost'}" onclick="BAL.grupo='${g}';render()">balanceo</button></td></tr>`).join('')}</tbody></table></div></div>`;
+   ${lista.map(([g,v])=>`<tr ${BAL.grupo===g?'style="background:var(--field)"':''}><td><b>${esc(v.lmo||(v.p?v.p.n:g))}</b>${v.lmo?'':' <span class="tag t-aviso">sin hoja</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc([...v.hijas].join(', '))}</td><td class="num">${v.ords.length}</td><td class="num">${num(v.pz)}</td><td style="font-size:var(--fs-xs)">${v.ords.slice(0,8).map(o=>fotoMini(o,22)+esc(o.op)+(o.opsSam?' <span class="tag t-aviso" title="tiene tiempos ajustados solo para esta referencia">ajustada</span>':'')).join(' · ')}${v.ords.length>8?' +'+(v.ords.length-8):''}</td><td><button class="btn sm ${BAL.grupo===g?'':'ghost'}" onclick="BAL.grupo='${g}';BAL.ref=null;render()">balanceo</button></td></tr>`).join('')}</tbody></table></div></div>`;
   if(!BAL.grupo){el.innerHTML=cab+listaHTML+'<p class="mut">Haz clic en "balanceo" de una hoja para verlo.</p>';return}
-  const G=grupos[BAL.grupo];const k=G.k0;const opsC=k?opsConfeccion(k):[];const samTot=opsC.reduce((a,x)=>a+x.sam,0);
+  const G=grupos[BAL.grupo];const oRef=BAL.ref?G.ords.find(o=>o.id===BAL.ref):null;if(BAL.ref&&!oRef)BAL.ref=null;const k=oRef?K(oRef.cat):G.k0;const opsC=k?(oRef?opsConfeccionDe(k,oRef):opsConfeccion(k)):[];const samTot=opsC.reduce((a,x)=>a+x.sam,0);
+  const puedeAj=puede('programa')||puedeCentro('modulos');const nAj=opsC.filter(x=>x.ajustada).length;
+  const selRef=`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>Referencia</label><select onchange="BAL.ref=this.value||null;render()"><option value="">Hoja estándar (todas las órdenes de la hoja)</option>${G.ords.map(o=>`<option value="${o.id}" ${BAL.ref===o.id?'selected':''}>${esc(o.op)} · ${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz${o.opsSam?' · ajustada':''}</option>`).join('')}</select></div>
+    <div class="mut" style="font-size:var(--fs-s)">${oRef?(puedeAj?'Clic en un tiempo para ajustarlo <b>solo para esta referencia</b> (motivo obligatorio; queda en Auditoría de replanificación).':'Tu perfil no ajusta tiempos.')+(nAj?' · '+nAj+' operaciones ajustadas':''):'Elige una referencia para ajustar tiempos solo para ella. La hoja estándar solo la corrige el administrador en Operaciones.'}</div></div>`;
   if(!opsC.length){el.innerHTML=cab+listaHTML+`<div class="warn">${esc(G.p?G.p.n:BAL.grupo)} no tiene hoja de operaciones de confección; el balanceo necesita las operaciones una por una.</div>`;return}
   const teorico=samTot?rec.pers*minH/samTot:0; // prendas/hora con las personas del módulo, perfectamente balanceado
   const objetivo=obj?obj.v:null;const base=objetivo||teorico;const takt=base?minH/base:0; // minutos de cada puesto por prenda
@@ -2260,8 +2334,8 @@ function vBalanceo(el){
   const tipos=[...new Set([...Object.keys(necesita),...Object.keys(tiene)])].filter(t=>t!=='Manual').sort();const sinMaq=opsC.filter(x=>!x.maq).length;
   const secciones=[];opsC.forEach(x=>{let s=secciones.find(y=>y.n===x.secc);if(!s){s={n:x.secc,ops:[]};secciones.push(s)}s.ops.push(x)});
   const dif=objetivo&&teorico?(objetivo-teorico)/teorico:null;
-  el.innerHTML=cab+listaHTML+`
-  <section class="imp"><div class="imp-cab"><div><b>${esc(rec.n)}</b> · balanceo de <b>${esc(G.lmo||k.n)}</b> <span class="mut">(${esc([...G.hijas].join(', '))})</span> · ${G.ords.length} ${G.ords.length===1?'orden usa':'órdenes usan'} este balanceo (${num(G.pz)} prendas)</div><div class="mut">${G.ords.map(o=>esc(o.op)).join(', ')}</div></div>
+  el.innerHTML=cab+listaHTML+selRef+`
+  <section class="imp"><div class="imp-cab"><div><b>${esc(rec.n)}</b> · balanceo de <b>${esc(G.lmo||k.n)}</b> <span class="mut">(${esc([...G.hijas].join(', '))})</span> · ${oRef?'referencia <b>'+esc(oRef.op)+'</b> ('+num(oRef.cant)+' prendas)'+(nAj?' · '+nAj+' tiempos ajustados solo para ella':' · tiempos de la hoja'):G.ords.length+' '+(G.ords.length===1?'orden usa':'órdenes usan')+' este balanceo ('+num(G.pz)+' prendas)'}</div><div class="mut">${G.ords.map(o=>esc(o.op)).join(', ')}</div></div>
   <div class="kpis"><div class="kpi"><div class="v">${num(samTot,2)}</div><div class="k">Minutos por prenda en confección · ${opsC.length} operaciones</div></div>
    <div class="kpi"><div class="v">${rec.pers}</div><div class="k">Personas del módulo (recurso)</div></div>
    <div class="kpi"><div class="v">${objetivo!=null?num(objetivo,1):'—'}</div><div class="k">Objetivo prendas/hora (supervisora)</div></div>
@@ -2271,7 +2345,7 @@ function vBalanceo(el){
   <div class="warn" style="margin:8px 0">Orden de las operaciones <b>provisional</b>: dentro de cada sección va en el orden del archivo LMO, no en la secuencia real de la prenda. Producción la está llenando en la hoja ORDEN; hasta entonces el reparto por puestos es una aproximación.</div>
   <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
    <div><h4 style="margin:0 0 6px">Operaciones por sección de la prenda</h4><table><thead><tr><th>#</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num">Min/pz</th></tr></thead><tbody>
-    ${secciones.map(sc=>`<tr style="background:var(--field);font-weight:600"><td colspan="4">${esc(sc.n)}</td><td class="num">${num(sc.ops.reduce((a,x)=>a+x.sam,0),2)}</td></tr>`+sc.ops.map(x=>`<tr><td class="mut">${x.orden}<span title="orden provisional (archivo)" style="color:var(--aviso)">*</span></td><td class="mut" style="font-size:var(--fs-xs)">${esc(sc.n)}</td><td>${esc(x.n)}</td><td>${esc(x.maq||'—')}</td><td class="num">${num(x.sam,2)}</td></tr>`).join('')).join('')}
+    ${secciones.map(sc=>`<tr style="background:var(--field);font-weight:600"><td colspan="4">${esc(sc.n)}</td><td class="num">${num(sc.ops.reduce((a,x)=>a+x.sam,0),2)}</td></tr>`+sc.ops.map(x=>`<tr><td class="mut">${x.orden}<span title="orden provisional (archivo)" style="color:var(--aviso)">*</span></td><td class="mut" style="font-size:var(--fs-xs)">${esc(sc.n)}</td><td>${esc(x.n)}${x.ajustada?' <span class="tag t-aviso" title="ajustado solo para esta referencia · hoja '+num(x.samHoja,3)+'">ajustada</span>':''}</td><td>${esc(x.maq||'—')}</td><td class="num">${oRef&&puedeAj?`<a style="cursor:pointer;text-decoration:underline" title="ajustar solo para ${esc(oRef.op)}" onclick="mAjusteOp('${oRef.id}','${x.op}')">${num(x.sam,2)}</a>`:num(x.sam,2)}</td></tr>`).join('')).join('')}
     <tr style="font-weight:600"><td colspan="4">Total</td><td class="num">${num(samTot,2)}</td></tr></tbody></table></div>
    <div><h4 style="margin:0 0 6px">Puestos <span class="mut" style="font-weight:400">· ninguno pasa del ritmo ${num(takt,2)} min</span></h4><table><thead><tr><th>#</th><th>Operaciones</th><th>Máquina</th><th class="num">Min/pz</th><th style="width:120px">Carga</th></tr></thead><tbody>
     ${puestos.map((p,i)=>`<tr><td>${i+1}</td><td style="font-size:var(--fs-xs)">${p.ops.map(x=>esc(x.n)).join(' + ')}${p.partida?' <span class="mut">(repartida)</span>':''}</td><td>${esc(p.maq)}</td><td class="num">${num(p.min,2)}</td><td>${barra(p.min,takt)}</td></tr>`).join('')}</tbody></table>
@@ -4383,8 +4457,8 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
    ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
    <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar se <b>reemplazan todas las órdenes</b> del sistema por las del archivo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;
-  const prevFases={};S.ordenes.forEach(o=>{if(o.fases&&o.fases.length)prevFases[normTxt(o.op)]=o.fases});const prevFase={};S.ordenes.forEach(o=>prevFase[normTxt(o.op)]=o.fase||null);
-  S.ordenes=p.ordenes.slice();S.avance={};colgarFotos();
+  const prevFases={};S.ordenes.forEach(o=>{if(o.fases&&o.fases.length)prevFases[normTxt(o.op)]=o.fases});const prevAj={};S.ordenes.forEach(o=>{if(o.opsSam)prevAj[normTxt(o.op)]=o.opsSam});const prevFase={};S.ordenes.forEach(o=>prevFase[normTxt(o.op)]=o.fase||null);
+  S.ordenes=p.ordenes.slice();S.avance={};colgarFotos();conservarAjustes(prevAj);
   S.ordenes.forEach(o=>{const k=normTxt(o.op);const nueva=o.fase;if(prevFases[k])o.fases=prevFases[k].slice();if(k in prevFase){o.fase=prevFase[k];registrarFase(o,nueva,'archivo');o.fase=nueva}else{o.fases=[{f:nueva||null,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',origen:'archivo',antes:null}]}});
   S.params.tareaCarga={archivo:p.archivo,fecha:new Date().toISOString(),hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,

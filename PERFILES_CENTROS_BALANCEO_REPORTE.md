@@ -134,6 +134,21 @@ impide nada al centro. Se guarda en `S.params.advertencias` (últimas 300). En p
   prenda de la hoja. Si hay objetivo, se muestra "objetivo ±N % frente al teórico"; si está más de 15 % por debajo, la
   tarjeta se marca. Solo los dos números; sin juicio.
 
+## 6b · Replanificación por referencia y auditoría (14-sep)
+
+- En Balanceo, con una **referencia** elegida, el supervisor (perfil Módulos o Planificación) hace clic en el tiempo de
+  una operación y lo ajusta **solo para esa orden** (`o.opsSam`), con motivo obligatorio. No toca la hoja de operaciones,
+  ni el SAM de la categoría, ni otras órdenes ni otros módulos; sí cambia la carga de esa orden en el programa (su paso de
+  confección toma la suma ajustada). "Volver al estándar" también pide motivo. El estándar solo se corrige en Operaciones
+  (administrador). Los ajustes viajan con la OP en la recarga de la Parte 2.
+- El objetivo de prendas por hora ahora también pide **motivo obligatorio**.
+- **Dirección → Auditoría de replanificación** (solo administrador y planificación; solo lee): por cada cambio, dos cuadros
+  lado a lado — Plan original (módulo, referencia, unidades, minutos) | Replanificación (módulo, referencia, unidades,
+  minutos, diferencia en min y %) — y debajo quién, cuándo y motivo. Filtros por módulo, persona, categoría y mes.
+  Resúmenes: por módulo (cambios, suben, bajan, Σ min, % promedio), por operación·categoría (si siempre es la misma, el
+  estándar está mal) y por persona. Solo números. Incluye los cambios de objetivo (historial existente; los anteriores a
+  hoy salen "sin motivo: cambio anterior a la auditoría"). Historial en `S.params.replan` (últimos 3.000).
+
 ## 7 · Lo que falta y no se inventó
 
 - Orden real de las operaciones (hoja ORDEN en producción).

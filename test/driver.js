@@ -230,10 +230,10 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const mod=R(BAL.rec);const btn=document.querySelector('#p-balanceo button[onclick^="BAL.grupo="]');if(btn){btn.click();hb=document.getElementById('p-balanceo').innerHTML;
      __check("balanceo: se muestra una vez para las órdenes de la misma hoja, por sección, con orden provisional y máquinas",hb.includes('este balanceo')&&hb.includes('provisional')&&hb.includes('Operaciones por sección')&&hb.includes('Puestos')&&hb.includes('Máquinas'));
      __check("balanceo: usa las personas del recurso",hb.includes('Personas del módulo (recurso)')&&hb.includes('>'+mod.pers+'<'));}
-   const nb2=S.bitacora.length;setObjetivoHora(mod.id,50);__check("objetivo: queda registrado quién, cuándo y antes",objetivoHora(mod).v===50&&!!objetivoHora(mod).u&&mod.objetivoHist.length===1&&S.bitacora.length===nb2+1);
+   const nb2=S.bitacora.length;const promptPrev=window.prompt;window.prompt=()=>'prueba de objetivo';setObjetivoHora(mod.id,50);__check("objetivo: queda registrado quién, cuándo y antes",objetivoHora(mod).v===50&&!!objetivoHora(mod).u&&mod.objetivoHist.length===1&&S.bitacora.length===nb2+1);
    setObjetivoHora(mod.id,40);__check("objetivo: el historial guarda el valor anterior",mod.objetivoHist[1].antes===50&&objetivoHora(mod).antes===50);
    hb=document.getElementById('p-balanceo').innerHTML;__check("balanceo: objetivo y ritmo teórico lado a lado",!btn||(hb.includes('Objetivo prendas/hora (supervisora)')&&hb.includes('Ritmo teórico')));
-   setObjetivoHora(mod.id,'');page='ordenes';render();__check("perfiles/centro/balanceo sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   __check("objetivo: el historial guarda el motivo",mod.objetivoHist[1].motivo==='prueba de objetivo');window.prompt=()=>'';setObjetivoHora(mod.id,20);__check("objetivo: sin motivo no se cambia",objetivoHora(mod).v===40);window.prompt=promptPrev;setObjetivoHora(mod.id,'');page='ordenes';render();__check("perfiles/centro/balanceo sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* historial de fases y cumplimiento de facturación */
   {const antes=__R.errors.length;const o=S.ordenes.find(x=>abierta(x)&&x.fase&&!esFacturada(x));const fFact=faseMapeo().find(r=>r.sistema==='cerrada'&&/factur/i.test(r.fase));
    __check("fases: la carga deja un historial inicial con origen archivo",(o.fases||[]).length>=1&&o.fases[0].origen==='archivo');
@@ -248,6 +248,24 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("cumplimiento: pantalla dice facturación, no entrega, y que lo incompleto no se mide",hc.includes('Cumplimiento de facturación')&&hc.includes('Se mide por referencias, no por unidades')&&hc.includes('% de referencias cumplidas a tiempo')&&hc.includes('Por mes de compromiso')&&hc.includes('Por cliente')&&hc.includes('Por ODC')&&!/prendas a tiempo/i.test(hc));
    mOrden(o.id);__check("ficha: muestra el historial de fases",document.getElementById('modal').innerHTML.includes('Historial de fases'));cerrar();
    setFase(o.id,o.fases[0].f);setFase(o2.id,o2.fases[0].f);o.fechaCompromiso=fc;o2.fechaCompromiso=fc2;page='ordenes';render();__check("fases/cumplimiento sin errores",__R.errors.length===antes);}
+  /* replanificación por referencia y auditoría */
+  {const antes=__R.errors.length;const adminP=PERFIL;const x=programar().pro.find(x=>x.centro==='modulos'&&x.rec);const o=x?S.ordenes.find(z=>z.op===x.op):null;const k=o?K(o.cat):null;const ops=k?opsConfeccion(k):[];
+   if(o&&ops.length){const op0=ops[0];const samHoja=op0.sam;const otra=S.ordenes.find(z=>z!==o&&z.cat===o.cat)||null;const tAntes=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;
+    const promptPrev=window.prompt;window.prompt=()=>'motivo de prueba';
+    mAjusteOp(o.id,op0.op);document.getElementById('aj-sam').value=String(samHoja+1);document.getElementById('aj-motivo').value='';guardarAjusteOp(o.id,op0.op);
+    __check("replan: sin motivo no se guarda",!(o.opsSam&&o.opsSam[op0.op]));
+    document.getElementById('aj-motivo').value='tela más gruesa';guardarAjusteOp(o.id,op0.op);
+    __check("replan: el ajuste queda solo en esa referencia",!!(o.opsSam&&o.opsSam[op0.op]&&Math.abs(o.opsSam[op0.op].sam-(samHoja+1))<1e-9)&&opsConfeccion(k)[0].sam===samHoja&&(!otra||!otra.opsSam));
+    __check("replan: la hoja de operaciones no cambia",S.operaciones.find(z=>z.id===op0.op).sam===samHoja);
+    const tDesp=((o.ruta||[]).find(p=>p.centro==='modulos')||{}).t;__check("replan: solo la carga de esa orden cambia (+1 min/prenda)",tAntes==null||Math.abs(tDesp-tAntes-1)<1e-6,tAntes+' → '+tDesp);
+    const e=replanLog().slice(-1)[0];__check("auditoría: entrada con antes, después, unidades, quién, cuándo y motivo",e&&e.tipo==='op'&&e.op===o.op&&e.antes===samHoja&&Math.abs(e.despues-(samHoja+1))<1e-9&&e.cant===+o.cant&&!!e.u&&!!e.ts&&e.motivo==='tela más gruesa');
+    page='auditoria';AUD={rec:'',u:'',cat:'',mes:''};render();const ha=document.getElementById('p-auditoria').innerHTML;
+    __check("auditoría: pantalla con plan original y replanificación lado a lado, resúmenes por módulo, operación y persona",ha.includes('Plan original')&&ha.includes('Replanificación')&&ha.includes('Por módulo')&&ha.includes('Por operación')&&ha.includes('Por persona')&&ha.includes('tela más gruesa')&&ha.includes(o.op));
+    AUD.u='nadie';render();__check("auditoría: filtro por persona",!document.getElementById('p-auditoria').innerHTML.includes('tela más gruesa'));AUD.u='';
+    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};render();__check("auditoría: solo administrador y planificación",document.getElementById('p-auditoria').innerHTML.includes('Solo administrador y planificación')&&!vePagina('auditoria')===false||!puede('programa'));PERFIL=adminP;
+    quitarAjusteOp(o.id,op0.op);__check("replan: volver al estándar borra el ajuste y deja rastro",!o.opsSam&&replanLog().slice(-1)[0].motivo.includes('vuelve al estándar'));
+    window.prompt=promptPrev;}
+   page='ordenes';render();__check("replan/auditoría sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
