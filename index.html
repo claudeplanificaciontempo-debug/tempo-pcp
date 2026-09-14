@@ -493,7 +493,7 @@ let ULT_DATOS=null;
 async function maxActualizado(){let m=null;try{for(const t of [...TABLAS,'params','avance']){const {data}=await sb.from(t).select('actualizado').order('actualizado',{ascending:false}).limit(1);const v=data&&data[0]&&data[0].actualizado;if(v&&(!m||v>m))m=v}}catch(e){}return m}
 async function revisarDatos(){if(guardando)return;const m=await maxActualizado();if(!m||!ULT_DATOS||m<=ULT_DATOS)return;
   let b=document.getElementById('aviso-datos');if(!b){b=document.createElement('div');b.id='aviso-datos';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:98;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
-  b.innerHTML='Hay <b>datos nuevos</b> guardados desde otra sesión a las '+new Date(m).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}).replace(/.$/,'')+'. Lo que ves puede estar viejo. <button class="btn sm" style="margin-left:8px" onclick="refrescar()">Actualizar ahora</button>'}
+  b.innerHTML='Hay <b>datos nuevos</b> guardados desde otra sesión a las '+new Date(m).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}).replace(/\.$/,'')+'. Lo que ves puede estar viejo. <button class="btn sm" style="margin-left:8px" onclick="refrescar()">Actualizar ahora</button>'}
 /* guarda solo lo que cambió respecto a lo leído del servidor; si la base rechaza algo (permisos), recarga */
 let guardando=false,pendiente=false;
 async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;return}guardando=true;
