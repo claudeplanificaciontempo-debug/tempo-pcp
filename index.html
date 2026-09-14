@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 10:41';
+const APP_BUILD='2026-09-14 11:16';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -831,7 +831,7 @@ function programar(){
     return d;
   }
 
-  const ords=S.ordenes.filter(o=>abierta(o)).slice()
+  const ords=S.ordenes.filter(o=>abierta(o)&&!o.sinLanzar).slice() // sin WH: cuenta en demanda, no se programa
     .sort((a,b)=>(a.prio||3)-(b.prio||3)||(prioCentro(a)-prioCentro(b))||(a.fecha<b.fecha?-1:1));
   const res={ordenes:{},tej:[],banos:[],pro:[],carga};
   const ini=S.params.inicio;
@@ -2522,7 +2522,7 @@ function vOrdenes(el){
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     <div><label>Agrupar</label><div class="chips" style="margin:0"><span class="chip ${ORDF.grupo==='fase'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fase'?null:'fase';render()">Por fase</span><span class="chip ${ORDF.grupo==='fam'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fam'?null:'fam';render()">Por familia</span><span class="chip ${ORDF.grupo==='cat'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='cat'?null:'cat';render()">Por categoría</span></div></div></div></div>`;
   const filaOrden=o=>{const ro=(P&&P.ordenes[o.id])||{};
-    return `<tr><td style="white-space:nowrap">${fotoMini(o)}${o.op?esc(o.op):'<span class="tag t-aviso">previsión</span>'}</td><td>${esc(o.ref||'')}</td><td title="${esc(nombreCat(K(o.cat)))}">${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'?')}</td>
+    return `<tr><td style="white-space:nowrap">${fotoMini(o)}${o.op?esc(o.op):'<span class="tag t-aviso">previsión</span>'}${o.sinLanzar?' <span class="tag t-aviso" title="orden sin número de WH en Odoo: cuenta en el plan, no se libera ni se programa">sin lanzar</span>':''}</td><td>${esc(o.ref||'')}</td><td title="${esc(nombreCat(K(o.cat)))}">${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'?')}</td>
       <td class="num">${num(o.cant)}</td>
       <td>${(o.telas||[]).map(t=>`${esc(nTela(t.tela))} ${t.ud==='m'?num(t.m,0)+' m <span class="mut">(plana)</span>':num(t.kg,1)+' kg'}${t.ext?' <span class="mut">('+(t.ext==='stock'?'stock':'ext')+')</span>':''}${t.color&&t.color!==o.color?' <span class="mut">· '+esc((C(t.color)||{}).n||'')+'</span>':''}`).join('<br>')||'<span class="tag t-alerta">sin tela</span>'}</td>
       <td style="white-space:nowrap">${abierta(o)?(!liberada(o,'tela')?'<span class="tag t-lavado">sin liberar</span>':ro.bloqueo?'<span class="tag t-lavado" title="'+esc(ro.bloqueo)+'">'+esc(ro.bloqueo)+'</span>':ro.finPro?(ro.atraso?'<span class="tag t-alerta" title="termina '+fmtDia(ro.finPro)+'">atraso</span>':'<span class="tag t-ok" title="termina '+fmtDia(ro.finPro)+'">a tiempo</span>'):''):''}${o.samProv?' <span class="tag t-aviso" title="tiempos provisionales">prov.</span>':''}</td>
@@ -2541,6 +2541,7 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
+  ${(()=>{const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);return (pr.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · precio por prenda fuera de rango (${pr.length})</b>: se reporta, no se corrige (corregir en Odoo). ${pr.map(x=>esc(x.op)+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' pz · $ '+num(x.total)+' = $ '+num(x.precio,2)+'/pz (mediana $ '+num(x.mediana,2)+')').join('<br>')}</div>`:'')+(sl.length?`<div class="warn" style="margin-bottom:12px"><b>${sl.length} órdenes sin número de WH</b> (no lanzadas en Odoo: ${[...new Set(sl.map(o=>o.fase))].map(esc).join(', ')}) · ${num(sl.reduce((a,o)=>a+ +o.cant,0))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.</div>`:'')})()}
   ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${new Date(S.params.tareaCarga.fecha).toLocaleString('es-EC')}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details><summary style="cursor:pointer">ver</summary><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${nc.slice(0,80).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')}${nc.length>80?'<br>…':''}</div></details></div>`:'')+
       ((rc.eliminadasConDecision||[]).length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${rc.eliminadasConDecision.length} órdenes eliminadas en la recarga tenían decisiones de persona</b>: ${rc.eliminadasConDecision.slice(0,40).map(esc).join(', ')}${rc.eliminadasConDecision.length>40?' …':''}</div>`:'')})()}
   ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
@@ -2891,12 +2892,12 @@ function guardarParo(){const g=x=>document.getElementById(x).value;const min=+g(
 let LIB_ALL=false; // el resumen gerencial mira toda la cartera como si estuviera liberada
 /* liberación: la firma humana (o.lib) manda mientras la orden no llegó a textil; desde el grupo que la tabla 5 marca como
    "libera tela" (textil en adelante) Odoo ya la afirma y no se pide dos veces. Igual para corte con "libera corte". Sin fila → solo firma. */
-function liberada(o,et){if(!o)return false;if(LIB_ALL)return true;const l=o.lib||{};const g=grupoDe(o.fase);
+function liberada(o,et){if(!o)return false;if(o.sinLanzar)return false;if(LIB_ALL)return true;const l=o.lib||{};const g=grupoDe(o.fase);
   if(et==='tej'||et==='tin'||et==='tela')return !!((l.tela&&l.tela.ok)||(l.tej&&l.tej.ok)||(l.tin&&l.tin.ok))||!!(g&&g.libTela);
   if(et==='corte')return !!(l.corte&&l.corte.ok)||!!(g&&g.libCorte);return false}
 function liberadaCorte(o){return liberada(o,'corte')}
-function puedeLiberarA(o,et){if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
-function faltaLiberarA(o,et){const f=[];if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
+function puedeLiberarA(o,et){if(o.sinLanzar)return false;if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
+function faltaLiberarA(o,et){const f=[];if(o.sinLanzar)f.push('sin lanzar en Odoo (sin WH)');if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
   else return faltaLiberar(o);return f}
 function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids.length+(ids.length===1?' orden':' órdenes')+' a producción?\n\nConfirmas que revisaste los insumos (BOM) de cada una. La tela y la calidad ya vienen validadas por tintorería y calidad.'))return;const et_n={tela:'tela (tejeduría y tintorería)',tej:'tela',tin:'tela',corte:'producción'}[et];let n=0,no=[];if(et==='tej'||et==='tin')et='tela';
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
@@ -4585,12 +4586,17 @@ function planTarea(rows,nombre){
   const HOY=hoy();const str=v=>v==null?'':String(v).trim();
   // 1) agrupar cabeceras y componentes
   const cab=[];let cur=null;let nLineasComp=0;
+  let plan_sinLanzar=0;
   for(let r=1;r<rows.length;r++){const x=rows[r];if(!x)continue;
     if(str(x[I.op])){cur={fila:r+1,op:str(x[I.op]),proyecto:str(x[I.proy]),cliente:str(x[I.cli]),titulo:str(x[I.tit]),odc:str(x[I.odc]),stilo:str(x[I.stilo]),depto:str(x[I.dep]),catP:str(x[I.catP]),catH:str(x[I.catH]),colorN:str(x[I.color]).toUpperCase(),
       estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur)}
+    else if(str(x[I.cli])||str(x[I.fase])||str(x[I.odc])){ // cabecera SIN WH: orden no lanzada en Odoo (0Diseño, 0Recetas Insumos…); identificador provisional estable
+      const base=[str(x[I.cli]),str(x[I.odc]),str(x[I.stilo]),str(x[I.catH]),str(x[I.color]).toUpperCase(),excelFecha(x[I.fecha])||'',+x[I.pedido]||0,str(x[I.proy])].join('|');let hsh=5381;for(let k=0;k<base.length;k++)hsh=((hsh*33)^base.charCodeAt(k))>>>0;const h6=hsh.toString(36);
+      cur={fila:r+1,op:'SIN WH #'+h6,sinLanzar:true,proyecto:str(x[I.proy]),cliente:str(x[I.cli]),titulo:str(x[I.tit]),odc:str(x[I.odc]),stilo:str(x[I.stilo]),depto:str(x[I.dep]),catP:str(x[I.catP]),catH:str(x[I.catH]),colorN:str(x[I.color]).toUpperCase(),
+      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur);plan_sinLanzar++}
     else nLineasComp++;
     if(cur&&str(x[I.prod]))cur.comp.push({prod:str(x[I.prod]),costo:+x[I.costo]||0,dem:+x[I.dem]||0,ruta:str(x[I.catProd]),udm:str(x[I.udm])})}
-  const plan={archivo:nombre,hoy:HOY,filas:rows.length-1,cabeceras:cab.length,lineasComp:nLineasComp,componentes:cab.reduce((a,o)=>a+o.comp.length,0),telaSinCatalogo:{},telaEnMetros:{},
+  const plan={archivo:nombre,hoy:HOY,filas:rows.length-1,cabeceras:cab.length,lineasComp:nLineasComp,componentes:cab.reduce((a,o)=>a+o.comp.length,0),telaSinCatalogo:{},telaEnMetros:{},sinLanzar:plan_sinLanzar,precioRaro:[],
     ordenes:[],excluidas:{cancel:[],fueraRango:[]},sinFecha:[],duplicados:[],fasesNoCalzan:{},fasesTablaSinUso:[],nivel2NoRec:{},nivel3NoRec:{},coloresNuevos:[],tecnicasNoEncontradas:{},porFase:{},porEstadoOP:{},catSinMapeo:{},telaSinClasificar:{},contradicciones:[],devoluciones:0,bloqueadas:0,vencidas:0,historia:0};
   const fasesVistas=new Set();const vistos={};
   // pasada previa sobre TODO el archivo (dentro o fuera del alcance): números repetidos y niveles de material no reconocidos
@@ -4644,22 +4650,23 @@ function planTarea(rows,nombre){
     if(fila&&sistema==='cerrada'&&ESTADOS_OP_ABIERTOS.includes(d.estadoOP))contradiccion=d.fase+' con Estado OP '+d.estadoOP;
     const devolucion=!!(fila&&['previo a producción','textil'].includes(sistema)&&d.estadoOP==='progress');
     const bloqueada=!!(fila&&fila.bloqueo);
-    let id='op_'+d.op.toLowerCase().replace(/[^a-z0-9]+/g,'_');vistos[id]=(vistos[id]||0)+1;const dup=vistos[id]>1;if(dup){id+='_dup'+vistos[id]}
+    let id=(d.sinLanzar?'sl_':'op_')+d.op.toLowerCase().replace(/[^a-z0-9]+/g,'_');vistos[id]=(vistos[id]||0)+1;const dup=vistos[id]>1;if(dup){id+='_dup'+vistos[id]}
     const o={id,op:d.op,cliente:d.cliente,ref:d.stilo,desc:d.titulo,odc:d.odc,depto:d.depto,proyecto:d.proyecto,cat:k?k.id:null,catTxt:d.catP+' / '+d.catH,color:colorDe(d.colorN).id,colorOdoo:d.colorN,
       cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
       tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
       vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
-      pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+      sinLanzar:!!d.sinLanzar,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
+  {const ps=plan.ordenes.map(o=>o.precio).filter(v=>v>0).sort((a,b)=>a-b);const med=ps.length?ps[Math.floor(ps.length/2)]:0;if(med>0)plan.precioRaro=plan.ordenes.filter(o=>o.precio>0&&o.precio>=med*10).map(o=>({op:o.op,cliente:o.cliente,odc:o.odc,ref:o.ref,cat:o.catTxt,color:o.colorOdoo,fase:o.fase,cant:o.cant,total:o.total,precio:o.precio,mediana:med}))}
   return plan}
 function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';
   return `<table><tbody>${li(p.cabeceras,'cabeceras de orden en el archivo ('+p.componentes+' líneas de componentes)')}${li(p.ordenes.length,'órdenes que se cargan (incluye '+p.historia+' done como historia y '+p.vencidas+' vencidas abiertas)')}
    ${li(p.excluidas.cancel.length,'excluidas por Estado OP = cancel')}${li(p.excluidas.fueraRango.length,'excluidas: entrega pasada y no abiertas (done o sin estado)')}${li(p.sinFecha.length,'sin Fecha Entrega → bandeja "órdenes sin fecha" (no se cargan, no se inventa fecha)')}
    ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con número de orden repetido (se cargan aparte, sin fusionar)')}
    ${li(Object.keys(p.nivel2NoRec).length,'segundos niveles de material no reconocidos: '+esc(Object.keys(p.nivel2NoRec).join(', ')))}${li(Object.keys(p.telaSinCatalogo).length,'telas en kg sin tela del catálogo en la tabla 8 (no entran al motor de tejeduría/tintorería): '+esc(Object.entries(p.telaSinCatalogo).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(Object.keys(p.telaSinClasificar).length,'tipos de tela SIN CLASIFICAR con órdenes: '+esc(Object.keys(p.telaSinClasificar).join(', ')))}${li(Object.keys(p.telaEnMetros||{}).length,'telas planas en metros (se quedan en metros; los kilos se registran por tanda en tintorería): '+esc(Object.entries(p.telaEnMetros||{}).map(([k,v])=>k+' ('+v+')').join(', ')))}
-   ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
+   ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.sinLanzar,'órdenes SIN número de WH (no lanzadas en Odoo: 0Diseño, 0Recetas Insumos…): entran con identificador provisional, cuentan en Plan mensual y Entregas, no se liberan ni se programan')}${li((p.precioRaro||[]).length,'órdenes con precio por prenda fuera de rango (≥ 10× la mediana del archivo): se reportan, no se corrigen: '+esc((p.precioRaro||[]).map(x=>x.op+' '+(x.odc||'')+' '+(x.ref||'')+' '+(x.color||'')+' $'+num(x.precio,2)+'/pz').join('; ')))}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
    <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar, lo que viene del archivo se <b>actualiza</b> (cantidades, cliente, categoría, color, materiales, técnica, precio, ruta; la fecha solo si no se cambió aquí) y <b>la fase de las órdenes que ya existen no se toca</b> (la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja) y lo que decidió una persona se <b>conserva</b> por número de OP según la tabla 14 (liberación, prioridad, programación, módulo fijo, compromiso, fotos, fases, ajustes, telas, rutas editadas, OT, avance de piso). Las órdenes que ya no vienen en el archivo se eliminan y se cuentan. Lo conservado que ya no calce con el archivo nuevo sale en una bandeja; no se retira solo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
@@ -4708,7 +4715,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
-    devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,
+    devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,sinLanzar:p.sinLanzar,precioRaro:p.precioRaro||[],
     recarga:{actualizadas,nuevas,eliminadas:eliminadas.length,eliminadasConDecision:elimConDec.map(o=>o.op).slice(0,200),avanceEliminado:avanceEliminado.length,conservado:cons,noCalzan:noCalzan.slice(0,500)}};
   bitacora('Recarga Parte 2 '+p.archivo+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
   TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Recarga aplicada: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
