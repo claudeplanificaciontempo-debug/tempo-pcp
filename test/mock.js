@@ -16,5 +16,5 @@ function builder(t){const st={t,op:'select',filters:[],single:false,payload:null
       if(st.op==='delete'){DB[t]=rows.filter(r=>!(st.ids||[]).includes(r.id));return res({data:null,error:null})}
       if(st.op==='update'){rows.filter(r=>st.filters.every(([k,v])=>r[k]===v)).forEach(r=>Object.assign(r,st.payload));return res({data:null,error:null})}
     }catch(e){return res({data:null,error:{message:e.message}})}}};return b}
-window.supabase={createClient(){const user={id:'u1',email:'prueba@tempo.local'};return{auth:{getSession:async()=>({data:{session:{user}}}),onAuthStateChange(){},signInWithPassword:async()=>({data:{user},error:null}),signOut:async()=>{}},from:builder,__DB:DB}}};
+window.supabase={createClient(){const user={id:'u1',email:'prueba@tempo.local'};return{auth:{getSession:async()=>({data:{session:{user}}}),onAuthStateChange(){},signInWithPassword:async()=>({data:{user},error:null}),signOut:async()=>{}},from:builder,__DB:DB,storage:{__FILES:{},from(b){const F=this.__FILES;return{async upload(p,blob,o){F[b+"/"+p]=blob?blob.size:0;return{data:{path:p},error:null}},async list(){return{data:Object.keys(F).map(k=>({name:k})),error:null}},getPublicUrl(p){return{data:{publicUrl:"https://mock/storage/v1/object/public/"+b+"/"+p}}}}}}}}};
 </script>
