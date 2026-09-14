@@ -126,3 +126,43 @@ nivel): decidir en la tabla 3 qué cuartos niveles de NUEVOS TEMPO son externos.
   del mes de los módulos.
 - Pendiente de tu decisión: las 44 órdenes de septiembre con Estado OP = done sin facturar (7.051 pz, $ 37.188), hoy
   fuera del plan como historia; en Odoo cuentan como "por entregar".
+
+## 10 · Prenda terminada y "la fase decide" (14-sep, 09:58)
+
+Commit `95a994b`, pruebas 466/466. Producción guardada 09:58.
+
+**Tabla 1 (grupo prenda terminada)**: 8Exportacion, 8Novedades, 8Cross → sin carga (como estaban). 8Embodegado → sin
+carga + **paso extra "etiquetas"** con los minutos del parámetro `minEtiqEmbodegado` (Configuración → Calendario y
+parámetros, sembrado en 1; en 0 o vacío el paso queda sin tiempo y sale en bandeja). 8Centro Distribucion → sin carga
++ **"sin medir"**: bandeja visible en Órdenes ("carga real sin medir": hoy 10 órdenes · 970 prendas). 8Empaque,
+8Servicios y Terminados, 8Botones, 8Lavanderia y 8Lavanderia Quito sin cambio. Las dos columnas nuevas de la tabla 1
+(paso extra / sin medir) son editables.
+
+**La fase decide, no el Estado OP** (cargador de la Parte 2): historia = fase con sistema "cerrada" (Facturado,
+Stand by); cancelada = fase que contenga "cancel"; fuera de rango = fecha pasada y fase cerrada. El Estado OP solo se
+reporta (done o cancel en fase abierta = contradicción visible). Aplicado en producción sin recargar: 46 órdenes done
+sin facturar vuelven al plan (7.480 prendas; 44 de septiembre) y entran 27 órdenes done en fases de prenda terminada
+con fecha pasada que antes quedaban fuera de rango (9 de septiembre, 18 de agosto y mayo). 7 Stand by con fecha pasada
+siguen en el sistema como stand by (fuera del plan).
+
+**Cuadre contra Odoo (fase sin FAC/STAN/CAN)** con el archivo del 13-sep:
+
+| Mes | Sistema ahora | Odoo (usuaria) | Diferencia |
+|---|---|---|---|
+| Agosto | 40 · 5.028 · $ 40.275 | 40 · 5.028 · $ 40.274,88 | 0 |
+| Septiembre | 342 · 63.306 · $ 416.719 | 341 · 63.026 · $ 413.778,84 | **WH/MO/28463** (8Cross, 280 pz, $ 2.940): estaba abierta en el archivo del 13-sep y ya se facturó en Odoo |
+| Octubre | 162 · 50.873 · $ 308.836 | 352 · 133.661 · $ 5.361.859,88 | Odoo tiene 190 órdenes nuevas desde el archivo; el precio raro solo se puede revisar con un archivo nuevo |
+| Noviembre | 104 · 66.146 · $ 331.832 | 239 · 138.432 · $ 543.920,98 | órdenes nuevas desde el archivo |
+| Diciembre | 4 · 815 · $ 5.929 | 175 · 69.106 · $ 315.762,82 | órdenes nuevas desde el archivo |
+
+Las 8 órdenes de diferencia de septiembre (333 → 341): las 9 done con fecha pasada que estaban fuera de rango
+(WH/MO/29014, 28641, 28643, 28614, 28626, 28463, 28532, 28534, 28550) menos WH/MO/28463, ya facturada en Odoo.
+
+**Carga por centro, antes → después** (minutos programados, todo el horizonte / septiembre): Etiquetas 1.406 → **2.817**
+(+1.411 = 7 órdenes en 8Embodegado × 1 min × 1.411 prendas); Confección 580.692 / 476.629, Corte 11.353, Botones
+22.794 / 22.388, Empaque 25.641 / 21.769, Estampado 3.167: **sin cambio**; tejeduría 260 h sin cambio. Las 46 + 27
+órdenes reabiertas están en fases sin carga, así que suman demanda (prendas y dólares) pero no minutos.
+
+**Órdenes sin fecha de entrega (4, para corregir en Odoo)**: WH/MO/23498 (14 pz), 23499 (82), 23503 (24), 23505 (24) —
+Comercializadora de Ropa Fashion Club, ODC POLOS-AVIÓN / POLOS-SIN AVIÓN, estilo ESMA, Polo Basica, CADET NAVY,
+fase 8Embodegado, Estado OP done, proyecto DICIEMBRE 2025.
