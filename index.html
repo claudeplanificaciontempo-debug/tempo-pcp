@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 09:10';
+const APP_BUILD='2026-09-14 09:14';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3995,11 +3995,11 @@ function catTela(){if(!Array.isArray(S.params.catTela))S.params.catTela=defCatTe
    2) disponibilidad (bodega = no hay que pedirla, usuaria TEMPO · pedir = proveedor de facturas · teje = propia) — no carga nada, decide si se espera proveedor;
    3) qué le falta (tintura · lavado de tela · nada) — el sistema PROPONE por tabla 13 (palabras del producto) y la categoría; la persona
       confirma o cambia en Liberación (queda quién y cuándo). Decide si carga TINTORERÍA. El lavado de tela es un baño más, con horas de color oscuro. */
-function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:'TEÑID',falta:'nada'},{palabra:'TENID',falta:'nada'},{palabra:'PFD',falta:'tintura'},{palabra:'CRUD',falta:'tintura'},{palabra:'LAVAD',falta:'lavado'}]}
+function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:'TEÑID',falta:'nada'},{palabra:'TENID',falta:'nada'},{palabra:'PFD',falta:'tintura'},{palabra:'CRUD',falta:'tintura'}]} // el lavado de tela no se propone por palabra: se decide en liberación
 function propuestaFalta(){if(!S.params.propuestaFalta||!S.params.propuestaFalta.length)S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
 function dimensionesTela(m){const org=m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
   const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;
-  const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':(cp&&cp.prov)?'pedir':'sin dato';
+  const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato'; // externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega
   const n=normTxt(m.prod||'');const pal=propuestaFalta().find(r=>r.palabra&&n.includes(normTxt(r.palabra)));
   const falta=pal?pal.falta:(org==='EXTERNA TEÑIDA'?'nada':'tintura');return{produce,disp,falta,prov:cp?cp.prov:(us?us.prov:'')}}
 /* líneas de tela de una orden (kg, o metros convertidos por kg/m de la tabla 9) con sus tres dimensiones; sin kg/m → kg 0 y sinConv */
