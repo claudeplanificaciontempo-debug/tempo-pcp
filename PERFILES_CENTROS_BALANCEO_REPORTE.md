@@ -52,7 +52,8 @@ pediste; no se construye hasta que decidas la fuente.
   del archivo se listan como "sin fecha exacta, no medibles" y las sin compromiso como "no medibles". Por mes de
   compromiso, por cliente y por ODC: órdenes medidas, a tiempo, % a tiempo, tarde, atraso promedio de las tardes.
   **Se mide por referencias, no por unidades** (decisión 14-sep): una referencia cuenta cumplida cuando llega a
-  Facturado; no se registran ni se registrarán unidades por despacho. La pantalla lo dice: "% de referencias
+  Facturado; en este indicador no se registran unidades por despacho. Alcance: SOLO el cumplimiento de facturación;
+  control de piso (prendas por centro), tintorería (kilos, faltantes, reprocesos), avance y reportería siguen en cantidades. La pantalla lo dice: "% de referencias
   cumplidas a tiempo · no son unidades"; las prendas aparecen solo como dato informativo.
 - Hoy en producción: las 55 facturadas vienen del archivo (sin fecha exacta) y sin compromiso → 0 medibles; el
   indicador empieza a llenarse cuando los supervisores muevan fases aquí y tú pongas compromisos.
