@@ -28,7 +28,7 @@ button,input,select,textarea{font:inherit;font-variant-numeric:tabular-nums}
 h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
 
 /* ---------- shell ---------- */
-#app{display:grid;grid-template-columns:190px 1fr;grid-template-rows:auto 1fr;height:100%}
+#app{display:grid;grid-template-columns:1fr;grid-template-rows:auto auto 1fr;height:100%}
 header{
   grid-column:1/-1;background:var(--ink);color:#fff;
   display:flex;align-items:center;gap:18px;padding:0 18px;height:52px;
@@ -43,7 +43,7 @@ header button{
 header button:hover{background:#22303E;color:#fff}
 header .saved{color:#7B8D9E;font-size:var(--fs-xs);min-width:120px;text-align:right}
 
-nav{background:var(--ink);padding:14px 0;display:flex;flex-direction:column;gap:1px}
+nav{background:var(--ink);padding:0 14px;display:flex;flex-direction:row;align-items:center;gap:4px;position:relative;z-index:25}
 nav a{
   color:#9AACBB;text-decoration:none;padding:9px 18px;font-size:var(--fs-m);
   border-left:3px solid transparent;cursor:pointer;display:flex;justify-content:space-between;align-items:center
@@ -194,12 +194,17 @@ input[type=number]{min-width:92px}
 nav .grp{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;padding:12px 18px 6px;font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
 nav .grp .car{font-size:10px;transition:transform .15s}
 nav .grp.cerrado .car{transform:rotate(-90deg)}
-nav .gbody{overflow:hidden}
-nav .gbody.cerrado{display:none}
+nav .gbody{position:absolute;top:100%;left:0;min-width:280px;max-height:calc(100vh - 120px);overflow:auto;background:var(--navy);border-radius:0 0 12px 12px;padding:8px;box-shadow:0 14px 30px rgba(0,0,0,.28);display:none;flex-direction:column;gap:1px;z-index:30}
+nav .gbody.abierto{display:flex}
+nav .grp{white-space:nowrap;border-radius:8px}
+nav .grp.abierto{background:rgba(255,255,255,.12);color:#fff}
+nav .grp.act{color:#fff;box-shadow:inset 0 -3px 0 var(--cobre2)}
+nav .grp .car{margin-left:6px}
+@media print{nav{display:none}}
 /* ================= tema visual (según boceto) ================= */
 :root{--navy:#243447;--navy2:#33475F;--navy3:#46617E;--cobre:#2E8B9E;--cobre2:#4FA3B8;--bg:#F1F4F5;--paper:#FFFFFF;--rule:#DCE1E6;--rule2:#E9EDF0;--field:#F4F6F8;--ink:#1E2830;--ink2:#455260;--ink3:#7A8794;--medio:#3C86B0;--ok:#2C8A5C;--aviso:#B8862B;--alerta:#C4402F;--r:12px}
 body{background:var(--bg)}
-#app{grid-template-columns:232px 1fr;grid-template-rows:64px 1fr}
+#app{grid-template-columns:1fr;grid-template-rows:64px 46px 1fr}
 header{background:var(--paper);color:var(--ink);border-bottom:1px solid var(--rule);height:64px;padding:0 22px;gap:14px}
 header h1{font-size:17px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:10px}
 header h1 .logo{display:inline-flex;width:34px;height:34px;border-radius:9px;background:var(--cobre);align-items:center;justify-content:center}
@@ -208,8 +213,8 @@ header .sub{color:var(--ink3)}
 header button{background:var(--paper);border:1px solid var(--rule);color:var(--ink);border-radius:9px;padding:7px 13px;font-weight:500}
 header button:hover{background:var(--field);color:var(--ink)}
 header .saved{color:var(--ink3)}
-nav{background:var(--navy);padding:12px 10px;gap:2px}
-nav .grp{color:rgba(255,255,255,.55);padding:14px 10px 6px;font-size:12px;letter-spacing:.06em;font-weight:600;border-radius:8px}
+nav{background:var(--navy);padding:0 16px;gap:4px}
+nav .grp{color:rgba(255,255,255,.7);padding:8px 12px;font-size:12.5px;letter-spacing:.04em;font-weight:600;border-radius:8px}
 nav .grp:hover{color:#fff}
 nav a{color:#C9D3E6;border-left:0;border-radius:9px;padding:9px 10px;gap:10px;justify-content:flex-start;font-size:13.5px;margin:1px 0}
 nav a .ic{display:inline-flex;width:18px;height:18px;flex:none}
@@ -504,7 +509,7 @@ function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a
     if(ok&&a.dataset.rep){ok=a.dataset.rep==='textil'?(veArea('tej')||veArea('tin')):veArea('pro')}
     if(ok&&a.dataset.p==='tejeduria')ok=veArea('tej');if(ok&&a.dataset.p==='tintoreria')ok=veArea('tin');
     a.style.display=ok?'':'none'});
-  document.querySelectorAll('nav .grp').forEach(g=>{const body=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const alguna=body&&[...body.querySelectorAll('a')].some(a=>a.style.display!=='none');g.style.display=alguna?'':'none';if(body)body.style.display=alguna?'':'none'})}
+  document.querySelectorAll('nav .grp').forEach(g=>{const body=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const alguna=body&&[...body.querySelectorAll('a')].some(a=>a.style.display!=='none');g.style.display=alguna?'':'none'})}
 function primeraPagina(){const a=[...document.querySelectorAll('nav a[data-p]')].find(x=>x.style.display!=='none');return a?a.dataset.p:'ordenes'}
 
 /* ---------- estado ---------- */
@@ -561,7 +566,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 15:01';
+const APP_BUILD='2026-09-14 15:24';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -771,7 +776,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box'};
+const ICO_NAV={reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -902,6 +907,52 @@ function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="
    ${R.top.map(x=>`<tr><td>${esc(x.o.op)}</td><td>${esc(x.o.cliente||'')}</td><td>${fmtDia(x.meta)}</td><td>${fmtDia(x.antes)}</td><td>${fmtDia(x.despues)}</td><td class="num"><b>${x.dias>0?'+':''}${x.dias}</b></td><td>${x.tardeA?'<span class="tag t-alerta">tarde</span>':'<span class="tag t-ok">a fecha</span>'} / ${x.tardeB?'<span class="tag t-alerta">tarde</span>':'<span class="tag t-ok">a fecha</span>'}</td><td>${esc(x.atasco||'')}</td></tr>`).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Días positivos = termina más tarde con el motor hacia atrás (se acerca a su fecha). Nada de esto cambia capacidades ni tiempos: solo el criterio de cuándo se coloca cada paso.</p>
   </div></div>`}
+/* ---------- menú horizontal: un grupo abierto a la vez; clic fuera lo cierra ---------- */
+function navCerrarTodo(){document.querySelectorAll('nav .gbody.abierto').forEach(b=>b.classList.remove('abierto'));document.querySelectorAll('nav .grp.abierto').forEach(g=>g.classList.remove('abierto'))}
+function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto')}}
+/* ---------- Hoy · una sola lista de pendientes (índice; las bandejas siguen donde están) ---------- */
+function esOdcPendiente(o){const v=normFase(String(o.odc||'').trim());return !v||v.includes('pendiente')}
+function pendPospuestos(){if(!S.params.pendPospuestos||typeof S.params.pendPospuestos!=='object')S.params.pendPospuestos={};return S.params.pendPospuestos}
+function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const add=(k,titulo,n,detalle,pagina,ir)=>items.push({k,titulo,n,detalle,pagina,ir});
+  add('sinFecha','Órdenes sin fecha de entrega',ab.filter(o=>!o.fecha).length,'no se programan ni se liberan hasta tener fecha (Odoo)','Órdenes',"ir('ordenes')");
+  add('sinOdc','Órdenes sin ODC asignado ("PENDIENTE ODC")',ab.filter(esOdcPendiente).length,'asígnalo a mano en Órdenes → Asignar ODC cuando el cliente libere su orden de compra','Órdenes',"ir('ordenes')");
+  add('sinWH','Órdenes sin WH por emparejar',ab.filter(o=>o.sinLanzar).length,'cabeceras sin lanzar en Odoo; entran como nuevas cuando tengan WH','Órdenes',"ir('ordenes')");
+  add('precioRaro','Precio por prenda fuera de rango',((S.params.tareaCarga||{}).precioRaro||[]).length,'≥ 10× la mediana del archivo; corregir en Odoo','Órdenes',"ir('ordenes')");
+  let mac=null,com=null;try{mac=macroMes('')}catch(e){}try{com=comprasMes('')}catch(e){}
+  add('telaSinClasif','Telas sin clasificar (origen)',mac?Object.keys(mac.rep.sinClasificar).length:0,'tabla 3 por categoría (propia / externa)','Macro del mes',"ir('macro')");
+  add('telaSinMerma','Tela × tipo sin merma de tintura',mac?Object.keys(mac.rep.sinMerma).length:0,'tabla 10 o "enc" de la tela','Macro del mes',"ir('macro')");
+  add('sinProv','Productos a comprar sin proveedor',com?Object.keys(com.rep.sinProv).length:0,'catálogo de productos (facturas) o tabla de la usuaria','Compras del mes',"ir('compras')");
+  add('provSinDias','Proveedores con días de entrega estimados sin confirmar',diasProveedor().filter(r=>r.estimado).length+(com?com.sinDias.length:0),'15 laborables sembrados; confírmalos uno por uno','Configuración → Órdenes y materiales',"CONF.tab='ordenes2';ir('config')");
+  const sinT={};ab.forEach(o=>(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!(p.t>0)){const k=nombreCat(K(o.cat))||'(sin categoría)';sinT[k]=(sinT[k]||0)+1}}));
+  add('catSinTiempo','Categorías con pasos sin tiempo de operaciones',Object.keys(sinT).length,'la categoría no tiene operaciones de ese centro en la hoja LMO','Categorías y operaciones',"ir('categorias')");
+  const fSin=ab.filter(o=>faseEstado(o.fase,o).sinFila).length;const cNo=Object.keys(((S.params.otCarga||{}).centrosNoMapeados)||{}).length;
+  add('faseNoCalza','Fases o centros de Odoo que no calzan con las tablas',fSin+cNo,(fSin?fSin+' órdenes con fase sin fila (tabla 1)':'')+(fSin&&cNo?' · ':'')+(cNo?cNo+' centros de trabajo sin fila (tabla 6)':''),'Configuración → Órdenes y materiales',"CONF.tab='ordenes2';ir('config')");
+  add('noCalzan','Decisiones que ya no calzan con el archivo',(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length,'fases, fechas, ODC o programaciones conservadas que el archivo trae distinto','Órdenes (bandeja)',"ir('ordenes')");
+  let sinCap=0,noAlc=0;try{const M=matrizCapacidad();Object.values(M.celdas).forEach(x=>{const e=estadoCel(x);if(e!=='rojo')return;if(!x.cap)sinCap++;else noAlc++})}catch(e){}
+  add('capacidad','Centro-mes sin capacidad o que no alcanza',sinCap+noAlc,(sinCap?sinCap+' sin recursos activos':'')+(sinCap&&noAlc?' · ':'')+(noAlc?noAlc+' sobre el 100 %':''),'Capacidad y decisiones',"ir('capacidad')");
+  add('sinMedir','Carga real sin medir',ab.filter(o=>(filaFaseDe(o.fase)||{}).sinMedir).length,'órdenes en fases marcadas "sin medir" (tabla 1)','Órdenes (bandeja)',"ir('ordenes')");
+  const pp=pendPospuestos();const h=hoy();items.forEach(it=>{const p=pp[it.k];it.pospuesto=!!(p&&p.hasta&&p.hasta>=h);it.posp=p||null});
+  return items}
+function posponerPend(k){const it=pendientesHoy().find(x=>x.k===k);if(!it)return;const d=prompt('¿Cuántos días pospones "'+it.titulo+'"? (no desaparece: queda en Pospuestos hasta esa fecha)');const n=+String(d||'').replace(',','.');if(!(n>0))return;
+  const motivo=(prompt('Motivo (opcional):')||'').trim();pendPospuestos()[k]={hasta:dsum(hoy(),Math.round(n)),u:quienFirma(),ts:new Date().toISOString(),motivo,n:it.n};
+  bitacora('Pendiente pospuesto: '+it.titulo+' ('+it.n+') hasta '+dsum(hoy(),Math.round(n))+(motivo?' · '+motivo:'')+' · '+quienFirma());save();render()}
+function reactivarPend(k){const p=pendPospuestos()[k];if(!p)return;delete pendPospuestos()[k];bitacora('Pendiente reactivado: '+k+' · '+quienFirma());save();render()}
+function pendientesHoyHTML(){if(!S.ordenes.length)return '';const items=pendientesHoy();const act=items.filter(i=>i.n>0&&!i.pospuesto),pos=items.filter(i=>i.n>0&&i.pospuesto);const tot=act.reduce((a,i)=>a+i.n,0);
+  return `<div class="panel"><h3>Pendientes <span class="note">${act.length} tipos · ${num(tot)} casos · índice de todas las bandejas; cada uno abre donde se resuelve</span>${pos.length?`<span class="spacer"></span><span class="mut" style="font-size:var(--fs-xs)">${pos.length} pospuestos</span>`:''}</h3><div class="body" style="padding-top:6px">
+   ${act.length?`<table><thead><tr><th class="num" style="width:70px">Casos</th><th>Pendiente</th><th>Qué es</th><th>Dónde se resuelve</th><th></th></tr></thead><tbody>${act.map(i=>`<tr><td class="num"><b>${num(i.n)}</b></td><td><a href="#" onclick="${esc(i.ir)};return false"><b>${esc(i.titulo)}</b></a></td><td class="mut" style="font-size:var(--fs-xs)">${esc(i.detalle||'')}</td><td style="white-space:nowrap"><a href="#" onclick="${esc(i.ir)};return false">${esc(i.pagina)} →</a></td><td>${puede('ordenes')||puede('programa')?`<button class="btn ghost sm" onclick="posponerPend('${i.k}')" title="no desaparece: pasa a Pospuestos hasta la fecha que digas">posponer</button>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="mut">Nada pendiente en las bandejas.</p>'}
+   ${pos.length?`<details style="margin-top:8px"><summary class="mut" style="cursor:pointer">Pospuestos (${pos.length})</summary><table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th class="num">Casos</th><th>Pendiente</th><th>Hasta</th><th>Quién · motivo</th><th></th></tr></thead><tbody>${pos.map(i=>`<tr><td class="num">${num(i.n)}</td><td><a href="#" onclick="${esc(i.ir)};return false">${esc(i.titulo)}</a></td><td>${fmtDia(i.posp.hasta)}</td><td class="mut">${esc(i.posp.u||'')}${i.posp.motivo?' · '+esc(i.posp.motivo):''}</td><td><button class="btn ghost sm" onclick="reactivarPend('${i.k}')">reactivar</button></td></tr>`).join('')}</tbody></table></details>`:''}
+  </div></div>`}
+/* ---------- Asignar ODC a mano (de a una o en bloque): queda en bitácora y forma colección con ese ODC ---------- */
+let ODCS={sel:new Set(),bloque:''};
+function asignarODC(ids,odc){if(!puede('ordenes')){alert('Tu perfil no edita órdenes.');return}const v=String(odc||'').trim();if(!v||/pendiente/i.test(v)){alert('Escribe el número de ODC.');return}
+  const u=quienFirma(),ts=new Date().toISOString();let n=0;ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=String(o.odc||'').trim();if(antes===v)return;o.odc=v;o.odcManual={u,ts,antes};bitacora('ODC asignado a mano '+o.op+': '+(antes||'—')+' → '+v+' ('+u+')');n++;ODCS.sel.delete(id)});
+  if(!n)return;PLAN=null;PLAN_ALL=null;save();render();alert(n+(n===1?' orden pasó':' órdenes pasaron')+' a formar la colección ODC '+v+'.')}
+function togSelODC(id,on){if(on)ODCS.sel.add(id);else ODCS.sel.delete(id);render()}
+function panelODCHTML(){const pend=S.ordenes.filter(o=>abierta(o)&&esOdcPendiente(o)).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1);if(!pend.length)return '';const ok=puede('ordenes');const sel=[...ODCS.sel].filter(id=>pend.some(o=>o.id===id));
+  return `<div class="panel"><h3>Asignar ODC <span class="note">${pend.length} órdenes con "PENDIENTE ODC" o sin ODC · al asignarlo forman colección con ese ODC · queda en bitácora</span></h3><div class="body">
+   ${ok?`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>ODC para las marcadas (${sel.length})</label><input type="text" id="odc-bloque" style="width:180px" value="${esc(ODCS.bloque)}" placeholder="p. ej. 3041" oninput="ODCS.bloque=this.value"></div><div><label>&nbsp;</label><button class="btn sm" ${sel.length?'':'disabled'} onclick="asignarODC(${JSON.stringify(sel).replace(/"/g,'&quot;')},document.getElementById('odc-bloque').value)">Asignar a las ${sel.length} marcadas</button></div><div><label>&nbsp;</label><button class="btn ghost sm" onclick="ODCS.sel=new Set(${JSON.stringify(pend.map(o=>o.id)).replace(/"/g,'&quot;')});render()">Marcar todas</button> <button class="btn ghost sm" onclick="ODCS.sel=new Set();render()">Ninguna</button></div></div>`:''}
+   <div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th style="width:26px"></th><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>ODC hoy</th><th>ODC nuevo</th></tr></thead><tbody>
+   ${pend.map(o=>`<tr><td>${ok?`<input type="checkbox" ${ODCS.sel.has(o.id)?'checked':''} onchange="togSelODC('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${o.fecha||'<span class="mut">sin fecha</span>'}</td><td class="mut">${esc(o.odc||'—')}</td><td style="white-space:nowrap">${ok?`<input type="text" style="width:110px" id="odc-${o.id}" placeholder="ODC"> <button class="btn ghost sm" onclick="asignarODC(['${o.id}'],document.getElementById('odc-${o.id}').value)">asignar</button>`:''}</td></tr>`).join('')}</tbody></table></div></div></div>`}
 function programar(){
   if(PLAN&&!LIB_ALL)return PLAN;
   const carga={}; S.recursos.forEach(r=>carga[r.id]={});
@@ -1267,6 +1318,7 @@ function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()
   const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
 function render(){CAPM=null;
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
+  document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
@@ -1346,6 +1398,7 @@ function vPanorama(el){
   el.innerHTML=`<div class="pagehead"><h2>Hoy</h2><span class="spacer"></span><span class="mut">${fmt(h)}</span></div>
   <p class="lede">Lo que está programado hoy por área, lo que necesita una decisión, y cómo va el mes. La foto mensual está en el Resumen gerencial.</p>
   ${puede('programa')?panelAdvertencias():''}
+  ${pendientesHoyHTML()}
   ${puede('programa')?avisoCapacidadHTML():''}
   <div class="kpis">
    <div class="kpi"><div class="v">${num(kgHoy)} kg</div><div class="k">A tejer hoy${!kgHoy&&proxTej?' · próximo '+fmtDia(proxTej):''}</div></div>
@@ -2911,6 +2964,7 @@ function vOrdenes(el){
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${(()=>{const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${sf.length} órdenes sin fecha de entrega</b>: ${enPlan.length} entran al plan por su Proyecto (${num(enPlan.reduce((a,o)=>a+ +o.cant,0))} prendas; no se programan ni se liberan hasta tener fecha) y ${sf.filter(x=>!x.entra).length} sin Proyecto quedan fuera. Ponles fecha en Odoo. ${sf.map(x=>esc(x.op)+' ('+esc(x.fase)+(x.proyecto?' · '+esc(x.proyecto):' · sin proyecto')+')').join(', ')}</div>`:''})()}
+  ${panelODCHTML()}
   ${(()=>{const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);return (pr.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · precio por prenda fuera de rango (${pr.length})</b>: se reporta, no se corrige (corregir en Odoo). ${pr.map(x=>esc(x.op)+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' pz · $ '+num(x.total)+' = $ '+num(x.precio,2)+'/pz (mediana $ '+num(x.mediana,2)+')').join('<br>')}</div>`:'')+(sl.length?`<div class="warn" style="margin-bottom:12px"><b>${sl.length} órdenes sin número de WH</b> (no lanzadas en Odoo: ${[...new Set(sl.map(o=>o.fase))].map(esc).join(', ')}) · ${num(sl.reduce((a,o)=>a+ +o.cant,0))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.</div>`:'')})()}
   ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${new Date(S.params.tareaCarga.fecha).toLocaleString('es-EC')}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details ${BND.abierta?'open':''} ontoggle="BND.abierta=this.open"><summary style="cursor:pointer">ver</summary>
        ${(()=>{const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);const f=o&&(o.fases||[]).filter(f=>f.origen==='app').slice(-1)[0];return f||null};const acept=fs.filter(x=>!movidas(x.op));
@@ -5212,11 +5266,11 @@ function defCamposConservados(){return [
   {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
   {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},
-  {campo:'recursoFijo',n:'Módulo fijado',conservar:true},{campo:'fechaCompromiso',n:'Fecha de compromiso (Entregas)',conservar:true},{campo:'foto',n:'Foto de la orden',conservar:true},
+  {campo:'recursoFijo',n:'Módulo fijado',conservar:true},{campo:'fechaCompromiso',n:'Fecha de compromiso (Entregas)',conservar:true},{campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true},{campo:'foto',n:'Foto de la orden',conservar:true},
   {campo:'fases',n:'Historial de fases',conservar:true},{campo:'opsSam',n:'Tiempos ajustados por referencia (balanceo)',conservar:true},{campo:'faltaConf',n:'Qué le falta a cada tela (decidido en liberación)',conservar:true},
   {campo:'rutaEditada',n:'Pasos agregados/quitados por el centro',conservar:true},{campo:'ot',n:'Cierres de órdenes de trabajo (hasta la siguiente carga de OT)',conservar:true},{campo:'terminadaF',n:'Fecha en que terminó (cumplimiento del programa)',conservar:true},
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
-function camposConservados(){if(!S.params.camposConservados||!S.params.camposConservados.length)S.params.camposConservados=defCamposConservados();return S.params.camposConservados}
+function camposConservados(){if(!S.params.camposConservados||!S.params.camposConservados.length)S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;if(!t.some(r=>r.campo==='odc'))t.push({campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true});return t}
 function conserva(campo){const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
 /* aplica una fase a una orden recalculando lo que depende de ella (estado, historia, ruta pendiente) sin tocar lo del archivo */
 let BND={sel:new Set(),abierta:false};
@@ -5249,6 +5303,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('prio')&&v.prio!=null&&v.prio!==3){o.prio=v.prio;cons.prio++}
     if(conserva('progCentro')&&v.progCentro){o.progCentro=v.progCentro;cons.progCentro++;Object.keys(v.progCentro).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'programación en '+nCen(c),motivo:'ese centro ya no está en la ruta'})})}
     if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está en la ruta de la orden'})})}
+    if(conserva('odc')&&v.odcManual){const nuevo=String(o.odc||'').trim(),mio=String(v.odc||'').trim();o.odc=v.odc;o.odcManual=v.odcManual;cons.odc=(cons.odc||0)+1;if(nuevo&&!/pendiente/i.test(nuevo)&&nuevo!==mio)noCalzan.push({op:o.op,decision:'ODC asignado a mano: '+mio+' ('+(v.odcManual.u||'')+')',motivo:'el archivo trae '+nuevo+'; se conserva el tuyo',tipo:'odc',sistema:mio,archivo:nuevo})}
     if(conserva('fechaCompromiso')&&v.fechaCompromiso){o.fechaCompromiso=v.fechaCompromiso;cons.fechaCompromiso++;if(esFacturada(o)&&!esFacturada(v))noCalzan.push({op:o.op,decision:'compromiso '+v.fechaCompromiso,motivo:'la orden llegó a '+o.fase+' según el archivo (sin fecha exacta)'})}
     if(conserva('foto')&&v.foto){o.foto=v.foto;cons.foto++}
     if(conserva('fases')&&v.fases&&v.fases.length){o.fases=v.fases.slice();cons.fases++;if(!conserva('fase')){const f0=o.fase;o.fase=v.fase||null;registrarFase(o,nueva,'archivo');o.fase=nueva;if(f0!==o.fase)o.fase=nueva}}else o.fases=[{f:o.fase||null,ts,u,origen:'archivo',antes:null}];
@@ -5530,7 +5585,9 @@ document.getElementById('veil').addEventListener('click',e=>{if(e.target.id==='v
 document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar()});
 iniciar();
 
-document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',()=>{g.classList.toggle('cerrado');const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');if(b)b.classList.toggle('cerrado')}));
+document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation();navToggle(g)}));
+document.querySelectorAll('nav .gbody a').forEach(a=>a.addEventListener('click',()=>navCerrarTodo()));
+document.addEventListener('click',e=>{if(!e.target.closest('nav'))navCerrarTodo()});
 document.querySelectorAll('nav a[data-lib]').forEach(a=>a.addEventListener('click',()=>{LIB.et=a.dataset.lib;LIB.sel=new Set();setTimeout(render,0)},true));
 document.querySelectorAll('nav a[data-cen]').forEach(a=>a.addEventListener('click',()=>{CEN.id=a.dataset.cen;CEN.q='';setTimeout(render,0)},true));
 document.querySelectorAll('nav a[data-rep]').forEach(a=>a.addEventListener('click',()=>{REP.vista=a.dataset.rep;setTimeout(render,0)},true));

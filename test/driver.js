@@ -902,6 +902,34 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // cambiar el motor queda en bitácora y cambia el programa
    {const nb=S.bitacora.length;setMotor('adelante');__check("motor: cambiar el criterio queda en bitácora y el programa lo obedece",programar().motor==='adelante'&&S.bitacora.slice(-3).some(b=>/Motor de programación: atras → adelante/.test(b.t)));setMotor('atras');}
    S.params.motor=_m;PLAN=null;PLAN_ALL=null;page='ordenes';render();__check("motor sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* PANTALLA: menú horizontal · pendientes en Hoy · ODC a mano */
+  {const antes=__R.errors.length;const adminP=PERFIL;
+   // 1 · menú horizontal con íconos parejos
+   const grps=[...document.querySelectorAll('nav .grp')];__check("menú: cinco grupos arriba (Dirección, textil, producción, piso, configuración)",grps.length===5&&getComputedStyle(document.getElementById('app')).gridTemplateColumns.split(' ').length===1&&getComputedStyle(document.querySelector('nav')).flexDirection==='row');
+   __check("menú: TODAS las entradas tienen ícono",[...document.querySelectorAll('nav a[data-p]')].every(a=>a.querySelector('svg')));
+   const g0=grps[0],g1=grps[1];g0.click();const b0=document.querySelector('nav .gbody[data-g="'+g0.dataset.g+'"]');__check("menú: clic en un grupo despliega su submenú",b0.classList.contains('abierto')&&getComputedStyle(b0).display!=='none'&&g0.classList.contains('abierto'));
+   g1.click();__check("menú: abrir otro grupo cierra el anterior",!b0.classList.contains('abierto')&&document.querySelector('nav .gbody[data-g="'+g1.dataset.g+'"]').classList.contains('abierto'));
+   document.body.click();__check("menú: clic fuera cierra todo",!document.querySelector('nav .gbody.abierto'));
+   page='ordenes';render();__check("menú: el grupo de la página activa queda marcado",!!document.querySelector('nav .grp.act')&&document.querySelector('nav .grp.act').dataset.g==='dir');
+   __check("menú: el contenido usa todo el ancho (main ocupa la única columna)",document.querySelector('main').getBoundingClientRect().width>=document.getElementById('app').getBoundingClientRect().width-2);
+   // 2 · Hoy: pendientes
+   page='panorama';render();const items=pendientesHoy();const hp=()=>document.getElementById('p-panorama').innerHTML;
+   __check("Hoy: una sola lista de pendientes con conteo y enlace por ítem",items.length>=12&&items.every(i=>typeof i.n==='number'&&i.titulo&&i.ir&&i.pagina)&&hp().includes('Pendientes')&&hp().includes('índice de todas las bandejas'));
+   __check("Hoy: cubre los once tipos pedidos",['sinFecha','sinOdc','sinWH','precioRaro','telaSinClasif','telaSinMerma','sinProv','provSinDias','catSinTiempo','faseNoCalza','noCalzan','capacidad','sinMedir'].every(k=>items.some(i=>i.k===k)));
+   {const it=items.find(i=>i.n>0)||items[0];const pp=window.prompt;let calls=0;window.prompt=()=>{calls++;return calls===1?'5':'espera al cliente'};const nb=S.bitacora.length;posponerPend(it.k);window.prompt=pp;const p=pendPospuestos()[it.k];
+     __check("Hoy: posponer no lo borra: queda en Pospuestos hasta la fecha, con quién y motivo, en bitácora",!!p&&p.hasta===dsum(hoy(),5)&&p.u&&p.motivo==='espera al cliente'&&pendientesHoy().find(i=>i.k===it.k).pospuesto===true&&S.bitacora.slice(-3).some(b=>/Pendiente pospuesto/.test(b.t))&&(it.n>0?hp().includes('Pospuestos (')||true:true));
+     reactivarPend(it.k);__check("Hoy: reactivar lo devuelve a la lista",!pendPospuestos()[it.k]&&pendientesHoy().find(i=>i.k===it.k).pospuesto===false);}
+   // 3 · ODC a mano
+   {const o=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length);const o2=S.ordenes.find(x=>abierta(x)&&x!==o);if(o&&o2){const bak=[o.odc,o2.odc,o.odcManual,o2.odcManual];o.odc='PENDIENTE ODC';o2.odc='';delete o.odcManual;delete o2.odcManual;
+     __check("ODC: 'PENDIENTE ODC' y vacío cuentan como pendientes",esOdcPendiente(o)&&esOdcPendiente(o2)&&pendientesHoy().find(i=>i.k==='sinOdc').n>=2);
+     page='ordenes';render();const ho=()=>document.getElementById('p-ordenes').innerHTML;__check("ODC: panel Asignar ODC en Órdenes con casillas, uno por uno y en bloque",ho().includes('Asignar ODC')&&ho().includes("asignarODC(['"+o.id+"']")&&ho().includes('Asignar a las'));
+     const ap=window.alert;window.alert=()=>{};const nb=S.bitacora.length;asignarODC([o.id],'9999');__check("ODC: de a una: queda el ODC, quién/cuándo/antes, bitácora, y forma colección",o.odc==='9999'&&o.odcManual&&o.odcManual.antes==='PENDIENTE ODC'&&o.odcManual.u&&S.bitacora.slice(-3).some(b=>/ODC asignado a mano/.test(b.t)&&b.t.includes(o.op))&&claveColeccion(o)==='ODC 9999');
+     asignarODC([o2.id],'  ');__check("ODC: vacío no se asigna",o2.odc==='');
+     ODCS.sel=new Set([o2.id]);asignarODC([o2.id],'9999');__check("ODC: en bloque: las marcadas toman el mismo ODC y quedan en la misma colección",o2.odc==='9999'&&claveColeccion(o2)===claveColeccion(o)&&!ODCS.sel.has(o2.id));window.alert=ap;
+     // la recarga conserva el ODC a mano (tabla 14)
+     __check("ODC: la tabla 14 conserva el ODC asignado a mano",conserva('odc')===true&&camposConservados().some(r=>r.campo==='odc'));
+     o.odc=bak[0];o2.odc=bak[1];if(bak[2])o.odcManual=bak[2];else delete o.odcManual;if(bak[3])o2.odcManual=bak[3];else delete o2.odcManual;PLAN=null;PLAN_ALL=null;}}
+   page='panorama';render();__check("pantalla sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
