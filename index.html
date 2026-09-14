@@ -289,6 +289,7 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="tejeduria">Tejeduría</a>
       <a data-p="stock">Stock de tela cruda</a>
       <a data-p="macro">Macro del mes</a>
+      <a data-p="compras">Compras del mes</a>
       <a data-p="tintoreria">Tintorería <span class="n" id="n-ban"></span></a>
       <a data-p="reporteria" data-rep="textil">Reportería textil</a>
     </div>
@@ -341,6 +342,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-tejeduria"></section>
     <section class="page" id="p-stock"></section>
     <section class="page" id="p-macro"></section>
+    <section class="page" id="p-compras"></section>
     <section class="page" id="p-reporteria"></section>
 <section class="page" id="p-tintoreria"></section>
     <section class="page" id="p-produccion"></section>
@@ -472,7 +474,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -559,7 +561,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 13:05';
+const APP_BUILD='2026-09-14 13:25';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1117,7 +1119,7 @@ function render(){CAPM=null;
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -2163,7 +2165,39 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
   if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300);
   save();render();
   if(nuevas.length)alert('Con este orden, '+nuevas.length+(nuevas.length===1?' orden ya no llega':' órdenes ya no llegan')+' a su fecha:\n'+nuevas.slice(0,15).map(x=>x.op+' · meta '+fmtDia(fechaMetaDe(x))+' · estimada '+fmtDia(lD[x.id])).join('\n')+(nuevas.length>15?'\n…':'')+'\nNo se impidió el cambio; quedó en Advertencias de fecha.')}
+/* ---------- registrar lo hecho desde la cola del centro (sin ir a Control de piso) ----------
+   Marcar hecho NO reprograma: solo avisa que la orden queda libre para el centro siguiente. Va al mismo avance de piso (turnos) y a la bitácora.
+   Por ahora COMPLETO (todo el paso). Los módulos podrían registrar parcial cuando tengan tablet: preparado pero apagado (S.params.modulosParcial). */
+function regHechoOk(c){return puedeCentro(c)||(puede('avance')&&veCentro(c))}
+function permiteParcial(c){return c==='modulos'&&!!(S.params&&S.params.modulosParcial)}
+function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
+function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
+  const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const pend=Math.max(0,o.cant-hechasPrev);const parc=permiteParcial(c);
+  abrir(`<h3>Registrar hecho en ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)"><b>${esc(o.op)}</b> · ${esc(nombreCat(K(o.cat)))} · pedido <b>${num(o.cant)}</b> prendas.${parc?' Puedes registrar parcial.':' Se registra <b>completo</b> (todo el paso terminado).'}</p>
+   <label>Prendas buenas que salieron</label><input type="number" id="hc-q" min="0" style="width:130px" value="${parc?'':pend}" autofocus>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Si es distinto al pedido se registra igual y queda marcado como <b>diferencia</b> (faltantes reales). Marcar hecho <b>no reprograma nada</b>: la orden ya estaba planificada; esto solo avisa que queda libre para el centro siguiente. Queda quién, cuándo y cuántas en el avance de piso y en la bitácora.</p>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarHechoCentro('${oid}','${c}')">Registrar hecho</button></div></div>`)}
+function confirmarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const el=document.getElementById('hc-q');const q=Math.max(0,Math.round(+((el&&el.value)||0)));
+  if(!(q>0)){alert('Escribe cuántas prendas salieron.');return}
+  const dif=q-o.cant;if(dif!==0&&!confirm('Registraste '+num(q)+' de '+num(o.cant)+' prendas ('+(dif<0?'faltan '+num(-dif):num(dif)+' de más')+'). Se marca como diferencia. ¿Registrar igual?'))return;
+  const a=S.avance[oid]=S.avance[oid]||{};a.centros=a.centros||{};const prev=a.centros[c]||0;
+  a.centros[c]=permiteParcial(c)?q:o.cant; // completo: el centro queda avanzado y la orden fluye al siguiente
+  a.hechoC=a.hechoC||{};const u=quienFirma();const h=hoy();
+  const paso=(o.ruta||[]).find(p=>p.centro===c)||{};let rec=(o.recursoFijo||{})[c];if(!rec){try{rec=((programar().ordenes[o.id]||{}).pasos||[]).filter(p=>p.centro===c).map(p=>p.rec)[0]}catch(e){}}
+  const delta=q-prev;if(rec&&delta){S.turnos=S.turnos||[];const tid=rec+'|'+h;let t=S.turnos.find(x=>x.id===tid);if(!t){t={id:tid,rec,d:h};S.turnos.push(t)}t.pz=(t.pz||0)+delta;t.std=(t.std||0)+delta*minPrenda(c,paso.t||0);t.ops=[...new Set([...(t.ops||[]),o.op])]}
+  a.hechoC[c]={ts:new Date().toISOString(),u,d:h,pz:q,pedido:o.cant,dif,rec:rec||null,turnoDelta:delta};
+  const sig=centroSiguiente(o,c);
+  bitacora('Hecho en '+nCen(c)+' · '+o.op+': '+num(q)+' prendas por '+u+(dif?' · DIFERENCIA '+(dif<0?num(-dif)+' faltantes':'+'+num(dif)):'')+(sig?' · lista para '+nCen(sig):' · última etapa'));
+  PLAN=null;PLAN_ALL=null;cerrar();save();render()}
+function deshacerHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const a=S.avance[oid]||{};const hc=(a.hechoC||{})[c];if(!hc)return;
+  const motivo=prompt('¿Por qué se deshace el "hecho" de '+o.op+' en '+nCen(c)+'? (obligatorio)');if(!motivo||!motivo.trim())return;
+  if(hc.rec&&hc.turnoDelta){const t=(S.turnos||[]).find(x=>x.id===hc.rec+'|'+hc.d);if(t){t.pz=(t.pz||0)-hc.turnoDelta;t.std=(t.std||0)-hc.turnoDelta*minPrenda(c,((o.ruta||[]).find(p=>p.centro===c)||{}).t||0)}}
+  a.centros=a.centros||{};a.centros[c]=Math.max(0,(a.centros[c]||0)-(permiteParcial(c)?hc.pz:o.cant));if(!a.centros[c])delete a.centros[c];
+  delete a.hechoC[c];
+  bitacora('Deshecho "hecho" en '+nCen(c)+' · '+o.op+' ('+num(hc.pz)+' prendas): '+motivo.trim()+' · '+quienFirma());
+  PLAN=null;PLAN_ALL=null;save();render()}
 let DRAGC=null;
+
 function arrastrarCola(ev,oid,c){DRAGC={oid,c};try{ev.dataTransfer.setData('text/plain',oid);ev.dataTransfer.effectAllowed='move'}catch(e){}ev.currentTarget.style.opacity='.5'}
 function overCola(ev,c){if(!DRAGC||DRAGC.c!==c)return;ev.preventDefault();try{ev.dataTransfer.dropEffect='move'}catch(e){}ev.currentTarget.classList.add('dd-over')}
 function outCola(ev){ev.currentTarget.classList.remove('dd-over')}
@@ -2206,10 +2240,11 @@ function vCentro(el){
        <td style="white-space:nowrap">${fotoMini(f.o)}${esc(f.o.op)} ${mandaCola(f.o,f.c,numerada)}</td><td>${esc(f.o.cliente||'')}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
        <td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">auto (${esc(nRec(f.paso.rec))})</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
        <td><input type="date" value="${pc.desde||''}" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${(P.ordenes[f.o.id]||{}).atraso?'<span class="tag t-alerta">'+f.o.fecha+'</span>':(f.o.fecha||'')}</td>
-       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button>`:''}</td></tr>`};
+       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button> `:''}${regHechoOk(f.c)?`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`:''}</td></tr>`};
       return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha ordenado esta cola: sin puesto, el motor ordena por prioridad global y fecha de entrega. El primer arrastre numera la cola completa.">cola sin numerar: el motor ordena por fecha de entrega</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Entrega</th><th></th></tr></thead><tbody>
        ${filasArbolEG(agruparCola(cola,niv),fila,12)||'<tr><td colspan="12" class="mut">Nada por programar.</td></tr>'}
-       ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="12">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`}).join('');
+       ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="12">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hh=S.ordenes.filter(o=>{const hc=((S.avance[o.id]||{}).hechoC||{})[c];return hc&&hc.d===h}).sort((a,b)=>(S.avance[b.id].hechoC[c].ts<S.avance[a.id].hechoC[c].ts?-1:1));const tot=hh.reduce((x,o)=>x+(S.avance[o.id].hechoC[c].pz||0),0);
+       return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · ya libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const hc=S.avance[o.id].hechoC[c];const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${regHechoOk(c)?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()}).join('');
     el.innerHTML=cab+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${selNivelesCEN()}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
     ${tablas}
@@ -3838,6 +3873,7 @@ function vConfig(el){
   ${CONF.tab==='ordenes2'?`
   <div class="warn" style="margin-bottom:12px">Tablas de la Recarga Parte 2 (órdenes y materiales). Todavía no se ha cargado ningún archivo: estas tablas están sembradas con valores iniciales dados por el usuario, marcados <b>pendiente de validar</b>. Edítalas aquí antes o después de cargar el archivo.</div>
 
+  ${(()=>{sembrarDiasProveedor();const t=diasProveedor();const sinDef=t.filter(r=>r.dias===''||r.dias==null).length;return `<div class="panel"><h3>Días de entrega por proveedor <span class="note">${t.length} proveedores · ${sinDef} sin definir · usados en Compras del mes para la fecha límite y por el motor como espera de tela externa</span><span class="spacer"></span><button class="btn ghost sm" onclick="addDiasProvRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Se siembran con los proveedores del catálogo y el valor EN BLANCO (sin definir). Un proveedor sin días se reporta en Compras; no se usan 15 días por defecto. Al llenar los días, la pantalla de Compras da la fecha límite para pedir.</p><div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th>Proveedor</th><th class="num" style="width:120px">Días de entrega</th><th></th></tr></thead><tbody>${t.slice().map((r,i)=>({r,i})).sort((a,b)=>(a.r.prov||'').localeCompare(b.r.prov||'','es')).map(({r,i})=>`<tr><td><input type="text" style="width:280px" value="${esc(r.prov)}" onchange="setDiasProvRow(${i},'prov',this.value)"></td><td class="num"><input type="number" min="0" style="width:90px" value="${r.dias===''||r.dias==null?'':r.dias}" placeholder="—" onchange="setDiasProvRow(${i},'dias',this.value)">${(r.dias===''||r.dias==null)?' <span class="tag t-aviso">sin definir</span>':''}</td><td><button class="btn ghost sm" onclick="delDiasProvRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
    <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; los minutos por prenda salen de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
     ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
@@ -4249,7 +4285,7 @@ function colorLavadoTela(){let c=S.colores.find(x=>x.id===COL_LAVADO);if(!c){c={
 function colorBano(o,tl){return faltaTela(tl)==='lavado'?colorLavadoTela():(tl.color||o.color)}
 function produceTela(tl){return tl.produce||(tl.ext?'externa':'propia')}
 function rutaTextilDe(o){const ts=(o.telas||[]).filter(t=>produceTela(t)!=='sin clasificar');/* sin clasificar: no entra a la ruta textil; se reporta */const tej=ts.some(t=>produceTela(t)==='propia');const prov=ts.some(t=>t.disp==='pedir'||(t.ext&&!t.disp));const tin=ts.some(t=>necesitaTin(t)&&(t.kg>0||t.m>0||produceTela(t)==='propia'));
-  const r=[];if(tej)r.push({centro:'tej',t:0});if(prov)r.push({centro:'proveedor',t:15});if(tin)r.push({centro:'tin',t:0});return r}
+  const r=[];if(tej)r.push({centro:'tej',t:0});if(prov)r.push({centro:'proveedor',t:diasProvOrden(o)||0});if(tin)r.push({centro:'tin',t:0});return r} // días del proveedor por tabla; sin dato = 0 (se reporta en Compras), nunca 15 fijo
 function aplicarRutaTextil(o){const tx=rutaTextilDe(o);const esTx=p=>['tej','tin','proveedor'].includes(p.centro);const fe=faseEstado(o.fase,o);
   ['ruta','rutaCompleta'].forEach(k=>{if(!o[k])return;const resto=o[k].filter(p=>!esTx(p));let pre=tx;if(k==='ruta')pre=tx.filter(p=>!(p.centro==='tej'&&fe.tejida)&&!(p.centro==='tin'&&fe.tinturada)&&!(p.centro==='proveedor'&&fe.lista));o[k]=[...pre,...resto]});
   o.kgTej=+(o.telas||[]).filter(t=>produceTela(t)==='propia').reduce((a,t)=>a+(+t.kg||0),0).toFixed(3);o.kgTin=+(o.telas||[]).filter(necesitaTin).reduce((a,t)=>a+(+t.kg||0),0).toFixed(3);o.mPlana=+(o.telas||[]).filter(t=>t.ud==='m').reduce((a,t)=>a+(+t.m||0),0).toFixed(1)}
@@ -4463,7 +4499,90 @@ function confirmarTandaPlana(){const maq=maquinaPlana();const hrs=planaHoras();i
   PLA={sel:{},kg:'',m:{}};PLAN=null;PLAN_ALL=null;save();render()}
 function deshacerTandaPlana(id){const b=(S.banos_conf||[]).find(x=>x.id===id);if(!b)return;if(!confirm('¿Deshacer la tanda '+(b.cod||'')+'? Las líneas vuelven a pendientes; el lote registrado se conserva como historial.'))return;
   S.banos_conf=S.banos_conf.filter(x=>x.id!==id);bitacora('Tanda de plana deshecha '+(b.cod||id));PLAN=null;PLAN_ALL=null;save();render()}
+/* ---------- COMPRAS DEL MES: qué comprar a proveedores (telas externas, insumos, servicios externos) ----------
+   Base: las mismas órdenes montadas que la Macro de tela, por Proyecto. Nada se asume: en bodega = no se pide (se muestra aparte),
+   sin disponibilidad = bandeja, sin proveedor = bandeja. La merma se aplica a la tela que se tintura. No toca capacidades ni el motor. */
+function diasProveedor(){if(!Array.isArray(S.params.diasProveedor))S.params.diasProveedor=[];return S.params.diasProveedor}
+function proveedoresCatalogo(){const set=new Map();const add=p=>{if(p&&normFase(p)!==normFase('TEMPO')&&normFase(p)!==normFase('(sin proveedor)'))set.set(normFase(p),p)};
+  Object.values(catalogoProd()).forEach(c=>{if(c.prov)add(c.prov);if(c.provs)Object.keys(c.provs).forEach(add)});Object.values(catalogoUsuaria()).forEach(c=>add(c.prov));return [...set.values()].sort((a,b)=>a.localeCompare(b,'es'))}
+/* siembra: agrega a la tabla los proveedores del catálogo que aún no están, con días EN BLANCO y marcados "sin definir". Devuelve cuántos agregó */
+function sembrarDiasProveedor(){const arr=diasProveedor();const have=new Set(arr.map(r=>normFase(r.prov)));let n=0;proveedoresCatalogo().forEach(p=>{if(!have.has(normFase(p))){arr.push({prov:p,dias:'',pendiente:true});n++}});return n}
+function diasProvDe(prov){const r=diasProveedor().find(x=>normFase(x.prov)===normFase(prov||''));return (r&&r.dias!==''&&r.dias!=null&&!isNaN(+r.dias))?+r.dias:null}
+function setDiasProvRow(i,k,v){const r=diasProveedor()[i];if(!r)return;const antes=r.dias;r[k]=k==='dias'?(String(v).trim()===''?'':(+String(v).replace(',','.')||0)):v;if(k==='dias'){r.pendiente=(r.dias==='');bitacora('Días de entrega '+r.prov+': '+(antes===''||antes==null?'(sin definir)':antes)+' → '+(r.dias===''?'(sin definir)':r.dias))}save();render()}
+function addDiasProvRow(){diasProveedor().push({prov:'',dias:'',pendiente:true});save();render()}
+function delDiasProvRow(i){diasProveedor().splice(i,1);save();render()}
+/* disponibilidad de un producto (genérico): teje (tela propia) · bodega (usuaria = TEMPO) · pedir (proveedor de facturas o de la usuaria) · sin dato */
+function dispProducto(cod,esTela,produce){if(esTela&&produce==='propia')return{disp:'teje',prov:'TEMPO'};
+  const us=cod?catalogoUsuaria()[cod]:null,cp=cod?catalogoProd()[cod]:null;
+  if(us&&normFase(us.prov)===normFase('TEMPO'))return{disp:'bodega',prov:'TEMPO'};
+  if(cp&&cp.prov)return{disp:'pedir',prov:cp.prov,multi:!!cp.revisar};
+  if(us&&us.prov)return{disp:'pedir',prov:us.prov};
+  return{disp:'sin dato',prov:''}}
+/* días de proveedor de una orden = el mayor de los días DEFINIDOS de los proveedores de sus telas externas; ninguno definido → null (no se inventa 15) */
+function diasProvOrden(o){let mx=null;(o.telas||[]).forEach(tl=>{if(produceTela(tl)==='propia')return;const d=diasProvDe(tl.prov);if(d!=null)mx=(mx==null?d:Math.max(mx,d))});return mx}
+function comprasMes(mes){const ords=S.ordenes.filter(o=>ordenMontada(o)&&(!mes||normFase(o.proyecto||'')===normFase(mes)));
+  const comprar={},bodega={},rep={sinProv:{},sinDisp:{},multiProv:{},sinClasif:{}};
+  const push=(dst,key,base)=>{const t=dst[key]=dst[key]||Object.assign({cant:0,cantMerma:0,ords:new Set(),minFecha:null,merma:false,mesReq:mes||null},base);return t};
+  ords.forEach(o=>(o.materiales||[]).forEach(m=>{const clasif=m.clasif;
+    if(!clasif){rep.sinClasif[m.n2||'(vacío)']=(rep.sinClasif[m.n2||'(vacío)']||0)+1;return}
+    if(clasif==='producto terminado')return;
+    const esTela=clasif==='tela';const dm=esTela?dimensionesTela(m):null;const produce=dm?dm.produce:'';
+    if(esTela&&produce==='propia')return;
+    const cod=m.cod||codProducto(m.prod)||'';const nombre=(m.prod||'').trim();
+    const dp=esTela?{disp:dm.disp,prov:dm.prov,multi:!!(cod&&(catalogoProd()[cod]||{}).revisar)}:dispProducto(cod,false,'');
+    const tipo=esTela?'Tela externa':(clasif==='insumo'?'Insumo':clasif.replace(/^servicio externo de /,'Servicio: '));
+    const cant=+m.dem||0;let merma=0;if(esTela&&dm.falta!=='nada'){const fila=filaCatTela(m.ruta);if(fila){const mm=mermaTinturaDe(fila.corta,tipoProducto(cod,nombre),fila.tela);if(mm)merma=mm.merma}}
+    const mp=String(o.proyecto||'').trim()||'—';
+    const key=(cod||nombre)+'|'+(dp.prov||'')+'|'+(m.udm||'');
+    if(dp.disp==='bodega'){const t=push(bodega,key,{cod,nombre,tipo,prov:dp.prov,udm:m.udm||'u'});t.cant+=cant;t.cantMerma+=cant*(1+merma);t.ords.add(o.op);if(merma)t.merma=true;if(o.fecha&&(!t.minFecha||o.fecha<t.minFecha))t.minFecha=o.fecha;return}
+    const t=push(comprar,key+'|'+mp,{cod,nombre,tipo,prov:dp.prov,disp:dp.disp,udm:m.udm||'u',multi:!!dp.multi,mesReq:mp});
+    t.cant+=cant;t.cantMerma+=cant*(1+merma);t.ords.add(o.op);if(merma)t.merma=true;if(o.fecha&&(!t.minFecha||o.fecha<t.minFecha))t.minFecha=o.fecha;
+    if(dp.disp==='sin dato')rep.sinDisp[cod||nombre]=(nombre||cod);
+    else{if(!dp.prov)rep.sinProv[cod||nombre]=(nombre||cod);if(dp.multi)rep.multiProv[cod||nombre]=(nombre||cod)}}));
+  const items=Object.values(comprar).map(t=>{const dias=diasProvDe(t.prov);const limite=(t.minFecha&&dias!=null)?dsum(t.minFecha,-dias):null;return Object.assign(t,{nOrds:t.ords.size,dias,limite})});
+  const provsUsados=[...new Set(items.filter(t=>t.disp==='pedir'&&t.prov).map(t=>t.prov))];
+  const sinDias=provsUsados.filter(p=>diasProvDe(p)==null);
+  return{ords:ords.length,items,bodega:Object.values(bodega),rep,sinDias,provsUsados}}
+const COMP_CAMPOS=[['prov','Proveedor'],['tipo','Tipo de material'],['mes','Mes (Proyecto)']];
+function claveCOMP(k,t){return k==='prov'?(t.prov||'Sin proveedor'):k==='tipo'?t.tipo:(t.mesReq||'—')}
+function arbolCOMP(items,niveles){if(!niveles.length)return{hojas:items.slice().sort((a,b)=>(b.cantMerma-a.cantMerma))};
+  const k=niveles[0],m={};items.forEach(t=>{const c=claveCOMP(k,t);(m[c]=m[c]||[]).push(t)});
+  return{nivel:k,grupos:Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([c,its])=>({clave:c,n:its.length,cant:its.reduce((x,t)=>x+t.cantMerma,0),sub:arbolCOMP(its,niveles.slice(1))}))}}
+function nivelesCOMP(){if(COMP.niveles)return COMP.niveles;try{const v=JSON.parse(localStorage.__compNiveles||'null');if(Array.isArray(v)){COMP.niveles=v;return v}}catch(e){}COMP.niveles=['prov'];return COMP.niveles}
+function setNivelCOMP(i,v){const n=nivelesCOMP().slice();n[i]=v;COMP.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__compNiveles=JSON.stringify(COMP.niveles)}catch(e){}render()}
+function filasArbolCOMP(a,prof){prof=prof||0;if(a.hojas)return a.hojas.map(t=>`<tr><td style="padding-left:${8+prof*18}px;white-space:nowrap">${esc(t.nombre||t.cod)}${t.multi?' <span class="tag t-aviso" title="el producto tiene más de un proveedor en las facturas">varios prov.</span>':''}</td><td>${t.prov?esc(t.prov):'<span class="tag t-alerta">sin proveedor</span>'}</td><td class="num">${num(t.cantMerma,1)}${t.merma?' <span class="mut" title="incluye merma de tintura">(+m)</span>':''}</td><td>${esc(t.udm)}</td><td class="num">${t.nOrds}</td><td>${t.limite?fmtDia(t.limite):(t.dias==null?'<span class="tag t-aviso">faltan días del proveedor</span>':'<span class="mut">—</span>')}</td></tr>`).join('');
+  const nom=(COMP_CAMPOS.find(x=>x[0]===a.nivel)||[])[1]||'';
+  return a.grupos.map(g=>`<tr class="eg-g eg-g${prof}"><td colspan="6" style="padding-left:${8+prof*18}px;background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.n} ${g.n===1?'producto':'productos'} · ${num(g.cant,1)} (con merma)</span></td></tr>`+filasArbolCOMP(g.sub,prof+1)).join('')}
+function selNivelesCOMP(){const n=nivelesCOMP();const sel=i=>`<select onchange="setNivelCOMP(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${COMP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
+  return `<div><label>Agrupar por <span class="mut" title="Agrupado por proveedor sale una lista lista para pedir.">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
+function exportarComprasCSV(){const M=comprasMes(COMP.mes);const rows=[['Proveedor','Producto','Codigo','Tipo','Cantidad (con merma)','Unidad','Cantidad base','Ordenes','Dias proveedor','Fecha limite para pedir','Disponibilidad','Mes']];
+  M.items.slice().sort((a,b)=>(a.prov||'~').localeCompare(b.prov||'~','es')||b.cantMerma-a.cantMerma).forEach(t=>rows.push([t.prov||'SIN PROVEEDOR',t.nombre||'',t.cod||'',t.tipo,+t.cantMerma.toFixed(2),t.udm,+t.cant.toFixed(2),t.nOrds,t.dias==null?'SIN DEFINIR':t.dias,t.limite||'',t.disp,t.mesReq||'']));
+  const csv=rows.map(r=>r.map(v=>{const x=String(v==null?'':v);return /[;"\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(';')).join('\n');
+  const b=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='compras_'+(COMP.mes||'todo').replace(/\s+/g,'_')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0)}
+function vCompras(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o=>String(o.proyecto||'').trim()).filter(Boolean))].sort();
+  const nuevos=sembrarDiasProveedor();if(nuevos)save();
+  const M=comprasMes(COMP.mes);const niv=nivelesCOMP();const arbol=arbolCOMP(M.items,niv);
+  const totProv={};M.items.forEach(t=>{const p=t.prov||'Sin proveedor';totProv[p]=(totProv[p]||0)+1});
+  const bnj=(o,t)=>Object.keys(o).length?`<p style="font-size:var(--fs-s);margin:4px 0"><b>${t}</b> (${Object.keys(o).length}): ${Object.values(o).slice(0,40).map(esc).join(', ')}${Object.keys(o).length>40?' …':''}</p>`:'';
+  el.innerHTML=`<div class="pagehead"><h2>Compras del mes · qué pedir a proveedores</h2><span class="spacer"></span>
+    <div class="row" style="align-items:flex-end;gap:12px"><div><label>Mes (Proyecto)</label><select onchange="COMP.mes=this.value;render()"><option value="">todo lo montado</option>${meses.map(m=>`<option value="${esc(m)}" ${COMP.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>${selNivelesCOMP()}<div><label>&nbsp;</label><button class="btn ghost" onclick="exportarComprasCSV()">Exportar CSV</button></div></div></div>
+  <p class="lede">Todo lo que viene de proveedores externos de las órdenes montadas (${M.ords} órdenes): telas externas o importadas, insumos y servicios externos. La tela propia va en Macro del mes. Cantidad con la merma de tintura donde corresponde. Lo que ya está en bodega se muestra aparte y no se pide; lo que no tiene disponibilidad o proveedor definido va a las bandejas de abajo.</p>
+  ${M.sinDias.length?`<div class="warn"><b>${M.sinDias.length} proveedores sin días de entrega</b>: ${M.sinDias.slice(0,20).map(esc).join(', ')}. Sin ese dato no puedo dar la fecha límite para pedir. Llénalos en Configuración → Órdenes y materiales → Días de entrega por proveedor.</div>`:''}
+  <div class="panel"><h3>A comprar <span class="note">${M.items.length} productos · ${Object.keys(totProv).length} proveedores · con merma donde aplica</span></h3><div class="scroll" style="max-height:600px"><table><thead><tr><th>Producto</th><th>Proveedor</th><th class="num">Cantidad</th><th>Unidad</th><th class="num">Órdenes</th><th>Fecha límite para pedir</th></tr></thead><tbody>
+   ${filasArbolCOMP(arbol)||'<tr><td colspan="6" class="mut">Nada que comprar en este mes.</td></tr>'}</tbody></table></div>
+   <p class="mut" style="font-size:var(--fs-xs);padding:6px 16px 0">Fecha límite para pedir = fecha de entrega más temprana de las órdenes del producto − días del proveedor. Es el tope para que llegue antes del despacho (no descuenta el tiempo de producción).</p></div>
+  <div class="panel"><h3>Ya lo tenemos <span class="note">${M.bodega.length} productos en bodega (usuaria = TEMPO): no se piden, se muestran para verificar</span></h3><div class="scroll" style="max-height:340px"><table><thead><tr><th>Producto</th><th>Tipo</th><th class="num">Cantidad</th><th>Unidad</th><th class="num">Órdenes</th></tr></thead><tbody>
+   ${M.bodega.length?M.bodega.slice().sort((a,b)=>b.cantMerma-a.cantMerma).map(t=>`<tr><td>${esc(t.nombre||t.cod)}</td><td>${esc(t.tipo)}</td><td class="num">${num(t.cantMerma,1)}</td><td>${esc(t.udm)}</td><td class="num">${t.ords.size}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nada marcado en bodega.</td></tr>'}</tbody></table></div></div>
+  <div class="panel"><h3>Bandejas <span class="note">no se asume nada: cada caso se decide</span></h3><div class="body">
+   ${bnj(M.rep.sinProv,'Productos sin proveedor asignado')}
+   ${bnj(M.rep.sinDisp,'Productos sin disponibilidad definida (no se asume comprar ni que ya está)')}
+   ${M.sinDias.length?`<p style="font-size:var(--fs-s);margin:4px 0"><b>Proveedores sin días de entrega</b> (${M.sinDias.length}): ${M.sinDias.slice(0,40).map(esc).join(', ')}</p>`:''}
+   ${bnj(M.rep.multiProv,'Productos con más de un proveedor en las facturas')}
+   ${bnj(M.rep.sinClasif,'Materiales sin clasificación (nivel 2 sin fila en la tabla de clasificación)')}
+   ${Object.keys(M.rep.sinProv).length+Object.keys(M.rep.sinDisp).length+M.sinDias.length+Object.keys(M.rep.multiProv).length+Object.keys(M.rep.sinClasif).length?'':'<p class="mut">Nada pendiente.</p>'}</div></div>`}
+let COMP={mes:'',niveles:null};
 let MAC={mes:''};
+
 function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o=>String(o.proyecto||'').trim()).filter(Boolean))].sort();
   const mac=macroMes(MAC.mes);const bj=banosJaspe(mac);const rep=mac.rep;const li=(o,t)=>Object.keys(o).length?`<p style="font-size:var(--fs-s);margin:4px 0"><b>${t}</b>: ${Object.entries(o).map(([k,v])=>esc(k)+' ('+(typeof v==='number'?v:esc(String(v)))+')').join(', ')}</p>`:'';
   const totTej=mac.tej.reduce((a,t)=>a+t.kgMerma,0),totTin=mac.tin.reduce((a,t)=>a+t.kgMerma,0);

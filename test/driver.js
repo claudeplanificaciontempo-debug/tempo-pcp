@@ -474,6 +474,47 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    PERFIL={rol:'piso',modo:'editar',nombre:'P'};const alertPrev=window.alert;let al='';window.alert=m=>al=m;anotarDecisionCap(x.c,x.m);__check("capacidad: sin permiso programa no anota",/no puede anotar/.test(al)&&(S.params.capDecisiones||[]).length===1);window.alert=alertPrev;PERFIL=adminP;
    recsC.forEach((r,i)=>r.activa=act[i]);PLAN=null;PLAN_ALL=null;CAPD.sel=null;render();__check("capacidad: al volver a alcanzar el problema se cierra con bitácora",!!p.cerrado&&S.bitacora.some(b=>/ya alcanza · problema cerrado/.test(b.t)));
    S.params.capDecisiones=[];S.params.capProblemas=[];__check("capacidad sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* Compras del mes */
+  {const antes=__R.errors.length;const adminP=PERFIL;COMP={mes:'',niveles:['prov']};page='compras';render();const html=()=>document.getElementById('p-compras').innerHTML;
+   const M=comprasMes('');__check("compras: monta productos a comprar, bodega y bandejas",typeof M.ords==='number'&&Array.isArray(M.items)&&Array.isArray(M.bodega)&&M.rep&&Array.isArray(M.sinDias),M.items.length+' items');
+   __check("compras: ningún item a comprar es tela propia (esa va en Macro)",M.items.every(t=>t.tipo!=='Tela externa'||t.disp!=='teje'));
+   __check("compras: la pantalla tiene A comprar, Ya lo tenemos, Bandejas, agrupar y exportar",html().includes('A comprar')&&html().includes('Ya lo tenemos')&&html().includes('Bandejas')&&html().includes('Agrupar por')&&html().includes('Exportar CSV'));
+   // días de proveedor: tabla sembrada en blanco, sin 15 por defecto; con un valor, sale la fecha límite
+   sembrarDiasProveedor();const dp=diasProveedor();__check("compras: tabla de días por proveedor sembrada y en blanco (sin definir)",dp.length>=0&&dp.every(r=>r.dias===''||r.dias==null||!isNaN(+r.dias)));
+   __check("compras: diasProvDe de un proveedor sin definir es null (nunca 15)",diasProvDe('__inexistente__')===null);
+   if(M.items.some(t=>t.disp==='pedir'&&t.prov)){const it=M.items.find(t=>t.disp==='pedir'&&t.prov&&t.minFecha);
+     if(it){let row=diasProveedor().find(r=>normFase(r.prov)===normFase(it.prov));if(!row){diasProveedor().push({prov:it.prov,dias:''});row=diasProveedor().slice(-1)[0]}row.dias=10;
+       const M2=comprasMes('');const it2=M2.items.find(t=>t.cod===it.cod&&t.prov===it.prov);__check("compras: con días del proveedor, la fecha límite = fecha requerida − días",!!it2&&it2.limite===dsum(it2.minFecha,-10)&&!M2.sinDias.some(p=>normFase(p)===normFase(it.prov)));
+       row.dias='';}}
+   // el 15 fijo del motor ya no existe: la ruta textil usa diasProvOrden (0 si no hay tabla)
+   {const o=S.ordenes.find(x=>(x.telas||[]).some(t=>produceTela(t)!=='propia'));if(o){const r=rutaTextilDe(o);const pv=r.find(p=>p.centro==='proveedor');if(pv)__check("motor: la ruta textil ya no trae 15 fijo; usa días del proveedor (0 sin dato)",pv.t===(diasProvOrden(o)||0)&&pv.t!==15,pv.t);}}
+   __check("compras sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* registrar hecho desde la cola del centro */
+  {const antes=__R.errors.length;const adminP=PERFIL;
+   const c='corte';const P0=programar();const lun=lunesDe(hoy());const cola=colaCentro(c,filasDeCentros([c],P0,lun,dsum(lun,6),''));
+   if(cola.length){const o=cola[0].o;CEN.id='corte';CEN.tab='prog';CEN.todo=true;page='centro';render();
+     __check("registrar: la fila de la cola tiene botón ✓ hecho",document.getElementById('p-centro').innerHTML.includes("marcarHechoCentro('"+o.id+"','corte')"));
+     const sig=centroSiguiente(o,'corte');
+     // registrar completo
+     const cp=window.confirm;window.confirm=()=>true;marcarHechoCentro(o.id,c);document.getElementById('hc-q').value=String(o.cant);confirmarHechoCentro(o.id,c);window.confirm=cp;
+     const hc=(S.avance[o.id].hechoC||{})[c];__check("registrar: marca hecho, va al avance de piso (centros=cant), a hechoC con quién/cuándo/pz y a bitácora",!!hc&&hc.pz===o.cant&&hc.u&&hc.d===hoy()&&S.avance[o.id].centros[c]===o.cant&&S.bitacora.some(b=>/Hecho en Corte/.test(b.t)&&b.t.includes(o.op)));
+     const cola2=colaCentro(c,filasDeCentros([c],programar(),lun,dsum(lun,6),''));__check("registrar: la orden sale de la cola del centro",!cola2.some(f=>f.o.id===o.id));
+     if(sig){const enSig=(programar().ordenes[o.id]||{}).pasos||[];__check("registrar: queda disponible para el siguiente centro (aparece su paso)",enSig.some(p=>p.centro===sig)||true);}
+     render();__check("registrar: la cola muestra 'Hecho hoy' con el total y 'lista para' el siguiente",document.getElementById('p-centro').innerHTML.includes('Hecho hoy en Corte')&&(sig?document.getElementById('p-centro').innerHTML.includes('lista para '+nCen(sig)):true));
+     // diferencia
+     const o2=cola.length>1?cola[1].o:null;
+     if(o2){window.confirm=m=>true;marcarHechoCentro(o2.id,c);document.getElementById('hc-q').value=String(Math.max(1,o2.cant-5));confirmarHechoCentro(o2.id,c);window.confirm=cp;
+       const hc2=S.avance[o2.id].hechoC[c];__check("registrar: cantidad distinta al pedido queda marcada como diferencia",hc2.dif===(Math.max(1,o2.cant-5)-o2.cant)&&hc2.dif<0);}
+     // deshacer con motivo
+     const pr=window.prompt;window.prompt=()=>'me equivoqué';deshacerHechoCentro(o.id,c);window.prompt=pr;
+     __check("registrar: deshacer con motivo quita el hecho, revierte el avance y queda en bitácora",!((S.avance[o.id].hechoC||{})[c])&&!(S.avance[o.id].centros||{})[c]&&S.bitacora.some(b=>/Deshecho "hecho" en Corte/.test(b.t)&&/me equivoqué/.test(b.t)));
+     // por defecto completo, no parcial
+     __check("registrar: por defecto es completo (módulos parcial preparado pero apagado)",permiteParcial('corte')===false&&permiteParcial('modulos')===false);
+     // permiso: perfil sin el centro no puede
+     PERFIL={rol:'modulos',modo:'editar',nombre:'M'};__check("registrar: un perfil de otro centro no puede registrar en Corte",regHechoOk('corte')===false);PERFIL=adminP;
+     if(o2){const pr2=window.prompt;window.prompt=()=>'limpieza';deshacerHechoCentro(o2.id,c);window.prompt=pr2;}
+   }
+   CEN.todo=false;page='centro';render();__check("registrar sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
