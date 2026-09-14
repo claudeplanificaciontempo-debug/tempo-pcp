@@ -559,7 +559,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 12:34';
+const APP_BUILD='2026-09-14 12:42';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -648,8 +648,12 @@ function poliPct(r,k){if(!r||!k)return 100;const p=K(k.padre)||k;const v=(r.poli
 /* velocidad de bordado configurada (puntadas/min por cabeza): campo del centro Bordado, si no el parámetro; sin dato → null */
 function velBordado(){const c=CE('bordado');if(c&&+c.puntMin>0)return +c.puntMin;const p=S.params?S.params.puntadasMin:null;return (+p>0)?+p:null}
 function sinVelBordado(o){return (o.ruta||[]).some(p=>p.centro==='bordado')&&!velBordado()}
+/* velocidad efectiva de un centro medido en puntadas: puntadas por minuto-MÁQUINA, promedio de las bordadoras activas ponderado por sus minutos
+   (ppm × cabezas de cada una, la misma regla que minPrendaR). Sin bordadoras con dato → la velocidad del centro (velBordado) con 1 cabeza.
+   Corrige el sesgo del 14-sep: el min/prenda del centro trataba cada máquina como de una sola cabeza y multiplicaba la carga de bordado ~4,5× */
+function velEfBordado(centroId){const recs=S.recursos.filter(r=>r.activa&&r.centro===centroId);let cap=0,pt=0;recs.forEach(r=>{const cd=capDia(r);const v=(+r.ppm>0?+r.ppm:velBordado());if(!(cd>0)||!v)return;cap+=cd;pt+=cd*v*(+r.cabezas||1)});return cap>0?pt/cap:(velBordado()||null)}
 function minPrenda(centroId,t){const c=CE(centroId);if(!c||!t||c.area!=='pro')return 0;
-  if(c.medida==='puntadas'){const v=velBordado();return v?t/v:0} // sin velocidad configurada: 0 minutos y la orden queda en la bandeja; no se inventa
+  if(c.medida==='puntadas'){const v=velEfBordado(centroId);return v?t/v:0} // sin velocidad configurada: 0 minutos y la orden queda en la bandeja; no se inventa
   if(c.medida==='prendas_h')return 60/t; return t;}
 /* minutos por prenda en un recurso concreto: bordadoras por cabezas y puntadas/min, estampado por prendas en paralelo */
 function minPrendaR(r,centroId,t){const c=CE(centroId);if(!c||!t||c.area!=='pro')return 0;

@@ -61,7 +61,12 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   const spcCam=samPorCentro(hCamCV);
   __check('bordado: el paso guarda las PUNTADAS por prenda (la unidad que el motor espera en minPrenda), no minutos',(()=>{ED={puntadas:900};const r=spcParaCentro({centro:'bordado',t:0},hCamCV,spcCam);return r.t===900})());
   CE('bordado').puntMin=20;S.params.puntadasMin=20;
-  __check('bordado: con velocidad 20 puntadas/min, minPrenda(bordado,900)=45 min (conversión del motor, sin tocarlo)',Math.abs(minPrenda('bordado',900)-45)<0.001,minPrenda('bordado',900));
+  {const rB=S.recursos.filter(r=>r.activa&&r.centro==='bordado');const bakB=rB.map(r=>({ppm:r.ppm,cab:r.cabezas,act:r.activa}));
+   rB.forEach(r=>{r.activa=false});__check('bordado: sin bordadoras activas, minPrenda usa la velocidad del centro con 1 cabeza (20 ppm → 900 puntadas = 45 min)',Math.abs(minPrenda('bordado',900)-45)<0.001,minPrenda('bordado',900));
+   rB.forEach((r,i)=>{r.activa=bakB[i].act});if(rB.length>=2){rB.forEach(r=>{r.ppm=null;r.cabezas=1});rB[0].ppm=100;rB[0].cabezas=6;rB[1].ppm=50;rB[1].cabezas=2; // 600 y 100 puntadas por minuto-máquina
+     const c0=capDia(rB[0]),c1=capDia(rB[1]);const otros=rB.slice(2).reduce((a,r)=>a+capDia(r),0);const esp=(c0*600+c1*100+otros*20)/(c0+c1+otros);
+     __check('bordado: la velocidad efectiva del centro pondera ppm × cabezas de cada bordadora por sus minutos (como minPrendaR); minPrenda = puntadas / esa velocidad',Math.abs(velEfBordado('bordado')-esp)<1e-6&&Math.abs(minPrenda('bordado',900)-900/esp)<1e-9,velEfBordado('bordado')+' vs '+esp);
+     rB.forEach((r,i)=>{r.ppm=bakB[i].ppm;r.cabezas=bakB[i].cab})}}
   __check('setCentro(puntMin) y S.params.puntadasMin son una sola fuente',(()=>{setCentro('bordado','puntMin',30);return S.params.puntadasMin===30})());
   delete CE('bordado').puntMin;S.params.puntadasMin=600;
   __check('lavado (prendas/hora): t = 60/minEstandar; plancha (min): t = minEstandar',(()=>{CE('lavado').minEstandar=2;CE('plancha').minEstandar=1.5;const a=tiempoPaso({centro:'lavado',t:0},null,{},0),b=tiempoPaso({centro:'plancha',t:0},null,{},0);delete CE('lavado').minEstandar;delete CE('plancha').minEstandar;return Math.abs(a.t-30)<0.001&&Math.abs(b.t-1.5)<0.001})());
@@ -493,7 +498,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   {const bak={pm:S.params.puntadasMin,cp:(CE('bordado')||{}).puntMin};
    S.params.puntadasMin=null;delete CE('bordado').puntMin;
    __check('velBordado(): sin centro ni parámetro → null (no se inventa 600)',velBordado()===null);
-   __check('minPrenda(bordado) sin velocidad → 0 minutos',minPrenda('bordado',5000)===0);
+   {const rB=S.recursos.filter(r=>r.activa&&r.centro==='bordado');const bakP=rB.map(r=>r.ppm);rB.forEach(r=>{r.ppm=null});__check('minPrenda(bordado) sin velocidad en el centro ni en las bordadoras → 0 minutos',minPrenda('bordado',5000)===0);rB.forEach((r,i)=>{r.ppm=bakP[i]})}
    __check('minPrendaR(bordadora sin ppm) sin velocidad → 0 minutos',minPrendaR({ppm:null,cabezas:24},'bordado',5000)===0);
    __check('minPrendaR(bordadora con ppm propio) sí convierte',Math.abs(minPrendaR({ppm:500,cabezas:2},'bordado',5000)-5)<1e-9);
    __check('sinVelBordado(orden con bordado) → true; sin bordado → false',sinVelBordado({ruta:[{centro:'bordado',t:100}]})===true&&sinVelBordado({ruta:[{centro:'corte',t:1}]})===false);

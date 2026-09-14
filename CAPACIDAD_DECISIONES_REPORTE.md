@@ -141,3 +141,34 @@ básica 1.435 (19.645), SIN WH #4r93y6 Bombers 576 pz (18.374), 29113 CR 1.349 (
 ordenada por peso, está en la celda Confección · noviembre.
 
 El × por orden se queda con confirmación (decisión de la usuaria).
+
+## 6 · Sesgo de bordado sin cabezas: dónde estaba y cómo quedó (14-sep, 12:45)
+
+`minPrenda('bordado', puntadas)` dividía por la velocidad del centro (650 puntadas/min) como si cada bordadora tuviera
+una cabeza. El motor (`minPrendaR`) siempre dividió por `ppm × cabezas` de cada máquina, así que el programa y el Plan
+mensual (que leen el programa) estaban bien; todo lo que sumaba "horas de planta" con `minPrenda` no.
+
+**Arreglo único, en la raíz:** `minPrenda` para centros medidos en puntadas usa ahora `velEfBordado()` = puntadas por
+minuto-máquina de las bordadoras activas, ponderado por sus minutos (ppm × cabezas de cada una; hoy **2.943**
+puntadas/min-máquina con las 7 bordadoras). Sin bordadoras con dato, cae a la velocidad del centro (650) con 1 cabeza,
+y sin ninguna velocidad sigue dando 0 y la orden va a la bandeja. Con esto todas las pantallas coinciden con el motor.
+
+Pantallas que usaban `minPrenda` para bordado y quedaron corregidas de una vez:
+
+| Pantalla | Qué mostraba | Antes → después (producción) |
+|---|---|---|
+| **Demanda agregada** (horas de planta, sep–dic) | 105.038 h, de las cuales bordado 6.415 h | **100.040 h**, bordado **1.417 h** (−4.998 h, −4,8 % del total; bordado −78 %) |
+| **Resumen gerencial** (horas de planta, todas las abiertas) | 105.378 h (bordado 6.490) | **100.321 h** (bordado 1.433) |
+| **Producto en proceso** (minutos por grupo de fase) | bordado ×4,5 | corregido |
+| **Liberación** (resumen: horas por centro de lo seleccionado) | bordado ×4,5 | corregido |
+| **Plan mensual → "por liberar"** (`minPendiente`, horas de las candidatas) | bordado ×4,5 | corregido |
+| **Reporte de carga** (`reporteTarea`: carga vencida por centro, carga por mes) | bordado ×4,5 | corregido |
+| **Control de piso** (minutos estándar de un turno de bordado) | ×4,5 | corregido |
+| **Capacidad y decisiones** | ya iba en puntadas contra cabezas (arreglo del mediodía) | sin cambio |
+| **`leadDias`** (días de planta estimados para la fecha requerida de tela; parte del motor) | bordado estimado ×4,5 | 28 de 358 órdenes con bordado bajan su lead (39 días en total); la fecha requerida de tela de esas 28 se corre más tarde |
+
+El último punto es motor: `leadDias` usa `minPrenda`, así que cambió por arrastre. Es una corrección del mismo sesgo,
+no una regla nueva; lo digo para que conste.
+
+Botones queda como está, problema abierto, hasta que confirmes en planta si son 3 personas o si parte de los ojales
+van en los módulos.
