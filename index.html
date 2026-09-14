@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 11:18';
+const APP_BUILD='2026-09-14 11:33';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -606,6 +606,9 @@ function dow(d){return new Date(d+'T12:00:00').getDay()}
 function laborable(d,dias){const g=dow(d);return dias>=7||(dias===6&&g!==0)||(dias<=5&&g!==0&&g!==6)}
 function sigLab(d,dias){let x=d;while(!laborable(x,dias))x=dsum(x,1);return x}
 /* calendario por área: días base por semana + excepciones (trabaja / no trabaja) por fecha */
+/* ---------- el plan va por PROYECTO (mes de Odoo), no por fecha de entrega (decisión 14-sep). Sin proyecto reconocible → null (se reporta, no se inventa) ---------- */
+const MESES_ES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+function mesPlan(o){const p=normTxt(String((o&&o.proyecto)||''));const m=p.match(/([a-z]+)\s+(\d{4})/);if(!m||!MESES_ES[m[1]])return null;return m[2]+'-'+String(MESES_ES[m[1]]).padStart(2,'0')}
 function areaDe(r){const c=CE(r.centro);return c?c.area:'pro'}
 /* parámetro numérico configurado: si está guardado (incluido 0) manda; el default solo aplica si no existe */
 function prm(k,def){const v=S.params?S.params[k]:undefined;return (typeof v==="number"&&!isNaN(v))?v:def}
@@ -1247,7 +1250,7 @@ function vGerencia(el){
   const atr=ords.filter(riesgo),atrPz=atr.reduce((a,o)=>a+ +o.cant,0);
   // por mes
   const usdO=o=>(o.precio||0)*o.cant;const usd=v=>'$ '+num(v);
-  const meses={};ords.forEach(o=>{const m=o.fecha.slice(0,7);if(!meses[m])meses[m]={n:0,pz:0,usd:0,usdWH:0,sinPrecio:0,nWH:0,pzWH:0,nSin:0,pzSin:0,atr:0,atrPz:0,ven:0};const x=meses[m];x.n++;x.pz+=+o.cant;x.usd+=usdO(o);if(!o.precio)x.sinPrecio+=+o.cant;if(esWH(o)){x.nWH++;x.pzWH+=+o.cant;x.usdWH+=usdO(o)}else{x.nSin++;x.pzSin+=+o.cant}if(!esWH(o))return;if(vencida(o))x.ven++;else if(riesgo(o)){x.atr++;x.atrPz+=+o.cant}});
+  const meses={};ords.forEach(o=>{const m=mesPlan(o)||'Sin proyecto';if(!meses[m])meses[m]={n:0,pz:0,usd:0,usdWH:0,sinPrecio:0,nWH:0,pzWH:0,nSin:0,pzSin:0,atr:0,atrPz:0,ven:0};const x=meses[m];x.n++;x.pz+=+o.cant;x.usd+=usdO(o);if(!o.precio)x.sinPrecio+=+o.cant;if(esWH(o)){x.nWH++;x.pzWH+=+o.cant;x.usdWH+=usdO(o)}else{x.nSin++;x.pzSin+=+o.cant}if(!esWH(o))return;if(vencida(o))x.ven++;else if(riesgo(o)){x.atr++;x.atrPz+=+o.cant}});
   // por cliente
   const cli={};ords.forEach(o=>{const c=o.cliente||'—';if(!cli[c])cli[c]={n:0,pz:0,usd:0,pzWH:0,pzSin:0,atr:0,ven:0};cli[c].n++;cli[c].pz+=+o.cant;cli[c].usd+=usdO(o);if(esWH(o))cli[c].pzWH+=+o.cant;else cli[c].pzSin+=+o.cant;if(!esWH(o))return;if(vencida(o))cli[c].ven++;else if(riesgo(o))cli[c].atr++});
   // por etapa (fase agrupada)
@@ -1269,7 +1272,7 @@ function vGerencia(el){
     if(n>=8||(last&&ac[last.centro]>=o.cant))return 1;if(n>=7)return .85;if(n>=5)return .65;if(n>=4)return .5;if(n>=2)return .3;if(n>=1)return .15;return 0};
   const estadoO=o=>{const w=pesoFase(o);return w>=1?'term':w>0?'proc':'sin'};
   const agAv=(key)=>{const r={};ords.forEach(o=>{const k=key(o);if(!r[k])r[k]={pz:0,term:0,proc:0,sin:0,av:0};const e=estadoO(o);r[k].pz+=+o.cant;r[k][e]+=+o.cant;r[k].av+=o.cant*pesoFase(o)});return r};
-  const avMes=agAv(o=>o.fecha.slice(0,7)),avCli=agAv(o=>o.cliente||'—');
+  const avMes=agAv(o=>mesPlan(o)||'Sin proyecto'),avCli=agAv(o=>o.cliente||'—');
   const totAv={pz:pz,term:ords.filter(o=>estadoO(o)==='term').reduce((a,o)=>a+ +o.cant,0),proc:ords.filter(o=>estadoO(o)==='proc').reduce((a,o)=>a+ +o.cant,0),sin:ords.filter(o=>estadoO(o)==='sin').reduce((a,o)=>a+ +o.cant,0),av:ords.reduce((a,o)=>a+o.cant*pesoFase(o),0)};
   const barra3=v=>{const t=v.pz||1;return `<div class="bar" style="height:12px;display:flex;background:var(--field)"><i style="width:${v.term/t*100}%;background:var(--ok)"></i><i style="width:${v.proc/t*100}%;background:var(--medio)"></i></div>`};
   const filaAv=(n,v)=>`<tr><td>${n}</td><td class="num">${num(v.pz)}</td><td class="num">${num(v.term)}</td><td class="num">${num(v.proc)}</td><td class="num">${num(v.sin)}</td><td style="min-width:120px">${barra3(v)}</td><td class="num"><b>${Math.round(v.av/(v.pz||1)*100)}%</b></td></tr>`;
@@ -1354,7 +1357,7 @@ function baseCapArea(a){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&
 function diasMesRec(r,ym){const [y,m]=ym.split('-').map(Number);const nd=new Date(y,m,0).getDate();let n=0;for(let d=1;d<=nd;d++){if(labR(ym+'-'+String(d).padStart(2,'0'),r))n++}return n}
 function calcularPlan(ym){
   const P=programar();const h=hoy();const ords=S.ordenes.filter(o=>abierta(o));
-  const enMes=ords.filter(o=>o.fecha&&o.fecha.startsWith(ym));const sem=semanasLV(ym);
+  const enMes=ords.filter(o=>mesPlan(o)===ym);const sem=semanasLV(ym); // por Proyecto (mes de Odoo)
   const precioDe=o=>o.precio>0?o.precio:null;
   const minConf=o=>(o.ruta||[]).filter(p=>p.centro==='modulos').reduce((a,p)=>a+minPrenda('modulos',p.t),0);
   // demanda del mes
@@ -1397,20 +1400,21 @@ function vPlan(el){
   if(vacios.length)guia.push(`Con poca carga: ${vacios.map(m=>m.r.n+' ('+Math.round(m.carga/m.cap*100)+'%)').join(', ')}. Ampliar su polivalencia o recibir órdenes de los sobrecargados.`);
   if(c.dem.riesgo)guia.push(`${c.dem.riesgo} órdenes con entrega en ${fm} terminan tarde según el programa.`);
   if(c.dem.sinPrecio)guia.push(`${num(c.dem.sinPrecio)} prendas del mes no tienen precio: la facturación está subestimada.`);
-  el.innerHTML=`<div class="pagehead"><h2>Plan mensual</h2><span class="spacer"></span><div class="row" style="margin:0;align-items:flex-end"><div><label>Mes</label><input type="month" value="${ym}" onchange="PM.mes=this.value;PM.ver=null;render()"></div>
+  el.innerHTML=`<div class="pagehead"><h2>Plan mensual <span class="mut" style="font-size:var(--fs-s);font-weight:400">· por Proyecto (mes de Odoo); la fecha de entrega sigue siendo el compromiso de cada orden</span></h2><span class="spacer"></span><div class="row" style="margin:0;align-items:flex-end"><div><label>Mes (Proyecto)</label><input type="month" value="${ym}" onchange="PM.mes=this.value;PM.ver=null;render()"></div>
     ${puede('programa')?`<div><label>&nbsp;</label><button class="btn" onclick="congelarPlan('${ym}')">Congelar ${fm}</button></div>`:''}<div><label>&nbsp;</label><button class="btn ghost no-print" onclick="window.print()">Imprimir</button></div></div></div>
   <p class="lede">Con la demanda del mes y las capacidades, aquí se estructura la planta y se congela el plan: capacidad por área y módulo, facturación esperada por fecha de entrega y metas de lunes a viernes. Lo congelado queda con versión y después se compara con lo real.</p>
   ${versiones.length?`<div class="panel"><div class="body" style="font-size:var(--fs-s)"><b>Versiones congeladas:</b> ${versiones.map(v=>`<span class="chip" style="cursor:default">v${v.ver} · ${new Date(v.ts).toLocaleDateString('es-EC')} · ${esc(v.u||'')} · ${num(v.dem.pz)} pz · ${usd(v.dem.usd)}</span>`).join(' ')} <span class="mut">La comparación de metas usa la última versión.</span></div></div>`:''}
-  <div class="kpis"><div class="kpi"><div class="v">${c.dem.ords}</div><div class="k">Órdenes con entrega en el mes</div></div><div class="kpi"><div class="v">${num(c.dem.pz)}</div><div class="k">Prendas · ${num(c.dem.terminadas)} ya terminadas</div></div><div class="kpi"><div class="v">${num(c.dem.hconf)} h</div><div class="k">Horas de confección</div></div><div class="kpi"><div class="v">${usd(c.dem.usd)}</div><div class="k">Facturación esperada${c.dem.sinPrecio?' · <span class="tag t-aviso">'+num(c.dem.sinPrecio)+' pz sin precio</span>':''}</div></div><div class="kpi ${c.dem.riesgo?'bad':''}"><div class="v">${c.dem.riesgo}</div><div class="k">En riesgo según el programa</div></div></div>
+  ${(()=>{const sp=S.ordenes.filter(o=>abierta(o)&&!mesPlan(o));return sp.length?`<div class="warn" style="margin-bottom:10px"><b>${sp.length} órdenes abiertas sin Proyecto reconocible</b> (${num(sp.reduce((a,o)=>a+ +o.cant,0))} prendas): no caen en ningún mes del plan hasta que Odoo les ponga proyecto. ${[...new Set(sp.map(o=>o.proyecto||'(vacío)'))].slice(0,8).map(esc).join(', ')}</div>`:''})()}
+  <div class="kpis"><div class="kpi"><div class="v">${c.dem.ords}</div><div class="k">Órdenes del proyecto del mes</div></div><div class="kpi"><div class="v">${num(c.dem.pz)}</div><div class="k">Prendas · ${num(c.dem.terminadas)} ya terminadas</div></div><div class="kpi"><div class="v">${num(c.dem.hconf)} h</div><div class="k">Horas de confección</div></div><div class="kpi"><div class="v">${usd(c.dem.usd)}</div><div class="k">Facturación esperada${c.dem.sinPrecio?' · <span class="tag t-aviso">'+num(c.dem.sinPrecio)+' pz sin precio</span>':''}</div></div><div class="kpi ${c.dem.riesgo?'bad':''}"><div class="v">${c.dem.riesgo}</div><div class="k">En riesgo según el programa</div></div></div>
   <div class="panel"><h3>Horizonte rodante <span class="note">los próximos meses con la misma lógica</span></h3><div class="body"><table><thead><tr><th>Mes</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">H. confección</th><th class="num">Cap. confección</th><th style="width:120px">Uso</th><th class="num">Facturación</th><th class="num">En riesgo</th></tr></thead><tbody>
    ${[0,1,2,3].map(i=>{const d=new Date(ym+'-15T12:00:00');d.setMonth(d.getMonth()+i);const m=d.toISOString().slice(0,7);const x=i===0?c:calcularPlan(m);const capC=(x.areas.find(a=>a.a==='pro')||{}).cap/60||0;const capConf=S.recursos.filter(r=>r.centro==='modulos'&&r.activa).length?(()=>{const [yy,mm]=m.split('-').map(Number);const nd2=new Date(yy,mm,0).getDate();let t=0;for(let dd=1;dd<=nd2;dd++){const ds=m+'-'+String(dd).padStart(2,'0');S.recursos.filter(r=>r.centro==='modulos'&&r.activa).forEach(r=>{if(labR(ds,r))t+=capDia(r,ds)})}return t/60})():0;
      return `<tr ${i===0?'style="font-weight:600"':''}><td style="cursor:pointer" onclick="PM.mes='${m}';render()">${d.toLocaleDateString('es-EC',{month:'long',year:'numeric'})}</td><td class="num">${x.dem.ords}</td><td class="num">${num(x.dem.pz)}</td><td class="num">${num(x.dem.hconf)} h</td><td class="num">${num(capConf)} h</td><td>${barra(x.dem.hconf,capConf||1)}</td><td class="num">${usd(x.dem.usd)}</td><td class="num">${x.dem.riesgo?'<span class="tag t-alerta">'+x.dem.riesgo+'</span>':'<span class="mut">·</span>'}</td></tr>`}).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Las horas de confección son la demanda bruta del mes de entrega; la capacidad, la de los módulos con el calendario de ese mes.</p></div></div>
-  ${(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&o.fecha&&o.fecha.startsWith(ym));const libs=enMes.filter(o=>!(P.ordenes[o.id]||{}).bloqueo),porLib=enMes.filter(o=>(P.ordenes[o.id]||{}).bloqueo);
+  ${(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const libs=enMes.filter(o=>!(P.ordenes[o.id]||{}).bloqueo),porLib=enMes.filter(o=>(P.ordenes[o.id]||{}).bloqueo);
     const usdL=libs.reduce((a,o)=>a+(o.precio||0)*o.cant,0),usdP=porLib.reduce((a,o)=>a+(o.precio||0)*o.cant,0);
     return `<div class="panel"><h3>Base del plan: lo liberado <span class="note">el plan mensual trabaja sobre lo que planificación ha liberado</span></h3><div class="body"><div class="kpis"><div class="kpi"><div class="v">${libs.length}</div><div class="k">Órdenes del mes liberadas y con fecha · ${num(libs.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdL)}</div></div><div class="kpi ${porLib.length?'warn':''}"><div class="v">${porLib.length}</div><div class="k">Del mes sin liberar o sin decidir · ${num(porLib.reduce((a,o)=>a+ +o.cant,0))} pz · $ ${num(usdP)} <a style="cursor:pointer" onclick="LIB.mes=new Set(['${ym}']);ir('liberacion')">ir a Liberación</a></div></div></div></div></div>`})()}
-  ${(()=>{const meta=((S.params.metas||{})[ym])||0;const esp=S.ordenes.filter(o=>abierta(o)&&o.fecha&&o.fecha.startsWith(ym)&&!(P.ordenes[o.id]||{}).bloqueo).reduce((a,o)=>a+(o.precio||0)*o.cant,0);const brecha=meta-esp;
-    const cand=S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&o.fecha&&o.fecha.startsWith(ym)).filter(o=>(P.ordenes[o.id]||{}).bloqueo||o.estado==='prevision').map(o=>({o,usd:(o.precio||0)*o.cant,h:minPendiente(o)/60,bl:(P.ordenes[o.id]||{}).bloqueo||'sin WH'})).sort((a,b)=>b.usd-a.usd);
+  ${(()=>{const meta=((S.params.metas||{})[ym])||0;const esp=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym&&!(P.ordenes[o.id]||{}).bloqueo).reduce((a,o)=>a+(o.precio||0)*o.cant,0);const brecha=meta-esp;
+    const cand=S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&mesPlan(o)===ym).filter(o=>(P.ordenes[o.id]||{}).bloqueo||o.estado==='prevision').map(o=>({o,usd:(o.precio||0)*o.cant,h:minPendiente(o)/60,bl:(P.ordenes[o.id]||{}).bloqueo||'sin WH'})).sort((a,b)=>b.usd-a.usd);
     const capLibre=Math.max(0,((c.areas.find(a=>a.a==='pro')||{}).cap-(c.areas.find(a=>a.a==='pro')||{}).carga)/60);let acum=0,hAcum=0;const prop=[];for(const x of cand){if(brecha>0&&acum>=brecha)break;prop.push(Object.assign({cabe:hAcum+x.h<=capLibre},x));acum+=x.usd;hAcum+=x.h}
     return `<div class="panel"><h3>Meta de facturación del mes <span class="note">lo que quieres facturar contra lo que el programa entrega</span></h3><div class="body">
      <div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>Meta ($)</label><input type="number" style="width:140px" value="${meta||''}" placeholder="0" ${puede('programa')?'':'disabled'} onchange="setMeta('${ym}',this.value)"></div>
@@ -1847,7 +1851,7 @@ function grupoFase(f){const n=faseNum(f);return n<=0?'0':n===1?'1':n<=4?'2':n<=7
 function vFamilias(el){
   const ords=S.ordenes.filter(o=>abierta(o)||(FAM.prev&&o.estado==='prevision'));
   if(!ords.length){el.innerHTML=`<div class="pagehead"><h2>Demanda agregada</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
-  const h=hoy();const mesDe=o=>o.fecha?o.fecha.slice(0,7):'Sin fecha';
+  const h=hoy();const mesDe=o=>mesPlan(o)||'Sin proyecto';
   const minConf=o=>(o.ruta||[]).filter(p=>p.centro==='modulos').reduce((a,p)=>a+minPrenda('modulos',p.t),0);
   const horasConf=o=>o.cant*minConf(o)/60;const horasPlanta=o=>o.cant*(o.ruta||[]).reduce((a,p)=>a+minPrenda(p.centro,p.t),0)/60;
   const fasesAll=[...new Set(ords.map(o=>o.fase||'Sin fase'))].sort();if(!FAM.fases)FAM.fases=new Set(fasesAll);
@@ -1922,7 +1926,7 @@ function vLiberacion(el){
   const ok=set=>v=>!set||!set.size||set.has(v);
   const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
   const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
-  const base=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)((o.fecha||'').slice(0,7))&&ok(LIB.fases)(o.fase||'Sin fase')&&okTela(LIB.tela)(o)&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt((C(o.color)||{}).n).includes(q)));
+  const base=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)(mesPlan(o)||'')&&ok(LIB.fases)(o.fase||'Sin fase')&&okTela(LIB.tela)(o)&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt((C(o.color)||{}).n).includes(q)));
   const yaHecha=o=>et==='tela'?!!((grupoDe(o.fase)||{}).libTela):faseEstado(o.fase,o).hechos.includes('corte');
   const pend=base.filter(o=>!liberada(o,et)&&!yaHecha(o));const listas=pend.filter(o=>puedeLiberarA(o,et)),noListas=pend.filter(o=>!puedeLiberarA(o,et));
   const liberadas=todas.filter(o=>!yaHecha(o)&&liberada(o,et)&&(et==='tela'?!(o.lib&&o.lib.corte&&o.lib.corte.ok&&false):true));
@@ -1935,11 +1939,11 @@ function vLiberacion(el){
       (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'){cen[p.centro]=cen[p.centro]||{h:0,pz:0};cen[p.centro].h+=o.cant*minPrenda(p.centro,p.t)/60;cen[p.centro].pz+=+o.cant}})});
     return{kg,kgCol:Object.values(kgCol).sort((a,b)=>b.kg-a.kg),fam,cen,pz,usd,h,n:lista.length}};
   const rPend=resumen(listas),rSel=resumen(sel),rLib=resumen(liberadas);
-  const baseSinFase=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)((o.fecha||'').slice(0,7))&&okTela(LIB.tela)(o)&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt((C(o.color)||{}).n).includes(q)));
+  const baseSinFase=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)(mesPlan(o)||'')&&okTela(LIB.tela)(o)&&(!q||normTxt(o.op).includes(q)||normTxt(o.ref).includes(q)||normTxt((C(o.color)||{}).n).includes(q)));
   const cuentasFase={};baseSinFase.filter(o=>!liberada(o,et)&&!yaHecha(o)).forEach(o=>{const f=o.fase||'Sin fase';cuentasFase[f]=(cuentasFase[f]||0)+ +o.cant});
   const totLibPend=rLib.pz+rPend.pz;const pctLib=totLibPend?Math.round(100*rLib.pz/totLibPend):0;
   const fams=[...new Set(todas.map(padreDe).filter(Boolean))].sort();const hijas=[...new Set(todas.filter(o=>ok(LIB.fam)(padreDe(o))).map(hijaDe).filter(Boolean))].sort();
-  const clis=[...new Set(todas.map(o=>o.cliente||'—'))].sort();const meses=[...new Set(todas.map(o=>(o.fecha||'').slice(0,7)).filter(Boolean))].sort();
+  const clis=[...new Set(todas.map(o=>o.cliente||'—'))].sort();const meses=[...new Set(todas.map(o=>mesPlan(o)).filter(Boolean))].sort();
   const telasDisp=[...new Set(todas.flatMap(telasOrden))].sort((a,b)=>nTela(a).localeCompare(nTela(b)));
   const nombre=et==='tela'?'la planta':'producción';const puedeF=puede('programa')||puede('liberar');
   const fila=(o,check)=>{return `<tr><td>${check?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.cliente||'')}</td><td>${esc(hijaDe(o))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(kgDe(o))}</td><td>${o.fecha}</td><td>${esc(faseNombre(o.fase||'—'))}</td>
@@ -2542,7 +2546,11 @@ function vOrdenes(el){
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${(()=>{const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);return (pr.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · precio por prenda fuera de rango (${pr.length})</b>: se reporta, no se corrige (corregir en Odoo). ${pr.map(x=>esc(x.op)+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' pz · $ '+num(x.total)+' = $ '+num(x.precio,2)+'/pz (mediana $ '+num(x.mediana,2)+')').join('<br>')}</div>`:'')+(sl.length?`<div class="warn" style="margin-bottom:12px"><b>${sl.length} órdenes sin número de WH</b> (no lanzadas en Odoo: ${[...new Set(sl.map(o=>o.fase))].map(esc).join(', ')}) · ${num(sl.reduce((a,o)=>a+ +o.cant,0))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.</div>`:'')})()}
-  ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${new Date(S.params.tareaCarga.fecha).toLocaleString('es-EC')}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details><summary style="cursor:pointer">ver</summary><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${nc.slice(0,80).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')}${nc.length>80?'<br>…':''}</div></details></div>`:'')+
+  ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${new Date(S.params.tareaCarga.fecha).toLocaleString('es-EC')}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details ${BND.abierta?'open':''} ontoggle="BND.abierta=this.open"><summary style="cursor:pointer">ver</summary>
+       ${(()=>{const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);return !!(o&&(o.fases||[]).some(f=>f.origen==='app'))};const acept=fs.filter(x=>!movidas(x.op));
+         return fs.length?`<div style="margin:6px 0"><b>Fases distintas (${fs.length})</b>: ${acept.length} avanzaron en Odoo y aquí nadie las movió; ${fs.length-acept.length} las moviste aquí (no se tocan). ${puede('ordenes')?`<button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(acept.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar las ${acept.length} de avance normal</button> <button class="btn ghost sm" onclick="BND.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${BND.sel.size?'':'disabled'} onclick="aceptarFasesArchivo()">Usar la fase del archivo en las ${BND.sel.size} marcadas</button>`:''}
+          <table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th></th><th>OP</th><th>Fase en el sistema</th><th>Fase del archivo</th><th></th></tr></thead><tbody>${fs.map(x=>{const mv=movidas(x.op);return `<tr><td>${mv?'':`<input type="checkbox" ${BND.sel.has(x.op)?'checked':''} onchange="if(this.checked)BND.sel.add('${x.op}');else BND.sel.delete('${x.op}');render()">`}</td><td>${esc(x.op)}</td><td>${esc(x.sistema)}</td><td>${esc(x.archivo)}</td><td class="mut">${mv?'movida aquí: se queda con la del sistema':''}</td></tr>`}).join('')}</tbody></table></div>`:''})()}
+       <div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${nc.filter(x=>x.tipo!=='fase').slice(0,80).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')}</div></details></div>`:'')+
       ((rc.eliminadasConDecision||[]).length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${rc.eliminadasConDecision.length} órdenes eliminadas en la recarga tenían decisiones de persona</b>: ${rc.eliminadasConDecision.slice(0,40).map(esc).join(', ')}${rc.eliminadasConDecision.length>40?' …':''}</div>`:'')})()}
   ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
     const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
@@ -4682,6 +4690,11 @@ function defCamposConservados(){return [
 function camposConservados(){if(!S.params.camposConservados||!S.params.camposConservados.length)S.params.camposConservados=defCamposConservados();return S.params.camposConservados}
 function conserva(campo){const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
 /* aplica una fase a una orden recalculando lo que depende de ella (estado, historia, ruta pendiente) sin tocar lo del archivo */
+let BND={sel:new Set(),abierta:false};
+function aceptarFasesArchivo(){const rc=(S.params.tareaCarga||{}).recarga;if(!rc||!BND.sel.size)return;if(!confirm('¿Usar la fase del archivo en '+BND.sel.size+' órdenes? Las que moviste aquí no se tocan.'))return;let n=0;const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
+  rc.noCalzan=rc.noCalzan.filter(x=>{if(x.tipo!=='fase'||!BND.sel.has(x.op))return true;const o=S.ordenes.find(z=>z.op===x.op);if(!o||(o.fases||[]).some(f=>f.origen==='app'))return true;
+    const antes=o.fase;registrarFase(o,x.archivo,'archivo');aplicarFaseSistema(o,x.archivo);bitacora('Fase '+o.op+': '+(antes||'—')+' → '+x.archivo+' (aceptada del archivo por '+u+')');n++;return false});
+  BND.sel=new Set();PLAN=null;PLAN_ALL=null;save();render();alert(n+' órdenes tomaron la fase del archivo.')}
 function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.faseSistema=fila?fila.sistema:null;o.esCola=!!(fila&&fila.esCola);o.sinCarga=!!(fila&&fila.sinCarga);o.faseNoCalza=!fila;o.bloqueada=!!(fila&&fila.bloqueo);
   const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
@@ -4724,8 +4737,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
    calcula aquí directamente (cant × minPrenda del motor, por mes de entrega; vencidas al mes en curso), NO con programar(). ---------- */
 function reporteTarea(){const C0=S.params.tareaCarga;if(!C0)return null;const HOY=C0.hoy||hoy();const mesHoy=HOY.slice(0,7);
   const ords=S.ordenes.filter(o=>o.origenParte2);
-  const meses=['2026-09','2026-10','2026-11','2026-12'];const mesDe=o=>o.vencida?mesHoy:(o.fecha||'').slice(0,7);
-  const cuentaMes={};meses.forEach(m=>cuentaMes[m]={n:0,prendas:0,total:0});ords.forEach(o=>{const m=(o.fecha||'').slice(0,7);if(cuentaMes[m]){cuentaMes[m].n++;cuentaMes[m].prendas+=o.cant;cuentaMes[m].total+=o.total||0}});
+  const meses=['2026-09','2026-10','2026-11','2026-12'];const mesDe=o=>o.vencida?mesHoy:(mesPlan(o)||'');
+  const cuentaMes={};meses.forEach(m=>cuentaMes[m]={n:0,prendas:0,total:0});ords.forEach(o=>{const m=mesPlan(o)||'';if(cuentaMes[m]){cuentaMes[m].n++;cuentaMes[m].prendas+=o.cant;cuentaMes[m].total+=o.total||0}});
   const noHist=ords.filter(o=>!o.historia);
   const venc=noHist.filter(o=>o.vencida);const minRuta=(o,r)=>(r||[]).reduce((a,p)=>a+(CE(p.centro)&&CE(p.centro).area==='pro'?o.cant*minPrenda(p.centro,p.t):0),0);
   const vencPorCentro={};venc.forEach(o=>(o.ruta||[]).forEach(p=>{if(CE(p.centro)&&CE(p.centro).area==='pro')vencPorCentro[p.centro]=(vencPorCentro[p.centro]||0)+o.cant*minPrenda(p.centro,p.t)}));
