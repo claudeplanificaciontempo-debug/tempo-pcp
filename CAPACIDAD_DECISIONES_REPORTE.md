@@ -104,3 +104,40 @@ Los de Configuración/Categorías están fuera de las pantallas diarias y detrá
   `borrarOperativo` ya no pide nada por sí mismo (solo lo llama `ejecutarBorrado`). `delOrden` con confirmación.
 - Pruebas: matriz por Proyecto, capacidad, umbral 0 respetado, problema nuevo + bitácora + aviso en Hoy, detalle,
   decisión (quién/cuándo/%), resolver, historial, permiso, cierre del problema; buscador conserva foco; borrado con frase.
+
+## 5 · Verificación pedida (14-sep, 12:30)
+
+**Bordado: el 385 % / 175 % era un error de la pantalla nueva, no de la planta.** La matriz usaba el min/prenda del
+centro (puntadas ÷ 650 ppm), que trata cada bordadora como si tuviera UNA cabeza. El motor (`minPrendaR`) divide por
+`ppm × cabezas` de cada máquina (6C1 800×6, 8C 750×8, 4C 650×4, 6C2 800×6, 1C1/1C2/1C3 800×1 = 20.600 puntadas/min en
+total). Corregido (`dbf9c90`): bordado va en **puntadas** contra **min-máquina × ppm × cabezas**. Con eso:
+sep 85 % desde hoy (94,2 M puntadas / 110,7 M) y **52 % con el mes completo** (181,9 M; coincide con el 52 % que el
+Plan mensual daba por programa), oct 18 %, **nov 39 %** (76,5 M / 197,8 M), dic 7 %. Los dos problemas de bordado se
+cerraron solos. El "noviembre 200 %" reportado el 13-sep salía del mismo cálculo por centro sin cabezas: **bordado sí
+alcanza**. Demanda agregada sigue usando min/prenda del centro para bordado (mismo sesgo); no la toqué.
+
+**Botones (199 / 149 / 187 %) — con qué está calculado.** Un solo recurso "Botones": **3 personas × 480 min × 85 % =
+1.224 min/día**, 6 días/semana (regla base pro; el calendario del mes manda): sep 23 días laborables (14 quedan →
+17.136 min), oct 27 (33.048), nov 25 (30.600). Carga: sep 34.018 min, oct 49.146, nov 57.079. Min/prenda de botones
+(LMO: familias OJALES + BOTONES → centro Botones, tabla de mapeo): Polo básica **1,56**, Polo moda 1,56, Camisas ML/MC
+**3,25**, Henley 2,34, Vestidos 1,16, Jeans 0,40, Short cargo 0,36. Lo que pesa: Polo básica (sep 11.511 pz = 17.957
+min; oct 11.299 pz; nov 20.028 pz = 31.244 min) y camisas (oct 5.800 pz = 18.843 min). Con esos tiempos y esas
+prendas, botones necesita ~6 personas-equivalente en sep-nov; con 3 configuradas sale al doble. El dato a confirmar es
+la **capacidad** (¿son 3 personas reales en ojales/botones, o parte se hace en los módulos?), no el tiempo por prenda.
+
+**Confección oct 141 % / nov 164 % — órdenes sin liberar que más pesan** (cliente único: Comercializadora de Ropa
+Fashion Club; min = pendientes × min/prenda de módulos):
+
+Octubre: 279 sin liberar de 312 (1.577.951 de 1.812.516 min; capacidad 1.289.520). Las mayores: WH/MO/28951 Camiseta
+CR 2.240 pz (30.159 min, 1Incompletos tin); SIN WH #1ljycgy Camiseta CV 1.640 pz (22.081, 0Diseño); WH/MO/28985 Polo
+básica 1.195 pz (16.360, 1Tintorería); y **doce órdenes SIN WH de 1.091 pz** cada una (Level 1 / Level 2, 14.689 min
+cada una = 176.268 min, fase 0Recetas Insumos, entrega 1–4 oct) — son las de la ODC 3033 con el precio raro.
+
+Noviembre: 221 sin liberar de 228 (1.922.627 de 1.954.551 min; capacidad 1.194.000). Las mayores, todas en
+0Adquisición: WH/MO/29142 Camiseta CR 3.133 pz (42.183 min), 29112 CR 2.685 (36.151), 29125 CR 2.652 (35.707), 29110
+CR 2.273 (30.604), 29200 Polo básica 1.671 (22.876), 29143 CR 1.572 (21.165), 29153 CV 1.467 (19.752), 29193 Polo
+básica 1.435 (19.645), SIN WH #4r93y6 Bombers 576 pz (18.374), 29113 CR 1.349 (18.163), 29198 y 29199 Polo básica
+1.316 c/u (18.016 c/u), 29149 CV 1.259 (16.951), 29177 CR 1.195 (16.089), 29126 CR 1.166 (15.699). La lista completa,
+ordenada por peso, está en la celda Confección · noviembre.
+
+El × por orden se queda con confirmación (decisión de la usuaria).
