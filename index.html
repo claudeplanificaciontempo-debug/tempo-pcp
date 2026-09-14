@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 11:40';
+const APP_BUILD='2026-09-14 11:48';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3562,7 +3562,7 @@ function vConfig(el){
      <td class="num"><a href="#bloque-${c.area}" style="color:var(--medio)">${S.recursos.filter(r=>r.centro===c.id).length}</a></td>
      <td class="num">${esLavPla?`<input type="number" step="0.01" style="width:70px" value="${c.minEstandar||''}" placeholder="0" onchange="setCentro('${c.id}','minEstandar',this.value)">`:'<span class="mut">—</span>'}</td>
      <td class="num">${esLavPla?`<input type="number" min="0" max="100" style="width:60px" value="${c.pctEstimado!=null?c.pctEstimado:''}" placeholder="0" onchange="setCentro('${c.id}','pctEstimado',this.value)">%${c.pctReal!=null?` <span class="mut" style="font-size:var(--fs-xs)">real ${num(c.pctReal,0)}%</span>`:''}`:'<span class="mut">—</span>'}</td>
-     <td class="num">${esBordado?`<input type="number" step="0.01" style="width:70px" value="${c.puntMin||''}" placeholder="sin config." onchange="setCentro('${c.id}','puntMin',this.value)">`:'<span class="mut">—</span>'}</td>
+     <td class="num">${esBordado?`<input type="number" step="0.01" style="width:70px" value="${c.puntMin||''}" placeholder="sin config." onchange="setCentro('${c.id}','puntMin',this.value)">${c.puntMinNota?'<br><span class="tag t-aviso" title="'+esc(c.puntMinNota)+'">'+esc(c.puntMinNota.split(':')[0])+'</span>':''}`:'<span class="mut">—</span>'}</td>
      <td>${['tej','tin','proveedor'].includes(c.id)?'':`<button class="btn ghost sm" onclick="delCentro('${c.id}')">×</button>`}</td></tr>`}).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lavado y plancha no salen de las operaciones (PASO 7): el minutaje y el % de prendas que realmente pasan se estiman aquí; la categoría decide si entra firme o solo como reserva (Categorías → editar).
    Bordado se mide en puntadas: si "Puntadas/min" tiene valor, la carga de cada orden sale de sus puntadas; si está vacío, se usa el SAM de la categoría como respaldo y la orden queda marcada "sin velocidad de bordado configurada".</p></div></div>
