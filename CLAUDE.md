@@ -169,7 +169,7 @@ modulos · terminados = etiquetas+botones+lavado+plancha · empaque) y `modo`
 (`editar` | `ver`). `puede()` devuelve false con `modo:'ver'`. `veArea/veCentro`
 = puede mirar; `puedeArea/puedeCentro` = puede registrar. Control de piso y los
 módulos por centro filtran por `veCentro` y habilitan por `puedeCentro`. Las
-columnas `subarea` y `modo` deben existir como texto en Supabase.
+columnas `subarea` y `modo` NO existen en producción (13-sep-2026); `modo` es opcional (`SUPABASE_PERFILES.sql`). Desde el 13-sep los perfiles salen del catálogo `S.params.perfilesDef` (Configuración → Usuarios); `rol` guarda el id del perfil. Ver `PERFILES_CENTROS_BALANCEO_REPORTE.md`.
 
 **Reportería (`vReporteria`, página `reporteria`, estado `REP`):** vista
 "textil" (tejeduría y tintorería: carga h vs capacidad por máquina y semana, kg,
