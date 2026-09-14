@@ -1462,28 +1462,77 @@ function vAlbaran(el){
    </section>`;
 }
 
-/* ---------- Entregas: lo que se le debe a un cliente, por departamento y mes, con fecha de compromiso ---------- */
-let EG={cli:'',meses:null,fam:null,hija:null,tela:null,sel:new Set(),masiva:''};
+/* ---------- Entregas: lo que se le debe a un cliente, por departamento y mes, con fecha de compromiso ----------
+   Dos salidas distintas: la PANTALLA (trabajo interno: estimada por el programa, liberación) y el PDF PARA EL CLIENTE, cuyas columnas
+   elige la usuaria en un selector de casillas que se guarda (S.params.pdfEntregas). Ningún dato interno sale al PDF si no está marcado. */
+let EG={cli:'',meses:null,fam:null,hija:null,tela:null,sel:new Set(),masiva:'',grupo:'depto',pdf:false};
+const EG_GRUPOS=[['depto','Departamento'],['mes','Mes de entrega pedida'],['fam','Familia'],['hija','Categoría'],['ninguno','Sin agrupar']];
+/* catálogo de columnas posibles del PDF. `interno`: dato de cómo vamos por dentro (fuera por defecto). `def`: marcada por defecto. */
+function colsEntregas(){const P=S.ordenes.length?programar():{ordenes:{}};const ro=o=>P.ordenes[o.id]||{};
+  return [
+    {k:'foto',n:'Foto de la prenda',def:true,grupo:'cliente',v:o=>fotoDe(o)?`<img src="${esc(fotoDe(o))}" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:4px">`:''},
+    {k:'op',n:'OP',def:true,grupo:'cliente',v:o=>esc(o.op)},
+    {k:'odc',n:'Orden de compra del cliente',def:false,grupo:'cliente',v:o=>esc(o.odc||'')},
+    {k:'ref',n:'Estilo / referencia',def:false,grupo:'cliente',v:o=>esc(o.ref||'')},
+    {k:'desc',n:'Descripción (título de la orden)',def:false,grupo:'cliente',v:o=>esc(o.desc||'')},
+    {k:'fam',n:'Familia',def:false,grupo:'cliente',v:o=>{const k=K(o.cat);return esc(k?(K(k.padre)||k).n:'')}},
+    {k:'cat',n:'Categoría',def:true,grupo:'cliente',v:o=>esc(nombreCat(K(o.cat)))},
+    {k:'color',n:'Color',def:true,grupo:'cliente',v:o=>esc((C(o.color)||{}).n||'')},
+    {k:'pantone',n:'Pantone',def:false,grupo:'cliente',v:o=>esc((C(o.color)||{}).cod||'')},
+    {k:'cant',n:'Prendas',def:true,grupo:'cliente',num:true,v:o=>num(o.cant)},
+    {k:'fecha',n:'Fecha pedida (Odoo)',def:false,grupo:'cliente',v:o=>o.fecha?fmtDia(o.fecha):''},
+    {k:'compromiso',n:'Fecha de entrega comprometida',def:true,grupo:'cliente',v:o=>o.fechaCompromiso?fmtDia(o.fechaCompromiso):''},
+    {k:'depto',n:'Departamento',def:false,grupo:'cliente',v:o=>esc(o.depto||'')},
+    {k:'proyecto',n:'Proyecto (mes)',def:false,grupo:'cliente',v:o=>esc(o.proyecto||'')},
+    {k:'telas',n:'Telas (solo nombres)',def:false,grupo:'cliente',v:o=>esc([...new Set((o.telas||[]).map(t=>nTela(t.tela)))].join(', '))},
+    {k:'estimada',n:'Fecha estimada por el programa',def:false,interno:true,v:o=>{const r=ro(o);return r.finPro?fmtDia(r.finPro)+(r.atraso?' (atraso)':''):(r.bloqueo?esc(r.bloqueo):'—')}},
+    {k:'lib',n:'Estado de liberación',def:false,interno:true,v:o=>esc(estadoLibEG(o))},
+    {k:'fase',n:'Fase de Odoo',def:false,interno:true,v:o=>esc(o.fase||'')},
+    {k:'estadoOP',n:'Estado OP de Odoo',def:false,interno:true,v:o=>esc(o.estadoOP||'')},
+    {k:'modulo',n:'Módulo / recurso de confección',def:false,interno:true,v:o=>{const p=(ro(o).pasos||[]).find(x=>x.centro==='modulos');return esc(p&&p.rec?nRec(p.rec):'')}},
+    {k:'minutos',n:'Minutos de confección por prenda',def:false,interno:true,num:true,v:o=>{const p=(o.ruta||[]).find(x=>x.centro==='modulos');return p&&p.t?num(p.t,2):''}},
+    {k:'kg',n:'Kg de tela (crudo)',def:false,interno:true,num:true,v:o=>num((o.telas||[]).reduce((a,t)=>a+(+t.kg||0),0),1)},
+    {k:'precio',n:'Precio unitario (Odoo)',def:false,interno:true,num:true,v:o=>o.precio!=null?num(o.precio,2):''},
+    {k:'total',n:'Total $ de la orden (Odoo)',def:false,interno:true,num:true,v:o=>o.total!=null?num(o.total,2):''},
+    {k:'avance',n:'Avance en piso (prendas por centro)',def:false,interno:true,v:o=>{const c=((S.avance[o.id]||{}).centros)||{};return esc(Object.entries(c).filter(([,v])=>v>0).map(([k,v])=>nCen(k)+' '+num(v)).join(' · '))}}
+  ]}
+function estadoLibEG(o){return liberada(o,'corte')?'liberada a producción':liberada(o,'tela')?'liberada a planta':'sin liberar'}
+/* selección guardada: {cols:{clave:true/false}}; si una clave no está guardada vale su `def` */
+function pdfEntregasCfg(){if(!S.params.pdfEntregas)S.params.pdfEntregas={cols:{}};if(!S.params.pdfEntregas.cols)S.params.pdfEntregas.cols={};return S.params.pdfEntregas}
+function colPdfOn(c){const v=pdfEntregasCfg().cols[c.k];return typeof v==='boolean'?v:!!c.def}
+function setColPdf(k,on){pdfEntregasCfg().cols[k]=!!on;save();mColsEntregas()}
+function restablecerColsPdf(){if(!confirm('¿Volver a las columnas recomendadas? (foto, OP, categoría, color, prendas, fecha comprometida; nada interno)'))return;pdfEntregasCfg().cols={};save();mColsEntregas()}
+function mColsEntregas(){const cols=colsEntregas();const li=c=>`<label style="display:block;font-size:var(--fs-s);padding:3px 0"><input type="checkbox" ${colPdfOn(c)?'checked':''} onchange="setColPdf('${c.k}',this.checked)"> ${esc(c.n)}${c.interno?' <span class="tag t-aviso" title="dato de cómo vamos por dentro">interno</span>':''}</label>`;
+  abrir(`<h3>Columnas del PDF para el cliente</h3><div class="body">
+   <p class="lede" style="margin-top:0">Marca qué columnas salen en el PDF que se entrega al cliente. Se guarda para todos. Los datos marcados <span class="tag t-aviso">interno</span> (fechas del programa, liberación, tiempos, módulos, costos, avance) están fuera por defecto: solo salen si tú los marcas.</p>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div><h4 style="margin:0 0 6px">Para el cliente</h4>${cols.filter(c=>!c.interno).map(li).join('')}</div><div><h4 style="margin:0 0 6px">Internos (fuera por defecto)</h4>${cols.filter(c=>c.interno).map(li).join('')}</div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Salen en el PDF: ${cols.filter(colPdfOn).map(c=>esc(c.n)).join(' · ')||'ninguna'}.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="restablecerColsPdf()">Restablecer recomendadas</button><span class="spacer"></span><button class="btn" onclick="cerrar();render()">Listo</button></div>`)}
+/* filtro y agrupación comunes a la pantalla y al PDF */
+function listaEntregas(){const ords=S.ordenes.filter(o=>abierta(o));
+  const padreDe=o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:''},hijaDe=o=>{const k=K(o.cat);return k?k.n:''};const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
+  const ok=set=>v=>!set||!set.size||set.has(v);const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
+  const lista=ords.filter(o=>(!EG.cli||o.cliente===EG.cli)&&ok(EG.meses)((o.fecha||'').slice(0,7))&&ok(EG.fam)(padreDe(o))&&ok(EG.hija)(hijaDe(o))&&okTela(EG.tela)(o));
+  const fmtM=m=>m?new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long',year:'numeric'}):'';
+  const claveDe=o=>EG.grupo==='mes'?(fmtM((o.fecha||'').slice(0,7))||'Sin fecha'):EG.grupo==='fam'?(padreDe(o)||'Sin familia'):EG.grupo==='hija'?(hijaDe(o)||'Sin categoría'):EG.grupo==='ninguno'?'':(o.depto||'Sin departamento');
+  const grupos={};lista.forEach(o=>{const d=claveDe(o);grupos[d]=grupos[d]||{ords:[],pz:0};grupos[d].ords.push(o);grupos[d].pz+=+o.cant});
+  Object.values(grupos).forEach(g=>g.ords.sort((a,b)=>a.fecha<b.fecha?-1:1));
+  return{ords,lista,grupos,padreDe,hijaDe,telasOrden,fmtM}}
 function vEntregas(el){
-  const P=S.ordenes.length?programar():{ordenes:{}};const ords=S.ordenes.filter(o=>abierta(o));
-  const padreDe=o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:''},hijaDe=o=>{const k=K(o.cat);return k?k.n:''};
-  const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
+  if(EG.pdf){vEntregasPDF(el);return}
+  const P=S.ordenes.length?programar():{ordenes:{}};const L=listaEntregas();const {ords,lista,grupos,padreDe,hijaDe,telasOrden,fmtM}=L;
   const clis=[...new Set(ords.map(o=>o.cliente).filter(Boolean))].sort();const meses=[...new Set(ords.map(o=>(o.fecha||'').slice(0,7)).filter(Boolean))].sort();
   const fams=[...new Set(ords.map(padreDe).filter(Boolean))].sort();const hijas=[...new Set(ords.filter(o=>!EG.fam||!EG.fam.size||EG.fam.has(padreDe(o))).map(hijaDe).filter(Boolean))].sort();
   const telasDisp=[...new Set(ords.flatMap(telasOrden))].sort((a,b)=>nTela(a).localeCompare(nTela(b)));
-  if(!EG.cli&&clis.length)EG.cli=clis[0];
-  const ok=set=>v=>!set||!set.size||set.has(v);const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
-  const lista=ords.filter(o=>(!EG.cli||o.cliente===EG.cli)&&ok(EG.meses)((o.fecha||'').slice(0,7))&&ok(EG.fam)(padreDe(o))&&ok(EG.hija)(hijaDe(o))&&okTela(EG.tela)(o));
-  const porDepto={};lista.forEach(o=>{const d=o.depto||'Sin departamento';porDepto[d]=porDepto[d]||{ords:[],pz:0};porDepto[d].ords.push(o);porDepto[d].pz+=+o.cant});
-  const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);
-  const fmtM=m=>m?new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long',year:'numeric'}):'';
-  const selCount=EG.sel.size;
-  el.innerHTML=`<div class="pagehead"><h2>Entregas</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="exportarEntregasPDF()">Exportar PDF</button><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
-  <p class="lede">Lo que le debemos a un cliente: todo lo que tiene WH y no está facturado ni en stand by, por departamento, con la fecha estimada según el programa y tu propia fecha de compromiso.</p>
+  if(!EG.cli&&clis.length){EG.cli=clis[0];vEntregas(el);return}
+  const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);const selCount=EG.sel.size;const nCols=colsEntregas().filter(colPdfOn).length;
+  el.innerHTML=`<div class="pagehead"><h2>Entregas</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
+  <p class="lede no-print">Lo que le debemos a un cliente: todo lo que tiene WH y no está facturado ni en stand by, con la fecha estimada según el programa, el estado de liberación y tu propia fecha de compromiso. <b>Esta pantalla es interna</b>; el PDF para el cliente solo lleva las columnas que marques en "Columnas del PDF".</p>
   <div class="panel no-print"><div class="body" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
    <div><label>Cliente</label><select onchange="EG.cli=this.value;render()">${clis.map(c=>`<option value="${esc(c)}" ${EG.cli===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
    ${selMulti('Meses de entrega',meses,EG.meses,'EG.meses','togMesEG',fmtM)}
    ${selMulti('Familia',fams,EG.fam,'EG.fam','togFamEG')}${selMulti('Categoría',hijas,EG.hija,'EG.hija','togHijaEG')}${selMulti('Tipo de tela',telasDisp,EG.tela,'EG.tela','togTelaEG',nTela)}
+   <div><label>Agrupar por</label><select onchange="EG.grupo=this.value;render()">${EG_GRUPOS.map(([k,v])=>`<option value="${k}" ${EG.grupo===k?'selected':''}>${v}</option>`).join('')}</select></div>
    ${(EG.meses||EG.fam||EG.hija||EG.tela)?`<div><button class="btn ghost sm" onclick="EG.meses=null;EG.fam=null;EG.hija=null;EG.tela=null;render()">Limpiar</button></div>`:''}</div></div>
   <div class="panel no-print"><div class="body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
    <b style="font-size:var(--fs-s)">Edición masiva de fecha de compromiso</b><span class="mut" style="font-size:var(--fs-s)">${selCount} seleccionadas</span>
@@ -1491,23 +1540,38 @@ function vEntregas(el){
    <button class="btn sm" ${selCount?'':'disabled'} onclick="aplicarMasivaEG()">Aplicar a las seleccionadas</button>
    <button class="btn ghost sm" onclick="marcarTodoEG(true)">Marcar todas</button>
    <button class="btn ghost sm" onclick="marcarTodoEG(false)">Ninguna</button></div></div>
-  <section class="imp"><div class="imp-cab"><div><b>${esc(EG.cli||'Todos los clientes')}</b></div><div class="mut">TEMPOCODECA · al ${new Date().toLocaleDateString('es-EC')}</div></div>
-  <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes pendientes</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div><div class="kpi"><div class="v">${Object.keys(porDepto).length}</div><div class="k">Departamentos</div></div></div>
-  ${Object.entries(porDepto).sort((a,b)=>b[1].pz-a[1].pz).map(([d,v])=>`<h4 style="margin:16px 0 6px">${esc(d)} <span class="mut" style="font-weight:400">· ${v.ords.length} órdenes · ${num(v.pz)} prendas</span></h4>
-   <table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
-   ${v.ords.sort((a,b)=>a.fecha<b.fecha?-1:1).map(o=>{const r=P.ordenes[o.id]||{};return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td>${esc(o.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
+  <section class="imp"><div class="imp-cab"><div><b>${esc(EG.cli||'Todos los clientes')}</b> <span class="mut">· vista interna</span></div><div class="mut">TEMPOCODECA · al ${new Date().toLocaleDateString('es-EC')}</div></div>
+  <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes pendientes</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div><div class="kpi"><div class="v">${Object.keys(grupos).length}</div><div class="k">${EG.grupo==='ninguno'?'Grupo':esc((EG_GRUPOS.find(g=>g[0]===EG.grupo)||[])[1]||'Grupos')}</div></div><div class="kpi"><div class="v">${lista.filter(o=>o.fechaCompromiso).length}</div><div class="k">Con fecha de compromiso</div></div></div>
+  ${Object.entries(grupos).sort((a,b)=>b[1].pz-a[1].pz).map(([d,v])=>`${d?`<h4 style="margin:16px 0 6px">${esc(d)} <span class="mut" style="font-weight:400">· ${v.ords.length} órdenes · ${num(v.pz)} prendas</span></h4>`:''}
+   <table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
+   ${v.ords.map(o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
+     <td><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
      <td><input type="date" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} onchange="setCompromiso('${o.id}',this.value)"></td></tr>`}).join('')}
    </tbody></table>`).join('')||'<p class="mut">Nada pendiente con estos filtros.</p>'}
   </section>`;
   __listaEG=lista;
 }
+/* documento para el cliente: mismo filtro y misma agrupación que la pantalla; solo las columnas marcadas */
+function vEntregasPDF(el){const L=listaEntregas();const {lista,grupos}=L;const cols=colsEntregas().filter(colPdfOn);const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);
+  const internos=cols.filter(c=>c.interno);
+  el.innerHTML=`<div class="pagehead no-print"><h2>PDF para el cliente</h2><span class="spacer"></span><button class="btn ghost" onclick="mColsEntregas()">Columnas del PDF (${cols.length})</button> <button class="btn" onclick="imprimirEntregasPDF()">Imprimir / guardar PDF</button> <button class="btn ghost" onclick="EG.pdf=false;render()">Volver a la pantalla</button></div>
+  ${internos.length?`<div class="warn no-print" style="margin-bottom:10px"><b>Ojo:</b> este PDF lleva columnas internas marcadas por ti: ${internos.map(c=>esc(c.n)).join(', ')}.</div>`:''}
+  <p class="mut no-print" style="font-size:var(--fs-s)">Esto es exactamente lo que sale en el PDF: cliente, filtros y agrupación de la pantalla (${esc((EG_GRUPOS.find(g=>g[0]===EG.grupo)||[])[1]||'')}), columnas marcadas. Usa "Imprimir / guardar PDF" y elige "Guardar como PDF".</p>
+  <section class="imp eg-pdf"><div class="imp-cab"><div><b>TEMPOCODECA</b> · Entregas pendientes · <b>${esc(EG.cli||'Todos los clientes')}</b></div><div class="mut">al ${new Date().toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+  <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes pendientes</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div></div>
+  ${cols.length?Object.entries(grupos).sort((a,b)=>b[1].pz-a[1].pz).map(([d,v])=>`${d?`<h4 style="margin:16px 0 6px">${esc(d)} <span class="mut" style="font-weight:400">· ${v.ords.length} órdenes · ${num(v.pz)} prendas</span></h4>`:''}
+   <table><thead><tr>${cols.map(c=>`<th class="${c.num?'num':''}">${esc(c.n)}</th>`).join('')}</tr></thead><tbody>
+   ${v.ords.map(o=>`<tr>${cols.map(c=>`<td class="${c.num?'num':''}" style="${c.k==='foto'?'width:58px;padding:2px':''}">${c.v(o)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')||'<p class="mut">Nada pendiente con estos filtros.</p>':'<p class="mut">No hay columnas marcadas para el PDF. Márcalas en "Columnas del PDF".</p>'}
+  </section>`}
+/* espera a que carguen las fotos antes de abrir el diálogo de impresión */
+async function imprimirEntregasPDF(){const imgs=[...document.querySelectorAll('.eg-pdf img')].filter(i=>!i.complete);
+  await Promise.race([Promise.all(imgs.map(i=>new Promise(ok=>{i.onload=ok;i.onerror=ok}))),new Promise(ok=>setTimeout(ok,8000))]);window.print()}
 function togMesEG(v){togSet(EG,'meses',v)}function togFamEG(v){togSet(EG,'fam',v);EG.hija=null}function togHijaEG(v){togSet(EG,'hija',v)}function togTelaEG(v){togSet(EG,'tela',v)}
 function togSelEG(id,on){if(on)EG.sel.add(id);else EG.sel.delete(id);render()}
 let __listaEG=[];
 function marcarTodoEG(on){EG.sel=on?new Set((__listaEG||[]).map(o=>o.id)):new Set();render()}
 function aplicarMasivaEG(){const v=(document.getElementById('eg-masiva')||{}).value;if(!v){alert('Elige una fecha primero.');return}
   [...EG.sel].forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(o)o.fechaCompromiso=v});save();render();alert('Fecha de compromiso aplicada a '+EG.sel.size+' órdenes.')}
-function exportarEntregasPDF(){alert('Usa "Imprimir" y elige "Guardar como PDF" en el diálogo de impresión: el formato ya está listo para eso.');window.print()}
 function setCompromiso(id,v){const o=S.ordenes.find(x=>x.id===id);if(!o)return;o.fechaCompromiso=v||null;save();render()}
 
 /* ---------- WIP: producto en proceso, snapshot por área (sin costos) ---------- */

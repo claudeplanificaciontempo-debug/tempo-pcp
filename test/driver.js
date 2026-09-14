@@ -163,6 +163,19 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page="macro";render();const hM=document.getElementById("p-macro").innerHTML;__check("fotos: la macro no lleva fotos",!hM.includes("foto-mini"));
    page="liberacion";LIB.et="corte";render();__check("fotos: liberación renderiza con miniaturas sin errores",__R.errors.length===antes);
    page="ordenes";render();}
+  /* Entregas: pantalla interna vs PDF para el cliente con columnas elegidas y guardadas */
+  {const antes=__R.errors.length;page="entregas";EG.pdf=false;EG.cli="";EG.grupo="depto";render();const hp=document.getElementById("p-entregas").innerHTML;
+   __check("entregas: la pantalla interna muestra estimada y liberación",hp.includes("Estimada por el programa")&&hp.includes("Liberación")&&/sin liberar|liberada a/.test(hp));
+   const cols=colsEntregas();const on=cols.filter(colPdfOn).map(c=>c.k);
+   __check("entregas: por defecto el PDF lleva foto, OP, categoría, color, prendas y fecha comprometida",["foto","op","cat","color","cant","compromiso"].every(k=>on.includes(k))&&on.length===6,on.join(","));
+   __check("entregas: por defecto ningún interno (estimada, liberación, tiempos, módulo, costos) va al PDF",cols.filter(c=>c.interno).every(c=>!colPdfOn(c)));
+   EG.pdf=true;render();const hd=document.getElementById("p-entregas").innerHTML;const doc=hd.slice(hd.indexOf('class="imp eg-pdf"'));
+   __check("entregas: el PDF no contiene estimada, liberación, minutos ni costos",!/Estimada|Liberaci|sin liberar|atraso|Minutos|Precio|Total \$|Módulo/.test(doc),doc.slice(0,200));
+   __check("entregas: el PDF lleva la foto y la agrupación de la pantalla",doc.includes("Foto de la prenda</th>")&&(doc.match(/<h4/g)||[]).length===(hp.match(/<h4/g)||[]).length);
+   setColPdf("estimada",true);cerrar();__check("entregas: la selección se guarda en params",S.params.pdfEntregas.cols.estimada===true);
+   EG.pdf=true;render();const hd2=document.getElementById("p-entregas").innerHTML;__check("entregas: al marcar una interna sale en el PDF y se avisa",hd2.includes("Fecha estimada por el programa")&&hd2.includes("columnas internas"));
+   setColPdf("estimada",false);cerrar();EG.grupo="mes";EG.pdf=true;render();const hd3=document.getElementById("p-entregas").innerHTML;__check("entregas: agrupar por mes se respeta en el PDF",/<h4[^>]*>[a-z]+ de 20\d\d/i.test(hd3)||!hd3.includes("<h4"),hd3.match(/<h4[^>]*>[^<]*/)&&hd3.match(/<h4[^>]*>[^<]*/)[0]);
+   EG.grupo="depto";EG.pdf=false;render();__check("entregas: sin errores",__R.errors.length===antes);}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
