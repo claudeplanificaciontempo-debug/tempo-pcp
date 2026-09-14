@@ -167,6 +167,15 @@ entregada y mal cerrada en Odoo), `sinProgramar` (con motivo: bloqueo, sin WH, s
 marcado estimado), `bien` (plegado). Una sola ficha de **próximo paso** por fila; el detalle de la ruta al clic
 (`mDetalleAsig`). Agrupar/filtrar con `APO` (cliente, ODC, familia, categoría, próximo paso, mes). Solo lee el programa.
 
+**Profundidad de color (14-sep-2026):** `profundidadDe(c)` = `fam` claro/oscuro explícito, `fam` confirmado a mano
+(`c.profConf`, desde la bandeja "Colores sin profundidad" en Tintorería, `setProfundidadColor`) o prefijo Pantone TCX;
+"medio" sin confirmar es el valor por defecto de la carga y cuenta como SIN clasificar. Nunca por parecido de nombre.
+Regla de máquinas: claros → DANITECH 1, oscuros y medios → DANITECH 2; STUART para lo que no llene una grande.
+**Advertencias de fecha** se muestran por movimiento (`gruposAdvertencias`, `atenderGrupo`). **Hoy** va en tarjetas
+desplegables (`tarjetasHoyHTML`). **Producto en proceso → Producción** tiene lista por orden con foto y agrupación
+(`wipOrdenesHTML`, incluye COLOR). Recarga del 14-sep (tarde): Odoo mandó en fase y fecha por instrucción expresa
+(tabla 14 desactivada solo para esa carga). Ver `ACTUALIZACION_14SEP_Y_MEJORAS_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

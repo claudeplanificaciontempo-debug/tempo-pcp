@@ -279,3 +279,10 @@ primero, con `pendientesHoy()` (13 tipos), `posponerPend`/`reactivarPend` (`S.pa
 Ver `ASIGNACION_POR_ORDEN_REPORTE.md`. En Carga general: `clasificarAsig` (vencidaUnPaso / sinProgramar / noLlega / justo /
 bien), `pasosPendPro`, `pasoProximoDe`, `mDetalleAsig`, `arbolAPO`/`filasArbolAPO`, estado `APO`; colchón
 `S.params.colchonDias` (sembrado 3, `colchonEstimado` hasta que se edite; `setColchon` a bitácora). No toca el motor.
+
+### Actualización completa 14-sep (tarde) y mejoras B–G
+Ver `ACTUALIZACION_14SEP_Y_MEJORAS_REPORTE.md`. Recarga con Odoo mandando en fase/fecha (157 fases cambiadas, aceptadas);
+OT 695 órdenes; fotos 664/665. Reversión de la numeración de la cola de Corte (536 puestos quitados) y 35 advertencias
+atendidas. `profundidadDe`/`setProfundidadColor`/`bandejaProfundidadHTML`; 37 baños armados (D1 claros, D2 oscuros/medios),
+16 colores sin clasificar en bandeja; 7 órdenes con contradicción Odoo (1Tintoreria) vs piso (baño salido).
+`gruposAdvertencias`/`atenderGrupo`; fotos y "sale (est.)" en tintorería; `wipOrdenesHTML` (color); `tarjetasHoyHTML`.
