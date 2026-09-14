@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 09:40';
+const APP_BUILD='2026-09-14 09:54';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -768,7 +768,8 @@ const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
    no dan nada por hecho: eso solo lo dice la orden de trabajo de Odoo. */
 function hechoPorFase(oe,desde){if(oe<0||oe>=desde)return false;const gs=faseGrupos();const sec=g=>g&&g.secuencial!==false;
   const propio=gs.find(g=>g.orden===oe);if(sec(propio))return true;return gs.some(g=>sec(g)&&g.orden>oe&&g.orden<=desde)}
-function faseEstado(f,o){const base=faseEstadoTabla(f);if(!o||!o.ot)return base;
+function faseEstado(f,o){const fe0=faseEstado0(f,o);const fila0=filaFaseDe(f);if(fila0&&fila0.pasoExtra&&fe0.hechos&&fe0.hechos.includes(fila0.pasoExtra)){const ac=((S.avance[(o||{}).id]||{}).centros)||{};const ot=((o||{}).ot||{})[fila0.pasoExtra];if(!(ot&&ot.estado==='terminado')&&!(o&&(ac[fila0.pasoExtra]||0)>=o.cant))return Object.assign({},fe0,{hechos:fe0.hechos.filter(c=>c!==fila0.pasoExtra)})}return fe0}
+function faseEstado0(f,o){const base=faseEstadoTabla(f);if(!o||!o.ot)return base;
   // la orden de trabajo manda: terminado → hecho aunque la fase no lo diga; en proceso / para hacer → pendiente aunque la fase lo diera por hecho
   const hechos=new Set(base.hechos);Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else hechos.delete(c)});
   return Object.assign({},base,{hechos:[...hechos]})}
@@ -2540,6 +2541,10 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
+  ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
+    const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
+    return (sm.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · carga real sin medir (${sm.length} órdenes)</b>: fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después. ${Object.entries(porF).map(([f,v])=>esc(f)+' ('+v.n+' órdenes · '+num(v.pz)+' prendas)').join(', ')}</div>`:'')+
+      (se.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · paso extra sin minutos (${se.length} órdenes)</b>: la fase tiene un paso extra en la tabla 1 pero el parámetro de minutos por prenda está vacío o en 0 en Configuración → Calendario y parámetros.</div>`:'')})()}
   ${(()=>{const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · fase que no calza con la tabla (${sf.length} órdenes)</b>: el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración → Órdenes y materiales → tabla 1. ${[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")}</div>`:""})()}
   ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}
   ${filtros}
@@ -3617,7 +3622,7 @@ function vConfig(el){
 `:''}
   ${CONF.tab==='cal'?`  <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
-    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}<div><label>Tela plana: máquina grande</label><select onchange="S.params.planaMaquina=this.value||null;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
+    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande</label><select onchange="S.params.planaMaquina=this.value||null;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>
@@ -3642,7 +3647,7 @@ function vConfig(el){
   <div class="warn" style="margin-bottom:12px">Tablas de la Recarga Parte 2 (órdenes y materiales). Todavía no se ha cargado ningún archivo: estas tablas están sembradas con valores iniciales dados por el usuario, marcados <b>pendiente de validar</b>. Edítalas aquí antes o después de cargar el archivo.</div>
 
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
-   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; los minutos por prenda salen de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
     ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${gruposOrdenados().map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
@@ -3652,6 +3657,8 @@ function vConfig(el){
       <td><select onchange="setFaseMapeoRow(${i},'desde',this.value)"><option value="">(el propio)</option>${gruposOrdenados().map(s=>`<option ${r.desde===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td>${r.sistema==='textil'?`<select onchange="setFaseMapeoRow(${i},'tela',this.value)">${TELA_FASE.map(([v,l])=>`<option value="${v}" ${(r.tela||'')===v?'selected':''}>${l}</option>`).join('')}</select>`:'<span class="mut">—</span>'}</td>
       <td style="text-align:center"><input type="checkbox" ${r.montado?'checked':''} onchange="setFaseMapeoRow(${i},'montado',this.checked)"></td>
+      <td><select onchange="setFaseMapeoRow(${i},'pasoExtra',this.value)"><option value="">—</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${r.pasoExtra===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select>${r.pasoExtra?`<br><input type="text" style="width:120px;font-size:var(--fs-xs)" value="${esc(r.pasoExtraParam||'')}" placeholder="parámetro min/pz" title="nombre del parámetro numérico de Configuración → Calendario y parámetros que da los minutos por prenda (ej. minEtiqEmbodegado)" onchange="setFaseMapeoRow(${i},'pasoExtraParam',this.value)">`:''}</td>
+      <td style="text-align:center"><input type="checkbox" ${r.sinMedir?'checked':''} onchange="setFaseMapeoRow(${i},'sinMedir',this.checked)"></td>
       <td>${r.pendiente?'<span class="tag t-alerta">pendiente de validar</span>':'<span class="tag t-ok">validado</span>'}<button class="btn ghost sm" onclick="togFaseMapeoRow(${i})" style="margin-left:6px">${r.pendiente?'validar':'pendiente'}</button></td>
       <td><button class="btn ghost sm" onclick="delFaseMapeoRow(${i})">×</button></td></tr>`).join('')}
    </tbody></table></div>
@@ -4537,10 +4544,12 @@ function delCentroEtapaRow(i){centroEtapa().splice(i,1);save();render()}
 
 /* pasos de la ruta completa que siguen pendientes según la fila de fase (BLOQUE E). Sin fila (fase que no calza) → ruta completa. */
 function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice();
-  if(fila.sinCarga)return [];
+  const extra=fila.pasoExtra?[{centro:fila.pasoExtra,t:fila.pasoExtraParam?prm(fila.pasoExtraParam,0):0,extra:true}]:[];
+  if(fila.sinCarga)return extra;
   const ig=g=>ordenGrupo(g);let desde=ig(fila.sistema);if(fila.desde&&ig(fila.desde)>=0)desde=ig(fila.desde);
   const excl=String(fila.excluye||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return rutaCompleta.filter(p=>{if(excl.includes(p.centro))return false;const i=ig(centroEtapaDe(p.centro));if(i<0)return true;return !hechoPorFase(i,desde)})}
+  const pend=rutaCompleta.filter(p=>{if(excl.includes(p.centro))return false;const i=ig(centroEtapaDe(p.centro));if(i<0)return true;return !hechoPorFase(i,desde)});
+  extra.forEach(e=>{if(!pend.some(p=>p.centro===e.centro))pend.push(e)});return pend}
 
 /* ---------- lectura del archivo ---------- */
 let TAREA=null;
@@ -4586,10 +4595,10 @@ function planTarea(rows,nombre){
     plan.porFase[d.fase]=plan.porFase[d.fase]||{n:0,prendas:0,sistema:fila?fila.sistema:null};plan.porFase[d.fase].n++;plan.porFase[d.fase].prendas+=d.cant;
     plan.porEstadoOP[d.estadoOP||'(vacío)']=(plan.porEstadoOP[d.estadoOP||'(vacío)']||0)+1;
     // BLOQUE C: alcance
-    if(d.estadoOP==='cancel'){plan.excluidas.cancel.push(d.op);return}
+    if(/cancel/i.test(d.fase||'')){plan.excluidas.cancel.push(d.op);return} // la fase decide, no el Estado OP (14-sep)
     if(!d.fecha){plan.sinFecha.push({op:d.op,cliente:d.cliente,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,catP:d.catP,catH:d.catH});return}
     let vencida=false;
-    if(d.fecha<HOY){if(ESTADOS_OP_ABIERTOS.includes(d.estadoOP))vencida=true;else{plan.excluidas.fueraRango.push({op:d.op,fecha:d.fecha,estadoOP:d.estadoOP||'(vacío)',fase:d.fase});return}}
+    if(d.fecha<HOY){if(!(fila&&fila.sistema==='cerrada'))vencida=true;else{plan.excluidas.fueraRango.push({op:d.op,fecha:d.fecha,estadoOP:d.estadoOP||'(vacío)',fase:d.fase});return}}
     if(!fila)plan.fasesNoCalzan[d.fase]=(plan.fasesNoCalzan[d.fase]||0)+1;
     // categoría (BLOQUE D) contra el catálogo y el mapeo de la Parte 1
     const k=S.categorias.find(x=>x.padre&&normTxt(x.n)===normTxt(d.catH)&&normTxt((K(x.padre)||{}).n)===normTxt(d.catP))||null;
@@ -4615,12 +4624,13 @@ function planTarea(rows,nombre){
     const pro=armarRuta('propia',0,opts,[],k?k.id:null).filter(p=>!['tej','tin','proveedor'].includes(p.centro)).map(p=>tiempoPaso(p,k,spc,d.puntadas));
     const textil=rutaTextilDe({telas:telasKg}); // por las líneas (aunque alguna no tenga tela del catálogo): la ruta textil no se pierde por falta de catálogo
     const rutaCompleta=[...textil,...pro];
-    const historia=d.estadoOP==='done';
+    const historia=!!(fila&&fila.sistema==='cerrada'); // Facturado / Stand by; el Estado OP no decide
     const ruta=historia?[]:pasosPendientes(rutaCompleta,fila);
     const sistema=fila?fila.sistema:null;
     let estado='plan';if(historia||sistema==='cerrada'){estado=normFase(d.fase).startsWith('stand')?'standby':'cerrada'}
     let contradiccion=null;
     if(d.estadoOP==='done'&&fila&&!['terminados','prenda terminada','cerrada'].includes(sistema))contradiccion='done en '+d.fase;
+    if(d.estadoOP==='cancel')contradiccion='Estado OP cancel en '+d.fase+' (la fase manda: se carga)';
     if(fila&&sistema==='cerrada'&&ESTADOS_OP_ABIERTOS.includes(d.estadoOP))contradiccion=d.fase+' con Estado OP '+d.estadoOP;
     const devolucion=!!(fila&&['previo a producción','textil'].includes(sistema)&&d.estadoOP==='progress');
     const bloqueada=!!(fila&&fila.bloqueo);

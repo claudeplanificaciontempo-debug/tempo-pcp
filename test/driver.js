@@ -101,10 +101,10 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   const tareaRows=await (await fetch('fixtures/tarea_rows.json')).json();
   __check('fixture tareas: 65.002 filas incl. header',tareaRows.length===65002,tareaRows.length);
   const bakOrd=S.ordenes;S.ordenes=[];
-  const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');
+  const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;
   __check('planTarea reconoce columnas',!!planT);
   __check('planTarea: 3.733 cabeceras y 61.268 líneas sin orden',planT.cabeceras===3733&&planT.lineasComp===61268,planT.cabeceras+' / '+planT.lineasComp);
-  __check('planTarea: 2 cancel excluidas, 4 sin fecha en bandeja',planT.excluidas.cancel.length===2&&planT.sinFecha.length===4,planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
+  __check('planTarea: la fase decide: los 2 Estado OP cancel son Facturado con fecha pasada → fuera de rango por la fase; 4 sin fecha en bandeja',planT.excluidas.cancel.length===0&&planT.excluidas.fueraRango.filter(x=>x.estadoOP==='cancel').length===2&&planT.sinFecha.length===4,planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
   __check('planTarea: ninguna fase del archivo queda sin calzar (40 valores, todos en la tabla)',Object.keys(planT.fasesNoCalzan).length===0,JSON.stringify(planT.fasesNoCalzan));
   __check('planTarea: 4 filas de la tabla sin órdenes en el archivo (0Diseño, 0Recetas Insumos, 1Calidad Tintoreria, 6 CD SERIGRAFIA)',planT.fasesTablaSinUso.length===4,planT.fasesTablaSinUso.join(', '));
   __check('planTarea: duplicados = 3 números / 7 filas, no fusionados',planT.duplicados.length===7&&new Set(planT.duplicados.map(d=>d.op)).size===3,planT.duplicados.length);
@@ -112,7 +112,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   __check('planTarea: ningún tercer nivel de MP fuera de la tabla',Object.keys(planT.nivel3NoRec).length===0,JSON.stringify(planT.nivel3NoRec));
   __check('planTarea: excepción 4to nivel — hay telas NUEVOS TEMPO/SERVICIO TINTURADO clasificadas EXTERNA TEÑIDA',planT.ordenes.some(o=>(o.materiales||[]).some(m=>m.n3==='NUEVOS TEMPO'&&m.n4==='SERVICIO TINTURADO'&&m.origen==='EXTERNA TEÑIDA')));
   __check('planTarea: las done quedan como historia con ruta pendiente vacía',planT.ordenes.filter(o=>o.historia).every(o=>o.ruta.length===0&&o.estado==='cerrada'));
-  __check('planTarea: las vencidas abiertas conservan su fecha original (no se inventa)',planT.ordenes.filter(o=>o.vencida).every(o=>o.fecha<planT.hoy&&ESTADOS_OP_ABIERTOS.includes(o.estadoOP)));
+  __check('planTarea: las vencidas abiertas conservan su fecha original (no se inventa)',planT.ordenes.filter(o=>o.vencida).every(o=>o.fecha<planT.hoy&&(filaFaseDe(o.fase)||{}).sistema!=='cerrada'));
   __check('planTarea: sin técnica ni puntadas no hay estampado ni bordado en la ruta completa',planT.ordenes.filter(o=>!o.tecnicaTxt&&!(o.puntadas>0)).every(o=>!o.rutaCompleta.some(p=>p.centro==='estampado'||p.centro==='bordado')));
   __check('planTarea: con puntadas>0 el paso bordado lleva las puntadas por prenda (unidad del motor)',planT.ordenes.filter(o=>o.puntadas>0&&o.cat).every(o=>{const b=o.rutaCompleta.find(p=>p.centro==='bordado');return b&&b.t===o.puntadas}));
   __check('planTarea: ruta textil por las tres dimensiones (propia → tej; pedir → proveedor; falta tintura/lavado → tin; sin clasificar → sin textil)',planT.ordenes.every(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))===JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})))&&planT.ordenes.filter(o=>lineasTelaDe(o.materiales).some(m=>m.produce==='propia'&&m.kg>0)).every(o=>o.rutaCompleta[0]&&o.rutaCompleta[0].centro==='tej')&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))),(()=>{const m=planT.ordenes.find(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))!==JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})));return m?m.op+' '+JSON.stringify(m.rutaCompleta.slice(0,3))+' vs '+JSON.stringify(rutaTextilDe({telas:lineasTelaDe(m.materiales)}))+' telas '+JSON.stringify(m.telas.map(t=>[t.tela,t.kg,t.produce,t.disp,t.falta,t.sinConv])):''})());
@@ -329,6 +329,18 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("plan: carga por tipo de producto con agrupar y filtrar",hp.includes('Carga de confección del mes por tipo de producto')&&hp.includes('Aplicado:')&&hp.includes('agrupado por Familia'));
    PMG.niveles=['cat','rec'];render();const hp2=document.getElementById('p-plan').innerHTML;__check("plan: agrupar categoría → módulo",hp2.includes('agrupado por Categoría → Módulo'));PMG.niveles=['fam'];
    window.confirm=confirmPrev;page='ordenes';render();__check("plana/plan sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* grupo prenda terminada: paso extra (Embodegado → etiquetas 1 min), sin medir (Centro Distribución), y la fase decide (no el Estado OP) */
+  {const antes=__R.errors.length;const fm=faseMapeo();const rEmb=fm.find(r=>normFase(r.fase)===normFase('8Embodegado'));const rCD=fm.find(r=>normFase(r.fase)===normFase('8Centro Distribucion'));
+   if(rEmb&&rCD){const bk=JSON.stringify([rEmb,rCD]);rEmb.sinCarga=true;rEmb.pasoExtra='etiquetas';rEmb.pasoExtraParam='minEtiqEmbodegado';S.params.minEtiqEmbodegado=1;rCD.sinCarga=true;rCD.sinMedir=true;FASE_CACHE.ver++;
+    const oE=S.ordenes.find(o=>abierta(o)&&normFase(o.fase)===normFase('8Embodegado'))||S.ordenes.find(o=>abierta(o)&&o.rutaCompleta&&o.rutaCompleta.length);
+    if(oE){const f0=oE.fase;oE.fase='8Embodegado';const pend=pasosPendientes(oE.rutaCompleta||[],rEmb);__check("paso extra: Embodegado deja solo etiquetas con el minuto del parámetro",pend.length===1&&pend[0].centro==='etiquetas'&&pend[0].t===1&&pend[0].extra===true,JSON.stringify(pend));
+      __check("paso extra: faseEstado no da etiquetas por hecho en Embodegado",!faseEstado('8Embodegado',oE).hechos.includes('etiquetas'));
+      S.params.minEtiqEmbodegado=0;__check("paso extra: parámetro en 0 → paso sin tiempo (se reporta, no se inventa)",pasosPendientes(oE.rutaCompleta||[],rEmb)[0].t===0);S.params.minEtiqEmbodegado=1;oE.fase=f0;}
+    const oC=S.ordenes.find(o=>abierta(o));const fC=oC.fase;oC.fase='8Centro Distribucion';page='ordenes';render();const hO=document.getElementById('p-ordenes').innerHTML;__check("sin medir: bandeja visible con la fase y las prendas",hO.includes('carga real sin medir')&&hO.includes('8Centro Distribucion'));oC.fase=fC;
+    [rEmb,rCD].forEach((r,i)=>Object.assign(r,JSON.parse(bk)[i]));delete rEmb.pasoExtra;delete rEmb.pasoExtraParam;delete rCD.sinMedir;FASE_CACHE.ver++;}
+   __check("la fase decide: una orden done en 8Novedades entra al plan (no es historia)",(window.__planT?window.__planT.ordenes:[]).filter(o=>o.estadoOP==='done'&&normFase(o.fase)===normFase('8Novedades')).every(o=>!o.historia&&o.estado==='plan'));
+   __check("la fase decide: Facturado / Stand by siguen siendo historia",(window.__planT?window.__planT.ordenes:[]).filter(o=>(filaFaseDe(o.fase)||{}).sistema==='cerrada').every(o=>o.historia));
+   page='ordenes';render();__check("prenda terminada sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   const RT=reporteTarea();window.__RT=RT;
   __check('reporteTarea genera carga pendiente y completa para sep/oct/nov',RT&&['2026-09','2026-10','2026-11'].every(m=>RT.cargaPendiente[m]&&RT.cargaCompleta[m]&&RT.capMes[m]));
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
