@@ -400,7 +400,10 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      __check("cola: las advertencias nuevas (si las hay) llevan la acción de la cola",(S.params.advertencias||[]).slice(nAdv).every(x=>/^Cola de Corte/.test(x.accion)));
      moverEnCola(oA.id,'corte',{pos:cola.length});const cola3=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
      __check("cola: escribir el puesto n la manda al final",cola3[cola3.length-1].o.id===oA.id&&cola3.every((f,i)=>puestoDe(f.o,'corte')===i+1));
-     __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · el motor/.test(html()));
+     __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · va al final/.test(html()));
+     // sin puesto va al final (decisión 14-sep): quitar el puesto de la primera la manda al final de la cola y el motor la toma como última
+     {const oF=cola3[0].o;delete oF.progCentro.corte.pri;PLAN=null;PLAN_ALL=null;render();const c4=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
+      __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · va al final'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
      // agrupar: reordena y suma, no esconde
      CEN.niveles=['cliente','cat'];render();const arb=agruparCola(cola3,['cliente','cat']);const nHojas=a=>a.hojas?a.hojas.length:a.grupos.reduce((x,g)=>x+nHojas(g.sub),0);
      __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes",nHojas(arb)===cola3.length&&arb.grupos.reduce((x,g)=>x+g.pz,0)===cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0)&&html().includes('Cliente:')&&(html().match(/draggable="true"/g)||[]).length===cola3.length);

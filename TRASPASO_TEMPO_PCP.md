@@ -229,8 +229,8 @@ número que usa el motor (`prioCentro` = menor puesto entre centros; la priorida
 (`moverEnCola`) renumera toda la cola del centro, avisa (sin impedir) qué órdenes dejan de llegar a su fecha
 (Advertencias de fecha) y queda en bitácora. Agrupar por cliente/familia/categoría/ODC hasta 3 niveles (`agruparCola`,
 preferencia del navegador). Tejeduría y tintorería no tienen arrastre por orden: el motor las ordena por tela/fecha
-requerida y por color/fecha requerida; tintorería arrastra baños confirmados a máquina × día. Pendiente decidir: orden
-sin puesto = 3 (hoy) o al final (cambio de motor).
+requerida y por color/fecha requerida; tintorería arrastra baños confirmados a máquina × día (decisión: se queda así).
+Sin puesto = al final (`SIN_PUESTO` en `prioCentro`, decidido 14-sep).
 
 ### Capacidad y decisiones · buscadores · borrado (14-sep-2026)
 Ver `CAPACIDAD_DECISIONES_REPORTE.md`. Página `capacidad` (Dirección, permiso `programa`): matriz centro × mes por

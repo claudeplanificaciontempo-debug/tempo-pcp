@@ -83,14 +83,14 @@ Como la regla es no tocar el motor y no crear un orden paralelo que el motor ign
 arrastre "decorativo". Si quieres que tejeduría tenga orden manual de corridas (por tela) o que el armado automático de
 baños respete un puesto, es un cambio de motor y lo hago solo con tu autorización; te diría antes qué cambia.
 
-## 5 · Decisión pendiente (una sola)
+## 5 · Decisiones tomadas (14-sep, usuaria)
 
-**¿Qué puesto tiene una orden sin puesto?** Hoy el motor la toma como **3** (regla de `prioCentro`, en el código). Con
-las colas numeradas 1..n, una orden nueva sin puesto entra "como si fuera la tercera". Opciones:
-- (a) dejarlo como está y que el centro le dé puesto al verla marcada "sin puesto" (lo que hay ahora);
-- (b) que sin puesto sea **al final** de la cola (cambio de una línea en `prioCentro`: 3 → último). Es motor: no lo
-  toco sin tu sí.
-Recomiendo (b): una orden que nadie ordenó no debería colarse delante de las que sí se ordenaron.
+- **Sin puesto = al final de la cola.** Cambiado en el motor con autorización: `prioCentro` devuelve `SIN_PUESTO` (muy
+  grande) cuando la orden no tiene puesto en ningún centro; antes devolvía 3. Una orden que nadie ordenó ya no se cuela
+  delante de las ordenadas; entre las sin puesto sigue mandando la prioridad global y la fecha de entrega. La fila la
+  marca "sin puesto · va al final". Único cambio en el motor de esta entrega.
+- **Tejeduría y tintorería se quedan como están**: tejeduría trabaja por tela y tintorería por color, no por orden; un
+  arrastre ahí sería decorativo.
 
 ## 6 · Código
 
