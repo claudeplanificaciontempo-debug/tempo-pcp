@@ -222,3 +222,12 @@ puntadas/min donde producción tenía 6.000), `AUDITORIA_REGLAS_FIJAS.md`, `ARRE
 `SIGUIENTE_PASO_STOCK_BORDADO.md`, `MOTOR_FASES_LIBERACION_ANTES_DESPUES.md`, `ORDENES_DE_TRABAJO_Y_TRAMO_NO_SECUENCIAL.md`,
 `CARGA_ORDENES_DE_TRABAJO_REPORTE.md`, `LISTADO_CATEGORIAS_PRODUCCION.md/.pdf`, `METODO_MACRO_REPORTE.md`, y este traspaso. `CLAUDE.md` tiene el
 resumen técnico y las reglas de tintorería; donde contradiga a este documento, manda este.
+
+### Programación del centro: cola única, arrastre y agrupación (14-sep-2026)
+Ver `PROGRAMACION_CENTRO_COLA_REPORTE.md`. El puesto en la cola de un centro es `progCentro[c].pri` (1..n), el mismo
+número que usa el motor (`prioCentro` = menor puesto entre centros; la prioridad global `o.prio` va antes). Arrastrar
+(`moverEnCola`) renumera toda la cola del centro, avisa (sin impedir) qué órdenes dejan de llegar a su fecha
+(Advertencias de fecha) y queda en bitácora. Agrupar por cliente/familia/categoría/ODC hasta 3 niveles (`agruparCola`,
+preferencia del navegador). Tejeduría y tintorería no tienen arrastre por orden: el motor las ordena por tela/fecha
+requerida y por color/fecha requerida; tintorería arrastra baños confirmados a máquina × día. Pendiente decidir: orden
+sin puesto = 3 (hoy) o al final (cambio de motor).

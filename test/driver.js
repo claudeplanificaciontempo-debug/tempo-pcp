@@ -390,7 +390,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("cola: Corte tiene cola con órdenes pendientes",cola.length>=3,cola.length);
    const html=()=>document.getElementById('p-centro').innerHTML;
    __check("cola: la tabla es arrastrable y tiene puesto numérico y zona 'al final'",/draggable="true"/.test(html())&&/onchange="moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
-   __check("cola: sin puesto la pantalla dice que el motor la toma como 3",html().includes('el motor la toma como 3'));
+   __check("cola: sin numerar la pantalla dice que el motor ordena por fecha de entrega",html().includes("cola sin numerar: el motor ordena por fecha de entrega"));
    if(cola.length>=3){const oA=cola[cola.length-1].o,oB=cola[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
      DRAGC={oid:oA.id,c:'corte'};const ev={preventDefault(){},currentTarget:{classList:{remove(){},add(){}}},dataTransfer:{}};soltarCola(ev,'corte',oB.id);
      const cola2=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
