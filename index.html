@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 09:19';
+const APP_BUILD='2026-09-14 09:21';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3999,7 +3999,7 @@ function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:
 function propuestaFalta(){if(!S.params.propuestaFalta||!S.params.propuestaFalta.length)S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
 function dimensionesTela(m){const org=m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
   const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;
-  const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato'; // externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega
+  const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato';/* externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega */
   const n=normTxt(m.prod||'');const pal=propuestaFalta().find(r=>r.palabra&&n.includes(normTxt(r.palabra)));
   const falta=pal?pal.falta:(org==='EXTERNA TEÑIDA'?'nada':'tintura');return{produce,disp,falta,prov:cp?cp.prov:(us?us.prov:'')}}
 /* líneas de tela de una orden (kg, o metros convertidos por kg/m de la tabla 9) con sus tres dimensiones; sin kg/m → kg 0 y sinConv */
@@ -4011,7 +4011,7 @@ const COL_LAVADO='col_lavado_tela';
 function colorLavadoTela(){let c=S.colores.find(x=>x.id===COL_LAVADO);if(!c){c={id:COL_LAVADO,n:'LAVADO DE TELA (proceso interno)',cod:'',fam:'oscuro'};S.colores.push(c)}return c.id}
 function colorBano(o,tl){return faltaTela(tl)==='lavado'?colorLavadoTela():(tl.color||o.color)}
 function produceTela(tl){return tl.produce||(tl.ext?'externa':'propia')}
-function rutaTextilDe(o){const ts=(o.telas||[]).filter(t=>produceTela(t)!=='sin clasificar'&&!t.sinConv); // sin clasificar o sin kg (metros sin kg/m): no entra a la ruta textil; se reportaconst tej=ts.some(t=>produceTela(t)==='propia');const prov=ts.some(t=>t.disp==='pedir'||(t.ext&&!t.disp));const tin=ts.some(t=>necesitaTin(t)&&(t.kg>0||produceTela(t)==='propia'));
+function rutaTextilDe(o){const ts=(o.telas||[]).filter(t=>produceTela(t)!=='sin clasificar'&&!t.sinConv);/* sin clasificar o sin kg (metros sin kg/m): no entra a la ruta textil; se reporta */const tej=ts.some(t=>produceTela(t)==='propia');const prov=ts.some(t=>t.disp==='pedir'||(t.ext&&!t.disp));const tin=ts.some(t=>necesitaTin(t)&&(t.kg>0||produceTela(t)==='propia'));
   const r=[];if(tej)r.push({centro:'tej',t:0});if(prov)r.push({centro:'proveedor',t:15});if(tin)r.push({centro:'tin',t:0});return r}
 function aplicarRutaTextil(o){const tx=rutaTextilDe(o);const esTx=p=>['tej','tin','proveedor'].includes(p.centro);const fe=faseEstado(o.fase,o);
   ['ruta','rutaCompleta'].forEach(k=>{if(!o[k])return;const resto=o[k].filter(p=>!esTx(p));let pre=tx;if(k==='ruta')pre=tx.filter(p=>!(p.centro==='tej'&&fe.tejida)&&!(p.centro==='tin'&&fe.tinturada)&&!(p.centro==='proveedor'&&fe.lista));o[k]=[...pre,...resto]});
