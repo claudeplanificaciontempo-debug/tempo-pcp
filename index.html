@@ -555,7 +555,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-14 11:33';
+const APP_BUILD='2026-09-14 11:40';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -834,7 +834,7 @@ function programar(){
     return d;
   }
 
-  const ords=S.ordenes.filter(o=>abierta(o)&&!o.sinLanzar).slice() // sin WH: cuenta en demanda, no se programa
+  const ords=S.ordenes.filter(o=>abierta(o)&&!o.sinLanzar&&!o.sinFechaEntrega).slice() // sin WH o sin fecha de entrega: cuenta en demanda, no se programa
     .sort((a,b)=>(a.prio||3)-(b.prio||3)||(prioCentro(a)-prioCentro(b))||(a.fecha<b.fecha?-1:1));
   const res={ordenes:{},tej:[],banos:[],pro:[],carga};
   const ini=S.params.inicio;
@@ -1626,7 +1626,7 @@ function vEntregas(el){
   if(!EG.cli&&clis.length){EG.cli=clis[0];vEntregas(el);return}
   const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);const selCount=EG.sel.size;const nCols=colsEntregas().filter(colPdfOn).length;
   const sinLib=lista.filter(o=>!liberada(o,'tela')),sinLibPz=sinLib.reduce((a,o)=>a+ +o.cant,0);
-  const fila=o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
+  const fila=o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op)}</td><td>${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha||'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
      <td><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
      <td><input type="date" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} onchange="setCompromiso('${o.id}',this.value)"></td></tr>`};
   el.innerHTML=`<div class="pagehead"><h2>Entregas</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
@@ -2545,6 +2545,7 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
+  ${(()=>{const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${sf.length} órdenes sin fecha de entrega</b>: ${enPlan.length} entran al plan por su Proyecto (${num(enPlan.reduce((a,o)=>a+ +o.cant,0))} prendas; no se programan ni se liberan hasta tener fecha) y ${sf.filter(x=>!x.entra).length} sin Proyecto quedan fuera. Ponles fecha en Odoo. ${sf.map(x=>esc(x.op)+' ('+esc(x.fase)+(x.proyecto?' · '+esc(x.proyecto):' · sin proyecto')+')').join(', ')}</div>`:''})()}
   ${(()=>{const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);return (pr.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · precio por prenda fuera de rango (${pr.length})</b>: se reporta, no se corrige (corregir en Odoo). ${pr.map(x=>esc(x.op)+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' pz · $ '+num(x.total)+' = $ '+num(x.precio,2)+'/pz (mediana $ '+num(x.mediana,2)+')').join('<br>')}</div>`:'')+(sl.length?`<div class="warn" style="margin-bottom:12px"><b>${sl.length} órdenes sin número de WH</b> (no lanzadas en Odoo: ${[...new Set(sl.map(o=>o.fase))].map(esc).join(', ')}) · ${num(sl.reduce((a,o)=>a+ +o.cant,0))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.</div>`:'')})()}
   ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${new Date(S.params.tareaCarga.fecha).toLocaleString('es-EC')}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details ${BND.abierta?'open':''} ontoggle="BND.abierta=this.open"><summary style="cursor:pointer">ver</summary>
        ${(()=>{const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);return !!(o&&(o.fases||[]).some(f=>f.origen==='app'))};const acept=fs.filter(x=>!movidas(x.op));
@@ -2900,12 +2901,12 @@ function guardarParo(){const g=x=>document.getElementById(x).value;const min=+g(
 let LIB_ALL=false; // el resumen gerencial mira toda la cartera como si estuviera liberada
 /* liberación: la firma humana (o.lib) manda mientras la orden no llegó a textil; desde el grupo que la tabla 5 marca como
    "libera tela" (textil en adelante) Odoo ya la afirma y no se pide dos veces. Igual para corte con "libera corte". Sin fila → solo firma. */
-function liberada(o,et){if(!o)return false;if(o.sinLanzar)return false;if(LIB_ALL)return true;const l=o.lib||{};const g=grupoDe(o.fase);
+function liberada(o,et){if(!o)return false;if(o.sinLanzar||o.sinFechaEntrega)return false;if(LIB_ALL)return true;const l=o.lib||{};const g=grupoDe(o.fase);
   if(et==='tej'||et==='tin'||et==='tela')return !!((l.tela&&l.tela.ok)||(l.tej&&l.tej.ok)||(l.tin&&l.tin.ok))||!!(g&&g.libTela);
   if(et==='corte')return !!(l.corte&&l.corte.ok)||!!(g&&g.libCorte);return false}
 function liberadaCorte(o){return liberada(o,'corte')}
-function puedeLiberarA(o,et){if(o.sinLanzar)return false;if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
-function faltaLiberarA(o,et){const f=[];if(o.sinLanzar)f.push('sin lanzar en Odoo (sin WH)');if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
+function puedeLiberarA(o,et){if(o.sinLanzar||o.sinFechaEntrega)return false;if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
+function faltaLiberarA(o,et){const f=[];if(o.sinLanzar)f.push('sin lanzar en Odoo (sin WH)');if(o.sinFechaEntrega)f.push('sin fecha de entrega');if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
   else return faltaLiberar(o);return f}
 function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids.length+(ids.length===1?' orden':' órdenes')+' a producción?\n\nConfirmas que revisaste los insumos (BOM) de cada una. La tela y la calidad ya vienen validadas por tintorería y calidad.'))return;const et_n={tela:'tela (tejeduría y tintorería)',tej:'tela',tin:'tela',corte:'producción'}[et];let n=0,no=[];if(et==='tej'||et==='tin')et='tela';
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
@@ -4620,7 +4621,7 @@ function planTarea(rows,nombre){
     plan.porEstadoOP[d.estadoOP||'(vacío)']=(plan.porEstadoOP[d.estadoOP||'(vacío)']||0)+1;
     // BLOQUE C: alcance
     if(/cancel/i.test(d.fase||'')){plan.excluidas.cancel.push(d.op);return} // la fase decide, no el Estado OP (14-sep)
-    if(!d.fecha){plan.sinFecha.push({op:d.op,cliente:d.cliente,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,catP:d.catP,catH:d.catH});return}
+    if(!d.fecha){plan.sinFecha.push({op:d.op,cliente:d.cliente,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,catP:d.catP,catH:d.catH,proyecto:d.proyecto,entra:!!mesPlan({proyecto:d.proyecto})});if(!mesPlan({proyecto:d.proyecto}))return;d.sinFechaEntrega=true} // con Proyecto entra al plan (mes del Proyecto); sin Proyecto, fuera. Nunca se inventa fecha
     let vencida=false;
     if(d.fecha<HOY){if(!(fila&&fila.sistema==='cerrada'))vencida=true;else{plan.excluidas.fueraRango.push({op:d.op,fecha:d.fecha,estadoOP:d.estadoOP||'(vacío)',fase:d.fase});return}}
     if(!fila)plan.fasesNoCalzan[d.fase]=(plan.fasesNoCalzan[d.fase]||0)+1;
@@ -4663,7 +4664,7 @@ function planTarea(rows,nombre){
       cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
       tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
       vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
-      sinLanzar:!!d.sinLanzar,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+      sinLanzar:!!d.sinLanzar,sinFechaEntrega:!!d.sinFechaEntrega,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
