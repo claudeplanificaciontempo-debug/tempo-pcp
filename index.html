@@ -270,7 +270,7 @@ tbody tr:hover td{background:var(--field)}
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
     <button onclick="refrescar()" title="Volver a leer los datos del servidor">Actualizar</button>
-    <button onclick="exportJSON()">Respaldo</button>
+    <button onclick="exportJSON()">Respaldo</button> <button onclick="importJSON()" title="Restaurar un respaldo JSON (solo administrador; pide confirmación y une la bitácora)">Restaurar</button>
     <button onclick="logout()">Salir</button>
   </header>
 
@@ -570,7 +570,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 06:41';
+const APP_BUILD='2026-09-15 07:37';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -614,7 +614,7 @@ function samPorCentro(k){const r={};opsDe(k).forEach(x=>{r[x.centro]=(r[x.centro
 function aplicarTiemposBotones(){let n=0;const cache={};S.ordenes.forEach(o=>{const k=K(o.cat);if(!k)return;const key=k.id;const sp=cache[key]||(cache[key]=samPorCentro(k));if(sp.botones==null)return;['ruta','rutaCompleta'].forEach(rk=>{(o[rk]||[]).forEach(p=>{if(p.centro==='botones'&&p.t!==sp.botones){p.t=sp.botones;n++}})})});if(n){PLAN=null;PLAN_ALL=null}return n}
 function addTiempoOBRow(){tiemposOjalBoton().push({match:'',ojales:0,botones:0});save();render()}
 function setTiempoOBRow(i,k,v){const r=tiemposOjalBoton()[i];if(!r)return;const antes=k==='match'?r.match:r[k];r[k]=k==='match'?v:(+String(v).replace(',','.')||0);if(k!=='match')r.sinConfirmar=false;bitacora('Tiempo '+(k==='match'?'coincidencia':k)+' ojal/botón ['+(r.match||'?')+']: '+antes+' → '+r[k]+(k!=='match'?' (confirmado)':''));const n=aplicarTiemposBotones();save();render()}
-function delTiempoOBRow(i){tiemposOjalBoton().splice(i,1);aplicarTiemposBotones();save();render()}
+function delTiempoOBRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;tiemposOjalBoton().splice(i,1);aplicarTiemposBotones();save();render()}
 /* herencia padre → hija: la hija usa lo suyo; si no tiene, lo del padre */
 function recursosDe(k){if(!k)return[];if(k.recursos&&k.recursos.length)return k.recursos;const p=K(k.padre);return p?recursosDe(p):[]}
 function nombreCat(k){if(!k)return'—';const p=K(k.padre);return p?p.n+' / '+k.n:k.n}
@@ -737,7 +737,7 @@ function ordenPaso(c){const i=RUTA_ORDEN.indexOf(c);return i<0?RUTA_ORDEN.indexO
    operación con SAM para uno de estos centros (ej. bordado en la familia CAMISETA), eso solo da el tiempo estándar
    a usar SI el centro aplica; que aplique o no lo decide la orden (técnica, puntadas, marca de categoría, o manual). */
 function defCentrosPorOrden(){return ['estampado','bordado','lavado','plancha']}
-function centrosPorOrden(){if(!S.params.centrosPorOrden||!S.params.centrosPorOrden.length)S.params.centrosPorOrden=defCentrosPorOrden();return S.params.centrosPorOrden}
+function centrosPorOrden(){if(!Array.isArray(S.params.centrosPorOrden))S.params.centrosPorOrden=defCentrosPorOrden();return S.params.centrosPorOrden}
 /* construye los pasos de una orden a partir del origen de tela y los centros opcionales marcados, conservando tiempos ya escritos */
 /* centros de producción de una categoría = los de sus propias operaciones (opsDe, con herencia padre→hija ya resuelta),
    EXCLUYENDO los que están en centrosPorOrden(): esos nunca entran solo por tener operación en la categoría. */
@@ -862,7 +862,7 @@ function esperaDeCentro(centro,o){const filas=esperasPaso().filter(f=>f.paso===c
   const gen=filas.find(f=>!f.match||!String(f.match).trim());const r=esp||gen;return r?(+r.dias||0):0}
 function addEsperaRow(){esperasPaso().push({paso:'lavado',match:'',dias:0,nota:''});save();render()}
 function setEsperaRow(i,k,v){const r=esperasPaso()[i];if(!r)return;const antes=r[k];r[k]=k==='dias'?(+String(v).replace(',','.')||0):(k==='sinRegla'?!!v:v);if(k==='dias')r.estimado=false;bitacora('Espera '+r.paso+(r.match?' ['+r.match+']':'')+' · '+k+': '+antes+' → '+r[k]);PLAN=null;PLAN_ALL=null;save();render()}
-function delEsperaRow(i){esperasPaso().splice(i,1);PLAN=null;PLAN_ALL=null;save();render()}
+function delEsperaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;esperasPaso().splice(i,1);PLAN=null;PLAN_ALL=null;save();render()}
 /* colección = ODC; sin ODC, cliente + fecha meta (se entregan juntas) */
 function claveColeccion(o){const odc=String(o.odc||'').trim();return odc?'ODC '+odc:((o.cliente||'—')+' · '+(fechaMetaDe(o)||'sin fecha'))}
 /* antes y después: el motor de siempre vs el nuevo, con las mismas capacidades, tiempos y liberaciones */
@@ -1040,7 +1040,7 @@ function tarjetasHoyHTML(){if(!S.ordenes.length)return '';const items=pendientes
    ${puede('programa')?tarjetaHoy('otros','Otros',cap.length+' centro-mes sin capacidad'+(cap.filter(p=>!p.visto).length?' · '+cap.filter(p=>!p.visto).length+' nuevos':''),avisoCapacidadHTML()||'<p class="mut">Nada más por ahora.</p>',cap.length?'warn':''):''}</div>`}
 /* ---------- D/F · Producto en proceso: lista por orden con foto, agrupable (cliente, ODC, familia, categoría, COLOR, etapa) ---------- */
 let WIPL={niveles:null,q:''};
-const WIP_CAMPOS=[['cliente','Cliente'],['odc','ODC'],['fam','Familia'],['cat','Categoría'],['color','Color'],['etapa','Etapa actual']];
+const WIP_CAMPOS=[['fase','Fase'],['cliente','Cliente'],['odc','ODC'],['fam','Categoría padre'],['cat','Categoría hija'],['color','Color'],['proyecto','Proyecto'],['etapa','Etapa actual']];
 function claveWIP(k,o,P){if(k==='color')return (C(o.color)||{}).n||'Sin color';if(k==='etapa'){const d=dondeEsta(o,P);return d.n}return claveAPO(k,o,P)}
 function nivelesWIP(){if(WIPL.niveles)return WIPL.niveles;try{const v=JSON.parse(localStorage.__wipNiveles||'null');if(Array.isArray(v)){WIPL.niveles=v;return v}}catch(e){}WIPL.niveles=['cat'];return WIPL.niveles}
 function setNivelWIP(i,v){const n=nivelesWIP().slice();n[i]=v;WIPL.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__wipNiveles=JSON.stringify(WIPL.niveles)}catch(e){}render()}
@@ -1052,7 +1052,7 @@ function wipOrdenesHTML(P){const q=normTxt(WIPL.q);const lista=S.ordenes.filter(
   const niv=nivelesWIP();const sel=i=>`<select onchange="setNivelWIP(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${WIP_CAMPOS.map(([k,v])=>`<option value="${k}" ${niv[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
   const fila=o=>{const ro=P.ordenes[o.id]||{};const d=dondeEsta(o,P);const pend=pasosPendPro(o);return `<tr><td style="white-space:nowrap">${fotoMini(o)}<a href="#" onclick="mDetalleAsig('${o.id}');return false"><b>${esc(o.op)}</b></a>${faseTag(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(d.n)}</td><td class="mut" style="font-size:var(--fs-xs)">${pend.map(p=>esc(nCen(p.centro))).join(' → ')||'—'}</td><td>${ro.finTin&&!ro.tinturadaHecha?fmtDia(ro.finTin):(ro.telaLista?fmtDia(ro.telaLista):'—')}</td><td>${ro.finPro?fmtDia(ro.finPro):'—'}</td></tr>`};
   return `<div class="panel"><h3>Órdenes en proceso <span class="note">${lista.length} liberadas · foto, etapa actual y pasos pendientes; clic en la orden abre la ruta</span></h3><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding-bottom:6px"><div><label>Agrupar por <span class="mut">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=niv.length).map(sel).join('')}</div></div><div style="flex:1;min-width:160px"><label>Buscar</label>${busqHTML('WIPL.q',WIPL.q,'WIPL.q=v','')}</div></div>
-   <div class="scroll" style="max-height:600px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Etapa actual</th><th>Pasos pendientes</th><th>Tela lista (est.)</th><th>Termina</th></tr></thead><tbody>${filasArbolWIP(arbolWIP(lista,niv,P),fila,10)||'<tr><td colspan="10" class="mut">Nada.</td></tr>'}</tbody></table></div></div>`}
+   <div class="scroll" style="max-height:600px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Etapa actual</th><th>Pasos pendientes</th><th>Tela lista (est.)</th><th>Termina</th></tr></thead><tbody>${(grpSt('wip').niveles=niv.slice(0,3),filasGRP('wip',lista,fila,10))||'<tr><td colspan="10" class="mut">Nada.</td></tr>'}</tbody></table></div></div>`}
 function programar(){
   if(PLAN&&!LIB_ALL)return PLAN;
   const carga={}; S.recursos.forEach(r=>carga[r.id]={});
@@ -1513,6 +1513,21 @@ function atenderCompra(id){const a=(S.params.alertasCompras||[]).find(x=>x.id===
 function alertasComprasHTML(){const al=(S.params.alertasCompras||[]).filter(a=>!a.atendida);if(!al.length)return '';
   return `<div class="panel" style="border:2px solid var(--alerta)"><h3>Estas órdenes pasaron a compras <span class="note">${al.length} · la persona de compras tiene que pedir la tela</span></h3><div class="body"><table><thead><tr><th>Cuándo</th><th>OP</th><th>Telas</th><th>Días proveedor</th><th>Motivo · quién</th><th></th></tr></thead><tbody>
    ${al.map(a=>{const o=S.ordenes.find(x=>x.id===a.oid);return `<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleDateString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(a.op)}</td><td style="font-size:var(--fs-xs)">${o?(o.telas||[]).map(t=>esc(nTela(t.tela))+' '+num(t.kg)+' kg').join(' · '):''}</td><td>${a.dias?num(a.dias):'<span class="tag t-alerta">sin días de proveedor</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(a.motivo||'')} · ${esc(a.u||'')}</td><td>${puede('ordenes')||puede('programa')?`<button class="btn ghost sm" onclick="atenderCompra('${a.id}')">pedida</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`}
+/* ---------- Agrupación colapsable como Odoo (hasta 3 niveles, conteo y prendas a la derecha) para cualquier lista de órdenes ---------- */
+const GRP_CAMPOS=[['fase','Fase'],['cliente','Cliente'],['odc','ODC'],['fam','Categoría padre'],['hija','Categoría hija'],['color','Color'],['proyecto','Proyecto'],['etapa','Etapa actual']];
+let GRP={};
+function grpSt(id){if(!GRP[id]){let n=null;try{n=JSON.parse(localStorage['__grp_'+id]||'null')}catch(e){}GRP[id]={niveles:Array.isArray(n)?n:[],exp:new Set()}}return GRP[id]}
+function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;g.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j).slice(0,3);g.exp=new Set();try{localStorage['__grp_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
+function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);render()}
+function claveGRP(o,c){switch(c){case 'fase':return o.fase||'Sin fase';case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';case 'fam':{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}case 'hija':case 'cat':{const k=K(o.cat);return k?k.n:'Sin categoría'}case 'color':return (C(o.color)||{}).n||'Sin color';case 'proyecto':return String(o.proyecto||'').trim()||'Sin proyecto';case 'etapa':try{return dondeEsta(o,programar()).n}catch(e){return '—'}}return '—'}
+function grpSelHTML(id,inline){const g=grpSt(id);const n=g.niveles;const sel=i=>`<select onchange="setNivelGRP('${id}',${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${GRP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;const ss=[0,1,2].filter(i=>i<=n.length).map(sel).join('');return inline?ss:`<div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${ss}</div></div>`}
+function filasGRP(id,items,filaFn,nCols,oDe,pzDe){const g=grpSt(id);const niv=g.niveles;oDe=oDe||(x=>x);pzDe=pzDe||(x=>+(oDe(x).cant)||0);if(!niv.length)return items.map(filaFn).join('');
+  const rec=(xs,i,pref)=>{if(i>=niv.length)return xs.map(filaFn).join('');const m={},orden=[];xs.forEach(x=>{const c=claveGRP(oDe(x),niv[i]);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(x)});orden.sort((a,b)=>niv[i]==='fase'?(faseNum(a)-faseNum(b)||a.localeCompare(b)):a.localeCompare(b,'es',{numeric:true}));const nom=(GRP_CAMPOS.find(z=>z[0]===niv[i])||[])[1]||'';
+    return orden.map(c=>{const key=pref+'|'+c;const open=g.exp.has(key);const ys=m[c];const pz=ys.reduce((a,x)=>a+pzDe(x),0);return `<tr class="grp-row" style="cursor:pointer;background:${i===0?'var(--field)':'transparent'};font-weight:${i===0?700:600}" onclick="togGRP('${id}','${jsq(key)}')"><td colspan="${nCols}" style="padding-left:${8+i*18}px;border-top:${i===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span style="display:inline-block;width:14px">${open?'▾':'▸'}</span><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(c)}<span style="float:right;font-weight:600">${ys.length} ${ys.length===1?'orden':'órdenes'} · ${num(pz)} prendas</span></td></tr>`+(open?rec(ys,i+1,key):'')}).join('')};
+  return rec(items,0,'')}
+function grpMap(id,items,nCols,oDe,filaFn){return{join:()=>filasGRP(id,items,filaFn,nCols,oDe)}}
+/* ---------- Gantt de tintorería: un baño que dura más que las horas del día ocupa los días laborables siguientes (solo vista) ---------- */
+function diasBano(b,r){if(!b||!b.dia)return [];const hd=capDia(r,b.dia)||0;if(!(hd>0))return [b.dia];const n=Math.max(1,Math.ceil((b.horas||0)/hd-1e-9));const ds=[b.dia];let d=b.dia,g=0;while(ds.length<n&&g<60){d=dsum(d,1);g++;if(labR(d,r))ds.push(d)}return ds}
 function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
   const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
 function render(){CAPM=null;
@@ -1753,7 +1768,7 @@ function enPlanMes(o){if(!o)return null;const pm=S.params.planMes||{};for(const 
 function planMesCongelado(ym){const r=planMesReg(ym);return (r&&r.congelado)||null}
 function pmClaveGrupo(o,g){if(g==='odc')return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';if(g==='cliente')return o.cliente||'Sin cliente';if(g==='entrega')return o.fecha||'Sin fecha';if(g==='fam'){const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}if(g==='hija'){const k=K(o.cat);return k?k.n:'Sin categoría'}return '—'}
 function minCentroOrden(o,centro){return (o.ruta||[]).filter(p=>p.centro===centro).reduce((a,p)=>a+minPrenda(centro,p.t),0)*(+o.cant||0)}
-function cargaPlanCentros(ym,extra){const oids=new Set([...planMesOids(ym),...(extra||[])]);const cen={};S.ordenes.forEach(o=>{if(!oids.has(o.id))return;(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(ce&&ce.area==='pro'){cen[p.centro]=(cen[p.centro]||0)+minPrenda(p.centro,p.t)*(+o.cant||0)}})});return cen}
+function cargaPlanCentros(ym,extra){const oids=new Set([...planMesOids(ym),...(extra||[])]);const cen={};S.ordenes.forEach(o=>{if(!oids.has(o.id))return;const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(ce&&ce.area==='pro'){const hechas=fe.hechos.includes(p.centro)?(+o.cant||0):(ac[p.centro]||0);cen[p.centro]=(cen[p.centro]||0)+minPrenda(p.centro,p.t)*Math.max(0,(+o.cant||0)-hechas)}})});return cen} // solo minutos PENDIENTES, como la carga por centro del resto del sistema
 function planMesAgregar(ym,oids){if(!puede('programa'))return;S.params.planMes=S.params.planMes||{};const r=S.params.planMes[ym]=S.params.planMes[ym]||{oids:[]};const set=new Set(r.oids);let n=0;oids.forEach(id=>{if(!set.has(id)){set.add(id);n++}});r.oids=[...set];r.ts=new Date().toISOString();r.u=quienFirma();if(r.congelado)r.congelado=null;bitacora('Plan mensual '+ym+': +'+n+' órdenes al plan ('+quienFirma()+')');PMADD.sel=new Set();save();render()}
 function planMesQuitar(ym,oid){const r=planMesReg(ym);if(!r)return;const o=S.ordenes.find(x=>x.id===oid);r.oids=(r.oids||[]).filter(x=>x!==oid);if(r.congelado)r.congelado=null;bitacora('Plan mensual '+ym+': quitada '+((o||{}).op||oid)+' ('+quienFirma()+')');save();render()}
 function togPMADD(id){PMADD.sel.has(id)?PMADD.sel.delete(id):PMADD.sel.add(id);render()}
@@ -1835,7 +1850,7 @@ function agregarAlPlanHTML(ym,c){
   const enPlan=planMesOids(ym);const cong=planMesCongelado(ym);
   const capCen={};c.centros.forEach(x=>capCen[x.c.id]=x.cap);
   const centrosPro=S.centros.filter(x=>x.area==='pro').map(x=>x.id);
-  const minPro=o=>(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').reduce((x,p)=>x+minPrenda(p.centro,p.t),0)*(+o.cant||0);
+  const minPro=o=>minPendiente(o);
   const cargaAhora=cargaPlanCentros(ym);const cargaMk=cargaPlanCentros(ym,[...PMADD.sel]);
   const proy=centrosPro.map(id=>({id,cap:capCen[id]||0,ah:cargaAhora[id]||0,mk:cargaMk[id]||0})).filter(x=>x.cap||x.mk||x.ah);
   const enPlanO=[...enPlan].map(id=>S.ordenes.find(o=>o.id===id)).filter(Boolean).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1);
@@ -2462,7 +2477,7 @@ function vLiberacion(el){
     ${selMulti('Familia',fams,LIB.fam,'LIB.fam','togSetFam')}${selMulti('Categoría',hijas,LIB.hija,'LIB.hija','togSetHija')}${selMulti('Tipo de tela',telasDisp,LIB.tela,'LIB.tela','togSetTela',nTela)}
     <div><label>Fases</label>${selFases(fasesAll,LIB.fases,'LIB.fases','togFaseLib',cuentasFase)}</div>
     ${selMulti('Cliente',clis,LIB.cli,'LIB.cli','togSetCli')}${selMulti('Mes de entrega',meses,LIB.mes,'LIB.mes','togSetMes')}
-    <div style="flex:1;min-width:180px"><label>Buscar</label>${busqHTML('LIB.q',LIB.q,'LIB.q=v','')}</div>
+    ${grpSelHTML('lib')}<div style="flex:1;min-width:180px"><label>Buscar</label>${busqHTML('LIB.q',LIB.q,'LIB.q=v','')}</div>
     ${(LIB.fam||LIB.hija||LIB.tela||LIB.cli||LIB.mes||LIB.fases||LIB.q)?`<div><button class="btn ghost sm" onclick="LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.q='';render()">Limpiar</button></div>`:''}</div></div>
   <div class="panel"><h3>Por liberar a ${nombre} <span class="note">con estos filtros: ${listas.length} órdenes listas · ${num(rPend.pz)} prendas${noListas.length?' · '+noListas.length+' aún no pueden':''}</span><span class="spacer"></span>
     ${puedeF&&et!=='corte'?`<button class="btn sm" ${listas.length?'':'disabled'} onclick="liberarA(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar todo lo filtrado (${listas.length})</button>`:(et==='corte'?'<span class="mut" style="font-size:var(--fs-s)">Una por una: marca en cada orden la materia prima y los insumos verificados en bodega, y libera.</span>':'')}</h3>
@@ -2470,12 +2485,12 @@ function vLiberacion(el){
     <div>${et==='tela'?`<h4 style="margin:0 0 6px">Tela en crudo por tela y color</h4>${tablaTelaColor(rPend,true)}`:`<h4 style="margin:0 0 6px">Carga que entra a los centros</h4>${tablaCen(rPend)}`}<p class="mut" style="font-size:var(--fs-s);margin-top:8px">${num(rPend.h)} h de planta${rPend.usd?' · $ '+num(rPend.usd):''}</p></div></div>
    <details style="margin-top:12px" ${LIB.verLista?'open':''}><summary class="mut" style="cursor:pointer" onclick="LIB.verLista=!LIB.verLista">Elegir órdenes una por una${sel.length?' · '+sel.length+' marcadas ('+num(rSel.pz)+' pz'+(et==='tela'?', '+num(Object.values(rSel.kg).reduce((a,b)=>a+b,0))+' kg':'')+')':''}</summary>
     <div style="margin:8px 0">${puedeF&&et!=='corte'?`<button class="btn ghost sm" onclick="LIB.sel=new Set(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')});LIB.verLista=true;render()">Marcar todas</button> <button class="btn ghost sm" onclick="LIB.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${sel.length?'':'disabled'} onclick="liberarA(${JSON.stringify(sel.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar marcadas</button>`:''}</div>
-    <div class="scroll" style="max-height:420px"><table>${cab}<tbody>${listas.slice(0,400).map(o=>et==='corte'?filaProd(o,hijaDe,kgDe):fila(o,true)).join('')||'<tr><td colspan="10" class="mut">Nada pendiente con estos filtros.</td></tr>'}</tbody></table></div>
-    ${noListas.length?`<h4 style="margin:12px 0 6px">Aún no pueden liberarse <span class="mut" style="font-weight:400">· ${noListas.length}</span></h4><div class="scroll" style="max-height:260px"><table>${cab}<tbody>${noListas.slice(0,200).map(o=>fila(o,false)).join('')}</tbody></table></div>`:''}</details></div></div>
+    <div class="scroll" style="max-height:420px"><table>${cab}<tbody>${grpMap('lib',listas.slice(0,400),et==='tela'?11:10,null,o=>et==='corte'?filaProd(o,hijaDe,kgDe):fila(o,true)).join('')||'<tr><td colspan="10" class="mut">Nada pendiente con estos filtros.</td></tr>'}</tbody></table></div>
+    ${noListas.length?`<h4 style="margin:12px 0 6px">Aún no pueden liberarse <span class="mut" style="font-weight:400">· ${noListas.length}</span></h4><div class="scroll" style="max-height:260px"><table>${cab}<tbody>${grpMap('lib',noListas.slice(0,200),et==='tela'?11:10,null,o=>fila(o,false)).join('')}</tbody></table></div>`:''}</details></div></div>
   <div class="panel"><h3>Liberadas <span class="note">${liberadas.length} órdenes · ${num(rLib.pz)} prendas · ${num(rLib.h)} h de planta${rLib.usd?' · $ '+num(rLib.usd):''}</span></h3><div class="body">
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h4 style="margin:0 0 6px">Por familia</h4>${tablaFam(rLib,true)}</div><div>${et==='tela'?`<h4 style="margin:0 0 6px">Tela en crudo por tela y color</h4>${tablaTelaColor(rLib,true)}`:`<h4 style="margin:0 0 6px">Carga en los centros</h4>${tablaCen(rLib)}`}</div></div>
    ${et==='tela'?cargaLib():`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Carga programada por centro con lo liberado</h4>${tablaCen(resumen(liberadas))}</div>`}
-   <details style="margin-top:12px"><summary class="mut" style="cursor:pointer">Ver las órdenes liberadas</summary><div class="scroll" style="max-height:360px;margin-top:6px"><table>${cab}<tbody>${liberadas.slice(0,400).map(o=>fila(o,false)).join('')||'<tr><td colspan="10" class="mut">Ninguna todavía.</td></tr>'}</tbody></table></div></details></div></div>`;
+   <details style="margin-top:12px"><summary class="mut" style="cursor:pointer">Ver las órdenes liberadas</summary><div class="scroll" style="max-height:360px;margin-top:6px"><table>${cab}<tbody>${grpMap('lib',liberadas.slice(0,400),et==='tela'?11:10,null,o=>fila(o,false)).join('')||'<tr><td colspan="10" class="mut">Ninguna todavía.</td></tr>'}</tbody></table></div></details></div></div>`;
 }
 function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){togSet(LIB,'hija',v)}function togSetTela(v){togSet(LIB,'tela',v)}function togSetCli(v){togSet(LIB,'cli',v)}function togSetMes(v){togSet(LIB,'mes',v)}
 function togFaseLib(f){togSet(LIB,'fases',f)}
@@ -3215,7 +3230,7 @@ function vOrdenes(el){
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
-    <div><label>Agrupar</label><div class="chips" style="margin:0"><span class="chip ${ORDF.grupo==='fase'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fase'?null:'fase';render()">Por fase</span><span class="chip ${ORDF.grupo==='fam'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='fam'?null:'fam';render()">Por familia</span><span class="chip ${ORDF.grupo==='cat'?'on':''}" onclick="ORDF.grupo=ORDF.grupo==='cat'?null:'cat';render()">Por categoría</span></div></div></div></div>`;
+    ${grpSelHTML('ord')}</div></div>`;
   const filaOrden=o=>{const ro=(P&&P.ordenes[o.id])||{};
     return `<tr><td style="white-space:nowrap">${fotoMini(o)}${o.op?esc(o.op):'<span class="tag t-aviso">previsión</span>'}${o.sinLanzar?' <span class="tag t-aviso" title="orden sin número de WH en Odoo: cuenta en el plan, no se libera ni se programa">sin lanzar</span>':''}</td><td>${esc(o.ref||'')}</td><td title="${esc(nombreCat(K(o.cat)))}">${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'?')}</td>
       <td class="num">${num(o.cant)}</td>
@@ -3226,12 +3241,7 @@ function vOrdenes(el){
       <td style="white-space:nowrap">${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
   const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead>`;
   let rows;
-  if(ORDF.grupo){const keyFn=ORDF.grupo==='fase'?(o=>o.fase||'Sin fase'):ORDF.grupo==='fam'?(o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}):(o=>{const k=K(o.cat);return k?k.n:'Sin categoría'});
-    const ordenFn=ORDF.grupo==='fase'?((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b)):((a,b)=>a.localeCompare(b));
-    const grupos={};lista.forEach(o=>{const f=keyFn(o);(grupos[f]=grupos[f]||[]).push(o)});
-    rows=Object.keys(grupos).sort(ordenFn).map(f=>{const g=grupos[f];const ab=ORDF.abiertas&&ORDF.abiertas.has(f);
-      return `<tr style="background:var(--field);cursor:pointer" onclick="togFaseOrd('${esc(f).replace(/'/g,"\\'")}')"><td colspan="10" style="font-weight:600">${ab?'▾':'▸'} ${esc(f)} <span class="mut" style="font-weight:400">· ${g.length} órdenes · ${num(g.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+(ab?g.slice(0,300).map(filaOrden).join(''):'')}).join('')}
-  else rows=lista.slice(0,600).map(filaOrden).join('');
+  rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
@@ -3267,7 +3277,7 @@ function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=
   if(!confirm('¿Borrar la orden '+o.op+' ('+num(o.cant)+' prendas, '+esc(o.cliente||'')+')?'+(pierde.length?'\nSe pierde también: '+pierde.join(', ')+'.':'')+'\nSi vuelve en la próxima carga de Odoo, entrará como nueva.'))return;
   bitacora('Orden borrada a mano: '+o.op+' · '+num(o.cant)+' prendas · '+(o.cliente||''));S.ordenes=S.ordenes.filter(x=>x.id!==id);save();render()}
 /* borra por lotes TODOS los datos operativos (órdenes, avance, baños, salidas, programas, novedades, bitácora…); conserva configuración, maestros, categorías y operaciones */
-const TABLAS_OPERATIVAS=['ordenes','avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','bitacora','planes'];
+const TABLAS_OPERATIVAS=['ordenes','avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','planes'];/* la bitácora nunca se borra */
 async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return} // solo desde ejecutarBorrado (Configuración → Borrado), que ya pidió la frase
   const st=document.getElementById('saved');const errs=[];
   for(const t of TABLAS_OPERATIVAS){let {data,error}=await sb.from(t).select('id');if(error){errs.push(t+': '+error.message);continue}
@@ -3320,9 +3330,9 @@ function vTin(el){
   const diasBase=[...new Set(banos.map(b=>b.dia))].sort();const ultimo=diasBase.length?diasBase[diasBase.length-1]:hoy();const dias=[...diasBase];for(let d=hoy();d<=dsum(ultimo,3);d=dsum(d,1))if(!dias.includes(d))dias.push(d);dias.sort();
   const grid=diasBase.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
-      const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
+      const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);const cont=banos.filter(b=>b.rec===r.id&&b.dia&&b.dia<d&&diasBano(b,r).includes(d));
       return `<td data-rec="${r.id}" data-dia="${d}" ondragover="ddOver(event)" ondragleave="ddOut(event)" ondrop="soltarBano(event,'${r.id}','${d}')" style="min-width:150px">${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" ${b.confirmado?`draggable="true" ondragstart="arrastrarBano(event,'${b.id}')" ondragend="this.style.opacity=1"`:''} style="background:${bg};color:${textoSobre(bg)};${b.confirmado?'cursor:grab':''}" title="${esc(b.ops.join(', '))}${b.confirmado?' · arrastra para mover de máquina o día':''}">
-        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
+        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h${diasBano(b,r).length>1?' · día 1 de '+diasBano(b,r).length:''} <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}${cont.map(b=>{const bg=hexColor(b.color);const ds=diasBano(b,r);return `<div class="bath cont" style="background:${bg};color:${textoSobre(bg)};opacity:.8;border-left:4px solid rgba(0,0,0,.35)" title="continúa ${esc(b.colorN)} · día ${ds.indexOf(d)+1} de ${ds.length}"><span class="c">↳ ${esc(b.colorN)}</span>sigue · día ${ds.indexOf(d)+1} de ${ds.length} · ${b.horas} h</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
     <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · arrastra una tarjeta a otra máquina o día para moverla. La máquina se elige al confirmar el baño en Armar baños.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
@@ -3550,7 +3560,7 @@ function vControl(el){
     <div class="row" style="margin:0;align-items:center">
       <div><label>Área</label><select onchange="CTL.area=this.value;CTL.centro=null;render()">${areasOK.map(a=>`<option value="${a}" ${CTL.area===a?'selected':''}>${a==='fases'?'Cambio de fases':AREAS[a]}</option>`).join('')}</select></div>
       ${CTL.area==='pro'?`<div><label>Centro</label><select onchange="CTL.centro=this.value||null;render()"><option value="">Todos</option>${S.centros.filter(c=>c.area==='pro').sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id)).map(c=>`<option value="${c.id}" ${CTL.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>`:''}
-      <div><label>Buscar</label>${busqHTML('CTL.q',CTL.q,'CTL.q=v','width:160px')}</div>
+      ${grpSelHTML('ctl')}<div><label>Buscar</label>${busqHTML('CTL.q',CTL.q,'CTL.q=v','width:160px')}</div>
       <div><label>&nbsp;</label><label class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=!CTL.todo;render()">${CTL.todo?'todas las órdenes':'solo lo activo'}</label></div></div></div>
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
@@ -3558,7 +3568,7 @@ function vControl(el){
     const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase,o).tejida;return{o,r,a,hecha}})
       .filter(x=>CTL.todo||!x.hecha).sort((x,y)=>(x.r.finTej||'9')<(y.r.finTej||'9')?-1:1);
     cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
-     ${lista.slice(0,300).map(({o,r,a,hecha})=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td>
+     ${grpMap('ctl',lista.slice(0,300),8,x=>x.o,({o,r,a,hecha})=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td>
        <td style="font-size:var(--fs-xs)">${(o.telas||[]).filter(t=>!t.ext).map(t=>esc(nTela(t.tela))+' '+num(kgCrudo(t.tela,t.kg))).join(' · ')||'<span class="tag t-alerta">sin tela</span>'}</td>
        <td style="font-size:var(--fs-xs)">${(r.telas||[]).map(t=>esc(nRec(t.rec))+' '+fmtDia(t.fin)).join('<br>')||'—'}</td>
        <td>${hecha?'<span class="tag t-ok">✓</span>':`<input type="checkbox" ${ok?'':'disabled'} onchange="setEstado('${o.id}','tejida',this.checked)">`}</td>
@@ -3583,7 +3593,7 @@ function vControl(el){
       if(!lista.length&&!CTL.centro)return'';
       lista.sort((x,y)=>(y.enHoy-x.enHoy)||((x.paso.ini||'9')<(y.paso.ini||'9')?-1:1));
       return `<div class="panel"><h3>${esc(c.n)} <span class="note">${lista.length} órdenes${CTL.todo?'':' activas'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Fase</th><th>Recurso</th><th class="num">Prog. hoy</th><th class="num">Hechas (1ª)</th><th class="num">2ª</th><th class="num">Avance</th><th>Entrega</th></tr></thead><tbody>
-       ${lista.slice(0,200).map(({o,ac,hecho,paso,enHoy})=>{const v=hecho?o.cant:(ac[c.id]||0);const seg=((S.avance[o.id]||{}).seg||{})[c.id]||0;return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td>
+       ${grpMap('ctl',lista.slice(0,200),11,x=>x.o,({o,ac,hecho,paso,enHoy})=>{const v=hecho?o.cant:(ac[c.id]||0);const seg=((S.avance[o.id]||{}).seg||{})[c.id]||0;return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td>
          <td><select style="width:auto;max-width:150px;font-size:var(--fs-xs)" ${puede('avance')?'':'disabled'} onchange="setFase('${o.id}',this.value)"><option value="">—</option>${FASES.map(f=>`<option value="${esc(f)}" ${o.fase===f?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
          <td style="font-size:var(--fs-xs)">${paso.rec?esc(nRec(paso.rec))+((o.recursoFijo||{})[c.id]?' ⚲':''):'—'}</td><td class="num">${enHoy?num(enHoy):'<span class="mut">·</span>'}</td>
          <td class="num">${hecho?`<span class="tag t-ok">${num(o.cant)}</span>`:!liberadaCorte(o)?`<span class="tag t-alerta" title="${esc(faltaLiberar(o).join(', ')||'falta la firma de liberación')}">sin liberar</span>`:`<input type="number" min="0" max="${o.cant}" style="width:70px" value="${ac[c.id]||''}" ${ok?'':'disabled'} onchange="setAvance('${o.id}','${c.id}',this.value,${o.cant})">`}</td>
@@ -3619,7 +3629,7 @@ function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
     o.lib=o.lib||{};o.lib[et]={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
-function retirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];bitacora('Retirada liberación '+et+' '+o.op);save();render()}
+function retirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;if(!confirm('¿Retirar la liberación de '+o.op+'? La orden vuelve a la cola de liberación y sale del programa hasta liberarla de nuevo.'))return;if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];bitacora('Retirada liberación '+et+' '+o.op);save();render()}
 function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}
 function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(!(o.telas||[]).length)f.push('sin telas en la receta');
   if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');return f}
@@ -3665,14 +3675,14 @@ function motivosReproceso(){if(!Array.isArray(S.params.motivosReproceso)||!S.par
 function motivoEsTejeduria(m){const r=motivosReproceso().find(x=>normFase(x.motivo)===normFase(m||''));return !!(r&&r.tejeduria)}
 function addMotivoReprocRow(){motivosReproceso().push({motivo:'',tejeduria:false});save();render()}
 function setMotivoReprocRow(i,k,v){const r=motivosReproceso()[i];if(!r)return;r[k]=k==='tejeduria'?!!v:v;save();render()}
-function delMotivoReprocRow(i){motivosReproceso().splice(i,1);save();render()}
+function delMotivoReprocRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;motivosReproceso().splice(i,1);save();render()}
 /* restricciones de faltante: qué materiales exigen baño grande (complementos, algodón). Sembrada con cuellos, puños, algodón. Lo no marcado se reporta. */
 function defRestriccionFaltante(){return [{match:'cuello',tipo:'complemento'},{match:'puño',tipo:'complemento'},{match:'puno',tipo:'complemento'},{match:'algodon',tipo:'algodón'}]}
 function restriccionFaltante(){if(!Array.isArray(S.params.restriccionFaltante)||!S.params.restriccionFaltante.length)S.params.restriccionFaltante=defRestriccionFaltante();return S.params.restriccionFaltante}
 function restriccionDeTela(telaId){const nm=normFase(nTela(telaId)||'');const r=restriccionFaltante().find(x=>x.match&&nm.includes(normFase(x.match)));return r||null}
 function addRestrFaltRow(){restriccionFaltante().push({match:'',tipo:'complemento'});save();render()}
 function setRestrFaltRow(i,k,v){const r=restriccionFaltante()[i];if(!r)return;r[k]=v;save();render()}
-function delRestrFaltRow(i){restriccionFaltante().splice(i,1);save();render()}
+function delRestrFaltRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;restriccionFaltante().splice(i,1);save();render()}
 /* faltantes pendientes: por cada orden con faltaTinPend y faltaKg>0 por tela; su restricción y si el color ya está en el programa */
 function faltantesTin(P){P=P||(S.ordenes.length?programar():{banos:[]});const coloresEnPrograma=new Set((P.banos||[]).filter(b=>!b.error).map(b=>b.color));const out=[];
   S.ordenes.filter(o=>abierta(o)&&(S.avance[o.id]||{}).faltaTinPend).forEach(o=>{const fk=(S.avance[o.id]||{}).faltaKg||{};Object.entries(fk).forEach(([tela,kg])=>{if(!(kg>0))return;
@@ -3750,7 +3760,7 @@ function confirmarBanoHecho(bId){const b=banoDe(bId);if(!b){cerrar();return}
   const obs=((document.getElementById('bh-obs')||{}).value||'').trim();
   const telasTxt=Object.entries(detalle).map(([t,k])=>nTela(t)+' '+num(k,1)+' kg').join(' + ')||b.telas.map(nTela).join(' + ');
   S.salidas_tin=S.salidas_tin||[];S.salidas_tin.push({id:uid(),ts:new Date().toISOString(),d:hoy(),rec:b.rec,cod:b.cod||'',colorN:b.colorN,color:b.color,telas:telasTxt,detalle,kgProg:+b.kg,kgReal,ops:b.ops.join(', '),oids:b.oids.slice(),obs,u:quienFirma()});
-  if(S.salidas_tin.length>500)S.salidas_tin=S.salidas_tin.slice(-500);
+  /* las salidas de tintorería no se recortan (15-sep-2026) */
   bitacora('Baño hecho '+b.colorN+' · '+nRec(b.rec)+' · '+num(kgReal,1)+' kg ('+telasTxt+')');
   // faltante: por cada tela con menos kg reales que programados, se reparte entre las órdenes del baño y queda pendiente en la cola de planificación
   const opsKg=b.opsKg||{};const totBanoKg=Object.values(opsKg).reduce((x,y)=>x+y,0)||b.kg||1;let huboFalta=false;
@@ -3767,7 +3777,7 @@ function mSalioBano(ids,rec,colorN,telas,kgProg,ops){abrir(`<h3>Baño terminado<
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarSalioBano('${ids}','${rec}','${colorN.replace(/'/g,"\\'")}','${telas.replace(/'/g,"\\'")}',${kgProg},'${ops.replace(/'/g,"\\'")}')">Confirmar y marcar listo</button></div>`)}
 function confirmarSalioBano(ids,rec,colorN,telas,kgProg,ops){const kgReal=+((document.getElementById('sb-kg')||{}).value)||kgProg;const obs=((document.getElementById('sb-obs')||{}).value||'').trim();
   S.salidas_tin=S.salidas_tin||[];S.salidas_tin.push({id:uid(),ts:new Date().toISOString(),d:hoy(),rec,colorN,telas,kgProg:+kgProg,kgReal,ops,obs,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''});
-  if(S.salidas_tin.length>500)S.salidas_tin=S.salidas_tin.slice(-500);
+  /* las salidas de tintorería no se recortan (15-sep-2026) */
   bitacora('Salida de baño '+colorN+' · '+nRec(rec)+' · '+kgReal+' kg');
   banoListo(ids);cerrar()}
 function banoReproceso(ids,quitar){if(!quitar){mReproceso(ids,false);return}
@@ -3876,10 +3886,10 @@ function setRecCat(id,rec,on){const k=K(id);
   save();render()}
 function addCat(padre){const k={id:uid(),n:padre?'Nueva hija':'Nuevo padre',padre:padre||null,recursos:[]};S.categorias.push(k);save();render();mCat(k.id)}
 function delCat(id){const hijas=S.categorias.filter(k=>k.padre===id);
-  if(hijas.length){alert('Primero quita o mueve sus '+hijas.length+' categorías hijas.');return}
+  if(hijas.length){alert('Primero quita o mueve sus '+hijas.length+' categorías hijas.');return}if(!confirm('¿Borrar la categoría? Se pierden sus operaciones y tiempos; las órdenes que la usan quedan sin categoría.'))return;
   if(S.ordenes.some(o=>o.cat===id)){alert('Hay órdenes con esta categoría; no se puede borrar.');return}
   delRow('categorias',id)}
-function delRuta(id){const u=S.ordenes.filter(o=>o.rutaId===id);if(u.length){alert('La usan '+u.length+' órdenes.');return}delRow('rutas',id)}
+function delRuta(id){const u=S.ordenes.filter(o=>o.rutaId===id);if(u.length){alert('La usan '+u.length+' órdenes.');return}if(!confirm('¿Borrar esta ruta? Se pierde su definición.'))return;delRow('rutas',id)}
 
 function mRuta(id){const r=id?RT(id):null;ED={telas:[],ruta:JSON.parse(JSON.stringify(r?r.pasos:[]))};
   abrir(`<h3>${r?'Editar':'Nueva'} ruta</h3><div class="body">
@@ -3981,7 +3991,7 @@ function defReglasFamCentro(){return [
   {familia:'EMPAQUE',prefijo:'',centro:'empaque'},
   {familia:'*',prefijo:'',centro:'modulos'}
 ]}
-function reglasFamCentro(){if(!S.params.reglasFamCentro||!S.params.reglasFamCentro.length)S.params.reglasFamCentro=defReglasFamCentro();return S.params.reglasFamCentro}
+function reglasFamCentro(){if(!Array.isArray(S.params.reglasFamCentro))S.params.reglasFamCentro=defReglasFamCentro();return S.params.reglasFamCentro}
 /* primera regla que calce, en el orden guardado; '*' de familia = cualquier otra (comodín, siempre al final).
    Si ninguna regla calza (o la regla apunta a un centro que ya no existe), devuelve null: la fila queda SIN mapear
    y se reporta (plan.sinCentro), no se asume ningún centro por defecto. */
@@ -4021,7 +4031,7 @@ function grupoDe(fase){const fila=filaFaseDe(fase);return fila?(faseGrupos().fin
 function addFaseGrupoRow(){faseGrupos().push({grupo:'',orden:faseGrupos().length+1,libTela:false,libCorte:false,secuencial:true,pendiente:true});save();render()}
 function setFaseGrupoRow(i,k,v){faseGrupos()[i][k]=(k==='orden')?(+v||0):v;FASE_CACHE.ver++;save();render()}
 function togFaseGrupoRow(i){const r=faseGrupos()[i];r.pendiente=!r.pendiente;save();render()}
-function delFaseGrupoRow(i){faseGrupos().splice(i,1);FASE_CACHE.ver++;save();render()}
+function delFaseGrupoRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;faseGrupos().splice(i,1);FASE_CACHE.ver++;save();render()}
 const TELA_FASE=[['','—'],['tejida','tejida (esperando tintorería)'],['tinturada','tinturada (en calidad)'],['lista','lista para cortar']];
 const normFase=s=>normTxt(s).replace(/\s+/g,''); // sin espacios: "6 CD SERIGRAFIA", "6CD Serigrafía" y "6 cd serigrafia" son la misma fila (BLOQUE B2)
 function defFaseMapeo(){const rows=[];const add=(sistema,fases,extra)=>fases.forEach(fase=>rows.push(Object.assign({fase,sistema,esCola:false,sinCarga:false,bloqueo:false,excluye:'',desde:'',tela:'',montado:['0Macro','1Tejeduria','1CD Tintoreria'].includes(fase),pendiente:true},extra||{},(extra&&extra.por&&extra.por[fase])||{})));
@@ -4057,7 +4067,7 @@ function defClasifMaterial(){return [
   {nivel2:'GASTOS MAQUILA',clasificacion:'servicio externo de confección',pendiente:true},
   {nivel2:'LAVANDERIA INDUSTRIAL',clasificacion:'servicio externo de lavado',pendiente:true},
   {nivel2:'TINTURADO INDUSTRIAL',clasificacion:'servicio externo de tintura',pendiente:true}]}
-function clasifMaterial(){if(!S.params.clasifMaterial||!S.params.clasifMaterial.length)S.params.clasifMaterial=defClasifMaterial();return S.params.clasifMaterial}
+function clasifMaterial(){if(!Array.isArray(S.params.clasifMaterial))S.params.clasifMaterial=defClasifMaterial();return S.params.clasifMaterial}
 function clasifDe(nivel2){const r=clasifMaterial().find(x=>normTxt(x.nivel2)===normTxt(nivel2||''));return r?r.clasificacion:null}
 
 /* ---------- PASO 6: tercer nivel de MP -> origen de tela (PROPIA / EXTERNA / EXTERNA TEÑIDA / SIN CLASIFICAR).
@@ -4159,13 +4169,13 @@ function actualizarHijasME(){const sel=document.getElementById('me-padre');if(!s
   document.getElementById('me-hija').innerHTML=S.categorias.filter(k=>k.padre===(p||{}).id).map(h=>`<option value="${esc(h.n)}">${esc(h.n)}</option>`).join('')}
 function addRegla(){reglasFamCentro().push({familia:'',prefijo:'',centro:'modulos'});save();mMapeoOps()}
 function setRegla(i,f,v){reglasFamCentro()[i][f]=v;save()}
-function delRegla(i){reglasFamCentro().splice(i,1);save();mMapeoOps()}
+function delRegla(i){if(!confirm('¿Quitar esta regla de familia → centro?'))return;reglasFamCentro().splice(i,1);save();mMapeoOps()}
 function setMapaPadre(padre,v){mapaCatLMO().porPadre[padre]=v.trim().toUpperCase()||undefined;if(!v.trim())delete mapaCatLMO().porPadre[padre];save()}
 function addMapaHija(){const pa=document.getElementById('me-padre').value,hi=document.getElementById('me-hija').value,lmo=document.getElementById('me-lmo').value.trim().toUpperCase();
   if(!pa||!hi||!lmo){alert('Completa padre, hija y categoría LMO.');return}
   mapaCatLMO().porHija[pa+'|'+hi]=lmo;save();mMapeoOps()}
 function setMapaHija(k,v){mapaCatLMO().porHija[k]=v.trim().toUpperCase();save()}
-function delMapaHija(k){delete mapaCatLMO().porHija[k];save();mMapeoOps()}
+function delMapaHija(k){if(!confirm('¿Quitar este vínculo de categoría hija → LMO?'))return;delete mapaCatLMO().porHija[k];save();mMapeoOps()}
 function revincularCategorias(){const {vinc,sinMapeo}=aplicarMapeoCategorias();save();cerrar();render();alert(vinc+' categorías vinculadas. '+sinMapeo.length+' sin mapeo o sin operaciones para su categoría LMO.')}
 function mCargarLMO(){abrir(`<h3>Cargar operaciones (hoja LMO de Odoo)</h3><div class="body">
    <p class="lede" style="margin-top:0">Sube la hoja <b>LMO</b> del archivo de operaciones (no "Hoja3": tiene celdas combinadas y pierde la categoría). El centro TEMPO de cada fila se calcula por <b>familia de operación</b>, con las reglas de Configuración → Operaciones → Mapeo; edítalas ahí si hace falta antes de cargar. Esto <b>reemplaza todas las operaciones</b> del sistema.</p>
@@ -4198,7 +4208,7 @@ function aplicarMapeoCategorias(){let vinc=0,sinMapeo=[];
     k.familiaLMO=catLMO;const ids=(S.params.menuFam&&S.params.menuFam[catLMO])||[];
     if(ids.length){k.ops=ids.map(op=>({op}));vinc++}else sinMapeo.push(k)});
   return{vinc,sinMapeo}}
-function aplicarLMO(){if(!LMO)return;const p=LMO;
+function aplicarLMO(){if(!LMO)return;const p=LMO;if(!confirm('Se REEMPLAZAN las '+S.operaciones.length+' operaciones cargadas y los vínculos de categorías por los del archivo. Lo editado a mano en operaciones se pierde. ¿Continuar?'))return;
   S.operaciones=[];S.categorias.forEach(k=>{delete k.ops;delete k.familiaLMO});
   const menuFam={};
   p.ops.forEach(o=>{if(!o.centroTEMPO)return;const id=uid();
@@ -4626,7 +4636,7 @@ function aplicarProp(a,ym){if(!S.params.excepciones)S.params.excepciones=[];
   [...cand.filter(d=>dow(d)===6),...cand.filter(d=>dow(d)===0),...cand.filter(d=>dow(d)!==0&&dow(d)!==6)].slice(0,faltan).forEach(d=>{
     S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===a));S.params.excepciones.push({fecha:d,area:a,tipo:'trabaja',motivo:'recomendación del mes'});agregados.push(fmtDia(d))});
   bitacora('Calendario · '+AREAS[a]+' · '+ym+' · aplicada la recomendación: '+agregados.length+' días marcados SÍ trabaja ('+agregados.join(', ')+')');save();render()}
-function bitacora(txt){S.bitacora.push({id:uid(),ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',t:txt});if(S.bitacora.length>500)S.bitacora=S.bitacora.slice(-500)}
+function bitacora(txt){S.bitacora.push({id:uid(),ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',t:txt});}/* la bitácora NUNCA se recorta ni se borra (decisión 15-sep-2026) */
 function setKgTela(rid,tid,v){const r=R(rid);if(!r)return;r.kgTela=r.kgTela||{};if(v===''||+v<=0)delete r.kgTela[tid];else r.kgTela[tid]=+v;r.telas=Object.keys(r.kgTela);save();render()}
 function setCosto(k,v){S.params.costos=S.params.costos||{};S.params.costos[k]=+v||0;save();render()}
 function costoMin(centro){const c=S.params.costos||{};return centro==='corte'?c.minCorte||0:centro==='empaque'?c.minEmp||0:centro==='modulos'?c.minConf||0:c.minConf||0}
@@ -4702,7 +4712,7 @@ function filaCentroOT(nombre,oper){const n=normFase(nombre),op=normFase(oper||''
 function addCentroOTRow(){centroOT().push({odoo:'',operacion:'',centro:'',recurso:'',cierraTambien:'',soloCierra:false,ignorar:false,historico:false,moduloDeOperacion:false,pendiente:true});save();render()}
 function setCentroOTRow(i,k,v){centroOT()[i][k]=v;save()}
 function togCentroOTRow(i){const r=centroOT()[i];r.pendiente=!r.pendiente;save();render()}
-function delCentroOTRow(i){centroOT().splice(i,1);save();render()}
+function delCentroOTRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;centroOT().splice(i,1);save();render()}
 const OT_SIGNIFICA=['terminado','en proceso','para hacer','bloqueado por material','esperando','cancelado'];
 function defEstadoOT(){return [{valor:'Terminado',significa:'terminado'},{valor:'En progreso',significa:'en proceso'},{valor:'Preparado',significa:'para hacer'},
   {valor:'Esperando componentes',significa:'bloqueado por material'},{valor:'Esperando a otra orden de trabajo',significa:'esperando'},{valor:'Cancelado',significa:'cancelado'},
@@ -4712,7 +4722,7 @@ function significaOT(valor){const n=normFase(valor);const r=estadoOT().find(x=>n
 function addEstadoOTRow(){estadoOT().push({valor:'',significa:'terminado',pendiente:true});save();render()}
 function setEstadoOTRow(i,k,v){estadoOT()[i][k]=v;save()}
 function togEstadoOTRow(i){const r=estadoOT()[i];r.pendiente=!r.pendiente;save();render()}
-function delEstadoOTRow(i){estadoOT().splice(i,1);save();render()}
+function delEstadoOTRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;estadoOT().splice(i,1);save();render()}
 
 let OT=null;
 function mOT(){abrir(`<h3>Órdenes de trabajo de Odoo (mrp.workorder)</h3><div class="body">
@@ -4819,7 +4829,7 @@ function catTela(){if(!Array.isArray(S.params.catTela))S.params.catTela=defCatTe
    3) qué le falta (tintura · lavado de tela · nada) — el sistema PROPONE por tabla 13 (palabras del producto) y la categoría; la persona
       confirma o cambia en Liberación (queda quién y cuándo). Decide si carga TINTORERÍA. El lavado de tela es un baño más, con horas de color oscuro. */
 function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:'TEÑID',falta:'nada'},{palabra:'TENID',falta:'nada'},{palabra:'PFD',falta:'tintura'},{palabra:'CRUD',falta:'tintura'}]} // el lavado de tela no se propone por palabra: se decide en liberación
-function propuestaFalta(){if(!S.params.propuestaFalta||!S.params.propuestaFalta.length)S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
+function propuestaFalta(){if(!Array.isArray(S.params.propuestaFalta))S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
 function dimensionesTela(m){const org=m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
   const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;
   const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato';/* externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega */
@@ -4850,21 +4860,21 @@ function chipsFaltaTela(o){const ok=puede('liberar')||puede('programa');return (
    ${conf?`<span class="mut" title="${esc(conf.u)} · ${new Date(conf.ts).toLocaleString('es-EC')}">✓ ${esc(conf.u||'')}</span>`:'<span class="mut" title="propuesta del sistema por catálogo; nadie la ha confirmado">(propuesta)</span>'}</div>`}).join('')}
 function filaCatTela(ruta){const n=normFase(ruta);return catTela().find(r=>normFase(r.ruta)===n)||null}
 function addCatTelaRow(){catTela().push({ruta:'',corta:'',tela:'',pendiente:true});save();render()}
-function setCatTelaRow(i,k,v){catTela()[i][k]=v;save()}function togCatTelaRow(i){const r=catTela()[i];r.pendiente=!r.pendiente;save();render()}function delCatTelaRow(i){catTela().splice(i,1);save();render()}
+function setCatTelaRow(i,k,v){catTela()[i][k]=v;save()}function togCatTelaRow(i){const r=catTela()[i];r.pendiente=!r.pendiente;save();render()}function delCatTelaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;catTela().splice(i,1);save();render()}
 // ---------- tabla 9
 function paramTela(){if(!Array.isArray(S.params.paramTela))S.params.paramTela=defParamTela();return S.params.paramTela}
 function filaParamTela(corta){const n=normFase(corta);return paramTela().find(r=>normFase(r.corta)===n)||null}
 function addParamTelaRow(){paramTela().push({corta:'',tipoTela:'',hilo:'',mermaTejido:0,gramaje:0,anchoM:0,kgm:0,pendiente:true});save();render()}
 function setParamTelaRow(i,k,v){const r=paramTela()[i];r[k]=['mermaTejido','gramaje','anchoM','kgm'].includes(k)?(+String(v).replace(',','.')||0):v;if(k==='gramaje'||k==='anchoM')r.kgm=+((r.gramaje*r.anchoM)/1000).toFixed(5);save();render()}
-function togParamTelaRow(i){const r=paramTela()[i];r.pendiente=!r.pendiente;save();render()}function delParamTelaRow(i){paramTela().splice(i,1);save();render()}
+function togParamTelaRow(i){const r=paramTela()[i];r.pendiente=!r.pendiente;save();render()}function delParamTelaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;paramTela().splice(i,1);save();render()}
 function kgUd(){if(!Array.isArray(S.params.kgUd))S.params.kgUd=defKgUd();return S.params.kgUd}
 function kgUdDe(corta){const n=normFase(corta);const r=kgUd().find(x=>normFase(x.corta)===n);return r?+r.kgUd||0:0}
 function addKgUdRow(){kgUd().push({corta:'',kgUd:0,pendiente:true,origen:'a mano'});save();render()}
-function setKgUdRow(i,k,v){kgUd()[i][k]=k==='kgUd'?(+String(v).replace(',','.')||0):v;save()}function togKgUdRow(i){const r=kgUd()[i];r.pendiente=!r.pendiente;save();render()}function delKgUdRow(i){kgUd().splice(i,1);save();render()}
+function setKgUdRow(i,k,v){kgUd()[i][k]=k==='kgUd'?(+String(v).replace(',','.')||0):v;save()}function togKgUdRow(i){const r=kgUd()[i];r.pendiente=!r.pendiente;save();render()}function delKgUdRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;kgUd().splice(i,1);save();render()}
 // ---------- tabla 10
 function mermaTintura(){if(!Array.isArray(S.params.mermaTintura))S.params.mermaTintura=defMermaTintura();return S.params.mermaTintura}
 function addMermaTinturaRow(){mermaTintura().push({corta:'',tipo:'LLANO',merma:0,pendiente:true});save();render()}
-function setMermaTinturaRow(i,k,v){mermaTintura()[i][k]=k==='merma'?(+String(v).replace(',','.')||0):v;save()}function togMermaTinturaRow(i){const r=mermaTintura()[i];r.pendiente=!r.pendiente;save();render()}function delMermaTinturaRow(i){mermaTintura().splice(i,1);save();render()}
+function setMermaTinturaRow(i,k,v){mermaTintura()[i][k]=k==='merma'?(+String(v).replace(',','.')||0):v;save()}function togMermaTinturaRow(i){const r=mermaTintura()[i];r.pendiente=!r.pendiente;save();render()}function delMermaTinturaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;mermaTintura().splice(i,1);save();render()}
 /* merma de tintura para una tela corta y tipo: 1) si la tela corta está enlazada a una tela del catálogo con "enc", manda enc
    (es la misma merma; no se duplica); 2) si no, tabla 10 por (corta, tipo) y luego (corta, LLANO). null = no hay dato (se reporta) */
 function mermaTinturaDe(corta,tipo,telaId){const t=telaId?T(telaId):null;if(t&&t.enc!=null&&t.enc!=='')return{merma:(+t.enc||0)/100,fuente:'enc de '+t.n};
@@ -4873,8 +4883,8 @@ function mermaTinturaDe(corta,tipo,telaId){const t=telaId?T(telaId):null;if(t&&t
 // ---------- tabla 11: palabras de jaspe (en el nombre del producto); tipo por defecto LLANO; corregible a mano en el catálogo (tabla 12)
 function palabrasJaspe(){if(!Array.isArray(S.params.palabrasJaspe))S.params.palabrasJaspe=[{palabra:'JASPE',pendiente:true},{palabra:'JASPEADO',pendiente:true}];return S.params.palabrasJaspe}
 function tipoDetectado(nombre){const n=normFase(nombre);return palabrasJaspe().some(p=>p.palabra&&n.includes(normFase(p.palabra)))?'JASPE':'LLANO'}
-function addPropFaltaRow(){propuestaFalta().push({palabra:'',falta:'tintura'});save();render()}function setPropFaltaRow(i,k,v){propuestaFalta()[i][k]=v;save()}function delPropFaltaRow(i){propuestaFalta().splice(i,1);save();render()}
-function addPalabraJaspeRow(){palabrasJaspe().push({palabra:'',pendiente:true});save();render()}function setPalabraJaspeRow(i,v){palabrasJaspe()[i].palabra=v;save()}function delPalabraJaspeRow(i){palabrasJaspe().splice(i,1);save();render()}
+function addPropFaltaRow(){propuestaFalta().push({palabra:'',falta:'tintura'});save();render()}function setPropFaltaRow(i,k,v){propuestaFalta()[i][k]=v;save()}function delPropFaltaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;propuestaFalta().splice(i,1);save();render()}
+function addPalabraJaspeRow(){palabrasJaspe().push({palabra:'',pendiente:true});save();render()}function setPalabraJaspeRow(i,v){palabrasJaspe()[i].palabra=v;save()}function delPalabraJaspeRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;palabrasJaspe().splice(i,1);save();render()}
 // ---------- tabla 12: catálogo de productos (código → proveedor, origen, tipo)
 function catalogoProd(){if(!S.params.catalogoProd||typeof S.params.catalogoProd!=='object')S.params.catalogoProd={};return S.params.catalogoProd}
 function catalogoUsuaria(){if(!S.params.catalogoUsuaria)S.params.catalogoUsuaria=defCatalogoUsuaria();return S.params.catalogoUsuaria}
@@ -5064,7 +5074,7 @@ function sembrarDiasProveedor(){const arr=diasProveedor();const have=new Set(arr
 function diasProvDe(prov){const r=diasProveedor().find(x=>normFase(x.prov)===normFase(prov||''));return (r&&r.dias!==''&&r.dias!=null&&!isNaN(+r.dias))?+r.dias:null}
 function setDiasProvRow(i,k,v){const r=diasProveedor()[i];if(!r)return;const antes=r.dias;if(k==='dias'){const nv=String(v).trim()===''?'':(+String(v).replace(',','.')||0);r.dias=nv;r.estimado=false;r.confirmado=(nv!=='');bitacora('Días de entrega '+r.prov+': '+(antes===''||antes==null?'(sin definir)':antes+(r.estimado?' est.':''))+' → '+(nv===''?'(sin definir)':nv+' laborables (confirmado)'))}else r[k]=v;save();render()}
 function addDiasProvRow(){diasProveedor().push({prov:'',dias:'',pendiente:true});save();render()}
-function delDiasProvRow(i){diasProveedor().splice(i,1);save();render()}
+function delDiasProvRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;diasProveedor().splice(i,1);save();render()}
 /* disponibilidad de un producto (genérico): teje (tela propia) · bodega (usuaria = TEMPO) · pedir (proveedor de facturas o de la usuaria) · sin dato */
 function dispProducto(cod,esTela,produce){if(esTela&&produce==='propia')return{disp:'teje',prov:'TEMPO'};
   const us=cod?catalogoUsuaria()[cod]:null,cp=cod?catalogoProd()[cod]:null;
@@ -5163,25 +5173,25 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
 function addFaseMapeoRow(){faseMapeo().push({fase:'',sistema:gruposOrdenados()[0],esCola:false,sinCarga:false,bloqueo:false,excluye:'',desde:'',tela:'',pendiente:true});FASE_CACHE.ver++;save();render()}
 function setFaseMapeoRow(i,k,v){faseMapeo()[i][k]=v;FASE_CACHE.ver++;save()}
 function togFaseMapeoRow(i){const r=faseMapeo()[i];r.pendiente=!r.pendiente;save();render()}
-function delFaseMapeoRow(i){faseMapeo().splice(i,1);FASE_CACHE.ver++;save();render()}
+function delFaseMapeoRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;faseMapeo().splice(i,1);FASE_CACHE.ver++;save();render()}
 function addClasifMaterialRow(){clasifMaterial().push({nivel2:'',clasificacion:'',pendiente:true});save();render()}
 function setClasifMaterialRow(i,k,v){clasifMaterial()[i][k]=v;save()}
 function togClasifMaterialRow(i){const r=clasifMaterial()[i];r.pendiente=!r.pendiente;save();render()}
-function delClasifMaterialRow(i){clasifMaterial().splice(i,1);save();render()}
+function delClasifMaterialRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;clasifMaterial().splice(i,1);save();render()}
 function addOrigenTelaRow(){origenTela().porTercero.push({nivel3:'',origen:'SIN CLASIFICAR',pendiente:true});save();render()}
 function setOrigenTelaRow(i,k,v){origenTela().porTercero[i][k]=v;save()}
 function togOrigenTelaRow(i){const r=origenTela().porTercero[i];r.pendiente=!r.pendiente;save();render()}
-function delOrigenTelaRow(i){origenTela().porTercero.splice(i,1);save();render()}
+function delOrigenTelaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;origenTela().porTercero.splice(i,1);save();render()}
 function addOrigenTelaCuartoRow(){origenTela().porCuarto.push({nivel3:'',nivel4:'',origen:'EXTERNA TEÑIDA',pendiente:true});save();render()}
 function setOrigenTelaCuartoRow(i,k,v){origenTela().porCuarto[i][k]=v;save()}
 function togOrigenTelaCuartoRow(i){const r=origenTela().porCuarto[i];r.pendiente=!r.pendiente;save();render()}
-function delOrigenTelaCuartoRow(i){origenTela().porCuarto.splice(i,1);save();render()}
+function delOrigenTelaCuartoRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;origenTela().porCuarto.splice(i,1);save();render()}
 function addExc(){const g=x=>document.getElementById(x).value;const d1=g('ex-d1'),d2=g('ex-d2')||d1;if(!d1){alert('Falta la fecha.');return}
   if(!S.params.excepciones)S.params.excepciones=[];const area=g('ex-a'),tipo=g('ex-t'),motivo=g('ex-m');
   const antes=[];for(let d=d1;d<=d2;d=dsum(d,1)){const prev=S.params.excepciones.find(e=>e.fecha===d&&e.area===area);if(prev)antes.push(fmtDia(d)+' era '+(prev.tipo==='trabaja'?'trabaja':'no trabaja'));S.params.excepciones=S.params.excepciones.filter(e=>!(e.fecha===d&&e.area===area));S.params.excepciones.push({fecha:d,area,tipo,motivo});if(S.params.excepciones.length>2000)break}
   bitacora('Calendario · '+(area==='todas'?'todas las áreas':AREAS[area])+' · '+fmtDia(d1)+(d2!==d1?' → '+fmtDia(d2):'')+': '+(tipo==='trabaja'?'SÍ trabaja':'NO trabaja')+(motivo?' ('+motivo+')':'')+(antes.length?' · reemplaza: '+antes.join(', '):''));
   save();render()}
-function delExc(f,a){const e=(S.params.excepciones||[]).find(x=>x.fecha===f&&x.area===a);S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===f&&e.area===a));bitacora('Calendario · '+(a==='todas'?'todas las áreas':AREAS[a])+' · '+fmtDia(f)+': quitada la marca '+(e?(e.tipo==='trabaja'?'SÍ trabaja':'NO trabaja'):'')+' (vuelve a la regla base)');save();render()}
+function delExc(f,a){if(!confirm('¿Quitar la marca del día '+f+'? El día vuelve a la regla base del área.'))return;const e=(S.params.excepciones||[]).find(x=>x.fecha===f&&x.area===a);S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===f&&e.area===a));bitacora('Calendario · '+(a==='todas'?'todas las áreas':AREAS[a])+' · '+fmtDia(f)+': quitada la marca '+(e?(e.tipo==='trabaja'?'SÍ trabaja':'NO trabaja'):'')+' (vuelve a la regla base)');save();render()}
 function setParam(k,v){const antes=S.params[k];S.params[k]=(k==='inicio')?v:(+v||0);if(S.params.pendienteValidar&&S.params.pendienteValidar[k])delete S.params.pendienteValidar[k];bitacora('Parámetro '+k+': '+(antes==null?'—':antes)+' → '+S.params[k]);save();render()}
 function setRow(tab,id,k,v){const r=S[tab].find(x=>x.id===id);if(!r)return;r[k]=(typeof v==='boolean')?v:(isNaN(v)||v===''?v:+v);save();render()}
 function setRec(id,k,v){setRow('recursos',id,k,v)}
@@ -5189,7 +5199,7 @@ function setTelasRec(id,tela,on){const r=R(id);
   if(tela===null){r.telas=[]}
   else{const set=new Set(r.telas||[]);on?set.add(tela):set.delete(tela);r.telas=[...set]}
   save();render()}
-function delRec(id){S.recursos=S.recursos.filter(r=>r.id!==id);save();render()}
+function delRec(id){const r=R(id);if(!confirm('¿Borrar el recurso '+((r&&r.n)||id)+'? Se pierden su capacidad, telas y calendario; el programa cambia.'))return;S.recursos=S.recursos.filter(r=>r.id!==id);save();render()}
 function addRec(area){const c=S.centros.find(x=>x.area===area);if(!c)return;
   const b={id:uid(),n:'Nuevo recurso',centro:c.id,dias:6,activa:true,telas:[]};
   if(area==='tej')Object.assign(b,{kgh:10,horas:24});else if(area==='tin')Object.assign(b,{cap:100,capPique:0,horas:24});else Object.assign(b,{pers:10,min:480,efic:85});
@@ -5198,7 +5208,7 @@ function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstim
   if(k==='puntMin'&&id==='bordado')S.params.puntadasMin=(+v>0)?+v:null; // una sola fuente; vaciar el centro vacía también el parámetro // el motor (minPrenda) lee la velocidad de aquí: una sola fuente
   save();render()}
 function addCentro(){S.centros.push({id:uid(),n:'Nuevo centro',area:'pro',medida:'min'});save();render()}
-function delCentro(id){if(S.recursos.some(r=>r.centro===id)){alert('Primero quita o mueve los recursos de este centro.');return}S.centros=S.centros.filter(c=>c.id!==id);save();render()}
+function delCentro(id){if(S.recursos.some(r=>r.centro===id)){alert('Primero quita o mueve los recursos de este centro.');return}if(!confirm('¿Borrar el centro '+nCen(id)+'? Se pierde su configuración y las rutas que lo usan dejan de cargarlo.'))return;S.centros=S.centros.filter(c=>c.id!==id);save();render()}
 /* al escribir el código TCX, la profundidad y las horas se actualizan en el momento; se guarda al salir del campo */
 function prefijoTCX(v){const m=String(v||'').match(/(\d{2})\s*-\s*\d{4}/);const p=m?parseInt(m[1],10):NaN;
   return p===11?'claro':(p>=12&&p<=17)?'medio':(p>=18&&p<=19)?'oscuro':null}
@@ -5211,7 +5221,7 @@ function profColor(c){if(!c)return'medio';const porCod=prefijoTCX(c.cod);if(porC
 function setCod(id,v){const c=C(id);c.cod=v;const f=prefijoTCX(v);if(f)c.fam=f;
   const sel=document.getElementById('fam-'+id),h=document.getElementById('hrs-'+id);
   if(sel){sel.value=c.fam;sel.disabled=!!f}if(h)h.textContent=horasBano(id,null)+' h';PLAN=null}
-function delRow(tab,id){S[tab]=S[tab].filter(x=>x.id!==id);save();render()}
+function delRow(tab,id){if(!confirm('¿Borrar esta fila de '+tab+'? Se pierde lo configurado en ella.'))return;S[tab]=S[tab].filter(x=>x.id!==id);save();render()}
 function addTela(){S.telas.push({id:uid(),n:'Nueva tela',fam:'IND',enc:8,pique:false,des:false});save();render()}
 function mPegarColores(){abrir(`<h3>Pegar colores desde Excel</h3><div class="body">
    <p class="lede" style="margin-top:0">Un color por línea: nombre y código TCX separados por tabulador (o punto y coma). La profundidad y las horas salen del código. Si el nombre ya existe, se le actualiza el código en vez de duplicarlo.</p>
@@ -5407,12 +5417,12 @@ function defCentroEtapa(){return [
   {centro:'estampado',etapa:'servicios',pendiente:true},{centro:'bordado',etapa:'servicios',pendiente:true},{centro:'etiquetas',etapa:'servicios',pendiente:true},
   {centro:'modulos',etapa:'confección',pendiente:true},
   {centro:'botones',etapa:'terminados',pendiente:true},{centro:'lavado',etapa:'terminados',pendiente:true},{centro:'plancha',etapa:'terminados',pendiente:true},{centro:'empaque',etapa:'terminados',pendiente:true}]}
-function centroEtapa(){if(!S.params.centroEtapa||!S.params.centroEtapa.length)S.params.centroEtapa=defCentroEtapa();return S.params.centroEtapa}
+function centroEtapa(){if(!Array.isArray(S.params.centroEtapa))S.params.centroEtapa=defCentroEtapa();return S.params.centroEtapa}
 function centroEtapaDe(centro){const r=centroEtapa().find(x=>x.centro===centro);return r?r.etapa:null}
 function addCentroEtapaRow(){centroEtapa().push({centro:'',etapa:gruposOrdenados()[0],pendiente:true});save();render()}
 function setCentroEtapaRow(i,k,v){centroEtapa()[i][k]=v;save()}
 function togCentroEtapaRow(i){const r=centroEtapa()[i];r.pendiente=!r.pendiente;save();render()}
-function delCentroEtapaRow(i){centroEtapa().splice(i,1);save();render()}
+function delCentroEtapaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;centroEtapa().splice(i,1);save();render()}
 
 /* pasos de la ruta completa que siguen pendientes según la fila de fase (BLOQUE E). Sin fila (fase que no calza) → ruta completa. */
 function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice();
@@ -5540,7 +5550,7 @@ function defCamposConservados(){return [
   {campo:'fases',n:'Historial de fases',conservar:true},{campo:'opsSam',n:'Tiempos ajustados por referencia (balanceo)',conservar:true},{campo:'faltaConf',n:'Qué le falta a cada tela (decidido en liberación)',conservar:true},
   {campo:'rutaEditada',n:'Pasos agregados/quitados por el centro',conservar:true},{campo:'ot',n:'Cierres de órdenes de trabajo (hasta la siguiente carga de OT)',conservar:true},{campo:'terminadaF',n:'Fecha en que terminó (cumplimiento del programa)',conservar:true},
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
-function camposConservados(){if(!S.params.camposConservados||!S.params.camposConservados.length)S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;if(!t.some(r=>r.campo==='odc'))t.push({campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true});return t}
+function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;if(!t.some(r=>r.campo==='odc'))t.push({campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true});return t}
 function conserva(campo){const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
 /* aplica una fase a una orden recalculando lo que depende de ella (estado, historia, ruta pendiente) sin tocar lo del archivo */
 let BND={sel:new Set(),abierta:false};
@@ -5585,8 +5595,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;cons.ot++}
     if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}});
   // avance de piso: se conserva; se quitan solo las entradas de órdenes eliminadas; lo que ya no calza se reporta
-  const avanceEliminado=[];if(conserva('avance')){Object.keys(S.avance).forEach(id=>{if(!idsNuevos.has(id)){avanceEliminado.push(id);delete S.avance[id];return}const a=S.avance[id];const o=p.ordenes.find(x=>x.id===id);if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});if(a.centros)cons.avance++})}else S.avance={};
-  S.ordenes=p.ordenes.slice();colgarFotos();
+  const avanceEliminado=[];if(conserva('avance')){Object.keys(S.avance).forEach(id=>{if(!idsNuevos.has(id)){avanceEliminado.push(id);return}/* el avance de piso no se borra ni de paso */const a=S.avance[id];const o=p.ordenes.find(x=>x.id===id);if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});if(a.centros)cons.avance++})}else S.avance={};
+  S.ordenes=p.ordenes.slice().concat(eliminadas.map(o=>Object.assign(o,{estado:'noArchivo',noArchivo:{ts:new Date().toISOString(),archivo:p.archivo||'',estadoAntes:o.estado||'plan'}})));colgarFotos();/* las que ya no vienen en el archivo NO se borran: quedan como noArchivo con todo lo suyo */
   S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
@@ -5848,7 +5858,7 @@ function abrir(h,wide){const m=document.getElementById('modal');m.innerHTML=h;m.
 function cerrar(){document.getElementById('veil').classList.remove('on')}
 function exportJSON(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='planificacion_tempo_'+hoy()+'.json';a.click()}
 function importJSON(){if(!puede('config')){alert('Solo el administrador puede importar.');return}const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const r=new FileReader();
-  r.onload=()=>{try{S=Object.assign(seed(),JSON.parse(r.result));save();render()}catch(err){alert('El archivo no se pudo leer.')}};r.readAsText(e.target.files[0])};i.click()}
+  r.onload=()=>{try{const nuevo=JSON.parse(r.result);if(!nuevo||!nuevo.params){alert('El archivo no parece un respaldo del sistema.');return}if(!confirm('Vas a REEMPLAZAR los datos actuales ('+S.ordenes.length+' órdenes, '+(S.bitacora||[]).length+' entradas de bitácora, toda la configuración) por los del respaldo ('+((nuevo.ordenes||[]).length)+' órdenes). Lo que no esté en el archivo se pierde; la bitácora se conserva y se une. ¿Continuar?'))return;const bitAntes=S.bitacora||[];S=Object.assign(seed(),nuevo);S.bitacora=S.bitacora||[];bitAntes.forEach(b=>{if(!S.bitacora.some(x=>x.id===b.id))S.bitacora.push(b)});S.bitacora.sort((a,b)=>(a.ts||'')<(b.ts||'')?-1:1);bitacora('Respaldo restaurado desde archivo ('+quienFirma()+')');save();render()}catch(err){alert('El archivo no se pudo leer.')}};r.readAsText(e.target.files[0])};i.click()}
 
 document.getElementById('nav').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;page=a.dataset.p;render()});
 document.getElementById('veil').addEventListener('click',e=>{if(e.target.id==='veil')cerrar()});

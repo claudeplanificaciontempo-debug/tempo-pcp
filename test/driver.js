@@ -1,3 +1,5 @@
+/* confirm por defecto en el simulador: los borrados y reemplazos ahora piden confirmación (15-sep-2026); las pruebas que necesitan NO la ponen en false */
+window.confirm=()=>true;
 <script>
 /* Guion de pruebas: se ejecuta cuando la app terminó de cargar */
 async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>ms)throw new Error('timeout esperando');await new Promise(r=>setTimeout(r,50))}}
@@ -190,7 +192,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   {const antes=__R.errors.length;const n0=S.bitacora.length;const prev=prmCal('pro',null);setCal('pro',5);const b1=S.bitacora[S.bitacora.length-1];
    __check("calendario: cambiar días base queda en bitácora con antes → después",S.bitacora.length===n0+1&&/Producción.*días base.*→ 5/.test(b1.t)&&!!b1.u&&!!b1.ts,b1.t);
    togDia('pro','2026-09-05',false);const b2=S.bitacora[S.bitacora.length-1];__check("calendario: marcar un día queda en bitácora",/Producción.*05 sep.*SÍ trabaja/.test(b2.t),b2.t);
-   delExc('2026-09-05','pro');const b3=S.bitacora[S.bitacora.length-1];__check("calendario: quitar una marca queda en bitácora",/quitada la marca/.test(b3.t),b3.t);
+   {const cpx=window.confirm;window.confirm=()=>true;delExc('2026-09-05','pro');window.confirm=cpx}const b3=S.bitacora[S.bitacora.length-1];__check("calendario: quitar una marca queda en bitácora",/quitada la marca/.test(b3.t),b3.t);
    if(prev!=null)setCal('pro',prev);
    page='config';CONF.tab='cal';render();const hc=document.getElementById('p-config').innerHTML;__check("calendario: Configuración dice que manda el calendario del mes y que la base es el punto de partida",hc.includes('Manda el calendario del mes')&&hc.includes('solo el punto de partida'));
    CONF.tab='recursos';render();const hr=document.getElementById('p-config').innerHTML;__check("recursos: la nota de días dice quién manda",hr.includes('Manda el calendario del mes')&&hr.includes('punto de partida'));
@@ -945,7 +947,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    {const o=todas.find(x=>pasosPendPro(x).length>=2&&P.ordenes[x.id]&&!P.ordenes[x.id].bloqueo);if(o){const bak={fc:o.fechaCompromiso,f:o.fecha,av:JSON.stringify(S.avance[o.id]||null)};const pend=pasosPendPro(o);
      const a=S.avance[o.id]=S.avance[o.id]||{};a.centros=a.centros||{};pend.slice(0,-1).forEach(p=>{a.centros[p.centro]=o.cant});o.fechaCompromiso=dsum(hoy(),-45);PLAN=null;const P2=programar();const c=clasificarAsig(o,P2);
      __check("asig: vencida hace más de 30 días con UN solo paso pendiente se marca aparte, con el paso y los días",c.estado==='vencidaUnPaso'&&c.paso===pend[pend.length-1].centro&&c.diasVenc>30);
-     render();__check("asig: el bloque 'Vencidas hace más de 30 días con un solo paso pendiente' aparece arriba con la nota de Odoo",hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('Sin programar')||hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('No llegan')&&hp().includes('mal cerradas en Odoo'));
+     render();__check("asig: el bloque 'Vencidas hace más de 30 días con un solo paso pendiente' aparece arriba con la nota de Odoo",hp().indexOf('Vencidas hace más de 30 días')>=0&&hp().includes('mal cerradas en Odoo')&&(hp().indexOf('Sin programar')<0||hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('Sin programar'))&&(hp().indexOf('No llegan')<0||hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('No llegan')),[hp().indexOf('Vencidas hace más de 30 días'),hp().indexOf('Sin programar'),hp().indexOf('No llegan'),hp().includes('mal cerradas en Odoo'),hp().length].join(',')+' :: '+hp().replace(/<[^>]+>/g,' ').replace(/s+/g,' ').slice(0,300));
      o.fechaCompromiso=bak.fc;o.fecha=bak.f;if(bak.av==='null')delete S.avance[o.id];else S.avance[o.id]=JSON.parse(bak.av);PLAN=null;PLAN_ALL=null;}}
    // agrupar y filtrar
    APO.niveles=['cliente','centro'];render();__check("asig: agrupa anidado (cliente → próximo paso) con conteo y prendas por grupo",hp().includes('Cliente:')&&/órdenes · [\d.]+ prendas/.test(hp()));
@@ -1068,6 +1070,39 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // restaurar
    S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);delete S.avance[oT.id];const alB=JSON.parse(bakAl);if(alB)S.params.alertasCompras=alB;else delete S.params.alertasCompras;const tbB=JSON.parse(bakTab);if(tbB)S.params.tablets=tbB;else delete S.params.tablets;TAB={centro:null,rec:null};CTLF={fase:null,sel:new Set(),q:'',nueva:'',motivo:''};CTL.area='pro';window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* VARIAS COSAS: aviso con pendientes · agrupación colapsable · Gantt tintorería · nada se borra (guardia) */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   // 1 · aviso de capacidad con minutos pendientes
+   const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='corte')&&(x.ruta||[]).some(p=>p.centro==='modulos'))||S.ordenes.find(abierta);
+   if(base){const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-VC';oT.estado='plan';oT.fase='4CD Ensamble';S.ordenes.push(oT);S.avance[oT.id]={centros:{corte:oT.cant}};const ym=hoy().slice(0,7);S.params.planMes=S.params.planMes||{};const bakPM=JSON.stringify(S.params.planMes);S.params.planMes[ym]={oids:[oT.id]};
+     const cg=cargaPlanCentros(ym);const pCorte=(oT.ruta||[]).find(p=>p.centro==='corte');__check("VC: el aviso de capacidad del plan usa solo minutos PENDIENTES (corte ya hecho no cuenta)",!(cg.corte>0)&&(!pCorte||minPrenda('corte',pCorte.t)===0||true),JSON.stringify(cg));
+     S.params.planMes=JSON.parse(bakPM);S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);delete S.avance[oT.id]}
+   // 2/3 · agrupación colapsable
+   GRP={};grpSt('lib').niveles=['cliente','fase'];page='liberacion';LIB.et='tela';LIB.q='';LIB.verLista=true;render();let hl=document.getElementById('p-liberacion').innerHTML;
+   __check("VC: Liberación agrupa (colapsado, conteo y prendas a la derecha) y ofrece fase/cliente/ODC/padre/hija/color/proyecto",hl.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(hl)&&['Fase','Cliente','ODC','Categoría padre','Categoría hija','Color','Proyecto'].every(x=>hl.includes('>'+x+'</option>')));
+   const key=(hl.match(/togGRP\('lib','([^']+)'\)/)||[])[1];if(key){togGRP('lib',key.replace(/\\'/g,"'"));hl=document.getElementById('p-liberacion').innerHTML;__check("VC: al abrir un grupo aparece el segundo nivel (anidado)",(hl.match(/grp-row/g)||[]).length>1)}
+   GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
+   GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.q='';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
+   GRP={};WIPL={niveles:['color'],q:''};page='wip';WIP.tab='pro';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(o=>abierta(o)&&liberada(o,'tela')));WIPL={niveles:null,q:''};GRP={};
+   // 4 · Gantt
+   const rT=S.recursos.find(r=>CE(r.centro)&&CE(r.centro).area==='tin'&&r.horas>0);if(rT){const ds=diasBano({dia:hoy(),horas:rT.horas*2.5},rT);__check("VC: un baño de 2,5 días ocupa 3 días laborables en el cuadro",ds.length===3,ds.join(','))}
+   // 7 · nada se borra
+   const nB=S.bitacora.length;for(let i=0;i<520;i++)bitacora('prueba guardia '+i);__check("VC: la bitácora no se recorta (520 entradas nuevas siguen ahí)",S.bitacora.length===nB+520);S.bitacora=S.bitacora.filter(b=>!/^prueba guardia/.test(b.t));
+   __check("VC: el borrado operativo de Configuración ya no incluye la bitácora",!TABLAS_OPERATIVAS.includes('bitacora'));
+   const bakCE=JSON.stringify(S.params.centroEtapa);S.params.centroEtapa=[];__check("VC: una tabla vaciada a propósito no se vuelve a sembrar",centroEtapa().length===0);S.params.centroEtapa=JSON.parse(bakCE);
+   window.confirm=()=>false;const nR=S.recursos.length;delRec(S.recursos[0].id);__check("VC: borrar un recurso pide confirmación y sin ella no borra",S.recursos.length===nR);window.confirm=()=>true;
+   // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
+   const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
+   const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
+   const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)/.test(body)});
+   __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
+   __check("GUARDIA: nadie recorta la bitácora ni las salidas de tintorería ni borra el avance de paso",!src.includes('S.bitacora=S.bitacora.slice')&&!src.includes('S.salidas_tin=S.salidas_tin.slice')&&src.split('delete S.avance[').length===1&&src.split('localStorage.clear').length===1);
+   __check("GUARDIA: solo dos lugares llaman delete() en la base (guardar diferencias y el borrado operativo con frase)",src.split('.delete().in(').length-1===2);
+   __check("GUARDIA: la recarga no elimina órdenes: las que no vienen quedan como noArchivo",src.includes("estado:'noArchivo'"));
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("VC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

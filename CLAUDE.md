@@ -208,6 +208,15 @@ bitácora); `faseTag` es clicable en toda pantalla → `mCambiarFase`. De 1Tejed
 (tej → proveedor con `diasProvOrden`), marca `telas[].ext='ext'`, `o.compraTela` y `S.params.alertasCompras[]` → Hoy → Pendientes
 (`pasoCompras`) y panel en Compras del mes (`alertasComprasHTML`, "pedida" = `atenderCompra`). Ver `CONTROL_LINEA_PDF_FASES_REPORTE.md`.
 
+**Nada se borra (15-sep-2026):** la bitácora y `salidas_tin` no se recortan; `TABLAS_OPERATIVAS` no incluye bitácora; las siembras
+`centrosPorOrden/reglasFamCentro/clasifMaterial/propuestaFalta/centroEtapa/camposConservados` solo entran si la tabla NO existe
+(`Array.isArray`); la recarga Parte 2 no elimina órdenes (quedan `estado:'noArchivo'`) ni borra avance; `importJSON` (botón Restaurar)
+confirma y une la bitácora; toda función `del*/borrar*/limpiar*/vaciar*/quitar*/eliminar*/deshacer*/retirar*` pide confirmación. La prueba
+GUARDIA del simulador falla si aparece una función de borrado nueva o sin confirmación. Ver `AUDITORIA_BORRADOS_Y_RESPALDO.md`.
+**Agrupación colapsable** (`GRP_CAMPOS`, `grpSt/grpSelHTML/filasGRP/grpMap`, estado `GRP` + localStorage) en Órdenes, Liberación, Control de
+piso y Producto en proceso: hasta 3 niveles (fase, cliente, ODC, padre, hija, color, proyecto, etapa). **Gantt de tintorería**: `diasBano(b,r)`
+pinta los días siguientes ("sigue · día n de N"), solo vista. **Aviso de capacidad del plan** con minutos pendientes (`cargaPlanCentros`).
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).
