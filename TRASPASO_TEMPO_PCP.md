@@ -114,7 +114,8 @@ mes con botón "pedida" (`atenderCompra`).
 5 **Congelar** (`congelarPlan`: versión en `S.planes` con `oids`; `planMes[ym].congelado={ver,ts,u}`; agregar/quitar
    vuelve a borrador). Liberación marca "EN EL PLAN — pendiente de liberar"; cada centro → Carga que viene muestra el
    plan congelado con foto/WH/fase y "pendiente de liberar" (`planCongeladoCentroHTML`).
-Estado: el plan de septiembre está **vacío** (borrador); ella debe agregar y congelar.
+El plan **arranca con lo en proceso** (fase ≥ 2, `planBase`); en "Agregar" solo fases tempranas, agrupadas por fase por defecto;
+resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembre sin órdenes agregadas todavía; ella agrega y congela.
 
 ### 2.4 Motor de programación (no tocar sin permiso)
 - `programar()` con caché `PLAN`; `programarTodo()` (toda la cartera, `LIB_ALL`) para vistas gerenciales.
@@ -133,8 +134,11 @@ Estado: el plan de septiembre está **vacío** (borrador); ella debe agregar y c
   Ver `SIMULADOR_CAPACIDAD_PLAN_REPORTE.md`.
 
 ### 2.5 Tejeduría y tintorería
-- Tejeduría teje contra stock por tipo de tela (Stock de tela cruda, anticipación `tejAnticipSem` 2). Pendiente:
-  descontar stock en el programa; carga de stock por Excel; código propio de corrida.
+- Tejeduría teje contra stock por tipo de tela (Stock de tela cruda, **primera entrada del menú textil**, anticipación
+  `tejAnticipSem` 2). **Programación manual (15-sep)**: la pantalla ya no muestra la grilla automática; muestra pedido vs
+  cargado por tela y la persona programa tela × máquina × día × kg (`S.params.progTej`, bitácora). El motor sigue
+  estimando la fecha de tela lista internamente. Sin imprimir. Pendiente: descontar stock en el programa; carga de stock por
+  Excel; código propio de corrida.
 - **Tintorería** (lo más delicado; detalle en `CLAUDE.md`): baños por color (Pantone) armados a mano en "Armar baños"
   (`propuestaColor`, familias A/B se mezclan, piqué de baño propio, remanentes se mezclan, WH se parte), confirmados en
   `banos_conf` (código `T<MES><AA>-<COLOR>-<NN>`, kg por orden `opsKg`), máquina automática o fija (`recFijo`), arrastre

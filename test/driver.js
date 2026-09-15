@@ -995,14 +995,14 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
    const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);
    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta)||S.ordenes[0];
-   const mk=(op,mes)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.proyecto=nomMes(mes);o.estado='plan';o.fecha=mes+'-20';o.odc='ODC-TEST-PM';delete o.lib;delete o.programa;S.ordenes.push(o);return o};
+   const mk=(op,mes)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.proyecto=nomMes(mes);o.estado='plan';o.fase='0Ord Compras';o.fecha=mes+'-20';o.odc='ODC-TEST-PM';delete o.lib;delete o.programa;S.ordenes.push(o);return o};
    const o1=mk('WH/TEST-PM-1',ym),o2=mk('WH/TEST-PM-2',ym),oS=mk('WH/TEST-PM-SIG',sig);PLAN=null;PLAN_ALL=null;
    page='plan';render();const hp=()=>document.getElementById('p-plan').innerHTML;let h=hp();
    const i1=h.indexOf('BLOQUE 1'),i2=h.indexOf('BLOQUE 2'),i3=h.indexOf('BLOQUE 3'),i4=h.indexOf('BLOQUE 4'),i5=h.indexOf('BLOQUE 5');
    __check("PM: cinco bloques en orden (días y capacidad → resumen → meta → agregar → congelar)",i1>0&&i1<i2&&i2<i3&&i3<i4&&i4<i5,[i1,i2,i3,i4,i5].join(','));
    __check("PM: el calendario de días está arriba de la capacidad y de los KPIs",h.indexOf('id="plan-cal"')<h.indexOf('Capacidad del mes por área')&&h.indexOf('id="plan-cal"')<h.indexOf('class="kpis"'));
    __check("PM: agrupar por ODC / cliente / entrega / familia / categoría hija y jalar del mes siguiente",h.includes('Agrupar por')&&h.includes('Jalar del mes siguiente')&&['ODC','Cliente','Fecha de entrega','Familia','Categoría hija'].every(x=>h.includes('>'+x+'</option>')));
-   __check("PM: las órdenes del mes aparecen agrupadas (grupo ODC con conteo y suma de prendas) y colapsadas",h.includes('ODC ODC-TEST-PM')&&/2 órdenes · [\d.]+ prendas/.test(h)&&!h.includes(esc(o1.op)));
+   __check("PM: las órdenes del mes aparecen agrupadas (grupo ODC con conteo y suma de prendas) y colapsadas",h.includes('ODC ODC-TEST-PM')&&/2 órdenes · [\d.]+ prendas/.test(h)&&!h.slice(h.indexOf('<h3>Agregar órdenes al plan')).includes(esc(o1.op)));
    togGrpPMADD('ODC ODC-TEST-PM');h=hp();__check("PM: al expandir el grupo se ven las órdenes con foto/WH, fase, cliente, categoría, color, prendas y entrega",h.includes(esc(o1.op))&&h.includes(esc(o2.op))&&h.includes(esc(faseNombre(o1.fase||'—')))&&h.includes(o1.fecha));
    __check("PM: la del mes siguiente NO aparece hasta activar 'jalar'",!h.includes(esc(oS.op)));
    togPMADD(o1.id);h=hp();__check("PM: al marcar avisa ANTES de guardar si la capacidad alcanza o no (con minutos y centro)",/Con lo marcado <b>(alcanza|YA NO ALCANZA)/.test(h)&&/min/.test(h.slice(h.indexOf('Con lo marcado'),h.indexOf('Con lo marcado')+400)));
@@ -1094,7 +1094,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -1140,6 +1140,33 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    quitarAjusteCap(ym,w1.ini,r.id);__check("SIM: quitar el ajuste vuelve a la base y pide confirmación",!(g[w1.ini]&&g[w1.ini][r.id])&&Math.abs(capDia(r,d1)-r.pers*r.min*r.efic/100)<0.01);
    const ajB=JSON.parse(bakAj);if(ajB)S.params.ajustesCap=ajB;else delete S.params.ajustesCap;SIM={on:false,ym:null,rec:null,cambios:{},motivo:''};window.alert=a0;PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render();
    __check("SIM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* OBSERVACIONES: plan arranca con lo en proceso · agregar solo tempranas · fase · centros compactos · semanas vacías · fotos en liberación · tejeduría manual */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const ym=hoy().slice(0,7);PM.mes=ym;const bakPM=JSON.stringify(S.params.planMes||null);S.params.planMes={};PMADD={grp:'fase',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
+   const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=ym+'-20';delete o.programa;S.ordenes.push(o);return o};
+   const oP=mk('WH/TEST-OB-PROC','4CD Ensamble'),oT=mk('WH/TEST-OB-TEMP','0Ord Compras');PLAN=null;PLAN_ALL=null;
+   page='plan';render();let h=document.getElementById('p-plan').innerHTML;
+   __check("OB1: el plan arranca con lo en proceso (fase ≥2) incluido: cuenta en 'En el plan' y en la capacidad",planMesOidsTot(ym).has(oP.id)&&!planMesOidsTot(ym).has(oT.id)&&h.includes('en proceso +')&&h.includes(esc(oP.op)));
+   __check("OB2: en 'Agregar' solo aparecen las de fases tempranas; las en proceso no",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');const seg=h.slice(i);return seg.includes('fases tempranas')&&!seg.includes(esc(oP.op))})());
+   togGrpPMADD(oT.fase);render();h=document.getElementById('p-plan').innerHTML;__check("OB3: agrupar por FASE en agregar (grupo colapsable con conteo) y la temprana está dentro",h.includes('>Fase</option>')&&h.includes(esc(oT.fase))&&h.includes(esc(oT.op)));
+   __check("OB4: resumen por centro compacto (bloques con % uso, unidades, horas y alcanza/no alcanza)",h.includes('cen-card')&&h.includes('% uso')&&/alcanza|no alcanza|sin capacidad/.test(h)&&!h.includes('<th class="num">Programado (h)</th>'));
+   __check("OB5: las semanas sin nada no se muestran en las metas semanales",(()=>{const c=calcularPlan(ym);const vac=c.metas.filter(x=>!(Object.values(x.prod).some(p=>p.pz>0)||Object.values(x.real).some(v=>v>0)||x.ords>0));return !vac.length||h.includes(vac.length+' semana(s) sin nada, ocultas')})());
+   __check("OB6: 'sin liberar' del plan lista órdenes con foto y fase",h.includes('Ver las')&&h.includes('sin liberar o sin decidir (foto y fase)')||!S.ordenes.some(o=>abierta(o)&&mesPlan(o)===ym&&(programar().ordenes[o.id]||{}).bloqueo));
+   S.ordenes=S.ordenes.filter(x=>![oP.id,oT.id].includes(x.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;PMADD={grp:'fase',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
+   // tejeduría
+   const tex=[...document.querySelectorAll('nav .gbody[data-g="tex"] a')].map(a=>a.dataset.p);__check("OB7: Stock de tela cruda es la primera entrada de Planificación textil",tex[0]==='stock');
+   const bakPT=JSON.stringify(S.params.progTej||null);S.params.progTej=[];page='tejeduria';render();h=document.getElementById('p-tejeduria').innerHTML;
+   __check("OB8: tejeduría ya no muestra la grilla automática; muestra cargas por tela y programación manual",!h.includes('<h3>Máquina × día</h3>')&&h.includes('Programación manual de tejeduría')&&h.includes('pedido vs cargado')&&h.includes('id="pt-tela"'));
+   const rT=S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const tela=(S.telas.find(t=>!t.ext)||S.telas[0]).id;
+   if(rT){document.getElementById('pt-tela').value=tela;document.getElementById('pt-rec').value=rT.id;document.getElementById('pt-dia').value=hoy();document.getElementById('pt-kg').value='120';addProgTej();h=document.getElementById('p-tejeduria').innerHTML;
+     __check("OB8: programar a mano guarda tela/máquina/día/kg con quién y cuándo, y se ve en la grilla manual",progTej().length===1&&progTej()[0].kg===120&&!!progTej()[0].u&&h.includes(esc(nTela(tela)))&&h.includes('120 kg'));
+     __check("OB10: resumen pedido vs cargado por tela (cargado = 120)",/Cargado \(kg\)/.test(h)&&(cargasTejPorTela(programar())[tela]||{}).cargado===120);
+     delProgTejRow(progTej()[0].id);__check("OB8: quitar pide confirmación y va a bitácora",progTej().length===0&&S.bitacora.slice(-1)[0].t.includes('Tejeduría programada quitada'));}
+   const ptB=JSON.parse(bakPT);if(ptB)S.params.progTej=ptB;else delete S.params.progTej;
+   page='imprimir';render();__check("OB9: Programa del día ya no ofrece Tejeduría (imprimir solo tintorería y producción)",!document.getElementById('p-imprimir').innerHTML.includes('>Tejeduría</option>'));
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("OB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
