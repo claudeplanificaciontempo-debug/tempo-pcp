@@ -179,6 +179,15 @@ desplegables (`tarjetasHoyHTML`). **Producto en proceso → Producción** tiene 
 (`wipOrdenesHTML`, incluye COLOR). Recarga del 14-sep (tarde): Odoo mandó en fase y fecha por instrucción expresa
 (tabla 14 desactivada solo para esa carga). Ver `ACTUALIZACION_14SEP_Y_MEJORAS_REPORTE.md`.
 
+**Plan mensual (14-sep-2026 noche, `vPlan`):** cinco bloques en orden: 1 días y capacidad (calendario `planMesHTML`
+arriba, luego área/centro/módulos), 2 resumen (KPIs; "en riesgo" se despliega con foto y dónde se atasca), 3 meta,
+4 **agregar órdenes al plan** (`agregarAlPlanHTML`: borrador `S.params.planMes[ym].oids`, agrupado por ODC/cliente/entrega/
+familia/hija con `PMADD`, "jalar del mes siguiente", aviso de capacidad por centro ANTES de guardar con `cargaPlanCentros` =
+minPrenda × prendas de la ruta vs. capacidad del mes; nunca impide), 5 congelar (`congelarPlan` guarda `oids` en `S.planes` y
+`planMes[ym].congelado={ver,ts,u}`; agregar/quitar vuelve a borrador). Liberación marca "EN EL PLAN — pendiente de liberar"
+(`enPlanMes`); cada centro → Carga que viene muestra `planCongeladoCentroHTML` (plan congelado, foto/WH/fase, "pendiente de
+liberar"). Ver `PLAN_MENSUAL_FLUJO_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

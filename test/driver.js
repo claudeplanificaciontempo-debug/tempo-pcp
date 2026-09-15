@@ -987,6 +987,34 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      const chica=rM.find(r=>r.cap<(prm('granMin',120))*1.2&&compatible(r,tela));if(chica&&cC){const iS=mk(cC,Math.min(30,chica.cap-5));PLAN=null;const bS=programar().banos.find(b=>b.id===iS);__check("tin: un baño menor a la pequeña y sin piqué va a la pequeña, no a la grande",!!bS&&bS.rec===chica.id,bS&&nRec(bS.rec));}
      S.banos_conf=(S.banos_conf||[]).filter(b=>!bc.includes(b.id));S.ordenes=S.ordenes.filter(x=>!oTs.includes(x.id));S.colores=S.colores.filter(c=>![cC.id,cO.id,cM.id].includes(c.id));}
    S.recursos=bakRC.recursos;S.centros=bakRC.centros;PLAN=null;PLAN_ALL=null;__check("tin reglas sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* PLAN MENSUAL: bloques en orden · agregar al plan con aviso de capacidad · congelar · Liberación y Carga que viene */
+  {const antes=__R.errors.length;const adminP=PERFIL;const bakPM=JSON.stringify(S.params.planMes||null);const bakPlanes=JSON.stringify(S.planes||[]);window.confirm=()=>true;
+   const ym=hoy().slice(0,7);PM.mes=ym;S.params.planMes={};PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
+   const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
+   const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta)||S.ordenes[0];
+   const mk=(op,mes)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.proyecto=nomMes(mes);o.estado='plan';o.fecha=mes+'-20';o.odc='ODC-TEST-PM';delete o.lib;delete o.programa;S.ordenes.push(o);return o};
+   const o1=mk('WH/TEST-PM-1',ym),o2=mk('WH/TEST-PM-2',ym),oS=mk('WH/TEST-PM-SIG',sig);PLAN=null;PLAN_ALL=null;
+   page='plan';render();const hp=()=>document.getElementById('p-plan').innerHTML;let h=hp();
+   const i1=h.indexOf('BLOQUE 1'),i2=h.indexOf('BLOQUE 2'),i3=h.indexOf('BLOQUE 3'),i4=h.indexOf('BLOQUE 4'),i5=h.indexOf('BLOQUE 5');
+   __check("PM: cinco bloques en orden (días y capacidad → resumen → meta → agregar → congelar)",i1>0&&i1<i2&&i2<i3&&i3<i4&&i4<i5,[i1,i2,i3,i4,i5].join(','));
+   __check("PM: el calendario de días está arriba de la capacidad y de los KPIs",h.indexOf('id="plan-cal"')<h.indexOf('Capacidad del mes por área')&&h.indexOf('id="plan-cal"')<h.indexOf('class="kpis"'));
+   __check("PM: agrupar por ODC / cliente / entrega / familia / categoría hija y jalar del mes siguiente",h.includes('Agrupar por')&&h.includes('Jalar del mes siguiente')&&['ODC','Cliente','Fecha de entrega','Familia','Categoría hija'].every(x=>h.includes('>'+x+'</option>')));
+   __check("PM: las órdenes del mes aparecen agrupadas (grupo ODC con conteo y suma de prendas) y colapsadas",h.includes('ODC ODC-TEST-PM')&&/2 órdenes · [\d.]+ prendas/.test(h)&&!h.includes(esc(o1.op)));
+   togGrpPMADD('ODC ODC-TEST-PM');h=hp();__check("PM: al expandir el grupo se ven las órdenes con foto/WH, fase, cliente, categoría, color, prendas y entrega",h.includes(esc(o1.op))&&h.includes(esc(o2.op))&&h.includes(esc(faseNombre(o1.fase||'—')))&&h.includes(o1.fecha));
+   __check("PM: la del mes siguiente NO aparece hasta activar 'jalar'",!h.includes(esc(oS.op)));
+   togPMADD(o1.id);h=hp();__check("PM: al marcar avisa ANTES de guardar si la capacidad alcanza o no (con minutos y centro)",/Con lo marcado <b>(alcanza|YA NO ALCANZA)/.test(h)&&/min/.test(h.slice(h.indexOf('Con lo marcado'),h.indexOf('Con lo marcado')+400)));
+   planMesAgregar(ym,[o1.id]);h=hp();__check("PM: agregar la guarda y aparece en 'En el plan' con fase, cliente, categoría, color, prendas y entrega",planMesOids(ym).has(o1.id)&&h.includes('En el plan de')&&h.includes(esc(o1.op))&&h.includes(esc(faseNombre(o1.fase||'—'))));
+   __check("PM: el resumen del plan se actualiza al agregar (1 orden, sus prendas, borrador sin congelar)",new RegExp('1 órdenes · '+num(+o1.cant)+' prendas').test(h)&&h.includes('borrador (sin congelar)'));
+   __check("PM: la orden agregada ya no está entre las disponibles",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');return i>0&&!h.slice(i).includes(esc(o1.op))})());
+   page='liberacion';LIB.et='tela';LIB.q=o1.op;render();const hl=document.getElementById('p-liberacion').innerHTML;__check("PM→Liberación: la orden del plan sin liberar dice EN EL PLAN — pendiente de liberar",liberada(o1,'tela')||hl.includes('EN EL PLAN')&&hl.includes('pendiente de liberar'),liberada(o1,'tela')?'(ya liberada)':'');
+   page='plan';render();congelarPlan(ym);__check("PM: congelar guarda versión con oids y marca planMes.congelado (versión, quién, cuándo)",!!planMesCongelado(ym)&&planMesCongelado(ym).ver>=1&&!!planMesCongelado(ym).ts&&(S.planes||[]).some(p=>p.mes===ym&&(p.oids||[]).includes(o1.id)));
+   h=hp();__check("PM: bloque 5 dice CONGELADO con versión y fecha, y 'En el plan' lo marca congelado",h.includes('CONGELADO')&&h.includes('versión v')&&h.includes('CONGELADO v'));
+   const cen=(o1.ruta||[]).map(p=>p.centro).find(cid=>CE(cid)&&CE(cid).area==='pro');if(cen){page='centro';CEN.id=cen;CEN.tab='viene';render();const hc=document.getElementById('p-centro').innerHTML;__check("PM→Centro: 'Carga que viene' muestra el plan congelado con la orden, fase y 'pendiente de liberar' si no está liberada",hc.includes('Plan mensual congelado')&&hc.includes(esc(o1.op))&&hc.includes('congelado')&&(liberada(o1,'corte')||hc.includes('pendiente de liberar')))}
+   page='plan';render();planMesQuitar(ym,o1.id);__check("PM: quitar del plan la saca y vuelve a borrador (des-congela)",!planMesOids(ym).has(o1.id)&&!planMesCongelado(ym));
+   PMADD.incluirSig=true;PMADD.exp=new Set(['ODC ODC-TEST-PM']);render();h=hp();__check("PM: 'jalar del mes siguiente' lista las órdenes del mes siguiente marcadas con su mes",h.includes(esc(oS.op))&&h.includes('la estás jalando'));PMADD.incluirSig=false;
+   S.ordenes=S.ordenes.filter(o=>![o1.id,o2.id,oS.id].includes(o.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlanes);PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};LIB.q='';PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("PM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

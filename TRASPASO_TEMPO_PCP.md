@@ -291,3 +291,9 @@ atendidas. `profundidadDe`/`setProfundidadColor`/`bandejaProfundidadHTML`; 37 ba
 Ver `TINTORERIA_REGLAS_MAQUINA_COLOR_REPORTE.md`. `maqApta`: claro→rol claro, oscuro→rol oscuro, medio/sin clasificar→cualquiera;
 chico sin piqué→STUART (rol ambos). 16 colores clasificados a mano, 42 baños a máquina automática, 17 nuevos, inicio 15-sep.
 Pendientes: SURF SPRAY sin profundidad; telas/capacidad piqué de STUART; 35 baños <70 %.
+
+### Plan mensual: flujo en cinco bloques (14-sep-2026 noche)
+Ver `PLAN_MENSUAL_FLUJO_REPORTE.md`. Días y capacidad arriba; resumen con riesgo desplegable; meta; agregar órdenes al plan
+(agrupado, jalar del mes siguiente, aviso de capacidad antes de guardar, sin bloquear); congelar con versión/fecha/quién.
+Liberación marca "EN EL PLAN — pendiente de liberar"; los centros ven el plan congelado en "Carga que viene".
+Datos: `S.params.planMes[ym]={oids,ts,u,congelado}`; `S.planes[].oids`. Motor y capacidades sin tocar.
