@@ -47,3 +47,9 @@ Si no hay nada que decidir, la sección lo dice en una línea.
 - El clic en una orden lleva a otra pantalla dejando el «← atrás», y el atrás devuelve a Hoy.
 - «Necesita decisión» enlaza a Capacidad y decisiones en vez de repetir su tabla.
 - Mes en curso sigue igual.
+
+## Revisión posterior (mismo día)
+Al repasar el punto «todo clic que lleva a otra pantalla usa el ← atrás» encontré uno que se me había escapado: el aviso
+de capacidad de la tarjeta «Otros» saltaba a Capacidad y decisiones cambiando la página a mano, sin dejar rastro para
+volver. Ya usa el mismo camino que el resto, así que también deja el ← atrás. Agregué una prueba que falla si aparece
+cualquier clic de Hoy que salte de pantalla sin pasar por ahí. Harness: 830 pruebas, todas verdes.

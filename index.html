@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 17:14';
+const APP_BUILD='2026-09-15 17:18';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -3195,7 +3195,7 @@ function revisarProblemasCap(){const M=matrizCapacidad();const now=new Date().to
   S.params.capProblemas.filter(p=>!p.cerrado).forEach(p=>{if(!rojos.some(x=>x.c===p.c&&x.m===p.m)){p.cerrado=now;cambio=true;bitacora('Capacidad: '+nombreCentroCap(p.c)+' '+fmtMesEG(p.m)+' ya alcanza · problema cerrado')}});
   if(cambio)save();return S.params.capProblemas}
 function avisoCapacidadHTML(){if(!S.ordenes.length)return '';const ps=revisarProblemasCap();const ab=ps.filter(p=>!p.cerrado);if(!ab.length)return '';const nuevos=ab.filter(p=>!p.visto);
-  return `<div class="warn"><b>Capacidad y decisiones:</b> ${ab.length} centro-mes no alcanzan${nuevos.length?` · <b>${nuevos.length} nuevos sin ver</b>: ${nuevos.slice(0,4).map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%)').join(', ')}${nuevos.length>4?'…':''}`:''}. <a href="#" onclick="page='capacidad';render();return false">Abrir</a></div>`}
+  return `<div class="warn"><b>Capacidad y decisiones:</b> ${ab.length} centro-mes no alcanzan${nuevos.length?` · <b>${nuevos.length} nuevos sin ver</b>: ${nuevos.slice(0,4).map(p=>esc(nombreCentroCap(p.c))+' '+esc(fmtMesEG(p.m))+' ('+(p.pctHoy!=null?p.pctHoy:p.pct)+'%)').join(', ')}${nuevos.length>4?'…':''}`:''}. <a href="#" onclick="ir('capacidad');return false">Abrir</a></div>`}
 function verProblemaCap(id){const p=(S.params.capProblemas||[]).find(x=>x.id===id);if(!p)return;p.visto=new Date().toISOString();p.vistoPor=quienFirma();save();render()}
 function anotarDecisionCap(c,m){if(!puede('programa')){alert('Tu perfil no puede anotar decisiones.');return}const ta=document.getElementById('capd-txt');const txt=((ta&&ta.value)||'').trim();if(!txt){alert('Escribe la decisión antes de anotar.');return}
   const x=matrizCapacidad().celdas[c+'|'+m]||{};S.params.capDecisiones=S.params.capDecisiones||[];

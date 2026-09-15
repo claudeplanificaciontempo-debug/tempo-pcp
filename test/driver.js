@@ -1355,6 +1355,10 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("DIR: famDeOrden agrupa por la familia (categoría padre)",(()=>{const o=S.ordenes.find(x=>K(x.cat)&&K(K(x.cat).padre));if(!o)return true;return famDeOrden(o)===K(K(o.cat).padre).n})());
    TARJ={exp:{}};NAVH.length=0;page='ordenes';render();
    __check("DIR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  {const antes=__R.errors.length;page='panorama';render();const h=document.getElementById('p-panorama').innerHTML;
+   __check("DIR: ningún clic de Hoy salta de pantalla sin dejar el atrás (todos usan ir())",!/onclick="[^"]*page=/.test(h));
+   __check("DIR: el aviso de capacidad enlaza con ir()",!/page=.capacidad/.test(h));
+   __check("DIR atrás sin errores",__R.errors.length===antes);}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
