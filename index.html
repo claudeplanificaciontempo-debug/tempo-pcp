@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 17:48';
+const APP_BUILD='2026-09-15 17:51';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -2656,7 +2656,7 @@ function togFaseFam(f){if(FAM.fases.has(f))FAM.fases.delete(f);else FAM.fases.ad
 function togGrupoFam(g,on){S.ordenes.forEach(o=>{const f=o.fase||'Sin fase';if(grupoFase(f)===g){if(on)FAM.fases.add(f);else FAM.fases.delete(f)}});render()}
 
 /* ---------- Liberación: tablero de lo que hay por liberar y lo liberado, filtros de casillas, liberación en bloque ---------- */
-let LIB={et:'tela',q:'',q4:'',fam:null,hija:null,cli:null,mes:null,fases:null,tela:null,sel:new Set(),verLista:true,scroll:0};
+let LIB={et:'tela',q:'',q4:'',fam:null,hija:null,cli:null,mes:null,fases:null,tela:null,sel:new Set(),verLista:false,scroll:0};
 function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.size:0;fmt=fmt||(x=>x);
   return `<div><label>${nombre}</label><details style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${n?n+' de '+items.length:'Todos'} ▾</summary>
    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:240px;max-height:360px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">

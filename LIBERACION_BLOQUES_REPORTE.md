@@ -58,3 +58,10 @@ corte, confección y empaque, y ninguna pasa por maquila. El número real lo vas
 - Se reportan las órdenes que contradicen la ruta por defecto.
 - El resumen de lo liberado trae órdenes, referencias, kilos y horas.
 - Revertir sin motivo no revierte; con motivo de la tabla 15 revierte y queda auditado con quién, cuándo, antes y después.
+
+## Revisión posterior (mismo día)
+Repasé los diez puntos del pedido contra lo publicado: los veinte controles del simulador que los cubren están en verde.
+El único punto que quedaba a tu criterio era si la lista «Elegir órdenes 1×1» debía arrancar abierta o cerrada. La dejé
+**cerrada**, que es lo coherente con el resto del bloque (familias y telas también arrancan cerradas): el bloque entra
+en pantalla sin bajar y el botón de arriba abre la lista cuando la necesitas. La selección y la posición se conservan
+igual al abrirla y cerrarla.
