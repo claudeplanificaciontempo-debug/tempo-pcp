@@ -216,11 +216,14 @@ Todo esto es **un componente por cosa**, reutilizado; al hacer una pantalla nuev
 - **Tarjeta resumen**: número grande + texto; si representa órdenes, al hacer clic despliega la lista con **foto, WH y
   fase**. En Plan mensual bloques 2 y 3 y en Mi centro.
 - **Buscador**: el de siempre (WH, ODC, **referencia (estilo)**, color, fase, cliente, categoría) en todas las listas.
-- **Devolver fase / revertir liberación**: exigen un motivo elegido de la **tabla 15 · Motivos** (Configuración → Órdenes y
-  materiales), con columna *uso*: devolución de fase / reversión de liberación / observación de piso. **No hay texto
-  libre**: un motivo que no esté en la tabla se rechaza, y si no hay motivos para ese uso no se puede continuar. Cada
-  cambio queda en Auditoría de replanificación con **quién, cuándo, antes, después y motivo** (y en la bitácora).
-  Quitar un motivo pide confirmación y no borra los registros anteriores.
+- **Devolver fase / revertir liberación**: el motivo se pide **solo cuando se devuelve**. Devolver = la fase nueva
+  cae en un **grupo anterior** de la tabla 5. Avanzar, o moverse dentro del mismo grupo, no pide motivo (igual queda en
+  auditoría con quién y cuándo). Revertir una liberación siempre pide motivo. Los motivos salen de la **tabla 15 ·
+  Motivos** (Configuración → Órdenes y materiales), con usos: devolución de fase, reversión de liberación, **reproceso de
+  tintorería** (estas filas conservan la columna "¿viene de tejeduría?" y son las que edita el panel de Tintorería) y
+  observación de piso. **No hay texto libre.** Mientras falten motivos de devolución o de reversión, Hoy → Pendientes lo
+  avisa ("Configurar motivos de devolución") en vez de bloquear recién en el momento. Cada cambio queda en Auditoría de
+  replanificación con quién, cuándo, antes, después y motivo; las devoluciones se distinguen de los avances.
 - **← atrás**: al llegar a una pantalla desde un clic en otra, arriba aparece "← atrás" y vuelve al mismo lugar (filtros,
   agrupación, búsqueda y posición). Navegar por el menú limpia esa pila.
 - **Tema**: los colores viven en seis tokens de `:root`; cambiarlos cambia tarjetas, bloques y encabezados de tabla en
@@ -231,7 +234,7 @@ Detalle en `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
 
 ## 3 · Datos y dónde viven (memoria `S`, tabla `params` = `S.params`)
 `S.params`: tablas 1–14, calendario/excepciones, `motor`, `inicio`, `esperasPaso`, `diasProveedor`, `tiemposOjalBoton`,
-`motivosReproceso`, `motivos` (tabla 15), `auditoriaCambios`, `restriccionFaltante`, `perfilesDef`, `tablets`, `planMes`, `metas`, `advertencias`, `capProblemas`,
+`motivos` (tabla 15, incluye los de reproceso), `motivosReproceso` (arreglo anterior, conservado), `motivosMigrados`, `auditoriaCambios`, `restriccionFaltante`, `perfilesDef`, `tablets`, `planMes`, `metas`, `advertencias`, `capProblemas`,
 `capDecisiones`, `pendPospuestos`, `alertasCompras`, `fotosIdx`, `colchonDias`, `modulosParcial`, tolerancias de
 tintorería, `granMin`, etc. Órdenes: `op, ref, cliente, odc(+odcManual), proyecto, cat, color, cant, fecha, fase,
 fases[], ruta[], telas[], lib{tela,corte}, prio, progCentro, recursoFijo, foto, ot, opsSam, rutaEditada, estado

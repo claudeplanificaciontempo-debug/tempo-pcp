@@ -849,6 +849,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   {const antes=__R.errors.length;const adminP=PERFIL;const _AV=JSON.stringify(S.avance);const _FA=JSON.stringify(S.ordenes.map(o=>o.fase));const _FS=JSON.stringify(S.ordenes.map(o=>o.fases||null));
    // D5 motivos editable, sin lista fija
    const mr=motivosReproceso();__check("D5: motivos de reproceso editables, sembrados con falla de tela (tejeduría) y no dio el tono",mr.length>=2&&mr.some(x=>x.tejeduria&&/tela/i.test(x.motivo))&&mr.some(x=>/tono|matiz/i.test(x.motivo))&&typeof MOTIVOS_REPROCESO==='undefined');
+   __check("D5: los motivos de reproceso viven en la tabla 15 (uso reproceso) sin perder la columna de tejeduría",mr.every(x=>x.uso==='reproceso')&&mr.every(x=>motivos().indexOf(x)>=0)&&motivosDe('reproceso').length===mr.length&&S.params.motivosMigrados===true);
    __check("D5: motivoEsTejeduria distingue el origen",motivoEsTejeduria(mr.find(x=>x.tejeduria).motivo)===true&&motivoEsTejeduria('No dio el tono / matización')===false);
    // D3 permiso armarBanos
    __check("D3: existe el permiso armarBanos y planificación lo tiene; tintorería no",PERMISOS_DEF.some(p=>p[0]==='armarBanos')&&defPerfiles().find(p=>p.id==='planificacion').permisos.includes('armarBanos')&&!defPerfiles().find(p=>p.id==='tintoreria').permisos.includes('armarBanos'));
@@ -1048,7 +1049,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='tej'))||S.ordenes.find(abierta);const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-TC';oT.fase='1Tejeduria';oT.estado='plan';oT.odc='ODC-TC';oT.ref='EST-TC';if(!(oT.ruta||[]).some(p=>p.centro==='tej'))oT.ruta=[{centro:'tej',t:0}].concat(oT.ruta||[]);(oT.telas||[]).forEach(t=>delete t.ext);delete oT.programa;S.ordenes.push(oT);PLAN=null;PLAN_ALL=null;
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];if(!S.params.motivos.some(m=>m.motivo==='ya no se teje, se compra'))S.params.motivos.push({motivo:'ya no se teje, se compra',uso:'fase'});
    page='control';CTL.area='fases';CTLF={fase:'1Tejeduria',sel:new Set(),q:'',nueva:'',motivo:''};render();let h=document.getElementById('p-control').innerHTML;
-   __check("TC: Control de piso tiene la vista 'Cambio de fases' con selector de fase, buscador y la orden con foto/WH, ODC, cliente, estilo, categoría, color, cantidad, entrega",h.includes('Cambio de fases')&&h.includes('data-q="CTLF.q"')&&h.includes('WH/TEST-TC')&&h.includes('ODC-TC')&&h.includes('EST-TC')&&h.includes('Motivo (obligatorio'));
+   __check("TC: Control de piso tiene la vista 'Cambio de fases' con selector de fase, buscador y la orden con foto/WH, ODC, cliente, estilo, categoría, color, cantidad, entrega",h.includes('Cambio de fases')&&h.includes('data-q="CTLF.q"')&&h.includes('WH/TEST-TC')&&h.includes('ODC-TC')&&h.includes('EST-TC')&&h.includes('<label>Motivo '));
    CTLF.q='ODC-TC';BUSQ['CTLF.q']='odc';render();h=document.getElementById('p-control').innerHTML;__check("TC: el buscador inteligente acota por ODC dentro de la fase",h.includes('WH/TEST-TC')&&(h.match(/WH\/TEST-TC/g)||[]).length>=1);CTLF.q='';delete BUSQ['CTLF.q'];
    const nAntes=(S.params.alertasCompras||[]).filter(a=>!a.atendida).length;moverFases([oT.id],'0Ord Compras','');__check("TC: sin motivo no se mueve",oT.fase==='1Tejeduria'&&alerts.some(m=>/motivo/i.test(m)));
    moverFases([oT.id],'0Ord Compras','ya no se teje, se compra');
@@ -1253,20 +1254,30 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // d) buscador común
    __check("CC-d: el buscador común ofrece WH, ODC, cliente y referencia",BUSQ_CAMPOS.some(x=>x[0]==='op')&&BUSQ_CAMPOS.some(x=>x[0]==='odc')&&BUSQ_CAMPOS.some(x=>x[0]==='cliente')&&BUSQ_CAMPOS.some(x=>x[0]==='ref'&&/Referencia/.test(x[1])));
    // e) motivos obligatorios de la tabla 15 + auditoría
-   page='config';CONF.tab='ordenes2';render();__check("CC-e: existe la tabla 15 · Motivos con los tres usos",document.getElementById('p-config').innerHTML.includes('15 · Motivos')&&USOS_MOTIVO.length===3);
-   const o=S.ordenes.find(x=>abierta(x)&&x.fase)||S.ordenes[0];const faseA=o.fase;const otra=fasesDisponibles().find(f=>f!==faseA);alerts.length=0;
-   moverFases([o.id],otra,'texto libre cualquiera');__check("CC-e: devolver fase con texto libre se rechaza (motivo no está en la tabla)",o.fase===faseA&&alerts.some(m=>/tabla 15/.test(m))&&auditoriaCambios().length===0);
-   __check("CC-e: sin motivos configurados el selector avisa y no deja continuar",selMotivoHTML('x','fase').includes('15 · Motivos')&&selMotivoHTML('x','fase').includes('type="hidden"'));
+   page='config';CONF.tab='ordenes2';render();__check("CC-e: existe la tabla 15 · Motivos con sus usos (devolución, reversión, reproceso, piso)",document.getElementById('p-config').innerHTML.includes('15 · Motivos')&&['fase','liberacion','reproceso','piso'].every(k=>USOS_MOTIVO.some(u=>u[0]===k)));
+   const fdev=fasesDisponibles();const parOrd=(()=>{for(const a of fdev)for(const b of fdev){if(esDevolucionFase(a,b))return [a,b]}return null})();
+   const o=S.ordenes.find(x=>abierta(x)&&x.fase)||S.ordenes[0];const faseOrig=o.fase;alerts.length=0;
+   // AVANZAR: sin motivo funciona (la tabla 15 puede estar vacía)
+   if(parOrd){const [tarde,temprana]=parOrd;o.fase=temprana;const nAud0=auditoriaCambios().length;alerts.length=0;moverFases([o.id],tarde,'');
+     __check("CC-e: avanzar de fase NO pide motivo y queda en auditoría con quién y cuándo",o.fase===tarde&&auditoriaCambios().length===nAud0+1&&auditoriaCambios().slice(-1)[0].dev===false&&!!auditoriaCambios().slice(-1)[0].u&&!alerts.length,JSON.stringify({fase:o.fase,tarde,temprana,alerts}));}
+   else __check("CC-e: avanzar de fase NO pide motivo y queda en auditoría con quién y cuándo",false,'no hay par de fases para avanzar');
+   // DEVOLVER: sin motivo se rechaza, con texto libre también
+   const faseA=o.fase;const atras=(()=>{for(const f of fdev)if(esDevolucionFase(faseA,f))return f;return null})();
+   alerts.length=0;const nA0=auditoriaCambios().length;
+   if(atras){moverFases([o.id],atras,'');__check("CC-e: devolver la fase sin motivo se rechaza",o.fase===faseA&&alerts.some(m=>/motivo/i.test(m))&&auditoriaCambios().length===nA0);
+     alerts.length=0;moverFases([o.id],atras,'texto libre cualquiera');__check("CC-e: devolver con texto libre se rechaza (el motivo debe salir de la tabla 15)",o.fase===faseA&&alerts.some(m=>/tabla 15/.test(m))&&auditoriaCambios().length===nA0);}
+   else {__check("CC-e: devolver la fase sin motivo se rechaza",false,'sin fase anterior');__check("CC-e: devolver con texto libre se rechaza (el motivo debe salir de la tabla 15)",false,'sin fase anterior')}
+   __check("CC-e: sin motivos configurados el selector avisa (y solo bloquea devoluciones)",selMotivoHTML('x','fase').includes('15 · Motivos')&&selMotivoHTML('x','fase').includes('type="hidden"'));
    S.params.motivos.push({motivo:'Error de captura en Odoo',uso:'fase'},{motivo:'Cliente cambió la orden',uso:'liberacion'});alerts.length=0;
-   moverFases([o.id],otra,'Error de captura en Odoo');const au=auditoriaCambios().slice(-1)[0];
-   __check("CC-e: con motivo de la tabla la fase cambia y queda en auditoría (usuario, fecha, antes, después, motivo)",o.fase===otra&&!!au&&au.tipo==='fase'&&au.antes===faseA&&au.despues===otra&&au.motivo==='Error de captura en Odoo'&&!!au.u&&!!au.ts);
-   moverFases([o.id],faseA,'Error de captura en Odoo');
+   moverFases([o.id],atras,'Error de captura en Odoo');const au=auditoriaCambios().slice(-1)[0];
+   __check("CC-e: con motivo de la tabla la devolución se hace y queda auditada (usuario, fecha, antes, después, motivo)",o.fase===atras&&!!au&&au.tipo==='fase'&&au.dev===true&&au.antes===faseA&&au.despues===atras&&au.motivo==='Error de captura en Odoo'&&!!au.u&&!!au.ts);
+   o.fase=faseOrig;
    __check("CC-e: el selector de motivo es una lista cerrada (sin texto libre) en el modal de fase",(()=>{mCambiarFase(o.id);const el=document.getElementById('cf-m');const ok=!!el&&el.tagName==='SELECT';try{cerrar()}catch(e){}return ok})());
    const oL=S.ordenes.find(x=>abierta(x)&&x.lib&&x.lib.tela&&x.lib.tela.ok)||(()=>{const x=S.ordenes.find(abierta);x.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};return x})();const nA=auditoriaCambios().length;
    retirarLib(oL.id,'tela','');__check("CC-e: revertir liberación sin motivo no revierte",!!(oL.lib&&oL.lib.tela)&&auditoriaCambios().length===nA);
    retirarLib(oL.id,'tela','Cliente cambió la orden');const au2=auditoriaCambios().slice(-1)[0];__check("CC-e: revertir con motivo de la tabla revierte y queda en auditoría con antes/después",!(oL.lib&&oL.lib.tela)&&au2&&au2.tipo==='liberacion'&&/liberada/.test(au2.antes)&&au2.despues==='sin liberar'&&au2.motivo==='Cliente cambió la orden');
    oL.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};
-   page='auditoria';render();__check("CC-e: Auditoría de replanificación muestra las devoluciones y reversiones",document.getElementById('p-auditoria').innerHTML.includes('Devoluciones de fase y reversiones de liberación'));
+   page='auditoria';render();__check("CC-e: Auditoría de replanificación muestra los cambios de fase y las reversiones",document.getElementById('p-auditoria').innerHTML.includes('Cambios de fase y reversiones de liberación'));
    page='liberacion';LIB.et='tela';render();__check("CC-e: el botón 'retirar' de Liberación abre el modal con motivo (mRetirarLib)",document.getElementById('p-liberacion').innerHTML.includes('mRetirarLib(')||!document.getElementById('p-liberacion').innerHTML.includes('retirar</button>'));
    // f) navegación atrás
    NAVH.length=0;page='ordenes';ORDF.q='';render();LIB.q='WH/ATRAS';ir('liberacion');__check("CC-f: llegar por clic desde otra pantalla muestra '← atrás'",page==='liberacion'&&NAVH.length===1&&document.getElementById('p-liberacion').innerHTML.includes('← atrás'));
@@ -1278,6 +1289,20 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("CC-h: hay base responsive: botón de menú y reglas para teléfono/tablet (menú colapsable, tarjetas en columna, tablas con scroll)",!!document.getElementById('navBtn')&&css.includes('max-width: 860px')&&css.includes('nav.abierto')&&css.includes('tarj-row'));
    const mB=JSON.parse(bakMot);if(mB)S.params.motivos=mB;else delete S.params.motivos;const aB=JSON.parse(bakAud);if(aB)S.params.auditoriaCambios=aB;else delete S.params.auditoriaCambios;window.alert=a0;PLAN=null;PLAN_ALL=null;NAVH.length=0;page='ordenes';render();
    __check("CC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* URGENTE · motivo solo al devolver, reproceso unificado, bandeja de motivos */
+  {const antes=__R.errors.length;const bak=JSON.stringify(S.params.motivos||null);
+   S.params.motivos=(S.params.motivos||[]).filter(m=>m.uso!=='fase'&&m.uso!=='liberacion');
+   const it=pendientesHoy().find(x=>x.k==='motivosDev');
+   __check("URG: sin motivos de devolución/reversión, Hoy → Pendientes lo avisa",!!it&&it.n===2&&/devolución de fase/.test(it.detalle)&&/reversión de liberación/.test(it.detalle));
+   S.params.motivos.push({motivo:'Error de captura en Odoo',uso:'fase'});
+   const it2=pendientesHoy().find(x=>x.k==='motivosDev');__check("URG: al configurar el de devolución, la bandeja baja a 1 y solo pide el de reversión",!!it2&&it2.n===1&&/reversión/.test(it2.detalle));
+   S.params.motivos.push({motivo:'Cliente cambió la orden',uso:'liberacion'});
+   __check("URG: con los dos configurados la bandeja desaparece",(pendientesHoy().find(x=>x.k==='motivosDev')||{n:0}).n===0);
+   __check("URG: devolución = la fase nueva cae en un grupo anterior de la tabla 5",esDevolucionFase('2Planificacion','1Tintoreria')===true&&esDevolucionFase('1Tintoreria','2Planificacion')===false&&esDevolucionFase('1Tintoreria','1Tejeduria')===false);
+   __check("URG: moverse dentro del mismo grupo no es devolución",mismoGrupoFase('1Tintoreria','1Tejeduria')===true&&esDevolucionFase('1Tintoreria','1Tejeduria')===false);
+   const rg=retrocesosMismoGrupo();__check("URG: se puede reportar qué grupos tienen varias fases (ahí un movimiento hacia atrás no pide motivo)",Array.isArray(rg)&&rg.every(g=>g.fases.length>1));
+   const b=JSON.parse(bak);if(b)S.params.motivos=b;else delete S.params.motivos;
+   __check("URG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
