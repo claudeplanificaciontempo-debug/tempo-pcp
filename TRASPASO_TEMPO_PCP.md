@@ -204,6 +204,18 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.11 Dirección · Hoy (15-sep-2026 noche)
+- **Escenarios ya no existe.** No guardaba nada: lo que se probaba ahí vivía solo en memoria. Para probar personas y
+  días se usa el simulador de capacidad del Plan mensual, que sí guarda con motivo.
+- **Hoy** arranca con Pendientes y sigue con tarjetas: a tejer hoy, baños, programadas hoy, entregas en 7 días,
+  vencidas y última carga. Las de tejeduría y planta abren la lista de qué se está haciendo, agrupada por familia.
+- **Bandejas del día**: ocho tarjetas (sin fecha, por liberar, entregas de la semana, en riesgo, vencidas, por terminar
+  en 7 días, tela externa por llegar, por liberar a corte). Cada una abre su lista agrupada por familia, con foto, WH y
+  fase, y cada orden tiene «ver dónde está →», que abre la pantalla donde se resuelve su estado y deja el «← atrás».
+- **Necesita decisión**: tarjetas de baños por armar, centro-mes que no alcanzan, órdenes que no llegan y faltantes de
+  tintorería. **Capacidad y decisiones sigue siendo una pantalla aparte**: Hoy solo enlaza, no repite su tabla.
+- **Mes en curso** quedó igual.
+
 ### 2.10 Componentes comunes, tema y responsive (15-sep-2026)
 Todo esto es **un componente por cosa**, reutilizado; al hacer una pantalla nueva se usan estos y no se copia nada.
 - **Filtro de fases**: un desplegable con los grupos de la **tabla 5** ("1 · TEXTIL", "2 · PLANIFICACIÓN"…), casillas por

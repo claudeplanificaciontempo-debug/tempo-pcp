@@ -298,6 +298,8 @@ cambiar de paleta) aplicados a `.kpi.tarj`, `.panel h3`, `thead` y la cinta de b
 `@media (max-width:860px)` (menú colapsable `nav.abierto`, cabecera en dos filas, tarjetas en columna, tablas con scroll propio).
 Ver `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
 
+**Dirección · Hoy y Escenarios (15-sep-2026 noche):** la página **Escenarios** se borró entera (menú, sección, `vEscenarios`, `ESC`, `conEscenario` y el enlace de Programación por centro); no guardaba nada en base, todo era memoria. **Hoy** (`vPanorama`) usa `tarjetasResumenHTML` arriba (ids `hoy-*`), una sección **Bandejas del día** (`hoyBandejasHTML`, ids `hb-*`: sin fecha, por liberar, entregas de la semana, en riesgo, vencidas, por terminar en 7 días, tela por llegar, por liberar a corte) y **Necesita decisión** (`hoyDecisionHTML`, ids `hd-*`: baños, capacidad, no llegan, faltantes) que SOLO enlaza a Capacidad y decisiones (sigue siendo pantalla aparte). Las listas de tarjeta se agrupan por familia (`card.porFam`, `famDeOrden`) y cada fila tiene `irEstadoOrden(oid)` (Órdenes / Compras / Liberación / Tintorería / Centro del próximo paso / Control) que usa `ir()` y por eso deja el «← atrás». `seccionHoy(titulo,nota,cuerpo)` pinta las cintas de sección. Mes en curso sin cambios. Ver `DIRECCION_HOY_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

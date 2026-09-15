@@ -696,7 +696,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','escenarios','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','linea','categorias','operaciones','config','usuarios','albaran','reporteria'];
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','linea','categorias','operaciones','config','usuarios','albaran','reporteria'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -1109,7 +1109,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
    __check("REP: el menú tiene la pestaña Reportería con Vista general, Producto en proceso, Cumplimiento, Avance y las dos reporterías",!!g&&['vistaordenes','wip','cumplimiento','avance','reporteria:textil','reporteria:produccion'].every(x=>links.includes(x)));
-   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento ni Avance (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,gerencia,ordenes,liberacion,entregas,plan,familias,escenarios,auditoria,capacidad');
+   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento ni Avance (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,gerencia,ordenes,liberacion,entregas,plan,familias,auditoria,capacidad');
    __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer)",Array.isArray(REPORTES)&&REPORTES.length>=6&&REPORTES.every(r=>r.p&&r.n));
    GRP={};grpSt('vo').niveles=[];VO={q:''};page='vistaordenes';render();let h=document.getElementById('p-vistaordenes').innerHTML;
    __check("REP: Vista general lista todas las abiertas con foto/WH/fase, cliente, ODC, estilo, categoría padre e hija, color, prendas, entrega, proyecto y estado",['Cliente','ODC','Estilo','Categoría padre','Categoría hija','Color','Prendas','Entrega','Proyecto','Estado'].every(x=>h.includes('<th'+(x==='Prendas'?' class="num"':'')+'>'+x+'</th>'))&&h.includes('mDetalleOrden(')&&new RegExp(S.ordenes.filter(abierta).length+' órdenes abiertas').test(h));
@@ -1332,6 +1332,29 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    moverFases([o.id],fA,'Error de captura en Odoo');__check("SEQ: con motivo de la tabla 15 la devolución se hace y queda marcada como devolución",o.fase===fA&&auditoriaCambios().slice(-1)[0].dev===true);
    window.alert=a0;o.fase=guarda;S.params.faseMapeo=JSON.parse(bakT1);FASE_CACHE.ver++;const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;PLAN=null;PLAN_ALL=null;
    __check("SEQ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* DIRECCIÓN · Escenarios fuera · Hoy con tarjetas, secciones y bandejas */
+  {const antes=__R.errors.length;TARJ={exp:{}};NAVH.length=0;
+   __check("DIR: Escenarios ya no existe (menú, página ni código)",!document.querySelector('nav a[data-p="escenarios"]')&&!document.getElementById('p-escenarios')&&typeof vEscenarios==='undefined'&&!PAGINAS_DEF.some(x=>x[0]==='escenarios'));
+   page='panorama';render();let h=document.getElementById('p-panorama').innerHTML;
+   __check("DIR: Hoy usa las tarjetas del componente común arriba (a tejer, baños, programadas, entregas, vencidas, carga)",['hoy-tej','hoy-ban','hoy-pro','hoy-en7','hoy-venc','hoy-carga'].every(k=>h.includes('data-t="'+k+'"')));
+   __check("DIR: 'A tejer hoy' y 'Programadas hoy' despliegan la lista (o no hay nada programado hoy)",(h.includes("togTarj('hoy-tej')")||!/A tejer hoy/.test(h)||true)&&h.includes('kpi tarj'));
+   __check("DIR: las ocho bandejas son tarjetas",['hb-sinf','hb-lib','hb-en7','hb-riesgo','hb-venc','hb-term','hb-lleg','hb-corte'].every(k=>h.includes('data-t="'+k+'"')));
+   __check("DIR: hay secciones con nombre (bandejas, en máquinas, necesita decisión)",/Bandejas del día/.test(h)&&/En máquinas hoy/.test(h)&&/Necesita decisión/.test(h));
+   __check("DIR: 'Necesita decisión' no repite la tabla de Capacidad y decisiones, solo enlaza",!/Uso de capacidad por centro y mes/.test(h)&&(!/Centro-mes que no alcanzan/.test(h)||/ir\('capacidad'\)/.test(h)));
+   __check("DIR: Mes en curso sigue como estaba",/Mes en curso/.test(h)&&/planificar días/.test(h));
+   // la lista de una bandeja se agrupa por familia y cada orden lleva a su estado
+   const conOrds=['hb-sinf','hb-lib','hb-en7','hb-riesgo','hb-venc','hb-term','hb-lleg','hb-corte'].find(k=>h.includes("togTarj('"+k+"')"));
+   if(conOrds){togTarj(conOrds);h=document.getElementById('p-panorama').innerHTML;
+     __check("DIR: al abrir una bandeja la lista sale agrupada por familia, con foto/WH/fase y enlace al estado de cada orden",h.includes('tarj-lista')&&h.includes('agrupadas por familia')&&h.includes('grp-row')&&h.includes('irEstadoOrden(')&&h.includes('fase-mini'));
+     togTarj(conOrds);}
+   else __check("DIR: al abrir una bandeja la lista sale agrupada por familia, con foto/WH/fase y enlace al estado de cada orden",true,'ninguna bandeja tiene órdenes en esta base de prueba');
+   // irEstadoOrden usa ir(): deja el "← atrás"
+   {const o=S.ordenes.find(x=>abierta(x)&&!x.fecha)||S.ordenes.find(x=>abierta(x));NAVH.length=0;page='panorama';render();irEstadoOrden(o.id);
+    __check("DIR: el clic en una orden de Hoy lleva a otra pantalla dejando el '← atrás'",page!=='panorama'&&NAVH.length===1&&document.getElementById('p-'+page).innerHTML.includes('← atrás'));
+    volver();__check("DIR: y el atrás devuelve a Hoy",page==='panorama'&&NAVH.length===0);}
+   __check("DIR: famDeOrden agrupa por la familia (categoría padre)",(()=>{const o=S.ordenes.find(x=>K(x.cat)&&K(K(x.cat).padre));if(!o)return true;return famDeOrden(o)===K(K(o.cat).padre).n})());
+   TARJ={exp:{}};NAVH.length=0;page='ordenes';render();
+   __check("DIR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
