@@ -114,7 +114,9 @@ mes con botón "pedida" (`atenderCompra`).
 5 **Congelar** (`congelarPlan`: versión en `S.planes` con `oids`; `planMes[ym].congelado={ver,ts,u}`; agregar/quitar
    vuelve a borrador). Liberación marca "EN EL PLAN — pendiente de liberar"; cada centro → Carga que viene muestra el
    plan congelado con foto/WH/fase y "pendiente de liberar" (`planCongeladoCentroHTML`).
-El plan **arranca con lo en proceso** (fase ≥ 2, `planBase`); en "Agregar" solo fases tempranas, agrupadas por fase por defecto;
+El plan **arranca con lo en proceso** (`planBase`: grupos con la columna "en el plan cuenta como en proceso" de la tabla 5,
+de cualquier Proyecto, minutos pendientes); en "Agregar" solo los demás grupos, agrupados por fase por defecto; órdenes sin
+mes de Proyecto → bandeja Hoy `sinMesProyecto`;
 resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembre sin órdenes agregadas todavía; ella agrega y congela.
 
 ### 2.4 Motor de programación (no tocar sin permiso)
@@ -136,8 +138,9 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 ### 2.5 Tejeduría y tintorería
 - Tejeduría teje contra stock por tipo de tela (Stock de tela cruda, **primera entrada del menú textil**, anticipación
   `tejAnticipSem` 2). **Programación manual (15-sep)**: la pantalla ya no muestra la grilla automática; muestra pedido vs
-  cargado por tela y la persona programa tela × máquina × día × kg (`S.params.progTej`, bitácora). El motor sigue
-  estimando la fecha de tela lista internamente. Sin imprimir. Pendiente: descontar stock en el programa; carga de stock por
+  cargado por tela y la persona programa tela × máquina × día × kg (`S.params.progTej`, bitácora; avisa sin impedir si la tela no está en `kgTela` o se pasa de `kgDiaTela`). El motor sigue
+  estimando la fecha de tela lista internamente; para que use lo manual hace falta tocar la sección de tejeduría del motor
+  (opciones B1/B2 en `OBSERVACIONES_PLAN_TEJEDURIA_REPORTE.md` §5, pendiente de autorización). Sin imprimir. Pendiente: descontar stock en el programa; carga de stock por
   Excel; código propio de corrida.
 - **Tintorería** (lo más delicado; detalle en `CLAUDE.md`): baños por color (Pantone) armados a mano en "Armar baños"
   (`propuestaColor`, familias A/B se mezclan, piqué de baño propio, remanentes se mezclan, WH se parte), confirmados en

@@ -58,3 +58,40 @@ kg cargados, y cuánto falta cargar.
 - Cargar la programación manual de tejeduría de esta semana (la grilla está vacía hasta que alguien programe).
 - Siguen: usuarios de módulo, plan de septiembre (ahora arranca con lo en proceso), STUART (Fleece perchado / French
   terry / Ribb 2x2 grueso), foto WH/MO/29252, tabla 6 "T-BIANCO-SINTEC(COMPACTADORA)".
+
+## Ajustes (15-sep, después del commit 52f9ab5)
+
+**1 · "En proceso" sin filtro de Proyecto.** Toda orden abierta cuyo grupo de fase está marcado como en proceso cuenta en
+el plan del mes con sus **minutos pendientes**, sea del Proyecto que sea (ya ocupa los centros). El desplegable de en
+proceso muestra la columna **Proyecto** de cada una.
+
+**2 · Órdenes sin mes de Proyecto.** Nueva bandeja en Hoy → Pendientes: "Órdenes sin mes de Proyecto: no entran al plan
+mensual", con el conteo y los valores de Proyecto que no dan mes. No se les asigna mes por suposición; se corrige en Odoo.
+
+**3 · El corte "fase ≥ 2" ya no está en el código.** Tabla 5 (grupos de fase) tiene la columna **"en el plan cuenta como
+en proceso"** (sí/no), sembrada igual que hoy: planificación, preparación de corte, corte, maquila externa, servicios,
+confección, terminados, prenda terminada y cerrada = sí; previo a producción y textil = no. Solo se siembra donde falta;
+lo editado no se pisa. `planBase` y "Agregar" leen esa columna (`enProcesoPlan(o)` = grupo de la fase → columna).
+
+**4 · Avisos en tejeduría manual (sin impedir).** Al programar: si la máquina no tiene esa tela en su tabla de kg
+(`kgTela`) o si los kg de ese día en esa máquina pasan su capacidad para la tela (`kgDiaTela`), sale un aviso, la fila queda
+marcada "con aviso" y la bitácora dice "CON AVISO: …". Se programa igual.
+
+**5 · Solo reporte: qué haría falta para que el motor use la programación manual de tejeduría como fecha de tela lista.**
+Hoy el motor calcula `telaLista` de cada orden con su propia corrida de tejeduría (lote por tela, por fecha requerida, con
+calibración y bloqueo por máquina) y de ahí sale `telaDesde` para tintorería y producción. Para que mande lo programado a mano:
+- (a) En la sección de tejeduría de `programar()`, para cada tela con filas en `S.params.progTej`, reemplazar la corrida
+  automática por las filas manuales: repartir los kg programados (máquina × día × kg) entre las órdenes de esa tela en
+  orden de fecha requerida, y la fecha de tela tejida de cada orden = el día en que se completa su kg. Es un cambio en el
+  motor (unas 15–25 líneas en esa sección), por eso no lo hice.
+- (b) Telas que nadie programó: dos opciones a decidir. **B1** el motor sigue con su corrida automática para esas telas
+  (mezcla: manual donde hay, automático donde no; la pantalla lo marcaría "sin programar a mano · fecha estimada por el
+  sistema"). **B2** sin programación manual no hay fecha de tela lista: la orden queda bloqueada "tejeduría sin programar"
+  y sale en una bandeja (más estricto, coherente con "la persona decide", pero deja sin fecha todo lo no programado).
+- (c) Kg programados menores al pedido: la parte no cubierta queda pendiente (misma decisión B1/B2 para ese resto);
+  mayores al pedido: se avisa (ya se muestra en "pedido vs cargado").
+- (d) Cambios: si tejeduría mueve una fila, el programa se recalcula (PLAN=null al guardar, ya ocurre).
+- (e) Pruebas: casos manual completo, manual parcial, tela sin programar, y que tintorería/producción se muevan con la
+  fecha manual.
+Recomendación: B1 mientras la persona de tejeduría toma el hábito; pasar a B2 cuando toda tela liberada tenga programa.
+Tú decides si se autoriza.

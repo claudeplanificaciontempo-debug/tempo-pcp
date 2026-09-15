@@ -1148,7 +1148,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const oP=mk('WH/TEST-OB-PROC','4CD Ensamble'),oT=mk('WH/TEST-OB-TEMP','0Ord Compras');PLAN=null;PLAN_ALL=null;
    page='plan';render();let h=document.getElementById('p-plan').innerHTML;
    __check("OB1: el plan arranca con lo en proceso (fase ≥2) incluido: cuenta en 'En el plan' y en la capacidad",planMesOidsTot(ym).has(oP.id)&&!planMesOidsTot(ym).has(oT.id)&&h.includes('en proceso +')&&h.includes(esc(oP.op)));
-   __check("OB2: en 'Agregar' solo aparecen las de fases tempranas; las en proceso no",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');const seg=h.slice(i);return seg.includes('fases tempranas')&&!seg.includes(esc(oP.op))})());
+   __check("OB2: en 'Agregar' solo aparecen las de fases tempranas; las en proceso no",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');const seg=h.slice(i);return seg.includes('en la tabla 5')&&!seg.includes(esc(oP.op))})());
    togGrpPMADD(oT.fase);render();h=document.getElementById('p-plan').innerHTML;__check("OB3: agrupar por FASE en agregar (grupo colapsable con conteo) y la temprana está dentro",h.includes('>Fase</option>')&&h.includes(esc(oT.fase))&&h.includes(esc(oT.op)));
    __check("OB4: resumen por centro compacto (bloques con % uso, unidades, horas y alcanza/no alcanza)",h.includes('cen-card')&&h.includes('% uso')&&/alcanza|no alcanza|sin capacidad/.test(h)&&!h.includes('<th class="num">Programado (h)</th>'));
    __check("OB5: las semanas sin nada no se muestran en las metas semanales",(()=>{const c=calcularPlan(ym);const vac=c.metas.filter(x=>!(Object.values(x.prod).some(p=>p.pz>0)||Object.values(x.real).some(v=>v>0)||x.ords>0));return !vac.length||h.includes(vac.length+' semana(s) sin nada, ocultas')})());
@@ -1167,6 +1167,30 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='imprimir';render();__check("OB9: Programa del día ya no ofrece Tejeduría (imprimir solo tintorería y producción)",!document.getElementById('p-imprimir').innerHTML.includes('>Tejeduría</option>'));
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("OB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* AJUSTES a observaciones: en proceso sin filtro de Proyecto y por tabla 5 · bandeja sin mes · avisos en tejeduría manual */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const ym=hoy().slice(0,7);PM.mes=ym;const bakPM=JSON.stringify(S.params.planMes||null);S.params.planMes={};const bakFG=JSON.stringify(S.params.faseGrupos);
+   __check("AJ3: la tabla 5 tiene la columna 'en el plan cuenta como en proceso' sembrada como el corte de hoy (planificación en adelante)",faseGrupos().every(g=>g.enProceso!==undefined)&&faseGrupos().find(g=>g.grupo==='corte').enProceso===true&&faseGrupos().find(g=>g.grupo==='textil').enProceso===false&&faseGrupos().find(g=>g.grupo==='previo a producción').enProceso===false);
+   const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);
+   const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
+   const mk=(op,fase,proy)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=proy;o.estado='plan';o.fase=fase;o.fecha=ym+'-20';delete o.programa;S.ordenes.push(o);return o};
+   const oF=mk('WH/TEST-AJ-FUT','4CD Ensamble',nomMes(sig)),oS=mk('WH/TEST-AJ-SINMES','4CD Ensamble','PROYECTO RARO 77');PLAN=null;PLAN_ALL=null;
+   __check("AJ1: una orden en proceso del Proyecto del mes siguiente cuenta en el plan de este mes",planMesOidsTot(ym).has(oF.id)&&planMesOidsTot(ym).has(oS.id));
+   page='plan';render();let h=document.getElementById('p-plan').innerHTML;__check("AJ1: el desplegable de en proceso muestra de qué Proyecto es cada una",(()=>{const i=h.indexOf(esc(oF.op));return i>0&&h.slice(i,i+900).includes(esc(nomMes(sig)))})());
+   faseGrupos().find(g=>g.grupo==='corte').enProceso=false;FASE_CACHE.ver++;__check("AJ3: planBase y Agregar leen la columna: apagada en 'corte', la orden deja de ser en proceso",!planMesOidsTot(ym).has(oF.id));faseGrupos().find(g=>g.grupo==='corte').enProceso=true;FASE_CACHE.ver++;
+   __check("AJ2: la orden sin mes de Proyecto va a la bandeja de Hoy → Pendientes y no se le asigna mes",(()=>{const it=pendientesHoy().find(x=>x.k==='sinMesProyecto');return !!it&&it.n>=1&&it.detalle.includes('PROYECTO RARO 77')&&mesPlan(oS)===null})());
+   S.ordenes=S.ordenes.filter(x=>![oF.id,oS.id].includes(x.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.params.faseGrupos=JSON.parse(bakFG);FASE_CACHE.ver++;
+   // 4 · tejeduría: avisos
+   const bakPT=JSON.stringify(S.params.progTej||null);S.params.progTej=[];const rT=S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');
+   if(rT){const bakK=JSON.stringify(rT.kgTela||null);const tOk=S.telas.find(t=>!t.ext&&!t.pique)||S.telas[0],tNo=S.telas.find(t=>t.id!==tOk.id&&!t.ext)||S.telas[1];rT.kgTela={[tOk.id]:240};
+     page='tejeduria';render();const set=(tela,kg)=>{document.getElementById('pt-tela').value=tela;document.getElementById('pt-rec').value=rT.id;document.getElementById('pt-dia').value=hoy();document.getElementById('pt-kg').value=String(kg)};
+     alerts.length=0;set(tOk.id,100);addProgTej();__check("AJ4: dentro de capacidad y con la tela en kgTela: sin aviso",progTej().length===1&&!progTej()[0].aviso&&!alerts.length);
+     set(tOk.id,200);addProgTej();__check("AJ4: pasarse de la capacidad del día avisa sin impedir y queda en bitácora",progTej().length===2&&/capacidad/.test(progTej()[1].aviso||'')&&alerts.some(m=>/aviso/i.test(m))&&/CON AVISO/.test(S.bitacora.slice(-1)[0].t));
+     set(tNo.id,10);addProgTej();__check("AJ4: tela que la máquina no tiene en kgTela avisa sin impedir",progTej().length===3&&/kgTela/.test(progTej()[2].aviso||'')&&document.getElementById('p-tejeduria').innerHTML.includes('con aviso'));
+     if(bakK==='null')delete rT.kgTela;else rT.kgTela=JSON.parse(bakK)}
+   const ptB=JSON.parse(bakPT);if(ptB)S.params.progTej=ptB;else delete S.params.progTej;
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("AJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

@@ -231,11 +231,11 @@ si `SIM.on`); la asistencia del día manda sobre personas. Plan mensual → Bloq
 `extrasResumenHTML` en el Bloque 2; Capacidad y decisiones marca "extras" (`tieneExtras`). Semanas cacheadas en `SEMC` (se limpia en `render`).
 Ver `SIMULADOR_CAPACIDAD_PLAN_REPORTE.md`.
 
-**Plan mensual, base en proceso (15-sep-2026):** `planBase(ym)` = abiertas con fase ≥ 2 y Proyecto ≤ mes; `planMesOidsTot` = base ∪
-agregadas; `cargaPlanCentros` y `congelarPlan` usan el total; "Agregar" solo fase < 2 (`PMADD.grp` por defecto 'fase'); Bloque 1
+**Plan mensual, base en proceso (15-sep-2026):** `planBase(ym)` = abiertas cuyo grupo de fase tiene la columna `enProceso` (tabla 5, sembrada planificación en adelante; `enProcesoPlan(o)`), de cualquier Proyecto, minutos pendientes; `planMesOidsTot` = base ∪
+agregadas; `cargaPlanCentros` y `congelarPlan` usan el total; "Agregar" solo grupos sin enProceso (`PMADD.grp` por defecto 'fase'); Bloque 1
 "Por centro" es `centrosCompactoHTML`; metas semanales ocultan semanas vacías (`semV`); simulador colapsa semanas sin carga
 (`SIM.verVacias`). **Tejeduría manual (15-sep):** sin grilla automática; `progTejPanelHTML` (`S.params.progTej[]`: tela, rec, dia, kg, u, ts;
-`addProgTej/setProgTejRow/delProgTejRow`, `cargasTejPorTela` pedido vs cargado). Programa del día ya no imprime tejeduría; Stock de tela
+`addProgTej` (avisa sin impedir: tela fuera de `kgTela` o kg del día > `kgDiaTela`; `p.aviso`, bitácora CON AVISO)`/setProgTejRow/delProgTejRow`, `cargasTejPorTela` pedido vs cargado). Bandeja Hoy `sinMesProyecto`. Programa del día ya no imprime tejeduría; Stock de tela
 cruda es la primera entrada de Planificación textil. Ver `OBSERVACIONES_PLAN_TEJEDURIA_REPORTE.md`.
 
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
