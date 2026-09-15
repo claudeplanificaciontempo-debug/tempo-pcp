@@ -217,7 +217,10 @@ Todo esto es **un componente por cosa**, reutilizado; al hacer una pantalla nuev
   fase**. En Plan mensual bloques 2 y 3 y en Mi centro.
 - **Buscador**: el de siempre (WH, ODC, **referencia (estilo)**, color, fase, cliente, categoría) en todas las listas.
 - **Devolver fase / revertir liberación**: el motivo se pide **solo cuando se devuelve**. Devolver = la fase nueva
-  cae en un **grupo anterior** de la tabla 5. Avanzar, o moverse dentro del mismo grupo, no pide motivo (igual queda en
+  tiene **secuencia menor** en la columna «secuencia» de la tabla 1 (números libres; dos fases con el mismo número
+  son **paralelas**). Mientras una fase no tenga secuencia se usa la regla por **grupo de la tabla 5** y la fase sale en
+  Hoy → Pendientes («Fases sin secuencia»). La secuencia la carga la usuaria; el sistema no la siembra (propuesta en
+  `SECUENCIA_FASES_DEVOLUCIONES_REPORTE.md`). Avanzar, o moverse a una fase paralela, no pide motivo (igual queda en
   auditoría con quién y cuándo). Revertir una liberación siempre pide motivo. Los motivos salen de la **tabla 15 ·
   Motivos** (Configuración → Órdenes y materiales), con usos: devolución de fase, reversión de liberación, **reproceso de
   tintorería** (estas filas conservan la columna "¿viene de tejeduría?" y son las que edita el panel de Tintorería) y

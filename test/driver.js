@@ -1303,6 +1303,35 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const rg=retrocesosMismoGrupo();__check("URG: se puede reportar qué grupos tienen varias fases (ahí un movimiento hacia atrás no pide motivo)",Array.isArray(rg)&&rg.every(g=>g.fases.length>1));
    const b=JSON.parse(bak);if(b)S.params.motivos=b;else delete S.params.motivos;
    __check("URG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* SECUENCIA DE FASES: manda sobre el grupo; iguales = paralelas; sin secuencia cae al grupo */
+  {const antes=__R.errors.length;const bakT1=JSON.stringify(S.params.faseMapeo);const bakM=JSON.stringify(S.params.motivos||null);
+   const fm=faseMapeo();const fA=fm[0].fase,fB=fm[1].fase,fC=fm[2].fase;
+   __check("SEQ: la tabla 1 tiene la columna secuencia editable y vacía (no se sembró sola)",fm.every(r=>r.secuencia===undefined||r.secuencia===''||typeof r.secuencia==='number')&&fasesSinSecuencia().length===fm.filter(r=>String(r.fase||'').trim()).length);
+   page='config';CONF.tab='ordenes2';render();__check("SEQ: la columna sale en la pantalla de la tabla 1",document.getElementById('p-config').innerHTML.includes(">secuencia</th>")&&document.getElementById('p-config').innerHTML.includes("'secuencia',this.value"));
+   const nb=S.bitacora.length;setFaseMapeoRow(0,'secuencia','10');setFaseMapeoRow(1,'secuencia','20');setFaseMapeoRow(2,'secuencia','20');
+   __check("SEQ: cargar la secuencia la guarda como número y queda en bitácora (quién, de qué a qué)",secuenciaDe(fA)===10&&secuenciaDe(fB)===20&&S.bitacora.length>nb&&/Secuencia de la fase/.test(S.bitacora.slice(-1)[0].t));
+   __check("SEQ: secuencia MENOR = devolución (pide motivo)",esDevolucionFase(fB,fA)===true);
+   __check("SEQ: secuencia MAYOR = avance (no pide motivo)",esDevolucionFase(fA,fB)===false);
+   __check("SEQ: misma secuencia = fases paralelas, no es devolución",esDevolucionFase(fB,fC)===false&&esDevolucionFase(fC,fB)===false&&fasesParalelas(fB,fC)===true);
+   __check("SEQ: la secuencia manda sobre el grupo de la tabla 5",(()=>{const a=fm.find(r=>r.sistema==='textil'),b=fm.find(r=>r.sistema==='planificación');if(!a||!b)return true;setFaseMapeoRow(fm.indexOf(a),'secuencia','90');setFaseMapeoRow(fm.indexOf(b),'secuencia','10');const r=esDevolucionFase(a.fase,b.fase)===true&&esDevolucionFase(b.fase,a.fase)===false;setFaseMapeoRow(fm.indexOf(a),'secuencia','');setFaseMapeoRow(fm.indexOf(b),'secuencia','');return r})());
+   // sin secuencia: manda el grupo de la tabla 5
+   setFaseMapeoRow(0,'secuencia','');setFaseMapeoRow(1,'secuencia','');setFaseMapeoRow(2,'secuencia','');
+   __check("SEQ: sin secuencia se usa la regla por grupo de la tabla 5",esDevolucionFase('2Planificacion','1Tintoreria')===true&&esDevolucionFase('1Tintoreria','2Planificacion')===false&&esDevolucionFase('1Tintoreria','1Tejeduria')===false);
+   __check("SEQ: si solo una de las dos tiene secuencia también manda el grupo",(()=>{const i=fm.findIndex(r=>r.fase==='1Tintoreria');if(i<0)return true;setFaseMapeoRow(i,'secuencia','5');const r=esDevolucionFase('2Planificacion','1Tintoreria')===true;setFaseMapeoRow(i,'secuencia','');return r})());
+   const it=pendientesHoy().find(x=>x.k==='faseSinSecuencia');
+   __check("SEQ: las fases sin secuencia salen en Hoy → Pendientes",!!it&&it.n===fasesSinSecuencia().length&&it.n>0&&/tabla 5/.test(it.detalle));
+   setFaseMapeoRow(0,'secuencia','10');const it2=pendientesHoy().find(x=>x.k==='faseSinSecuencia');
+   __check("SEQ: al cargar una secuencia, esa fase sale de la bandeja",it2.n===it.n-1);
+   // devolver por secuencia exige motivo de la tabla 15; avanzar no
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];S.params.motivos.push({motivo:'Error de captura en Odoo',uso:'fase'});
+   const o=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const guarda=o.fase;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   setFaseMapeoRow(0,'secuencia','10');setFaseMapeoRow(1,'secuencia','20');setFaseMapeoRow(2,'secuencia','20');
+   o.fase=fA;moverFases([o.id],fB,'');__check("SEQ: avanzar a una secuencia mayor no pide motivo",o.fase===fB&&!alerts.length);
+   alerts.length=0;moverFases([o.id],fC,'');__check("SEQ: moverse a una fase paralela (misma secuencia) no pide motivo",o.fase===fC&&!alerts.length);
+   alerts.length=0;moverFases([o.id],fA,'');__check("SEQ: volver a una secuencia menor exige motivo",o.fase===fC&&alerts.some(m=>/motivo/i.test(m)));
+   moverFases([o.id],fA,'Error de captura en Odoo');__check("SEQ: con motivo de la tabla 15 la devolución se hace y queda marcada como devolución",o.fase===fA&&auditoriaCambios().slice(-1)[0].dev===true);
+   window.alert=a0;o.fase=guarda;S.params.faseMapeo=JSON.parse(bakT1);FASE_CACHE.ver++;const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;PLAN=null;PLAN_ALL=null;
+   __check("SEQ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
