@@ -204,6 +204,18 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.14 Centros de producción (15-sep-2026 noche)
+- **Confección** se ve por **módulo**, con la **maquila aparte**: una tarjeta por puesto con prendas, minutos usados y
+  capacidad; al abrirla salen sus órdenes por familia.
+- Todos los centros tienen el **filtro de fases** común y el **agrupador** común (en la cola los grupos vienen abiertos
+  y el clic los cierra; se sigue arrastrando para cambiar el puesto).
+- **Resumen de la semana** arriba de la programación: día × familia, con unidades y horas.
+- **Carga que viene**: cruce **familia por fase** que se da vuelta, y **sin liberar** como tarjeta desplegable.
+- **Color**: botón «juntar colores en la cola» en corte y confección. Es vista y orden manual, queda en bitácora y no
+  cambia ninguna fecha del motor. Lo que haría falta para que el motor secuencie por color está en `CENTROS_REPORTE.md`.
+- Las vistas de centro **no muestran la fecha de entrega**: muestran plan inicio → fin y una marca (prioridad / va tarde).
+- **Costura: secuencia y rebalanceo** es una pestaña del centro Confección; ya no está suelta en el menú.
+
 ### 2.13 Liberación y Liberación a producción por bloques (15-sep-2026 noche)
 Las dos páginas tienen la misma estructura, con los componentes comunes:
 - **Bloque 1 · Por liberar**: arriba los botones (liberar todo lo filtrado, elegir órdenes 1×1, marcar todas, liberar

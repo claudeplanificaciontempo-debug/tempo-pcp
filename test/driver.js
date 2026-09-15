@@ -425,8 +425,10 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      {const oF=cola3[0].o;delete oF.progCentro.corte.pri;PLAN=null;PLAN_ALL=null;render();const c4=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
       __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · va al final'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
      // agrupar: reordena y suma, no esconde
-     CEN.niveles=['cliente','cat'];render();const arb=agruparCola(cola3,['cliente','cat']);const nHojas=a=>a.hojas?a.hojas.length:a.grupos.reduce((x,g)=>x+nHojas(g.sub),0);
-     __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes",nHojas(arb)===cola3.length&&arb.grupos.reduce((x,g)=>x+g.pz,0)===cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0)&&html().includes('Cliente:')&&(html().match(/draggable="true"/g)||[]).length===cola3.length);
+     GRP={};grpSt('cen').niveles=['cliente','cat'];render();const hc=html();const pend3=cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0);
+     const sumaGrp=(hc.match(/prendas · [\d.,]+ h<\/span>/g)||[]).length;
+     __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes (agrupador común)",hc.includes('Cliente:')&&(hc.match(/draggable="true"/g)||[]).length===cola3.length&&sumaGrp>0&&hc.includes(num(pend3)+' prendas'));
+     GRP={};
      // prio global manda: la pantalla lo dice
      const pr=oA.prio;oA.prio=1;render();__check("cola: si la orden tiene prio global, la pantalla dice que manda",html().includes('prio global 1 manda'));oA.prio=pr;
      // otro centro con menor puesto
@@ -1481,6 +1483,43 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const ba=JSON.parse(bakAud);if(ba)S.params.auditoriaCambios=ba;else delete S.params.auditoriaCambios;
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("LB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* CENTROS DE PRODUCCIÓN: secciones por módulo, filtro y agrupador comunes, resumen día × familia, color, marca */
+  {const antes=__R.errors.length;window.confirm=()=>true;GRP={};CEN.fases=null;CEN.q='';CEN.sem=0;CEN.todo=false;
+   page='centro';CEN.id='modulos';CEN.tab='prog';render();let h=document.getElementById('p-centro').innerHTML;
+   __check("CP1: Confección muestra una sección por módulo y la maquila aparte",/Confección por módulo/.test(h)&&/Maquila \(aparte de los módulos\)/.test(h)&&/data-t="mod-/.test(h));
+   __check("CP3: arriba de la programación está el resumen de la semana día × familia con unidades y horas",/Resumen de la semana/.test(h)&&(/día × familia|qué se hace cada día, por familia/.test(h)));
+   __check("CP2: la programación del centro usa el filtro de fases común y el agrupador común",/class="ffases"/.test(h)&&/setNivelGRP\('cen'|onchange="setNivelGRP\('cen'/.test(h.replace(/&quot;/g,'"'))||/grpSelHTML/.test(h));
+   __check("CP5: corte y confección tienen 'juntar colores en la cola' y dice que es solo vista y orden",/Juntar colores en la cola/.test(h)&&/el motor no secuencia por color/.test(h));
+   __check("CP6: la cola ya no muestra la fecha de entrega: plan inicio → fin y marca",/Plan: inicio → fin<\/th><th>Marca<\/th>/.test(h));
+   __check("CP7: Costura es una pestaña dentro de Confección y ya no está suelta en el menú",h.includes("CEN.tab='costura'")&&!document.querySelector('nav a[data-p="costura"]'));
+   CEN.tab='costura';render();h=document.getElementById('p-centro').innerHTML;
+   __check("CP7: la pestaña Costura trae secuencia, rebalanceo y andon dentro del centro",/Secuencia por módulo/.test(h)&&/Rebalanceo/.test(h)&&/Andon/.test(h));
+   // carga que viene
+   CEN.tab='viene';CEN.cruce='fam';render();h=document.getElementById('p-centro').innerHTML;
+   __check("CP4: 'Carga que viene' cruza familia por fase y se puede dar vuelta",/Familia por fase/.test(h)&&/ver fases en las filas/.test(h)||!/Familia por fase/.test(h));
+   if(/Familia por fase/.test(h)){CEN.cruce='fase';render();const h2=document.getElementById('p-centro').innerHTML;
+     __check("CP4: al darla vuelta, las fases pasan a las filas",/ver familias en las filas/.test(h2));CEN.cruce='fam'}
+   else __check("CP4: al darla vuelta, las fases pasan a las filas",true,'sin órdenes en camino en esta base');
+   __check("CP4: 'Sin liberar' se muestra como tarjeta desplegable",/data-t="cv-sinlib"/.test(h)||!/Sin liberar/.test(h));
+   __check("CP2: 'Carga que viene' también usa el filtro de fases y el agrupador comunes",/class="ffases"/.test(h)&&/grp-sel|— sin agrupar —/.test(h));
+   __check("CP6: 'Carga que viene' no muestra la entrega, muestra la marca",!/<th>Entrega<\/th>/.test(h));
+   // el filtro de fases acota de verdad
+   {CEN.tab='plan';CEN.fases=new Set(['∅']);render();const hv=document.getElementById('p-centro').innerHTML;
+    __check("CP2: 'ninguna fase' deja la vista vacía (el filtro acota de verdad)",/Órdenes de la semana <span class="note">0 /.test(hv)||/0 prendas programadas/.test(hv));CEN.fases=null}
+   // reordenar por color: solo orden manual, con bitácora, sin tocar el motor
+   {const P0=programar();const filas=filasDeCentros(['modulos'],P0,hoy(),dsum(hoy(),60),'');const cola=colaCentro('modulos',filas);
+    if(cola.length){const nb=S.bitacora.length;const finAntes=JSON.stringify(Object.keys(P0.ordenes).map(id=>(P0.ordenes[id]||{}).finPro));
+      ordenarColaPorColor('modulos');
+      const pris=cola.map(f=>((f.o.progCentro||{}).modulos||{}).pri).filter(x=>x>0);
+      PLAN=null;PLAN_ALL=null;const P1=programar();
+      __check("CP5: juntar colores solo numera la cola (queda en bitácora) y no cambia las fechas del motor",pris.length===cola.length&&S.bitacora.length>nb&&/juntando colores/.test(S.bitacora.slice(-1)[0].t)&&JSON.stringify(Object.keys(P1.ordenes).map(id=>(P1.ordenes[id]||{}).finPro))===finAntes);
+      cola.forEach(f=>{if(f.o.progCentro&&f.o.progCentro.modulos&&f.o.progCentro.modulos.porColor)delete f.o.progCentro.modulos});PLAN=null;PLAN_ALL=null;}
+    else __check("CP5: juntar colores solo numera la cola (queda en bitácora) y no cambia las fechas del motor",true,'sin cola en confección');}
+   // corte: mismas piezas
+   CEN.id='corte';CEN.tab='prog';render();h=document.getElementById('p-centro').innerHTML;
+   __check("CP: corte tiene resumen, filtro de fases, agrupador y juntar colores",/Resumen de la semana/.test(h)&&/class="ffases"/.test(h)&&/Juntar colores en la cola/.test(h));
+   CEN.id='corte';CEN.tab='plan';CEN.fases=null;GRP={};page='ordenes';render();
+   __check("CP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

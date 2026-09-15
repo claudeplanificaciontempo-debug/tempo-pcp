@@ -324,6 +324,17 @@ corte/modulos/empaque con bandera `S.params.rutaDefectoSembrada`, `centrosRutaDe
 cuando la orden no tiene `rutaEditada`; `ordenesContraRutaDefecto()`/`contraRutaHTML()` reportan las cargadas que la
 contradicen. Ver `LIBERACION_BLOQUES_REPORTE.md`.
 
+**Centros de producción (15-sep-2026 noche):** `vCentro` usa los componentes comunes: filtro de fases en la cabecera
+(`CEN.fases`, `togFaseCEN`, `faseOkCEN` filtra `filas`), agrupador común en la cola (`filasGRP('cen',…)` con
+`grpSt('cen').todoAbierto=true`, que invierte el colapso: en una lista de trabajo los grupos vienen abiertos) y en
+Carga que viene (`filasGRP('cenv',…)`). `resumenDiaFamiliaHTML` (día × familia, unidades y horas) va arriba de la
+programación; `cruceFamFaseHTML` (familia × fase, se da vuelta con `CEN.cruce`) y la tarjeta `cv-sinlib` van en Carga
+que viene. Confección: `seccionesModulos`/`modKPIsHTML` (una tarjeta por módulo y la maquila aparte).
+`ordenarColaPorColor(c)` renumera `progCentro[c].pri` juntando colores (vista y orden manual, bitácora, NO toca el
+motor). `marcaCentro(o,P)` reemplazó a la fecha de entrega en las vistas de centro (etiquetas prioridad / va tarde).
+`vCostura(el,embebido)` se renderiza como pestaña `CEN.tab==='costura'` del centro Confección y la entrada suelta del
+menú se quitó. Qué faltaría para secuenciar por color en el motor: ver `CENTROS_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
