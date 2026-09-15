@@ -1200,7 +1200,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const c=calcularPlan(ym);const P=programar();
    __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const v=enMes.filter(o=>o.fecha&&o.fecha<hoy()).length;const r=enMes.filter(o=>!(o.fecha&&o.fecha<hoy())&&P.ordenes[o.id]&&P.ordenes[o.id].atraso).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
    page='plan';render();let h=document.getElementById('p-plan').innerHTML;
-   __check("VR3: el Bloque 2 muestra dos contadores (Vencidas y En riesgo) con enlace a Hoy → Advertencias, sin la tabla larga",h.includes('Vencidas (entrega pasada)')&&h.includes('En riesgo según el programa')&&h.includes("irNoLlegan('"+ym+"','venc')")&&!h.includes('órdenes en riesgo según el programa <span')&&!h.includes('clic para ver por qué y en qué paso se atascan'));
+   __check("VR3: el Bloque 2 muestra dos contadores (Vencidas y En riesgo) con enlace a Hoy → Advertencias, sin la tabla larga",h.includes('Vencidas (fecha meta pasada)')&&h.includes('En riesgo según el programa')&&h.includes("irNoLlegan('"+ym+"','venc')")&&!h.includes('órdenes en riesgo según el programa <span')&&!h.includes('clic para ver por qué y en qué paso se atascan'));
    NLF={mes:ym,tipo:null};page='panorama';render();h=document.getElementById('p-panorama').innerHTML;
    __check("VR2/4: Advertencias de fecha separa Vencidas (con fecha posible) y En riesgo, filtrado por el mes",h.includes('id="nollegan"')&&h.includes('Solo '+fmtMesEG(ym))&&h.includes('Fecha posible (para avisar al cliente)')&&h.includes('>Vencidas <span')&&h.includes('>En riesgo <span'));
    __check("VR2: 'Se atasca en' no muestra [object Object]; muestra nombre y +N d o —",!h.includes('[object Object]')&&(()=>{const r={atasco:{nombre:'Confección',dias:3}};const r2={atasco:null};return atascoTxt(r).includes('Confección')&&atascoTxt(r).includes('+3')&&atascoTxt(r2).includes('—')})());
@@ -1359,6 +1359,21 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("DIR: ningún clic de Hoy salta de pantalla sin dejar el atrás (todos usan ir())",!/onclick="[^"]*page=/.test(h));
    __check("DIR: el aviso de capacidad enlaza con ir()",!/page=.capacidad/.test(h));
    __check("DIR atrás sin errores",__R.errors.length===antes);}
+  /* BLOQUE 2 · vencidas y en riesgo contra la fecha meta (compromiso si existe), igual que el motor */
+  {const antes=__R.errors.length;const ym=hoy().slice(0,7);
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk2=(p)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/B2M-'+o.id.slice(0,4);o.estado='plan';o.proyecto=new Date(ym+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long'})+' '+ym.slice(0,4);Object.assign(o,p);delete o.programa;S.ordenes.push(o);return o};
+   const oComp=mk2({fecha:dsum(hoy(),-30),fechaCompromiso:dsum(hoy(),30)});
+   const oVenc=mk2({fecha:dsum(hoy(),-30),fechaCompromiso:''});
+   PLAN=null;PLAN_ALL=null;const P0=programar();
+   [oComp,oVenc].forEach(o=>{P0.ordenes[o.id]=Object.assign({},P0.ordenes[o.id]||{},{atraso:false,bloqueo:null})});
+   P0.ordenes[oComp.id].atraso=true; // el motor dice que no llega al compromiso
+   const c=calcularPlan(ym);
+   __check("B2M: una orden con fecha de Odoo pasada pero compromiso futuro NO cuenta como vencida",!S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym&&(()=>{const f=fechaMetaDe(o);return f&&f<hoy()})()).some(o=>o.id===oComp.id)&&fechaMetaDe(oComp)===oComp.fechaCompromiso);
+   __check("B2M: si el motor dice que no llega al compromiso, cuenta como en riesgo",c.dem.riesgo>=1);
+   __check("B2M: sin compromiso manda la fecha de Odoo y sí es vencida",fechaMetaDe(oVenc)===oVenc.fecha&&c.dem.vencidas>=1);
+   S.ordenes=S.ordenes.filter(o=>o!==oComp&&o!==oVenc);PLAN=null;PLAN_ALL=null;
+   __check("B2M sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
