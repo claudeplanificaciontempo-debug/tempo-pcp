@@ -286,3 +286,8 @@ OT 695 órdenes; fotos 664/665. Reversión de la numeración de la cola de Corte
 atendidas. `profundidadDe`/`setProfundidadColor`/`bandejaProfundidadHTML`; 37 baños armados (D1 claros, D2 oscuros/medios),
 16 colores sin clasificar en bandeja; 7 órdenes con contradicción Odoo (1Tintoreria) vs piso (baño salido).
 `gruposAdvertencias`/`atenderGrupo`; fotos y "sale (est.)" en tintorería; `wipOrdenesHTML` (color); `tarjetasHoyHTML`.
+
+### Tintorería: reglas de máquina y color (14-sep-2026 noche)
+Ver `TINTORERIA_REGLAS_MAQUINA_COLOR_REPORTE.md`. `maqApta`: claro→rol claro, oscuro→rol oscuro, medio/sin clasificar→cualquiera;
+chico sin piqué→STUART (rol ambos). 16 colores clasificados a mano, 42 baños a máquina automática, 17 nuevos, inicio 15-sep.
+Pendientes: SURF SPRAY sin profundidad; telas/capacidad piqué de STUART; 35 baños <70 %.

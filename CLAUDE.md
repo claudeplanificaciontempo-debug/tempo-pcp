@@ -170,7 +170,10 @@ marcado estimado), `bien` (plegado). Una sola ficha de **próximo paso** por fil
 **Profundidad de color (14-sep-2026):** `profundidadDe(c)` = `fam` claro/oscuro explícito, `fam` confirmado a mano
 (`c.profConf`, desde la bandeja "Colores sin profundidad" en Tintorería, `setProfundidadColor`) o prefijo Pantone TCX;
 "medio" sin confirmar es el valor por defecto de la carga y cuenta como SIN clasificar. Nunca por parecido de nombre.
-Regla de máquinas: claros → DANITECH 1, oscuros y medios → DANITECH 2; STUART para lo que no llene una grande.
+Regla de máquinas (motor, `maqApta` en `programar()`, desde el 14-sep-2026 noche): rol de máquina (`rolColor` claro/oscuro/ambos)
+contra `profundidadDe(color)`: claro → solo rol claro (DANITECH 1), oscuro → solo rol oscuro (DANITECH 2), medio o sin
+clasificar → cualquiera; baño confirmado que cabe en una pequeña y sin piqué → pequeña (STUART, rol ambos, cap piqué 0).
+Ya no se usa `profColor` (nombre) para elegir máquina. Ver `TINTORERIA_REGLAS_MAQUINA_COLOR_REPORTE.md`.
 **Advertencias de fecha** se muestran por movimiento (`gruposAdvertencias`, `atenderGrupo`). **Hoy** va en tarjetas
 desplegables (`tarjetasHoyHTML`). **Producto en proceso → Producción** tiene lista por orden con foto y agrupación
 (`wipOrdenesHTML`, incluye COLOR). Recarga del 14-sep (tarde): Odoo mandó en fase y fecha por instrucción expresa
