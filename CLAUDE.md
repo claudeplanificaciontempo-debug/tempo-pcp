@@ -282,6 +282,22 @@ sub-área: min vs capacidad por recurso, plan vs real por semana, paros). Al fin
 siempre "Resumen de todos los procesos" por centro, filtrado por lo que el
 perfil puede ver. Enlaces en el menú: "Reportería textil" y "Reportería por área".
 
+**Componentes comunes, tema y responsive (15-sep-2026):** se construyen UNA vez y se reutilizan; ninguna pantalla
+copia el suyo. **Filtro de fases**: `filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)` (desplegable con los grupos de la tabla 5
+vía `grupoDe`, "Seleccionar todas"/"Limpiar", `togGrupoFiltro`, centinela `'∅'` = ninguna); `selFases` solo lo llama; lo usan
+LIB.fases, ORDF.fases y FAM.fases. **Agrupador**: `GRP_CAMPOS` + `filasGRP` con campos nuevos `paso` (próximo paso) y `mes`, y
+horas por grupo (`minPendiente/60`); Asignación por orden migró de `arbolAPO` a `filasGRP('apo',…)`; cola por centro, Plan →
+agregar y Carga por tipo de producto siguen con el suyo a propósito. **Tarjeta resumen**: `tarjetasResumenHTML(cards)` +
+`TARJ.exp`/`togTarj` (`data-t="<id>"`, lista desplegable con `whCell`) en Plan bloques 2 y 3 y en Mi centro. **Motivos (tabla 15)**:
+`S.params.motivos[]={motivo,uso}` con `USOS_MOTIVO` (fase | liberacion | piso), `motivos()/motivosDe/motivoValido/selMotivoHTML`,
+`add/set/delMotivoRow` (del con confirmación, en la lista GUARDIA); `moverFases` rechaza motivos fuera de la tabla, `retirarLib(id,et,motivo)`
+lo exige y se abre por `mRetirarLib`; todo va a `S.params.auditoriaCambios[]={ts,u,tipo,oid,op,antes,despues,motivo}` (`registrarAuditoria`)
+y se ve en Auditoría (`auditoriaCambiosHTML`). **Atrás**: `NAVH`/`navSnap`/`volver`/`atrasHTML`; `ir(p)` apila y el clic del menú limpia
+la pila (`NAV_PROG`). **Tema**: tokens `--t-primary/--t-accent/--t-accent-soft/--t-card/--t-block/--t-thead` en `:root` (único lugar para
+cambiar de paleta) aplicados a `.kpi.tarj`, `.panel h3`, `thead` y la cinta de bloque del plan. **Responsive**: `#navBtn` (☰) y el
+`@media (max-width:860px)` (menú colapsable `nav.abierto`, cabecera en dos filas, tarjetas en columna, tablas con scroll propio).
+Ver `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

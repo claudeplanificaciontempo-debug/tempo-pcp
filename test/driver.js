@@ -1000,7 +1000,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='plan';render();const hp=()=>document.getElementById('p-plan').innerHTML;let h=hp();
    const i1=h.indexOf('BLOQUE 1'),i2=h.indexOf('BLOQUE 2'),i3=h.indexOf('BLOQUE 3'),i4=h.indexOf('BLOQUE 4'),i5=h.indexOf('BLOQUE 5');
    __check("PM: cinco bloques en orden (días y capacidad → resumen → meta → agregar → congelar)",i1>0&&i1<i2&&i2<i3&&i3<i4&&i4<i5,[i1,i2,i3,i4,i5].join(','));
-   __check("PM: el calendario de días está arriba de la capacidad y de los KPIs",h.indexOf('id="plan-cal"')<h.indexOf('Capacidad del mes por área')&&h.indexOf('id="plan-cal"')<h.indexOf('class="kpis"'));
+   __check("PM: el calendario de días está arriba de la capacidad y de los KPIs",h.indexOf('id="plan-cal"')<h.indexOf('Capacidad del mes por área')&&h.indexOf('id="plan-cal"')<h.indexOf('class="kpis'));
    __check("PM: agrupar por ODC / cliente / entrega / familia / categoría hija y jalar del mes siguiente",h.includes('Agrupar por')&&h.includes('Jalar del mes siguiente')&&['ODC','Cliente','Fecha de entrega','Familia','Categoría hija'].every(x=>h.includes('>'+x+'</option>')));
    __check("PM: las órdenes del mes aparecen agrupadas (grupo ODC con conteo y suma de prendas) y colapsadas",h.includes('ODC ODC-TEST-PM')&&/2 órdenes · [\d.]+ prendas/.test(h)&&!h.slice(h.indexOf('<h3>Agregar órdenes al plan')).includes(esc(o1.op)));
    togGrpPMADD('ODC ODC-TEST-PM');h=hp();__check("PM: al expandir el grupo se ven las órdenes con foto/WH, fase, cliente, categoría, color, prendas y entrega",h.includes(esc(o1.op))&&h.includes(esc(o2.op))&&h.includes(esc(faseNombre(o1.fase||'—')))&&h.includes(o1.fecha));
@@ -1028,13 +1028,13 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("FF: Liberación muestra la fase junto a la WH",veFase('liberacion',()=>{LIB.et='corte';LIB.q='WH/TEST-FF';LIB.verLista=true}));
    __check("FF: Control de piso usa foto+WH+fase en las filas de las tres áreas (y se ve cuando hay filas)",(()=>{const src=vControl.toString();const usa=src.split('whCell(o)').length>=3;page='control';CTL.area='pro';CTL.q='';CTL.centro=null;render();const h=document.getElementById('p-control').innerHTML;const filas=(h.match(/<tr><td style="white-space:nowrap">/g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
    __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
-   __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:null,q:'WH/TEST-FF'}}));
+   __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:[],q:'WH/TEST-FF'}}));
    __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('produccion',()=>{APO.q='WH/TEST-FF'}));
    __check("FF: Costura · secuencia por módulo usa foto+WH+fase",(()=>{const src=vCostura.toString();return src.includes('whCell(o)')})());
    S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};APO.q='';PLAN=null;PLAN_ALL=null;
    // buscador
    page='liberacion';LIB.et='tela';LIB.q='';render();let hl=document.getElementById('p-liberacion').innerHTML;__check("FF: el buscador es un solo campo (busq) sin menú cuando está vacío",hl.includes('class="busq"')&&!hl.includes('busq-menu'));
-   LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ofrece 'Buscar Orden de producción / ODC / Estilo / Color / Fase / Cliente por: texto' como Odoo",hl.includes('busq-menu')&&['Orden de producción','ODC','Estilo','Color','Fase','Cliente'].every(n=>hl.includes('Buscar <b>'+n+'</b> por: <i>'+esc(o.op.slice(-4))+'</i>')));
+   LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ofrece 'Buscar Orden de producción / ODC / Referencia (estilo) / Color / Fase / Cliente por: texto' como Odoo",hl.includes('busq-menu')&&['Orden de producción','ODC','Referencia (estilo)','Color','Fase','Cliente'].every(n=>hl.includes('Buscar <b>'+n+'</b> por: <i>'+esc(o.op.slice(-4))+'</i>')));
    setBusq('LIB.q','fase');hl=document.getElementById('p-liberacion').innerHTML;__check("FF: elegir un campo cierra el menú y deja el chip con el campo elegido",!hl.includes('busq-menu')&&hl.includes('Fase ✕'));
    const q4=o.op.slice(-4);const porFase=S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q')),porTodo=(()=>{BUSQ['LIB.q']='*';return S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q'))})();
    __check("FF: buscar por campo acota (por Fase no encuentra el número de WH; en todos sí)",porFase.every(x=>normTxt(faseNombre(x.fase)).includes(normTxt(q4)))&&porTodo.some(x=>x.id===o.id),porFase.length+' vs '+porTodo.length);
@@ -1046,8 +1046,9 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='liberacion';LIB.et='tela';LIB.q='';render();__check("TC: el buscador ya no deja el residuo 'X.q=v)' en pantalla",!document.getElementById('p-liberacion').innerText.includes('LIB.q=v)'));
    // C · fases
    const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='tej'))||S.ordenes.find(abierta);const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-TC';oT.fase='1Tejeduria';oT.estado='plan';oT.odc='ODC-TC';oT.ref='EST-TC';if(!(oT.ruta||[]).some(p=>p.centro==='tej'))oT.ruta=[{centro:'tej',t:0}].concat(oT.ruta||[]);(oT.telas||[]).forEach(t=>delete t.ext);delete oT.programa;S.ordenes.push(oT);PLAN=null;PLAN_ALL=null;
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];if(!S.params.motivos.some(m=>m.motivo==='ya no se teje, se compra'))S.params.motivos.push({motivo:'ya no se teje, se compra',uso:'fase'});
    page='control';CTL.area='fases';CTLF={fase:'1Tejeduria',sel:new Set(),q:'',nueva:'',motivo:''};render();let h=document.getElementById('p-control').innerHTML;
-   __check("TC: Control de piso tiene la vista 'Cambio de fases' con selector de fase, buscador y la orden con foto/WH, ODC, cliente, estilo, categoría, color, cantidad, entrega",h.includes('Cambio de fases')&&h.includes('data-q="CTLF.q"')&&h.includes('WH/TEST-TC')&&h.includes('ODC-TC')&&h.includes('EST-TC')&&h.includes('Motivo (obligatorio)'));
+   __check("TC: Control de piso tiene la vista 'Cambio de fases' con selector de fase, buscador y la orden con foto/WH, ODC, cliente, estilo, categoría, color, cantidad, entrega",h.includes('Cambio de fases')&&h.includes('data-q="CTLF.q"')&&h.includes('WH/TEST-TC')&&h.includes('ODC-TC')&&h.includes('EST-TC')&&h.includes('Motivo (obligatorio'));
    CTLF.q='ODC-TC';BUSQ['CTLF.q']='odc';render();h=document.getElementById('p-control').innerHTML;__check("TC: el buscador inteligente acota por ODC dentro de la fase",h.includes('WH/TEST-TC')&&(h.match(/WH\/TEST-TC/g)||[]).length>=1);CTLF.q='';delete BUSQ['CTLF.q'];
    const nAntes=(S.params.alertasCompras||[]).filter(a=>!a.atendida).length;moverFases([oT.id],'0Ord Compras','');__check("TC: sin motivo no se mueve",oT.fase==='1Tejeduria'&&alerts.some(m=>/motivo/i.test(m)));
    moverFases([oT.id],'0Ord Compras','ya no se teje, se compra');
@@ -1094,9 +1095,9 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
-   const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)/.test(body)});
+   const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
    __check("GUARDIA: nadie recorta la bitácora ni las salidas de tintorería ni borra el avance de paso",!src.includes('S.bitacora=S.bitacora.slice')&&!src.includes('S.salidas_tin=S.salidas_tin.slice')&&src.split('delete S.avance[').length===1&&src.split('localStorage.clear').length===1);
    __check("GUARDIA: solo dos lugares llaman delete() en la base (guardar diferencias y el borrado operativo con frase)",src.split('.delete().in(').length-1===2);
@@ -1233,6 +1234,50 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const metasB=JSON.parse(bakMetas);if(metasB)S.params.metas=metasB;else delete S.params.metas;
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("B3 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* COMPONENTES COMUNES: filtro de fases · agrupador con horas · tarjetas · motivos obligatorios + auditoría · atrás · tema · responsive */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const bakMot=JSON.stringify(S.params.motivos||null),bakAud=JSON.stringify(S.params.auditoriaCambios||null);S.params.motivos=[];S.params.auditoriaCambios=[];
+   // a) filtro de fases agrupado
+   page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;render();let h=document.getElementById('p-liberacion').innerHTML;
+   __check("CC-a: el filtro de fases es el común: agrupado por grupo de la tabla 5 con 'Seleccionar todas' y 'Limpiar'",h.includes('class="ffases"')&&h.includes('Seleccionar todas')&&h.includes('>Limpiar<')&&/\d · [A-ZÁÉÍÓÚ ]+<\/span>/.test(h));
+   page='familias';render();__check("CC-a: Demanda agregada usa el mismo filtro de fases",document.getElementById('p-familias').innerHTML.includes('class="ffases"'));
+   page='ordenes';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
+   // b) agrupador con horas y campos comunes
+   GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
+   __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Categoría padre','Categoría hija','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
+   GRP={};page='produccion';APO={niveles:['cliente'],cli:'',cen:'',mes:'',q:''};render();h=document.getElementById('p-produccion').innerHTML;__check("CC-b: Asignación por orden usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));APO.niveles=null;GRP={};
+   // c) tarjetas resumen
+   const ym=hoy().slice(0,7);PM.mes=ym;TARJ={exp:{}};page='plan';render();h=document.getElementById('p-plan').innerHTML;__check("CC-c: el Bloque 2 y el Bloque 3 usan la tarjeta resumen del tema (número grande, clic despliega lista)",h.includes('kpi tarj')&&h.includes('data-t="b2-ords"')&&h.includes('data-t="b3-libs"'));
+   {const oz=S.ordenes.filter(abierta).slice(0,2);TARJ.exp={'cc-x':true};const hx=tarjetasResumenHTML([{id:'cc-x',v:oz.length,k:'Prueba',items:oz}]);__check("CC-c: al hacer clic se despliega la lista con foto, WH y fase",hx.includes('tarj-lista')&&hx.includes('OP · fase')&&(!oz.length||hx.includes('fase-mini'))&&hx.includes("togTarj('cc-x')"));TARJ={exp:{}};}
+   TAB={centro:'modulos',rec:null};page='tablet';render();__check("CC-c: Mi centro usa las mismas tarjetas",document.getElementById('p-tablet').innerHTML.includes('kpi tarj'));TAB={centro:null,rec:null};
+   // d) buscador común
+   __check("CC-d: el buscador común ofrece WH, ODC, cliente y referencia",BUSQ_CAMPOS.some(x=>x[0]==='op')&&BUSQ_CAMPOS.some(x=>x[0]==='odc')&&BUSQ_CAMPOS.some(x=>x[0]==='cliente')&&BUSQ_CAMPOS.some(x=>x[0]==='ref'&&/Referencia/.test(x[1])));
+   // e) motivos obligatorios de la tabla 15 + auditoría
+   page='config';CONF.tab='ordenes2';render();__check("CC-e: existe la tabla 15 · Motivos con los tres usos",document.getElementById('p-config').innerHTML.includes('15 · Motivos')&&USOS_MOTIVO.length===3);
+   const o=S.ordenes.find(x=>abierta(x)&&x.fase)||S.ordenes[0];const faseA=o.fase;const otra=fasesDisponibles().find(f=>f!==faseA);alerts.length=0;
+   moverFases([o.id],otra,'texto libre cualquiera');__check("CC-e: devolver fase con texto libre se rechaza (motivo no está en la tabla)",o.fase===faseA&&alerts.some(m=>/tabla 15/.test(m))&&auditoriaCambios().length===0);
+   __check("CC-e: sin motivos configurados el selector avisa y no deja continuar",selMotivoHTML('x','fase').includes('15 · Motivos')&&selMotivoHTML('x','fase').includes('type="hidden"'));
+   S.params.motivos.push({motivo:'Error de captura en Odoo',uso:'fase'},{motivo:'Cliente cambió la orden',uso:'liberacion'});alerts.length=0;
+   moverFases([o.id],otra,'Error de captura en Odoo');const au=auditoriaCambios().slice(-1)[0];
+   __check("CC-e: con motivo de la tabla la fase cambia y queda en auditoría (usuario, fecha, antes, después, motivo)",o.fase===otra&&!!au&&au.tipo==='fase'&&au.antes===faseA&&au.despues===otra&&au.motivo==='Error de captura en Odoo'&&!!au.u&&!!au.ts);
+   moverFases([o.id],faseA,'Error de captura en Odoo');
+   __check("CC-e: el selector de motivo es una lista cerrada (sin texto libre) en el modal de fase",(()=>{mCambiarFase(o.id);const el=document.getElementById('cf-m');const ok=!!el&&el.tagName==='SELECT';try{cerrar()}catch(e){}return ok})());
+   const oL=S.ordenes.find(x=>abierta(x)&&x.lib&&x.lib.tela&&x.lib.tela.ok)||(()=>{const x=S.ordenes.find(abierta);x.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};return x})();const nA=auditoriaCambios().length;
+   retirarLib(oL.id,'tela','');__check("CC-e: revertir liberación sin motivo no revierte",!!(oL.lib&&oL.lib.tela)&&auditoriaCambios().length===nA);
+   retirarLib(oL.id,'tela','Cliente cambió la orden');const au2=auditoriaCambios().slice(-1)[0];__check("CC-e: revertir con motivo de la tabla revierte y queda en auditoría con antes/después",!(oL.lib&&oL.lib.tela)&&au2&&au2.tipo==='liberacion'&&/liberada/.test(au2.antes)&&au2.despues==='sin liberar'&&au2.motivo==='Cliente cambió la orden');
+   oL.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};
+   page='auditoria';render();__check("CC-e: Auditoría de replanificación muestra las devoluciones y reversiones",document.getElementById('p-auditoria').innerHTML.includes('Devoluciones de fase y reversiones de liberación'));
+   page='liberacion';LIB.et='tela';render();__check("CC-e: el botón 'retirar' de Liberación abre el modal con motivo (mRetirarLib)",document.getElementById('p-liberacion').innerHTML.includes('mRetirarLib(')||!document.getElementById('p-liberacion').innerHTML.includes('retirar</button>'));
+   // f) navegación atrás
+   NAVH.length=0;page='ordenes';ORDF.q='';render();LIB.q='WH/ATRAS';ir('liberacion');__check("CC-f: llegar por clic desde otra pantalla muestra '← atrás'",page==='liberacion'&&NAVH.length===1&&document.getElementById('p-liberacion').innerHTML.includes('← atrás'));
+   volver();__check("CC-f: atrás vuelve a la pantalla anterior y limpia la pila",page==='ordenes'&&NAVH.length===0&&!document.getElementById('p-ordenes').innerHTML.includes('← atrás'));LIB.q='';
+   document.querySelector('nav a[data-p="ordenes"]').click();__check("CC-f: navegar por el menú no deja rastro de atrás",NAVH.length===0);
+   // g) tema y h) responsive
+   const css=[...document.styleSheets].map(ss=>{try{return [...ss.cssRules].map(r=>r.cssText).join('\n')}catch(e){return ''}}).join('\n');
+   __check("CC-g: los colores del tema son tokens (--t-primary, --t-accent) y las tarjetas/bloques los usan",getComputedStyle(document.documentElement).getPropertyValue('--t-accent').trim().length>0&&css.includes('.kpi.tarj')&&css.includes('--t-accent'));
+   __check("CC-h: hay base responsive: botón de menú y reglas para teléfono/tablet (menú colapsable, tarjetas en columna, tablas con scroll)",!!document.getElementById('navBtn')&&css.includes('max-width: 860px')&&css.includes('nav.abierto')&&css.includes('tarj-row'));
+   const mB=JSON.parse(bakMot);if(mB)S.params.motivos=mB;else delete S.params.motivos;const aB=JSON.parse(bakAud);if(aB)S.params.auditoriaCambios=aB;else delete S.params.auditoriaCambios;window.alert=a0;PLAN=null;PLAN_ALL=null;NAVH.length=0;page='ordenes';render();
+   __check("CC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

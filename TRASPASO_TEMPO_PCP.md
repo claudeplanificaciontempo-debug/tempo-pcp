@@ -204,9 +204,34 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.10 Componentes comunes, tema y responsive (15-sep-2026)
+Todo esto es **un componente por cosa**, reutilizado; al hacer una pantalla nueva se usan estos y no se copia nada.
+- **Filtro de fases**: un desplegable con los grupos de la **tabla 5** ("1 · TEXTIL", "2 · PLANIFICACIÓN"…), casillas por
+  fase, "todas/quitar" por grupo y arriba **Seleccionar todas** / **Limpiar**. Reemplazó todos los filtros de fase
+  (Liberación, Liberación a producción, Órdenes, Demanda agregada por familia).
+- **Agrupador**: hasta 3 niveles por fase, cliente, ODC, categoría padre/hija, color, proyecto, etapa, **próximo paso** y
+  **mes de entrega**; cada grupo muestra órdenes, prendas y **horas**. Lo usan Órdenes, Liberación, Control de piso,
+  Producto en proceso, Vista general y Asignación por orden. La cola por centro (se arrastra), Plan → Agregar (casillas)
+  y Carga por tipo de producto conservan el suyo porque hacen algo más que agrupar.
+- **Tarjeta resumen**: número grande + texto; si representa órdenes, al hacer clic despliega la lista con **foto, WH y
+  fase**. En Plan mensual bloques 2 y 3 y en Mi centro.
+- **Buscador**: el de siempre (WH, ODC, **referencia (estilo)**, color, fase, cliente, categoría) en todas las listas.
+- **Devolver fase / revertir liberación**: exigen un motivo elegido de la **tabla 15 · Motivos** (Configuración → Órdenes y
+  materiales), con columna *uso*: devolución de fase / reversión de liberación / observación de piso. **No hay texto
+  libre**: un motivo que no esté en la tabla se rechaza, y si no hay motivos para ese uso no se puede continuar. Cada
+  cambio queda en Auditoría de replanificación con **quién, cuándo, antes, después y motivo** (y en la bitácora).
+  Quitar un motivo pide confirmación y no borra los registros anteriores.
+- **← atrás**: al llegar a una pantalla desde un clic en otra, arriba aparece "← atrás" y vuelve al mismo lugar (filtros,
+  agrupación, búsqueda y posición). Navegar por el menú limpia esa pila.
+- **Tema**: los colores viven en seis tokens de `:root`; cambiarlos cambia tarjetas, bloques y encabezados de tabla en
+  todo el sistema. Si se elige otra paleta, se tocan solo esos tokens.
+- **Responsive**: hasta 860 px de ancho el menú se colapsa tras el botón ☰, la cabecera se acomoda en dos filas, las
+  tarjetas se apilan y las tablas tienen scroll propio. Revisado a 375 px en Mi centro, Control de piso y Liberación.
+Detalle en `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
+
 ## 3 · Datos y dónde viven (memoria `S`, tabla `params` = `S.params`)
 `S.params`: tablas 1–14, calendario/excepciones, `motor`, `inicio`, `esperasPaso`, `diasProveedor`, `tiemposOjalBoton`,
-`motivosReproceso`, `restriccionFaltante`, `perfilesDef`, `tablets`, `planMes`, `metas`, `advertencias`, `capProblemas`,
+`motivosReproceso`, `motivos` (tabla 15), `auditoriaCambios`, `restriccionFaltante`, `perfilesDef`, `tablets`, `planMes`, `metas`, `advertencias`, `capProblemas`,
 `capDecisiones`, `pendPospuestos`, `alertasCompras`, `fotosIdx`, `colchonDias`, `modulosParcial`, tolerancias de
 tintorería, `granMin`, etc. Órdenes: `op, ref, cliente, odc(+odcManual), proyecto, cat, color, cant, fecha, fase,
 fases[], ruta[], telas[], lib{tela,corte}, prio, progCentro, recursoFijo, foto, ot, opsSam, rutaEditada, estado
