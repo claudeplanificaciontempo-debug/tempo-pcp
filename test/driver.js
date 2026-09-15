@@ -899,7 +899,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      const R=compararMotores();__check("motor: antes/después trae carga por centro y mes, a fecha vs no, cambios de mes y top 10",R.centros.length>0&&R.meses.length>0&&R.estA.prog===R.estB.prog&&R.top.length<=10&&typeof R.cambianMes==='number');}
    // pantallas
    page='config';CONF.tab='cal';render();__check("motor: selector en Configuración → Calendario y parámetros, con las esperas",document.getElementById('p-config').innerHTML.includes('Motor de programación')&&document.getElementById('p-config').innerHTML.includes('setMotor(')&&document.getElementById('p-config').innerHTML.includes('Esperas después de un paso'));
-   page='panorama';render();__check("motor: Advertencias de fecha muestra 'no llegan' o 'todas llegan'",/no llegan a su fecha|todas las órdenes programadas llegan/.test(document.getElementById('p-panorama').innerHTML));
+   page='panorama';render();__check("motor: Advertencias de fecha muestra 'no llegan' o 'todas llegan'",/no llegan|todas las órdenes programadas.{0,40}llegan a su fecha/.test(document.getElementById('p-panorama').innerHTML));
    page='capacidad';CAPD.cmp=true;render();__check("motor: Capacidad y decisiones muestra antes y después",document.getElementById('p-capacidad').innerHTML.includes('Motor de programación: antes y después')&&document.getElementById('p-capacidad').innerHTML.includes('Las 10 órdenes que más se mueven'));CAPD.cmp=false;
    // cambiar el motor queda en bitácora y cambia el programa
    {const nb=S.bitacora.length;setMotor('adelante');__check("motor: cambiar el criterio queda en bitácora y el programa lo obedece",programar().motor==='adelante'&&S.bitacora.slice(-3).some(b=>/Motor de programación: atras → adelante/.test(b.t)));setMotor('atras');}
@@ -1191,6 +1191,20 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const ptB=JSON.parse(bakPT);if(ptB)S.params.progTej=ptB;else delete S.params.progTej;
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("AJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* PLAN · Bloque 2: vencidas vs en riesgo · atasco bien mostrado · sin tabla larga · fecha posible */
+  {const antes=__R.errors.length;const adminP=PERFIL;const ym=hoy().slice(0,7);PM.mes=ym;
+   const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
+   const oV=JSON.parse(JSON.stringify(baseO));oV.id=uid();oV.op='WH/TEST-VENC';oV.proyecto=nomMes(ym);oV.estado='plan';oV.fase='4CD Ensamble';oV.fecha=dsum(hoy(),-10);oV.lib={tela:{ok:true},corte:{ok:true}};delete oV.programa;S.ordenes.push(oV);PLAN=null;PLAN_ALL=null;
+   const c=calcularPlan(ym);const P=programar();
+   __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const v=enMes.filter(o=>o.fecha&&o.fecha<hoy()).length;const r=enMes.filter(o=>!(o.fecha&&o.fecha<hoy())&&P.ordenes[o.id]&&P.ordenes[o.id].atraso).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
+   page='plan';render();let h=document.getElementById('p-plan').innerHTML;
+   __check("VR3: el Bloque 2 muestra dos contadores (Vencidas y En riesgo) con enlace a Hoy → Advertencias, sin la tabla larga",h.includes('Vencidas (entrega pasada)')&&h.includes('En riesgo según el programa')&&h.includes("irNoLlegan('"+ym+"','venc')")&&!h.includes('órdenes en riesgo según el programa <span')&&!h.includes('clic para ver por qué y en qué paso se atascan'));
+   NLF={mes:ym,tipo:null};page='panorama';render();h=document.getElementById('p-panorama').innerHTML;
+   __check("VR2/4: Advertencias de fecha separa Vencidas (con fecha posible) y En riesgo, filtrado por el mes",h.includes('id="nollegan"')&&h.includes('Solo '+fmtMesEG(ym))&&h.includes('Fecha posible (para avisar al cliente)')&&h.includes('>Vencidas <span')&&h.includes('>En riesgo <span'));
+   __check("VR2: 'Se atasca en' no muestra [object Object]; muestra nombre y +N d o —",!h.includes('[object Object]')&&(()=>{const r={atasco:{nombre:'Confección',dias:3}};const r2={atasco:null};return atascoTxt(r).includes('Confección')&&atascoTxt(r).includes('+3')&&atascoTxt(r2).includes('—')})());
+   NLF={mes:'2000-01',tipo:null};render();h=document.getElementById('p-panorama').innerHTML;__check("VR: el filtro por mes deja fuera los otros meses y se puede quitar",(()=>{const i=h.indexOf('id="nollegan"');const seg=i<0?'':h.slice(i,i+3000);return i>=0&&!seg.includes(esc(oV.op))&&seg.includes('ver todo')})());NLF={mes:null,tipo:null};
+   S.ordenes=S.ordenes.filter(x=>x.id!==oV.id);PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("VR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

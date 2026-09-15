@@ -105,7 +105,8 @@ mes con botón "pedida" (`atenderCompra`).
 
 ### 2.3 Plan mensual (Dirección) — cinco bloques (14-sep noche)
 1 **Días y capacidad** (calendario del mes por área arriba, `planMesHTML`; luego capacidad por área/centro/módulo).
-2 **Resumen del mes** (KPIs; "en riesgo" se despliega con foto y dónde se atasca; Horizonte rodante sin tocar).
+2 **Resumen del mes** (KPIs; **Vencidas** (entrega pasada) y **En riesgo** (no llegan) separados, con enlace a Hoy →
+   Advertencias de fecha filtrado por mes, donde las vencidas muestran la fecha posible; Horizonte rodante sin tocar).
 3 **Meta de facturación** (meta → liberado cubre / falta / qué liberar).
 4 **Agregar órdenes al plan** (`agregarAlPlanHTML`): borrador `S.params.planMes[ym].oids`, órdenes del Proyecto del mes
    agrupadas (ODC/cliente/entrega/familia/hija, colapsables), "jalar del mes siguiente", buscador, **aviso de capacidad

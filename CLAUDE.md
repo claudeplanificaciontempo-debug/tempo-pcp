@@ -180,7 +180,7 @@ desplegables (`tarjetasHoyHTML`). **Producto en proceso → Producción** tiene 
 (tabla 14 desactivada solo para esa carga). Ver `ACTUALIZACION_14SEP_Y_MEJORAS_REPORTE.md`.
 
 **Plan mensual (14-sep-2026 noche, `vPlan`):** cinco bloques en orden: 1 días y capacidad (calendario `planMesHTML`
-arriba, luego área/centro/módulos), 2 resumen (KPIs; "en riesgo" se despliega con foto y dónde se atasca), 3 meta,
+arriba, luego área/centro/módulos), 2 resumen (KPIs; "Vencidas" y "En riesgo" separados, enlazan a Hoy → Advertencias filtrado por mes con `irNoLlegan`/`NLF`; `atascoTxt` muestra el atasco), 3 meta,
 4 **agregar órdenes al plan** (`agregarAlPlanHTML`: borrador `S.params.planMes[ym].oids`, agrupado por ODC/cliente/entrega/
 familia/hija con `PMADD`, "jalar del mes siguiente", aviso de capacidad por centro ANTES de guardar con `cargaPlanCentros` =
 minPrenda × prendas de la ruta vs. capacidad del mes; nunca impide), 5 congelar (`congelarPlan` guarda `oids` en `S.planes` y
