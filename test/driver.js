@@ -1163,7 +1163,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const rT=S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const tela=(S.telas.find(t=>!t.ext)||S.telas[0]).id;
    if(rT){document.getElementById('pt-tela').value=tela;document.getElementById('pt-rec').value=rT.id;document.getElementById('pt-dia').value=hoy();document.getElementById('pt-kg').value='120';addProgTej();h=document.getElementById('p-tejeduria').innerHTML;
      __check("OB8: programar a mano guarda tela/máquina/día/kg con quién y cuándo, y se ve en la grilla manual",progTej().length===1&&progTej()[0].kg===120&&!!progTej()[0].u&&h.includes(esc(nTela(tela)))&&h.includes('120 kg'));
-     __check("OB10: resumen pedido vs cargado por tela (cargado = 120)",/Cargado \(kg\)/.test(h)&&(cargasTejPorTela(programar())[tela]||{}).cargado===120);
+     __check("OB10: resumen pedido vs cargado por tela (cargado = 120)",/Programado a mano/.test(h)&&/Estimado por sistema/.test(h)&&(cargasTejPorTela(programar())[tela]||{}).cargado===120);
      delProgTejRow(progTej()[0].id);__check("OB8: quitar pide confirmación y va a bitácora",progTej().length===0&&S.bitacora.slice(-1)[0].t.includes('Tejeduría programada quitada'));}
    const ptB=JSON.parse(bakPT);if(ptB)S.params.progTej=ptB;else delete S.params.progTej;
    page='imprimir';render();__check("OB9: Programa del día ya no ofrece Tejeduría (imprimir solo tintorería y producción)",!document.getElementById('p-imprimir').innerHTML.includes('>Tejeduría</option>'));
@@ -1374,6 +1374,54 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("B2M: sin compromiso manda la fecha de Odoo y sí es vencida",fechaMetaDe(oVenc)===oVenc.fecha&&c.dem.vencidas>=1);
    S.ordenes=S.ordenes.filter(o=>o!==oComp&&o!==oVenc);PLAN=null;PLAN_ALL=null;
    __check("B2M sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* TEJEDURÍA EN EL MOTOR (B1): stock → programado a mano → corrida automática estimada */
+  {const antes=__R.errors.length;
+   const bakStock=JSON.stringify(S.params.stockTela||null),bakProg=JSON.stringify(S.params.progTej||null);
+   const base=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).some(t=>!t.ext&&t.kg>0))||S.ordenes.find(abierta);
+   const tela=((base.telas||[]).find(t=>!t.ext&&t.kg>0)||{}).tela;
+   const rec=(S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej'&&compatible(r,tela))||{}).id;
+   const mkT=(kg,fecha)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEJ-'+o.id.slice(0,4);o.estado='plan';o.fase='1Tejeduria';o.fecha=fecha;o.telas=[{tela,kg}];o.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   S.params.stockTela={};S.params.progTej=[];
+   PLAN=null;PLAN_ALL=null;const orgBase=Object.assign({stock:0,manual:0,estimado:0},(programar().tejOrigen||{})[tela]);
+   const oPri=mkT(100,dsum(hoy(),30));   // requerida antes
+   const oSeg=mkT(100,dsum(hoy(),90));   // requerida después
+   PLAN=null;PLAN_ALL=null;let P=programar();
+   const org=()=>{const o=Object.assign({stock:0,manual:0,estimado:0},(P.tejOrigen||{})[tela]);return {stock:o.stock-orgBase.stock,manual:o.manual-orgBase.manual,estimado:o.estimado-orgBase.estimado}};
+   const org0=org();
+   __check("TEJ-a: sin stock ni programación manual, todo va a la corrida automática marcada como estimada",Math.round(org0.stock)===0&&Math.round(org0.manual)===0&&Math.round(org0.estimado)===200&&(P.tej||[]).filter(x=>x.tela===tela&&!x.cambio).every(x=>x.estimado===true),JSON.stringify(org0));
+   // (b) el stock se descuenta primero y la fecha requerida más cercana lo toma
+   S.params.stockTela={};S.params.stockTela[tela]={kg:100,ts:new Date().toISOString(),u:'prueba'};
+   PLAN=null;PLAN_ALL=null;P=programar();const org1=org();
+   const rPri=P.ordenes[oPri.id]||{},rSeg=P.ordenes[oSeg.id]||{};
+   const conTela=o=>abierta(o)&&(o.telas||[]).some(t=>t.tela===tela&&!t.ext&&t.kg>0)&&!(P.ordenes[o.id]||{}).tejSkip;
+   const tomanStock=S.ordenes.filter(o=>((P.ordenes[o.id]||{}).tejStock||0)>0);
+   const candidatas=S.ordenes.filter(conTela);
+   __check("TEJ-b: el stock de tela cruda se descuenta antes de repartir kg y lo toma la orden con la fecha requerida más cercana",Math.round(org1.stock)===100&&tomanStock.length>0&&tomanStock.reduce((a,o)=>a+P.ordenes[o.id].tejStock,0)===100&&tomanStock.every(o=>candidatas.every(x=>x===o||!x.fecha||x.fecha>=o.fecha)),JSON.stringify({org1,quien:tomanStock.map(o=>o.op+' '+o.fecha),otras:candidatas.map(o=>o.fecha).sort().slice(0,3)}));
+   __check("TEJ-c: la orden que toma stock tiene la tela lista antes que una que espera la corrida",tomanStock.every(o=>P.ordenes[o.id].telaDesde<=(rSeg.telaDesde||'9999')),JSON.stringify({seg:rSeg.telaDesde}));
+   // (d) lo que el stock no cubre lo toma la programación manual
+   const diaMan=dsum(hoy(),3);
+   S.params.progTej=[{id:uid(),tela,rec,dia:diaMan,kg:100,u:'prueba',ts:new Date().toISOString()}];
+   PLAN=null;PLAN_ALL=null;P=programar();const org2=org();const rSeg2=P.ordenes[oSeg.id]||{};
+   __check("TEJ-d: lo que el stock no cubre lo toma la programación manual, con su máquina y su día",Math.round(org2.stock)===100&&Math.round(org2.manual)===100&&org2.estimado<org0.estimado&&(P.tej||[]).some(x=>x.tela===tela&&x.manual===true&&x.dia===diaMan),JSON.stringify(org2));
+   const conManual=S.ordenes.filter(o=>((P.ordenes[o.id]||{}).tejManualKg||0)>0);
+   __check("TEJ-d: la orden servida a mano queda con la tela lista según ese día",conManual.length>0&&conManual.reduce((a,o)=>a+P.ordenes[o.id].tejManualKg,0)===100&&conManual.every(o=>P.ordenes[o.id].telaDesde>=dsum(diaMan,1)),JSON.stringify({quien:conManual.map(o=>o.op+' '+P.ordenes[o.id].telaDesde),diaMan}));
+   // (e) lo que no alcanza queda estimado por el sistema
+   const oTer=mkT(150,dsum(hoy(),120));PLAN=null;PLAN_ALL=null;P=programar();const org3=org();
+   __check("TEJ-e: lo que no cubren ni el stock ni lo manual va a corrida automática marcada 'estimada por el sistema'",Math.round(org3.estimado)===150&&(P.ordenes[oTer.id]||{}).tejEstimado>0&&(P.tej||[]).some(x=>x.tela===tela&&x.estimado===true),JSON.stringify(org3));
+   // pedido vs cargado con las tres columnas
+   const m=cargasTejPorTela(P);__check("TEJ: 'pedido vs cargado' trae stock, programado a mano y estimado por sistema",m[tela]&&Math.round(m[tela].stock-orgBase.stock)===100&&m[tela].cargado===100&&m[tela].estimado>0,JSON.stringify(m[tela]));
+   page='tejeduria';render();const h=document.getElementById('p-tejeduria').innerHTML;
+   __check("TEJ: la pantalla muestra las tres columnas",/Estimado por sistema/.test(h)&&/Programado a mano/.test(h)&&/>Stock</.test(h));
+   // reporte antes/después
+   const cmp=compararTejeduria();
+   __check("TEJ: hay reporte antes y después (cuántas órdenes cambian de fecha de tela lista y cuánto)",!!cmp&&Array.isArray(cmp.filas)&&cmp.filas.every(f=>typeof f.dias==='number'&&f.antes&&f.despues)&&cmp.org.stock>=100);
+   __check("TEJ: el panel de comparación sale en Tejeduría",/Antes y después de usar el stock/.test(h));
+   __check("TEJ: la comparación no deja el motor en modo viejo",TEJ_MODO==='nuevo');
+   S.ordenes=S.ordenes.filter(o=>o!==oPri&&o!==oSeg&&o!==oTer);
+   const bs=JSON.parse(bakStock);if(bs)S.params.stockTela=bs;else delete S.params.stockTela;
+   const bp=JSON.parse(bakProg);if(bp)S.params.progTej=bp;else delete S.params.progTej;
+   PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TEJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

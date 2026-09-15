@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 17:22';
+const APP_BUILD='2026-09-15 17:30';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1112,30 +1112,56 @@ function programar(){
     ro.tejSkip=!et.tej||av.tejida||fe.tejida||av.reproc;
     if(ro.tejSkip&&et.tej){ro.finTej=dsum(ini,-1);ro.tejidaHecha=true;ro.telaDesde=ini}
     if(!ro.tejSkip&&et.tej&&!liberada(o,'tela')){ro.tejSkip=true;ro.sinLib='tela'}});
-  const corridas={};
+const corridas={};
   ords.forEach(o=>{const ro=res.ordenes[o.id];if(ro.tejSkip)return;
     (o.telas||[]).forEach(tl=>{if(tl.ext)return;const kg=kgCrudo(tl.tela,tl.kg);if(kg<=0)return;
       if(!corridas[tl.tela])corridas[tl.tela]={tela:tl.tela,kg:0,items:[],req:null};
       const c=corridas[tl.tela];c.kg+=kg;c.items.push({o,kg});
       const lead=(o.ruta||[]).length?leadDias(o):5;const req=dsum(o.fecha,-(lead+S.params.diasTintBodega+2));
-      if(!c.req||req<c.req)c.req=req})});
+      if(!c.req||req<c.req)c.req=req;
+      const it=c.items[c.items.length-1];it.req=req})});
+  /* 1.a · Stock de tela cruda y programación manual mandan sobre la corrida automática (B1, 15-sep-2026).
+     Orden: primero el stock disponible (la fecha requerida más cercana toma stock primero), después lo que la persona
+     de tejeduría programó a mano, y recién lo que no alcanza va a una corrida automática marcada como estimada. */
+  res.tejOrigen={};res.tejManual=[];
+  if(TEJ_MODO!=='viejo')Object.values(corridas).forEach(c=>{
+    const org=res.tejOrigen[c.tela]={stock:0,manual:0,estimado:0};
+    c.items.sort((a,b)=>(a.req||'9')<(b.req||'9')?-1:(a.req||'9')>(b.req||'9')?1:0);
+    c.items.forEach(it=>{it.pend=it.kg});
+    // stock disponible de esa tela (Stock de tela cruda), menos lo que ya tomaron otras corridas de esta misma pasada
+    let stock=Math.max(0,+((stockTela()[c.tela]||{}).kg)||0);
+    c.items.forEach(it=>{if(stock<=0||it.pend<=0)return;const t=Math.min(stock,it.pend);stock-=t;it.pend-=t;org.stock+=t;
+      const ro=res.ordenes[it.o.id];ro.telas.push({tela:c.tela,kg:t,origen:'stock',fin:dsum(ini,-1),ini:dsum(ini,-1)});
+      ro.tejStock=(ro.tejStock||0)+t});
+    // programación manual de tejeduría, por fecha
+    const manual=progTej().filter(p=>p.tela===c.tela&&+p.kg>0).slice().sort((a,b)=>(a.dia||'9')<(b.dia||'9')?-1:1).map(p=>({p,kg:+p.kg}));
+    c.items.forEach(it=>{while(it.pend>0&&manual.length){const m=manual[0];const t=Math.min(m.kg,it.pend);m.kg-=t;it.pend-=t;org.manual+=t;
+        const ro=res.ordenes[it.o.id];const kh=kgHora(R(m.p.rec)||{},c.tela)||0;
+        res.tej.push({rec:m.p.rec,dia:m.p.dia,kg:t,h:kh?t/kh:0,op:it.o.op,tela:c.tela,manual:true});
+        res.tejManual.push({tela:c.tela,rec:m.p.rec,dia:m.p.dia,kg:t,op:it.o.op});
+        ro.telas.push({tela:c.tela,kg:t,rec:m.p.rec,ini:m.p.dia,fin:m.p.dia,origen:'manual'});
+        ro.finTej=maxD(ro.finTej,m.p.dia);ro.telaDesde=maxD(ro.telaDesde,dsum(ro.finTej,1));ro.tejManualKg=(ro.tejManualKg||0)+t;
+        if(m.kg<=0)manual.shift()}});
+    c.kg=c.items.reduce((a,it)=>a+it.pend,0);org.estimado=c.kg;
+    c.items=c.items.filter(it=>it.pend>0).map(it=>({o:it.o,kg:it.pend,req:it.req}))});
   // una máquina se calibra para una tela y se queda con ella al menos tejBloqueDias; cambiar de tela cuesta tejCambioHoras
   const bloque=+prm('tejBloqueDias',0),cambioH=+prm('tejCambioHoras',0);const libreDesde={};res.tejBloqueo=[];
-  Object.values(corridas).sort((a,b)=>(a.req||'9')<(b.req||'9')?-1:1).forEach(c=>{
+  Object.values(corridas).filter(c=>c.kg>0&&c.items.length).sort((a,b)=>(a.req||'9')<(b.req||'9')?-1:1).forEach(c=>{
     const cand=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej'&&compatible(r,c.tela)&&capDia(r)>0&&kgHora(r,c.tela)>0);
     if(!cand.length){c.items.forEach(({o,kg})=>res.ordenes[o.id].telas.push({tela:c.tela,kg,error:'sin máquina compatible'}));return}
     // cada máquina teje esta tela a su propio ritmo y solo desde que termina su bloque anterior: se elige la que termina antes
     let best=null;cand.forEach(r=>{const desde=maxD(ini,libreDesde[r.id]||ini);const hrs=c.kg/kgHora(r,c.tela)+cambioH;const f=simFin(r,hrs,desde);if(!best||f<best.f||(f===best.f&&total(r)<total(best.r)))best={r,f,desde}});
     const kh=kgHora(best.r,c.tela);let iniC=null,finC=null;
-    if(cambioH>0){const x0=fluir(best.r,cambioH,best.desde,'cambio');iniC=x0.ini;x0.det.forEach(d=>res.tej.push({rec:best.r.id,dia:d.dia,kg:0,h:d.q,op:'cambio de tela',tela:c.tela,cambio:true}))}
+    if(cambioH>0){const x0=fluir(best.r,cambioH,best.desde,'cambio');iniC=x0.ini;x0.det.forEach(d=>res.tej.push({rec:best.r.id,dia:d.dia,kg:0,h:d.q,op:'cambio de tela',tela:c.tela,cambio:true,estimado:TEJ_MODO!=='viejo'}))}
     c.items.forEach(({o,kg})=>{const ro=res.ordenes[o.id];
       const x=fluir(best.r,kg/kh,best.desde,o.op);if(!iniC)iniC=x.ini;finC=maxD(finC,x.fin);
-      x.det.forEach(d=>res.tej.push({rec:best.r.id,dia:d.dia,kg:d.q*kh,h:d.q,op:o.op,tela:c.tela}));
-      ro.telas.push({tela:c.tela,kg,rec:best.r.id,ini:x.ini,fin:x.fin});
-      ro.finTej=maxD(ro.finTej,x.fin);ro.telaDesde=dsum(ro.finTej,1)});
+      x.det.forEach(d=>res.tej.push({rec:best.r.id,dia:d.dia,kg:d.q*kh,h:d.q,op:o.op,tela:c.tela,estimado:TEJ_MODO!=='viejo'}));
+      ro.telas.push({tela:c.tela,kg,rec:best.r.id,ini:x.ini,fin:x.fin,origen:TEJ_MODO!=='viejo'?'estimado':null});
+      ro.finTej=maxD(ro.finTej,x.fin);ro.telaDesde=dsum(ro.finTej,1);if(TEJ_MODO!=='viejo')ro.tejEstimado=(ro.tejEstimado||0)+kg});
     // el bloque mínimo: la máquina no cambia de tela hasta cumplir los días, aunque la corrida termine antes
     if(iniC&&finC){let fb=finC;if(bloque>0){let d=iniC,n=0;while(n<bloque){if(labR(d,best.r))n++;if(n<bloque)d=dsum(d,1)}fb=maxD(finC,d)}
       libreDesde[best.r.id]=dsum(fb,1);if(fb>finC){for(let d=dsum(finC,1);d<=fb;d=dsum(d,1))if(labR(d,best.r)){usar(best.r,d,libre(best.r,d));res.tejBloqueo.push({rec:best.r.id,dia:d,tela:c.tela})}}}});
+
 
   /* 2 · Baños: por color. A y B se mezclan entre sí; las de baño propio van solas, pero si no llenan se completan
         con lo que haya del mismo color (primero la mezcla A/B, luego otras de baño propio).
@@ -1651,10 +1677,29 @@ function planBase(ym){return S.ordenes.filter(o=>abierta(o)&&enProcesoPlan(o))} 
 function planMesOidsTot(ym){return new Set([...planBase(ym).map(o=>o.id),...planMesOids(ym)])}
 function centrosCompactoHTML(c){if(!c.centros.length)return '';return `<h4 style="margin:16px 0 6px">Por centro <span class="mut" style="font-weight:400">· unidades, horas y uso del mes, con lo liberado · clic abre el centro</span></h4><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px">${c.centros.map(x=>{const ok=x.carga<=x.cap;const col=x.cap?(x.pct>100?'var(--alerta)':x.pct>85?'var(--aviso)':'var(--ok)'):'var(--rule)';return `<div class="cen-card" style="border:1px solid var(--rule);border-left:4px solid ${col};border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--paper)" onclick="CEN.id='${x.c.id}';ir('centro')"><div style="font-weight:600">${esc(nCen(x.c.id))}</div><div style="font-size:22px;font-weight:700;line-height:1.1">${x.cap?Math.round(x.pct):'—'}<span style="font-size:12px;font-weight:400"> % uso</span></div><div class="mut" style="font-size:var(--fs-xs)">${num(x.pz)} u · ${num(x.carga/60)} h de ${num(x.cap/60)} h</div><div style="margin-top:4px">${x.cap?(ok?'<span class="tag t-ok">alcanza</span>':'<span class="tag t-alerta">no alcanza · faltan '+num((x.carga-x.cap)/60)+' h</span>'):'<span class="tag t-aviso">sin capacidad</span>'}</div></div>`}).join('')}</div>`}
 /* ---------- Tejeduría: programación MANUAL (la persona decide máquina × día; el sistema solo muestra las cargas) ---------- */
+/* Tejeduría: el stock de tela cruda y la programación manual mandan; lo que no alcanzan va a corrida automática estimada.
+   TEJ_MODO='viejo' solo lo usa la comparación antes/después; el motor normal corre en 'nuevo'. */
+let TEJ_MODO='nuevo';
+function compararTejeduria(){const bakP=PLAN,bakA=PLAN_ALL;
+  PLAN=null;PLAN_ALL=null;TEJ_MODO='viejo';let viejo=null;try{viejo=programar()}catch(e){}
+  const antes={};if(viejo)Object.entries(viejo.ordenes).forEach(([id,r])=>antes[id]=r.telaDesde||null);
+  PLAN=null;PLAN_ALL=null;TEJ_MODO='nuevo';const nuevo=programar();
+  const filas=[];Object.entries(nuevo.ordenes).forEach(([id,r])=>{const a=antes[id],b=r.telaDesde||null;if(!a||!b||a===b)return;
+    const o=S.ordenes.find(x=>x.id===id);if(!o)return;filas.push({o,antes:a,despues:b,dias:Math.round((new Date(b)-new Date(a))/864e5)})});
+  filas.sort((x,y)=>x.dias-y.dias);
+  const org={stock:0,manual:0,estimado:0};Object.values(nuevo.tejOrigen||{}).forEach(v=>{org.stock+=v.stock;org.manual+=v.manual;org.estimado+=v.estimado});
+  PLAN=bakP;PLAN_ALL=bakA;return {filas,org,adelantan:filas.filter(f=>f.dias<0).length,atrasan:filas.filter(f=>f.dias>0).length}}
+function comparaTejHTML(){if(!S.ordenes.length)return '';let c=null;try{c=compararTejeduria()}catch(e){return ''}
+  const kg=v=>num(Math.round(v))+' kg';
+  return `<div class="panel"><h3>Antes y después de usar el stock y lo programado a mano <span class="note">compara la fecha de tela lista con la corrida automática de siempre · solo lectura</span></h3><div class="body">
+   ${tarjetasResumenHTML([{id:'tejc-stock',v:kg(c.org.stock),k:'Cubierto con stock de tela cruda'},{id:'tejc-man',v:kg(c.org.manual),k:'Cubierto con la programación manual'},{id:'tejc-est',v:kg(c.org.estimado),k:'Va a corrida automática <span class="mut">fecha estimada por el sistema</span>',cls:c.org.estimado?'warn':''},{id:'tejc-camb',v:c.filas.length,k:'Órdenes que cambian de fecha de tela lista · '+c.adelantan+' se adelantan, '+c.atrasan+' se atrasan',items:c.filas.map(f=>f.o),porFam:true}])}
+   ${c.filas.length?`<div class="scroll" style="max-height:320px;margin-top:8px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Tela lista antes</th><th>Tela lista ahora</th><th class="num">Días</th></tr></thead><tbody>${c.filas.slice(0,200).map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${fmtDia(f.antes)}</td><td>${fmtDia(f.despues)}</td><td class="num"><span class="tag ${f.dias<0?'t-ok':'t-aviso'}">${f.dias>0?'+':''}${f.dias}</span></td></tr>`).join('')}</tbody></table></div>`:'<p class="mut" style="margin-top:8px">Ninguna orden cambia de fecha de tela lista.</p>'}
+  </div></div>`}
 function progTej(){if(!Array.isArray(S.params.progTej))S.params.progTej=[];return S.params.progTej}
 function cargasTejPorTela(P){const m={};S.ordenes.filter(abierta).forEach(o=>{const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(a.tejida||fe.tejida)return;if(!liberada(o,'tej'))return;(o.telas||[]).forEach(t=>{if(t.ext||!(t.kg>0))return;const r=m[t.tela]=m[t.tela]||{pedido:0,ords:new Set(),req:null};r.pedido+=kgCrudo(t.tela,t.kg);r.ords.add(o.op);const ro=(P.ordenes||{})[o.id]||{};const req=ro.telaDesde||null;if(req&&(!r.req||req<r.req))r.req=req})});
   (P.tej||[]).filter(x=>!x.cambio).forEach(x=>{const r=m[x.tela];if(r&&x.dia&&(!r.sug||x.dia<r.sug))r.sug=x.dia});
-  progTej().forEach(p=>{const r=m[p.tela]=m[p.tela]||{pedido:0,ords:new Set(),req:null};r.cargado=(r.cargado||0)+(+p.kg||0)});return m}
+  progTej().forEach(p=>{const r=m[p.tela]=m[p.tela]||{pedido:0,ords:new Set(),req:null};r.cargado=(r.cargado||0)+(+p.kg||0)});
+  Object.entries((P&&P.tejOrigen)||{}).forEach(([t,v])=>{const r=m[t]=m[t]||{pedido:0,ords:new Set(),req:null};r.stock=v.stock;r.manual=v.manual;r.estimado=v.estimado});return m}
 function addProgTej(){if(!(puedeArea('tej')||puede('programa'))){alert('Tu perfil no programa tejeduría.');return}const g=id=>(document.getElementById(id)||{}).value;const tela=g('pt-tela'),rec=g('pt-rec'),dia=g('pt-dia'),kg=+String(g('pt-kg')||'').replace(',','.');
   if(!tela||!rec||!dia||!(kg>0)){alert('Tela, máquina, día y kilos son obligatorios.');return}const r=R(rec);const av=[];if(r&&r.kgTela&&Object.keys(r.kgTela).length&&!(r.kgTela[tela]>0))av.push('la máquina no tiene esta tela en su tabla de kg (kgTela)');const capT=r?kgDiaTela(r,tela):0;const yaDia=progTej().filter(x=>x.rec===rec&&x.dia===dia).reduce((a,x)=>a+(+x.kg||0),0);if(capT>0&&yaDia+kg>capT+1e-6)av.push('los kg del día pasan la capacidad de la máquina para esa tela ('+num(yaDia+kg)+' de '+num(capT)+' kg/día)');
   const p={id:uid(),tela,rec,dia,kg,u:quienFirma(),ts:new Date().toISOString()};if(av.length)p.aviso=av.join('; ');progTej().push(p);bitacora('Tejeduría programada a mano: '+nTela(tela)+' '+num(kg)+' kg en '+nRec(rec)+' el '+fmtDia(dia)+(av.length?' · CON AVISO: '+av.join('; '):'')+' ('+quienFirma()+')');if(av.length)alert('Programado con aviso (no se impide):\n· '+av.join('\n· '));save();render()}
@@ -1663,13 +1708,13 @@ function delProgTejRow(id){const p=progTej().find(x=>x.id===id);if(!p)return;if(
 function progTejPanelHTML(P){const ok=puedeArea('tej')||puede('programa');const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const m=cargasTejPorTela(P);const telas=Object.keys(m).sort((a,b)=>(m[b].pedido||0)-(m[a].pedido||0));
   const rows=progTej().slice().sort((a,b)=>(a.dia||'9')<(b.dia||'9')?-1:1);const dias=[...new Set(rows.map(p=>p.dia))].sort();
   const totP=telas.reduce((a,t)=>a+(m[t].pedido||0),0),totC=telas.reduce((a,t)=>a+(m[t].cargado||0),0);
-  const resumen=`<div class="panel"><h3>Cargas por tela · pedido vs cargado <span class="note">pedido = kg liberados por tejer; cargado = lo que programaste abajo; el sistema no asigna máquinas solo</span></h3><div class="body"><table><thead><tr><th>Tela</th><th class="num">Órdenes</th><th class="num">Pedido (kg)</th><th class="num">Cargado (kg)</th><th class="num">Falta cargar</th><th>Requerida (tela lista)</th><th>Sugerida por el motor</th></tr></thead><tbody>
-    ${telas.map(t=>{const r=m[t];const falta=Math.max(0,(r.pedido||0)-(r.cargado||0));return `<tr><td>${esc(nTela(t))}</td><td class="num">${r.ords.size}</td><td class="num">${num(r.pedido||0)}</td><td class="num">${num(r.cargado||0)}</td><td class="num">${falta>0.5?'<span class="tag t-aviso">'+num(falta)+'</span>':(r.pedido?'<span class="tag t-ok">completo</span>':'<span class="mut">·</span>')}</td><td>${r.req?fmtDia(r.req):'<span class="mut">—</span>'}</td><td class="mut">${r.sug?fmtDia(r.sug):'—'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Nada liberado por tejer.</td></tr>'}
-    <tr style="font-weight:600;background:var(--field)"><td>Total</td><td></td><td class="num">${num(totP)}</td><td class="num">${num(totC)}</td><td class="num">${num(Math.max(0,totP-totC))}</td><td colspan="2"></td></tr></tbody></table></div></div>`;
+  const resumen=`<div class="panel"><h3>Cargas por tela · pedido vs cargado <span class="note">pedido = kg liberados por tejer; primero se usa el stock de tela cruda, después lo que programaste a mano y lo que falta lo estima el sistema</span></h3><div class="body"><table><thead><tr><th>Tela</th><th class="num">Órdenes</th><th class="num">Pedido (kg)</th><th class="num" title="cubierto con stock de tela cruda">Stock</th><th class="num" title="cubierto con la programación manual de abajo">Programado a mano</th><th class="num" title="lo que no cubren ni el stock ni lo manual: corrida automática con fecha estimada por el sistema">Estimado por sistema</th><th class="num">Falta cargar</th><th>Requerida (tela lista)</th><th>Sugerida por el motor</th></tr></thead><tbody>
+    ${telas.map(t=>{const r=m[t];const falta=Math.max(0,(r.pedido||0)-(r.cargado||0));return `<tr><td>${esc(nTela(t))}</td><td class="num">${r.ords.size}</td><td class="num">${num(r.pedido||0)}</td><td class="num">${r.stock?num(Math.round(r.stock)):'<span class="mut">—</span>'}</td><td class="num">${num(r.cargado||0)}</td><td class="num">${r.estimado?'<span class="tag t-aviso" title="fecha estimada por el sistema · sin programar a mano">'+num(Math.round(r.estimado))+'</span>':'<span class="mut">—</span>'}</td><td class="num">${falta>0.5?'<span class="tag t-aviso">'+num(falta)+'</span>':(r.pedido?'<span class="tag t-ok">completo</span>':'<span class="mut">·</span>')}</td><td>${r.req?fmtDia(r.req):'<span class="mut">—</span>'}</td><td class="mut">${r.sug?fmtDia(r.sug):'—'}</td></tr>`}).join('')||'<tr><td colspan="9" class="mut">Nada liberado por tejer.</td></tr>'}
+    <tr style="font-weight:600;background:var(--field)"><td>Total</td><td></td><td class="num">${num(totP)}</td><td class="num">${num(Math.round(telas.reduce((a,t)=>a+(m[t].stock||0),0)))}</td><td class="num">${num(totC)}</td><td class="num">${num(Math.round(telas.reduce((a,t)=>a+(m[t].estimado||0),0)))}</td><td class="num">${num(Math.max(0,totP-totC))}</td><td colspan="2"></td></tr></tbody></table></div></div>`;
   const form=ok?`<div class="row" style="margin:0 0 10px;align-items:flex-end"><div><label>Tela</label><select id="pt-tela">${[...new Set([...telas,...S.telas.filter(t=>!t.ext).map(t=>t.id)])].map(t=>`<option value="${t}">${esc(nTela(t))}${m[t]&&m[t].pedido?' · pedido '+num(m[t].pedido)+' kg':''}</option>`).join('')}</select></div><div><label>Máquina</label><select id="pt-rec">${recs.map(r=>`<option value="${r.id}">${esc(r.n)} · ${num(capDia(r))} kg/día</option>`).join('')}</select></div><div><label>Día</label><input type="date" id="pt-dia" value="${hoy()}"></div><div><label>Kg</label><input type="number" id="pt-kg" min="0" style="width:90px"></div><div><label>&nbsp;</label><button class="btn" onclick="addProgTej()">Programar</button></div></div>`:'';
   const grid=dias.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(capDia(r))} kg/día</span></td>${dias.map(d=>{const xs=rows.filter(p=>p.rec===r.id&&p.dia===d);const tot=xs.reduce((a,p)=>a+p.kg,0);const cap=capDia(r);return `<td>${xs.map(p=>`<div class="bath b-medio" style="background:var(--ink2)"><span class="c">${esc(nTela(p.tela))}</span>${num(p.kg)} kg</div>`).join('')}${xs.length&&cap?`<div class="mut" style="font-size:var(--fs-xs)">${Math.round(tot/cap*100)}% del día</div>`:''}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>`:'<div class="empty">Todavía no hay nada programado a mano. Elige tela, máquina, día y kilos arriba.</div>';
   const tabla=rows.length?`<table style="margin-top:10px"><thead><tr><th>Día</th><th>Máquina</th><th>Tela</th><th class="num">Kg</th><th>Quién · cuándo</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><input type="date" value="${p.dia}" ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','dia',this.value)"></td><td><select ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','rec',this.value)">${recs.map(r=>`<option value="${r.id}" ${r.id===p.rec?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td><td>${esc(nTela(p.tela))}${p.aviso?' <span class="tag t-aviso" title="'+esc(p.aviso)+'">con aviso</span>':''}</td><td class="num"><input type="number" min="0" style="width:90px" value="${p.kg}" ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','kg',this.value)"></td><td class="mut" style="font-size:var(--fs-xs)">${esc(p.u||'')} · ${new Date(p.ts).toLocaleDateString('es-EC')}</td><td>${ok?`<button class="btn ghost sm" onclick="delProgTejRow('${p.id}')">quitar</button>`:''}</td></tr>`).join('')}</tbody></table>`:'';
-  return resumen+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
+  return resumen+comparaTejHTML()+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
 /* ===== COMPONENTES COMUNES (prompt 2): se construyen una vez y se reutilizan; no copiar por pantalla ===== */
 /* a) Filtro de fases: casillas agrupadas por grupo de la tabla 5, con Seleccionar todas / Limpiar (sentinel '∅' = ninguna) */
 function refEstado(nombre){const [obj,k]=nombre.split('.');const M={};try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}return {o:M[obj],k}}
