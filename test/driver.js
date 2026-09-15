@@ -1015,6 +1015,30 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    PMADD.incluirSig=true;PMADD.exp=new Set(['ODC ODC-TEST-PM']);render();h=hp();__check("PM: 'jalar del mes siguiente' lista las órdenes del mes siguiente marcadas con su mes",h.includes(esc(oS.op))&&h.includes('la estás jalando'));PMADD.incluirSig=false;
    S.ordenes=S.ordenes.filter(o=>![o1.id,o2.id,oS.id].includes(o.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlanes);PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};LIB.q='';PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* FOTOS, FASE y BUSCADOR como Odoo en las pantallas de órdenes */
+  {const antes=__R.errors.length;const adminP=PERFIL;const o=S.ordenes.find(x=>abierta(x)&&x.fase&&x.op)||S.ordenes[0];const fase=faseNombre(o.fase||'');
+   __check("FF: whCell = foto + WH + fase; faseTag muestra la fase de Odoo",typeof whCell==='function'&&whCell(o).includes(esc(o.op))&&(!fase||whCell(o).includes('fase-mini')&&whCell(o).includes(esc(fase))));
+   // orden temporal con fase y ruta de producción, liberada, para ver la fase en las listas
+   const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta)||S.ordenes[0];
+   const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-FF';oT.fase='4CD Ensamble';oT.estado='plan';oT.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()},corte:{ok:true,u:'t',ts:new Date().toISOString()}};delete oT.programa;S.ordenes.push(oT);delete S.avance[oT.id];PLAN=null;PLAN_ALL=null;
+   const cenT=(oT.ruta||[]).map(p=>p.centro).find(c=>CE(c)&&CE(c).area==='pro');
+   const veFase=(pg,pre)=>{page=pg;if(pre)pre();render();const h=document.getElementById('p-'+pg).innerHTML;const re=new RegExp('WH/TEST-FF(</b></a>)? <span class="tag fase-mini"[^>]*>CD Ensamble');return re.test(h)};
+   __check("FF: Liberación muestra la fase junto a la WH",veFase('liberacion',()=>{LIB.et='corte';LIB.q='WH/TEST-FF';LIB.verLista=true}));
+   __check("FF: Control de piso usa foto+WH+fase en las filas de las tres áreas (y se ve cuando hay filas)",(()=>{const src=vControl.toString();const usa=src.split('whCell(o)').length>=3;page='control';CTL.area='pro';CTL.q='';CTL.centro=null;render();const h=document.getElementById('p-control').innerHTML;const filas=(h.match(/<tr><td style="white-space:nowrap">/g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
+   __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
+   __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:null,q:'WH/TEST-FF'}}));
+   __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('produccion',()=>{APO.q='WH/TEST-FF'}));
+   __check("FF: Costura · secuencia por módulo usa foto+WH+fase",(()=>{const src=vCostura.toString();return src.includes('whCell(o)')})());
+   S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};APO.q='';PLAN=null;PLAN_ALL=null;
+   // buscador
+   page='liberacion';LIB.et='tela';LIB.q='';render();let hl=document.getElementById('p-liberacion').innerHTML;__check("FF: el buscador es un solo campo (busq) sin menú cuando está vacío",hl.includes('class="busq"')&&!hl.includes('busq-menu'));
+   LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ofrece 'Buscar Orden de producción / ODC / Estilo / Color / Fase / Cliente por: texto' como Odoo",hl.includes('busq-menu')&&['Orden de producción','ODC','Estilo','Color','Fase','Cliente'].every(n=>hl.includes('Buscar <b>'+n+'</b> por: <i>'+esc(o.op.slice(-4))+'</i>')));
+   setBusq('LIB.q','fase');hl=document.getElementById('p-liberacion').innerHTML;__check("FF: elegir un campo cierra el menú y deja el chip con el campo elegido",!hl.includes('busq-menu')&&hl.includes('Fase ✕'));
+   const q4=o.op.slice(-4);const porFase=S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q')),porTodo=(()=>{BUSQ['LIB.q']='*';return S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q'))})();
+   __check("FF: buscar por campo acota (por Fase no encuentra el número de WH; en todos sí)",porFase.every(x=>normTxt(faseNombre(x.fase)).includes(normTxt(q4)))&&porTodo.some(x=>x.id===o.id),porFase.length+' vs '+porTodo.length);
+   BUSQ['LIB.q']='fase';__check("FF: buscar Fase por el nombre de una fase encuentra las órdenes de esa fase",!fase||S.ordenes.filter(x=>abierta(x)&&matchBusq(x,fase,'LIB.q')).every(x=>normTxt(faseNombre(x.fase)).includes(normTxt(fase))));
+   setBusq('LIB.q',null);LIB.q='';LIB.verLista=false;delete BUSQ['LIB.q'];page='ordenes';render();
+   __check("FF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

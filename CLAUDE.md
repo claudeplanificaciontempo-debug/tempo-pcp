@@ -188,6 +188,14 @@ minPrenda × prendas de la ruta vs. capacidad del mes; nunca impide), 5 congelar
 (`enPlanMes`); cada centro → Carga que viene muestra `planCongeladoCentroHTML` (plan congelado, foto/WH/fase, "pendiente de
 liberar"). Ver `PLAN_MENSUAL_FLUJO_REPORTE.md`.
 
+**Foto + WH + fase en toda lista de órdenes (15-sep-2026):** `whCell(o,px)` = `fotoMini` + WH + `faseTag(o)` (etiqueta
+`.fase-mini` con la fase de Odoo). Se usa en Liberación, Control de piso (tej/tin/pro), Tintorería (estado, resumen WH, reprocesos,
+faltantes, cuadro, modal hecho, baños confirmados), Producto en proceso, Programación por centro, Asignación por orden, Costura
+(secuencia y rojas), Modo línea y Balanceo. Toda lista nueva de órdenes debe usar `whCell`. **Buscador como Odoo:** `busqHTML(id,valor,setter)`
+renders el campo; al escribir ofrece "Buscar <campo> por: <texto>" (WH, ODC, estilo, color, fase, cliente, categoría); elegir uno guarda
+`BUSQ[id]` y `matchBusq(o,q,id)` acota a ese campo (Enter = todos). Pantallas: Órdenes (ORDF.q), Liberación (LIB.q), Producto en proceso
+(WIPL.q), Asignación por orden (APO.q), Centro (CEN.q), Control de piso (CTL.q), Plan mensual → agregar (PMADD.q). Ver `FOTOS_FASE_BUSCADOR_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

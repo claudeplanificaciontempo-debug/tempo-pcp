@@ -297,3 +297,7 @@ Ver `PLAN_MENSUAL_FLUJO_REPORTE.md`. Días y capacidad arriba; resumen con riesg
 (agrupado, jalar del mes siguiente, aviso de capacidad antes de guardar, sin bloquear); congelar con versión/fecha/quién.
 Liberación marca "EN EL PLAN — pendiente de liberar"; los centros ven el plan congelado en "Carga que viene".
 Datos: `S.params.planMes[ym]={oids,ts,u,congelado}`; `S.planes[].oids`. Motor y capacidades sin tocar.
+
+### Fotos, fase junto a la WH y buscador como Odoo (15-sep-2026)
+Ver `FOTOS_FASE_BUSCADOR_REPORTE.md`. `whCell`/`faseTag` en todas las listas de órdenes; `busqHTML`/`matchBusq`/`BUSQ` en los 7 buscadores.
+Agrupación (punto 4 del pedido) quedó pendiente: el mensaje llegó cortado.
