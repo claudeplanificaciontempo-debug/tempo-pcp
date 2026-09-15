@@ -313,6 +313,17 @@ motor no se tocó. Ver `TEJEDURIA_MOTOR_STOCK_MANUAL_REPORTE.md`.
 (compromiso si existe, si no la de Odoo), la misma que usa el motor; los textos dicen «fecha meta». Ver
 `PLAN_BLOQUE2_FECHA_META_REPORTE.md`.
 
+**Liberación por bloques (15-sep-2026 noche):** `vLiberacion` (las dos páginas) se arma con `bloqueLib(n,titulo,nota)`:
+1 Por liberar (botones arriba + lista `#lib-lista` que siempre está en el DOM y se colapsa con `display:none` según
+`LIB.verLista`; familias y tela/color en `<details>` cerrados con totales en el summary), 2 Liberadas, 3 Resumen
+(tarjetas `lib-r-*` + `cargaLib()`), 4 Órdenes liberadas (`LIB.q4` con `busqHTML`, agrupador `lib4`, `mRetirarLib` y
+`mCambiarFase`). El agrupador común ganó `grpSt(id).selFn` + `g.mapa[key]` (ids por grupo) para «seleccionar todo»
+(`selGrupoLib`); la posición de la lista se recuerda en `LIB.scroll` (`recordarScroll`/`restaurarScrollLib`).
+**Ruta por defecto**: `c.rutaDefecto` por centro (Configuración → Centros), `sembrarRutaDefecto()` una sola vez en
+corte/modulos/empaque con bandera `S.params.rutaDefectoSembrada`, `centrosRutaDefecto()`; `mRutaCentro` marca esos pasos
+cuando la orden no tiene `rutaEditada`; `ordenesContraRutaDefecto()`/`contraRutaHTML()` reportan las cargadas que la
+contradicen. Ver `LIBERACION_BLOQUES_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

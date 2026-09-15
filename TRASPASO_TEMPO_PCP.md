@@ -204,6 +204,20 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.13 Liberación y Liberación a producción por bloques (15-sep-2026 noche)
+Las dos páginas tienen la misma estructura, con los componentes comunes:
+- **Bloque 1 · Por liberar**: arriba los botones (liberar todo lo filtrado, elegir órdenes 1×1, marcar todas, liberar
+  las marcadas) y la lista agrupada, con «seleccionar todo» por grupo. Familias y tela/color quedan en desplegables
+  cerrados que ya muestran los totales. Abrir y cerrar una orden no pierde la selección ni la posición.
+- **Bloque 2 · Liberadas**: por familia y por tela y color.
+- **Bloque 3 · Resumen de lo liberado**: órdenes, referencias distintas, kilos de tela cruda y horas de planta, más lo
+  que cargó tejeduría y los baños que armó tintorería.
+- **Bloque 4 · Órdenes liberadas**: buscador común (WH, ODC, cliente, referencia), revertir la liberación con motivo de
+  la tabla 15 y devolver la fase según la secuencia de la tabla 1. Todo queda en auditoría.
+- **Ruta por defecto**: en Configuración → Centros, la marca «va por defecto en toda ruta» (sembrada en corte,
+  confección y empaque, editable, con bitácora). Al abrir una orden sin ruta editada esos pasos vienen marcados, y
+  Liberación avisa cuáles de las órdenes cargadas contradicen esa ruta.
+
 ### 2.12 Tejeduría en el motor y Bloque 2 contra la fecha meta (15-sep-2026 noche)
 - **Tejeduría**: al programar, los kilos de cada tela se cubren en este orden: **stock de tela cruda** (la orden con la
   fecha requerida más cercana lo toma primero y queda con la tela lista de una), **lo programado a mano** por la persona

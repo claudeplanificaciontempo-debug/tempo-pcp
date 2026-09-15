@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 17:30';
+const APP_BUILD='2026-09-15 17:48';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1586,9 +1586,9 @@ function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;
 function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);render()}
 function claveGRP(o,c){switch(c){case 'fase':return o.fase||'Sin fase';case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';case 'fam':{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}case 'hija':case 'cat':{const k=K(o.cat);return k?k.n:'Sin categoría'}case 'color':return (C(o.color)||{}).n||'Sin color';case 'proyecto':return String(o.proyecto||'').trim()||'Sin proyecto';case 'etapa':try{return dondeEsta(o,programar()).n}catch(e){return '—'}case 'paso':try{const p=pasoProximoDe(o,programar());return p?nCen(p.centro):'Sin paso pendiente'}catch(e){return '—'}case 'mes':{const m=fechaMetaDe(o);return m?fmtMesEG(m.slice(0,7)):'Sin fecha'}}return '—'}
 function grpSelHTML(id,inline){const g=grpSt(id);const n=g.niveles;const sel=i=>`<select onchange="setNivelGRP('${id}',${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${GRP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;const ss=[0,1,2].filter(i=>i<=n.length).map(sel).join('');return inline?ss:`<div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${ss}</div></div>`}
-function filasGRP(id,items,filaFn,nCols,oDe,pzDe){const g=grpSt(id);const niv=g.niveles;oDe=oDe||(x=>x);pzDe=pzDe||(x=>+(oDe(x).cant)||0);if(!niv.length)return items.map(filaFn).join('');
+function filasGRP(id,items,filaFn,nCols,oDe,pzDe){const g=grpSt(id);const niv=g.niveles;oDe=oDe||(x=>x);pzDe=pzDe||(x=>+(oDe(x).cant)||0);g.mapa=g.mapa||{};if(!niv.length)return items.map(filaFn).join('');
   const rec=(xs,i,pref)=>{if(i>=niv.length)return xs.map(filaFn).join('');const m={},orden=[];xs.forEach(x=>{const c=claveGRP(oDe(x),niv[i]);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(x)});orden.sort((a,b)=>niv[i]==='fase'?(faseNum(a)-faseNum(b)||a.localeCompare(b)):a.localeCompare(b,'es',{numeric:true}));const nom=(GRP_CAMPOS.find(z=>z[0]===niv[i])||[])[1]||'';
-    return orden.map(c=>{const key=pref+'|'+c;const open=g.exp.has(key);const ys=m[c];const pz=ys.reduce((a,x)=>a+pzDe(x),0);const hs=ys.reduce((a,x)=>{const o=oDe(x);return a+(o&&o.ruta?minPendiente(o)/60:0)},0);return `<tr class="grp-row" style="cursor:pointer;background:${i===0?'var(--field)':'transparent'};font-weight:${i===0?700:600}" onclick="togGRP('${id}','${jsq(key)}')"><td colspan="${nCols}" style="padding-left:${8+i*18}px;border-top:${i===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span style="display:inline-block;width:14px">${open?'▾':'▸'}</span><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(c)}<span style="float:right;font-weight:600">${ys.length} ${ys.length===1?'orden':'órdenes'} · ${num(pz)} prendas · ${num(hs)} h</span></td></tr>`+(open?rec(ys,i+1,key):'')}).join('')};
+    return orden.map(c=>{const key=pref+'|'+c;const open=g.exp.has(key);const ys=m[c];g.mapa[key]=ys.map(x=>{const o=oDe(x);return o&&o.id}).filter(Boolean);const pz=ys.reduce((a,x)=>a+pzDe(x),0);const hs=ys.reduce((a,x)=>{const o=oDe(x);return a+(o&&o.ruta?minPendiente(o)/60:0)},0);return `<tr class="grp-row" style="cursor:pointer;background:${i===0?'var(--field)':'transparent'};font-weight:${i===0?700:600}" onclick="togGRP('${id}','${jsq(key)}')"><td colspan="${nCols}" style="padding-left:${8+i*18}px;border-top:${i===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span style="display:inline-block;width:14px">${open?'▾':'▸'}</span><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(c)}<span style="float:right;font-weight:600">${g.selFn?'<a style="cursor:pointer;font-weight:400" onclick="event.stopPropagation();'+g.selFn+'(\''+jsq(key)+'\',true)">seleccionar todo</a> · ':''}${ys.length} ${ys.length===1?'orden':'órdenes'} · ${num(pz)} prendas · ${num(hs)} h</span></td></tr>`+(open?rec(ys,i+1,key):'')}).join('')};
   return rec(items,0,'')}
 function grpMap(id,items,nCols,oDe,filaFn){return{join:()=>filasGRP(id,items,filaFn,nCols,oDe)}}
 /* ---------- Gantt de tintorería: un baño que dura más que las horas del día ocupa los días laborables siguientes (solo vista) ---------- */
@@ -2656,13 +2656,35 @@ function togFaseFam(f){if(FAM.fases.has(f))FAM.fases.delete(f);else FAM.fases.ad
 function togGrupoFam(g,on){S.ordenes.forEach(o=>{const f=o.fase||'Sin fase';if(grupoFase(f)===g){if(on)FAM.fases.add(f);else FAM.fases.delete(f)}});render()}
 
 /* ---------- Liberación: tablero de lo que hay por liberar y lo liberado, filtros de casillas, liberación en bloque ---------- */
-let LIB={et:'tela',q:'',fam:null,hija:null,cli:null,mes:null,fases:null,tela:null,sel:new Set(),verLista:false};
+let LIB={et:'tela',q:'',q4:'',fam:null,hija:null,cli:null,mes:null,fases:null,tela:null,sel:new Set(),verLista:true,scroll:0};
 function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.size:0;fmt=fmt||(x=>x);
   return `<div><label>${nombre}</label><details style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${n?n+' de '+items.length:'Todos'} ▾</summary>
    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:240px;max-height:360px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
     <div style="margin-bottom:8px"><button class="btn ghost sm" onclick="${varName}=null;render()">Todos</button></div>
     ${items.map(x=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${sel&&sel.has(x)?'checked':''} onchange="${togFn}('${esc(String(x)).replace(/'/g,"\\\\'")}')" onclick="event.stopPropagation()"> ${esc(fmt(x))}</label>`).join('')||'<span class="mut">Nada</span>'}</div></details></div>`}
 function togSet(obj,k,v){obj[k]=obj[k]||new Set();if(obj[k].has(v))obj[k].delete(v);else obj[k].add(v);if(!obj[k].size)obj[k]=null;render()}
+/* Ruta por defecto: marca editable por centro (Configuración → Centros). Se siembra UNA vez en corte, confección y
+   empaque; si la usuaria la cambia, no se vuelve a pisar. */
+function sembrarRutaDefecto(){if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
+function centrosRutaDefecto(){sembrarRutaDefecto();return S.centros.filter(c=>c.area==='pro'&&c.rutaDefecto).map(c=>c.id)}
+/* órdenes cargadas que contradicen la ruta por defecto: les falta un paso marcado por defecto (o va por maquila) */
+function ordenesContraRutaDefecto(){const def=centrosRutaDefecto();const out=[];
+  S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).length).forEach(o=>{const cen=(o.ruta||[]).map(p=>p.centro);
+    const faltan=def.filter(c=>!cen.includes(c));if(!faltan.length)return;
+    const maquila=cen.some(c=>/maquila/i.test(c)||/maquila/i.test(nCen(c)||''));
+    out.push({o,faltan,maquila})});
+  return out}
+function contraRutaHTML(){const l=ordenesContraRutaDefecto();if(!l.length)return '';
+  const porFalta={};l.forEach(x=>x.faltan.forEach(c=>{porFalta[c]=porFalta[c]||[];porFalta[c].push(x)}));
+  return `<details class="panel" style="border-left:3px solid var(--aviso)"><summary style="cursor:pointer;padding:10px 14px"><b>${l.length} órdenes cargadas no siguen la ruta por defecto</b> <span class="mut" style="font-size:var(--fs-xs)">${Object.entries(porFalta).map(([c,xs])=>xs.length+' sin '+esc(nCen(c))).join(' · ')}${l.some(x=>x.maquila)?' · '+l.filter(x=>x.maquila).length+' con maquila en la ruta':''} · se reporta, no se cambia nada solo</span></summary>
+   <div class="body"><div class="scroll" style="max-height:300px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Categoría</th><th>Le falta</th><th>Ruta cargada</th></tr></thead><tbody>
+   ${l.slice(0,200).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td>${esc(nombreCat(K(x.o.cat)))}</td><td>${x.faltan.map(c=>'<span class="tag t-aviso">'+esc(nCen(c))+'</span>').join(' ')}${x.maquila?' <span class="tag">maquila</span>':''}</td><td class="mut" style="font-size:var(--fs-xs)">${(x.o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')}</td></tr>`).join('')}
+   </tbody></table></div></div></details>`}
+/* selección por grupo del agrupador común y memoria de scroll de la lista */
+function selGrupoLib(key,on){const g=grpSt('lib');const ids=(g.mapa||{})[key]||[];ids.forEach(id=>on?LIB.sel.add(id):LIB.sel.delete(id));render()}
+function recordarScroll(el){if(!el)return;LIB.scroll=el.scrollTop}
+function restaurarScrollLib(){const e=document.getElementById('lib-lista');if(e&&LIB.scroll)e.scrollTop=LIB.scroll}
+function bloqueLib(n,titulo,nota){return `<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Bloque ${n} · ${esc(titulo)}</span>${nota?' <span class="mut" style="font-size:var(--fs-xs)">'+esc(nota)+'</span>':''}</div>`}
 function vLiberacion(el){
   const et=LIB.et;const P=S.ordenes.length?programar():{ordenes:{},pro:[],tej:[],banos:[]};const q=normTxt(LIB.q);const todas=S.ordenes.filter(abierta);
   const padreDe=o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:''},hijaDe=o=>{const k=K(o.cat);return k?k.n:''};
@@ -2713,23 +2735,52 @@ function vLiberacion(el){
     ${selMulti('Familia',fams,LIB.fam,'LIB.fam','togSetFam')}${selMulti('Categoría',hijas,LIB.hija,'LIB.hija','togSetHija')}${selMulti('Tipo de tela',telasDisp,LIB.tela,'LIB.tela','togSetTela',nTela)}
     <div><label>Fases</label>${selFases(fasesAll,LIB.fases,'LIB.fases','togFaseLib',cuentasFase)}</div>
     ${selMulti('Cliente',clis,LIB.cli,'LIB.cli','togSetCli')}${selMulti('Mes de entrega',meses,LIB.mes,'LIB.mes','togSetMes')}
-    ${grpSelHTML('lib')}<div style="flex:1;min-width:180px"><label>Buscar</label>${busqHTML('LIB.q',LIB.q,'LIB.q=v','')}</div>
+${grpSelHTML('lib')}<div style="width:190px"><label>Buscar</label>${busqHTML('LIB.q',LIB.q,'LIB.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
     ${(LIB.fam||LIB.hija||LIB.tela||LIB.cli||LIB.mes||LIB.fases||LIB.q)?`<div><button class="btn ghost sm" onclick="LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.q='';render()">Limpiar</button></div>`:''}</div></div>
-  <div class="panel"><h3>Por liberar a ${nombre} <span class="note">con estos filtros: ${listas.length} órdenes listas · ${num(rPend.pz)} prendas${noListas.length?' · '+noListas.length+' aún no pueden':''}</span><span class="spacer"></span>
-    ${puedeF&&et!=='corte'?`<button class="btn sm" ${listas.length?'':'disabled'} onclick="liberarA(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar todo lo filtrado (${listas.length})</button>`:(et==='corte'?'<span class="mut" style="font-size:var(--fs-s)">Una por una: marca en cada orden la materia prima y los insumos verificados en bodega, y libera.</span>':'')}</h3>
-   <div class="body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h4 style="margin:0 0 6px">Prendas por familia <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· clic para acotar</span></h4>${tablaFam(rPend,true)}</div>
-    <div>${et==='tela'?`<h4 style="margin:0 0 6px">Tela en crudo por tela y color</h4>${tablaTelaColor(rPend,true)}`:`<h4 style="margin:0 0 6px">Carga que entra a los centros</h4>${tablaCen(rPend)}`}<p class="mut" style="font-size:var(--fs-s);margin-top:8px">${num(rPend.h)} h de planta${rPend.usd?' · $ '+num(rPend.usd):''}</p></div></div>
-   <details style="margin-top:12px" ${LIB.verLista?'open':''}><summary class="mut" style="cursor:pointer" onclick="LIB.verLista=!LIB.verLista">Elegir órdenes una por una${sel.length?' · '+sel.length+' marcadas ('+num(rSel.pz)+' pz'+(et==='tela'?', '+num(Object.values(rSel.kg).reduce((a,b)=>a+b,0))+' kg':'')+')':''}</summary>
-    <div style="margin:8px 0">${puedeF&&et!=='corte'?`<button class="btn ghost sm" onclick="LIB.sel=new Set(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')});LIB.verLista=true;render()">Marcar todas</button> <button class="btn ghost sm" onclick="LIB.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${sel.length?'':'disabled'} onclick="liberarA(${JSON.stringify(sel.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar marcadas</button>`:''}</div>
-    <div class="scroll" style="max-height:420px"><table>${cab}<tbody>${grpMap('lib',listas.slice(0,400),et==='tela'?11:10,null,o=>et==='corte'?filaProd(o,hijaDe,kgDe):fila(o,true)).join('')||'<tr><td colspan="10" class="mut">Nada pendiente con estos filtros.</td></tr>'}</tbody></table></div>
-    ${noListas.length?`<h4 style="margin:12px 0 6px">Aún no pueden liberarse <span class="mut" style="font-weight:400">· ${noListas.length}</span></h4><div class="scroll" style="max-height:260px"><table>${cab}<tbody>${grpMap('lib',noListas.slice(0,200),et==='tela'?11:10,null,o=>fila(o,false)).join('')}</tbody></table></div>`:''}</details></div></div>
-  <div class="panel"><h3>Liberadas <span class="note">${liberadas.length} órdenes · ${num(rLib.pz)} prendas · ${num(rLib.h)} h de planta${rLib.usd?' · $ '+num(rLib.usd):''}</span></h3><div class="body">
+  ${et==='tela'?contraRutaHTML():''}
+  ${bloqueLib('1',`Por liberar a ${nombre}`,`${listas.length} órdenes listas · ${num(rPend.pz)} prendas${noListas.length?' · '+noListas.length+' aún no pueden':''}`)}
+  <div class="panel"><div class="body">
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+    ${puedeF&&et!=='corte'?`<button class="btn sm" ${listas.length?'':'disabled'} onclick="liberarA(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')},'${et}')">Liberar todo lo filtrado (${listas.length})</button>`:(et==='corte'?'<span class="mut" style="font-size:var(--fs-s)">Una por una: marca en cada orden la materia prima y los insumos verificados en bodega.</span>':'')}
+    <button class="btn ghost sm ${LIB.verLista?'on':''}" onclick="LIB.verLista=!LIB.verLista;render()">${LIB.verLista?'▾':'▸'} Elegir órdenes 1×1${sel.length?' · '+sel.length+' marcadas ('+num(rSel.pz)+' pz'+(et==='tela'?', '+num(Object.values(rSel.kg).reduce((a,b)=>a+b,0))+' kg':'')+')':''}</button>
+    ${puedeF&&et!=='corte'?`<button class="btn ghost sm" onclick="LIB.sel=new Set(${JSON.stringify(listas.map(o=>o.id)).replace(/"/g,'&quot;')});LIB.verLista=true;render()">Marcar todas</button> <button class="btn ghost sm" onclick="LIB.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${sel.length?'':'disabled'} onclick="liberarA(${JSON.stringify([...LIB.sel]).replace(/"/g,'&quot;')},'${et}')">Liberar las marcadas (${sel.length})</button>`:''}
+   </div>
+   ${`<div class="scroll" id="lib-lista" style="max-height:420px;${LIB.verLista?'':'display:none'}" onscroll="recordarScroll(this)"><table>${cab}<tbody>${(grpSt('lib').selFn='selGrupoLib',grpMap('lib',listas.slice(0,400),et==='tela'?11:10,null,o=>et==='corte'?filaProd(o,hijaDe,kgDe):fila(o,true)).join(''))||'<tr><td colspan="10" class="mut">Nada pendiente con estos filtros.</td></tr>'}</tbody></table></div>`}
+   <details style="margin-top:10px"><summary style="cursor:pointer"><b>Prendas por familia</b> <span class="mut" style="font-size:var(--fs-s)">· ${Object.keys(rPend.fam).length} familias · ${rPend.n} órdenes · ${num(rPend.pz)} prendas · clic para abrir</span></summary><div style="margin-top:8px">${tablaFam(rPend,true)}</div></details>
+   <details style="margin-top:8px"><summary style="cursor:pointer"><b>${et==='tela'?'Tela en crudo por tela y color':'Carga que entra a los centros'}</b> <span class="mut" style="font-size:var(--fs-s)">· ${et==='tela'?num(Object.values(rPend.kg).reduce((a,b)=>a+b,0))+' kg crudo en '+rPend.kgCol.length+' tela/color':num(rPend.h)+' h de planta en '+Object.keys(rPend.cen).length+' centros'}${rPend.usd?' · $ '+num(rPend.usd):''} · clic para abrir</span></summary><div style="margin-top:8px">${et==='tela'?tablaTelaColor(rPend,true):tablaCen(rPend)}</div></details>
+   ${noListas.length?`<details style="margin-top:8px"><summary style="cursor:pointer"><b>Aún no pueden liberarse</b> <span class="mut" style="font-size:var(--fs-s)">· ${noListas.length} órdenes · clic para abrir</span></summary><div class="scroll" style="max-height:260px;margin-top:8px"><table>${cab}<tbody>${grpMap('lib',noListas.slice(0,200),et==='tela'?11:10,null,o=>fila(o,false)).join('')}</tbody></table></div></details>`:''}
+  </div></div>
+
+  ${bloqueLib('2',`Liberadas a ${nombre}`,`${liberadas.length} órdenes · ${num(rLib.pz)} prendas · ${num(rLib.h)} h de planta${rLib.usd?' · $ '+num(rLib.usd):''}`)}
+  <div class="panel"><div class="body">
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h4 style="margin:0 0 6px">Por familia</h4>${tablaFam(rLib,true)}</div><div>${et==='tela'?`<h4 style="margin:0 0 6px">Tela en crudo por tela y color</h4>${tablaTelaColor(rLib,true)}`:`<h4 style="margin:0 0 6px">Carga en los centros</h4>${tablaCen(rLib)}`}</div></div>
-   ${et==='tela'?cargaLib():`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Carga programada por centro con lo liberado</h4>${tablaCen(resumen(liberadas))}</div>`}
-   <details style="margin-top:12px"><summary class="mut" style="cursor:pointer">Ver las órdenes liberadas</summary><div class="scroll" style="max-height:360px;margin-top:6px"><table>${cab}<tbody>${grpMap('lib',liberadas.slice(0,400),et==='tela'?11:10,null,o=>fila(o,false)).join('')||'<tr><td colspan="10" class="mut">Ninguna todavía.</td></tr>'}</tbody></table></div></details></div></div>`;
+  </div></div>
+
+  ${bloqueLib('3','Resumen de lo liberado','lo que lo liberado cargó en tejeduría y tintorería, y cuánto se liberó')}
+  <div class="panel"><div class="body">
+   ${tarjetasResumenHTML([
+     {id:'lib-r-ord',v:liberadas.length,k:'Órdenes liberadas · '+num(rLib.pz)+' prendas',items:liberadas,porFam:true},
+     {id:'lib-r-ref',v:new Set(liberadas.map(o=>String(o.ref||'').trim()).filter(Boolean)).size,k:'Referencias distintas liberadas'},
+     {id:'lib-r-kg',v:num(Object.values(rLib.kg).reduce((a,b)=>a+b,0))+' kg',k:'Tela cruda que pidieron'},
+     {id:'lib-r-h',v:num(rLib.h)+' h',k:'Horas de planta que cargaron'}])}
+   ${et==='tela'?cargaLib():`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Carga programada por centro con lo liberado</h4>${tablaCen(rLib)}</div>`}
+  </div></div>
+
+  ${bloqueLib('4','Órdenes liberadas','buscar una orden, revertir su liberación con motivo o devolverle la fase')}
+  <div class="panel"><div class="body">
+   <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">
+    <div style="width:220px"><label>Buscar entre las liberadas</label>${busqHTML('LIB.q4',LIB.q4||'','LIB.q4=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
+    ${grpSelHTML('lib4')}
+   </div>
+   ${(()=>{const q4=normTxt(LIB.q4||'');const l4=liberadas.filter(o=>matchBusq(o,q4,'LIB.q4'));
+     const fila4=o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(o.ref||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${((o.lib||{})[et]||{}).u||''}${((o.lib||{})[et]||{}).ts?' · '+new Date(o.lib[et].ts).toLocaleDateString('es-EC'):''}</td><td style="white-space:nowrap">${puedeF?`<button class="btn ghost sm" onclick="mRetirarLib('${o.id}','${et}')" title="revertir la liberación: pide motivo de la tabla 15 y queda en auditoría">revertir</button> <button class="btn ghost sm" onclick="mCambiarFase('${o.id}')" title="devolver o cambiar la fase: si la secuencia de la tabla 1 baja, pide motivo">fase</button>`:''}</td></tr>`;
+     return `<div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Referencia</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Liberó</th><th></th></tr></thead><tbody>${filasGRP('lib4',l4.slice(0,400),fila4,9)||'<tr><td colspan="9" class="mut">Ninguna orden liberada con esa búsqueda.</td></tr>'}</tbody></table></div>`})()}
+  </div></div>`;
+  restaurarScrollLib();
 }
 function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){togSet(LIB,'hija',v)}function togSetTela(v){togSet(LIB,'tela',v)}function togSetCli(v){togSet(LIB,'cli',v)}function togSetMes(v){togSet(LIB,'mes',v)}
 function togFaseLib(f){togSet(LIB,'fases',f)}
+function togSetQ4(){}
 /* ---------- Liberación a producción: segundo filtro, UNA POR UNA, con dos verificaciones humanas (no bloquea por dato, bloquea por firma) ---------- */
 let LIBV={};
 function setLibV(id,k,on){LIBV[id]=LIBV[id]||{};LIBV[id][k]=on;render()}
@@ -3036,8 +3087,8 @@ function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;con
   abrir(`<h3>Ruta de ${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Marca o desmarca los pasos de tus centros. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría; si la categoría no tiene tiempo para ese centro, el paso entra <b>sin tiempo</b> y queda en la bandeja "sin tiempo por prenda" hasta que se cargue. El motivo es obligatorio y todo queda en la bitácora.</p>
    <table><thead><tr><th>Paso</th><th>En la ruta</th><th class="num">Min/prenda</th><th>Estado</th></tr></thead><tbody>
-   ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id);const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);
-     return `<tr><td>${esc(c.n)}</td><td><input type="checkbox" id="rc-${c.id}" ${p?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
+   ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id);const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);const porDefecto=!p&&!o.rutaEditada&&centrosRutaDefecto().includes(c.id)&&!hecho;
+     return `<tr><td>${esc(c.n)}${porDefecto?' <span class="tag t-ok" title="marcado en Configuración → Centros: va por defecto en toda ruta">por defecto</span>':''}</td><td><input type="checkbox" id="rc-${c.id}" ${(p||porDefecto)?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
    <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rc-motivo" placeholder="faltaba la operación, cambio de bordado a estampado, el cliente pidió lavado…"></div></div></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarRutaCentro('${o.id}')">Guardar ruta</button></div>`)}
 function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}
@@ -4556,10 +4607,11 @@ function vConfig(el){
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
   ${CONF.tab==='borrado'?panelBorradoHTML():''}
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
-   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
+   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th title="al abrir una orden sin ruta editada, este paso viene marcado">va por defecto en toda ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
    ${S.centros.map(c=>{const esLavPla=c.id==='lavado'||c.id==='plancha';const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
      <td><select onchange="setCentro('${c.id}','area',this.value)">${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${c.area===k?'selected':''}>${v}</option>`).join('')}</select></td>
      <td>${c.area==='pro'?`<select onchange="setCentro('${c.id}','medida',this.value)">${Object.entries(MEDIDAS).filter(([k])=>k!=='dias').map(([k,v])=>`<option value="${k}" ${c.medida===k?'selected':''}>${v}</option>`).join('')}</select>`:'<span class="mut">'+({tej:'kg por hora',tin:'kg por baño',ext:'días de entrega'}[c.area]||'')+'</span>'}</td>
+     <td style="text-align:center">${c.area==='pro'?`<input type="checkbox" ${(sembrarRutaDefecto(),c.rutaDefecto)?'checked':''} onchange="setCentro('${c.id}','rutaDefecto',this.checked)">`:'<span class="mut">—</span>'}</td>
      <td class="num"><a href="#bloque-${c.area}" style="color:var(--medio)">${S.recursos.filter(r=>r.centro===c.id).length}</a></td>
      <td class="num">${esLavPla?`<input type="number" step="0.01" style="width:70px" value="${c.minEstandar||''}" placeholder="0" onchange="setCentro('${c.id}','minEstandar',this.value)">`:'<span class="mut">—</span>'}</td>
      <td class="num">${esLavPla?`<input type="number" min="0" max="100" style="width:60px" value="${c.pctEstimado!=null?c.pctEstimado:''}" placeholder="0" onchange="setCentro('${c.id}','pctEstimado',this.value)">%${c.pctReal!=null?` <span class="mut" style="font-size:var(--fs-xs)">real ${num(c.pctReal,0)}%</span>`:''}`:'<span class="mut">—</span>'}</td>
@@ -5437,7 +5489,8 @@ function addRec(area){const c=S.centros.find(x=>x.area===area);if(!c)return;
   const b={id:uid(),n:'Nuevo recurso',centro:c.id,dias:6,activa:true,telas:[]};
   if(area==='tej')Object.assign(b,{kgh:10,horas:24});else if(area==='tin')Object.assign(b,{cap:100,capPique:0,horas:24});else Object.assign(b,{pers:10,min:480,efic:85});
   S.recursos.push(b);save();render()}
-function setCentro(id,k,v){const c=CE(id);c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;
+function setCentro(id,k,v){const c=CE(id);const antes=c[k];c[k]=(k==='minEstandar'||k==='pctEstimado'||k==='puntMin')?(+v||0):v;
+  if(k==='rutaDefecto')bitacora('Centro '+nCen(id)+' · va por defecto en toda ruta: '+(antes?'sí':'no')+' → '+(v?'sí':'no')+' ('+quienFirma()+')');
   if(k==='puntMin'&&id==='bordado')S.params.puntadasMin=(+v>0)?+v:null; // una sola fuente; vaciar el centro vacía también el parámetro // el motor (minPrenda) lee la velocidad de aquí: una sola fuente
   save();render()}
 function addCentro(){S.centros.push({id:uid(),n:'Nuevo centro',area:'pro',medida:'min'});save();render()}

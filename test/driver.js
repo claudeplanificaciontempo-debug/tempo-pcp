@@ -1080,9 +1080,11 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      const cg=cargaPlanCentros(ym);const pCorte=(oT.ruta||[]).find(p=>p.centro==='corte');__check("VC: el aviso de capacidad del plan usa solo minutos PENDIENTES (corte ya hecho no cuenta)",!(cg.corte>0)&&(!pCorte||minPrenda('corte',pCorte.t)===0||true),JSON.stringify(cg));
      S.params.planMes=JSON.parse(bakPM);S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);delete S.avance[oT.id]}
    // 2/3 · agrupación colapsable
-   GRP={};grpSt('lib').niveles=['cliente','fase'];page='liberacion';LIB.et='tela';LIB.q='';LIB.verLista=true;render();let hl=document.getElementById('p-liberacion').innerHTML;
+   const oPendVC=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/VC-PEND';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
+   GRP={};grpSt('lib').niveles=['cliente','fase'];page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;LIB.verLista=true;render();let hl=document.getElementById('p-liberacion').innerHTML;
    __check("VC: Liberación agrupa (colapsado, conteo y prendas a la derecha) y ofrece fase/cliente/ODC/padre/hija/color/proyecto",hl.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(hl)&&['Fase','Cliente','ODC','Categoría padre','Categoría hija','Color','Proyecto'].every(x=>hl.includes('>'+x+'</option>')));
    const key=(hl.match(/togGRP\('lib','([^']+)'\)/)||[])[1];if(key){togGRP('lib',key.replace(/\\'/g,"'"));hl=document.getElementById('p-liberacion').innerHTML;__check("VC: al abrir un grupo aparece el segundo nivel (anidado)",(hl.match(/grp-row/g)||[]).length>1)}
+   S.ordenes=S.ordenes.filter(x=>x!==oPendVC);PLAN=null;PLAN_ALL=null;
    GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
    GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.q='';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
    GRP={};WIPL={niveles:['color'],q:''};page='wip';WIP.tab='pro';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(o=>abierta(o)&&liberada(o,'tela')));WIPL={niveles:null,q:''};GRP={};
@@ -1422,6 +1424,63 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bp=JSON.parse(bakProg);if(bp)S.params.progTej=bp;else delete S.params.progTej;
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TEJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* LIBERACIÓN POR BLOQUES: bloques 1-4, ruta por defecto y reversión auditada */
+  {const antes=__R.errors.length;window.confirm=()=>true;
+   const bakMot=JSON.stringify(S.params.motivos||null),bakAud=JSON.stringify(S.params.auditoriaCambios||null);
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];
+   if(!S.params.motivos.some(m=>m.uso==='liberacion'))S.params.motivos.push({motivo:'Cliente cambió la orden',uso:'liberacion'});
+   page='liberacion';LIB.et='tela';LIB.q='';LIB.q4='';LIB.fases=null;LIB.verLista=false;render();let h=document.getElementById('p-liberacion').innerHTML;
+   __check("LB1: Liberación está en cuatro bloques con nombre",['Bloque 1','Bloque 2','Bloque 3','Bloque 4'].every(b=>h.includes(b))&&/Por liberar a la planta/.test(h)&&/Liberadas a la planta/.test(h)&&/Resumen de lo liberado/.test(h)&&/Órdenes liberadas/.test(h));
+   __check("LB1: el encabezado y la explicación siguen",/<h2>Liberación<\/h2>/.test(h)&&/La liberación principal/.test(h));
+   __check("LB2: familias y telas por color son desplegables cerrados con los totales a la vista",/<summary[^>]*><b>Prendas por familia<\/b>/.test(h)&&/<summary[^>]*><b>Tela en crudo por tela y color<\/b>/.test(h)&&!/<details[^>]*open[^>]*><summary[^>]*><b>Prendas por familia/.test(h)&&/familias ·/.test(h));
+   __check("LB2: 'Elegir órdenes 1×1' está arriba del bloque, antes de los desplegables",h.indexOf('Elegir órdenes 1×1')>0&&h.indexOf('Elegir órdenes 1×1')<h.indexOf('Prendas por familia'));
+   __check("LB1: el buscador del bloque de filtros es el común y más chico",/busq/.test(h)&&/font-size:var\(--fs-s\);padding:4px 6px/.test(h));
+   // seleccionar todo por grupo
+   const oPend=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/LB-PEND';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
+   GRP={};grpSt('lib').niveles=['cliente'];LIB.verLista=true;LIB.sel=new Set();LIB.q='';LIB.fases=null;render();h=document.getElementById('p-liberacion').innerHTML;
+   const key=Object.keys(grpSt('lib').mapa||{})[0];
+   __check("LB2: cada grupo tiene 'seleccionar todo'",!!key&&h.includes('selGrupoLib('));
+   if(key){const ids=grpSt('lib').mapa[key];selGrupoLib(key,true);
+     __check("LB2: 'seleccionar todo' marca las órdenes de ese grupo",ids.length>0&&ids.every(id=>LIB.sel.has(id)));}
+   else __check("LB2: 'seleccionar todo' marca las órdenes de ese grupo",true,'sin grupos con órdenes');
+   // abrir y cerrar una orden no pierde la selección ni la posición
+   {const antesSel=[...LIB.sel];recordarScroll({scrollTop:40});
+    const oid=antesSel[0]||(S.ordenes.find(abierta)||{}).id;if(oid){mRutaCentro(oid);try{cerrar()}catch(x){}}
+    render();
+    __check("LB2: abrir y cerrar una orden no pierde la selección ni la posición",antesSel.every(id=>LIB.sel.has(id))&&LIB.sel.size===antesSel.length&&LIB.scroll===40,JSON.stringify({antesSel:antesSel.length,ahora:LIB.sel.size,scroll:LIB.scroll}));}
+   S.ordenes=S.ordenes.filter(x=>x!==oPend);PLAN=null;PLAN_ALL=null;LIB.sel=new Set();GRP={};
+   // ruta por defecto
+   __check("LB3: la marca 'va por defecto en toda ruta' existe y viene sembrada en corte, confección y empaque",centrosRutaDefecto().includes('corte')&&centrosRutaDefecto().includes('modulos')&&centrosRutaDefecto().includes('empaque')&&S.params.rutaDefectoSembrada===true);
+   page='config';CONF.tab='recursos';render();__check("LB3: la marca es editable en Configuración → Centros",document.getElementById('p-config').innerHTML.includes("'rutaDefecto',this.checked"));
+   {const c=CE('empaque');const antesV=c.rutaDefecto;const nb=S.bitacora.length;setCentro('empaque','rutaDefecto',false);
+    __check("LB3: cambiar la marca queda en bitácora y no se vuelve a sembrar sola",c.rutaDefecto===false&&S.bitacora.length>nb&&(sembrarRutaDefecto(),c.rutaDefecto===false));
+    setCentro('empaque','rutaDefecto',antesV===undefined?true:antesV);}
+   {const o=S.ordenes.find(x=>abierta(x)&&!x.rutaEditada)||S.ordenes.find(abierta);const bakRuta=o.ruta;const bakEd=o.rutaEditada;
+    o.ruta=[];delete o.rutaEditada;mRutaCentro(o.id);
+    const marcados=centrosRutaDefecto().filter(c=>{const el=document.getElementById('rc-'+c);return el&&el.checked});
+    __check("LB3: al abrir una orden sin ruta editada, los pasos por defecto vienen marcados",marcados.length===centrosRutaDefecto().filter(c=>!faseEstado(o.fase,o).hechos.includes(c)).length&&marcados.length>0);
+    try{cerrar()}catch(x){}o.ruta=bakRuta;if(bakEd)o.rutaEditada=bakEd;}
+   {const contra=ordenesContraRutaDefecto();
+    __check("LB3: se reportan las órdenes cargadas que contradicen la ruta por defecto",Array.isArray(contra)&&contra.every(x=>x.faltan.length>0));
+    page='liberacion';LIB.et='tela';render();h=document.getElementById('p-liberacion').innerHTML;
+    __check("LB3: el aviso sale en Liberación cuando hay órdenes que la contradicen",contra.length?/no siguen la ruta por defecto/.test(h):!/no siguen la ruta por defecto/.test(h));}
+   // bloque 3 resumen y bloque 4 con buscador y reversión auditada
+   __check("LB5: el resumen de lo liberado dice órdenes, referencias, kg de tejeduría y horas",h.includes('data-t="lib-r-ord"')&&h.includes('data-t="lib-r-ref"')&&h.includes('data-t="lib-r-kg"')&&h.includes('data-t="lib-r-h"'));
+   __check("LB6: el bloque 4 tiene buscador común y botones de revertir y de fase",/Buscar entre las liberadas/.test(h)&&/data-q="LIB.q4"/.test(h)&&(/mRetirarLib\(/.test(h)||!/<td>Liberó<\/td>/.test(h)));
+   {const o=S.ordenes.find(x=>abierta(x)&&liberada(x,'tela'))||(()=>{const x=S.ordenes.find(abierta);x.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};return x})();
+    const nA=auditoriaCambios().length;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+    retirarLib(o.id,'tela','');__check("LB6: revertir sin motivo no revierte",!!(o.lib&&o.lib.tela)&&auditoriaCambios().length===nA);
+    retirarLib(o.id,'tela','Cliente cambió la orden');const au=auditoriaCambios().slice(-1)[0];
+    __check("LB6: revertir con motivo de la tabla 15 revierte y queda auditado (quién, cuándo, antes, después)",!(o.lib&&o.lib.tela)&&au&&au.tipo==='liberacion'&&au.motivo==='Cliente cambió la orden'&&!!au.u&&!!au.ts);
+    window.alert=a0;o.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};}
+   // liberación a producción: misma estructura
+   LIB.et='corte';render();const h2=document.getElementById('p-liberacion').innerHTML;
+   __check("LB7: Liberación a producción tiene los mismos cuatro bloques, buscador y reversión",['Bloque 1','Bloque 2','Bloque 3','Bloque 4'].every(b=>h2.includes(b))&&/Por liberar a producción/.test(h2)&&/Liberadas a producción/.test(h2)&&/data-q="LIB.q4"/.test(h2));
+   LIB.et='tela';LIB.verLista=false;LIB.q4='';
+   const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   const ba=JSON.parse(bakAud);if(ba)S.params.auditoriaCambios=ba;else delete S.params.auditoriaCambios;
+   PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("LB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
