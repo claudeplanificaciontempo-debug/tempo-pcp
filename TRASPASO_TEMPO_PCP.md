@@ -107,7 +107,11 @@ mes con botón "pedida" (`atenderCompra`).
 1 **Días y capacidad** (calendario del mes por área arriba, `planMesHTML`; luego capacidad por área/centro/módulo).
 2 **Resumen del mes** (KPIs; **Vencidas** (entrega pasada) y **En riesgo** (no llegan) separados, con enlace a Hoy →
    Advertencias de fecha filtrado por mes, donde las vencidas muestran la fecha posible; Horizonte rodante sin tocar).
-3 **Meta de facturación** (meta → liberado cubre / falta / qué liberar).
+3 **Meta de facturación** (15-sep, sin repetir con el Bloque 4): "Base del plan" solo el número de sin-liberar + enlace a
+   Liberación (sin lista propia); facturación esperada = solo lo que **termina dentro del mes** según `finPro`, lo
+   liberado que termina después se muestra aparte; línea "liberando todo lo pendiente llegas a $A (B% de la meta)"; la
+   tabla "Por liberar" es la única lista de detalle (foto/WH/fase) y las órdenes que ya son candidatas del Bloque 4
+   solo se resumen con enlace (`#pm-agregar`) en vez de repetirse.
 4 **Agregar órdenes al plan** (`agregarAlPlanHTML`): borrador `S.params.planMes[ym].oids`, órdenes del Proyecto del mes
    agrupadas (ODC/cliente/entrega/familia/hija, colapsables), "jalar del mes siguiente", buscador, **aviso de capacidad
    antes de guardar** por centro ("alcanza: te sobran X min" / "YA NO ALCANZA en centro: te pasas X min"; nunca impide)

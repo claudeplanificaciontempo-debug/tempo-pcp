@@ -188,6 +188,14 @@ minPrenda × prendas de la ruta vs. capacidad del mes; nunca impide), 5 congelar
 (`enPlanMes`); cada centro → Carga que viene muestra `planCongeladoCentroHTML` (plan congelado, foto/WH/fase, "pendiente de
 liberar"). Ver `PLAN_MENSUAL_FLUJO_REPORTE.md`.
 
+**Bloque 3 sin repetir (15-sep-2026):** "Base del plan: lo liberado" ya no lista el detalle de las sin-liberar (solo el
+número + enlace a Liberación); la facturación esperada solo cuenta órdenes cuyo `finPro` cae dentro del mes (`dentro`/
+`fuera` en el cierre de `bloque3`), lo liberado que termina después se muestra aparte ("Liberado pero termina después del
+mes"); línea "Liberando todo lo pendiente del mes llegas a $A (B% de la meta)" con `totalConTodo`/`pctConTodo`; la única
+lista de detalle es "Por liberar" (foto/WH/fase vía `whCell`), y las órdenes que ya son candidatas de Bloque 4
+(`esCand`/`enB4`) no se repiten ahí: se resumen y enlazan a `#pm-agregar` (ancla en `agregarAlPlanHTML`) en vez de listarse
+dos veces. Textos: "sin bloqueo en el programa" (antes "liberadas y con fecha"), "sin liberar" (antes "sin fecha").
+
 **Foto + WH + fase en toda lista de órdenes (15-sep-2026):** `whCell(o,px)` = `fotoMini` + WH + `faseTag(o)` (etiqueta
 `.fase-mini` con la fase de Odoo). Se usa en Liberación, Control de piso (tej/tin/pro), Tintorería (estado, resumen WH, reprocesos,
 faltantes, cuadro, modal hecho, baños confirmados), Producto en proceso, Programación por centro, Asignación por orden, Costura

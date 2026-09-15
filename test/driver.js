@@ -1152,7 +1152,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    togGrpPMADD(oT.fase);render();h=document.getElementById('p-plan').innerHTML;__check("OB3: agrupar por FASE en agregar (grupo colapsable con conteo) y la temprana está dentro",h.includes('>Fase</option>')&&h.includes(esc(oT.fase))&&h.includes(esc(oT.op)));
    __check("OB4: resumen por centro compacto (bloques con % uso, unidades, horas y alcanza/no alcanza)",h.includes('cen-card')&&h.includes('% uso')&&/alcanza|no alcanza|sin capacidad/.test(h)&&!h.includes('<th class="num">Programado (h)</th>'));
    __check("OB5: las semanas sin nada no se muestran en las metas semanales",(()=>{const c=calcularPlan(ym);const vac=c.metas.filter(x=>!(Object.values(x.prod).some(p=>p.pz>0)||Object.values(x.real).some(v=>v>0)||x.ords>0));return !vac.length||h.includes(vac.length+' semana(s) sin nada, ocultas')})());
-   __check("OB6: 'sin liberar' del plan lista órdenes con foto y fase",h.includes('Ver las')&&h.includes('sin liberar o sin decidir (foto y fase)')||!S.ordenes.some(o=>abierta(o)&&mesPlan(o)===ym&&(programar().ordenes[o.id]||{}).bloqueo));
+   __check("OB6: 'sin liberar' ya no se lista aparte en Base del plan (vive una sola vez en 'Por liberar' de la Meta, Bloque 3)",!h.includes('Ver las')&&!h.includes('sin liberar o sin decidir (foto y fase)'));
    S.ordenes=S.ordenes.filter(x=>![oP.id,oT.id].includes(x.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;PMADD={grp:'fase',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
    // tejeduría
    const tex=[...document.querySelectorAll('nav .gbody[data-g="tex"] a')].map(a=>a.dataset.p);__check("OB7: Stock de tela cruda es la primera entrada de Planificación textil",tex[0]==='stock');
@@ -1205,6 +1205,34 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    NLF={mes:'2000-01',tipo:null};render();h=document.getElementById('p-panorama').innerHTML;__check("VR: el filtro por mes deja fuera los otros meses y se puede quitar",(()=>{const i=h.indexOf('id="nollegan"');const seg=i<0?'':h.slice(i,i+3000);return i>=0&&!seg.includes(esc(oV.op))&&seg.includes('ver todo')})());NLF={mes:null,tipo:null};
    S.ordenes=S.ordenes.filter(x=>x.id!==oV.id);PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* PLAN · Bloque 3: meta de facturación sin repetir, dentro/fuera del mes, sin duplicar con Bloque 4 */
+  {const antes=__R.errors.length;const adminP=PERFIL;const ym=hoy().slice(0,7);PM.mes=ym;
+   const bakMetas=JSON.stringify(S.params.metas||null);
+   const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
+   const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
+   const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
+   PLAN=null;PLAN_ALL=null;const P=programar();
+   // fuerza escenarios (finPro dentro/fuera del mes, bloqueada) sin tocar el motor: solo ajusta el resultado ya calculado para esta orden de prueba
+   P.ordenes[oDentro.id]=Object.assign({},P.ordenes[oDentro.id],{finPro:ym+'-15',bloqueo:null});
+   P.ordenes[oFuera.id]=Object.assign({},P.ordenes[oFuera.id],{finPro:dsum(ym+'-28',15),bloqueo:null});
+   P.ordenes[oCand.id]=Object.assign({},P.ordenes[oCand.id],{bloqueo:'sin liberar'});
+   P.ordenes[oNoCand.id]=Object.assign({},P.ordenes[oNoCand.id],{bloqueo:'sin liberar'});
+   S.params.metas=S.params.metas||{};S.params.metas[ym]=1e9;
+   page='plan';render();let hh=document.getElementById('p-plan').innerHTML;
+   __check("B3-1: la lista 'sin liberar' de Base del plan ya no se repite (solo número y enlace a Liberación)",!hh.includes('sin liberar o sin decidir (foto y fase)')&&!/Ver las \d+ sin liberar/.test(hh));
+   __check("B3-4a: texto corregido a 'sin bloqueo en el programa' (ya no 'liberadas y con fecha')",hh.includes('sin bloqueo en el programa')&&!hh.includes('liberadas y con fecha'));
+   __check("B3-2: facturación esperada solo cuenta lo que termina DENTRO del mes",hh.includes('Facturación esperada (termina dentro del mes)'));
+   __check("B3-2: lo liberado que termina DESPUÉS del mes se muestra aparte, sin sumarse a la esperada",/Liberado pero termina después del mes \(\d+ órdenes\)/.test(hh));
+   __check("B3-3: aparece 'Liberando todo lo pendiente del mes llegas a $ A (B% de la meta)'",/Liberando todo lo pendiente del mes llegas a <b>\$\s*[\d.,]+<\/b> \(\d+% de la meta\)/.test(hh));
+   __check("B3-4b: 'Por liberar' dice 'sin liberar', ya no 'sin fecha'",hh.includes('órdenes del mes sin liberar, ordenadas por valor')&&!hh.includes('órdenes del mes sin fecha, ordenadas por valor'));
+   __check("B3-5: la orden candidata de Bloque 4 no se repite en la tabla de Bloque 3; se enlaza al Bloque 4",hh.includes('ya están disponibles para agregar en el')&&hh.includes('pm-agregar')&&hh.includes('scrollIntoView')&&!hh.includes(esc(oCand.op)));
+   __check("B3-5: la orden bloqueada que NO es candidata de Bloque 4 (ya en proceso) sí sale en la tabla directa con botón liberar",hh.includes(esc(oNoCand.op)));
+   __check("B3-anchor: el panel de Agregar (Bloque 4) tiene el ancla id=\"pm-agregar\" para el enlace",hh.includes('id="pm-agregar"'));
+   S.ordenes=S.ordenes.filter(x=>![oDentro.id,oFuera.id,oCand.id,oNoCand.id].includes(x.id));
+   const metasB=JSON.parse(bakMetas);if(metasB)S.params.metas=metasB;else delete S.params.metas;
+   PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("B3 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
