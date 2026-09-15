@@ -570,7 +570,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 07:37';
+const APP_BUILD='2026-09-15 07:45';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -2624,7 +2624,7 @@ function confirmarArmColor(colorId){const P=programar();const oids=oidsColor(P,c
   bins.forEach(b=>S.banos_conf.push({id:uid(),cod:codBano(colorN,reqC),rec:rA?rA.id:undefined,recFijo:!!rA,telas:tl,color:colorId,colorN,opsKg:b.opsKg,ts:new Date().toISOString(),u:quienFirma()}));
   delete ARM.sel[colorId];PLAN=null;PLAN_ALL=null;save();render();
   if(bins.length>1)alert('Se confirmaron '+bins.length+' baños (la cantidad marcada no cabía en uno solo).')}
-function deshacerBanoConf(id){if(!confirm('¿Deshacer este baño? Las órdenes vuelven a la lista de espera.'))return;
+function deshacerBanoConf(id){const bcx=(S.banos_conf||[]).find(b=>b.id===id);if(!confirm('¿Deshacer el baño '+((bcx&&(bcx.cod||bcx.colorN))||'')+'? Las órdenes vuelven a la lista de espera y el baño sale del programa.'))return;if(bcx)bitacora('Baño deshecho '+(bcx.cod||bcx.colorN||id)+' · '+Math.round(Object.values(bcx.opsKg||{}).reduce((a,k)=>a+k,0))+' kg · órdenes '+Object.keys(bcx.opsKg||{}).map(oid=>(S.ordenes.find(o=>o.id===oid)||{}).op||oid).join(', ')+' ('+quienFirma()+')');
   S.banos_conf=(S.banos_conf||[]).filter(b=>b.id!==id);PLAN=null;PLAN_ALL=null;save();render()}
 
 function listaDecisiones(P,max){const pend=(P.banosPend||[]);if(!pend.length)return'';

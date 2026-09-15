@@ -144,7 +144,7 @@ Estado: el plan de septiembre está **vacío** (borrador); ella debe agregar y c
   rechaza (reproceso con motivo; `S.params.motivosReproceso`); faltantes (`faltantesPanelHTML`, `restriccionFaltante`);
   reporte mensual (`reporteTin`). `estadoTin(o)`: 1Tintoreria (Odoo) sigue disponible para armar; "incomplet" = solo
   los kg que faltan; "stock" = tinturada.
-- Estado 15-sep: 59 baños confirmados (56 programados), todos con máquina automática; STUART recibe Jersey 24/1 y
+- Estado 15-sep: 48 baños confirmados y programados (ella deshizo 8 la noche del 14-sep y fijó 3 a máquina; 3 se cerraron por piso); STUART recibe Jersey 24/1 y
   Galleta (15-sep); SURF SPRAY clasificado claro; los 3 baños cuyo piso decía "ya salió" (TRUE RED-01, POMEGRANATE-01/02)
   cerrados; las órdenes con baño salido pero fase Odoo 1Tintoreria quedan en 1Calidad Tintoreria (piso manda). Los
   baños bajo 70 % se quedan como están (remanentes; decisión de ella).
