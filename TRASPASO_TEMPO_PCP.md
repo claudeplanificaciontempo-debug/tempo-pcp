@@ -57,8 +57,7 @@ Donde `CLAUDE.md` contradiga a este documento, manda este.
 
 **Dirección**: Hoy (tarjetas Pendientes / Advertencias de fecha / Otros; `pendientesHoy` = índice de todas las bandejas,
 posponer con motivo, nunca desaparece), Resumen gerencial, Órdenes, **Liberación** (la principal, `LIB.et='tela'`),
-Producto en proceso, Entregas, **Plan mensual**, Demanda agregada, Escenarios, Cumplimiento, Avance del mes, Auditoría,
-Capacidad y decisiones.
+Entregas, **Plan mensual**, Demanda agregada, Escenarios, Auditoría, Capacidad y decisiones.
 **Planificación textil**: Tejeduría, Stock de tela cruda, Macro del mes, Compras del mes, **Tintorería**, Reportería textil.
 **Planificación de producción**: Carga general (Asignación por orden), Centros, Costura, Balanceo, **Liberación a
 producción** (`LIB.et='corte'`), Programa del día, Reportería por área.

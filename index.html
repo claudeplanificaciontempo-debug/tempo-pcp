@@ -281,13 +281,13 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="gerencia">Resumen gerencial</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
       <a data-p="liberacion" data-lib="tela">Liberación</a>
-      <a data-p="wip">Producto en proceso</a>
+      
       <a data-p="entregas">Entregas</a>
       <a data-p="plan">Plan mensual</a>
       <a data-p="familias">Demanda agregada</a>
       <a data-p="escenarios">Escenarios</a>
-      <a data-p="cumplimiento">Cumplimiento</a>
-      <a data-p="avance">Avance del mes</a>
+      
+      
       <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
       <a data-p="capacidad" data-perm="programa">Capacidad y decisiones</a>
     </div>
@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 08:29';
+const APP_BUILD='2026-09-15 09:06';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}

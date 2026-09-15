@@ -11,8 +11,8 @@ otras. Entradas:
 - Avance del mes
 - Reportería textil y Reportería por área (las que ya existían, para que todo lo de reportes esté en un solo sitio)
 
-Las tres pantallas viejas **siguen también donde estaban** (Dirección y Planificación de producción) como acceso directo;
-la entrada principal es Reportería.
+Producto en proceso, Cumplimiento y Avance del mes viven **solo en Reportería** (se quitaron de Dirección el mismo día; ver
+el ajuste al final).
 
 ## 2 · Quién la ve
 - Dirección, planificación, admin y consulta: todo (ya tenían todo el menú).
@@ -44,3 +44,8 @@ reorganizar nada.
 ## Pendientes tuyos
 - Siguen: usuarios de módulo, plan de septiembre, STUART (Fleece perchado / French terry / Ribb 2x2 grueso), foto
   WH/MO/29252, tabla 6 "T-BIANCO-SINTEC(COMPACTADORA)".
+
+## Ajuste (15-sep, después): Dirección sin duplicados
+Por pedido de la usuaria, Producto en proceso, Cumplimiento y Avance del mes **salieron de Dirección**: viven solo en
+Reportería. Dirección queda con: Hoy, Resumen gerencial, Órdenes, Liberación, Entregas, Plan mensual, Demanda agregada,
+Escenarios, Auditoría de replanificación y Capacidad y decisiones.

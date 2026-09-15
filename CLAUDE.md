@@ -219,7 +219,7 @@ pinta los días siguientes ("sigue · día n de N"), solo vista. **Aviso de capa
 
 **Reportería (pestaña propia, 15-sep-2026):** grupo `data-g="rep"` del menú con Vista general de órdenes (`vVistaOrdenes`, página
 `vistaordenes`, estado `VO`, agrupación `GRP 'vo'`, detalle `mDetalleOrden` = `mDetalleAsig(oid,extra)` + historial de fases + foto), Producto en
-proceso, Cumplimiento, Avance del mes y las dos reporterías; las viejas siguen en su grupo como acceso directo. Registro
+proceso, Cumplimiento, Avance del mes y las dos reporterías; Producto en proceso, Cumplimiento y Avance ya NO están en Dirección (solo en Reportería, 15-sep). Registro
 `REPORTES[]` (agregar un reporte = una entrada + su <a> en el menú) y `reporteriaBarraHTML` que `render()` inserta arriba de cada
 reporte. Perfiles de supervisores reciben esas páginas una sola vez (`S.params.migReporteria`, bitácora); tablet no. Ver
 `REPORTERIA_PESTANA_REPORTE.md`.
