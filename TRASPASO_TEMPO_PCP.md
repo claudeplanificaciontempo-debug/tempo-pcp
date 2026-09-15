@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.12 Tejeduría en el motor y Bloque 2 contra la fecha meta (15-sep-2026 noche)
+- **Tejeduría**: al programar, los kilos de cada tela se cubren en este orden: **stock de tela cruda** (la orden con la
+  fecha requerida más cercana lo toma primero y queda con la tela lista de una), **lo programado a mano** por la persona
+  de tejeduría (con su máquina y su día) y, recién lo que falta, una **corrida automática** marcada «fecha estimada por
+  el sistema · sin programar a mano». Es lo único del motor que se tocó.
+- **Pedido vs cargado** en Tejeduría muestra por tela: pedido, stock, programado a mano y estimado por sistema.
+- **Antes y después**: panel en Tejeduría que compara la fecha de tela lista contra la corrida automática de siempre y
+  dice cuántas órdenes cambian y cuántos días, en vivo con los datos reales.
+- **Plan mensual, Bloque 2**: vencidas y en riesgo se cuentan contra la **fecha meta** (compromiso si existe, si no la de
+  Odoo), la misma que usa el motor. Una orden con fecha de Odoo pasada pero compromiso futuro no es vencida.
+
 ### 2.11 Dirección · Hoy (15-sep-2026 noche)
 - **Escenarios ya no existe.** No guardaba nada: lo que se probaba ahí vivía solo en memoria. Para probar personas y
   días se usa el simulador de capacidad del Plan mensual, que sí guarda con motivo.

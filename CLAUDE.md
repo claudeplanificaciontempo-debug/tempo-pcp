@@ -300,6 +300,19 @@ Ver `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
 
 **Dirección · Hoy y Escenarios (15-sep-2026 noche):** la página **Escenarios** se borró entera (menú, sección, `vEscenarios`, `ESC`, `conEscenario` y el enlace de Programación por centro); no guardaba nada en base, todo era memoria. **Hoy** (`vPanorama`) usa `tarjetasResumenHTML` arriba (ids `hoy-*`), una sección **Bandejas del día** (`hoyBandejasHTML`, ids `hb-*`: sin fecha, por liberar, entregas de la semana, en riesgo, vencidas, por terminar en 7 días, tela por llegar, por liberar a corte) y **Necesita decisión** (`hoyDecisionHTML`, ids `hd-*`: baños, capacidad, no llegan, faltantes) que SOLO enlaza a Capacidad y decisiones (sigue siendo pantalla aparte). Las listas de tarjeta se agrupan por familia (`card.porFam`, `famDeOrden`) y cada fila tiene `irEstadoOrden(oid)` (Órdenes / Compras / Liberación / Tintorería / Centro del próximo paso / Control) que usa `ir()` y por eso deja el «← atrás». `seccionHoy(titulo,nota,cuerpo)` pinta las cintas de sección. Mes en curso sin cambios. Ver `DIRECCION_HOY_REPORTE.md`.
 
+**Tejeduría en el motor (15-sep-2026 noche, AUTORIZADO B1 · solo la sección 1 de `programar()`):** los kg de cada tela se
+reparten por fecha requerida (la más cercana primero) en tres fuentes: 1) **stock de tela cruda** (`stockTela()`; esos kg no se
+tejen, `ro.tejStock`, tela lista desde `inicio`), 2) **programación manual** (`progTej()` por fecha; `ro.tejManualKg`, entradas
+`P.tej[].manual`, tela lista al día siguiente) y 3) **corrida automática** de siempre, marcada `estimado:true` / `ro.tejEstimado`
+(«fecha estimada por el sistema · sin programar a mano»). `res.tejOrigen[tela]={stock,manual,estimado}` alimenta
+`cargasTejPorTela` (pedido vs cargado con tres columnas). `TEJ_MODO` (nuevo | viejo) lo usa SOLO `compararTejeduria()` /
+`comparaTejHTML()` (panel antes/después en Tejeduría: qué órdenes cambian de fecha de tela lista y cuántos días). El resto del
+motor no se tocó. Ver `TEJEDURIA_MOTOR_STOCK_MANUAL_REPORTE.md`.
+
+**Plan Bloque 2 contra la fecha meta (15-sep-2026 noche):** `calcularPlan` cuenta vencidas y en riesgo con `fechaMetaDe(o)`
+(compromiso si existe, si no la de Odoo), la misma que usa el motor; los textos dicen «fecha meta». Ver
+`PLAN_BLOQUE2_FECHA_META_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
