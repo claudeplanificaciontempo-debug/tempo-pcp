@@ -724,7 +724,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
   await __p(100);PLAN=null;P=programar();
   const conf=P.banos.filter(b=>b.confirmado&&!b.error);
   __check('baños confirmados programados',conf.length>0&&conf.every(b=>b.dia&&b.rec),conf.map(b=>b.colorN+'@'+b.rec+' '+b.dia+' '+Math.round(b.kg)+'kg').join('; '));
-  __check('máquina apta por rol de color (claro→DANITECH 1, oscuro→DANITECH 2)',conf.every(b=>{const bc=(S.banos_conf||[]).find(x=>x.id===b.id);if(bc&&bc.recFijo)return true;const r=R(b.rec);const claro=profColor(C(b.color))==='claro';return !r.rolColor||r.rolColor==='ambos'||(r.rolColor==='claro')===claro}),conf.map(b=>b.colorN+'→'+nRec(b.rec)).join('; '));
+  __check('máquina apta por rol de color (claro→DANITECH 1, oscuro→DANITECH 2)',conf.every(b=>{const bc=(S.banos_conf||[]).find(x=>x.id===b.id);if(bc&&bc.recFijo)return true;const r=R(b.rec);const p=profundidadDe(C(b.color));if(!r.rolColor||r.rolColor==='ambos'||!p||p==='medio')return true;return r.rolColor==='claro'?p==='claro':p==='oscuro'}),conf.map(b=>b.colorN+'→'+nRec(b.rec)).join('; '));
   __check('cada baño confirmado tiene código interno único',conf.every(b=>/^T[A-Z]{3}\d{2}-[A-Z0-9]+-\d{2}$/.test(b.cod))&&new Set(conf.map(b=>b.cod)).size===conf.length,conf.map(b=>b.cod).join(', '));
   page='tintoreria';render();__check('cuadro muestra el código del baño y reparto de WH partidas',document.getElementById('p-tintoreria').innerHTML.includes(conf[0].cod)&&(document.getElementById('p-tintoreria').innerHTML.includes('% aquí · resto:')||!conf.some(b=>b.oids.some(oid=>conf.filter(x=>x.opsKg[oid]>0).length>1))));
   __check('tintorería: resumen por WH',document.getElementById('p-tintoreria').innerHTML.includes('Resumen por WH')&&document.getElementById('p-tintoreria').innerHTML.includes(conf[0].cod));
@@ -976,6 +976,17 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // G
    page='panorama';render();__check("G: Hoy en tarjetas desplegables (Pendientes, Advertencias, Otros) con conteo en el título",(hp().match(/<details class="tarj/g)||[]).length>=2&&/Pendientes<\/b><span class="mut">\d+ tipos · [\d.]+ casos/.test(hp())&&hp().includes('Advertencias de fecha</b>'));
    page='ordenes';render();__check("B–G sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* TINTORERÍA · reglas de máquina por profundidad (claro → rol claro, oscuro → rol oscuro, medio → cualquiera; chico → pequeña) */
+  {const antes=__R.errors.length;const adminP=PERFIL;const bakRC={recursos:S.recursos,centros:S.centros};const sdT=seed();S.recursos=JSON.parse(JSON.stringify(sdT.recursos));S.centros=JSON.parse(JSON.stringify(sdT.centros));const rM=S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='tin');const bak=rM.map(r=>({id:r.id,rol:r.rolColor}));
+   const g=rM.filter(r=>r.cap>=(prm('granMin',120))*1.2);if(g.length>=2){g[0].rolColor='claro';g[1].rolColor='oscuro';
+     const cC={id:uid(),n:'TEST CLARO',cod:'',fam:'claro'},cO={id:uid(),n:'TEST OSCURO',cod:'',fam:'oscuro'},cM={id:uid(),n:'TEST MEDIO',cod:'',fam:'medio',profConf:true};S.colores.push(cC,cO,cM);
+     window.confirm=()=>true;const bc=[];const tela=(S.telas.find(t=>!t.pique&&!(t.fam==='IND'))||S.telas[0]).id;const oTs=[];const mk=(c,kg)=>{const o=JSON.parse(JSON.stringify(S.ordenes.find(x=>abierta(x))||S.ordenes[0]));o.id=uid();o.op='WH/TEST-'+c.n;o.fase='1Tintoreria';o.color=c.id;o.telas=[{tela,kg:900}];o.entrega=dsum(hoy(),40);delete o.programa;S.ordenes.push(o);oTs.push(o.id);const id=uid();bc.push(id);S.banos_conf=S.banos_conf||[];S.banos_conf.push({id,cod:'T',telas:[tela],color:c.id,colorN:c.n,opsKg:{[o.id]:kg},ts:new Date().toISOString(),u:'t'});return id};
+     if(cC&&cO){const iC=mk(cC,200),iO=mk(cO,200);PLAN=null;const P=programar();const bC=P.banos.find(b=>b.id===iC),bO=P.banos.find(b=>b.id===iO);
+       __check("tin: baño claro va a la máquina de rol claro y el oscuro a la de rol oscuro",!!bC&&!!bO&&bC.rec===g[0].id&&bO.rec===g[1].id,(bC&&nRec(bC.rec))+' / '+(bO&&nRec(bO.rec)));}
+     if(cM){const iM=mk(cM,200);PLAN=null;const bM=programar().banos.find(b=>b.id===iM);__check("tin: baño medio puede ir a cualquiera de las dos grandes",!!bM&&[g[0].id,g[1].id].includes(bM.rec));}
+     const chica=rM.find(r=>r.cap<(prm('granMin',120))*1.2&&compatible(r,tela));if(chica&&cC){const iS=mk(cC,Math.min(30,chica.cap-5));PLAN=null;const bS=programar().banos.find(b=>b.id===iS);__check("tin: un baño menor a la pequeña y sin piqué va a la pequeña, no a la grande",!!bS&&bS.rec===chica.id,bS&&nRec(bS.rec));}
+     S.banos_conf=(S.banos_conf||[]).filter(b=>!bc.includes(b.id));S.ordenes=S.ordenes.filter(x=>!oTs.includes(x.id));S.colores=S.colores.filter(c=>![cC.id,cO.id,cM.id].includes(c.id));}
+   S.recursos=bakRC.recursos;S.centros=bakRC.centros;PLAN=null;PLAN_ALL=null;__check("tin reglas sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
