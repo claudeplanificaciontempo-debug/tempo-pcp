@@ -196,6 +196,18 @@ renders el campo; al escribir ofrece "Buscar <campo> por: <texto>" (WH, ODC, est
 `BUSQ[id]` y `matchBusq(o,q,id)` acota a ese campo (Enter = todos). Pantallas: Órdenes (ORDF.q), Liberación (LIB.q), Producto en proceso
 (WIPL.q), Asignación por orden (APO.q), Centro (CEN.q), Control de piso (CTL.q), Plan mensual → agregar (PMADD.q). Ver `FOTOS_FASE_BUSCADOR_REPORTE.md`.
 
+**Mi centro (tablet, 15-sep-2026, `vTablet`, página `tablet`):** perfil `tablet` (sembrado idempotente en `perfilesDef`; solo la página
+Mi centro; `perfilDe` le da como centro el asignado en `S.params.tablets[uid]={centro,rec}`, columna Tablet de Usuarios). Cola con
+`tabletFilas` (= `colaCentro` + recurso; en módulos sigue `P.secMod`), tarjetas con foto grande, WH+fase, producto, color, cliente,
+hechas/total, entrega, tallas; "Hecho" = `marcarHechoCentro` (completo; parcial por `permiteParcial`); cronómetro opcional
+`cronoTablet` → `S.avance[oid].crono[c]={ini,fin,min,u}` vs `minEstandarOrden`. Admin/planificación ven cualquier centro con `TAB`.
+**PDF del programa por centro:** `imprimirProgramaCentro(cid)` (botón en Centro → Programación): ventana nueva A4 horizontal con
+puesto, foto, WH, cliente, producto, color, min estándar y unidades; nada interno. **Cambio de fases:** Control de piso → área
+"Cambio de fases" (`fasesCentralHTML`, estado `CTLF`, buscador `CTLF.q`); `moverFases(ids,f,motivo)` (motivo obligatorio → `o.fases[].motivo`,
+bitácora); `faseTag` es clicable en toda pantalla → `mCambiarFase`. De 1Tejeduria a 0Ord Compras: `pasarACompras` cambia la ruta
+(tej → proveedor con `diasProvOrden`), marca `telas[].ext='ext'`, `o.compraTela` y `S.params.alertasCompras[]` → Hoy → Pendientes
+(`pasoCompras`) y panel en Compras del mes (`alertasComprasHTML`, "pedida" = `atenderCompra`). Ver `CONTROL_LINEA_PDF_FASES_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

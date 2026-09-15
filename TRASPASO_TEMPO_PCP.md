@@ -301,3 +301,8 @@ Datos: `S.params.planMes[ym]={oids,ts,u,congelado}`; `S.planes[].oids`. Motor y 
 ### Fotos, fase junto a la WH y buscador como Odoo (15-sep-2026)
 Ver `FOTOS_FASE_BUSCADOR_REPORTE.md`. `whCell`/`faseTag` en todas las listas de órdenes; `busqHTML`/`matchBusq`/`BUSQ` en los 7 buscadores.
 Agrupación (punto 4 del pedido) quedó pendiente: el mensaje llegó cortado.
+
+### Control en línea (tablet), PDF del programa y cambio de fases (15-sep-2026)
+Ver `CONTROL_LINEA_PDF_FASES_REPORTE.md`. Página Mi centro (`vTablet`) con perfil `tablet` y asignación `S.params.tablets`;
+`imprimirProgramaCentro`; Control de piso → Cambio de fases (`moverFases`, motivo obligatorio), `faseTag` clicable, tejeduría → compras
+cambia ruta y avisa (`alertasCompras`). Los 11 usuarios de módulo los crea la usuaria (Usuarios → Nuevo usuario, perfil Tablet).

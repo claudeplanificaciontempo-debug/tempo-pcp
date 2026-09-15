@@ -199,7 +199,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("calendario/versión sin errores",__R.errors.length===antes);page='ordenes';render();}
   /* perfiles por catálogo, carga que viene, ruta por centro, advertencias, balanceo y objetivo */
   {const antes=__R.errors.length;const adminP=PERFIL;
-   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta",perfilesDef().length===8&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
+   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet",perfilesDef().length===9&&perfilesDef().some(x=>x.id==='tablet')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
    __check("perfil corte: ve corte, estampado y bordado; no confección ni configuración",veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&puede('ruta')&&puedeCentro('corte'));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
@@ -1039,6 +1039,35 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    BUSQ['LIB.q']='fase';__check("FF: buscar Fase por el nombre de una fase encuentra las órdenes de esa fase",!fase||S.ordenes.filter(x=>abierta(x)&&matchBusq(x,fase,'LIB.q')).every(x=>normTxt(faseNombre(x.fase)).includes(normTxt(fase))));
    setBusq('LIB.q',null);LIB.q='';LIB.verLista=false;delete BUSQ['LIB.q'];page='ordenes';render();
    __check("FF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* TRES COSAS: tablet por centro · PDF del programa · cambio de fases centralizado */
+  {const antes=__R.errors.length;const adminP=PERFIL;const bakAl=JSON.stringify(S.params.alertasCompras||null);const bakTab=JSON.stringify(S.params.tablets||null);window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   page='liberacion';LIB.et='tela';LIB.q='';render();__check("TC: el buscador ya no deja el residuo 'X.q=v)' en pantalla",!document.getElementById('p-liberacion').innerText.includes('LIB.q=v)'));
+   // C · fases
+   const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='tej'))||S.ordenes.find(abierta);const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-TC';oT.fase='1Tejeduria';oT.estado='plan';oT.odc='ODC-TC';oT.ref='EST-TC';if(!(oT.ruta||[]).some(p=>p.centro==='tej'))oT.ruta=[{centro:'tej',t:0}].concat(oT.ruta||[]);(oT.telas||[]).forEach(t=>delete t.ext);delete oT.programa;S.ordenes.push(oT);PLAN=null;PLAN_ALL=null;
+   page='control';CTL.area='fases';CTLF={fase:'1Tejeduria',sel:new Set(),q:'',nueva:'',motivo:''};render();let h=document.getElementById('p-control').innerHTML;
+   __check("TC: Control de piso tiene la vista 'Cambio de fases' con selector de fase, buscador y la orden con foto/WH, ODC, cliente, estilo, categoría, color, cantidad, entrega",h.includes('Cambio de fases')&&h.includes('data-q="CTLF.q"')&&h.includes('WH/TEST-TC')&&h.includes('ODC-TC')&&h.includes('EST-TC')&&h.includes('Motivo (obligatorio)'));
+   CTLF.q='ODC-TC';BUSQ['CTLF.q']='odc';render();h=document.getElementById('p-control').innerHTML;__check("TC: el buscador inteligente acota por ODC dentro de la fase",h.includes('WH/TEST-TC')&&(h.match(/WH\/TEST-TC/g)||[]).length>=1);CTLF.q='';delete BUSQ['CTLF.q'];
+   const nAntes=(S.params.alertasCompras||[]).filter(a=>!a.atendida).length;moverFases([oT.id],'0Ord Compras','');__check("TC: sin motivo no se mueve",oT.fase==='1Tejeduria'&&alerts.some(m=>/motivo/i.test(m)));
+   moverFases([oT.id],'0Ord Compras','ya no se teje, se compra');
+   __check("TC: mover fase guarda fase, motivo, quién y cuándo en el historial",oT.fase==='0Ord Compras'&&oT.fases.slice(-1)[0].motivo==='ya no se teje, se compra'&&!!oT.fases.slice(-1)[0].ts);
+   __check("TC: 1Tejeduria → 0Ord Compras cambia la ruta (proveedor en vez de tejeduría) y marca la tela como comprada",!(oT.ruta||[]).some(p=>p.centro==='tej')&&(oT.ruta||[]).some(p=>p.centro==='proveedor')&&(oT.telas||[]).every(t=>t.ext)&&!!oT.compraTela);
+   const nDesp=(S.params.alertasCompras||[]).filter(a=>!a.atendida).length;__check("TC: genera la alerta 'pasaron a compras'",nDesp===nAntes+1);
+   __check("TC: la alerta sale en Hoy → Pendientes con las WH",(()=>{const it=pendientesHoy().find(x=>x.k==='pasoCompras');return !!it&&it.n>=1&&it.detalle.includes('WH/TEST-TC')})());
+   page='compras';render();__check("TC: Compras del mes muestra el panel 'pasaron a compras' con botón pedida",document.getElementById('p-compras').innerHTML.includes('pasaron a compras'));
+   const al=(S.params.alertasCompras||[]).find(a=>a.oid===oT.id);atenderCompra(al.id);__check("TC: 'pedida' atiende la alerta",al.atendida===true&&al.atendidaU!==undefined);
+   __check("TC: la etiqueta de fase es clicable y abre el cambio de fase con motivo",faseTag(oT).includes("mCambiarFase('"+oT.id+"')")&&(()=>{mCambiarFase(oT.id);const ok=!!document.getElementById('cf-f')&&!!document.getElementById('cf-m');try{cerrar()}catch(e){}return ok})());
+   // A · tablet
+   __check("TC: existe el perfil 'tablet' (solo página Mi centro) y toma el centro asignado por usuario",perfilesDef().some(x=>x.id==='tablet')&&(()=>{S.params.tablets=Object.assign({},S.params.tablets,{u_test:{centro:'corte',rec:''}});const d=perfilDe({rol:'tablet',id:'u_test'});return d&&d.paginas.length===1&&d.paginas[0]==='tablet'&&d.centros[0]==='corte'})());
+   TAB={centro:'modulos',rec:null};page='tablet';render();h=document.getElementById('p-tablet').innerHTML;__check("TC: Mi centro muestra prendas del día, hechas, faltan y la cola con foto grande, WH+fase, producto, color, cliente, cantidades, entrega y botón Hecho",h.includes('Prendas del día')&&h.includes('Hechas hoy')&&h.includes('Faltan')&&(h.includes('tab-card')?h.includes('>Hecho<')&&h.includes('cronómetro'):true));
+   const oC=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='modulos'))||oT;cronoTablet(oC.id,'modulos','ini');const c1=S.avance[oC.id].crono.modulos;__check("TC: cronómetro inicio guarda hora y quién",!!c1.ini&&!c1.fin);cronoTablet(oC.id,'modulos','fin');__check("TC: cronómetro fin guarda minutos para comparar con el estándar",typeof S.avance[oC.id].crono.modulos.min==='number'&&minEstandarOrden(oC,'modulos')>=0);delete S.avance[oC.id].crono;
+   __check("TC: la columna Tablet de Usuarios ofrece centro y recurso",tabletSelHTML('u_test').includes('<select')&&tabletSelHTML('u_test').includes('todo el centro'));
+   // B · PDF
+   let cap='';const w0=window.open;window.open=()=>({document:{write:x=>{cap+=x},close(){}}});imprimirProgramaCentro('corte');window.open=w0;
+   __check("TC: el PDF del programa es horizontal y lleva puesto, foto, WH, cliente, producto, color, minutos estándar y unidades, sin datos internos",cap.includes('landscape')&&['Puesto','Foto','Orden de producción','Cliente','Tipo de producto','Color','Min. estándar','Unidades'].every(x=>cap.includes(x))&&!/eficiencia|módulo|costo/i.test(cap));
+   __check("TC: Programación del centro tiene el botón PDF",(()=>{page='centro';CEN.tab='prog';render();return document.getElementById('p-centro').innerHTML.includes('imprimirProgramaCentro(')})());
+   // restaurar
+   S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);delete S.avance[oT.id];const alB=JSON.parse(bakAl);if(alB)S.params.alertasCompras=alB;else delete S.params.alertasCompras;const tbB=JSON.parse(bakTab);if(tbB)S.params.tablets=tbB;else delete S.params.tablets;TAB={centro:null,rec:null};CTLF={fase:null,sel:new Set(),q:'',nueva:'',motivo:''};CTL.area='pro';window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
