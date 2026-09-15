@@ -217,6 +217,13 @@ GUARDIA del simulador falla si aparece una función de borrado nueva o sin confi
 piso y Producto en proceso: hasta 3 niveles (fase, cliente, ODC, padre, hija, color, proyecto, etapa). **Gantt de tintorería**: `diasBano(b,r)`
 pinta los días siguientes ("sigue · día n de N"), solo vista. **Aviso de capacidad del plan** con minutos pendientes (`cargaPlanCentros`).
 
+**Reportería (pestaña propia, 15-sep-2026):** grupo `data-g="rep"` del menú con Vista general de órdenes (`vVistaOrdenes`, página
+`vistaordenes`, estado `VO`, agrupación `GRP 'vo'`, detalle `mDetalleOrden` = `mDetalleAsig(oid,extra)` + historial de fases + foto), Producto en
+proceso, Cumplimiento, Avance del mes y las dos reporterías; las viejas siguen en su grupo como acceso directo. Registro
+`REPORTES[]` (agregar un reporte = una entrada + su <a> en el menú) y `reporteriaBarraHTML` que `render()` inserta arriba de cada
+reporte. Perfiles de supervisores reciben esas páginas una sola vez (`S.params.migReporteria`, bitácora); tablet no. Ver
+`REPORTERIA_PESTANA_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).

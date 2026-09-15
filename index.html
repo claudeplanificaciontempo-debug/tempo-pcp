@@ -315,6 +315,15 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="imprimir">Programa del día</a>
       <a data-p="reporteria" data-rep="produccion">Reportería por área</a>
     </div>
+    <div class="grp" data-g="rep">Reportería <span class="car">▾</span></div>
+    <div class="gbody" data-g="rep">
+      <a data-p="vistaordenes">Vista general de órdenes</a>
+      <a data-p="wip">Producto en proceso</a>
+      <a data-p="cumplimiento">Cumplimiento de facturación</a>
+      <a data-p="avance">Avance del mes</a>
+      <a data-p="reporteria" data-rep="textil">Reportería textil</a>
+      <a data-p="reporteria" data-rep="produccion">Reportería por área</a>
+    </div>
     <div class="grp" data-g="piso">Piso <span class="car">▾</span></div>
     <div class="gbody" data-g="piso">
       <a data-p="control">Control de piso</a>
@@ -346,6 +355,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-capacidad"></section>
     <section class="page" id="p-linea"></section>
     <section class="page" id="p-tablet"></section>
+    <section class="page" id="p-vistaordenes"></section>
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
@@ -483,7 +493,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['escenarios','Escenarios'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['tablet','Mi centro (tablet)'],['vistaordenes','Vista general de órdenes (Reportería)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -493,10 +503,11 @@ function defPerfiles(){return [
   {id:'modulos',n:'Módulos (confección)',permisos:['avance','reprogramar','ruta'],centros:['modulos'],paginas:['centro','control','linea','reporteria','imprimir','balanceo','costura'],desc:'Las dos personas ven los once módulos; no se reparten por módulo.'},
   {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','linea','reporteria','imprimir'],desc:'Plancha, botones, lavado, etiquetas y empaque: los procesos finales antes de facturar.'},
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
-function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
+function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['vistaordenes','wip','cumplimiento','avance','reporteria'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
+  if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
 /* perfiles viejos (rol piso/carga con área y sub-área) se traducen al catálogo sin tocar la tabla */
 function perfilDe(p){if(!p)return null;const cat=perfilesDef();let d=cat.find(x=>x.id===p.rol);if(d){if(d.id==='tablet'){const t=(S.params.tablets||{})[p.id]||{};return Object.assign({},d,{centros:t.centro?[t.centro]:[]})}return d}
-  if(p.rol==='piso'){if(p.area==='tin')return cat.find(x=>x.id==='tintoreria')||null;if(p.area==='tej')return{id:'piso_tej',n:'Piso tejeduría',permisos:['avance'],centros:['tej'],paginas:['tejeduria','control','reporteria','imprimir']};
+  if(p.rol==='piso'){if(p.area==='tin')return cat.find(x=>x.id==='tintoreria')||null;if(p.area==='tej')return{id:'piso_tej',n:'Piso tejeduría',permisos:['avance'],centros:['tej'],paginas:['tejeduria','control','reporteria','imprimir','vistaordenes','wip','cumplimiento','avance']};
     const sub=p.subarea&&SUBAREAS[p.subarea];return{id:'piso',n:'Piso',permisos:['avance'],centros:sub?sub.centros.slice():['corte','estampado','bordado','modulos','etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','linea','reporteria','imprimir']}}
   if(p.rol==='carga')return{id:'carga',n:'Carga de órdenes',permisos:['ordenes'],centros:['*'],paginas:['ordenes']};
   return cat.find(x=>x.id==='consulta')||null}
@@ -570,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 07:45';
+const APP_BUILD='2026-09-15 08:18';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -780,7 +791,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={tablet:'factory',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
+const ICO_NAV={tablet:'factory',vistaordenes:'box',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',escenarios:'flask',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -981,12 +992,12 @@ function arbolAPO(lista,niveles,P){if(!niveles.length)return{hojas:lista};const 
   return{nivel:k,grupos:orden.sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).map(c=>({clave:c,n:m[c].length,pz:m[c].reduce((a,o)=>a+(+o.cant||0),0),sub:arbolAPO(m[c],niveles.slice(1),P)}))}}
 function filasArbolAPO(a,filaFn,nCols,prof){prof=prof||0;if(a.hojas)return a.hojas.map(filaFn).join('');const nom=(APO_CAMPOS.find(x=>x[0]===a.nivel)||[])[1]||'';
   return a.grupos.map(g=>`<tr class="eg-g eg-g${prof}"><td colspan="${nCols}" style="padding-left:${8+prof*18}px;background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.n} ${g.n===1?'orden':'órdenes'} · ${num(g.pz)} prendas</span></td></tr>`+filasArbolAPO(g.sub,filaFn,nCols,prof+1)).join('')}
-function mDetalleAsig(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const P=programar();const ro=P.ordenes[o.id]||{};const c=clasificarAsig(o,P);const meta=fechaMetaDe(o);
+function mDetalleAsig(oid,extra){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const P=programar();const ro=P.ordenes[o.id]||{};const c=clasificarAsig(o,P);const meta=fechaMetaDe(o);
   abrir(`<h3>${esc(o.op)} <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${esc(o.cliente||'')} · ${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">
    <p style="font-size:var(--fs-s)">Entrega meta <b>${meta?fmtDia(meta):'—'}</b>${o.fechaCompromiso?' (compromiso)':' (pedida)'} · termina <b>${ro.finPro?fmtDia(ro.finPro):'—'}</b> · tela lista ${ro.telaLista?fmtDia(ro.telaLista):'—'}${ro.coleccion?' · colección '+esc(ro.coleccion.key)+' ('+ro.coleccion.n+')':''}${c.estado==='noLlega'?' · <span class="tag t-alerta">'+c.dias+' días tarde · '+esc(c.atasco)+'</span>'+(ro.fechaPosible?' · fecha posible '+fmtDia(ro.fechaPosible):''):c.estado==='sinProgramar'?' · <span class="tag t-aviso">sin programar: '+esc(c.motivo)+'</span>':c.holg!=null?' · holgura '+c.holg+' d':''}</p>
    <table><thead><tr><th>Paso</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Límite (para llegar)</th><th class="num">Min</th><th>Estado</th></tr></thead><tbody>
    ${(ro.pasos||[]).map(p=>`<tr><td>${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''}</td><td>${p.rec?esc(nRec(p.rec)):'—'}</td><td>${p.ini?fmtDia(p.ini):'—'}</td><td>${p.fin?fmtDia(p.fin):'—'}</td><td>${p.limite?fmtDia(p.limite):'<span class="mut">—</span>'}</td><td class="num">${num(p.min||0)}</td><td>${p.hecho?'<span class="tag t-ok">hecho</span>':p.error?'<span class="tag t-alerta">'+esc(p.error)+'</span>':(p.limite&&p.fin>p.limite?'<span class="tag t-alerta">se pasa '+diasEntre(p.limite,p.fin)+' d</span>':'<span class="tag t-medio">programado</span>')}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin pasos programados.</td></tr>'}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>${extra||''}
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div></div>`,true)}
 function asignacionPorOrdenHTML(P){const h=hoy();const q=normTxt(APO.q);const todas=S.ordenes.filter(o=>abierta(o));
   const clis=[...new Set(todas.map(o=>o.cliente||'Sin cliente'))].sort((a,b)=>a.localeCompare(b,'es'));const cens=S.centros.filter(c=>c.area==='pro');const meses=[...new Set(todas.map(o=>(fechaMetaDe(o)||'').slice(0,7)).filter(Boolean))].sort();
@@ -1528,6 +1539,32 @@ function filasGRP(id,items,filaFn,nCols,oDe,pzDe){const g=grpSt(id);const niv=g.
 function grpMap(id,items,nCols,oDe,filaFn){return{join:()=>filasGRP(id,items,filaFn,nCols,oDe)}}
 /* ---------- Gantt de tintorería: un baño que dura más que las horas del día ocupa los días laborables siguientes (solo vista) ---------- */
 function diasBano(b,r){if(!b||!b.dia)return [];const hd=capDia(r,b.dia)||0;if(!(hd>0))return [b.dia];const n=Math.max(1,Math.ceil((b.horas||0)/hd-1e-9));const ds=[b.dia];let d=b.dia,g=0;while(ds.length<n&&g<60){d=dsum(d,1);g++;if(labR(d,r))ds.push(d)}return ds}
+/* ---------- Reportería: pestaña propia del menú; cada reporte es una entrada de REPORTES (agregar uno = una línea aquí + su <a> en el menú) ---------- */
+const REPORTES=[
+  {p:'vistaordenes',n:'Vista general de órdenes',desc:'todas las órdenes abiertas con foto, fase, cliente, ODC, estilo, categoría, color, prendas, entrega, proyecto y estado'},
+  {p:'wip',n:'Producto en proceso',desc:'lo que está en planta por etapa y por orden'},
+  {p:'cumplimiento',n:'Cumplimiento de facturación',desc:'semanas congeladas contra lo real'},
+  {p:'avance',n:'Avance del mes',desc:'unidades hechas contra el plan congelado del mes'},
+  {p:'reporteria',rep:'textil',n:'Reportería textil',desc:'tejeduría y tintorería: carga, kilos, baños, salidas'},
+  {p:'reporteria',rep:'produccion',n:'Reportería por área',desc:'minutos vs capacidad por recurso y semana, plan vs real'}];
+function reporteriaBarraHTML(){const vis=REPORTES.filter(r=>vePagina(r.p)&&(!r.rep||(r.rep==='textil'?(veArea('tej')||veArea('tin')):veArea('pro'))));if(vis.length<2)return '';
+  return `<div class="chips no-print" style="margin:0 0 12px;align-items:center"><span class="mut" style="font-size:var(--fs-xs);margin-right:4px">Reportería:</span>${vis.map(r=>`<span class="chip ${page===r.p&&(!r.rep||(typeof REP!=='undefined'&&REP.vista===r.rep))?'on':''}" title="${esc(r.desc||'')}" onclick="${r.rep?`REP.vista='${r.rep}';`:''}ir('${r.p}')">${esc(r.n)}</span>`).join('')}</div>`}
+let VO={q:''};
+function vVistaOrdenes(el){const P=S.ordenes.length?programar():{ordenes:{}};const lista=S.ordenes.filter(o=>abierta(o)&&matchBusq(o,VO.q,'VO.q')).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1);
+  const fila=o=>{const ro=P.ordenes[o.id]||{};const d=dondeEsta(o,P);const k=K(o.cat);return `<tr style="cursor:pointer" onclick="mDetalleOrden('${o.id}')"><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim())}</td><td>${esc(o.ref||'')}</td><td>${esc(k?(K(k.padre)||k).n:'')}</td><td>${esc(k?k.n:'')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td style="white-space:nowrap">${esc(o.fecha||'')}</td><td>${esc(o.proyecto||'')}</td><td style="white-space:nowrap">${esc(d.n)}${ro.atraso?' <span class="tag t-alerta">atraso</span>':''}</td></tr>`};
+  el.innerHTML=`<div class="pagehead"><h2>Vista general de órdenes</h2><span class="spacer"></span><span class="mut" style="font-size:var(--fs-s)">${lista.length} órdenes abiertas · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas</span></div>
+   <p class="lede">Todas las órdenes abiertas en una sola lista, para ver cómo está cualquier referencia sin ir centro por centro. Clic en una orden abre el detalle completo: ruta, dónde está, qué le falta, historial de fases y foto.</p>
+   <div class="panel"><div class="body" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">${grpSelHTML('vo')}<div style="flex:1;min-width:220px"><label>Buscar</label>${busqHTML('VO.q',VO.q,'VO.q=v','')}</div></div></div>
+   <div class="panel"><div class="scroll"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Estilo</th><th>Categoría padre</th><th>Categoría hija</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th>Proyecto</th><th>Estado</th></tr></thead><tbody>${filasGRP('vo',lista.slice(0,1500),fila,11)||'<tr><td colspan="11" class="mut">Nada.</td></tr>'}</tbody></table></div></div>`}
+function mDetalleOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  const falta=pasosPendPro(o).map(p=>esc(nCen(p.centro))).join(' → ')||'nada pendiente en producción';
+  const fases=(o.fases||[]).slice().reverse().map(f=>`<tr><td style="white-space:nowrap">${new Date(f.ts).toLocaleString('es-EC')}</td><td>${esc(f.antes||'—')} → <b>${esc(f.f||'—')}</b></td><td>${esc(f.u||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(f.origen||'')}${f.motivo?' · '+esc(f.motivo):''}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">Sin cambios de fase registrados en el sistema.</td></tr>';
+  const extra=`<div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap"><div style="flex:none">${fotoDe(o)?fotoMini(o,180):'<div class="mut" style="width:180px;height:180px;background:var(--field);border-radius:6px;display:flex;align-items:center;justify-content:center">sin foto</div>'}</div>
+   <div style="flex:1;min-width:260px;font-size:var(--fs-s)"><div><b>Cliente</b> ${esc(o.cliente||'—')} · <b>ODC</b> ${esc(String(o.odc||'').trim()||'—')} · <b>Estilo</b> ${esc(o.ref||'—')}</div><div><b>Categoría</b> ${esc(nombreCat(K(o.cat)))} · <b>Color</b> ${dotColor(o.color)}${esc((C(o.color)||{}).n||'—')} · <b>Proyecto</b> ${esc(o.proyecto||'—')}</div>
+    <div><b>Liberación</b> ${esc(estadoLibEG(o))} · <b>Estado</b> ${esc((o.estado||'plan'))}${enPlanMes(o)?' · en el plan mensual'+(enPlanMes(o).congelado?' (congelado)':''):''}</div>
+    <div><b>Qué le falta</b>: ${falta}</div><div><b>Telas</b>: ${(o.telas||[]).map(t=>esc(nTela(t.tela))+' '+num(t.kg)+' kg'+(t.ext?' (ext)':'')).join(' · ')||'—'}</div></div></div>
+   <h4 style="margin:14px 0 6px">Historial de fases</h4><div class="scroll" style="max-height:220px"><table><thead><tr><th>Cuándo</th><th>De → a</th><th>Quién</th><th>Origen · motivo</th></tr></thead><tbody>${fases}</tbody></table></div>`;
+  mDetalleAsig(oid,extra)}
 function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
   const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
 function render(){CAPM=null;
@@ -1536,7 +1573,8 @@ function render(){CAPM=null;
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,escenarios:vEscenarios,cumplimiento:vCumplimiento,linea:vLinea,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes}[page])(el);
+  if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';

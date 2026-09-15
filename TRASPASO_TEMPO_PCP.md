@@ -62,6 +62,9 @@ Capacidad y decisiones.
 **Planificación textil**: Tejeduría, Stock de tela cruda, Macro del mes, Compras del mes, **Tintorería**, Reportería textil.
 **Planificación de producción**: Carga general (Asignación por orden), Centros, Costura, Balanceo, **Liberación a
 producción** (`LIB.et='corte'`), Programa del día, Reportería por área.
+**Reportería** (15-sep): Vista general de órdenes (todas las abiertas, buscador, agrupación, detalle completo), Producto en
+proceso, Cumplimiento, Avance del mes, Reportería textil y por área; registro `REPORTES` para crecer; supervisores la ven en
+consulta, tablet no. Ver `REPORTERIA_PESTANA_REPORTE.md`.
 **Piso**: Control de piso (tej/tin/pro + **Cambio de fases**), Modo línea, **Mi centro** (tablet).
 **Configuración**: Centros y recursos, Categorías y operaciones, Órdenes y materiales (tablas 1–14), Calendario y
 parámetros, Usuarios, Borrado (con frase).
