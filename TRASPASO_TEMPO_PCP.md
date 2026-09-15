@@ -128,6 +128,10 @@ Estado: el plan de septiembre está **vacío** (borrador); ella debe agregar y c
 - Capacidad de producción: `capDia(r,d)` = personas × minutos × eficiencia (asistencia del día manda); bordado por
   puntadas/min y cabezas (`velEfBordado`); tejeduría horas-máquina por tela (`kgTela`); tintorería horas por baño.
 - Carga por centro en todo el sistema = **minutos pendientes** (prendas no hechas × min/prenda del centro).
+- **Ajustes de capacidad por semana** (15-sep): Plan mensual → Bloque 1 → Simular: minutos/personas/eficiencia por recurso y
+  semana, provisional hasta "Guardar ajustes" (motivo obligatorio); se guarda en `S.params.ajustesCap` como base + extra sin
+  tocar Configuración; `capDia` lo aplica; gerencia lo ve en el resumen del plan y en Capacidad y decisiones ("extras").
+  Ver `SIMULADOR_CAPACIDAD_PLAN_REPORTE.md`.
 
 ### 2.5 Tejeduría y tintorería
 - Tejeduría teje contra stock por tipo de tela (Stock de tela cruda, anticipación `tejAnticipSem` 2). Pendiente:

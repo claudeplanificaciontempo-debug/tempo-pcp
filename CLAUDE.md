@@ -224,6 +224,13 @@ proceso, Cumplimiento, Avance del mes y las dos reporterías; las viejas siguen 
 reporte. Perfiles de supervisores reciben esas páginas una sola vez (`S.params.migReporteria`, bitácora); tablet no. Ver
 `REPORTERIA_PESTANA_REPORTE.md`.
 
+**Ajustes de capacidad por semana y simulador (15-sep-2026):** `S.params.ajustesCap[ym].semanas[lunes][recId]={min,pers,efic,base,motivo,u,ts}`
+(solo lo que difiere de la base; la base de Configuración no se toca). `capDia(r,d)` consulta `ajusteRecDia(r,d)` (guardado, o simulado
+si `SIM.on`); la asistencia del día manda sobre personas. Plan mensual → Bloque 1: `simuladorCapHTML` (estado `SIM`, `simSet`, `simCopiar`,
+`guardarAjustesCap` con motivo obligatorio y bitácora, `quitarAjusteCap`), `ajustesCapPanelHTML` ("480 base + 60 extra = 540 (sem. 1, 2)"),
+`extrasResumenHTML` en el Bloque 2; Capacidad y decisiones marca "extras" (`tieneExtras`). Semanas cacheadas en `SEMC` (se limpia en `render`).
+Ver `SIMULADOR_CAPACIDAD_PLAN_REPORTE.md`.
+
 **Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
 pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
 a producción" (Planificación de producción, `LIB.et='corte'`).
