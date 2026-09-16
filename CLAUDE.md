@@ -509,6 +509,23 @@ En proceso (CONTINUAR + Terminar orden + barra), Disponibles y Próximas (sin IN
 `marcaCentro(o,P,c)` separan «meta vencida», «la orden va tarde» y «este paso va tarde»; `porQueTardeHTML` explica arriba
 de cada cola contra qué fecha se compara. La marca SIEMPRE fue contra `fechaMetaDe(o)` vs `ro.finPro` (la orden entera).
 
+**Menú de Planificación de producción (16-sep-2026):** **Empaque salió del primer nivel** y es sub-área de
+Terminados. `armarNavSubCentros()` (corre en `render()`, antes de marcar la entrada activa) cuelga un
+`<a class="subnav" data-sub="1" data-padre="<grupo>" data-cen="<centro>">` por cada sub-área de **todo** ítem de
+planificación con `subAreasDe(g).length>=2` (hoy Terminados y Estampado), en el orden de `ordenPaso`, con el `!`
+de `alertaSubArea(c)` (= brecha de `origenTiempoCentro(c)` + «ninguna orden la tiene en su ruta»). El clic del menú
+pasó a **delegación** (los sub-ítems se inyectan después). **`CEN.solo`**: el sub-ítem abre esa sub-área sola
+(`cens=[CEN.solo]` en `vCentro`, con enlace «ver las N juntas»); el ítem padre sigue siendo el consolidado.
+**Etiquetas pasó al ítem Estampado** (`GRUPO_PLAN_DEF.etiquetas='estampado'` + siembra idempotente en
+`sembrarTerminados`): sus **dos únicas** operaciones de la LMO son «Etiquetar» en **SER-01 serigrafía**,
+TAMPOGRÁFICA 0,35 y MANUAL 0,40, **ninguna cosida** — se verificó antes de mover. `sembrarPerfilesEtiquetas()`
+la saca del perfil `terminado` y la agrega al perfil `corte` (una vez, con bitácora, editable); las **tablets no
+cambian** porque siempre apuntan a un centro real. `CENTROS_PROD` ahora se **deriva** de `GRUPO_PLAN_DEF` y
+`SUBAREAS` se alinea: no debe volver a haber una lista fija de sub-áreas que contradiga la columna «Ítem de
+planificación»; quien necesite las sub-áreas de un grupo usa `censDeGrupo()`. Brecha de datos de fondo: **sólo 3
+de 24 categorías tienen `familiaLMO` vinculada**, por eso la etiqueta de 0,5 min no carga en ninguna camiseta y 15
+de las 16 operaciones de ojales y botones no llegan a ningún producto. Ver `MENU_PRODUCCION_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

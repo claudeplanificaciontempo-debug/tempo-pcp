@@ -204,6 +204,25 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.31 Menú de Planificación de producción (16-sep)
+- **Empaque sale del primer nivel**: es sub-área de **Terminados**. No es código: sale de la columna **«Ítem de
+  planificación»** de Configuración → Centros; cambiarla rehace el menú en el mismo dibujado.
+- **Sub-ítems dinámicos**: `armarNavSubCentros()` cuelga un `↳ sub-área` de **todo** ítem de planificación con 2 o
+  más sub-áreas (hoy Terminados y Estampado), en el orden del proceso, con un `!` y el motivo cuando la sub-área
+  tiene brecha (sin minutos o fuera de toda ruta). El aviso reusa `origenTiempoCentro()`: no hay segunda fuente.
+- **`CEN.solo`**: el sub-ítem abre **esa sub-área sola** (con enlace «ver las N juntas»); el ítem padre sigue siendo
+  el consolidado y la cabecera dice cuál es cuál. Sin esto, `↳ Estampado` bajo `Estampado` era un duplicado.
+- **Etiquetas pasa al ítem Estampado**, verificado antes de mover: sus **dos únicas** operaciones de la LMO son
+  «Etiquetar» en **SER-01 (serigrafía)**, TAMPOGRÁFICA 0,35 y MANUAL 0,40 — **ninguna cosida**. Siembra idempotente
+  con bitácora; los **perfiles se mueven con ella** (`sembrarPerfilesEtiquetas`): «Producto terminado» deja de
+  verla, «Corte, estampado y bordado» la ve. Las **tablets no cambian**: cada una apunta a un centro real.
+- `CENTROS_PROD` se **deriva** de `GRUPO_PLAN_DEF` y `SUBAREAS` se alinea: ya no hay listas fijas que contradigan
+  la columna configurada. Los dos lugares que leían `CENTROS_PROD` directo usan `censDeGrupo()`.
+- **Brechas medidas** sobre los datos reales: **sólo 3 de 24 categorías tienen familia LMO vinculada** (es la causa
+  de que la etiqueta de 0,5 min no cargue en ninguna camiseta y de que 15 de las 16 operaciones de ojales y
+  botones no lleguen a ningún producto); **0 órdenes** con Etiquetas, Plancha o Empaque en su ruta.
+- Ver `MENU_PRODUCCION_REPORTE.md` (incluye las 16 operaciones de ojales y botones con minutos y fuente).
+
 ### 2.30 Ajustes finales del 16-sep
 - **Reportería → «Rutas sin secuencia»**: brecha con conteo por motivo (sin ruta, centro repetido, avance fuera de
   la ruta) y la lista de órdenes. Medido sobre el volcado real: de 1.155 abiertas, **685 sin ruta de producción**;
