@@ -2197,6 +2197,60 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});
    LIB.ym=bakYm;LIB.q='';LIB.fam2=null;LIB.sel=new Set();LIB.verLista=false;LIB.odc=null;GRP={};window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("LBB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MI CENTRO · total sin tallas y resultado de búsqueda visible */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,cant)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=cant;delete o.tallasPedido;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oS=mk('WH/MO/99001',300);PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};
+   const antesDia=hechasDelDia('modulos',rec,hoy()).pz;
+   // 1 · sin curva de tallas: una sola fila de TOTAL con el formato de una talla
+   iniciarTramo(oS.id,'modulos',rec);const tr=tramosDe(oS.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-40*6e4).toISOString();terminarTramo(tr.id,oS.id);
+   {const h=tallasSegHTML(oS,tr,'modulos',[]);
+    __check("MT1: sin curva de tallas se dibuja una fila Total con − + rápidos, número editable y segundas",h.includes('>Total<')&&h.includes("setTallaTramo('"+tr.id)&&h.includes('setTallaTramoVal(')&&h.includes('inputmode="numeric"')&&h.includes('segundas'));
+    __check("MT1: la fila Total dice cuánto lleva de las prendas de la orden",h.includes('de '+num(oS.cant)));
+    __check("MT1: la pantalla de confirmar ya no se queda sin campo",flujoTramoHTML('modulos',rec,[]).includes('setTallaTramoVal('));}
+   setTallaTramoVal(tr.id,oS.id,'(total)',20);
+   __check("MT1: el número editable guarda las unidades en el tramo",(tramosDe(oS.id).find(x=>x.id===tr.id).tallas||{})['(total)']===20);
+   guardarTramo(tr.id,oS.id);
+   __check("MT1: al guardar, «Hechas hoy» suma las 20",hechasDelDia('modulos',rec,hoy()).pz===antesDia+20,antesDia+' → '+hechasDelDia('modulos',rec,hoy()).pz);
+   __check("MT1: el avance de la orden en ese centro sube 20 y queda la línea (total) en el registro",(((S.avance[oS.id]||{}).centros)||{}).modulos===20&&((S.avance[oS.id]||{}).tallasLog||[]).some(x=>x.talla==='(total)'&&x.pz===20));
+   // 2 · guardar el tramo sin unidades: pregunta, no bloquea
+   iniciarTramo(oS.id,'modulos',rec);const tr2=tramosDe(oS.id).find(x=>!x.fin);tr2.ini=new Date(Date.now()-20*6e4).toISOString();terminarTramo(tr2.id,oS.id);
+   {let preg='';const cp=window.confirm;window.confirm=m=>{preg=String(m);return false};guardarTramo(tr2.id,oS.id);
+    __check("MT2: guardar con 0 unidades pregunta antes (puede haber sido solo un paro)",/sin unidades/.test(preg)&&tramosDe(oS.id).find(x=>x.id===tr2.id).pz===undefined);
+    window.confirm=()=>true;guardarTramo(tr2.id,oS.id);const t2=tramosDe(oS.id).find(x=>x.id===tr2.id);
+    __check("MT2: al confirmar se guarda con 0 prendas y el tiempo trabajado",t2.pz===0&&t2.min>0&&t2.minPrenda===null);
+    __check("MT2: el tramo guardado conserva QUIÉN trabajó (las unidades van en pz, ya no pisan la persona)",typeof t2.u==='string'&&t2.u.length>0&&tramosDelDiaHTML('modulos',rec).includes(t2.u));
+    window.confirm=cp}
+   TRAMO={paso:null,id:null,oid:null};
+   // 3 · el resultado de la búsqueda se ve siempre
+   const oC=mk('WH/MO/28513',50),oF=mk('WH/MO/77777',50);PLAN=null;PLAN_ALL=null;
+   const cola=[{o:oC,hechas:0}];const bakTAB=JSON.parse(JSON.stringify({centro:TAB.centro,rec:TAB.rec,q:TAB.q}));
+   TAB.centro='modulos';TAB.rec=rec;TAB.q='28513';
+   {const h=tabletBuscadorHTML('modulos',cola,rec);
+    __check("MB1: la WH de la cola sale como tarjeta con WH, fase, color, prendas y botón INICIO",h.includes(esc(oC.op))&&h.includes('>INICIO<')&&h.includes("iniciarTramo('"+oC.id+"','modulos','"+rec+"')")&&h.includes('por hacer de')&&h.includes('fase-mini'));
+    TAB.q='WH/MO/28513';
+    __check("MB1: acepta el número suelto y la WH completa",tabletBuscadorHTML('modulos',cola,rec).includes('>INICIO<'));}
+   TAB.q='77777';
+   {const h=tabletBuscadorHTML('modulos',cola,rec);
+    __check("MB2: una WH que no está programada aquí sale bloqueada, con pedir reprogramación",h.includes(esc(oF.op))&&/no programada en/.test(h)&&h.includes("pedirReprogramacion('"+oF.id+"'"));}
+   TAB.q='ZZ-NO-EXISTE';
+   __check("MB2: si no existe ninguna orden con eso, lo dice",/No existe ninguna orden/.test(tabletBuscadorHTML('modulos',cola,rec)));
+   // con un tramo abierto de otra orden
+   iniciarTramo(oS.id,'modulos',rec);const tr3=tramosDe(oS.id).find(x=>!x.fin);TAB.q='28513';
+   {const h=tabletBuscadorHTML('modulos',cola,rec);
+    __check("MB3: con un tramo abierto de otra orden, la tarjeta lo dice y ofrece ir a ella",h.includes(esc(oC.op))&&/tienes abierta la /.test(h)&&h.includes(esc(oS.op))&&!h.includes('>INICIO<'));}
+   // con un tramo terminado y pendiente de confirmar
+   terminarTramo(tr3.id,oS.id);
+   {const h=tabletBuscadorHTML('modulos',cola,rec);
+    __check("MB3: con un tramo pendiente de confirmar, buscar otra WH de la cola muestra su tarjeta y avisa",h.includes(esc(oC.op))&&/falta confirmar lo que salió de/.test(h)&&h.includes(esc(oS.op))&&!h.includes('>INICIO<'));}
+   setTallaTramoVal(tr3.id,oS.id,'(total)',5);guardarTramo(tr3.id,oS.id);TRAMO={paso:null,id:null,oid:null};
+   __check("MB4: Mi centro le pasa el recurso al buscador (el resultado sabe si es de mi puesto)",vTablet.toString().includes('tabletBuscadorHTML(c,cola,rec)'));
+   TAB.q='';TAB.centro=bakTAB.centro;TAB.rec=bakTAB.rec;
+   S.ordenes=S.ordenes.filter(o=>![oS,oC,oF].includes(o));[oS,oC,oF].forEach(o=>{delete S.avance[o.id]});
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("MT/MB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

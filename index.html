@@ -588,7 +588,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 00:12';
+const APP_BUILD='2026-09-16 08:25';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1651,8 +1651,38 @@ function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
   if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15 (uso «observación de piso»).');return}
   const antes=o.fase;moverFases([oid],f,m);
   if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
-/* --- buscador de Mi centro: solo lo programado en ese centro; si existe pero no está aquí, bloqueada --- */
-function tabletBuscadorHTML(c,cola){const q=normTxt(TAB.q||'');
+/* --- buscador de Mi centro: el resultado se ve SIEMPRE como tarjeta, esté o no en la cola --- */
+function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
+  const ab=tramoAbiertoDe(c,rec||null);
+  const porConfirmar=(TRAMO.paso==='tallas'&&TRAMO.oid)?S.ordenes.find(x=>x.id===TRAMO.oid):null;
+  const pedida=pedidosReprog().some(p=>p.oid===o.id&&p.centro===c&&!p.atendida);
+  const hechas=fila?fila.hechas:((((S.avance[o.id]||{}).centros)||{})[c]||0);
+  const porHacer=Math.max(0,(+o.cant||0)-hechas);
+  const irA=op=>`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="TAB.q='';render()">Ir a ${esc(op)}</button>`;
+  let nota='',accion='',borde='var(--t-accent)';
+  if(!enCola){borde='var(--aviso)';
+    nota=`<div class="tag t-alerta" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
+     <p class="mut" style="font-size:14px;margin:8px 0 0">Esta orden existe pero hoy no está programada en este centro, así que no se puede registrar aquí. Planificación decide: tú no reprogramas.</p>`;
+    accion=pedida?'<span class="tag t-ok">ya pediste la reprogramación</span>':`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="pedirReprogramacion('${o.id}','${c}')">Pedir reprogramación</button>`}
+  else if(porConfirmar&&porConfirmar.id!==o.id){borde='var(--aviso)';
+    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">falta confirmar lo que salió de ${esc(porConfirmar.op)}: termínala primero</div>`;
+    accion=irA(porConfirmar.op)}
+  else if(ab&&ab.o.id!==o.id){borde='var(--aviso)';
+    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">tienes abierta la ${esc(ab.o.op)}: termínala primero</div>`;
+    accion=irA(ab.o.op)}
+  else if(ab&&ab.o.id===o.id){nota='<div class="tag t-ok" style="font-size:15px;margin-top:6px">la tienes abierta ahora</div>';accion=irA(o.op)}
+  else accion=`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="TAB.q='';iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button>`;
+  return `<div class="panel" style="border:2px solid ${borde}"><div class="body" style="font-size:17px">
+   <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:none">${fotoDe(o)?fotoMini(o,110):''}</div>
+    <div style="flex:1;min-width:220px">
+     <div><b style="font-size:20px">${esc(o.op)}</b> ${faseTag(o)}</div>
+     <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div>
+     <div class="mut">${num(porHacer)} por hacer de ${num(o.cant)} prendas${o.fecha?' · entrega '+esc(o.fecha):''}</div>
+     ${nota}</div>
+    <div style="flex:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end">${accion}</div>
+   </div></div></div>`}
+function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const simple=esOperario(); // el operario no elige campos: escribe la WH y listo
   const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
   const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${campo}</div>${simple?`<button class="btn" style="font-size:20px;padding:14px 20px" onclick="TAB.q=(document.getElementById('tab-wh')||{}).value||'';render()">Buscar</button>`:''}${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
@@ -1660,19 +1690,14 @@ function tabletBuscadorHTML(c,cola){const q=normTxt(TAB.q||'');
   const soloNum=x=>String(x||'').replace(/\D+/g,'');
   const qn=soloNum(q);
   const calza=o=>normTxt(o.op).includes(q)||normTxt(o.ref||'').includes(q)||(qn.length>=3&&soloNum(o.op).includes(qn));
+  const TOPE=6;
   const enCola=cola.filter(f=>calza(f.o));
-  if(enCola.length)return cab;
-  const o=S.ordenes.find(calza);
-  if(!o)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
-  const pedida=pedidosReprog().some(p=>p.oid===o.id&&p.centro===c&&!p.atendida);
-  return cab+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:17px">
-   <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><div style="flex:none">${fotoDe(o)?fotoMini(o,110):''}</div>
-   <div style="flex:1;min-width:220px"><div><b style="font-size:20px">${esc(o.op)}</b> ${faseTag(o)}</div>
-    <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div>
-    <div class="tag t-alerta" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
-    <p class="mut" style="font-size:14px;margin:8px 0 0">Esta orden existe pero hoy no está programada en este centro, así que no se puede registrar aquí. Planificación decide: tú no reprogramas.</p></div>
-   <div style="flex:none">${pedida?'<span class="tag t-ok">ya pediste la reprogramación</span>':`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="pedirReprogramacion('${o.id}','${c}')">Pedir reprogramación</button>`}</div>
-  </div></div></div>`}
+  const otras=S.ordenes.filter(o=>calza(o)&&!enCola.some(f=>f.o.id===o.id));
+  if(!enCola.length&&!otras.length)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
+  const cards=enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f));
+  otras.slice(0,Math.max(0,TOPE-cards.length)).forEach(o=>cards.push(tarjetaWHTabletHTML(o,c,rec,null)));
+  const mas=enCola.length+otras.length-cards.length;
+  return cab+cards.join('')+(mas>0?`<p class="mut" style="font-size:15px">… y ${mas} ${mas===1?'orden más':'órdenes más'} con esa búsqueda: escribe la WH completa.</p>`:'')}
 /* ---------- Carga masiva del pedido por tallas (Excel o CSV), como las demás cargas por WH ---------- */
 let TALLAS_CARGA=null;
 function mCargarTallas(){abrir(`<h3>Cargar el pedido por tallas</h3><div class="body">
@@ -1894,11 +1919,12 @@ function setTallaTramo(tid,oid,talla,delta){const t=tramosDe(oid).find(x=>x.id==
 function setSegTramo(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
   t.segundas=t.segundas||{};const v=Math.max(0,Math.round(+valor||0));if(v)t.segundas[talla]=v;else delete t.segundas[talla];save()}
 function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tramosDe(oid).find(x=>x.id===tid);if(!o||!t)return;
-  const u=sumaCurva(t.tallas||{});if(!(u>0)){alert('Marca cuántas prendas salieron, por talla.');return}
+  const u=sumaCurva(t.tallas||{});
+  if(!(u>0)&&!confirm('¿Guardar el tramo sin unidades?\n\nQueda el tiempo trabajado y 0 prendas. Puede pasar si solo hubo paro.'))return;
   const b=baseTallas(o,t.centro);const a=S.avance[oid]=S.avance[oid]||{};a.tallas=a.tallas||{};const prev=a.tallas[t.centro]||{};
   const excede=[];Object.entries(t.tallas).forEach(([k,q])=>{const lim=(b.tallas||{})[k];if(lim!=null&&(prev[k]||0)+q>lim)excede.push(k+': '+num((prev[k]||0)+q)+' de '+num(lim))});
   if(excede.length&&!confirm('Estas tallas pasan de lo '+(b.base==='corte'?'cortado':'pedido')+':\n'+excede.join('\n')+'\n¿Guardar igual? Queda marcado.'))return;
-  const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.persFuente=c.persFuente;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.minPrendaTot=c.minPrendaTot!=null?+c.minPrendaTot.toFixed(3):null;t.u=u;t.seg=c.seg;t.excede=excede.length>0;
+  const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.persFuente=c.persFuente;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.minPrendaTot=c.minPrendaTot!=null?+c.minPrendaTot.toFixed(3):null;t.pz=u;t.seg=c.seg;t.excede=excede.length>0; // las unidades van en t.pz: t.u es QUIÉN empezó el tramo
   if(c.seg>0){const av=S.avance[oid];av.seg=av.seg||{};av.seg[t.centro]=Math.max(0,(+av.seg[t.centro]||0)+c.seg)} // el mismo dato que ve Control de piso
   a.tallasLog=a.tallasLog||[];const ts=new Date().toISOString();
   Object.entries(t.tallas).forEach(([k,q])=>{prev[k]=(prev[k]||0)+q;a.tallasLog.push({ts,u:quienFirma(),centro:t.centro,rec:t.rec||null,talla:k,pz:q,base:b.base||'sin base',tramo:t.id,min:t.min,minPersona:t.minPersona,excede:excede.some(x=>x.startsWith(k+':'))})});
@@ -1980,20 +2006,28 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
      ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,o.cant-f.hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div></div>
      <button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button></div>`}).join('')||'<span class="mut">No hay órdenes programadas en este centro.</span>'}
    </div></div></div>`}
-function tallasSegHTML(o,t,c,tallas){if(!tallas.length)return '<div class="warn">Sin tallas cargadas para esta WH: se registra solo el total.</div>';
-  const b=baseTallas(o,c);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};const rap=[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0);
-  return `<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>{const lim=(b.tallas||{})[tt];const v=(t.tallas||{})[tt]||0;const total=(ya[tt]||0)+v;
-    return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b style="width:70px;font-size:20px">${esc(tt)}</b>
-     <button class="btn ghost" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',-1)">−</button>
-     <b style="font-size:24px;min-width:56px;text-align:center">${v}</b>
-     <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
-     ${rap.map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}
-     <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',this.value)"></label>
-     <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}).join('')}</div>`}
+/* --- una fila de registro (talla o total) con − + rápidos, número editable y segundas --- */
+const TALLA_TOTAL='(total)';
+function setTallaTramoVal(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
+  t.tallas=t.tallas||{};const v=Math.max(0,Math.round(+valor||0));if(v)t.tallas[talla]=v;else delete t.tallas[talla];save();render()}
+function filaTallaTramoHTML(o,t,c,tt,ya,lim,etiqueta){const v=(t.tallas||{})[tt]||0;const total=(+ya||0)+v;
+  const rap=[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0);const k=jsq(tt);
+  return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b style="width:70px;font-size:20px">${esc(etiqueta||tt)}</b>
+   <button class="btn ghost" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${k}',-1)">−</button>
+   <input type="number" inputmode="numeric" min="0" value="${v}" style="font-size:24px;font-weight:700;width:96px;text-align:center;padding:8px" onfocus="this.select()" onchange="setTallaTramoVal('${t.id}','${o.id}','${k}',this.value)">
+   <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${k}',1)">+</button>
+   ${rap.map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${k}',${n})">+${n}</button>`).join('')}
+   <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${k}',this.value)"></label>
+   <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}
+function tallasSegHTML(o,t,c,tallas){const b=baseTallas(o,c);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};
+  if(!tallas.length){const hechoC=(((S.avance[o.id]||{}).centros)||{})[c]||0; // sin curva: una sola fila de TOTAL, con el mismo formato que una talla
+    return `<div class="warn" style="font-size:16px;margin-bottom:10px">Esta WH no tiene curva de tallas cargada: se registra solo el <b>total</b>.</div>
+     <div style="display:flex;flex-direction:column;gap:10px">${filaTallaTramoHTML(o,t,c,TALLA_TOTAL,hechoC,+o.cant||null,'Total')}</div>`}
+  return `<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>filaTallaTramoHTML(o,t,c,tt,ya[tt]||0,(b.tallas||{})[tt])).join('')}</div>`}
 function tramosDelDiaHTML(c,rec){const h=hoy();const l=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===h);
   if(!l.length)return '';
   return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Segundas</th><th class="num">Min/prenda real</th><th class="num">Personas</th><th>Quién</th></tr></thead><tbody>
-   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="estándar ${num(cal.estandar,3)} min/prenda · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.pers}</td><td class="mut">${esc(t.u||'')}</td></tr>`}).join('')}
+   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="estándar ${num(cal.estandar,3)} min/prenda · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.pers}</td><td class="mut">${esc(typeof t.u==='string'?t.u:(t.uFin||''))}</td></tr>`}).join('')}
    </tbody></table></div>${descansosCentro(c).falta?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración → Centros cuando los definas.</p>`:''}${personasRec(rec,c).falta?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
 function vTablet(el){
   const asg=tabletDe();const admin=(puede('usuarios')||puede('programa'))&&!esOperario();
@@ -2022,7 +2056,7 @@ function vTablet(el){
   el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
    ${tarjetasResumenHTML([{id:'tab-plan',v:num(planHoy),k:'Prendas del día'},{id:'tab-hechas',v:num(hechasHoy),k:'Hechas hoy'},{id:'tab-faltan',v:num(Math.max(0,planHoy-hechasHoy)),k:'Faltan',cls:planHoy-hechasHoy>0?'warn':''},{id:'tab-cola',v:cola.length,k:'Órdenes en cola',items:cola.map(f=>f.o)}])}
    <div id="aviso-guardado"></div>
-   ${tabletBuscadorHTML(c,cola)}
+   ${tabletBuscadorHTML(c,cola,rec)}
    ${flujoTramoHTML(c,rec,cola)}
    ${tramosDelDiaHTML(c,rec)}
    ${cola.map(card).join('')||'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'}
