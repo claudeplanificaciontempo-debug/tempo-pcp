@@ -226,6 +226,9 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   tablet, corte, módulos, terminado y los perfiles antiguos de piso; **planificación no**). En esas sesiones las
   demás tablas y `params` **ni se intentan**: las siembras y migraciones automáticas se usan en memoria, así que un
   rechazo de permisos ya no puede tumbar el registro del piso. El aviso de error dice en qué tabla falló.
+- **Decidido por la usuaria (16-sep-2026)**: planificación **no** se marca «solo piso» aunque no tenga permiso de
+  Configuración (escribe órdenes, programa y plan), y las siembras se quedan así: **no las guarda el piso**, sí
+  planificación y administración. No se hace la versión estricta.
 - **Lo que el operario hace fuera de esas tablas pasa a avance**: el pedido de reprogramación, su auditoría y —lo
   más importante— el **cambio de fase**, que ya no escribe en `ordenes`: queda como **solicitud** y planificación la
   aplica desde Control de piso → Cambio de fases (regla de secuencia y auditoría de siempre). Bandeja en Hoy.

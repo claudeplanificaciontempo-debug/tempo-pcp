@@ -119,6 +119,14 @@ Se ejecutan al leer, desde cualquier pantalla, y escriben en `params`:
 Ninguna se guarda desde la tablet. Se siguen guardando cuando entra planificación o administración, que es donde
 tienen sentido.
 
+## 2 bis · Confirmado por la usuaria (16-sep-2026)
+Las dos decisiones que quedaron abiertas en esta entrega están **confirmadas y cerradas**:
+1. **Planificación NO se marca «solo piso»**, aunque no tenga permiso de Configuración: escribe órdenes, programa y
+   plan mensual, y marcarla le rompería el trabajo. La regla que manda es la columna **Piso** del catálogo.
+2. **Las siembras se quedan como están**: no las persiste el piso; planificación y administración sí. No se hace la
+   versión estricta de «solo las guarda quien tenga permiso de configuración», porque planificación escribe en
+   `params` de forma legítima (plan del mes, ajustes de capacidad, motivos, programación de tejeduría).
+
 ## 3 · Lo que el operario hace de verdad fuera de esas cuatro tablas
 
 | Lo que hace | Antes escribía en | Ahora |
