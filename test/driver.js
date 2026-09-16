@@ -214,7 +214,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;
    __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet",perfilesDef().length===9&&perfilesDef().some(x=>x.id==='tablet')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
-   __check("perfil corte: ve corte, estampado, bordado y etiquetas; no confección ni configuración",veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&puede('ruta')&&puedeCentro('corte'));
+   __check("perfil corte: ve corte, estampado, bordado y etiquetas; reprograma pero YA NO edita rutas",(sembrarPermisoRutas(),veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&!puede('ruta')&&puedeCentro('corte')));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
    PERFIL={rol:'terminado',modo:'editar',nombre:'PT'};__check("perfil producto terminado: plancha, botones, lavado y empaque (Etiquetas pasó a Estampado)",['plancha','botones','lavado','empaque'].every(veCentro)&&!veCentro('etiquetas')&&!veCentro('corte'));
    PERFIL={rol:'tintoreria',modo:'editar',nombre:'Tin'};__check("perfil tintorería: solo tintorería, registra y hace calidad",veArea('tin')&&!veArea('tej')&&!veArea('pro')&&puedeArea('tin')&&puede('calidadTin')&&!puede('liberar'));
@@ -2986,6 +2986,153 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("D6: y todo queda en la bitácora",(S.bitacora||[]).some(b=>/JEANS/.test(b.txt||b.t||'')&&/DENIM/.test(b.txt||b.t||'')));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("DEC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* PARTE A · Dirección, Liberación y Planificación de producción */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   /* 1 · cada centro con su propio «ver programa» */
+   {page='panorama';render();const h=document.getElementById('p-panorama').innerHTML;
+    const cens=S.centros.filter(c=>c.area==='pro').map(c=>c.id);
+    __check("A1: Planta hoy lista TODOS los centros de producción, con carga o sin ella",cens.every(c=>h.includes('irCentro(&quot;'+c+'&quot;')||h.includes("irCentro('"+c+"'")));
+    __check("A1: y ya no manda a Carga general desde la tarjeta del centro",(h.match(/irCentro\(/g)||[]).length>=cens.length);
+    irCentro('estampado',hoy());
+    __check("A1: el enlace abre la pantalla del centro, en su programación",page==='centro'&&CEN.tab==='prog'&&censDeGrupo(CEN.id).includes('estampado'));
+    __check("A1: y en la semana del día pedido",CEN.sem===0);
+    irCentro('plancha',dsum(hoy(),14));
+    __check("A1: un día de otra semana abre esa semana",CEN.sem===2&&(CEN.solo==='plancha'||censDeGrupo(CEN.id).includes('plancha')));
+    CEN.solo='';CEN.sem=0;}
+   /* 2 · el menú */
+   {const plan=[...document.querySelectorAll('nav .gbody[data-g="prod"] a')].map(a=>a.dataset.p+'/'+(a.dataset.rep||''));
+    const rep=[...document.querySelectorAll('nav .gbody[data-g="rep"] a')].map(a=>a.dataset.p+'/'+(a.dataset.rep||''));
+    __check("A2: «Reportería por área» sale de Planificación de producción",!plan.includes('reporteria/produccion'));
+    __check("A2: y sigue en la pestaña Reportería",rep.includes('reporteria/produccion'));}
+   /* 3 · fecha, hora y usuario de la liberación */
+   {const o=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
+    if(o.lib)delete o.lib.corte;PERFIL={rol:'admin',modo:'editar',nombre:'Jefa Prod'};
+    confirmarRuta(o,'persona','prueba');S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].calidadOk=true;
+    if(!puedeLiberarA(o,'corte'))__check('A3: la orden de prueba se puede liberar',false,faltaLiberarA(o,'corte').join(', '));
+    const t0=new Date().toISOString();liberarA([o.id],'corte');
+    __check("A3: al liberar se guarda fecha, hora y quién",!!(o.lib&&o.lib.corte&&o.lib.corte.ts>=t0.slice(0,10)&&o.lib.corte.u==='Jefa Prod'));
+    __check("A3: y queda en el historial de la orden",(o.histLib||[]).some(x=>x.accion==='liberada'&&x.et==='corte'));
+    const f=libFechaDe(o,'corte');__check("A3: la fecha se lee del registro, no se adivina",f&&f.origen==='registro'&&!!f.ts);
+    __check("A3: y se muestra con hora y usuario",/Jefa Prod/.test(libFechaTxt(o,'corte')));
+    // una liberada vieja, sin ts y sin auditoría: brecha, no fecha inventada
+    const bakA=S.params.auditoriaCambios;S.params.auditoriaCambios=[];
+    o.lib.corte={ok:true,u:'alguien'};
+    __check("A3: una liberada antigua sin rastro se marca como BRECHA, no se le inventa fecha",libFechaDe(o,'corte').origen==='desconocida'&&!libFechaDe(o,'corte').ts&&/desconocida/.test(libFechaTxt(o,'corte')));
+    // con auditoría sí se reconstruye, y se dice de dónde salió
+    S.params.auditoriaCambios=[{ts:'2026-09-01T10:00:00.000Z',u:'Ana',tipo:'liberacion',oid:o.id,despues:'liberada a producción'}];
+    const f2=libFechaDe(o,'corte');
+    __check("A3: si está en la auditoría se reconstruye, y la pantalla dice que viene de ahí",f2.origen==='auditoría'&&f2.ts==='2026-09-01T10:00:00.000Z'&&/aud\./.test(libFechaTxt(o,'corte')));
+    S.params.auditoriaCambios=bakA;o.lib.corte={ok:true,u:'Jefa Prod',ts:t0};
+    // el resumen por período, con selector de rango
+    LIBR.gran='dia';LIBR.desde='';LIBR.hasta='';
+    const r=resumenLiberacion('corte');
+    __check("A3: el resumen cuenta órdenes y prendas por período",r.tot>=1&&r.totPz>=1&&r.filas.length>=1);
+    LIBR.gran='mes';const rm=resumenLiberacion('corte');
+    __check("A3: y se puede ver por día, semana o mes",rm.filas.every(f=>/^\d{4}-\d{2}$/.test(f.k)));
+    LIBR.desde='1999-01-01';LIBR.hasta='1999-12-31';
+    __check("A3: el selector de rango acota de verdad",resumenLiberacion('corte').tot===0);
+    LIBR.desde='';LIBR.hasta='';LIBR.gran='dia';
+    __check("A3: el bloque está al final de Liberación a producción",/Cuánto se liberó/.test(resumenLiberacionHTML('corte')));}
+   /* 4 · desliberar */
+   {const o=S.ordenes.find(x=>liberada(x,'corte'));
+    if(!o)__check('A4: hay alguna orden liberada para probar',false);
+    else{
+     PERFIL={rol:'corte',modo:'editar',nombre:'Encargado'};
+     __check("A4: un encargado de centro NO puede desliberar",!puedeDesliberar());
+     const nA=(S.params.auditoriaCambios||[]).length;desliberar([o.id],'corte','error de digitación');
+     __check("A4: y si lo intenta igual, no pasa nada",liberada(o,'corte')&&(S.params.auditoriaCambios||[]).length===nA);
+     PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};
+     __check("A4: Dirección y el jefe de planificación sí pueden",puedeDesliberar());
+     desliberar([o.id],'corte','');
+     __check("A4: sin motivo de la tabla 15 no se desliberá nada",liberada(o,'corte'));
+     if(!motivosDe('liberacion').length){S.params.motivos=(S.params.motivos||[]).concat([{motivo:'Error de digitación',uso:'liberacion'}])}
+     const mot=(motivosDe('liberacion')[0]||{}).motivo;
+     S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros=Object.assign({corte:5},(S.avance[o.id].centros||{}));
+     mDesliberar([o.id],'corte');const hm=document.getElementById('modal').innerHTML;
+     __check("A4: si la orden ya tiene avance, el modal lo advierte ANTES de confirmar",/ya tiene avance registrado/.test(hm)&&/Corte/.test(hm));cerrar();
+     const nA2=(S.params.auditoriaCambios||[]).length;
+     if(mot)desliberar([o.id],'corte',mot);
+     __check("A4: con motivo se deslibera y vuelve a la cola",!liberada(o,'corte'));
+     __check("A4: el avance del piso NO se borra",((S.avance[o.id]||{}).centros||{}).corte===5);
+     __check("A4: queda en la auditoría y en el historial de la orden",(S.params.auditoriaCambios||[]).length>nA2&&(o.histLib||[]).some(x=>x.accion==='desliberada'&&x.motivo===mot));
+     __check("A4: y la auditoría deja dicho que tenía avance",(S.params.auditoriaCambios||[]).slice(-1)[0].motivo.indexOf('tenía avance')>=0);
+     delete S.avance[o.id].centros.corte;liberarA([o.id],'corte');}}
+   /* 5 · el mismo agrupador en todas */
+   {const campos=GRP_CAMPOS.map(x=>x[0]);
+    __check("A5: el agrupador ofrece Cliente, Fase, ODC y Familia además de Tela",['cliente','fase','odc','fam','tela'].every(k=>campos.includes(k)));
+    ['lib','lib4','cg','cen','cenv','cenviene','bal','imp'].forEach(id=>{const h=grpSelHTML(id,true);
+     __check('A5: '+id+' usa el mismo componente, con los mismos campos',['cliente','fase','odc','fam','tela'].every(k=>h.includes('value="'+k+'"')));});}
+   /* 6 · «Arranca» nunca antes de hoy */
+   {const o=S.ordenes.find(x=>abierta(x)&&pasosProDe(x).length)||S.ordenes[0];const c=pasosProDe(o)[0]||'corte';
+    delete (o.progCentro||{})[c];
+    if(S.avance[o.id]){delete S.avance[o.id].centros;delete S.avance[o.id].tramos}
+    __check("A6: una orden que no arrancó no acepta una fecha pasada",!fechaArranqueValida(o,c,dsum(hoy(),-3)).ok&&minArranque(o,c)===hoy());
+    setProgCen(o.id,c,'desde',dsum(hoy(),-3));
+    __check("A6: y el guardado tampoco la deja pasar, no solo la interfaz",((o.progCentro||{})[c]||{}).desde===undefined);
+    setProgCen(o.id,c,'desde',dsum(hoy(),5));
+    __check("A6: una fecha futura sí se guarda",((o.progCentro||{})[c]||{}).desde===dsum(hoy(),5));
+    S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros={[c]:3};
+    __check("A6: una orden que YA arrancó conserva su fecha real: no se le aplica el tope",yaArranco(o,c)&&fechaArranqueValida(o,c,dsum(hoy(),-3)).ok&&minArranque(o,c)===null);
+    setProgCen(o.id,c,'desde',dsum(hoy(),-3));
+    __check("A6: y esa fecha pasada sí se guarda, porque es real",((o.progCentro||{})[c]||{}).desde===dsum(hoy(),-3));
+    delete S.avance[o.id].centros;setProgCen(o.id,c,null);}
+   /* 7 · permisos de rutas */
+   {sembrarPermisoRutas();const cat=perfilesDef();
+    const jefe=cat.find(x=>x.id==='planificacion');
+    __check("A7: el jefe de planificación de producción conserva el permiso de rutas",(jefe.permisos||[]).includes('ruta'));
+    __check("A7: ningún otro perfil de centro lo tiene",cat.filter(x=>['corte','modulos','terminado'].includes(x.id)).every(x=>!(x.permisos||[]).includes('ruta')));
+    PERFIL={rol:'corte',modo:'editar',nombre:'Encargado'};
+    __check("A7: un encargado de centro no edita rutas",!puedeEditarRuta());
+    const o=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const ruta0=JSON.stringify(o.ruta||[]);
+    const nR=reglasRuta().length;addReglaRuta();
+    __check("A7: no puede crear reglas de ruta",reglasRuta().length===nR);
+    aplicarLavado([o.id],'quito','prueba');
+    __check("A7: no puede agregar ni quitar lavado",JSON.stringify(o.ruta||[])===ruta0);
+    const nAud=(S.params.auditoriaCambios||[]).length;
+    mRutaCentro(o.id);guardarRutaCentro(o.id);
+    __check("A7: y el guardado lo rechaza aunque se llame a mano, no solo se ocultan los botones",(S.params.auditoriaCambios||[]).length===nAud&&JSON.stringify(o.ruta||[])===ruta0);cerrar();
+    PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};
+    __check("A7: el jefe sí puede",puedeEditarRuta());
+    PERFIL=adminP;}
+   /* 8 · «Sin fecha todavía» */
+   {PERFIL={rol:'corte',modo:'editar',nombre:'Encargado'};
+    __check("A8: el encargado de centro no ve el bloque «Sin fecha todavía»",!veSinFecha());
+    page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';render();
+    __check("A8: y no aparece en su pantalla",!/Sin fecha todavía/.test(document.getElementById('p-centro').innerHTML));
+    PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa'};
+    __check("A8: planificación sí lo ve",veSinFecha());
+    __check("A8: y siguen contadas como brecha en Reportería, no desaparecen",/Órdenes sin fecha/.test(sinFechaBrechaHTML()));
+    PERFIL=adminP;page='reporteria';REP.vista='produccion';render();
+    __check("A8: el panel está en Reportería",/Órdenes sin fecha/.test(document.getElementById('p-reporteria').innerHTML));}
+   /* 9 · «Lo que viene» */
+   {const P=S.ordenes.length?programar():{ordenes:{},pro:[]};
+    const l=loQueVieneDe(['empaque'],P);
+    __check("A9: «lo que viene» sale de la RUTA de cada orden",l.every(x=>pasosProDe(x.o).includes('empaque')));
+    __check("A9: y son órdenes que todavía están en un paso anterior, no las que ya le tocan",l.every(x=>x.faltan.length>0));
+    const h=loQueVieneHTML(['empaque'],P,'Empaque');
+    __check("A9: el bloque dice dónde están ahora y qué les falta antes de llegar",/Lo que viene/.test(h)&&/Dónde está/.test(h)&&/Le falta antes de llegar/.test(h));
+    __check("A9: y es agrupable con el componente común",/setNivelGRP\('cenviene'/.test(h));
+    page='centro';CEN.id='terminados';CEN.solo='empaque';CEN.tab='plan';render();
+    __check("A9: aparece en la pantalla del centro",/Lo que viene/.test(document.getElementById('p-centro').innerHTML));}
+   /* 10 · «Dónde está» dentro del centro */
+   {const o=S.ordenes.find(x=>abierta(x)&&pasosProDe(x).includes('corte'))||S.ordenes[0];
+    const P=S.ordenes.length?programar():{ordenes:{},pro:[]};
+    if(S.avance[o.id]){delete S.avance[o.id].centros;delete S.avance[o.id].tramos}
+    __check("A10: los textos por centro son configurables y traen los del proceso",estadosCentro('corte').join('|')==='Por cortar|Cortando|Cortada'&&estadosCentro('modulos')[1]==='Cosiendo'&&estadosCentro('estampado')[0]==='Por estampar');
+    __check("A10: sin avance, la orden está «Por cortar»",estadoEnCentro(o,'corte')===0&&estadoCentroTxt(o,'corte')==='Por cortar');
+    S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros={corte:3};
+    __check("A10: con avance parcial, «Cortando»",estadoEnCentro(o,'corte')===1&&estadoCentroTxt(o,'corte')==='Cortando');
+    const hEn=dondeEstaEnCentro(o,P,'corte');
+    __check("A10: dentro de Corte NO se repite «Corte»: se ve su estado propio",/Cortando/.test(hEn)&&!/>Corte</.test(hEn));
+    __check("A10: y dice cuántas lleva",/3/.test(hEn));
+    S.avance[o.id].centros={corte:+o.cant};
+    __check("A10: completa, «Cortada»",estadoEnCentro(o,'corte')===2&&estadoCentroTxt(o,'corte')==='Cortada');
+    delete S.avance[o.id].centros;
+    const otro=pasosProDe(o).find(c=>c!=='corte');
+    if(otro)__check("A10: fuera del centro se sigue mostrando dónde está la orden",dondeEstaEnCentro(o,P,otro)===dondeEstaCentro(o,P,otro));}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("PA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
