@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:19';
+const APP_BUILD='2026-09-16 10:30';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1623,7 +1623,7 @@ function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delet
 /* ================= BÚSQUEDA GENERAL: una barra arriba, en todas las pantallas y en teléfono ================= */
 /* textos que se pueden cambiar sin tocar código (tabla de ayudas, Configuración → Órdenes y materiales) */
 const AYUDAS_DEF={
-  'grp.fam':'Familia','grp.hija':'Tipo de producto','grp.cliente':'Cliente','grp.fase':'Fase','grp.color':'Color',
+  'grp.fam':'Familia','grp.hija':'Tipo de producto','grp.tela':'Tela','grp.cliente':'Cliente','grp.fase':'Fase','grp.color':'Color',
   'grp.odc':'ODC','grp.mes':'Mes de entrega','grp.paso':'Próximo paso','grp.proyecto':'Proyecto','grp.etapa':'Etapa actual',
   'busq.placeholder':'Buscar WH, ODC, cliente, referencia…','busq.solo':'buscar solo en…',
   'busqg.placeholder':'Buscar una orden: WH, ODC, cliente o referencia'};
@@ -2294,19 +2294,24 @@ function alertasComprasHTML(){const al=(S.params.alertasCompras||[]).filter(a=>!
   return `<div class="panel" style="border:2px solid var(--alerta)"><h3>Estas órdenes pasaron a compras <span class="note">${al.length} · la persona de compras tiene que pedir la tela</span></h3><div class="body"><table><thead><tr><th>Cuándo</th><th>OP</th><th>Telas</th><th>Días proveedor</th><th>Motivo · quién</th><th></th></tr></thead><tbody>
    ${al.map(a=>{const o=S.ordenes.find(x=>x.id===a.oid);return `<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleDateString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(a.op)}</td><td style="font-size:var(--fs-xs)">${o?(o.telas||[]).map(t=>esc(nTela(t.tela))+' '+num(t.kg)+' kg').join(' · '):''}</td><td>${a.dias?num(a.dias):'<span class="tag t-alerta">sin días de proveedor</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(a.motivo||'')} · ${esc(a.u||'')}</td><td>${puede('ordenes')||puede('programa')?`<button class="btn ghost sm" onclick="atenderCompra('${a.id}')">pedida</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`}
 /* ---------- Agrupación colapsable como Odoo (hasta 3 niveles, conteo y prendas a la derecha) para cualquier lista de órdenes ---------- */
-const GRP_ORDEN=['cliente','fase','fam','hija','color','odc','mes','paso','proyecto','etapa'];
-const GRP_CAMPOS_BASE={fase:'grp.fase',cliente:'grp.cliente',odc:'grp.odc',fam:'grp.fam',hija:'grp.hija',color:'grp.color',proyecto:'grp.proyecto',etapa:'grp.etapa',paso:'grp.paso',mes:'grp.mes'};
+const GRP_ORDEN=['cliente','fase','fam','hija','tela','color','odc','mes','paso','proyecto','etapa'];
+const GRP_CAMPOS_BASE={fase:'grp.fase',cliente:'grp.cliente',odc:'grp.odc',fam:'grp.fam',hija:'grp.hija',tela:'grp.tela',color:'grp.color',proyecto:'grp.proyecto',etapa:'grp.etapa',paso:'grp.paso',mes:'grp.mes'};
 Object.defineProperty(window,'GRP_CAMPOS',{get:()=>GRP_ORDEN.map(k=>[k,ayuda(GRP_CAMPOS_BASE[k])])});
 let GRP={};
 function claveUsr(){return (PERFIL&&(PERFIL.id||PERFIL.email))||'anon'}
 function grpSt(id){if(!GRP[id]){let n=null;try{n=JSON.parse(localStorage['__grp_'+claveUsr()+'_'+id]||localStorage['__grp_'+id]||'null')}catch(e){}GRP[id]={niveles:Array.isArray(n)?n:[],exp:new Set()}}return GRP[id]}
 function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;g.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j).slice(0,3);g.exp=new Set();try{localStorage['__grp_'+claveUsr()+'_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
 function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);render()}
-function claveGRP(o,c){switch(c){case 'fase':return o.fase||'Sin fase';case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';case 'fam':{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}case 'hija':case 'cat':{const k=K(o.cat);return k?k.n:'Sin categoría'}case 'color':return (C(o.color)||{}).n||'Sin color';case 'proyecto':return String(o.proyecto||'').trim()||'Sin proyecto';case 'etapa':try{return dondeEsta(o,programar()).n}catch(e){return '—'}case 'paso':try{const p=pasoProximoDe(o,programar());return p?nCen(p.centro):'Sin paso pendiente'}catch(e){return '—'}case 'mes':{const m=fechaMetaDe(o);return m?fmtMesEG(m.slice(0,7)):'Sin fecha'}}return '—'}
+function telaPrincipalDe(o){const t=(o.telas||[]).filter(x=>!x.ext&&(+x.kg||0)>0);
+  if(t.length)return nTela(t.slice().sort((a,b)=>(+b.kg||0)-(+a.kg||0))[0].tela);
+  const ts=telasDe(K(o.cat))||[];   // tabla categoría → tela
+  if(ts.length)return nTela(ts.slice().sort((a,b)=>(+b.kg||+b.consumo||0)-(+a.kg||+a.consumo||0))[0].tela);
+  return 'Sin tela asignada'}
+function claveGRP(o,c){switch(c){case 'tela':return telaPrincipalDe(o);case 'fase':return o.fase||'Sin fase';case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';case 'fam':{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}case 'hija':case 'cat':{const k=K(o.cat);return k?k.n:'Sin categoría'}case 'color':return (C(o.color)||{}).n||'Sin color';case 'proyecto':return String(o.proyecto||'').trim()||'Sin proyecto';case 'etapa':try{return dondeEsta(o,programar()).n}catch(e){return '—'}case 'paso':try{const p=pasoProximoDe(o,programar());return p?nCen(p.centro):'Sin paso pendiente'}catch(e){return '—'}case 'mes':{const m=fechaMetaDe(o);return m?fmtMesEG(m.slice(0,7)):'Sin fecha'}}return '—'}
 function grpSelHTML(id,inline){const g=grpSt(id);const n=g.niveles;const sel=i=>`<select onchange="setNivelGRP('${id}',${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${GRP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;const ss=[0,1,2].filter(i=>i<=n.length).map(sel).join('');return inline?ss:`<div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${ss}</div></div>`}
 function filasGRP(id,items,filaFn,nCols,oDe,pzDe){const g=grpSt(id);const niv=g.niveles;oDe=oDe||(x=>x);pzDe=pzDe||(x=>+(oDe(x).cant)||0);g.mapa=g.mapa||{};if(!niv.length)return items.map(filaFn).join('');
   const rec=(xs,i,pref)=>{if(i>=niv.length)return xs.map(filaFn).join('');const m={},orden=[];xs.forEach(x=>{const c=claveGRP(oDe(x),niv[i]);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(x)});orden.sort((a,b)=>niv[i]==='fase'?(faseNum(a)-faseNum(b)||a.localeCompare(b)):a.localeCompare(b,'es',{numeric:true}));const nom=(GRP_CAMPOS.find(z=>z[0]===niv[i])||[])[1]||'';
-    return orden.map(c=>{const key=pref+'|'+c;const open=g.todoAbierto?!g.exp.has(key):g.exp.has(key);const ys=m[c];g.mapa[key]=ys.map(x=>{const o=oDe(x);return o&&o.id}).filter(Boolean);const pz=ys.reduce((a,x)=>a+pzDe(x),0);const hs=ys.reduce((a,x)=>{const o=oDe(x);return a+(o&&o.ruta?minPendiente(o)/60:0)},0);return `<tr class="grp-row" style="cursor:pointer;background:${i===0?'var(--field)':'transparent'};font-weight:${i===0?700:600}" onclick="togGRP('${id}','${jsq(key)}')"><td colspan="${nCols}" style="padding-left:${8+i*18}px;border-top:${i===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span style="display:inline-block;width:14px">${open?'▾':'▸'}</span><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(c)}<span style="float:right;font-weight:600">${g.selFn?'<a style="cursor:pointer;font-weight:400" onclick="event.stopPropagation();'+g.selFn+'(\''+jsq(key)+'\',true)">seleccionar todo</a> · ':''}${ys.length} ${ys.length===1?'orden':'órdenes'} · ${num(pz)} prendas · ${num(hs)} h</span></td></tr>`+(open?rec(ys,i+1,key):'')}).join('')};
+    return orden.map(c=>{const key=pref+'|'+c;const open=g.todoAbierto?!g.exp.has(key):g.exp.has(key);const ys=m[c];g.mapa[key]=ys.map(x=>{const o=oDe(x);return o&&o.id}).filter(Boolean);const pz=ys.reduce((a,x)=>a+pzDe(x),0);const hs=ys.reduce((a,x)=>{const o=oDe(x);return a+(o&&o.ruta?minPendiente(o)/60:0)},0);return `<tr class="grp-row" style="cursor:pointer;background:${i===0?'var(--field)':'transparent'};font-weight:${i===0?700:600}" onclick="togGRP('${id}','${jsq(key)}')"><td colspan="${nCols}" style="padding-left:${8+i*18}px;border-top:${i===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span style="display:inline-block;width:14px">${open?'▾':'▸'}</span><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(c)}<span style="float:right;font-weight:600">${g.selFn?(g.selChk?'<label style="font-weight:400" onclick="event.stopPropagation()"><input type="checkbox" '+(g.selChk(g.mapa[key])?'checked':'')+' onchange="'+g.selFn+'(\''+jsq(key)+'\',this.checked)"> marcar el grupo</label> · ':'<a style="cursor:pointer;font-weight:400" onclick="event.stopPropagation();'+g.selFn+'(\''+jsq(key)+'\',true)">seleccionar todo</a> · '):''}${ys.length} ${ys.length===1?'orden':'órdenes'} · ${num(pz)} prendas · ${num(hs)} h (${num(hs*60)} min)</span></td></tr>`+(open?rec(ys,i+1,key):'')}).join('')};
   return rec(items,0,'')}
 function grpMap(id,items,nCols,oDe,filaFn){return{join:()=>filasGRP(id,items,filaFn,nCols,oDe)}}
 /* ---------- Gantt de tintorería: un baño que dura más que las horas del día ocupa los días laborables siguientes (solo vista) ---------- */
@@ -2861,6 +2866,7 @@ terminadas:enMes.filter(o=>faseNum(o.fase)>=8).reduce((a,o)=>a+ +o.cant,0)};
   return{ym,dem,areas,centros,mods,metas,sem}}
 function jsq(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 function selGrpPMADD(ids,on){ids.forEach(id=>on?PMADD.sel.add(id):PMADD.sel.delete(id));render()}
+function selGrupoPMADD(key,on){const ids=((grpSt('pmadd').mapa)||{})[key]||[];ids.forEach(id=>on?PMADD.sel.add(id):PMADD.sel.delete(id));render()}
 function planBloqueDiv(n,titulo,nota){return `<div style="margin:26px 0 10px;border-top:3px solid var(--t-block);padding-top:12px"><span style="display:inline-block;background:var(--t-block);color:#fff;font-weight:700;font-size:var(--fs-s);padding:2px 10px;border-radius:6px">BLOQUE ${n}</span> <b style="font-size:var(--fs-l)">${esc(titulo)}</b>${nota?` <span class="mut" style="font-size:var(--fs-s)">· ${esc(nota)}</span>`:''}</div>`}
 function agregarAlPlanHTML(ym,c){
   const puedeP=puede('programa');
@@ -2880,18 +2886,16 @@ function agregarAlPlanHTML(ym,c){
   if(!puedeP)return panelA;
   const q=normTxt(PMADD.q);
   const cand=S.ordenes.filter(o=>abierta(o)&&!enPlanTot.has(o.id)&&!enProcesoPlan(o)&&(mesPlan(o)===ym||(PMADD.incluirSig&&mesPlan(o)===sig))&&(matchBusq(o,q,'PMADD.q')));
-  const grupos={};cand.forEach(o=>{const k=pmClaveGrupo(o,PMADD.grp);(grupos[k]=grupos[k]||[]).push(o)});
-  const gk=Object.keys(grupos).sort((a,b)=>PMADD.grp==='fase'?(faseNum(a)-faseNum(b)||a.localeCompare(b)):a.localeCompare(b));
+  {const g=grpSt('pmadd');if(!g.niveles.length)g.niveles=['cliente'];g.selFn='selGrupoPMADD';g.selChk=ids=>!!(ids&&ids.length&&ids.every(id=>PMADD.sel.has(id)))}
   const marc=[...PMADD.sel].filter(id=>cand.some(o=>o.id===id));
   const conMk=proy.map(x=>({id:x.id,cap:x.cap,mk:x.mk,libre:x.cap-x.mk}));
   const apret=conMk.filter(x=>x.cap&&x.mk>x.cap);const justo=conMk.filter(x=>x.cap).sort((a,b)=>a.libre-b.libre)[0];
   const head=!marc.length?'<span class="mut">Marca órdenes para ver, antes de agregarlas, si tu capacidad alcanza.</span>':apret.length?`<span class="tag t-alerta">Capacidad</span> Con lo marcado <b>YA NO ALCANZA</b> en ${apret.map(x=>esc(nCen(x.id))+': te pasas '+num(x.mk-x.cap)+' min').join(' · ')}. Puedes agregarlas igual y decidir tú.`:`<span class="tag t-ok">Capacidad</span> Con lo marcado <b>alcanza</b>${justo?': te sobran '+num(justo.libre)+' min en '+esc(nCen(justo.id))+' (el más justo)':''}.`;
-  const grpSel=`<select onchange="PMADD.grp=this.value;PMADD.exp=new Set();render()">${PMADD_CAMPOS.map(([k,v])=>`<option value="${k}" ${PMADD.grp===k?'selected':''}>${v}</option>`).join('')}</select>`;
+  const grpSel=grpSelHTML('pmadd',true);
   const rowC=o=>`<tr><td><input type="checkbox" ${PMADD.sel.has(o.id)?'checked':''} onchange="togPMADD('${o.id}')"></td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op||'(sin WH)')}${mesPlan(o)===sig?' <span class="tag t-lavado" style="font-size:10px" title="es del mes siguiente, la estás jalando">'+esc(fmtMesEG(sig))+'</span>':''}</td><td>${esc(faseNombre(o.fase||'—'))}</td><td>${esc(o.cliente||'')}</td><td>${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td></tr>`;
-  const cuerpo=gk.map(k=>{const xs=grupos[k];const spz=xs.reduce((a,o)=>a+ +o.cant,0);const open=PMADD.exp.has(k);const allSel=xs.length&&xs.every(o=>PMADD.sel.has(o.id));const idsJ=JSON.stringify(xs.map(o=>o.id)).replace(/"/g,'&quot;');
-    return `<tr style="background:var(--field);font-weight:600"><td><input type="checkbox" ${allSel?'checked':''} onclick="event.stopPropagation()" onchange="selGrpPMADD(${idsJ},this.checked)"></td><td colspan="6" style="cursor:pointer" onclick="togGrpPMADD('${jsq(k)}')">${open?'▾':'▸'} ${esc(k)} <span class="mut" style="font-weight:400">${xs.length} órdenes · ${num(spz)} prendas</span></td><td class="num">${num(spz)}</td></tr>`+(open?xs.map(rowC).join(''):'')}).join('')||'<tr><td colspan="8" class="mut">No hay órdenes disponibles con estos filtros.</td></tr>';
+  const cuerpo=filasGRP('pmadd',cand.slice().sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1),rowC,8)||'<tr><td colspan="8" class="mut">No hay órdenes disponibles con estos filtros.</td></tr>';
   const panelB=`<div class="panel" id="pm-agregar"><h3>Agregar órdenes al plan <span class="note">${cand.length} disponibles (solo grupos no marcados como «en proceso» en la tabla 5)${PMADD.incluirSig?' (incluye '+esc(fmtMesEG(sig))+')':''} · agrupa como en Odoo, marca y agrega</span></h3><div class="body">
-    <div class="no-print" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px"><div><label>Agrupar por</label>${grpSel}</div>
+    <div class="no-print" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px"><div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${grpSel}</div></div>
       <div><label>&nbsp;</label><label style="font-weight:400;font-size:var(--fs-s)"><input type="checkbox" ${PMADD.incluirSig?'checked':''} onchange="PMADD.incluirSig=this.checked;render()"> Jalar del mes siguiente (${esc(fmtMesEG(sig))})</label></div>
       <div style="flex:1;min-width:180px"><label>Buscar</label>${busqHTML('PMADD.q',PMADD.q,'PMADD.q=v','')}</div>
       <div><label>&nbsp;</label><button class="btn" ${marc.length?'':'disabled'} onclick="planMesAgregar('${ym}',${JSON.stringify(marc).replace(/"/g,'&quot;')})">Agregar al plan (${marc.length})</button></div>
