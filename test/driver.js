@@ -3822,6 +3822,64 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    delete S.params.rutaDefectoAplicada;
    window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("RT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* 6 · «0 hechas» no es lo mismo que «sin registros» · 7 · Vienen después */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   const lun=lunesDe(hoy());const dias=[];for(let d=lun;d<=dsum(lun,6);d=dsum(d,1))dias.push(d);
+   const rec0=S.recursos.find(r=>r.activa&&r.centro==='corte');
+   const bakT=JSON.parse(JSON.stringify(S.turnos||[]));const bakP=JSON.parse(JSON.stringify(S.paros||[]));
+   /* 6 · sin registros */
+   {S.turnos=[];S.paros=[];
+    S.ordenes.forEach(o=>{const a=S.avance[o.id];if(a){delete a.tallasLog;delete a.tramos}});
+    const lab=diasConTurno('corte',dias);
+    __check("SR: sin ningún registro, el centro queda marcado «ninguno»",lab.length?registroSemana('corte',dias).ninguno===true:true);
+    __check("SR: y ningún día laborable cuenta como registrado",lab.every(d=>!hayRegistroEn('corte',d)));
+    const P=S.ordenes.length?programar():{pro:[]};
+    const a=avanceSemanaCentro(['corte'],P,dias,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+    __check("SR: el avance de la semana NO muestra 0 % sino «sin registros»",lab.length?(a.sinReg===true&&a.pct===null):true);
+    page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
+    const h=document.getElementById('p-centro').innerHTML;
+    __check("SR: y la pantalla lo dice con esas palabras",!lab.length||/sin registros esta semana/.test(h));
+    const dd=datosDiaCentro(['corte'],P,lab[0]||lun,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+    __check("SR: la tarjeta del día también distingue sin registro de 0",!lab.length||(dd.sinRegistro===true&&dd.lab===true));
+    __check("SR: y en la tarjeta se lee «sin registros», no un 0",!lab.length||/sin registros/.test(h));
+    /* ahora SÍ hay un registro: vuelve a leerse el cumplimiento */
+    if(lab.length&&rec0){S.turnos=[{id:uid(),rec:rec0.id,d:lab[0],pz:120}];
+     __check("SR: registrar producción en un turno cuenta como registro",hayRegistroEn('corte',lab[0])===true);
+     const a2=avanceSemanaCentro(['corte'],P,dias,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+     __check("SR: con al menos un registro, ya no es «sin registros»",a2.sinReg===false);
+     __check("SR: pero los días laborables sin registrar se siguen contando",a2.diasSinReg===lab.length-1);
+     S.turnos=[{id:uid(),rec:rec0.id,d:lab[0],pz:null,std:null,ops:null}];
+     __check("SR: un turno sin producción NO cuenta como registro de producción",hayRegistroEn('corte',lab[0])===false);
+     S.paros=[{id:uid(),rec:rec0.id,d:lab[0],min:30,motivo:'prueba'}];
+     __check("SR: pero un paro registrado SÍ cuenta: alguien estuvo ahí",hayRegistroEn('corte',lab[0])===true);}
+    /* la brecha por centro y día, en Reportería */
+    S.turnos=[];S.paros=[];
+    const b=brechaRegistro(dias);
+    __check("SR: la brecha lista los centros y sus días sin registro",Array.isArray(b.filas)&&b.filas.every(f=>Array.isArray(f.sin)&&Array.isArray(f.lab)));
+    __check("SR: un centro sin turnos esta semana no entra (no se le reclama registro)",b.filas.every(f=>f.lab.length>0));
+    const hb=brechaRegistroHTML();
+    __check("SR: el panel muestra centro × día y explica la diferencia",/Registro de producción por centro y día/.test(hb)&&/puede no haber producido, o puede no haber registrado/.test(hb));
+    __check("SR: y dice qué cuenta como registro",/Cuenta como registro/.test(hb));
+    page='reporteria';REP.vista='produccion';render();
+    __check("SR: está en Reportería",/Registro de producción por centro y día/.test(document.getElementById('p-reporteria').innerHTML));}
+   S.turnos=bakT;S.paros=bakP;
+   /* 7 · «Vienen después» no repite la lista de arriba */
+   {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
+    const P=S.ordenes.length?programar():{pro:[],ordenes:{}};
+    const dom=dsum(lun,6);
+    const filas=filasDeCentros(['corte'],P,lun,dom,'');
+    const enSem=filas.filter(f=>f.pzSem>0);
+    const luego=filas.filter(f=>!f.hecho&&!f.bloq&&f.pzSem===0&&f.paso.ini&&f.paso.ini>dom);
+    __check("VD: «Vienen después» y «Órdenes de la semana» son conjuntos disjuntos: ninguna orden está en los dos",
+     !luego.some(f=>enSem.some(g=>g.o===f.o&&g.c===f.c)));
+    __check("VD: las de «Vienen después» tienen fecha de inicio POSTERIOR a la semana mostrada",luego.every(f=>f.paso.ini>dom));
+    __check("VD: y las de la lista de arriba tienen prendas ESTA semana",enSem.every(f=>f.pzSem>0));
+    const h=document.getElementById('p-centro').innerHTML;
+    __check("VD: el rótulo dice que ninguna está en la lista de arriba",!luego.length||/ninguna está en la lista de arriba/.test(h));
+    __check("VD: y que el programa ya las fechó en este centro",!luego.length||/ya fechó en este centro/.test(h));}
+   window.alert=a0;PERFIL=adminP;CEN.dia=null;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("SR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

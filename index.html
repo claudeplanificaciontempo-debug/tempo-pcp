@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 15:39';
+const APP_BUILD='2026-09-16 15:52';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4873,7 +4873,10 @@ function datosDiaCentro(cens,P,d,recs){
   const min=xs.reduce((a,x)=>a+(x.min||0),0);
   const cap=(recs||[]).reduce((a,r)=>a+(labR(d,r)?capDia(r,d):0),0);
   const hechas=cens.reduce((a,c)=>a+(+hechasDelDia(c,null,d).pz||0),0);
-  return {d,pz,min,cap,hechas,pend:Math.max(0,pz-hechas),pct:cap?Math.round(min/cap*100):null,ops:[...new Set(xs.map(x=>x.op))]}}
+  const lab=cens.some(c=>diasConTurno(c,[d]).length);
+  const reg=cens.some(c=>hayRegistroEn(c,d));
+  return {d,pz,min,cap,hechas,pend:Math.max(0,pz-hechas),pct:cap?Math.round(min/cap*100):null,ops:[...new Set(xs.map(x=>x.op))],
+    lab,reg,sinRegistro:lab&&!reg}}
 function togDiaCEN(d){CEN.dia=(CEN.dia===d)?null:d;render()}
 /* las órdenes de un día con prendas pendientes: es lo que filtra la tarjeta */
 function filaEnDiaCEN(f,P,d){if(!d)return true;
@@ -4888,8 +4891,8 @@ function tarjetasDiaCENHTML(cens,P,dias,recs){
    <table style="width:100%;font-size:var(--fs-xs);margin-top:4px"><tbody>
     <tr><td class="mut">Carga</td><td class="num" style="font-weight:700;font-size:var(--fs-m)">${num(x.pz)}</td></tr>
     <tr><td colspan="2" class="mut" style="font-size:10px;line-height:1.3">${num(x.min)} / ${num(x.cap)} min${x.pct!=null?' · '+x.pct+'%':' · sin capacidad'}</td></tr>
-    <tr><td class="mut">Avance</td><td class="num" style="font-weight:600;color:var(--ok)">${num(x.hechas)}</td></tr>
-    <tr><td class="mut">Pendientes</td><td class="num" style="font-weight:600;${x.pend?'color:var(--alerta)':''}">${num(x.pend)}</td></tr>
+    <tr><td class="mut">Avance</td><td class="num" style="font-weight:600;color:var(--ok)">${x.sinRegistro?'<span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="día laborable sin ningún registro de producción: no se sabe si se hizo algo">sin registros</span>':num(x.hechas)}</td></tr>
+    <tr><td class="mut">Pendientes</td><td class="num" style="font-weight:600;${x.pend?'color:var(--alerta)':''}">${x.sinRegistro?'<span class="mut">—</span>':num(x.pend)}</td></tr>
    </tbody></table></div>`).join('')}</div>
    ${CEN.dia?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 10px"><span class="tag t-ok">filtro activo</span> mostrando solo las órdenes del <b>${fmtDia(CEN.dia)}</b> con prendas pendientes · <a href="#" onclick="CEN.dia=null;render();return false">quitar el filtro</a></p>`:''}`}
 
@@ -4921,14 +4924,19 @@ function avanceSemanaCentro(cens,P,dias,recs){
   const lun=dias[0],dom=dias[dias.length-1];
   const cong=cens.map(c=>avanceCongelado(c,lun,dom,P)).filter(Boolean);
   const cg=cong.length?{pzProg:cong.reduce((a,x)=>a+x.pzProg,0),hechas:cong.reduce((a,x)=>a+x.hechas,0)}:null;
-  return {pz,hechas,pend:Math.max(0,pz-hechas),pct:pz?Math.round(hechas/pz*100):null,atras,
+  const rg=cens.map(c=>registroSemana(c,dias));
+  const sinReg=rg.length&&rg.every(r=>r.ninguno||r.sinDias)&&rg.some(r=>r.ninguno);
+  return {pz,hechas,pend:Math.max(0,pz-hechas),pct:(sinReg||!pz)?null:Math.round(hechas/pz*100),sinReg,
+    diasSinReg:rg.reduce((a,r)=>a+r.sin.length,0),atras,
     cong:cg,congPct:(cg&&cg.pzProg)?Math.round(cg.hechas/cg.pzProg*100):null,
     minProg:L.reduce((a,x)=>a+x.min,0),cap:L.reduce((a,x)=>a+x.cap,0)}}
 function avanceSemanaHTML(cid,cens,P,dias,recs,nombre){
   const subs=(!CEN.solo&&subAreasDe(cid).length>1)?subAreasDe(cid):null;
-  const fila=(nom,a)=>`<tr><td><b>${esc(nom)}</b></td><td class="num">${num(a.pz)}</td><td class="num" style="color:var(--ok);font-weight:600">${num(a.hechas)}</td>
-   <td class="num">${num(a.pend)}</td>
-   <td style="min-width:120px">${a.pct===null?'<span class="mut">—</span>':`<div class="bar" style="height:10px"><i style="width:${Math.min(100,a.pct)}%"></i></div><span class="mut" style="font-size:var(--fs-xs)">${a.pct}%</span>`}</td>
+  const cumpl=a=>a.sinReg?'<span class="tag t-alerta" title="ningún día laborable de la semana tiene registro de producción: no se puede leer el cumplimiento">sin registros esta semana</span>'
+    :(a.pct===null?'<span class="mut">—</span>':'<div class="bar" style="height:10px"><i style="width:'+Math.min(100,a.pct)+'%"></i></div><span class="mut" style="font-size:var(--fs-xs)">'+a.pct+'%'+(a.diasSinReg?' · <span class="tag t-aviso" style="font-size:9px;padding:0 3px" title="'+a.diasSinReg+' días laborables sin registro">'+a.diasSinReg+' días sin registrar</span>':'')+'</span>');
+  const fila=(nom,a)=>`<tr><td><b>${esc(nom)}</b></td><td class="num">${num(a.pz)}</td><td class="num" style="color:var(--ok);font-weight:600">${a.sinReg?'<span class="mut">—</span>':num(a.hechas)}</td>
+   <td class="num">${a.sinReg?'<span class="mut">—</span>':num(a.pend)}</td>
+   <td style="min-width:120px">${cumpl(a)}</td>
    <td class="num">${a.atras?'<span class="tag t-alerta">'+a.atras+'</span>':'<span class="mut">0</span>'}</td>
    <td class="num">${a.congPct===null?'<span class="mut" title="esta semana no está congelada en este centro">sin congelar</span>':'<b>'+a.congPct+'%</b> <span class="mut" style="font-size:var(--fs-xs)">de '+num(a.cong.pzProg)+'</span>'}</td></tr>`;
   const tot=avanceSemanaCentro(cens,P,dias,recs);
@@ -4936,8 +4944,8 @@ function avanceSemanaHTML(cid,cens,P,dias,recs,nombre){
    <table style="font-size:var(--fs-s)"><thead><tr><th>${subs?'Sub-área':'Centro'}</th><th class="num">Programadas</th><th class="num">Hechas</th><th class="num">Pendientes</th><th>Cumplimiento</th><th class="num">Órdenes atrasadas</th><th class="num">Contra lo congelado</th></tr></thead><tbody>
    ${subs?subs.map(c=>fila(nCen(c),avanceSemanaCentro([c],P,dias,S.recursos.filter(r=>r.activa&&r.centro===c)))).join(''):''}
    <tr${subs?' style="border-top:2px solid var(--rule);font-weight:600"':''}>${subs?'<td>Total '+esc(nombre)+'</td>':'<td><b>'+esc(nombre)+'</b></td>'}
-    <td class="num">${num(tot.pz)}</td><td class="num" style="color:var(--ok);font-weight:600">${num(tot.hechas)}</td><td class="num">${num(tot.pend)}</td>
-    <td>${tot.pct===null?'<span class="mut">—</span>':`<div class="bar" style="height:10px"><i style="width:${Math.min(100,tot.pct)}%"></i></div><span class="mut" style="font-size:var(--fs-xs)">${tot.pct}%</span>`}</td>
+    <td class="num">${num(tot.pz)}</td><td class="num" style="color:var(--ok);font-weight:600">${tot.sinReg?'<span class="mut">—</span>':num(tot.hechas)}</td><td class="num">${tot.sinReg?'<span class="mut">—</span>':num(tot.pend)}</td>
+    <td>${cumpl(tot)}</td>
     <td class="num">${tot.atras?'<span class="tag t-alerta">'+tot.atras+'</span>':'<span class="mut">0</span>'}</td>
     <td class="num">${tot.congPct===null?'<span class="mut">sin congelar</span>':'<b>'+tot.congPct+'%</b>'}</td></tr>
    </tbody></table>
@@ -5067,6 +5075,48 @@ function rutasRevisarPanelHTML(){const l=rutasParaRevisar();const r=rutasPorReca
      <td class="mut" style="font-size:var(--fs-xs)">${esc(o.rutaRevisar.motivo||'')}</td>
      <td style="white-space:nowrap">${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">ver / editar</button> <button class="btn sm" onclick="marcarRutaRevisada2('${o.id}')">revisada</button>`:''}</td></tr>`).join('')}
    </tbody></table></div>`:'<div class="empty">Ninguna ruta editada a mano quedó afectada.</div>'}
+  </div></div>`}
+/* ==================== 6 · «0 hechas» NO es lo mismo que «sin registros» (16-sep-2026) ====================
+   Un centro puede tener 0 porque no produjo, o porque nadie registró. Son cosas distintas y se ven distinto:
+   lo primero es un problema de producción, lo segundo es una brecha de registro. */
+function hayRegistroEn(c,d){
+  if((hechasDelDia(c,null,d).detalle||[]).length)return true;                       // avance por talla o por total
+  const recs=S.recursos.filter(r=>r.activa&&r.centro===c).map(r=>r.id);
+  if((S.turnos||[]).some(t=>t.d===d&&recs.includes(t.rec)&&(t.pz!=null||t.std!=null||t.ops!=null)))return true;  // asistencia o producción del turno
+  if((S.paros||[]).some(x=>x.d===d&&recs.includes(x.rec)))return true;              // registrar un paro también es registrar
+  return S.ordenes.some(o=>((S.avance[o.id]||{}).tramos||[]).some(t=>t.centro===c&&t.fin&&String(t.fin).slice(0,10)===d)) // tramo cerrado ese día
+}
+/* días laborables del centro en la semana: no se le reclama registro un domingo sin turno */
+function diasConTurno(c,dias){const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
+  return (dias||[]).filter(d=>recs.some(r=>labR(d,r)))}
+function registroSemana(c,dias){const lab=diasConTurno(c,dias);
+  const con=lab.filter(d=>hayRegistroEn(c,d));
+  return {lab,con,sin:lab.filter(d=>!hayRegistroEn(c,d)),
+    ninguno:lab.length>0&&con.length===0,                 // no registró ni un día laborable
+    sinDias:lab.length===0}}                              // el centro no trabajó esta semana
+/* la brecha de registro, por centro y día, para Reportería */
+function brechaRegistro(dias){const cens=S.centros.filter(c=>c.area==='pro').map(c=>c.id);
+  const filas=cens.map(c=>{const r=registroSemana(c,dias);
+    const recs=S.recursos.filter(x=>x.activa&&x.centro===c);
+    return {c,...r,recs:recs.length}}).filter(f=>!f.sinDias);
+  return {filas,ninguno:filas.filter(f=>f.ninguno),
+    conHuecos:filas.filter(f=>!f.ninguno&&f.sin.length),
+    diasSin:filas.reduce((a,f)=>a+f.sin.length,0)}}
+function brechaRegistroHTML(){const lun=lunesDe(hoy()),dias=[];for(let d=lun;d<=dsum(lun,6);d=dsum(d,1))dias.push(d);
+  const b=brechaRegistro(dias);
+  const pinta=f=>`<tr><td><b>${esc(nCen(f.c))}</b> <span class="mut" style="font-size:var(--fs-xs)">${f.recs} ${f.recs===1?'recurso':'recursos'}</span></td>
+   ${dias.map(d=>{const lab=f.lab.includes(d);
+     return `<td class="num" style="text-align:center">${!lab?'<span class="mut" title="no es día laborable de este centro">·</span>'
+       :hayRegistroEn(f.c,d)?'<span class="tag t-ok" style="font-size:10px;padding:0 4px" title="hubo registro">✓</span>'
+       :'<span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="día laborable sin ningún registro de producción">—</span>'}</td>`}).join('')}
+   <td class="num">${f.ninguno?'<span class="tag t-alerta">ninguno</span>':f.sin.length?'<span class="tag t-aviso">'+f.sin.length+' sin</span>':'<span class="tag t-ok">al día</span>'}</td></tr>`;
+  return `<div class="panel"${b.ninguno.length?' style="border:2px solid var(--alerta)"':''}><h3>Registro de producción por centro y día <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dsum(lun,6))} · ${b.ninguno.length} centros sin ningún registro · ${b.diasSin} días laborables sin registrar</span></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Un centro con 0 hechas puede no haber producido, o puede no haber registrado.</b> Son cosas distintas: lo primero se corrige en planta, lo segundo aquí. Mientras un centro no registre, su cumplimiento no se puede leer — por eso la pantalla dice «sin registros» en vez de 0 %.</p>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th>${dias.map(d=>`<th class="num" style="text-align:center">${fmtDia(d).replace(/,.*/,'')}</th>`).join('')}<th class="num">Estado</th></tr></thead><tbody>
+   ${b.filas.map(pinta).join('')||'<tr><td colspan="9" class="mut">Ningún centro de producción tiene turno esta semana.</td></tr>'}
+   </tbody></table>
+   ${b.ninguno.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">brecha</span> <b>${b.ninguno.map(f=>esc(nCen(f.c))).join(', ')}</b> no ${b.ninguno.length===1?'registró':'registraron'} nada esta semana. Su avance sale «sin registros», no 0 %: no se puede saber si trabajaron.</p>`:''}
+   <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Cuenta como registro: avance por talla o por total en Mi centro, un tramo cerrado, la producción de un turno en Control de piso, o un paro registrado.</p>
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
@@ -5506,7 +5556,7 @@ function vCentro(el){
     ${tarjetasDiaCENHTML(cens,P,dias,recs)}
     <div class="panel"><h3>Órdenes de la semana <span style="font-size:24px;font-weight:700;color:var(--t-primary);margin-left:6px">${enSem.length}</span> <span class="note">${enSem.length!==enSemAll.length?'de '+enSemAll.length+' · ':''}${num(enSem.reduce((a,f)=>a+f.pzSem,0))} prendas programadas · ordenadas por fecha de inicio</span><span class="spacer"></span><span style="font-weight:400">${grpSelHTML('cenplan',true)}</span></h3><div class="scroll" style="max-height:520px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Esta semana</th><th class="num">Hechas</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Marca</th><th>Liberada</th></tr></thead><tbody>
      ${(grpSt('cenplan').todoAbierto=true,filasGRP('cenplan',enSem,f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant)}</td><td class="num"><b>${num(f.pzSem)}</b></td><td class="num">${num(f.hechas)}</td><td>${esc(nRec(f.paso.rec))}${((f.o.progCentro||{})[f.c]||{}).rec?' ⚲':''}</td><td>${fmtDia(f.paso.ini)}</td><td>${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td><td>${liberadaCorte(f.o)?'<span class="tag t-ok">sí</span>':'<span class="tag t-alerta">no</span>'}</td></tr>`,11,f=>f.o,f=>f.pzSem))||('<tr><td colspan="11" class="mut">Nada programado'+(CEN.dia?' el '+fmtDia(CEN.dia)+' con prendas pendientes':' en esta semana')+'.</td></tr>')}</tbody></table></div></div>
-    ${luego.length?`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Vienen después <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${luego.length} órdenes con inicio posterior</span> <span style="font-weight:400">${grpSelHTML('cenluego',true)}</span></h4>
+    ${luego.length?`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Vienen después <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${luego.length} órdenes que el programa ya fechó en este centro, pero para <b>después</b> de esta semana · ninguna está en la lista de arriba</span> <span style="font-weight:400">${grpSelHTML('cenluego',true)}</span></h4>
      <div class="scroll" style="max-height:320px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Inicio</th><th>Dónde está</th></tr></thead><tbody>
      ${(grpSt('cenluego').todoAbierto=true,filasGRP('cenluego',luego.sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1).slice(0,150),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${dondeEstaEnCentro(f.o,P,f.c)}</td></tr>`,5,f=>f.o,f=>+f.o.cant||0))}
      </tbody></table></div></div>`:''}
@@ -6616,7 +6666,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
+   ${resumen()}${brechaRegistroHTML()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
