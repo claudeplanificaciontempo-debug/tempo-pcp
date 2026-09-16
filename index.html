@@ -535,10 +535,7 @@ const PERFILES_PISO_DEF=['tablet','corte','modulos','terminado','piso','piso_tej
 const TABLAS_N={params:'configuración',ordenes:'órdenes',avance:'avance del piso',bitacora:'bitácora',turnos:'turnos y asistencia',paros:'paros',centros:'centros',recursos:'recursos y máquinas',telas:'telas',colores:'colores',rutas:'rutas',operaciones:'operaciones',tecnicas:'técnicas',maquinas:'máquinas',categorias:'categorías',programas:'programas',cargas:'cargas',propuestas:'propuestas',planes:'planes',salidas_tin:'salidas de tintorería',banos_conf:'baños confirmados'};
 function nTabla(t){return TABLAS_N[t]||t}
 /* el catálogo manda: la columna «solo piso» del perfil; si no está definida, los perfiles de piso de siempre */
-function perfilSoloPiso(){const d=(typeof perfilDe==='function'&&typeof S!=='undefined'&&S)?perfilDe(PERFIL):null;if(!d)return false;
-  if((d.permisos||[]).includes('*'))return false;
-  if(d.soloPiso!=null)return !!d.soloPiso;
-  return PERFILES_PISO_DEF.includes(d.id)}
+function perfilSoloPiso(){return !!(typeof tipoPisoActual==='function'&&tipoPisoActual())} // operario o supervisor de piso: los dos suben solo sus cuatro tablas
 function puedeSubirTabla(t){return !perfilSoloPiso()||TABLAS_PISO.includes(t)}
 const TIPOS_MAQ=['Recta','Overlock 3 hilos','Overlock 4 hilos','Overlock 5 hilos','Recubridora','Collaretera','Cerradora de codo','Atracadora','Ojaladora','Botonadora','Elasticadora','Zigzag','Doble aguja','Plancha','Manual'];
 let sb=null,USER=null,PERFIL=null,S=null,BASE={},page='ordenes',PLAN=null;
@@ -570,7 +567,7 @@ async function revisarDatos(){if(guardando)return;const m=await maxActualizado()
 let guardando=false,pendiente=false;
 let SAVE_ERR=null,ULT_SALTADAS=[];
 function avisoGuardado(){const n=document.getElementById('aviso-guardado');if(!n)return;
-  n.innerHTML=SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor</b> (falló en: '+esc((SAVE_ERR.tablas||[]).join(', ')||'el servidor')+'). Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
+  n.innerHTML=(!SAVE_ERR&&(ULT_SALTADAS||[]).filter(t=>t!=='params').length)?'<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:16px"><b>Ojo:</b> con tu perfil no se guardan los cambios de <b>'+esc((ULT_SALTADAS||[]).filter(t=>t!=='params').map(nTabla).join(', '))+'</b> (eso lo guarda planificación). Lo que registras de tu trabajo sí se guardó.</div></div>':SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor</b> (falló en: '+esc((SAVE_ERR.tablas||[]).join(', ')||'el servidor')+'). Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
 async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
 async function _save(){
@@ -592,16 +589,17 @@ async function _save(){
   await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
   if(!errs.length)BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));
   const st=document.getElementById('saved');
+  ULT_SALTADAS=saltadas;
   if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
     SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4).map(e=>nTabla(e.t)+': '+e.msg),tablas:[...new Set(errs.map(e=>nTabla(e.t)))],permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e.msg))};
     if(st)st.textContent='No se guardó';
     if(typeof avisoGuardado==='function')avisoGuardado();
     if(!SAVE_ERR.permiso)alert('No se pudo guardar en '+SAVE_ERR.tablas.join(', ')+':\n'+SAVE_ERR.errs.join('\n')+'\n\nLo que registraste sigue en pantalla: vuelve a tocar Guardar.');}
-  else{SAVE_ERR=null;ULT_SALTADAS=saltadas;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
+  else{SAVE_ERR=null;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 08:52';
+const APP_BUILD='2026-09-16 09:06';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1667,9 +1665,9 @@ function atenderSolicitudPiso(oid,id,nota){const s=(((S.avance[oid]||{}).solicit
 function descartarSolicitudPiso(oid,id){if(!(puede('programa')||puede('ordenes')||puede('reprogramar'))){alert('Tu perfil no atiende las solicitudes del piso.');return}
   if(!confirm('¿Descartar esta solicitud del piso? Queda registrada como atendida sin aplicar.'))return;
   const s=atenderSolicitudPiso(oid,id,'descartada');if(s)bitacora('Solicitud del piso descartada · '+(s.op||'')+' ('+quienFirma()+')');save();render()}
-function aplicarSolicitudFase(oid,id){const s=(((S.avance[oid]||{}).solicitudes)||[]).find(x=>x.id===id);const o=S.ordenes.find(x=>x.id===oid);if(!s||!o)return;
+async function aplicarSolicitudFase(oid,id){const s=(((S.avance[oid]||{}).solicitudes)||[]).find(x=>x.id===id);const o=S.ordenes.find(x=>x.id===oid);if(!s||!o)return;
   if(!puedeFases()){alert('Tu perfil no cambia fases.');return}
-  const antes=o.fase;moverFases([oid],s.f,s.motivo||'');
+  const antes=o.fase;await moverFases([oid],s.f,s.motivo||'');
   if(o.fase===s.f){const ult=(o.fases||[]).slice(-1)[0];if(ult&&s.obs)ult.obs=s.obs;
     atenderSolicitudPiso(oid,id,'aplicada');bitacora('Solicitud de fase aplicada · '+o.op+': '+(antes||'—')+' → '+s.f+' (pedida por '+esc(s.u||'')+', aplicada por '+quienFirma()+')');save();render()}}
 function solicitudesPisoHTML(){const l=solicitudesPiso();if(!l.length)return '';
@@ -1690,7 +1688,7 @@ function mFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
 function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   const f=(document.getElementById('fp-f')||{}).value;const obs=String((document.getElementById('fp-obs')||{}).value||'').trim();const m=String((document.getElementById('fp-m')||{}).value||'').trim();
   if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15 (uso «observación de piso»).');return}
-  if(perfilSoloPiso()){ // el piso no escribe en órdenes: queda como solicitud en avance y planificación la aplica
+  if(esOperarioTablet()){ // el operario no escribe en órdenes: queda como solicitud en avance y planificación (o el supervisor) la aplica
     if(!f||f===o.fase){alert('Elige una fase distinta.');return}
     if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15.');return}
     pedirSolicitudPiso(oid,'fase',{f,obs,motivo:m,antes:o.fase,centro:c},'cambiar la fase de '+(o.fase||'—')+' a '+f);
@@ -2159,6 +2157,7 @@ function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia f
   if(devs.length){if(!motivo){alert('Devolver la fase a un grupo anterior exige motivo'+(devs.length>1?' ('+devs.length+' de las órdenes marcadas son devolución)':'')+'. Elígelo de la tabla 15 (Motivos, uso «devolución de fase»).');return}
     if(!motivoValido('fase',motivo)){alert('El motivo debe elegirse de la tabla 15 (Motivos, uso «devolución de fase»); no se acepta texto libre. Si la tabla está vacía, configúrala en Configuración → Órdenes y materiales → 15 · Motivos.');return}}
   else if(motivo&&!motivoValido('fase',motivo)){alert('Ese motivo no está en la tabla 15; elige uno de la lista o déjalo vacío (avanzar no exige motivo).');return}
+  if(esSupervisorPiso())return moverFasesRPC(ids,f,motivo); // el piso no escribe en ordenes: la fase la mueve la función mover_fase
   let n=0,comp=0;ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=o.fase;const dev=esDevolucionFase(antes,f);if(!registrarFase(o,f,'manual'))return;o.fases[o.fases.length-1].motivo=motivo;registrarAuditoria('fase',o,antes,f,motivo,dev);n++;
     bitacora((dev?'Devolución de fase ':'Fase ')+o.op+': '+(antes||'—')+' → '+f+(motivo?' · '+motivo:'')+' ('+quienFirma()+')');if(esCompraDesdeTej(antes,f)){pasarACompras(o,motivo);comp++}});
   CTLF.sel=new Set();CTLF.motivo='';CTLF.nueva='';PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render();if(comp)alert(comp+' orden(es) pasaron a compras: la persona de compras tiene que pedirlas (aviso en Hoy → Pendientes y en Compras del mes).')}
@@ -3732,6 +3731,42 @@ function listaParaEmpezar(o,c){const ant=centroAnteriorPro(o,c);if(!ant)return n
   return {centro:ant,ci}}
 function tagListaEmpezar(o,c){const l=listaParaEmpezar(o,c);if(!l)return '';
   return ' <span class="tag t-ok" title="salieron '+num(l.ci.pz)+' de '+num(l.ci.cant)+(l.ci.faltan?' · faltan '+num(l.ci.faltan)+' ('+esc(l.ci.motivo||'')+')':'')+'">lista para empezar · terminada en '+esc(nCen(l.centro))+' · '+new Date(l.ci.ts).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>'}
+/* ---------- operario u supervisor de piso: lo dice el catálogo de perfiles, no el código ---------- */
+const PISO_TIPOS=[['','—'],['operario','Operario (registra y solicita)'],['supervisor','Supervisor de piso (registra y mueve fases)']];
+const PISO_DEF={tablet:'operario',piso:'operario',corte:'supervisor',modulos:'supervisor',terminado:'supervisor',piso_tej:'supervisor'};
+function tipoPiso(d){if(!d)return '';
+  if((d.permisos||[]).includes('*'))return '';
+  if(d.piso!=null)return d.piso||'';               // lo configurado manda
+  if(d.soloPiso===false)return '';                  // marca vieja apagada a mano
+  if(d.soloPiso===true)return PISO_DEF[d.id]||'operario';
+  return PISO_DEF[d.id]||''}
+function tipoPisoActual(){return tipoPiso((typeof perfilDe==='function'&&typeof S!=='undefined'&&S)?perfilDe(PERFIL):null)}
+function esSupervisorPiso(){return tipoPisoActual()==='supervisor'}
+function esOperarioTablet(){return tipoPisoActual()==='operario'}
+/* ---------- el supervisor de piso mueve la fase con la función de la base, no escribiendo en ordenes ---------- */
+const SQL_FASE='SUPABASE_MOVER_FASE.sql';
+async function moverFaseServidor(o,f,motivo){
+  if(!sb||typeof sb.rpc!=='function')return{falta:true};
+  try{const {error}=await sb.rpc('mover_fase',{p_orden:o.id,p_fase:f,p_motivo:motivo||''});
+    if(error){const m=String(error.message||'');
+      if(/mover_fase|does not exist|could not find|schema cache|PGRST202|not found|404/i.test(m))return{falta:true,error:m};
+      return{error:m}}
+    return{ok:true}}catch(e){return{error:String((e&&e.message)||e)}}}
+async function moverFasesRPC(ids,f,motivo){let n=0,err=null,falta=false;const movidas=[];
+  for(const id of ids){const o=S.ordenes.find(x=>x.id===id);if(!o)continue;
+    const antes=o.fase;if(normFase(f)===normFase(antes||''))continue;
+    const dev=esDevolucionFase(antes,f);
+    const r=await moverFaseServidor(o,f,motivo);
+    if(r.falta){falta=true;break}
+    if(r.error){err=r.error;break}
+    if(!registrarFase(o,f,'manual'))continue;
+    o.fases[o.fases.length-1].motivo=motivo;registrarAuditoria('fase',o,antes,f,motivo,dev);n++;movidas.push(o.op);
+    if(BASE.ordenes&&BASE.ordenes[o.id]){try{const b=JSON.parse(BASE.ordenes[o.id]);b.fase=o.fase;b.fases=JSON.parse(JSON.stringify(o.fases));BASE.ordenes[o.id]=JSON.stringify(b)}catch(e){}} // el servidor ya tiene la fase: no se vuelve a intentar
+  }
+  CTLF.sel=new Set();CTLF.motivo='';CTLF.nueva='';PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render();
+  if(falta)alert('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil mueve las fases con la función mover_fase del servidor, y todavía no existe. No se cambió nada: avisa a planificación.');
+  else if(err)alert('El servidor no aceptó el cambio de fase:\n'+err+'\n\nNo se cambió nada.');
+  return n}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
   const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const pend=Math.max(0,o.cant-hechasPrev);const parc=permiteParcial(c);
@@ -5222,15 +5257,15 @@ async function vUsuarios(el){
   <p class="lede">Cada usuario tiene un <b>perfil</b>. El perfil dice qué puede hacer, qué centros ve y qué entradas del menú tiene; los perfiles se editan abajo (son datos, no código). Un usuario con permiso "solo ve" abre sus pantallas pero no registra nada.</p>
   <div class="panel" id="pan-usuarios"><div class="empty">Cargando…</div></div>
   <div class="panel"><h3>Perfiles <span class="note">qué puede hacer cada uno · se guarda al cambiar</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPerfilDef()">Nuevo perfil</button></h3><div class="body scroll">
-   <table style="font-size:var(--fs-s)"><thead><tr><th>Perfil</th><th>Permisos</th><th>Centros que ve y donde registra</th><th>Menú</th><th title="solo sube avance, bitácora, turnos y paros">Solo piso</th><th></th></tr></thead><tbody>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Perfil</th><th>Permisos</th><th>Centros que ve y donde registra</th><th>Menú</th><th title="operario: registra y pide los cambios · supervisor de piso: registra y mueve fases con la función del servidor">Piso</th><th></th></tr></thead><tbody>
    ${cat.map(d=>{const todoP=d.permisos.includes('*'),todoC=d.centros.includes('*'),todoPg=d.paginas.includes('*');const chk=(lista,k,on,fn)=>`<label style="display:inline-block;margin:1px 8px 1px 0;white-space:nowrap"><input type="checkbox" ${on?'checked':''} ${d.id==='admin'?'disabled':''} onchange="${fn}('${d.id}','${k}',this.checked)"> ${esc(lista)}</label>`;
      return `<tr><td style="vertical-align:top;min-width:170px"><b>${esc(d.n)}</b><br><span class="mut" style="font-size:var(--fs-xs)">${esc(d.id)}</span><br><textarea style="width:170px;height:60px;font-size:var(--fs-xs);margin-top:4px" ${d.id==='admin'?'disabled':''} onchange="setPerfilDef('${d.id}','desc',this.value)">${esc(d.desc||'')}</textarea></td>
       <td style="vertical-align:top">${chk('todo','*',todoP,'togPermDef')}${todoP?'':'<br>'+PERMISOS_DEF.map(([k,n])=>chk(n,k,d.permisos.includes(k),'togPermDef')).join('')}</td>
       <td style="vertical-align:top">${chk('todos','*',todoC,'togCentroDef')}${todoC?'':'<br>'+[['tej','Tejeduría (área)'],['tin','Tintorería (área)']].concat(S.centros.filter(c=>c.area==='pro').map(c=>[c.id,c.n])).map(([k,n])=>chk(n,k,d.centros.includes(k),'togCentroDef')).join('')}</td>
       <td style="vertical-align:top">${chk('todo el menú','*',todoPg,'togPaginaDef')}${todoPg?'':'<br>'+PAGINAS_DEF.map(([k,n])=>chk(n,k,d.paginas.includes(k),'togPaginaDef')).join('')}</td>
-      <td style="vertical-align:top;text-align:center"><input type="checkbox" ${(d.soloPiso!=null?d.soloPiso:PERFILES_PISO_DEF.includes(d.id))?'checked':''} ${d.id==='admin'?'disabled':''} title="Guarda solo avance, bitácora, turnos y paros: lo que las políticas de la base dejan escribir al piso. Lo demás (configuración, órdenes) ni se intenta." onchange="setPerfilDef('${d.id}','soloPiso',this.checked)"></td>
+      <td style="vertical-align:top"><select ${d.id==='admin'?'disabled':''} title="Operario y supervisor guardan solo avance, bitácora, turnos y paros. El supervisor además mueve fases con la función mover_fase del servidor." onchange="setPerfilDef('${d.id}','piso',this.value)">${PISO_TIPOS.map(([k,n])=>`<option value="${k}" ${tipoPiso(d)===k?'selected':''}>${esc(n)}</option>`).join('')}</select></td>
       <td style="vertical-align:top">${d.id==='admin'?'':`<button class="btn ghost sm" onclick="delPerfilDef('${d.id}')">×</button>`}</td></tr>`}).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>Solo piso</b>: esa sesión sube únicamente avance, bitácora, turnos y paros (las cuatro tablas que las políticas de la base le permiten). Lo que cambie en otras tablas —incluidas las siembras automáticas de configuración— se usa en pantalla pero no se guarda, y por eso un rechazo de permisos ya no puede tumbar el registro del piso. Los centros de producción marcados son los que el perfil ve en Control de piso, en las páginas de centro y en su reportería, y donde puede reprogramar y editar la ruta si tiene esos permisos. "Tejeduría" y "Tintorería" se marcan como área completa. Todo cambio de un usuario o de un perfil queda en la bitácora.</p></div></div>`;
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>Piso</b>: operario y supervisor suben únicamente avance, bitácora, turnos y paros (las cuatro tablas que las políticas de la base les permiten); lo que cambien en otras tablas —incluidas las siembras automáticas de configuración— se usa en pantalla pero no se guarda, y por eso un rechazo de permisos ya no puede tumbar el registro del piso. El <b>supervisor de piso</b> además <b>mueve fases</b>, llamando a la función <b>mover_fase</b> del servidor (archivo SUPABASE_MOVER_FASE.sql); el <b>operario</b> las pide y planificación las aplica. Los centros de producción marcados son los que el perfil ve en Control de piso, en las páginas de centro y en su reportería, y donde puede reprogramar y editar la ruta si tiene esos permisos. "Tejeduría" y "Tintorería" se marcan como área completa. Todo cambio de un usuario o de un perfil queda en la bitácora.</p></div></div>`;
   const {data,error}=await sb.from('perfiles').select('*').order('email');const pan=document.getElementById('pan-usuarios');if(!pan)return;
   if(error){pan.innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
   const porPerfil={};data.forEach(u=>{const d=perfilDe(u);porPerfil[d?d.id:'?']=(porPerfil[d?d.id:'?']||0)+1});

@@ -2409,6 +2409,65 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>o!==oO);delete S.avance[oO.id];
    TAB.centro=null;TAB.rec=null;TAB.q='';TRAMO={paso:null,id:null,oid:null};window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("OP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · el supervisor mueve fases con la función del servidor; el operario las pide */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const bakMot=JSON.stringify(S.params.motivos||null);if(!Array.isArray(S.params.motivos))S.params.motivos=[];
+   // 1 · el catálogo separa operario de supervisor, y es editable
+   {const cat=perfilesDef();const t=id=>tipoPiso(cat.find(x=>x.id===id)||{id});
+    __check("SF1: tablet es operario y corte/módulos/terminado son supervisores de piso",t('tablet')==='operario'&&t('corte')==='supervisor'&&t('modulos')==='supervisor'&&t('terminado')==='supervisor');
+    __check("SF1: planificación y admin no son de piso",!t('planificacion')&&!t('admin'));
+    const d=cat.find(x=>x.id==='corte');const bak=d.piso;setPerfilDef('corte','piso','operario');
+    __check("SF1: la columna es editable y manda sobre el código",tipoPiso(d)==='operario');
+    setPerfilDef('corte','piso',bak===undefined?'supervisor':bak);
+    page='usuarios';render();await __p(80);const h=document.getElementById('p-usuarios').innerHTML;
+    __check("SF1: la columna Piso se ve y se edita en Configuración → Usuarios",/>Piso</.test(h)&&h.includes("setPerfilDef('corte','piso'")&&/Supervisor de piso/.test(h));}
+   // orden de prueba, ya guardada en la base (como cualquier orden real)
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
+   const oF=JSON.parse(JSON.stringify(base));oF.id=uid();oF.op='WH/FASE-1';oF.estado='plan';oF.cant=100;oF.fase='4CD Ensamble';oF.ruta=[{centro:'modulos',t:5}];delete oF.programa;S.ordenes.push(oF);delete S.avance[oF.id];
+   PERFIL=adminP;await save();await __p(80);
+   const filaDB=()=>(sb.__DB.ordenes||[]).find(r=>r.id===oF.id);
+   __check("SF2: la orden de prueba está en la base para poder comprobar qué toca la función",!!filaDB());
+   const fNueva=fasesDisponibles().find(f=>f!==oF.fase&&!esDevolucionFase(oF.fase,f))||fasesDisponibles().find(f=>f!==oF.fase);
+   // 3 · el supervisor de piso mueve la fase por rpc, no escribiendo en ordenes
+   PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};
+   __check("SF3: el supervisor de piso sigue sin subir la tabla de órdenes",esSupervisorPiso()&&perfilSoloPiso()&&!puedeSubirTabla('ordenes')&&puedeFases());
+   {const snap=JSON.parse(JSON.stringify(filaDB().data));__RPC.falta=false;__RPC.error=null;__RPC.ultimo=null;__W.writes=[];__W.deny=t=>!['avance','bitacora','turnos','paros'].includes(t);
+    await moverFases([oF.id],fNueva,'');await __p(120);
+    const dsp=filaDB().data;
+    __check("SF3: la fase cambia en la base por mover_fase (rpc), no por un upsert de órdenes",dsp.fase===fNueva&&!!__RPC.ultimo&&__RPC.ultimo.orden===oF.id&&!__W.writes.some(w=>w.t==='ordenes'));
+    __check("SF3: la función toca SOLO la fase y su historial",(()=>{const a=Object.assign({},snap),b=Object.assign({},dsp);delete a.fase;delete b.fase;delete a.fases;delete b.fases;return JSON.stringify(a)===JSON.stringify(b)})());
+    __check("SF3: en la app la orden queda con la fase nueva y su historial con quién y motivo",oF.fase===fNueva&&(oF.fases||[]).slice(-1)[0].f===fNueva&&(oF.fases||[]).slice(-1)[0].antes==='4CD Ensamble');
+    __check("SF3: queda la auditoría (en avance, que es lo que el piso sí guarda) y la bitácora del servidor",auditoriaTodo().some(x=>x.tipo==='fase'&&x.oid===oF.id)&&(sb.__DB.bitacora||[]).some(r=>/Fase /.test(((r.data||{}).t)||'')));
+    __check("SF3: el guardado no falla ni intenta subir órdenes",!SAVE_ERR,SAVE_ERR?JSON.stringify(SAVE_ERR.errs):'');}
+   // 3 · si la función no existe todavía, avisa y NO cambia nada
+   {const faseAntes=oF.fase;const snap=JSON.stringify(filaDB().data);__RPC.falta=true;const n=alerts.length;
+    const otra=fasesDisponibles().find(f=>f!==oF.fase)||oF.fase;
+    await moverFases([oF.id],otra,motivoValido('fase',(motivosDe('fase')[0]||{}).motivo||'')?(motivosDe('fase')[0]||{}).motivo:'');await __p(120);
+    __check("SF3: sin la función en la base avisa «falta ejecutar SUPABASE_MOVER_FASE.sql» y no cambia nada",alerts.length>n&&/SUPABASE_MOVER_FASE\.sql/.test(alerts[alerts.length-1])&&oF.fase===faseAntes&&JSON.stringify(filaDB().data)===snap);
+    __RPC.falta=false}
+   // 3 · el operario sigue enviando solicitud
+   {PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec:(S.recursos.find(r=>r.centro==='modulos'&&r.activa)||{}).id};
+    const faseAntes=oF.fase;const nSol=solicitudesPiso().length;__RPC.ultimo=null;
+    mFasePiso(oF.id,'modulos');const sel=document.getElementById('fp-f');const otra=fasesDisponibles().find(f=>f!==oF.fase&&!esDevolucionFase(oF.fase,f))||fasesDisponibles().find(f=>f!==oF.fase)||oF.fase;if(sel)sel.value=otra;
+    guardarFasePiso(oF.id,'modulos');await __p(80);
+    __check("SF3: el operario no mueve la fase: queda solicitud y no se llama a la función",oF.fase===faseAntes&&solicitudesPiso().length===nSol+1&&!__RPC.ultimo);
+    // y el supervisor la aplica
+    PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};const sol=solicitudesPiso('fase').slice(-1)[0];
+    await aplicarSolicitudFase(sol.oid,sol.id);await __p(150);
+    __check("SF3: el supervisor aplica la solicitud del operario y la fase cambia en la base",oF.fase===sol.f&&filaDB().data.fase===sol.f);}
+   // la bandeja de «fase sin actualizar» le sirve al supervisor
+   {S.avance[oF.id]=S.avance[oF.id]||{};S.avance[oF.id].centros={modulos:100};
+    cierresDe(oF.id).modulos={pz:100,cant:100,faltan:0,motivo:'',u:'prueba',ts:new Date().toISOString()};
+    const cf=cierresSinFase();
+    __check("SF3: la bandeja «fase sin actualizar» lista la orden para el supervisor",cf.some(x=>x.o.id===oF.id));
+    page='control';CTL.area='fases';render();const h=document.getElementById('p-control').innerHTML;
+    __check("SF3: y el panel le ofrece mover la fase (que ahora sí puede)",/Terminadas en un centro con la fase sin actualizar/.test(h)&&h.includes(esc(oF.op))&&/mover fase/.test(h)&&puedeFases()&&esSupervisorPiso());}
+   PERFIL=adminP;__W.deny=null;__RPC.falta=false;__RPC.error=null;
+   S.ordenes=S.ordenes.filter(o=>o!==oF);delete S.avance[oF.id];
+   if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oF.id);
+   const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   window.alert=a0;CTL.area='pro';PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("SF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
