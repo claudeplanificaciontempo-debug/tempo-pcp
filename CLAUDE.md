@@ -349,6 +349,24 @@ total), `mRegistroTallas`/`guardarRegistroTallas` (suma, avisa al exceder, `S.av
 (uso piso) + motivo solo si la secuencia baja. Teléfono: `@media (max-width:520px)` para `.tab-card`, `#p-tablet` y
 `#p-control`. Ver `PISO_TALLAS_REPORTE.md`.
 
+**Carga: una sola cuenta (15-sep-2026 noche):** `cargaUnica(base,{ym,ordenes})` con `base` = `programadas` |
+`abiertas` | `plan` (`ordenesBase`, `CARGA_BASES`, `CARGA_BASE_TXT`, `notaBaseHTML`). Devuelve por centro
+`{firme,proceso,reserva,pz,n}` con la MISMA fórmula (`minPendCentro`); lo único que cambia es el conjunto de órdenes.
+`cargaPlanCentros` la llama; Carga general y Capacidad y decisiones muestran su base en pantalla; el número oficial del
+mes es `cargaOficialMes(ym)` (plan congelado) y `refOficialHTML` lo muestra cuando difiere. Reserva: solo lavado y
+plancha (`centrosReserva`, `reservaDe`, `reservaCentroDatos`); sin `minEstandar` o `pctEstimado` → cero y bandeja
+`reservaSinDatos` en Hoy. **Carga general** (`vPro`, estado `CG`) es solo consulta: área/centro, filtro de fases y
+buscador comunes, bloque de semanas (`semanasCarga`, parámetro `semCarga` = 8), cruce familia × centro y detalle con
+`filasGRP('cg')` + `irEstadoOrden`. **Asignación por orden** se mudó a Reportería (`vAsignacion`, página `asignacion`).
+Ver `CARGA_GENERAL_REPORTE.md`.
+
+**Balanceo etapa 1 (15-sep-2026 noche):** tabla **Tipos de máquina** (`tiposMaq`, `sembrarTiposMaq` siembra un tipo por
+nombre distinto de la hoja SIN agrupar; los TP quedan `porConfirmar`), `normMaquina(nombre)` resuelve por alias de tipo
+activo y `opsConfeccion` la usa. **Operarias** (`operarias`, `NIVELES_ESP` 1/2/3, `operariasDe`) con nombre, módulo y
+especialidad; llenarla no es obligatorio. Parámetros `tolPuesto` (2 %, reemplaza el 1.02 de `repartirPuestos`) y
+`nivelMinEsp` (2). Balanceo abre con `modulosVistaHTML` (personas, máquinas, operarias y referencia en curso).
+`delTipoMaq`/`delOperaria` están en la lista GUARDIA. Ver `BALANCEO_ETAPA1_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

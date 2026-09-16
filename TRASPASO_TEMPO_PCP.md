@@ -204,6 +204,21 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.16 Carga general y Balanceo etapa 1 (15-sep-2026 noche)
+- **Una sola cuenta de carga**: la misma fórmula (minutos pendientes por centro, separados en firme, en proceso y
+  reserva) con tres bases: **programadas**, **todas las abiertas** y **plan del mes**. Cada pantalla dice con cuál está
+  calculada. El número **oficial del mes es el plan congelado**; las demás lo muestran como referencia cuando difieren.
+- **Carga general** es solo consulta: área y centro, filtro de fases y buscador comunes, carga contra capacidad por
+  semana (8 semanas, parámetro `semCarga`), cruce familia por centro y detalle hasta las órdenes con el agrupador y el
+  enlace al estado de cada una.
+- **Reserva**: solo lavado y plancha, con los minutos por prenda y el % estimado del centro. Sin esos datos, cero y
+  aviso en Hoy → Pendientes.
+- **Asignación por orden** se mudó a Reportería, entera.
+- **Balanceo etapa 1**: tabla de **tipos de máquina con alias** (se siembra con los nombres de la hoja sin agrupar; los
+  TP quedan «por confirmar con planta»), **máquinas por módulo** (ya existía, ahora usa esos tipos), **operarias y
+  especialidades** (nombre, módulo y nivel 1/2/3 por máquina, no obligatorio), parámetros **tolPuesto** y
+  **nivelMinEsp**, y la **vista de módulos** con personas, máquinas y referencia en curso.
+
 ### 2.15 Piso: Mi centro, tallas y teléfono (15-sep-2026 noche)
 - **Mi centro** muestra solo lo programado en ese centro. El buscador por WH: si la orden existe pero no está
   programada ahí, sale bloqueada con «no programada · pedir reprogramación»; el pedido avisa en Hoy → Pendientes a
