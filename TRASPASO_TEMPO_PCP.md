@@ -204,6 +204,25 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.34 Parte B — Reportería gerencial, sub-centros y congelado (16-sep)
+- **Resumen gerencial** pasó de Dirección a **Reportería** (menú + registro `REPORTES`). Filtro global de meses
+  (`GER.meses`, multiselección que **suma**) aplicado en `vGerencia` sobre `ords`, así que manda sobre TODOS los
+  bloques; `filtroMesesGERHTML` pinta el selector y el total de lo seleccionado (órdenes, pedidas, hechas, falta,
+  valor, vencidas, riesgo). `pzHechasOrden` = avance del último paso de la ruta.
+  **Las consultas por cliente, fase, ODC, estilo y familia NO están construidas**: propuesta en
+  `REPORTERIA_GERENCIAL_DISENO.md`, esperando confirmación (3 decisiones abiertas ahí).
+- **Sub-centros**: `resumenSubCentros(g,P,lun,dom)` / `resumenSubCentrosHTML` — una fila por sub-área con carga,
+  capacidad, ocupación, órdenes, prendas programadas, hechas de la semana, atrasadas y pendientes, más el total.
+  Sale de `subAreasDe(g)` (columna «Ítem de planificación»): **mismo componente para cualquier centro**, y mover una
+  sub-área de ítem lo cambia solo. No se muestra con una sola sub-área ni cuando `CEN.solo` está puesto.
+- **Congelado del programa semanal**: `S.params.progCongelado[]` = `{id,k:centro|lunes,centro,lun,dom,ts,u,ords[{oid,op,pz,min,dias}],pz,min,hechasAl}`.
+  `congelarPrograma(cens,lun,dom)` exige `puede('programa')`; **volver a congelar NO pisa**, deja historial.
+  `avanceCongelado` mide solo lo hecho DESPUÉS del congelado (por eso guarda `hechasAl`) y detecta **agregadas** y
+  **sacadas** comparando la foto con el programa vigente. `avanceCongeladoHTML` va al final de Centro → Programación.
+  **No se contradice con el congelado del plan mensual (Bloque 5)**: el del mes fija **qué órdenes** entran; este fija
+  **cuándo y cuánto** se hace esa semana en ese centro. La pantalla lo explica.
+- Ver `PARTE_B_REPORTE.md` y `REPORTERIA_GERENCIAL_DISENO.md`.
+
 ### 2.33 Parte A — Dirección, Liberación y Producción (16-sep)
 - **Hoy → Planta hoy**: cada centro con su propio «ver programa» (`irCentro(c,dia,tab)`), en la semana del día pedido y
   **aunque su carga sea 0** (se listan todos los centros, no solo los que tienen carga). `ir('centro')` pulsa la primera

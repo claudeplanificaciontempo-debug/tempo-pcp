@@ -559,6 +559,19 @@ de un centro manda el estado propio (`estadosCentro`, textos por la tabla 17, si
 sigue `dondeEstaCentro`. **`detalleAgrupableHTML`** lleva el agrupador común a Balanceo y Programa del día (la hoja
 impresa conserva centro → recurso). Ver `PARTE_A_REPORTE.md`.
 
+**Parte B · Reportería gerencial, sub-centros y congelado (16-sep-2026):** el **Resumen gerencial** vive en
+**Reportería** (salió de Dirección; está en `REPORTES`). `GER.meses` es un Set multiselección que **suma** los meses
+y se aplica UNA vez sobre `ords` en `vGerencia`, así que todos los bloques obedecen; `filtroMesesGERHTML` muestra el
+selector y el total. Las **consultas por cliente, fase, ODC, estilo y familia NO están construidas**: la propuesta
+vive en `REPORTERIA_GERENCIAL_DISENO.md` y espera confirmación. **Sub-centros**: `resumenSubCentrosHTML(g,P,lun,dom)`
+en el centro padre, una fila por sub-área (carga, capacidad, ocupación, órdenes, programadas, hechas, atrasadas,
+pendientes) + total; sale de `subAreasDe(g)`, nunca de una lista en código, y no se dibuja con `CEN.solo` puesto.
+**Congelado semanal**: `S.params.progCongelado[]` con `hechasAl` (lo hecho al congelar) para medir solo lo posterior;
+`congelarPrograma` exige `puede('programa')` y **no pisa** la foto anterior; `avanceCongelado` da cumplimiento,
+atrasadas, **agregadas** y **sacadas** contra la foto. Son DOS congelados distintos y no se contradicen: el del **plan
+mensual** fija qué órdenes entran al mes, el **semanal** fija cuándo y cuánto se hace en ese centro esa semana.
+Ver `PARTE_B_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
