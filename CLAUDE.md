@@ -708,6 +708,22 @@ visible** (`erroresGruposMod`). Maquila con `recursoFijo` **resta del saldo prop
 kilos). El **inicio no puede ser anterior a hoy**. Todo lo editable exige el permiso **`programa`**, que hoy solo
 tienen **admin** y **planificacion**. Ver `NIVELACION_PASO1_MOTOR.md`.
 
+**Días hábiles: dos semánticas distintas, no mezclarlas (16-sep-2026).** La nivelación usa UNA convención
+(`CONV_HABILES`): **el inicio cuenta como día 1 y el compromiso es el último día disponible, los dos
+inclusive** — `finLabInc(ini,n)` y `diasHabilesInc(a,b)`, que concuerdan entre sí. **`dsumLab(d,n)` es otra cosa
+y NO se toca**: es un **plazo** («n días hábiles DESPUÉS de d»), el lead time del proveedor en el motor. Usar
+`dsumLab` donde iba la convención inclusiva corre todo un día. `noHabilesEntre`/`mesesSinFestivos`/`txtHabiles`
+explican en pantalla **qué días se descontaron y por qué**. **La tabla de excepciones está vacía**: hoy solo se
+descuentan fines de semana y se avisa «sin festivos cargados para <mes>»; no se inventa ningún festivo.
+**Toda cifra dice su alcance**: el cuadrito trae el saldo del horizonte y el total, rotulados «en este horizonte
+(<meses>)» / «en todo el saldo». **El compromiso no tiene valor por defecto**: sin fecha, *dato faltante* y todo
+lo que dependa de él queda en `null`. **Configuración → Nivelación de carga**: grupos de módulos y parámetros
+de tela; cada grupo **nace «sugerido»** y solo `confirmarGrupoMod` lo confirma (con responsable y fecha),
+y **tocarlo lo devuelve a sugerido**; `validarGruposMod()` marca como **error** un módulo repartido a más del
+100% y una familia en **dos grupos** (doble conteo), y como **aviso** una familia sin grupo.
+**La clave pública de Supabase no lee nada sin sesión** (RLS): la anon key devuelve 0 filas en `perfiles`,
+`params`, `ordenes` y `centros`. Ver `NIVELACION_PASO1_CORRECCIONES.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

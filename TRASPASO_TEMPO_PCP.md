@@ -204,6 +204,31 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.47 Nivelación — correcciones del Paso 1 (16-sep)
+- **UNA convención de días hábiles** (`CONV_HABILES`): **el inicio cuenta como día 1 y el compromiso es el
+  último día disponible, los dos inclusive**. `finLabInc(ini,n)` y `diasHabilesInc(a,b)` la implementan y
+  concuerdan entre sí (contar hasta el día N devuelve N). Reemplazó a `diasHabilesEntre`, que era exclusiva.
+  **`dsumLab` NO se tocó y NO sigue esta convención**: es un **plazo** («n días hábiles DESPUÉS de»), el lead
+  time del proveedor dentro del motor. No mezclar las dos semánticas.
+- `noHabilesEntre(a,b)` (qué días se descontaron y por qué), `mesesSinFestivos(a,b)` y `txtHabiles(a,b)` dan el
+  **tooltip** de Días necesarios / Fecha final / Días disponibles. **La tabla de excepciones está VACÍA**: hoy
+  solo se descuentan fines de semana y se avisa «sin festivos cargados para <mes>» (decisión 7).
+- **Toda cifra dice su alcance**: el cuadrito trae `saldo` (el horizonte) y `saldoTot` (todos los meses) y
+  rotula «en este horizonte (<meses>)» / «en todo el saldo». `horTxt()` escribe el horizonte.
+- **El compromiso no tiene valor por defecto**: sin fecha cargada el cuadrito dice *dato faltante* y deja
+  días disponibles, alcanzable, rezago y «cabe» en **`null`**.
+- La lista del rezago arranca agrupada por **tipo de producto y fase** (`filasGRP` + `whCell`).
+- **Configuración → Nivelación de carga** (pestaña nueva, solo tablas y validaciones): grupos de módulos
+  (`gruposModHTML`) y parámetros de tela (`nivParamsHTML`) + el panel de días hábiles (`calendarioNivHTML`).
+  Cada grupo **nace «sugerido»** y sigue así hasta `confirmarGrupoMod` (guarda **responsable y fecha**);
+  **cambiar un grupo confirmado lo devuelve a sugerido**. `validarGruposMod()`: más del 100% por módulo y una
+  familia en dos grupos son **error**; una familia sin grupo es **aviso**. `famsCatalogo()` saca las familias
+  del catálogo real, nunca de una lista en código.
+- **La clave pública de Supabase no lee nada sin sesión** (RLS): `perfiles`, `params`, `ordenes` y `centros`
+  devuelven 0 filas con la anon key. Para listar qué personas tienen `programa` hay que consultarlo desde una
+  sesión real; la consulta SQL de solo lectura está en el reporte.
+- Ver `NIVELACION_PASO1_CORRECCIONES.md`.
+
 ### 2.46 Nivelación de carga — PASO 1: el motor y el cuadrito (16-sep)
 - **Del Excel de nivelación se tomó SOLO el esquema de trabajo, no sus datos.** El Excel no es fuente de ningún
   número; todo sale del volcado de Odoo.
