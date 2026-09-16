@@ -2690,6 +2690,37 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>![oDisp,oProx,oProc].includes(o));[oDisp,oProx,oProc].forEach(o=>delete S.avance[o.id]);}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};page='ordenes';render();
    __check("PE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* LIBERACIÓN · el mes de ENTREGA filtra por la fecha de entrega de verdad */
+  {const antes=__R.errors.length;const bak={mes:LIB.mes,ym:LIB.ym,odc:LIB.odc,fam:LIB.fam,cli:LIB.cli};
+   LIB.mes=null;LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.hija=null;LIB.tela=null;LIB.fases=null;LIB.et='tela';
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,fecha,proy)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=10;o.fecha=fecha;o.proyecto=proy;o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];if(!rutaConfirmada(o))confirmarRuta(o,'persona','prueba');return o};
+   const oE1=mk('WH/ENT-1','2027-05-10','ENERO 2027'),oE2=mk('WH/ENT-2','2027-06-20','ENERO 2027'),oSin=mk('WH/ENT-SIN','','ENERO 2027');
+   PLAN=null;PLAN_ALL=null;
+   const pend=()=>pendLiberacion('tela',LIB.ym).filter(okFiltrosB1);
+   __check("ME1: el mes de entrega sale de la fecha de entrega, no del Proyecto",mesEntregaDe(oE1)==='2027-05'&&mesEntregaDe(oE2)==='2027-06'&&mesPlan(oE1)==='2027-01');
+   __check("ME1: las órdenes sin fecha van al grupo «Sin fecha de entrega»",mesEntregaDe(oSin)==='Sin fecha de entrega');
+   LIB.mes=new Set(['2027-05']);
+   __check("ME2: con un mes de entrega marcado solo pasa esa",pend().some(o=>o.op==='WH/ENT-1')&&!pend().some(o=>o.op==='WH/ENT-2')&&!pend().some(o=>o.op==='WH/ENT-SIN'));
+   togSetMes('2027-06');
+   __check("ME2: es multiselección: dos meses de entrega a la vez",LIB.mes.size===2&&pend().some(o=>o.op==='WH/ENT-1')&&pend().some(o=>o.op==='WH/ENT-2'));
+   LIB.mes=new Set(['Sin fecha de entrega']);
+   __check("ME2: se puede filtrar justamente las que no tienen fecha",pend().some(o=>o.op==='WH/ENT-SIN')&&!pend().some(o=>o.op==='WH/ENT-1'));
+   LIB.mes=null;page='liberacion';render();
+   {const h=document.getElementById('p-liberacion').innerHTML;
+    __check("ME3: el filtro está en pantalla, con los meses de entrega y el grupo sin fecha",h.includes('<label>Mes de entrega</label>')&&h.includes('Sin fecha de entrega')&&h.includes("togSetMes("));}
+   S.ordenes=S.ordenes.filter(o=>![oE1,oE2,oSin].includes(o));[oE1,oE2,oSin].forEach(o=>delete S.avance[o.id]);
+   LIB.mes=bak.mes;LIB.ym=bak.ym;LIB.odc=bak.odc;LIB.fam=bak.fam;LIB.cli=bak.cli;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("ME sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* TERMINADOS · de dónde sale el tiempo de cada sub-área */
+  {const antes=__R.errors.length;
+   __check("OT1: plancha viene con 2 min/prenda sembrados en la columna editable",(sembrarTerminados(),+((CE('plancha')||{}).minEstandar)===2));
+   __check("OT1: lavado es proceso por días y no consume capacidad",centroPorDias('lavado')===true&&diasEsperaCentro('lavado')>=3);
+   {const or=origenTiempoCentro('botones');
+    __check("OT2: ojales y botones dice de dónde sale su tiempo (LMO y, si hay, la tabla de ojal/botón que la reemplaza)",/operaciones de la LMO/.test(or.txt)&&/operaciones mapeadas/.test(or.det));}
+   __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('Min/prenda'));
+   __check("OT2: lavado dice que se mide en días",/días de proceso/.test(origenTiempoCentro('lavado').txt));
+   __check("OT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
