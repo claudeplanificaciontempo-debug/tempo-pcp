@@ -81,3 +81,73 @@ guardado, la cabecera sin Respaldo ni Restaurar y el buscador arriba.
 - El aviso distingue el problema de permisos de un error cualquiera, y desaparece al guardar bien.
 - El operario no ve Respaldo ni Restaurar; quien tiene permiso de configuración sí.
 - El buscador de WH está arriba, antes del flujo y de las tarjetas, y una WH no programada en el recurso sale bloqueada.
+
+---
+
+# 2ª entrega (16-sep-2026) · el guardado del operario solo sube sus cuatro tablas
+
+**Commit:** `33ba25d` · **Harness:** 1120 pruebas verdes (después 1154 con las partes 2 y 3) · **Motor:** no se tocó.
+
+## El problema de fondo
+Las políticas RLS de producción ya dejan escribir al piso en `avance`, `bitacora`, `turnos` y `paros`. Pero `_save()`
+recorría **todas** las tablas y `params`, y subía cualquier diferencia contra lo leído. En la sesión de un operario hay
+diferencias que él no hizo: cada pantalla que se dibuja ejecuta siembras y migraciones («si no existe, créalo») que
+tocan `S.params`. Al primer rechazo por permisos, `_save()` cortaba y **el avance tampoco subía**. Que el Módulo 1
+guardara a las 08:08 fue casualidad: un administrador había abierto la app antes y persistió esas siembras.
+
+## 1 · Qué sube cada sesión
+- `TABLAS_PISO = avance, bitacora, turnos, paros` — las mismas cuatro de `SUPABASE_POLITICAS_TABLET.sql`.
+- Un perfil es **«solo piso»** por la columna nueva **Solo piso** de Configuración → Usuarios → Perfiles. Si nadie la
+  ha tocado, vale para `tablet`, `corte`, `modulos`, `terminado` y los perfiles antiguos de piso. **Planificación no
+  es «solo piso»**: no tiene permiso de Configuración pero sí escribe órdenes, programas y plan, así que sigue
+  guardando todo (si se la marcara, dejaría de guardar su trabajo).
+- En una sesión «solo piso», `_save()` **ni intenta** subir las demás tablas ni `params`: no manda la petición, no
+  falla y no cuenta como error. Lo que cambió ahí se usa en pantalla y se pierde al recargar, que es justo lo que
+  queremos para una siembra.
+
+## 2 · Las siembras y migraciones automáticas que había
+Se ejecutan al leer, desde cualquier pantalla, y escriben en `params`:
+
+`motivos` (y `parosMigrados`, que asegura Almuerzo, Cierre del día y Fallo de máquina) · `perfilesDef` y
+`migReporteria` · `tallasJuegos` · `tiposMaq` · `operarias` · `camposConservados` · `centrosPorOrden` ·
+`reglasFamCentro` · `clasifMaterial` · `propuestaFalta` · `centroEtapa` · `faseGrupos` · `faseMapeo` ·
+`faseMapeoMontado` · `esperasPaso` · `diasProveedor` · `tiemposOjalBoton` · `catTela` · `paramTela` · `kgUd` ·
+`mermaTintura` · `palabrasJaspe` · `restriccionFaltante` · `estadoOT` · `centroOT` · `auditoriaCambios` ·
+`pedidosReprog` · `progTej` · `mapaCatLMO` · `rutaDefectoSembrada` · `motivosMigrados` · `colchonDias` ·
+`excepciones` · `cal` · `catalogoUsuaria` · `planaLotes` · `pdfEntregas` · `replan` · `stockTela`.
+
+Ninguna se guarda desde la tablet. Se siguen guardando cuando entra planificación o administración, que es donde
+tienen sentido.
+
+## 3 · Lo que el operario hace de verdad fuera de esas cuatro tablas
+
+| Lo que hace | Antes escribía en | Ahora |
+| --- | --- | --- |
+| Inicio, paro, fin, unidades y tallas del tramo | `avance` (+ `bitacora`, `turnos`) | igual: son sus tablas |
+| Asistencia del día | `turnos` | igual |
+| Registro rápido «Hecho» | `avance` + `turnos` + `bitacora` | igual |
+| **Pedir reprogramación** | `params.pedidosReprog` | **`avance[oid].pedidosReprog`**; la pantalla del supervisor lee las dos fuentes, así que los pedidos viejos no se pierden |
+| **Corrección de tramo y toda su auditoría** | `params.auditoriaCambios` | **`avance[oid].auditoria`**; Auditoría muestra las dos juntas, ordenadas por fecha |
+| **Cambiar la fase desde piso** | `ordenes` (+ `params`) | **no la cambia**: queda como **solicitud** en `avance[oid].solicitudes` y planificación la aplica |
+
+La solicitud de fase se ve en **Control de piso → Cambio de fases** («El piso pide cambios»: qué orden, a qué fase,
+la observación, el motivo, quién y cuándo) con botones **aplicar** y **descartar**, y en **Hoy → Pendientes**. Al
+aplicarla se usa `moverFases`, o sea la regla de secuencia de la tabla 1 y la auditoría de siempre. No se abrió
+`ordenes` ni `params` a ningún rol de piso.
+
+## 4 · El aviso dice dónde falló
+El error de guardado ahora nombra la tabla en palabras: «No se guardó en el servidor (falló en: **configuración**)»,
+«…(falló en: **avance del piso**)», con el detalle técnico debajo y el botón Reintentar. Lo registrado sigue en
+pantalla.
+
+## 5 · Qué se probó
+Con perfil **tablet real** y la base de pruebas **rechazando toda escritura fuera de las cuatro tablas del piso**, y
+con siembras pendientes de guardar: iniciar el tramo, paro, reanudar, fin y unidades **guardan sin un solo error**, y
+no se manda ni una petición a `params` ni a ninguna otra tabla. Además: la siembra pendiente sigue en memoria y no se
+guardó; pedir reprogramación va a `avance`; el cambio de fase queda como solicitud, sale en Hoy y planificación lo
+aplica; el aviso nombra la tabla.
+
+## Lo que sigue en tus manos
+Nada de esto cambia las políticas de Supabase. `SUPABASE_POLITICAS_TABLET.sql` sigue **sin ejecutarse**; lo que hay en
+producción son las políticas que ya cargaste. Si algún día quieres que un supervisor de centro vuelva a cambiar fases
+directo, basta con desmarcarle **Solo piso** y darle la política de escritura en `ordenes`.

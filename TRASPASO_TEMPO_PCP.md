@@ -204,6 +204,28 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.23 Piso: guardado del operario, total sin tallas y cierre del paso (16-sep-2026)
+- **El guardado del operario solo sube sus cuatro tablas**: `avance`, `bitacora`, `turnos` y `paros` (las mismas de las
+  políticas RLS). Un perfil es «solo piso» por la columna **Solo piso** de Configuración → Usuarios (por defecto
+  tablet, corte, módulos, terminado y los perfiles antiguos de piso; **planificación no**). En esas sesiones las
+  demás tablas y `params` **ni se intentan**: las siembras y migraciones automáticas se usan en memoria, así que un
+  rechazo de permisos ya no puede tumbar el registro del piso. El aviso de error dice en qué tabla falló.
+- **Lo que el operario hace fuera de esas tablas pasa a avance**: el pedido de reprogramación, su auditoría y —lo
+  más importante— el **cambio de fase**, que ya no escribe en `ordenes`: queda como **solicitud** y planificación la
+  aplica desde Control de piso → Cambio de fases (regla de secuencia y auditoría de siempre). Bandeja en Hoy.
+- **Sin curva de tallas** hay una fila única **Total** para registrar; guardar el tramo con 0 unidades pregunta.
+- **El resultado del buscador se ve siempre** como tarjeta: INICIO si está programada en ese puesto, «pedir
+  reprogramación» si no, y aviso si hay un tramo abierto o uno pendiente de confirmar.
+- **Cerrar la orden en el centro** («Terminé esta orden en mi centro», en «Confirma lo que salió»): completo cierra
+  sin preguntar; con faltante muestra cuántas prendas faltan (por talla si hay curva) y exige motivo de la tabla 15
+  con el uso **cierre con faltante** (sembrado vacío). Al cerrar, el paso cuenta como terminado (único cambio en el
+  motor), la orden sale de la cola, el recurso queda libre y todo va a auditoría. Los centros siguientes trabajan
+  contra **lo que realmente salió**. El faltante se ve en la ficha, en Control de piso y en el reporte de avance.
+  **La fase no cambia**: la orden queda «terminada en <centro> · fase sin actualizar» en todas las listas, «Dónde
+  está» dice «esperando en <siguiente centro>», y el supervisor la mueve desde Hoy → Pendientes o Control de piso →
+  Cambio de fases. Reabrir un cierre: solo supervisor, con motivo y auditoría.
+- Ver `TABLET_PERMISOS_REPORTE.md` (2ª entrega) y `MI_CENTRO_UNICO_REPORTE.md` (8ª y 9ª entregas).
+
 ### 2.22 Rutas confirmadas (15-sep-2026 noche, PARTE A)
 **Ninguna orden se libera —ni textil ni a producción— sin RUTA CONFIRMADA.** Cada orden tiene `rutaConf`
 (estado, origen `persona` u `Odoo OT`, quién, cuándo, nota), en auditoría y en la tabla 14 (se conserva en las

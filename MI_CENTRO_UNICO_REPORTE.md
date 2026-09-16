@@ -336,3 +336,70 @@ tramo (`t.uFin`).
 - La WH de la cola sale como tarjeta con INICIO; acepta el número suelto y la WH completa.
 - Una WH que no está programada aquí sale bloqueada con «pedir reprogramación»; si no existe, lo dice.
 - Con un tramo abierto de otra orden, y con uno pendiente de confirmar, la tarjeta lo dice y ofrece ir a ella.
+
+---
+
+# 9ª entrega (16-sep-2026) · cerrar la orden en el centro aunque falten prendas
+
+**Commit:** `dea07a0` · **Harness:** 1154 pruebas verdes · **Motor:** solo se le enseñó a leer el cierre como paso
+terminado; nada más.
+
+> La parte 2 de este prompt (el campo de Total sin tallas y el resultado de la búsqueda) ya estaba hecha en la
+> entrega anterior (`4edbd33`), y sigue igual: fila única **Total** con − / + / +10 / +25, número grande editable y
+> segundas; guardar con 0 unidades pregunta; y la tarjeta del buscador sale siempre, con INICIO o con «pedir
+> reprogramación», y avisa si hay un tramo abierto o uno pendiente de confirmar.
+
+## El problema
+El paso de un centro se daba por hecho **solo** cuando las unidades registradas llegaban a la cantidad de la orden.
+Si terminaba con menos (merma, faltante, segundas), no había forma de cerrarla: se quedaba en la cola para siempre.
+FIN + Guardar cierra el **tramo** y libera el puesto; esto cierra la **orden en ese centro**.
+
+## 1 · El botón
+En «Confirma lo que salió», al lado de Guardar: **«Terminé esta orden en mi centro»**. Guarda primero el tramo (si no
+estaba guardado) y después cierra el paso.
+- **Si lo registrado llega a la cantidad**: cierra sin preguntar.
+- **Si falta**: muestra «Faltan N prendas: salieron X de Y», el detalle por talla cuando hay curva, y pide **motivo de
+  la tabla 15** con el uso nuevo **«cierre con faltante»**. Ese uso viene **vacío**: los motivos los cargas tú en
+  Configuración → Órdenes y materiales → 15 · Motivos. Sin motivo de la tabla no cierra, y lo dice.
+
+## 2 · Qué pasa al cerrar
+- El paso queda **terminado**: `pasoHecho(orden, centro)` es cierto por la fase de Odoo, por unidades completas **o
+  por el cierre del piso**. Ese es el único cambio en el motor.
+- La orden **sale de la cola** del centro y de Mi centro; el recurso queda libre.
+- Queda en **auditoría** (quién, cuándo, unidades, faltante y motivo) y en la bitácora.
+- Se guarda en `avance[orden].cierres[centro]` = unidades que salieron, cantidad que debía salir, faltante, faltante
+  por talla, motivo, quién y cuándo. Reabrir no borra nada: marca el cierre como reabierto y guarda el histórico.
+
+## 3 · El faltante se ve y manda
+- **Ficha de la orden**: tabla «Cerrada en estos centros» con salieron / faltan / motivo / quién / tallas.
+- **Control de piso**: la etiqueta «cerrada 180 de 200 · faltan 20» (con el motivo en el tooltip) y el botón
+  **reabrir** para el supervisor.
+- **Reporte de avance**: panel nuevo **«Cerradas con faltante»** con todas, sus prendas que no salieron y el motivo.
+- **Los centros siguientes trabajan contra lo que realmente salió**: `cantCentro(orden, centro)` toma lo que salió del
+  último paso cerrado antes de él. Si corte cerró con 180 de 200, confección dice «0 / 180 (de 200 del pedido: el paso
+  anterior cerró con menos)» y el tope al registrar también es 180.
+
+## 4 · Reabrir
+Solo supervisor (planificación o quien pueda reprogramar), con motivo de la tabla 15 y confirmación. Queda auditado,
+la orden vuelve a la cola del centro y el cierre anterior se conserva con quién lo reabrió y por qué.
+
+## 5 · La fase no cambia sola
+- Al cerrar, **la fase se queda donde está**. Es del supervisor moverla.
+- En el **siguiente centro** la orden aparece como **«lista para empezar · terminada en Corte · 16/09 08:12»**, con
+  las prendas que salieron.
+- En **todas las listas** (la celda común de WH) lleva **«terminada en Corte · fase sin actualizar»** mientras la fase
+  no se mueva, y **«Dónde está»** dice **«Esperando en Confección»**.
+- **Hoy → Pendientes** tiene la bandeja **«Órdenes terminadas en un centro con fase sin actualizar»**, y
+  **Control de piso → Cambio de fases** el panel con cada una: cuándo se cerró, salieron / faltan, motivo, cuál es el
+  siguiente centro, y los botones **mover fase → (la fase sugerida del siguiente paso)** y **reabrir**. Mover la fase
+  usa la regla de secuencia de la tabla 1 y la auditoría de siempre.
+- El motor: al cerrar corte deja de pedir tiempo ahí y **no retrasa** el paso siguiente (probado: la fecha de
+  confección no se va más tarde que antes del cierre, y la orden entra en la cola de confección).
+
+## Qué se probó
+Cerrar con faltante sin motivo no cierra y lo dice · el motivo tiene que salir de la tabla 15 · con motivo guarda
+unidades, faltante, quién y cuándo, y queda en auditoría · el paso cuenta como terminado para el motor y las listas ·
+la orden sale de la cola · el siguiente centro trabaja contra 180 y no contra 200 · el faltante se ve en la ficha, en
+Control de piso y en el reporte de avance · la fase no cambia sola · sale en Hoy y en el panel del supervisor con los
+botones · el operario no puede reabrir y el supervisor sí, con motivo y auditoría · cierre completo sin preguntar ·
+el botón del tramo guarda primero y cierra después · y **todo el recorrido entrando como operario de tablet**.

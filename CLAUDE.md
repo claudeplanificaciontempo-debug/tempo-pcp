@@ -441,6 +441,24 @@ Producción sigue una por una (`celdaLibProd`, las dos verificaciones). **Bloque
 filtros del bloque 1 y la nota lo dice. Debajo, las tarjetas del resumen y el desplegable «Qué cargó lo liberado»
 (tejeduría, tintorería y centros). **Bloque 3**: Órdenes liberadas con buscador y reversión auditada.
 
+**Piso: guardado, total sin tallas y cierre del paso (16-sep-2026):** `TABLAS_PISO=[avance,bitacora,turnos,paros]` y
+`perfilSoloPiso()` (columna `soloPiso` del catálogo de perfiles; por defecto `PERFILES_PISO_DEF` = tablet, corte, modulos,
+terminado, piso, piso_tej; planificación NO). `_save()` salta las tablas que esa sesión no puede escribir (incluido
+`params`, o sea todas las siembras) sin intentarlo ni contarlo como error; `ULT_SALTADAS` las recuerda y `SAVE_ERR.tablas`
+nombra en palabras dónde falló (`TABLAS_N`/`nTabla`). Lo que el piso hace fuera de esas tablas va a `avance`:
+`avance[oid].pedidosReprog` (`pedidosReprog()` une las de params), `avance[oid].auditoria` (`auditoriaTodo()` une las dos y es lo
+que muestra Auditoría) y `avance[oid].solicitudes` (`pedirSolicitudPiso`/`solicitudesPiso`/`aplicarSolicitudFase`/
+`solicitudesPisoHTML`): desde un perfil de piso `guardarFasePiso` NO cambia la fase, la pide. **Cierre del paso**:
+`avance[oid].cierres[centro]={pz,cant,faltan,tallas,motivo,u,ts,reabierto?}` con `cerrarCentro`/`mCerrarCentro`/
+`terminarOrdenCentro`/`reabrirCierre`; `pasoHecho(o,c,fe)` (fase de Odoo | unidades completas | cierre) reemplazó al
+patrón `fe.hechos.includes(c)||ac[c]>=o.cant` en motor, colas y pantallas —único cambio del motor—, y `cantCentro(o,c)`
+da lo que realmente llega a un centro (lo que salió del último paso cerrado antes de él). Uso nuevo de la tabla 15:
+`cierre` («cierre con faltante»), sembrado vacío. La fase no cambia al cerrar: `tagCierre` (dentro de `whCell`) dice
+«terminada en X · fase sin actualizar», `tagListaEmpezar` marca «lista para empezar» en el siguiente centro,
+`dondeEsta` dice «Esperando en X», y `cierresSinFase`/`cierresSinFaseHTML` + la bandeja `cierreSinFase` de Hoy son el
+panel del supervisor (mover fase con `mCambiarFase(oid,sugerida)` o reabrir). `cierresConFaltanteHTML` en el reporte de
+avance y `cierresOrdenHTML` en la ficha. Ver `TABLET_PERMISOS_REPORTE.md` y `MI_CENTRO_UNICO_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
