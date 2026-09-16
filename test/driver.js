@@ -623,6 +623,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      opsLMO:(S.operaciones||[]).length,catsLMO:[...new Set((S.operaciones||[]).map(o=>o.catP).filter(Boolean))].length,
      lmoSinUsar:[...new Set((S.operaciones||[]).map(o=>o.catP).filter(Boolean))].filter(c=>!S.categorias.some(k=>k.familiaLMO===c))};
    // lo que movería la unificación JEANS→DENIM con el catálogo y las órdenes reales (NO se ejecuta)
+   {const se=rutasSinEmpaque(null);const porU={};se.forEach(o=>{const r=pasosProDe(o);porU[r[r.length-1]]=(porU[r[r.length-1]]||0)+1});
+    __R.empaqueReal={conRuta:S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).length).length,sinEmpaque:se.length,porUltimo:porU,
+      pz:se.reduce((a,o)=>a+(+o.cant||0),0)};
+    __check('EMP: se puede medir cuántas rutas reales no terminan en Empaque',typeof __R.empaqueReal.sinEmpaque==='number');}
    {const d=diagJeans();__R.jeansReal={cats:d.cats.length,ordenes:d.ordenes.length,ops:d.ops.length,
      tablas:d.tablas.map(x=>x.t+': '+x.fila),ejemplos:d.ordenes.slice(0,5).map(o=>o.op),
      yaUnificado:!!S.params.jeansUnificado};}
@@ -3273,6 +3277,131 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.params.progCongelado=[];}
    window.alert=a0;PERFIL=adminP;GER.meses=null;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* CONSULTAS GERENCIALES · cinco cortes de la misma cartera */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   const P=programarTodo();
+   GER.meses=null;GER.cli=null;GER.est=null;GER.q='';GER.abierto=null;GER.det=null;
+   /* LA PRUEBA PRINCIPAL: los cinco bloques cuadran con cualquier combinación de filtros */
+   {const combos=[
+     {n:'sin filtros'},
+     {n:'un mes',f:()=>{GER.meses=new Set([mesesGER()[0]])}},
+     {n:'dos meses',f:()=>{const m=mesesGER();GER.meses=new Set(m.slice(0,2))}},
+     {n:'un cliente',f:()=>{GER.cli=new Set([clientesGER()[0]])}},
+     {n:'mes + cliente',f:()=>{GER.meses=new Set([mesesGER()[0]]);GER.cli=new Set([clientesGER()[0]])}},
+     {n:'un estado',f:()=>{GER.est=new Set(['curso'])}},
+     {n:'estado terminadas',f:()=>{GER.est=new Set(['term'])}},
+     {n:'dos estados',f:()=>{GER.est=new Set(['vencida','tarde'])}},
+     {n:'mes + cliente + estado',f:()=>{GER.meses=new Set([mesesGER()[0]]);GER.cli=new Set([clientesGER()[0]]);GER.est=new Set(['curso','term'])}},
+     {n:'buscador',f:()=>{GER.q='a'}},
+     {n:'todo junto',f:()=>{GER.meses=new Set(mesesGER().slice(0,2));GER.cli=new Set(clientesGER().slice(0,2));GER.est=new Set(['curso']);GER.q='a'}},
+     {n:'filtro que no deja nada',f:()=>{GER.q='zzz-no-existe-zzz'}}];
+    let todosOk=true,detalle='';
+    combos.forEach(c=>{GER.meses=null;GER.cli=null;GER.est=null;GER.q='';if(c.f)c.f();
+     const ords=ordenesGER(P);
+     const tots=GER_BLOQUES.map(b=>totGER(agruparGER(b,ords,P)));
+     const pz=tots.map(t=>t.pz), n=tots.map(t=>t.n), he=tots.map(t=>t.hechas);
+     const ok=pz.every(x=>x===pz[0])&&n.every(x=>x===n[0])&&he.every(x=>x===he[0])&&pz[0]===ords.reduce((a,o)=>a+(+o.cant||0),0);
+     if(!ok){todosOk=false;detalle+=c.n+': pz='+pz.join('/')+' n='+n.join('/')+' · ';}});
+    __check("GC: los totales de «Pedidas» de los CINCO bloques son idénticos con cualquier combinación de filtros",todosOk,detalle);
+    GER.meses=null;GER.cli=null;GER.est=null;GER.q='';
+    const ords=ordenesGER(P);
+    __check("GC: y también cuadran órdenes y hechas, no solo las prendas",(()=>{const t=GER_BLOQUES.map(b=>totGER(agruparGER(b,ords,P)));
+      return t.every(x=>x.n===t[0].n&&x.hechas===t[0].hechas&&Math.abs(x.usd-t[0].usd)<0.01)})());}
+   /* filtros GLOBALES */
+   {GER.meses=null;GER.cli=null;GER.est=null;GER.q='';
+    const todas=ordenesGER(P).length;
+    const c0=clientesGER()[0];GER.cli=new Set([c0]);
+    const soloC=ordenesGER(P);
+    __check("GF: el filtro de cliente es global y acota de verdad",soloC.length<=todas&&soloC.every(o=>(o.cliente||'Sin cliente')===c0));
+    GER.cli=null;GER.est=new Set(['term']);
+    const term=ordenesGER(P);
+    __check("GF: el filtro de estado usa el mismo estado que muestra el detalle",term.every(o=>estadoGERDe(o,P)==='term'));
+    GER.est=null;GER.q='zzz-no-existe-zzz';
+    __check("GF: el buscador también es global",ordenesGER(P).length===0);
+    GER.q='';
+    page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
+    __check("GF: los cuatro filtros están en la misma cabecera",/Meses del Proyecto/.test(h)&&/>Cliente</.test(h)&&/>Estado</.test(h)&&/GER\.q/.test(h));}
+   /* vencidas y va tarde: UNA sola definición */
+   {const ords=ordenesGER(P);
+    __check("GV: «meta vencida» y «la orden va tarde» salen de diagAtraso, el mismo de las marcas",
+     ords.every(o=>{const d=diagAtraso(o,P);return esMetaVencida(o,P)===!!(d.orden&&d.vencida)&&esOrdenVaTarde(o,P)===!!(d.orden&&!d.vencida)}));
+    __check("GV: una orden no puede ser las dos cosas a la vez",ords.every(o=>!(esMetaVencida(o,P)&&esOrdenVaTarde(o,P))));
+    __check("GV: los bloques cuentan lo mismo que la cabecera",(()=>{const t=totGER(agruparGER(GER_BLOQUES[0],ords,P));
+      return t.venc===ords.filter(o=>esMetaVencida(o,P)).length&&t.tarde===ords.filter(o=>esOrdenVaTarde(o,P)).length})());
+    page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
+    __check("GV: y la pantalla usa los mismos nombres, no inventa otros",/Meta vencida/.test(h)&&/La orden va tarde/.test(h)&&!/>En riesgo</.test(h));}
+   /* «hechas» = último paso de la ruta, y la brecha de ruta sin Empaque */
+   {const o=S.ordenes.find(x=>abierta(x)&&pasosProDe(x).length>1);
+    if(o){const ru=pasosProDe(o);const ult=ru[ru.length-1];
+     S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros={};
+     __check("GH: sin avance en el último paso, hechas = 0 aunque haya avance en los anteriores",(S.avance[o.id].centros[ru[0]]=+o.cant,pzHechasOrden(o)===0));
+     S.avance[o.id].centros[ult]=7;
+     __check("GH: hechas se mide en el ÚLTIMO paso de la ruta",pzHechasOrden(o)===7);
+     delete S.avance[o.id].centros;}
+    // la brecha: toda ruta debe terminar en Empaque
+    const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
+    const mk=(op,ruta)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.estado='plan';x.cant=10;x.ruta=ruta;delete x.programa;S.ordenes.push(x);delete S.avance[x.id];return x};
+    const mal=mk('WH/SINEMP-1',[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'plancha',t:2}]);
+    const bien=mk('WH/CONEMP-1',[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}]);
+    __check("GH: una ruta que no termina en Empaque sale como brecha",!rutaTerminaEnEmpaque(mal)&&rutasSinEmpaque(null).includes(mal));
+    __check("GH: y una que sí termina en Empaque, no",rutaTerminaEnEmpaque(bien)&&!rutasSinEmpaque(null).includes(bien));
+    const hb=rutasSinEmpaqueHTML(null);
+    __check("GH: la brecha trae conteo y lista, y dice en qué centro terminan",/Ruta no termina en Empaque/.test(hb)&&hb.includes(esc(mal.op))&&/Terminan en Plancha/.test(hb));
+    __check("GH: y NO se le da trato especial en el cálculo: se mide igual, en su último paso",(()=>{S.avance[mal.id]={centros:{plancha:4}};return pzHechasOrden(mal)===4})());
+    S.ordenes=S.ordenes.filter(x=>x!==mal&&x!==bien);[mal,bien].forEach(x=>delete S.avance[x.id]);}
+   /* bloques colapsables, uno a la vez, recordando el último */
+   {GER.abierto=null;abrirBloqueGER('cliente');
+    __check("GB: se abre el bloque tocado",GER.abierto==='cliente');
+    abrirBloqueGER('fase');
+    __check("GB: abrir otro cierra el anterior: solo uno a la vez",GER.abierto==='fase');
+    abrirBloqueGER('fase');
+    __check("GB: tocarlo otra vez lo cierra",GER.abierto===null);
+    abrirBloqueGER('odc');
+    __check("GB: y se recuerda cuál quedó abierto",(()=>{try{return localStorage['__ger_'+claveUsr()]==='odc'}catch(e){return true}})());
+    page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
+    __check("GB: los cinco bloques están, y solo el abierto muestra su tabla",GER_BLOQUES.every(b=>h.includes(esc(b.n)))&&(h.match(/>Pedidas</g)||[]).length===1);
+    __check("GB: el detalle se abre al tocar una fila",/verDetalleGER\(/.test(h));
+    GER.abierto=null;GER.det=null;}
+   /* columnas propias de cada bloque */
+   {GER.abierto='fase';const h1=bloqueGERHTML(GER_BLOQUES[1],ordenesGER(P),P);
+    __check("GX: el bloque de fase trae los días en la fase, y dice «sin historial» en vez de un 0 inventado",/Días en la fase/.test(h1)&&(/sin historial/.test(h1)||!/sin historial/.test(h1)));
+    GER.abierto='odc';const h2=bloqueGERHTML(GER_BLOQUES[2],ordenesGER(P),P);
+    __check("GX: el bloque de ODC trae cliente, entrega más temprana y cuántas están listas",/Entrega más temprana/.test(h2)&&/Órdenes listas/.test(h2));
+    GER.abierto='estilo';const h3=bloqueGERHTML(GER_BLOQUES[3],ordenesGER(P),P);
+    __check("GX: el bloque de estilo trae categorías y colores",/Categorías/.test(h3)&&/Colores/.test(h3));
+    GER.abierto=null;}
+   /* cierre mensual: se empieza a guardar YA */
+   {S.params.cierresMes={};
+    // las órdenes del demo no traen Proyecto: sin mes no hay cierre mensual que tomar
+    const bakPro=S.ordenes.map(o=>o.proyecto);
+    const mesAnt=hoy().slice(0,4)+'-'+String(Math.max(1,+hoy().slice(5,7)-1)).padStart(2,'0');
+    const nomMes=m=>['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+m.slice(5,7)-1]+' '+m.slice(0,4);
+    S.ordenes.forEach((o,i)=>{o.proyecto=nomMes(i%2?mesAnt:hoy().slice(0,7))});
+    const n=guardarCierresMes(P);
+    __check("GM: se guarda una foto de la cartera por mes",n>0&&Object.keys(cierresMes()).length===n);
+    const ym=Object.keys(cierresMes())[0];const f=cierresMes()[ym];
+    __check("GM: la foto trae órdenes, pedidas, hechas, valor, vencidas y va tarde",['ordenes','pz','hechas','usd','vencidas','tarde'].every(k=>k in f));
+    __check("GM: y el desglose por cliente y por familia",!!f.porCliente&&!!f.porFamilia&&Object.keys(f.porCliente).length>0);
+    __check("GM: la foto usa las MISMAS definiciones de vencida y va tarde",(()=>{const o2=S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&(mesPlan(o)||'Sin proyecto')===ym);
+      return f.vencidas===o2.filter(o=>esMetaVencida(o,P)).length&&f.tarde===o2.filter(o=>esOrdenVaTarde(o,P)).length})());
+    // el mes en curso se actualiza una vez al día; los que pasaron se congelan
+    const hoyYm=hoy().slice(0,7);
+    if(cierresMes()[hoyYm]){__check("GM: el mes en curso queda abierto",cierresMes()[hoyYm].cerrado===false);
+     const ts0=cierresMes()[hoyYm].ts;guardarCierresMes(P);
+     __check("GM: y no se vuelve a tomar el mismo día",cierresMes()[hoyYm].ts===ts0);}
+    const viejo=Object.keys(cierresMes()).filter(x=>x<hoyYm)[0];
+    if(viejo){__check("GM: un mes que ya pasó queda CERRADO",cierresMes()[viejo].cerrado===true);
+     const t0=cierresMes()[viejo].ts;cierresMes()[viejo].pz=-1;guardarCierresMes(P);
+     __check("GM: y una vez cerrado no se vuelve a tocar nunca",cierresMes()[viejo].pz===-1&&cierresMes()[viejo].ts===t0);}
+    __check("GM: la pantalla muestra la historia y dice que el gráfico todavía no está",/Historia de la cartera/.test(cierresMesHTML())&&/todavía no está/.test(cierresMesHTML()));
+    S.params.cierresMes={};S.ordenes.forEach((o,i)=>{if(bakPro[i]===undefined)delete o.proyecto;else o.proyecto=bakPro[i]});}
+   /* márgenes: anotado como integración futura, sin construir nada */
+   {__check("GZ: márgenes queda anotado como integración futura con Costos TEMPO, sin inventar ningún costo",
+     /Costos TEMPO/.test(consultasGERHTML(ordenesGER(P),P))&&!/margen/i.test(JSON.stringify(GER_BLOQUES.map(b=>b.n))));}
+   window.alert=a0;PERFIL=adminP;GER.meses=null;GER.cli=null;GER.est=null;GER.q='';GER.abierto=null;GER.det=null;
+   PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("GC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

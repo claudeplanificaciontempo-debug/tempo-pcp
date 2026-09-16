@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 13:35';
+const APP_BUILD='2026-09-16 14:41';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2789,12 +2789,15 @@ function irLib(et){LIB.et=et;LIB.sel=new Set();ir('liberacion')}
 function vGerencia(el){
   if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Resumen gerencial</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
   const P=programarTodo();const todasOrds=S.ordenes.filter(o=>abierta(o)||o.estado==='prevision');
-  const ords=todasOrds.filter(enMesGER);          // el filtro de meses manda sobre todos los bloques
+  const ords=todasOrds.filter(o=>pasaFiltrosGER(o,P));   // meses, cliente, estado y buscador: los cuatro mandan sobre todos los bloques
+  guardarCierresMes(P);                                  // se va guardando la historia de la cartera
   const esWH=o=>o.estado!=='prevision';
   const kgO=kgPendiente,minO=minPendiente;
   const pz=ords.reduce((a,o)=>a+ +o.cant,0),kg=ords.reduce((a,o)=>a+kgO(o),0),hrs=ords.reduce((a,o)=>a+minO(o),0)/60;
   const kgTot=ords.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext).reduce((b,t)=>b+kgCrudo(t.tela,t.kg),0),0),hrsTot=ords.reduce((a,o)=>a+(o.ruta||[]).reduce((b,p)=>b+o.cant*minPrenda(p.centro,p.t),0),0)/60;
-  const h=hoy();const vencida=o=>o.fecha<h;const riesgo=o=>!vencida(o)&&P.ordenes[o.id]&&P.ordenes[o.id].atraso;
+  const h=hoy();
+  /* una sola definición: la de diagAtraso(), que es la que pinta «meta vencida» y «la orden va tarde» */
+  const vencida=o=>esMetaVencida(o,P),riesgo=o=>esOrdenVaTarde(o,P);
   const ven=ords.filter(vencida),venPz=ven.reduce((a,o)=>a+ +o.cant,0);
   const atr=ords.filter(riesgo),atrPz=atr.reduce((a,o)=>a+ +o.cant,0);
   // por mes
@@ -2828,7 +2831,7 @@ function vGerencia(el){
   const avisos=[];
   avisos.push('Este resumen mira toda la cartera sin considerar liberaciones: el riesgo y las fechas se calculan como si todo estuviera liberado.');
   if(ords.some(o=>!esWH(o)))avisos.push('Sin WH: estilos en diseño o recetas que aún no tienen orden de producción; cuentan en la carga y en el avance como sin empezar; no tienen receta, así que no entran al riesgo.');
-  avisos.push('Vencida: la fecha de entrega ya pasó. En riesgo: la entrega está por venir pero, con la capacidad cargada, el programa la termina después. Avance: fase 8 o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
+  avisos.push('Vencida: la fecha de entrega ya pasó. La orden va tarde: la meta está por venir pero, con la capacidad cargada, el programa la termina después. Meta vencida: la meta ya pasó y la orden sigue sin llegar. Son los mismos dos nombres que usan las marcas de las pantallas de centro, con la misma definición. Avance: fase 8 o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
   if(S.ordenes.some(o=>o.samProv))avisos.push('Los tiempos de corte, confección y empaque son provisionales por familia; la fecha estimada de planta mejora cuando se carguen las hojas de operaciones.');
   if(S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro').every(r=>r.pers===12||r.pers===10||r.pers===8||r.pers===6||r.pers===4||r.pers===3||r.pers===2||r.pers===20))avisos.push('Las capacidades de los recursos de producción son valores de arranque, no los reales de cada módulo.');
   const sinCod=S.colores.filter(c=>!c.cod).length;if(sinCod)avisos.push(sinCod+' colores sin código Pantone (profundidad de baño supuesta como media).');
@@ -2839,7 +2842,7 @@ function vGerencia(el){
   <div class="kpis" style="margin:12px 0 16px"><div class="kpi"><div class="v">${ords.length}</div><div class="k">Órdenes en cartera <span class="mut">· ${ords.filter(esWH).length} con WH, ${ords.filter(o=>!esWH(o)).length} sin WH</span></div></div><div class="kpi"><div class="v">${num(pz)}</div><div class="k">Prendas <span class="mut">· ${num(ords.filter(esWH).reduce((a,o)=>a+ +o.cant,0))} con WH, ${num(ords.filter(o=>!esWH(o)).reduce((a,o)=>a+ +o.cant,0))} sin WH</span></div></div>
    <div class="kpi"><div class="v">${num(kg)} kg</div><div class="k">Tela propia pendiente de tejer y teñir <span class="mut">· de ${num(kgTot)} kg en la cartera</span></div></div><div class="kpi"><div class="v">${num(hrs)} h</div><div class="k">Horas de planta pendientes <span class="mut">· de ${num(hrsTot)} h totales</span></div></div>
    <div class="kpi ${ven.length?'bad':''}"><div class="v">${ven.length}</div><div class="k">Con entrega vencida · ${num(venPz)} pz</div></div>
-   <div class="kpi ${atr.length?'warn':''}"><div class="v">${atr.length}</div><div class="k">En riesgo (terminan después de la entrega) · ${num(atrPz)} pz</div></div>
+   <div class="kpi ${atr.length?'warn':''}"><div class="v">${atr.length}</div><div class="k">La orden va tarde (termina después de la meta) · ${num(atrPz)} pz</div></div>
    ${(()=>{const bl=ords.filter(o=>esWH(o)&&(P.ordenes[o.id]||{}).bloqueo);return bl.length?`<div class="kpi warn"><div class="v">${bl.length}</div><div class="k">Sin fecha: esperan liberación o decisión · ${num(bl.reduce((a,o)=>a+ +o.cant,0))} pz</div></div>`:''})()}</div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -2866,13 +2869,15 @@ function vGerencia(el){
   <p style="margin:8px 0 0;font-size:var(--fs-s)"><b>Cuello de botella:</b> ${cuello?AREAS[cuello.a]+' llega al '+Math.round(cuello.p)+'% de su capacidad en el mes más cargado.':'—'} Tintorería: ${banos.length} baños programados, ${aprob.length} con aprobación pendiente y ${bajos.length} por debajo del llenado.</p>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
-   <div><h4 style="margin:0 0 6px">Carga por cliente</h4><table><thead><tr><th>Cliente</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">Con WH</th><th class="num">Sin WH</th><th class="num">Facturación</th><th class="num">Vencidas</th><th class="num">En riesgo</th></tr></thead><tbody>
+   <div><h4 style="margin:0 0 6px">Carga por cliente</h4><table><thead><tr><th>Cliente</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">Con WH</th><th class="num">Sin WH</th><th class="num">Facturación</th><th class="num">Vencidas</th><th class="num">Va tarde</th></tr></thead><tbody>
     ${Object.entries(cli).sort((a,b)=>b[1].pz-a[1].pz).map(([c,v])=>`<tr><td>${esc(c)}</td><td class="num">${v.n}</td><td class="num"><b>${num(v.pz)}</b></td><td class="num">${num(v.pzWH)}</td><td class="num">${v.pzSin?num(v.pzSin):'<span class="mut">·</span>'}</td><td class="num">${usd(v.usd)}</td><td class="num">${v.ven||'<span class="mut">·</span>'}</td><td class="num">${v.atr||'<span class="mut">·</span>'}</td></tr>`).join('')}</tbody></table></div>
-   <div><h4 style="margin:0 0 6px">Órdenes en riesgo más grandes</h4><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Estimada</th></tr></thead><tbody>
+   <div><h4 style="margin:0 0 6px">Órdenes que van tarde, las más grandes</h4><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Estimada</th></tr></thead><tbody>
     ${top.map(o=>`<tr><td>${esc(o.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${o.fecha.slice(5)}</td><td>${fmtDia(P.ordenes[o.id].finPro)}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Ninguna.</td></tr>'}</tbody></table></div>
   </div>
   ${avisos.length?`<p class="mut" style="font-size:var(--fs-xs);margin:16px 0 0;line-height:1.5"><b>Notas:</b> ${avisos.map(esc).join(' ')}</p>`:''}
-  </section>`;
+  </section>
+  ${consultasGERHTML(ords,P)}
+  ${cierresMesHTML()}`;
 }
 
 /* ---------- Plan mensual: estructura, capacidad, facturación, metas semanales y congelado ---------- */
@@ -4385,7 +4390,8 @@ function detalleAgrupableHTML(id,ords,titulo,nota,extraCol){
 
 /* ---------- 1 · filtro global de meses del Resumen gerencial ---------- */
 /* Un solo Set manda sobre TODOS los bloques: carga por mes, cartera, pedido y avance. */
-let GER={meses:null};
+let GER={meses:null,cli:null,est:null,q:'',abierto:null,det:null};
+try{GER.abierto=localStorage['__ger_'+((PERFIL&&(PERFIL.id||PERFIL.email))||'anon')]||null}catch(e){}
 function togMesGER(m){togSet(GER,'meses',m)}
 function mesesGER(){const ms=[...new Set(S.ordenes.filter(o=>abierta(o)||o.estado==='prevision').map(o=>mesPlan(o)||'Sin proyecto'))];
   return ms.sort((a,b)=>a==='Sin proyecto'?1:b==='Sin proyecto'?-1:(a<b?-1:1))}
@@ -4397,14 +4403,17 @@ function filtroMesesGERHTML(ords,P){
   const pz=ords.reduce((a,o)=>a+ +o.cant||0,0);
   const usd=ords.reduce((a,o)=>a+((o.precio||0)*(+o.cant||0)),0);
   const h=hoy();
-  const ven=ords.filter(o=>o.fecha&&o.fecha<h).length;
-  const rie=ords.filter(o=>o.fecha&&o.fecha>=h&&(P.ordenes[o.id]||{}).atraso).length;
+  const ven=ords.filter(o=>esMetaVencida(o,P)).length;
+  const rie=ords.filter(o=>esOrdenVaTarde(o,P)).length;
   const hechas=ords.reduce((a,o)=>a+Math.min(+o.cant||0,pzHechasOrden(o)),0);
   return `<div class="panel" style="border:2px solid var(--t-primary)"><div class="body">
    <div class="row" style="align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 10px">
     ${selMulti('Meses del Proyecto',ms,GER.meses,'GER.meses','togMesGER',fmtMesGER)}
+    ${selMulti('Cliente',clientesGER(),GER.cli,'GER.cli','togCliGER')}
+    ${selMulti('Estado',GER_ESTADOS.map(x=>x[0]),GER.est,'GER.est','togEstGER',k=>(GER_ESTADOS.find(x=>x[0]===k)||[,k])[1])}
+    <div style="width:200px"><label>Buscar</label>${busqHTML('GER.q',GER.q,'GER.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
     <span class="mut" style="font-size:var(--fs-s)">${sel?'Sumando <b>'+sel.length+'</b> '+(sel.length===1?'mes':'meses')+': '+sel.map(fmtMesGER).map(esc).join(' + '):'Todos los meses'} · el filtro afecta a <b>todos</b> los bloques de esta pantalla</span>
-    ${sel?`<button class="btn ghost sm" onclick="GER.meses=null;render()">Todos los meses</button>`:''}
+    ${(sel||(GER.cli&&GER.cli.size)||(GER.est&&GER.est.size)||GER.q)?`<button class="btn ghost sm" onclick="GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render()">Limpiar filtros</button>`:''}
    </div>
    <div class="kpis tarj-row">
     <div class="kpi tarj"><div class="v">${num(ords.length)}</div><div class="k">Órdenes</div></div>
@@ -4412,8 +4421,8 @@ function filtroMesesGERHTML(ords,P){
     <div class="kpi tarj ok"><div class="v">${num(hechas)}</div><div class="k">Hechas · ${pz?Math.round(hechas/pz*100):0}%</div></div>
     <div class="kpi tarj"><div class="v">${num(Math.max(0,pz-hechas))}</div><div class="k">Lo que falta</div></div>
     <div class="kpi tarj"><div class="v">$ ${num(usd)}</div><div class="k">Valor${ords.some(o=>!o.precio)?' <span class="mut">· '+ords.filter(o=>!o.precio).length+' sin precio</span>':''}</div></div>
-    <div class="kpi tarj ${ven?'bad':''}"><div class="v">${num(ven)}</div><div class="k">Vencidas</div></div>
-    <div class="kpi tarj ${rie?'warn':''}"><div class="v">${num(rie)}</div><div class="k">En riesgo</div></div>
+    <div class="kpi tarj ${ven?'bad':''}"><div class="v">${num(ven)}</div><div class="k">Meta vencida</div></div>
+    <div class="kpi tarj ${rie?'warn':''}"><div class="v">${num(rie)}</div><div class="k">La orden va tarde</div></div>
    </div>
   </div></div>`}
 /* prendas hechas de una orden: el último paso de producción de su ruta */
@@ -4532,6 +4541,150 @@ function avanceCongeladoHTML(cens,P,lun,dom){const lista=(Array.isArray(cens)?ce
     ${a.agregadas.length?a.agregadas.map(x=>`<tr style="background:var(--field)"><td style="white-space:nowrap">${x.o?whCell(x.o):esc(x.op)}</td><td class="num mut">—</td><td class="num">${num(x.pz)}</td><td></td><td><span class="tag t-aviso" title="entró al programa después de congelar">agregada después</span></td></tr>`).join(''):''}
     </tbody></table></div>`).join('')}
    <p class="mut" style="font-size:var(--fs-s);margin:10px 0 0">Este congelado es de <b>la semana de un centro</b>: fija cuándo y cuánto se va a hacer. Es distinto del <b>congelado del plan mensual</b> (Plan mensual, bloque 5), que fija <b>qué órdenes entran al mes</b>. Uno no reemplaza al otro: el del mes dice el alcance, este dice la ejecución.</p>`}
+  </div></div>`}
+/* ==================== CONSULTAS DEL RESUMEN GERENCIAL (16-sep-2026, diseño aprobado) ==================== */
+
+/* ---------- Vencidas y en riesgo: UNA sola definición, la de las marcas que ya existen ----------
+   «meta vencida» y «la orden va tarde» salen de diagAtraso(), el mismo que pinta marcaCentro().
+   No hay un segundo cálculo: si cambia la regla del motor, cambian las dos a la vez. */
+function esMetaVencida(o,P){const d=diagAtraso(o,P);return !!(d.orden&&d.vencida)}
+function esOrdenVaTarde(o,P){const d=diagAtraso(o,P);return !!(d.orden&&!d.vencida)}
+const GER_ESTADOS=[['curso','En curso'],['vencida','Meta vencida'],['tarde','La orden va tarde'],['term','Terminadas']];
+function estadoGERDe(o,P){if(pzHechasOrden(o)>=(+o.cant||0)&&(+o.cant||0)>0)return 'term';
+  if(esMetaVencida(o,P))return 'vencida';
+  if(esOrdenVaTarde(o,P))return 'tarde';
+  return 'curso'}
+
+/* ---------- filtros GLOBALES: los cinco bloques obedecen a los mismos ---------- */
+function togCliGER(c){togSet(GER,'cli',c)}
+function togEstGER(e){togSet(GER,'est',e)}
+function clientesGER(){return [...new Set(S.ordenes.filter(o=>abierta(o)||o.estado==='prevision').map(o=>o.cliente||'Sin cliente'))].sort((a,b)=>a.localeCompare(b,'es'))}
+function pasaFiltrosGER(o,P){if(!enMesGER(o))return false;
+  if(GER.cli&&GER.cli.size&&!GER.cli.has(o.cliente||'Sin cliente'))return false;
+  if(GER.est&&GER.est.size&&!GER.est.has(estadoGERDe(o,P)))return false;
+  if(GER.q&&!matchBusq(o,normTxt(GER.q),'GER.q'))return false;
+  return true}
+function ordenesGER(P){return S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&pasaFiltrosGER(o,P))}
+
+/* ---------- brecha: toda ruta debe terminar en Empaque ---------- */
+function rutaTerminaEnEmpaque(o){const ru=pasosProDe(o);return ru.length?ru[ru.length-1]==='empaque':false}
+function rutasSinEmpaque(P){return (P?ordenesGER(P):S.ordenes.filter(abierta)).filter(o=>pasosProDe(o).length&&!rutaTerminaEnEmpaque(o))}
+function rutasSinEmpaqueHTML(P){const l=rutasSinEmpaque(P);
+  const porUlt={};l.forEach(o=>{const ru=pasosProDe(o);const u=ru[ru.length-1];(porUlt[u]=porUlt[u]||[]).push(o)});
+  return `<div class="panel"${l.length?' style="border:2px solid var(--alerta)"':''}><h3>Ruta no termina en Empaque <span class="note">${l.length} órdenes · ${num(l.reduce((a,o)=>a+ +o.cant||0,0))} prendas</span></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Toda ruta debe terminar en Empaque.</b> En estas no es así, y por eso «hechas» se mide en un paso que no es el final: el número queda alto o bajo sin que se note. No reciben ningún trato especial en los cálculos — se arreglan aquí.</p>
+   ${l.length?`<div class="kpis tarj-row">${Object.entries(porUlt).sort((a,b)=>b[1].length-a[1].length).map(([u,os])=>`<div class="kpi tarj warn"><div class="v">${os.length}</div><div class="k">Terminan en ${esc(nCen(u))}</div></div>`).join('')}</div>
+   <div class="scroll" style="max-height:340px;margin-top:10px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th class="num">Prendas</th><th>Ruta</th><th>Termina en</th><th></th></tr></thead><tbody>
+    ${l.slice(0,300).map(o=>{const ru=pasosProDe(o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td class="num">${num(o.cant)}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${ru.map(c=>esc(nCen(c))).join(' → ')}</td>
+     <td><span class="tag t-alerta">${esc(nCen(ru[ru.length-1]))}</span></td>
+     <td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar ruta</button>`:''}</td></tr>`}).join('')}
+   </tbody></table>${l.length>300?`<p class="mut">Se muestran 300 de ${l.length}.</p>`:''}</div>`:'<div class="empty">Ninguna: todas las rutas de producción terminan en Empaque.</div>'}
+  </div></div>`}
+
+/* ---------- las cinco consultas: mismas columnas, misma cuenta, distinta clave ---------- */
+const GER_BLOQUES=[
+  {id:'cliente',n:'Por cliente',clave:o=>o.cliente||'Sin cliente',col:'Cliente'},
+  {id:'fase',n:'Por fase',clave:o=>o.fase||'Sin fase',col:'Fase',orden:(a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b,'es')},
+  {id:'odc',n:'Por ODC',clave:o=>String(o.odc||'').trim()||'Sin ODC',col:'ODC'},
+  {id:'estilo',n:'Por estilo',clave:o=>String(o.ref||'').trim()||'Sin estilo',col:'Estilo'},
+  {id:'familia',n:'Por familia',clave:o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'},col:'Familia'}];
+/* días que lleva una orden en su fase actual; sin historial NO se inventa un 0 */
+function diasEnFase(o){const fs=(o.fases||[]).filter(x=>x.ts);if(!fs.length)return null;
+  const ult=fs[fs.length-1];return diasEntre(String(ult.ts).slice(0,10),hoy())}
+function agruparGER(b,ords,P){const m={};
+  ords.forEach(o=>{const k=b.clave(o);const r=m[k]=m[k]||{k,n:0,pz:0,hechas:0,usd:0,sinPrecio:0,venc:0,tarde:0,kg:0,
+      clientes:new Set(),dias:[],sinHist:0,terminadas:0,entrega:null,cats:new Set(),colores:new Set()};
+    const pz=+o.cant||0;const he=Math.min(pz,pzHechasOrden(o));
+    r.n++;r.pz+=pz;r.hechas+=he;r.usd+=(o.precio||0)*pz;if(!o.precio)r.sinPrecio+=pz;
+    if(esMetaVencida(o,P))r.venc++;else if(esOrdenVaTarde(o,P))r.tarde++;
+    if(he>=pz&&pz>0)r.terminadas++;
+    r.kg+=kgPendiente(o);
+    if(o.cliente)r.clientes.add(o.cliente);
+    const k2=K(o.cat);if(k2)r.cats.add(k2.n);
+    const cl=(C(o.color)||{}).n;if(cl)r.colores.add(cl);
+    const d=diasEnFase(o);if(d==null)r.sinHist++;else r.dias.push(d);
+    const f=fechaMetaDe(o);if(f&&(!r.entrega||f<r.entrega))r.entrega=f});
+  const filas=Object.values(m).map(r=>Object.assign(r,{falta:Math.max(0,r.pz-r.hechas),
+    pct:r.pz?r.hechas/r.pz*100:null,diasProm:r.dias.length?Math.round(r.dias.reduce((a,x)=>a+x,0)/r.dias.length):null}));
+  filas.sort(b.orden?((x,y)=>b.orden(x.k,y.k)):((x,y)=>y.pz-x.pz||String(x.k).localeCompare(String(y.k),'es')));
+  return filas}
+function totGER(filas){return filas.reduce((a,r)=>({n:a.n+r.n,pz:a.pz+r.pz,hechas:a.hechas+r.hechas,usd:a.usd+r.usd,
+  venc:a.venc+r.venc,tarde:a.tarde+r.tarde,kg:a.kg+r.kg}),{n:0,pz:0,hechas:0,usd:0,venc:0,tarde:0,kg:0})}
+/* un bloque abierto a la vez, y se recuerda cuál */
+function abrirBloqueGER(id){GER.abierto=(GER.abierto===id)?null:id;
+  try{localStorage['__ger_'+claveUsr()]=GER.abierto||''}catch(e){}
+  GER.det=null;render()}
+function verDetalleGER(b,k){GER.det=(GER.det&&GER.det.b===b&&GER.det.k===k)?null:{b,k};render()}
+function bloqueGERHTML(b,ords,P){const abierto=GER.abierto===b.id;
+  const filas=abierto?agruparGER(b,ords,P):null;
+  const t=filas?totGER(filas):null;
+  const extra=b.id==='fase'?['Días en la fase']:b.id==='odc'?['Cliente','Entrega más temprana','Órdenes listas']:b.id==='estilo'?['Categorías','Colores']:[];
+  const cel=r=>b.id==='fase'?`<td class="num">${r.diasProm==null?'<span class="mut" title="ninguna de estas órdenes tiene historial de fases: no hay desde cuándo">sin historial</span>':num(r.diasProm)+(r.sinHist?' <span class="mut" style="font-size:var(--fs-xs)">('+r.sinHist+' sin hist.)</span>':'')}</td>`
+    :b.id==='odc'?`<td class="mut">${esc([...r.clientes].slice(0,2).join(', '))}${r.clientes.size>2?' +'+(r.clientes.size-2):''}</td><td>${r.entrega?fmtDia(r.entrega):'<span class="mut">—</span>'}</td><td class="num">${r.terminadas} <span class="mut">de ${r.n}</span></td>`
+    :b.id==='estilo'?`<td class="mut" style="font-size:var(--fs-xs)">${esc([...r.cats].slice(0,2).join(', '))}${r.cats.size>2?' +'+(r.cats.size-2):''}</td><td class="mut" style="font-size:var(--fs-xs)">${r.colores.size}</td>`:'';
+  const nCols=9+extra.length;
+  return `<div class="panel"><h3 style="cursor:pointer" onclick="abrirBloqueGER('${b.id}')">${abierto?'▾':'▸'} ${esc(b.n)}
+   <span class="note">${abierto?filas.length+' '+(filas.length===1?'fila':'filas')+' · '+num(t.pz)+' prendas':'tocar para abrir'}</span></h3>
+   ${!abierto?'':`<div class="body">
+   <div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>${esc(b.col)}</th>${extra.map(x=>`<th>${esc(x)}</th>`).join('')}<th class="num">Órdenes</th><th class="num">Pedidas</th><th class="num">Hechas</th><th class="num">Falta</th><th style="width:120px">% avance</th><th class="num">Valor</th><th class="num">Vencidas</th><th class="num">Va tarde</th></tr></thead><tbody>
+   ${filas.slice(0,300).map(r=>`<tr class="${(GER.det&&GER.det.b===b.id&&GER.det.k===r.k)?'':''}" style="cursor:pointer${(GER.det&&GER.det.b===b.id&&GER.det.k===r.k)?';background:var(--field)':''}" onclick="verDetalleGER('${b.id}','${jsq(String(r.k))}')">
+     <td><b>${esc(String(r.k))}</b></td>${cel(r)}
+     <td class="num">${num(r.n)}</td><td class="num"><b>${num(r.pz)}</b></td><td class="num">${num(r.hechas)}</td><td class="num">${num(r.falta)}</td>
+     <td>${r.pct===null?'<span class="mut">—</span>':`<div class="bar" style="height:10px"><i style="width:${Math.round(r.pct)}%"></i></div><span class="mut" style="font-size:var(--fs-xs)">${Math.round(r.pct)}%</span>`}</td>
+     <td class="num">$ ${num(r.usd)}${r.sinPrecio?`<br><span class="tag t-aviso" style="font-size:10px;padding:0 4px" title="${num(r.sinPrecio)} prendas sin precio: no suman al valor">${num(r.sinPrecio)} s/precio</span>`:''}</td>
+     <td class="num">${r.venc?'<span class="tag t-alerta">'+r.venc+'</span>':'<span class="mut">0</span>'}</td>
+     <td class="num">${r.tarde?'<span class="tag t-aviso">'+r.tarde+'</span>':'<span class="mut">0</span>'}</td></tr>`).join('')}
+   <tr style="border-top:2px solid var(--rule);font-weight:600"><td>Total</td>${extra.map(()=>'<td></td>').join('')}<td class="num">${num(t.n)}</td><td class="num">${num(t.pz)}</td><td class="num">${num(t.hechas)}</td><td class="num">${num(t.pz-t.hechas)}</td>
+    <td>${t.pz?Math.round(t.hechas/t.pz*100)+'%':'—'}</td><td class="num">$ ${num(t.usd)}</td><td class="num">${t.venc}</td><td class="num">${t.tarde}</td></tr>
+   </tbody></table>${filas.length>300?`<p class="mut">Se muestran 300 de ${filas.length}.</p>`:''}</div>
+   ${(()=>{if(!GER.det||GER.det.b!==b.id)return '';
+     const det=ords.filter(o=>String(b.clave(o))===String(GER.det.k));
+     return `<div style="margin-top:12px;border-top:2px solid var(--rule);padding-top:10px">
+      <div class="row" style="margin:0 0 8px;align-items:center"><b>${esc(String(GER.det.k))}</b> <span class="mut">· ${det.length} órdenes</span><span class="spacer"></span>${grpSelHTML('gerdet',true)} <button class="btn ghost sm" onclick="GER.det=null;render()">cerrar</button></div>
+      <div class="scroll" style="max-height:340px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th class="num">Pedidas</th><th class="num">Hechas</th><th>Entrega</th><th>Estado</th></tr></thead><tbody>
+      ${(grpSt('gerdet').todoAbierto=true,filasGRP('gerdet',det.slice(0,300),o=>{const e=estadoGERDe(o,P);
+        return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td class="mut">${esc(nombreCat(K(o.cat))||'')}</td>
+         <td class="num">${num(o.cant)}</td><td class="num">${num(Math.min(+o.cant||0,pzHechasOrden(o)))}</td><td>${fechaMetaDe(o)?fmtDia(fechaMetaDe(o)):'—'}</td>
+         <td>${e==='term'?'<span class="tag t-ok">terminada</span>':e==='vencida'?'<span class="tag t-alerta">meta vencida</span>':e==='tarde'?'<span class="tag t-alerta">la orden va tarde</span>':'<span class="tag t-medio">en curso</span>'}</td></tr>`},7))}
+      </tbody></table></div></div>`})()}
+   </div>`}</div>`}
+function consultasGERHTML(ords,P){
+  return `<div style="margin:18px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Consultas</span>
+   <span class="mut" style="font-size:var(--fs-xs)">los cinco cortes de la misma cartera: los totales de «Pedidas» son idénticos en los cinco · un bloque abierto a la vez</span></div>
+  ${GER_BLOQUES.map(b=>bloqueGERHTML(b,ords,P)).join('')}
+  ${rutasSinEmpaqueHTML(P)}
+  <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Márgenes y costo por prenda: pendiente de integrar con <b>Costos TEMPO</b> (el sistema de costos, otro repositorio). Aquí solo hay precio, así que un margen sería inventado.</p>`}
+
+/* ---------- cierre mensual: se empieza a guardar YA, para tener historia ---------- */
+function cierresMes(){if(!S.params.cierresMes||typeof S.params.cierresMes!=='object')S.params.cierresMes={};return S.params.cierresMes}
+function fotoCarteraMes(ym,P){const ords=S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&(mesPlan(o)||'Sin proyecto')===ym);
+  const porClave=(fn)=>{const m={};ords.forEach(o=>{const k=fn(o);const r=m[k]=m[k]||{n:0,pz:0,hechas:0,usd:0,venc:0,tarde:0};
+    const pz=+o.cant||0;r.n++;r.pz+=pz;r.hechas+=Math.min(pz,pzHechasOrden(o));r.usd+=(o.precio||0)*pz;
+    if(esMetaVencida(o,P))r.venc++;else if(esOrdenVaTarde(o,P))r.tarde++});return m};
+  const t=porClave(()=>'t')['t']||{n:0,pz:0,hechas:0,usd:0,venc:0,tarde:0};
+  return {ym,ts:new Date().toISOString(),u:quienFirma(),
+    ordenes:t.n,pz:t.pz,hechas:t.hechas,usd:t.usd,vencidas:t.venc,tarde:t.tarde,
+    porCliente:porClave(o=>o.cliente||'Sin cliente'),
+    porFamilia:porClave(o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'})}}
+/* el mes en curso se actualiza; los meses que ya pasaron se congelan una sola vez */
+function guardarCierresMes(P){if(!S.ordenes.length)return 0;
+  const hoyYm=hoy().slice(0,7);const C=cierresMes();let n=0;
+  const yms=[...new Set(S.ordenes.filter(o=>abierta(o)||o.estado==='prevision').map(o=>mesPlan(o)).filter(Boolean))];
+  yms.forEach(ym=>{const ya=C[ym];
+    if(ya&&ya.cerrado)return;                       // ya congelado: no se toca nunca más
+    const foto=fotoCarteraMes(ym,P);
+    foto.cerrado=ym<hoyYm;                          // el mes ya pasó: esta es la foto definitiva
+    if(ya&&!foto.cerrado&&String(ya.ts).slice(0,10)===hoy())return;   // una por día mientras está en curso
+    C[ym]=foto;n++});
+  return n}
+function cierresMesHTML(){const C=cierresMes();const yms=Object.keys(C).sort().reverse();
+  return `<div class="panel"><h3>Historia de la cartera <span class="note">${yms.length} ${yms.length===1?'mes guardado':'meses guardados'} · se guarda solo, para poder comparar más adelante</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">El sistema guarda una <b>foto de la cartera de cada mes</b> (órdenes, prendas, hechas, valor, vencidas y va tarde, con el desglose por cliente y por familia). El mes en curso se actualiza una vez al día; cuando el mes pasa, su foto <b>se congela</b> y ya no cambia. El gráfico de tendencia todavía no está: primero hay que juntar historia.</p>
+   ${yms.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Mes</th><th class="num">Órdenes</th><th class="num">Pedidas</th><th class="num">Hechas</th><th class="num">Valor</th><th class="num">Vencidas</th><th class="num">Va tarde</th><th>Estado</th></tr></thead><tbody>
+    ${yms.slice(0,24).map(ym=>{const f=C[ym];return `<tr><td><b>${esc(fmtMesGER(ym))}</b></td><td class="num">${num(f.ordenes)}</td><td class="num">${num(f.pz)}</td><td class="num">${num(f.hechas)}</td><td class="num">$ ${num(f.usd)}</td><td class="num">${f.vencidas}</td><td class="num">${f.tarde}</td>
+     <td>${f.cerrado?'<span class="tag t-ok" title="el mes ya pasó: esta foto no cambia">cerrado</span>':'<span class="tag t-medio" title="se actualiza una vez al día">en curso</span>'} <span class="mut" style="font-size:var(--fs-xs)">${new Date(f.ts).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})}</span></td></tr>`}).join('')}
+   </tbody></table>`:'<div class="empty">Todavía no hay fotos guardadas. Se toma la primera al abrir esta pantalla con órdenes cargadas.</div>'}
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
