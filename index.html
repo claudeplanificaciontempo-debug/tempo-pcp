@@ -599,7 +599,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 09:06';
+const APP_BUILD='2026-09-16 09:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3767,6 +3767,23 @@ async function moverFasesRPC(ids,f,motivo){let n=0,err=null,falta=false;const mo
   if(falta)alert('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil mueve las fases con la función mover_fase del servidor, y todavía no existe. No se cambió nada: avisa a planificación.');
   else if(err)alert('El servidor no aceptó el cambio de fase:\n'+err+'\n\nNo se cambió nada.');
   return n}
+/* ---------- listas para empezar que el motor todavía no programa (el supervisor decide si las adelanta) ---------- */
+function listasNoProgramadas(c,P,hasta){
+  return S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c)&&!!listaParaEmpezar(o,c))
+    .map(o=>{const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};return{o,paso,l:listaParaEmpezar(o,c)}})
+    .filter(x=>!x.paso.ini||(hasta&&x.paso.ini>hasta))
+    .sort((a,b)=>((a.l.ci.ts||'')<(b.l.ci.ts||'')?1:-1))}
+function listasNoProgramadasHTML(c,P,hasta){const l=listasNoProgramadas(c,P,hasta);if(!l.length)return '';
+  const puedeAdel=!perfilSoloPiso()&&(puede('programa')||puede('reprogramar'));
+  return `<div class="panel" style="border:2px solid var(--ok)"><h3>Listas para empezar · aún no programadas <span class="note">${l.length} · el paso anterior ya terminó y las prendas están aquí, pero el motor las programa más adelante</span></h3><div class="body">
+   <table><thead><tr><th>OP · fase</th><th>Terminada en</th><th class="num">Prendas que salieron</th><th>Cliente</th><th>Entrega</th><th>El motor la programa</th><th></th></tr></thead><tbody>
+   ${l.map(({o,paso,l:li})=>`<tr><td style="white-space:nowrap">${whCell(o)}</td>
+     <td style="white-space:nowrap">${esc(nCen(li.centro))} <span class="mut" style="font-size:var(--fs-xs)">${new Date(li.ci.ts).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></td>
+     <td class="num">${num(li.ci.pz)}${li.ci.faltan?' <span class="tag t-aviso" title="'+esc(li.ci.motivo||'')+'">faltaron '+num(li.ci.faltan)+'</span>':''}</td>
+     <td>${esc(o.cliente||'')}</td><td>${esc(o.fecha||'—')}</td>
+     <td style="white-space:nowrap">${paso.ini?fmtDia(paso.ini):'<span class="tag t-aviso">sin fecha en el programa</span>'}</td>
+     <td style="white-space:nowrap">${puedeAdel?`<button class="btn ghost sm" title="la pone primera en la cola de este centro" onclick="moverEnCola('${o.id}','${c}',1)">adelantar</button>`:'<span class="mut" style="font-size:var(--fs-xs)">adelantarla en la cola la guarda planificación</span>'}</td></tr>`).join('')}
+   </tbody></table></div></div>`}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
   const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const pend=Math.max(0,o.cant-hechasPrev);const parc=permiteParcial(c);
@@ -3901,6 +3918,7 @@ function vCentro(el){
   if(CEN.tab==='prog'){
     const niv=nivelesCEN();const hasta=dsum(dom,7);
     const sec=seccionesModulos(cens,P);const secciones=sec?(modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')):'';
+    const listas=cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
     const tablas=cens.map(c=>{const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
       const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const sinPuesto=colaAll.filter(f=>!puestoDe(f.o,c)).length;const numerada=sinPuesto<colaAll.length;
       const fila=f=>{const pc=(f.o.progCentro||{})[f.c]||{};return `<tr draggable="${okPiso?'true':'false'}" ondragstart="arrastrarCola(event,'${f.o.id}','${f.c}')" ondragend="finArrastreCola(event)" ondragover="overCola(event,'${f.c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${f.c}','${f.o.id}')">
@@ -3915,6 +3933,7 @@ function vCentro(el){
        return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · ya libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const det=hd.detalle.find(x=>x.o===o)||{};const hc=Object.assign({pz:det.pz||0,u:(det.fuente==='tramo'?'registro por talla':''),ts:det.ts||new Date().toISOString(),dif:0},((S.avance[o.id]||{}).hechoC||{})[c]||{});const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${(regHechoOk(c)&&((S.avance[o.id]||{}).hechoC||{})[c])?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()}).join('');
     el.innerHTML=cab+resumenDiaFamiliaHTML(cens,P,dias,nombre)+secciones+`<div class="no-print" style="margin:-4px 0 10px"><button class="btn ghost sm" onclick="imprimirProgramaCentro('${cid}')">PDF del programa (para operarios)</button>${(cid==='corte'||cid==='modulos')?' <button class="btn ghost sm" onclick="ordenarColaPorColor(\''+cens[0]+'\')" title="junta los colores en la cola para bajar cambios de hilo; es solo el orden de los puestos, el motor no cambia">Juntar colores en la cola</button> <span class="mut" style="font-size:var(--fs-xs)">agrupar por color es vista y orden manual: el motor no secuencia por color</span>':''} <span class="mut" style="font-size:var(--fs-xs)">puesto, foto, WH, cliente, producto, color, minutos estándar y unidades · horizontal · sin datos internos</span></div>`+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${grpSelHTML('cen')}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
+    ${listas}
     ${tablas}
     <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. Las prendas de cada grupo son las pendientes en el centro. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p>`;
     return}

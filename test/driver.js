@@ -2462,6 +2462,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("SF3: la bandeja «fase sin actualizar» lista la orden para el supervisor",cf.some(x=>x.o.id===oF.id));
     page='control';CTL.area='fases';render();const h=document.getElementById('p-control').innerHTML;
     __check("SF3: y el panel le ofrece mover la fase (que ahora sí puede)",/Terminadas en un centro con la fase sin actualizar/.test(h)&&h.includes(esc(oF.op))&&/mover fase/.test(h)&&puedeFases()&&esSupervisorPiso());}
+   // 4 · listas para empezar que el motor aún no programa
+   {const oL=JSON.parse(JSON.stringify(base));oL.id=uid();oL.op='WH/FASE-2';oL.estado='plan';oL.cant=100;oL.fase='4CD Ensamble';oL.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5}];delete oL.programa;S.ordenes.push(oL);
+    S.avance[oL.id]={centros:{corte:80}};cierresDe(oL.id).corte={pz:80,cant:100,faltan:20,motivo:'prueba',u:'prueba',ts:new Date().toISOString()};
+    PLAN=null;PLAN_ALL=null;const P=programar();
+    const l=listasNoProgramadas('modulos',P,hoy());
+    __check("SF4: la orden con el paso anterior cerrado y sin fecha cercana sale en «listas para empezar»",l.some(x=>x.o.id===oL.id),JSON.stringify(l.map(x=>x.o.op)));
+    const h=listasNoProgramadasHTML('modulos',P,hoy());
+    __check("SF4: la sección dice dónde terminó, cuándo y cuántas prendas salieron",/Listas para empezar · aún no programadas/.test(h)&&h.includes(esc(oL.op))&&/80/.test(h)&&/faltaron 20/.test(h));
+    PERFIL=adminP;const h2=listasNoProgramadasHTML('modulos',P,hoy());
+    __check("SF4: planificación puede adelantarla; el piso ve que eso lo guarda planificación",/adelantar/.test(h2)&&/adelantarla en la cola la guarda planificación/.test(h));
+    page='centro';CEN.id='modulos';CEN.tab='prog';CEN.q='';render();
+    __check("SF4: la sección sale en la programación del centro",/Listas para empezar · aún no programadas/.test(document.getElementById('p-centro').innerHTML));
+    S.ordenes=S.ordenes.filter(x=>x!==oL);delete S.avance[oL.id]}
    PERFIL=adminP;__W.deny=null;__RPC.falta=false;__RPC.error=null;
    S.ordenes=S.ordenes.filter(o=>o!==oF);delete S.avance[oF.id];
    if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oF.id);
