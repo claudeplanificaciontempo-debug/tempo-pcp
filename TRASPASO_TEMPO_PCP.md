@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.19 Permisos de la tablet (15-sep-2026 noche)
+- El operario recibía «new row violates row-level security policy» en avance y bitacora: las políticas de Supabase no
+  incluyen al perfil tablet. Las políticas **no estaban en el repo**; ahora hay dos archivos:
+  `SUPABASE_POLITICAS_ACTUALES.sql` (consultas para volcar las que existen hoy) y `SUPABASE_POLITICAS_TABLET.sql`
+  (propuesta, **sin ejecutar**): lectura de lo que Mi centro necesita y escritura solo en **avance, bitacora, turnos y
+  paros** para los perfiles de piso. Nada de escritura en órdenes, params, centros, recursos ni configuración.
+- **Si el guardado falla, la app ya no recarga**: el registro se queda en pantalla, aparece el aviso «no se guardó,
+  avisa a planificación» con botón Reintentar, y al guardar bien desaparece.
+- La cabecera del operario no muestra Respaldo ni Restaurar (solo con permiso de configuración).
+- El buscador de WH va arriba de todo en Mi centro; la barra general no se corta en teléfono.
+
 ### 2.18 Mi centro único: inicio, fin, tiempo y unidades por talla (15-sep-2026 noche)
 - **Modo línea se juntó con Mi centro**: ya no está en el menú ni en los perfiles y el enlace viejo abre Mi centro del
   mismo módulo. La pantalla vieja sigue en el código hasta que la usuaria confirme borrarla.

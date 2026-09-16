@@ -1936,6 +1936,37 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bh=JSON.parse(bakH);if(bh)S.params.horarios=bh;else delete S.params.horarios;
    window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("MC3 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* TABLET: guardado que no pierde lo escrito, cabecera del operario y buscador arriba */
+  {const antes=__R.errors.length;const adminP=PERFIL;const bakTb=JSON.stringify(S.params.tablets||null);
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const uidOp='op-rls';S.params.tablets=S.params.tablets||{};S.params.tablets[uidOp]={centro:'modulos',rec};
+   // 1e · si falla el guardado, no se recarga y el aviso queda en pantalla
+   PERFIL={id:uidOp,nombre:'Modulo 1',rol:'tablet',modo:'editar'};page='tablet';render();
+   SAVE_ERR={ts:new Date().toISOString(),errs:['bitacora: new row violates row-level security policy for table bitacora'],permiso:true};
+   avisoGuardado();
+   {const h=document.getElementById('p-tablet').innerHTML;
+    __check("RLS: si el guardado falla, el aviso queda en pantalla y ofrece reintentar, sin recargar",/No se guardó en el servidor/.test(h)&&/avisa a planificación/i.test(h)&&h.includes('onclick="save()"'));
+    __check("RLS: el aviso dice que es un problema de permisos, no un error cualquiera",/no tiene permiso para escribir/.test(h));}
+   __check("RLS: el guardado no vuelve a cargar los datos del servidor cuando falla",!_save.toString().includes('await cargarTodo();render()'));
+   SAVE_ERR=null;avisoGuardado();
+   __check("RLS: al guardar bien, el aviso desaparece",!/No se guardó en el servidor/.test(document.getElementById('p-tablet').innerHTML));
+   // 2 · cabecera del operario
+   verBotonesAdmin();
+   __check("CAB: el operario no ve Respaldo ni Restaurar, y sí Actualizar y Salir",document.getElementById('btn-respaldo').style.display==='none'&&document.getElementById('btn-restaurar').style.display==='none'&&!!document.querySelector('header button[onclick="refrescar()"]')&&!!document.querySelector('header button[onclick="logout()"]'));
+   PERFIL=adminP;verBotonesAdmin();
+   __check("CAB: quien tiene permiso de configuración sí los ve",document.getElementById('btn-respaldo').style.display!=='none');
+   // 3 · buscador arriba de las tarjetas
+   PERFIL={id:uidOp,nombre:'Modulo 1',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
+   {const h=document.getElementById('p-tablet').innerHTML;const iB=h.indexOf('data-q="TAB.q"');const iT=h.indexOf('tab-card');
+    __check("BQ: el buscador de WH está arriba, antes de las tarjetas y del flujo",iB>=0&&(iT<0||iB<iT)&&/Buscar WH/.test(h));}
+   {const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];const oX=JSON.parse(JSON.stringify(base));oX.id=uid();oX.op='WH/NOAQUI';oX.estado='plan';delete oX.programa;S.ordenes.push(oX);delete S.avance[oX.id];PLAN=null;PLAN_ALL=null;
+    TAB.q='WH/NOAQUI';render();const h=document.getElementById('p-tablet').innerHTML;
+    const enCola=tabletFilas('modulos',rec,programar()).some(f=>f.o.op==='WH/NOAQUI');
+    __check("BQ: una WH que existe pero no está programada en mi recurso sale bloqueada",enCola||(/no programada en/.test(h)&&/Pedir reprogramación/.test(h)));
+    S.ordenes=S.ordenes.filter(x=>x!==oX);TAB.q=''}
+   const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
+   PERFIL=adminP;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

@@ -133,7 +133,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .fase-mini{font-size:10px;padding:0 5px;background:var(--field);color:var(--ink);border-color:var(--rule);vertical-align:middle;font-weight:400}.busq-menu{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);margin-top:4px;overflow:hidden}.busq-menu>div{padding:7px 12px;cursor:pointer;font-size:var(--fs-s);border-top:1px solid var(--rule2)}.busq-menu>div:first-child{border-top:0}.busq-menu>div:hover{background:var(--field)}
 .kpi.tarj{border-left:4px solid var(--t-accent);background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft));border-radius:8px}.kpi.tarj .v{color:var(--t-primary)}.kpi.tarj.clic{cursor:pointer}.kpi.tarj.clic:hover{filter:brightness(.97)}.kpi.tarj.abierta{outline:2px solid var(--t-accent)}.kpi.tarj.bad .v{color:var(--alerta)}.kpi.tarj.warn .v{color:var(--aviso)}.kpis.tarj-row{gap:8px;background:transparent;border:0}.panel h3{border-left:3px solid var(--t-accent)}.panel table thead th{background:var(--t-thead)}
 #navBtn{display:none;background:var(--t-accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:18px;cursor:pointer}
-@media (max-width:520px){#busg-host{order:9;flex:1 0 100%!important;min-width:0}#busg-host>div{max-width:none!important}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
+@media (max-width:520px){#busg-host{order:9;flex:1 0 100%!important;min-width:0;margin-top:6px}#busg-host>div{max-width:none!important;width:100%}#busg{font-size:16px;padding:10px}header{row-gap:8px}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
 @media (max-width:860px){#navBtn{display:inline-block}#app{grid-template-rows:auto auto 1fr!important}header{height:auto!important;min-height:52px;padding:8px 12px;gap:8px;row-gap:6px}header .saved{min-width:0;text-align:left;order:9}header h1{font-size:15px}header button{padding:6px 10px}nav{display:none;flex-direction:column;align-items:stretch;overflow:visible}nav.abierto{display:flex}nav .grp{display:block;padding:10px 14px}nav .gbody{position:static!important;display:none;left:auto!important}nav .gbody.abierto{display:block}.kpis,.kpis.tarj-row{flex-direction:column}.pagehead{flex-wrap:wrap}.tab-card .body{flex-direction:column}.tarjetas{grid-template-columns:1fr}.panel .body{overflow-x:auto}.scroll{overflow-x:auto}header{height:auto;flex-wrap:wrap;padding:8px 12px}header .sub{display:none}}
 .cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
@@ -274,7 +274,7 @@ tbody tr:hover td{background:var(--field)}
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
     <button onclick="refrescar()" title="Volver a leer los datos del servidor">Actualizar</button>
-    <button onclick="exportJSON()">Respaldo</button> <button onclick="importJSON()" title="Restaurar un respaldo JSON (solo administrador; pide confirmación y une la bitácora)">Restaurar</button>
+    <button id="btn-respaldo" onclick="exportJSON()">Respaldo</button> <button id="btn-restaurar" onclick="importJSON()" title="Restaurar un respaldo JSON (solo administrador; pide confirmación y une la bitácora)">Restaurar</button>
     <button onclick="logout()">Salir</button>
   </header>
 
@@ -556,6 +556,9 @@ async function revisarDatos(){if(guardando)return;const m=await maxActualizado()
   b.innerHTML='Hay <b>datos nuevos</b> guardados desde otra sesión a las '+new Date(m).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}).replace(/\.$/,'')+'. Lo que ves puede estar viejo. <button class="btn sm" style="margin-left:8px" onclick="refrescar()">Actualizar ahora</button>'}
 /* guarda solo lo que cambió respecto a lo leído del servidor; si la base rechaza algo (permisos), recarga */
 let guardando=false,pendiente=false;
+let SAVE_ERR=null;
+function avisoGuardado(){const n=document.getElementById('aviso-guardado');if(!n)return;
+  n.innerHTML=SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor.</b> Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
 async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
 async function _save(){
@@ -575,12 +578,17 @@ async function _save(){
   await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
   if(!errs.length)BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));
   const st=document.getElementById('saved');
-  if(errs.length){st.textContent='No se guardó';alert('No se pudo guardar:\n'+errs.join('\n')+'\n\nSe vuelven a cargar los datos del servidor.');await cargarTodo();render()}
-  else{st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
+  if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
+    SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4),permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e))};
+    if(st)st.textContent='No se guardó';
+    if(typeof avisoGuardado==='function')avisoGuardado();
+    if(!SAVE_ERR.permiso)alert('No se pudo guardar:\n'+errs.join('\n')+'\n\nLo que registraste sigue en pantalla: vuelve a tocar Guardar.');}
+  else{SAVE_ERR=null;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 22:22';
+const APP_BUILD='2026-09-15 22:32';
+function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1642,7 +1650,7 @@ function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
   if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
 /* --- buscador de Mi centro: solo lo programado en ese centro; si existe pero no está aquí, bloqueada --- */
 function tabletBuscadorHTML(c,cola){const q=normTxt(TAB.q||'');
-  const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label>Buscar una WH</label>${busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:18px;padding:10px')}</div>${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
+  const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px')}</div>${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
   if(!q)return cab;
   const enCola=cola.filter(f=>normTxt(f.o.op).includes(q)||normTxt(f.o.ref||'').includes(q));
   if(enCola.length)return cab;
@@ -1992,9 +2000,10 @@ function vTablet(el){
      </div></div></div>`};
   el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
    ${tarjetasResumenHTML([{id:'tab-plan',v:num(planHoy),k:'Prendas del día'},{id:'tab-hechas',v:num(hechasHoy),k:'Hechas hoy'},{id:'tab-faltan',v:num(Math.max(0,planHoy-hechasHoy)),k:'Faltan',cls:planHoy-hechasHoy>0?'warn':''},{id:'tab-cola',v:cola.length,k:'Órdenes en cola',items:cola.map(f=>f.o)}])}
+   <div id="aviso-guardado"></div>
+   ${tabletBuscadorHTML(c,cola)}
    ${flujoTramoHTML(c,rec,cola)}
    ${tramosDelDiaHTML(c,rec)}
-   ${tabletBuscadorHTML(c,cola)}
    ${cola.map(card).join('')||'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'}
    <p class="mut no-print" style="font-size:var(--fs-xs)">"Hecho" registra la orden completa en este centro y la pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
@@ -3245,7 +3254,7 @@ ${grpSelHTML('lib')}<div style="width:190px"><label>Buscar</label>${busqHTML('LI
      const fila4=o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(o.ref||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${((o.lib||{})[et]||{}).u||''}${((o.lib||{})[et]||{}).ts?' · '+new Date(o.lib[et].ts).toLocaleDateString('es-EC'):''}</td><td style="white-space:nowrap">${puedeF?`<button class="btn ghost sm" onclick="mRetirarLib('${o.id}','${et}')" title="revertir la liberación: pide motivo de la tabla 15 y queda en auditoría">revertir</button> <button class="btn ghost sm" onclick="mCambiarFase('${o.id}')" title="devolver o cambiar la fase: si la secuencia de la tabla 1 baja, pide motivo">fase</button>`:''}</td></tr>`;
      return `<div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Referencia</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Liberó</th><th></th></tr></thead><tbody>${filasGRP('lib4',l4.slice(0,400),fila4,9)||'<tr><td colspan="9" class="mut">Ninguna orden liberada con esa búsqueda.</td></tr>'}</tbody></table></div>`})()}
   </div></div>`;
-  restaurarScrollLib();
+  restaurarScrollLib();avisoGuardado();verBotonesAdmin();
   if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
 }
 function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){togSet(LIB,'hija',v)}function togSetTela(v){togSet(LIB,'tela',v)}function togSetCli(v){togSet(LIB,'cli',v)}function togSetMes(v){togSet(LIB,'mes',v)}

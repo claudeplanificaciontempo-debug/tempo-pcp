@@ -389,6 +389,14 @@ abierta por recurso (`tramoAbiertoDe`). **Modo línea** salió del menú y de lo
 `vLinea` redirige a Mi centro del mismo módulo; la función todavía NO se borró (lista en el reporte). Ver
 `MI_CENTRO_UNICO_REPORTE.md`.
 
+**Tablet y permisos (15-sep-2026 noche):** el guardado fallido YA NO recarga: `SAVE_ERR` + `avisoGuardado()` dejan
+lo registrado en pantalla con botón Reintentar (`#aviso-guardado` arriba de Mi centro) y distinguen el fallo de RLS.
+`verBotonesAdmin()` oculta Respaldo y Restaurar salvo `puede('config')`. El buscador de WH (`tabletBuscadorHTML`) va
+arriba de todo en Mi centro. Políticas de Supabase: la clave anon no puede leer `pg_policies`; quedan
+`SUPABASE_POLITICAS_ACTUALES.sql` (consultas para volcarlas) y `SUPABASE_POLITICAS_TABLET.sql` (propuesta SIN
+ejecutar: lectura amplia y escritura solo en avance, bitacora, turnos y paros para los perfiles de piso). El tramo, las
+tallas y las segundas viven dentro de `avance`; la asistencia en `turnos`. Ver `TABLET_PERMISOS_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
