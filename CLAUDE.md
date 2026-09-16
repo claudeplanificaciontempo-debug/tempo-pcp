@@ -662,6 +662,16 @@ puntadas rehace la ruta; `rutaProSugerida(o,rehacer)` con `rehacer=true` **puede
 nunca pierde un paso. **Escribir auditoría solo si la ruta cambia de verdad** — ni marcas ni registros vacíos.
 Ver `TEJEDURIA_Y_RUTAS_REPORTE.md`.
 
+**Tejeduría, dos cosas distintas (16-sep-2026):** `tejCuentaComoLista(p)` decide **qué filas entran** al motor y
+**sí** depende del interruptor `S.params.tejEstricto`; `kgDeFilaTej(p)` decide **cuántos kilos aporta la fila** y
+**NO** depende de él — una fila `tejido` aporta siempre sus `kgReal`. Por eso **marcar una fila con kilos distintos
+a los programados mueve fechas de tela lista aun con la regla apagada**; `efectoKgReales()` lo mide (con
+`TEJ_KG_MODO` = `real` | `prog`, restaurándolo siempre) y el panel lo muestra **aparte** del efecto de encender la
+regla. No confundir los dos efectos al reportar. **`chequeoSiembrasHTML()`** (Reportería por área) verifica que las
+siembras automáticas corrieron: **lo esperado sale de lo que cada siembra guardó antes de tocar nada**
+(`jeansUnificadoPrevio`, `rutasEmpaqueCorregidas`, `rutaDefectoAplicada`), nunca de un número escrito a mano — una
+siembra nueva debería guardar su «antes» igual. Ver `KG_REALES_Y_CHEQUEO.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

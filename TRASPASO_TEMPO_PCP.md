@@ -204,6 +204,21 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.43 Kg reales con la regla apagada y chequeo de siembras (16-sep)
+- **Dos cosas separadas**: `tejCuentaComoLista(p)` decide **qué filas entran** (eso sí depende del interruptor) y
+  `kgDeFilaTej(p)` decide **cuántos kilos aporta cada fila** (eso **no**: una fila `tejido` da siempre sus `kgReal`).
+  Consecuencia: **marcar una fila con kilos distintos a los programados puede mover la fecha de tela lista aunque la
+  regla esté apagada.**
+- **`efectoKgReales()`** mide ese efecto corriendo el motor con `TEJ_KG_MODO='prog'` y `'real'` y comparando
+  `telaLista`; devuelve filas con diferencia, kg de diferencia y las órdenes que **ya** cambiaron. No deja el modo
+  cambiado. El panel «Tejido sin confirmar» lo muestra **arriba, marcado «ya aplicado»**, y rotula el bloque de la
+  regla como **«efecto distinto del de arriba»**.
+- **`chequeoSiembras()`/`chequeoSiembrasHTML()`** en Reportería por área: JEANS→DENIM, rutas a Empaque y ruta por
+  defecto, con **esperado vs encontrado**. Lo esperado sale de lo que cada siembra guardó **antes** de tocar nada
+  (`jeansUnificadoPrevio`, `rutasEmpaqueCorregidas`, `rutaDefectoAplicada`), no de un número escrito a mano; lo
+  encontrado se verifica contra los datos de ahora. Tres estados: **aplicada / pendiente / revisar**.
+- Ver `KG_REALES_Y_CHEQUEO.md`.
+
 ### 2.42 Ruta por defecto, firma con técnica y tejeduría programado/tejido (16-sep)
 - **`sembrarRutaDefecto22()`**: la ruta por defecto de las 22 (aprobada) corre con las demás siembras.
 - **La firma de ruta incluye ahora `ordenCentrosAuto(o)`** (técnica → estampado, puntadas → bordado): agregar o quitar
