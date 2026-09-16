@@ -1712,6 +1712,72 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     PERFIL=adminP;GRP={}}
    S.ordenes=S.ordenes.filter(o=>o!==oG);PLAN=null;PLAN_ALL=null;BUSG={q:'',abierto:false,oid:null};page='ordenes';render();
    __check("BG/PL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* MI CENTRO ÚNICO: inicio, fin, paros, unidades por talla y minutos-persona */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const bakM=JSON.stringify(S.params.motivos||null);
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];
+   if(!S.params.motivos.some(m=>m.uso==='piso'))S.params.motivos.push({motivo:'Falta de tela en la mesa',uso:'piso'});
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TRAMO-1';oT.estado='plan';oT.cant=100;oT.tallasPedido={S:50,M:50};delete oT.programa;S.ordenes.push(oT);delete S.avance[oT.id];PLAN=null;PLAN_ALL=null;
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const bakPers=rec?R(rec).pers:null;if(rec)R(rec).pers=8;
+   // 1 · Modo línea ya no está en el menú ni en los perfiles
+   __check("ML: Modo línea salió del menú y de los perfiles",!document.querySelector('nav a[data-p=\"linea\"]')&&!perfilesDef().some(p=>(p.paginas||[]).includes('linea')));
+   __check("ML: el enlace viejo abre Mi centro",vLinea.toString().includes("page='tablet'")&&vLinea.toString().includes('vTablet('));
+   // 2 · flujo: inicio
+   iniciarTramo(oT.id,'modulos',rec);
+   const tr=tramosDe(oT.id)[0];
+   __check("TR: INICIO abre el tramo con quién y cuándo, y una sola orden a la vez por puesto",!!tr&&!!tr.ini&&!tr.fin&&!!tr.u&&!!tramoAbiertoDe('modulos',rec));
+   // otra orden en el mismo puesto pregunta si cierra la anterior
+   {const o2=JSON.parse(JSON.stringify(base));o2.id=uid();o2.op='WH/TRAMO-2';o2.estado='plan';S.ordenes.push(o2);delete S.avance[o2.id];
+    let preguntó=false;const c0=window.confirm;window.confirm=m=>{preguntó=/Ya hay una orden empezada/.test(String(m));return false};
+    iniciarTramo(o2.id,'modulos',rec);window.confirm=c0;
+    __check("TR: si intenta iniciar otra orden en el mismo puesto, pregunta si cierra la anterior",preguntó&&tramosDe(o2.id).length===0&&!!tramoAbiertoDe('modulos',rec));
+    S.ordenes=S.ordenes.filter(x=>x!==o2)}
+   // paro con motivo de la tabla 15
+   tr.ini=new Date(Date.now()-60*60*1000).toISOString(); // una hora
+   tr.paros=[{min:15,motivo:'Falta de tela en la mesa',ts:new Date().toISOString(),u:'prueba'}];
+   // 3 · fin y cálculo
+   terminarTramo(tr.id,oT.id);
+   const cal=calcTramo(tr,oT);
+   __check("TR: el tiempo trabajado descuenta los paros",Math.abs(cal.brutoMin-60)<2&&cal.paros===15&&Math.abs(cal.trabajado-(cal.brutoMin-15-cal.descansos))<0.01);
+   __check("TR: minutos-persona = tiempo trabajado × personas del recurso (módulo con 8 personas)",cal.pers===8&&Math.abs(cal.minPersona-cal.trabajado*8)<0.01);
+   __check("TR: si el horario no tiene descansos cargados, se reporta y no se inventan",cal.descansos===0&&cal.descansosFalta===true&&centrosSinDescansos().includes('modulos'));
+   // unidades por talla, con tope
+   setTallaTramo(tr.id,oT.id,'S',1);setTallaTramo(tr.id,oT.id,'S',1);setTallaTramo(tr.id,oT.id,'M',1);
+   __check("TR: las unidades por talla se cargan con + y −",sumaCurva(tr.tallas)===3&&(setTallaTramo(tr.id,oT.id,'M',-1),sumaCurva(tr.tallas)===2));
+   const cal2=calcTramo(tr,oT);
+   __check("TR: minutos por prenda real = minutos-persona / unidades, con semáforo contra el estándar",Math.abs(cal2.minPrendaReal-cal2.minPersona/2)<0.01&&['ok','aviso','alerta',''].includes(cal2.sem));
+   guardarTramo(tr.id,oT.id);
+   __check("TR: al guardar quedan unidades por talla, tiempo, paros y auditoría",((S.avance[oT.id].tallas||{}).modulos||{}).S===2&&(S.avance[oT.id].tallasLog||[]).some(x=>x.tramo===tr.id&&x.minPersona>0&&x.u&&x.centro==='modulos'));
+   // unidades por encima de lo pedido avisan
+   {iniciarTramo(oT.id,'modulos',rec);const t2=tramosDe(oT.id).slice(-1)[0];t2.ini=new Date(Date.now()-10*60*1000).toISOString();terminarTramo(t2.id,oT.id);
+    t2.tallas={S:60};let avisó=false;const c0=window.confirm;window.confirm=m=>{avisó=/pasan de lo/.test(String(m));return true};
+    guardarTramo(t2.id,oT.id);window.confirm=c0;
+    __check("TR: pasar de lo cortado o lo pedido avisa y queda marcado",avisó&&t2.excede===true)}
+   // 5 · olvidos
+   {iniciarTramo(oT.id,'modulos',rec);const t3=tramosDe(oT.id).slice(-1)[0];t3.ini=new Date(Date.now()-(prm('topeHorasTramo',10)+2)*36e5).toISOString();
+    const olv=tramosOlvidados();
+    __check("TR: un inicio sin fin que pasa del tope avisa y NO se cierra solo",olv.some(x=>x.t.id===t3.id)&&!t3.fin);
+    const it=pendientesHoy().find(x=>x.k==='tramoSinFin');
+    __check("TR: el olvido sale en Hoy → Pendientes del supervisor",!!it&&it.n>=1);
+    TAB={centro:'modulos',rec,q:''};page='tablet';render();
+    __check("TR: Mi centro también lo avisa y ofrece corregirlo",/inicios sin fin|inicio sin fin/i.test(document.getElementById('p-tablet').innerHTML)&&document.getElementById('p-tablet').innerHTML.includes('mCorregirTramo('));
+    // el supervisor corrige con auditoría
+    mCorregirTramo(t3.id,oT.id);const fin=new Date(new Date(t3.ini).getTime()+45*6e4);
+    document.getElementById('ct-fin').value=new Date(fin.getTime()-fin.getTimezoneOffset()*6e4).toISOString().slice(0,16);document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
+    const nA=auditoriaCambios().length;corregirTramo(t3.id,oT.id);
+    __check("TR: el supervisor corrige el fin y queda en auditoría",!!t3.fin&&!!t3.corregido&&auditoriaCambios().length===nA+1);
+    TRAMO={paso:null,id:null,oid:null}}
+   // la pantalla del flujo
+   TAB={centro:'modulos',rec,q:''};page='tablet';render();
+   {const h=document.getElementById('p-tablet').innerHTML;
+    __check("TR: Mi centro muestra el flujo (elegir orden, INICIO) y lo registrado hoy",(/INICIO<\/button>/.test(h)||/No hay órdenes programadas/.test(h))&&(/Lo registrado hoy/.test(h)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
+   if(rec&&bakPers!=null)R(rec).pers=bakPers;
+   S.ordenes=S.ordenes.filter(o=>o!==oT);delete S.avance[oT.id];
+   const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("TR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

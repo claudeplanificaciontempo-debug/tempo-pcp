@@ -376,6 +376,19 @@ producto, Color, ODC, Mes, Próximo paso, Proyecto, Etapa. La agrupación se gua
 de localStorage). Buscador común agregado en Entregas (`EG.q`), Costura (`COS.q`) y el detalle de Capacidad y decisiones
 (`CAPD.q` + `filasGRP('cap')`). Ver `BUSQUEDA_AGRUPADOR_REPORTE.md`.
 
+**Mi centro único: tramos de trabajo (15-sep-2026 noche):** `S.avance[oid].tramos[]` =
+`{id,centro,rec,ini,fin,u,uFin,paros:[{min,motivo,ts,u}],tallas:{},min,minPersona,pers,minPrenda,excede,corregido}`.
+Flujo en Mi centro con `flujoTramoHTML(c,rec,cola)` y estado `TRAMO` (elegir orden → `iniciarTramo` → `mParoTramo` →
+`terminarTramo` → unidades por talla con `setTallaTramo` → `guardarTramo`). Fórmula única en `calcTramo(t,o)`:
+trabajado = fin − ini − paros − `descansosCentro(c)` (hoy NO hay horarios con descansos: `centrosSinDescansos()` lo
+reporta), minutos-persona = trabajado × `personasRec(rec,c)` (módulos: personas del recurso; el resto 1, marcado),
+min/prenda real = minutos-persona / unidades, con semáforo contra `minPrenda` y parámetro `tolMinPrenda` (15 %).
+Olvidos: `tramosOlvidados()` usa `topeHorasTramo` (10 h), avisa en Mi centro y en la bandeja `tramoSinFin`; el
+supervisor corrige con `mCorregirTramo`/`corregirTramo` (motivo de la tabla 15 + `registrarAuditoria`). Una orden
+abierta por recurso (`tramoAbiertoDe`). **Modo línea** salió del menú y de los perfiles (ahora llevan `tablet`) y
+`vLinea` redirige a Mi centro del mismo módulo; la función todavía NO se borró (lista en el reporte). Ver
+`MI_CENTRO_UNICO_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -204,6 +204,23 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.18 Mi centro único: inicio, fin, tiempo y unidades por talla (15-sep-2026 noche)
+- **Modo línea se juntó con Mi centro**: ya no está en el menú ni en los perfiles y el enlace viejo abre Mi centro del
+  mismo módulo. La pantalla vieja sigue en el código hasta que la usuaria confirme borrarla.
+- **El flujo es uno**: elegir orden programada en el centro (con foto) → INICIO → FIN → unidades por talla con + y −
+  contra lo cortado o lo pedido → Guardar. Durante el tramo hay botón **Paro** con motivo de la tabla 15, y ese tiempo
+  se descuenta.
+- **Tiempo real**: trabajado = fin − inicio − paros − descansos del horario; minutos-persona = trabajado × personas
+  del recurso; minutos por prenda real = minutos-persona / unidades, con semáforo contra el estándar. Parámetros
+  `tolMinPrenda` y `topeHorasTramo` en Configuración.
+- **Hoy no hay descansos cargados en ningún centro** y los centros que no son módulos no tienen personas: se reporta
+  en pantalla y se calcula con 0 descansos y 1 persona. No se inventa nada.
+- **Olvidos**: un inicio sin fin que pasa del tope avisa en Mi centro y en Hoy → Pendientes; el supervisor pone la hora
+  real con motivo y queda en auditoría. El sistema no cierra solo.
+- **Una orden abierta por puesto**: iniciar otra pregunta si cierra la anterior.
+- Cada tramo guarda quién, cuándo, centro, recurso, paros, tallas, tiempo y minutos-persona: es la base del
+  seguimiento de avance del responsable de centro.
+
 ### 2.17 Búsqueda general, buscador y agrupador (15-sep-2026 noche)
 - **Barra de búsqueda general** en la cabecera, en todas las pantallas y en teléfono: WH, ODC, cliente o referencia,
   con foto, fase y dónde está; el clic abre la ficha de la orden (ruta con el paso actual, fechas, avance por talla e
