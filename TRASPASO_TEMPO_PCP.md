@@ -204,6 +204,21 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.44 Tiempos estimados de confección (Santiago Garzón, 16-sep)
+- **** trae las 14 categorías de la hoja «Para llenar» con su minuto, su referencia y su observación.
+   las carga en  +  {fuente, obs, ref, pendiente}. **Solo
+  confección**, y solo si la categoría **no tiene hoja LMO**; no pisa valores puestos a mano; idempotente.
+  **Camiseta Tejida (4,57)** queda «pendiente de confirmar» con su motivo. 11 de 14 calzan con el volcado; las 3
+  restantes (Hoodie Tejido, JUMPER, Chalecos) no tienen órdenes.
+- **Efecto**: hoy **0 minutos y 0 órdenes cambian**, porque de las 79 órdenes solo **26 están liberadas** y el
+  programa solo contiene lo liberado. Carga que aparecerá: **34.304 min (572 h) de lo ya liberado** y **197.573 min
+  (3.293 h) del total**. El plan de confección estaba subestimado en esas ~3.300 h.
+- **Tiempos actuales: NO se cambió nada** (la columna «¿Correcto?» vino vacía).  **calcula solas**
+  las incoherencias — Short Cargo > Pantalon Cargo, y categorías con confección sin empaque — y se apagan cuando
+  alguien corrija el tiempo. Panel en Configuración → Operaciones.
+- **HENLEY / «Nueva hija» es real y NO se borra** (producción lo confirmó); pendiente de nombre.
+- Ver .
+
 ### 2.43 Kg reales con la regla apagada y chequeo de siembras (16-sep)
 - **Dos cosas separadas**: `tejCuentaComoLista(p)` decide **qué filas entran** (eso sí depende del interruptor) y
   `kgDeFilaTej(p)` decide **cuántos kilos aporta cada fila** (eso **no**: una fila `tejido` da siempre sus `kgReal`).
