@@ -938,7 +938,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
      o.odc=bak[0];o2.odc=bak[1];if(bak[2])o.odcManual=bak[2];else delete o.odcManual;if(bak[3])o2.odcManual=bak[3];else delete o2.odcManual;PLAN=null;PLAN_ALL=null;}}
    page='panorama';render();__check("pantalla sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* ASIGNACIÓN POR ORDEN: por estado, próximo paso, agrupar/filtrar, foto, vencidas con un solo paso */
-  {const antes=__R.errors.length;const adminP=PERFIL;APO={niveles:null,cli:'',cen:'',mes:'',q:''};page='produccion';render();const hp=()=>document.getElementById('p-produccion').innerHTML;
+  {const antes=__R.errors.length;const adminP=PERFIL;APO={niveles:null,cli:'',cen:'',mes:'',q:''};page='asignacion';render();const hp=()=>document.getElementById('p-asignacion').innerHTML;
    const P=programar();const todas=S.ordenes.filter(abierta);const cnt={};todas.forEach(o=>{const c=clasificarAsig(o,P).estado;cnt[c]=(cnt[c]||0)+1});
    __check("asig: cada orden cae en exactamente un bloque (vencidaUnPaso / sinProgramar / noLlega / justo / bien)",Object.values(cnt).reduce((a,b)=>a+b,0)===todas.length&&Object.keys(cnt).every(k=>['vencidaUnPaso','sinProgramar','noLlega','justo','bien'].includes(k)),JSON.stringify(cnt));
    __check("asig: la pantalla separa por estado con conteo y prendas, y 'Llegan bien' va plegado",hp().includes('Asignación por orden')&&/<details class="panel"[^>]*>\s*<summary[^>]*>Llegan bien/.test(hp())&&!/<details class="panel"[^>]*open/.test(hp())&&!hp().includes('Ruta asignada (centro'));
@@ -1034,7 +1034,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("FF: Control de piso usa foto+WH+fase en las filas de las tres áreas (y se ve cuando hay filas)",(()=>{const src=vControl.toString();const usa=src.split('whCell(o)').length>=3;page='control';CTL.area='pro';CTL.q='';CTL.centro=null;render();const h=document.getElementById('p-control').innerHTML;const filas=(h.match(/<tr><td style="white-space:nowrap">/g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
    __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
    __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:[],q:'WH/TEST-FF'}}));
-   __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('produccion',()=>{APO.q='WH/TEST-FF'}));
+   __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('asignacion',()=>{APO.q='WH/TEST-FF';APO.niveles=[]}));
    __check("FF: Costura · secuencia por módulo usa foto+WH+fase",(()=>{const src=vCostura.toString();return src.includes('whCell(o)')})());
    S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};APO.q='';PLAN=null;PLAN_ALL=null;
    // buscador
@@ -1102,7 +1102,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -1252,7 +1252,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // b) agrupador con horas y campos comunes
    GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
    __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Categoría padre','Categoría hija','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
-   GRP={};page='produccion';APO={niveles:['cliente'],cli:'',cen:'',mes:'',q:''};render();h=document.getElementById('p-produccion').innerHTML;__check("CC-b: Asignación por orden usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));APO.niveles=null;GRP={};
+   GRP={};page='asignacion';APO={niveles:['cliente'],cli:'',cen:'',mes:'',q:''};render();h=document.getElementById('p-asignacion').innerHTML;__check("CC-b: Asignación por orden usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));APO.niveles=null;GRP={};
    // c) tarjetas resumen
    const ym=hoy().slice(0,7);PM.mes=ym;TARJ={exp:{}};page='plan';render();h=document.getElementById('p-plan').innerHTML;__check("CC-c: el Bloque 2 y el Bloque 3 usan la tarjeta resumen del tema (número grande, clic despliega lista)",h.includes('kpi tarj')&&h.includes('data-t="b2-ords"')&&h.includes('data-t="b3-libs"'));
    {const oz=S.ordenes.filter(abierta).slice(0,2);TARJ.exp={'cc-x':true};const hx=tarjetasResumenHTML([{id:'cc-x',v:oz.length,k:'Prueba',items:oz}]);__check("CC-c: al hacer clic se despliega la lista con foto, WH y fase",hx.includes('tarj-lista')&&hx.includes('OP · fase')&&(!oz.length||hx.includes('fase-mini'))&&hx.includes("togTarj('cc-x')"));TARJ={exp:{}};}
@@ -1602,6 +1602,60 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const br=JSON.parse(bakR);if(br)S.params.pedidosReprog=br;else delete S.params.pedidosReprog;
    window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* CARGA GENERAL: una sola cuenta con base explícita · BALANCEO etapa 1 */
+  {const antes=__R.errors.length;window.confirm=()=>true;const ym=hoy().slice(0,7);
+   // 1 · misma base = mismo número
+   const oids=planMesOidsTot(ym);const cu=cargaUnica('plan',{ym});const cp=cargaPlanCentros(ym);
+   const centros=[...new Set([...Object.keys(cp),...Object.keys(cu.centros)])];
+   const igual=centros.every(c=>Math.abs((cp[c]||0)-(((cu.centros[c]||{}).firme||0)+((cu.centros[c]||{}).proceso||0)))<0.5);
+   __check("CGU: con la misma base (plan del mes) la cuenta única y el aviso de capacidad del plan dan lo mismo",igual,JSON.stringify(centros.slice(0,4).map(c=>c+': '+num(cp[c]||0)+' vs '+num(((cu.centros[c]||{}).firme||0)+((cu.centros[c]||{}).proceso||0)))));
+   const ab=cargaUnica('abiertas',{ym});const pr=cargaUnica('programadas',{ym});
+   __check("CGU: cambiar de base cambia el conjunto de órdenes, no la fórmula",ab.ordenes>=pr.ordenes&&ab.base==='abiertas'&&pr.base==='programadas'&&!!CARGA_BASE_TXT.plan);
+   {const c0=Object.keys(ab.centros)[0];
+    if(c0){const sumaAb=S.ordenes.filter(abierta).reduce((a,o)=>a+minPendCentro(o,c0),0);
+      __check("CGU: la base «todas las abiertas» suma exactamente los minutos pendientes de las órdenes abiertas",Math.abs(sumaAb-(ab.centros[c0].firme+ab.centros[c0].proceso))<0.5||ab.centros[c0].reserva>0,JSON.stringify({c0,sumaAb,calc:ab.centros[c0]}));}
+    else __check("CGU: la base «todas las abiertas» suma exactamente los minutos pendientes de las órdenes abiertas",true,'sin centros con carga');}
+   // 2 · cada pantalla dice su base
+   page='produccion';CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:''};render();let h=document.getElementById('p-produccion').innerHTML;
+   __check("CG: Carga general dice su base y separa firme, en proceso y reserva",/base: <b>programadas<\/b>/.test(h)&&/firme, en proceso y reserva/.test(h)&&/todas las abiertas/.test(h));
+   __check("CG: muestra 8 semanas por defecto (parámetro semCarga)",semanasCarga().length===8&&prm('semCarga',8)===8);
+   page='capacidad';render();__check("CG: Capacidad y decisiones dice que su base es «todas las abiertas» y cuál es el número oficial",/base: <b>todas las abiertas<\/b>/.test(document.getElementById('p-capacidad').innerHTML)&&/plan congelado/.test(document.getElementById('p-capacidad').innerHTML));
+   // 3 · Asignación por orden se mudó a Reportería, no se borró
+   __check("CG: Asignación por orden vive en Reportería y sigue existiendo",!!document.querySelector('nav .gbody[data-g=\"rep\"] a[data-p=\"asignacion\"]')&&REPORTES.some(r=>r.p==='asignacion')&&typeof vAsignacion==='function');
+   page='asignacion';render();__check("CG: la pantalla de Asignación por orden muestra las órdenes contra el programa",/Asignación por orden/.test(document.getElementById('p-asignacion').innerHTML));
+   page='produccion';render();h=document.getElementById('p-produccion').innerHTML;
+   __check("CG: Carga general ya no repite la clasificación por orden",!/vencida de un paso|Sin programar<\/h4>/.test(h));
+   // 4 · reserva de lavado y plancha
+   {const lav=CE('lavado');const bakM=lav.minEstandar,bakP=lav.pctEstimado;
+    lav.minEstandar=0;lav.pctEstimado=0;
+    const it=pendientesHoy().find(x=>x.k==='reservaSinDatos');
+    __check("CG: sin minutos ni % cargados la reserva es cero y avisa en Hoy → Pendientes",centrosSinDatosReserva().includes('lavado')&&!!it&&it.n>=1&&cargaUnica('abiertas',{ym}).centros.lavado===undefined||((cargaUnica('abiertas',{ym}).centros.lavado||{}).reserva||0)===0);
+    lav.minEstandar=2;lav.pctEstimado=50;CAPM=null;
+    const o=S.ordenes.find(x=>abierta(x)&&!(x.ruta||[]).some(p=>p.centro==='lavado'));
+    if(o){const esperado=Math.max(0,+o.cant||0)*2*0.5;
+      __check("CG: con minutos y % cargados la reserva se calcula sobre lo que no tiene el paso en la ruta",Math.abs(reservaDe(o,'lavado')-esperado)<0.5,JSON.stringify({calc:reservaDe(o,'lavado'),esperado}));}
+    else __check("CG: con minutos y % cargados la reserva se calcula sobre lo que no tiene el paso en la ruta",true,'todas las órdenes tienen lavado en la ruta');
+    lav.minEstandar=bakM;lav.pctEstimado=bakP;CAPM=null}
+   // 5 · BALANCEO etapa 1
+   const bakT=JSON.stringify(S.params.tiposMaq||null),bakO=JSON.stringify(S.params.operarias||null);
+   const tm=tiposMaq();
+   __check("BE1: los tipos de máquina se siembran con los nombres de la hoja, sin agrupar y sin asumir los TP",tm.length>=20&&tm.some(r=>/OVERLOK 4 HILOS/i.test(r.tipo))&&tm.some(r=>/OVERLOCK 4 HILOS/i.test(r.tipo))&&tm.filter(r=>/ TP\b/i.test(r.tipo)).every(r=>r.porConfirmar===true));
+   {const i1=tm.findIndex(r=>/^OVERLOCK 4 HILOS$/i.test(r.tipo));const i2=tm.findIndex(r=>/^OVERLOK 4 HILOS$/i.test(r.tipo));
+    if(i1>=0&&i2>=0){const alias=tm[i2].tipo;setTipoMaq(i1,'alias',alias);setTipoMaq(i2,'activa',false);
+      __check("BE1: con el alias cargado, OVERLOK y OVERLOCK quedan como el mismo tipo",normMaquina('OVERLOK 4 HILOS')===tm[i1].tipo&&normMaquina('OVERLOCK 4 HILOS')===tm[i1].tipo&&normMaquina('overlok 4 hilos')===tm[i1].tipo);
+      __check("BE1: sin alias, dos nombres distintos NO se juntan solos",normMaquina('RECTA')!=='OVERLOCK 4 HILOS'&&normMaquina('RECTA TP')==='RECTA TP');}
+    else __check("BE1: con el alias cargado, OVERLOK y OVERLOCK quedan como el mismo tipo",false,'no están los dos nombres en la hoja');}
+   __check("BE1: hay parámetros para la tolerancia del puesto y el nivel mínimo de especialidad, distintos del semáforo",prm('tolPuesto',2)===2&&prm('nivelMinEsp',2)===2&&repartirPuestos.toString().includes("prm('tolPuesto'")&&!repartirPuestos.toString().includes('1.02'));
+   S.params.operarias=[];addOperaria('mod1');const io=operarias().length-1;setOperaria(io,'n','Prueba');setEspOperaria(io,tiposMaqActivos()[0],3);
+   __check("BE1: operarias con nombre, módulo y especialidad por tipo de máquina (tres niveles)",operariasDe('mod1').length===1&&operarias()[io].esp[tiposMaqActivos()[0]]===3&&NIVELES_ESP.length===3);
+   page='config';CONF.tab='recursos';render();const hc=document.getElementById('p-config').innerHTML;
+   __check("BE1: las tablas de tipos de máquina, operarias y máquinas por módulo están en Configuración",/Tipos de máquina/.test(hc)&&/Operarias y especialidades/.test(hc)&&/Máquinas de confección/.test(hc));
+   page='balanceo';render();const hb=document.getElementById('p-balanceo').innerHTML;
+   __check("BE1: Balanceo abre con la vista de módulos (personas, máquinas y referencia en curso)",/Módulos de confección/.test(hb)&&/data-t="balmod-/.test(hb));
+   const bt=JSON.parse(bakT);if(bt)S.params.tiposMaq=bt;else delete S.params.tiposMaq;
+   const bo=JSON.parse(bakO);if(bo)S.params.operarias=bo;else delete S.params.operarias;
+   PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render();
+   __check("CG/BE1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

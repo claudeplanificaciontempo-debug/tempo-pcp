@@ -319,6 +319,7 @@ tbody tr:hover td{background:var(--field)}
     <div class="grp" data-g="rep">Reportería <span class="car">▾</span></div>
     <div class="gbody" data-g="rep">
       <a data-p="vistaordenes">Vista general de órdenes</a>
+      <a data-p="asignacion">Asignación por orden</a>
       <a data-p="wip">Producto en proceso</a>
       <a data-p="cumplimiento">Cumplimiento de facturación</a>
       <a data-p="avance">Avance del mes</a>
@@ -356,6 +357,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-linea"></section>
     <section class="page" id="p-tablet"></section>
     <section class="page" id="p-vistaordenes"></section>
+    <section class="page" id="p-asignacion"></section>
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
@@ -493,7 +495,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['tablet','Mi centro (tablet)'],['vistaordenes','Vista general de órdenes (Reportería)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['tablet','Mi centro (tablet)'],['vistaordenes','Vista general de órdenes (Reportería)'],['asignacion','Asignación por orden (Reportería)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -581,7 +583,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 20:42';
+const APP_BUILD='2026-09-15 21:25';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -792,7 +794,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={tablet:'factory',vistaordenes:'box',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
+const ICO_NAV={tablet:'factory',vistaordenes:'box',asignacion:'sheet',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -938,6 +940,7 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   add('sinFecha','Órdenes sin fecha de entrega',ab.filter(o=>!o.fecha).length,'no se programan ni se liberan hasta tener fecha (Odoo)','Órdenes',"ir('ordenes')");
   add('sinOdc','Órdenes sin ODC asignado ("PENDIENTE ODC")',ab.filter(esOdcPendiente).length,'asígnalo a mano en Órdenes → Asignar ODC cuando el cliente libere su orden de compra','Órdenes',"ir('ordenes')");
   {const sm=ab.filter(o=>!mesPlan(o));add('sinMesProyecto','Órdenes sin mes de Proyecto: no entran al plan mensual',sm.length,'Proyecto vacío o sin mes reconocible: '+[...new Set(sm.map(o=>String(o.proyecto||'').trim()||'(vacío)'))].slice(0,6).map(x=>x).join(', ')+' · corregir el Proyecto en Odoo; no se asigna un mes por suposición','Órdenes',"ir('ordenes')")}
+  {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
   {const pr=pedidosReprog().filter(p=>!p.atendida);add('reprog','El piso pide reprogramación',pr.length,pr.map(p=>p.op+' → '+nCen(p.centro)).slice(0,8).join(', ')+' · el operario buscó la WH en su centro y no está programada ahí','Programación del centro',"CEN.id=(pedidosReprog().filter(p=>!p.atendida)[0]||{}).centro||CEN.id;CEN.tab='prog';ir('centro')")}
   {const sinSec=fasesSinSecuencia();const enUso={};ab.forEach(o=>{if(o.fase&&sinSec.includes(o.fase))enUso[o.fase]=(enUso[o.fase]||0)+1});const usadas=Object.keys(enUso);
@@ -1782,6 +1785,7 @@ function diasBano(b,r){if(!b||!b.dia)return [];const hd=capDia(r,b.dia)||0;if(!(
 /* ---------- Reportería: pestaña propia del menú; cada reporte es una entrada de REPORTES (agregar uno = una línea aquí + su <a> en el menú) ---------- */
 const REPORTES=[
   {p:'vistaordenes',n:'Vista general de órdenes',desc:'todas las órdenes abiertas con foto, fase, cliente, ODC, estilo, categoría, color, prendas, entrega, proyecto y estado'},
+  {p:'asignacion',n:'Asignación por orden',desc:'cada orden abierta contra el programa: vencidas, sin programar, no llegan, justas y bien, con su próximo paso'},
   {p:'wip',n:'Producto en proceso',desc:'lo que está en planta por etapa y por orden'},
   {p:'cumplimiento',n:'Cumplimiento de facturación',desc:'semanas congeladas contra lo real'},
   {p:'avance',n:'Avance del mes',desc:'unidades hechas contra el plan congelado del mes'},
@@ -1956,7 +1960,7 @@ function render(){CAPM=null;SEMC={};
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,linea:vLinea,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,linea:vLinea,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes,asignacion:vAsignacion}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -2230,7 +2234,10 @@ function enPlanMes(o){if(!o)return null;const pm=S.params.planMes||{};for(const 
 function planMesCongelado(ym){const r=planMesReg(ym);return (r&&r.congelado)||null}
 function pmClaveGrupo(o,g){if(g==='fase')return o.fase||'Sin fase';if(g==='odc')return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';if(g==='cliente')return o.cliente||'Sin cliente';if(g==='entrega')return o.fecha||'Sin fecha';if(g==='fam'){const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}if(g==='hija'){const k=K(o.cat);return k?k.n:'Sin categoría'}return '—'}
 function minCentroOrden(o,centro){return (o.ruta||[]).filter(p=>p.centro===centro).reduce((a,p)=>a+minPrenda(centro,p.t),0)*(+o.cant||0)}
-function cargaPlanCentros(ym,extra){const oids=new Set([...planMesOidsTot(ym),...(extra||[])]);const cen={};S.ordenes.forEach(o=>{if(!oids.has(o.id))return;const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(ce&&ce.area==='pro'){const hechas=fe.hechos.includes(p.centro)?(+o.cant||0):(ac[p.centro]||0);cen[p.centro]=(cen[p.centro]||0)+minPrenda(p.centro,p.t)*Math.max(0,(+o.cant||0)-hechas)}})});return cen} // solo minutos PENDIENTES, como la carga por centro del resto del sistema
+function cargaPlanCentros(ym,extra){const oids=new Set([...planMesOidsTot(ym),...(extra||[])]);
+  // misma cuenta que Carga general, Capacidad y decisiones y Reportería: cambia el conjunto de órdenes, no la fórmula
+  const c=cargaUnica('plan',{ym,ordenes:S.ordenes.filter(o=>oids.has(o.id))});const cen={};
+  Object.entries(c.centros).forEach(([k,v])=>{const m=v.firme+v.proceso;if(m>0)cen[k]=m});return cen} // solo minutos PENDIENTES, como la carga por centro del resto del sistema
 function planMesAgregar(ym,oids){if(!puede('programa'))return;S.params.planMes=S.params.planMes||{};const r=S.params.planMes[ym]=S.params.planMes[ym]||{oids:[]};const set=new Set(r.oids);let n=0;oids.forEach(id=>{if(!set.has(id)){set.add(id);n++}});r.oids=[...set];r.ts=new Date().toISOString();r.u=quienFirma();if(r.congelado)r.congelado=null;bitacora('Plan mensual '+ym+': +'+n+' órdenes al plan ('+quienFirma()+')');PMADD.sel=new Set();save();render()}
 function planMesQuitar(ym,oid){const r=planMesReg(ym);if(!r)return;const o=S.ordenes.find(x=>x.id===oid);r.oids=(r.oids||[]).filter(x=>x!==oid);if(r.congelado)r.congelado=null;bitacora('Plan mensual '+ym+': quitada '+((o||{}).op||oid)+' ('+quienFirma()+')');save();render()}
 function togPMADD(id){PMADD.sel.has(id)?PMADD.sel.delete(id):PMADD.sel.add(id);render()}
@@ -3588,7 +3595,7 @@ function vCapacidad(el){
    ${M.sinProy.length?`<div class="warn"><b>${M.sinProy.length} órdenes con carga y sin Proyecto reconocible</b> (${num(M.sinProy.reduce((a,o)=>a+ +o.cant,0))} prendas): no caen en ningún mes de esta tabla hasta que Odoo les ponga proyecto.</div>`:''}
    <div class="kpis"><div class="kpi ${rojas.length?'bad':''}"><div class="v">${rojas.length}</div><div class="k">Centro-mes que no alcanzan</div></div><div class="kpi"><div class="v">${Object.values(M.celdas).filter(x=>estadoCel(x)==='amb').length}</div><div class="k">Justos (≥ ${prm('capAmbar',85)}%)</div></div><div class="kpi"><div class="v">${abiertos.length}</div><div class="k">Problemas abiertos · ${(S.params.capDecisiones||[]).filter(d=>!d.resuelto).length} decisiones abiertas</div></div><div class="kpi"><div class="v">${M.meses.length}</div><div class="k">Meses con carga: ${M.meses.map(fmM).join(', ')}</div></div></div>
    ${motorComparaHTML()}
-   <div class="panel capm"><h3>Uso de capacidad por centro y mes <span class="note">clic en una celda para ver el detalle · verde alcanza · ámbar justo · rojo no llega</span></h3><div class="scroll"><table><thead><tr><th>Centro</th>${M.meses.map(m=>'<th style="text-align:center">'+esc(fmM(m))+'</th>').join('')}</tr></thead><tbody>
+   <div class="panel capm"><h3>Uso de capacidad por centro y mes ${notaBaseHTML('abiertas','el número oficial del mes es el plan congelado; aquí se cuenta todo lo abierto por mes de Proyecto')} <span class="note">clic en una celda para ver el detalle · verde alcanza · ámbar justo · rojo no llega</span></h3><div class="scroll"><table><thead><tr><th>Centro</th>${M.meses.map(m=>'<th style="text-align:center">'+esc(fmM(m))+'</th>').join('')}</tr></thead><tbody>
     ${M.filas.map(f=>'<tr><td style="white-space:nowrap"><b>'+esc(f.n)+'</b>'+(f.area!=='pro'?' <span class="mut" style="font-size:var(--fs-xs)">programa</span>':'')+'</td>'+M.meses.map(m=>cel(f,m)).join('')+'</tr>').join('')||'<tr><td class="mut">Sin carga.</td></tr>'}</tbody></table></div></div>
    ${detalle}
    ${rojas.length&&!sel?`<div class="panel"><h3>Dónde no alcanza <span class="note">de más cercano a más lejano</span></h3><div class="body"><table><thead><tr><th>Centro</th><th>Mes</th><th class="num">Uso</th><th class="num">Faltan</th><th class="num">No liberadas</th><th>Decisiones</th><th></th></tr></thead><tbody>${rojas.map(x=>{const nd=(S.params.capDecisiones||[]).filter(d=>d.c===x.c&&d.m===x.m);return `<tr><td>${esc(nombreCentroCap(x.c))}</td><td>${esc(fmtMesEG(x.m))}</td><td class="num">${x.cap?Math.round(x.pct)+'%':'sin cap.'}</td><td class="num">${fmtCarga(x.cap?x.carga-x.cap:x.carga,x.u)}</td><td class="num">${x.noLib} · ${fmtCarga(x.minNoLib,x.u)}</td><td>${nd.length?nd.length+' ('+nd.filter(d=>!d.resuelto).length+' abiertas)':'<span class="tag t-aviso">sin decisión</span>'}</td><td><button class="btn ghost sm" onclick="CAPD.sel='${x.c}|${x.m}';render()">ver</button></td></tr>`}).join('')}</tbody></table></div></div>`:''}
@@ -3633,11 +3640,77 @@ function setObjetivoHora(rid,v){const r=R(rid);if(!r)return;if(!(puede('programa
   r.objetivoHist=(r.objetivoHist||[]).concat([{ts,u,antes:antes?antes.v:null,v:n,motivo}]).slice(-100);r.objetivoHora=n==null?null:{v:n,u,ts,antes:antes?antes.v:null};
   bitacora('Objetivo prendas/hora '+r.n+': '+(antes?antes.v:'—')+' → '+(n==null?'—':n)+' ('+motivo+')');save();render()}
 /* hoja de operaciones de confección de una categoría, con sección y orden provisional */
-function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{op:x.op,n:x.n,sam:+x.sam||0,maq:x.maq||'',secc:src.seccOp||'General',orden:i+1,provisional:true}})}
+function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{op:x.op,n:x.n,sam:+x.sam||0,maq:normMaquina(x.maq||''),secc:src.seccOp||'General',orden:i+1,provisional:true}})}
 /* reparto por puestos: operaciones consecutivas de la misma máquina hasta llenar el ritmo; una operación mayor que el ritmo se parte */
 function repartirPuestos(ops,takt){const puestos=[];let cur=null;ops.forEach(x=>{const req=takt?x.sam/takt:0;
     if(req>1){for(let i=0;i<Math.ceil(req);i++)puestos.push({ops:[x],maq:x.maq||'Manual',min:x.sam/Math.ceil(req),partida:true});cur=null;return}
-    if(cur&&cur.maq===(x.maq||'Manual')&&cur.min+x.sam<=takt*1.02){cur.ops.push(x);cur.min+=x.sam}else{cur={ops:[x],maq:x.maq||'Manual',min:x.sam};puestos.push(cur)}});return puestos}
+    if(cur&&cur.maq===(x.maq||'Manual')&&cur.min+x.sam<=takt*(1+(+prm('tolPuesto',2)||0)/100)){cur.ops.push(x);cur.min+=x.sam}else{cur={ops:[x],maq:x.maq||'Manual',min:x.sam};puestos.push(cur)}});return puestos}
+/* ============ BALANCEO · ETAPA 1: tipos de máquina con alias, operarias y vista de módulos ============
+   Los tipos se siembran uno por cada nombre distinto que traiga la hoja de operaciones, SIN agrupar:
+   la agrupación la confirma la usuaria escribiendo los alias. El sufijo TP queda como tipo separado. */
+function tiposMaq(){if(!Array.isArray(S.params.tiposMaq))S.params.tiposMaq=[];sembrarTiposMaq();return S.params.tiposMaq}
+function sembrarTiposMaq(){const t=S.params.tiposMaq;const vistos=new Set(t.map(r=>normTxt(r.tipo)));let n=0;
+  (S.operaciones||[]).forEach(o=>{const nom=String(o.maq||'').trim();if(!nom)return;if(vistos.has(normTxt(nom)))return;
+    vistos.add(normTxt(nom));t.push({tipo:nom,alias:'',familia:'',activa:true,pendiente:true,porConfirmar:/\bTP\b/i.test(nom)});n++});
+  if(n&&typeof bitacora==='function')bitacora('Tipos de máquina: '+n+' nombres tomados de la hoja de operaciones, sin agrupar (los alias los confirma la usuaria)')}
+function addTipoMaq(){tiposMaq().push({tipo:'',alias:'',familia:'',activa:true,pendiente:true});save();render()}
+function setTipoMaq(i,k,v){const r=tiposMaq()[i];if(!r)return;const antes=r[k];r[k]=(k==='activa')?!!v:v;if(k==='tipo'||k==='alias')r.pendiente=!String(r.tipo||'').trim();
+  bitacora('Tipos de máquina · '+(r.tipo||'(sin nombre)')+' · '+k+': '+(antes===true?'sí':antes===false?'no':(antes||'—'))+' → '+(v===true?'sí':v===false?'no':(v||'—'))+' ('+quienFirma()+')');save();render()}
+function delTipoMaq(i){const r=tiposMaq()[i];if(!r)return;if(!confirm('¿Quitar el tipo de máquina «'+(r.tipo||'')+'»? Las operaciones que lo usan quedan sin tipo hasta que lo vuelvas a crear o le pongas otro alias.'))return;
+  tiposMaq().splice(i,1);bitacora('Tipo de máquina quitado: '+(r.tipo||'')+' ('+quienFirma()+')');save();render()}
+/* normaliza el nombre que viene de la hoja: devuelve el tipo oficial si algún alias (o el propio nombre) calza */
+function normMaquina(nombre){const n=normTxt(String(nombre||'').trim());if(!n)return '';
+  const t=tiposMaq();const tieneAlias=r=>String(r.alias||'').split(/[,;]/).map(x=>normTxt(x.trim())).filter(Boolean).includes(n);
+  // manda el alias de un tipo activo: así se juntan dos nombres sin borrar el tipo viejo (solo se desactiva)
+  const al=t.find(r=>r.activa&&tieneAlias(r));if(al)return al.tipo;
+  const exA=t.find(r=>r.activa&&normTxt(r.tipo)===n);if(exA)return exA.tipo;
+  const al2=t.find(tieneAlias);if(al2)return al2.tipo;
+  const ex=t.find(r=>normTxt(r.tipo)===n);return ex?ex.tipo:String(nombre||'').trim()}
+function tiposMaqActivos(){return tiposMaq().filter(r=>r.activa&&String(r.tipo||'').trim()).map(r=>r.tipo)}
+function tiposMaqPanelHTML(){const t=tiposMaq();const usos={};(S.operaciones||[]).forEach(o=>{const k=normMaquina(o.maq);if(k)usos[k]=(usos[k]||0)+1});
+  return `<div class="panel"><h3>Tipos de máquina <span class="note">un tipo por máquina real; en «alias» van los nombres con que llega de la hoja (separados por coma) · ${t.length} tipos · los sufijos TP quedan aparte hasta que planta confirme</span><span class="spacer"></span><button class="btn ghost sm" onclick="addTipoMaq()">Agregar</button></h3>
+   <div class="body"><div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-s)"><thead><tr><th>Tipo</th><th>Alias que llegan de la hoja</th><th>Familia</th><th class="num">Operaciones</th><th>Activa</th><th></th><th></th></tr></thead><tbody>
+   ${t.map((r,i)=>`<tr><td><input type="text" style="width:200px" value="${esc(r.tipo||'')}" onchange="setTipoMaq(${i},'tipo',this.value)"></td>
+     <td><input type="text" style="width:260px" value="${esc(r.alias||'')}" placeholder="OVERLOK 4 HILOS, OVERLOCK 4H" onchange="setTipoMaq(${i},'alias',this.value)"></td>
+     <td><select onchange="setTipoMaq(${i},'familia',this.value)"><option value="">—</option>${['recta','overlock','recubridora','especial','manual'].map(f=>`<option value="${f}" ${r.familia===f?'selected':''}>${f}</option>`).join('')}</select></td>
+     <td class="num">${num(usos[r.tipo]||0)}</td>
+     <td style="text-align:center"><input type="checkbox" ${r.activa?'checked':''} onchange="setTipoMaq(${i},'activa',this.checked)"></td>
+     <td>${r.porConfirmar?'<span class="tag t-aviso" title="nombre con sufijo TP: no se asumió que sea la misma máquina">por confirmar con planta</span>':''}</td>
+     <td><button class="btn ghost sm" onclick="delTipoMaq(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin tipos. Se siembran solos con los nombres de la hoja de operaciones.</td></tr>'}
+   </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Nada se agrupa solo: si dos nombres son la misma máquina, deja uno como tipo y escribe el otro en sus alias.</p></div></div>`}
+/* --- operarias por módulo y su especialidad por tipo de máquina (no obligatorio llenar) --- */
+const NIVELES_ESP=[[1,'1 · aprende'],[2,'2 · hace'],[3,'3 · referente']];
+function operarias(){if(!Array.isArray(S.params.operarias))S.params.operarias=[];return S.params.operarias}
+function addOperaria(rec){operarias().push({id:uid(),n:'',rec:rec||'',esp:{},activa:true});save();render()}
+function setOperaria(i,k,v){const r=operarias()[i];if(!r)return;const antes=r[k];r[k]=(k==='activa')?!!v:v;
+  bitacora('Operarias · '+(r.n||'(sin nombre)')+' · '+k+': '+(antes===true?'sí':antes===false?'no':(antes||'—'))+' → '+(v===true?'sí':v===false?'no':(v||'—'))+' ('+quienFirma()+')');save();render()}
+function setEspOperaria(i,tipo,niv){const r=operarias()[i];if(!r)return;r.esp=r.esp||{};const antes=r.esp[tipo]||'—';
+  if(!niv)delete r.esp[tipo];else r.esp[tipo]=+niv;
+  bitacora('Operarias · '+(r.n||'(sin nombre)')+' · '+tipo+': nivel '+antes+' → '+(niv||'—')+' ('+quienFirma()+')');save();render()}
+function delOperaria(i){const r=operarias()[i];if(!r)return;if(!confirm('¿Quitar a «'+(r.n||'sin nombre')+'» de la lista de operarias? No borra ningún registro de producción.'))return;
+  operarias().splice(i,1);bitacora('Operaria quitada: '+(r.n||'sin nombre')+' ('+quienFirma()+')');save();render()}
+function operariasDe(rec){return operarias().filter(o=>o.rec===rec&&o.activa!==false)}
+function operariasPanelHTML(){const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);const tipos=tiposMaqActivos();const l=operarias();
+  return `<div class="panel"><h3>Operarias y especialidades <span class="note">nombre, módulo y qué máquina maneja cada una · ${l.length} operarias · llenar no es obligatorio: se puede trabajar con puestos numerados</span><span class="spacer"></span>${mods.map(m=>`<button class="btn ghost sm" onclick="addOperaria('${m.id}')">+ ${esc(m.n)}</button>`).join(' ')}</h3>
+   <div class="body"><div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>Nombre</th><th>Módulo</th><th>Especialidades (nivel por máquina)</th><th>Activa</th><th></th></tr></thead><tbody>
+   ${l.map((r,i)=>`<tr><td><input type="text" style="width:180px" value="${esc(r.n||'')}" placeholder="sin nombre (puesto numerado)" onchange="setOperaria(${i},'n',this.value)"></td>
+     <td><select onchange="setOperaria(${i},'rec',this.value)"><option value="">—</option>${mods.map(m=>`<option value="${m.id}" ${r.rec===m.id?'selected':''}>${esc(m.n)}</option>`).join('')}</select></td>
+     <td><div style="display:flex;gap:6px;flex-wrap:wrap">${tipos.slice(0,12).map(t=>`<label style="font-size:var(--fs-xs)">${esc(t)} <select style="width:auto" onchange="setEspOperaria(${i},'${esc(t).replace(/'/g,"\\'")}',this.value)"><option value="">—</option>${NIVELES_ESP.map(([v,n])=>`<option value="${v}" ${(r.esp||{})[t]==v?'selected':''}>${n}</option>`).join('')}</select></label>`).join('')}</div>${tipos.length>12?`<span class="mut" style="font-size:var(--fs-xs)">y ${tipos.length-12} tipos más: deja activos solo los que usa el módulo</span>`:''}</td>
+     <td style="text-align:center"><input type="checkbox" ${r.activa!==false?'checked':''} onchange="setOperaria(${i},'activa',this.checked)"></td>
+     <td><button class="btn ghost sm" onclick="delOperaria(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Sin operarias cargadas. El balanceo funciona igual con puestos numerados.</td></tr>'}
+   </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Solo nombre, módulo y especialidad: no se guarda ningún otro dato personal. Nivel mínimo para que una sugerencia asigne una operación: parámetro <b>nivelMinEsp</b> (hoy ${num(prm('nivelMinEsp',2))}).</p></div></div>`}
+/* --- vista de módulos: personas, máquinas y referencia en curso --- */
+function refEnCurso(rec,P){const ym=hoy().slice(0,7);const ops=[...new Set((P.pro||[]).filter(x=>x.rec===rec&&x.centro==='modulos'&&(x.dia||'').startsWith(ym)).map(x=>x.op))];
+  const ords=ops.map(op=>S.ordenes.find(o=>o.op===op)).filter(Boolean);
+  const porCat={};ords.forEach(o=>{const k=nombreCat(K(o.cat));porCat[k]=(porCat[k]||0)+(+o.cant||0)});
+  const top=Object.entries(porCat).sort((a,b)=>b[1]-a[1])[0];
+  return {ords,top:top?top[0]:null,pz:ords.reduce((a,o)=>a+ +o.cant,0)}}
+function modulosVistaHTML(P){const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa&&veCentro('modulos'));
+  const maqPorRec={};(S.maquinas||[]).forEach(m=>{if(!m.rec)return;maqPorRec[m.rec]=(maqPorRec[m.rec]||0)+((m.estado||'operativa')==='operativa'?1:0)});
+  const cards=mods.map(r=>{const c=refEnCurso(r.id,P);const ops=operariasDe(r.id).length;
+    return {id:'balmod-'+r.id,v:r.pers,k:esc(r.n)+' · '+(maqPorRec[r.id]||0)+' máquinas · '+(ops?ops+' operarias':'<span class="mut">sin operarias cargadas</span>')+'<br><span class="mut" style="font-size:var(--fs-xs)">'+(c.top?'en curso: '+esc(c.top)+' · '+num(c.pz)+' prendas':'nada programado este mes')+'</span>',items:c.ords,porFam:true,cls:(maqPorRec[r.id]||0)===0?'warn':''}});
+  return `<div class="panel"><h3>Módulos de confección <span class="note">personas, máquinas registradas y referencia en curso · clic en una tarjeta abre sus órdenes</span></h3><div class="body">${tarjetasResumenHTML(cards)}
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Las máquinas se registran en Configuración → Centros y recursos → Máquinas de confección; las operarias, en Operarias y especialidades. Tolerancia del puesto: parámetro <b>tolPuesto</b> (hoy ${num(prm('tolPuesto',2))} %), distinta del semáforo de carga de los centros.</p></div></div>`}
 function vBalanceo(el){
   const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa&&veCentro('modulos'));const h=hoy();
   if(!BAL.rec||!mods.some(r=>r.id===BAL.rec))BAL.rec=(mods[0]||{}).id;if(!BAL.mes)BAL.mes=h.slice(0,7);
@@ -3653,15 +3726,16 @@ function vBalanceo(el){
   const byIdOp={};S.operaciones.forEach(x=>byIdOp[x.id]=x);const grupos={};ords.forEach(o=>{const k=K(o.cat);const p=k?(K(k.padre)||k):null;const os=k?opsDe(k):[];const lmo=os.length?(byIdOp[os[0].op]||{}).catP:null;const g=lmo?'lmo:'+lmo:(p?p.id:'(sin categoría)');grupos[g]=grupos[g]||{p,k0:k,lmo,ords:[],pz:0,hijas:new Set()};grupos[g].ords.push(o);grupos[g].pz+=+o.cant||0;if(k)grupos[g].hijas.add(k.n)});
   const lista=Object.entries(grupos).sort((a,b)=>b[1].pz-a[1].pz);if(BAL.grupo&&!grupos[BAL.grupo])BAL.grupo=null;
   const efic=(rec.efic||0)/100;const minH=60*efic;const obj=objetivoHora(rec);
+  const vistaMods=modulosVistaHTML(P);
   const cab=`<div class="pagehead"><h2>Balanceo de módulo</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
   <p class="lede">Sale de lo que <b>ya está programado</b> en el módulo en el mes (nada se elige de un catálogo). Las órdenes de la misma hoja de operaciones comparten el balanceo: se muestra una vez. Personas: las del recurso (${rec.pers}); eficiencia ${rec.efic}% → ${num(minH,1)} min efectivos por persona y hora (Configuración → Centros y recursos).</p>${sel}
   <div class="panel"><h3>Objetivo de prendas por hora · ${esc(rec.n)} <span class="note">lo fija la supervisora; queda registrado quién, cuándo y qué valor tenía antes</span></h3><div class="body"><div class="row" style="align-items:flex-end">
    <div><label>Objetivo (prendas/hora)</label><input type="number" style="width:110px" value="${obj?obj.v:''}" placeholder="sin fijar" ${(puede('programa')||puedeCentro('modulos'))?'':'disabled'} onchange="setObjetivoHora('${rec.id}',this.value)"></div>
    <div class="mut" style="font-size:var(--fs-s)">${obj?'Fijado por '+esc(obj.u)+' el '+new Date(obj.ts).toLocaleString('es-EC')+(obj.antes!=null?' · antes '+obj.antes:''):'Sin objetivo fijado.'}${(rec.objetivoHist||[]).length>1?` <details style="display:inline"><summary style="cursor:pointer;display:inline">historial (${rec.objetivoHist.length})</summary>${rec.objetivoHist.slice().reverse().map(x=>'<div>'+new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.u)+' · '+(x.antes==null?'—':x.antes)+' → '+(x.v==null?'—':x.v)+'</div>').join('')}</details>`:''}</div></div></div></div>`;
-  if(!lista.length){el.innerHTML=cab+`<div class="panel"><div class="empty">Nada programado en ${esc(rec.n)} en ${esc(fmtMesEG(ym))}.</div></div>`;return}
+  if(!lista.length){el.innerHTML=cab+vistaMods+`<div class="panel"><div class="empty">Nada programado en ${esc(rec.n)} en ${esc(fmtMesEG(ym))}.</div></div>`;return}
   const listaHTML=`<div class="panel"><h3>Órdenes programadas en ${esc(rec.n)} · ${esc(fmtMesEG(ym))} <span class="note">${ords.length} órdenes · ${num(ords.reduce((a,o)=>a+ +o.cant,0))} prendas · ${lista.length} hojas de operaciones</span></h3><div class="body"><table><thead><tr><th>Hoja de operaciones (familia)</th><th>Categorías</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Órdenes</th><th></th></tr></thead><tbody>
    ${lista.map(([g,v])=>`<tr ${BAL.grupo===g?'style="background:var(--field)"':''}><td><b>${esc(v.lmo||(v.p?v.p.n:g))}</b>${v.lmo?'':' <span class="tag t-aviso">sin hoja</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc([...v.hijas].join(', '))}</td><td class="num">${v.ords.length}</td><td class="num">${num(v.pz)}</td><td style="font-size:var(--fs-xs)">${v.ords.slice(0,8).map(o=>fotoMini(o,22)+esc(o.op)+(o.opsSam?' <span class="tag t-aviso" title="tiene tiempos ajustados solo para esta referencia">ajustada</span>':'')).join(' · ')}${v.ords.length>8?' +'+(v.ords.length-8):''}</td><td><button class="btn sm ${BAL.grupo===g?'':'ghost'}" onclick="BAL.grupo='${g}';BAL.ref=null;render()">balanceo</button></td></tr>`).join('')}</tbody></table></div></div>`;
-  if(!BAL.grupo){el.innerHTML=cab+listaHTML+'<p class="mut">Haz clic en "balanceo" de una hoja para verlo.</p>';return}
+  if(!BAL.grupo){el.innerHTML=cab+vistaMods+listaHTML+'<p class="mut">Haz clic en «balanceo» de una hoja para verlo.</p>';return}
   const G=grupos[BAL.grupo];const oRef=BAL.ref?G.ords.find(o=>o.id===BAL.ref):null;if(BAL.ref&&!oRef)BAL.ref=null;const k=oRef?K(oRef.cat):G.k0;const opsC=k?(oRef?opsConfeccionDe(k,oRef):opsConfeccion(k)):[];const samTot=opsC.reduce((a,x)=>a+x.sam,0);
   const puedeAj=puede('programa')||puedeCentro('modulos');const nAj=opsC.filter(x=>x.ajustada).length;
   const selRef=`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>Referencia</label><select onchange="BAL.ref=this.value||null;render()"><option value="">Hoja estándar (todas las órdenes de la hoja)</option>${G.ords.map(o=>`<option value="${o.id}" ${BAL.ref===o.id?'selected':''}>${esc(o.op)} [${esc(faseNombre(o.fase)||"—")}] · ${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz${o.opsSam?' · ajustada':''}</option>`).join('')}</select></div>
@@ -3901,15 +3975,117 @@ function congelar(){const b=programar().banos.filter(x=>!x.error);
   if(S.programas.length>20)S.programas.shift();const p=PLAN;save();PLAN=p;render();}
 
 /* ---------- Producción ---------- */
+/* ================= CARGA: una sola cuenta para todas las pantallas =================
+   base 'programadas' = lo liberado que el motor ya colocó · 'abiertas' = todas las órdenes abiertas ·
+   'plan' = el plan del mes (en proceso + agregadas). Cada pantalla dice con qué base está calculada. */
+const CARGA_BASES={programadas:'programadas',abiertas:'todas las abiertas',plan:'plan del mes'};
+const CARGA_BASE_TXT={programadas:'lo liberado que el motor ya colocó en el programa',abiertas:'todas las órdenes abiertas, estén liberadas o no',plan:'las órdenes del plan del mes (en proceso + agregadas)'};
+function ordenesBase(base,ym){const ab=S.ordenes.filter(abierta);
+  if(base==='plan'){const set=planMesOidsTot(ym||hoy().slice(0,7));return ab.filter(o=>set.has(o.id))}
+  if(base==='programadas')return ab.filter(o=>liberadaCorte(o));
+  return ab}
+/* reserva: solo lavado y plancha, con lo configurado en el centro (min/prenda y % estimado que pasa) */
+function centrosReserva(){return S.centros.filter(c=>c.area==='pro'&&(c.id==='lavado'||c.id==='plancha'))}
+function reservaCentroDatos(c){const ce=CE(c)||{};const min=+ce.minEstandar||0;const pct=+ce.pctEstimado||0;return {min,pct,falta:!(min>0)||!(pct>0)}}
+function centrosSinDatosReserva(){return centrosReserva().filter(c=>reservaCentroDatos(c.id).falta).map(c=>c.id)}
+function reservaDe(o,c){const d=reservaCentroDatos(c);if(d.falta)return 0; // sin minutos o % cargados: cero, y se avisa en Hoy
+  if((o.ruta||[]).some(p=>p.centro===c))return 0; // si ya está en la ruta, no es reserva: es carga firme
+  const a=S.avance[o.id]||{};const hechas=(a.centros||{})[c]||0;const pend=Math.max(0,(+o.cant||0)-hechas);
+  return pend*d.min*(d.pct/100)}
+/* la cuenta única: minutos pendientes por centro, separados en firme, en proceso y reserva */
+function cargaUnica(base,opts){opts=opts||{};const ym=opts.ym||hoy().slice(0,7);const ords=opts.ordenes||ordenesBase(base,ym);
+  const out={base,baseTxt:CARGA_BASE_TXT[base]||base,ym,centros:{},ordenes:ords.length};
+  const cen=id=>out.centros[id]=out.centros[id]||{firme:0,proceso:0,reserva:0,pz:0,ords:new Set(),u:(CE(id)||{}).medida==='puntadas'?'pt':'min'};
+  ords.forEach(o=>{const a=S.avance[o.id]||{};const ac=a.centros||{};
+    const vistos={};(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(!ce||ce.area!=='pro'||vistos[p.centro])return;vistos[p.centro]=1;
+      const m=minPendCentro(o,p.centro);if(!(m>0))return;const x=cen(p.centro);
+      if((ac[p.centro]||0)>0)x.proceso+=m;else x.firme+=m;
+      x.pz+=Math.max(0,(+o.cant||0)-(ac[p.centro]||0));x.ords.add(o.id)});
+    centrosReserva().forEach(c=>{const r=reservaDe(o,c.id);if(r>0){const x=cen(c.id);x.reserva+=r;x.ords.add(o.id)}})});
+  Object.values(out.centros).forEach(x=>{x.total=x.firme+x.proceso+x.reserva;x.n=x.ords.size});
+  return out}
+function cargaUnicaCentro(base,c,opts){const r=cargaUnica(base,opts).centros[c];return r?r.total:0}
+/* número oficial del mes: el plan congelado. Las demás pantallas lo muestran como referencia cuando difieren. */
+function cargaOficialMes(ym){const reg=(S.params.planMes||{})[ym]||{};const cong=!!reg.congelado;
+  const c=cargaUnica('plan',{ym});return {congelado:cong,ym,centros:c.centros,base:'plan',txt:cong?'plan congelado':'plan en borrador'}}
+function notaBaseHTML(base,extra){return `<span class="note" title="${esc(CARGA_BASE_TXT[base]||'')}">base: <b>${esc(CARGA_BASES[base]||base)}</b>${extra?' · '+extra:''}</span>`}
+function refOficialHTML(ym,c,valor){const of=cargaOficialMes(ym);const v=(of.centros[c]||{}).total||0;
+  if(!v||Math.abs(v-valor)<1)return '';
+  return `<div class="mut" style="font-size:var(--fs-xs)">Número oficial del mes (${esc(of.txt)}): <b>${num(v)}</b> · aquí ves <b>${num(valor)}</b> porque la base es distinta.</div>`}
+/* ---------- Carga general: consulta de carga contra capacidad ---------- */
+let CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:''};
+function semanasCarga(){const n=+prm('semCarga',8)||8;const lun=lunesDe(hoy());const out=[];for(let i=0;i<n;i++)out.push(dsum(lun,7*i));return out}
+function capSemCentro(c,w){const recs=S.recursos.filter(r=>r.activa&&r.centro===c);const dias=[];for(let i=0;i<7;i++)dias.push(dsum(w,i));
+  return recs.reduce((a,r)=>a+dias.reduce((b,d)=>b+(labR(d,r)?capDia(r,d):0),0),0)}
+function faseOkCG(o){const s=CG.fases;if(!s||!s.size)return true;if(s.has('∅'))return false;return s.has(o.fase||'Sin fase')}
+function cargaSemanaCentro(c,w,base){const P=S.ordenes.length?programar():{pro:[]};const fin=dsum(w,6);
+  const byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);const ords=new Set(ordenesBase(base).filter(faseOkCG).map(o=>o.id));
+  let firme=0,proceso=0,pz=0;const ops=new Set();
+  (P.pro||[]).filter(x=>x.centro===c&&x.dia>=w&&x.dia<=fin).forEach(x=>{const o=byOp[x.op];if(!o||!ords.has(o.id))return;
+    const ya=((S.avance[o.id]||{}).centros||{})[c]||0;if(ya>0)proceso+=x.min;else firme+=x.min;pz+=x.pz||0;ops.add(o.id)});
+  return {firme,proceso,pz,n:ops.size,cap:capSemCentro(c,w)}}
 function vPro(el){
-  const P=S.ordenes.length?programar():null;
-  el.innerHTML=`<div class="pagehead"><h2>Programa de producción</h2></div>
-  <p class="lede">Cada paso de la ruta se asigna a un recurso de su centro según el motor vigente (hacia atrás desde la fecha de entrega, o lo antes posible). La carga se mide en minutos estándar. Abajo, cada orden con su estado: lo que necesita atención primero.</p>
-  ${tablaCarga('pro','Carga por centro y recurso')}
-  ${tablaMezcla()}
-  ${P?asignacionPorOrdenHTML(P):'<div class="panel"><div class="empty">Sin órdenes.</div></div>'}`;
+  const P=S.ordenes.length?programar():null;const sems=semanasCarga();const ym=hoy().slice(0,7);
+  const cens=(CG.area==='pro'?S.centros.filter(c=>c.area==='pro'):S.centros.filter(c=>c.area===CG.area)).sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  const lista=CG.centro?cens.filter(c=>c.id===CG.centro):cens;
+  const fasesAll=[...new Set(S.ordenes.filter(abierta).map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
+  const prog=cargaUnica('programadas',{ym});const todo=cargaUnica('abiertas',{ym});
+  const faltaRes=centrosSinDatosReserva();
+  const cab=`<div class="pagehead"><h2>Carga general</h2><span class="spacer"></span><span class="mut" style="font-size:var(--fs-s)">consulta: carga contra capacidad</span></div>
+  <p class="lede">Cuánta carga hay contra cuánta capacidad, por área, centro, familia y semana. Aquí no se decide el mes (eso es Plan mensual) ni qué hacer con la sobrecarga (eso es Capacidad y decisiones): esto solo muestra.</p>
+  <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+   <div><label>Área</label><select onchange="CG.area=this.value;CG.centro='';CG.det=null;render()">${[['pro','Producción'],['tej','Tejeduría'],['tin','Tintorería']].map(([k,v])=>`<option value="${k}" ${CG.area===k?'selected':''}>${v}</option>`).join('')}</select></div>
+   <div><label>Centro</label><select onchange="CG.centro=this.value;CG.det=null;render()"><option value="">Todos</option>${cens.map(c=>`<option value="${c.id}" ${CG.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>
+   <div><label>Fases</label>${filtroFasesHTML(fasesAll,CG.fases,'CG.fases','togFaseCG')}</div>
+   <div style="width:190px"><label>Buscar</label>${busqHTML('CG.q',CG.q,'CG.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
+   <div class="mut" style="font-size:var(--fs-xs);max-width:280px">${sems.length} semanas (parámetro <b>semCarga</b> en Configuración → Calendario y parámetros)</div>
+  </div></div>`;
+  if(!S.ordenes.length){el.innerHTML=cab+'<div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>';return}
+  /* Bloque 1 · carga contra capacidad por semana */
+  const filaCen=c=>{const cels=sems.map(w=>cargaSemanaCentro(c.id,w,'programadas'));
+    const res=(prog.centros[c.id]||{}).reserva||0;const resSem=res/sems.length;
+    return `<tr><td style="white-space:nowrap"><b>${esc(c.n)}</b><div class="mut" style="font-size:var(--fs-xs)">${num((todo.centros[c.id]||{}).total||0)} min si se cuenta todo lo abierto</div></td>
+     ${cels.map((x,i)=>{const tot=x.firme+x.proceso+resSem;const pct=x.cap?Math.round(tot/x.cap*100):null;
+       return `<td class="num" style="cursor:pointer" onclick="CG.det={c:'${c.id}',w:'${sems[i]}'};render()" title="clic para ver las órdenes">
+        ${x.firme?num(x.firme):'<span class="mut">·</span>'}<br><span class="mut" style="font-size:var(--fs-xs)">${x.proceso?num(x.proceso)+' en proceso<br>':''}${resSem>1?num(resSem)+' reserva<br>':''}${pct!=null?'<b class="'+(pct>100?'tag t-alerta':pct>=(+prm('capAmbar',85)||85)?'tag t-aviso':'mut')+'">'+pct+'%</b>':'sin capacidad'}</span></td>`}).join('')}
+     <td class="num"><b>${num(cels.reduce((a,x)=>a+x.firme+x.proceso,0)+res)}</b></td></tr>`};
+  const bloque1=`<div class="panel"><h3>Carga contra capacidad por semana ${notaBaseHTML('programadas','firme, en proceso y reserva por separado · la segunda línea de cada centro es la base «todas las abiertas»')}</h3>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th>${sems.map(w=>`<th class="num">${fmtDia(w)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+   ${lista.map(filaCen).join('')||'<tr><td colspan="'+(sems.length+2)+'" class="mut">Sin centros.</td></tr>'}
+   </tbody></table></div>
+   ${faltaRes.length?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)">La reserva de ${faltaRes.map(c=>esc(nCen(c))).join(' y ')} sale <b>cero</b>: falta cargar minutos por prenda y % estimado en Configuración → Centros. Está avisado en Hoy → Pendientes.</div>`:''}
+   ${refOficialHTML(ym,lista[0]?lista[0].id:'',(prog.centros[(lista[0]||{}).id]||{}).total||0)}
+   </div></div>`;
+  /* Bloque 2 · familia por centro */
+  const ordsF=ordenesBase('programadas',ym).filter(faseOkCG).filter(o=>matchBusq(o,normTxt(CG.q),'CG.q'));
+  const porFilas=CG.cruce!=='centro';const m={},cols={};
+  ordsF.forEach(o=>{const vistos={};(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(!ce||ce.area!==CG.area||vistos[p.centro])return;if(CG.centro&&p.centro!==CG.centro)return;vistos[p.centro]=1;
+    const min=minPendCentro(o,p.centro);if(!(min>0))return;const f=famDeOrden(o),c=nCen(p.centro);
+    const a=porFilas?f:c,b=porFilas?c:f;m[a]=m[a]||{};m[a][b]=m[a][b]||{min:0,pz:0};m[a][b].min+=min;m[a][b].pz+=Math.max(0,+o.cant||0);cols[b]=(cols[b]||0)+min})});
+  const colsOrd=Object.keys(cols).sort((x,y)=>cols[y]-cols[x]);const filOrd=Object.keys(m).sort((x,y)=>{const sx=Object.values(m[x]).reduce((a,b)=>a+b.min,0),sy=Object.values(m[y]).reduce((a,b)=>a+b.min,0);return sy-sx});
+  const totGen=Object.values(cols).reduce((a,b)=>a+b,0);
+  const bloque2=filOrd.length?`<div class="panel"><h3>${porFilas?'Familia por centro':'Centro por familia'} ${notaBaseHTML('programadas','unidades, horas y % del total')}<span class="spacer"></span><button class="btn ghost sm" onclick="CG.cruce='${porFilas?'centro':'fam'}';render()">dar vuelta el cruce</button></h3>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>${porFilas?'Familia':'Centro'}</th>${colsOrd.map(c=>`<th class="num">${esc(c)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+   ${filOrd.map(f=>{const tot=Object.values(m[f]).reduce((a,b)=>a+b.min,0);
+     return `<tr><td>${esc(f)}</td>${colsOrd.map(c=>{const x=m[f][c];return `<td class="num">${x?num(x.pz)+' u<br><span class="mut" style="font-size:var(--fs-xs)">'+num(x.min/60,1)+' h · '+(totGen?Math.round(x.min/totGen*100):0)+'%</span>':'<span class="mut">·</span>'}</td>`}).join('')}<td class="num"><b>${num(tot/60,1)} h</b></td></tr>`}).join('')}
+   </tbody></table></div></div></div>`:'';
+  /* Bloque 3 · detalle de una celda */
+  let bloque3='';
+  if(CG.det){const c=CG.det.c,w=CG.det.w,fin=dsum(w,6);const byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);
+    const ids=new Set((P?P.pro:[]).filter(x=>x.centro===c&&x.dia>=w&&x.dia<=fin).map(x=>(byOp[x.op]||{}).id).filter(Boolean));
+    const dets=S.ordenes.filter(o=>ids.has(o.id)&&faseOkCG(o));
+    bloque3=`<div class="panel"><h3>${esc(nCen(c))} · semana del ${fmtDia(w)} <span class="note">${dets.length} órdenes</span><span class="spacer"></span>${grpSelHTML('cg')}<button class="btn ghost sm" onclick="CG.det=null;render()">cerrar</button></h3>
+     <div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Min pend.</th><th></th></tr></thead><tbody>
+     ${filasGRP('cg',dets,o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(minPendCentro(o,c))}</td><td><a style="cursor:pointer" onclick="irEstadoOrden('${o.id}')">ver dónde está →</a></td></tr>`,7)||'<tr><td colspan="7" class="mut">Sin órdenes.</td></tr>'}
+     </tbody></table></div></div></div>`}
+  el.innerHTML=cab+bloque1+bloque2+bloque3;
 }
-
+function togFaseCG(f){togSet(CG,'fases',f)}
+/* Asignación por orden: ahora vive en Reportería (no se borró) */
+function vAsignacion(el){const P=S.ordenes.length?programar():null;
+  el.innerHTML=`<div class="pagehead"><h2>Asignación por orden</h2></div>
+  <p class="lede">Una fila por orden abierta, con su estado contra el programa y su próximo paso. La consulta de carga contra capacidad está en Carga general.</p>
+  ${P?asignacionPorOrdenHTML(P):'<div class="panel"><div class="empty">Sin órdenes.</div></div>'}`}
 /* qué categorías tiene cargadas cada centro, por período */
 function tablaMezcla(){
   const P=programar();if(!P.pro.length)return'';
@@ -4881,11 +5057,13 @@ function vConfig(el){
    <div class="body"><table><thead><tr><th>Recurso</th><th>Centro</th><th class="num">Personas</th><th class="num">Min/día</th><th class="num">Efic. %</th><th class="num">Min efectivos/día</th><th class="num">Días/sem <span class="mut" title="Regla base del área; el calendario del mes manda">(base del área)</span></th><th>Activo</th><th></th></tr></thead><tbody>${recRows('pro')}</tbody></table></div></div>
 
   <p class="mut" style="font-size:var(--fs-s);margin:-6px 0 14px">"Días/sem" no se edita aquí. <b>Manda el calendario del mes</b> (Dirección → Plan mensual → Planificar el mes): ahí se marcan los días reales. La regla base del área (Configuración → Calendario y parámetros) es <b>solo el punto de partida</b> para los días sin marca en el calendario; por eso un mes puede tener más o menos días que los que da la regla. El campo "días" propio de cada recurso ya no se usa.</p>
+  ${tiposMaqPanelHTML()}
+  ${operariasPanelHTML()}
   <div class="panel" id="bloque-maq"><h3>Máquinas de confección <span class="note">inventario por módulo, para balancear</span><span class="spacer"></span><button class="btn ghost sm" onclick="mPegarMaq()">Pegar desde Excel</button> <button class="btn ghost sm" onclick="addMaq()">Agregar</button></h3>
    <div class="body">${resumenMaq()}
    <table><thead><tr><th>Tipo</th><th>Código / placa</th><th>Módulo</th><th>Estado</th><th></th></tr></thead><tbody>
    ${S.maquinas.slice().sort((a,b)=>(a.rec||'').localeCompare(b.rec||'')||a.tipo.localeCompare(b.tipo)).map(m=>`<tr>
-     <td><select onchange="setRow('maquinas','${m.id}','tipo',this.value)">${TIPOS_MAQ.concat(TIPOS_MAQ.includes(m.tipo)?[]:[m.tipo]).map(t=>`<option ${m.tipo===t?'selected':''}>${esc(t)}</option>`).join('')}</select></td>
+     <td><select onchange="setRow('maquinas','${m.id}','tipo',this.value)">${(tiposMaqActivos().length?tiposMaqActivos():TIPOS_MAQ).concat((tiposMaqActivos().length?tiposMaqActivos():TIPOS_MAQ).includes(m.tipo)?[]:[m.tipo]).map(t=>`<option ${m.tipo===t?'selected':''}>${esc(t)}</option>`).join('')}</select></td>
      <td><input type="text" style="width:120px" value="${esc(m.cod||'')}" onchange="setRow('maquinas','${m.id}','cod',this.value)"></td>
      <td><select onchange="setRow('maquinas','${m.id}','rec',this.value)"><option value="">Sin asignar (stock)</option>${S.recursos.filter(r=>r.centro==='modulos').map(r=>`<option value="${r.id}" ${m.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
      <td><select onchange="setRow('maquinas','${m.id}','estado',this.value)">${['operativa','mantenimiento','parada'].map(e=>`<option value="${e}" ${(m.estado||'operativa')===e?'selected':''}>${e}</option>`).join('')}</select></td>
