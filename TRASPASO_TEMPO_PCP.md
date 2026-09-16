@@ -204,6 +204,29 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.28 Revisión de seis puntos (16-sep-2026)
+- **Liberación**: el mes del Proyecto es multiselección (con «Seleccionar todos» y «Limpiar»); el filtro de fases
+  ya marca bien (el bug era el centinela «ninguna») y **acota de verdad** la lista, las tarjetas, el conteo y el
+  botón de liberar, igual que categoría y tipo de tela. «Mes de entrega» se quitó: filtraba por el mismo mes del
+  Proyecto.
+- **Plan mensual → agregar**: agrupador anidado de hasta 3 niveles (Cliente, Fase, Familia, Tipo de producto,
+  Tela, Color, ODC, Mes…) con checkbox para marcar el grupo entero.
+- **Terminados** sigue siendo un ítem de planificación y abre con el **consolidado de sus sub-áreas** (ojales y
+  botones, plancha, lavado, empaque, etiquetas) con capacidad, carga y ocupación de cada una; debajo, la cola y la
+  programación de cada una. La pertenencia y los tiempos son **columnas editables** en Configuración → Centros
+  («Ítem de planificación», «Por días», min/prenda, % estimado). Plancha sembrada en 2 min/prenda; lavado se mide
+  por días (3 en planta, 15 en Quito para denim/jean, en la tabla de esperas).
+- **Lavado y plancha en 0 horas**: no están en la ruta de ninguna orden, no tienen min/prenda ni operaciones
+  mapeadas, y la reserva depende de eso mismo. Ahora la pantalla lo dice en vez de mostrar un 0 mudo.
+- **Agrupación en los centros**: se agregó **Tela** (de la orden o de la tabla categoría → tela; sin mapeo,
+  «Sin tela asignada») y cada grupo muestra órdenes, prendas, horas y minutos.
+- **Mi centro**: la cola se parte en **En proceso** (CONTINUAR, barra de avance y «Terminar orden»), **Disponibles**
+  y **Próximas** (fase de un paso anterior: se ven, no se inician). Un inicio sin fin se ve «en curso» con su tiempo.
+- **«Va tarde» en los centros**: se calcula contra la **fecha meta de la orden** y el fin de la **orden completa**,
+  no contra el paso. Ahora se distingue «meta vencida», «la orden va tarde» y «este paso va tarde», y cada cola
+  explica arriba cuántas caen en cada causa.
+- Detalle y datos faltantes en `REVISION_16SEP_SEIS_PUNTOS.md`.
+
 ### 2.27 Estado real de los permisos en Supabase (16-sep-2026) — YA EJECUTADO
 - **Escritura del piso (15-sep noche)**: función `rol_piso_usuario()` + políticas `piso_inserta` y `piso_actualiza` en
   **avance, bitacora, turnos y paros** para `tablet, corte, modulos, terminado`. Sin DELETE. No se tocó ninguna

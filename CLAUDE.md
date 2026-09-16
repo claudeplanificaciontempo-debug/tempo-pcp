@@ -494,6 +494,21 @@ enlace (con confirmación y bitácora): la app NO puede poner la contraseña de 
 no puede estar en una página pública). Configuración de Supabase pendiente de la usuaria (URL Configuration, SMTP
 propio y límites): ver `LOGIN_RECUPERAR_CONTRASENA.md`.
 
+**Revisión de seis puntos (16-sep-2026):** ver `REVISION_16SEP_SEIS_PUNTOS.md`. (1) `LIB.ym` pasa a Set (acepta Set,
+texto o null vía `mesEnFiltro`/`mesesLibTxt`); `selMulti` gana «Seleccionar todos» y «Limpiar»; `togFaseFiltro(varName,f,fasesAll)`
+reemplaza a los `togFaseX` en el checkbox del filtro de fases y distingue todas/ninguna/selección (el bug era que tras
+«Limpiar» se sumaba la fase al centinela `∅`); `okFiltrosB1` aplica TODOS los filtros (antes solo ODC/familia/cliente);
+`refEstado` conoce ahora CEN, CG, WIPL y PMADD. (2) Plan → agregar usa `filasGRP('pmadd')` + `grpSelHTML` y `g.selChk`
+(checkbox por grupo, `selGrupoPMADD`). (3) `grupoPlanDe`/`subAreasDe`/`censDeGrupo` (columna «Ítem de planificación»),
+`centroPorDias` (columna «Por días», no consume capacidad), `sembrarTerminados` (plancha 2 min/prenda, lavado por días) y
+`subAreasResumenHTML` (consolidado con la brecha a la vista). Lavado/plancha daban 0 h por tres datos faltantes, no por
+un fallo: no están en ninguna ruta, no tienen min/prenda ni operaciones, y la reserva depende de lo mismo.
+(4) `telaPrincipalDe` + clave `tela` en `GRP_CAMPOS`/`claveGRP`; cada grupo muestra horas y minutos. (5) `estadoOrdenCentro`
+(proceso | disponible | proxima | terminada), `tramoAbiertoOrden`, `seccionColaTabletHTML`: Mi centro parte la cola en
+En proceso (CONTINUAR + Terminar orden + barra), Disponibles y Próximas (sin INICIO). (6) `diagAtraso(o,P,c)` y
+`marcaCentro(o,P,c)` separan «meta vencida», «la orden va tarde» y «este paso va tarde»; `porQueTardeHTML` explica arriba
+de cada cola contra qué fecha se compara. La marca SIEMPRE fue contra `fechaMetaDe(o)` vs `ro.finPro` (la orden entera).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
