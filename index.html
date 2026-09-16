@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 14:41';
+const APP_BUILD='2026-09-16 14:56';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -785,6 +785,7 @@ function tiemposOjalBoton(){if(!Array.isArray(S.params.tiemposOjalBoton))S.param
 function ojalBotonDe(k){if(!k)return null;const nm=normFase(k.n||''),pad=normFase((K(k.padre)||{}).n||'');return tiemposOjalBoton().find(r=>r.match&&(nm.includes(normFase(r.match))||pad.includes(normFase(r.match))))||null}
 function samPorCentro(k){const r={};opsDe(k).forEach(x=>{if(!x.centro||!CE(x.centro))return;r[x.centro]=(r[x.centro]||0)+(+x.sam||0)});const ob=ojalBotonDe(k);if(ob&&!ob.sinConfirmar&&r.botones!=null)r.botones=(+ob.ojales||0)+(+ob.botones||0);
   const et=(typeof etiquetaDe==='function')?etiquetaDe(k):null;if(et&&+et.min>0){const ce=et.centro||'etiquetas';if(CE(ce))r[ce]=(r[ce]||0)+(+et.min||0)}  // etiqueta de serigrafía: tabla de reglas, no LMO
+  if(r.modulos==null&&typeof minEstimadoConf==='function'){const me=minEstimadoConf(k);if(me!=null&&me>0)r.modulos=me}  // sin hoja LMO: el minuto estimado de producción, marcado como tal
   return r} // Botones: ojales+botones de la tabla (override de la LMO)
 /* recalcula el paso de Botones en las órdenes ya cargadas con el tiempo corregido (sin esto, seguían con el valor viejo de la carga) */
 function aplicarTiemposBotones(){let n=0;const cache={};S.ordenes.forEach(o=>{const k=K(o.cat);if(!k)return;const key=k.id;const sp=cache[key]||(cache[key]=samPorCentro(k));if(sp.botones==null)return;['ruta','rutaCompleta'].forEach(rk=>{(o[rk]||[]).forEach(p=>{if(p.centro==='botones'&&p.t!==sp.botones){p.t=sp.botones;n++}})})});if(n){PLAN=null;PLAN_ALL=null}return n}
@@ -962,7 +963,10 @@ function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
 /* estados: plan (abierta, se programa) · prevision (sin WH) · standby (en espera) · cerrada (facturada / done) · anulada */
-const abierta=o=>!o.estado||o.estado==='plan';
+/* UNA sola definición de orden abierta, para todo el sistema (ver abiertaDe()): no archivada y sin fase de
+   cierre según la columna «sistema» de la tabla de fases. Antes miraba solo el estado interno y daba por
+   abiertas a las facturadas, que es de donde salían los tres números distintos. */
+const abierta=o=>(typeof abiertaDe==='function')?abiertaDe(o):(!o.estado||o.estado==='plan');
 const ESTADOS_ORD={plan:'Abiertas',prevision:'Previsión (sin WH)',cerrada:'Cerradas / facturadas / stand by',anulada:'Anuladas'};
 const matchEstadoOrd=(o,k)=>k==='cerrada'?((o.estado||'plan')==='cerrada'||(o.estado||'plan')==='standby'):(o.estado||'plan')===k;
 const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
@@ -4133,6 +4137,13 @@ function unificarJeansEnDenim(){if(!puede('categorias')&&!puede('config')){alert
   bitacora('Catálogo unificado (decisión 16-sep): JEANS → DENIM · '+d.ordenes.length+' órdenes, '+d.ops.length+' operaciones y '+d.tablas.length+' filas de configuración apuntaban a JEANS. '+movidas+' hijas movidas. Nada se borró.');
   PLAN=null;PLAN_ALL=null;save();render();
   alert('Unificado en DENIM. '+movidas+' categorías hijas movidas. Nada se borró: revisa la bitácora y la auditoría.')}
+/* autorizado el 16-sep: corre una sola vez, sin preguntar, y deja todo en bitácora y auditoría */
+function sembrarUnificacionJeans(){if(S.params.jeansUnificado)return;
+  const d=diagJeans();
+  S.params.jeansUnificadoPrevio={cats:d.cats.length,ordenes:d.ordenes.length,ops:d.ops.length,tablas:d.tablas.length,ts:new Date().toISOString()};
+  if(!d.total){S.params.jeansUnificado=new Date().toISOString();return}
+  const cf=window.confirm,al=window.alert;
+  try{window.confirm=()=>true;window.alert=()=>{};unificarJeansEnDenim()}finally{window.confirm=cf;window.alert=al}}
 function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   return `<div class="panel"${d.total&&!ya?' style="border:2px solid var(--aviso)"':''}><h3>DENIM y JEANS <span class="note">${ya?'unificado':'la misma familia con dos nombres'}</span></h3><div class="body">
    <p class="lede" style="margin-top:0">DENIM y JEANS son la <b>misma familia</b> (decisión 16-sep). Antes de mover nada, esto es todo lo que hoy apunta a JEANS. <b>Unificar no borra</b>: las categorías se renombran o se cuelgan de DENIM y todo queda en la auditoría.</p>
@@ -4149,7 +4160,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas()}
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -4685,6 +4696,92 @@ function cierresMesHTML(){const C=cierresMes();const yms=Object.keys(C).sort().r
     ${yms.slice(0,24).map(ym=>{const f=C[ym];return `<tr><td><b>${esc(fmtMesGER(ym))}</b></td><td class="num">${num(f.ordenes)}</td><td class="num">${num(f.pz)}</td><td class="num">${num(f.hechas)}</td><td class="num">$ ${num(f.usd)}</td><td class="num">${f.vencidas}</td><td class="num">${f.tarde}</td>
      <td>${f.cerrado?'<span class="tag t-ok" title="el mes ya pasó: esta foto no cambia">cerrado</span>':'<span class="tag t-medio" title="se actualiza una vez al día">en curso</span>'} <span class="mut" style="font-size:var(--fs-xs)">${new Date(f.ts).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})}</span></td></tr>`}).join('')}
    </tbody></table>`:'<div class="empty">Todavía no hay fotos guardadas. Se toma la primera al abrir esta pantalla con órdenes cargadas.</div>'}
+  </div></div>`}
+/* ==================== DECISIONES DEL 16-sep (segunda tanda) ==================== */
+
+/* ---------- 4 · UNA sola definición de «orden abierta» ----------
+   Abierta = cargada en el sistema, no archivada, y su fase NO es de cierre según la columna «sistema»
+   de la tabla de fases (Configuración → Órdenes y materiales). Es configuración, no código: si mañana
+   una fase pasa a contar como cerrada, se marca ahí y todo el sistema la sigue.
+   Los tres números que andaban dando vueltas:
+     · CARGADAS   = todas las que entraron del volcado (incluye facturadas recientes)
+     · ABIERTAS   = ésta: las que siguen vivas para planificar
+     · EN PLANTA  = abiertas que además ya están liberadas a producción */
+const ESTADOS_CERRADOS=['cerrada','standby','archivada','noArchivo'];
+/* Estado OP de Odoo que cierra una orden. Editable en Configuración → Órdenes y materiales (tabla 8). */
+const ESTADO_OP_CERRADO_DEF=['done','cancel'];
+function estadosOPCerrados(){const v=S.params.estadoOPCerrado;return Array.isArray(v)&&v.length?v:ESTADO_OP_CERRADO_DEF}
+function faseDeCierre(f){const fila=(typeof filaFaseDe==='function')?filaFaseDe(f):null;
+  return !!(fila&&fila.sistema==='cerrada')}
+function abiertaDe(o){if(!o)return false;
+  if(ESTADOS_CERRADOS.includes(o.estado||''))return false;          // archivada o cerrada a mano
+  if(estadosOPCerrados().includes(o.estadoOP||''))return false;     // Estado OP de Odoo: done o cancel
+  return !faseDeCierre(o.fase)}                                     // y su fase no es de cierre
+/* una orden LANZADA es una abierta que ya tiene orden de producción (WH) en Odoo; las de diseño todavía no */
+function lanzada(o){return abiertaDe(o)&&!!String((o&&o.op)||'').trim()&&!/^SIN/i.test(String(o.op))&&!!o.estadoOP}
+function ordenesLanzadas(){return S.ordenes.filter(lanzada)}
+function cargadasTot(){return S.ordenes.length}
+function ordenesAbiertas(){return S.ordenes.filter(abiertaDe)}
+function ordenesEnPlanta(){return ordenesAbiertas().filter(liberadaCorte)}
+/* de dónde sale cada cifra, para que no vuelva a haber tres números distintos */
+function conteoOrdenesHTML(){const car=cargadasTot(),ab=ordenesAbiertas(),pl=ordenesEnPlanta(),lan=ordenesLanzadas();
+  const doneOP=S.ordenes.filter(o=>!ESTADOS_CERRADOS.includes(o.estado||'')&&estadosOPCerrados().includes(o.estadoOP||''));
+  const sinWH=ab.filter(o=>!lanzada(o));
+  const cerradasFase=S.ordenes.filter(o=>!ESTADOS_CERRADOS.includes(o.estado||'')&&faseDeCierre(o.fase));
+  const archivadas=S.ordenes.filter(o=>ESTADOS_CERRADOS.includes(o.estado||''));
+  const fases=[...new Set(cerradasFase.map(o=>o.fase||'(sin fase)'))].sort();
+  return `<div class="panel"><h3>Cuántas órdenes hay <span class="note">una sola definición, la misma en todo el sistema</span></h3><div class="body">
+   <div class="kpis tarj-row">
+    <div class="kpi tarj"><div class="v">${num(car)}</div><div class="k">Cargadas <span class="mut">todo lo que entró del archivo</span></div></div>
+    <div class="kpi tarj ok"><div class="v">${num(ab.length)}</div><div class="k">Abiertas <span class="mut">siguen vivas para planificar</span></div></div>
+    <div class="kpi tarj"><div class="v">${num(lan.length)}</div><div class="k">Lanzadas <span class="mut">abiertas con orden de producción (WH)</span></div></div>
+    <div class="kpi tarj"><div class="v">${num(pl.length)}</div><div class="k">En planta <span class="mut">lanzadas y liberadas a producción</span></div></div>
+   </div>
+   <table style="font-size:var(--fs-s);margin-top:10px"><tbody>
+    <tr><td>Cargadas</td><td class="num"><b>${num(car)}</b></td><td class="mut">todas las del volcado que no se excluyeron al cargar (canceladas, sin fecha o fuera de rango)</td></tr>
+    <tr><td>− archivadas o cerradas a mano</td><td class="num">${num(archivadas.length)}</td><td class="mut">${ESTADOS_CERRADOS.join(', ')}</td></tr>
+    <tr><td>− con Estado OP cerrado en Odoo</td><td class="num">${num(doneOP.length)}</td><td class="mut">${estadosOPCerrados().join(', ')} <span class="tag t-medio" style="font-size:10px;padding:0 4px">Estado OP del archivo</span></td></tr>
+    <tr><td>− con fase de cierre</td><td class="num">${num(cerradasFase.length)}</td><td class="mut">${fases.length?esc(fases.slice(0,6).join(', '))+(fases.length>6?' y '+(fases.length-6)+' más':''):'ninguna'} <span class="tag t-medio" style="font-size:10px;padding:0 4px">columna «sistema» de la tabla de fases</span></td></tr>
+    <tr style="border-top:2px solid var(--rule);font-weight:600"><td>= Abiertas</td><td class="num">${num(ab.length)}</td><td class="mut">la cifra que usa Reportería, el plan y los centros</td></tr>
+    <tr><td>de ellas, sin orden de producción todavía</td><td class="num">${num(sinWH.length)}</td><td class="mut">en diseño o recetas: no tienen WH, no se pueden programar</td></tr>
+    <tr style="font-weight:600"><td>= Lanzadas</td><td class="num">${num(lan.length)}</td><td class="mut">las que de verdad se pueden planificar hoy</td></tr>
+   </tbody></table>
+   <p class="mut" style="font-size:var(--fs-s);margin:8px 0 0">Qué fases cuentan como cierre se decide en <b>Configuración → Órdenes y materiales → tabla de fases</b>, columna «sistema», y qué Estado OP cierra en <code>S.params.estadoOPCerrado</code> (${estadosOPCerrados().join(', ')}). No está escrito en el código.</p>
+  </div></div>`}
+
+/* ---------- 5 · minuto estimado por prenda, por categoría, mientras no haya hoja LMO ---------- */
+/* Sin valor cargado NO se inventa nada: la categoría sigue en 0 y sale como brecha. */
+function minEstimadoConf(k){if(!k)return null;
+  const v=k.minEstConf!=null?k.minEstConf:((K(k.padre)||{}).minEstConf);
+  return (v==null||v==='')?null:(+v||0)}
+function tieneHojaLMO(k){return !!(k&&(opsDe(k)||[]).length)}
+function setMinEstConf(id,v){const k=K(id);if(!k)return;
+  if(!(puede('categorias')||puede('config'))){alert('Tu perfil no edita el catálogo.');return}
+  const antes=k.minEstConf;
+  if(v===''||v==null)delete k.minEstConf;else k.minEstConf=+String(v).replace(',','.')||0;
+  bitacora('Minuto estimado de confección · '+nombreCat(k)+': '+(antes==null?'sin valor':num(antes,2))+' → '+(k.minEstConf==null?'sin valor':num(k.minEstConf,2))+' (estimado, hasta que haya hoja de operaciones) ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render()}
+/* categorías que pasan por confección y no tienen hoja: con estimado o sin nada */
+function categoriasSinHoja(){const sin=[],est=[];
+  S.categorias.filter(k=>k.padre).forEach(k=>{if(tieneHojaLMO(k))return;
+    const m=minEstimadoConf(k);
+    const n=S.ordenes.filter(o=>abiertaDe(o)&&o.cat===k.id);
+    const fila={k,min:m,ordenes:n.length,pz:n.reduce((a,o)=>a+(+o.cant||0),0)};
+    if(m==null)sin.push(fila);else est.push(fila)});
+  return {sin,est,total:sin.length+est.length}}
+function categoriasSinHojaHTML(){const r=categoriasSinHoja();
+  const fila=(f,conEst)=>`<tr><td><b>${esc(nombreCat(f.k))}</b></td>
+   <td class="num">${f.ordenes}</td><td class="num">${num(f.pz)}</td>
+   <td class="num"><input type="number" step="0.01" style="width:96px" value="${f.min==null?'':f.min}" placeholder="sin valor" ${(puede('categorias')||puede('config'))?'':'disabled'} onchange="setMinEstConf('${f.k.id}',this.value)"></td>
+   <td>${conEst?`<span class="tag t-aviso" title="lo escribió producción a mano: no viene de la hoja de operaciones">estimado</span> <span class="mut" style="font-size:var(--fs-xs)">${num((f.min||0)*f.pz/60)} h</span>`:'<span class="tag t-alerta" title="sin minuto por prenda esta categoría carga 0 en confección">carga 0</span>'}</td></tr>`;
+  return `<div class="panel"${r.sin.length?' style="border:2px solid var(--alerta)"':''}><h3>Categorías sin hoja de operaciones <span class="note">${r.total} categorías · ${r.est.length} con minuto estimado, ${r.sin.length} todavía en 0</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Estas categorías <b>no tienen hoja de operaciones en la LMO</b>, así que el sistema no sabe cuántos minutos de confección lleva cada prenda. Mientras tanto, producción puede escribir aquí un <b>minuto estimado por prenda</b>: se usa para planificar y queda <b>marcado como estimado</b> en todas las pantallas. <b>Sin valor cargado la categoría sigue en 0</b> — no se inventa ninguno.</p>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Categoría</th><th class="num">Órdenes abiertas</th><th class="num">Prendas</th><th class="num">Min/prenda estimado</th><th>Estado</th></tr></thead><tbody>
+   ${r.sin.map(f=>fila(f,false)).join('')}${r.est.map(f=>fila(f,true)).join('')}
+   ${r.total?'':'<tr><td colspan="5" class="mut">Ninguna: todas las categorías tienen hoja de operaciones.</td></tr>'}
+   </tbody></table>
+   ${r.sin.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">brecha</span> <b>${r.sin.length} categorías</b> (${num(r.sin.reduce((a,f)=>a+f.pz,0))} prendas abiertas) cargan <b>0 minutos</b> en confección. Su carga no aparece en ningún centro hasta que se les ponga la hoja o, mientras tanto, el minuto estimado.</p>`:''}
+   ${r.est.length?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0">Las ${r.est.length} con estimado suman <b>${num(r.est.reduce((a,f)=>a+(f.min||0)*f.pz,0)/60)} horas</b> de confección que <b>hoy sí entran</b> al plan, marcadas como estimadas.</p>`:''}
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
@@ -6232,7 +6329,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
+   ${resumen()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -6768,6 +6865,7 @@ function vOperaciones(el){
    ${S.operaciones.length?`<div class="scroll" style="max-height:640px"><table><thead><tr><th>Familia de operación</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num">Sec.</th><th class="num">Tiempo (min)</th><th class="num">Usada en</th><th></th></tr></thead><tbody>${bloques}</tbody></table></div>`
    :'<div class="empty"><p>El catálogo está vacío.</p><button class="btn" onclick="mPegarOps()">Pegar catálogo desde Excel</button></div>'}</div>
   ${reglasEtiquetaHTML()}
+  ${categoriasSinHojaHTML()}
   ${opsSinCentroHTML()}
   <div class="panel"><h3>Hoja de operaciones por familia</h3><div class="body"><table><thead><tr><th>Familia</th><th class="num">Operaciones</th><th>Min/prenda por centro</th><th class="num">Total</th><th></th></tr></thead><tbody>
    ${S.categorias.filter(k=>!k.padre).map(p=>[p,...S.categorias.filter(k=>k.padre===p.id)]).flat().map(k=>{const ops=opsDe(k),spc=samPorCentro(k),propias=!!(k.ops&&k.ops.length);

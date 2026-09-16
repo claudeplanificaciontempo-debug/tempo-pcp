@@ -596,7 +596,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     let re=0,sin=[];S.ordenes.forEach(o=>{const key=porOp[o.op];
       if(key&&porNombre[key]){o.cat=porNombre[key];re++}else if(key)sin.push(key)});
     __check('CAT: las 1.206 órdenes cargadas quedan enlazadas a su categoría del catálogo real',re===S.ordenes.length,re+' de '+S.ordenes.length+(sin.length?' · sin calzar: '+[...new Set(sin)].slice(0,5).join(', '):''));
-    __check('CAT: contra el catálogo del demo solo calzaban 133 de 1.206 (por eso la medición anterior salió distorsionada)',((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length===133,String(((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length));}
+    __check("CAT: contra el catálogo del demo calzaba menos del 20% de las 1.206 órdenes (por eso la medición anterior salió distorsionada)",((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length<250,String(((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length));}
    const {vinc,sinMapeo}=aplicarMapeoCategorias();
    const conOps=S.categorias.filter(k=>k.padre&&(k.ops||[]).length);
    const conFam=S.categorias.filter(k=>k.padre&&k.familiaLMO);
@@ -615,8 +615,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     // con las órdenes reales cargadas: cuántas llevan la etiqueta
     const ids=new Set(ks.filter(Boolean).map(k=>k.id));
     const conEtiq=S.ordenes.filter(o=>abierta(o)&&ids.has(o.cat));
-    __R.etiqReal={cats:cuatro,ordenes:conEtiq.length,pz:conEtiq.reduce((a,o)=>a+(+o.cant||0),0),
-      min:conEtiq.reduce((a,o)=>a+(+o.cant||0)*0.5,0)};}
+    const todasEtiq=S.ordenes.filter(o=>ids.has(o.cat));
+    __R.etiqReal={cats:cuatro,
+      cargadas:{ordenes:todasEtiq.length,pz:todasEtiq.reduce((a,o)=>a+(+o.cant||0),0)},
+      lanzadas:(()=>{const l=S.ordenes.filter(o=>lanzada(o)&&ids.has(o.cat));return{ordenes:l.length,pz:l.reduce((a,o)=>a+(+o.cant||0),0),min:l.reduce((a,o)=>a+(+o.cant||0)*0.5,0)}})(),
+      abiertas:{ordenes:conEtiq.length,pz:conEtiq.reduce((a,o)=>a+(+o.cant||0),0),min:conEtiq.reduce((a,o)=>a+(+o.cant||0)*0.5,0)}};
+    __check('ETIQ: las abiertas son un subconjunto de las cargadas',conEtiq.length<=todasEtiq.length);}
+   /* de dónde sale cada cifra de órdenes, con la definición única */
+   {const cerrFase=S.ordenes.filter(o=>!ESTADOS_CERRADOS.includes(o.estado||'')&&faseDeCierre(o.fase));
+    const arch=S.ordenes.filter(o=>ESTADOS_CERRADOS.includes(o.estado||''));
+    __R.conteo={cargadas:cargadasTot(),abiertas:ordenesAbiertas().length,lanzadas:ordenesLanzadas().length,enPlanta:ordenesEnPlanta().length,
+      archivadas:arch.length,conFaseDeCierre:cerrFase.length,
+      fasesDeCierre:[...new Set(cerrFase.map(o=>o.fase||'(sin fase)'))].sort()};
+    const doneOP=S.ordenes.filter(o=>!ESTADOS_CERRADOS.includes(o.estado||'')&&estadosOPCerrados().includes(o.estadoOP||''));
+    __R.conteo.conEstadoOPCerrado=doneOP.length;
+    __check("ORD: cargadas = abiertas + archivadas + Estado OP cerrado + fase de cierre, sin contar ninguna dos veces",
+     __R.conteo.cargadas===__R.conteo.abiertas+__R.conteo.archivadas+doneOP.length+cerrFase.filter(o=>!estadosOPCerrados().includes(o.estadoOP||'')).length,JSON.stringify(__R.conteo));
+    __check('ORD: la definición única es la que usa abierta() en todo el sistema',S.ordenes.every(o=>abierta(o)===abiertaDe(o)));}
+   /* lo que mueve la unificación JEANS→DENIM sobre los datos reales */
+   {const prev=diagJeans();
+    const nCat=S.categorias.length,nOrd=S.ordenes.length,nOps=(S.operaciones||[]).length;
+    __R.jeansMovido={antes:{cats:prev.cats.length,ordenes:prev.ordenes.length,ops:prev.ops.length,
+      tablas:prev.tablas.map(x=>x.t+': '+x.fila)},ejemplos:prev.ordenes.slice(0,6).map(o=>o.op)};
+    delete S.params.jeansUnificado;sembrarUnificacionJeans();
+    __R.jeansMovido.despues={cats:diagJeans().cats.length,ordenes:diagJeans().ordenes.length};
+    __R.jeansMovido.sinBorrar=(S.categorias.length===nCat&&S.ordenes.length===nOrd&&(S.operaciones||[]).length===nOps);
+    __check('JD: la unificación autorizada corre sola y no borra nada',!!S.params.jeansUnificado&&__R.jeansMovido.sinBorrar);}
+   /* las 7 familias sin hoja, sobre el catálogo real */
+   {const c=categoriasSinHoja();
+    __R.sinHoja={total:c.total,sinValor:c.sin.length,conEstimado:c.est.length,
+      pz:c.sin.reduce((a,f)=>a+f.pz,0),ordenes:c.sin.reduce((a,f)=>a+f.ordenes,0),
+      familias:[...new Set(c.sin.concat(c.est).map(f=>(K(f.k.padre)||{}).n))].sort(),
+      detalle:c.sin.concat(c.est).map(f=>nombreCat(f.k)+' · '+f.ordenes+' ord · '+f.pz+' pz')};
+    __check('SH: las 7 familias sin hoja se detectan sobre el catálogo real',__R.sinHoja.familias.length===7,JSON.stringify(__R.sinHoja.familias));}
    // el reparto real que queda registrado para el reporte
    __R.cat={padres:Object.keys(pares).length,hijas:nPares,vinculadas:conFam.length,sinVinculo:sinVinc.length,
      detalleSinVinculo:sinVinc.map(k=>(K(k.padre)||{}).n+' / '+k.n),
@@ -3402,6 +3433,68 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    window.alert=a0;PERFIL=adminP;GER.meses=null;GER.cli=null;GER.est=null;GER.q='';GER.abierto=null;GER.det=null;
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("GC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* DECISIONES 2ª TANDA · definición de abierta, unificación, etiqueta y minuto estimado */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   /* 4 · definición única de orden abierta */
+   {const o=S.ordenes[0];const bakE=o.estado,bakF=o.fase;
+    o.estado='plan';o.fase='2Planificacion';
+    __check("OA: una orden en una fase normal está abierta",abiertaDe(o)&&abierta(o));
+    o.fase='Facturado';
+    __check("OA: una orden facturada NO está abierta, aunque su estado interno diga «plan»",!abiertaDe(o)&&!abierta(o));
+    o.fase='Stand by';
+    __check("OA: ni una en Stand by",!abiertaDe(o));
+    o.fase=bakF;o.estado='noArchivo';
+    __check("OA: ni una archivada",!abiertaDe(o));
+    o.estado=bakE;
+    __check("OA: abierta() y abiertaDe() son la MISMA definición, no dos",S.ordenes.every(x=>abierta(x)===abiertaDe(x)));
+    __check("OA: qué fase cierra sale de la tabla de fases, no del código",faseDeCierre('Facturado')===true&&faseDeCierre('2Planificacion')===false);
+    __check("OA: las tres cifras cuadran: cargadas = abiertas + archivadas + con fase de cierre",(()=>{
+      const ce=S.ordenes.filter(x=>!ESTADOS_CERRADOS.includes(x.estado||'')&&faseDeCierre(x.fase)).length;
+      const ar=S.ordenes.filter(x=>ESTADOS_CERRADOS.includes(x.estado||'')).length;
+      return cargadasTot()===ordenesAbiertas().length+ar+ce})());
+    __check("OA: «en planta» son las abiertas ya liberadas a producción",ordenesEnPlanta().every(x=>abiertaDe(x)&&liberadaCorte(x)));
+    const h=conteoOrdenesHTML();
+    __check("OA: la pantalla explica de dónde sale cada cifra",/Cargadas/.test(h)&&/Abiertas/.test(h)&&/En planta/.test(h)&&/tabla de fases/.test(h));
+    page='reporteria';REP.vista='produccion';render();
+    __check("OA: y está en Reportería",/Cuántas órdenes hay/.test(document.getElementById('p-reporteria').innerHTML));}
+   /* 1 · unificación JEANS → DENIM, autorizada */
+   {const nCat=S.categorias.length,nOrd=S.ordenes.length,nOps=(S.operaciones||[]).length;
+    delete S.params.jeansUnificado;
+    const d0=diagJeans();
+    sembrarUnificacionJeans();
+    __check("JD: corre sola al sembrar, sin preguntar (ya autorizada)",!!S.params.jeansUnificado);
+    __check("JD: y deja registrado lo que había antes de mover",!!S.params.jeansUnificadoPrevio&&S.params.jeansUnificadoPrevio.ordenes===d0.ordenes.length);
+    __check("JD: NADA se borra",S.categorias.length===nCat&&S.ordenes.length===nOrd&&(S.operaciones||[]).length===nOps);
+    const den=S.categorias.find(k=>!k.padre&&normFase(k.n)==='denim');
+    __check("JD: queda la familia DENIM",!!den);
+    __check("JD: la fila «jean» de ojales y botones queda unificada, sin borrarse",(()=>{const j=tiemposOjalBoton().find(r=>/jean/.test(r.match||''));return !j||j.unificadaEn==='denim'})());
+    __check("JD: queda en la bitácora",(S.bitacora||[]).some(b=>/JEANS/.test(b.txt||b.t||'')&&/DENIM/.test(b.txt||b.t||'')));
+    const ts0=S.params.jeansUnificado;sembrarUnificacionJeans();
+    __check("JD: es idempotente: no se vuelve a ejecutar",S.params.jeansUnificado===ts0);}
+   /* 5 · minuto estimado por categoría, mientras no haya hoja */
+   {const k=S.categorias.find(x=>x.padre&&!tieneHojaLMO(x));
+    if(!k)__check('ME: hay alguna categoría sin hoja de operaciones para probar',false);
+    else{
+     delete k.minEstConf;
+     __check("ME: sin valor cargado, la categoría sigue en 0: no se inventa nada",minEstimadoConf(k)===null&&samPorCentro(k).modulos===undefined);
+     __check("ME: y sale como brecha, con sus órdenes y prendas",categoriasSinHoja().sin.some(f=>f.k===k));
+     setMinEstConf(k.id,14.5);
+     __check("ME: con el minuto estimado, la categoría ya carga en confección",minEstimadoConf(k)===14.5&&samPorCentro(k).modulos===14.5);
+     __check("ME: y pasa a la lista de estimados, no a la de brecha",categoriasSinHoja().est.some(f=>f.k===k)&&!categoriasSinHoja().sin.some(f=>f.k===k));
+     const h=categoriasSinHojaHTML();
+     __check("ME: la pantalla lo marca como ESTIMADO y dice que no viene de la hoja",/estimado/.test(h)&&/no se inventa ninguno/.test(h));
+     __check("ME: y es editable desde la pantalla",/setMinEstConf\(/.test(h));
+     __check("ME: el cambio queda en la bitácora",(S.bitacora||[]).some(b=>/Minuto estimado de confecci/.test(b.txt||b.t||'')));
+     setMinEstConf(k.id,0);
+     __check("ME: un 0 escrito a mano se respeta como 0 confirmado, no como «sin valor»",minEstimadoConf(k)===0&&categoriasSinHoja().est.some(f=>f.k===k));
+     setMinEstConf(k.id,'');
+     __check("ME: y borrarlo la devuelve a la brecha",minEstimadoConf(k)===null&&categoriasSinHoja().sin.some(f=>f.k===k));
+     // una categoría CON hoja no aparece en esta lista
+     const kc=S.categorias.find(x=>x.padre&&tieneHojaLMO(x));
+     if(kc)__check("ME: una categoría con hoja de operaciones no entra aquí",!categoriasSinHoja().sin.some(f=>f.k===kc)&&!categoriasSinHoja().est.some(f=>f.k===kc));}}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("D2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
