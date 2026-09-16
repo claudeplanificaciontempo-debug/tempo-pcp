@@ -710,6 +710,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   for(const c of Object.keys(CENTROS_PROD)){for(const tab of ['plan','prog','ejec']){const antes=__R.errors.length;page='centro';CEN.id=c;CEN.tab=tab;try{render()}catch(e){__R.errors.push({page:'centro/'+c+'/'+tab,msg:e.message})}__check('centro '+c+' '+tab,__R.errors.length===antes)}}
   try{localStorage.__fase="flujo tintoreria"}catch(e){}
   /* flujo tintorería: armar por color → confirmar → salió → calidad → liberar a corte */
+  {const an=analizarRutasOdoo();const abiertas=S.ordenes.filter(abierta).length;
+   __R.rutasOdoo={abiertas,coincide:an.coincide.length,difiere:an.difiere.length,sinMapear:an.sinMapear.length,contradiccion:an.contradiccion.length,sinOT:an.sinOT.length,yaConfirmadas:an.confirmada.length,conHistorialEdicion:S.ordenes.filter(o=>abierta(o)&&(o.rutaEditada||[]).length&&!rutaConfirmada(o)).length,refs:Object.keys(refsPorDefinir()).length};
+   __check('RU: se puede contar el estado de las rutas antes de confirmar nada',__R.rutasOdoo.abiertas>0);}
+  liberarA(S.ordenes.map(o=>o.id),'tela');  // desde el 15-sep no se libera sin ruta confirmada: el flujo de prueba confirma primero, como haría planificación
+  S.ordenes.forEach(o=>{if(!rutaConfirmada(o))confirmarRuta(o,'persona','flujo de prueba')});
   liberarA(S.ordenes.map(o=>o.id),'tela');await __p(50);__check('órdenes liberadas a tela',S.ordenes.every(o=>liberada(o,'tin')),S.ordenes.filter(o=>!liberada(o,'tin')).map(o=>o.op+': '+faltaLiberarA(o,'tela').join('/')).join('; '));
   PLAN=null;let P=programar();const grupos=Object.values(armGrupos(P));
   __check('hay grupos por armar',grupos.length>0,grupos.length+' grupos');
@@ -929,7 +934,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 3 · ODC a mano
    {const o=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length);const o2=S.ordenes.find(x=>abierta(x)&&x!==o);if(o&&o2){const bak=[o.odc,o2.odc,o.odcManual,o2.odcManual];o.odc='PENDIENTE ODC';o2.odc='';delete o.odcManual;delete o2.odcManual;
      __check("ODC: 'PENDIENTE ODC' y vacío cuentan como pendientes",esOdcPendiente(o)&&esOdcPendiente(o2)&&pendientesHoy().find(i=>i.k==='sinOdc').n>=2);
-     page='ordenes';render();const ho=()=>document.getElementById('p-ordenes').innerHTML;__check("ODC: panel Asignar ODC en Órdenes con casillas, uno por uno y en bloque",ho().includes('Asignar ODC')&&ho().includes("asignarODC(['"+o.id+"']")&&ho().includes('Asignar a las'));
+     page='ordenes';ORDF.tab='ord';render();const ho=()=>document.getElementById('p-ordenes').innerHTML;__check("ODC: panel Asignar ODC en Órdenes con casillas, uno por uno y en bloque",ho().includes('Asignar ODC')&&ho().includes("asignarODC(['"+o.id+"']")&&ho().includes('Asignar a las'));
      const ap=window.alert;window.alert=()=>{};const nb=S.bitacora.length;asignarODC([o.id],'9999');__check("ODC: de a una: queda el ODC, quién/cuándo/antes, bitácora, y forma colección",o.odc==='9999'&&o.odcManual&&o.odcManual.antes==='PENDIENTE ODC'&&o.odcManual.u&&S.bitacora.slice(-3).some(b=>/ODC asignado a mano/.test(b.t)&&b.t.includes(o.op))&&claveColeccion(o)==='ODC 9999');
      asignarODC([o2.id],'  ');__check("ODC: vacío no se asigna",o2.odc==='');
      ODCS.sel=new Set([o2.id]);asignarODC([o2.id],'9999');__check("ODC: en bloque: las marcadas toman el mismo ODC y quedan en la misma colección",o2.odc==='9999'&&claveColeccion(o2)===claveColeccion(o)&&!ODCS.sel.has(o2.id));window.alert=ap;
@@ -1090,7 +1095,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const key=(hl.match(/togGRP\('lib','([^']+)'\)/)||[])[1];if(key){togGRP('lib',key.replace(/\\'/g,"'"));hl=document.getElementById('p-liberacion').innerHTML;__check("VC: al abrir un grupo aparece el segundo nivel (anidado)",(hl.match(/grp-row/g)||[]).length>1)}
    S.ordenes=S.ordenes.filter(x=>x!==oPendVC);PLAN=null;PLAN_ALL=null;
    GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
-   GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.q='';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
+   GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.tab='ord';ORDF.q='';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
    GRP={};WIPL={niveles:['color'],q:''};page='wip';WIP.tab='pro';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(o=>abierta(o)&&liberada(o,'tela')));WIPL={niveles:null,q:''};GRP={};
    // 4 · Gantt
    const rT=S.recursos.find(r=>CE(r.centro)&&CE(r.centro).area==='tin'&&r.horas>0);if(rT){const ds=diasBano({dia:hoy(),horas:rT.horas*2.5},rT);__check("VC: un baño de 2,5 días ocupa 3 días laborables en el cuadro",ds.length===3,ds.join(','))}
@@ -1248,7 +1253,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;render();let h=document.getElementById('p-liberacion').innerHTML;
    __check("CC-a: el filtro de fases es el común: agrupado por grupo de la tabla 5 con 'Seleccionar todas' y 'Limpiar'",h.includes('class="ffases"')&&h.includes('Seleccionar todas')&&h.includes('>Limpiar<')&&/\d · [A-ZÁÉÍÓÚ ]+<\/span>/.test(h));
    page='familias';render();__check("CC-a: Demanda agregada usa el mismo filtro de fases",document.getElementById('p-familias').innerHTML.includes('class="ffases"'));
-   page='ordenes';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
+   page='ordenes';ORDF.tab='ord';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
    // b) agrupador con horas y campos comunes
    GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
    __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Familia','Tipo de producto','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
@@ -1678,7 +1683,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     PERFIL=bak}
    cerrarBusqG();
    // 2 · el buscador de lista busca en todos los campos sin elegir
-   page='ordenes';GRP={};grpSt('ord').niveles=[];ORDF.q='';delete BUSQ['ORDF.q'];ORDF.grupo=null;ORDF.q='CLIENTE BUSG';render();
+   page='ordenes';ORDF.tab='ord';GRP={};grpSt('ord').niveles=[];ORDF.q='';delete BUSQ['ORDF.q'];ORDF.grupo=null;ORDF.q='CLIENTE BUSG';render();
    {const h=document.getElementById('p-ordenes').innerHTML;
     __check("BL: escribir en el buscador de lista ya filtra por todos los campos, sin elegir campo",matchBusq(oG,normTxt('CLIENTE BUSG'),'ORDF.q')&&!BUSQ['ORDF.q']&&h.includes('WH/BUSG-1'));
     __check("BL: el selector de campo es opcional y se llama «buscar solo en…»",h.includes(ayuda('busq.solo'))||h.includes('buscar solo en'));}
@@ -2072,6 +2077,69 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>o!==oH);delete S.avance[oH.id];
    TAB={centro:null,rec:null,q:''};TRAMO={paso:null,id:null,oid:null};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("HH sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PARTE A · RUTAS CONFIRMADAS */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).length)||S.ordenes[0];
+   const mkR=(op,ruta,ot,extra)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.ref=(extra&&extra.ref)||'REF-RUTA';o.cant=(extra&&extra.cant)||100;delete o.rutaConf;delete o.lib;delete o.programa;
+     o.ruta=ruta.map(c=>({centro:c,t:1}));if(ot)o.ot=ot;else delete o.ot;Object.assign(o,(extra&&extra.mas)||{});S.ordenes.push(o);delete S.avance[o.id];return o};
+   const OTc=cs=>Object.fromEntries(cs.map(c=>[c,{estado:'terminado',odoo:'X'}]));
+   // A1 · la ruta por defecto NO confirma
+   const oDef=mkR('WH/RU-DEF',centrosRutaDefecto(),null);
+   __check("RU1: la ruta por defecto de Configuración no confirma nada",!rutaConfirmada(oDef)&&!rutaConf(oDef));
+   __check("RU1: una orden con historial de ediciones tampoco cuenta como confirmada",(()=>{oDef.rutaEditada=[{ts:new Date().toISOString(),u:'x',motivo:'y'}];return !rutaConfirmada(oDef)})());
+   // A2 · coincidencia exacta con Odoo
+   const oIgual=mkR('WH/RU-OK',['corte','modulos','empaque'],OTc(['corte','modulos','empaque']));
+   const oMas=mkR('WH/RU-MAS',['corte','modulos','empaque'],OTc(['corte','modulos','empaque','bordado']));
+   const oMenos=mkR('WH/RU-MENOS',['corte','modulos','empaque'],OTc(['corte','modulos']));
+   const oSinMap=mkR('WH/RU-MAP',['corte','modulos','empaque'],Object.assign(OTc(['corte','modulos','empaque']),{PULIDO:{estado:'terminado',odoo:'PULIDO'}}));
+   const oSinOT=mkR('WH/RU-SINOT',['corte','modulos','empaque'],null);
+   PLAN=null;PLAN_ALL=null;
+   __check("RU2: coincide exacto con Odoo → se puede confirmar sola",diagRutaOdoo(oIgual).estado==='coincide');
+   __check("RU2: un centro de más en Odoo → por definir, y dice en qué difiere",diagRutaOdoo(oMas).estado==='difiere'&&/Odoo tiene Bordado, la ruta no/.test(diagRutaOdoo(oMas).txt));
+   __check("RU2: un centro de menos en Odoo → por definir",diagRutaOdoo(oMenos).estado==='difiere'&&/la ruta tiene Empaque, Odoo no/.test(diagRutaOdoo(oMenos).txt));
+   __check("RU2: un centro de Odoo sin centro TEMPO → por definir",diagRutaOdoo(oSinMap).estado==='sinMapear'&&/PULIDO/.test(diagRutaOdoo(oSinMap).txt));
+   __check("RU2: sin órdenes de trabajo cargadas → por definir",diagRutaOdoo(oSinOT).estado==='sinOT');
+   {const an=analizarRutasOdoo();
+    __check("RU2: el análisis cuenta por motivo antes de aplicar nada",an.coincide.some(x=>x.o===oIgual)&&an.difiere.some(x=>x.o===oMas)&&an.sinMapear.some(x=>x.o===oSinMap)&&an.sinOT.some(x=>x.o===oSinOT)&&!rutaConfirmada(oIgual));}
+   confirmarRutasOdoo();
+   __check("RU2: al aplicar, solo se confirma la que coincide y las demás no se tocan",rutaConfirmada(oIgual)&&rutaConf(oIgual).origen==='odoo'&&!rutaConfirmada(oMas)&&!rutaConfirmada(oMenos)&&pasosRutaDe(oMas).length===3);
+   __check("RU2: la confirmación queda en auditoría",auditoriaCambios().some(x=>x.tipo==='ruta'&&x.oid===oIgual.id));
+   // nunca pisa una confirmación de persona
+   confirmarRuta(oMas,'persona','prueba');const uAntes=rutaConf(oMas).u,tsAntes=rutaConf(oMas).ts;
+   confirmarRutasOdoo();
+   __check("RU2: nunca pisa una ruta confirmada por una persona",rutaConf(oMas).origen==='persona'&&rutaConf(oMas).ts===tsAntes);
+   // A3 · confirmar por referencia
+   {const r1=mkR('WH/REF-1',['corte','modulos'],null,{ref:'REF-X'});const r2=mkR('WH/REF-2',['corte'],null,{ref:'REF-X'});
+    const r3=mkR('WH/REF-3',['corte'],null,{ref:'REF-X',mas:{lib:{corte:{ok:true,u:'t',ts:new Date().toISOString()}}}});
+    const n=aplicarRutaARef(r1.id);
+    __check("RU3: confirmar por referencia aplica la ruta a sus WH abiertas y no liberadas",rutaConfirmada(r1)&&rutaConfirmada(r2)&&pasosRutaDe(r2).join()==='corte,modulos'&&!rutaConfirmada(r3)&&n===2);
+    const r4=mkR('WH/REF-4',['corte'],null,{ref:'REF-Y'});aplicarRutaARef(r4.id,true);
+    __check("RU3: «solo esta WH» no toca a las demás de la referencia",rutaConfirmada(r4));
+    page='ordenes';ORDF.tab='rutas';RUT.q='';render();
+    const h=document.getElementById('p-ordenes').innerHTML;
+    __check("RU3: la pestaña Rutas muestra la tarjeta, la lista por referencia y lo que dice Odoo",/Faltan rutas por confirmar/.test(h)&&/Por definir/.test(h)&&/Qué dice Odoo hoy/.test(h)&&/data-q="RUT.q"/.test(h));
+    RUT.ver='conf';render();
+    __check("RU3: la lista de confirmadas trae origen, quién y cuándo",/Con ruta confirmada/.test(document.getElementById('p-ordenes').innerHTML));RUT.ver='pend';
+    S.ordenes=S.ordenes.filter(x=>x!==r1&&x!==r2&&x!==r3&&x!==r4)}
+   // A4 · recarga: WH nueva de una referencia confirmada entra precargada y por definir
+   {const c1=mkR('WH/PRE-1',['corte','modulos','empaque'],null,{ref:'REF-PRE'});confirmarRuta(c1,'persona','prueba');
+    const c2=mkR('WH/PRE-2',[],null,{ref:'REF-PRE'});
+    precargarRutasNuevas();
+    __check("RU4: una WH nueva de una referencia confirmada entra con la ruta precargada y por definir",pasosRutaDe(c2).join()==='corte,modulos,empaque'&&!rutaConfirmada(c2)&&!!c2.rutaPrecargada);
+    __check("RU4: la confirmación se conserva en las recargas (tabla 14)",camposConservados().some(x=>x.campo==='rutaConf'&&x.conservar));
+    S.ordenes=S.ordenes.filter(x=>x!==c1&&x!==c2)}
+   // A5 · bloqueo en las dos liberaciones
+   {const oL=mkR('WH/LIB-SR',['corte','modulos','empaque'],null,{ref:'REF-LIB'});
+    __check("RU5: sin ruta confirmada no se puede liberar y dice por qué",!puedeLiberarA(oL,'corte')&&faltaLiberarA(oL,'corte').includes('falta confirmar ruta')&&!puedeLiberarA(oL,'tela')&&faltaLiberarA(oL,'tela').includes('falta confirmar ruta'));
+    confirmarRuta(oL,'persona','prueba');
+    __check("RU5: al confirmar la ruta, deja de estar frenada por eso",!faltaLiberarA(oL,'corte').includes('falta confirmar ruta'));
+    oL.lib={corte:{ok:true,u:'t',ts:new Date().toISOString()}};desconfirmarRuta(oL,'prueba');
+    const it=pendientesHoy().find(x=>x.k==='libSinRuta');
+    __check("RU5: una ya liberada sin ruta confirmada no se deslibera y sale en Hoy → Pendientes",!!(oL.lib&&oL.lib.corte)&&!!it&&it.n>=1);
+    S.ordenes=S.ordenes.filter(x=>x!==oL)}
+   S.ordenes=S.ordenes.filter(o=>![oDef,oIgual,oMas,oMenos,oSinMap,oSinOT].includes(o));
+   window.alert=a0;ORDF.tab='ord';PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("RU sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

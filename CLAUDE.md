@@ -404,6 +404,18 @@ vive en el mismo bloque con la columna **Dónde está** (`dondeEstaCentro(o,P,c)
 fecha de entrega salió de las dos tablas. `grpSelHTML('cg')` se muestra en la barra de Carga general. Ver
 `CENTROS_LIMPIEZA_REPORTE.md`.
 
+**Rutas confirmadas (15-sep-2026 noche, PARTE A):** `o.rutaConf={estado,origen:persona|odoo,u,ts,nota}`;
+`rutaConfirmada(o)`, `confirmarRuta`, `desconfirmarRuta` (auditoría tipo `ruta`). Guardar en el editor confirma
+(persona); la ruta por defecto de Configuración NO confirma. `diagRutaOdoo(o)` compara el conjunto de centros de las
+OT (sin canceladas ni bodegas, todas con centro TEMPO, sin contradicción) contra `pasosRutaDe(o)`: solo si es
+EXACTO se puede confirmar sola. `analizarRutasOdoo()` cuenta por motivo (coincide, difiere, sinMapear,
+contradiccion, sinOT) y `confirmarRutasOdoo()` aplica solo las que coinciden y NUNCA pisa una confirmación de
+persona. Pestaña **Rutas** en Órdenes (`ORDF.tab`, `RUT`, `rutasHTML`): tarjeta de pendientes, lista por
+**referencia** (`aplicarRutaARef(oid,soloEsta)`) y lista de confirmadas. `precargarRutasNuevas()` deja la ruta de la
+referencia en las WH nuevas, sin confirmar. `puedeLiberarA` devuelve false sin ruta confirmada y `faltaLiberarA`
+dice «falta confirmar ruta»; bandejas `rutasPorDefinir` y `libSinRuta` en Hoy. `rutaConf` está en la tabla 14.
+Ver `RUTAS_Y_LIBERACION_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -588,7 +588,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 23:27';
+const APP_BUILD='2026-09-15 23:46';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -946,6 +946,8 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   add('sinFecha','Órdenes sin fecha de entrega',ab.filter(o=>!o.fecha).length,'no se programan ni se liberan hasta tener fecha (Odoo)','Órdenes',"ir('ordenes')");
   add('sinOdc','Órdenes sin ODC asignado ("PENDIENTE ODC")',ab.filter(esOdcPendiente).length,'asígnalo a mano en Órdenes → Asignar ODC cuando el cliente libere su orden de compra','Órdenes',"ir('ordenes')");
   {const sm=ab.filter(o=>!mesPlan(o));add('sinMesProyecto','Órdenes sin mes de Proyecto: no entran al plan mensual',sm.length,'Proyecto vacío o sin mes reconocible: '+[...new Set(sm.map(o=>String(o.proyecto||'').trim()||'(vacío)'))].slice(0,6).map(x=>x).join(', ')+' · corregir el Proyecto en Odoo; no se asigna un mes por suposición','Órdenes',"ir('ordenes')")}
+  {const lr=liberadasSinRuta();add('libSinRuta','Órdenes liberadas sin ruta confirmada',lr.length,lr.map(o=>o.op).slice(0,8).join(', ')+' · no se desliberan; confirma su ruta para que el programa use la correcta','Órdenes de producción → Rutas',"ORDF.tab='rutas';ir('ordenes')")}
+  {const pd=rutasPorDefinir();add('rutasPorDefinir','Rutas por confirmar',pd.length,Object.keys(refsPorDefinir()).length+' referencias · ninguna se puede liberar hasta confirmar su ruta','Órdenes de producción → Rutas',"ORDF.tab='rutas';ir('ordenes')")}
   {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
@@ -3664,11 +3666,115 @@ function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;con
      return `<tr><td>${esc(c.n)}${porDefecto?' <span class="tag t-ok" title="marcado en Configuración → Centros: va por defecto en toda ruta">por defecto</span>':''}</td><td><input type="checkbox" id="rc-${c.id}" ${(p||porDefecto)?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
    <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rc-motivo" placeholder="faltaba la operación, cambio de bordado a estampado, el cliente pidió lavado…"></div></div></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarRutaCentro('${o.id}')">Guardar ruta</button></div>`)}
+/* ================== RUTAS CONFIRMADAS ==================
+   Una orden no se libera sin ruta confirmada. La ruta por defecto de Configuración solo precarga el editor:
+   confirmar es un acto de una persona, o la coincidencia exacta con las órdenes de trabajo de Odoo. */
+function rutaConf(o){return (o&&o.rutaConf)||null}
+function rutaConfirmada(o){const r=rutaConf(o);return !!(r&&r.estado==='confirmada')}
+function confirmarRuta(o,origen,nota){const antes=rutaConf(o);
+  o.rutaConf={estado:'confirmada',origen:origen||'persona',u:quienFirma(),ts:new Date().toISOString(),nota:nota||''};
+  registrarAuditoria('ruta',o,antes?('confirmada por '+antes.origen):'por definir','confirmada ('+(origen||'persona')+')',nota||'',false);
+  bitacora('Ruta confirmada · '+o.op+' · '+(origen==='odoo'?'coincide con las órdenes de trabajo de Odoo':'guardada por '+quienFirma())+(nota?' · '+nota:''))}
+function desconfirmarRuta(o,motivo){if(!rutaConf(o))return;const antes=rutaConf(o);delete o.rutaConf;
+  registrarAuditoria('ruta',o,'confirmada ('+antes.origen+')','por definir',motivo||'',true);
+  bitacora('Ruta vuelta a «por definir» · '+o.op+' ('+quienFirma()+')')}
+/* --- lo que dice Odoo para esa WH: centros de sus OT, sin canceladas ni bodegas --- */
+function centrosOdooDe(o){const ot=o&&o.ot;if(!ot||!Object.keys(ot).length)return null;
+  const cen=Object.entries(ot).filter(([c,r])=>{const ce=CE(c);return ce&&ce.area==='pro'&&r&&r.estado!=='cancelado'}).map(([c])=>c);
+  return cen.length?[...new Set(cen)]:[]}
+function pasosRutaDe(o){return [...new Set((o.ruta||[]).filter(p=>{const c=CE(p.centro);return c&&c.area==='pro'}).map(p=>p.centro))]}
+function contradiccionesOT(){const l=((S.params.otCarga||{}).contradicciones)||[];return new Set(l.map(x=>normFase(x.op||x)))}
+function centrosOdooSinMapear(o){const ot=o&&o.ot;if(!ot)return [];
+  return Object.entries(ot).filter(([c,r])=>r&&r.odoo&&!CE(c)).map(([c])=>c)}
+/* diagnóstico de una orden: se confirma sola solo si coincide EXACTO con Odoo */
+function diagRutaOdoo(o,contras){const cod=centrosOdooDe(o);
+  if(rutaConfirmada(o))return {estado:'confirmada',txt:'ya confirmada ('+rutaConf(o).origen+')'};
+  if(!cod)return {estado:'sinOT',txt:'sin órdenes de trabajo cargadas'};
+  const sinMapear=centrosOdooSinMapear(o);
+  if(sinMapear.length)return {estado:'sinMapear',txt:'centro de Odoo sin centro TEMPO: '+sinMapear.join(', ')};
+  if((contras||contradiccionesOT()).has(normFase(o.op)))return {estado:'contradiccion',txt:'tiene contradicción entre la fase y las órdenes de trabajo'};
+  const ruta=pasosRutaDe(o);
+  const faltanEnRuta=cod.filter(c=>!ruta.includes(c));const sobranEnRuta=ruta.filter(c=>!cod.includes(c));
+  if(faltanEnRuta.length||sobranEnRuta.length){
+    const dif=[...faltanEnRuta.map(c=>'Odoo tiene '+nCen(c)+', la ruta no'),...sobranEnRuta.map(c=>'la ruta tiene '+nCen(c)+', Odoo no')];
+    return {estado:'difiere',txt:dif.join(' · '),cod,ruta}}
+  return {estado:'coincide',txt:'coincide exacto con Odoo ('+cod.map(nCen).join(' → ')+')',cod,ruta}}
+function analizarRutasOdoo(){const contras=contradiccionesOT();const res={coincide:[],difiere:[],sinMapear:[],contradiccion:[],sinOT:[],confirmada:[]};
+  S.ordenes.filter(abierta).forEach(o=>{const d=diagRutaOdoo(o,contras);(res[d.estado]=res[d.estado]||[]).push({o,d})});
+  return res}
+function confirmarRutasOdoo(){if(!(puede('programa')||puede('ruta'))){alert('Tu perfil no confirma rutas.');return}
+  const res=analizarRutasOdoo();const n=res.coincide.length;
+  if(!n){alert('Ninguna orden coincide exacto con Odoo: no se confirma nada.');return}
+  if(!confirm('Se van a confirmar '+n+' rutas que coinciden EXACTO con las órdenes de trabajo de Odoo.\nNo se toca ninguna ruta ni ninguna confirmación hecha por una persona. ¿Aplicar?'))return;
+  res.coincide.forEach(({o})=>{if(!rutaConfirmada(o))confirmarRuta(o,'odoo','coincide exacto con las OT')});
+  bitacora('Rutas confirmadas automáticamente: '+n+' órdenes que coinciden exacto con Odoo ('+quienFirma()+')');
+  save();render();alert(n+' rutas confirmadas desde Odoo.')}
+/* --- referencia (estilo): la ruta se confirma por referencia y baja a sus WH --- */
+function refDe(o){return String(o.ref||'').trim()||'(sin referencia)'}
+function ordenesDeRef(ref){return S.ordenes.filter(o=>abierta(o)&&refDe(o)===ref)}
+function rutasPorDefinir(){return S.ordenes.filter(o=>abierta(o)&&!rutaConfirmada(o))}
+function refsPorDefinir(){const m={};rutasPorDefinir().forEach(o=>{const r=refDe(o);(m[r]=m[r]||[]).push(o)});return m}
+function aplicarRutaARef(oid,soloEsta){const o=S.ordenes.find(x=>x.id===oid);if(!o)return 0;
+  const ref=refDe(o);let n=0;
+  const destino=soloEsta?[o]:ordenesDeRef(ref).filter(x=>x===o||(!liberada(x,'corte')&&!rutaConfirmada(x)));
+  destino.forEach(x=>{if(x!==o){x.ruta=JSON.parse(JSON.stringify(o.ruta||[]));x.rutaEditada=(x.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),motivo:'ruta de la referencia '+ref}])}
+    confirmarRuta(x,'persona',soloEsta?'solo esta WH':'ruta de la referencia '+ref);n++});
+  bitacora('Ruta de la referencia '+ref+' aplicada a '+n+' '+(n===1?'orden':'órdenes')+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render();return n}
+/* --- recargas: una WH nueva de una referencia ya confirmada entra con esa ruta precargada, sin confirmar --- */
+function precargarRutaDeRef(o){if(!o||rutaConfirmada(o)||(o.ruta||[]).length)return false;
+  const hermana=ordenesDeRef(refDe(o)).find(x=>x!==o&&rutaConfirmada(x)&&(x.ruta||[]).length);
+  if(!hermana)return false;o.ruta=JSON.parse(JSON.stringify(hermana.ruta));o.rutaPrecargada={ref:refDe(o),de:hermana.op,ts:new Date().toISOString()};return true}
+function precargarRutasNuevas(){let n=0;S.ordenes.filter(abierta).forEach(o=>{if(precargarRutaDeRef(o))n++});
+  if(n)bitacora('Rutas precargadas desde su referencia en '+n+' órdenes nuevas (quedan por confirmar)');return n}
+/* --- bloqueo en las dos liberaciones --- */
+function faltaRutaConfirmada(o){return !rutaConfirmada(o)}
+function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'tela')||liberada(o,'corte'))&&!rutaConfirmada(o))}
+/* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
+let RUT={q:'',ref:null,ver:'pend'};
+function rutasTarjetaHTML(){const pd=rutasPorDefinir();const refs=Object.keys(refsPorDefinir()).length;
+  const pz=pd.reduce((a,o)=>a+ +o.cant,0);
+  return tarjetasResumenHTML([{id:'rut-pend',v:pd.length,k:'Faltan rutas por confirmar · '+refs+' referencias · '+num(pz)+' unidades',items:pd,porFam:true,cls:pd.length?'warn':''}])}
+function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
+  const pend=rutasPorDefinir().filter(o=>matchBusq(o,q,'RUT.q'));
+  const porRef={};pend.forEach(o=>{const r=refDe(o);(porRef[r]=porRef[r]||[]).push(o)});
+  const refs=Object.keys(porRef).sort((a,b)=>porRef[b].length-porRef[a].length||a.localeCompare(b,'es'));
+  const conf=S.ordenes.filter(o=>abierta(o)&&rutaConfirmada(o)&&matchBusq(o,q,'RUT.q'));
+  const an=analizarRutasOdoo();
+  return `${rutasTarjetaHTML()}
+  <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+   <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
+   ${grpSelHTML('rut')}
+   <div class="chips" style="margin:0">${[['pend','Por definir'],['conf','Con ruta confirmada']].map(([k,n])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n}</span>`).join('')}</div>
+   ${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="confirmarRutasOdoo()" title="solo las que coinciden EXACTO con las órdenes de trabajo; nunca pisa una confirmación de una persona">Confirmar las que coinciden con Odoo (${an.coincide.length})</button>`:''}
+  </div></div>
+  <div class="panel"><div class="body" style="font-size:var(--fs-s)">
+   <b>Qué dice Odoo hoy:</b> ${an.coincide.length} coinciden exacto · ${an.difiere.length} difieren de la ruta · ${an.sinMapear.length} con un centro sin mapear · ${an.contradiccion.length} con contradicción fase vs OT · ${an.sinOT.length} sin órdenes de trabajo cargadas. <span class="mut">Solo las que coinciden se pueden confirmar solas; el resto se revisa a mano y su ruta no se toca.</span>
+  </div></div>
+  ${RUT.ver==='pend'?`<div class="panel"><h3>Por definir <span class="note">${refs.length} referencias · ${pend.length} órdenes · la ruta se confirma por referencia y baja a sus WH</span></h3><div class="body">
+   ${refs.length?refs.map(r=>{const os=porRef[r];const o0=os[0];const d=diagRutaOdoo(o0,contras);const pz=os.reduce((a,o)=>a+ +o.cant,0);
+     return `<div style="border-bottom:1px solid var(--rule2);padding:10px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:none">${fotoDe(o0)?fotoMini(o0,70):''}</div>
+      <div style="flex:1;min-width:240px">
+       <div><b style="font-size:17px">${esc(r)}</b> <span class="mut">· ${esc(famDeOrden(o0))} · ${esc(o0.cliente||'')}</span></div>
+       <div class="mut">${os.length} ${os.length===1?'WH':'WH'} · ${num(pz)} prendas</div>
+       <div style="font-size:var(--fs-s);margin-top:4px">Ruta actual: ${pasosRutaDe(o0).map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta</span>'}</div>
+       <div class="mut" style="font-size:var(--fs-xs)">Odoo: ${esc(d.txt)}</div>
+       <div class="mut" style="font-size:var(--fs-xs)">${os.slice(0,6).map(o=>esc(o.op)).join(' · ')}${os.length>6?' y '+(os.length-6)+' más':''}</div>
+      </div>
+      <div style="flex:none;display:flex;flex-direction:column;gap:6px">
+       ${(puede('programa')||puede('ruta'))?`<button class="btn sm" onclick="mRutaCentro('${o0.id}')">Editar y confirmar</button>
+        <button class="btn ghost sm" onclick="if(confirm('¿Confirmar la ruta actual para las ${os.length} WH abiertas y no liberadas de ${esc(r).replace(/'/g,'')}?'))aplicarRutaARef('${o0.id}')">Confirmar como está</button>
+        <button class="btn ghost sm" onclick="aplicarRutaARef('${o0.id}',true)" title="solo esta WH, sin tocar las demás de la referencia">Solo esta WH</button>`:''}
+      </div></div>`}).join(''):'<span class="mut">No queda ninguna ruta por confirmar con esta búsqueda.</span>'}
+  </div></div>`:`<div class="panel"><h3>Con ruta confirmada <span class="note">${conf.length} órdenes · quién, cuándo y de dónde salió</span></h3><div class="body"><div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Referencia</th><th>Cliente</th><th>Ruta</th><th>Origen</th><th>Quién y cuándo</th><th></th></tr></thead><tbody>
+   ${(grpSt('rut').todoAbierto=true,filasGRP('rut',conf.slice(0,400),o=>{const r=rutaConf(o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(refDe(o))}</td><td>${esc(o.cliente||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${pasosRutaDe(o).map(c=>esc(nCen(c))).join(' → ')}</td><td>${r.origen==='odoo'?'<span class="tag t-medio">Odoo OT</span>':'<span class="tag t-ok">persona</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(r.u||'')} · ${new Date(r.ts).toLocaleString('es-EC')}</td><td>${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')" title="${liberada(o,'corte')?'esta orden ya está liberada: cambiar la ruta cambia su programa':'editar la ruta'}">editar${liberada(o,'corte')?' ⚠':''}</button>`:''}</td></tr>`},7))||'<tr><td colspan="7" class="mut">Ninguna ruta confirmada todavía.</td></tr>'}
+  </tbody></table></div></div></div>`}`}
 function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}
   const edit=centrosEditablesRuta();const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
   S.centros.filter(c=>c.area==='pro'&&edit.includes(c.id)).forEach(c=>{const el=document.getElementById('rc-'+c.id);if(!el||el.disabled)return;const en=antes.includes(c.id);
     if(el.checked&&!en){mas.push(c.id)}if(!el.checked&&en){menos.push(c.id)}});
-  if(!mas.length&&!menos.length){cerrar();return}
+  if(!mas.length&&!menos.length){confirmarRuta(o,'persona',motivo);PLAN=null;PLAN_ALL=null;save();cerrar();render();return} // guardar sin cambios también confirma
   conAvisoFecha(o,'Ruta: '+(mas.length?'+'+mas.map(nCen).join(', '):'')+(menos.length?' −'+menos.map(nCen).join(', '):'')+' ('+motivo+')',()=>{
     let ruta=(o.ruta||[]).filter(p=>!menos.includes(p.centro));
     mas.forEach(c=>{const t=sam[c]||0;if(!t)sinT.push(c);const idx=ordenPaso(c);let pos=ruta.length;for(let i=0;i<ruta.length;i++){if(ordenPaso(ruta[i].centro)>idx){pos=i;break}}ruta.splice(pos,0,{centro:c,t})});
@@ -4143,12 +4249,13 @@ function vImprimir(el){
 }
 
 /* ---------- Órdenes ---------- */
-let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null};
+let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord'};
 function togFaseOrdF(f){ORDF.fases=ORDF.fases||new Set();if(ORDF.fases.has(f))ORDF.fases.delete(f);else ORDF.fases.add(f);render()}
 /* selector compacto de fases con casillas, agrupadas por etapa; sel=null o vacío = todas */
 function selFases(fasesAll,sel,varName,togFn,cuentas){return filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)}
 function togFaseOrd(f){ORDF.abiertas=ORDF.abiertas||new Set();if(ORDF.abiertas.has(f))ORDF.abiertas.delete(f);else ORDF.abiertas.add(f);render()}
 function vOrdenes(el){
+  if(ORDF.tab==='rutas'){el.innerHTML=`<div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips">${[['ord','Órdenes'],['rutas','Rutas']].map(([k,n])=>`<span class="chip ${ORDF.tab===k||(k==='ord'&&!ORDF.tab)?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div></div>`+rutasHTML();return}
   const P=S.ordenes.length?programar():null;
   const cnt={};S.ordenes.forEach(o=>{const e=(o.estado||'plan')==='standby'?'cerrada':(o.estado||'plan');cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
   const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&(!ORDF.fases||!ORDF.fases.size||ORDF.fases.has(o.fase||'Sin fase'))&&(matchBusq(o,q,'ORDF.q')));
@@ -4171,7 +4278,7 @@ function vOrdenes(el){
   let rows;
   rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
   el.innerHTML=`
-  <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>
+  <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips" style="margin-right:10px">${[['ord','Órdenes'],['rutas','Rutas'+(rutasPorDefinir().length?' · '+rutasPorDefinir().length:'')]].map(([k,n])=>`<span class="chip ${(ORDF.tab||'ord')===k?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mOdoo()">${ICO.sync} Actualizar desde Odoo</button><button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${(()=>{const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${sf.length} órdenes sin fecha de entrega</b>: ${enPlan.length} entran al plan por su Proyecto (${num(enPlan.reduce((a,o)=>a+ +o.cant,0))} prendas; no se programan ni se liberan hasta tener fecha) y ${sf.filter(x=>!x.entra).length} sin Proyecto quedan fuera. Ponles fecha en Odoo. ${sf.map(x=>esc(x.op)+' ('+esc(x.fase)+(x.proyecto?' · '+esc(x.proyecto):' · sin proyecto')+')').join(', ')}</div>`:''})()}
@@ -4655,9 +4762,11 @@ function liberada(o,et){if(!o)return false;if(o.sinLanzar||o.sinFechaEntrega)ret
   if(et==='tej'||et==='tin'||et==='tela')return !!((l.tela&&l.tela.ok)||(l.tej&&l.tej.ok)||(l.tin&&l.tin.ok))||!!(g&&g.libTela);
   if(et==='corte')return !!(l.corte&&l.corte.ok)||!!(g&&g.libCorte);return false}
 function liberadaCorte(o){return liberada(o,'corte')}
-function puedeLiberarA(o,et){if(o.sinLanzar||o.sinFechaEntrega)return false;if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
-function faltaLiberarA(o,et){const f=[];if(o.sinLanzar)f.push('sin lanzar en Odoo (sin WH)');if(o.sinFechaEntrega)f.push('sin fecha de entrega');if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
-  else return faltaLiberar(o);return f}
+function puedeLiberarA(o,et){if(!rutaConfirmada(o))return false; // sin ruta confirmada no se libera, ni textil ni a producción
+  if(o.sinLanzar||o.sinFechaEntrega)return false;if(et==='tela'||et==='tej'||et==='tin'){const propia=(o.telas||[]).some(t=>!t.ext);return (o.telas||[]).length>0&&(!propia||!!(C(o.color)||{}).cod)&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)}return puedeLiberar(o)}
+function faltaLiberarA(o,et){const f=[];if(!rutaConfirmada(o))f.push('falta confirmar ruta');if(o.sinLanzar)f.push('sin lanzar en Odoo (sin WH)');if(o.sinFechaEntrega)f.push('sin fecha de entrega');if(et==='tela'||et==='tej'||et==='tin'){if(!(o.telas||[]).length)f.push('sin receta de tela');if((o.telas||[]).some(t=>!t.ext)&&!(C(o.color)||{}).cod)f.push('color sin Pantone');if((o.telas||[]).some(t=>!t.ext&&!(t.kg>0)))f.push('tela sin kilos')}
+  else return f.concat(faltaLiberar(o)); // «falta confirmar ruta» también frena la liberación a producción
+  return f}
 function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids.length+(ids.length===1?' orden':' órdenes')+' a producción?\n\nConfirmas que revisaste los insumos (BOM) de cada una. La tela y la calidad ya vienen validadas por tintorería y calidad.'))return;const et_n={tela:'tela (tejeduría y tintorería)',tej:'tela',tin:'tela',corte:'producción'}[et];let n=0,no=[];if(et==='tej'||et==='tin')et='tela';
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
     o.lib=o.lib||{};o.lib[et]={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
@@ -6593,7 +6702,7 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
    Lo conservado que ya no calza con el archivo nuevo no se retira solo: sale en la bandeja "decisiones que ya no calzan". */
-function defCamposConservados(){return [{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
+function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (quién, cuándo y de dónde salió)',conservar:true},{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
   {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
   {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},
