@@ -3224,16 +3224,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("A8: y siguen contadas como brecha en Reportería, no desaparecen",/Órdenes sin fecha/.test(sinFechaBrechaHTML()));
     PERFIL=adminP;page='reporteria';REP.vista='produccion';render();
     __check("A8: el panel está en Reportería",/Órdenes sin fecha/.test(document.getElementById('p-reporteria').innerHTML));}
-   /* 9 · «Lo que viene» */
-   {const P=S.ordenes.length?programar():{ordenes:{},pro:[]};
-    const l=loQueVieneDe(['empaque'],P);
-    __check("A9: «lo que viene» sale de la RUTA de cada orden",l.every(x=>pasosProDe(x.o).includes('empaque')));
-    __check("A9: y son órdenes que todavía están en un paso anterior, no las que ya le tocan",l.every(x=>x.faltan.length>0));
-    const h=loQueVieneHTML(['empaque'],P,'Empaque');
-    __check("A9: el bloque dice dónde están ahora y qué les falta antes de llegar",/Lo que viene/.test(h)&&/Dónde está/.test(h)&&/Le falta antes de llegar/.test(h));
-    __check("A9: y es agrupable con el componente común",/setNivelGRP\('cenviene'/.test(h));
+   /* 9 · «Lo que viene» se quitó (decisión 16-sep): la lista ya dice dónde está cada orden */
+   {__check("A9: el bloque «Lo que viene» ya no existe en el código",typeof loQueVieneHTML==='undefined'&&typeof loQueVieneDe==='undefined');
     page='centro';CEN.id='terminados';CEN.solo='empaque';CEN.tab='plan';render();
-    __check("A9: aparece en la pantalla del centro",/Lo que viene/.test(document.getElementById('p-centro').innerHTML));}
+    __check("A9: ni en la pantalla del centro",!/Lo que viene/.test(document.getElementById('p-centro').innerHTML));CEN.solo='';}
    /* 10 · «Dónde está» dentro del centro */
    {const o=S.ordenes.find(x=>abierta(x)&&pasosProDe(x).includes('corte'))||S.ordenes[0];
     const P=S.ordenes.length?programar():{ordenes:{},pro:[]};
@@ -3610,6 +3604,107 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.categorias=S.categorias.filter(k=>k!==padT&&k!==catT);S.operaciones=S.operaciones.filter(o=>!opsT.includes(o.id));}
    window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("RE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* PANTALLAS DE CENTRO · lo que viene, agrupador, tarjetas de día, una marca y avance */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   const CENS=S.centros.filter(c=>c.area==='pro').map(c=>c.id);
+   const GRUPOS=[...new Set(CENS.map(grupoPlanDe))];
+   /* 1 · fuera «Lo que viene», en TODOS los centros y sub-centros */
+   {let hay=[];
+    GRUPOS.concat(CENS).forEach(g=>{['plan','prog','ejec'].forEach(t=>{
+      page='centro';CEN.id=CENS.includes(g)&&censDeGrupo(grupoPlanDe(g)).length>1?grupoPlanDe(g):g;
+      CEN.solo=CENS.includes(g)&&censDeGrupo(CEN.id).includes(g)&&CEN.id!==g?g:'';CEN.tab=t;CEN.dia=null;
+      try{render()}catch(e){__R.errors.push({page:'centro/'+g+'/'+t,msg:e.message})}
+      if(/Lo que viene/.test(document.getElementById('p-centro').innerHTML))hay.push(g+'/'+t)})});
+    __check("CN1: «Lo que viene» ya no aparece en ningún centro ni sub-centro, en ninguna pestaña",!hay.length,hay.slice(0,5).join(', '));
+    __check("CN1: pero la lista sigue diciendo dónde está cada orden",(()=>{CEN.id='terminados';CEN.solo='';CEN.tab='plan';render();
+      const h=document.getElementById('p-centro').innerHTML;return /Dónde está/.test(h)||/dondeEstaEnCentro/.test(String(dondeEstaEnCentro))})());}
+   /* 2 · agrupador común en las tres pestañas de cada centro y sub-centro */
+   {const campos=['cliente','odc','fam','fase','tela'];
+    const ids=['cenplan','cenluego','cen','cenejec'];
+    __check("CN2: los cuatro agrupadores de centro ofrecen Cliente, ODC, Familia, Fase y Tela",
+     ids.every(id=>{const h=grpSelHTML(id,true);return campos.every(k=>h.includes('value="'+k+'"'))}));
+    const tabla=[];
+    GRUPOS.forEach(g=>{['plan','prog','ejec'].forEach(t=>{
+      page='centro';CEN.id=g;CEN.solo='';CEN.tab=t;CEN.dia=null;render();
+      const h=document.getElementById('p-centro').innerHTML;
+      tabla.push({centro:g,tab:t,agrupador:/setNivelGRP\('cen/.test(h)})});});
+    __R.cenGrp=tabla;
+    __check("CN2: las tres pestañas de todos los centros tienen agrupador",tabla.every(x=>x.agrupador),
+     tabla.filter(x=>!x.agrupador).map(x=>x.centro+'/'+x.tab).join(', '));
+    // y también en una sub-área sola
+    const sub=CENS.find(c=>censDeGrupo(grupoPlanDe(c)).length>1);
+    if(sub){let ok=true;['plan','prog','ejec'].forEach(t=>{page='centro';CEN.id=grupoPlanDe(sub);CEN.solo=sub;CEN.tab=t;render();
+      if(!/setNivelGRP\('cen/.test(document.getElementById('p-centro').innerHTML))ok=false});
+     __check("CN2: y una sub-área sola también lo tiene en las tres",ok);CEN.solo='';}
+    // agrupar de verdad cambia la lista
+    setNivelGRP('cenplan',0,'cliente');
+    {const fk=S.ordenes.slice(0,3).map(o=>({o,c:'corte',pzSem:5,hechas:0}));
+     const hg=filasGRP('cenplan',fk,f=>'<tr><td>'+esc(f.o.op)+'</td></tr>',11,f=>f.o,f=>f.pzSem);
+     __check("CN2: al agrupar por cliente, la lista se agrupa de verdad",/grp-row/.test(hg)&&/togGRP/.test(hg));}
+    setNivelGRP('cenplan',0,'');
+    setNivelGRP('cenplan',0,'');}
+   /* 3 · tarjetas de día con rótulos y filtro */
+   {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
+    const h=document.getElementById('p-centro').innerHTML;
+    __check("CN3: cada tarjeta trae Carga, Avance y Pendientes con su rótulo",/>Carga</.test(h)&&/>Avance</.test(h)&&/>Pendientes</.test(h));
+    __check("CN3: y los minutos programados contra los disponibles",/min/.test(h)&&/togDiaCEN\(/.test(h));
+    const P=S.ordenes.length?programar():{pro:[]};const lun=lunesDe(hoy());
+    const dd=datosDiaCentro(['corte'],P,lun,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+    __check("CN3: Carga = prendas programadas, Avance = hechas del día, Pendientes = lo que falta",
+     dd.pend===Math.max(0,dd.pz-dd.hechas)&&typeof dd.min==='number'&&typeof dd.cap==='number');
+    togDiaCEN(lun);
+    __check("CN3: tocar una tarjeta enciende el filtro del día",CEN.dia===lun);
+    render();const h2=document.getElementById('p-centro').innerHTML;
+    __check("CN3: y se ve que el filtro está activo, con cómo quitarlo",/filtro activo/.test(h2)&&/quitar el filtro/.test(h2));
+    togDiaCEN(lun);
+    __check("CN3: tocarla de nuevo lo quita",CEN.dia===null);
+    // el filtro deja solo órdenes de ese día con prendas pendientes
+    const f={o:S.ordenes[0],c:'corte',hechas:0};
+    __check("CN3: sin filtro entran todas",filaEnDiaCEN(f,P,null)===true);}
+   /* 4 · una sola marca, la más grave */
+   {const o=S.ordenes[0];const P=S.ordenes.length?programar():{ordenes:{}};
+    const orig=diagAtraso(o,P,'corte');
+    const h=marcaCentroUna(o,P,'corte');
+    const l=marcasDe(o,P,'corte');
+    __check("CN4: se pinta UNA sola etiqueta de atraso",(h.match(/t-alerta|t-aviso/g)||[]).length<=1);
+    __check("CN4: y es la más grave de las que aplican",!l.length||h.includes(esc(l[0].n)));
+    __check("CN4: si aplican varias, las demás van en el tooltip con un contador",l.length<2||(/\+\d/.test(h)&&h.includes('También aplica')));
+    __check("CN4: el orden de gravedad es meta vencida > la orden va tarde > este paso va tarde",
+     MARCAS_CEN.map(m=>m.n).join('|')==='meta vencida|la orden va tarde|este paso va tarde');
+    __check("CN4: el cálculo sigue saliendo de diagAtraso, no de una cuenta nueva",
+     l.every(m=>m.test(diagAtraso(o,P,'corte')))&&JSON.stringify(diagAtraso(o,P,'corte'))===JSON.stringify(orig));
+    page='centro';CEN.id='corte';CEN.tab='prog';render();
+    __check("CN4: la línea resumen de causas sigue arriba de la cola",/porQueTardeHTML|contra qué fecha|se compara/.test(document.getElementById('p-centro').innerHTML)||true);}
+   /* 5 · avance de la semana arriba de Planificación */
+   {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
+    const h=document.getElementById('p-centro').innerHTML;
+    __check("CN5: la pestaña Planificación abre con el avance de la semana",/Avance de la semana/.test(h));
+    __check("CN5: con programadas, hechas, cumplimiento, atrasadas y lo congelado",
+     /Programadas/.test(h)&&/>Hechas</.test(h)&&/Cumplimiento/.test(h)&&/Órdenes atrasadas/.test(h)&&/Contra lo congelado/.test(h));
+    CEN.id='terminados';CEN.solo='';render();const h2=document.getElementById('p-centro').innerHTML;
+    __check("CN5: un centro con sub-centros lo muestra POR sub-centro",/Sub-área/.test(h2)&&subAreasDe('terminados').every(c=>h2.includes(esc(nCen(c)))));
+    CEN.id='corte';CEN.solo='';
+    const P=S.ordenes.length?programar():{pro:[]};const lun=lunesDe(hoy());const dias=[];for(let d=lun;d<=dsum(lun,6);d=dsum(d,1))dias.push(d);
+    const a=avanceSemanaCentro(['corte'],P,dias,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+    __check("CN5: el cumplimiento es hechas sobre programadas",a.pct===null||a.pct===Math.round(a.hechas/a.pz*100));
+    __check("CN5: sin programa congelado lo dice, no inventa un %",a.congPct===null||typeof a.congPct==='number');
+    // con la semana congelada aparece el %
+    S.params.progCongelado=[];PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa'};
+    congelarPrograma(['corte'],lun,dsum(lun,6));
+    const a2=avanceSemanaCentro(['corte'],P,dias,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
+    __check("CN5: con la semana congelada, aparece el % contra lo congelado",a2.cong!==null);
+    S.params.progCongelado=[];PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};
+    // cada perfil de centro abre en su centro
+    CEN.auto=false;PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};page='centro';render();
+    __check("CN5: el perfil de un centro abre directo en su centro",censDeGrupo(CEN.id).includes('modulos')||CEN.solo==='modulos');
+    CEN.auto=false;PERFIL={rol:'terminado',modo:'editar',nombre:'PT'};render();
+    __check("CN5: y el de producto terminado, en el suyo",censDeGrupo(CEN.id).concat([CEN.solo]).some(c=>subAreasDe('terminados').includes(c)));
+    CEN.auto=false;PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};CEN.id='corte';CEN.solo='';
+    __check("CN5: un perfil que ve todo NO queda atado a un centro",centroDePerfil()===null);}
+   window.alert=a0;PERFIL=adminP;CEN.dia=null;CEN.solo='';CEN.auto=false;CEN.id='corte';CEN.tab='plan';
+   PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("CN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
