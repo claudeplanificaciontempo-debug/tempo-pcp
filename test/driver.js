@@ -676,6 +676,34 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __R.empDiag.sugerenciaTerminaEmpaque=cambian.filter(o=>{const s=sugerida(o);return s[s.length-1]==='empaque'}).length;
     __R.empDiag.ejemploSugerida=cambian.slice(0,5).map(o=>({op:o.op,cat:nombreCat(K(o.cat)),antes:pasosProDe(o).join(' → '),despues:sugerida(o).join(' → ')}));
     __R.empDiag.sinSugerencia=mal.filter(o=>!sugerida(o).length).length;
+    // ANTES/DESPUÉS de la corrección autorizada, sobre los datos reales
+    {const ant={conRuta:conRuta.length,mal:mal.length,pz:mal.reduce((a,o)=>a+(+o.cant||0),0),
+      porUlt:JSON.parse(JSON.stringify(porUlt))};
+     const pv=previaCompletarRutas();
+     const bakCierres=JSON.parse(JSON.stringify(S.params.cierresMes||{}));
+     const ymC=hoy().slice(0,7);S.params.cierresMes={};S.ordenes.forEach(o=>{if(!o.proyecto)o.proyecto='x'});
+     guardarCierresMes(programarTodo());const fotoAntes=S.params.cierresMes[ymC]?JSON.parse(JSON.stringify(S.params.cierresMes[ymC])):null;
+     delete S.params.rutasEmpaqueCorregidas;
+     const cf=window.confirm,al=window.alert;window.confirm=()=>true;window.alert=()=>{};
+     sembrarRutasEmpaque();
+     window.confirm=cf;window.alert=al;
+     const conRuta2=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).length);
+     const mal2=conRuta2.filter(o=>!rutaTerminaEnEmpaque(o));
+     const porUlt2={};mal2.forEach(o=>{const r=pasosProDe(o);porUlt2[r[r.length-1]]=(porUlt2[r[r.length-1]]||0)+1});
+     const fotoDesp=S.params.cierresMes[ymC]||null;
+     __R.empAplicado={antes:ant,corregidas:(S.params.rutasEmpaqueCorregidas||{}).n||0,
+       despues:{conRuta:conRuta2.length,mal:mal2.length,pz:mal2.reduce((a,o)=>a+(+o.cant||0),0),porUlt:porUlt2},
+       previa:{falta:pv.falta.length,fuera:pv.fuera.length,manual:pv.manual.length,sinArreglo:pv.sinArreglo.length},
+       terminanEmpaque:conRuta2.filter(rutaTerminaEnEmpaque).length,
+       fotoRecalculada:!!(fotoDesp&&fotoDesp.recalculada),
+       fotoAntesHechas:fotoAntes?fotoAntes.hechas:null,fotoDespHechas:fotoDesp?fotoDesp.hechas:null,
+       fotoAntesBrecha:fotoAntes&&fotoAntes.brechaRutas?fotoAntes.brechaRutas.ordenes:null,
+       fotoDespBrecha:fotoDesp&&fotoDesp.brechaRutas?fotoDesp.brechaRutas.ordenes:null};
+     // la ruta por defecto para las que quedan
+     const pd=previaRutaDefecto();
+     __R.rutaDefectoPrevia={n:pd.n,sinMin:pd.sinMin,
+       ejemplos:pd.filas.slice(0,5).map(f=>({op:f.o.op,cat:nombreCat(f.cat),min:f.min,de:f.de.join(' → '),a:f.a.join(' → ')}))};
+     S.params.cierresMes=bakCierres;}
     __check('EMP: se puede diagnosticar por qué las rutas no terminan en Empaque',__R.empDiag.mal>=0);}
    /* las 7 familias sin hoja, sobre el catálogo real */
    {const c=categoriasSinHoja();
@@ -3705,6 +3733,95 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    window.alert=a0;PERFIL=adminP;CEN.dia=null;CEN.solo='';CEN.auto=false;CEN.id='corte';CEN.tab='plan';
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("CN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* RUTAS · corrección autorizada, ruta por defecto y recálculo automático */
+  {const antes=__R.errors.length;const adminP=PERFIL;const c0=window.confirm,a0=window.alert;window.alert=()=>{};window.confirm=()=>true;
+   PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   /* una categoría de prueba CON hoja (corte, confección, empaque) y otra SIN hoja */
+   const opsT=[['corte',1],['modulos',5],['empaque',1]].map(([c,t])=>{const id=uid();S.operaciones.push({id,centro:c,n:'p '+c,sam:t});return id});
+   const opBot=(()=>{const id=uid();S.operaciones.push({id,centro:'botones',n:'p botones',sam:2});return id})();
+   const padT={id:uid(),n:'PRUEBA RT'};const conHoja={id:uid(),padre:padT.id,n:'Con hoja',ops:opsT.map(op=>({op}))};
+   const sinHoja={id:uid(),padre:padT.id,n:'Sin hoja'};
+   S.categorias.push(padT,conHoja,sinHoja);
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,cat,ruta,ed)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.estado='plan';x.fase='2Planificacion';
+     delete x.estadoOP;x.cant=10;x.cat=cat;x.ruta=ruta;delete x.programa;delete x.rutaEditada;delete x.rutaConf;delete x.rutaFirma;delete x.rutaRevisar;
+     if(ed)x.rutaEditada=[{ts:new Date().toISOString(),u:'alguien',motivo:'a mano'}];
+     S.ordenes.push(x);delete S.avance[x.id];return x};
+   /* 1 · la corrección de las rutas sin Empaque corre sola, ya autorizada */
+   {const mala=mk('WH/RT-1',conHoja.id,[{centro:'tej',t:0},{centro:'bordado',t:2}]);
+    delete S.params.rutasEmpaqueCorregidas;
+    const de=pasosProDe(mala).join(' → ');
+    sembrarRutasEmpaque();
+    __check("RT1: la corrección autorizada corre sola, sin preguntar",!!S.params.rutasEmpaqueCorregidas);
+    __check("RT1: y la ruta incompleta queda terminando en Empaque",rutaTerminaEnEmpaque(mala),de+' → '+pasosProDe(mala).join(' → '));
+    __check("RT1: conservando el bordado que la orden ya tenía",pasosProDe(mala).includes('bordado'));
+    const ts0=S.params.rutasEmpaqueCorregidas.ts;sembrarRutasEmpaque();
+    __check("RT1: es idempotente: no se vuelve a ejecutar",S.params.rutasEmpaqueCorregidas.ts===ts0);
+    S.ordenes=S.ordenes.filter(o=>o!==mala);}
+   /* 2 · ruta por defecto para las que ni su categoría tiene Empaque */
+   {delete sinHoja.minEstConf;
+    const sin=mk('WH/RT-2',sinHoja.id,[{centro:'tej',t:0},{centro:'bordado',t:2}]);
+    const d=diagRutasSinEmpaque();
+    __check("RT2: una orden cuya categoría tampoco tiene Empaque cae en «sin arreglo»",d.sinArreglo.includes(sin));
+    const pv=previaRutaDefecto();
+    __check("RT2: la vista previa la trae, y dice que no tiene minuto estimado",pv.filas.some(f=>f.o===sin&&f.min===null)&&pv.sinMin>=1);
+    __check("RT2: la ruta propuesta es corte → confección → empaque, más lo que la orden pide",(()=>{
+      const a=pv.filas.find(f=>f.o===sin).a;return a.includes('corte')&&a.includes('modulos')&&a[a.length-1]==='empaque'&&a.includes('bordado')})());
+    const ruta0=JSON.stringify(sin.ruta);
+    __check("RT2: la previa no toca nada",JSON.stringify(sin.ruta)===ruta0);
+    __check("RT2: es brecha de TIEMPOS, no de ruta, y la pantalla lo dice",/0 con aviso/.test(rutaDefectoPanelHTML())&&/tiempos/.test(rutaDefectoPanelHTML()));
+    aplicarRutaDefecto();
+    __check("RT2: al aplicar, la ruta se crea y termina en Empaque",rutaTerminaEnEmpaque(sin));
+    __check("RT2: y queda «estimada – sin revisar»",estadoRuta(sin)==='sinRevisar');
+    __check("RT2: sin minuto estimado la ruta SE CREA igual y la carga queda en 0",(()=>{
+      const pc=(sin.ruta||[]).find(x=>x.centro==='modulos');return !!pc&&(+pc.t||0)===0})());
+    // con minuto estimado sí carga
+    const sin2=mk('WH/RT-3',sinHoja.id,[{centro:'tej',t:0},{centro:'bordado',t:2}]);
+    setMinEstConf(sinHoja.id,12.5);
+    delete S.params.rutaDefectoAplicada;aplicarRutaDefecto();
+    __check("RT2: con minuto estimado, el paso de confección sí trae minutos",(()=>{
+      const pc=(sin2.ruta||[]).find(x=>x.centro==='modulos');return !!pc&&(+pc.t||0)===12.5})());
+    __check("RT2: queda en la auditoría",(S.params.auditoriaCambios||[]).some(a=>/ruta por defecto/.test(a.motivo||'')));
+    delete sinHoja.minEstConf;S.ordenes=S.ordenes.filter(o=>o!==sin&&o!==sin2);}
+   /* 3 · las rutas se rehacen solas cuando cambia el catálogo */
+   {const auto=mk('WH/RT-4',conHoja.id,[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}]);
+    const aMano=mk('WH/RT-5',conHoja.id,[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}],true);
+    sellarRuta(auto);sellarRuta(aMano);
+    __check("RT3: con el catálogo quieto, ninguna ruta está desactualizada",!rutaDesactualizada(auto)&&!rutaDesactualizada(aMano)&&rutasPorRecalcular().total===0);
+    // CORRECCIÓN DEL CATÁLOGO: la categoría gana una operación de bordado
+    conHoja.ops=conHoja.ops.concat([{op:opBot}]);
+    __check("RT3: al cambiar la hoja de la categoría, sus rutas quedan desactualizadas",rutaDesactualizada(auto)&&rutaDesactualizada(aMano));
+    const r=recalcularRutas('prueba: la categoría ganó ojales y botones');
+    __check("RT3: la ruta NO editada a mano se rehace sola y toma el paso nuevo",pasosProDe(auto).includes('botones')&&rutaTerminaEnEmpaque(auto)&&r.n>=1);
+    __check("RT3: la editada a mano NO se toca",!pasosProDe(aMano).includes('botones'));
+    __check("RT3: pero queda marcada para revisar, diciendo qué cambió",!!aMano.rutaRevisar&&/botones|categor/.test(aMano.rutaRevisar.motivo||''));
+    __check("RT3: y aparece en el panel de revisión",rutasParaRevisar().includes(aMano)&&rutasRevisarPanelHTML().includes(esc(aMano.op)));
+    __check("RT3: todo queda en auditoría",(S.params.auditoriaCambios||[]).some(a=>/ruta rehecha/.test(a.motivo||''))&&(S.params.auditoriaCambios||[]).some(a=>/no se toca/.test(a.motivo||'')));
+    __check("RT3: el paso nuevo entra en su lugar del proceso, antes de Empaque",(()=>{const r2=pasosProDe(auto);return r2.indexOf('botones')<r2.indexOf('empaque')})());
+    __check("RT3: ya recalculadas, no quedan pendientes",rutasPorRecalcular().auto.length===0);
+    marcarRutaRevisada2(aMano.id);
+    __check("RT3: al marcarla revisada, sale del panel y se vuelve a sellar",!aMano.rutaRevisar&&!rutaDesactualizada(aMano));
+    // cambiar la CATEGORÍA de la orden también dispara el recálculo
+    auto.cat=sinHoja.id;
+    __check("RT3: cambiar la categoría de la orden también la desactualiza",rutaDesactualizada(auto));
+    recalcularRutas('prueba: cambió la categoría');
+    __check("RT3: y se rehace con la categoría nueva",!rutaDesactualizada(auto));
+    S.ordenes=S.ordenes.filter(o=>o!==auto&&o!==aMano);}
+   /* 4 · sin rutas malas, la etiqueta «con brecha» desaparece */
+   {const bakOrd=S.ordenes;
+    S.ordenes=S.ordenes.filter(o=>!abierta(o)||rutaTerminaEnEmpaque(o)||!pasosProDe(o).length);
+    __check("RT4: cuando no queda ninguna ruta sin Empaque, no hay brecha",brechaHechas()===null&&avisoHechasHTML()==='');
+    page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
+    __check("RT4: y la etiqueta «con brecha» desaparece de Hechas",!/con brecha/.test(document.getElementById('p-gerencia').innerHTML));
+    S.ordenes=bakOrd;
+    const mala=mk('WH/RT-6',conHoja.id,[{centro:'corte',t:1},{centro:'bordado',t:2}]);
+    __check("RT4: y vuelve a aparecer si aparece una ruta mala",!!brechaHechas()&&/afectado/.test(avisoHechasHTML()));
+    S.ordenes=S.ordenes.filter(o=>o!==mala);}
+   S.categorias=S.categorias.filter(k=>![padT,conHoja,sinHoja].includes(k));
+   S.operaciones=S.operaciones.filter(o=>!opsT.includes(o.id)&&o.id!==opBot);
+   delete S.params.rutaDefectoAplicada;
+   window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("RT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 15:22';
+const APP_BUILD='2026-09-16 15:39';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2601,6 +2601,7 @@ function render(){
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
+  if(typeof recalcularRutas==='function'&&typeof rutasPorRecalcular==='function'){const _r=rutasPorRecalcular();if(_r.total)recalcularRutas()}
   if(typeof armarNavSubCentros==='function')armarNavSubCentros();
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
@@ -4160,7 +4161,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans()}
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarRutasEmpaque();sembrarFirmasRuta()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -4642,6 +4643,8 @@ function consultasGERHTML(ords,P){
    <span class="mut" style="font-size:var(--fs-xs)">los cinco cortes de la misma cartera: los totales de «Pedidas» son idénticos en los cinco · un bloque abierto a la vez</span></div>
   ${GER_BLOQUES.map(b=>bloqueGERHTML(b,ords,P)).join('')}
   ${rutasEmpaquePanelHTML()}
+  ${rutaDefectoPanelHTML()}
+  ${rutasRevisarPanelHTML()}
   <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Márgenes y costo por prenda: pendiente de integrar con <b>Costos TEMPO</b> (el sistema de costos, otro repositorio). Aquí solo hay precio, así que un margen sería inventado.</p>`}
 
 /* ---------- cierre mensual: se empieza a guardar YA, para tener historia ---------- */
@@ -4810,7 +4813,7 @@ function completarRutasSinEmpaque(){
     const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
     const nuevos=a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)}));
     const otros=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'));
-    o.ruta=otros.concat(nuevos);
+    o.ruta=otros.concat(nuevos);sellarRuta(o);
     const mas=a.filter(c=>!de.includes(c));
     o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas,menos:[],
       motivo:'toda ruta termina en Empaque (corrección sistémica 16-sep)',etapa:'regla de empaque'}]);
@@ -4949,6 +4952,122 @@ function centroDePerfil(){const cs=centrosPerfil()||[];
 function abrirCentroDelPerfil(){if(CEN.auto)return;const c=centroDePerfil();if(!c)return;
   CEN.auto=true;const g=grupoPlanDe(c);const juntas=censDeGrupo(g);
   CEN.id=juntas.includes(c)?g:c;CEN.solo=(juntas.length>1&&juntas.includes(c))?c:''}
+/* ==================== RUTAS: corrección autorizada y recálculo automático (16-sep-2026) ==================== */
+
+/* ---------- 1 · la corrección de las rutas sin Empaque, ya autorizada: corre una sola vez ---------- */
+/* la firma se siembra una vez en todas las órdenes abiertas: desde ahí el recálculo detecta los cambios */
+function sembrarFirmasRuta(){if(S.params.rutaFirmaSembrada)return;
+  let n=0;S.ordenes.forEach(o=>{if(o.rutaFirma)return;o.rutaFirma=firmaRutaDe(o);n++});
+  S.params.rutaFirmaSembrada=new Date().toISOString();
+  if(n&&typeof bitacora==='function')bitacora('Rutas: se selló la firma de catálogo de '+n+' órdenes, para que se rehagan solas cuando cambie su categoría o su hoja de operaciones')}
+function sembrarRutasEmpaque(){if(S.params.rutasEmpaqueCorregidas)return;
+  const p=previaCompletarRutas();
+  if(!p.n){S.params.rutasEmpaqueCorregidas={ts:new Date().toISOString(),u:'siembra',n:0,nada:true};return}
+  const cf=window.confirm,al=window.alert;
+  try{window.confirm=()=>true;window.alert=()=>{};completarRutasSinEmpaque()}finally{window.confirm=cf;window.alert=al}}
+
+/* ---------- 2 · las que ni su categoría tiene Empaque: ruta por defecto ---------- */
+/* Toda prenda pasa por corte, confección y empaque aunque su familia no tenga hoja LMO.
+   La ruta se crea igual; si la categoría no tiene minuto estimado, la carga queda en 0 CON AVISO:
+   es una brecha de TIEMPOS, no de ruta. */
+const RUTA_DEFECTO_PRO=['corte','modulos','empaque'];
+function rutaDefectoDe(o){const cs=new Set(RUTA_DEFECTO_PRO.filter(c=>CE(c)));
+  if(typeof ordenCentrosAuto==='function')ordenCentrosAuto(o).forEach(c=>{if(CE(c)&&CE(c).area==='pro')cs.add(c)});
+  (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro')cs.add(p.centro)});
+  return ordenarRutaPro([...cs])}
+function previaRutaDefecto(){const d=diagRutasSinEmpaque();
+  return {n:d.sinArreglo.length,
+    filas:d.sinArreglo.map(o=>{const k=K(o.cat);const me=k?minEstimadoConf(k):null;
+      return {o,de:pasosProDe(o),a:rutaDefectoDe(o),min:me,cat:k}}),
+    sinMin:d.sinArreglo.filter(o=>{const k=K(o.cat);return !k||minEstimadoConf(k)==null}).length}}
+function aplicarRutaDefecto(){
+  if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  const p=previaRutaDefecto();
+  if(!p.n){alert('No queda ninguna orden sin ruta hasta Empaque.');return}
+  if(!confirm('Se les pone la ruta por defecto (corte → confección → empaque, más estampado o bordado si la orden los pide) a '+p.n+' órdenes.\n\n'
+    +'Quedan como «estimada – sin revisar», para revisarlas una por una.\n'
+    +(p.sinMin?'· '+p.sinMin+' son de categorías SIN minuto estimado: la ruta se crea igual y su carga queda en 0 con aviso.\n':'')
+    +'\nNada se borra: cada cambio queda en la auditoría.\n¿Aplicar?'))return;
+  let n=0;
+  p.filas.forEach(({o,de,a,cat})=>{const sam=cat?(samPorCentro(cat)||{}):{};
+    const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
+    const nuevos=a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)}));
+    o.ruta=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro')).concat(nuevos);
+    sellarRuta(o);
+    o.rutaConf={estado:'estimada',origen:'sistema',revisada:false,u:quienFirma(),ts:new Date().toISOString(),
+      nota:'ruta por defecto: su familia no tiene hoja de operaciones'};
+    o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:a.filter(c=>!de.includes(c)),menos:[],
+      motivo:'ruta por defecto (familia sin hoja LMO)',etapa:'ruta por defecto'}]);
+    registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → '),'ruta por defecto: toda prenda pasa por corte, confección y empaque',false);
+    n++});
+  S.params.rutaDefectoAplicada={ts:new Date().toISOString(),u:quienFirma(),n,sinMin:p.sinMin};
+  bitacora('Ruta por defecto aplicada a '+n+' órdenes de familias sin hoja de operaciones (corte → confección → empaque). '+p.sinMin+' sin minuto estimado: su carga queda en 0 con aviso. ('+quienFirma()+')');
+  if(typeof recalcularCierreMesEnCurso==='function')recalcularCierreMesEnCurso();
+  PLAN=null;PLAN_ALL=null;save();render();
+  alert(n+' órdenes con ruta por defecto, marcadas «estimada – sin revisar».')}
+function rutaDefectoPanelHTML(){const p=previaRutaDefecto();const ya=S.params.rutaDefectoAplicada;
+  if(!p.n&&!ya)return '';
+  return `<div class="panel"${p.n?' style="border:2px solid var(--aviso)"':''}><h3>Órdenes cuya familia no tiene hoja de operaciones <span class="note">${p.n} sin ruta hasta Empaque</span></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Toda prenda pasa por corte, confección y empaque</b>, tenga o no hoja de operaciones su familia. A estas se les puede poner la <b>ruta por defecto</b> (más estampado o bordado si la orden los pide), marcada <b>«estimada – sin revisar»</b> para revisarlas una por una.</p>
+   ${p.sinMin?`<p class="mut" style="font-size:var(--fs-s)"><span class="tag t-alerta">ojo</span> <b>${p.sinMin}</b> son de categorías <b>sin minuto estimado</b>: la ruta se crea igual, pero su carga queda en <b>0 con aviso</b>. Es una brecha de <b>tiempos</b>, no de ruta — se cierra poniendo el minuto estimado en Configuración → Operaciones.</p>`:''}
+   ${ya?`<p class="mut"><span class="tag t-ok">aplicada</span> a ${ya.n} órdenes el ${new Date(ya.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} por ${esc(ya.u||'—')}.</p>`:''}
+   ${p.n?`<h4 style="margin:14px 0 6px">Vista previa · ${p.n} órdenes</h4>
+    <div class="scroll" style="max-height:300px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Categoría</th><th class="num">Min/prenda</th><th>Ruta hoy</th><th>Quedaría</th></tr></thead><tbody>
+    ${p.filas.slice(0,12).map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td class="mut">${esc(nombreCat(f.cat)||'sin categoría')}</td>
+     <td class="num">${f.min==null?'<span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="sin minuto estimado: la carga de esta orden queda en 0">sin valor</span>':num(f.min,2)+' <span class="mut" style="font-size:10px">est.</span>'}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${f.de.map(c=>esc(nCen(c))).join(' → ')||'—'}</td>
+     <td style="font-size:var(--fs-xs)">${f.a.map(c=>(f.de.includes(c)?'':'<b>')+esc(nCen(c))+(f.de.includes(c)?'':'</b>')).join(' → ')}</td></tr>`).join('')}
+    </tbody></table>${p.n>12?`<p class="mut">Se muestran 12 de ${p.n}; al aplicar se corrigen todas.</p>`:''}</div>
+    ${puedeEditarRuta()?`<div class="row" style="margin-top:10px"><button class="btn" onclick="aplicarRutaDefecto()">Poner la ruta por defecto a las ${p.n}</button></div>`:''}`:'<div class="empty">Ninguna: todas las órdenes tienen ruta hasta Empaque.</div>'}
+  </div></div>`}
+
+/* ---------- 3 · las rutas se rehacen solas cuando cambia la categoría o su vínculo con la LMO ---------- */
+/* Se guarda en la orden la «firma» con la que se armó su ruta: categoría + qué centros aporta hoy esa
+   categoría. Si la firma cambia, la ruta está vieja. Las editadas a mano NO se rehacen: se marcan. */
+function firmaRutaDe(o){const k=K(o.cat);
+  if(!k)return 'sin-cat';
+  const cs=[...centrosDeCategoria(k)].sort().join(',');
+  return k.id+'|'+(k.familiaLMO||'')+'|'+cs}
+function rutaDesactualizada(o){if(!o.rutaFirma)return false;return o.rutaFirma!==firmaRutaDe(o)}
+function sellarRuta(o){o.rutaFirma=firmaRutaDe(o)}
+function rutasPorRecalcular(){const auto=[],manual=[];
+  S.ordenes.filter(abierta).forEach(o=>{if(!rutaDesactualizada(o))return;
+    (rutaEditadaAMano(o)?manual:auto).push(o)});
+  return {auto,manual,total:auto.length+manual.length}}
+/* rehace las que puede y marca las de mano; devuelve el detalle para el reporte */
+function recalcularRutas(motivo){const r=rutasPorRecalcular();
+  if(!r.total)return {n:0,marcadas:0};
+  let n=0;
+  r.auto.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o);
+    if(!a.length||a.join()===de.join()){sellarRuta(o);return}
+    const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+    const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
+    o.ruta=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'))
+      .concat(a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)})));
+    registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → '),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
+    sellarRuta(o);n++});
+  r.manual.forEach(o=>{o.rutaRevisar={ts:new Date().toISOString(),motivo:motivo||'cambió la categoría o su hoja de operaciones',
+    firmaVieja:o.rutaFirma,firmaNueva:firmaRutaDe(o)};
+    registrarAuditoria('ruta',o,'ruta editada a mano','marcada para revisar',(motivo||'cambió la categoría')+': la ruta se hizo a mano y no se toca',false)});
+  if(n||r.manual.length)bitacora('Rutas rehechas por cambio de catálogo: '+n+' actualizadas, '+r.manual.length+' editadas a mano marcadas para revisar'+(motivo?' ('+motivo+')':'')+' ('+quienFirma()+')');
+  if(n)PLAN=null,PLAN_ALL=null;
+  return {n,marcadas:r.manual.length}}
+function rutasParaRevisar(){return S.ordenes.filter(o=>abierta(o)&&o.rutaRevisar)}
+function marcarRutaRevisada2(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o||!o.rutaRevisar)return;
+  if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción revisa rutas.');return}
+  delete o.rutaRevisar;sellarRuta(o);
+  bitacora('Ruta editada a mano revisada tras el cambio de catálogo · '+o.op+' ('+quienFirma()+')');save();render()}
+function rutasRevisarPanelHTML(){const l=rutasParaRevisar();const r=rutasPorRecalcular();
+  if(!l.length&&!r.total)return '';
+  return `<div class="panel"${l.length?' style="border:2px solid var(--aviso)"':''}><h3>Rutas afectadas por un cambio de catálogo <span class="note">${l.length} editadas a mano, para revisar${r.auto.length?' · '+r.auto.length+' se rehacen solas':''}</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Cuando cambia la categoría de una orden, o el vínculo de esa categoría con su hoja de operaciones, <b>las rutas que nadie tocó se rehacen solas</b>. Las <b>editadas a mano no se tocan</b>: se marcan aquí para que alguien decida.</p>
+   ${l.length?`<div class="scroll" style="max-height:300px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Categoría</th><th>Ruta a mano</th><th>Qué cambió</th><th></th></tr></thead><tbody>
+    ${l.slice(0,100).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="mut">${esc(nombreCat(K(o.cat))||'')}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${pasosProDe(o).map(c=>esc(nCen(c))).join(' → ')}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${esc(o.rutaRevisar.motivo||'')}</td>
+     <td style="white-space:nowrap">${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">ver / editar</button> <button class="btn sm" onclick="marcarRutaRevisada2('${o.id}')">revisada</button>`:''}</td></tr>`).join('')}
+   </tbody></table></div>`:'<div class="empty">Ninguna ruta editada a mano quedó afectada.</div>'}
+  </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -5670,6 +5789,7 @@ function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
     let ruta=(o.ruta||[]).filter(p=>!menos.includes(p.centro));
     mas.forEach(c=>{const t=sam[c]||0;if(!t)sinT.push(c);const idx=ordenPaso(c);let pos=ruta.length;for(let i=0;i<ruta.length;i++){if(ordenPaso(ruta[i].centro)>idx){pos=i;break}}ruta.splice(pos,0,{centro:c,t})});
     o.ruta=ruta;if(o.rutaCompleta){o.rutaCompleta=o.rutaCompleta.filter(p=>!menos.includes(p.centro));mas.forEach(c=>{if(!o.rutaCompleta.some(p=>p.centro===c))o.rutaCompleta.push({centro:c,t:sam[c]||0})})}
+    if(typeof sellarRuta==='function')sellarRuta(o);if(o.rutaRevisar)delete o.rutaRevisar;
     const etapa=(page==='liberacion')?(LIB.et==='tela'?'liberación general':'liberación a producción'):'centro';o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',mas,menos,motivo,etapa}]);if(page==='liberacion'&&LIB.et==='tela')o.rutaRevGeneral={u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()}});
   bitacora('Ruta '+o.op+': '+antes.map(nCen).join(' → ')+'  ⇒  '+(o.ruta||[]).map(p=>p.centro).map(nCen).join(' → ')+' · '+motivo+(sinT.length?' · SIN TIEMPO: '+sinT.map(nCen).join(', '):''));
   save();cerrar();render();if(sinT.length)alert('Pasos agregados sin tiempo por prenda (la categoría no tiene operaciones de ese centro): '+sinT.map(nCen).join(', ')+'. Quedan en la bandeja "sin tiempo" y no cargan hasta que se cargue el tiempo.')}
