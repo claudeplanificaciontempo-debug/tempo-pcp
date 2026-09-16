@@ -204,6 +204,21 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.41 «0 hechas» vs «sin registros» y qué es «Vienen después» (16-sep)
+- **`hayRegistroEn(c,d)`**: hubo registro si hay avance por talla o por total, un **tramo cerrado**, la **producción de
+  un turno** o un **paro registrado**. Un turno sin producción **no** cuenta. `diasConTurno`/`registroSemana` solo miran
+  los días **laborables** del centro: a un centro sin turno no se le reclama registro.
+- **Tarjetas de día**: «sin registros» en vez de 0, y los pendientes en «—» (sin registros no se sabe cuánto falta).
+- **Avance de la semana**: «**sin registros esta semana**» en vez de 0 % de cumplimiento; si hay registros pero faltan
+  días, el % va con la advertencia de cuántos días laborables quedaron sin registrar.
+- **`brechaRegistroHTML()`** en Reportería por área: matriz **centro × día** con ✓ / — / ·, los centros que no
+  registraron nada y el total de días laborables sin registrar.
+- **«Vienen después» se MANTIENE**: no repite la lista de arriba. Son conjuntos **disjuntos por construcción**
+  (`enSem` = `pzSem>0`; `luego` = `pzSem===0 && paso.ini>dom`), y hay prueba que lo fija. Se diferencia del
+  **«Lo que viene» eliminado** en que aquel mostraba órdenes **en un paso anterior de su ruta**, sin fecha en este
+  centro, y eso sí repetía lo que ya dice la lista principal. El rótulo se reescribió para que la diferencia se lea.
+- Ver `SIN_REGISTROS_REPORTE.md`.
+
 ### 2.40 Rutas: corrección aplicada y recálculo automático (16-sep)
 - **`sembrarRutasEmpaque()`** — la corrección de las rutas sin Empaque, autorizada, corre **una sola vez** con las
   demás siembras y recalcula la foto del mes en curso. **Real: 348 → 22** rutas sin Empaque (122.788 → 3.125

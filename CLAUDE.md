@@ -642,6 +642,15 @@ editadas a mano** y marca las editadas con `o.rutaRevisar` — nunca las pisa. *
 firma a propósito**: dependen de la técnica/puntadas de la orden, no de la categoría. Al escribir una ruta hay que
 llamar a `sellarRuta(o)`, o el recálculo la dará por vieja. Ver `RUTAS_CORRECCION_REPORTE.md`.
 
+**«0 hechas» ≠ «sin registros» (16-sep-2026).** `hayRegistroEn(c,d)` = avance por talla/total, tramo cerrado,
+producción de un turno o paro registrado (un turno **sin** producción no cuenta). `registroSemana` solo mira días
+**laborables** del centro. Las tarjetas de día muestran «sin registros» y dejan los pendientes en «—»; el avance de la
+semana muestra «**sin registros esta semana**» en vez de 0 %, y marca los días sueltos sin registrar cuando sí hay
+alguno. `brechaRegistroHTML()` (Reportería por área) es la matriz centro × día. **Nunca presentar un 0 de avance sin
+comprobar antes si hubo registro.** **«Vienen después» se mantiene**: `enSem` (`pzSem>0`) y `luego`
+(`pzSem===0 && paso.ini>dom`) son **disjuntos**, no repite nada; el «Lo que viene» que se eliminó sí repetía, porque
+mostraba órdenes en un paso anterior y la lista principal ya dice dónde está cada una. Ver `SIN_REGISTROS_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
