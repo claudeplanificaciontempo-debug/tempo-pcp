@@ -204,6 +204,20 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.27 Estado real de los permisos en Supabase (16-sep-2026) — YA EJECUTADO
+- **Escritura del piso (15-sep noche)**: función `rol_piso_usuario()` + políticas `piso_inserta` y `piso_actualiza` en
+  **avance, bitacora, turnos y paros** para `tablet, corte, modulos, terminado`. Sin DELETE. No se tocó ninguna
+  política existente. Comprobado: 8 filas en pg_policies; la tablet guardó el 16-sep 08:08. El SQL realmente
+  ejecutado está en `SUPABASE_POLITICAS_TABLET.sql` (la propuesta anterior NO fue la que corrió).
+- **Funciones de fase y cola (16-sep)**: `SUPABASE_MOVER_FASE.sql` ejecutado; existen `fase_num`, `puede_mover_fase`,
+  `mover_fase` y `set_prioridad_centro`. Los supervisores de piso ya mueven fases y reordenan la cola de verdad.
+- **Roles en uso en perfiles**: admin 3 · terminado 1 · tablet 1 · corte 1. Nadie tiene `piso` ni `planificacion`.
+- **Al ejecutar SQL con funciones, elegir siempre «Run without RLS»**; los avisos de «destructive operation» por
+  `drop policy if exists` o `revoke` son esperables.
+- **Un perfil nuevo del catálogo no escribe hasta habilitarlo en Supabase**: para las cuatro tablas del piso hay
+  que agregarlo a la lista de `rol_piso_usuario()` (única regla de negocio que vive en la base); para mover fases
+  basta marcarlo «Supervisor de piso» en la columna Piso del catálogo.
+
 ### 2.26 Entrar: recuperar la contraseña (16-sep-2026)
 - La ventana de ingreso tiene **«¿Olvidaste tu contraseña?»**: pide el correo, manda el enlace y responde siempre
   lo mismo exista o no el correo («Si el correo está registrado, te llegará un enlace. Revisa también spam»).

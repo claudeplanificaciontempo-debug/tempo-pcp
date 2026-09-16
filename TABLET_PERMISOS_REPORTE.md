@@ -294,3 +294,54 @@ reordena la cola con `set_prioridad_centro` y sin ningún upsert de órdenes, y 
 estaba con su aviso · **la fase que movió otra persona se mantiene** cuando esta sesión guarda otro campo de la
 misma orden, y ese campo sí se guarda · con los dos cambiando el mismo campo sale el aviso, no se pisa, y «Dejar lo
 mío» sube el valor y cierra el aviso.
+
+---
+
+# Estado real de los permisos en Supabase (al 16-sep-2026)
+
+Esto ya **está ejecutado en producción**. Los dos archivos SQL del repo dejaron de ser propuestas y ahora dicen
+«EJECUTADO» con su fecha.
+
+## 1 · Permisos de escritura del piso — ejecutado el 15-sep por la noche
+Lo que corrió **no fue** la propuesta que estaba en `SUPABASE_POLITICAS_TABLET.sql`: fue una versión más corta y
+más conservadora, que es la que ahora está en ese archivo. En resumen:
+
+- función nueva **`public.rol_piso_usuario()`** (`security definer`), que devuelve `perfiles.rol` del usuario de la
+  sesión;
+- dos políticas nuevas por tabla —**`piso_inserta`** (INSERT) y **`piso_actualiza`** (UPDATE)— en **avance,
+  bitacora, turnos y paros**, para `rol in ('tablet','corte','modulos','terminado')`. **Sin DELETE**;
+- **no se tocó ninguna política existente** (`<tabla>_leer` / `<tabla>_escribir` con `rol_actual()`) ni se crearon
+  políticas de lectura nuevas: las que ya había alcanzaban.
+
+Comprobado: **8 filas** en `pg_policies` (4 tablas × 2) y «Modulo 1 · tablet» guardando en producción el 16-sep a
+las 08:08.
+
+**Roles realmente en uso en `perfiles`:** admin 3 · terminado 1 · tablet 1 · corte 1. Ningún usuario tiene `piso`
+ni `planificacion`, que son los roles que aceptan las políticas de escritura antiguas; si mañana creas un usuario
+con perfil planificación, escribirá por esas políticas viejas, no por las del piso.
+
+## 2 · Las funciones de fase y de cola — ejecutadas el 16-sep
+`SUPABASE_MOVER_FASE.sql` (versión 2, commit `2d38f20`) está ejecutado. Comprobado en `pg_proc`: existen
+**`fase_num`**, **`puede_mover_fase`**, **`mover_fase`** y **`set_prioridad_centro`**. Con eso, los supervisores de
+piso mueven fases y reordenan la cola de su centro **de verdad**: la app ya no avisa que falta el archivo.
+
+El primer intento falló porque se eligió *Run and enable RLS* y Supabase metió un `ALTER TABLE` dentro de la
+función; se volvió a ejecutar con *Run without RLS* y pasó limpio. **No quedaron objetos a medias.**
+
+## 3 · Tres cosas para no tropezar otra vez
+
+1. **SQL con funciones → siempre «Run without RLS»** en el editor de Supabase. Con «Run and enable RLS» el editor
+   envuelve la consulta y le inserta `ALTER TABLE`, lo que rompe cualquier `create function`.
+2. Los avisos de **«destructive operation»** por `drop policy if exists` o `revoke` son **esperables**: no borran
+   datos, solo reemplazan una política o un permiso de ejecución.
+3. **Un perfil nuevo del catálogo no escribe nada hasta que lo habilites en Supabase.** Y ojo, porque hay **dos
+   mecanismos distintos**:
+
+   | Para qué | Dónde se decide | Qué hacer con un perfil nuevo |
+   | --- | --- | --- |
+   | Escribir en avance, bitácora, turnos y paros | **lista fija dentro de `rol_piso_usuario()`**, en la base | agregar el id del perfil a la lista y volver a ejecutar ese bloque |
+   | Mover fases y reordenar la cola (`mover_fase`, `set_prioridad_centro`) | **columna «Piso» del catálogo**, en Configuración → Usuarios | marcarlo como «Supervisor de piso»; no hace falta tocar SQL |
+
+   La primera fila es hoy **el único sitio del sistema donde una regla de negocio vive en la base y no en una tabla
+   editable**. Si creas, por ejemplo, un perfil «empaque» de piso, en la app podrá todo lo suyo pero **el servidor
+   le rechazará cada guardado** hasta que lo agregues a esa lista.

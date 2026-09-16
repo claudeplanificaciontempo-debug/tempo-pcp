@@ -1,93 +1,100 @@
 -- ============================================================================
--- PROPUESTA DE POLÍTICAS PARA EL PERFIL TABLET (operarios) — TEMPO PCP
+-- EJECUTADO EN PRODUCCIÓN el 15-sep-2026 (noche) — TEMPO PCP
 -- ============================================================================
--- NO EJECUTADO. Esperando tu confirmación.
+-- Este archivo ya NO es una propuesta: es EL SQL QUE SE EJECUTÓ, tal cual.
+-- La propuesta anterior (la que estaba aquí antes) NO se ejecutó; la versión
+-- que corrió es más corta y más conservadora:
+--   · no crea políticas de LECTURA nuevas (las que ya existían alcanzaban);
+--   · no toca ninguna política existente (<tabla>_leer / <tabla>_escribir con
+--     rol_actual()): solo AGREGA dos políticas por tabla;
+--   · usa su propia función, public.rol_piso_usuario().
 --
--- Qué resuelve: el usuario "Modulo 1 · tablet" recibe
+-- Qué resuelve: el usuario "Modulo 1 · tablet" recibía
 --   "new row violates row-level security policy for table bitacora / avance"
--- porque las políticas de escritura exigen un rol que no incluye a 'tablet'.
+-- porque las políticas de escritura que había exigen un rol que no incluye a
+-- los perfiles de piso.
 --
--- Criterio: el operario puede LEER lo que su pantalla necesita y ESCRIBIR solo
--- donde registra su trabajo. No puede escribir en órdenes, params, centros,
--- recursos ni en ninguna tabla de configuración.
+-- Criterio: el piso escribe SOLO donde registra su trabajo — avance, bitacora,
+-- turnos y paros — y nada más. Sin DELETE: desde el piso no se borra nada.
+-- El tramo de trabajo (inicio, fin, paros, unidades por talla) y las segundas
+-- viven dentro de `avance`; la asistencia del día, en `turnos`; los paros
+-- generales, en `paros`.
 --
--- IMPORTANTE: el tramo de trabajo (inicio, fin, paros, unidades por talla) y las
--- segundas se guardan dentro de `avance` (S.avance[oid].tramos / .tallas / .seg).
--- La asistencia del día se guarda en `turnos`. Los paros generales, en `paros`.
--- Por eso el operario necesita escribir exactamente en: avance, bitacora, turnos
--- y paros. Nada más.
+-- COMPROBADO después de ejecutarlo:
+--   · pg_policies devuelve 8 filas nuevas (4 tablas × 2 políticas);
+--   · "Modulo 1 · tablet" guardó en producción el 16-sep-2026 a las 08:08.
 -- ============================================================================
 
--- 0) Función auxiliar: el rol del usuario que hace la petición.
---    Si ya existe una equivalente en tu base, usa esa y salta este bloque.
-create or replace function public.mi_rol()
+-- ---------------------------------------------------------------------------
+-- 1 · el rol del usuario que hace la petición
+-- ---------------------------------------------------------------------------
+create or replace function public.rol_piso_usuario()
 returns text
 language sql
 stable
 security definer
 set search_path = public
-as $$
-  select rol from public.perfiles where id = auth.uid()
-$$;
+as $$ select rol from public.perfiles where id = auth.uid() $$;
 
-revoke all on function public.mi_rol() from public;
-grant execute on function public.mi_rol() to authenticated;
+revoke all on function public.rol_piso_usuario() from public;
+grant execute on function public.rol_piso_usuario() to authenticated;
 
--- ============================================================================
--- 1) LECTURA: el operario necesita ver estas tablas para armar Mi centro
---    (órdenes de su centro, rutas, categorías, colores, centros y recursos).
---    Es solo lectura: no puede modificarlas.
--- ============================================================================
+-- ---------------------------------------------------------------------------
+-- 2 · escritura del piso en sus cuatro tablas (insert y update; nunca delete)
+-- ---------------------------------------------------------------------------
 do $$
 declare t text;
 begin
-  foreach t in array array[
-    'ordenes','avance','centros','recursos','categorias','colores','telas','rutas',
-    'operaciones','tecnicas','maquinas','programas','planes','turnos','paros','bitacora',
-    'cargas','propuestas','salidas_tin','banos_conf'
-  ]
-  loop
-    execute format('drop policy if exists tablet_lee on public.%I', t);
-    execute format(
-      'create policy tablet_lee on public.%I for select to authenticated using (true)', t);
-  end loop;
-end $$;
-
--- ============================================================================
--- 2) ESCRITURA del piso: avance, bitacora, turnos y paros.
---    Incluye al perfil tablet y a los perfiles de piso que ya registraban
---    (corte, modulos, terminado, piso), para que nadie pierda lo que hacía.
--- ============================================================================
-do $$
-declare t text;
-declare roles_piso text := $roles$ array['tablet','corte','modulos','terminado','piso','tintoreria','tejeduria'] $roles$;
-begin
-  foreach t in array array['avance','bitacora','turnos','paros']
-  loop
-    execute format('drop policy if exists piso_escribe on public.%I', t);
-    execute format(
-      'create policy piso_escribe on public.%I for insert to authenticated with check (public.mi_rol() = any(%s))', t, roles_piso);
-
+  foreach t in array array['avance','bitacora','turnos','paros'] loop
+    execute format('drop policy if exists piso_inserta on public.%I', t);
+    execute format('create policy piso_inserta on public.%I for insert to authenticated
+      with check (public.rol_piso_usuario() in (''tablet'',''corte'',''modulos'',''terminado''))', t);
     execute format('drop policy if exists piso_actualiza on public.%I', t);
-    execute format(
-      'create policy piso_actualiza on public.%I for update to authenticated using (public.mi_rol() = any(%s)) with check (public.mi_rol() = any(%s))', t, roles_piso, roles_piso);
+    execute format('create policy piso_actualiza on public.%I for update to authenticated
+      using (public.rol_piso_usuario() in (''tablet'',''corte'',''modulos'',''terminado''))
+      with check (public.rol_piso_usuario() in (''tablet'',''corte'',''modulos'',''terminado''))', t);
   end loop;
 end $$;
 
--- Nota: NO se da permiso de delete al piso. Nada se borra desde la tablet.
+-- ---------------------------------------------------------------------------
+-- 3 · comprobación (dio 8 filas)
+-- ---------------------------------------------------------------------------
+-- select tablename, policyname, cmd
+--   from pg_policies
+--  where schemaname = 'public'
+--    and policyname in ('piso_inserta','piso_actualiza')
+--  order by tablename, policyname;
 
 -- ============================================================================
--- 3) Lo que el operario NO puede escribir (se deja explícito para que se lea)
---    ordenes, params, centros, recursos, categorias, colores, telas, rutas,
---    operaciones, tecnicas, maquinas, programas, planes, cargas, propuestas,
---    salidas_tin, banos_conf.
---    Si alguna de esas tablas tiene hoy una política que permite escribir a
---    'authenticated' sin mirar el rol, conviene restringirla a los perfiles que
---    corresponda. Revisar con el volcado de SUPABASE_POLITICAS_ACTUALES.sql.
+-- LO QUE HAY QUE SABER PARA MAÑANA
 -- ============================================================================
-
--- 4) Comprobación después de ejecutar (debe listar las políticas nuevas)
--- select tablename, policyname, cmd, roles
--- from pg_policies
--- where schemaname='public' and policyname in ('tablet_lee','piso_escribe','piso_actualiza')
--- order by tablename, policyname;
+-- · LA LISTA DE ROLES ESTÁ AQUÍ DENTRO, NO EN LA CONFIGURACIÓN DE LA APP.
+--   Si creas un perfil nuevo de piso en Configuración → Usuarios (por ejemplo
+--   "empaque"), ESE PERFIL NO PODRÁ ESCRIBIR NADA hasta que lo agregues a la
+--   lista de esta función y vuelvas a ejecutar el bloque. Es el único lugar
+--   del sistema donde una regla de negocio vive en la base y no en una tabla
+--   editable: tenerlo presente.
+--   (Ojo: no confundir con la columna «Piso» del catálogo de perfiles, que sí
+--   es configuración y es la que usa mover_fase / set_prioridad_centro.)
+--
+-- · Roles realmente en uso en `perfiles` al 16-sep-2026:
+--       admin 3 · terminado 1 · tablet 1 · corte 1
+--   Ningún usuario tiene 'piso' ni 'planificacion', que son los roles que
+--   aceptan las políticas de escritura antiguas (<tabla>_escribir con
+--   rol_actual()). Si algún día creas un usuario con perfil planificación,
+--   escribirá por esas políticas viejas, no por estas.
+--
+-- · Al ejecutar SQL con funciones en el editor de Supabase, elegir siempre
+--   "Run without RLS". Con "Run and enable RLS" Supabase envuelve la consulta
+--   y mete ALTER TABLE dentro de la función, y falla.
+--   Los avisos de "destructive operation" por `drop policy if exists` o
+--   `revoke` son esperables: no borran datos.
+--
+-- · Para quitar todo esto (vuelve al estado anterior):
+--     do $$ declare t text; begin
+--       foreach t in array array['avance','bitacora','turnos','paros'] loop
+--         execute format('drop policy if exists piso_inserta on public.%I', t);
+--         execute format('drop policy if exists piso_actualiza on public.%I', t);
+--       end loop; end $$;
+--     drop function if exists public.rol_piso_usuario();
+-- ============================================================================

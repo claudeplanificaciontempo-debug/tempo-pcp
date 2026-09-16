@@ -1,11 +1,16 @@
 -- ============================================================================
--- PROPUESTA: dos funciones para que los SUPERVISORES DE PISO (corte, módulos,
+-- DOS FUNCIONES para que los SUPERVISORES DE PISO (corte, módulos,
 -- terminado) muevan la fase de una orden y reordenen la cola de su centro
 -- SIN poder escribir en la tabla `ordenes`. TEMPO PCP.
 -- ============================================================================
--- NO EJECUTADO. Revísala y ejecútala tú (o autoriza que se ejecute).
--- Mientras no existan, la app avisa "Falta ejecutar SUPABASE_MOVER_FASE.sql"
--- y NO cambia nada.
+-- EJECUTADO EN PRODUCCIÓN el 16-sep-2026. Comprobado en pg_proc: existen
+-- fase_num, puede_mover_fase, mover_fase y set_prioridad_centro.
+--
+-- Nota de la ejecución: el primer intento falló porque se eligió "Run and
+-- enable RLS" y Supabase insertó un ALTER TABLE dentro de la función. Se
+-- volvió a ejecutar con "Run without RLS" y pasó limpio; no quedaron objetos
+-- a medias. Para el futuro: SQL con funciones, siempre "Run without RLS".
+-- Los avisos de "destructive operation" por revoke son esperables.
 --
 -- Versión 2 (16-sep-2026), con tus correcciones:
 --   · la lista fija de roles es solo una red de seguridad MIENTRAS el catálogo

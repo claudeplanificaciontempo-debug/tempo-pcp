@@ -100,3 +100,44 @@ con un correo registrado y con uno inventado** · al llegar el evento PASSWORD_R
 menos de 8 caracteres no se guarda · dos contraseñas distintas tampoco · con las dos iguales se llama a `updateUser`
 y entra, y los campos quedan vacíos · si el enlace venció lo dice y no entra · administración manda el enlace, queda
 en la bitácora y la columna sale en Usuarios.
+
+---
+
+## 4 · Operarios con correo inventado: cómo se les cambia la clave
+
+Varias cuentas de piso no tienen un correo real (son direcciones inventadas para poder crear el usuario, del tipo
+`modulo1@tempo.local`). Para ellas:
+
+- **«¿Olvidaste tu contraseña?» y el botón «enviar enlace» de Usuarios no sirven**: el correo se manda, pero no
+  llega a ninguna parte porque esa dirección no existe. No es un fallo de la app; es que no hay a dónde escribir.
+- La única forma de devolverles el acceso es que **administración les ponga una clave nueva** y se las diga en
+  persona.
+
+**Cómo ponerla** (dos caminos, el mismo resultado):
+
+1. **Desde el panel**, si tu versión lo ofrece: Supabase → **Authentication → Users** → busca el usuario → menú
+   de la fila (⋯) → la opción de cambiar la contraseña. Es lo más simple; si no aparece, usa el SQL.
+2. **Desde SQL Editor** (recuerda: *Run without RLS*):
+
+```sql
+update auth.users
+   set encrypted_password = crypt('NuevaClave', gen_salt('bf')),
+       updated_at = now()
+ where email = '<correo>';
+-- tiene que devolver: 1 row
+```
+
+- Si devuelve **0 rows**, el correo está mal escrito: búscalo primero con
+  `select id, email from auth.users order by email;`.
+- Si da **`function crypt(...) does not exist`**, es que pgcrypto está en otro esquema: escribe
+  `extensions.crypt('NuevaClave', extensions.gen_salt('bf'))`.
+- Las sesiones que esa persona ya tenga abiertas **siguen abiertas** hasta que cierre sesión; la clave nueva es
+  para la próxima vez que entre.
+
+**Nunca** guardes esa clave en una tabla del sistema, ni en la bitácora, ni en el documento de traspaso: se dice en
+persona y se acabó. La bitácora sí registra que administración mandó un enlace de restablecimiento, pero **nunca**
+una contraseña.
+
+**Para las cuentas nuevas:** si alguna vez esas personas van a tener correo de la empresa, conviene ponérselo al
+crear el usuario; con un correo real, «enviar enlace» resuelve solo y administración deja de ser el cuello de
+botella.
