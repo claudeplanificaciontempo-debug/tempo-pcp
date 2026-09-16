@@ -219,7 +219,8 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   real con motivo y queda en auditoría. El sistema no cierra solo.
 - **Una orden abierta por puesto**: iniciar otra pregunta si cierra la anterior.
 - **Reloj vivo** en h:mm:ss mientras el tramo corre (solo cambia el texto, no redibuja); se congela en el paro.
-- **Paro sin minutos**: se elige el motivo (tabla 15, uso «paro»: Almuerzo, Cierre del día, Fallo de máquina, editables) y
+- **Paro sin minutos**: se elige el motivo (tabla 15, uso «paro»). Almuerzo, Cierre del día y Fallo de máquina se
+  aseguran siempre; los tipos de paro viejos quedan en la tabla pero **inactivos** (el operario solo ve los activos) y
   la duración la calcula el sistema al Reanudar. El cierre del día no cuenta como trabajo ni dispara el aviso de olvido.
   Si el almuerzo está marcado como paro, el descanso del horario no se descuenta otra vez.
 - **Tallas a la vista** durante el tramo: Pedido, Cortado, Hechas y Faltan, con + − +10 +25; sin curva, solo total.

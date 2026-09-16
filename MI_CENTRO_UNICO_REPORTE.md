@@ -175,3 +175,28 @@ para esta WH», y solo deja registrar el total.
 - Un tramo en paro de cierre del día no dispara el aviso de olvido, y sin ese paro las mismas horas sí lo disparan.
 - La tabla por talla aparece durante el tramo; una orden sin curva lo dice y solo permite total.
 - El operario no ve selectores, solo ve lo de su recurso, y el alta de usuario pide centro y recurso.
+
+---
+
+# Corrección: motivos de paro (cuarta entrega)
+
+Fecha: 15-sep-2026, noche. Pruebas del simulador: **999 (5 nuevas), todas verdes, 0 errores**.
+
+**El problema**: la siembra creaba Almuerzo, Cierre del día y Fallo de máquina solo si la tabla estaba vacía de motivos
+de paro. Como la migración de los cinco tipos viejos corría primero, en producción la tabla nunca quedaba vacía y esos
+tres **no se creaban nunca**. Sin ellos no funcionaban ni la pausa nocturna ni la regla que evita el doble descuento del
+almuerzo.
+
+**Lo corregido**:
+1. Los tres motivos **se aseguran uno por uno**, sin depender de que la tabla esté vacía. Si ya existe un motivo con ese
+   nombre, no se duplica: solo se le agrega la marca que le falta.
+2. Los cinco tipos viejos siguen en la tabla, pero **inactivos**: el operario no los ve. Los paros ya registrados con
+   esos nombres se siguen viendo en los reportes tal cual. Tú activas los que quieras cuando quieras.
+3. La tabla 15 tiene columna **Activo**: el operario solo ve los motivos de paro activos.
+4. **tiposParo** salió de los parámetros por defecto del código.
+5. Las marcas **Almuerzo** y **Cierre del día** son columnas visibles y editables en la tabla 15, así que cualquier otro
+   motivo puede comportarse igual si hace falta.
+
+**Comprobado con una base que ya tenía los cinco tipos cargados**: después de la migración el operario ve exactamente
+Almuerzo, Cierre del día y Fallo de máquina; los cinco viejos quedan en la tabla marcados inactivos; y un paro de
+almuerzo no descuenta el descanso del horario por segunda vez.

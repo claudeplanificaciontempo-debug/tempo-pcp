@@ -1848,10 +1848,20 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // 2 · motivos de paro en la tabla 15
    S.params.motivos=(S.params.motivos||[]).filter(m=>m.uso!=='paro');delete S.params.parosMigrados;S.params.tiposParo=['Mecánico','Energía'];
    const mp=motivosParo();
-   __check("PA: los tipos de paro viejos se migran a la tabla 15 sin perderse",mp.some(m=>m.motivo==='Mecánico')&&mp.some(m=>m.motivo==='Energía')&&S.params.parosMigrados===true&&Array.isArray(S.params.tiposParo));
+   __check("PA: los tipos de paro viejos se migran a la tabla 15 pero quedan inactivos",motivosDe('paro').some(m=>m.motivo==='Mecánico'&&m.activo===false)&&motivosDe('paro').some(m=>m.motivo==='Energía'&&m.activo===false)&&S.params.parosMigrados===true&&!mp.some(m=>m.motivo==='Mecánico'));
+   __check("PA: aunque hubiera tipos viejos, el operario ve exactamente Almuerzo, Cierre del día y Fallo de máquina",mp.length===3&&['Almuerzo','Cierre del día','Fallo de máquina'].every(x=>mp.some(m=>m.motivo===x))&&motivoParoEs('Almuerzo','esAlmuerzo')&&motivoParoEs('Cierre del día','cierreDia'));
+   {const t0=S.ordenes.find(o=>abierta(o))||S.ordenes[0];const tr0={centro:'modulos',rec:null,ini:new Date(Date.now()-120*6e4).toISOString(),fin:new Date().toISOString(),paros:[{ini:new Date(Date.now()-90*6e4).toISOString(),fin:new Date(Date.now()-60*6e4).toISOString(),min:30,motivo:'Almuerzo'}],tallas:{}};
+    const bakH0=JSON.stringify(S.params.horarios||null);S.params.horarios={modulos:{ventanas:[{ini:'00:00',fin:'23:59'}]}};
+    const c0=calcTramo(tr0,t0);
+    __check("PA: con la base que ya tenía tipos viejos, un paro de almuerzo no se descuenta dos veces",c0.almuerzoMarcado===true&&c0.descansos===0&&Math.abs(c0.trabajado-(c0.brutoMin-30))<0.6);
+    const bh0=JSON.parse(bakH0);if(bh0)S.params.horarios=bh0;else delete S.params.horarios;}
+   __check("PA: la tabla 15 tiene columna activo y las marcas de almuerzo y cierre del día",(()=>{page='config';CONF.tab='ordenes2';render();const h=document.getElementById('p-config').innerHTML;return /<th>Activo<\/th>/.test(h)&&/<th>Almuerzo<\/th>/.test(h)&&/<th>Cierre del día<\/th>/.test(h)&&h.includes("'esAlmuerzo',this.checked")&&h.includes("'cierreDia',this.checked")})());
+   __check("PA: tiposParo ya no está en los parámetros por defecto del código",!/tiposParo:\['Mecánico'/.test(document.documentElement.outerHTML));
    S.params.motivos=(S.params.motivos||[]).filter(m=>m.uso!=='paro');delete S.params.parosMigrados;delete S.params.tiposParo;
    const mp2=motivosParo();
    __check("PA: sin nada previo se siembran solo Almuerzo, Cierre del día y Fallo de máquina, editables",mp2.length===3&&['Almuerzo','Cierre del día','Fallo de máquina'].every(x=>mp2.some(m=>m.motivo===x))&&motivoParoEs('Almuerzo','esAlmuerzo')&&motivoParoEs('Cierre del día','cierreDia'));
+   {const alm=motivos().find(m=>m.uso==='paro'&&m.motivo==='Almuerzo');alm.activo=false;
+    __check("PA: si la usuaria desactiva un motivo, el operario deja de verlo",!motivosParo().some(m=>m.motivo==='Almuerzo')&&motivosDe('paro').some(m=>m.motivo==='Almuerzo'));alm.activo=true}
    __check("PA: la lista fija de tipos de paro salió del código",!mParo.toString().includes('Calidad / reproceso')&&mParo.toString().includes('motivosParo()'));
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
    const oP=JSON.parse(JSON.stringify(base));oP.id=uid();oP.op='WH/PARO-1';oP.estado='plan';oP.cant=100;oP.tallasPedido={S:60,M:40};delete oP.programa;S.ordenes.push(oP);delete S.avance[oP.id];
