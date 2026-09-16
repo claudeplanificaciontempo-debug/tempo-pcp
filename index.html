@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 16:38';
+const APP_BUILD='2026-09-16 17:04';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -5377,6 +5377,52 @@ function alertasTiemposHTML(){const l=alertasTiempos();
    ${(S.params.tiemposSGNoCalzan||[]).length?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-alerta">brecha</span> No calzaron con el catálogo: <b>${(S.params.tiemposSGNoCalzan||[]).map(esc).join(', ')}</b>. Esas categorías siguen en 0.</p>`:''}
    <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0"><b>HENLEY / «Nueva hija»</b>: producción confirmó que es una categoría real. <b>No se borra</b>; queda pendiente de nombre definitivo.</p>
   </div></div>`}
+/* ==================== CONTAR CARTERA: hay que DECIR sobre qué base (16-sep-2026) ====================
+   Las cuatro bases son legítimas y dan números muy distintos. El error no es usar una u otra: es no decir
+   cuál. Por eso todo conteo de cartera pasa por aquí y la base va siempre escrita al lado del número. */
+const BASES_CARTERA=[
+  ['cargadas','Cargadas','todo lo que entró del archivo'],
+  ['abiertas','Abiertas','siguen vivas para planificar (incluye las de diseño, sin WH)'],
+  ['lanzadas','Lanzadas','abiertas CON orden de producción: las que se pueden programar'],
+  ['liberadas','Liberadas','lanzadas y liberadas a producción: las que están en el programa']];
+function baseCarteraTxt(b){const f=BASES_CARTERA.find(x=>x[0]===b);return f?f[1]:b}
+function baseCarteraDesc(b){const f=BASES_CARTERA.find(x=>x[0]===b);return f?f[2]:''}
+function carteraDe(base,filtro){
+  if(!BASES_CARTERA.some(x=>x[0]===base))throw new Error('base de cartera desconocida: '+base);
+  let l=S.ordenes;
+  if(base!=='cargadas')l=l.filter(abiertaDe);
+  if(base==='lanzadas'||base==='liberadas')l=l.filter(lanzada);
+  if(base==='liberadas')l=l.filter(liberadaCorte);
+  return filtro?l.filter(filtro):l}
+function cuentaCartera(base,filtro){const l=carteraDe(base,filtro);
+  return {base,n:l.length,pz:l.reduce((a,o)=>a+(+o.cant||0),0),ordenes:l}}
+/* el número SIEMPRE se muestra con su base al lado */
+function cifraCarteraHTML(base,filtro,sufijo){const c=cuentaCartera(base,filtro);
+  return num(c.n)+' <span class="mut" style="font-size:var(--fs-xs)" title="'+esc(baseCarteraDesc(base))+'">'+esc(baseCarteraTxt(base).toLowerCase())+'</span>'+(sufijo||'')}
+
+/* ---------- los tiempos estimados, en las cuatro bases ---------- */
+function cargaTiemposEst(base){const filas=[];
+  S.categorias.filter(k=>k.padre&&minEstimadoConf(k)!=null&&!tieneHojaLMO(k)).forEach(k=>{
+    const c=cuentaCartera(base,o=>o.cat===k.id);const m=minEstimadoConf(k);
+    filas.push({k,min:m,n:c.n,pz:c.pz,minTot:c.pz*m,meta:metaEstConf(k)})});
+  filas.sort((a,b)=>b.minTot-a.minTot);
+  return {base,filas,n:filas.reduce((a,f)=>a+f.n,0),pz:filas.reduce((a,f)=>a+f.pz,0),
+    minTot:filas.reduce((a,f)=>a+f.minTot,0)}}
+let CTE={base:'lanzadas'};
+function cargaTiemposEstHTML(){const r=cargaTiemposEst(CTE.base);
+  if(!r.filas.length)return '';
+  const otras=BASES_CARTERA.filter(b=>b[0]!==CTE.base).map(b=>{const x=cargaTiemposEst(b[0]);return b[1]+': '+num(x.n)+' órdenes · '+num(x.pz)+' pz · '+num(x.minTot/60)+' h'});
+  return `<div class="panel"><h3>Carga de los tiempos estimados <span class="note">qué agregan a confección las categorías sin hoja de operaciones</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Estas categorías se planificaban con <b>0 minutos</b>. Con el tiempo estimado cargado, esto es lo que aportan. <b>El número cambia mucho según la base</b>, así que la base va escrita siempre: las de <b>diseño (sin WH) no se pueden programar</b>, y solo las <b>liberadas</b> están hoy en el programa.</p>
+   <div class="row" style="margin:0 0 10px"><div><label>Base</label><select onchange="CTE.base=this.value;render()">${BASES_CARTERA.map(b=>`<option value="${b[0]}" ${CTE.base===b[0]?'selected':''}>${esc(b[1])} — ${esc(b[2])}</option>`).join('')}</select></div></div>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Categoría</th><th class="num">Min/prenda</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">Minutos</th><th class="num">Horas</th><th></th></tr></thead><tbody>
+   ${r.filas.map(f=>`<tr><td><b>${esc(nombreCat(f.k))}</b></td><td class="num">${num(f.min,2)} ${marcaEstConfHTML(f.k)}</td>
+    <td class="num">${num(f.n)}</td><td class="num">${num(f.pz)}</td><td class="num">${num(f.minTot)}</td><td class="num"><b>${num(f.minTot/60)}</b></td>
+    <td class="mut" style="font-size:var(--fs-xs)">${f.meta&&f.meta.obs?esc(String(f.meta.obs).slice(0,90)):''}</td></tr>`).join('')}
+   <tr style="border-top:2px solid var(--rule);font-weight:600"><td>Total · ${esc(baseCarteraTxt(r.base).toLowerCase())}</td><td></td><td class="num">${num(r.n)}</td><td class="num">${num(r.pz)}</td><td class="num">${num(r.minTot)}</td><td class="num">${num(r.minTot/60)}</td><td></td></tr>
+   </tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">En las otras bases: ${otras.map(esc).join(' · ')}.</p>
+  </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -7462,6 +7508,7 @@ function vOperaciones(el){
    :'<div class="empty"><p>El catálogo está vacío.</p><button class="btn" onclick="mPegarOps()">Pegar catálogo desde Excel</button></div>'}</div>
   ${reglasEtiquetaHTML()}
   ${categoriasSinHojaHTML()}
+  ${cargaTiemposEstHTML()}
   ${alertasTiemposHTML()}
   ${opsSinCentroHTML()}
   <div class="panel"><h3>Hoja de operaciones por familia</h3><div class="body"><table><thead><tr><th>Familia</th><th class="num">Operaciones</th><th>Min/prenda por centro</th><th class="num">Total</th><th></th></tr></thead><tbody>
@@ -9264,7 +9311,7 @@ async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=do
       plan.nuevas.push(nuevaOrden('op_'+op.toLowerCase().replace(/[^a-z0-9]+/g,'_'),op,datos,k));if(estado==='cerrada')plan.cerradas++}
   });
   if(plan.hayPrev)plan.prevQuitadas=Object.keys(porPrev).filter(id=>!vistasPrev.has(id));
-  ODOO=plan;const nPlan=plan.nuevas.filter(o=>o.estado==='plan').length,nCer=plan.nuevas.filter(o=>o.estado==='cerrada').length,nSb=plan.nuevas.filter(o=>o.estado==='standby').length;
+  ODOO=plan;/* conteo del ARCHIVO que se va a cargar, no de la cartera: aquí el estado viene del archivo */const nPlan=plan.nuevas.filter(o=>o.estado==='plan').length,nCer=plan.nuevas.filter(o=>o.estado==='cerrada').length,nSb=plan.nuevas.filter(o=>o.estado==='standby').length;
   res.innerHTML=`<table><tbody>
     <tr><td><b>${nPlan}</b></td><td>órdenes abiertas nuevas${conComp?' (con telas y Pantone de la receta)':' (sin componentes: telas desde el consumo de la categoría)'}</td></tr>
     ${nCer?`<tr><td><b>${nCer}</b></td><td>órdenes cerradas o facturadas nuevas (historial)</td></tr>`:''}${nSb?`<tr><td><b>${nSb}</b></td><td>órdenes en stand by nuevas</td></tr>`:''}

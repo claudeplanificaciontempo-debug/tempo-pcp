@@ -751,6 +751,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        ordenes:pot.reduce((a,x)=>a+x.ordenes,0),pz:pot.reduce((a,x)=>a+x.pz,0),
        liberadas:pot.reduce((a,x)=>a+x.liberadas,0)};
      __check('SG: se puede medir la carga que agregan esos tiempos',__R.tiemposSG.potencial.minTot>0);}
+     // las TRES bases por categoría, con la definición única
+     const tres=conMin.map(k=>{const car=S.ordenes.filter(o=>o.cat===k.id);
+       const ab=car.filter(abiertaDe),lan=car.filter(lanzada),lib=ab.filter(liberadaCorte);
+       const pz=l=>l.reduce((a,o)=>a+(+o.cant||0),0);const m=minEstimadoConf(k);
+       return {cat:nombreCat(k),min:m,
+         cargadas:{n:car.length,pz:pz(car),min:pz(car)*m},
+         abiertas:{n:ab.length,pz:pz(ab),min:pz(ab)*m},
+         lanzadas:{n:lan.length,pz:pz(lan),min:pz(lan)*m},
+         liberadas:{n:lib.length,pz:pz(lib),min:pz(lib)*m},
+         sinWH:ab.filter(o=>!lanzada(o)).length,
+         fases:[...new Set(ab.map(o=>o.fase||'(sin fase)'))].slice(0,6)}});
+      const sum=(f)=>tres.reduce((a,x)=>({n:a.n+x[f].n,pz:a.pz+x[f].pz,min:a.min+x[f].min}),{n:0,pz:0,min:0});
+      __R.tiemposSG.tresBases={porCat:tres,cargadas:sum('cargadas'),abiertas:sum('abiertas'),
+        lanzadas:sum('lanzadas'),liberadas:sum('liberadas')};
+      __check('SG: las tres bases se miden con la definición única',tres.every(x=>x.lanzadas.n<=x.abiertas.n&&x.abiertas.n<=x.cargadas.n));
     __check('SG: los tiempos estimados se cargan sobre el catálogo real',conMin.length>=10,String(conMin.length));}
    /* las 7 familias sin hoja, sobre el catálogo real */
    {const c=categoriasSinHoja();
@@ -4134,6 +4149,44 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("SG6: el panel está en Configuración → Operaciones",/Tiempos por revisar/.test(document.getElementById('p-operaciones').innerHTML));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("SG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* GUARDIA DE CARTERA · un conteo de órdenes tiene que decir sobre qué base está hecho */
+  {const antes=__R.errors.length;const adminP=PERFIL;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};
+   const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
+   /* nadie puede filtrar la cartera por el estado interno a mano: para eso está abiertaDe() */
+   {const usos=src.split(String.fromCharCode(10)).filter(l=>/\.filter\([a-z]\s*=>\s*!?[a-z]\.estado\s*===?\s*'(plan|cerrada|standby|noArchivo)'/.test(l)
+     &&!/no de la cartera/.test(l)).map(l=>l.trim().slice(0,70));
+    __check("GC1: ninguna pantalla filtra la cartera por el estado interno a mano",usos.length===0,usos.slice(0,3).join(" · "));}
+   {const def=(src.match(/const abierta=o=>/g)||[]).length;
+    __check("GC1: hay UNA sola definición de orden abierta en el código",def===1);
+    __check("GC1: y delega en abiertaDe()",/const abierta=o=>\(typeof abiertaDe==='function'\)\?abiertaDe\(o\)/.test(src));}
+   /* las cuatro bases existen, están declaradas y dan subconjuntos encajados */
+   {__check("GC2: las cuatro bases de cartera están declaradas, con su explicación",
+     BASES_CARTERA.length===4&&BASES_CARTERA.every(b=>b[0]&&b[1]&&b[2]));
+    const c=BASES_CARTERA.map(b=>cuentaCartera(b[0]));
+    __check("GC2: cargadas ≥ abiertas ≥ lanzadas ≥ liberadas",
+     c[0].n>=c[1].n&&c[1].n>=c[2].n&&c[2].n>=c[3].n,c.map(x=>x.base+':'+x.n).join(' '));
+    __check("GC2: y cada base es subconjunto de la anterior",(()=>{
+     const ids=c.map(x=>new Set(x.ordenes.map(o=>o.id)));
+     return [...ids[1]].every(id=>ids[0].has(id))&&[...ids[2]].every(id=>ids[1].has(id))&&[...ids[3]].every(id=>ids[2].has(id))})());
+    __check("GC2: todas pasan por la definición única",(()=>{
+     return carteraDe('abiertas').every(abiertaDe)&&carteraDe('lanzadas').every(o=>abiertaDe(o)&&lanzada(o))
+       &&carteraDe('liberadas').every(o=>abiertaDe(o)&&lanzada(o)&&liberadaCorte(o))})());
+    let malo=false;try{carteraDe('inventada')}catch(e){malo=true}
+    __check("GC3: pedir una base que no existe es un error, no un silencio",malo);}
+   /* el número SIEMPRE se muestra con su base escrita al lado */
+   {const h=cifraCarteraHTML('lanzadas');
+    __check("GC4: una cifra de cartera se muestra con su base al lado",/lanzadas/.test(h));
+    const p1=cargaTiemposEst('lanzadas'),p2=cargaTiemposEst('abiertas');
+    __check("GC4: la carga de los tiempos estimados se calcula por base",p1.base==='lanzadas'&&p2.base==='abiertas'&&p2.n>=p1.n);
+    const hp=cargaTiemposEstHTML();
+    if(p1.filas.length){
+     __check("GC4: el panel dice sobre qué base está y ofrece las otras",/Base/.test(hp)&&/Total \u00b7 /.test(hp)&&/En las otras bases/.test(hp));
+     __check("GC4: y avisa de que el número cambia mucho según la base",/cambia mucho seg\u00fan la base/.test(hp));}
+    page='operaciones';render();
+    __check("GC4: está en Configuración → Operaciones",!p1.filas.length||/Carga de los tiempos estimados/.test(document.getElementById('p-operaciones').innerHTML));}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("GC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
