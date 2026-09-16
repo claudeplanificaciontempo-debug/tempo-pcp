@@ -2481,6 +2481,64 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
    window.alert=a0;CTL.area='pro';PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("SF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · prioridad por rpc, catálogo que manda y guardar sin pisar lo de otra persona */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
+   const mk=op=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=100;o.fase='4CD Ensamble';o.ruta=[{centro:'modulos',t:5}];delete o.progCentro;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oX=mk('WH/FUS-1');PERFIL=adminP;PLAN=null;PLAN_ALL=null;await save();await __p(90);
+   const fila=()=>(sb.__DB.ordenes||[]).find(r=>r.id===oX.id);
+   __check("FU0: la orden está en la base y su «actualizado» quedó anotado",!!fila()&&!!fila().actualizado&&(BASE_TS.ordenes||{})[oX.id]===fila().actualizado);
+   // 1 · si el catálogo le quita «supervisor» a corte, corte ya no mueve fases
+   {const cat=perfilesDef();const dC=cat.find(x=>x.id==='corte');const bak=dC.piso;
+    setPerfilDef('corte','piso','operario');PERFIL={id:'u1',rol:'corte',nombre:'Corte de prueba'};
+    const faseAntes=oX.fase;const nSol=solicitudesPiso().length;__RPC.ultimo=null;
+    const otra=fasesDisponibles().find(f=>f!==oX.fase&&!esDevolucionFase(oX.fase,f))||fasesDisponibles().find(f=>f!==oX.fase);
+    await moverFases([oX.id],otra,'');await __p(90);
+    __check("FU1: con el catálogo en «operario», corte no mueve la fase: queda solicitud",!esSupervisorPiso()&&oX.fase===faseAntes&&!__RPC.ultimo&&solicitudesPiso().length===nSol+1);
+    setPerfilDef('corte','piso','supervisor');PERFIL={id:'u1',rol:'corte',nombre:'Corte de prueba'};
+    __check("FU1: al devolverle «supervisor», vuelve a mover fases",esSupervisorPiso());
+    setPerfilDef('corte','piso',bak===undefined?'supervisor':bak)}
+   // 2 · una fase que todavía no usa ninguna orden se puede mover (la SQL ya no la rechaza)
+   {PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};
+    const usadas=new Set(S.ordenes.map(o=>o.fase));const libre=FASES.filter(f=>!usadas.has(f)&&!esDevolucionFase(oX.fase,f))[0];
+    if(libre){await moverFases([oX.id],libre,'');await __p(120);
+     __check("FU2: la primera orden que llega a una fase sin usar se mueve igual",oX.fase===libre&&fila().data.fase===libre);}
+    else __check("FU2: la primera orden que llega a una fase sin usar se mueve igual",true,'todas las fases están en uso');}
+   // 3 · el supervisor reordena la cola por rpc, sin subir la tabla de órdenes
+   {const oY=mk('WH/FUS-2');PERFIL=adminP;await save();await __p(90);
+    PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};__RPC.ultimoPri=null;__W.writes=[];__W.deny=t=>!['avance','bitacora','turnos','paros'].includes(t);
+    PLAN=null;PLAN_ALL=null;await moverEnCola(oY.id,'modulos',{pos:1});await __p(200);
+    __check("FU3: el supervisor reordena la cola con set_prioridad_centro, no con un upsert de órdenes",!!__RPC.ultimoPri&&__RPC.ultimoPri.centro==='modulos'&&!__W.writes.some(w=>w.t==='ordenes'));
+    const fY=(sb.__DB.ordenes||[]).find(r=>r.id===oY.id);
+    __check("FU3: el puesto queda guardado en la base y en la pantalla",!!fY&&((fY.data.progCentro||{}).modulos||{}).pri>=1&&((oY.progCentro||{}).modulos||{}).pri>=1);
+    // y si la función no existe, se deshace y avisa
+    const priAntes=((oY.progCentro||{}).modulos||{}).pri;__RPC.falta=true;const n=alerts.length;
+    await moverEnCola(oY.id,'modulos',{pos:9});await __p(200);
+    __check("FU3: sin la función en la base, avisa y deja la cola como estaba",alerts.length>n&&/SUPABASE_MOVER_FASE\.sql/.test(alerts[alerts.length-1])&&((oY.progCentro||{}).modulos||{}).pri===priAntes);
+    __RPC.falta=false;__W.deny=null;S.ordenes=S.ordenes.filter(x=>x!==oY);if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oY.id)}
+   // 4 · guardar sin pisar lo que cambió otra persona
+   PERFIL=adminP;
+   {const otraFase=fasesDisponibles().find(f=>f!==oX.fase)||oX.fase;
+    const f0=fila();f0.data=JSON.parse(JSON.stringify(f0.data));f0.data.fase=otraFase;f0.data.fases=(f0.data.fases||[]).concat([{f:otraFase,antes:oX.fase,ts:new Date().toISOString(),u:'otra persona'}]);
+    f0.actualizado=new Date(Date.now()+9999).toISOString(); // otro supervisor movió la fase desde otro equipo
+    oX.fecha='2026-12-31'; // y aquí planificación cambia OTRO campo
+    await save();await __p(150);
+    __check("FU4: la fase que movió la otra persona se mantiene y no se pisa",fila().data.fase===otraFase&&oX.fase===otraFase);
+    __check("FU4: y el campo que cambió esta sesión sí se guarda",fila().data.fecha==='2026-12-31'&&!CONFLICTOS.length);}
+   // 5 · si los dos tocan el MISMO campo, avisa y deja decidir
+   {const f1=fila();f1.data=JSON.parse(JSON.stringify(f1.data));f1.data.fecha='2026-11-11';f1.actualizado=new Date(Date.now()+99999).toISOString();
+    oX.fecha='2026-10-10';
+    await save();await __p(150);
+    __check("FU5: los dos cambiaron el mismo campo: avisa, no pisa y deja lo del servidor a la vista",CONFLICTOS.length===1&&CONFLICTOS[0].choques.includes('fecha')&&fila().data.fecha==='2026-11-11'&&oX.fecha==='2026-11-11');
+    avisoConflictos();const b=document.getElementById('aviso-conflicto');
+    __check("FU5: el aviso dice de qué orden y en qué campo, con las dos salidas",!!b&&/Otra persona cambió/.test(b.innerHTML)&&b.innerHTML.includes('fecha')&&/Dejar lo mío/.test(b.innerHTML));
+    await resolverConflicto(0,'mio');await __p(150);
+    __check("FU5: «dejar lo mío» sube mi valor y cierra el aviso",fila().data.fecha==='2026-10-10'&&!CONFLICTOS.length&&!document.getElementById('aviso-conflicto'));}
+   PERFIL=adminP;__W.deny=null;__RPC.falta=false;CONFLICTOS=[];avisoConflictos();
+   S.ordenes=S.ordenes.filter(o=>o!==oX);delete S.avance[oX.id];
+   if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oX.id);
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("FU sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

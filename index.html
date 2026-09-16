@@ -546,11 +546,13 @@ const sinId=r=>{const {id,...d}=r;return d};
 async function cargarTodo(){
   const sd=seed();S={params:sd.params,avance:{},programas:[]};TABLAS.forEach(t=>S[t]=[]);
   // lectura por páginas: Supabase devuelve como máximo 1000 filas por consulta
-  const leer=async t=>{let out=[],from=0;while(true){const {data,error}=await sb.from(t).select('id,data').order('id').range(from,from+999);if(error)return{error};out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}return{data:out}};
+  const leer=async t=>{let out=[],from=0;while(true){const {data,error}=await sb.from(t).select('id,data,actualizado').order('id').range(from,from+999);if(error)return{error};out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}return{data:out}};
+  BASE_TS={};CONFLICTOS=[];if(typeof avisoConflictos==='function')avisoConflictos();
   for(const t of [...TABLAS,'params','avance']){
     const {data,error}=await leer(t);
     if(error){alert('No se pudo leer '+t+': '+error.message);return}
     if(t==='params'){const r=data.find(x=>x.id==='global');if(r)S.params=Object.assign({},sd.params,r.data);BASE.params=JSON.stringify(S.params);continue}
+    BASE_TS[t]=Object.fromEntries(data.map(r=>[r.id,r.actualizado]));
     if(t==='avance'){data.forEach(r=>S.avance[r.id]=r.data);BASE.avance=Object.fromEntries(data.map(r=>[r.id,JSON.stringify(r.data)]));continue}
     S[t]=data.map(r=>Object.assign({id:r.id},r.data));
     BASE[t]=Object.fromEntries(data.map(r=>[r.id,JSON.stringify(r.data)]));
@@ -563,6 +565,64 @@ async function maxActualizado(){let m=null;try{for(const t of [...TABLAS,'params
 async function revisarDatos(){if(guardando)return;const m=await maxActualizado();if(!m||!ULT_DATOS||m<=ULT_DATOS)return;
   let b=document.getElementById('aviso-datos');if(!b){b=document.createElement('div');b.id='aviso-datos';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:98;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
   b.innerHTML='Hay <b>datos nuevos</b> guardados desde otra sesión a las '+new Date(m).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}).replace(/\.$/,'')+'. Lo que ves puede estar viejo. <button class="btn sm" style="margin-left:8px" onclick="refrescar()">Actualizar ahora</button>'}
+/* ---------- no pisar lo que cambió otra persona: se compara el «actualizado» de cada fila ---------- */
+const TABLAS_FUSION=['ordenes','avance']; // las dos que varias sesiones tocan a la vez
+let BASE_TS={},CONFLICTOS=[];
+async function filasServidor(t,ids){const out={};
+  for(let i=0;i<ids.length;i+=200){const {data,error}=await sb.from(t).select('id,data,actualizado').in('id',ids.slice(i,i+200));
+    if(error)return{error:error.message};(data||[]).forEach(r=>out[r.id]=r)}
+  return{rows:out}}
+/* base = como estaba cuando la leí · mio = como está en esta sesión · suyo = como está ahora en el servidor */
+function fusionarFila(baseJSON,mio,suyo){let base={};try{base=JSON.parse(baseJSON||'{}')}catch(e){}
+  const res=JSON.parse(JSON.stringify(suyo||{}));const choques=[];
+  const claves=new Set([...Object.keys(mio||{}),...Object.keys(base||{})]);
+  claves.forEach(k=>{const m=JSON.stringify((mio||{})[k]),b=JSON.stringify(base[k]),s=JSON.stringify(res[k]);
+    if(m===b)return;                               // yo no toqué este campo: se queda el del servidor
+    if(s===b){if(m===undefined)delete res[k];else res[k]=JSON.parse(m);return}  // el otro no lo tocó: entra el mío
+    choques.push(k)});                             // los dos cambiaron el mismo campo
+  return{data:res,choques}}
+function avisoConflictos(){let b=document.getElementById('aviso-conflicto');
+  if(!CONFLICTOS.length){if(b)b.remove();return}
+  if(!b){b=document.createElement('div');b.id='aviso-conflicto';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:10px 16px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:92vw';document.body.appendChild(b)}
+  b.innerHTML=CONFLICTOS.map((c,i)=>`<div style="margin:2px 0"><b>Otra persona cambió ${esc(c.op||c.id)}</b> mientras trabajabas: los dos tocaron ${esc(c.choques.join(', '))}. Lo tuyo <b>no se guardó</b>.
+   <button class="btn sm" style="margin-left:8px" onclick="resolverConflicto(${i},'mio')">Dejar lo mío</button>
+   <button class="btn sm ghost" style="margin-left:4px;border-color:#fff;color:#fff" onclick="resolverConflicto(${i},'suyo')">Quedarme con lo del servidor</button></div>`).join('')}
+async function resolverConflicto(i,cual){const c=CONFLICTOS[i];if(!c)return;
+  if(cual==='mio'){ // se sube lo de esta sesión encima, con lo del servidor como base para lo que yo no toqué
+    const {data:fus}=fusionarFila(BASE[c.t]&&BASE[c.t][c.id],c.mio,c.suyo);
+    c.choques.forEach(k=>{if(c.mio[k]===undefined)delete fus[k];else fus[k]=JSON.parse(JSON.stringify(c.mio[k]))});
+    const {error}=await sb.from(c.t).upsert([{id:c.id,data:fus}]);
+    if(error){alert('No se pudo guardar: '+error.message);return}
+    bitacora('Conflicto resuelto en '+nTabla(c.t)+' · '+(c.op||c.id)+': se dejó lo de '+quienFirma()+' en '+c.choques.join(', '));
+    aplicarFilaLocal(c.t,c.id,fus)}
+  else{aplicarFilaLocal(c.t,c.id,c.suyo);bitacora('Conflicto resuelto en '+nTabla(c.t)+' · '+(c.op||c.id)+': se dejó lo del servidor en '+c.choques.join(', '))}
+  CONFLICTOS.splice(i,1);avisoConflictos();PLAN=null;PLAN_ALL=null;save();render()}
+function aplicarFilaLocal(t,id,data){const copia=JSON.parse(JSON.stringify(data||{}));
+  const enSitio=o=>{Object.keys(o).forEach(k=>{if(k!=='id'&&!(k in copia))delete o[k]});Object.assign(o,copia);return o}; // se mutan los objetos: cualquier pantalla abierta sigue apuntando al mismo
+  if(t==='avance'){const a=S.avance[id]||(S.avance[id]={});enSitio(a);BASE.avance=BASE.avance||{};BASE.avance[id]=JSON.stringify(a);return}
+  const o=S[t].find(r=>r.id===id);
+  if(!o)S[t].push(Object.assign({id},copia));else enSitio(o);
+  BASE[t]=BASE[t]||{};BASE[t][id]=JSON.stringify(copia)}
+/* devuelve las filas listas para subir, ya fusionadas; deja en CONFLICTOS las que chocan */
+async function prepararSubida(t,rows,leerMio){
+  if(!TABLAS_FUSION.includes(t)||!rows.length)return{rows};
+  const ts=BASE_TS[t]||{};const ids=rows.map(r=>r.id).filter(id=>ts[id]);
+  if(!ids.length)return{rows};
+  const {rows:srv,error}=await filasServidor(t,ids);
+  if(error)return{rows,aviso:error}; // si no se puede comprobar, se sube como siempre
+  const out=[];
+  rows.forEach(r=>{const s=srv[r.id];
+    if(!s||!ts[r.id]||s.actualizado===ts[r.id]){out.push(r);return} // nadie lo tocó desde que lo leí
+    const f=fusionarFila((BASE[t]||{})[r.id],r.data,s.data||{});
+    if(f.choques.length){const o=t==='ordenes'?S.ordenes.find(x=>x.id===r.id):null;
+      CONFLICTOS.push({t,id:r.id,op:o?o.op:r.id,choques:f.choques,mio:r.data,suyo:s.data||{}});
+      aplicarFilaLocal(t,r.id,s.data||{}); // en pantalla queda lo del servidor hasta que se decida
+      return}
+    out.push({id:r.id,data:f.data});aplicarFilaLocal(t,r.id,f.data)});
+  return{rows:out}}
+async function refrescarTS(t,ids){if(!TABLAS_FUSION.includes(t)||!ids.length)return;
+  const {rows}=await filasServidor(t,ids);if(!rows)return;
+  BASE_TS[t]=BASE_TS[t]||{};Object.values(rows).forEach(r=>{BASE_TS[t][r.id]=r.actualizado})}
 /* guarda solo lo que cambió respecto a lo leído del servidor; si la base rechaza algo (permisos), recarga */
 let guardando=false,pendiente=false;
 let SAVE_ERR=null,ULT_SALTADAS=[];
@@ -578,16 +638,18 @@ async function _save(){
   for(const t of TABLAS){
     if(!puedeSubirTabla(t)){const cur0=S[t],b0=BASE[t]||{};if(cur0.some(r=>JSON.stringify(sinId(r))!==b0[r.id])||Object.keys(b0).some(id=>!cur0.some(r=>r.id===id)))saltadas.push(t);continue} // el piso no sube esta tabla: ni se intenta ni cuenta como error
     const cur=S[t],base=BASE[t]||{};
-    const rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
+    let rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
     const ids=Object.keys(base).filter(id=>!cur.some(r=>r.id===id));
+    const prep=await prepararSubida(t,rows);rows=prep.rows; // no se pisa lo que cambió otra persona
     await up(t,rows);await del(t,ids);
-    if(!errs.length)BASE[t]=Object.fromEntries(cur.map(r=>[r.id,JSON.stringify(sinId(r))]));
+    if(!errs.length){BASE[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(sinId(r))]));await refrescarTS(t,rows.map(r=>r.id))}
   }
   if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
   const ba=BASE.avance||{};
-  await up('avance',Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v})));
-  await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
-  if(!errs.length)BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));
+  {let av=Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v}));
+   const prepA=await prepararSubida('avance',av);av=prepA.rows;
+   await up('avance',av);await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
+   if(!errs.length){BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));await refrescarTS('avance',av.map(r=>r.id))}}
   const st=document.getElementById('saved');
   ULT_SALTADAS=saltadas;
   if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
@@ -595,11 +657,11 @@ async function _save(){
     if(st)st.textContent='No se guardó';
     if(typeof avisoGuardado==='function')avisoGuardado();
     if(!SAVE_ERR.permiso)alert('No se pudo guardar en '+SAVE_ERR.tablas.join(', ')+':\n'+SAVE_ERR.errs.join('\n')+'\n\nLo que registraste sigue en pantalla: vuelve a tocar Guardar.');}
-  else{SAVE_ERR=null;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
+  else{SAVE_ERR=null;if(typeof avisoGuardado==='function')avisoGuardado();if(typeof avisoConflictos==='function')avisoConflictos();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 09:07';
+const APP_BUILD='2026-09-16 09:23';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2157,6 +2219,10 @@ function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia f
   if(devs.length){if(!motivo){alert('Devolver la fase a un grupo anterior exige motivo'+(devs.length>1?' ('+devs.length+' de las órdenes marcadas son devolución)':'')+'. Elígelo de la tabla 15 (Motivos, uso «devolución de fase»).');return}
     if(!motivoValido('fase',motivo)){alert('El motivo debe elegirse de la tabla 15 (Motivos, uso «devolución de fase»); no se acepta texto libre. Si la tabla está vacía, configúrala en Configuración → Órdenes y materiales → 15 · Motivos.');return}}
   else if(motivo&&!motivoValido('fase',motivo)){alert('Ese motivo no está en la tabla 15; elige uno de la lista o déjalo vacío (avanzar no exige motivo).');return}
+  if(esOperarioTablet()){ // el operario no mueve fases: lo que toque queda como solicitud
+    ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o||normFase(o.fase||'')===normFase(f))return;
+      pedirSolicitudPiso(id,'fase',{f,motivo,antes:o.fase},'cambiar la fase de '+(o.fase||'—')+' a '+f)});
+    try{cerrar()}catch(e){}render();alert('Pedido enviado. Planificación o tu supervisor lo aplican: la fase no cambia hasta entonces.');return}
   if(esSupervisorPiso())return moverFasesRPC(ids,f,motivo); // el piso no escribe en ordenes: la fase la mueve la función mover_fase
   let n=0,comp=0;ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=o.fase;const dev=esDevolucionFase(antes,f);if(!registrarFase(o,f,'manual'))return;o.fases[o.fases.length-1].motivo=motivo;registrarAuditoria('fase',o,antes,f,motivo,dev);n++;
     bitacora((dev?'Devolución de fase ':'Fase ')+o.op+': '+(antes||'—')+' → '+f+(motivo?' · '+motivo:'')+' ('+quienFirma()+')');if(esCompraDesdeTej(antes,f)){pasarACompras(o,motivo);comp++}});
@@ -3626,13 +3692,37 @@ function agruparCola(lista,niveles){if(!niveles.length)return{hojas:lista};const
   return{nivel:k,grupos:orden.map(c=>({clave:c,n:m[c].length,pz:m[c].reduce((a,f)=>a+Math.max(0,(+f.o.cant||0)-(f.hechas||0)),0),sub:agruparCola(m[c],niveles.slice(1))}))}} // grupos en orden de aparición en la cola
 function lateDe(PP){const s={};S.ordenes.forEach(x=>{if(!abierta(x))return;const r=PP.ordenes[x.id]||{};const m=fechaMetaDe(x);if(m&&r.finPro&&r.finPro>m)s[x.id]=r.finPro});return s}
 /* mover una orden en la cola del centro: destino {antes:oid} | {pos:n} | {final:true}. Renumera toda la cola, registra en bitácora y avisa (sin impedir) qué órdenes dejan de llegar a su fecha */
+/* ---------- el supervisor de piso también reordena la cola por la función del servidor ---------- */
+async function setPrioridadServidor(o,c,pri){
+  if(!sb||typeof sb.rpc!=='function')return{falta:true};
+  try{const {error}=await sb.rpc('set_prioridad_centro',{p_orden:o.id,p_centro:c,p_pri:pri||null});
+    if(error){const m=String(error.message||'');
+      if(/set_prioridad_centro|does not exist|could not find|schema cache|PGRST202|not found|404/i.test(m))return{falta:true,error:m};
+      return{error:m}}
+    return{ok:true}}catch(e){return{error:String((e&&e.message)||e)}}}
+/* cambios = [{o, pri}] ya aplicados en memoria; si el servidor no los acepta, se deshacen */
+async function guardarPrioridadesRPC(cambios,c,antes){let err=null,falta=false;
+  for(const x of cambios){const r=await setPrioridadServidor(x.o,c,x.pri);
+    if(r.falta){falta=true;break}
+    if(r.error){err=r.error;break}
+    if(BASE.ordenes&&BASE.ordenes[x.o.id]){try{const b=JSON.parse(BASE.ordenes[x.o.id]);b.progCentro=JSON.parse(JSON.stringify(x.o.progCentro||{}));BASE.ordenes[x.o.id]=JSON.stringify(b)}catch(e){}}}
+  if(falta||err){ // se deshace lo de la pantalla: el servidor manda
+    (antes||[]).forEach(x=>{x.o.progCentro=x.o.progCentro||{};x.o.progCentro[c]=x.o.progCentro[c]||{};if(x.pri)x.o.progCentro[c].pri=x.pri;else delete x.o.progCentro[c].pri});
+    PLAN=null;PLAN_ALL=null;render();
+    alert(falta?('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil reordena la cola con la función set_prioridad_centro del servidor, y todavía no existe. No se cambió nada: avisa a planificación.')
+               :('El servidor no aceptó el nuevo orden de la cola:\n'+err+'\n\nNo se cambió nada.'));
+    return false}
+  await refrescarTS('ordenes',cambios.map(x=>x.o.id));
+  return true}
 function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no puede reprogramar '+nCen(c)+'.');return}
   const P=programar();const lun=lunesDe(hoy());const cola=colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),'')).map(f=>f.o);
   const i=cola.indexOf(o);if(i<0)return;const antes=cola.map(x=>x.id).join();
   cola.splice(i,1);let j;if(destino&&destino.antes){j=cola.findIndex(x=>x.id===destino.antes);if(j<0)j=cola.length}else if(destino&&destino.pos!=null){if(!(destino.pos>=1)){render();return}j=Math.min(cola.length,Math.round(destino.pos)-1)}else j=cola.length;
   cola.splice(j,0,o);
   const lA=lateDe(P);
+  const priAntes=cola.map(x=>({o:x,pri:((x.progCentro||{})[c]||{}).pri||0}));
   cola.forEach((x,k)=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].pri=k+1});
+  const priCambios=cola.map((x,k)=>({o:x,pri:k+1})).filter((x,k)=>priAntes[k].pri!==x.pri);
   PLAN=null;PLAN_ALL=null;const P2=programar();const lD=lateDe(P2);
   const nuevas=Object.keys(lD).filter(id=>!lA[id]).map(id=>S.ordenes.find(x=>x.id===id)).filter(Boolean);
   const igual=cola.map(x=>x.id).join()===antes;
@@ -3640,6 +3730,7 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
   const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';S.params.advertencias=S.params.advertencias||[];
   nuevas.forEach(x=>S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:x.id,op:x.op,accion:'Cola de '+nCen(c)+': '+o.op+' al puesto '+(j+1),meta:fechaMetaDe(x),metaTipo:x.fechaCompromiso?'compromiso':'pedida',antes:(P.ordenes[x.id]||{}).finPro||null,despues:lD[x.id],atendida:false}));
   if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300);
+  if(esSupervisorPiso()){guardarPrioridadesRPC(priCambios,c,priAntes).then(ok=>{if(ok){save();render()}});return}
   save();render();
   if(nuevas.length)alert('Con este orden, '+nuevas.length+(nuevas.length===1?' orden ya no llega':' órdenes ya no llegan')+' a su fecha:\n'+nuevas.slice(0,15).map(x=>x.op+' · meta '+fmtDia(fechaMetaDe(x))+' · estimada '+fmtDia(lD[x.id])).join('\n')+(nuevas.length>15?'\n…':'')+'\nNo se impidió el cambio; quedó en Advertencias de fecha.')}
 /* ---------- registrar lo hecho desde la cola del centro (sin ir a Control de piso) ----------
@@ -3782,7 +3873,7 @@ function listasNoProgramadasHTML(c,P,hasta){const l=listasNoProgramadas(c,P,hast
      <td class="num">${num(li.ci.pz)}${li.ci.faltan?' <span class="tag t-aviso" title="'+esc(li.ci.motivo||'')+'">faltaron '+num(li.ci.faltan)+'</span>':''}</td>
      <td>${esc(o.cliente||'')}</td><td>${esc(o.fecha||'—')}</td>
      <td style="white-space:nowrap">${paso.ini?fmtDia(paso.ini):'<span class="tag t-aviso">sin fecha en el programa</span>'}</td>
-     <td style="white-space:nowrap">${puedeAdel?`<button class="btn ghost sm" title="la pone primera en la cola de este centro" onclick="moverEnCola('${o.id}','${c}',1)">adelantar</button>`:'<span class="mut" style="font-size:var(--fs-xs)">adelantarla en la cola la guarda planificación</span>'}</td></tr>`).join('')}
+     <td style="white-space:nowrap">${puedeAdel?`<button class="btn ghost sm" title="la pone primera en la cola de este centro" onclick="moverEnCola('${o.id}','${c}',{pos:1})">adelantar</button>`:'<span class="mut" style="font-size:var(--fs-xs)">adelantarla en la cola la guarda planificación</span>'}</td></tr>`).join('')}
    </tbody></table></div></div>`}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
