@@ -682,6 +682,16 @@ de las 26 liberadas). **La hoja «Tiempos actuales» volvió sin correcciones: n
 en vez de listarlas a mano, así se apagan solas al corregir. **HENLEY / «Nueva hija» es real: no borrarla.**
 Ver `TIEMPOS_SANTIAGO_REPORTE.md`.
 
+**Contar cartera: DECIR siempre la base (16-sep-2026).** Cuatro bases legítimas y muy distintas, en
+`BASES_CARTERA`: **cargadas** ⊇ **abiertas** ⊇ **lanzadas** ⊇ **liberadas**. `carteraDe(base,filtro)` es el único
+camino para contar cartera y **lanza error** si la base no existe; `cifraCarteraHTML` pinta el número **con su base
+escrita al lado**. Usar `abiertaDe()` no basta: **hay que decir qué base se está mostrando**, o los números no se
+pueden comparar entre reportes — así se reportó 197.573 min (abiertas) contra un listado de 89.253 (lanzadas).
+Las **abiertas incluyen las de diseño sin WH**, que no se pueden programar: para carga de planta, la base es
+**lanzadas**. Hay una **guardia** que falla si una pantalla filtra la cartera por el estado interno a mano, si
+aparece una segunda definición de orden abierta, si las bases dejan de encajar o si una base inexistente no da
+error; un conteo que no sea de cartera se marca en su línea con el motivo. Ver `TIEMPOS_CORRECCION_BASE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -204,6 +204,22 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.45 Contar cartera: hay que DECIR la base (16-sep) — CORRIGE cifras de 2.44
+- **El error no fue la definición, fue la base.** El cálculo de los tiempos estimados usaba `abiertaDe()`, pero se
+  reportó en base **abiertas** (79 órdenes / 16.232 pz / 197.573 min) al lado de un listado hecho en base
+  **lanzadas**. Lo comparable es **50 órdenes / 8.232 pz / 89.253 min** (el listado decía 51 / 8.241 / ≈89.400).
+  La diferencia son **29 órdenes en diseño, sin WH**, que no se pueden programar.
+- **`BASES_CARTERA`** declara las cuatro con su explicación y **`carteraDe(base,filtro)`/`cuentaCartera()`** son el
+  único camino para contar cartera; una base inexistente **lanza error**. **`cifraCarteraHTML`** pinta el número
+  siempre con su base al lado.
+- **`cargaTiemposEst(base)`/`cargaTiemposEstHTML()`** (Configuración → Operaciones): la carga de los tiempos
+  estimados por categoría, con **selector de base**, el total rotulado y **las otras tres bases al pie**.
+- **Guardia de cartera** (prueba): falla si alguna pantalla filtra por el estado interno a mano, si hay más de una
+  definición de orden abierta, si `abierta()` deja de delegar en `abiertaDe()`, si las bases dejan de ser
+  subconjuntos encajados o si una base inexistente deja de dar error. Un conteo que no sea de cartera (contar lo que
+  trae un archivo) se marca en su línea con el motivo.
+- Ver `TIEMPOS_CORRECCION_BASE.md`.
+
 ### 2.44 Tiempos estimados de confección (Santiago Garzón, 16-sep)
 - `TIEMPOS_SG` trae las 14 categorías de la hoja «Para llenar» con su minuto, su referencia y su observación.
   `sembrarTiemposSG()` las carga en `k.minEstConf` + `k.minEstConfMeta` {fuente, obs, ref, pendiente}.
