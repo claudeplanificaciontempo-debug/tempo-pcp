@@ -529,6 +529,17 @@ function primeraPagina(){const a=[...document.querySelectorAll('nav a[data-p]')]
 
 /* ---------- estado ---------- */
 const TABLAS=['centros','recursos','telas','colores','rutas','operaciones','tecnicas','maquinas','categorias','ordenes','programas','cargas','propuestas','paros','turnos','bitacora','planes','salidas_tin','banos_conf'];
+/* ---------- qué sube cada sesión: el piso solo sus cuatro tablas (espejo de las políticas RLS de SUPABASE_POLITICAS_TABLET.sql) ---------- */
+const TABLAS_PISO=['avance','bitacora','turnos','paros'];
+const PERFILES_PISO_DEF=['tablet','corte','modulos','terminado','piso','piso_tej'];
+const TABLAS_N={params:'configuración',ordenes:'órdenes',avance:'avance del piso',bitacora:'bitácora',turnos:'turnos y asistencia',paros:'paros',centros:'centros',recursos:'recursos y máquinas',telas:'telas',colores:'colores',rutas:'rutas',operaciones:'operaciones',tecnicas:'técnicas',maquinas:'máquinas',categorias:'categorías',programas:'programas',cargas:'cargas',propuestas:'propuestas',planes:'planes',salidas_tin:'salidas de tintorería',banos_conf:'baños confirmados'};
+function nTabla(t){return TABLAS_N[t]||t}
+/* el catálogo manda: la columna «solo piso» del perfil; si no está definida, los perfiles de piso de siempre */
+function perfilSoloPiso(){const d=(typeof perfilDe==='function'&&typeof S!=='undefined'&&S)?perfilDe(PERFIL):null;if(!d)return false;
+  if((d.permisos||[]).includes('*'))return false;
+  if(d.soloPiso!=null)return !!d.soloPiso;
+  return PERFILES_PISO_DEF.includes(d.id)}
+function puedeSubirTabla(t){return !perfilSoloPiso()||TABLAS_PISO.includes(t)}
 const TIPOS_MAQ=['Recta','Overlock 3 hilos','Overlock 4 hilos','Overlock 5 hilos','Recubridora','Collaretera','Cerradora de codo','Atracadora','Ojaladora','Botonadora','Elasticadora','Zigzag','Doble aguja','Plancha','Manual'];
 let sb=null,USER=null,PERFIL=null,S=null,BASE={},page='ordenes',PLAN=null;
 function hoy(){return new Date().toISOString().slice(0,10)}
@@ -557,38 +568,40 @@ async function revisarDatos(){if(guardando)return;const m=await maxActualizado()
   b.innerHTML='Hay <b>datos nuevos</b> guardados desde otra sesión a las '+new Date(m).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}).replace(/\.$/,'')+'. Lo que ves puede estar viejo. <button class="btn sm" style="margin-left:8px" onclick="refrescar()">Actualizar ahora</button>'}
 /* guarda solo lo que cambió respecto a lo leído del servidor; si la base rechaza algo (permisos), recarga */
 let guardando=false,pendiente=false;
-let SAVE_ERR=null;
+let SAVE_ERR=null,ULT_SALTADAS=[];
 function avisoGuardado(){const n=document.getElementById('aviso-guardado');if(!n)return;
-  n.innerHTML=SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor.</b> Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
+  n.innerHTML=SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor</b> (falló en: '+esc((SAVE_ERR.tablas||[]).join(', ')||'el servidor')+'). Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
 async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
 async function _save(){
   const errs=[];
-  const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push(t+': '+error.message);return}}};
-  const del=async(t,ids)=>{for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push(t+': '+error.message);return}}};
+  const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push({t,msg:error.message});return}}};
+  const del=async(t,ids)=>{for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push({t,msg:error.message});return}}};
+  const saltadas=[];
   for(const t of TABLAS){
+    if(!puedeSubirTabla(t)){const cur0=S[t],b0=BASE[t]||{};if(cur0.some(r=>JSON.stringify(sinId(r))!==b0[r.id])||Object.keys(b0).some(id=>!cur0.some(r=>r.id===id)))saltadas.push(t);continue} // el piso no sube esta tabla: ni se intenta ni cuenta como error
     const cur=S[t],base=BASE[t]||{};
     const rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
     const ids=Object.keys(base).filter(id=>!cur.some(r=>r.id===id));
     await up(t,rows);await del(t,ids);
     if(!errs.length)BASE[t]=Object.fromEntries(cur.map(r=>[r.id,JSON.stringify(sinId(r))]));
   }
-  if(JSON.stringify(S.params)!==BASE.params){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}
+  if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
   const ba=BASE.avance||{};
   await up('avance',Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v})));
   await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
   if(!errs.length)BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));
   const st=document.getElementById('saved');
   if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
-    SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4),permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e))};
+    SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4).map(e=>nTabla(e.t)+': '+e.msg),tablas:[...new Set(errs.map(e=>nTabla(e.t)))],permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e.msg))};
     if(st)st.textContent='No se guardó';
     if(typeof avisoGuardado==='function')avisoGuardado();
-    if(!SAVE_ERR.permiso)alert('No se pudo guardar:\n'+errs.join('\n')+'\n\nLo que registraste sigue en pantalla: vuelve a tocar Guardar.');}
-  else{SAVE_ERR=null;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
+    if(!SAVE_ERR.permiso)alert('No se pudo guardar en '+SAVE_ERR.tablas.join(', ')+':\n'+SAVE_ERR.errs.join('\n')+'\n\nLo que registraste sigue en pantalla: vuelve a tocar Guardar.');}
+  else{SAVE_ERR=null;ULT_SALTADAS=saltadas;if(typeof avisoGuardado==='function')avisoGuardado();if(st)st.textContent='Guardado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});ULT_DATOS=await maxActualizado()}
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 08:25';
+const APP_BUILD='2026-09-16 08:36';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -951,6 +964,7 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
+  {const sp=solicitudesPiso();add('solicPiso','El piso pide un cambio de fase',sp.length,sp.map(x=>x.op+' → '+faseNombre(x.f||'')).slice(0,8).join(', ')+' · el operario no cambia fases: lo pide y tú lo aplicas','Control de piso → Cambio de fases',"CTL.area='fases';ir('control')")}
   {const pr=pedidosReprog().filter(p=>!p.atendida);add('reprog','El piso pide reprogramación',pr.length,pr.map(p=>p.op+' → '+nCen(p.centro)).slice(0,8).join(', ')+' · el operario buscó la WH en su centro y no está programada ahí','Programación del centro',"CEN.id=(pedidosReprog().filter(p=>!p.atendida)[0]||{}).centro||CEN.id;CEN.tab='prog';ir('centro')")}
   {const sinSec=fasesSinSecuencia();const enUso={};ab.forEach(o=>{if(o.fase&&sinSec.includes(o.fase))enUso[o.fase]=(enUso[o.fase]||0)+1});const usadas=Object.keys(enUso);
    add('faseSinSecuencia','Fases sin secuencia en la tabla 1',sinSec.length,'sin número de secuencia la devolución se decide por el grupo de la tabla 5 (menos preciso): '+(usadas.length?usadas.slice(0,8).join(', ')+(usadas.length>8?' y '+(usadas.length-8)+' más':'')+' · con órdenes abiertas hoy':sinSec.slice(0,8).join(', ')+(sinSec.length>8?' y '+(sinSec.length-8)+' más':''))+' · la secuencia la cargas tú: fases con el mismo número son paralelas','Configuración → Órdenes y materiales (tabla 1)',"CONF.tab='ordenes2';ir('config')")}
@@ -1626,10 +1640,12 @@ function difTallasHTML(o,c){const b=baseTallas(o,c);const hechas=((S.avance[o.id
    <tr><td>Diferencia</td>${tallas.map(t=>{const d=(hechas[t]||0)-(b.tallas[t]||0);return `<td class="num">${d?'<span class="tag '+(d<0?'t-aviso':'t-alerta')+'">'+(d>0?'+':'')+num(d)+'</span>':'<span class="mut">·</span>'}</td>`}).join('')}<td class="num">${num(sumaCurva(hechas)-sumaCurva(b.tallas))}</td></tr>
    </tbody></table>${b.base==='pedido'&&c!=='corte'?'<p class="mut" style="font-size:var(--fs-xs);margin-top:4px">Sin registro de corte: se compara contra lo pedido.</p>':''}`}
 /* --- pedir reprogramación desde el piso (el operario no reprograma) --- */
-function pedidosReprog(){if(!Array.isArray(S.params.pedidosReprog))S.params.pedidosReprog=[];return S.params.pedidosReprog}
+function pedidosReprogParams(){if(!Array.isArray(S.params.pedidosReprog))S.params.pedidosReprog=[];return S.params.pedidosReprog}
+function pedidosReprog(){const l=pedidosReprogParams().slice();Object.values(S.avance||{}).forEach(a=>(a.pedidosReprog||[]).forEach(p=>l.push(p)));return l} // los del piso se guardan en avance: es la tabla que sí puede escribir
 function pedirReprogramacion(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   if(pedidosReprog().some(p=>p.oid===oid&&p.centro===c&&!p.atendida)){alert('Ya está pedida la reprogramación de esta orden para '+nCen(c)+'.');return}
-  pedidosReprog().push({id:uid(),oid,op:o.op,centro:c,u:quienFirma(),ts:new Date().toISOString()});
+  const reg={id:uid(),oid,op:o.op,centro:c,u:quienFirma(),ts:new Date().toISOString()};
+  if(perfilSoloPiso()){const a=S.avance[oid]=S.avance[oid]||{};a.pedidosReprog=a.pedidosReprog||[];a.pedidosReprog.push(reg)}else pedidosReprogParams().push(reg);
   bitacora('Piso pide reprogramación: '+o.op+' para '+nCen(c)+' ('+quienFirma()+')');save();render();
   alert('Pedido enviado. Planificación lo ve en Hoy → Pendientes.')}
 function atenderReprog(id){const p=pedidosReprog().find(x=>x.id===id);if(!p)return;if(!(puede('programa')||puede('reprogramar'))){alert('Tu perfil no atiende reprogramaciones.');return}
@@ -1637,6 +1653,30 @@ function atenderReprog(id){const p=pedidosReprog().find(x=>x.id===id);if(!p)retu
 function reprogPanelHTML(){const l=pedidosReprog().filter(p=>!p.atendida);if(!l.length)return '';
   return `<div class="panel" style="border:2px solid var(--aviso)"><h3>El piso pide reprogramación <span class="note">${l.length} · buscaron la WH en su centro y no está programada ahí</span></h3><div class="body"><table><thead><tr><th>Cuándo</th><th>Orden</th><th>Centro</th><th>Quién</th><th></th></tr></thead><tbody>
    ${l.map(p=>{const o=S.ordenes.find(x=>x.id===p.oid);return `<tr><td style="white-space:nowrap">${new Date(p.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(p.op)}</td><td>${esc(nCen(p.centro))}</td><td>${esc(p.u||'')}</td><td>${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="atenderReprog('${p.id}')">atendida</button>`:''}</td></tr>`}).join('')}
+   </tbody></table></div></div>`}
+/* ---------- lo que el piso pide y planificación aplica: vive en AVANCE, la tabla que el piso sí puede escribir ---------- */
+function solicitudesDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!Array.isArray(a.solicitudes))a.solicitudes=[];return a.solicitudes}
+function solicitudesPiso(solo){const out=[];Object.entries(S.avance||{}).forEach(([oid,a])=>{(a.solicitudes||[]).forEach(s=>{if(s.atendida)return;if(solo&&s.tipo!==solo)return;out.push(Object.assign({oid},s))})});
+  return out.sort((a,b)=>(a.ts||'')<(b.ts||'')?1:-1)}
+function pedirSolicitudPiso(oid,tipo,datos,texto){const o=S.ordenes.find(x=>x.id===oid);if(!o)return null;
+  const s=Object.assign({id:uid(),tipo,ts:new Date().toISOString(),u:quienFirma(),op:o.op},datos||{});
+  solicitudesDe(oid).push(s);bitacora('Piso pide '+texto+' · '+o.op+' ('+quienFirma()+')');save();return s}
+function atenderSolicitudPiso(oid,id,nota){const s=(((S.avance[oid]||{}).solicitudes)||[]).find(x=>x.id===id);if(!s)return null;
+  s.atendida={u:quienFirma(),ts:new Date().toISOString(),nota:nota||''};return s}
+function descartarSolicitudPiso(oid,id){if(!(puede('programa')||puede('ordenes')||puede('reprogramar'))){alert('Tu perfil no atiende las solicitudes del piso.');return}
+  if(!confirm('¿Descartar esta solicitud del piso? Queda registrada como atendida sin aplicar.'))return;
+  const s=atenderSolicitudPiso(oid,id,'descartada');if(s)bitacora('Solicitud del piso descartada · '+(s.op||'')+' ('+quienFirma()+')');save();render()}
+function aplicarSolicitudFase(oid,id){const s=(((S.avance[oid]||{}).solicitudes)||[]).find(x=>x.id===id);const o=S.ordenes.find(x=>x.id===oid);if(!s||!o)return;
+  if(!puedeFases()){alert('Tu perfil no cambia fases.');return}
+  const antes=o.fase;moverFases([oid],s.f,s.motivo||'');
+  if(o.fase===s.f){const ult=(o.fases||[]).slice(-1)[0];if(ult&&s.obs)ult.obs=s.obs;
+    atenderSolicitudPiso(oid,id,'aplicada');bitacora('Solicitud de fase aplicada · '+o.op+': '+(antes||'—')+' → '+s.f+' (pedida por '+esc(s.u||'')+', aplicada por '+quienFirma()+')');save();render()}}
+function solicitudesPisoHTML(){const l=solicitudesPiso();if(!l.length)return '';
+  const txt=s=>s.tipo==='fase'?('cambiar la fase a <b>'+esc(faseNombre(s.f)||s.f)+'</b>'+(s.obs?' · '+esc(s.obs):'')+(s.motivo?' · motivo: '+esc(s.motivo):'')):esc(s.tipo);
+  return `<div class="panel" style="border:2px solid var(--aviso)"><h3>El piso pide cambios <span class="note">${l.length} · el operario no cambia fases: lo pide y planificación lo aplica con la regla de secuencia y la auditoría de siempre</span></h3><div class="body">
+   <table><thead><tr><th>Cuándo</th><th>Orden</th><th>Qué pide</th><th>Quién</th><th></th></tr></thead><tbody>
+   ${l.map(s=>{const o=S.ordenes.find(x=>x.id===s.oid);return `<tr><td style="white-space:nowrap">${new Date(s.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(s.op||'')}</td><td>${txt(s)}</td><td class="mut">${esc(s.u||'')}</td>
+    <td style="white-space:nowrap">${s.tipo==='fase'&&puedeFases()?`<button class="btn sm" onclick="aplicarSolicitudFase('${s.oid}','${s.id}')">aplicar</button> `:''}<button class="btn ghost sm" onclick="descartarSolicitudPiso('${s.oid}','${s.id}')">descartar</button></td></tr>`}).join('')}
    </tbody></table></div></div>`}
 /* --- cambio de fase desde el piso: observación de la tabla 15, sin texto libre --- */
 function mFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
@@ -1649,6 +1689,11 @@ function mFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
 function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   const f=(document.getElementById('fp-f')||{}).value;const obs=String((document.getElementById('fp-obs')||{}).value||'').trim();const m=String((document.getElementById('fp-m')||{}).value||'').trim();
   if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15 (uso «observación de piso»).');return}
+  if(perfilSoloPiso()){ // el piso no escribe en órdenes: queda como solicitud en avance y planificación la aplica
+    if(!f||f===o.fase){alert('Elige una fase distinta.');return}
+    if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15.');return}
+    pedirSolicitudPiso(oid,'fase',{f,obs,motivo:m,antes:o.fase,centro:c},'cambiar la fase de '+(o.fase||'—')+' a '+f);
+    try{cerrar()}catch(e){}render();alert('Pedido enviado. Planificación lo ve en Control de piso → Cambio de fases y en Hoy → Pendientes. La fase no cambia hasta que lo apliquen.');return}
   const antes=o.fase;moverFases([oid],f,m);
   if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
 /* --- buscador de Mi centro: el resultado se ve SIEMPRE como tarjeta, esté o no en la cola --- */
@@ -2300,10 +2345,13 @@ function delMotivoRow(i){const r=motivos()[i];if(!r)return;if(!confirm('¿Quitar
 function selMotivoHTML(id,uso){const ms=motivosDe(uso);const nom=(USOS_MOTIVO.find(u=>u[0]===uso)||[])[1]||uso;if(!ms.length)return `<div class="warn" style="font-size:var(--fs-s)">No hay motivos configurados para «${esc(nom)}». Configúralos en Configuración → Órdenes y materiales → <b>15 · Motivos</b>. Sin ellos no se puede devolver una fase ni revertir una liberación (avanzar sí).</div><input type="hidden" id="${id}" value="">`;
   return `<select id="${id}"><option value="">— elige el motivo —</option>${ms.map(m=>`<option value="${esc(m.motivo)}">${esc(m.motivo)}</option>`).join('')}</select>`}
 function auditoriaCambios(){if(!Array.isArray(S.params.auditoriaCambios))S.params.auditoriaCambios=[];return S.params.auditoriaCambios}
-function registrarAuditoria(tipo,o,antes,despues,motivo,dev){auditoriaCambios().push({id:uid(),ts:new Date().toISOString(),u:quienFirma(),tipo,dev:dev===undefined?true:!!dev,oid:o.id,op:o.op,antes:antes||'—',despues:despues||'—',motivo:motivo||''})}
+function registrarAuditoria(tipo,o,antes,despues,motivo,dev){const e={id:uid(),ts:new Date().toISOString(),u:quienFirma(),tipo,dev:dev===undefined?true:!!dev,oid:o.id,op:o.op,antes:antes||'—',despues:despues||'—',motivo:motivo||''};
+  if(perfilSoloPiso()&&o&&o.id){const a=S.avance[o.id]=S.avance[o.id]||{};a.auditoria=a.auditoria||[];a.auditoria.push(e)} // el piso no escribe configuración: su auditoría va en avance y se ve igual
+  else auditoriaCambios().push(e)}
+function auditoriaTodo(){const l=auditoriaCambios().slice();Object.values(S.avance||{}).forEach(a=>(a.auditoria||[]).forEach(e=>l.push(e)));return l.sort((x,y)=>(x.ts||'')<(y.ts||'')?-1:1)}
 function motivosPanelHTML(){const t=motivos();return `<div class="panel"><h3>15 · Motivos <span class="note">lista cerrada: devolver una fase a un grupo anterior, revertir una liberación, reproceso de tintorería u observación de piso · sin texto libre · ${t.length} motivos</span><span class="spacer"></span>${USOS_MOTIVO.map(([k,n])=>`<button class="btn ghost sm" onclick="addMotivoRow('${k}')">+ ${esc(n)}</button>`).join(' ')}</h3><div class="body"><table><thead><tr><th>Motivo</th><th>Uso</th><th>¿Viene de tejeduría?</th><th>Activo</th><th>Almuerzo</th><th>Cierre del día</th><th></th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td><input type="text" style="width:320px" value="${esc(r.motivo||'')}" onchange="setMotivoRow(${i},'motivo',this.value)"></td><td><select onchange="setMotivoRow(${i},'uso',this.value)">${USOS_MOTIVO.map(([k,n])=>`<option value="${k}" ${r.uso===k?'selected':''}>${esc(n)}</option>`).join('')}</select></td><td>${r.uso==='reproceso'?`<label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoRow(${i},'tejeduria',this.checked)"> falla de tela</label>`:'<span class="mut">—</span>'}</td><td style="text-align:center"><input type="checkbox" ${r.activo!==false?'checked':''} onchange="setMotivoRow(${i},'activo',this.checked)" title="si está apagado, el operario no lo ve"></td><td style="text-align:center">${r.uso==='paro'?`<input type="checkbox" ${r.esAlmuerzo?'checked':''} onchange="setMotivoRow(${i},'esAlmuerzo',this.checked)" title="marcarlo evita que el descanso del horario se descuente dos veces">`:'<span class="mut">—</span>'}</td><td style="text-align:center">${r.uso==='paro'?`<input type="checkbox" ${r.cierreDia?'checked':''} onchange="setMotivoRow(${i},'cierreDia',this.checked)" title="pausa el tramo hasta el día siguiente; la noche no cuenta ni dispara el aviso de olvido">`:'<span class="mut">—</span>'}</td><td>${r.pendiente?'<span class="tag t-aviso">sin texto</span>':''}</td><td><button class="btn ghost sm" onclick="delMotivoRow(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="8" class="mut">Sin motivos. Agrega al menos uno de devolución de fase y uno de reversión de liberación: sin ellos no se puede devolver ni revertir (avanzar de fase sí).</td></tr>'}</tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El motivo se exige solo al <b>devolver</b> una fase (la fase nueva cae en un grupo anterior de la tabla 5) y al <b>revertir</b> una liberación; avanzar o moverse dentro del mismo grupo no lo pide. Los motivos de <b>reproceso de tintorería</b> son estas mismas filas (el panel de Tintorería las edita). Todo queda en Auditoría de replanificación con usuario, fecha, antes y después.</p></div></div>`}
 function mRetirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;abrir(`<h3>Revertir liberación · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · ${esc(nombreCat(K(o.cat)))} · liberación <b>${et==='tela'?'textil':'a producción'}</b>. La orden vuelve a la cola de liberación y sale del programa hasta liberarla de nuevo.</p><label>Motivo (obligatorio, de la tabla 15)</label>${selMotivoHTML('rl-m','liberacion')}</div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="retirarLib('${o.id}','${et}',document.getElementById('rl-m').value)">Revertir</button></div>`)}
-function auditoriaCambiosHTML(){const L=auditoriaCambios().slice().reverse();return `<div class="panel"><h3>Cambios de fase y reversiones de liberación <span class="note">${L.length} · las devoluciones y las reversiones llevan motivo de la tabla 15 · usuario, fecha, antes y después</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${L.slice(0,300).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);return `<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('es-EC')}</td><td>${esc(e.u||'')}</td><td>${e.tipo==='fase'?(e.dev?'<b>devolución de fase</b>':'cambio de fase'):'reversión de liberación'}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${esc(e.antes||'—')}</td><td>${esc(e.despues||'—')}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Sin registros.</td></tr>'}</tbody></table></div></div></div>`}
+function auditoriaCambiosHTML(){const L=auditoriaTodo().slice().reverse();return `<div class="panel"><h3>Cambios de fase y reversiones de liberación <span class="note">${L.length} · las devoluciones y las reversiones llevan motivo de la tabla 15 · usuario, fecha, antes y después</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${L.slice(0,300).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);return `<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('es-EC')}</td><td>${esc(e.u||'')}</td><td>${e.tipo==='fase'?(e.dev?'<b>devolución de fase</b>':'cambio de fase'):'reversión de liberación'}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${esc(e.antes||'—')}</td><td>${esc(e.despues||'—')}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Sin registros.</td></tr>'}</tbody></table></div></div></div>`}
 /* f) Navegación: "← atrás" cuando se llega a una pantalla desde un clic en otra; vuelve con filtros y scroll */
 let NAVH=[];let NAV_PROG=false;
 function navRefs(){const M={};try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.CTL=CTL}catch(e){}try{M.CEN=CEN}catch(e){}try{M.APO=APO}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.VO=VO}catch(e){}try{M.CTLF=CTLF}catch(e){}try{M.PM=PM}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.REP=REP}catch(e){}try{M.NLF=NLF}catch(e){}try{M.TAB=TAB}catch(e){}try{M.WIP=WIP}catch(e){}try{M.AUD=AUD}catch(e){}try{M.FAM=FAM}catch(e){}try{M.TARJ=TARJ}catch(e){}return M}
@@ -4824,7 +4872,7 @@ function vControl(el){
       <div><label>&nbsp;</label><label class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=!CTL.todo;render()">${CTL.todo?'todas las órdenes':'solo lo activo'}</label></div></div></div>
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
-  if(CTL.area==='fases'){cuerpo=fasesCentralHTML(P)}else if(CTL.area==='tej'){
+  if(CTL.area==='fases'){cuerpo=solicitudesPisoHTML()+fasesCentralHTML(P)}else if(CTL.area==='tej'){
     const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase,o).tejida;return{o,r,a,hecha}})
       .filter(x=>CTL.todo||!x.hecha).sort((x,y)=>(x.r.finTej||'9')<(y.r.finTej||'9')?-1:1);
     cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
@@ -5071,14 +5119,15 @@ async function vUsuarios(el){
   <p class="lede">Cada usuario tiene un <b>perfil</b>. El perfil dice qué puede hacer, qué centros ve y qué entradas del menú tiene; los perfiles se editan abajo (son datos, no código). Un usuario con permiso "solo ve" abre sus pantallas pero no registra nada.</p>
   <div class="panel" id="pan-usuarios"><div class="empty">Cargando…</div></div>
   <div class="panel"><h3>Perfiles <span class="note">qué puede hacer cada uno · se guarda al cambiar</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPerfilDef()">Nuevo perfil</button></h3><div class="body scroll">
-   <table style="font-size:var(--fs-s)"><thead><tr><th>Perfil</th><th>Permisos</th><th>Centros que ve y donde registra</th><th>Menú</th><th></th></tr></thead><tbody>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Perfil</th><th>Permisos</th><th>Centros que ve y donde registra</th><th>Menú</th><th title="solo sube avance, bitácora, turnos y paros">Solo piso</th><th></th></tr></thead><tbody>
    ${cat.map(d=>{const todoP=d.permisos.includes('*'),todoC=d.centros.includes('*'),todoPg=d.paginas.includes('*');const chk=(lista,k,on,fn)=>`<label style="display:inline-block;margin:1px 8px 1px 0;white-space:nowrap"><input type="checkbox" ${on?'checked':''} ${d.id==='admin'?'disabled':''} onchange="${fn}('${d.id}','${k}',this.checked)"> ${esc(lista)}</label>`;
      return `<tr><td style="vertical-align:top;min-width:170px"><b>${esc(d.n)}</b><br><span class="mut" style="font-size:var(--fs-xs)">${esc(d.id)}</span><br><textarea style="width:170px;height:60px;font-size:var(--fs-xs);margin-top:4px" ${d.id==='admin'?'disabled':''} onchange="setPerfilDef('${d.id}','desc',this.value)">${esc(d.desc||'')}</textarea></td>
       <td style="vertical-align:top">${chk('todo','*',todoP,'togPermDef')}${todoP?'':'<br>'+PERMISOS_DEF.map(([k,n])=>chk(n,k,d.permisos.includes(k),'togPermDef')).join('')}</td>
       <td style="vertical-align:top">${chk('todos','*',todoC,'togCentroDef')}${todoC?'':'<br>'+[['tej','Tejeduría (área)'],['tin','Tintorería (área)']].concat(S.centros.filter(c=>c.area==='pro').map(c=>[c.id,c.n])).map(([k,n])=>chk(n,k,d.centros.includes(k),'togCentroDef')).join('')}</td>
       <td style="vertical-align:top">${chk('todo el menú','*',todoPg,'togPaginaDef')}${todoPg?'':'<br>'+PAGINAS_DEF.map(([k,n])=>chk(n,k,d.paginas.includes(k),'togPaginaDef')).join('')}</td>
+      <td style="vertical-align:top;text-align:center"><input type="checkbox" ${(d.soloPiso!=null?d.soloPiso:PERFILES_PISO_DEF.includes(d.id))?'checked':''} ${d.id==='admin'?'disabled':''} title="Guarda solo avance, bitácora, turnos y paros: lo que las políticas de la base dejan escribir al piso. Lo demás (configuración, órdenes) ni se intenta." onchange="setPerfilDef('${d.id}','soloPiso',this.checked)"></td>
       <td style="vertical-align:top">${d.id==='admin'?'':`<button class="btn ghost sm" onclick="delPerfilDef('${d.id}')">×</button>`}</td></tr>`}).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los centros de producción marcados son los que el perfil ve en Control de piso, en las páginas de centro y en su reportería, y donde puede reprogramar y editar la ruta si tiene esos permisos. "Tejeduría" y "Tintorería" se marcan como área completa. Todo cambio de un usuario o de un perfil queda en la bitácora.</p></div></div>`;
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>Solo piso</b>: esa sesión sube únicamente avance, bitácora, turnos y paros (las cuatro tablas que las políticas de la base le permiten). Lo que cambie en otras tablas —incluidas las siembras automáticas de configuración— se usa en pantalla pero no se guarda, y por eso un rechazo de permisos ya no puede tumbar el registro del piso. Los centros de producción marcados son los que el perfil ve en Control de piso, en las páginas de centro y en su reportería, y donde puede reprogramar y editar la ruta si tiene esos permisos. "Tejeduría" y "Tintorería" se marcan como área completa. Todo cambio de un usuario o de un perfil queda en la bitácora.</p></div></div>`;
   const {data,error}=await sb.from('perfiles').select('*').order('email');const pan=document.getElementById('pan-usuarios');if(!pan)return;
   if(error){pan.innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
   const porPerfil={};data.forEach(u=>{const d=perfilDe(u);porPerfil[d?d.id:'?']=(porPerfil[d?d.id:'?']||0)+1});

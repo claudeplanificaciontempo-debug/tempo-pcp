@@ -2251,6 +2251,67 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>![oS,oC,oF].includes(o));[oS,oC,oF].forEach(o=>{delete S.avance[o.id]});
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("MT/MB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · el guardado del operario solo sube sus cuatro tablas */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oP=JSON.parse(JSON.stringify(base));oP.id=uid();oP.op='WH/PISO-1';oP.estado='plan';oP.cant=200;delete oP.tallasPedido;delete oP.programa;S.ordenes.push(oP);delete S.avance[oP.id];PLAN=null;PLAN_ALL=null;
+   S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec};
+   TRAMO={paso:null,id:null,oid:null};TAB.centro='modulos';TAB.rec=rec;TAB.q='';
+   PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba',email:'op@tempo.local'};
+   __check("P1.1: el perfil de tablet es «solo piso» y sus tablas son avance, bitácora, turnos y paros",perfilSoloPiso()&&TABLAS_PISO.join()==='avance,bitacora,turnos,paros'&&TABLAS_PISO.every(puedeSubirTabla)&&!puedeSubirTabla('params')&&!puedeSubirTabla('ordenes'));
+   __check("P1.1: los perfiles de centro también, y planificación NO (sigue guardando todo)",['corte','modulos','terminado'].every(r=>{PERFIL={id:'u1',rol:r};return perfilSoloPiso()})&&(PERFIL={id:'u1',rol:'planificacion'},!perfilSoloPiso())&&(PERFIL={id:'u1',rol:'admin'},!perfilSoloPiso()));
+   PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba',email:'op@tempo.local'};
+   // siembras pendientes de guardar + la base rechaza cualquier escritura fuera de las cuatro tablas del piso
+   S.params.pruebaSiembra=new Date().toISOString();
+   const DEJA=['avance','bitacora','turnos','paros'];
+   __W.writes=[];__W.deny=t=>!DEJA.includes(t);SAVE_ERR=null;
+   iniciarTramo(oP.id,'modulos',rec);await __p(60);
+   const trP=tramosDe(oP.id).find(x=>!x.fin);
+   __check("P1.5: el operario inicia el tramo y se guarda sin error, aunque la base rechace lo demás",!!trP&&!SAVE_ERR,SAVE_ERR?JSON.stringify(SAVE_ERR.errs):'');
+   __check("P1.5: no se intenta subir params ni ninguna tabla fuera de las cuatro del piso",!__W.writes.some(w=>!DEJA.includes(w.t)),JSON.stringify([...new Set(__W.writes.map(w=>w.t))]));
+   {const m=(motivosParo()[0]||{}).motivo;
+    if(m){trP.paros=trP.paros||[];trP.paros.push({id:uid(),ini:new Date(Date.now()-5*6e4).toISOString(),motivo:m,u:quienFirma()});save();await __p(60);
+     const pa=paroAbierto(trP);if(pa){pa.fin=new Date().toISOString();pa.min=5;save();await __p(60)}}
+    __check("P1.5: paro y reanudación también guardan sin error",!SAVE_ERR&&!__W.writes.some(w=>!DEJA.includes(w.t)));}
+   trP.ini=new Date(Date.now()-40*6e4).toISOString();terminarTramo(trP.id,oP.id);await __p(60);
+   setTallaTramoVal(trP.id,oP.id,'(total)',30);await __p(60);guardarTramo(trP.id,oP.id);await __p(80);
+   __check("P1.5: fin y unidades del tramo guardan sin error y quedan en avance",!SAVE_ERR&&(((S.avance[oP.id]||{}).centros)||{}).modulos===30,SAVE_ERR?JSON.stringify(SAVE_ERR.errs):'');
+   __check("P1.5: lo subido fue solo avance, bitácora, turnos y paros",__W.writes.length>0&&!__W.writes.some(w=>!DEJA.includes(w.t)),JSON.stringify([...new Set(__W.writes.map(w=>w.t))]));
+   __check("P1.2: la siembra pendiente sigue en memoria pero no se guardó",!!S.params.pruebaSiembra&&JSON.parse(BASE.params||'{}').pruebaSiembra===undefined);
+   // 1.3 · lo que el operario hace fuera de sus tablas queda como solicitud en avance
+    {const nSol=solicitudesPiso().length;const fNueva=fasesDisponibles().find(f=>f!==oP.fase&&!esDevolucionFase(oP.fase,f))||fasesDisponibles().find(f=>f!==oP.fase)||oP.fase;
+    const faseAntes=oP.fase;mFasePiso(oP.id,'modulos');
+    const selF=document.getElementById('fp-f');if(selF)selF.value=fNueva;
+    guardarFasePiso(oP.id,'modulos');await __p(60);
+    __check("P1.3: el operario no cambia la fase: queda como solicitud en avance y planificación la aplica",oP.fase===faseAntes&&solicitudesPiso().length===nSol+1&&((S.avance[oP.id]||{}).solicitudes||[]).some(x=>x.tipo==='fase'&&x.f===fNueva));
+    __check("P1.3: pedirlo no rompe el guardado ni toca órdenes",!SAVE_ERR&&!__W.writes.some(w=>w.t==='ordenes'));
+    const it=pendientesHoy().find(x=>x.k==='solicPiso');
+    __check("P1.3: sale en Hoy → Pendientes del supervisor",!!it&&it.n>=1);
+    // planificación la aplica
+    PERFIL=adminP;__W.deny=null;const sol=solicitudesPiso('fase')[0];
+    aplicarSolicitudFase(sol.oid,sol.id);await __p(60);
+    __check("P1.3: planificación la aplica y la fase cambia con la auditoría de siempre",oP.fase===fNueva&&solicitudesPiso('fase').every(x=>x.id!==sol.id));
+    PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba',email:'op@tempo.local'};__W.deny=t=>!DEJA.includes(t)}
+   {const nR=pedidosReprog().length;__W.writes=[];
+    const oFuera=S.ordenes.find(x=>abierta(x)&&x!==oP);
+    if(oFuera){pedirReprogramacion(oFuera.id,'modulos');await __p(60);
+     __check("P1.3: el pedido de reprogramación del piso se guarda en avance, no en configuración",pedidosReprog().length===nR+1&&((S.avance[oFuera.id]||{}).pedidosReprog||[]).length>=1&&!SAVE_ERR&&!__W.writes.some(w=>w.t==='params'));}
+    else __check("P1.3: el pedido de reprogramación del piso se guarda en avance, no en configuración",true,'sin otra orden');}
+   {const nA=auditoriaTodo().length;const trC=tramosDe(oP.id)[0];
+    __check("P1.3: la auditoría del piso (corrección de tramo) también va en avance y se ve igual",(()=>{registrarAuditoria('tramo',oP,'antes','después','prueba',false);return auditoriaTodo().length===nA+1&&((S.avance[oP.id]||{}).auditoria||[]).length>=1})());}
+   // 1.4 · el aviso dice en qué tabla falló
+   {__W.deny=()=>true;SAVE_ERR=null;S.avance[oP.id].__forzar=Date.now();await save();
+    __check("P1.4: si el servidor rechaza, el aviso dice en qué tabla falló, en texto simple",!!SAVE_ERR&&(SAVE_ERR.tablas||[]).includes('avance del piso')&&SAVE_ERR.permiso===true,JSON.stringify(SAVE_ERR&&SAVE_ERR.tablas));
+    {let host=document.getElementById('aviso-guardado');let creado=false;if(!host){host=document.createElement('div');host.id='aviso-guardado';document.body.appendChild(host);creado=true}avisoGuardado();
+     __check("P1.4: el aviso en pantalla nombra la tabla y ofrece reintentar",/falló en: avance del piso/.test(host.innerHTML)&&/Reintentar/.test(host.innerHTML));if(creado)host.remove();else host.innerHTML=''}
+    __W.deny=null;delete S.avance[oP.id].__forzar;SAVE_ERR=null;await save();await __p(60);
+    __check("P1.4: al volver a guardar sin rechazo, el aviso desaparece",!SAVE_ERR);}
+   PERFIL=adminP;__W.deny=null;__W.writes=[];delete S.params.pruebaSiembra;
+   S.ordenes=S.ordenes.filter(o=>o!==oP);delete S.avance[oP.id];
+   TAB.centro=null;TAB.rec=null;TAB.q='';TRAMO={paso:null,id:null,oid:null};
+   window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("P1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
