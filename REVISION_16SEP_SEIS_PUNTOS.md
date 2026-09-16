@@ -250,3 +250,80 @@ final). **Arranca vacía** y cada regla nueva **nace apagada**.
 4. **Confirmar** los 2–3 días de lavado en planta (quedó en 3, marcado estimado) y los 2 min/prenda de plancha.
 5. **Órdenes sin ruta o con el centro repetido**: salen en «Ruta sin secuencia». En la base de pruebas es 1; con
    tus datos el número aparece en esa sección de cada centro.
+
+---
+
+# Ajustes finales sobre A y C (16-sep) · commit `3bcc83d`
+
+**Harness:** 1286 pruebas verdes, sin errores.
+
+## 1 · El reparto real de `cambiosDisponibilidad()`
+
+No puedo consultar Supabase con tu cuenta, pero el simulador **carga el volcado real de órdenes** (el archivo de
+tareas del 13-sep, 65.002 filas → 4.235 cabeceras). Medí ahí, con las órdenes aplicadas, **no con datos
+inventados**. Sobre **1.155 órdenes abiertas** (1.206 en total), de las cuales **470 tienen ruta de producción**:
+
+**Cambios de lado con la regla nueva** — 800 pares orden × centro evaluables:
+
+| Centro | Próxima → **Disponible** | Disponible → **Próxima** |
+| --- | --- | --- |
+| Bordado | **272** | 4 |
+| Corte | **85** | — |
+| Estampado | **52** | — |
+| Ojales y botones | **4** | — |
+| Lavado | — | 3 |
+| Empaque | — | 3 |
+| **Total** | **413** | **10** |
+
+Justo lo que anticipabas: el grueso está en **bordado, estampado y corte**, que es donde el orden por grupos de la
+tabla 5 no representa el orden real. Con la regla vieja, 413 órdenes aparecían como «próximas» en un centro donde
+ya les tocaba.
+
+**Brecha «Rutas sin secuencia»** sobre esas mismas órdenes:
+
+| Motivo | Órdenes |
+| --- | --- |
+| Sin ruta de producción | **685** |
+| Con un centro repetido en la ruta | 0 |
+| Con avance en un paso fuera de su ruta | 0 |
+
+Las 685 son casi todas de fases tempranas (macro, compras, diseño) que todavía no tienen ruta armada; vale la pena
+mirar cuántas de esas ya deberían tenerla.
+
+**Dónde está**: **Reportería → «Rutas sin secuencia»**, con las tres tarjetas de conteo y la lista de órdenes con
+su motivo, su ruta actual y el botón para editarla. **No se creó ningún panel en Mi centro** (ahí sigue solo la
+sección de la cola, que es donde el operario la necesita).
+
+## 2 · Ojales y botones: cero confirmado es cero
+
+Verificado y **probado**: una fila **confirmada** con ojales 0 + botones 0 **aplica 0** y reemplaza al SAM de la
+LMO; con valores, reemplaza con esos valores. Lo único que no se aplica es lo **no confirmado** — y eso ya no pasa
+en silencio: el consolidado de Terminados marca como **brecha** cuántas categorías tienen una regla **sin
+confirmar** (con sus nombres) y cuántas pasan por la sub-área **sin ninguna regla**. Antes caía al SAM de la LMO
+sin avisar.
+
+*(En el punto del simulador donde medí, esas cuentas dieron 0 porque las operaciones de la LMO todavía no estaban
+cargadas; con tus datos el número sale en la pantalla.)*
+
+## 3 · Lavado: la modalidad decide, y lo pendiente no se asume
+
+Si un paso medido en días **ocupa capacidad de planta** o es **solo lead time** pasa a ser configurable **por
+modalidad**, en una columna nueva de la **tabla de esperas por paso** (que es donde ya viven los días, así que no
+se duplica el dato): **sí ocupa planta** / **no, solo lead time** / **pendiente de confirmar**.
+
+- **Quito** (denim/jean, 15 días): **lead time**, no ocupa planta.
+- **En planta** (3 días): **pendiente de tu confirmación**. Mientras lo esté, el sistema **no asume ninguna de las
+  dos cosas**: el consolidado muestra «pendiente de confirmar si ocupa planta» en rojo en vez de decidir.
+- Se **retiró la suposición anterior**, que daba el lavado por «no ocupa capacidad»: esa marca se borra sola en la
+  migración.
+
+Cuando confirmes, con un clic en esa columna: si dices que **no ocupa**, lavado pasa a medirse solo en días; si
+dices que **sí**, vuelve a contar como capacidad de planta con sus minutos.
+
+## Lo que sigue esperando tu decisión
+
+1. **Lavado en planta: ¿ocupa capacidad o es solo lead time?** (columna «¿Ocupa capacidad?» de la tabla de esperas).
+2. **Las reglas de ruta** (tabla de la letra D): sin ellas, plancha sigue en **0 órdenes** y lavado en **38**.
+3. **El atributo de la prenda tinturada** para el lavado de Quito.
+4. **Tiempos definitivos de ojales y botones**, si los de la tabla no lo son.
+5. **Las 685 órdenes sin ruta de producción**: decidir cuáles deberían tener ruta ya.

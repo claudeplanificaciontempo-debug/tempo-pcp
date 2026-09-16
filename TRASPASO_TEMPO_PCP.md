@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.30 Ajustes finales del 16-sep
+- **Reportería → «Rutas sin secuencia»**: brecha con conteo por motivo (sin ruta, centro repetido, avance fuera de
+  la ruta) y la lista de órdenes. Medido sobre el volcado real: de 1.155 abiertas, **685 sin ruta de producción**;
+  y con la regla nueva **413 pares orden-centro pasan de Próxima a Disponible** (bordado 272, corte 85, estampado
+  52, botones 4) y 10 al revés.
+- **Ojales y botones**: una regla **confirmada en 0 aplica 0** (cero es cero). Lo **no confirmado** no se aplica y
+  sale como **brecha** en el consolidado, en vez de caer al SAM de la LMO en silencio.
+- **Lavado**: la columna nueva **«¿Ocupa capacidad?»** de la tabla de esperas por paso decide por modalidad: sí /
+  no (solo lead time) / **pendiente**. Quito = lead time; **en planta queda pendiente de confirmación y no se
+  asume**. Se retiró la suposición anterior de que no ocupaba capacidad.
+
 ### 2.29 Ajustes sobre la revisión (16-sep-2026)
 - **Mi centro**: Disponible/Próxima se decide con la **secuencia de la ruta** de cada orden, no con el número ni el
   grupo de la fase (el número dice grupo, no orden; estampado, bordado y confección son empíricos). Si la ruta no
