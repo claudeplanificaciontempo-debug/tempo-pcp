@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:46';
+const APP_BUILD='2026-09-16 10:50';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2132,26 +2132,54 @@ function tablaTallasTramoHTML(o,t,c,editable){const b=baseTallas(o,c);const cur=
    </tbody></table></div>`}
 /* ---------- estado de una orden EN ESTE CENTRO: pendiente → en proceso → terminada ---------- */
 function tramoAbiertoOrden(oid,c,rec){return (tramosDe(oid)||[]).find(t=>t.centro===c&&(rec?(t.rec||null)===(rec||null):true)&&!t.fin)||null}
+/* El número de la fase dice a qué GRUPO pertenece, no en qué orden se hace: en estampado, bordado y confección
+   el orden es empírico y lo resuelven las OT de Odoo. Por eso la pertenencia al centro se decide con la
+   SECUENCIA DE LA RUTA de cada orden, y cuando la ruta no la define se muestra como brecha, no se adivina. */
+function pasosProDe(o){return (o&&o.ruta||[]).map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro')}
+function secuenciaCentro(o,c){const ru=pasosProDe(o);
+  if(!ru.length)return{estado:'sinSecuencia',motivo:'la orden no tiene ruta de producción'};
+  const veces=ru.filter(x=>x===c).length;
+  if(!veces)return{estado:'sinSecuencia',motivo:'este centro no está en la ruta de la orden'};
+  if(veces>1)return{estado:'sinSecuencia',motivo:'el centro aparece '+veces+' veces en la ruta: no se sabe cuál de las dos es'};
+  const i=ru.indexOf(c);const antes=ru.slice(0,i);
+  const pend=antes.filter(x=>!pasoHecho(o,x));
+  if(!pend.length)return{estado:'disponible',motivo:''};
+  const et=centroEtapaDe(c);const gr=et?faseGrupos().find(g=>g.grupo===et):null;
+  if(gr&&gr.secuencial===false&&pend.every(x=>centroEtapaDe(x)===et))
+    return{estado:'disponible',motivo:'tramo no secuencial ('+esc(et)+'): el orden real lo dan las órdenes de trabajo de Odoo'};
+  return{estado:'proxima',motivo:'falta '+pend.map(x=>nCen(x)).join(', ')+' en su ruta'}}
 function estadoOrdenCentro(o,c,rec){if(pasoHecho(o,c))return 'terminada';
   const a=S.avance[o.id]||{};const hechas=(a.centros||{})[c]||0;
   if(tramoAbiertoOrden(o.id,c,null)||hechas>0)return 'proceso';   // empezó: hay un inicio o ya registró cantidades
-  const et=centroEtapaDe(c);const g=grupoDe(o.fase);
-  if(et&&g){const oe=ordenGrupo(et),og=ordenGrupo(g.grupo);
-    if(oe>=0&&og>=0&&og<oe)return 'proxima'}                      // todavía en una fase anterior: se ve, no se inicia
-  return 'disponible'}
+  return secuenciaCentro(o,c).estado}
+function motivoEstadoCentro(o,c){return secuenciaCentro(o,c).motivo}
+/* cuántas órdenes cambian de lado con la regla nueva (secuencia de la ruta) frente a la vieja (orden de grupos) */
+function cambiosDisponibilidad(){const out={centros:{},aProxima:0,aDisponible:0,sinSecuencia:0,total:0};
+  S.centros.filter(x=>x.area==='pro').forEach(c=>{const cid=c.id;const et=centroEtapaDe(cid);
+    S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===cid)).forEach(o=>{
+      if(pasoHecho(o,cid))return;const a=S.avance[o.id]||{};if(tramoAbiertoOrden(o.id,cid,null)||((a.centros||{})[cid]||0)>0)return;
+      const g=grupoDe(o.fase);let viejo='disponible';
+      if(et&&g){const oe=ordenGrupo(et),og=ordenGrupo(g.grupo);if(oe>=0&&og>=0&&og<oe)viejo='proxima'}
+      const nuevo=secuenciaCentro(o,cid).estado;out.total++;
+      if(nuevo==='sinSecuencia'){out.sinSecuencia++}
+      else if(viejo!==nuevo){const k=cid+'|'+viejo+'→'+nuevo;out.centros[k]=(out.centros[k]||0)+1;
+        if(nuevo==='proxima')out.aProxima++;else out.aDisponible++}})});
+  return out}
 function transcurridoTxt(ini){if(!ini)return '';const min=Math.max(0,(Date.now()-new Date(ini))/6e4);return fmtHMS(min)}
 function barraAvanceHTML(hechas,total){const p=total>0?Math.min(100,Math.round(hechas/total*100)):0;
   return `<div class="bar" style="height:10px;margin:6px 0 2px"><i style="width:${p}%"></i></div><div class="mut" style="font-size:14px">${num(hechas)} de ${num(total)} · ${p}%</div>`}
 function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c);const hechas=f.hechas||0;
   const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
   const ab=tramoAbiertoOrden(o.id,c,null);
+  const mot=motivoEstadoCentro(o,c);
   const btn=modo==='proxima'
-    ? '<span class="tag t-aviso" style="font-size:15px" title="su fase todavía es de un paso anterior: cuando llegue a este centro se puede iniciar">todavía no: '+esc(faseNombre(o.fase||'—'))+'</span>'
+    ? '<span class="tag t-aviso" style="font-size:15px" title="'+esc(mot)+'">todavía no · '+esc(mot)+'</span>'
     : (ab?`<button class="btn" style="font-size:20px;padding:14px 22px;background:var(--aviso);border-color:var(--aviso)" onclick="TRAMO={paso:null,id:null,oid:null};render()">EN CURSO · ${transcurridoTxt(ab.ini)}</button>`
         :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`);
   return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
    ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
     <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div>
+    ${(modo==='sinSecuencia'||(modo==='disponible'&&mot))?'<div class="tag t-alerta" style="font-size:14px;margin-top:4px">'+esc(mot)+'</div>':''}
     ${modo==='proceso'?barraAvanceHTML(hechas,total):''}</div>
    <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
     ${modo==='proceso'?`<button class="btn ghost" style="font-size:15px" onclick="terminarOrdenCentro(null,'${o.id}','${c}')">Terminar orden</button>`:''}</div></div>`}
@@ -2192,13 +2220,14 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
            <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mPararTramo('${t.id}','${o.id}')">Paro</button>`}</div>
      ${pa?'':tablaTallasTramoHTML(o,t,c,true)}
     </div></div>`}
-  const est={proceso:[],disponible:[],proxima:[]};
+  const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
-  const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length;
+  const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length;
   return avisoOlv
    +seccionColaTabletHTML('En proceso','lo que ya empezaste y no has terminado · toca CONTINUAR para seguir, o «Terminar orden» cuando salga todo',est.proceso,c,rec,'proceso','var(--t-accent)')
    +seccionColaTabletHTML('Disponibles','ya están en la fase de este centro: se pueden iniciar',est.disponible,c,rec,'disponible',null)
-   +seccionColaTabletHTML('Próximas','vienen para acá, pero su fase todavía es de un paso anterior: se ven, no se inician',est.proxima,c,rec,'proxima',null)
+   +seccionColaTabletHTML('Próximas','todavía les falta un paso anterior de SU ruta: se ven, no se inician',est.proxima,c,rec,'proxima',null)
+   +seccionColaTabletHTML('Ruta sin secuencia','no se puede saber por la ruta si ya les toca aquí: se pueden iniciar, pero avisa a planificación para que corrijan la ruta',est.sinSecuencia,c,rec,'sinSecuencia','var(--alerta)')
    +(vacio?'<div class="panel"><div class="empty">No hay órdenes programadas en este centro.</div></div>':'')}
 /* --- una fila de registro (talla o total) con − + rápidos, número editable y segundas --- */
 const TALLA_TOTAL='(total)';

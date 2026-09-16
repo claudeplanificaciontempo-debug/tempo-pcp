@@ -2663,20 +2663,23 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
    const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=100;o.fase=fase;o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5}];delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
    const etMod=centroEtapaDe('modulos');
-   const fProx=FASES.find(f=>{const g=grupoDe(f);return g&&ordenGrupo(g.grupo)>=0&&ordenGrupo(etMod)>=0&&ordenGrupo(g.grupo)<ordenGrupo(etMod)});
-   const fAqui=FASES.find(f=>{const g=grupoDe(f);return g&&g.grupo===etMod});
+   const fProx=FASES[1]||'1Tejeduria';
+   const fAqui=FASES[2]||'2Planificacion';
    if(!fProx||!fAqui){__check('PE0: la tabla 5 tiene fases del centro y de un paso anterior',false,'etapa de módulos: '+etMod)}
    else{
    const oDisp=mk('WH/EST-DISP',fAqui),oProx=mk('WH/EST-PROX',fProx),oProc=mk('WH/EST-PROC',fAqui);
    S.avance[oProc.id]={centros:{modulos:30}};PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};
    __check("PE1: una orden con cantidades registradas y sin cerrar está EN PROCESO",estadoOrdenCentro(oProc,'modulos',rec)==='proceso');
-   __check("PE1: una orden en la fase de este centro y sin empezar está DISPONIBLE",estadoOrdenCentro(oDisp,'modulos',rec)==='disponible');
-   __check("PE1: una orden todavía en una fase anterior es PRÓXIMA (se ve, no se inicia)",estadoOrdenCentro(oProx,'modulos',rec)==='proxima',fProx+' vs etapa '+etMod);
+   __check("PE1: con el paso anterior hecho, la orden está DISPONIBLE",(S.avance[oDisp.id]={centros:{corte:100}},estadoOrdenCentro(oDisp,'modulos',rec)==='disponible'));
+   S.avance[oProx.id]={centros:{}};   // a la próxima le falta CORTE, que es el paso anterior de SU ruta
+   S.avance[oDisp.id]={centros:{corte:100}};  // a la disponible ya le hicieron corte
+   __check("PE1: es PRÓXIMA porque le falta un paso anterior de SU RUTA, no por el número de fase",estadoOrdenCentro(oProx,'modulos',rec)==='proxima'&&/falta Corte/i.test(motivoEstadoCentro(oProx,'modulos')));
+   __check("PE1: y es DISPONIBLE cuando el paso anterior de su ruta ya está hecho, sin mirar la fase",estadoOrdenCentro(oDisp,'modulos',rec)==='disponible'&&oDisp.fase===oProx.fase||estadoOrdenCentro(oDisp,'modulos',rec)==='disponible');
    {const cola=[{o:oProc,hechas:30},{o:oDisp,hechas:0},{o:oProx,hechas:0}];
     const h=flujoTramoHTML('modulos',rec,cola);
     __check("PE2: la sección En proceso va arriba, con foto, WH, hechas/total, barra y CONTINUAR",h.indexOf('En proceso')>=0&&h.indexOf('En proceso')<h.indexOf('Disponibles')&&h.includes('>CONTINUAR<')&&h.includes('30 de 100')&&h.includes('class="bar"'));
     __check("PE2: y ofrece «Terminar orden» para cerrar el paso",h.includes('terminarOrdenCentro(null,')&&h.includes(oProc.id)&&h.includes('Terminar orden'));
-    __check("PE4: Disponibles ofrece INICIO y Próximas no",h.includes("iniciarTramo('"+oDisp.id)&&!h.includes("iniciarTramo('"+oProx.id)&&h.includes('todavía no:'));
+    __check("PE4: Disponibles ofrece INICIO y Próximas no",h.includes("iniciarTramo('"+oDisp.id)&&!h.includes("iniciarTramo('"+oProx.id)&&h.includes('todavía no ·'));
     __check("PE4: la próxima se ve igual, con la fase en la que está",h.includes(esc(oProx.op))&&h.includes(esc(faseNombre(fProx))));}
    {iniciarTramo(oDisp.id,'modulos',rec);const tr=tramosDe(oDisp.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-90*6e4).toISOString();
     __check("PE3: con un inicio sin fin la orden pasa a EN PROCESO",estadoOrdenCentro(oDisp,'modulos',rec)==='proceso'&&!!tramoAbiertoOrden(oDisp.id,'modulos',null));
@@ -2721,6 +2724,33 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('Min/prenda'));
    __check("OT2: lavado dice que se mide en días",/días de proceso/.test(origenTiempoCentro('lavado').txt));
    __check("OT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · la secuencia de la ruta manda sobre el número de fase */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,ruta,fase)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=100;o.fase=fase;o.ruta=ruta;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const faseTarde=FASES[FASES.length-1];
+   // 1 · fase muy avanzada pero con el paso anterior de SU ruta sin hacer: es PRÓXIMA
+   const oA=mk('WH/SEQ-A',[{centro:'corte',t:1},{centro:'modulos',t:5}],FASES[1]);S.avance[oA.id]={centros:{}};
+   __check("SQ1: con la MISMA fase, la que tiene el paso anterior de su ruta pendiente es PRÓXIMA",estadoOrdenCentro(oA,'modulos',rec)==='proxima'&&/falta Corte/i.test(motivoEstadoCentro(oA,'modulos')));
+   // 2 · fase temprana pero el paso anterior ya está hecho: es DISPONIBLE
+   const oB=mk('WH/SEQ-B',[{centro:'corte',t:1},{centro:'modulos',t:5}],FASES[1]);S.avance[oB.id]={centros:{corte:100}};  // misma fase que oA: solo cambia lo hecho en su ruta
+   __check("SQ1: y la que ya tiene hecho ese paso es DISPONIBLE, con la misma fase: manda la ruta, no el número de fase",estadoOrdenCentro(oB,'modulos',rec)==='disponible'&&oA.fase===oB.fase);
+   // 3 · sin ruta, o el centro no está en ella: brecha visible
+   const oC=mk('WH/SEQ-C',[],FASES[1]);
+   __check("SQ2: sin ruta de producción se muestra como «ruta sin secuencia», ni bloqueada ni habilitada en silencio",estadoOrdenCentro(oC,'modulos',rec)==='sinSecuencia'&&/no tiene ruta/.test(motivoEstadoCentro(oC,'modulos')));
+   const oD=mk('WH/SEQ-D',[{centro:'corte',t:1},{centro:'empaque',t:1}],FASES[1]);
+   __check("SQ2: si el centro no está en la ruta, también es brecha",estadoOrdenCentro(oD,'modulos',rec)==='sinSecuencia'&&/no está en la ruta/.test(motivoEstadoCentro(oD,'modulos')));
+   const oE=mk('WH/SEQ-E',[{centro:'modulos',t:5},{centro:'corte',t:1},{centro:'modulos',t:5}],FASES[1]);
+   __check("SQ2: y si el centro aparece dos veces en la ruta, lo dice",estadoOrdenCentro(oE,'modulos',rec)==='sinSecuencia'&&/dos veces|2 veces/.test(motivoEstadoCentro(oE,'modulos')));
+   {const h=flujoTramoHTML('modulos',rec,[{o:oC,hechas:0},{o:oA,hechas:0},{o:oB,hechas:0}]);
+    __check("SQ3: la sección «Ruta sin secuencia» existe, dice el motivo y deja iniciar (no bloquea en silencio)",h.includes('Ruta sin secuencia')&&h.includes('no tiene ruta de producción')&&h.includes("iniciarTramo('"+oC.id));
+    __check("SQ3: la próxima dice qué paso le falta, no «su fase es anterior»",/todavía no · falta Corte/i.test(h));}
+   {const cmb=cambiosDisponibilidad();__R.cambiosDisp=cmb;
+    __check("SQ4: se puede contar cuántas órdenes cambian de lado con la regla nueva",typeof cmb.aProxima==='number'&&typeof cmb.aDisponible==='number'&&typeof cmb.sinSecuencia==='number'&&cmb.total>=3);}
+   S.ordenes=S.ordenes.filter(o=>![oA,oB,oC,oD,oE].includes(o));[oA,oB,oC,oD,oE].forEach(o=>delete S.avance[o.id]);
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("SQ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
