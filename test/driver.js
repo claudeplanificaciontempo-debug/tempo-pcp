@@ -2635,6 +2635,23 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    LIB.ym=bak.ym;LIB.fases=bak.fases;LIB.hija=bak.hija;LIB.tela=bak.tela;LIB.odc=bak.odc;LIB.fam=bak.fam;LIB.cli=bak.cli;LIB.fam2=null;LIB.verLista=false;
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("F1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* CENTRO · por qué una orden aparece «tarde» */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='corte'))||S.ordenes.find(o=>abierta(o));
+   const mk=(op,fecha)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=50;o.fecha=fecha;delete o.fechaCompromiso;o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5}];delete o.programa;S.ordenes.push(o);delete S.avance[o.id];if(!rutaConfirmada(o))confirmarRuta(o,'persona','prueba');return o};
+   const oVenc=mk('WH/TARDE-1',dsum(hoy(),-20));   // la meta ya pasó
+   const oLejos=mk('WH/TARDE-2',dsum(hoy(),400));  // con muchísimo margen
+   PLAN=null;PLAN_ALL=null;const P=programar();
+   {const d=diagAtraso(oVenc,P,'corte');
+    __check("VT1: la marca se calcula contra la fecha meta de la ORDEN, no contra el paso del centro",d.meta===fechaMetaDe(oVenc)&&d.finPro===(P.ordenes[oVenc.id]||{}).finPro);
+    __check("VT1: con la meta ya vencida se dice «meta vencida», no «va tarde» a secas",d.vencida===true&&/meta vencida/.test(marcaCentro(oVenc,P,'corte')));}
+   {const m=marcaCentro(oLejos,P,'corte');
+    __check("VT2: una orden con margen de sobra no lleva ninguna marca de atraso",!/va tarde|meta vencida/.test(m),m);}
+   {const h=porQueTardeHTML([{o:oVenc},{o:oLejos}],P,'corte');
+    __check("VT3: la cola explica arriba contra qué fecha se compara y cuántas por cada causa",/Por qué aparecen/.test(h)&&/fecha meta de la orden/.test(h)&&/meta ya vencida/.test(h));}
+   S.ordenes=S.ordenes.filter(o=>![oVenc,oLejos].includes(o));[oVenc,oLejos].forEach(o=>delete S.avance[o.id]);
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("VT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
