@@ -100,6 +100,10 @@ El número de personas sale, en este orden:
 La pantalla dice de cuál de los cuatro salió, tanto en el tramo abierto como en la tabla del día. Probado: un módulo de
 8 personas con asistencia de 6 calcula con 6.
 
+El orden se conserva tal cual. Cuando el número sale del **ajuste de la semana**, la pantalla lo dice con estas
+palabras: «planificado para la semana (sin asistencia registrada hoy)», para que se note que nadie registró la
+asistencia de ese día.
+
 ## 3 · Descansos como ventanas de hora
 El horario del centro dejó de ser un número de minutos: ahora es una **lista de ventanas** (por ejemplo 12:30 a 13:30),
 editable en Configuración → Órdenes y materiales → **18 · Descansos por centro**. El cálculo descuenta **solo la parte

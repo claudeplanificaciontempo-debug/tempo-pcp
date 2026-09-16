@@ -225,7 +225,8 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - **Tallas a la vista** durante el tramo: Pedido, Cortado, Hechas y Faltan, con + − +10 +25; sin curva, solo total.
 - **Operarios**: el perfil tablet entra directo a su centro y recurso, sin selectores, y solo ve lo programado en su
   recurso. El alta de usuario pide centro y recurso (obligatorio en módulos) y lista los módulos sin operario.
-- **Personas del tramo**: manda la asistencia real del día; si no hay, el ajuste de la semana; si no, las personas
+- **Personas del tramo**: manda la asistencia real del día; si no hay, el ajuste de la semana (la pantalla dice
+  «planificado para la semana (sin asistencia registrada hoy)»); si no, las personas
   del recurso; y solo si no hay nada, 1, avisado. La pantalla dice de cuál salió.
 - **Descansos**: ventanas de hora por centro (tabla 18); se descuenta solo la parte que cae dentro del tramo.
 - **Segundas** por talla en el mismo flujo: los minutos por prenda se calculan sobre las buenas y también se muestran

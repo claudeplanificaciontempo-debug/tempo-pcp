@@ -1792,6 +1792,17 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    S.turnos.push({id:rec+'|'+hoy(),rec,d:hoy(),pers:6});
    __check("PT: un módulo de 8 personas con asistencia de 6 calcula con 6, y se ve de dónde salió",personasTramo(rec,'modulos',hoy()).pers===6&&personasTramo(rec,'modulos',hoy()).fuente==='asistencia'&&/asistencia/.test(personasTramo(rec,'modulos',hoy()).txt));
    __check("PT: un recurso sin personas ni asistencia calcula con 1 y avisa",personasTramo(null,'corte',hoy()).pers===1&&personasTramo(null,'corte',hoy()).fuente==='defecto');
+   // el ajuste de la semana queda en medio y la pantalla lo dice con esas palabras
+   {const ym=hoy().slice(0,7);const w=semanasMes(ym).find(x=>x.dias.includes(hoy()));
+    const bakA=JSON.stringify(S.params.ajustesCap||null);const bakT2=JSON.stringify(S.turnos||null);
+    S.turnos=(S.turnos||[]).filter(x=>!(x.rec===rec&&x.d===hoy()));
+    S.params.ajustesCap={[ym]:{semanas:{[w.ini]:{[rec]:{pers:5,min:480,efic:100,motivo:'prueba',u:'t',ts:new Date().toISOString()}}}}};
+    const pt=personasTramo(rec,'modulos',hoy());
+    __check("PT: sin asistencia del día manda el ajuste de la semana y la pantalla dice de dónde salió",pt.pers===5&&pt.fuente==='ajuste'&&pt.txt==='planificado para la semana (sin asistencia registrada hoy)');
+    S.turnos.push({id:rec+'|'+hoy(),rec,d:hoy(),pers:6});
+    __check("PT: si además hay asistencia del día, la asistencia manda sobre el ajuste",personasTramo(rec,'modulos',hoy()).pers===6&&personasTramo(rec,'modulos',hoy()).fuente==='asistencia');
+    const ba=JSON.parse(bakA);if(ba)S.params.ajustesCap=ba;else delete S.params.ajustesCap;
+    const bt2=JSON.parse(bakT2);if(bt2)S.turnos=bt2;else S.turnos=[];}
    // 3 · descansos como ventanas
    S.params.horarios={modulos:{ventanas:[{ini:'12:30',fin:'13:30'}]}};
    const hoyD=hoy();

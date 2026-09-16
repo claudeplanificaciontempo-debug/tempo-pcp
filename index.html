@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 22:15';
+const APP_BUILD='2026-09-15 22:19';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1751,7 +1751,7 @@ function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t
 function personasTramo(rec,c,dia){const d=dia||hoy();const r=rec?R(rec):null;
   if(r){const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===d&&x.pers!=null&&x.pers!=='');
     if(t&&+t.pers>0)return {pers:+t.pers,fuente:'asistencia',txt:'asistencia del día'};
-    const aj=ajusteRecDia(r,d);if(aj&&+aj.pers>0)return {pers:+aj.pers,fuente:'ajuste',txt:'ajuste de capacidad de la semana'};
+    const aj=ajusteRecDia(r,d);if(aj&&+aj.pers>0)return {pers:+aj.pers,fuente:'ajuste',txt:'planificado para la semana (sin asistencia registrada hoy)'};
     if(+r.pers>0)return {pers:+r.pers,fuente:'recurso',txt:'personas del recurso'}}
   return {pers:1,fuente:'defecto',txt:'sin dato: se calcula con 1 persona'}}
 function personasRec(rec,c,dia){const p=personasTramo(rec,c,dia);return {pers:p.pers,falta:p.fuente==='defecto',fuente:p.fuente,txt:p.txt}}
