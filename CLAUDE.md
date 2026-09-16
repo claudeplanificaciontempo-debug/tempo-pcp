@@ -621,6 +621,17 @@ curso al corregir y **nunca toca un mes cerrado**. **Tejeduría manual (`progTej
 para `ro.telaDesde`, y una fecha pasada significa «ya se tejíó» — por eso **no** lleva el tope de «no antes de hoy»
 que sí tiene «Arranca». Ver `RUTAS_EMPAQUE_DIAGNOSTICO.md`.
 
+**Pantallas de centro (16-sep-2026):** **«Lo que viene» se eliminó** (bloque y funciones). **Agrupador común en las
+tres pestañas** de todo centro y sub-centro: `cenplan`, `cenluego`, `cen`, `cenejec` — toda lista de órdenes nueva en
+un centro debe llevar el suyo. **Tarjetas de día** con rótulos **Carga / Avance / Pendientes**
+(`datosDiaCentro`/`tarjetasDiaCENHTML`) que filtran la lista con `CEN.dia` (`filaEnDiaCEN`) y avisan del filtro activo.
+**Una sola marca**: `marcaCentroUna(o,P,c)` pinta la más grave de `MARCAS_CEN` (meta vencida > la orden va tarde > este
+paso va tarde) y manda las demás al tooltip; **el cálculo NO se duplica — sigue saliendo de `diagAtraso()`**.
+**`avanceSemanaHTML`** abre la pestaña Planificación con programadas, hechas, pendientes, cumplimiento, atrasadas y el
+% contra el congelado (o «sin congelar»; nunca un número inventado), **por sub-centro** cuando el ítem tiene varias.
+**`abrirCentroDelPerfil()`** lleva a cada perfil de centro a su propio centro una sola vez por sesión (`CEN.auto`), sin
+atar a los perfiles que ven todo. Ver `CENTROS_AJUSTES_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

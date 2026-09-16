@@ -204,6 +204,25 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.39 Pantallas de centro (16-sep)
+- **«Lo que viene» eliminado** de todos los centros y sub-centros, junto con `loQueVieneDe`/`loQueVieneHTML` (no se
+  deja código muerto). La lista sigue diciendo dónde está cada orden con `dondeEstaEnCentro`.
+- **Agrupador común en las TRES pestañas** de todo centro y sub-centro: `cenplan` (Órdenes de la semana), `cenluego`
+  (Vienen después), `cen` (la cola, ya lo tenía) y `cenejec` (Desviaciones por orden). Cliente, ODC, Familia, Fase y
+  Tela. Prueba que recorre las 18 combinaciones (6 ítems × 3 pestañas) y falla nombrando la pantalla.
+- **Tarjetas de día** (`datosDiaCentro`/`tarjetasDiaCENHTML`): **Carga** (prendas programadas + min programados /
+  disponibles + %), **Avance** (hechas registradas ese día) y **Pendientes**. Al tocarlas, `CEN.dia` filtra la lista a
+  las órdenes de ese día con prendas pendientes (`filaEnDiaCEN`), con aviso del filtro activo; tocar de nuevo lo quita.
+- **Una sola marca** (`marcaCentroUna` + `MARCAS_CEN`): la más grave (meta vencida > la orden va tarde > este paso va
+  tarde), las demás en el tooltip con contador. **El cálculo sigue siendo `diagAtraso()`**: solo cambia la
+  presentación. `marcaCentro` (la vieja, con todas las etiquetas) sigue existiendo para otras pantallas.
+- **Avance de la semana** arriba de Planificación (`avanceSemanaCentro`/`avanceSemanaHTML`): programadas, hechas,
+  pendientes, % de cumplimiento, órdenes atrasadas y % contra el programa congelado (o **«sin congelar»**, sin inventar
+  un número). Los ítems con sub-áreas lo muestran **por sub-centro** más el total.
+- **`abrirCentroDelPerfil()`**: cada perfil de centro abre directo en el suyo (`CEN.auto`, una sola vez por sesión para
+  no pisar la navegación del usuario); un perfil con `centros:['*']` no queda atado a ninguno.
+- Ver `CENTROS_AJUSTES_REPORTE.md`.
+
 ### 2.38 Rutas que no terminan en Empaque (16-sep) — diagnosticado, SIN aplicar
 - **No estaban mal ordenadas: estaban incompletas.** De 348 rutas malas, **0 contienen Empaque en otra posición**,
   0 están desordenadas, 0 editadas a mano y **0 tienen OT cargadas**. 338 tienen **un solo paso** de producción
