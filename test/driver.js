@@ -551,6 +551,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
   {const antes=__R.errors.length;mReporteTarea();__check('mReporteTarea renderiza sin errores',__R.errors.length===antes);cerrar()}
   {const antes=__R.errors.length;page='ordenes';render();__check('página órdenes renderiza con las órdenes de la Parte 2',__R.errors.length===antes);}
+  /* MEDICIÓN sobre las órdenes REALES cargadas del volcado (antes de restaurar el estado de prueba) */
+  {const ab=S.ordenes.filter(abierta);
+   const cd=cambiosDisponibilidad();const rs=rutasSinSecuencia();
+   __R.real={ordenes:S.ordenes.length,abiertas:ab.length,
+     conRutaPro:ab.filter(o=>pasosProDe(o).length).length,
+     cambios:cd,rutas:{sinRuta:rs.sinRuta.length,repetido:rs.repetido.length,fueraDeRuta:rs.fueraDeRuta.length,total:rs.total},
+     ojalBoton:(()=>{const b=brechasOjalBoton();return{sinConfirmar:b.sinConf.length,sinRegla:b.sinRegla.length,conCero:b.conCero.length,ej:b.sinConf.slice(0,5)}})(),
+     capLavado:capacidadPaso('lavado'),porDiasLavado:centroPorDias('lavado'),
+     enRuta:{lavado:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='lavado')).length,plancha:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='plancha')).length,botones:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='botones')).length}};
+   __check("MED: se pudo medir sobre las órdenes cargadas del volcado real",__R.real.abiertas>100,JSON.stringify({abiertas:__R.real.abiertas}));}
   S.ordenes=bakOrd;S.avance={};PLAN=null;PLAN_ALL=null;
   try{localStorage.__fase="parte2 fin"}catch(e){}
   /* ===== Arreglos previos al Bloque K: calendario manda, lo configurado no se sobrescribe, tabla de fases no se pisa ===== */
@@ -2718,11 +2728,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* TERMINADOS · de dónde sale el tiempo de cada sub-área */
   {const antes=__R.errors.length;
    __check("OT1: plancha viene con 2 min/prenda sembrados en la columna editable",(sembrarTerminados(),+((CE('plancha')||{}).minEstandar)===2));
-   __check("OT1: lavado es proceso por días y no consume capacidad",centroPorDias('lavado')===true&&diasEsperaCentro('lavado')>=3);
+   __check("OT1: lavado NO se asume: queda pendiente de confirmar si ocupa planta, con sus días cargados",(sembrarCapPasos(),capacidadPaso('lavado')==='pend'&&centroPorDias('lavado')===false&&diasEsperaCentro('lavado')>=3));
    {const or=origenTiempoCentro('botones');
     __check("OT2: ojales y botones dice de dónde sale su tiempo (LMO y, si hay, la tabla de ojal/botón que la reemplaza)",/operaciones de la LMO/.test(or.txt)&&/operaciones mapeadas/.test(or.det));}
    __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('Min/prenda'));
-   __check("OT2: lavado dice que se mide en días",/días de proceso/.test(origenTiempoCentro('lavado').txt));
+   __check("OT2: y el consolidado lo dice como brecha, no como 0 mudo",/falta decidir si ocupa planta/.test(origenTiempoCentro('lavado').txt)&&/pendiente/.test(origenTiempoCentro('lavado').brecha||''));
    __check("OT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* PISO · la secuencia de la ruta manda sobre el número de fase */
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
@@ -2783,6 +2793,56 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const br=JSON.parse(bakR);if(br)S.params.reglasRuta=br;else delete S.params.reglasRuta;
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';ORDF.tab='ord';render();
    __check("DR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* AJUSTES FINALES · cero confirmado, lavado por modalidad y la brecha de rutas sin secuencia */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   // 2 · una regla CONFIRMADA con 0 aplica 0; una sin confirmar no aplica y es brecha
+   {const bakT=JSON.stringify(S.params.tiemposOjalBoton||null);
+    const k=S.categorias.find(x=>{const sp={};opsDe(x).forEach(y=>{sp[y.centro]=(sp[y.centro]||0)+(+y.sam||0)});return sp.botones!=null});
+    if(!k)__check('OB0: hay alguna categoría que pase por ojales y botones',false,'ninguna categoría con SAM de botones');
+    else{
+     const nom=k.n||'';
+     S.params.tiemposOjalBoton=[{match:nom,ojales:0,botones:0}];  // confirmada (sin sinConfirmar) y en CERO
+     __check("OB1: una regla CONFIRMADA en 0 aplica 0 (cero es cero, no se cae al SAM de la LMO)",samPorCentro(k).botones===0);
+     S.params.tiemposOjalBoton=[{match:nom,ojales:0.47,botones:0.59}];
+     __check("OB1: y una regla confirmada con valores reemplaza al SAM",Math.abs(samPorCentro(k).botones-1.06)<1e-9);
+     S.params.tiemposOjalBoton=[{match:nom,ojales:0,botones:0,sinConfirmar:true}];
+     const sam=samPorCentro(k).botones;
+     __check("OB2: una regla SIN CONFIRMAR no se aplica: manda el SAM de la LMO",sam!==0);
+     const b=brechasOjalBoton();
+     __check("OB2: y esa categoría sale como BRECHA, no en silencio",b.sinConf.some(x=>x.indexOf(nom)===0));
+     __check("OB2: el consolidado de Terminados lo muestra como brecha",!!origenTiempoCentro('botones').brecha&&/SIN CONFIRMAR/.test(origenTiempoCentro('botones').brecha));
+    }
+    const bt=JSON.parse(bakT);if(bt)S.params.tiemposOjalBoton=bt;else delete S.params.tiemposOjalBoton;}
+   // 3 · lavado: la modalidad decide, y «pendiente» no se asume
+   {const bakE=JSON.stringify(S.params.esperasPaso||null);const bakS=JSON.stringify(S.params.capPasoSembrado||null);
+    delete S.params.capPasoSembrado;S.params.esperasPaso=JSON.parse(JSON.stringify(defEsperasPaso()));
+    sembrarCapPasos();
+    const f=esperasPaso().filter(x=>x.paso==='lavado'&&!x.sinRegla);
+    __check("LV1: la fila de Quito queda como lead time y la de planta, PENDIENTE de confirmar",f.some(x=>/quito/i.test(x.nota||'')&&x.cap==='no')&&f.some(x=>!/quito/i.test(x.nota||'')&&x.cap==='pend'));
+    __check("LV1: mientras haya una pendiente no se asume nada: ni ocupa ni deja de ocupar",capacidadPaso('lavado')==='pend'&&capacidadPendiente('lavado')===true&&centroPorDias('lavado')===false);
+    __check("LV1: y la suposición anterior del centro quedó retirada",(CE('lavado')||{}).sinCapacidad===undefined);
+    esperasPaso().filter(x=>x.paso==='lavado'&&!/quito/i.test(x.nota||'')).forEach(x=>{x.cap='no'});
+    __check("LV2: si confirmas que NO ocupa planta, pasa a medirse solo en días",capacidadPaso('lavado')==='no'&&centroPorDias('lavado')===true&&!capacidadPendiente('lavado'));
+    esperasPaso().filter(x=>x.paso==='lavado'&&!/quito/i.test(x.nota||'')).forEach(x=>{x.cap='si'});
+    __check("LV2: y si confirmas que SÍ ocupa, vuelve a contar como capacidad de planta",capacidadPaso('lavado')==='si'&&centroPorDias('lavado')===false);
+    {const h=celdaCapPasoHTML(0,{cap:''});__check("LV3: la columna está en la tabla de esperas y avisa cuando falta confirmar",/setCapPaso\(0,/.test(h)&&/sin confirmar/.test(h));}
+    const be=JSON.parse(bakE);if(be)S.params.esperasPaso=be;else delete S.params.esperasPaso;
+    const bs=JSON.parse(bakS);if(bs)S.params.capPasoSembrado=bs;else delete S.params.capPasoSembrado;}
+   // 1 · la brecha de rutas sin secuencia, en Reportería
+   {const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+    const mk=(op,ruta)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=10;o.ruta=ruta;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+    const oSin=mk('WH/RSS-1',[]);
+    const oRep=mk('WH/RSS-2',[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'corte',t:1}]);
+    const oFue=mk('WH/RSS-3',[{centro:'modulos',t:5}]);S.avance[oFue.id]={centros:{corte:5}};
+    const r=rutasSinSecuencia();
+    __check("RS1: la brecha cuenta por motivo: sin ruta, centro repetido y avance fuera de la ruta",r.sinRuta.some(x=>x.o===oSin)&&r.repetido.some(x=>x.o===oRep)&&r.fueraDeRuta.some(x=>x.o===oFue));
+    const h=rutasSinSecuenciaHTML();
+    __check("RS2: el panel lista las órdenes con su motivo y deja editar la ruta",/Rutas sin secuencia/.test(h)&&h.includes(esc(oSin.op))&&h.includes(esc(oRep.op))&&h.includes(esc(oFue.op))&&/editar ruta/.test(h));
+    page='reporteria';render();
+    __check("RS3: y está en Reportería, no en Mi centro",/Rutas sin secuencia/.test(document.getElementById('p-reporteria').innerHTML)&&!/Rutas sin secuencia/.test(flujoTramoHTML('modulos',null,[])));
+    S.ordenes=S.ordenes.filter(o=>![oSin,oRep,oFue].includes(o));[oSin,oRep,oFue].forEach(o=>delete S.avance[o.id]);}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("AF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

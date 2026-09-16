@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:54';
+const APP_BUILD='2026-09-16 11:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1030,8 +1030,8 @@ function motorConfigHTML(){const m=motorProgramacion();const e=esperasPaso();con
    <div class="row" style="align-items:flex-end"><div><label>Criterio</label><select onchange="setMotor(this.value)"><option value="atras" ${m==='atras'?'selected':''}>Hacia atrás: desde la fecha de entrega (vigente)</option><option value="adelante" ${m==='adelante'?'selected':''}>Hacia adelante: lo antes posible (el de siempre)</option></select></div>
     <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px 12px;max-width:640px">Hacia atrás: cada orden parte de su fecha comprometida (o la pedida) y se coloca de empaque hacia corte, cada paso terminando el día laborable anterior a que empiece el siguiente, menos la espera del paso. Si no cabe, se programa igual hacia adelante y queda en Advertencias de fecha con días tarde, paso atascado y fecha posible. Las órdenes de una misma colección (ODC) van tarde juntas.</p></div>
    <h4 style="margin:12px 0 6px">Esperas después de un paso <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">· días calendario · no existían en el sistema: sembradas de tu mensaje del 14-sep</span><span class="spacer"></span><button class="btn ghost sm" onclick="addEsperaRow()">Agregar</button></h4>
-   <table style="font-size:var(--fs-s)"><thead><tr><th>Paso</th><th>Aplica a (categorías/familias, coma)</th><th class="num" style="width:90px">Días</th><th>Nota</th><th style="width:110px">Sin regla</th><th></th></tr></thead><tbody>
-   ${e.map((r,i)=>`<tr style="${r.sinRegla?'opacity:.75':''}"><td><select onchange="setEsperaRow(${i},'paso',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.paso===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td><td><input type="text" style="width:220px" value="${esc(r.match||'')}" placeholder="(general del paso)" onchange="setEsperaRow(${i},'match',this.value)"></td><td class="num"><input type="number" min="0" style="width:70px" value="${r.dias}" onchange="setEsperaRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="valor sembrado; confírmalo">est.</span>':''}</td><td><input type="text" style="width:300px" value="${esc(r.nota||'')}" onchange="setEsperaRow(${i},'nota',this.value)"></td><td><label title="una fila sin regla no se aplica: solo se reporta"><input type="checkbox" ${r.sinRegla?'checked':''} onchange="setEsperaRow(${i},'sinRegla',this.checked)"> ${r.sinRegla?'<span class="tag t-alerta">no se aplica</span>':''}</label></td><td><button class="btn ghost sm" onclick="delEsperaRow(${i})">×</button></td></tr>`).join('')}</tbody></table>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Paso</th><th>Aplica a (categorías/familias, coma)</th><th class="num" style="width:90px">Días</th><th style="width:150px" title="un paso medido en días puede ocupar planta (lavandería propia) o ser solo tiempo de espera (proveedor)">¿Ocupa capacidad?</th><th>Nota</th><th style="width:110px">Sin regla</th><th></th></tr></thead><tbody>
+   ${e.map((r,i)=>`<tr style="${r.sinRegla?'opacity:.75':''}"><td><select onchange="setEsperaRow(${i},'paso',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.paso===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td><td><input type="text" style="width:220px" value="${esc(r.match||'')}" placeholder="(general del paso)" onchange="setEsperaRow(${i},'match',this.value)"></td><td class="num"><input type="number" min="0" style="width:70px" value="${r.dias}" onchange="setEsperaRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="valor sembrado; confírmalo">est.</span>':''}</td>${celdaCapPasoHTML(i,r)}<td><input type="text" style="width:300px" value="${esc(r.nota||'')}" onchange="setEsperaRow(${i},'nota',this.value)"></td><td><label title="una fila sin regla no se aplica: solo se reporta"><input type="checkbox" ${r.sinRegla?'checked':''} onchange="setEsperaRow(${i},'sinRegla',this.checked)"> ${r.sinRegla?'<span class="tag t-alerta">no se aplica</span>':''}</label></td><td><button class="btn ghost sm" onclick="delEsperaRow(${i})">×</button></td></tr>`).join('')}</tbody></table>
    ${e.some(r=>r.sinRegla)?`<p class="warn" style="font-size:var(--fs-xs);margin-top:8px"><b>Esperas sin regla (no se aplican):</b> ${e.filter(r=>r.sinRegla).map(r=>esc(r.nota||r.paso)).join(' · ')}</p>`:''}
    <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Las esperas de tela (días del proveedor en laborables, ${S.params.diasTintBodega} día(s) de tintorería a bodega) ya viven en sus tablas y el motor las respeta. Tejeduría y tintorería se arman por tela y por color (lotes), no orden por orden: siguen con su lógica de lote.</p>
   </div></div>`}
@@ -3455,7 +3455,7 @@ function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.
 function togSet(obj,k,v){obj[k]=obj[k]||new Set();if(obj[k].has(v))obj[k].delete(v);else obj[k].add(v);if(!obj[k].size)obj[k]=null;render()}
 /* Ruta por defecto: marca editable por centro (Configuración → Centros). Se siembra UNA vez en corte, confección y
    empaque; si la usuaria la cambia, no se vuelve a pisar. */
-function sembrarRutaDefecto(){sembrarTerminados();if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
+function sembrarRutaDefecto(){sembrarTerminados();sembrarCapPasos();if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
 function centrosRutaDefecto(){sembrarRutaDefecto();return S.centros.filter(c=>c.area==='pro'&&c.rutaDefecto).map(c=>c.id)}
 /* órdenes cargadas que contradicen la ruta por defecto: les falta un paso marcado por defecto (o va por maquila) */
 function ordenesContraRutaDefecto(){const def=centrosRutaDefecto();const out=[];
@@ -3819,21 +3819,73 @@ function grupoPlanDe(cid){const c=CE(cid)||{};return c.grupoPlan||GRUPO_PLAN_DEF
 function subAreasDe(g){return S.centros.filter(c=>c.area==='pro'&&grupoPlanDe(c.id)===g).map(c=>c.id).sort((a,b)=>ordenPaso(a)-ordenPaso(b))}
 function censDeGrupo(g){const l=subAreasDe(g);return l.length?l:(CENTROS_PROD[g]||[g])}
 /* un centro que se mide en DÍAS (lavado) no consume capacidad de planta: su tiempo es la espera del paso */
-function centroPorDias(cid){const c=CE(cid)||{};return !!c.sinCapacidad}
+function centroPorDias(c){const cp=capacidadPaso(c);if(cp)return cp==='no';return !!((CE(c)||{}).sinCapacidad)}
+function capacidadPendiente(c){return capacidadPaso(c)==='pend'}
 function diasEsperaCentro(cid){const f=esperasPaso().filter(x=>x.paso===cid&&!x.sinRegla);return f.length?Math.max(...f.map(x=>+x.dias||0)):0}
 /* siembra idempotente de lo que la usuaria dictó (16-sep): plancha 2 min/prenda y lavado como proceso por días */
 function sembrarTerminados(){if(S.params.terminadosSembrado)return;
   const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;p.minEstandarEstimado=true;if(typeof bitacora==='function')bitacora('Terminados: plancha sembrada en 2 min/prenda (dictado 16-sep; editable en Configuración → Centros)')}
-  const l=CE('lavado');if(l&&l.sinCapacidad===undefined){l.sinCapacidad=true;if(typeof bitacora==='function')bitacora('Terminados: lavado marcado como proceso por días (no consume capacidad de planta; la espera sale de la tabla de esperas por paso)')}
   S.params.terminadosSembrado=new Date().toISOString()}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
+/* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
+function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
+  S.categorias.forEach(k=>{const sp={};opsDe(k).forEach(x=>{sp[x.centro]=(sp[x.centro]||0)+(+x.sam||0)});
+    if(sp.botones==null)return;                       // esa categoría no pasa por ojales y botones
+    const ob=ojalBotonDe(k);
+    if(!ob){sinRegla.push(k.n||k.id);return}
+    if(ob.sinConfirmar){sinConf.push((k.n||k.id)+' ('+ob.match+')');return}
+    if(((+ob.ojales||0)+(+ob.botones||0))===0)conCero.push(k.n||k.id)});
+  return{sinConf,sinRegla,conCero}}
+/* ---------- 3 · un paso medido en días: ¿consume capacidad de planta o es solo lead time? ---------- */
+const CAP_PASO=[['si','sí, ocupa planta'],['no','no: solo lead time'],['pend','pendiente de confirmar']];
+function capacidadPaso(c){const f=esperasPaso().filter(x=>x.paso===c&&!x.sinRegla);if(!f.length)return null;
+  if(f.some(x=>x.cap==='si'))return 'si';
+  if(f.some(x=>!x.cap||x.cap==='pend'))return 'pend';   // sin definir NO se asume
+  return 'no'}
+function sembrarCapPasos(){if(S.params.capPasoSembrado)return;
+  esperasPaso().forEach(f=>{if(f.cap)return;
+    if(f.paso==='lavado')f.cap=/quito/i.test(f.nota||'')?'no':'pend'; // Quito: lead time. En planta: lo confirma ella.
+  });
+  const l=CE('lavado');if(l&&l.sinCapacidad===true)delete l.sinCapacidad; // se quita la suposición anterior
+  S.params.capPasoSembrado=new Date().toISOString();
+  if(typeof bitacora==='function')bitacora('Lavado: Quito queda como lead time (no ocupa planta) y el lavado en planta queda PENDIENTE de confirmar si ocupa capacidad; no se asume ninguno de los dos')}
+function setCapPaso(i,v){const r=esperasPaso()[i];if(!r)return;const antes=r.cap||'pendiente';r.cap=v;
+  bitacora('Espera de '+(r.paso||'?')+(r.match?' ['+r.match+']':'')+': consume capacidad '+antes+' → '+v+' ('+quienFirma()+')');save();render()}
+/* ---------- 1 · brecha de rutas sin secuencia, para Reportería ---------- */
+function rutasSinSecuencia(){const out={sinRuta:[],repetido:[],fueraDeRuta:[]};
+  S.ordenes.filter(abierta).forEach(o=>{const ru=pasosProDe(o);
+    if(!ru.length){out.sinRuta.push({o,det:'no tiene ningún paso de producción en su ruta'});return}
+    const rep=[...new Set(ru.filter((c,i)=>ru.indexOf(c)!==i))];
+    if(rep.length)out.repetido.push({o,det:rep.map(nCen).join(', ')+' aparece más de una vez'});
+    const ac=(S.avance[o.id]||{}).centros||{};
+    const fuera=Object.keys(ac).filter(c=>(+ac[c]||0)>0&&CE(c)&&CE(c).area==='pro'&&ru.indexOf(c)<0);
+    if(fuera.length)out.fueraDeRuta.push({o,det:'tiene avance en '+fuera.map(nCen).join(', ')+', que no está en su ruta'})});
+  out.total=out.sinRuta.length+out.repetido.length+out.fueraDeRuta.length;return out}
+function rutasSinSecuenciaHTML(){const r=rutasSinSecuencia();
+  const filas=[].concat(r.sinRuta.map(x=>({...x,m:'sin ruta'})),r.repetido.map(x=>({...x,m:'centro repetido'})),r.fueraDeRuta.map(x=>({...x,m:'paso fuera de la ruta'})));
+  return `<div class="panel"${r.total?' style="border:2px solid var(--alerta)"':''}><h3>Rutas sin secuencia <span class="note">${r.total} órdenes · el piso no puede saber por la ruta si ya les toca en un centro</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Mi centro decide «disponible» o «próxima» con la <b>secuencia de la ruta</b> de cada orden. Estas no la tienen clara, así que salen en la sección «Ruta sin secuencia» del centro: se ven y se pueden iniciar, pero conviene arreglarles la ruta.</p>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj ${r.sinRuta.length?'warn':''}"><div class="v">${r.sinRuta.length}</div><div class="k">Sin ruta de producción</div></div>
+    <div class="kpi tarj ${r.repetido.length?'warn':''}"><div class="v">${r.repetido.length}</div><div class="k">Con un centro repetido en la ruta</div></div>
+    <div class="kpi tarj ${r.fueraDeRuta.length?'warn':''}"><div class="v">${r.fueraDeRuta.length}</div><div class="k">Con avance en un paso fuera de su ruta</div></div>
+   </div>
+   ${filas.length?`<div class="scroll" style="max-height:420px;margin-top:10px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Motivo</th><th>Qué pasa</th><th>Ruta actual</th><th></th></tr></thead><tbody>
+    ${filas.slice(0,300).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td>${esc(x.o.cliente||'')}</td><td><span class="tag t-alerta">${esc(x.m)}</span></td><td>${esc(x.det)}</td><td style="font-size:var(--fs-xs)">${pasosProDe(x.o).map(c=>esc(nCen(c))).join(' → ')||'—'}</td><td>${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${x.o.id}')">editar ruta</button>`:''}</td></tr>`).join('')}
+    </tbody></table>${filas.length>300?`<p class="mut">… y ${filas.length-300} más</p>`:''}</div>`:'<div class="empty">Ninguna: todas las órdenes abiertas tienen una secuencia clara.</div>'}
+  </div></div>`}
+function celdaCapPasoHTML(i,r){const v=r.cap||'pend';
+  return `<td><select onchange="setCapPaso(${i},this.value)">${CAP_PASO.map(([k,n])=>`<option value="${k}" ${v===k?'selected':''}>${esc(n)}</option>`).join('')}</select>${v==='pend'?'<br><span class="tag t-alerta" style="font-size:var(--fs-xs)">sin confirmar</span>':''}</td>`}
 function origenTiempoCentro(c){const ce=CE(c)||{};
   if(centroPorDias(c))return{txt:'días de proceso (tabla de esperas por paso)',det:'no consume capacidad de planta'};
-  if(c==='botones'){const n=(S.operaciones||[]).filter(x=>x.centro===c).length;const t=tiemposOjalBoton().filter(r=>r.match&&!r.sinConfirmar).length;
-    return{txt:'operaciones de la LMO'+(t?' + tabla de ojales y botones':''),det:n+' operaciones mapeadas'+(t?' · '+t+' reglas confirmadas de ojal/botón, que REEMPLAZAN al SAM de la LMO en las categorías que coinciden':' · la tabla de ojal/botón no tiene reglas confirmadas: manda el SAM de la LMO')}}
+  if(capacidadPendiente(c))return{txt:'días de proceso · falta decidir si ocupa planta',det:diasEsperaCentro(c)?num(diasEsperaCentro(c))+' días de espera cargados':'sin días cargados',brecha:'pendiente: dinos en la tabla de esperas por paso si esta modalidad ocupa capacidad de planta o es solo tiempo de espera. Mientras tanto no se asume ninguna de las dos.'};
+  if(c==='botones'){const n=(S.operaciones||[]).filter(x=>x.centro===c).length;const t=tiemposOjalBoton().filter(r=>r.match&&!r.sinConfirmar).length;const b=brechasOjalBoton();
+    return{txt:'operaciones de la LMO'+(t?' + tabla de ojales y botones':''),
+      det:n+' operaciones mapeadas'+(t?' · '+t+' reglas confirmadas, que REEMPLAZAN al SAM de la LMO (incluido el 0: cero es cero)':' · sin reglas confirmadas'),
+      brecha:(b.sinConf.length?b.sinConf.length+' categorías con una regla SIN CONFIRMAR: hoy usan el SAM de la LMO. Confírmalas o quítalas: '+b.sinConf.slice(0,6).join(', '):'')+(b.sinRegla.length?(b.sinConf.length?' · ':'')+b.sinRegla.length+' categorías pasan por ojales y botones y no tienen regla':'')}}
   if(+ce.minEstandar>0)return{txt:'columna «Min/prenda» del centro',det:num(ce.minEstandar,2)+' min'+(ce.minEstandarEstimado?' (sembrado, confírmalo)':'')};
   const n=(S.operaciones||[]).filter(x=>x.centro===c).length;
-  return n?{txt:'operaciones de la LMO',det:n+' operaciones mapeadas'}:{txt:'sin origen',det:'ni min/prenda en el centro ni operaciones mapeadas'}}
+  return n?{txt:'operaciones de la LMO',det:n+' operaciones mapeadas'}:{txt:'sin origen',det:'ni min/prenda en el centro ni operaciones mapeadas',brecha:'sin minutos por prenda no hay horas'}}
 function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
   const h=hoy();const filas=cens.map(c=>{const ce=CE(c)||{};
     const ords=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c));
@@ -3854,9 +3906,9 @@ function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
       <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.min/60)}</td>
       <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.prog/60)}</td>
       <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.capSem/60)}</td>
-      <td>${f.porDias?'<span class="mut">no ocupa capacidad</span>':(ocup==null?'<span class="mut">—</span>':`<span class="tag ${ocup>100?'t-alerta':ocup>85?'t-aviso':'t-ok'}">${ocup}%</span>`)}</td>
+      <td>${capacidadPendiente(f.c)?'<span class="tag t-alerta" title="no se asume: dilo en la tabla de esperas por paso">pendiente de confirmar si ocupa planta</span>':f.porDias?'<span class="mut">no ocupa capacidad (solo lead time)</span>':(ocup==null?'<span class="mut">—</span>':`<span class="tag ${ocup>100?'t-alerta':ocup>85?'t-aviso':'t-ok'}">${ocup}%</span>`)}</td>
       <td style="font-size:var(--fs-xs)">${f.porDias?('por <b>días</b>: '+(f.dias?num(f.dias)+' días de espera':'<span class="tag t-alerta">sin días en la tabla de esperas</span>')+' · no consume capacidad de planta'):('por <b>minutos</b> de planta'+(f.dias?' · '+num(f.dias)+' días de espera antes del siguiente paso':''))}</td>
-      <td style="font-size:var(--fs-xs)">${(()=>{const or=origenTiempoCentro(f.c);return '<b>'+esc(or.txt)+'</b><br><span class="mut">'+esc(or.det)+'</span>'})()}</td></tr>`}).join('')}
+      <td style="font-size:var(--fs-xs)">${(()=>{const or=origenTiempoCentro(f.c);return '<b>'+esc(or.txt)+'</b><br><span class="mut">'+esc(or.det)+'</span>'+(or.brecha?'<br><span class="tag t-alerta">'+esc(or.brecha)+'</span>':'')})()}</td></tr>`}).join('')}
    </tbody></table>
    ${falta.length?`<div class="warn" style="margin-top:10px;font-size:var(--fs-s)"><b>${falta.length} ${falta.length===1?'sub-área':'sub-áreas'} sin minutos por prenda</b> (${falta.map(f=>esc(nCen(f.c))).join(', ')}): mientras falte ese dato su carga sale en <b>0 horas</b>, no porque no haya trabajo. Cárgalo en Configuración → Centros (columna «Min/prenda») o mapea sus operaciones en Configuración → Operaciones.</div>`:''}
    ${cens.some(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)))?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)"><b>Sub-áreas sin ninguna orden en su ruta:</b> ${cens.filter(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c))).map(c=>esc(nCen(c))).join(', ')}. El motor solo programa los pasos que están en la ruta de la orden: si la ruta no los trae, no hay nada que programar. Se corrige en Órdenes → Rutas.</div>`:''}
@@ -5302,7 +5354,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}`;
+   ${resumen()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
