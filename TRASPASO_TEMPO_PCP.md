@@ -204,6 +204,24 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.42 Ruta por defecto, firma con técnica y tejeduría programado/tejido (16-sep)
+- **`sembrarRutaDefecto22()`**: la ruta por defecto de las 22 (aprobada) corre con las demás siembras.
+- **La firma de ruta incluye ahora `ordenCentrosAuto(o)`** (técnica → estampado, puntadas → bordado): agregar o quitar
+  la técnica de una orden rehace su ruta no editada a mano. **`rutaProSugerida(o,rehacer)`**: con `rehacer=true` los
+  centros que dependen de la ORDEN se rehacen desde la técnica/puntadas de ahora — así se pueden **quitar**; sin él
+  (completar rutas) no se pierde ningún paso.
+- **Auditoría solo cuando la ruta cambia**: si la firma quedó vieja pero la ruta resultante es la misma, se vuelve a
+  sellar en silencio; una editada a mano que no cambiaría **no se marca**. Tres pruebas lo fijan.
+- **Tejeduría: columna Estado** (`estadoTej`, `TEJ_ESTADOS`). **Programado** no acepta fecha pasada (al crear y al
+  editar); **Tejido** sí, con `kgReal`, `confU` y `confTs`. `marcarTejido`/`desmarcarTejido` exigen `puedeTejer()`
+  (tejeduría o planificación); deshacer pide motivo. **El motor usa los kg REALES** de lo tejido.
+- **`tejCuentaComoLista(p)`** es lo que decide si una fila es tela lista. La regla «lo programado con día pasado sin
+  confirmar NO es tela lista» vive detrás de **`S.params.tejEstricto`** (interruptor, solo planificación),
+  **apagado por defecto**: mientras lo esté, el motor se comporta como siempre. `previaTejEstricto()` corre el motor
+  con y sin la regla y dice cuántas filas sin confirmar hay, cuántos kg y **qué órdenes cambiarían su fecha de tela
+  lista**; no deja la regla encendida. Panel `tejEstrictoPanelHTML` en Tejeduría.
+- Ver `TEJEDURIA_Y_RUTAS_REPORTE.md`.
+
 ### 2.41 «0 hechas» vs «sin registros» y qué es «Vienen después» (16-sep)
 - **`hayRegistroEn(c,d)`**: hubo registro si hay avance por talla o por total, un **tramo cerrado**, la **producción de
   un turno** o un **paro registrado**. Un turno sin producción **no** cuenta. `diasConTurno`/`registroSemana` solo miran

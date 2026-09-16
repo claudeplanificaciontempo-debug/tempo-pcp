@@ -651,6 +651,17 @@ comprobar antes si hubo registro.** **«Vienen después» se mantiene**: `enSem`
 (`pzSem===0 && paso.ini>dom`) son **disjuntos**, no repite nada; el «Lo que viene» que se eliminó sí repetía, porque
 mostraba órdenes en un paso anterior y la lista principal ya dice dónde está cada una. Ver `SIN_REGISTROS_REPORTE.md`.
 
+**Tejeduría: programado vs tejido (16-sep-2026).** Una fila de `progTej()` lleva **`estado`**: `prog` (fecha **no
+anterior a hoy**) o `tejido` (cualquier fecha, con `kgReal`, `confU`, `confTs`). `marcarTejido`/`desmarcarTejido`
+exigen `puedeTejer()` = tejeduría o planificación. **El motor usa `tejCuentaComoLista(p)` y los kg REALES de lo
+tejido.** La regla «lo **programado** con día pasado sin confirmar no es tela lista» está detrás del interruptor
+**`S.params.tejEstricto`** (solo planificación), **apagado por defecto**; `previaTejEstricto()` mide su efecto
+corriendo el motor con y sin ella y **la deja como estaba**. No aplicar el tope de fecha a una fila `tejido`: es un
+hecho, no un compromiso. **Rutas**: `firmaRutaDe(o)` incluye `ordenCentrosAuto(o)`, así que cambiar técnica o
+puntadas rehace la ruta; `rutaProSugerida(o,rehacer)` con `rehacer=true` **puede quitar** estampado/bordado, sin él
+nunca pierde un paso. **Escribir auditoría solo si la ruta cambia de verdad** — ni marcas ni registros vacíos.
+Ver `TEJEDURIA_Y_RUTAS_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
