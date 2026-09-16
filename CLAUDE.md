@@ -595,6 +595,18 @@ un tercer nombre (se eliminó el `o.fecha<h` que tenía `vGerencia`). **Cierre m
 pasados (`cerrado:true`, no se vuelven a tocar). Márgenes: solo una nota, pendiente de **Costos TEMPO** (otro repo).
 Ver `CONSULTAS_GERENCIALES_REPORTE.md`.
 
+**Orden abierta: UNA sola definición (16-sep-2026).** `abiertaDe(o)` = no archivada (`ESTADOS_CERRADOS`) + **Estado OP
+de Odoo no cerrado** (`estadosOPCerrados()`, `done`/`cancel`, param `S.params.estadoOPCerrado`) + **fase no de cierre**
+(columna «sistema» de la tabla de fases). `abierta()` **delega** en ella — no escribir un segundo criterio en ninguna
+pantalla. `lanzada(o)` = abierta **con WH** (la cifra del listado del 13-sep; las de diseño no se pueden programar).
+Reales: **1.206 cargadas = 1.078 abiertas + 51 archivadas + 77 con Estado OP cerrado**; 582 lanzadas, 279 en planta.
+`conteoOrdenesHTML()` en Reportería explica de dónde sale cada cifra y una prueba fija la descomposición. Antes había
+tres números (590 / 1.155 / 1.206) porque `abierta()` miraba el estado interno, `esFacturada()` la tabla de fases y
+**nadie miraba el Estado OP de Odoo**. **Minuto estimado de confección**: `k.minEstConf`/`minEstimadoConf(k)` entra a
+`samPorCentro` **solo sin hoja LMO**, marcado estimado; sin valor la categoría queda en **0 con brecha**
+(`categoriasSinHojaHTML`), nunca un valor inventado, y un 0 a mano es 0 confirmado. **JEANS→DENIM** ya corre en
+`sembrarDecisiones16()` (autorizado 16-sep), una sola vez y sin borrar nada. Ver `DEFINICION_ORDEN_ABIERTA.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

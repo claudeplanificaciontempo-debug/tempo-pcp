@@ -204,6 +204,26 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.37 Definición única de orden abierta + DENIM + minuto estimado (16-sep)
+- **`abiertaDe(o)` es LA definición**, y `abierta()` delega en ella: no archivada (`ESTADOS_CERRADOS`) · **Estado OP de
+  Odoo no cerrado** (`estadosOPCerrados()`, por defecto `done`/`cancel`, en `S.params.estadoOPCerrado`) · y **fase no de
+  cierre** (columna «sistema» de la tabla de fases). Antes `abierta()` miraba solo el estado interno y `esFacturada()`
+  miraba la tabla de fases: dos nociones conviviendo, y ninguna miraba el Estado OP.
+- **`lanzada(o)`** = abierta **con WH**. Es la cifra del listado del 13-sep. Las cuatro cifras reales:
+  **1.206 cargadas = 1.078 abiertas + 51 archivadas + 77 con Estado OP cerrado**; de las abiertas, **582 lanzadas**
+  (496 sin WH, en diseño) y **279 en planta**. `conteoOrdenesHTML()` lo explica en Reportería y hay prueba que fija la
+  descomposición sin contar ninguna orden dos veces.
+- **Etiqueta** en las tres bases: cargadas 452 / 219.283 · **abiertas 395 / 201.293** · **lanzadas 185 / 78.412**
+  (esta última coincide con el listado del 13-sep).
+- **JEANS → DENIM autorizado**: `sembrarUnificacionJeans()` entra a `sembrarDecisiones16()` y corre **una sola vez, sin
+  preguntar**; guarda `S.params.jeansUnificadoPrevio` con lo que había antes. Mueve 3 categorías, 13 órdenes abiertas
+  (31 en todo el volcado), 49 operaciones y 3 filas de configuración. **No borra nada** y es idempotente.
+- **Minuto estimado de confección por categoría**: `k.minEstConf` / `minEstimadoConf(k)`, editable
+  (`setMinEstConf`, con bitácora). Entra a `samPorCentro` **solo si la categoría no tiene hoja LMO** (`tieneHojaLMO`) y
+  se marca **estimado**. **Sin valor la categoría sigue en 0** y sale como brecha en `categoriasSinHojaHTML`; un 0
+  escrito a mano se respeta como 0 confirmado. Son **11 categorías de 7 familias, ~16.200 prendas abiertas en 0**.
+- Ver `DEFINICION_ORDEN_ABIERTA.md`.
+
 ### 2.36 Consultas del Resumen gerencial (16-sep, diseño aprobado)
 - **Filtros GLOBALES** en una cabecera: meses (suma), cliente, estado y buscador. Se aplican UNA vez en
   `pasaFiltrosGER`/`ordenesGER` sobre `ords` de `vGerencia`, por eso los cinco bloques cuadran.
