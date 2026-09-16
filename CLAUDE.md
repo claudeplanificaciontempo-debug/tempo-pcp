@@ -632,6 +632,16 @@ paso va tarde) y manda las demás al tooltip; **el cálculo NO se duplica — si
 **`abrirCentroDelPerfil()`** lleva a cada perfil de centro a su propio centro una sola vez por sesión (`CEN.auto`), sin
 atar a los perfiles que ven todo. Ver `CENTROS_AJUSTES_REPORTE.md`.
 
+**Rutas: corrección y recálculo automático (16-sep-2026).** `sembrarRutasEmpaque()` aplica la corrección autorizada
+una sola vez (**348 → 22** rutas sin Empaque; 326 corregidas) y recalcula la foto del mes en curso, sin tocar meses
+cerrados. **Ruta por defecto** (`RUTA_DEFECTO_PRO` = corte → modulos → empaque + lo que pida la orden) para las que ni
+su categoría tiene Empaque: quedan «estimada – sin revisar» y, **sin minuto estimado, la ruta se crea igual y la carga
+queda en 0 con aviso** (brecha de TIEMPOS, no de ruta). **Recálculo automático**: `firmaRutaDe(o)` sella categoría +
+`familiaLMO` + centros de la categoría; si cambia, `recalcularRutas()` (que corre en `render()`) rehace las **no
+editadas a mano** y marca las editadas con `o.rutaRevisar` — nunca las pisa. **Estampado y bordado quedan fuera de la
+firma a propósito**: dependen de la técnica/puntadas de la orden, no de la categoría. Al escribir una ruta hay que
+llamar a `sellarRuta(o)`, o el recálculo la dará por vieja. Ver `RUTAS_CORRECCION_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

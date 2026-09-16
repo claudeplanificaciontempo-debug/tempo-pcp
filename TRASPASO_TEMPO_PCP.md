@@ -204,6 +204,27 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.40 Rutas: corrección aplicada y recálculo automático (16-sep)
+- **`sembrarRutasEmpaque()`** — la corrección de las rutas sin Empaque, autorizada, corre **una sola vez** con las
+  demás siembras y recalcula la foto del mes en curso. **Real: 348 → 22** rutas sin Empaque (122.788 → 3.125
+  prendas); **326 corregidas**, 447 de 469 terminan ahora en Empaque. La foto del mes bajó de 348 a 22 en su marca
+  de brecha y quedó `recalculada`; **los meses cerrados no se tocaron**.
+- **Ruta por defecto** para las que ni su categoría tiene Empaque (`RUTA_DEFECTO_PRO` = corte → modulos → empaque,
+  más lo que la orden pide): `rutaDefectoDe`/`previaRutaDefecto`/`aplicarRutaDefecto`/`rutaDefectoPanelHTML`. Quedan
+  **«estimada – sin revisar»** y usan `minEstimadoConf`. **Sin minuto cargado la ruta se crea igual y la carga queda
+  en 0 con aviso: es brecha de TIEMPOS, no de ruta.** Son **22**, todas sin minuto. **Con vista previa, SIN aplicar.**
+- **Recálculo automático**: `firmaRutaDe(o)` = categoría + `familiaLMO` + centros que aporta la categoría.
+  `rutaDesactualizada`/`recalcularRutas(motivo)` rehacen las rutas **no editadas a mano** y marcan las editadas con
+  `o.rutaRevisar` (panel `rutasRevisarPanelHTML`, botón `marcarRutaRevisada2`). Corre en `render()` cuando hay
+  pendientes; `sembrarFirmasRuta()` sella las órdenes existentes. Todo a auditoría.
+  **Estampado y bordado NO entran en la firma a propósito**: dependen de la técnica/puntadas de la ORDEN.
+- **`brechaHechas()` devuelve null** cuando no queda ninguna ruta sin Empaque: la etiqueta «con brecha» de Hechas
+  desaparece sola. Fijado en prueba.
+- **Tejeduría manual**: propuesta de diseño (columna **Estado** = programado | tejido, kg reales, quién y cuándo;
+  el motor trataría «tejido» como hecho y dejaría de contar como tela lista lo **programado con día pasado sin
+  confirmar**, que hoy sí cuenta). **NO construido**, esperando confirmación.
+- Ver `RUTAS_CORRECCION_REPORTE.md`.
+
 ### 2.39 Pantallas de centro (16-sep)
 - **«Lo que viene» eliminado** de todos los centros y sub-centros, junto con `loQueVieneDe`/`loQueVieneHTML` (no se
   deja código muerto). La lista sigue diciendo dónde está cada orden con `dondeEstaEnCentro`.
