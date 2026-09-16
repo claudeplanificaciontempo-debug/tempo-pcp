@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.20 Centros: limpieza de la pestaña Planificación (15-sep-2026 noche)
+- El **total de órdenes de la semana** va en grande y con el color del tema; siguen ordenadas por fecha de inicio.
+- **Vienen después** está en el mismo bloque, por fecha de inicio, con la columna **Dónde está** (de dondeEsta(), con
+  color según qué tan cerca está de llegar al centro). **La fecha de entrega del cliente ya no se muestra** en la
+  pestaña Planificación.
+- La pestaña **Carga que viene salió de los centros**: su resumen completo (programado del mes con toda la cartera,
+  liberado, por liberar, órdenes en camino, plan congelado y la lista agrupada por dónde está) se ve en
+  **Planificación de producción → Carga general**, eligiendo el centro en el selector.
+- Agrupador (Fase, Familia, Cliente y el resto) y buscador común en las pestañas de centro, Carga general, Liberación
+  a producción y Control de piso. La cola del centro ya usaba el agrupador común y conserva el arrastre.
+
 ### 2.19 Permisos de la tablet (15-sep-2026 noche)
 - El operario recibía «new row violates row-level security policy» en avance y bitacora: las políticas de Supabase no
   incluyen al perfil tablet. Las políticas **no estaban en el repo**; ahora hay dos archivos:

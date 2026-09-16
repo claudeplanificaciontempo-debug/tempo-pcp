@@ -214,7 +214,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    PERFIL={rol:'piso',area:'pro',subarea:'confeccion',modo:'editar',nombre:'viejo'};__check("perfil viejo (piso/confección) sigue funcionando",veCentro('modulos')&&!veCentro('corte'));
    PERFIL=adminP;
    // carga que viene
-   page='centro';CEN.id='modulos';CEN.tab='viene';render();const hv=document.getElementById('p-centro').innerHTML;
+   page='produccion';CG={area:'pro',centro:'modulos',sem:null,det:null,cruce:'fam',fases:null,q:''};render();const hv=document.getElementById('p-produccion').innerHTML;
    __check("carga que viene: pestaña renderiza con base declarada y 'por liberar'",__R.errors.length===antes&&hv.includes('Por liberar')&&hv.includes('liberada o no')&&hv.includes('solo órdenes liberadas'));
    // ruta por centro con motivo y bitácora
    const oR=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos')&&!(o.ruta||[]).some(p=>p.centro==='lavado'));
@@ -1017,7 +1017,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='liberacion';LIB.et='tela';LIB.q=o1.op;render();const hl=document.getElementById('p-liberacion').innerHTML;__check("PM→Liberación: la orden del plan sin liberar dice EN EL PLAN — pendiente de liberar",liberada(o1,'tela')||hl.includes('EN EL PLAN')&&hl.includes('pendiente de liberar'),liberada(o1,'tela')?'(ya liberada)':'');
    page='plan';render();congelarPlan(ym);__check("PM: congelar guarda versión con oids y marca planMes.congelado (versión, quién, cuándo)",!!planMesCongelado(ym)&&planMesCongelado(ym).ver>=1&&!!planMesCongelado(ym).ts&&(S.planes||[]).some(p=>p.mes===ym&&(p.oids||[]).includes(o1.id)));
    h=hp();__check("PM: bloque 5 dice CONGELADO con versión y fecha, y 'En el plan' lo marca congelado",h.includes('CONGELADO')&&h.includes('versión v')&&h.includes('CONGELADO v'));
-   const cen=(o1.ruta||[]).map(p=>p.centro).find(cid=>CE(cid)&&CE(cid).area==='pro');if(cen){page='centro';CEN.id=cen;CEN.tab='viene';render();const hc=document.getElementById('p-centro').innerHTML;__check("PM→Centro: 'Carga que viene' muestra el plan congelado con la orden, fase y 'pendiente de liberar' si no está liberada",hc.includes('Plan mensual congelado')&&hc.includes(esc(o1.op))&&hc.includes('congelado')&&(liberada(o1,'corte')||hc.includes('pendiente de liberar')))}
+   const cen=(o1.ruta||[]).map(p=>p.centro).find(cid=>CE(cid)&&CE(cid).area==='pro');if(cen){page='produccion';CG={area:'pro',centro:cen,sem:null,det:null,cruce:'fam',fases:null,q:''};render();const hc=document.getElementById('p-produccion').innerHTML;__check("PM→Centro: 'Carga que viene' muestra el plan congelado con la orden, fase y 'pendiente de liberar' si no está liberada",hc.includes('Plan mensual congelado')&&hc.includes(esc(o1.op))&&hc.includes('congelado')&&(liberada(o1,'corte')||hc.includes('pendiente de liberar')))}
    page='plan';render();planMesQuitar(ym,o1.id);__check("PM: quitar del plan la saca y vuelve a borrador (des-congela)",!planMesOids(ym).has(o1.id)&&!planMesCongelado(ym));
    PMADD.incluirSig=true;PMADD.exp=new Set(['ODC ODC-TEST-PM']);render();h=hp();__check("PM: 'jalar del mes siguiente' lista las órdenes del mes siguiente marcadas con su mes",h.includes(esc(oS.op))&&h.includes('la estás jalando'));PMADD.incluirSig=false;
    S.ordenes=S.ordenes.filter(o=>![o1.id,o2.id,oS.id].includes(o.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlanes);PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};LIB.q='';PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -1497,7 +1497,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    CEN.tab='costura';render();h=document.getElementById('p-centro').innerHTML;
    __check("CP7: la pestaña Costura trae secuencia, rebalanceo y andon dentro del centro",/Secuencia por módulo/.test(h)&&/Rebalanceo/.test(h)&&/Andon/.test(h));
    // carga que viene
-   CEN.tab='viene';CEN.cruce='fam';render();h=document.getElementById('p-centro').innerHTML;
+   CEN.id='corte';CG={area:'pro',centro:'corte',sem:null,det:null,cruce:'fam',fases:null,q:''};page='produccion';render();h=document.getElementById('p-produccion').innerHTML;
    __check("CP4: 'Carga que viene' cruza familia por fase y se puede dar vuelta",/Familia por fase/.test(h)&&/ver fases en las filas/.test(h)||!/Familia por fase/.test(h));
    if(/Familia por fase/.test(h)){CEN.cruce='fase';render();const h2=document.getElementById('p-centro').innerHTML;
      __check("CP4: al darla vuelta, las fases pasan a las filas",/ver familias en las filas/.test(h2));CEN.cruce='fam'}
@@ -1506,8 +1506,8 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("CP2: 'Carga que viene' también usa el filtro de fases y el agrupador comunes",/class="ffases"/.test(h)&&/grp-sel|— sin agrupar —/.test(h));
    __check("CP6: 'Carga que viene' no muestra la entrega, muestra la marca",!/<th>Entrega<\/th>/.test(h));
    // el filtro de fases acota de verdad
-   {CEN.tab='plan';CEN.fases=new Set(['∅']);render();const hv=document.getElementById('p-centro').innerHTML;
-    __check("CP2: 'ninguna fase' deja la vista vacía (el filtro acota de verdad)",/Órdenes de la semana <span class="note">0 /.test(hv)||/0 prendas programadas/.test(hv));CEN.fases=null}
+   {page='centro';CEN.id='modulos';CEN.tab='plan';CEN.fases=new Set(['∅']);render();const hv=document.getElementById('p-centro').innerHTML;
+    __check("CP2: 'ninguna fase' deja la vista vacía (el filtro acota de verdad)",/0 prendas programadas/.test(hv)||/Nada programado/.test(hv));CEN.fases=null}
    // reordenar por color: solo orden manual, con bitácora, sin tocar el motor
    {const P0=programar();const filas=filasDeCentros(['modulos'],P0,hoy(),dsum(hoy(),60),'');const cola=colaCentro('modulos',filas);
     if(cola.length){const nb=S.bitacora.length;const finAntes=JSON.stringify(Object.keys(P0.ordenes).map(id=>(P0.ordenes[id]||{}).finPro));
@@ -1518,7 +1518,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
       cola.forEach(f=>{if(f.o.progCentro&&f.o.progCentro.modulos&&f.o.progCentro.modulos.porColor)delete f.o.progCentro.modulos});PLAN=null;PLAN_ALL=null;}
     else __check("CP5: juntar colores solo numera la cola (queda en bitácora) y no cambia las fechas del motor",true,'sin cola en confección');}
    // corte: mismas piezas
-   CEN.id='corte';CEN.tab='prog';render();h=document.getElementById('p-centro').innerHTML;
+   page='centro';CEN.id='corte';CEN.tab='prog';render();h=document.getElementById('p-centro').innerHTML;
    __check("CP: corte tiene resumen, filtro de fases, agrupador y juntar colores",/Resumen de la semana/.test(h)&&/class="ffases"/.test(h)&&/Juntar colores en la cola/.test(h));
    CEN.id='corte';CEN.tab='plan';CEN.fases=null;GRP={};page='ordenes';render();
    __check("CP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
@@ -1967,6 +1967,35 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
    PERFIL=adminP;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* CENTROS · limpieza: total visible, «vienen después» con dónde está, carga que viene movida */
+  {const antes=__R.errors.length;const adminP=PERFIL;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   page='centro';CEN.id='corte';CEN.tab='plan';CEN.sem=0;CEN.fases=null;CEN.q='';render();
+   {const h=document.getElementById('p-centro').innerHTML;
+    __check("CL1: el total de órdenes de la semana va en grande y con el color del tema",/Órdenes de la semana <span style="font-size:24px;font-weight:700;color:var\(--t-primary\)/.test(h));
+    __check("CL1: las de la semana siguen ordenadas por fecha de inicio y sin entrega del cliente",!/<th>Entrega<\/th>/.test(h)&&/<th>Inicio<\/th>/.test(h)&&/ordenadas por fecha de inicio/.test(h));
+    __check("CL2: la pestaña «Carga que viene» ya no está en el centro",![...document.querySelectorAll('#p-centro .chips .chip')].some(c=>/Carga que viene/.test(c.innerText)));}
+   // las que vienen después: mismo bloque, con Dónde está
+   {const o2=JSON.parse(JSON.stringify(base));o2.id=uid();o2.op='WH/LUEGO-1';o2.estado='plan';o2.fase='2Planificacion';delete o2.programa;S.ordenes.push(o2);delete S.avance[o2.id];PLAN=null;PLAN_ALL=null;render();
+    const h=document.getElementById('p-centro').innerHTML;
+    __check("CL1: «Vienen después» está en el mismo bloque, con columna Dónde está y sin entrega",(!/Vienen después/.test(h)&&!/<th>Entrega<\/th>/.test(h))||(/Vienen después/.test(h)&&/<th>Dónde está<\/th>/.test(h)&&!/<th>Entrega<\/th>/.test(h)&&!/<details[^>]*><summary[^>]*>Vienen después/.test(h)),h.includes('Vienen después')?'hay órdenes posteriores':'sin órdenes posteriores en esta base');
+    __check("CL1: «Dónde está» sale de dondeEsta() y lleva color",typeof dondeEstaCentro==='function'&&/class="tag t-(ok|aviso|alerta|medio|lavado)"/.test(dondeEstaCentro(o2,programar(),'corte')));
+    S.ordenes=S.ordenes.filter(x=>x!==o2);PLAN=null;PLAN_ALL=null}
+   // la carga que viene vive en Carga general con selector de centro
+   {page='produccion';CG={area:'pro',centro:'corte',sem:null,det:null,cruce:'fam',fases:null,q:''};render();
+    const h=document.getElementById('p-produccion').innerHTML;
+    __check("CL2: «Carga que viene» aparece en Carga general al elegir un centro, con todo su resumen",/Carga que viene · Corte/.test(h)&&/Prendas programadas en/.test(h)&&/De esas, liberadas a producción/.test(h)&&/Por liberar/.test(h));
+    CG.centro='';render();
+    __check("CL2: sin centro elegido, Carga general lo dice en vez de mostrarla vacía",/Elige un centro arriba para ver/.test(document.getElementById('p-produccion').innerHTML));}
+   // 3 · agrupador y buscador en las pantallas de producción
+   {const campos=GRP_CAMPOS.map(x=>x[0]);
+    __check("CL3: el agrupador común ofrece fase, familia y cliente",['fase','fam','cliente'].every(k=>campos.includes(k)));
+    const ver=[['centro','p-centro',()=>{page='centro';CEN.id='modulos';CEN.tab='prog'}],['produccion','p-produccion',()=>{page='produccion'}],['liberacion','p-liberacion',()=>{page='liberacion';LIB.et='corte'}],['control','p-control',()=>{page='control';CTL.area='pro'}]];
+    const falt=[];ver.forEach(([pg,id,pre])=>{pre();render();const h=document.getElementById(id).innerHTML;
+      const tieneB=/class="busq"/.test(h);const tieneG=/— sin agrupar —/.test(h)||/grp-row/.test(h);if(!tieneB||!tieneG)falt.push(pg+(tieneB?'':' sin buscador')+(tieneG?'':' sin agrupador'))});
+    __check("CL3: centro, Carga general, Liberación a producción y Control de piso tienen buscador y agrupador comunes",!falt.length,falt.join(' · '));}
+   CEN.id='corte';CEN.tab='plan';PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("CL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

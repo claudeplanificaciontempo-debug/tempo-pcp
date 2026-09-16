@@ -587,7 +587,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 22:32';
+const APP_BUILD='2026-09-15 22:49';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3486,6 +3486,15 @@ function mandaCola(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);if(!p&&col
 function togFaseCEN(f){togSet(CEN,'fases',f)}
 function faseOkCEN(o){const s=CEN.fases;if(!s||!s.size)return true;if(s.has('∅'))return false;return s.has(o.fase||'Sin fase')}
 /* marca que reemplaza a la fecha de entrega en las vistas de centro */
+function dondeEstaCentro(o,P,c){let d={k:null,n:'—'};try{d=dondeEsta(o,P)}catch(e){}
+  const n=d&&d.n?d.n:'—';const k=d&&d.k;
+  let cls='t-lavado'; // lejos
+  if(k===c)cls='t-ok'; // ya está en este centro
+  else if(/sin liberar/i.test(n))cls='t-alerta';
+  else if(/por liberar/i.test(n))cls='t-aviso';
+  else{const pasos=(o.ruta||[]).map(p=>p.centro);const iA=pasos.indexOf(k),iC=pasos.indexOf(c);
+    if(iA>=0&&iC>=0&&iC-iA===1)cls='t-ok';else if(iA>=0&&iC>=0&&iC-iA===2)cls='t-medio'}
+  return '<span class="tag '+cls+'" title="dónde está la orden ahora">'+esc(n)+'</span>'}
 function marcaCentro(o,P){const ro=(P&&P.ordenes&&P.ordenes[o.id])||{};const t=[];
   if((o.prio||3)<=2)t.push('<span class="tag t-aviso" title="prioridad puesta en la orden">prioridad</span>');
   if(ro.atraso)t.push('<span class="tag t-alerta" title="'+(ro.diasTarde?ro.diasTarde+' días tarde según el programa':'el programa dice que no llega')+'">va tarde</span>');
@@ -3543,7 +3552,7 @@ function vCentro(el){
   const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
   const okPiso=puede('programa')||(puede('reprogramar')&&cens.some(veCentro));const q=normTxt(CEN.q);
   const fasesCEN=[...new Set(S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>cens.includes(p.centro))).map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
-  const tabs=[['plan','Planificación'],['viene','Carga que viene'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']].concat(cid==='modulos'?[['costura','Costura: secuencia y rebalanceo']]:[]);
+  const tabs=[['plan','Planificación'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']].concat(cid==='modulos'?[['costura','Costura: secuencia y rebalanceo']]:[]);
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
@@ -3556,13 +3565,16 @@ function vCentro(el){
     const bloq=filas.filter(f=>f.bloq&&!f.hecho);const luego=filas.filter(f=>!f.hecho&&!f.bloq&&f.pzSem===0&&f.paso.ini&&f.paso.ini>dom);
     el.innerHTML=cab+`<p class="lede">Lo que planificación asignó a ${esc(nombre)} esta semana: órdenes, prendas y fechas, y la carga de cada día contra la capacidad del centro. El centro programa sobre esto en la pestaña siguiente.</p>
     <div class="kpis">${porDia.map(x=>`<div class="kpi ${x.cap&&x.min>x.cap*1.02?'bad':''}"><div class="v">${num(x.pz)}</div><div class="k">${fmtDia(x.d)}<br>${num(x.min)} / ${num(x.cap)} min${x.cap?' · '+Math.round(x.min/x.cap*100)+'%':''}</div></div>`).join('')}</div>
-    <div class="panel"><h3>Órdenes de la semana <span class="note">${enSem.length} · ${num(enSem.reduce((a,f)=>a+f.pzSem,0))} prendas programadas</span></h3><div class="scroll" style="max-height:520px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Esta semana</th><th class="num">Hechas</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Marca</th><th>Liberada</th></tr></thead><tbody>
+    <div class="panel"><h3>Órdenes de la semana <span style="font-size:24px;font-weight:700;color:var(--t-primary);margin-left:6px">${enSem.length}</span> <span class="note">${num(enSem.reduce((a,f)=>a+f.pzSem,0))} prendas programadas · ordenadas por fecha de inicio</span></h3><div class="scroll" style="max-height:520px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Esta semana</th><th class="num">Hechas</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Marca</th><th>Liberada</th></tr></thead><tbody>
      ${enSem.map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant)}</td><td class="num"><b>${num(f.pzSem)}</b></td><td class="num">${num(f.hechas)}</td><td>${esc(nRec(f.paso.rec))}${((f.o.progCentro||{})[f.c]||{}).rec?' ⚲':''}</td><td>${fmtDia(f.paso.ini)}</td><td>${fmtDia(f.paso.fin)}</td><td>${marcaCentro(f.o,P)}</td><td>${liberadaCorte(f.o)?'<span class="tag t-ok">sí</span>':'<span class="tag t-alerta">no</span>'}</td></tr>`).join('')||'<tr><td colspan="11" class="mut">Nada programado en esta semana.</td></tr>'}</tbody></table></div></div>
-    ${luego.length?`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Vienen después <span class="mut" style="font-weight:400">· ${luego.length} órdenes con inicio posterior</span></summary><div class="scroll" style="max-height:300px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Inicio</th><th>Entrega</th></tr></thead><tbody>${luego.sort((a,b)=>a.paso.ini<b.paso.ini?-1:1).slice(0,150).map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${f.o.fecha}</td></tr>`).join('')}</tbody></table></div></details>`:''}
+    ${luego.length?`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Vienen después <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${luego.length} órdenes con inicio posterior, ordenadas por fecha de inicio</span></h4>
+     <div class="scroll" style="max-height:320px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Inicio</th><th>Dónde está</th></tr></thead><tbody>
+     ${luego.sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1).slice(0,150).map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${dondeEstaCentro(f.o,P,f.c)}</td></tr>`).join('')}
+     </tbody></table></div></div>`:''}
     ${bloq.length?`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Sin fecha todavía <span class="mut" style="font-weight:400">· ${bloq.length} órdenes esperan liberación o decisión</span></summary><div class="body" style="font-size:var(--fs-s)">${Object.entries(bloq.reduce((m,f)=>{m[f.bloq]=(m[f.bloq]||0)+1;return m},{})).map(([b,n])=>n+' '+esc(b)).join(' · ')}</div></details>`:''}`;
     return}
   if(CEN.tab==='costura'&&cid==='modulos'){el.innerHTML=cab;const d=document.createElement('div');el.appendChild(d);vCostura(d,true);return}
-  if(CEN.tab==='viene'){el.innerHTML=cab+cargaQueVieneHTML(cens,nombre,P);return}
+  if(CEN.tab==='viene'){CEN.tab='plan'} // la carga que viene se ve en Carga general, con selector de centro
   if(CEN.tab==='prog'){
     const niv=nivelesCEN();const hasta=dsum(dom,7);
     const sec=seccionesModulos(cens,P);const secciones=sec?(modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')):'';
@@ -4324,6 +4336,7 @@ function vPro(el){
    <div><label>Centro</label><select onchange="CG.centro=this.value;CG.det=null;render()"><option value="">Todos</option>${cens.map(c=>`<option value="${c.id}" ${CG.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>
    <div><label>Fases</label>${filtroFasesHTML(fasesAll,CG.fases,'CG.fases','togFaseCG')}</div>
    <div style="width:190px"><label>Buscar</label>${busqHTML('CG.q',CG.q,'CG.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
+   ${grpSelHTML('cg')}
    <div class="mut" style="font-size:var(--fs-xs);max-width:280px">${sems.length} semanas (parámetro <b>semCarga</b> en Configuración → Calendario y parámetros)</div>
   </div></div>`;
   if(!S.ordenes.length){el.innerHTML=cab+'<div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>';return}
@@ -4364,7 +4377,9 @@ function vPro(el){
      <div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Min pend.</th><th></th></tr></thead><tbody>
      ${filasGRP('cg',dets,o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(minPendCentro(o,c))}</td><td><a style="cursor:pointer" onclick="irEstadoOrden('${o.id}')">ver dónde está →</a></td></tr>`,7)||'<tr><td colspan="7" class="mut">Sin órdenes.</td></tr>'}
      </tbody></table></div></div></div>`}
-  el.innerHTML=cab+bloque1+bloque2+bloque3;
+  const cvCen=CG.centro||(CG.area==='pro'?'':'');
+  const cargaViene=(CG.area==='pro'&&cvCen)?`<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Carga que viene · ${esc(nCen(cvCen))}</span></div>${cargaQueVieneHTML([cvCen],nCen(cvCen),P||programar())}`:(CG.area==='pro'?'<p class="mut" style="margin-top:18px">Elige un centro arriba para ver <b>Carga que viene</b>: lo que va a llegar y dónde está ahora.</p>':'');
+  el.innerHTML=cab+bloque1+bloque2+bloque3+cargaViene;
 }
 function togFaseCG(f){togSet(CG,'fases',f)}
 /* Asignación por orden: ahora vive en Reportería (no se borró) */

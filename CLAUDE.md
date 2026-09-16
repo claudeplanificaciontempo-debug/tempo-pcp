@@ -397,6 +397,13 @@ arriba de todo en Mi centro. Políticas de Supabase: la clave anon no puede leer
 ejecutar: lectura amplia y escritura solo en avance, bitacora, turnos y paros para los perfiles de piso). El tramo, las
 tallas y las segundas viven dentro de `avance`; la asistencia en `turnos`. Ver `TABLET_PERMISOS_REPORTE.md`.
 
+**Centros, limpieza (15-sep-2026 noche):** la pestaña **Carga que viene salió de los centros**: `cargaQueVieneHTML`
+se llama ahora desde `vPro` (Carga general) con el centro de `CG.centro`; `CEN.tab==='viene'` cae a `plan`. En la
+pestaña Planificación el total de la semana va en grande con `--t-primary`, «Vienen después» dejó de ser `<details>` y
+vive en el mismo bloque con la columna **Dónde está** (`dondeEstaCentro(o,P,c)`, color por cercanía al centro), y la
+fecha de entrega salió de las dos tablas. `grpSelHTML('cg')` se muestra en la barra de Carga general. Ver
+`CENTROS_LIMPIEZA_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
