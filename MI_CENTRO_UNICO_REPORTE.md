@@ -200,3 +200,39 @@ almuerzo.
 **Comprobado con una base que ya tenía los cinco tipos cargados**: después de la migración el operario ve exactamente
 Almuerzo, Cierre del día y Fallo de máquina; los cinco viejos quedan en la tabla marcados inactivos; y un paro de
 almuerzo no descuenta el descanso del horario por segunda vez.
+
+---
+
+# Reloj que corre, búsqueda del operario y arranque sin parpadeo (quinta entrega)
+
+Fecha: 15-sep-2026, noche. Pruebas del simulador: **1.031 (13 nuevas), todas verdes, 0 errores**.
+
+## 1 · El reloj ahora sí corre
+Tenías razón: el arranque del reloj había quedado al final de Liberación, no en Mi centro, así que nunca se encendía.
+Ahora se arranca **al final de cada dibujado de pantalla**, sea cual sea la página, y se apaga solo cuando no hay reloj
+en pantalla. La prueba nueva abre Mi centro, inicia un tramo, **espera tres segundos reales** y comprueba que el texto
+cambió, sin llamar a nada a mano: pasa de 0:00:00 a 0:00:03.
+
+## 2 · La búsqueda del operario
+Para el perfil tablet, el campo es uno solo: **«Buscar WH»**, sin menú de «buscar solo en…» ni opciones de campo, con
+**teclado numérico** en teléfono y botón **Buscar** al lado. Acepta **28300** o **WH/MO/28300**, y con Enter abre el
+resultado: si está programada en su recurso aparece su tarjeta con INICIO, y si existe pero no está programada ahí sale
+bloqueada con «no programada · pedir reprogramación». Los demás perfiles conservan el buscador común con sus campos.
+
+## 3 · Arranque sin parpadeo
+La app **no dibuja nada** hasta tener el perfil del usuario: mientras carga se ve solo **«Cargando…»**, sin menú, sin
+cabecera de administración y sin páginas. Recién cuando el perfil está aplicado se dibuja la pantalla. Así un operario
+no alcanza a ver Dirección, Configuración, Respaldo ni Restaurar, ni por un instante.
+
+## 4 · El tiempo no se pierde
+**Cada paso guarda de inmediato**: INICIO, PARO, REANUDAR y FIN escriben el tramo en `avance` en ese momento, no al
+final. Si el servidor rechaza el guardado, el registro **se queda en pantalla** con el aviso de reintento. Aunque se
+cierre la tablet, el tiempo ya está registrado localmente y se envía al reintentar.
+
+## Qué se probó en esta entrega
+- El reloj avanza solo en tres segundos reales y el arranque ya no vive dentro de Liberación.
+- El operario ve un campo simple sin menú de campos, encuentra por número y por WH completa, y los demás perfiles
+  conservan el buscador común.
+- Sin perfil, la app queda en «Cargando…» con el menú y la cabecera ocultos; con perfil, dibuja normal.
+- Los cuatro pasos del tramo guardan de inmediato, el tramo queda dentro de avance apenas se inicia, y un guardado
+  rechazado queda en el aviso de reintento.

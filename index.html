@@ -135,6 +135,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 #navBtn{display:none;background:var(--t-accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:18px;cursor:pointer}
 @media (max-width:520px){#busg-host{order:9;flex:1 0 100%!important;min-width:0;margin-top:6px}#busg-host>div{max-width:none!important;width:100%}#busg{font-size:16px;padding:10px}header{row-gap:8px}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
 @media (max-width:860px){#navBtn{display:inline-block}#app{grid-template-rows:auto auto 1fr!important}header{height:auto!important;min-height:52px;padding:8px 12px;gap:8px;row-gap:6px}header .saved{min-width:0;text-align:left;order:9}header h1{font-size:15px}header button{padding:6px 10px}nav{display:none;flex-direction:column;align-items:stretch;overflow:visible}nav.abierto{display:flex}nav .grp{display:block;padding:10px 14px}nav .gbody{position:static!important;display:none;left:auto!important}nav .gbody.abierto{display:block}.kpis,.kpis.tarj-row{flex-direction:column}.pagehead{flex-wrap:wrap}.tab-card .body{flex-direction:column}.tarjetas{grid-template-columns:1fr}.panel .body{overflow-x:auto}.scroll{overflow-x:auto}header{height:auto;flex-wrap:wrap;padding:8px 12px}header .sub{display:none}}
+#app.cargando nav,#app.cargando main,#app.cargando header button,#app.cargando #busg-host{display:none!important}#app.cargando::after{content:'Cargando…';display:block;padding:40px;text-align:center;color:var(--ink3);font-size:18px}
 .cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
 .bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
@@ -587,7 +588,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 22:49';
+const APP_BUILD='2026-09-15 22:58';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -607,7 +608,7 @@ async function entrar(user){
   document.getElementById('login').classList.remove('on');
   document.getElementById('quien').textContent=(PERFIL.nombre||user.email)+' · '+(ROLES[PERFIL.rol]||PERFIL.rol);
   await cargarTodo();
-  aplicarNavPerfil();decorarNav();
+  aplicarNavPerfil();decorarNav();LISTO=true; // recién ahora se dibuja: nunca se ve el menú de otro perfil
   page=vePagina('ordenes')?'ordenes':primeraPagina();render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);setInterval(revisarDatos,3*60*1000);
 }
 function mostrarLogin(msg){document.getElementById('login').classList.add('on');document.getElementById('login-msg').textContent=msg||''}
@@ -1650,11 +1651,16 @@ function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
   if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
 /* --- buscador de Mi centro: solo lo programado en ese centro; si existe pero no está aquí, bloqueada --- */
 function tabletBuscadorHTML(c,cola){const q=normTxt(TAB.q||'');
-  const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px')}</div>${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
+  const simple=esOperario(); // el operario no elige campos: escribe la WH y listo
+  const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
+  const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${campo}</div>${simple?`<button class="btn" style="font-size:20px;padding:14px 20px" onclick="TAB.q=(document.getElementById('tab-wh')||{}).value||'';render()">Buscar</button>`:''}${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
   if(!q)return cab;
-  const enCola=cola.filter(f=>normTxt(f.o.op).includes(q)||normTxt(f.o.ref||'').includes(q));
+  const soloNum=x=>String(x||'').replace(/\D+/g,'');
+  const qn=soloNum(q);
+  const calza=o=>normTxt(o.op).includes(q)||normTxt(o.ref||'').includes(q)||(qn.length>=3&&soloNum(o.op).includes(qn));
+  const enCola=cola.filter(f=>calza(f.o));
   if(enCola.length)return cab;
-  const o=S.ordenes.find(x=>normTxt(x.op).includes(q));
+  const o=S.ordenes.find(calza);
   if(!o)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
   const pedida=pedidosReprog().some(p=>p.oid===o.id&&p.centro===c&&!p.atendida);
   return cab+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:17px">
@@ -2260,7 +2266,10 @@ function nombrePagina(p){const e=(typeof PAGINAS_DEF!=='undefined'?PAGINAS_DEF:[
 function atrasHTML(){if(!NAVH.length)return '';const s=NAVH[NAVH.length-1];return `<div class="no-print atras" style="margin:0 0 10px"><a class="chip on" style="cursor:pointer" onclick="volver()">← atrás</a> <span class="mut" style="font-size:var(--fs-xs)">vuelve a ${esc(nombrePagina(s.page))} con sus filtros y su posición</span></div>`}
 function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
   const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
+let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
 function render(){
+  if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
+  {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
@@ -2276,6 +2285,8 @@ function render(){
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
   document.getElementById('n-atr').textContent=P?(Object.values(P.ordenes).filter(o=>o.atraso).length||''):'';
+  avisoGuardado();verBotonesAdmin();
+  if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
 }
 const semaforo=p=>p>100?'t-alerta':p>85?'t-aviso':'t-ok';
 /* pastel de uso de capacidad: anillo con el porcentaje; rojo si pasa del 100 */
@@ -3254,8 +3265,7 @@ ${grpSelHTML('lib')}<div style="width:190px"><label>Buscar</label>${busqHTML('LI
      const fila4=o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(o.ref||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${((o.lib||{})[et]||{}).u||''}${((o.lib||{})[et]||{}).ts?' · '+new Date(o.lib[et].ts).toLocaleDateString('es-EC'):''}</td><td style="white-space:nowrap">${puedeF?`<button class="btn ghost sm" onclick="mRetirarLib('${o.id}','${et}')" title="revertir la liberación: pide motivo de la tabla 15 y queda en auditoría">revertir</button> <button class="btn ghost sm" onclick="mCambiarFase('${o.id}')" title="devolver o cambiar la fase: si la secuencia de la tabla 1 baja, pide motivo">fase</button>`:''}</td></tr>`;
      return `<div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Referencia</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Liberó</th><th></th></tr></thead><tbody>${filasGRP('lib4',l4.slice(0,400),fila4,9)||'<tr><td colspan="9" class="mut">Ninguna orden liberada con esa búsqueda.</td></tr>'}</tbody></table></div>`})()}
   </div></div>`;
-  restaurarScrollLib();avisoGuardado();verBotonesAdmin();
-  if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
+  restaurarScrollLib();
 }
 function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){togSet(LIB,'hija',v)}function togSetTela(v){togSet(LIB,'tela',v)}function togSetCli(v){togSet(LIB,'cli',v)}function togSetMes(v){togSet(LIB,'mes',v)}
 function togFaseLib(f){togSet(LIB,'fases',f)}

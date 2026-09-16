@@ -5,7 +5,7 @@ window.confirm=()=>true;
 async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>ms)throw new Error('timeout esperando');await new Promise(r=>setTimeout(r,50))}}
 function __check(nombre,cond,detalle){__R.checks.push({nombre,ok:!!cond,detalle:detalle===undefined?'':String(detalle)})}
 const __p=ms=>new Promise(r=>setTimeout(r,ms));
-async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
+async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
   S.colores.forEach((c,i)=>{c.cod=['19-4005','11-0601','17-4402','19-3921','19-1758'][i]+' TCX'});
@@ -1957,7 +1957,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("CAB: quien tiene permiso de configuración sí los ve",document.getElementById('btn-respaldo').style.display!=='none');
    // 3 · buscador arriba de las tarjetas
    PERFIL={id:uidOp,nombre:'Modulo 1',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
-   {const h=document.getElementById('p-tablet').innerHTML;const iB=h.indexOf('data-q="TAB.q"');const iT=h.indexOf('tab-card');
+   {const h=document.getElementById('p-tablet').innerHTML;const iB=Math.max(h.indexOf('data-q="TAB.q"'),h.indexOf('id="tab-wh"'));const iT=h.indexOf('tab-card');
     __check("BQ: el buscador de WH está arriba, antes de las tarjetas y del flujo",iB>=0&&(iT<0||iB<iT)&&/Buscar WH/.test(h));}
    {const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];const oX=JSON.parse(JSON.stringify(base));oX.id=uid();oX.op='WH/NOAQUI';oX.estado='plan';delete oX.programa;S.ordenes.push(oX);delete S.avance[oX.id];PLAN=null;PLAN_ALL=null;
     TAB.q='WH/NOAQUI';render();const h=document.getElementById('p-tablet').innerHTML;
@@ -1996,6 +1996,50 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     __check("CL3: centro, Carga general, Liberación a producción y Control de piso tienen buscador y agrupador comunes",!falt.length,falt.join(' · '));}
    CEN.id='corte';CEN.tab='plan';PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("CL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MI CENTRO · reloj real, búsqueda simple del operario, arranque sin parpadeo y guardado inmediato */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;
+   const bakTb=JSON.stringify(S.params.tablets||null);
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oR=JSON.parse(JSON.stringify(base));oR.id=uid();oR.op='WH/MO/28300';oR.estado='plan';oR.cant=50;oR.tallasPedido={S:50};delete oR.programa;S.ordenes.push(oR);delete S.avance[oR.id];PLAN=null;PLAN_ALL=null;
+   // 1 · el reloj corre solo, sin llamar a tickCrono a mano
+   TAB={centro:'modulos',rec,q:''};page='tablet';iniciarTramo(oR.id,'modulos',rec);render();
+   const el0=document.getElementById('crono-vivo');const txt0=el0?el0.textContent:null;
+   await __p(3200);
+   const el1=document.getElementById('crono-vivo');
+   __check("RJ: el reloj de Mi centro avanza solo (3 segundos reales, sin tocar tickCrono)",!!el0&&!!el1&&el1.textContent!==txt0&&/^\d+:\d{2}:\d{2}$/.test(el1.textContent),JSON.stringify({txt0,txt1:el1&&el1.textContent}));
+   __check("RJ: el arranque del reloj ya no está dentro de Liberación",!vLiberacion.toString().includes('arrancarCrono')&&render.toString().includes('arrancarCrono'));
+   // 2 · el operario busca por número, sin menú de campos
+   {S.params.tablets=S.params.tablets||{};S.params.tablets['op-b']={centro:'modulos',rec};
+    PERFIL={id:'op-b',nombre:'Operaria',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
+    const h=document.getElementById('p-tablet').innerHTML;
+    __check("BQ2: el operario ve un campo simple, sin menú «buscar solo en…» ni opciones de campo",h.includes('id="tab-wh"')&&!h.includes('data-q="TAB.q"')&&!/busq-menu/.test(h)&&/inputmode="numeric"/.test(h));
+    TAB.q='28300';render();const h2=document.getElementById('p-tablet').innerHTML;
+    const enCola=tabletFilas('modulos',rec,programar()).some(f=>f.o.op==='WH/MO/28300');
+    __check("BQ2: escribir solo el número encuentra la WH (programada abre su tarjeta; si no, sale bloqueada)",enCola?/WH\/MO\/28300/.test(h2):(/no programada en/.test(h2)&&/Pedir reprogramación/.test(h2)));
+    TAB.q='WH/MO/28300';render();
+    __check("BQ2: también acepta la WH completa",/WH\/MO\/28300/.test(document.getElementById('p-tablet').innerHTML));
+    TAB.q='';PERFIL=adminP;render();
+    __check("BQ2: los demás perfiles conservan el buscador común",document.getElementById('p-tablet').innerHTML.includes('data-q="TAB.q"'));
+    delete S.params.tablets['op-b']}
+   // 3 · arranque sin parpadeo
+   __check("AR2: la app no dibuja nada hasta tener el perfil (mientras tanto, «Cargando…»)",render.toString().includes('if(!LISTO)')&&/cargando/.test(render.toString())&&entrar.toString().includes('LISTO=true'));
+   {const ap=document.getElementById('app');const bak=LISTO;LISTO=false;render();
+    __check("AR2: con la app sin perfil, el menú y la cabecera de admin quedan ocultos",ap.classList.contains('cargando'));
+    LISTO=bak;render();
+    __check("AR2: al tener el perfil, se dibuja normal",!ap.classList.contains('cargando'));}
+   // 4 · cada paso guarda de inmediato
+   {const marcas=[['iniciarTramo',iniciarTramo],['pararTramo',pararTramo],['reanudarTramo',reanudarTramo],['terminarTramo',terminarTramo]];
+    __check("GD: INICIO, PARO, REANUDAR y FIN guardan de inmediato",marcas.every(([n,f])=>/save\(\)/.test(f.toString())));
+    const ab=tramoAbiertoDe('modulos',rec);
+    __check("GD: el tramo queda dentro de avance apenas se inicia (aunque se cierre la tablet)",!!ab&&((S.avance[oR.id]||{}).tramos||[]).some(t=>t.id===ab.t.id));
+    SAVE_ERR={ts:new Date().toISOString(),errs:['avance: new row violates row-level security policy'],permiso:true};avisoGuardado();
+    __check("GD: si ese guardado falla, queda en el aviso de reintento",/No se guardó en el servidor/.test(document.getElementById('p-tablet').innerHTML));
+    SAVE_ERR=null;avisoGuardado()}
+   S.ordenes=S.ordenes.filter(o=>o!==oR);delete S.avance[oR.id];TRAMO={paso:null,id:null,oid:null};
+   const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
+   PERFIL=adminP;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("MC4 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
