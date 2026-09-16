@@ -583,6 +583,18 @@ quedan fijados en pruebas (`__R.cat`, `__R.etiqReal`, `__R.jeansReal`). **Reales
 las mismas «⚠ SIN OPERACIONES» de `LISTADO_CATEGORIAS_PRODUCCION.md`. La etiqueta de 0,5 min carga en **423 órdenes**.
 Antes de reportar una brecha de catálogo, comprobar contra qué catálogo se está midiendo. Ver `RECONCILIACION_CATALOGO.md`.
 
+**Consultas del Resumen gerencial (16-sep-2026):** filtros **globales** (meses, cliente, estado, buscador) aplicados
+UNA sola vez en `ordenesGER(P)`; por eso los **cinco bloques** (`GER_BLOQUES`: cliente, fase, ODC, estilo, familia)
+cuadran — es la misma lista partida de cinco maneras, y hay una prueba con 12 combinaciones de filtros que lo fija.
+Bloques **colapsables, uno abierto a la vez**, recordado por usuario. **«Hechas» = `pzHechasOrden` = último paso de la
+ruta**; las rutas que no terminan en Empaque son **brecha** (`rutasSinEmpaqueHTML`), sin trato especial: **349 de 470
+reales no terminan ahí** (301 bordado, 48 estampado). **Vencida y va tarde tienen UNA definición**:
+`esMetaVencida`/`esOrdenVaTarde` envuelven a `diagAtraso()`, el mismo de `marcaCentro`; no crear un segundo cálculo ni
+un tercer nombre (se eliminó el `o.fecha<h` que tenía `vGerencia`). **Cierre mensual** en `S.params.cierresMes`:
+`guardarCierresMes(P)` corre al dibujar el resumen, actualiza el mes en curso una vez al día y **congela** los meses
+pasados (`cerrado:true`, no se vuelven a tocar). Márgenes: solo una nota, pendiente de **Costos TEMPO** (otro repo).
+Ver `CONSULTAS_GERENCIALES_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

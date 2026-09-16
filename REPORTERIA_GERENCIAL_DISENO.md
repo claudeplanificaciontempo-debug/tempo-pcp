@@ -1,5 +1,9 @@
 # Consultas del Resumen gerencial — propuesta de diseño
 
+> **APROBADO y CONSTRUIDO** (commit `eb23d1a`). Decisiones tomadas: filtros **globales**; «hechas» = **último paso de la
+> ruta**, con brecha «Ruta no termina en Empaque»; bloques **colapsables, uno a la vez**. Ver
+> `CONSULTAS_GERENCIALES_REPORTE.md`.
+
 **Esto no está construido.** Es la propuesta que pediste antes de tocar nada. Dime qué apruebas, qué cambio y
 qué sobra, y lo construyo.
 

@@ -204,6 +204,28 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.36 Consultas del Resumen gerencial (16-sep, diseño aprobado)
+- **Filtros GLOBALES** en una cabecera: meses (suma), cliente, estado y buscador. Se aplican UNA vez en
+  `pasaFiltrosGER`/`ordenesGER` sobre `ords` de `vGerencia`, por eso los cinco bloques cuadran.
+- **Cinco bloques** (`GER_BLOQUES`: cliente, fase, ODC, estilo, familia) con `agruparGER`/`totGER`/`bloqueGERHTML`:
+  mismas columnas (órdenes, pedidas, hechas, falta, % avance, valor, vencidas, va tarde) y extras por bloque
+  (fase = días en la fase o «sin historial»; ODC = cliente, entrega más temprana, órdenes listas; estilo = categorías
+  y colores). **Colapsables, uno abierto a la vez**, recordado en localStorage por usuario (`abrirBloqueGER`);
+  clic en una fila abre el detalle con `filasGRP('gerdet')`.
+- **«Hechas» = último paso de la ruta** (`pzHechasOrden`). Brecha **«Ruta no termina en Empaque»**
+  (`rutaTerminaEnEmpaque`/`rutasSinEmpaque`/`rutasSinEmpaqueHTML`), sin trato especial en el cálculo. **Real: 349 de
+  470 rutas no terminan en Empaque** (301 bordado, 48 estampado, 122.830 prendas).
+- **Una sola definición de vencida y va tarde**: `esMetaVencida`/`esOrdenVaTarde` salen de `diagAtraso()`, el mismo
+  que pinta las marcas de los centros. Se **eliminó** el segundo cálculo que tenía `vGerencia` (`o.fecha<h`) y se
+  renombraron sus textos a «meta vencida» y «la orden va tarde». **Plan mensual no se tocó.**
+- **Cierre mensual** (`S.params.cierresMes`): `fotoCarteraMes`/`guardarCierresMes` guardan por mes órdenes, pedidas,
+  hechas, valor, vencidas, va tarde y el desglose por cliente y familia. El mes en curso se actualiza **una vez al
+  día**; al pasar el mes la foto queda `cerrado:true` y **no se vuelve a tocar**. El gráfico de tendencia NO se
+  construyó: falta juntar historia.
+- **Márgenes**: solo una nota en pantalla, pendiente de integrar con **Costos TEMPO**. Nada construido.
+- **Prueba principal**: los totales de «Pedidas» de los cinco bloques son idénticos con 12 combinaciones de filtros.
+- Ver `CONSULTAS_GERENCIALES_REPORTE.md`.
+
 ### 2.35 Reconciliación del catálogo (16-sep) — CORRIGE cifras de 2.31 y 2.32
 - **Las brechas de catálogo reportadas el 16-sep estaban medidas contra el catálogo de DEMO del simulador**, cuyas
   familias (CAM BÁSICA, POLO PIQUÉ, HOODIE, JEAN, Nuevo padre) no existen en Odoo; la tabla padre→LMO usa los nombres
