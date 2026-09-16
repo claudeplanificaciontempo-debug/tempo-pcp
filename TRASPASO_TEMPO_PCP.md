@@ -204,6 +204,30 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.32 Decisiones de producción (16-sep, Jannine Cadena)
+- **Etiquetado**: solo **Level 1, Level 2, Camiseta CR y Camiseta CV** llevan etiqueta de serigrafía (0,5 min), y sale de la
+  tabla editable `reglasEtiqueta` (Configuración → Operaciones), no de la LMO: ninguna de las cuatro tiene esa operación.
+  Calce EXACTO por nombre; fila sin confirmar no aplica. Se **retiró la regla** «SERIGRAFIA + ETIQUETAR → Etiquetas»: las dos
+  operaciones que calzaban (**FITS** tampográfica 0,35 y **BVD** manual 0,40) quedan **sin centro, sin borrarse**, en el panel
+  «Operaciones sin centro» con su motivo y un selector. Las etiquetas **cosidas** (ENSAMBLE/RECTA) y «ETIQUETAR PRENDA»
+  (EMPAQUE) no se tocaron. Brecha: **Level 1 y Level 2 no existen en el catálogo**, y el panel lo marca.
+- **Plancha**: 2 min/prenda **confirmado**; se quitó `minEstandarEstimado`.
+- **Lavado**: planta 3 días, Quito 15, los dos como **solo tiempo de espera**, con la nota «ocupa capacidad propia; pendiente
+  datos de lavadoras» pegada a la fila (`avisoLavadoPlanta`). **No se asigna por regla**: la modalidad vive en la orden
+  (`o.lavadoModo`) y `esperaDeCentro` la respeta por encima del calce por categoría. `mLavado`/`aplicarLavado` agregan o quitan
+  lavado a una o varias órdenes (Liberación → «Lavado de las marcadas», y desde la ruta de cualquier orden), con motivo
+  obligatorio, auditoría de ruta y bitácora; `posLavado` lo mete después de confección y antes de plancha/empaque.
+- **Ojales y botones**: los tiempos de la tabla son **definitivos**; se confirmaron las 3 filas pendientes y
+  `tiemposOjalBoton()` ya **no repone** filas sin confirmar (antes las recién renombradas revivían en blanco).
+- **Rutas estimadas**: `rutaConf.estado` acepta `estimada` con `revisada` → tres estados («estimada – sin revisar» /
+  «estimada – revisada» / «real»). `generarRutasEstimadas` arma la ruta con la ruta por defecto + los minutos de la categoría
+  y **excluye `CENTROS_DISENO`** (estampado, bordado, etiquetas); si la categoría tenía minutos ahí, la fila avisa que **esa
+  carga puede faltar**. Panel de revisión en Órdenes → Rutas y conteo en Reportería (`rutasEstimadasResumenHTML`).
+- **DENIM y JEANS**: `diagJeans()` **reporta antes de mover** (categorías, órdenes, operaciones y filas de configuración);
+  `unificarJeansEnDenim()` renombra la familia, recuelga las hijas, marca `unificadaEn` y deja todo en bitácora **sin borrar**.
+  El mapeo a la hoja LMO sigue diciendo JEANS (es su nombre de origen). **HENLEY y las «Nueva hija» no se tocan.**
+- Ver `DECISIONES_PRODUCCION_16SEP.md`.
+
 ### 2.31 Menú de Planificación de producción (16-sep)
 - **Empaque sale del primer nivel**: es sub-área de **Terminados**. No es código: sale de la columna **«Ítem de
   planificación»** de Configuración → Centros; cambiarla rehace el menú en el mismo dibujado.

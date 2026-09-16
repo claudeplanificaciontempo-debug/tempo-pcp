@@ -526,6 +526,24 @@ planificación»; quien necesite las sub-áreas de un grupo usa `censDeGrupo()`.
 de 24 categorías tienen `familiaLMO` vinculada**, por eso la etiqueta de 0,5 min no carga en ninguna camiseta y 15
 de las 16 operaciones de ojales y botones no llegan a ningún producto. Ver `MENU_PRODUCCION_REPORTE.md`.
 
+**Decisiones de producción (16-sep-2026):** **Etiquetado** — solo Level 1, Level 2, Camiseta CR y Camiseta CV llevan
+etiqueta de serigrafía (0,5 min) y sale de `reglasEtiqueta` (tabla editable, calce EXACTO por nombre, columna
+`confirmada`; `etiquetaDe(k)` y `samPorCentro` la suman al centro). NO sale de la LMO: ninguna de las cuatro tiene esa
+operación. Se retiró la regla «SERIGRAFIA + ETIQUETAR → Etiquetas» de `reglasFamCentro` y las **dos** operaciones que
+calzaban (FITS TAMPOGRÁFICA 0,35 y BVD MANUAL 0,40) quedaron **sin centro y sin borrarse** (`o.centroPend`,
+`o.centroMotivo`, panel `opsSinCentroHTML` con selector `setCentroOp`). Las etiquetas **cosidas** (familia ENSAMBLE,
+RECTA) y «ETIQUETAR PRENDA» (EMPAQUE) son otra cosa y no se tocan. **Plancha** 2 min/prenda confirmado (sin
+`minEstandarEstimado`). **Lavado**: planta 3 días / Quito 15, los dos `cap:'no'` (solo espera) con `avisoLavadoPlanta()`
+a la vista porque NO es definitivo; la modalidad es **por orden** (`o.lavadoModo`), `esperaDeCentro` la respeta sobre el
+calce por categoría, y se agrega o quita a mano con `mLavado`/`aplicarLavado` (Liberación en lote y desde la ruta de
+cualquier orden; motivo obligatorio, auditoría y bitácora). **Ojales y botones**: tiempos definitivos, todas las filas
+confirmadas, y `tiemposOjalBoton()` ya no repone filas sin confirmar. **Rutas estimadas**: `estadoRuta(o)` =
+sinRevisar | revisada | real; `generarRutasEstimadas` excluye `CENTROS_DISENO` (estampado, bordado, etiquetas) y la
+pantalla avisa que esa carga puede faltar; revisión en Órdenes → Rutas, conteo en Reportería. **DENIM/JEANS**:
+`diagJeans()` reporta antes de mover y `unificarJeansEnDenim()` mueve **sin borrar** (renombra, recuelga hijas, marca
+`unificadaEn`, bitácora); el mapeo a la hoja LMO sigue diciendo JEANS. HENLEY y las «Nueva hija» NO son parte de esto.
+Ver `DECISIONES_PRODUCCION_16SEP.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
