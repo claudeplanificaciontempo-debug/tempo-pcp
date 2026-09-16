@@ -133,7 +133,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .fase-mini{font-size:10px;padding:0 5px;background:var(--field);color:var(--ink);border-color:var(--rule);vertical-align:middle;font-weight:400}.busq-menu{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);margin-top:4px;overflow:hidden}.busq-menu>div{padding:7px 12px;cursor:pointer;font-size:var(--fs-s);border-top:1px solid var(--rule2)}.busq-menu>div:first-child{border-top:0}.busq-menu>div:hover{background:var(--field)}
 .kpi.tarj{border-left:4px solid var(--t-accent);background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft));border-radius:8px}.kpi.tarj .v{color:var(--t-primary)}.kpi.tarj.clic{cursor:pointer}.kpi.tarj.clic:hover{filter:brightness(.97)}.kpi.tarj.abierta{outline:2px solid var(--t-accent)}.kpi.tarj.bad .v{color:var(--alerta)}.kpi.tarj.warn .v{color:var(--aviso)}.kpis.tarj-row{gap:8px;background:transparent;border:0}.panel h3{border-left:3px solid var(--t-accent)}.panel table thead th{background:var(--t-thead)}
 #navBtn{display:none;background:var(--t-accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:18px;cursor:pointer}
-@media (max-width:520px){.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
+@media (max-width:520px){#busg-host{order:9;flex:1 0 100%!important;min-width:0}#busg-host>div{max-width:none!important}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
 @media (max-width:860px){#navBtn{display:inline-block}#app{grid-template-rows:auto auto 1fr!important}header{height:auto!important;min-height:52px;padding:8px 12px;gap:8px;row-gap:6px}header .saved{min-width:0;text-align:left;order:9}header h1{font-size:15px}header button{padding:6px 10px}nav{display:none;flex-direction:column;align-items:stretch;overflow:visible}nav.abierto{display:flex}nav .grp{display:block;padding:10px 14px}nav .gbody{position:static!important;display:none;left:auto!important}nav .gbody.abierto{display:block}.kpis,.kpis.tarj-row{flex-direction:column}.pagehead{flex-wrap:wrap}.tab-card .body{flex-direction:column}.tarjetas{grid-template-columns:1fr}.panel .body{overflow-x:auto}.scroll{overflow-x:auto}header{height:auto;flex-wrap:wrap;padding:8px 12px}header .sub{display:none}}
 .cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
@@ -268,7 +268,7 @@ tbody tr:hover td{background:var(--field)}
 <div id="app">
   <header>
     <button id="navBtn" onclick="document.getElementById('nav').classList.toggle('abierto')" title="Menú">☰</button><h1 id="brand">Planificación y control</h1>
-    <span class="sub">TEMPOCODECA</span>
+    <span class="sub">TEMPOCODECA</span><span id="busg-host" style="flex:1;display:flex;justify-content:center;min-width:0"></span>
     <span class="spacer"></span>
     <span class="saved" id="saved"></span>
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
@@ -583,7 +583,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 21:25';
+const APP_BUILD='2026-09-15 21:40';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1478,9 +1478,75 @@ function valBusq(o,c){switch(c){case 'op':return o.op;case 'odc':return String(o
 function matchBusq(o,q,id){if(!q)return true;const qn=normTxt(q);const c=BUSQ[id];if(c&&c!=='*')return normTxt(valBusq(o,c)||'').includes(qn);return BUSQ_CAMPOS.some(([k])=>normTxt(valBusq(o,k)||'').includes(qn))}
 function setBusq(id,c){if(c)BUSQ[id]=c;else delete BUSQ[id];render();const n=document.querySelector('input[data-q="'+id+'"]');if(n)n.focus()}
 function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delete BUSQ[id];const c=BUSQ[id];const nomC=c&&c!=='*'?(BUSQ_CAMPOS.find(x=>x[0]===c)||[])[1]:null;
-  return `<div class="busq" style="position:relative;${extra||''}"><input type="text" value="${esc(v)}" placeholder="Buscar WH, ODC, estilo, color, fase, cliente…" data-q="${id}" oninput="buscarQ(this,v=>${setter})" onkeydown="if(event.key==='Enter'){event.preventDefault();setBusq('${id}','*')}else if(event.key==='Escape'){setBusq('${id}','*')}" style="width:100%;${nomC?'padding-right:150px':''}">
+  return `<div class="busq" style="position:relative;${extra||''}"><input type="text" value="${esc(v)}" placeholder="${esc(ayuda('busq.placeholder'))}" data-q="${id}" oninput="buscarQ(this,v=>${setter})" onkeydown="if(event.key==='Enter'){event.preventDefault();setBusq('${id}','*')}else if(event.key==='Escape'){setBusq('${id}','*')}" style="width:100%;${nomC?'padding-right:150px':''}">
    ${nomC?`<span class="chip on" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;cursor:pointer;white-space:nowrap" onclick="setBusq('${id}',null)" title="quitar el campo y buscar en todos">${esc(nomC)} ✕</span>`:''}
-   ${v&&!c?`<div class="busq-menu">${BUSQ_CAMPOS.map(([k,n])=>`<div onclick="setBusq('${id}','${k}')">Buscar <b>${n}</b> por: <i>${esc(v)}</i></div>`).join('')}<div class="mut" onclick="setBusq('${id}','*')">Buscar en todos los campos <span style="float:right">Enter</span></div></div>`:''}</div>`}
+   ${v&&!c?`<div class="busq-menu"><div class="mut" style="font-size:var(--fs-xs)">Ya está buscando en todos los campos · ${esc(ayuda('busq.solo'))}</div>${BUSQ_CAMPOS.map(([k,n])=>`<div onclick="setBusq('${id}','${k}')">solo <b>${n}</b></div>`).join('')}<div class="mut" onclick="setBusq('${id}','*')">seguir en todos <span style="float:right">Enter</span></div></div>`:''}</div>`}
+/* ================= BÚSQUEDA GENERAL: una barra arriba, en todas las pantallas y en teléfono ================= */
+/* textos que se pueden cambiar sin tocar código (tabla de ayudas, Configuración → Órdenes y materiales) */
+const AYUDAS_DEF={
+  'grp.fam':'Familia','grp.hija':'Tipo de producto','grp.cliente':'Cliente','grp.fase':'Fase','grp.color':'Color',
+  'grp.odc':'ODC','grp.mes':'Mes de entrega','grp.paso':'Próximo paso','grp.proyecto':'Proyecto','grp.etapa':'Etapa actual',
+  'busq.placeholder':'Buscar WH, ODC, cliente, referencia…','busq.solo':'buscar solo en…',
+  'busqg.placeholder':'Buscar una orden: WH, ODC, cliente o referencia'};
+function ayudas(){if(!S.params.ayudas||typeof S.params.ayudas!=='object')S.params.ayudas={};return S.params.ayudas}
+function ayuda(k){const v=ayudas()[k];return (v===undefined||v===null||v==='')?(AYUDAS_DEF[k]||k):v}
+function setAyuda(k,v){const antes=ayuda(k);ayudas()[k]=v;bitacora('Textos de pantalla · '+k+': '+antes+' → '+(v||'(por defecto)')+' ('+quienFirma()+')');save();render()}
+function ayudasPanelHTML(){const ks=Object.keys(AYUDAS_DEF);
+  return `<div class="panel"><h3>17 · Textos de pantalla <span class="note">nombres que se ven en el agrupador y los buscadores · vacío = el texto por defecto</span></h3><div class="body"><div class="scroll" style="max-height:300px"><table style="font-size:var(--fs-s)"><thead><tr><th>Dónde</th><th>Por defecto</th><th>Lo que se ve</th></tr></thead><tbody>
+   ${ks.map(k=>`<tr><td class="mut" style="font-size:var(--fs-xs)">${esc(k)}</td><td class="mut">${esc(AYUDAS_DEF[k])}</td><td><input type="text" style="width:260px" value="${esc(ayudas()[k]||'')}" placeholder="${esc(AYUDAS_DEF[k])}" onchange="setAyuda('${k}',this.value)"></td></tr>`).join('')}
+   </tbody></table></div></div></div>`}
+/* ---------- barra de búsqueda general ---------- */
+let BUSG={q:'',abierto:false,oid:null};
+function ordenesQueVe(){const ab=S.ordenes.filter(o=>abierta(o)||o.estado==='cerrada'||o.estado==='prevision');
+  if(!PERFIL)return ab;
+  if(puede('programa')||puede('ordenes')||puede('usuarios'))return ab;
+  const cens=S.centros.filter(c=>veCentro(c.id)).map(c=>c.id);
+  if(!cens.length)return [];
+  return ab.filter(o=>(o.ruta||[]).some(p=>cens.includes(p.centro))||cens.includes('tej')||cens.includes('tin'))}
+function buscarGeneral(q){const qn=normTxt(q||'');if(!qn||qn.length<2)return [];
+  return ordenesQueVe().filter(o=>BUSQ_CAMPOS.some(([k])=>normTxt(valBusq(o,k)||'').includes(qn))).slice(0,40)}
+function setBusqG(v){BUSG.q=v;BUSG.abierto=!!v;render();const n=document.getElementById('busg');if(n){n.focus();try{n.setSelectionRange(n.value.length,n.value.length)}catch(e){}}}
+function cerrarBusqG(){BUSG.q='';BUSG.abierto=false;render()}
+function busquedaGeneralHTML(){const res=BUSG.abierto?buscarGeneral(BUSG.q):[];
+  return `<div id="busg-wrap" style="position:relative;flex:1;max-width:420px;min-width:150px">
+   <input id="busg" type="text" value="${esc(BUSG.q)}" placeholder="${esc(ayuda('busqg.placeholder'))}" oninput="buscarQ(this,v=>setBusqG(v))" onkeydown="if(event.key==='Escape')cerrarBusqG()" style="width:100%;padding:6px 10px;border:1px solid var(--rule);border-radius:8px">
+   ${BUSG.abierto&&BUSG.q?`<div class="busq-menu" style="left:0;right:0;max-height:60vh;overflow:auto">
+     ${res.length?res.map(o=>{const d=dondeEstaTxt(o);return `<div onclick="abrirFichaOrden('${o.id}')" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
+       ${fotoDe(o)?fotoMini(o,34):'<span style="width:34px;display:inline-block"></span>'}
+       <span style="flex:1;min-width:0"><b>${esc(o.op)}</b> ${faseTag(o)}<br><span class="mut" style="font-size:var(--fs-xs)">${esc(o.cliente||'')}${o.ref?' · '+esc(o.ref):''} · ${esc(d)}</span></span></div>`}).join(''):'<div class="mut" style="padding:8px">Ninguna orden con «'+esc(BUSG.q)+'» entre las que tu perfil puede ver.</div>'}
+    </div>`:''}</div>`}
+function dondeEstaTxt(o){try{const P=programar();const d=dondeEsta(o,P);return d&&d.n?d.n:'—'}catch(e){return '—'}}
+/* ficha de la orden: foto, ruta con el paso actual, fechas, avance por talla e historial */
+function abrirFichaOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;BUSG.abierto=false;
+  let P=null;try{P=programar()}catch(e){}
+  const ro=(P&&P.ordenes[o.id])||{};const pasos=(ro.pasos||[]);const d=P?dondeEsta(o,P):{k:null,n:'—'};
+  const a=S.avance[o.id]||{};const curva=curvaCorte(o)||curvaPedida(o);const tallas=curva?Object.keys(curva):[];
+  const hist=(o.fases||[]).slice(-12).reverse();
+  abrir(`<h3>${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">
+   <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div style="flex:none">${fotoDe(o)?fotoMini(o,150):'<div class="mut">sin foto</div>'}</div>
+    <div style="flex:1;min-width:230px;font-size:var(--fs-s)">
+     <div>${faseTag(o)} · <b>${esc(d.n||'—')}</b></div>
+     <div>${esc(o.cliente||'')}${o.odc?' · ODC '+esc(String(o.odc)):''}${o.ref?' · '+esc(o.ref):''}</div>
+     <div>${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div>
+     <div class="mut">Entrega pedida ${esc(o.fecha||'—')}${o.fechaCompromiso?' · compromiso '+esc(o.fechaCompromiso):''}${ro.finPro?' · el programa la termina '+fmtDia(ro.finPro):''}</div>
+     ${ro.atraso?'<div class="tag t-alerta">el programa dice que no llega'+(ro.diasTarde?' · '+ro.diasTarde+' días':'')+'</div>':''}
+    </div></div>
+   <h4 style="margin:12px 0 6px">Ruta</h4>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Paso</th><th>Desde</th><th>Hasta</th><th class="num">Hechas</th><th></th></tr></thead><tbody>
+   ${(o.ruta||[]).map(p=>{const pp=pasos.find(x=>x.centro===p.centro)||{};const hechas=(a.centros||{})[p.centro]||0;const aqui=d.k===p.centro;
+     return `<tr ${aqui?'style="background:var(--field);font-weight:600"':''}><td>${aqui?'▶ ':''}${esc(nCen(p.centro))}</td><td>${pp.ini?fmtDia(pp.ini):'—'}</td><td>${pp.fin?fmtDia(pp.fin):'—'}</td><td class="num">${num(hechas)} / ${num(o.cant)}</td><td>${hechas>=o.cant?'<span class="tag t-ok">hecho</span>':(aqui?'<span class="tag t-aviso">aquí</span>':'')}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin ruta cargada.</td></tr>'}
+   </tbody></table>
+   ${tallas.length?`<h4 style="margin:12px 0 6px">Avance por talla <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${curvaCorte(o)?'contra lo cortado':'contra lo pedido'}</span></h4>
+    <div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th>${tallas.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+    <tr><td>${curvaCorte(o)?'Cortado':'Pedido'}</td>${tallas.map(t=>`<td class="num">${num(curva[t]||0)}</td>`).join('')}<td class="num">${num(sumaCurva(curva))}</td></tr>
+    ${Object.entries(a.tallas||{}).map(([c,v])=>`<tr><td>${esc(nCen(c))}</td>${tallas.map(t=>`<td class="num">${num(v[t]||0)}</td>`).join('')}<td class="num">${num(sumaCurva(v))}</td></tr>`).join('')}
+    </tbody></table></div>`:'<p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Sin curva de tallas cargada.</p>'}
+   <h4 style="margin:12px 0 6px">Historial de fases</h4>
+   <table style="font-size:var(--fs-xs)"><thead><tr><th>Cuándo</th><th>Fase</th><th>Origen</th><th>Motivo / observación</th></tr></thead><tbody>
+   ${hist.map(f=>`<tr><td style="white-space:nowrap">${f.ts?new Date(f.ts).toLocaleString('es-EC'):''}</td><td>${esc(f.fase||'')}</td><td class="mut">${esc(f.origen||'')}</td><td class="mut">${esc(f.motivo||f.obs||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">Sin historial.</td></tr>'}
+   </tbody></table></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" onclick="cerrar();irEstadoOrden('${o.id}')">Ir a donde está</button></div>`)}
 /* ---------- A · Mi centro: pantalla de tablet por centro / módulo (el usuario ve solo lo suyo) ---------- */
 let TAB={centro:null,rec:null,q:''};
 function tabletDe(){return (S.params.tablets||{})[(PERFIL&&PERFIL.id)||'']||{}}
@@ -1768,10 +1834,13 @@ function alertasComprasHTML(){const al=(S.params.alertasCompras||[]).filter(a=>!
   return `<div class="panel" style="border:2px solid var(--alerta)"><h3>Estas órdenes pasaron a compras <span class="note">${al.length} · la persona de compras tiene que pedir la tela</span></h3><div class="body"><table><thead><tr><th>Cuándo</th><th>OP</th><th>Telas</th><th>Días proveedor</th><th>Motivo · quién</th><th></th></tr></thead><tbody>
    ${al.map(a=>{const o=S.ordenes.find(x=>x.id===a.oid);return `<tr><td style="white-space:nowrap">${new Date(a.ts).toLocaleDateString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(a.op)}</td><td style="font-size:var(--fs-xs)">${o?(o.telas||[]).map(t=>esc(nTela(t.tela))+' '+num(t.kg)+' kg').join(' · '):''}</td><td>${a.dias?num(a.dias):'<span class="tag t-alerta">sin días de proveedor</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(a.motivo||'')} · ${esc(a.u||'')}</td><td>${puede('ordenes')||puede('programa')?`<button class="btn ghost sm" onclick="atenderCompra('${a.id}')">pedida</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`}
 /* ---------- Agrupación colapsable como Odoo (hasta 3 niveles, conteo y prendas a la derecha) para cualquier lista de órdenes ---------- */
-const GRP_CAMPOS=[['fase','Fase'],['cliente','Cliente'],['odc','ODC'],['fam','Categoría padre'],['hija','Categoría hija'],['color','Color'],['proyecto','Proyecto'],['etapa','Etapa actual'],['paso','Próximo paso'],['mes','Mes de entrega']];
+const GRP_ORDEN=['cliente','fase','fam','hija','color','odc','mes','paso','proyecto','etapa'];
+const GRP_CAMPOS_BASE={fase:'grp.fase',cliente:'grp.cliente',odc:'grp.odc',fam:'grp.fam',hija:'grp.hija',color:'grp.color',proyecto:'grp.proyecto',etapa:'grp.etapa',paso:'grp.paso',mes:'grp.mes'};
+Object.defineProperty(window,'GRP_CAMPOS',{get:()=>GRP_ORDEN.map(k=>[k,ayuda(GRP_CAMPOS_BASE[k])])});
 let GRP={};
-function grpSt(id){if(!GRP[id]){let n=null;try{n=JSON.parse(localStorage['__grp_'+id]||'null')}catch(e){}GRP[id]={niveles:Array.isArray(n)?n:[],exp:new Set()}}return GRP[id]}
-function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;g.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j).slice(0,3);g.exp=new Set();try{localStorage['__grp_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
+function claveUsr(){return (PERFIL&&(PERFIL.id||PERFIL.email))||'anon'}
+function grpSt(id){if(!GRP[id]){let n=null;try{n=JSON.parse(localStorage['__grp_'+claveUsr()+'_'+id]||localStorage['__grp_'+id]||'null')}catch(e){}GRP[id]={niveles:Array.isArray(n)?n:[],exp:new Set()}}return GRP[id]}
+function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;g.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j).slice(0,3);g.exp=new Set();try{localStorage['__grp_'+claveUsr()+'_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
 function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);render()}
 function claveGRP(o,c){switch(c){case 'fase':return o.fase||'Sin fase';case 'cliente':return o.cliente||'Sin cliente';case 'odc':return String(o.odc||'').trim()?'ODC '+String(o.odc).trim():'Sin ODC';case 'fam':{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'}case 'hija':case 'cat':{const k=K(o.cat);return k?k.n:'Sin categoría'}case 'color':return (C(o.color)||{}).n||'Sin color';case 'proyecto':return String(o.proyecto||'').trim()||'Sin proyecto';case 'etapa':try{return dondeEsta(o,programar()).n}catch(e){return '—'}case 'paso':try{const p=pasoProximoDe(o,programar());return p?nCen(p.centro):'Sin paso pendiente'}catch(e){return '—'}case 'mes':{const m=fechaMetaDe(o);return m?fmtMesEG(m.slice(0,7)):'Sin fecha'}}return '—'}
 function grpSelHTML(id,inline){const g=grpSt(id);const n=g.niveles;const sel=i=>`<select onchange="setNivelGRP('${id}',${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${GRP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;const ss=[0,1,2].filter(i=>i<=n.length).map(sel).join('');return inline?ss:`<div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${ss}</div></div>`}
@@ -1954,7 +2023,8 @@ function nombrePagina(p){const e=(typeof PAGINAS_DEF!=='undefined'?PAGINAS_DEF:[
 function atrasHTML(){if(!NAVH.length)return '';const s=NAVH[NAVH.length-1];return `<div class="no-print atras" style="margin:0 0 10px"><a class="chip on" style="cursor:pointer" onclick="volver()">← atrás</a> <span class="mut" style="font-size:var(--fs-xs)">vuelve a ${esc(nombrePagina(s.page))} con sus filtros y su posición</span></div>`}
 function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
   const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
-function render(){CAPM=null;SEMC={};
+function render(){
+  {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
@@ -2493,7 +2563,7 @@ function vAlbaran(el){
    Base: TODAS las órdenes abiertas (con WH, no facturadas ni stand by), liberadas o no — la misma base que el plan mensual.
    Dos salidas: la PANTALLA (interna: estimada por el programa, liberación) y el PDF PARA EL CLIENTE con columnas elegidas y
    guardadas (S.params.pdfEntregas). La agrupación es la misma en las dos. Ningún dato interno sale al PDF si no está marcado. */
-let EG={cli:'',meses:null,fam:null,hija:null,tela:null,sel:new Set(),masiva:'',niveles:null,pdf:false};
+let EG={cli:'',meses:null,fam:null,hija:null,tela:null,sel:new Set(),masiva:'',niveles:null,pdf:false,q:''};
 const EG_CAMPOS_GRUPO=[['odc','ODC (orden de compra)'],['cat','Categoría'],['depto','Departamento'],['fam','Familia'],['mes','Mes de entrega pedida'],['cliente','Cliente'],['color','Color'],['ref','Estilo']];
 function nivelesEG(){if(EG.niveles)return EG.niveles;try{const v=JSON.parse(localStorage.__egNiveles||'null');if(Array.isArray(v)){EG.niveles=v;return v}}catch(e){}EG.niveles=['odc','cat'];return EG.niveles}
 function setNivelEG(i,v){const n=nivelesEG().slice();n[i]=v;EG.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j);try{localStorage.__egNiveles=JSON.stringify(EG.niveles)}catch(e){}render()}
@@ -2582,6 +2652,7 @@ function vEntregas(el){
    <b style="font-size:var(--fs-s)">Edición masiva de fecha de compromiso</b><span class="mut" style="font-size:var(--fs-s)">${selCount} seleccionadas</span>
    <input type="date" id="eg-masiva" value="${EG.masiva}" onchange="EG.masiva=this.value">
    <button class="btn sm" ${selCount?'':'disabled'} onclick="aplicarMasivaEG()">Aplicar a las seleccionadas</button>
+   <div style="width:200px"><label>Buscar</label>${busqHTML('EG.q',EG.q,'EG.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
    <button class="btn ghost sm" onclick="marcarTodoEG(true)">Marcar todas</button>
    <button class="btn ghost sm" onclick="marcarTodoEG(false)">Ninguna</button></div></div>
   <section class="imp"><div class="imp-cab"><div><b>${esc(EG.cli||'Todos los clientes')}</b> <span class="mut">· vista interna</span></div><div class="mut">TEMPOCODECA · al ${new Date().toLocaleDateString('es-EC')}</div></div>
@@ -3386,7 +3457,7 @@ function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);co
    ${filasGRP('cenv',grupos[g].f.filter(f=>faseOkCEN(f.o)).sort((a,b)=>(a.ini||a.iniTodo||'9')<(b.ini||b.iniTodo||'9')?-1:1).slice(0,300),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.pz)}</td><td>${f.ini?fmtDia(f.ini):'<span class="mut">no programada</span>'}</td><td class="mut">${!f.ini&&f.iniTodo?fmtDia(f.iniTodo):''}</td><td>${marcaCentro(f.o,P)}</td><td><span class="tag ${liberada(f.o,'corte')?'t-ok':'t-lavado'}">${esc(estadoLibEG(f.o))}</span></td></tr>`,8,f=>f.o,f=>f.pz)}</tbody></table></div></div>`).join('')||'<div class="panel"><div class="empty">Nada en camino: todo lo que tiene paso aquí ya está en este centro o terminado.</div></div>'}`}
 
 /* ---------- Costura: secuencia por módulo · rebalanceo con aprobación · Andon ---------- */
-let COS={tab:'secuencia',rec:null,eval:{}};
+let COS={tab:'secuencia',rec:null,eval:{},q:''};
 function vCostura(el,embebido){
   const tabs=[['secuencia','Secuencia por módulo'],['rebalanceo','Rebalanceo'],['andon','Andon']];
   const cab=`<div class="pagehead">${embebido?'<h3 style="margin:0">Costura</h3>':'<h2>Costura</h2>'}<span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${COS.tab===k?'on':''}" onclick="COS.tab='${k}';render()">${v}${k==='rebalanceo'&&(S.propuestas||[]).some(p=>p.estado==='PENDIENTE')?' ('+(S.propuestas||[]).filter(p=>p.estado==='PENDIENTE').length+')':''}</span>`).join('')}</div></div>`;
@@ -3399,6 +3470,7 @@ function vCostura(el,embebido){
     let cambios=0;for(let i=1;i<sec.length;i++)if(sec[i].color!==sec[i-1].color)cambios++;
     const tot=sec.reduce((a,x)=>a+x.min,0)||1;
     el.innerHTML=cab+`<p class="lede">Orden en que el programa hace pasar las órdenes por cada módulo. Con la ventana de color (Configuración → Parámetros) el motor prefiere seguir con el mismo color si no atrasa más de esos días; una orden marcada urgente en Control de piso sube al frente, y una fijada a un módulo (⚲) no se mueve.</p>
+    <div class="row" style="margin:0 0 10px;align-items:flex-end"><div style="width:220px"><label>Buscar</label>${busqHTML('COS.q',COS.q,'COS.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div></div>
     <div class="chips" style="margin-bottom:12px">${mods.map(m=>{const n=((P.secMod||{})[m.id]||[]).length;return `<span class="chip ${m.id===COS.rec?'on':''}" onclick="COS.rec='${m.id}';render()">${esc(m.n)} <span class="mut">${n}</span></span>`},7,f=>f.o,f=>f.pz)}</div>
     <div class="panel"><h3>${esc(r?r.n:'')} <span class="note">${sec.length} órdenes · ${num(tot)} min estándar · ${cambios} cambios de hilo · ${num(tot/(capDia(r,h)||1),1)} días de cola</span></h3><div class="body">
      <div style="display:flex;height:16px;border-radius:2px;overflow:hidden;margin-bottom:12px;background:var(--field)">${sec.map((x,i)=>`<i style="flex:${x.min/tot};background:${colHex(x.color)};${i>0&&sec[i-1].color!==x.color?'border-left:2px solid #fff;':''}" title="${esc(x.op)} · ${esc((C(x.color)||{}).n||'')} · ${num(x.min)} min"></i>`).join('')}</div>
@@ -3511,7 +3583,7 @@ function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
    min/prenda del centro (la misma regla del motor para un paso, minRef), sin repartir por días. Capacidad = calendario del mes × recursos
    activos (capDia), como el Plan mensual. Tejeduría y tintorería no tienen min/prenda por Proyecto: se muestran por PROGRAMA con toda la
    cartera (programarTodo) y la celda lo dice. No se toca el motor: solo se lee. */
-let CAPD={sel:null,cen:'',cmp:false};let CAPM=null;
+let CAPD={sel:null,cen:'',cmp:false,q:''};let CAPM=null;
 const CAP_TEXTIL={tej:'Tejeduría',tin:'Tintorería'};
 function nombreCentroCap(c){return CAP_TEXTIL[c]||nCen(c)}
 function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hechas=fe.hechos.includes(c)?o.cant:(ac[c]||0);const pend=Math.max(0,o.cant-hechas);if(!pend)return 0;
@@ -3580,8 +3652,8 @@ function vCapacidad(el){
       <div class="kpi"><div class="v">${fmtCarga(x.cap,x.u)}</div><div class="k">Capacidad · ${x.vencido?'mes ya pasado: 0':(x.m===hoy().slice(0,7)?'solo los días que quedan desde hoy':'calendario del mes')+' × recursos activos (Configuración → Centros y recursos · Calendario)'+(x.u==='pt'?' · minutos-máquina × puntadas/min × cabezas de cada bordadora (misma regla que el motor)':'')}</div></div>
       <div class="kpi ${x.noLib?'warn':''}"><div class="v">${x.noLib}</div><div class="k">Órdenes todavía NO liberadas · ${fmtCarga(x.minNoLib,x.u)} · ahí todavía puedes decidir</div></div></div>
      ${cercanos.length?`<p style="font-size:var(--fs-s)"><b>Meses cercanos con holgura en ${esc(n)}:</b> ${cercanos.map(z=>esc(fmtMesEG(z.m))+': caben '+fmtCarga(z.holg,x.u)+' (uso '+(z.cap?Math.round(z.carga/z.cap*100):0)+'%)').join(' · ')}</p>`:`<p class="mut" style="font-size:var(--fs-s)">Ningún mes a ±3 tiene holgura en ${esc(n)}.</p>`}
-     ${x.det.length?`<div class="scroll" style="max-height:380px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Pendientes</th><th class="num">${x.u==='h'?'Horas':x.u==='pt'?'Puntadas':'Min'}</th><th class="num">% del mes</th><th>Liberación</th><th>Entrega</th></tr></thead><tbody>
-      ${x.det.slice(0,80).map(d=>`<tr><td style="white-space:nowrap">${fotoMini(d.o)}${esc(d.o.op)}</td><td>${esc(d.o.cliente||'')}</td><td>${esc(nombreCat(K(d.o.cat)))}</td><td class="num">${num(d.o.cant)}</td><td class="num">${x.u==='h'?num(d.min,1):num(d.min)}</td><td class="num">${x.cap?Math.round(d.min/x.cap*100):'—'}%</td><td><span class="tag ${d.lib?'t-ok':'t-lavado'}">${esc(estadoLibEG(d.o))}</span></td><td>${d.o.fecha||'<span class="mut">sin fecha</span>'}</td></tr>`).join('')}${x.det.length>80?`<tr><td colspan="8" class="mut">… y ${x.det.length-80} órdenes más (ordenadas por peso)</td></tr>`:''}</tbody></table></div>`:''}
+     ${x.det.length?`<div class="row" style="margin:6px 0;align-items:flex-end"><div style="width:200px"><label>Buscar</label>${busqHTML('CAPD.q',CAPD.q,'CAPD.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>${grpSelHTML('cap')}</div><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Pendientes</th><th class="num">${x.u==='h'?'Horas':x.u==='pt'?'Puntadas':'Min'}</th><th class="num">% del mes</th><th>Liberación</th><th>Entrega</th></tr></thead><tbody>
+      ${(grpSt('cap').todoAbierto=true,filasGRP('cap',x.det.filter(d=>matchBusq(d.o,normTxt(CAPD.q),'CAPD.q')).slice(0,200),d=>`<tr><td style="white-space:nowrap">${fotoMini(d.o)}${esc(d.o.op)}</td><td>${esc(d.o.cliente||'')}</td><td>${esc(nombreCat(K(d.o.cat)))}</td><td class="num">${num(d.o.cant)}</td><td class="num">${x.u==='h'?num(d.min,1):num(d.min)}</td><td class="num">${x.cap?Math.round(d.min/x.cap*100):'—'}%</td><td><span class="tag ${d.lib?'t-ok':'t-lavado'}">${esc(estadoLibEG(d.o))}</span></td><td>${d.o.fecha||'<span class="mut">sin fecha</span>'}</td></tr>`,8,d=>d.o,d=>+d.o.cant||0))}${x.det.length>80?`<tr><td colspan="8" class="mut">… y ${x.det.length-80} órdenes más (ordenadas por peso)</td></tr>`:''}</tbody></table></div>`:''}
      ${x.banos&&x.banos.length?`<div class="scroll" style="max-height:300px"><table><thead><tr><th>Baño</th><th>Color</th><th class="num">kg</th><th class="num">Horas</th><th>Máquina</th><th>Día</th><th>WH</th></tr></thead><tbody>${x.banos.slice(0,60).map(b=>`<tr><td>${esc(b.cod||'')}${b.confirmado?' <span class="tag t-ok">confirmado</span>':''}</td><td>${esc(b.colorN||'')}</td><td class="num">${num(b.kg)}</td><td class="num">${num(b.horas||0,1)}</td><td>${esc(nRec(b.rec))}</td><td>${fmtDia(b.dia)}</td><td style="font-size:var(--fs-xs)">${[...(b.ops||[])].slice(0,6).map(esc).join(', ')}</td></tr>`).join('')}</tbody></table></div>`:''}
      <h4 style="margin:14px 0 6px">Decisiones sobre ${esc(n)} · ${esc(fmtMesEG(x.m))}</h4>
      ${puede('programa')?`<textarea id="capd-txt" rows="2" style="width:100%" placeholder="Qué se decidió (texto libre). Aquí solo se anota: el sistema no ejecuta nada; si decides mover carga, reprogramas a mano."></textarea><div style="margin:6px 0 10px"><button class="btn sm" onclick="anotarDecisionCap('${x.c}','${x.m}')">Anotar decisión</button> <span class="mut" style="font-size:var(--fs-xs)">queda con quién, cuándo, el % y lo que faltaba en ese momento</span></div>`:''}
@@ -5212,6 +5284,7 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
   ${motivosPanelHTML()}
   ${tallasPanelHTML()}
+  ${ayudasPanelHTML()}
 
   <div class="panel"><h3>13 · Qué le falta a la tela: propuesta por palabras del producto <span class="note">tintura · lavado de tela · nada; sin palabra: EXTERNA TEÑIDA → nada, lo demás → tintura. La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>

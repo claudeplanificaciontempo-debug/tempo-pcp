@@ -367,6 +367,15 @@ especialidad; llenarla no es obligatorio. Parámetros `tolPuesto` (2 %, reemplaz
 `nivelMinEsp` (2). Balanceo abre con `modulosVistaHTML` (personas, máquinas, operarias y referencia en curso).
 `delTipoMaq`/`delOperaria` están en la lista GUARDIA. Ver `BALANCEO_ETAPA1_REPORTE.md`.
 
+**Búsqueda general y textos (15-sep-2026 noche):** barra `busquedaGeneralHTML` en la cabecera (`#busg-host`, la inyecta
+`render()`), estado `BUSG`, `buscarGeneral` sobre `ordenesQueVe()` (respeta perfiles) y `abrirFichaOrden(oid)` (foto,
+ruta con el paso actual, fechas, avance por talla e historial). El buscador de lista ya filtra por todos los campos y el
+menú solo ofrece acotar. `GRP_CAMPOS` es ahora un getter que arma las etiquetas desde la **tabla 17 · Textos de
+pantalla** (`ayudas()`/`ayuda(k)`/`AYUDAS_DEF`): Familia, Tipo de producto, y el orden Cliente, Fase, Familia, Tipo de
+producto, Color, ODC, Mes, Próximo paso, Proyecto, Etapa. La agrupación se guarda por usuario (`claveUsr()` en la clave
+de localStorage). Buscador común agregado en Entregas (`EG.q`), Costura (`COS.q`) y el detalle de Capacidad y decisiones
+(`CAPD.q` + `filasGRP('cap')`). Ver `BUSQUEDA_AGRUPADOR_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -204,6 +204,19 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.17 Búsqueda general, buscador y agrupador (15-sep-2026 noche)
+- **Barra de búsqueda general** en la cabecera, en todas las pantallas y en teléfono: WH, ODC, cliente o referencia,
+  con foto, fase y dónde está; el clic abre la ficha de la orden (ruta con el paso actual, fechas, avance por talla e
+  historial). Respeta los perfiles.
+- **Buscador de lista**: escribir busca en todos los campos; elegir uno es opcional.
+- **Agrupador**: Familia y Tipo de producto (antes categoría padre e hija), en el orden Cliente, Fase, Familia, Tipo de
+  producto, Color, ODC, Mes de entrega, Próximo paso, Proyecto. Los nombres salen de la tabla 17 · Textos de pantalla.
+- **Se agregó el buscador común** en Entregas, Costura y el detalle de Capacidad y decisiones (ahí también el agrupador).
+- **No lo llevan** Tejeduría, Tintorería, Stock, Compras, Macro, Reportería ni Avance: no listan órdenes.
+- **Conservan su agrupador propio** Entregas (departamento y estilo, selección para el PDF), Plan → Agregar (casillas)
+  y la secuencia de Costura (el orden es la función).
+- Lo elegido se recuerda **por pantalla y por usuario**.
+
 ### 2.16 Carga general y Balanceo etapa 1 (15-sep-2026 noche)
 - **Una sola cuenta de carga**: la misma fórmula (minutos pendientes por centro, separados en firme, en proceso y
   reserva) con tres bases: **programadas**, **todas las abiertas** y **plan del mes**. Cada pantalla dice con cuál está

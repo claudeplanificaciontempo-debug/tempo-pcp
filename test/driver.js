@@ -167,7 +167,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("fotos: la orden sin foto no tiene enlace",!fotoDe(S.ordenes.find(o=>o!==o1&&o!==o2)));
    __check("fotos: miniatura carga perezosa y abre la grande",/loading="lazy"/.test(fotoMini(o1))&&/mFoto/.test(fotoMini(o1))&&fotoMini(S.ordenes.find(o=>o!==o1&&o!==o2))==="");
    delete o1.foto;__check("fotos: tras una recarga de órdenes el enlace se vuelve a colgar por OP",colgarFotos()===1&&!!o1.foto);
-   cerrar();page="ordenes";ORDF.q=o1.op;const g0=ORDF.grupo;ORDF.grupo=null;render();const hO=document.getElementById("p-ordenes").innerHTML;ORDF.q="";ORDF.grupo=g0;__check("fotos: miniaturas en la lista de órdenes",hO.includes("foto-mini"));
+   cerrar();page="ordenes";ORDF.q=o1.op;const g0=ORDF.grupo;ORDF.grupo=null;GRP={};grpSt("ord").niveles=[];render();const hO=document.getElementById("p-ordenes").innerHTML;ORDF.q="";ORDF.grupo=g0;__check("fotos: miniaturas en la lista de órdenes",hO.includes("foto-mini"));
    page="imprimir";IMP.area="pro";render();const hI=document.getElementById("p-imprimir").innerHTML;__check("fotos: hoja impresa de producción lleva la foto (54 px)",__R.errors.length===antes&&(hI.includes("foto-mini")||!hI.includes(o1.op)),hI.includes(o1.op));
    page="macro";render();const hM=document.getElementById("p-macro").innerHTML;__check("fotos: la macro no lleva fotos",!hM.includes("foto-mini"));
    page="liberacion";LIB.et="corte";render();__check("fotos: liberación renderiza con miniaturas sin errores",__R.errors.length===antes);
@@ -321,7 +321,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("tabla 3: NUEVOS TEMPO / TELA TINTURADA (EXTERNA) → EXTERNA TEÑIDA",origenDeTela('NUEVOS TEMPO','TELA TINTURADA (EXTERNA)')==='EXTERNA TEÑIDA'&&dimensionesTela({cod:'',prod:'CUBE LYCRA - TINTURADO',origen:origenDeTela('NUEVOS TEMPO','TELA TINTURADA (EXTERNA)')}).produce==='externa');
    const oP=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).some(t=>t.ud==='m'&&t.m>0));
    __check("plana: hay órdenes con tela en metros aparte de las de kilos",!!oP&&oP.telas.some(t=>t.ud==='m')&&(oP.mPlana==null||oP.mPlana>=0));
-   page='ordenes';ORDF.q=oP?oP.op:'';const g0=ORDF.grupo;ORDF.grupo=null;render();const hO=document.getElementById('p-ordenes').innerHTML;ORDF.q='';ORDF.grupo=g0;__check("plana: la lista de órdenes muestra metros con la marca (plana)",!oP||/\d+ m <span class="mut">\(plana\)/.test(hO));
+   page='ordenes';ORDF.q=oP?oP.op:'';const g0=ORDF.grupo;ORDF.grupo=null;GRP={};grpSt('ord').niveles=[];render();const hO=document.getElementById('p-ordenes').innerHTML;ORDF.q='';ORDF.grupo=g0;__check("plana: la lista de órdenes muestra metros con la marca (plana)",!oP||/\d+ m <span class="mut">\(plana\)/.test(hO));
    page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: tela plana en metros en tabla aparte, no sumada a los kilos",hm.includes('Tela plana · METROS')||!macroMes('').planas.length);
    // tanda de plana: requiere máquina y horas configuradas
    const mTin=S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&r.cap>=200);S.params.planaMaquina=mTin.id;S.params.planaHoras=8;
@@ -1039,7 +1039,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};APO.q='';PLAN=null;PLAN_ALL=null;
    // buscador
    page='liberacion';LIB.et='tela';LIB.q='';render();let hl=document.getElementById('p-liberacion').innerHTML;__check("FF: el buscador es un solo campo (busq) sin menú cuando está vacío",hl.includes('class="busq"')&&!hl.includes('busq-menu'));
-   LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ofrece 'Buscar Orden de producción / ODC / Referencia (estilo) / Color / Fase / Cliente por: texto' como Odoo",hl.includes('busq-menu')&&['Orden de producción','ODC','Referencia (estilo)','Color','Fase','Cliente'].every(n=>hl.includes('Buscar <b>'+n+'</b> por: <i>'+esc(o.op.slice(-4))+'</i>')));
+   LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ya busca en todos los campos y ofrece acotar a uno solo",hl.includes('busq-menu')&&/Ya está buscando en todos los campos/.test(hl)&&['Orden de producción','ODC','Referencia (estilo)','Color','Fase','Cliente'].every(n=>hl.includes('solo <b>'+n+'</b>')));
    setBusq('LIB.q','fase');hl=document.getElementById('p-liberacion').innerHTML;__check("FF: elegir un campo cierra el menú y deja el chip con el campo elegido",!hl.includes('busq-menu')&&hl.includes('Fase ✕'));
    const q4=o.op.slice(-4);const porFase=S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q')),porTodo=(()=>{BUSQ['LIB.q']='*';return S.ordenes.filter(x=>abierta(x)&&matchBusq(x,q4,'LIB.q'))})();
    __check("FF: buscar por campo acota (por Fase no encuentra el número de WH; en todos sí)",porFase.every(x=>normTxt(faseNombre(x.fase)).includes(normTxt(q4)))&&porTodo.some(x=>x.id===o.id),porFase.length+' vs '+porTodo.length);
@@ -1086,7 +1086,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // 2/3 · agrupación colapsable
    const oPendVC=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/VC-PEND';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
    GRP={};grpSt('lib').niveles=['cliente','fase'];page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;LIB.verLista=true;render();let hl=document.getElementById('p-liberacion').innerHTML;
-   __check("VC: Liberación agrupa (colapsado, conteo y prendas a la derecha) y ofrece fase/cliente/ODC/padre/hija/color/proyecto",hl.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(hl)&&['Fase','Cliente','ODC','Categoría padre','Categoría hija','Color','Proyecto'].every(x=>hl.includes('>'+x+'</option>')));
+   __check("VC: Liberación agrupa (colapsado, conteo y prendas a la derecha) y ofrece fase/cliente/ODC/padre/hija/color/proyecto",hl.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(hl)&&['Fase','Cliente','ODC','Familia','Tipo de producto','Color','Proyecto'].every(x=>hl.includes('>'+x+'</option>')));
    const key=(hl.match(/togGRP\('lib','([^']+)'\)/)||[])[1];if(key){togGRP('lib',key.replace(/\\'/g,"'"));hl=document.getElementById('p-liberacion').innerHTML;__check("VC: al abrir un grupo aparece el segundo nivel (anidado)",(hl.match(/grp-row/g)||[]).length>1)}
    S.ordenes=S.ordenes.filter(x=>x!==oPendVC);PLAN=null;PLAN_ALL=null;
    GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
@@ -1119,7 +1119,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer)",Array.isArray(REPORTES)&&REPORTES.length>=6&&REPORTES.every(r=>r.p&&r.n));
    GRP={};grpSt('vo').niveles=[];VO={q:''};page='vistaordenes';render();let h=document.getElementById('p-vistaordenes').innerHTML;
    __check("REP: Vista general lista todas las abiertas con foto/WH/fase, cliente, ODC, estilo, categoría padre e hija, color, prendas, entrega, proyecto y estado",['Cliente','ODC','Estilo','Categoría padre','Categoría hija','Color','Prendas','Entrega','Proyecto','Estado'].every(x=>h.includes('<th'+(x==='Prendas'?' class="num"':'')+'>'+x+'</th>'))&&h.includes('mDetalleOrden(')&&new RegExp(S.ordenes.filter(abierta).length+' órdenes abiertas').test(h));
-   __check("REP: buscador inteligente y agrupación colapsable (fase, cliente, ODC, padre, hija, color, proyecto)",h.includes('data-q="VO.q"')&&h.includes("setNivelGRP('vo'")&&['Fase','Cliente','ODC','Categoría padre','Categoría hija','Color','Proyecto'].every(x=>h.includes('>'+x+'</option>')));
+   __check("REP: buscador inteligente y agrupación colapsable (fase, cliente, ODC, padre, hija, color, proyecto)",h.includes('data-q="VO.q"')&&h.includes("setNivelGRP('vo'")&&['Fase','Cliente','ODC','Familia','Tipo de producto','Color','Proyecto'].every(x=>h.includes('>'+x+'</option>')));
    grpSt('vo').niveles=['cliente','fase','color'];render();h=document.getElementById('p-vistaordenes').innerHTML;__check("REP: agrupa colapsado con conteo y prendas; hasta tres niveles",h.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(h)&&(h.match(/setNivelGRP\('vo',/g)||[]).length>=3);GRP={};
    __check("REP: la barra de reportes aparece en las pantallas de Reportería",h.includes('Reportería:')&&(()=>{page='wip';WIP.tab='pro';render();return document.getElementById('p-wip').innerHTML.includes('Reportería:')})());
    const o=S.ordenes.find(abierta);if(o){mDetalleOrden(o.id);const m=document.body.innerHTML;__check("REP: el detalle de la orden trae ruta/pasos, dónde está, qué le falta, historial de fases y foto",m.includes('Historial de fases')&&m.includes('Qué le falta')&&m.includes('<th>Paso</th>')&&m.includes(esc(o.op)));try{cerrar()}catch(e){}}
@@ -1251,7 +1251,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    page='ordenes';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
    // b) agrupador con horas y campos comunes
    GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
-   __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Categoría padre','Categoría hija','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
+   __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Familia','Tipo de producto','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
    GRP={};page='asignacion';APO={niveles:['cliente'],cli:'',cen:'',mes:'',q:''};render();h=document.getElementById('p-asignacion').innerHTML;__check("CC-b: Asignación por orden usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));APO.niveles=null;GRP={};
    // c) tarjetas resumen
    const ym=hoy().slice(0,7);PM.mes=ym;TARJ={exp:{}};page='plan';render();h=document.getElementById('p-plan').innerHTML;__check("CC-c: el Bloque 2 y el Bloque 3 usan la tarjeta resumen del tema (número grande, clic despliega lista)",h.includes('kpi tarj')&&h.includes('data-t="b2-ords"')&&h.includes('data-t="b3-libs"'));
@@ -1656,6 +1656,62 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bo=JSON.parse(bakO);if(bo)S.params.operarias=bo;else delete S.params.operarias;
    PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render();
    __check("CG/BE1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* BÚSQUEDA GENERAL + buscador y agrupador comunes */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oG=JSON.parse(JSON.stringify(base));oG.id=uid();oG.op='WH/BUSG-1';oG.cliente='CLIENTE BUSG';oG.ref='REF-BUSG';oG.odc='ODC-BUSG';oG.estado='plan';delete oG.programa;S.ordenes.push(oG);delete S.avance[oG.id];PLAN=null;PLAN_ALL=null;
+   // 1 · barra general
+   page='ordenes';render();
+   __check("BG: la barra de búsqueda general está en la cabecera, en todas las pantallas",!!document.getElementById('busg'));
+   setBusqG('WH/BUSG');
+   __check("BG: buscar por WH encuentra la orden al instante",buscarGeneral('WH/BUSG').some(o=>o.id===oG.id)&&document.getElementById('busg-host').innerHTML.includes('WH/BUSG-1'));
+   __check("BG: también encuentra por ODC, cliente y referencia",buscarGeneral('ODC-BUSG').length>0&&buscarGeneral('CLIENTE BUSG').length>0&&buscarGeneral('REF-BUSG').length>0);
+   __check("BG: el resultado muestra foto, WH, cliente, fase y dónde está",(()=>{const h=document.getElementById('busg-host').innerHTML;return h.includes('fase-mini')&&h.includes('CLIENTE BUSG')&&h.includes('abrirFichaOrden(')})());
+   abrirFichaOrden(oG.id);
+   {const md=document.getElementById('modal')||document.body;const h=md.innerHTML;
+    __check("BG: la ficha trae ruta con el paso actual, fechas, avance por talla e historial",/Ruta<\/h4>/.test(h)&&/Historial de fases/.test(h)&&(/Avance por talla/.test(h)||/Sin curva de tallas/.test(h))&&/Ir a donde está/.test(h));
+    try{cerrar()}catch(e){}}
+   // perfiles: un perfil de piso solo ve lo suyo
+   {const bak=PERFIL;PERFIL={id:'x',nombre:'Piso corte',rol:'piso_corte',area:'pro',subarea:'corte',modo:'editar'};
+    const ve=ordenesQueVe();const todas=S.ordenes.filter(o=>abierta(o));
+    __check("BG: la búsqueda general respeta el perfil (no muestra lo que el perfil no puede ver)",ve.length<=todas.length&&ve.every(o=>(o.ruta||[]).some(pp=>veCentro(pp.centro))||['tej','tin'].some(a=>veCentro(a))));
+    PERFIL=bak}
+   cerrarBusqG();
+   // 2 · el buscador de lista busca en todos los campos sin elegir
+   page='ordenes';GRP={};grpSt('ord').niveles=[];ORDF.q='';delete BUSQ['ORDF.q'];ORDF.grupo=null;ORDF.q='CLIENTE BUSG';render();
+   {const h=document.getElementById('p-ordenes').innerHTML;
+    __check("BL: escribir en el buscador de lista ya filtra por todos los campos, sin elegir campo",matchBusq(oG,normTxt('CLIENTE BUSG'),'ORDF.q')&&!BUSQ['ORDF.q']&&h.includes('WH/BUSG-1'));
+    __check("BL: el selector de campo es opcional y se llama «buscar solo en…»",h.includes(ayuda('busq.solo'))||h.includes('buscar solo en'));}
+   ORDF.q='';delete BUSQ['ORDF.q'];
+   // 3 · agrupador: nombres y orden
+   __check("AG: el agrupador dice Familia y Tipo de producto (textos de la tabla de ayudas)",GRP_CAMPOS.some(x=>x[0]==='fam'&&x[1]==='Familia')&&GRP_CAMPOS.some(x=>x[0]==='hija'&&x[1]==='Tipo de producto'));
+   __check("AG: el orden de las opciones es el pedido",GRP_CAMPOS.map(x=>x[0]).join(',')==='cliente,fase,fam,hija,color,odc,mes,paso,proyecto,etapa');
+   {const bakA=JSON.stringify(S.params.ayudas||null);setAyuda('grp.fam','FAMILIA DE PRUEBA');
+    __check("AG: cambiar el texto en la tabla de ayudas cambia lo que se ve",GRP_CAMPOS.find(x=>x[0]==='fam')[1]==='FAMILIA DE PRUEBA');
+    const ba=JSON.parse(bakA);if(ba)S.params.ayudas=ba;else delete S.params.ayudas;}
+   page='config';CONF.tab='ordenes2';render();__check("AG: la tabla 17 · Textos de pantalla existe",document.getElementById('p-config').innerHTML.includes('17 · Textos de pantalla'));
+   // 4 · buscador y agrupador en las pantallas que faltaban
+   page='entregas';EG.pdf=false;EG.cli='';EG.q='';render();
+   {const he=document.getElementById('p-entregas').innerHTML;
+    __check("PL: Entregas tiene el buscador común",he.includes('data-q="EG.q"')||/Sin órdenes|Nada pendiente/.test(he),he.slice(0,120));}
+   page='costura';COS.tab='secuencia';COS.q='';render();
+   __check("PL: Costura tiene el buscador común",document.getElementById('p-costura').innerHTML.includes('data-q="COS.q"'));
+   page='capacidad';CAPD.q='';render();
+   {const M=matrizCapacidad();const k=Object.keys(M.celdas)[0];
+    if(k){CAPD.sel=k;render();const h=document.getElementById('p-capacidad').innerHTML;
+      __check("PL: Capacidad y decisiones tiene buscador y agrupador comunes en el detalle",h.includes('data-q="CAPD.q"')&&(h.includes('grp-row')||h.includes('— sin agrupar —')));CAPD.sel=null}
+    else __check("PL: Capacidad y decisiones tiene buscador y agrupador comunes en el detalle",true,'sin celdas con carga');}
+   // agrupar por familia funciona en las pantallas nuevas
+   {GRP={};grpSt('cap').niveles=['fam'];const ok=GRP_CAMPOS.some(x=>x[0]==='fam');
+    __check("PL: se puede agrupar por Familia en las pantallas nuevas",ok&&grpSt('cap').niveles[0]==='fam');GRP={}}
+   // 5 · lo elegido se recuerda por pantalla y usuario
+   {PERFIL={id:'u1',nombre:'Uno'};GRP={};setNivelGRP('ord',0,'cliente');
+    const guardado=localStorage['__grp_u1_ord'];
+    PERFIL={id:'u2',nombre:'Dos'};GRP={};const otros=grpSt('ord').niveles;
+    __check("MEM: la agrupación se recuerda por pantalla y por usuario",!!guardado&&JSON.parse(guardado)[0]==='cliente'&&(!otros.length||otros[0]!=='cliente'));
+    PERFIL=adminP;GRP={}}
+   S.ordenes=S.ordenes.filter(o=>o!==oG);PLAN=null;PLAN_ALL=null;BUSG={q:'',abierto:false,oid:null};page='ordenes';render();
+   __check("BG/PL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
