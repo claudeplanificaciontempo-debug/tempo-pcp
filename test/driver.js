@@ -1152,7 +1152,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
    __check("REP: el menú tiene la pestaña Reportería con Vista general, Producto en proceso, Cumplimiento, Avance y las dos reporterías",!!g&&['vistaordenes','wip','cumplimiento','avance','reporteria:textil','reporteria:produccion'].every(x=>links.includes(x)));
-   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento ni Avance (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,gerencia,ordenes,liberacion,entregas,plan,familias,auditoria,capacidad');
+   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,liberacion,entregas,plan,familias,auditoria,capacidad');
    __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer)",Array.isArray(REPORTES)&&REPORTES.length>=6&&REPORTES.every(r=>r.p&&r.n));
    GRP={};grpSt('vo').niveles=[];VO={q:''};page='vistaordenes';render();let h=document.getElementById('p-vistaordenes').innerHTML;
    __check("REP: Vista general lista todas las abiertas con foto/WH/fase, cliente, ODC, estilo, categoría padre e hija, color, prendas, entrega, proyecto y estado",['Cliente','ODC','Estilo','Categoría padre','Categoría hija','Color','Prendas','Entrega','Proyecto','Estado'].every(x=>h.includes('<th'+(x==='Prendas'?' class="num"':'')+'>'+x+'</th>'))&&h.includes('mDetalleOrden(')&&new RegExp(S.ordenes.filter(abierta).length+' órdenes abiertas').test(h));
@@ -3133,6 +3133,98 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(otro)__check("A10: fuera del centro se sigue mostrando dónde está la orden",dondeEstaEnCentro(o,P,otro)===dondeEstaCentro(o,P,otro));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* PARTE B · Reportería gerencial, sub-centros y congelado del programa */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   /* 1 · el Resumen gerencial vive en Reportería */
+   {const dir=[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p);
+    const rep=[...document.querySelectorAll('nav .gbody[data-g="rep"] a')].map(a=>a.dataset.p);
+    __check("B1: el Resumen gerencial sale de Dirección",!dir.includes('gerencia'));
+    __check("B1: y entra a Reportería",rep.includes('gerencia'));
+    __check("B1: y aparece en la barra de reportes",REPORTES.some(r=>r.p==='gerencia'));
+    page='gerencia';GER.meses=null;render();
+    __check("B1: la pantalla abre sin errores y con el filtro arriba",/Meses del Proyecto/.test(document.getElementById('p-gerencia').innerHTML));}
+   /* 1 · el filtro de meses afecta a TODOS los bloques */
+   {const ms=mesesGER();
+    __check("B1: el selector lista los meses de Proyecto de la cartera",ms.length>=1);
+    GER.meses=null;const todas=S.ordenes.filter(o=>abierta(o)||o.estado==='prevision');
+    __check("B1: sin filtro entran todas",todas.every(enMesGER));
+    const m0=ms[0];GER.meses=new Set([m0]);
+    const sel=todas.filter(enMesGER);
+    __check("B1: con un mes elegido solo entran las de ese mes",sel.length<=todas.length&&sel.every(o=>(mesPlan(o)||'Sin proyecto')===m0));
+    if(ms.length>1){GER.meses=new Set([ms[0],ms[1]]);
+     const dos=todas.filter(enMesGER);
+     __check("B1: con dos meses SUMA los dos, no reemplaza",dos.length>=sel.length&&dos.every(o=>[ms[0],ms[1]].includes(mesPlan(o)||'Sin proyecto')));}
+    GER.meses=new Set([m0]);render();
+    const h=document.getElementById('p-gerencia').innerHTML;
+    __check("B1: el total de lo seleccionado se muestra arriba",/Sumando/.test(h)&&/Prendas pedidas/.test(h)&&/Lo que falta/.test(h));
+    // y los bloques de abajo respetan el filtro: la tabla por mes solo trae el mes elegido
+    __check("B1: el bloque de cartera por mes ya no muestra los otros meses",ms.filter(m=>m!==m0&&m!=='Sin proyecto').every(m=>!h.includes('>'+fmtMesEG(m)+'<')));
+    GER.meses=null;render();
+    __check("B1: y al quitar el filtro vuelven todos",/Todos los meses/.test(document.getElementById('p-gerencia').innerHTML));}
+   /* 2 · resumen por sub-centro */
+   {const P=S.ordenes.length?programar():{pro:[],ordenes:{}};const lun=lunesDe(hoy()),dom=dsum(lun,6);
+    __check("B2: un ítem con una sola sub-área NO muestra el resumen",resumenSubCentros('corte',P,lun,dom)===null);
+    const rT=resumenSubCentros('terminados',P,lun,dom);
+    __check("B2: Terminados trae una fila por sub-área, en el orden del proceso",!!rT&&rT.filas.map(f=>f.c).join()===subAreasDe('terminados').join());
+    __check("B2: cada fila trae carga, capacidad, ocupación, órdenes, avance y atrasos",rT.filas.every(f=>'carga' in f&&'cap' in f&&'pct' in f&&'ops' in f&&'hechasSem' in f&&'atras' in f));
+    const rE=resumenSubCentros('estampado',P,lun,dom);
+    __check("B2: Estampado (serigrafía) trae Estampado y Etiquetas",!!rE&&rE.filas.map(f=>f.c).sort().join()===['estampado','etiquetas'].sort().join());
+    const hT=resumenSubCentrosHTML('terminados',P,lun,dom);
+    __check("B2: el panel dice que las sub-áreas salen del «Ítem de planificación», no del código",/Ítem de planificación/.test(hT)&&/sin tocar código/.test(hT));
+    __check("B2: y marca la brecha de la sub-área que no tiene de dónde sacar sus minutos",!rT.filas.some(f=>f.origen&&f.origen.brecha)||/brecha/.test(hT));
+    // es el MISMO componente: mover una sub-área lo cambia solo
+    const bak=(CE('empaque')||{}).grupoPlan;setCentro('empaque','grupoPlan','estampado');
+    const rE2=resumenSubCentros('estampado',P,lun,dom);
+    __check("B2: si mueves una sub-área de ítem, el resumen la sigue",rE2.filas.some(f=>f.c==='empaque')&&!resumenSubCentros('terminados',P,lun,dom).filas.some(f=>f.c==='empaque'));
+    setCentro('empaque','grupoPlan',bak===undefined?'terminados':bak);
+    page='centro';CEN.id='terminados';CEN.solo='';CEN.tab='plan';render();
+    __check("B2: al abrir el centro padre se ve el resumen",/sub-áreas de Terminados/.test(document.getElementById('p-centro').innerHTML));
+    CEN.solo='plancha';render();
+    __check("B2: y al abrir una sub-área sola, no se repite",!/sub-áreas de Terminados/.test(document.getElementById('p-centro').innerHTML));CEN.solo='';}
+   /* 3 · congelar el programa semanal */
+   {const P=S.ordenes.length?programar():{pro:[],ordenes:{}};const lun=lunesDe(hoy()),dom=dsum(lun,6);
+    S.params.progCongelado=[];
+    PERFIL={rol:'corte',modo:'editar',nombre:'Encargado'};
+    congelarPrograma(['corte'],lun,dom);
+    __check("B3: un encargado de centro no congela el programa",!congeladoDe('corte',lun));
+    __check("B3: y no ve el botón",!/Congelar programa/.test(avanceCongeladoHTML(['corte'],P,lun,dom)));
+    PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};
+    __check("B3: planificación sí lo ve",/Congelar programa/.test(avanceCongeladoHTML(['corte'],P,lun,dom)));
+    congelarPrograma(['corte'],lun,dom);
+    const f=congeladoDe('corte',lun);
+    __check("B3: la foto se guarda con centro, semana, fecha y usuario",!!f&&f.centro==='corte'&&f.lun===lun&&!!f.ts&&f.u==='Jefa Prod');
+    __check("B3: y guarda las prendas programadas de cada orden",Array.isArray(f.ords)&&f.pz===f.ords.reduce((a,e)=>a+e.pz,0));
+    const a1=avanceCongelado('corte',lun,dom,P);
+    __check("B3: el avance contra la foto arranca en 0 hechas",!!a1&&a1.hechas===0);
+    // se registra avance y el cumplimiento sube
+    if(f.ords.length){const e=f.ords[0];const base=+((f.hechasAl||{})[e.oid])||0;
+     S.avance[e.oid]=S.avance[e.oid]||{};S.avance[e.oid].centros=Object.assign({},S.avance[e.oid].centros,{corte:base+e.pz});
+     const a2=avanceCongelado('corte',lun,dom,P);
+     __check("B3: lo hecho DESPUÉS del congelado cuenta, no lo que ya estaba",a2.hechas===e.pz&&a2.filas[0].pct===100);
+     __check("B3: y el % de cumplimiento sale contra la foto, no contra el programa de ahora",a2.pzProg===f.pz);}
+    // reprogramar después NO cambia la foto
+    const pzFoto=f.pz;const nOrdsFoto=(f.ords||[]).length;
+    PLAN=null;PLAN_ALL=null;
+    __check("B3: se puede seguir reprogramando y la línea base no se mueve",congeladoDe('corte',lun).pz===pzFoto&&congeladoDe('corte',lun).ords.length===nOrdsFoto);
+    // volver a congelar deja historial, no pisa
+    congelarPrograma(['corte'],lun,dom);
+    __check("B3: volver a congelar NO borra la anterior: queda el historial",congelados().filter(x=>x.k===claveCong('corte',lun)).length===2);
+    const h3=avanceCongeladoHTML(['corte'],P,lun,dom);
+    __check("B3: el bloque muestra fecha y usuario del congelado",/congelado el /.test(h3)&&/Jefa Prod/.test(h3));
+    __check("B3: y trae cumplimiento, atrasadas, agregadas y sacadas",/Cumplimiento/.test(h3)&&/Órdenes atrasadas/.test(h3)&&/Agregadas después/.test(h3)&&/Sacadas después/.test(h3));
+    __check("B3: explica en pantalla la diferencia con el congelado del plan mensual",/plan mensual/.test(h3)&&/qué órdenes entran al mes/.test(h3));
+    // agregadas y sacadas se detectan contra la foto
+    {const fake={id:uid(),k:claveCong('corte',lun),centro:'corte',lun,dom,ts:new Date().toISOString(),u:'Prueba',
+      ords:[{oid:'no-existe',op:'WH/FANTASMA',pz:99,min:10,dias:[lun]}],pz:99,min:10,hechasAl:{}};
+     congelados().push(fake);
+     const a3=avanceCongelado('corte',lun,dom,P);
+     __check("B3: una orden que ya no está programada sale como «sacada después»",a3.sacadas.some(x=>x.op==='WH/FANTASMA'));
+     __check("B3: y lo que entró después de congelar sale como «agregada después»",a3.agregadas.length===[...new Set(P.pro.filter(x=>x.centro==='corte'&&x.dia>=lun&&x.dia<=dom).map(x=>x.op))].length);
+     S.params.progCongelado=congelados().filter(x=>x!==fake);}
+    S.params.progCongelado=[];}
+   window.alert=a0;PERFIL=adminP;GER.meses=null;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("PB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

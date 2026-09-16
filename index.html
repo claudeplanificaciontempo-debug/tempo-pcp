@@ -284,7 +284,6 @@ tbody tr:hover td{background:var(--field)}
     <div class="grp" data-g="dir">Dirección <span class="car">▾</span></div>
     <div class="gbody" data-g="dir">
       <a data-p="panorama">Hoy</a>
-      <a data-p="gerencia">Resumen gerencial</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
       <a data-p="liberacion" data-lib="tela">Liberación</a>
       <a data-p="entregas">Entregas</a>
@@ -318,6 +317,7 @@ tbody tr:hover td{background:var(--field)}
     </div>
     <div class="grp" data-g="rep">Reportería <span class="car">▾</span></div>
     <div class="gbody" data-g="rep">
+      <a data-p="gerencia">Resumen gerencial</a>
       <a data-p="vistaordenes">Vista general de órdenes</a>
       <a data-p="asignacion">Asignación por orden</a>
       <a data-p="wip">Producto en proceso</a>
@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 13:25';
+const APP_BUILD='2026-09-16 13:35';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2408,6 +2408,7 @@ function grpMap(id,items,nCols,oDe,filaFn){return{join:()=>filasGRP(id,items,fil
 function diasBano(b,r){if(!b||!b.dia)return [];const hd=capDia(r,b.dia)||0;if(!(hd>0))return [b.dia];const n=Math.max(1,Math.ceil((b.horas||0)/hd-1e-9));const ds=[b.dia];let d=b.dia,g=0;while(ds.length<n&&g<60){d=dsum(d,1);g++;if(labR(d,r))ds.push(d)}return ds}
 /* ---------- Reportería: pestaña propia del menú; cada reporte es una entrada de REPORTES (agregar uno = una línea aquí + su <a> en el menú) ---------- */
 const REPORTES=[
+  {p:'gerencia',n:'Resumen gerencial',desc:'la cartera completa por mes, cliente y familia: carga, pedido, avance y lo que falta'},
   {p:'vistaordenes',n:'Vista general de órdenes',desc:'todas las órdenes abiertas con foto, fase, cliente, ODC, estilo, categoría, color, prendas, entrega, proyecto y estado'},
   {p:'asignacion',n:'Asignación por orden',desc:'cada orden abierta contra el programa: vencidas, sin programar, no llegan, justas y bien, con su próximo paso'},
   {p:'wip',n:'Producto en proceso',desc:'lo que está en planta por etapa y por orden'},
@@ -2787,7 +2788,9 @@ function irLib(et){LIB.et=et;LIB.sel=new Set();ir('liberacion')}
 /* ---------- Resumen gerencial ---------- */
 function vGerencia(el){
   if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Resumen gerencial</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
-  const P=programarTodo();const ords=S.ordenes.filter(o=>abierta(o)||o.estado==='prevision');const esWH=o=>o.estado!=='prevision';
+  const P=programarTodo();const todasOrds=S.ordenes.filter(o=>abierta(o)||o.estado==='prevision');
+  const ords=todasOrds.filter(enMesGER);          // el filtro de meses manda sobre todos los bloques
+  const esWH=o=>o.estado!=='prevision';
   const kgO=kgPendiente,minO=minPendiente;
   const pz=ords.reduce((a,o)=>a+ +o.cant,0),kg=ords.reduce((a,o)=>a+kgO(o),0),hrs=ords.reduce((a,o)=>a+minO(o),0)/60;
   const kgTot=ords.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext).reduce((b,t)=>b+kgCrudo(t.tela,t.kg),0),0),hrsTot=ords.reduce((a,o)=>a+(o.ruta||[]).reduce((b,p)=>b+o.cant*minPrenda(p.centro,p.t),0),0)/60;
@@ -2831,6 +2834,7 @@ function vGerencia(el){
   const sinCod=S.colores.filter(c=>!c.cod).length;if(sinCod)avisos.push(sinCod+' colores sin código Pantone (profundidad de baño supuesta como media).');
   if(S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='tej').every(r=>!(r.telas||[]).length))avisos.push('Las tejedoras no tienen telas asignadas: las corridas caen en la primera máquina libre.');
   el.innerHTML=`<div class="pagehead"><h2>Resumen gerencial</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
+  ${filtroMesesGERHTML(ords,P)}
   <section class="imp"><div class="imp-cab"><div><b>Planificación y control</b> · resumen al ${new Date().toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'})}</div><div class="mut">TEMPOCODECA · programa desde ${fmtDia(S.params.inicio)}</div></div>
   <div class="kpis" style="margin:12px 0 16px"><div class="kpi"><div class="v">${ords.length}</div><div class="k">Órdenes en cartera <span class="mut">· ${ords.filter(esWH).length} con WH, ${ords.filter(o=>!esWH(o)).length} sin WH</span></div></div><div class="kpi"><div class="v">${num(pz)}</div><div class="k">Prendas <span class="mut">· ${num(ords.filter(esWH).reduce((a,o)=>a+ +o.cant,0))} con WH, ${num(ords.filter(o=>!esWH(o)).reduce((a,o)=>a+ +o.cant,0))} sin WH</span></div></div>
    <div class="kpi"><div class="v">${num(kg)} kg</div><div class="k">Tela propia pendiente de tejer y teñir <span class="mut">· de ${num(kgTot)} kg en la cartera</span></div></div><div class="kpi"><div class="v">${num(hrs)} h</div><div class="k">Horas de planta pendientes <span class="mut">· de ${num(hrsTot)} h totales</span></div></div>
@@ -4377,6 +4381,158 @@ function detalleAgrupableHTML(id,ords,titulo,nota,extraCol){
    <div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>${extraCol?'<th></th>':''}</tr></thead><tbody>
    ${(grpSt(id).todoAbierto=true,filasGRP(id,ords.slice(0,400),fila,nCols))}
    </tbody></table></div></div></div>`}
+/* ==================== PARTE B · Reportería gerencial, sub-centros y congelado (16-sep-2026) ==================== */
+
+/* ---------- 1 · filtro global de meses del Resumen gerencial ---------- */
+/* Un solo Set manda sobre TODOS los bloques: carga por mes, cartera, pedido y avance. */
+let GER={meses:null};
+function togMesGER(m){togSet(GER,'meses',m)}
+function mesesGER(){const ms=[...new Set(S.ordenes.filter(o=>abierta(o)||o.estado==='prevision').map(o=>mesPlan(o)||'Sin proyecto'))];
+  return ms.sort((a,b)=>a==='Sin proyecto'?1:b==='Sin proyecto'?-1:(a<b?-1:1))}
+function enMesGER(o){if(!GER.meses||!GER.meses.size)return true;return GER.meses.has(mesPlan(o)||'Sin proyecto')}
+function fmtMesGER(m){return m==='Sin proyecto'?'Sin proyecto':fmtMesEG(m)}
+/* cabecera: el selector y el total de lo seleccionado, arriba de todo */
+function filtroMesesGERHTML(ords,P){
+  const ms=mesesGER();const sel=GER.meses&&GER.meses.size?[...GER.meses]:null;
+  const pz=ords.reduce((a,o)=>a+ +o.cant||0,0);
+  const usd=ords.reduce((a,o)=>a+((o.precio||0)*(+o.cant||0)),0);
+  const h=hoy();
+  const ven=ords.filter(o=>o.fecha&&o.fecha<h).length;
+  const rie=ords.filter(o=>o.fecha&&o.fecha>=h&&(P.ordenes[o.id]||{}).atraso).length;
+  const hechas=ords.reduce((a,o)=>a+Math.min(+o.cant||0,pzHechasOrden(o)),0);
+  return `<div class="panel" style="border:2px solid var(--t-primary)"><div class="body">
+   <div class="row" style="align-items:flex-end;gap:12px;flex-wrap:wrap;margin:0 0 10px">
+    ${selMulti('Meses del Proyecto',ms,GER.meses,'GER.meses','togMesGER',fmtMesGER)}
+    <span class="mut" style="font-size:var(--fs-s)">${sel?'Sumando <b>'+sel.length+'</b> '+(sel.length===1?'mes':'meses')+': '+sel.map(fmtMesGER).map(esc).join(' + '):'Todos los meses'} · el filtro afecta a <b>todos</b> los bloques de esta pantalla</span>
+    ${sel?`<button class="btn ghost sm" onclick="GER.meses=null;render()">Todos los meses</button>`:''}
+   </div>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj"><div class="v">${num(ords.length)}</div><div class="k">Órdenes</div></div>
+    <div class="kpi tarj"><div class="v">${num(pz)}</div><div class="k">Prendas pedidas</div></div>
+    <div class="kpi tarj ok"><div class="v">${num(hechas)}</div><div class="k">Hechas · ${pz?Math.round(hechas/pz*100):0}%</div></div>
+    <div class="kpi tarj"><div class="v">${num(Math.max(0,pz-hechas))}</div><div class="k">Lo que falta</div></div>
+    <div class="kpi tarj"><div class="v">$ ${num(usd)}</div><div class="k">Valor${ords.some(o=>!o.precio)?' <span class="mut">· '+ords.filter(o=>!o.precio).length+' sin precio</span>':''}</div></div>
+    <div class="kpi tarj ${ven?'bad':''}"><div class="v">${num(ven)}</div><div class="k">Vencidas</div></div>
+    <div class="kpi tarj ${rie?'warn':''}"><div class="v">${num(rie)}</div><div class="k">En riesgo</div></div>
+   </div>
+  </div></div>`}
+/* prendas hechas de una orden: el último paso de producción de su ruta */
+function pzHechasOrden(o){const ru=pasosProDe(o);if(!ru.length)return 0;
+  const ac=((S.avance[o.id]||{}).centros)||{};const ult=ru[ru.length-1];
+  if(pasoHecho(o,ult))return +o.cant||0;
+  return +ac[ult]||0}
+
+/* ---------- 2 · resumen por sub-centro, para cualquier ítem con sub-áreas ---------- */
+/* Sale de la columna «Ítem de planificación»: no hay ninguna lista de sub-centros en el código. */
+function resumenSubCentros(g,P,lun,dom){const subs=subAreasDe(g);if(subs.length<2)return null;
+  const h=hoy();const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
+  const filas=subs.map(c=>{
+    const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
+    const cap=dias.reduce((a,d)=>a+recs.reduce((x,r)=>x+(labR(d,r)?capDia(r,d):0),0),0);
+    const xs=(P.pro||[]).filter(x=>x.centro===c&&dias.includes(x.dia));
+    const carga=xs.reduce((a,x)=>a+(x.min||0),0);
+    const pzProg=xs.reduce((a,x)=>a+(x.pz||0),0);
+    const ops=[...new Set(xs.map(x=>x.op))];
+    const ords=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c));
+    const hechasSem=dias.reduce((a,d)=>a+(+hechasDelDia(c,null,d).pz||0),0);
+    const atras=ords.filter(o=>{const d=diagAtraso(o,P,c);return d&&(d.pasoTarde||d.orden)}).length;
+    return {c,recs:recs.length,cap,carga,pct:cap?carga/cap*100:null,ops:ops.length,pzProg,hechasSem,atras,
+      pend:ords.length,pzPend:ords.reduce((a,o)=>a+Math.max(0,cantCentro(o,c)-((((S.avance[o.id]||{}).centros)||{})[c]||0)),0),
+      porDias:centroPorDias(c),origen:origenTiempoCentro(c)}});
+  return {subs,filas,tot:filas.reduce((a,f)=>({cap:a.cap+f.cap,carga:a.carga+f.carga,ops:a.ops+f.ops,pzProg:a.pzProg+f.pzProg,hechasSem:a.hechasSem+f.hechasSem,atras:a.atras+f.atras,pzPend:a.pzPend+f.pzPend}),{cap:0,carga:0,ops:0,pzProg:0,hechasSem:0,atras:0,pzPend:0})}}
+function resumenSubCentrosHTML(g,P,lun,dom){const r=resumenSubCentros(g,P,lun,dom);if(!r)return '';
+  const t=r.tot;const nom=CENTROS_PROD_N[g]||nCen(g);
+  const fila=f=>`<tr${CEN.solo===f.c?' style="background:var(--field)"':''}>
+   <td><b>${esc(nCen(f.c))}</b>${f.porDias?' <span class="tag t-lavado" title="se mide en días, no consume capacidad de planta">por días</span>':''}${f.origen&&f.origen.brecha?' <span class="tag t-alerta" title="'+esc(f.origen.brecha)+'">!</span>':''}</td>
+   <td class="num">${f.recs||'<span class="mut">0</span>'}</td>
+   <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.carga)}</td>
+   <td class="num">${f.porDias?'<span class="mut">—</span>':(f.cap?num(f.cap):'<span class="tag t-alerta" title="sin recursos activos: no hay capacidad contra qué medir">sin capacidad</span>')}</td>
+   <td style="min-width:110px">${f.porDias||f.pct===null?'<span class="mut">—</span>':donut(f.pct,34)+' <b>'+Math.round(f.pct)+'%</b>'}</td>
+   <td class="num">${num(f.ops)}</td>
+   <td class="num">${num(f.pzProg)}</td>
+   <td class="num">${num(f.hechasSem)}</td>
+   <td class="num">${f.atras?'<span class="tag t-alerta">'+f.atras+'</span>':'<span class="mut">0</span>'}</td>
+   <td class="num mut">${num(f.pzPend)}</td>
+   <td><button class="btn ghost sm" onclick="CEN.solo='${f.c}';render()">ver sola</button></td></tr>`;
+  return `<div class="panel"><h3>Las ${r.subs.length} sub-áreas de ${esc(nom)} <span class="note">la semana ${fmtDia(lun)} – ${fmtDia(dom)} · carga, capacidad, ocupación, órdenes, avance y atrasos</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Qué sub-áreas tiene un ítem sale de la columna <b>«Ítem de planificación»</b> de Configuración → Centros: cualquier centro con dos o más sub-áreas muestra este mismo resumen, sin tocar código.</p>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Sub-área</th><th class="num">Recursos</th><th class="num">Carga (min)</th><th class="num">Capacidad</th><th>Ocupación</th><th class="num">Órdenes</th><th class="num">Prendas programadas</th><th class="num">Hechas</th><th class="num">Atrasadas</th><th class="num">Pendientes</th><th></th></tr></thead><tbody>
+   ${r.filas.map(fila).join('')}
+   <tr style="border-top:2px solid var(--rule);font-weight:600"><td>Total ${esc(nom)}</td><td class="num">${r.filas.reduce((a,f)=>a+f.recs,0)}</td><td class="num">${num(t.carga)}</td><td class="num">${num(t.cap)}</td>
+    <td>${t.cap?donut(t.carga/t.cap*100,34)+' <b>'+Math.round(t.carga/t.cap*100)+'%</b>':'<span class="mut">—</span>'}</td>
+    <td class="num">${num(t.ops)}</td><td class="num">${num(t.pzProg)}</td><td class="num">${num(t.hechasSem)}</td><td class="num">${t.atras?'<span class="tag t-alerta">'+t.atras+'</span>':'0'}</td><td class="num mut">${num(t.pzPend)}</td><td></td></tr>
+   </tbody></table>
+   ${r.filas.some(f=>f.origen&&f.origen.brecha)?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">brecha</span> ${r.filas.filter(f=>f.origen&&f.origen.brecha).map(f=>'<b>'+esc(nCen(f.c))+'</b>: '+esc(f.origen.brecha)).join(' · ')}</p>`:''}
+  </div></div>`}
+
+/* ---------- 3 · congelar el programa de la semana, por centro ---------- */
+/* Es la foto de UNA semana de UN centro. Distinto del congelado del plan mensual (Bloque 5), que fija
+   QUÉ órdenes entran al mes. Aquí se fija CUÁNDO y CUÁNTO se va a hacer esa semana. */
+function congelados(){if(!Array.isArray(S.params.progCongelado))S.params.progCongelado=[];return S.params.progCongelado}
+function claveCong(c,lun){return c+'|'+lun}
+function congeladoDe(c,lun){return congelados().filter(x=>x.k===claveCong(c,lun)).sort((a,b)=>a.ts<b.ts?1:-1)[0]||null}
+function congelarPrograma(cens,lun,dom){
+  if(!puede('programa')){alert('Solo planificación congela el programa de la semana.');return}
+  const P=S.ordenes.length?programar():{pro:[]};const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
+  const lista=(Array.isArray(cens)?cens:[cens]);
+  const ya=lista.filter(c=>congeladoDe(c,lun));
+  if(ya.length&&!confirm('Ya hay una foto congelada de esta semana en '+ya.map(nCen).join(', ')+'.\n\nCongelar otra vez NO borra la anterior: queda el historial y la nueva pasa a ser la línea base.\n¿Continuar?'))return;
+  if(!ya.length&&!confirm('Se guarda una foto del programa de la semana '+fmtDia(lun)+' – '+fmtDia(dom)+' en '+lista.map(nCen).join(', ')+'.\n\nDespués puedes seguir reprogramando: lo congelado queda como línea base para medir el cumplimiento.\n¿Congelar?'))return;
+  const ts=new Date().toISOString(),u=quienFirma();let n=0;
+  lista.forEach(c=>{const xs=(P.pro||[]).filter(x=>x.centro===c&&dias.includes(x.dia));
+    const porOrden={};xs.forEach(x=>{const o=S.ordenes.find(y=>y.op===x.op);if(!o)return;
+      const e=porOrden[o.id]=porOrden[o.id]||{oid:o.id,op:o.op,pz:0,min:0,dias:[]};
+      e.pz+=x.pz||0;e.min+=x.min||0;if(!e.dias.includes(x.dia))e.dias.push(x.dia)});
+    const ords=Object.values(porOrden);
+    congelados().push({id:uid(),k:claveCong(c,lun),centro:c,lun,dom,ts,u,
+      ords,pz:ords.reduce((a,e)=>a+e.pz,0),min:ords.reduce((a,e)=>a+e.min,0),
+      hechasAl:ords.reduce((m,e)=>{m[e.oid]=((((S.avance[e.oid]||{}).centros)||{})[c])||0;return m},{})});
+    n++});
+  bitacora('Programa congelado · semana '+fmtDia(lun)+'–'+fmtDia(dom)+' · '+lista.map(nCen).join(', ')+' ('+u+')');
+  save();render();
+  alert('Congelado el programa de '+n+' '+(n===1?'centro':'centros')+'. Puedes seguir reprogramando: la foto queda como línea base.')}
+/* avance contra la foto: hechas, cumplimiento, atrasadas y qué entró o salió después de congelar */
+function avanceCongelado(c,lun,dom,P){const f=congeladoDe(c,lun);if(!f)return null;
+  const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
+  const ac=oid=>((((S.avance[oid]||{}).centros)||{})[c])||0;
+  const filas=(f.ords||[]).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);
+    const base=+((f.hechasAl||{})[e.oid])||0;
+    const hechas=Math.max(0,ac(e.oid)-base);
+    const sigue=!!o&&(P.pro||[]).some(x=>x.centro===c&&x.op===e.op&&dias.includes(x.dia));
+    return {o,op:e.op,pzProg:e.pz,hechas,pct:e.pz?Math.min(100,hechas/e.pz*100):null,
+      atrasada:!!o&&e.pz>0&&hechas<e.pz&&dom<hoy(),
+      sacada:!sigue}});
+  const enFoto=new Set((f.ords||[]).map(e=>e.op));
+  const agregadas=[...new Set((P.pro||[]).filter(x=>x.centro===c&&dias.includes(x.dia)&&!enFoto.has(x.op)).map(x=>x.op))]
+    .map(op=>{const o=S.ordenes.find(y=>y.op===op);const xs=(P.pro||[]).filter(x=>x.centro===c&&x.op===op&&dias.includes(x.dia));
+      return {o,op,pz:xs.reduce((a,x)=>a+(x.pz||0),0)}});
+  const pzProg=filas.reduce((a,x)=>a+x.pzProg,0),hechas=filas.reduce((a,x)=>a+x.hechas,0);
+  return {f,filas,agregadas,sacadas:filas.filter(x=>x.sacada),atrasadas:filas.filter(x=>x.atrasada),
+    pzProg,hechas,pct:pzProg?hechas/pzProg*100:null}}
+function avanceCongeladoHTML(cens,P,lun,dom){const lista=(Array.isArray(cens)?cens:[cens]);
+  const datos=lista.map(c=>({c,a:avanceCongelado(c,lun,dom,P)}));
+  const conFoto=datos.filter(x=>x.a);
+  const tot=conFoto.reduce((a,x)=>({pzProg:a.pzProg+x.a.pzProg,hechas:a.hechas+x.a.hechas,atr:a.atr+x.a.atrasadas.length,ag:a.ag+x.a.agregadas.length,sa:a.sa+x.a.sacadas.length}),{pzProg:0,hechas:0,atr:0,ag:0,sa:0});
+  return `<div class="panel"><h3>Avance contra el programa congelado <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dom)} · la foto es la línea base; reprogramar después no la cambia</span>
+   <span class="spacer"></span>${puede('programa')?`<button class="btn sm" onclick="congelarPrograma(${JSON.stringify(lista).replace(/"/g,'&quot;')},'${lun}','${dom}')">${conFoto.length?'Volver a congelar':'Congelar programa'}</button>`:''}</h3><div class="body">
+   ${!conFoto.length?`<div class="empty">Esta semana no está congelada${puede('programa')?'. Congélala para poder medir el cumplimiento contra lo que se planificó.':'; planificación todavía no la congeló.'}</div>`:`
+   <div class="kpis tarj-row">
+    <div class="kpi tarj"><div class="v">${num(tot.pzProg)}</div><div class="k">Prendas en la foto</div></div>
+    <div class="kpi tarj ok"><div class="v">${num(tot.hechas)}</div><div class="k">Hechas desde el congelado</div></div>
+    <div class="kpi tarj ${tot.pzProg&&tot.hechas/tot.pzProg<.8?'warn':''}"><div class="v">${tot.pzProg?Math.round(tot.hechas/tot.pzProg*100):0}%</div><div class="k">Cumplimiento</div></div>
+    <div class="kpi tarj ${tot.atr?'bad':''}"><div class="v">${tot.atr}</div><div class="k">Órdenes atrasadas</div></div>
+    <div class="kpi tarj ${tot.ag?'warn':''}"><div class="v">${tot.ag}</div><div class="k">Agregadas después</div></div>
+    <div class="kpi tarj ${tot.sa?'warn':''}"><div class="v">${tot.sa}</div><div class="k">Sacadas después</div></div>
+   </div>
+   ${conFoto.map(({c,a})=>`<h4 style="margin:14px 0 6px">${esc(nCen(c))} <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· congelado el ${new Date(a.f.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} por ${esc(a.f.u||'—')}${congelados().filter(x=>x.k===claveCong(c,lun)).length>1?' · '+congelados().filter(x=>x.k===claveCong(c,lun)).length+' versiones':''}</span></h4>
+    <div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th class="num">Programadas en la foto</th><th class="num">Hechas</th><th style="width:120px">Cumplimiento</th><th>Estado</th></tr></thead><tbody>
+    ${a.filas.map(x=>`<tr><td style="white-space:nowrap">${x.o?whCell(x.o):esc(x.op)}</td><td class="num">${num(x.pzProg)}</td><td class="num"><b>${num(x.hechas)}</b></td>
+     <td>${x.pct===null?'<span class="mut">—</span>':`<div class="bar" style="height:10px"><i style="width:${Math.round(x.pct)}%"></i></div><span class="mut" style="font-size:var(--fs-xs)">${Math.round(x.pct)}%</span>`}</td>
+     <td>${x.sacada?'<span class="tag t-aviso" title="ya no está programada esta semana: se movió después de congelar">sacada después</span>':x.atrasada?'<span class="tag t-alerta">atrasada</span>':x.pct>=100?'<span class="tag t-ok">cumplida</span>':'<span class="tag t-medio">en curso</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">La foto quedó vacía: no había nada programado al congelar.</td></tr>'}
+    ${a.agregadas.length?a.agregadas.map(x=>`<tr style="background:var(--field)"><td style="white-space:nowrap">${x.o?whCell(x.o):esc(x.op)}</td><td class="num mut">—</td><td class="num">${num(x.pz)}</td><td></td><td><span class="tag t-aviso" title="entró al programa después de congelar">agregada después</span></td></tr>`).join(''):''}
+    </tbody></table></div>`).join('')}
+   <p class="mut" style="font-size:var(--fs-s);margin:10px 0 0">Este congelado es de <b>la semana de un centro</b>: fija cuándo y cuánto se va a hacer. Es distinto del <b>congelado del plan mensual</b> (Plan mensual, bloque 5), que fija <b>qué órdenes entran al mes</b>. Uno no reemplaza al otro: el del mes dice el alcance, este dice la ejecución.</p>`}
+  </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -4809,7 +4965,7 @@ function vCentro(el){
     const enSem=filas.filter(f=>f.pzSem>0).sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1);
     const porDia=dias.map(d=>{const xs=P.pro.filter(x=>cens.includes(x.centro)&&x.dia===d);return{d,min:xs.reduce((a,x)=>a+x.min,0),pz:xs.reduce((a,x)=>a+(x.pz||0),0),cap:recs.reduce((a,r)=>a+(labR(d,r)?capDia(r,d):0),0)}});
     const bloq=filas.filter(f=>f.bloq&&!f.hecho);const luego=filas.filter(f=>!f.hecho&&!f.bloq&&f.pzSem===0&&f.paso.ini&&f.paso.ini>dom);
-    el.innerHTML=cab+`<p class="lede">Lo que planificación asignó a ${esc(nombre)} esta semana: órdenes, prendas y fechas, y la carga de cada día contra la capacidad del centro. El centro programa sobre esto en la pestaña siguiente.</p>
+    el.innerHTML=cab+(CEN.solo?'':resumenSubCentrosHTML(cid,P,lun,dom))+`<p class="lede">Lo que planificación asignó a ${esc(nombre)} esta semana: órdenes, prendas y fechas, y la carga de cada día contra la capacidad del centro. El centro programa sobre esto en la pestaña siguiente.</p>
     <div class="kpis">${porDia.map(x=>`<div class="kpi ${x.cap&&x.min>x.cap*1.02?'bad':''}"><div class="v">${num(x.pz)}</div><div class="k">${fmtDia(x.d)}<br>${num(x.min)} / ${num(x.cap)} min${x.cap?' · '+Math.round(x.min/x.cap*100)+'%':''}</div></div>`).join('')}</div>
     <div class="panel"><h3>Órdenes de la semana <span style="font-size:24px;font-weight:700;color:var(--t-primary);margin-left:6px">${enSem.length}</span> <span class="note">${num(enSem.reduce((a,f)=>a+f.pzSem,0))} prendas programadas · ordenadas por fecha de inicio</span></h3><div class="scroll" style="max-height:520px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Esta semana</th><th class="num">Hechas</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Marca</th><th>Liberada</th></tr></thead><tbody>
      ${enSem.map(f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant)}</td><td class="num"><b>${num(f.pzSem)}</b></td><td class="num">${num(f.hechas)}</td><td>${esc(nRec(f.paso.rec))}${((f.o.progCentro||{})[f.c]||{}).rec?' ⚲':''}</td><td>${fmtDia(f.paso.ini)}</td><td>${fmtDia(f.paso.fin)}</td><td>${marcaCentro(f.o,P,f.c)}</td><td>${liberadaCorte(f.o)?'<span class="tag t-ok">sí</span>':'<span class="tag t-alerta">no</span>'}</td></tr>`).join('')||'<tr><td colspan="11" class="mut">Nada programado en esta semana.</td></tr>'}</tbody></table></div></div>
@@ -4843,6 +4999,7 @@ function vCentro(el){
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${grpSelHTML('cen')}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
     ${listas}
     ${tablas}
+    ${avanceCongeladoHTML(cens,P,lun,dom)}
     <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. Las prendas de cada grupo son las pendientes en el centro. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p>`;
     return}
   // ejecución y desviaciones
