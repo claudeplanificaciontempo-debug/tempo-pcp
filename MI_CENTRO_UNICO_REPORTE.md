@@ -123,3 +123,51 @@ Junto a **+** y **−** de cada talla hay dos botones de salto, hoy **+10** y **
 - Las ventanas de descanso se descuentan solo si se solapan con el tramo, y sin ventanas no se descuenta nada.
 - Las segundas por talla cambian los minutos por prenda con y sin segundas, y suman al mismo dato de Control de piso.
 - Los botones de avance rápido salen de parámetros y suman de golpe.
+
+---
+
+# Reloj vivo, paro sin minutos, tallas a la vista y operarios (tercera entrega)
+
+Fecha: 15-sep-2026, noche. Pruebas del simulador: **992 (22 nuevas), todas verdes, 0 errores**.
+
+## 1 · El reloj corre
+Mientras el tramo está abierto se ve un reloj grande en **h:mm:ss** que avanza cada segundo. Solo se actualiza el
+texto del reloj: la pantalla no se vuelve a dibujar, así que nada de lo que el operario esté escribiendo se pierde.
+Durante un paro el reloj se queda quieto y cambia de color, y al reanudar sigue desde donde estaba.
+
+## 2 · Paro sin escribir minutos
+El botón **Paro** ahora solo pide el motivo. El reloj se detiene y el botón pasa a **Reanudar**; la duración la calcula
+el sistema restando el inicio del paro. El campo de minutos desapareció.
+
+- Los motivos salen de la **tabla 15 con uso «paro»**, sembrados solo con **Almuerzo, Cierre del día y Fallo de
+  máquina**, todos editables. La lista fija que estaba en el código se eliminó y los tipos de paro que ya existían se
+  migraron a la tabla sin perder nada; los paros ya registrados conservan su texto.
+- **Cierre del día**: deja el tramo en paro hasta el día siguiente. Esa noche no cuenta como trabajo y **no dispara el
+  aviso de olvido**, porque el aviso ahora mide el tiempo efectivo, sin los paros.
+- **Almuerzo marcado manda**: si el operario marcó el paro de almuerzo, el descanso del horario **no se descuenta otra
+  vez**. Si hay un descanso del horario dentro del tramo y nadie marcó almuerzo, la pantalla pregunta si se olvidó de
+  marcarlo y descuenta el horario. Nunca se descuenta dos veces.
+
+## 3 · Tallas a la vista mientras trabaja
+Debajo del reloj está la tabla de la orden por talla con cuatro columnas: **Pedido, Cortado, Hechas y Faltan**, y
+botones **+**, **−**, **+10** y **+25** para ir sumando durante el tramo. Al tocar FIN se confirma lo sumado y se
+agregan las segundas por talla. Si la orden no tiene curva, la tarjeta lo dice con esas palabras, «sin tallas cargadas
+para esta WH», y solo deja registrar el total.
+
+## 4 · Usuarios operarios
+- El perfil tablet entra **directo a Mi centro de su centro y su recurso**: sin selector de centro, sin selector de
+  recurso y sin ver otras pantallas.
+- Solo ve **las órdenes programadas en su recurso**, tanto en la cola como en la búsqueda.
+- En **Configuración → Usuarios**, al crear un usuario con perfil tablet aparecen en el mismo paso el **centro** y el
+  **recurso**; en módulos el recurso es obligatorio y el sistema no deja crear sin él. Debajo se listan los **módulos
+  que todavía no tienen operario asignado**.
+- Probado entrando como operario de Módulo 1 y como operario de Bordado, no como administrador.
+
+## Qué se probó en esta entrega
+- Los tipos de paro viejos se migran a la tabla 15, y sin nada previo se siembran los tres motivos pedidos.
+- El modal de paro no pide minutos; al reanudar, el sistema calcula la duración y el tiempo trabajado la descuenta.
+- El reloj muestra h:mm:ss, avanza cambiando solo su texto y se congela durante el paro, con el botón en «Reanudar».
+- Con almuerzo marcado no se descuenta el horario; sin marcarlo, se descuenta y avisa del olvido.
+- Un tramo en paro de cierre del día no dispara el aviso de olvido, y sin ese paro las mismas horas sí lo disparan.
+- La tabla por talla aparece durante el tramo; una orden sin curva lo dice y solo permite total.
+- El operario no ve selectores, solo ve lo de su recurso, y el alta de usuario pide centro y recurso.

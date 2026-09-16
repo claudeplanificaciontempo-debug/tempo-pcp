@@ -581,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 22:02';
+const APP_BUILD='2026-09-15 22:15';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -1498,6 +1498,8 @@ function ayudasPanelHTML(){const ks=Object.keys(AYUDAS_DEF);
 let BUSG={q:'',abierto:false,oid:null};
 function ordenesQueVe(){const ab=S.ordenes.filter(o=>abierta(o)||o.estado==='cerrada'||o.estado==='prevision');
   if(!PERFIL)return ab;
+  if(esOperario()){const a=tabletDe();if(!a.centro)return [];
+    try{const P=programar();const ops=new Set((P.pro||[]).filter(x=>x.centro===a.centro&&(!a.rec||x.rec===a.rec)).map(x=>x.op));return ab.filter(o=>ops.has(o.op))}catch(e){return ab.filter(o=>(o.ruta||[]).some(p=>p.centro===a.centro))}}
   if(puede('programa')||puede('ordenes')||puede('usuarios'))return ab;
   const cens=S.centros.filter(c=>veCentro(c.id)).map(c=>c.id);
   if(!cens.length)return [];
@@ -1549,6 +1551,8 @@ function abrirFichaOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return
 /* ---------- A · Mi centro: pantalla de tablet por centro / módulo (el usuario ve solo lo suyo) ---------- */
 let TAB={centro:null,rec:null,q:''};
 function tabletDe(){return (S.params.tablets||{})[(PERFIL&&PERFIL.id)||'']||{}}
+function esOperario(){const p=PERFIL&&PERFIL.rol;return p==='tablet'||(perfilDe&&(perfilDe()||{}).id==='tablet')}
+function recursosSinAsignar(){const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);const usados=new Set(Object.values(S.params.tablets||{}).map(t=>t.rec).filter(Boolean));return mods.filter(r=>!usados.has(r.id)).map(r=>r.n)}
 function setTablet(uid,k,v){S.params.tablets=S.params.tablets||{};const t=S.params.tablets[uid]=S.params.tablets[uid]||{};const antes=t[k]||'';t[k]=v||'';if(k==='centro')t.rec='';bitacora('Tablet '+String(uid).slice(0,8)+' · '+k+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');save()}
 function tabletSelHTML(uid){const t=(S.params.tablets||{})[uid]||{};const cens=S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));return `<select onchange="setTablet('${uid}','centro',this.value);render()"><option value="">—</option>${cens.map(c=>`<option value="${c.id}" ${t.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select> ${t.centro?`<select onchange="setTablet('${uid}','rec',this.value)"><option value="">todo el centro</option>${S.recursos.filter(r=>r.activa&&r.centro===t.centro).map(r=>`<option value="${r.id}" ${t.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select>`:''}`}
 /* ================= TALLAS: juegos configurables, carga masiva por WH y registro por talla desde el piso ================= */
@@ -1780,9 +1784,12 @@ function horariosPanelHTML(){const cens=S.centros.filter(c=>c.area==='pro');
 /* fórmula única del tiempo real de un tramo */
 function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new Date(t.fin):null;
   const brutoMin=(ini&&fin)?Math.max(0,(fin-ini)/6e4):0;
-  const paros=(t.paros||[]).reduce((a,p)=>a+(+p.min||0),0);
+  const paros=minParos(t,t.fin||undefined);
   const vent=minutosVentana(t.ini,t.fin,t.centro);
-  const des={min:vent.min,falta:vent.falta};
+  const almMarcado=(t.paros||[]).some(p=>motivoParoEs(p.motivo,'esAlmuerzo'));
+  // si el operario marcó el almuerzo como paro, el horario NO se descuenta otra vez
+  const des={min:almMarcado?0:vent.min,falta:vent.falta};
+  const avisoAlmuerzo=!almMarcado&&vent.min>0;
   const trabajado=Math.max(0,brutoMin-paros-(des.min||0));
   const pr=personasRec(t.rec,t.centro,t.ini?String(t.ini).slice(0,10):null);
   const minPersona=trabajado*pr.pers;
@@ -1792,8 +1799,48 @@ function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new
   const estandar=o?minPrenda(t.centro,paso.t||0):0;
   const tol=+prm('tolMinPrenda',15)||0;
   let sem='';if(minPrendaReal!=null&&estandar>0){const d=(minPrendaReal-estandar)/estandar*100;sem=d<=0?'ok':(d<=tol?'aviso':'alerta')}
-  return {brutoMin,paros,descansos:des.min||0,descansosFalta:des.falta,trabajado,pers:pr.pers,persFalta:pr.falta,persFuente:pr.fuente,persTxt:pr.txt,minPersona,u,seg,uTot,minPrendaReal,minPrendaTot,estandar,sem,tol}}
+  return {brutoMin,paros,descansos:des.min||0,descansosFalta:des.falta,almuerzoMarcado:almMarcado,avisoAlmuerzo,trabajado,pers:pr.pers,persFalta:pr.falta,persFuente:pr.fuente,persTxt:pr.txt,minPersona,u,seg,uTot,minPrendaReal,minPrendaTot,estandar,sem,tol}}
 function fmtMinSeg(min){const sg=Math.round(min*60);const m=Math.floor(sg/60),s=sg%60;return m+' min '+String(s).padStart(2,'0')+' s'}
+/* ---- paros del tramo: se marcan con motivo y se reanudan; la duración la calcula el sistema ---- */
+function sembrarMotivosParo(){const t=motivos();
+  if(!S.params.parosMigrados){const viejos=Array.isArray(S.params.tiposParo)?S.params.tiposParo:[];let n=0;
+    viejos.forEach(x=>{const m=String(x||'').trim();if(!m)return;if(t.some(r=>r.uso==='paro'&&r.motivo===m))return;t.push({motivo:m,uso:'paro'});n++});
+    S.params.parosMigrados=true;if(n&&typeof bitacora==='function')bitacora('Tipos de paro migrados a la tabla 15: '+n+' motivos (el arreglo anterior se conserva)')}
+  if(!t.some(r=>r.uso==='paro')){[['Almuerzo',{esAlmuerzo:true}],['Cierre del día',{cierreDia:true}],['Fallo de máquina',{}]].forEach(([m,extra])=>t.push(Object.assign({motivo:m,uso:'paro'},extra)));
+    if(typeof bitacora==='function')bitacora('Motivos de paro sembrados (Almuerzo, Cierre del día, Fallo de máquina): editables en la tabla 15')}
+  return t}
+function motivosParo(){sembrarMotivosParo();return motivosDe('paro')}
+function motivoParoEs(m,k){const r=motivos().find(x=>x.uso==='paro'&&x.motivo===m);return !!(r&&r[k])}
+function paroAbierto(t){return (t.paros||[]).find(p=>p.ini&&!p.fin)||null}
+function minParos(t,hasta){return (t.paros||[]).reduce((a,p)=>{if(p.fin)return a+((new Date(p.fin)-new Date(p.ini))/6e4);
+  if(p.ini)return a+((new Date(hasta||Date.now())-new Date(p.ini))/6e4);return a+(+p.min||0)},0)}
+function mPararTramo(tid,oid){const ms=motivosParo();
+  abrir(`<h3>Paro</h3><div class="body"><p style="font-size:var(--fs-s)">El reloj se detiene hasta que toques <b>Reanudar</b>. La duración la calcula el sistema; no hay que escribir minutos.</p>
+   <label>Motivo del paro</label>${ms.length?`<select id="pt-m" style="font-size:18px;padding:8px">${ms.map(m=>`<option value="${esc(m.motivo)}">${esc(m.motivo)}</option>`).join('')}</select>`:'<div class="warn">No hay motivos de paro en la tabla 15.</div>'}
+   </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" ${ms.length?'':'disabled'} onclick="pararTramo('${tid}','${oid}')">Parar</button></div>`)}
+function pararTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const o=S.ordenes.find(x=>x.id===oid);if(!t||!o)return;
+  if(paroAbierto(t)){alert('El tramo ya está en paro.');return}
+  const m=String((document.getElementById('pt-m')||{}).value||'').trim();
+  if(!motivosParo().some(x=>x.motivo===m)){alert('Elige el motivo del paro (tabla 15, uso «paro»).');return}
+  t.paros=t.paros||[];t.paros.push({id:uid(),ini:new Date().toISOString(),motivo:m,u:quienFirma()});
+  bitacora('Paro iniciado · '+o.op+' en '+nCen(t.centro)+' · '+m+' ('+quienFirma()+')');
+  save();try{cerrar()}catch(e){}render()}
+function reanudarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const o=S.ordenes.find(x=>x.id===oid);if(!t||!o)return;
+  const p=paroAbierto(t);if(!p)return;p.fin=new Date().toISOString();p.min=+(((new Date(p.fin)-new Date(p.ini))/6e4).toFixed(2));p.uFin=quienFirma();
+  bitacora('Paro terminado · '+o.op+' en '+nCen(t.centro)+' · '+p.motivo+' · '+num(p.min)+' min ('+quienFirma()+')');
+  save();render()}
+/* ---- cronómetro vivo: actualiza SOLO el texto del reloj, sin redibujar la pantalla ---- */
+let CRONO_INT=null;
+function fmtHMS(min){const sg=Math.max(0,Math.round(min*60));const h=Math.floor(sg/3600),m=Math.floor((sg%3600)/60),s=sg%60;
+  return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function tickCrono(){const el=document.getElementById('crono-vivo');
+  if(!el){if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}return}
+  const ini=el.getAttribute('data-ini');if(!ini)return;
+  const pausa=el.getAttribute('data-pausa');const paros=+el.getAttribute('data-paros')||0;
+  const hasta=pausa?new Date(pausa):new Date();
+  const min=Math.max(0,(hasta-new Date(ini))/6e4-paros);
+  el.textContent=fmtHMS(min)}
+function arrancarCrono(){if(CRONO_INT)clearInterval(CRONO_INT);tickCrono();CRONO_INT=setInterval(tickCrono,1000)}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
   const ab=tramoAbiertoDe(c,rec||null);
@@ -1804,19 +1851,6 @@ function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)ret
   tramosDe(oid).push(t);
   bitacora('Inicio de trabajo · '+o.op+' en '+nCen(c)+(rec?' ('+nRec(rec)+')':'')+' por '+quienFirma());
   save();render()}
-function mParoTramo(tid,oid){const ms=motivosDe('piso');
-  abrir(`<h3>Paro</h3><div class="body"><p style="font-size:var(--fs-s)">El tiempo del paro se descuenta del tramo.</p>
-   <label>Motivo (de la tabla 15)</label>${selMotivoHTML('pt-m','piso')}
-   <label style="margin-top:8px">Cuántos minutos</label><input type="number" id="pt-min" min="1" style="width:110px;font-size:18px;padding:8px" value="5"></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" ${ms.length?'':'disabled'} onclick="guardarParoTramo('${tid}','${oid}')">Registrar paro</button></div>`)}
-function guardarParoTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
-  const m=String((document.getElementById('pt-m')||{}).value||'').trim();const min=Math.max(1,Math.round(+((document.getElementById('pt-min')||{}).value||0)));
-  if(!motivoValido('piso',m)){alert('Elige el motivo de la tabla 15 (uso «observación de piso»).');return}
-  if(!(min>0)){alert('Escribe los minutos del paro.');return}
-  t.paros=t.paros||[];t.paros.push({min,motivo:m,ts:new Date().toISOString(),u:quienFirma()});
-  const o=S.ordenes.find(x=>x.id===oid)||{};
-  bitacora('Paro '+min+' min en '+nCen(t.centro)+' · '+(o.op||'')+' · '+m+' ('+quienFirma()+')');
-  save();try{cerrar()}catch(e){}render()}
 function terminarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);if(!t||t.fin)return;
   t.fin=new Date().toISOString();t.uFin=quienFirma();
   const o=S.ordenes.find(x=>x.id===oid)||{};
@@ -1841,7 +1875,9 @@ function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tra
   TRAMO={paso:null,id:null,oid:null};save();render()}
 /* --- olvidos: inicios que pasan del tope de horas sin fin --- */
 function tramosOlvidados(){const tope=+prm('topeHorasTramo',10)||10;const ahora=Date.now();
-  return todosTramos().filter(x=>!x.t.fin&&x.t.ini&&(ahora-new Date(x.t.ini))/36e5>tope)}
+  // se mide el tiempo EFECTIVO: lo que está en paro (almuerzo, cierre del día) no cuenta como trabajo
+  return todosTramos().filter(x=>{const t=x.t;if(t.fin||!t.ini)return false;
+    const efectivo=((ahora-new Date(t.ini))/6e4-minParos(t,ahora))/60;return efectivo>tope})}
 function mCorregirTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const o=S.ordenes.find(x=>x.id===oid);if(!t||!o)return;
   if(!(puede('programa')||puede('reprogramar')||puedeCentro(t.centro))){alert('Solo el supervisor corrige un tramo olvidado.');return}
   abrir(`<h3>Corregir el tramo de ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Empezó ${new Date(t.ini).toLocaleString('es-EC')} en ${esc(nCen(t.centro))} y no tiene fin. El sistema <b>no lo cierra solo ni inventa la hora</b>: pon la hora real de fin.</p>
@@ -1859,52 +1895,74 @@ function corregirTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const 
   TRAMO={paso:'tallas',id:tid,oid};save();try{cerrar()}catch(e){}render()}
 /* --- la pantalla del flujo, con botones grandes --- */
 let TRAMO={paso:null,id:null,oid:null};
+function tablaTallasTramoHTML(o,t,c,editable){const b=baseTallas(o,c);const cur=curvaPedida(o);const cor=curvaCorte(o);
+  const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
+  if(!tallas.length)return `<div class="warn" style="font-size:17px;margin:10px 0">Sin tallas cargadas para esta WH: solo se puede registrar el total.</div>`;
+  const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};const rap=[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0);
+  return `<div class="scroll" style="max-height:340px;margin:10px 0"><table style="font-size:17px"><thead><tr><th>Talla</th><th class="num">Pedido</th><th class="num">Cortado</th><th class="num">Hechas</th><th class="num">Faltan</th>${editable?'<th>Este tramo</th>':''}</tr></thead><tbody>
+   ${tallas.map(tt=>{const ped=(cur||{})[tt]||0;const cort=(cor||{})[tt]||0;const base=(b.tallas||{})[tt]||0;const hechas=(ya[tt]||0)+((t&&(t.tallas||{})[tt])||0);const faltan=Math.max(0,base-hechas);
+     const v=(t&&(t.tallas||{})[tt])||0;
+     return `<tr><td><b>${esc(tt)}</b></td><td class="num">${ped?num(ped):'—'}</td><td class="num">${cort?num(cort):'—'}</td><td class="num">${num(hechas)}</td><td class="num">${faltan?num(faltan):'<span class="tag t-ok">0</span>'}</td>
+      ${editable&&t?`<td style="white-space:nowrap"><button class="btn ghost" style="font-size:20px;padding:6px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',-1)">−</button>
+       <b style="display:inline-block;min-width:44px;text-align:center;font-size:20px">${v}</b>
+       <button class="btn" style="font-size:20px;padding:6px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
+       ${rap.map(n=>`<button class="btn ghost" style="font-size:15px;padding:6px 10px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}</td>`:''}</tr>`}).join('')}
+   </tbody></table></div>`}
 function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
   const olv=tramosOlvidados().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null));
   const avisoOlv=olv.length?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px">
-    <b>${olv.length} ${olv.length===1?'inicio':'inicios'} sin fin</b> de hace más de ${num(prm('topeHorasTramo',10))} horas. El sistema no los cierra solo.
+    <b>${olv.length} ${olv.length===1?'inicio':'inicios'} sin fin</b> de hace más de ${num(prm('topeHorasTramo',10))} horas de trabajo. El sistema no los cierra solo.
     ${olv.map(x=>`<div style="margin-top:8px">${esc(x.o.op)} · empezó ${new Date(x.t.ini).toLocaleString('es-EC')} <button class="btn ghost" onclick="mCorregirTramo('${x.t.id}','${x.o.id}')">corregir</button></div>`).join('')}
    </div></div>`:'';
   if(TRAMO.paso==='tallas'&&TRAMO.oid){const o=S.ordenes.find(x=>x.id===TRAMO.oid);const t=o?tramosDe(o.id).find(x=>x.id===TRAMO.id):null;
-    if(o&&t){const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);const cal=calcTramo(t,o);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};
+    if(o&&t){const cal=calcTramo(t,o);const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
       return avisoOlv+`<div class="panel"><div class="body" style="font-size:18px">
        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
-       <div class="mut" style="margin:8px 0">Trabajado ${fmtMinSeg(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
-       <h3 style="margin:10px 0">¿Cuántas salieron, por talla?</h3>
-       ${tallas.length?`<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>{const lim=(b.tallas||{})[tt];const v=(t.tallas||{})[tt]||0;const total=(ya[tt]||0)+v;
-         return `<div style="display:flex;align-items:center;gap:12px"><b style="width:70px;font-size:20px">${esc(tt)}</b>
-          <button class="btn ghost" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',-1)">−</button>
-          <b style="font-size:24px;min-width:56px;text-align:center">${v}</b>
-          <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
-          ${[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0).map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}
-          <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',this.value)"></label>
-          <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}).join('')}</div>`
-        :'<div class="warn">Esta orden no tiene curva de tallas ni registro de corte: solo se puede registrar el total (avisado en Hoy → Pendientes).</div>'}
+       <div class="mut" style="margin:8px 0">Trabajado ${fmtHMS(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
+       ${cal.avisoAlmuerzo?'<div class="warn" style="font-size:16px">El horario tiene un descanso dentro de este tramo y no marcaste el paro de almuerzo. ¿Olvidaste marcarlo? Se descontó del horario.</div>':''}
+       <h3 style="margin:10px 0">Confirma lo que salió</h3>
+       ${tallasSegHTML(o,t,c,tallas)}
        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn" style="font-size:22px;padding:16px 26px" onclick="guardarTramo('${t.id}','${o.id}')">Guardar</button>
         <button class="btn ghost" style="font-size:18px;padding:14px 20px" onclick="TRAMO={paso:null,id:null,oid:null};render()">Ahora no</button></div>
       </div></div>`}}
-  if(ab){const o=ab.o;const t=ab.t;const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
+  if(ab){const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
+    const parosCerrados=(t.paros||[]).filter(p=>p.fin).reduce((a,p)=>a+(+p.min||0),0);
     return avisoOlv+`<div class="panel" style="border:2px solid var(--t-accent)"><div class="body" style="font-size:18px">
      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<div><b style="font-size:22px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div></div></div>
-     <div style="margin:12px 0;font-size:20px">Empezó ${new Date(t.ini).toLocaleTimeString('es-EC')} · <b>${fmtMinSeg(cal.brutoMin)}</b>${(t.paros||[]).length?' · paros '+num(cal.paros)+' min':''}</div>
-     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn" style="font-size:22px;padding:16px 26px" onclick="terminarTramo('${t.id}','${o.id}')">FIN</button>
-      <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mParoTramo('${t.id}','${o.id}')">Paro</button></div>
+     <div style="margin:14px 0;text-align:center">
+      <div id="crono-vivo" data-ini="${esc(t.ini)}" data-paros="${parosCerrados}" ${pa?`data-pausa="${esc(pa.ini)}"`:''} style="font-size:46px;font-weight:700;letter-spacing:.04em;color:${pa?'var(--aviso)':'var(--t-primary)'}">0:00:00</div>
+      <div class="mut" style="font-size:15px">empezó ${new Date(t.ini).toLocaleTimeString('es-EC')}${parosCerrados?' · paros '+num(parosCerrados)+' min':''}${pa?' · <b>en paro: '+esc(pa.motivo)+'</b>':''}</div></div>
+     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      ${pa?`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="reanudarTramo('${t.id}','${o.id}')">Reanudar</button>`
+         :`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="terminarTramo('${t.id}','${o.id}')">FIN</button>
+           <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mPararTramo('${t.id}','${o.id}')">Paro</button>`}</div>
+     ${pa?'':tablaTallasTramoHTML(o,t,c,true)}
     </div></div>`}
   return avisoOlv+`<div class="panel"><div class="body"><h3 style="margin:0 0 10px">Elige la orden y toca INICIO</h3>
    <div style="display:flex;flex-direction:column;gap:10px">
-   ${cola.slice(0,40).map(f=>{const o=f.o;return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
-     ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,o.cant-f.hechas))} por hacer</div></div>
+   ${cola.slice(0,40).map(f=>{const o=f.o;const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
+     return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
+     ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,o.cant-f.hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div></div>
      <button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button></div>`}).join('')||'<span class="mut">No hay órdenes programadas en este centro.</span>'}
    </div></div></div>`}
+function tallasSegHTML(o,t,c,tallas){if(!tallas.length)return '<div class="warn">Sin tallas cargadas para esta WH: se registra solo el total.</div>';
+  const b=baseTallas(o,c);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};const rap=[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0);
+  return `<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>{const lim=(b.tallas||{})[tt];const v=(t.tallas||{})[tt]||0;const total=(ya[tt]||0)+v;
+    return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b style="width:70px;font-size:20px">${esc(tt)}</b>
+     <button class="btn ghost" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',-1)">−</button>
+     <b style="font-size:24px;min-width:56px;text-align:center">${v}</b>
+     <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
+     ${rap.map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}
+     <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',this.value)"></label>
+     <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}).join('')}</div>`}
 function tramosDelDiaHTML(c,rec){const h=hoy();const l=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===h);
   if(!l.length)return '';
   return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Segundas</th><th class="num">Min/prenda real</th><th class="num">Personas</th><th>Quién</th></tr></thead><tbody>
    ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="estándar ${num(cal.estandar,3)} min/prenda · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.pers}</td><td class="mut">${esc(t.u||'')}</td></tr>`}).join('')}
    </tbody></table></div>${descansosCentro(c).falta?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración → Centros cuando los definas.</p>`:''}${personasRec(rec,c).falta?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
 function vTablet(el){
-  const asg=tabletDe();const admin=puede('usuarios')||puede('programa');
+  const asg=tabletDe();const admin=(puede('usuarios')||puede('programa'))&&!esOperario();
   const c=admin?(TAB.centro||asg.centro||null):(asg.centro||null);const rec=admin?(TAB.rec||asg.rec||null):(asg.rec||null);
   const cens=S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   const sel=admin?`<div class="row no-print" style="margin:0;align-items:flex-end"><div><label>Centro</label><select onchange="TAB.centro=this.value||null;TAB.rec=null;render()"><option value="">—</option>${cens.map(x=>`<option value="${x.id}" ${c===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}</select></div>${c?`<div><label>Recurso</label><select onchange="TAB.rec=this.value||null;render()"><option value="">todo el centro</option>${S.recursos.filter(r=>r.activa&&r.centro===c).map(r=>`<option value="${r.id}" ${rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></div>`:''}</div>`:'';
@@ -2161,7 +2219,7 @@ function tarjetasResumenHTML(cards){const ab=cards.find(c=>c.items&&c.items.leng
       return `<tr class="grp-row" style="background:var(--field);font-weight:700"><td colspan="7" style="border-top:2px solid var(--rule)">${esc(f)}<span style="float:right">${xs.length} ${xs.length===1?'orden':'órdenes'} · ${num(xs.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+xs.map(filaOrd).join('')}).join('')};
   return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div></div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${ab.items.length} órdenes${ab.porFam?' · agrupadas por familia':''}</span></h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
 /* e) Devolver/revertir: el motivo sale de la tabla 15 (lista cerrada, sin texto libre) */
-const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso']];
+const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso']];
 function motivos(){if(!Array.isArray(S.params.motivos))S.params.motivos=[];migrarMotivosReproceso();return S.params.motivos}
 // los motivos de reproceso viven ahora en la tabla 15 (uso 'reproceso'); se migra una vez y NO se borra el arreglo viejo
 function migrarMotivosReproceso(){const t=S.params.motivos;if(S.params.motivosMigrados)return;const viejos=Array.isArray(S.params.motivosReproceso)&&S.params.motivosReproceso.length?S.params.motivosReproceso:defMotivosReproceso();let n=0;viejos.forEach(r=>{const m=String(r.motivo||'').trim();if(!m)return;if(t.some(x=>x.uso==='reproceso'&&x.motivo===m))return;t.push({motivo:m,uso:'reproceso',tejeduria:!!r.tejeduria});n++});S.params.motivosMigrados=true;if(n&&typeof bitacora==='function')bitacora('Motivos de reproceso unificados en la tabla 15: '+n+' motivos (el arreglo anterior se conserva)')}
@@ -3183,6 +3241,7 @@ ${grpSelHTML('lib')}<div style="width:190px"><label>Buscar</label>${busqHTML('LI
      return `<div class="scroll" style="max-height:420px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Referencia</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Liberó</th><th></th></tr></thead><tbody>${filasGRP('lib4',l4.slice(0,400),fila4,9)||'<tr><td colspan="9" class="mut">Ninguna orden liberada con esa búsqueda.</td></tr>'}</tbody></table></div>`})()}
   </div></div>`;
   restaurarScrollLib();
+  if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
 }
 function togSetFam(v){togSet(LIB,'fam',v);LIB.hija=null}function togSetHija(v){togSet(LIB,'hija',v)}function togSetTela(v){togSet(LIB,'tela',v)}function togSetCli(v){togSet(LIB,'cli',v)}function togSetMes(v){togSet(LIB,'mes',v)}
 function togFaseLib(f){togSet(LIB,'fases',f)}
@@ -4526,7 +4585,7 @@ function vControl(el){
 function setAsist(rid,v){const h=hoy();S.turnos=S.turnos||[];const id=rid+'|'+h;let t=S.turnos.find(x=>x.id===id);if(v===''){S.turnos=S.turnos.filter(x=>x.id!==id)}else{if(!t){t={id,rec:rid,d:h};S.turnos.push(t)}t.pers=+v}
   S.turnos=S.turnos.filter(x=>x.d>=dsum(h,-90));bitacora('Asistencia '+nRec(rid)+' '+h+': '+(v===''?'sin dato':v));save();render()}
 function setSeg(oid,c,v){if(!S.avance[oid])S.avance[oid]={};const a=S.avance[oid];if(!a.seg)a.seg={};a.seg[c]=Math.max(0,+v||0);save()}
-function mParo(){const mods=S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro'&&r.activa);const tipos=S.params.tiposParo||['Mecánico','Falta de material','Calidad / reproceso','Falta de personal','Energía / servicios'];
+function mParo(){const mods=S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro'&&r.activa);const tipos=motivosParo().map(m=>m.motivo);
   abrir(`<h3>Registrar paro</h3><div class="body"><div class="row"><div><label>Recurso</label><select id="p-rec">${mods.map(r=>`<option value="${r.id}">${esc(r.n)}</option>`).join('')}</select></div>
     <div><label>Tipo</label><select id="p-tipo">${tipos.map(t=>`<option>${esc(t)}</option>`).join('')}</select></div><div><label>Minutos</label><input type="number" id="p-min" min="1" value="15" style="width:90px"></div></div>
     <div class="row"><div style="flex:1"><label>Orden (opcional)</label><input type="text" id="p-op" placeholder="WH/MO/…"></div><div style="flex:2"><label>Observación</label><input type="text" id="p-obs"></div></div></div>
@@ -4752,12 +4811,20 @@ async function vUsuarios(el){
 async function setPerfil(id,k,v){const {data:antes}=await sb.from('perfiles').select('email,nombre,rol,modo').eq('id',id).single();const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);
   if(error){alert('No se pudo actualizar: '+error.message+(/check constraint "perfiles_rol/i.test(error.message)?'\n\nLa tabla perfiles de Supabase todavía tiene la restricción de los roles viejos (admin, planificacion, carga, piso, consulta). Ejecuta SUPABASE_PERFILES.sql en Supabase → SQL Editor y vuelve a intentar.':'')+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''));return}
   bitacora('Usuario '+((antes&&antes.email)||id)+' · '+k+': '+((antes&&antes[k])||'—')+' → '+(v||'—'));save()}
+function verFilaTablet(){const p=(document.getElementById('nu-perfil')||{}).value;const f=document.getElementById('nu-fila-tablet');if(f)f.style.display=(p==='tablet')?'':'none'}
+function pintarRecursosNuevoUsuario(){const c=(document.getElementById('nu-centro')||{}).value;const sel=document.getElementById('nu-rec');if(!sel)return;
+  const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
+  sel.innerHTML='<option value="">'+(c==='modulos'?'— elige el módulo (obligatorio) —':'— todo el centro —')+'</option>'+recs.map(r=>'<option value="'+r.id+'">'+esc(r.n)+'</option>').join('')}
 function mNuevoUsuario(){const cat=perfilesDef();abrir(`<h3>Nuevo usuario</h3><div class="body">
    <div class="row"><div><label>Correo</label><input type="email" id="nu-email" style="min-width:260px"></div><div><label>Nombre</label><input type="text" id="nu-nombre"></div></div>
-   <div class="row"><div><label>Perfil</label><select id="nu-perfil">${cat.filter(x=>x.id!=='admin'||puede('usuarios')).map(x=>`<option value="${x.id}">${esc(x.n)}</option>`).join('')}</select></div><div><label>Contraseña inicial</label><input type="text" id="nu-pass" placeholder="mínimo 8 caracteres"></div></div>
+   <div class="row" id="nu-fila-tablet" style="display:none"><div><label>Centro del operario</label><select id="nu-centro" onchange="pintarRecursosNuevoUsuario()"><option value="">—</option>${S.centros.filter(x=>x.area==='pro').map(x=>`<option value="${x.id}">${esc(x.n)}</option>`).join('')}</select></div><div><label>Recurso (módulo)</label><select id="nu-rec"><option value="">—</option></select></div></div>
+   ${recursosSinAsignar().length?'<p class="mut" style="font-size:var(--fs-xs)">Módulos sin operario asignado: '+recursosSinAsignar().map(esc).join(', ')+'</p>':'<p class="mut" style="font-size:var(--fs-xs)">Todos los módulos activos ya tienen operario asignado.</p>'}
+   <div class="row"><div><label>Perfil</label><select id="nu-perfil" onchange="verFilaTablet()">${cat.filter(x=>x.id!=='admin'||puede('usuarios')).map(x=>`<option value="${x.id}">${esc(x.n)}</option>`).join('')}</select></div><div><label>Contraseña inicial</label><input type="text" id="nu-pass" placeholder="mínimo 8 caracteres"></div></div>
    <p class="mut" style="font-size:var(--fs-s)">La persona entra con ese correo y esa contraseña y puede cambiarla luego. Si Supabase pide confirmar el correo, primero debe abrir el enlace que le llega.</p></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="nu-ok" onclick="crearUsuario()">Crear</button></div>`)}
 async function crearUsuario(){const g=x=>document.getElementById(x).value.trim();const email=g('nu-email'),nombre=g('nu-nombre'),perfil=g('nu-perfil'),pass=g('nu-pass');
+  const cenOp=(document.getElementById('nu-centro')||{}).value||'';const recOp=(document.getElementById('nu-rec')||{}).value||'';
+  if(perfil==='tablet'){if(!cenOp){alert('Elige el centro del operario.');return}if(cenOp==='modulos'&&!recOp){alert('En módulos el recurso es obligatorio: elige el módulo del operario.');return}}
   if(!email||!pass||pass.length<8){alert('Falta el correo o la contraseña (mínimo 8 caracteres).');return}
   const btn=document.getElementById('nu-ok');btn.disabled=true;
   const c2=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
@@ -4768,6 +4835,7 @@ async function crearUsuario(){const g=x=>document.getElementById(x).value.trim()
   let e2=null,filas=0;for(let k=0;k<6&&!filas;k++){await new Promise(r=>setTimeout(r,k?1500:300));const r=await sb.from('perfiles').update({nombre,rol:perfil}).eq('id',uid).select('id');e2=r.error;filas=(r.data||[]).length;if(e2)break}
   if(e2)alert('La cuenta se creó pero no se pudo guardar el perfil: '+e2.message+(/check constraint/i.test(e2.message)?'\n\nLa tabla perfiles tiene una restricción con los roles viejos: ejecuta SUPABASE_PERFILES.sql en Supabase → SQL Editor.':'')+'\nAsígnalo desde la tabla.');
   else if(!filas)alert('La cuenta se creó, pero Supabase no creó su fila en perfiles (falta el disparador). Créala en Supabase → Table editor → perfiles con el id '+uid+' y asigna el perfil aquí.');
+  if(perfil==='tablet'&&cenOp){S.params.tablets=S.params.tablets||{};S.params.tablets[uid]={centro:cenOp,rec:recOp||''};bitacora('Operario '+(nombre||email)+': centro '+nCen(cenOp)+(recOp?' · '+nRec(recOp):'')+' ('+quienFirma()+')');save()}
   bitacora('Usuario creado '+email+' · perfil '+perfil);save();cerrar();render();
   alert('Cuenta creada para '+email+(data.session?'':' (si el proyecto exige confirmación, debe abrir el correo antes de entrar)'))}
 function setPerfilDef(id,k,v){const d=perfilesDef().find(x=>x.id===id);if(!d)return;const antes=d[k];d[k]=v;bitacora('Perfil '+d.n+' · '+k+': '+(antes||'—')+' → '+(v||'—'));save()}

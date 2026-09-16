@@ -218,6 +218,13 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - **Olvidos**: un inicio sin fin que pasa del tope avisa en Mi centro y en Hoy → Pendientes; el supervisor pone la hora
   real con motivo y queda en auditoría. El sistema no cierra solo.
 - **Una orden abierta por puesto**: iniciar otra pregunta si cierra la anterior.
+- **Reloj vivo** en h:mm:ss mientras el tramo corre (solo cambia el texto, no redibuja); se congela en el paro.
+- **Paro sin minutos**: se elige el motivo (tabla 15, uso «paro»: Almuerzo, Cierre del día, Fallo de máquina, editables) y
+  la duración la calcula el sistema al Reanudar. El cierre del día no cuenta como trabajo ni dispara el aviso de olvido.
+  Si el almuerzo está marcado como paro, el descanso del horario no se descuenta otra vez.
+- **Tallas a la vista** durante el tramo: Pedido, Cortado, Hechas y Faltan, con + − +10 +25; sin curva, solo total.
+- **Operarios**: el perfil tablet entra directo a su centro y recurso, sin selectores, y solo ve lo programado en su
+  recurso. El alta de usuario pide centro y recurso (obligatorio en módulos) y lista los módulos sin operario.
 - **Personas del tramo**: manda la asistencia real del día; si no hay, el ajuste de la semana; si no, las personas
   del recurso; y solo si no hay nada, 1, avisado. La pantalla dice de cuál salió.
 - **Descansos**: ventanas de hora por centro (tabla 18); se descuenta solo la parte que cae dentro del tramo.

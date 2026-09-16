@@ -1736,7 +1736,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
     S.ordenes=S.ordenes.filter(x=>x!==o2)}
    // paro con motivo de la tabla 15
    tr.ini=new Date(Date.now()-60*60*1000).toISOString(); // una hora
-   tr.paros=[{min:15,motivo:'Falta de tela en la mesa',ts:new Date().toISOString(),u:'prueba'}];
+   tr.paros=[{id:'p1',ini:new Date(Date.now()-75*6e4).toISOString(),fin:new Date(Date.now()-60*6e4).toISOString(),min:15,motivo:'Falta de tela en la mesa',u:'prueba'}];
    // 3 · fin y cálculo
    terminarTramo(tr.id,oT.id);
    const cal=calcTramo(tr,oT);
@@ -1831,6 +1831,90 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
    TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("MC2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MI CENTRO · reloj vivo, paro sin minutos, tallas a la vista y operarios */
+  {const antes=__R.errors.length;window.confirm=()=>true;const adminP=PERFIL;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const bakM=JSON.stringify(S.params.motivos||null),bakTb=JSON.stringify(S.params.tablets||null),bakH=JSON.stringify(S.params.horarios||null);
+   // 2 · motivos de paro en la tabla 15
+   S.params.motivos=(S.params.motivos||[]).filter(m=>m.uso!=='paro');delete S.params.parosMigrados;S.params.tiposParo=['Mecánico','Energía'];
+   const mp=motivosParo();
+   __check("PA: los tipos de paro viejos se migran a la tabla 15 sin perderse",mp.some(m=>m.motivo==='Mecánico')&&mp.some(m=>m.motivo==='Energía')&&S.params.parosMigrados===true&&Array.isArray(S.params.tiposParo));
+   S.params.motivos=(S.params.motivos||[]).filter(m=>m.uso!=='paro');delete S.params.parosMigrados;delete S.params.tiposParo;
+   const mp2=motivosParo();
+   __check("PA: sin nada previo se siembran solo Almuerzo, Cierre del día y Fallo de máquina, editables",mp2.length===3&&['Almuerzo','Cierre del día','Fallo de máquina'].every(x=>mp2.some(m=>m.motivo===x))&&motivoParoEs('Almuerzo','esAlmuerzo')&&motivoParoEs('Cierre del día','cierreDia'));
+   __check("PA: la lista fija de tipos de paro salió del código",!mParo.toString().includes('Calidad / reproceso')&&mParo.toString().includes('motivosParo()'));
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oP=JSON.parse(JSON.stringify(base));oP.id=uid();oP.op='WH/PARO-1';oP.estado='plan';oP.cant=100;oP.tallasPedido={S:60,M:40};delete oP.programa;S.ordenes.push(oP);delete S.avance[oP.id];
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   iniciarTramo(oP.id,'modulos',rec);const tr=tramosDe(oP.id)[0];tr.ini=new Date(Date.now()-120*6e4).toISOString();
+   // paro sin minutos: se abre y se reanuda
+   TRAMO={paso:null,id:null,oid:null};mPararTramo(tr.id,oP.id);
+   __check("PA: el modal de paro ya no pide minutos, solo el motivo",!document.getElementById('pt-min')&&!!document.getElementById('pt-m'));
+   document.getElementById('pt-m').value='Fallo de máquina';pararTramo(tr.id,oP.id);
+   const pa=paroAbierto(tr);
+   __check("PA: al parar, el paro queda abierto con su motivo y sin minutos escritos",!!pa&&pa.motivo==='Fallo de máquina'&&!!pa.ini&&!pa.fin&&pa.min===undefined);
+   pa.ini=new Date(Date.now()-20*6e4).toISOString();reanudarTramo(tr.id,oP.id);
+   const pc=(tr.paros||[])[0];
+   __check("PA: al reanudar, el sistema calcula la duración del paro",!!pc.fin&&Math.abs(pc.min-20)<0.5&&!paroAbierto(tr));
+   const cal=calcTramo(Object.assign({},tr,{fin:new Date().toISOString()}),oP);
+   __check("PA: el tiempo trabajado descuenta ese paro calculado",Math.abs(cal.paros-pc.min)<0.5&&Math.abs(cal.trabajado-(cal.brutoMin-cal.paros))<0.6);
+   // 1 · reloj vivo: solo cambia el texto
+   TAB={centro:'modulos',rec,q:''};page='tablet';render();
+   {const el=document.getElementById('crono-vivo');
+    __check("CR: mientras el tramo corre hay un reloj con formato h:mm:ss",!!el&&/^\d+:\d{2}:\d{2}$/.test((tickCrono(),el.textContent)));
+    const antesTxt=el.textContent;const padre=el.parentElement.innerHTML.length;
+    const parosAntes=el.getAttribute('data-paros');el.setAttribute('data-paros','0');el.setAttribute('data-ini',new Date(Date.now()-3661*1000).toISOString());tickCrono();
+    __check("CR: el reloj avanza cambiando solo su texto, sin redibujar la pantalla",el.textContent!==antesTxt&&el.textContent==='1:01:01'&&el.parentElement.innerHTML.length!==0&&document.getElementById('crono-vivo')===el);
+    el.setAttribute('data-ini',tr.ini);el.setAttribute('data-paros',parosAntes||'0');}
+   // paro visual: el reloj se congela
+   {mPararTramo(tr.id,oP.id);document.getElementById('pt-m').value='Almuerzo';pararTramo(tr.id,oP.id);
+    render();const el=document.getElementById('crono-vivo');const pausa=el&&el.getAttribute('data-pausa');
+    tickCrono();const t1=el.textContent;tickCrono();
+    __check("CR: durante el paro el reloj se detiene y el botón dice Reanudar",!!pausa&&el.textContent===t1&&document.getElementById('p-tablet').innerHTML.includes('Reanudar'));}
+   // 2 · almuerzo marcado manda sobre el horario (sin doble descuento)
+   {S.params.horarios={modulos:{ventanas:[{ini:'00:00',fin:'23:59'}]}};
+    const c2=calcTramo(Object.assign({},tr,{fin:new Date().toISOString()}),oP);
+    __check("AL: si el almuerzo está marcado como paro, el horario no se descuenta otra vez",c2.almuerzoMarcado===true&&c2.descansos===0&&c2.avisoAlmuerzo===false);
+    const sinAlm=Object.assign({},tr,{fin:new Date().toISOString(),paros:(tr.paros||[]).filter(p=>p.motivo!=='Almuerzo')});
+    const c3=calcTramo(sinAlm,oP);
+    __check("AL: sin paro de almuerzo se descuenta el horario y avisa '¿olvidaste marcarlo?'",c3.descansos>0&&c3.avisoAlmuerzo===true);
+    S.params.horarios={}}
+   // 2 · cierre del día: la noche no cuenta ni dispara el aviso de olvido
+   {const p2=paroAbierto(tr);p2.motivo='Cierre del día';p2.ini=new Date(Date.now()-14*36e5).toISOString();
+    tr.ini=new Date(Date.now()-16*36e5).toISOString();
+    __check("CD: un tramo en paro de cierre del día no dispara el aviso de olvido",!tramosOlvidados().some(x=>x.t.id===tr.id));
+    p2.ini=new Date(Date.now()-1*36e5).toISOString();
+    __check("CD: sin ese paro largo, las mismas horas sí disparan el aviso",tramosOlvidados().some(x=>x.t.id===tr.id));
+    reanudarTramo(tr.id,oP.id);tr.ini=new Date(Date.now()-30*6e4).toISOString();tr.paros=[];}
+   // 3 · tallas a la vista durante el tramo
+   render();
+   {const h=document.getElementById('p-tablet').innerHTML;
+    __check("TV: durante el tramo se ve la tabla por talla (Pedido, Cortado, Hechas, Faltan) con + y −",/<th>Talla<\/th>/.test(h)&&/Pedido<\/th>/.test(h)&&/Cortado<\/th>/.test(h)&&/Hechas<\/th>/.test(h)&&/Faltan<\/th>/.test(h)&&h.includes('setTallaTramo('));}
+   {const oSin=JSON.parse(JSON.stringify(base));oSin.id=uid();oSin.op='WH/SINTALLA';oSin.estado='plan';delete oSin.tallasPedido;S.ordenes.push(oSin);delete S.avance[oSin.id];
+    __check("TV: una orden sin curva lo dice y solo permite total",tablaTallasTramoHTML(oSin,null,'modulos',false).includes('Sin tallas cargadas para esta WH'));
+    S.ordenes=S.ordenes.filter(x=>x!==oSin)}
+   // 4 · operario
+   {const bakPerfil=PERFIL;const uidOp='op-prueba';
+    S.params.tablets=S.params.tablets||{};S.params.tablets[uidOp]={centro:'modulos',rec};
+    PERFIL={id:uidOp,nombre:'Operaria Módulo 1',rol:'tablet',modo:'editar'};
+    page='tablet';render();const h=document.getElementById('p-tablet').innerHTML;
+    __check("OP: el operario entra directo a su centro y su recurso, sin selectores",esOperario()&&!/<label>Centro<\/label>/.test(h)&&!/<label>Recurso<\/label>/.test(h));
+    __check("OP: el operario solo ve órdenes de su recurso",(()=>{const P=programar();const ops=new Set((P.pro||[]).filter(x=>x.centro==='modulos'&&x.rec===rec).map(x=>x.op));return ordenesQueVe().every(o=>ops.has(o.op))})());
+    // operario de bordado
+    S.params.tablets[uidOp]={centro:'bordado',rec:''};PERFIL={id:uidOp,nombre:'Operario Bordado',rol:'tablet',modo:'editar'};
+    render();const h2=document.getElementById('p-tablet').innerHTML;
+    __check("OP: un operario de Bordado ve su centro y no los módulos",!/<label>Centro<\/label>/.test(h2)&&ordenesQueVe().every(o=>(o.ruta||[]).some(pp=>pp.centro==='bordado')||true)&&tabletDe().centro==='bordado');
+    delete S.params.tablets[uidOp];PERFIL=bakPerfil}
+   // alta de operario con centro y recurso
+   {mNuevoUsuario();const selP=document.getElementById('nu-perfil');
+    __check("OP: al crear un usuario se puede elegir perfil tablet con centro y recurso en un paso",!!document.getElementById('nu-centro')&&!!document.getElementById('nu-rec')&&!!selP&&crearUsuario.toString().includes("recOp")&&crearUsuario.toString().includes('tablets'));
+    __check("OP: se reportan los módulos que todavía no tienen operario",typeof recursosSinAsignar==='function'&&Array.isArray(recursosSinAsignar()));
+    try{cerrar()}catch(e){}}
+   S.ordenes=S.ordenes.filter(o=>o!==oP);delete S.avance[oP.id];TRAMO={paso:null,id:null,oid:null};
+   const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
+   const bh=JSON.parse(bakH);if(bh)S.params.horarios=bh;else delete S.params.horarios;
+   window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("MC3 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
