@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 15:52';
+const APP_BUILD='2026-09-16 16:03';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1312,7 +1312,9 @@ const corridas={};
       const ro=res.ordenes[it.o.id];ro.telas.push({tela:c.tela,kg:t,origen:'stock',fin:dsum(ini,-1),ini:dsum(ini,-1)});
       ro.tejStock=(ro.tejStock||0)+t});
     // programación manual de tejeduría, por fecha
-    const manual=progTej().filter(p=>p.tela===c.tela&&+p.kg>0).slice().sort((a,b)=>(a.dia||'9')<(b.dia||'9')?-1:1).map(p=>({p,kg:+p.kg}));
+    const manual=progTej().filter(p=>p.tela===c.tela&&(typeof tejCuentaComoLista!=='function'||tejCuentaComoLista(p)))
+      .map(p=>({p,kg:(typeof estadoTej==='function'&&estadoTej(p)==='tejido')?(p.kgReal!=null?(+p.kgReal||0):(+p.kg||0)):(+p.kg||0)}))
+      .filter(x=>x.kg>0).sort((a,b)=>((a.p.dia||'9')<(b.p.dia||'9')?-1:1));
     c.items.forEach(it=>{while(it.pend>0&&manual.length){const m=manual[0];const t=Math.min(m.kg,it.pend);m.kg-=t;it.pend-=t;org.manual+=t;
         const ro=res.ordenes[it.o.id];const kh=kgHora(R(m.p.rec)||{},c.tela)||0;
         res.tej.push({rec:m.p.rec,dia:m.p.dia,kg:t,h:kh?t/kh:0,op:it.o.op,tela:c.tela,manual:true});
@@ -2520,9 +2522,14 @@ function cargasTejPorTela(P){const m={};S.ordenes.filter(abierta).forEach(o=>{co
   progTej().forEach(p=>{const r=m[p.tela]=m[p.tela]||{pedido:0,ords:new Set(),req:null};r.cargado=(r.cargado||0)+(+p.kg||0)});
   Object.entries((P&&P.tejOrigen)||{}).forEach(([t,v])=>{const r=m[t]=m[t]||{pedido:0,ords:new Set(),req:null};r.stock=v.stock;r.manual=v.manual;r.estimado=v.estimado});return m}
 function addProgTej(){if(!(puedeArea('tej')||puede('programa'))){alert('Tu perfil no programa tejeduría.');return}const g=id=>(document.getElementById(id)||{}).value;const tela=g('pt-tela'),rec=g('pt-rec'),dia=g('pt-dia'),kg=+String(g('pt-kg')||'').replace(',','.');
-  if(!tela||!rec||!dia||!(kg>0)){alert('Tela, máquina, día y kilos son obligatorios.');return}const r=R(rec);const av=[];if(r&&r.kgTela&&Object.keys(r.kgTela).length&&!(r.kgTela[tela]>0))av.push('la máquina no tiene esta tela en su tabla de kg (kgTela)');const capT=r?kgDiaTela(r,tela):0;const yaDia=progTej().filter(x=>x.rec===rec&&x.dia===dia).reduce((a,x)=>a+(+x.kg||0),0);if(capT>0&&yaDia+kg>capT+1e-6)av.push('los kg del día pasan la capacidad de la máquina para esa tela ('+num(yaDia+kg)+' de '+num(capT)+' kg/día)');
-  const p={id:uid(),tela,rec,dia,kg,u:quienFirma(),ts:new Date().toISOString()};if(av.length)p.aviso=av.join('; ');progTej().push(p);bitacora('Tejeduría programada a mano: '+nTela(tela)+' '+num(kg)+' kg en '+nRec(rec)+' el '+fmtDia(dia)+(av.length?' · CON AVISO: '+av.join('; '):'')+' ('+quienFirma()+')');if(av.length)alert('Programado con aviso (no se impide):\n· '+av.join('\n· '));save();render()}
-function setProgTejRow(id,k,v){const p=progTej().find(x=>x.id===id);if(!p)return;const antes=p[k];p[k]=k==='kg'?(+String(v).replace(',','.')||0):v;bitacora('Tejeduría programada: '+nTela(p.tela)+' '+k+' '+(k==='rec'?nRec(antes):antes)+' → '+(k==='rec'?nRec(p[k]):p[k])+' ('+quienFirma()+')');save();render()}
+  if(!tela||!rec||!dia||!(kg>0)){alert('Tela, máquina, día y kilos son obligatorios.');return}
+  const yaTejido=(document.getElementById('pt-estado')||{}).value==='tejido';
+  if(!yaTejido&&dia<hoy()){alert('Una fila PROGRAMADA no puede tener fecha pasada.\n\nSi eso ya se tejíó, marcá el estado «Tejido» al crearla.');return}const r=R(rec);const av=[];if(r&&r.kgTela&&Object.keys(r.kgTela).length&&!(r.kgTela[tela]>0))av.push('la máquina no tiene esta tela en su tabla de kg (kgTela)');const capT=r?kgDiaTela(r,tela):0;const yaDia=progTej().filter(x=>x.rec===rec&&x.dia===dia).reduce((a,x)=>a+(+x.kg||0),0);if(capT>0&&yaDia+kg>capT+1e-6)av.push('los kg del día pasan la capacidad de la máquina para esa tela ('+num(yaDia+kg)+' de '+num(capT)+' kg/día)');
+  const p={id:uid(),tela,rec,dia,kg,u:quienFirma(),ts:new Date().toISOString()};if(av.length)p.aviso=av.join('; ');
+  if(yaTejido){p.estado='tejido';p.kgReal=kg;p.confU=quienFirma();p.confTs=p.ts}progTej().push(p);bitacora('Tejeduría programada a mano: '+nTela(tela)+' '+num(kg)+' kg en '+nRec(rec)+' el '+fmtDia(dia)+(av.length?' · CON AVISO: '+av.join('; '):'')+' ('+quienFirma()+')');if(av.length)alert('Programado con aviso (no se impide):\n· '+av.join('\n· '));save();render()}
+function setProgTejRow(id,k,v){const p=progTej().find(x=>x.id===id);if(!p)return;
+  if(k==='dia'&&estadoTej(p)==='prog'&&v&&v<hoy()){alert('Una fila PROGRAMADA no puede quedar en una fecha pasada.\n\nSi eso ya se tejíó, usá «marcar como tejido»: ahí sí se registra la fecha real y los kilos reales.');render();return}
+  const antes=p[k];p[k]=k==='kg'?(+String(v).replace(',','.')||0):v;bitacora('Tejeduría programada: '+nTela(p.tela)+' '+k+' '+(k==='rec'?nRec(antes):antes)+' → '+(k==='rec'?nRec(p[k]):p[k])+' ('+quienFirma()+')');save();render()}
 function delProgTejRow(id){const p=progTej().find(x=>x.id===id);if(!p)return;if(!confirm('¿Quitar '+nTela(p.tela)+' '+num(p.kg)+' kg de '+nRec(p.rec)+' el '+fmtDia(p.dia)+' del programa de tejeduría?'))return;S.params.progTej=progTej().filter(x=>x.id!==id);bitacora('Tejeduría programada quitada: '+nTela(p.tela)+' '+num(p.kg)+' kg '+nRec(p.rec)+' '+fmtDia(p.dia)+' ('+quienFirma()+')');save();render()}
 function progTejPanelHTML(P){const ok=puedeArea('tej')||puede('programa');const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const m=cargasTejPorTela(P);const telas=Object.keys(m).sort((a,b)=>(m[b].pedido||0)-(m[a].pedido||0));
   const rows=progTej().slice().sort((a,b)=>(a.dia||'9')<(b.dia||'9')?-1:1);const dias=[...new Set(rows.map(p=>p.dia))].sort();
@@ -2530,10 +2537,15 @@ function progTejPanelHTML(P){const ok=puedeArea('tej')||puede('programa');const 
   const resumen=`<div class="panel"><h3>Cargas por tela · pedido vs cargado <span class="note">pedido = kg liberados por tejer; primero se usa el stock de tela cruda, después lo que programaste a mano y lo que falta lo estima el sistema</span></h3><div class="body"><table><thead><tr><th>Tela</th><th class="num">Órdenes</th><th class="num">Pedido (kg)</th><th class="num" title="cubierto con stock de tela cruda">Stock</th><th class="num" title="cubierto con la programación manual de abajo">Programado a mano</th><th class="num" title="lo que no cubren ni el stock ni lo manual: corrida automática con fecha estimada por el sistema">Estimado por sistema</th><th class="num">Falta cargar</th><th>Requerida (tela lista)</th><th>Sugerida por el motor</th></tr></thead><tbody>
     ${telas.map(t=>{const r=m[t];const falta=Math.max(0,(r.pedido||0)-(r.cargado||0));return `<tr><td>${esc(nTela(t))}</td><td class="num">${r.ords.size}</td><td class="num">${num(r.pedido||0)}</td><td class="num">${r.stock?num(Math.round(r.stock)):'<span class="mut">—</span>'}</td><td class="num">${num(r.cargado||0)}</td><td class="num">${r.estimado?'<span class="tag t-aviso" title="fecha estimada por el sistema · sin programar a mano">'+num(Math.round(r.estimado))+'</span>':'<span class="mut">—</span>'}</td><td class="num">${falta>0.5?'<span class="tag t-aviso">'+num(falta)+'</span>':(r.pedido?'<span class="tag t-ok">completo</span>':'<span class="mut">·</span>')}</td><td>${r.req?fmtDia(r.req):'<span class="mut">—</span>'}</td><td class="mut">${r.sug?fmtDia(r.sug):'—'}</td></tr>`}).join('')||'<tr><td colspan="9" class="mut">Nada liberado por tejer.</td></tr>'}
     <tr style="font-weight:600;background:var(--field)"><td>Total</td><td></td><td class="num">${num(totP)}</td><td class="num">${num(Math.round(telas.reduce((a,t)=>a+(m[t].stock||0),0)))}</td><td class="num">${num(totC)}</td><td class="num">${num(Math.round(telas.reduce((a,t)=>a+(m[t].estimado||0),0)))}</td><td class="num">${num(Math.max(0,totP-totC))}</td><td colspan="2"></td></tr></tbody></table></div></div>`;
-  const form=ok?`<div class="row" style="margin:0 0 10px;align-items:flex-end"><div><label>Tela</label><select id="pt-tela">${[...new Set([...telas,...S.telas.filter(t=>!t.ext).map(t=>t.id)])].map(t=>`<option value="${t}">${esc(nTela(t))}${m[t]&&m[t].pedido?' · pedido '+num(m[t].pedido)+' kg':''}</option>`).join('')}</select></div><div><label>Máquina</label><select id="pt-rec">${recs.map(r=>`<option value="${r.id}">${esc(r.n)} · ${num(capDia(r))} kg/día</option>`).join('')}</select></div><div><label>Día</label><input type="date" id="pt-dia" value="${hoy()}"></div><div><label>Kg</label><input type="number" id="pt-kg" min="0" style="width:90px"></div><div><label>&nbsp;</label><button class="btn" onclick="addProgTej()">Programar</button></div></div>`:'';
+  const form=ok?`<div class="row" style="margin:0 0 10px;align-items:flex-end"><div><label>Tela</label><select id="pt-tela">${[...new Set([...telas,...S.telas.filter(t=>!t.ext).map(t=>t.id)])].map(t=>`<option value="${t}">${esc(nTela(t))}${m[t]&&m[t].pedido?' · pedido '+num(m[t].pedido)+' kg':''}</option>`).join('')}</select></div><div><label>Máquina</label><select id="pt-rec">${recs.map(r=>`<option value="${r.id}">${esc(r.n)} · ${num(capDia(r))} kg/día</option>`).join('')}</select></div><div><label>Estado</label><select id="pt-estado" onchange="{const d=document.getElementById('pt-dia');if(d)d.min=this.value==='tejido'?'':hoy()}"><option value="prog">Programado</option><option value="tejido">Ya tejido</option></select></div><div><label>Día</label><input type="date" id="pt-dia" min="${hoy()}" value="${hoy()}"></div><div><label>Kg</label><input type="number" id="pt-kg" min="0" style="width:90px"></div><div><label>&nbsp;</label><button class="btn" onclick="addProgTej()">Programar</button></div></div>`:'';
   const grid=dias.length?`<div class="grid-wrap"><table class="mgrid"><thead><tr><th></th>${dias.map(d=>`<th>${fmtDia(d)}</th>`).join('')}</tr></thead><tbody>${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(capDia(r))} kg/día</span></td>${dias.map(d=>{const xs=rows.filter(p=>p.rec===r.id&&p.dia===d);const tot=xs.reduce((a,p)=>a+p.kg,0);const cap=capDia(r);return `<td>${xs.map(p=>`<div class="bath b-medio" style="background:var(--ink2)"><span class="c">${esc(nTela(p.tela))}</span>${num(p.kg)} kg</div>`).join('')}${xs.length&&cap?`<div class="mut" style="font-size:var(--fs-xs)">${Math.round(tot/cap*100)}% del día</div>`:''}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>`:'<div class="empty">Todavía no hay nada programado a mano. Elige tela, máquina, día y kilos arriba.</div>';
-  const tabla=rows.length?`<table style="margin-top:10px"><thead><tr><th>Día</th><th>Máquina</th><th>Tela</th><th class="num">Kg</th><th>Quién · cuándo</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><input type="date" value="${p.dia}" ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','dia',this.value)"></td><td><select ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','rec',this.value)">${recs.map(r=>`<option value="${r.id}" ${r.id===p.rec?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td><td>${esc(nTela(p.tela))}${p.aviso?' <span class="tag t-aviso" title="'+esc(p.aviso)+'">con aviso</span>':''}</td><td class="num"><input type="number" min="0" style="width:90px" value="${p.kg}" ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','kg',this.value)"></td><td class="mut" style="font-size:var(--fs-xs)">${esc(p.u||'')} · ${new Date(p.ts).toLocaleDateString('es-EC')}</td><td>${ok?`<button class="btn ghost sm" onclick="delProgTejRow('${p.id}')">quitar</button>`:''}</td></tr>`).join('')}</tbody></table>`:'';
-  return resumen+comparaTejHTML()+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
+  const tabla=rows.length?`<table style="margin-top:10px"><thead><tr><th>Día</th><th>Estado</th><th>Máquina</th><th>Tela</th><th class="num">Kg programados</th><th class="num">Kg reales</th><th>Quién · cuándo</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><input type="date" value="${p.dia}" ${ok?'':'disabled'} min="${estadoTej(p)==='prog'?hoy():''}" onchange="setProgTejRow('${p.id}','dia',this.value)"></td>
+  <td>${estadoTej(p)==='tejido'?'<span class="tag t-ok" title="ya se tejíó: es un hecho, no un compromiso">tejido</span>':(p.dia&&p.dia<hoy()?'<span class="tag t-alerta" title="programado y el día ya pasó: nadie confirmó que se tejiera">sin confirmar</span>':'<span class="tag t-medio">programado</span>')}</td>
+  <td><select ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','rec',this.value)">${recs.map(r=>`<option value="${r.id}" ${r.id===p.rec?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td><td>${esc(nTela(p.tela))}${p.aviso?' <span class="tag t-aviso" title="'+esc(p.aviso)+'">con aviso</span>':''}</td><td class="num"><input type="number" min="0" style="width:90px" value="${p.kg}" ${ok?'':'disabled'} onchange="setProgTejRow('${p.id}','kg',this.value)"></td>
+  <td class="num">${estadoTej(p)==='tejido'?'<b>'+num(p.kgReal!=null?p.kgReal:p.kg)+'</b>':'<span class="mut">—</span>'}</td>
+  <td class="mut" style="font-size:var(--fs-xs)">${esc(p.u||'')} · ${new Date(p.ts).toLocaleDateString('es-EC')}${p.confU?'<br><span class="tag t-ok" style="font-size:9px;padding:0 3px">tejido</span> '+esc(p.confU)+' · '+new Date(p.confTs).toLocaleDateString('es-EC'):''}</td>
+  <td style="white-space:nowrap">${puedeTejer()?(estadoTej(p)==='tejido'?`<button class="btn ghost sm" onclick="desmarcarTejido('${p.id}')" title="volver a programado: pide motivo">deshacer</button>`:`<button class="btn sm" onclick="marcarTejido('${p.id}')">marcar como tejido</button>`):''} ${ok?`<button class="btn ghost sm" onclick="delProgTejRow('${p.id}')">quitar</button>`:''}</td></tr>`).join('')}</tbody></table>`:'';
+  return resumen+comparaTejHTML()+tejEstrictoPanelHTML()+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
 /* ===== COMPONENTES COMUNES (prompt 2): se construyen una vez y se reutilizan; no copiar por pantalla ===== */
 /* a) Filtro de fases: casillas agrupadas por grupo de la tabla 5, con Seleccionar todas / Limpiar (sentinel '∅' = ninguna) */
 function refEstado(nombre){const [obj,k]=nombre.split('.');const M={};try{M.CEN=CEN}catch(e){}try{M.CG=CG}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}return {o:M[obj],k}}
@@ -4161,7 +4173,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarRutasEmpaque();sembrarFirmasRuta()}
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -4773,11 +4785,14 @@ function categoriasSinHojaHTML(){const r=categoriasSinHoja();
 
 /* la ruta de producción que le corresponde a una orden: lo que dice su categoría (hoja LMO) más lo
    que pide la propia orden (técnica, puntadas), ordenado por el proceso y con Empaque siempre al final */
-function rutaProSugerida(o){const k=K(o.cat);
+function rutaProSugerida(o,rehacer){const k=K(o.cat);
   const cs=new Set();
   if(k)centrosDeCategoria(k).forEach(c=>cs.add(c));
   if(typeof ordenCentrosAuto==='function')ordenCentrosAuto(o).forEach(c=>cs.add(c));
-  (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro')cs.add(p.centro)});  // lo que ya tenía no se pierde
+  /* rehacer=true: los centros que dependen de la ORDEN (estampado, bordado…) salen de la técnica y las
+     puntadas de ahora, así que si la orden dejó de pedirlos, se quitan. Si no, nunca se pierde un paso. */
+  const dep=rehacer?centrosPorOrden():[];
+  (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!dep.includes(p.centro))cs.add(p.centro)});
   const l=[...cs].filter(c=>CE(c)&&CE(c).area==='pro');
   const emp=l.filter(c=>c==='empaque');
   return l.filter(c=>c!=='empaque').sort((a,b)=>ordenPaso(a)-ordenPaso(b)).concat(emp.length?['empaque']:[])}
@@ -4968,6 +4983,11 @@ function sembrarFirmasRuta(){if(S.params.rutaFirmaSembrada)return;
   let n=0;S.ordenes.forEach(o=>{if(o.rutaFirma)return;o.rutaFirma=firmaRutaDe(o);n++});
   S.params.rutaFirmaSembrada=new Date().toISOString();
   if(n&&typeof bitacora==='function')bitacora('Rutas: se selló la firma de catálogo de '+n+' órdenes, para que se rehagan solas cuando cambie su categoría o su hoja de operaciones')}
+/* aprobado el 16-sep: la ruta por defecto de las que ni su categoría tiene Empaque */
+function sembrarRutaDefecto22(){if(S.params.rutaDefectoAplicada)return;
+  if(!previaRutaDefecto().n){S.params.rutaDefectoAplicada={ts:new Date().toISOString(),u:'siembra',n:0,sinMin:0,nada:true};return}
+  const cf=window.confirm,al=window.alert;
+  try{window.confirm=()=>true;window.alert=()=>{};aplicarRutaDefecto()}finally{window.confirm=cf;window.alert=al}}
 function sembrarRutasEmpaque(){if(S.params.rutasEmpaqueCorregidas)return;
   const p=previaCompletarRutas();
   if(!p.n){S.params.rutasEmpaqueCorregidas={ts:new Date().toISOString(),u:'siembra',n:0,nada:true};return}
@@ -5033,9 +5053,12 @@ function rutaDefectoPanelHTML(){const p=previaRutaDefecto();const ya=S.params.ru
 /* Se guarda en la orden la «firma» con la que se armó su ruta: categoría + qué centros aporta hoy esa
    categoría. Si la firma cambia, la ruta está vieja. Las editadas a mano NO se rehacen: se marcan. */
 function firmaRutaDe(o){const k=K(o.cat);
-  if(!k)return 'sin-cat';
+  /* lo que la ORDEN aporta por sí misma: técnica → estampado, puntadas → bordado. Va en la firma para que
+     agregar o quitar la técnica de una orden también rehaga su ruta. */
+  const propios=[...ordenCentrosAuto(o)].sort().join(',');
+  if(!k)return 'sin-cat|'+propios;
   const cs=[...centrosDeCategoria(k)].sort().join(',');
-  return k.id+'|'+(k.familiaLMO||'')+'|'+cs}
+  return k.id+'|'+(k.familiaLMO||'')+'|'+cs+'|'+propios}
 function rutaDesactualizada(o){if(!o.rutaFirma)return false;return o.rutaFirma!==firmaRutaDe(o)}
 function sellarRuta(o){o.rutaFirma=firmaRutaDe(o)}
 function rutasPorRecalcular(){const auto=[],manual=[];
@@ -5046,7 +5069,7 @@ function rutasPorRecalcular(){const auto=[],manual=[];
 function recalcularRutas(motivo){const r=rutasPorRecalcular();
   if(!r.total)return {n:0,marcadas:0};
   let n=0;
-  r.auto.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o);
+  r.auto.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
     if(!a.length||a.join()===de.join()){sellarRuta(o);return}
     const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
     const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
@@ -5054,12 +5077,15 @@ function recalcularRutas(motivo){const r=rutasPorRecalcular();
       .concat(a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)})));
     registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → '),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
     sellarRuta(o);n++});
-  r.manual.forEach(o=>{o.rutaRevisar={ts:new Date().toISOString(),motivo:motivo||'cambió la categoría o su hoja de operaciones',
-    firmaVieja:o.rutaFirma,firmaNueva:firmaRutaDe(o)};
-    registrarAuditoria('ruta',o,'ruta editada a mano','marcada para revisar',(motivo||'cambió la categoría')+': la ruta se hizo a mano y no se toca',false)});
-  if(n||r.manual.length)bitacora('Rutas rehechas por cambio de catálogo: '+n+' actualizadas, '+r.manual.length+' editadas a mano marcadas para revisar'+(motivo?' ('+motivo+')':'')+' ('+quienFirma()+')');
+  let marcadas=0;
+  r.manual.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
+    if(!a.length||a.join()===de.join()){sellarRuta(o);return}   // no cambiaría nada: se vuelve a sellar y ya
+    o.rutaRevisar={ts:new Date().toISOString(),motivo:motivo||'cambió la categoría o su hoja de operaciones',
+      firmaVieja:o.rutaFirma,firmaNueva:firmaRutaDe(o),propuesta:a.join(' → ')};
+    registrarAuditoria('ruta',o,'ruta editada a mano','marcada para revisar',(motivo||'cambió la categoría')+': la ruta se hizo a mano y no se toca',false);marcadas++});
+  if(n||marcadas)bitacora('Rutas rehechas: '+n+' actualizadas, '+marcadas+' editadas a mano marcadas para revisar'+(motivo?' ('+motivo+')':'')+' ('+quienFirma()+')');
   if(n)PLAN=null,PLAN_ALL=null;
-  return {n,marcadas:r.manual.length}}
+  return {n,marcadas}}
 function rutasParaRevisar(){return S.ordenes.filter(o=>abierta(o)&&o.rutaRevisar)}
 function marcarRutaRevisada2(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o||!o.rutaRevisar)return;
   if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción revisa rutas.');return}
@@ -5117,6 +5143,85 @@ function brechaRegistroHTML(){const lun=lunesDe(hoy()),dias=[];for(let d=lun;d<=
    </tbody></table>
    ${b.ninguno.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">brecha</span> <b>${b.ninguno.map(f=>esc(nCen(f.c))).join(', ')}</b> no ${b.ninguno.length===1?'registró':'registraron'} nada esta semana. Su avance sale «sin registros», no 0 %: no se puede saber si trabajaron.</p>`:''}
    <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Cuenta como registro: avance por talla o por total en Mi centro, un tramo cerrado, la producción de un turno en Control de piso, o un paro registrado.</p>
+  </div></div>`}
+/* ==================== TEJEDURÍA: «programado» vs «ya tejido» (16-sep-2026) ====================
+   Una fila con fecha pasada no es un error: significa que ya se tejió. Por eso la fila lleva ESTADO
+   en vez de deducirlo de la fecha, y el motor trata cada uno distinto. */
+const TEJ_ESTADOS=[['prog','Programado'],['tejido','Tejido']];
+function estadoTej(p){return (p&&p.estado)||'prog'}
+function kgTejidos(p){return estadoTej(p)==='tejido'?(p.kgReal!=null?(+p.kgReal||0):(+p.kg||0)):0}
+function puedeTejer(){return puedeArea('tej')||puede('programa')}
+/* una fila programada cuyo día ya pasó y nadie confirmó: no es tela lista, es una brecha */
+function tejSinConfirmar(){return progTej().filter(p=>estadoTej(p)==='prog'&&p.dia&&p.dia<hoy())}
+/* el interruptor: hasta que la usuaria lo encienda, el motor sigue contando lo programado como hoy */
+function tejEstrictoOn(){return !!S.params.tejEstricto}
+/* lo que el motor debe considerar tela lista de una fila */
+function tejCuentaComoLista(p){if(estadoTej(p)==='tejido')return true;
+  if(!tejEstrictoOn())return true;                       // regla apagada: se comporta como siempre
+  return !(p.dia&&p.dia<hoy())}                          // programada y ya pasó sin confirmar: NO cuenta
+function marcarTejido(id){const p=progTej().find(x=>x.id===id);if(!p)return;
+  if(!puedeTejer()){alert('Solo tejeduría y planificación marcan lo tejido.');return}
+  if(estadoTej(p)==='tejido'){alert('Esa fila ya está marcada como tejida.');return}
+  const v=prompt('Kilos REALES tejidos de '+nTela(p.tela)+' en '+nRec(p.rec)+' el '+fmtDia(p.dia)+':',String(p.kg||''));
+  if(v===null)return;
+  const kg=+String(v).replace(',','.');
+  if(!(kg>=0)){alert('Kilos inválidos.');return}
+  p.estado='tejido';p.kgReal=kg;p.confU=quienFirma();p.confTs=new Date().toISOString();
+  bitacora('Tejeduría: '+nTela(p.tela)+' en '+nRec(p.rec)+' el '+fmtDia(p.dia)+' marcado TEJIDO con '+num(kg)+' kg reales'+((+p.kg||0)!==kg?' (programados '+num(p.kg)+')':'')+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render()}
+function desmarcarTejido(id){const p=progTej().find(x=>x.id===id);if(!p||estadoTej(p)!=='tejido')return;
+  if(!puedeTejer()){alert('Solo tejeduría y planificación cambian esto.');return}
+  const m=(prompt('Motivo para volver esta fila a PROGRAMADO (se pierde el registro de kilos reales):')||'').trim();
+  if(!m){alert('El motivo es obligatorio; no se cambió.');return}
+  const kgR=p.kgReal;p.estado='prog';delete p.kgReal;delete p.confU;delete p.confTs;
+  bitacora('Tejeduría: '+nTela(p.tela)+' del '+fmtDia(p.dia)+' vuelve a PROGRAMADO (tenía '+num(kgR||0)+' kg reales) · '+m+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render()}
+/* ---------- la vista previa de lo que cambiaría al encender la regla ---------- */
+function previaTejEstricto(){const sin=tejSinConfirmar();
+  if(!sin.length)return {sin:[],kg:0,ordenes:[],telas:{}};
+  const telas={};sin.forEach(p=>{telas[p.tela]=(telas[p.tela]||0)+(+p.kg||0)});
+  const bak=S.params.tejEstricto;
+  let ordenes=[];
+  try{
+    S.params.tejEstricto=false;PLAN=null;PLAN_ALL=null;
+    const A=S.ordenes.length?programar():{ordenes:{}};
+    const fA={};Object.entries(A.ordenes||{}).forEach(([id,r])=>fA[id]=r.telaLista||null);
+    S.params.tejEstricto=true;PLAN=null;PLAN_ALL=null;
+    const B=S.ordenes.length?programar():{ordenes:{}};
+    Object.entries(B.ordenes||{}).forEach(([id,r])=>{const a=fA[id],b=r.telaLista||null;
+      if(a!==b){const o=S.ordenes.find(x=>x.id===id);if(o)ordenes.push({o,antes:a,despues:b,dias:(a&&b)?diasEntre(a,b):null})}});
+  }finally{S.params.tejEstricto=bak;PLAN=null;PLAN_ALL=null}
+  return {sin,kg:sin.reduce((a,p)=>a+(+p.kg||0),0),telas,ordenes}}
+function togTejEstricto(){if(!puede('programa')){alert('Solo planificación enciende esta regla.');return}
+  const on=tejEstrictoOn();
+  if(!on){const p=previaTejEstricto();
+    if(!confirm('Vas a encender la regla: una fila PROGRAMADA con fecha pasada que nadie confirmó dejará de contar como tela lista.\n\n'
+      +'· '+p.sin.length+' filas sin confirmar ('+num(p.kg)+' kg)\n'
+      +'· '+p.ordenes.length+' órdenes cambiarían su fecha de tela lista\n\n'
+      +'Puedes apagarla cuando quieras. ¿Encender?'))return}
+  S.params.tejEstricto=!on;
+  bitacora('Tejeduría: la regla «lo programado sin confirmar no es tela lista» queda '+(!on?'ENCENDIDA':'apagada')+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render()}
+function tejEstrictoPanelHTML(){const p=previaTejEstricto();const on=tejEstrictoOn();
+  if(!p.sin.length&&!on)return '';
+  return `<div class="panel"${p.sin.length&&!on?' style="border:2px solid var(--aviso)"':''}><h3>Tejido sin confirmar <span class="note">${p.sin.length} filas programadas cuyo día ya pasó y nadie marcó como tejidas · ${num(p.kg)} kg</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Hoy el motor <b>da por tejido todo lo que se programó</b>, se haya confirmado o no. Eso puede estar adelantando fechas de tela lista que no ocurrieron. Con la regla encendida, una fila programada con día pasado <b>deja de contar</b> hasta que alguien la marque como tejida.</p>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj ${p.sin.length?'warn':''}"><div class="v">${p.sin.length}</div><div class="k">Filas sin confirmar <span class="mut">${num(p.kg)} kg</span></div></div>
+    <div class="kpi tarj ${p.ordenes.length?'warn':''}"><div class="v">${p.ordenes.length}</div><div class="k">Órdenes que cambiarían su fecha de tela lista</div></div>
+    <div class="kpi tarj ${on?'ok':''}"><div class="v">${on?'SÍ':'NO'}</div><div class="k">Regla encendida</div></div>
+   </div>
+   ${Object.keys(p.telas).length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0">Por tela: ${Object.entries(p.telas).sort((a,b)=>b[1]-a[1]).map(([t,k])=>esc(nTela(t))+' <b>'+num(k)+'</b> kg').join(' · ')}</p>`:''}
+   ${p.ordenes.length?`<div class="scroll" style="max-height:260px;margin-top:10px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Tela lista hoy</th><th>Quedaría</th><th class="num">Días</th></tr></thead><tbody>
+    ${p.ordenes.slice(0,60).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td>${x.antes?fmtDia(x.antes):'<span class="mut">—</span>'}</td><td><b>${x.despues?fmtDia(x.despues):'<span class="tag t-alerta">sin tela</span>'}</b></td><td class="num">${x.dias!=null?(x.dias>0?'+'+x.dias:x.dias):'—'}</td></tr>`).join('')}
+   </tbody></table>${p.ordenes.length>60?`<p class="mut">Se muestran 60 de ${p.ordenes.length}.</p>`:''}</div>`:''}
+   ${puede('programa')?`<div class="row" style="margin-top:10px"><button class="btn ${on?'ghost':''}" onclick="togTejEstricto()">${on?'Apagar la regla':'Encender la regla'}</button>
+    <span class="mut" style="font-size:var(--fs-s)">${on?'está encendida: lo no confirmado no cuenta como tela lista':'apagada: por ahora el motor sigue contando lo programado, para dar tiempo a tejeduría de marcar lo ya tejido'}</span></div>`:''}
+   ${p.sin.length?`<h4 style="margin:14px 0 6px">Las ${p.sin.length} filas por confirmar</h4>
+    <div class="scroll" style="max-height:240px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Día</th><th>Máquina</th><th>Tela</th><th class="num">Kg programados</th><th></th></tr></thead><tbody>
+    ${p.sin.slice(0,80).map(x=>`<tr><td>${fmtDia(x.dia)}</td><td>${esc(nRec(x.rec))}</td><td>${esc(nTela(x.tela))}</td><td class="num">${num(x.kg)}</td>
+     <td>${puedeTejer()?`<button class="btn sm" onclick="marcarTejido('${x.id}')">marcar como tejido</button>`:''}</td></tr>`).join('')}
+   </tbody></table></div>`:''}
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */

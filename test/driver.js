@@ -3880,6 +3880,115 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("VD: y que el programa ya las fechó en este centro",!luego.length||/ya fechó en este centro/.test(h));}
    window.alert=a0;PERFIL=adminP;CEN.dia=null;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("SR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* RUTA POR DEFECTO · FIRMA CON TÉCNICA · TEJEDURÍA programado vs tejido */
+  {const antes=__R.errors.length;const adminP=PERFIL;const c0=window.confirm,a0=window.alert;window.alert=()=>{};window.confirm=()=>true;
+   PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   /* 1 · las 22: la ruta por defecto ya corre con las siembras */
+   {__check("RD1: la ruta por defecto quedó en las siembras automáticas",typeof sembrarRutaDefecto22==='function'&&String(sembrarDecisiones16).includes('sembrarRutaDefecto22'));
+    __check("RD1: y deja registro de cuántas movió",!!S.params.rutaDefectoAplicada);
+    const ts0=JSON.stringify(S.params.rutaDefectoAplicada);sembrarRutaDefecto22();
+    __check("RD1: es idempotente",JSON.stringify(S.params.rutaDefectoAplicada)===ts0);}
+   /* 2 · la firma incluye técnica y puntadas */
+   {const opsT=[['corte',1],['modulos',5],['empaque',1]].map(([c,t])=>{const id=uid();S.operaciones.push({id,centro:c,n:'q '+c,sam:t});return id});
+    const pad={id:uid(),n:'PRUEBA TEC'};const cat={id:uid(),padre:pad.id,n:'Con hoja tec',ops:opsT.map(op=>({op}))};
+    S.categorias.push(pad,cat);
+    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+    const mk=(op,ed)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.estado='plan';x.fase='2Planificacion';
+      delete x.estadoOP;x.cant=10;x.cat=cat.id;x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+      delete x.tecnica;delete x.tecnicaTxt;x.puntadas=0;delete x.programa;delete x.rutaEditada;delete x.rutaConf;delete x.rutaRevisar;
+      if(ed)x.rutaEditada=[{ts:new Date().toISOString(),u:'alguien',motivo:'a mano'}];
+      S.ordenes.push(x);delete S.avance[x.id];sellarRuta(x);return x};
+    const o=mk('WH/TEC-1');const oM=mk('WH/TEC-2',true);
+    __check("FT1: con la orden quieta, su ruta no está desactualizada",!rutaDesactualizada(o));
+    // se le AGREGAN puntadas: debe entrar bordado
+    o.puntadas=5000;oM.puntadas=5000;
+    __check("FT1: agregar puntadas a una orden desactualiza su ruta",rutaDesactualizada(o)&&rutaDesactualizada(oM));
+    recalcularRutas('prueba: la orden ganó puntadas');
+    __check("FT1: la ruta no editada a mano se actualiza y entra bordado",pasosProDe(o).includes('bordado'));
+    __check("FT1: y entra ENTRE corte y confección, no al final",(()=>{const r=pasosProDe(o);
+      return r.indexOf('corte')<r.indexOf('bordado')&&r.indexOf('bordado')<r.indexOf('modulos')&&r[r.length-1]==='empaque'})());
+    __check("FT1: la editada a mano no se toca, pero queda marcada",!pasosProDe(oM).includes('bordado')&&!!oM.rutaRevisar);
+    __check("FT1: queda en auditoría",(S.params.auditoriaCambios||[]).some(a=>/puntadas/.test(a.motivo||'')));
+    // se le QUITAN las puntadas: debe salir bordado
+    o.puntadas=0;
+    __check("FT1: quitar las puntadas también desactualiza",rutaDesactualizada(o));
+    recalcularRutas('prueba: se quitaron las puntadas');
+    __check("FT1: y bordado sale de la ruta",!pasosProDe(o).includes('bordado')&&rutaTerminaEnEmpaque(o));
+    // técnica → estampado
+    o.tecnica='x';
+    recalcularRutas('prueba: la orden ganó técnica');
+    __check("FT1: agregar técnica mete estampado, entre corte y confección",(()=>{const r=pasosProDe(o);
+      return r.includes('estampado')&&r.indexOf('corte')<r.indexOf('estampado')&&r.indexOf('estampado')<r.indexOf('modulos')})());
+    /* 2b · auditoría solo cuando la ruta cambia de verdad */
+    delete oM.rutaRevisar;sellarRuta(oM);
+    const nA=(S.params.auditoriaCambios||[]).length;
+    const r1=recalcularRutas('prueba: sin cambios');
+    __check("FT2: si nada cambió, no se recalcula ni se escribe auditoría",r1.n===0&&r1.marcadas===0&&(S.params.auditoriaCambios||[]).length===nA);
+    // una firma vieja que NO cambia la ruta: se re-sella en silencio
+    o.rutaFirma='firma-vieja-inventada';
+    const nA2=(S.params.auditoriaCambios||[]).length;
+    const r2=recalcularRutas('prueba: firma vieja pero misma ruta');
+    __check("FT2: una firma vieja cuya ruta queda igual se vuelve a sellar SIN auditoría",r2.n===0&&(S.params.auditoriaCambios||[]).length===nA2&&!rutaDesactualizada(o));
+    // y una editada a mano cuya ruta tampoco cambiaría: no se marca
+    oM.tecnica=o.tecnica;oM.puntadas=o.puntadas;   // misma orden, misma ruta: no debería cambiar nada
+    oM.ruta=JSON.parse(JSON.stringify(o.ruta));oM.rutaFirma='firma-vieja-inventada';
+    const nA3=(S.params.auditoriaCambios||[]).length;recalcularRutas('prueba');
+    __check("FT2: una editada a mano que no cambiaría NO se marca ni deja auditoría",!oM.rutaRevisar&&(S.params.auditoriaCambios||[]).length===nA3);
+    S.ordenes=S.ordenes.filter(x=>x!==o&&x!==oM);S.categorias=S.categorias.filter(k=>k!==pad&&k!==cat);
+    S.operaciones=S.operaciones.filter(x=>!opsT.includes(x.id));}
+   /* 3 · tejeduría: programado vs tejido */
+   {const bak=JSON.parse(JSON.stringify(S.params.progTej||[]));const bakE=S.params.tejEstricto;
+    S.params.progTej=[];delete S.params.tejEstricto;
+    const tela=(S.telas.find(t=>!t.ext)||{}).id;const rec=(S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej')||{}).id;
+    if(!tela||!rec)__check('TJ: hay tela y máquina de tejeduría para probar',false);
+    else{
+     const ayer=dsum(hoy(),-3),maniana=dsum(hoy(),3);
+     const prog={id:uid(),tela,rec,dia:maniana,kg:100,u:'t',ts:new Date().toISOString()};
+     const viejo={id:uid(),tela,rec,dia:ayer,kg:200,u:'t',ts:new Date().toISOString()};
+     S.params.progTej=[prog,viejo];
+     __check("TJ1: una fila sin estado es «programado»",estadoTej(prog)==='prog'&&estadoTej(viejo)==='prog');
+     __check("TJ1: una programada con día pasado sale como «tejido sin confirmar»",tejSinConfirmar().length===1&&tejSinConfirmar()[0]===viejo);
+     /* marcar como tejido */
+     PERFIL={rol:'consulta',modo:'ver',nombre:'Consulta'};
+     __check("TJ2: un perfil que no es tejeduría ni planificación no puede marcar",!puedeTejer());
+     window.prompt=()=>'180';marcarTejido(viejo.id);
+     __check("TJ2: y si lo intenta, no pasa nada",estadoTej(viejo)==='prog');
+     PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};
+     marcarTejido(viejo.id);
+     __check("TJ2: planificación sí puede, y se guardan los kg REALES",estadoTej(viejo)==='tejido'&&viejo.kgReal===180&&viejo.kg===200);
+     __check("TJ2: con usuario y fecha de registro",viejo.confU==='Jefa Prod'&&!!viejo.confTs);
+     __check("TJ2: queda en la bitácora",(S.bitacora||[]).some(b=>/marcado TEJIDO/.test(b.txt||b.t||'')));
+     __check("TJ2: y ya no sale como sin confirmar",!tejSinConfirmar().length);
+     /* la fecha: programado no admite pasado; tejido sí */
+     setProgTejRow(prog.id,'dia',ayer);
+     __check("TJ3: una fila PROGRAMADA no acepta fecha pasada",prog.dia===maniana);
+     setProgTejRow(viejo.id,'dia',dsum(hoy(),-5));
+     __check("TJ3: una TEJIDA sí, porque es un hecho",viejo.dia===dsum(hoy(),-5));
+     /* el interruptor y su vista previa */
+     viejo.estado='prog';delete viejo.kgReal;viejo.dia=ayer;
+     __check("TJ4: con la regla APAGADA, lo programado sin confirmar sigue contando como tela lista",!tejEstrictoOn()&&tejCuentaComoLista(viejo)===true);
+     const pv=previaTejEstricto();
+     __check("TJ4: la vista previa dice cuántas filas hay sin confirmar y cuántos kg",pv.sin.length===1&&pv.kg===200);
+     __check("TJ4: y cuántas órdenes cambiarían su fecha de tela lista",Array.isArray(pv.ordenes));
+     __check("TJ4: la previa NO enciende la regla",!tejEstrictoOn());
+     togTejEstricto();
+     __check("TJ5: encendida, lo programado con día pasado NO cuenta como tela lista",tejEstrictoOn()&&tejCuentaComoLista(viejo)===false);
+     __check("TJ5: pero lo programado a futuro sí sigue contando",tejCuentaComoLista(prog)===true);
+     viejo.estado='tejido';viejo.kgReal=180;
+     __check("TJ5: y lo marcado como tejido cuenta siempre, con sus kg reales",tejCuentaComoLista(viejo)===true&&kgTejidos(viejo)===180);
+     togTejEstricto();
+     __check("TJ5: se puede apagar cuando se quiera",!tejEstrictoOn());
+     viejo.estado='prog';delete viejo.kgReal;   // vuelve a haber una fila sin confirmar, para ver el panel
+     const h=tejEstrictoPanelHTML();
+     __check("TJ6: el panel explica la regla y trae el interruptor",/Tejido sin confirmar/.test(h)&&/da por tejido todo lo que se program/.test(h)&&/togTejEstricto/.test(h));
+     PERFIL={rol:'corte',modo:'editar',nombre:'Enc'};
+     __check("TJ6: solo planificación ve el interruptor",!/togTejEstricto/.test(tejEstrictoPanelHTML()));
+     PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};
+     page='tejeduria';render();
+     __check("TJ6: y está en la pantalla de Tejeduría",/Programación manual de tejeduría/.test(document.getElementById('p-tejeduria').innerHTML));}
+    S.params.progTej=bak;if(bakE===undefined)delete S.params.tejEstricto;else S.params.tejEstricto=bakE;}
+   window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
