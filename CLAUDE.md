@@ -672,15 +672,15 @@ siembras automáticas corrieron: **lo esperado sale de lo que cada siembra guard
 (`jeansUnificadoPrevio`, `rutasEmpaqueCorregidas`, `rutaDefectoAplicada`), nunca de un número escrito a mano — una
 siembra nueva debería guardar su «antes» igual. Ver `KG_REALES_Y_CHEQUEO.md`.
 
-**Tiempos estimados de confección (Santiago Garzón, 16-sep-2026):**  +  cargan los 14
-minutos por prenda en / (fuente, observación, referencia, ). **Solo
+**Tiempos estimados de confección (Santiago Garzón, 16-sep-2026):** `TIEMPOS_SG` + `sembrarTiemposSG()` cargan los
+14 minutos por prenda en `k.minEstConf`/`k.minEstConfMeta` (fuente, observación, referencia, `pendiente`). **Solo
 confección y solo sin hoja LMO**; no pisan lo puesto a mano. **Camiseta Tejida 4,57 va «pendiente de confirmar».**
 Un minuto por prenda **no se convierte en carga** hasta que la orden tenga el paso en su ruta **y esté liberada**:
 por eso el efecto inmediato fue 0 y lo útil de reportar es la **carga potencial** (197.573 min de 79 órdenes; 34.304
 de las 26 liberadas). **La hoja «Tiempos actuales» volvió sin correcciones: no se cambió ningún tiempo existente.**
- **deriva** las incoherencias de los datos (Short Cargo > Pantalon Cargo, confección sin empaque)
+`alertasTiempos()` **deriva** las incoherencias de los datos (Short Cargo > Pantalon Cargo, confección sin empaque)
 en vez de listarlas a mano, así se apagan solas al corregir. **HENLEY / «Nueva hija» es real: no borrarla.**
-Ver .
+Ver `TIEMPOS_SANTIAGO_REPORTE.md`.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
