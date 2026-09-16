@@ -204,6 +204,34 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.33 Parte A — Dirección, Liberación y Producción (16-sep)
+- **Hoy → Planta hoy**: cada centro con su propio «ver programa» (`irCentro(c,dia,tab)`), en la semana del día pedido y
+  **aunque su carga sea 0** (se listan todos los centros, no solo los que tienen carga). `ir('centro')` pulsa la primera
+  entrada del menú y el delegado pisaba el centro: ahora se navega primero y se fija `CEN` después.
+- **Menú**: «Reportería por área» sale de Planificación de producción; queda en la pestaña Reportería.
+- **Liberación**: `o.lib[et]={ok,u,ts}` + `o.histLib[]`. `libFechaDe/libFechaTxt` = registro → auditoría (etiqueta «aud.»)
+  → **«fecha de liberación desconocida»** como brecha; nunca se inventa. Columna «Liberada» en la tabla y bloque
+  `resumenLiberacionHTML` (día/semana/mes + rango desde/hasta, estado `LIBR`).
+- **Desliberar** en producción: `mDesliberar`/`desliberar`/`aplicarDesliberacion`, en lote y una a una, permiso
+  `puedeDesliberar()` = `puede('programa')`, motivo de la tabla 15, auditoría + `histLib`, y **advertencia previa si la
+  orden ya tiene avance** (`avanceDeOrden`); el avance NO se borra y la marca `lista` se apaga, no se elimina.
+- **Agrupador**: `detalleAgrupableHTML(id,ords,...)` lleva el componente común a **Balanceo** (`bal`) y **Programa del
+  día** (`imp`); la hoja impresa conserva centro → recurso.
+- **«Arranca»**: `yaArranco/minArranque/fechaArranqueValida`; `min=` en el input **y** validación en `setProgCen`. Las
+  órdenes con avance o tramo iniciado conservan su fecha real. Pendiente: tejeduría manual (`addProgTej`) sigue sin tope.
+- **Rutas**: `puedeEditarRuta()` reemplaza los 16 chequeos sueltos y se valida **en el guardado** de
+  `guardarRutaCentro`, `add/set/delReglaRuta`, `aplicarReglasRuta`, `aplicarLavado`, `confirmarRuta`,
+  `desconfirmarRuta`, `marcarRutaRevisada`, `generarRutasEstimadas` y `confirmarRutasOdoo`. `sembrarPermisoRutas()`
+  quita `ruta` a corte, módulos y terminado (bitácora, editable en Configuración → Usuarios).
+- **«Sin fecha todavía»**: sale de la vista del encargado (`veSinFecha()`) y aparece como brecha «Órdenes sin fecha»
+  en Reportería (`sinFechaBrechaHTML` + `motivoSinFecha`, que dice qué frena cada una).
+- **«Lo que viene»** por centro (`loQueVieneDe/loQueVieneHTML`): órdenes con ese centro en su **ruta** que siguen en un
+  paso anterior, con dónde están, qué les falta y por qué sub-área entran; agrupable (`cenviene`).
+- **«Dónde está»** dentro de un centro: `dondeEstaEnCentro` no repite el nombre del centro, muestra el estado propio
+  (`estadosCentro`/`estadoEnCentro`/`estadoCentroTxt`, textos configurables por la tabla 17; siembra
+  `ESTADOS_CENTRO_DEF`) y cuántas lleva. Fuera del centro sigue diciendo dónde está.
+- Ver `PARTE_A_REPORTE.md`.
+
 ### 2.32 Decisiones de producción (16-sep, Jannine Cadena)
 - **Etiquetado**: solo **Level 1, Level 2, Camiseta CR y Camiseta CV** llevan etiqueta de serigrafía (0,5 min), y sale de la
   tabla editable `reglasEtiqueta` (Configuración → Operaciones), no de la LMO: ninguna de las cuatro tiene esa operación.

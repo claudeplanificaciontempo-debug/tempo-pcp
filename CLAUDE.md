@@ -544,6 +544,21 @@ pantalla avisa que esa carga puede faltar; revisión en Órdenes → Rutas, cont
 `unificadaEn`, bitácora); el mapeo a la hoja LMO sigue diciendo JEANS. HENLEY y las «Nueva hija» NO son parte de esto.
 Ver `DECISIONES_PRODUCCION_16SEP.md`.
 
+**Parte A · Dirección, Liberación y Producción (16-sep-2026):** `irCentro(c,dia,tab)` abre el programa de UN centro
+en la semana del día pedido; **navega primero y fija `CEN` después**, porque `ir('centro')` pulsa la primera entrada
+del menú y el clic delegado pisaba el centro. «Planta hoy» lista **todos** los centros de producción, con carga o sin
+ella. «Reportería por área» salió del menú de Planificación de producción. **Liberación**: `o.lib[et].ts/u` +
+`o.histLib[]`; `libFechaDe` = registro → auditoría → **brecha «fecha de liberación desconocida»** (nunca se inventa);
+`resumenLiberacionHTML` (día/semana/mes con rango, estado `LIBR`). **Desliberar** (`mDesliberar`/`desliberar`) exige
+`puede('programa')` + motivo de la tabla 15, avisa si hay avance y **no lo borra** (la marca `lista` se apaga, no se
+elimina: la GUARDIA prohíbe `delete S.avance[`). **`puedeEditarRuta()`** es el único chequeo de rutas y va también en
+el **guardado**, no solo en los botones; `sembrarPermisoRutas()` deja `ruta` solo en planificación y admin.
+**`veSinFecha()`** saca «Sin fecha todavía» de la vista del centro y `sinFechaBrechaHTML` la reporta en Reportería con
+`motivoSinFecha`. **`loQueVieneHTML`** arma «Lo que viene» desde la ruta de cada orden. **`dondeEstaEnCentro`**: dentro
+de un centro manda el estado propio (`estadosCentro`, textos por la tabla 17, siembra `ESTADOS_CENTRO_DEF`), fuera
+sigue `dondeEstaCentro`. **`detalleAgrupableHTML`** lleva el agrupador común a Balanceo y Programa del día (la hoja
+impresa conserva centro → recurso). Ver `PARTE_A_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
