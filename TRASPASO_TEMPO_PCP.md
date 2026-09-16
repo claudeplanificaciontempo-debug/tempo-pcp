@@ -204,6 +204,20 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.29 Ajustes sobre la revisión (16-sep-2026)
+- **Mi centro**: Disponible/Próxima se decide con la **secuencia de la ruta** de cada orden, no con el número ni el
+  grupo de la fase (el número dice grupo, no orden; estampado, bordado y confección son empíricos). Si la ruta no
+  lo define —sin ruta, centro fuera de la ruta o repetido— va a **«Ruta sin secuencia»**: se ve, dice el motivo y
+  se puede iniciar. `cambiosDisponibilidad()` cuenta cuántas cambian de lado.
+- **Liberación**: «Mes de entrega» vuelve, en multiselección y por la **fecha de entrega real**; las órdenes sin
+  fecha van a «Sin fecha de entrega».
+- **Terminados**: el consolidado dice **de dónde sale el tiempo** de cada sub-área. Ojales y botones = SAM de la
+  LMO, que la **tabla de ojales y botones reemplaza** en las categorías con regla **confirmada**. Plancha = 2
+  min/prenda (columna del centro). Lavado = días de la tabla de esperas, sin consumir capacidad.
+- **Reglas de ruta** (Órdenes → Rutas): tabla editable familia + categoría + atributo → sub-área y posición, con
+  vista previa, sin pisar rutas editadas a mano y con auditoría. Arranca vacía; cada regla nace apagada.
+- Ver `REVISION_16SEP_SEIS_PUNTOS.md` (sección de ajustes A–E).
+
 ### 2.28 Revisión de seis puntos (16-sep-2026)
 - **Liberación**: el mes del Proyecto es multiselección (con «Seleccionar todos» y «Limpiar»); el filtro de fases
   ya marca bien (el bug era el centinela «ninguna») y **acota de verdad** la lista, las tarjetas, el conteo y el

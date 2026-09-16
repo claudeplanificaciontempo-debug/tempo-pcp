@@ -158,3 +158,95 @@ cuántas son «meta vencida» y cuántas «la orden no alcanza».
    una sola de las dos, se cambia en la columna «Ítem de planificación» sin tocar código.
 6. **Las 26 órdenes de Corte**: no puedo darte el reparto exacto por causa desde aquí (la base de pruebas tiene
    otras órdenes). La línea nueva arriba de la cola te lo dice con tus datos en cuanto abras la pantalla.
+
+---
+
+# Ajustes pedidos sobre esta revisión (A–E)
+
+**Harness:** 1270 pruebas verdes, sin errores.
+
+| Letra | Commit |
+| --- | --- |
+| B y C · Mes de entrega real y de dónde sale cada tiempo | `28b4543` |
+| A · Disponibles vs Próximas por la secuencia de la ruta | `507d59f` |
+| D · Tabla de reglas de ruta | `3180b02` |
+
+## A · Mi centro: manda la secuencia de la ruta
+
+Tenías razón y estaba mal planteado: el número de fase dice **a qué grupo pertenece**, no en qué orden se hace, y en
+estampado, bordado y confección el orden es empírico. Ya **no se usa el orden de grupos de la tabla 5** para decidir
+si una orden llegó al centro. Ahora:
+
+- **Disponible**: todos los pasos de producción **anteriores de su propia ruta** están hechos.
+- **Próxima**: falta alguno, y la etiqueta dice cuál — «todavía no · falta Corte».
+- **Ruta sin secuencia** (sección nueva, en rojo): la orden no tiene ruta de producción, el centro no está en su
+  ruta, o el centro aparece dos veces. Ahí se **ve**, dice el motivo y **sí se puede iniciar**: ni bloqueada ni
+  habilitada en silencio, como pediste.
+- Si el tramo es **no secuencial** (grupo con `secuencial = false` en la tabla 5) y lo que falta es de ese mismo
+  tramo, queda **disponible con el aviso** de que el orden real lo dan las órdenes de trabajo de Odoo.
+
+**Cuántas cambian de lado.** Se agregó `cambiosDisponibilidad()`, que compara la regla vieja contra la nueva por
+centro y en los dos sentidos. En la base del simulador (12 casos evaluables) dio: **4 pasan de Próxima a
+Disponible** (corte 2, confección 1, botones 1), **1 pasa de Disponible a Próxima** (plancha) y **1 queda en «ruta
+sin secuencia»**. Con tus datos el reparto es otro: la función recorre todos los centros y lo cuenta; dime si
+quieres que lo deje fijo en algún panel.
+
+## B · Mes de entrega
+
+Restaurado, **multiselección**, y ahora filtra por la **fecha de entrega real** de la orden (antes usaba el mes del
+Proyecto, que es lo que lo volvía un duplicado). Las órdenes sin fecha caen en **«Sin fecha de entrega»**, que
+también se puede marcar para verlas juntas. Convive con «Mes del Proyecto»: son dos cosas distintas y cada filtro
+dice cuál mira.
+
+## C · Tiempos de Terminados
+
+- **Plancha**: 2 min/prenda cargados como valor inicial en la columna editable (sembrado idempotente, en bitácora,
+  marcado como estimado hasta que lo confirmes).
+- **Ojales y botones**: **sí usa los tiempos corregidos**, y **no hay dos tablas compitiendo**. El orden es: base =
+  SAM de las **operaciones de la LMO** del centro; encima, la **tabla de ojales y botones** (coincidencia por
+  nombre de la categoría o de su padre) **reemplaza** ese SAM en las categorías que coinciden, pero **solo si la
+  fila está confirmada** — las sembradas sin confirmar (vestido, jean, denim, en 0) no se aplican. Ese valor se
+  escribe en el paso «botones» de la ruta de cada orden, que es lo que lee el motor. El consolidado de Terminados
+  ahora **dice de dónde sale el tiempo de cada sub-área**, con cuántas operaciones hay mapeadas y cuántas reglas
+  confirmadas.
+- **Lavado**: 3 días en planta como valor inicial editable y 15 días en Quito, en la tabla de esperas por paso; el
+  centro queda marcado **«por días»**, así que **no consume capacidad de planta**.
+
+## D · Reglas de ruta
+
+Tabla editable nueva en **Órdenes → Rutas**: familia + categoría + atributo (texto que se busca en producto,
+referencia, color, categoría o WH) → **sub-área a insertar** y **dónde** (antes de un paso, después de un paso o al
+final). **Arranca vacía** y cada regla nueva **nace apagada**.
+
+- **Vista previa permanente**: por regla, a cuántas órdenes afecta, cuántas ya tienen esa sub-área, cuántas quedan
+  fuera por ruta editada a mano y cuántas no tienen el paso de referencia.
+- **Las rutas editadas a mano no se sobrescriben** (ahí entran las 247 que no siguen la ruta por defecto): se
+  listan aparte, con su ruta actual y un botón para editarlas una por una.
+- Nada cambia hasta apretar **Aplicar**, que confirma diciendo cuántas se tocan y cuántas quedan fuera.
+- Cada cambio queda en la **auditoría de ruta**, en la **bitácora** y en el historial de la propia orden. Volver a
+  aplicar no duplica el paso.
+
+## E · Las dos aclaraciones
+
+1. **«todas/quitar» por grupo en Centro y Carga general: quedó CORREGIDO**, no solo detectado. El resolutor de
+   estado de los filtros comunes no conocía esas dos pantallas (ni Producto en proceso ni Plan → agregar); se
+   agregaron las cuatro en el commit `45af33e`, el mismo del punto 1.
+2. **Puntos 2 y 4 en `fbf3991`.** Los dos tocan los mismos dos archivos —`index.html` y `test/driver.js`—, porque
+   la app es un solo archivo. Por función:
+   - **punto 2** (Plan mensual): `agregarAlPlanHTML` (pasa a `filasGRP('pmadd')` + `grpSelHTML` en vez del select
+     simple), `selGrupoPMADD` nuevo, y `filasGRP`, que aprendió `g.selChk` para el checkbox por grupo;
+   - **punto 4** (centros): `telaPrincipalDe` nuevo, la clave `tela` en `claveGRP`, `GRP_ORDEN` y
+     `GRP_CAMPOS_BASE`, la etiqueta `grp.tela` en la tabla 17 de textos, y los minutos en la fila de grupo de
+     `filasGRP`.
+
+## Brechas de datos que siguen abiertas
+
+1. **Lavado y plancha no están en la ruta de ninguna orden.** La tabla de reglas de D es justamente la herramienta
+   para arreglarlo, pero **las reglas las cargas tú**: familia/categoría/atributo → sub-área y posición.
+2. **El atributo del lavado de Quito** (prenda tinturada) sigue sin definirse: la regla de 15 días quedó marcada
+   «sin regla», y en la tabla nueva puedes usar el campo «atributo» en cuanto me digas por qué texto se reconoce.
+3. **Tiempos corregidos de ojales y botones**: si los que hay en la tabla no son los definitivos, pásamelos y los
+   cargo; hoy manda la LMO salvo en las categorías con regla confirmada.
+4. **Confirmar** los 2–3 días de lavado en planta (quedó en 3, marcado estimado) y los 2 min/prenda de plancha.
+5. **Órdenes sin ruta o con el centro repetido**: salen en «Ruta sin secuencia». En la base de pruebas es 1; con
+   tus datos el número aparece en esa sección de cada centro.
