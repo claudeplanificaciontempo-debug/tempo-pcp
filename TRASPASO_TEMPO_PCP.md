@@ -245,6 +245,9 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - **El operario busca la WH con un campo simple** (teclado numérico, acepta «28300» o la WH completa); los demás
   perfiles conservan el buscador común.
 - **Arranque sin parpadeo**: hasta tener el perfil solo se ve «Cargando…»; nadie alcanza a ver el menú de otro perfil.
+- **Lo hecho en el día se cuenta en un solo lugar** (`hechasDelDia`): sale de los registros por talla del tramo y del
+  registro por total; los registros viejos solo suman si esa orden no dejó línea ese día. El tramo también suma a la
+  producción del turno, que es lo que leen Reportería y Ejecución.
 - **Cada paso del tramo guarda de inmediato**: si el servidor lo rechaza, queda en el aviso de reintento y no se pierde.
 - **Paro sin minutos**: se elige el motivo (tabla 15, uso «paro»). Almuerzo, Cierre del día y Fallo de máquina se
   aseguran siempre; los tipos de paro viejos quedan en la tabla pero **inactivos** (el operario solo ve los activos) y

@@ -2040,6 +2040,38 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
    PERFIL=adminP;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("MC4 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MI CENTRO · «Hechas hoy» suma lo guardado en el tramo */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oH=JSON.parse(JSON.stringify(base));oH.id=uid();oH.op='WH/HECHAS-1';oH.estado='plan';oH.cant=100;oH.tallasPedido={S:60,M:40};delete oH.programa;S.ordenes.push(oH);delete S.avance[oH.id];PLAN=null;PLAN_ALL=null;
+   const antesDia=hechasDelDia('modulos',rec,hoy()).pz;
+   // un tramo de 20 prendas
+   iniciarTramo(oH.id,'modulos',rec);const tr=tramosDe(oH.id)[0];tr.ini=new Date(Date.now()-30*6e4).toISOString();terminarTramo(tr.id,oH.id);
+   setTallaTramo(tr.id,oH.id,'S',12);setTallaTramo(tr.id,oH.id,'M',8);guardarTramo(tr.id,oH.id);
+   __check("HH: lo guardado en el tramo suma en «hechas del día» (una sola función)",hechasDelDia('modulos',rec,hoy()).pz===antesDia+20);
+   TAB={centro:'modulos',rec,q:''};page='tablet';render();
+   {const h=document.getElementById('p-tablet').innerHTML;
+    __check("HH: la tarjeta «Hechas hoy» de Mi centro muestra las 20 y «Faltan» baja",new RegExp('>'+num(antesDia+20)+'<[\\s\\S]{0,80}Hechas hoy').test(h));}
+   // al recargar (mismo dato en avance) se mantiene
+   __check("HH: el dato vive en avance, así que se mantiene al recargar",((S.avance[oH.id]||{}).tallasLog||[]).filter(x=>x.centro==='modulos').reduce((a,x)=>a+x.pz,0)===20&&((S.avance[oH.id]||{}).tallas||{}).modulos.S===12);
+   // 2 · sin curva de tallas, el registro por total también queda en tallasLog y suma
+   {const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/HECHAS-2';oT.estado='plan';oT.cant=15;delete oT.tallasPedido;delete oT.programa;S.ordenes.push(oT);delete S.avance[oT.id];
+    const antes2=hechasDelDia('modulos',rec,hoy()).pz;
+    mHechoTotal(oT.id,'modulos');document.getElementById('hc-q').value=15;confirmarHechoCentro(oT.id,'modulos');
+    __check("HH: una orden sin curva registra el total, queda en tallasLog y también suma",((S.avance[oT.id]||{}).tallasLog||[]).some(x=>x.talla==='(total)'&&x.pz===15)&&hechasDelDia('modulos',null,hoy()).pz>=antes2+15);
+    __check("HH: no se cuenta dos veces (tramo y registro rápido de la misma orden)",hechasDelDia('modulos',null,hoy()).pz===antes2+15);
+    S.ordenes=S.ordenes.filter(x=>x!==oT);delete S.avance[oT.id]}
+   // 3 · las otras pantallas leen lo mismo
+   __check("HH: Mi centro y «Hecho hoy» del centro usan la función única",vTablet.toString().includes('hechasDelDia(')&&vCentro.toString().includes('hechasDelDia('));
+   __check("HH: el tramo también suma a la producción del turno (Reportería y Ejecución)",(S.turnos||[]).some(t=>t.rec===rec&&t.d===hoy()&&(t.pz||0)>=20));
+   page='centro';CEN.id='modulos';CEN.tab='prog';render();
+   __check("HH: «Hecho hoy» del centro muestra la orden del tramo",/Hecho hoy en/.test(document.getElementById('p-centro').innerHTML));
+   // 4 · bitácora con los paros etiquetados
+   __check("HH: la bitácora del tramo escribe « · N paros»",S.bitacora.some(b=>/Tramo guardado/.test(b.t))&&!S.bitacora.some(b=>/min\/prenda\d/.test(b.t)));
+   S.ordenes=S.ordenes.filter(o=>o!==oH);delete S.avance[oH.id];
+   TAB={centro:null,rec:null,q:''};TRAMO={paso:null,id:null,oid:null};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("HH sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

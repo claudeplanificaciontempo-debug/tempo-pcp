@@ -236,3 +236,45 @@ cierre la tablet, el tiempo ya está registrado localmente y se envía al reinte
 - Sin perfil, la app queda en «Cargando…» con el menú y la cabecera ocultos; con perfil, dibuja normal.
 - Los cuatro pasos del tramo guardan de inmediato, el tramo queda dentro de avance apenas se inicia, y un guardado
   rechazado queda en el aviso de reintento.
+
+---
+
+# «Hechas hoy» suma lo del tramo (sexta entrega)
+
+Fecha: 15-sep-2026, noche. Pruebas del simulador: **1.041 (10 nuevas), todas verdes, 0 errores**.
+
+**El problema, tal como lo describiste**: guardar el tramo escribía en `avance.centros`, `avance.tallas` y
+`avance.tallasLog`, pero no en `hechoC`, que era de donde las tarjetas sacaban «Hechas hoy». Por eso el contador
+quedaba en cero y «Faltan» no bajaba.
+
+## 1 · Una sola función
+`hechasDelDia(centro, recurso, día)` suma desde **tallasLog**, que es donde escriben tanto el tramo como el registro por
+total, filtrando por centro, recurso y fecha. Para no perder lo viejo, agrega los registros de `hechoC` de ese día
+**solo cuando esa orden no dejó línea en tallasLog**, así nada se cuenta dos veces. La usan las tarjetas de Mi centro y
+el panel «Hecho hoy» del centro, que es el mismo dato que ve Control de piso.
+
+## 2 · Sin curva de tallas
+El registro por total ahora también deja su línea en tallasLog, con la talla «(total)», así que suma igual. Probado:
+una orden sin curva registra 15 y el contador sube 15, sin duplicar.
+
+## 3 · Qué leía cada pantalla (lo que pediste revisar)
+| Pantalla | Antes leía | Ahora |
+| --- | --- | --- |
+| Mi centro, tarjeta «Hechas hoy» | `hechoC` | `hechasDelDia` |
+| Centro → «Hecho hoy en …» | `hechoC` | `hechasDelDia` |
+| Cola del centro, «por hacer» | `avance.centros` | igual: el tramo ya lo actualizaba |
+| Reportería, plan contra real | `turnos[].pz` | igual, y **el tramo ahora suma ahí** |
+| Ejecución y desviaciones | `turnos[].pz` y `avance.centros` | igual, con el tramo sumando |
+| Avance del mes y tablero del centro | `avance.centros` | igual |
+
+O sea: dos pantallas leían el dato viejo y ya usan la función única; las otras leían `avance.centros` o los turnos, y
+lo que faltaba era que **el tramo alimentara los turnos**, que es lo que se agregó.
+
+## 4 · Bitácora
+La cantidad de paros salía pegada al número de minutos por prenda. Ahora se escribe **« · N paros»**, con su etiqueta.
+
+## Qué se probó
+- Un tramo de 20 prendas en un módulo deja «hechas del día» en 20 más lo que hubiera, y la tarjeta lo muestra.
+- El dato vive en `avance`, así que se mantiene al recargar.
+- Una orden sin curva registra el total, queda en tallasLog y suma, sin contarse dos veces con el registro rápido.
+- Mi centro y el panel del centro usan la función única, y el tramo suma a la producción del turno.
