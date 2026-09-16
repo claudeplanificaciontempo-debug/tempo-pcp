@@ -204,6 +204,45 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.46 Nivelación de carga — PASO 1: el motor y el cuadrito (16-sep)
+- **Del Excel de nivelación se tomó SOLO el esquema de trabajo, no sus datos.** El Excel no es fuente de ningún
+  número; todo sale del volcado de Odoo.
+- **`nivelar(e)`** es el único cálculo: saldo → − maquila → neto → capacidad diaria → días necesarios → inicio →
+  fin (`dsumLab`) → compromiso → días disponibles (`diasHabilesEntre`) → alcanzable → **rezago** → meta diaria →
+  holgura. Todo en **minutos**, con unidades al lado vía **SAM ponderado** (`samPonderado`, `aUnid`). Lo que falta
+  vuelve **`null`** y se pinta como *dato faltante*; **cero es cero** (capacidad 0 → alcanzable 0 y el rezago es todo
+  el saldo, no se reemplaza por nada).
+- **Comparte lo que ya existía, no hay segunda versión de nada**: `capDia` (turnos y ajustes de semana),
+  `labR`/`dsumLab` (calendario y festivos), `minPrenda` vía **`samOrdenCentro(o,c)`** (devuelve **`null`, nunca 0**)
+  y la tabla 1 de fases. **El motor de programación no se tocó.**
+- **`PROC_NIVEL`** = tela (por fase) · corte · confección · empaque (los tres de planta, **por RUTA**). La tabla 1
+  tiene columna **nivelación** (`setNivelFase`, `procNivelDeFase`, `fasesDeProcNivel`): **solo Tela se define por
+  fase**, por eso `1Calidad Tintoreria` no cuenta en tela.
+- **`saldoProceso(proc,horizonte)`** = abiertas (`abiertaDe`) con ese proceso **en su ruta** y sin `pasoHecho`,
+  **estén en la fase que estén**: es el **«Saldo por procesar (incluye órdenes en fases anteriores)»**, distinto de
+  la carga actual del centro, y la pantalla lo dice. Horizonte por **mes de entrega** (`mesEntregaNiv`,
+  `mesesNivDisp`, `horizonteNiv`); sin elegir nada arranca en el **mes en curso**.
+- **Grupos de módulos** (`gruposMod`, tabla que **nace vacía**): `addGrupoMod`/`setGrupoMod`/`setPctModGrupo`/
+  `delGrupoMod`; `pctModTotal` + **`erroresGruposMod`** (un módulo repartido a más del 100% es **error visible**, no
+  se corrige solo); `sugerirGruposMod`/`aplicarSugerenciaGrupos` proponen desde la polivalencia ya cargada;
+  `capGrupoDia` = `capDia` por el %; `saldoGrupo` acota el saldo de confección a las familias del grupo.
+- **Maquila**: una orden con `recursoFijo.modulos==="maquila"` **sale del saldo propio** y se muestra como línea
+  «− marcado a maquila». Lo *sugerido* no resta.
+- **Tela**: `nivParam`/`setNivParam` y **`capTelaReal()`** = promedio de unidades que entraron a corte en los
+  últimos N días hábiles (N configurable, 10 por defecto) **junto al valor planificado**; sin la mitad de los días
+  con registro dice «sin avance suficiente» en vez de inventar un promedio. **No convierte horas ni kilos.**
+- **Fechas** (`nivFecha`/`setNivFecha`): el **inicio no puede ser anterior a hoy** (se rechaza con aviso); cada
+  cambio va a la bitácora. Editar cualquier cosa de la nivelación exige el permiso **`programa`**, que hoy solo
+  tienen **admin** y **planificacion**.
+- **`cuadritoNivHTML(cfg)`** es el componente reutilizable (los once pasos en orden, cada número con su nota de
+  origen, lista de rezago con `filasGRP`+`whCell`); `cuadritoProceso(procId)` y `cuadritoGrupo(g)` lo alimentan.
+- **Sin SAM**: la orden **no suma como cero ni se descarta**, queda fuera del cálculo y **a la vista** con sus
+  unidades. Sobre el volcado real: 22 órdenes distintas (corte 12, confección 14, empaque 22), todas de las
+  categorías sin hoja LMO.
+- **Paso 1 no tiene pantalla todavía** (a propósito): el simulador y el plan mensual **no se movieron**. La
+  pestaña, la tabla de grupos y los parámetros de tela son el Paso 2, pendiente de aprobación.
+- Ver `NIVELACION_PASO1_MOTOR.md` y `NIVELACION_PASO0_ESCANEO.md`.
+
 ### 2.45 Contar cartera: hay que DECIR la base (16-sep) — CORRIGE cifras de 2.44
 - **El error no fue la definición, fue la base.** El cálculo de los tiempos estimados usaba `abiertaDe()`, pero se
   reportó en base **abiertas** (79 órdenes / 16.232 pz / 197.573 min) al lado de un listado hecho en base

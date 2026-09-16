@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 17:04';
+const APP_BUILD='2026-09-16 17:54';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -5423,6 +5423,264 @@ function cargaTiemposEstHTML(){const r=cargaTiemposEst(CTE.base);
    </tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">En las otras bases: ${otras.map(esc).join(' · ')}.</p>
   </div></div>`}
+/* ==================== NIVELACIÓN DE CARGA · PASO 1: el motor (16-sep-2026) ====================
+   Un solo cálculo, en MINUTOS MONTADOS, que comparten la pestaña de nivelación y el plan mensual.
+   Todo sale del sistema: capDia(), el SAM de la categoría, el calendario con sus excepciones y la
+   tabla de fases. Del Excel de planta se toma el esquema del cuadrito, ningún dato. */
+
+/* los procesos que se nivelan; el orden es el del flujo */
+const PROC_NIVEL=[
+  {id:'tela',    n:'Tela por entregar', porFase:true,  centro:null,      area:'tej', unidad:'unidades'},
+  {id:'corte',   n:'Corte',             porFase:false, centro:'corte',   area:'pro', unidad:'minutos'},
+  {id:'confeccion',n:'Confección',      porFase:false, centro:'modulos', area:'pro', unidad:'minutos'},
+  {id:'empaque', n:'Empaque',           porFase:false, centro:'empaque', area:'pro', unidad:'minutos'}];
+function procNivel(id){return PROC_NIVEL.find(p=>p.id===id)||null}
+
+/* ---------- 2 · a qué proceso de nivelación cuenta cada FASE (columna nueva de la tabla 1) ---------- */
+/* Solo manda para TELA, que se define por fase (por eso se puede excluir 1Calidad Tintoreria).
+   Los procesos de planta se definen por la RUTA de cada orden (decisión 3). */
+function procNivelDeFase(f){const fila=filaFaseDe(f);return (fila&&fila.nivel)||''}
+function setNivelFase(i,v){const r=faseMapeo()[i];if(!r)return;
+  if(!puede('programa')){alert('Solo planificación edita esta tabla.');return}
+  const antes=r.nivel||'(ninguno)';r.nivel=v||'';
+  bitacora('Fase «'+(r.fase||'?')+'»: cuenta para la nivelación de '+antes+' → '+(r.nivel||'(ninguno)')+' ('+quienFirma()+')');
+  NIVC=null;save();render()}
+function fasesDeProcNivel(p){return faseMapeo().filter(r=>r.nivel===p).map(r=>r.fase)}
+
+/* ---------- SAM: el mismo que usa el motor, nunca otro ---------- */
+/* minutos pendientes de una orden en un centro (minPendCentro ya descuenta lo hecho) */
+function samOrdenCentro(o,c){const p=(o.ruta||[]).find(x=>x.centro===c);if(!p)return null;
+  const m=minPrenda(c,p.t);return m>0?m:null}          // null = sin SAM, NO es cero
+function pendCentroUnid(o,c){const ac=((S.avance[o.id]||{}).centros)||{};
+  return Math.max(0,cantCentro(o,c)-(+ac[c]||0))}
+
+/* ---------- 3 · el saldo de un proceso ---------- */
+/* «Saldo por procesar»: órdenes que tienen ese proceso EN SU RUTA y aún no lo terminaron, estén en la
+   fase que estén. Una orden sin ese proceso en su ruta NO suma. Es distinto de la carga actual del
+   centro que ve ingeniería, y la pantalla lo dice. */
+function saldoProceso(procId,horizonte){const p=procNivel(procId);if(!p)return null;
+  const enHor=o=>!horizonte||!horizonte.length||horizonte.includes(mesEntregaNiv(o));
+  const out={proc:procId,ordenes:[],unid:0,min:0,sinSAM:[],unidSinSAM:0,delMes:0,arrastrado:0,maquila:0,minMaquila:0};
+  if(p.porFase){                                     // TELA: por fase, según la columna de la tabla 1
+    const fs=new Set(fasesDeProcNivel(procId).map(normFase));
+    S.ordenes.filter(abiertaDe).forEach(o=>{if(!enHor(o))return;
+      if(!fs.has(normFase(o.fase||'')))return;
+      const u=+o.cant||0;out.ordenes.push(o);out.unid+=u});
+    return out}
+  const c=p.centro;
+  S.ordenes.filter(abiertaDe).forEach(o=>{if(!enHor(o))return;
+    if(!(o.ruta||[]).some(x=>x.centro===c))return;    // no tiene el proceso en su ruta: no suma
+    if(pasoHecho(o,c))return;                         // ya lo terminó
+    const u=pendCentroUnid(o,c);if(u<=0)return;
+    const sam=samOrdenCentro(o,c);
+    const aMaq=(c==='modulos'&&((o.recursoFijo||{}).modulos==='maquila'));
+    if(sam==null){out.sinSAM.push(o);out.unidSinSAM+=u;if(!aMaq)out.ordenes.push(o);return}
+    if(aMaq){out.maquila+=u;out.minMaquila+=u*sam;return}   // 5 · lo marcado a maquila sale del saldo propio
+    out.ordenes.push(o);out.unid+=u;out.min+=u*sam});
+  return out}
+/* el mes de entrega que usa el horizonte */
+function mesEntregaNiv(o){const f=fechaMetaDe(o);return f?f.slice(0,7):'sin fecha'}
+/* SAM ponderado del saldo de un cuadrito: es la conversión minutos ↔ unidades, y se muestra */
+function samPonderado(s){return (s&&s.unid>0)?s.min/s.unid:null}
+
+/* ---------- 4 · grupos de módulos ---------- */
+function gruposMod(){if(!Array.isArray(S.params.gruposMod))S.params.gruposMod=[];return S.params.gruposMod}
+function addGrupoMod(){if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  gruposMod().push({id:uid(),n:'',mods:[],fams:[]});save();render()}
+function setGrupoMod(id,k,v){const g=gruposMod().find(x=>x.id===id);if(!g)return;
+  if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  const antes=g[k];g[k]=v;bitacora('Grupo de módulos «'+(g.n||'sin nombre')+'»: '+k+' '+JSON.stringify(antes)+' → '+JSON.stringify(v)+' ('+quienFirma()+')');
+  NIVC=null;save();render()}
+function setPctModGrupo(gid,rec,pct){const g=gruposMod().find(x=>x.id===gid);if(!g)return;
+  if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  const p=+String(pct).replace(',','.');g.mods=g.mods||[];
+  const f=g.mods.find(m=>m.rec===rec);
+  if(!(p>0)){g.mods=g.mods.filter(m=>m.rec!==rec)}else if(f)f.pct=p;else g.mods.push({rec,pct:p});
+  bitacora('Grupo «'+(g.n||'sin nombre')+'»: '+nRec(rec)+' al '+num(p||0)+'% ('+quienFirma()+')');
+  NIVC=null;save();render()}
+function delGrupoMod(id){const g=gruposMod().find(x=>x.id===id);if(!g)return;
+  if(!confirm('¿Quitar el grupo «'+(g.n||'sin nombre')+'»? Se pierde su reparto de módulos y sus familias; los módulos y las órdenes no se tocan.'))return;
+  S.params.gruposMod=gruposMod().filter(x=>x.id!==id);bitacora('Grupo de módulos quitado: '+(g.n||'sin nombre')+' ('+quienFirma()+')');NIVC=null;save();render()}
+/* suma de % de un módulo entre todos los grupos: si pasa de 100 es ERROR visible, no se corrige solo */
+function pctModTotal(rec){return gruposMod().reduce((a,g)=>a+((g.mods||[]).find(m=>m.rec===rec)||{}).pct||0,0)}
+function erroresGruposMod(){const out=[];
+  S.recursos.filter(r=>r.activa&&r.centro==='modulos').forEach(r=>{const t=pctModTotal(r.id);
+    if(t>100)out.push({rec:r.id,pct:t,txt:nRec(r.id)+' está repartido al '+num(t)+'%: pasa del 100%'})});
+  gruposMod().forEach(g=>{if(!(g.mods||[]).length)out.push({g:g.id,txt:'El grupo «'+(g.n||'sin nombre')+'» no tiene ningún módulo'});
+    if(!(g.fams||[]).length)out.push({g:g.id,txt:'El grupo «'+(g.n||'sin nombre')+'» no tiene ninguna familia'})});
+  return out}
+/* sugerencia a partir de la polivalencia que ya existe; el usuario confirma o edita */
+function sugerirGruposMod(){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
+  const fams=S.categorias.filter(k=>!k.padre);
+  const porFam={};
+  fams.forEach(f=>{const l=mods.filter(r=>poliPct(r,{padre:f.id})>0&&(r.poli||{})[f.id]!=null);
+    if(l.length)porFam[f.n]=l.map(r=>r.id)});
+  /* familias con exactamente el mismo conjunto de módulos se proponen como un grupo */
+  const porClave={};Object.entries(porFam).forEach(([f,ids])=>{const k=ids.slice().sort().join(',');(porClave[k]=porClave[k]||{ids,fams:[]}).fams.push(f)});
+  return Object.values(porClave).map(x=>({n:x.fams.join(' + '),mods:x.ids,fams:x.fams}))}
+function aplicarSugerenciaGrupos(){if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  const s=sugerirGruposMod();
+  if(!s.length){alert('No se puede sugerir nada: ningún módulo tiene polivalencia cargada por familia.\n\nCarga la polivalencia en Configuración → Centros y recursos, o arma los grupos a mano.');return}
+  if(!confirm('Se proponen '+s.length+' grupos a partir de la polivalencia que ya está cargada:\n\n'
+    +s.map(x=>'· '+x.n+': '+x.mods.map(nRec).join(', ')).join('\n')
+    +'\n\nSon una PROPUESTA: revísalos y edítalos. Cada módulo entra al 100% en su grupo; si un módulo va en dos, hay que repartirlo a mano.\n¿Crearlos?'))return;
+  s.forEach(x=>gruposMod().push({id:uid(),n:x.n,mods:x.mods.map(rec=>({rec,pct:100})),fams:x.fams,sugerido:true}));
+  bitacora('Grupos de módulos sugeridos desde la polivalencia: '+s.length+' grupos ('+quienFirma()+'). Son una propuesta, hay que revisarla.');
+  NIVC=null;save();render()}
+/* capacidad de un grupo en minutos/día, con el reparto */
+function capGrupoDia(g,d){return (g.mods||[]).reduce((a,m)=>{const r=R(m.rec);if(!r||!r.activa)return a;
+  return a+capDia(r,d)*((+m.pct||0)/100)},0)}
+/* el saldo de un grupo: las órdenes de confección cuyas familias le tocan */
+function saldoGrupo(g,horizonte){const s=saldoProceso('confeccion',horizonte);if(!s)return null;
+  const fams=new Set((g.fams||[]).map(normFase));
+  const mio=o=>{const k=K(o.cat);const f=k?(K(k.padre)||k).n:'';return fams.has(normFase(f))};
+  const out={proc:'grupo:'+g.id,ordenes:[],unid:0,min:0,sinSAM:[],unidSinSAM:0,maquila:0,minMaquila:0};
+  s.ordenes.filter(mio).forEach(o=>{const u=pendCentroUnid(o,'modulos');const sam=samOrdenCentro(o,'modulos');
+    if(sam==null){out.sinSAM.push(o);out.unidSinSAM+=u;return}
+    out.ordenes.push(o);out.unid+=u;out.min+=u*sam});
+  s.sinSAM.filter(mio).forEach(o=>{if(out.sinSAM.includes(o))return;out.sinSAM.push(o);out.unidSinSAM+=pendCentroUnid(o,'modulos')});
+  return out}
+
+/* ---------- 6 · capacidad de TELA: unidades reales que pasaron a corte ---------- */
+function nivParam(k,def){const v=(S.params.nivelacion||{})[k];return v==null||v===''?def:v}
+function setNivParam(k,v){if(!puede('programa')){alert('Solo planificación edita esto.');return}
+  S.params.nivelacion=S.params.nivelacion||{};const antes=S.params.nivelacion[k];
+  S.params.nivelacion[k]=(k==='diasTela')?(+v||0):((k==='telaPlan')?(v===''?'':(+String(v).replace(',','.')||0)):v);
+  bitacora('Nivelación · '+k+': '+(antes==null?'sin valor':antes)+' → '+S.params.nivelacion[k]+' ('+quienFirma()+')');
+  NIVC=null;save();render()}
+/* promedio de unidades que entraron a corte en los últimos N días hábiles de tej/tin */
+function capTelaReal(){const n=+nivParam('diasTela',10)||10;
+  const dias=[];let d=hoy(),g=0;
+  const recsT=S.recursos.filter(r=>r.activa&&CE(r.centro)&&(CE(r.centro).area==='tej'||CE(r.centro).area==='tin'));
+  while(dias.length<n&&g++<200){d=dsum(d,-1);if(recsT.some(r=>labR(d,r)))dias.push(d)}
+  let u=0,conDato=0;
+  dias.forEach(x=>{const h=hechasDelDia('corte',null,x);if((h.detalle||[]).length)conDato++;u+=(+h.pz||0)});
+  return {dias:dias.length,conDato,unid:u,prom:dias.length?u/dias.length:null,
+    suficiente:conDato>=Math.ceil(n/2)}}   // sin la mitad de los días con registro, no alcanza para un promedio
+
+/* ---------- 1 · EL MOTOR: un solo cálculo, en minutos ---------- */
+/* Devuelve todos los pasos del cuadrito. Lo que falte se devuelve como null y se muestra como
+   «dato faltante»: nunca un valor por defecto silencioso. Cero es cero. */
+function nivelar(e){
+  const o={...e};
+  const capDiaMin=(e.capDia==null||e.capDia==='')?null:+e.capDia;
+  const saldo=e.saldoMin;
+  const neto=(saldo==null)?null:Math.max(0,saldo-(+e.maquilaMin||0));
+  const ini=e.inicio||null, comp=e.compromiso||null;
+  const diasNec=(neto==null||capDiaMin==null||capDiaMin<=0)?null:Math.ceil(neto/capDiaMin);
+  const fin=(ini&&diasNec!=null)?dsumLab(ini,diasNec):null;
+  const diasDisp=(ini&&comp)?diasHabilesEntre(ini,comp):null;
+  const alcanzable=(capDiaMin!=null&&diasDisp!=null)?capDiaMin*diasDisp:null;
+  const rezago=(neto!=null&&alcanzable!=null)?Math.max(0,neto-alcanzable):null;
+  const meta=(neto!=null&&diasDisp!=null&&diasDisp>0)?neto/diasDisp:null;
+  const holgura=(diasDisp!=null&&diasNec!=null)?diasDisp-diasNec:null;
+  const falta=[];
+  if(capDiaMin==null)falta.push('capacidad diaria');
+  if(!ini)falta.push('fecha de inicio');
+  if(!comp)falta.push('fecha de compromiso');
+  if(saldo==null)falta.push('saldo');
+  if(diasDisp!=null&&diasDisp<=0)falta.push('el compromiso no deja días hábiles por delante');
+  return {...o,capDia:capDiaMin,saldoMin:saldo,netoMin:neto,diasNec,inicio:ini,fin,compromiso:comp,
+    diasDisp,alcanzableMin:alcanzable,rezagoMin:rezago,metaMin:meta,holgura,falta,
+    cabe:(rezago!=null)?rezago===0:null}}
+function diasHabilesEntre(a,b){if(!a||!b||b<a)return 0;let n=0,d=a,g=0;
+  while(d<b&&g++<3000){d=dsum(d,1);if(labDiaGeneral(d))n++}return n}
+/* la conversión minutos → unidades, siempre con el SAM ponderado a la vista */
+function aUnid(min,sam){return (min==null||!(sam>0))?null:min/sam}
+/* ---------- el CUADRITO: un solo componente, lo usan la nivelación y el plan mensual ---------- */
+let NIV={horizonte:null,abierto:null};let NIVC=null;
+function horizonteNiv(){if(NIV.horizonte&&NIV.horizonte.length)return NIV.horizonte;
+  const h=hoy().slice(0,7);return [h]}
+function mesesNivDisp(){return [...new Set(S.ordenes.filter(abiertaDe).map(mesEntregaNiv))].sort((a,b)=>a==='sin fecha'?1:b==='sin fecha'?-1:(a<b?-1:1))}
+function togMesNiv(m){NIV.horizonte=NIV.horizonte||[];
+  NIV.horizonte=NIV.horizonte.includes(m)?NIV.horizonte.filter(x=>x!==m):NIV.horizonte.concat([m]);
+  if(!NIV.horizonte.length)NIV.horizonte=null;NIVC=null;render()}
+/* el compromiso y el inicio de cada cuadrito, editables y guardados */
+function nivFecha(id,k){const x=((S.params.nivelacion||{}).fechas||{})[id]||{};return x[k]||''}
+function setNivFecha(id,k,v){if(!puede('programa')){alert('Solo planificación edita esto.');return}
+  if(k==='inicio'&&v&&v<hoy()){alert('La fecha de inicio no puede ser anterior a hoy.');render();return}
+  S.params.nivelacion=S.params.nivelacion||{};S.params.nivelacion.fechas=S.params.nivelacion.fechas||{};
+  const o=S.params.nivelacion.fechas[id]=S.params.nivelacion.fechas[id]||{};const antes=o[k]||'(sin fecha)';
+  o[k]=v||'';
+  bitacora('Nivelación · '+id+' · '+(k==='inicio'?'inicio':'compromiso')+': '+antes+' → '+(v||'(sin fecha)')+' ('+quienFirma()+')');
+  NIVC=null;save();render()}
+const faltaTxt=v=>'<span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="dato faltante: no se rellena con una suposición">dato faltante</span>';
+function minUni(min,sam,dec){if(min==null)return faltaTxt();
+  const u=aUnid(min,sam);
+  return '<b>'+num(min,dec==null?0:dec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">min</span>'
+   +(u==null?'':' <span class="mut" style="font-size:var(--fs-xs)">· '+num(u,0)+' u</span>')}
+/* el cuadrito, con los once pasos del esquema, en el mismo orden */
+function cuadritoNivHTML(cfg){
+  const r=cfg.calc, s=cfg.saldo, sam=cfg.sam, id=cfg.id;
+  const ok=puede('programa');
+  const uni=cfg.unidad==='unidades';
+  const val=(min,dec)=>uni?(min==null?faltaTxt():'<b>'+num(min,dec==null?0:dec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">u</span>'):minUni(min,sam,dec);
+  const fila=(k,v,nota)=>`<tr><td class="mut" style="white-space:nowrap">${esc(k)}</td><td class="num">${v}</td>${nota?`<td class="mut" style="font-size:var(--fs-xs)">${nota}</td>`:'<td></td>'}</tr>`;
+  const estado=r.cabe===null?'<span class="tag t-alerta">no se puede calcular</span>'
+    :r.cabe?'<span class="tag t-ok">cabe</span>':'<span class="tag t-alerta">no cabe</span>';
+  return `<div class="panel" style="border:2px solid ${r.cabe===null?'var(--aviso)':r.cabe?'var(--ok)':'var(--alerta)'}">
+   <h3>${esc(cfg.titulo)} ${estado}<span class="note">${esc(cfg.nota||'')}</span>
+    <span class="spacer"></span>${s&&s.ordenes?`<a href="#" onclick="NIV.abierto=NIV.abierto==='${id}'?null:'${id}';render();return false">${NIV.abierto===id?'ocultar':'ver'} el rezago (${s.ordenes.length})</a>`:''}</h3><div class="body">
+   <table style="font-size:var(--fs-s);width:100%"><tbody>
+   ${fila('Saldo por procesar',val(r.saldoMin),(s&&s.unid?num(s.unid)+' prendas':'')+(sam?' · SAM ponderado '+num(sam,2)+' min/prenda':''))}
+   ${(s&&s.maquila)?fila('− marcado a maquila',val(-s.minMaquila),num(s.maquila)+' prendas con recurso fijo maquila'):''}
+   ${(s&&s.maquila)?fila('= Saldo neto',val(r.netoMin),'el propio, sin lo que va a maquila'):''}
+   ${fila('Capacidad diaria',val(r.capDia,0),cfg.notaCap||'')}
+   ${fila('Días necesarios',r.diasNec==null?faltaTxt():'<b>'+num(r.diasNec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','saldo neto ÷ capacidad, redondeado hacia arriba')}
+   <tr><td class="mut">Fecha de inicio</td><td class="num"><input type="date" value="${esc(r.inicio||'')}" min="${hoy()}" ${ok?'':'disabled'} onchange="setNivFecha('${id}','inicio',this.value)" style="padding:2px 4px"></td><td class="mut" style="font-size:var(--fs-xs)">no puede ser anterior a hoy</td></tr>
+   ${fila('Fecha final',r.fin?'<b>'+fmtDia(r.fin)+'</b>':faltaTxt(),'inicio + días necesarios, en hábiles')}
+   <tr><td class="mut">Fecha de compromiso</td><td class="num"><input type="date" value="${esc(r.compromiso||'')}" ${ok?'':'disabled'} onchange="setNivFecha('${id}','compromiso',this.value)" style="padding:2px 4px"></td><td class="mut" style="font-size:var(--fs-xs)">editable</td></tr>
+   ${fila('Días disponibles',r.diasDisp==null?faltaTxt():'<b>'+num(r.diasDisp)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','entre el inicio y el compromiso')}
+   ${fila('Producción alcanzable',val(r.alcanzableMin),'capacidad × días disponibles')}
+   <tr style="border-top:2px solid var(--rule)"><td class="mut"><b>Rezago</b></td><td class="num" style="${r.rezagoMin?'color:var(--alerta)':''}">${r.rezagoMin==null?faltaTxt():(r.rezagoMin?val(r.rezagoMin):'<b>0</b>')}</td><td class="mut" style="font-size:var(--fs-xs)">lo que no alcanza a salir</td></tr>
+   ${fila('Meta diaria para cumplir',val(r.metaMin,0),'saldo neto ÷ días disponibles')}
+   ${fila('Holgura',r.holgura==null?faltaTxt():'<b>'+num(r.holgura)+'</b> <span class="mut" style="font-size:var(--fs-xs)">días</span>',r.holgura!=null&&r.holgura<0?'faltan días':'')}
+   </tbody></table>
+   ${r.falta.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">falta</span> ${esc(r.falta.join(' · '))}. No se calcula con suposiciones.</p>`:''}
+   ${(s&&s.unidSinSAM)?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-alerta">sin SAM</span> <b>${num(s.unidSinSAM)} unidades</b> en ${s.sinSAM.length} órdenes no tienen minutos por prenda: <b>no se suman como cero</b> ni se descartan, quedan fuera del cálculo y a la vista.</p>`:''}
+   ${NIV.abierto===id&&s?rezagoListaHTML(id,s):''}
+  </div></div>`}
+/* el rezago, con el componente de lista agrupada con fotos que ya existe */
+function rezagoListaHTML(id,s){const gid='niv'+String(id).replace(/[^a-z0-9]/gi,'');
+  const l=s.ordenes.concat(s.sinSAM.filter(o=>!s.ordenes.includes(o)));
+  if(!l.length)return '<div class="empty">Sin órdenes en el saldo.</div>';
+  const fila=o=>{const c=(procNivel(id)||{}).centro;const u=c?pendCentroUnid(o,c):(+o.cant||0);
+    const sam=c?samOrdenCentro(o,c):null;
+    return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td>
+     <td class="mut">${esc(nombreCat(K(o.cat))||'')}</td><td class="num">${num(u)}</td>
+     <td class="num">${sam==null?'<span class="tag t-alerta" style="font-size:10px;padding:0 4px">sin SAM</span>':num(sam,2)}</td>
+     <td class="num">${sam==null?'<span class="mut">—</span>':num(u*sam)}</td>
+     <td>${fechaMetaDe(o)?fmtDia(fechaMetaDe(o)):'<span class="mut">sin fecha</span>'}</td></tr>`};
+  return `<div style="margin-top:12px;border-top:2px solid var(--rule);padding-top:10px">
+   <div class="row" style="margin:0 0 8px;align-items:center"><b>Saldo por orden</b> <span class="mut">· ${l.length} órdenes</span><span class="spacer"></span>${grpSelHTML(gid,true)}</div>
+   <div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th class="num">Pendientes</th><th class="num">SAM</th><th class="num">Minutos</th><th>Entrega</th></tr></thead><tbody>
+   ${(grpSt(gid).todoAbierto=true,filasGRP(gid,l.slice(0,400),fila,7,o=>o,o=>{const c=(procNivel(id)||{}).centro;return c?pendCentroUnid(o,c):(+o.cant||0)}))}
+   </tbody></table></div></div>`}
+
+/* ---------- armar el cuadrito de un proceso ---------- */
+function cuadritoProceso(procId){const p=procNivel(procId);if(!p)return null;
+  const hor=horizonteNiv();const s=saldoProceso(procId,hor);
+  const sam=samPonderado(s);
+  let capD=null,notaCap='';
+  if(p.porFase){const t=capTelaReal();const plan=nivParam('telaPlan','');
+    capD=(plan===''||plan==null)?(t.suficiente?t.prom:null):+plan;
+    notaCap=(plan===''||plan==null)
+      ?(t.suficiente?('promedio real de '+t.dias+' días hábiles ('+t.conDato+' con registro)'):('sin avance suficiente: '+t.conDato+' de '+t.dias+' días con registro'))
+      :('valor planificado'+(t.suficiente?' · el real de los últimos '+t.dias+' días es '+num(t.prom,0)+' u/día':' · sin avance suficiente para comparar'))}
+  else{const recs=S.recursos.filter(r=>r.activa&&r.centro===p.centro);
+    capD=recs.length?recs.reduce((a,r)=>a+capDia(r,hoy()),0):null;
+    notaCap=recs.length?(recs.length+' recursos · capDia de hoy'):'sin recursos activos en el centro'}
+  const calc=nivelar({id:procId,saldoMin:p.porFase?s.unid:s.min,maquilaMin:s.minMaquila||0,
+    capDia:capD,inicio:nivFecha(procId,'inicio'),compromiso:nivFecha(procId,'compromiso')});
+  return {id:procId,titulo:p.n,unidad:p.unidad,saldo:s,sam,calc,notaCap,
+    nota:'Saldo por procesar (incluye órdenes en fases anteriores) · distinto de la carga actual del centro'}}
+function cuadritoGrupo(g){const hor=horizonteNiv();const s=saldoGrupo(g,hor);const sam=samPonderado(s);
+  const capD=capGrupoDia(g,hoy());
+  const calc=nivelar({id:'grupo:'+g.id,saldoMin:s.min,capDia:(g.mods||[]).length?capD:null,
+    inicio:nivFecha('grupo:'+g.id,'inicio'),compromiso:nivFecha('grupo:'+g.id,'compromiso')});
+  return {id:'grupo:'+g.id,titulo:g.n||'(grupo sin nombre)',unidad:'minutos',saldo:s,sam,calc,
+    notaCap:(g.mods||[]).map(m=>nRec(m.rec)+' '+num(m.pct)+'%').join(' + ')||'sin módulos asignados',
+    nota:(g.fams||[]).join(', ')||'sin familias asignadas'}}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -7985,13 +8243,14 @@ function vConfig(el){
   ${(()=>{const mr=motivosReproceso();const rf=restriccionFaltante();return `<div class="panel"><h3>Motivos de reproceso de tintorería <span class="note">${mr.length} motivos · marca cuáles vienen de tejeduría (falla de tela) · son las filas de uso «reproceso» de la tabla 15</span><span class="spacer"></span><button class="btn ghost sm" onclick="addMotivoReprocRow()">Agregar</button></h3><div class="body"><table style="font-size:var(--fs-s)"><thead><tr><th>Motivo</th><th style="width:200px">¿Viene de tejeduría?</th><th></th></tr></thead><tbody>${mr.map((r,i)=>`<tr><td><input type="text" style="width:340px" value="${esc(r.motivo)}" onchange="setMotivoReprocRow(${i},'motivo',this.value)"></td><td><label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoReprocRow(${i},'tejeduria',this.checked)"> falla de tela (tejeduría)</label></td><td><button class="btn ghost sm" onclick="delMotivoReprocRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>
   <div class="panel"><h3>Restricciones de faltante <span class="note">${rf.length} materiales que exigen baño grande (complementos, algodón)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRestrFaltRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Si el nombre de la tela/material del faltante CONTIENE la coincidencia, ese faltante no puede ir a máquina pequeña: espera baño grande. Sembrada con cuellos, puños y algodón. Lo no marcado se reporta en la cola de faltantes (revísalo).</p><table style="font-size:var(--fs-s)"><thead><tr><th>Coincidencia (tela o material)</th><th style="width:180px">Tipo</th><th></th></tr></thead><tbody>${rf.map((r,i)=>`<tr><td><input type="text" style="width:280px" value="${esc(r.match)}" onchange="setRestrFaltRow(${i},'match',this.value)"></td><td><input type="text" style="width:150px" value="${esc(r.tipo)}" onchange="setRestrFaltRow(${i},'tipo',this.value)"></td><td><button class="btn ghost sm" onclick="delRestrFaltRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
-   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; los minutos por prenda salen de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a que proceso de la nivelacion de carga cuenta esta fase">nivelacion</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; los minutos por prenda salen de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
     ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${gruposOrdenados().map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td><input type="number" step="1" style="width:60px" value="${r.secuencia===''||r.secuencia==null?'':r.secuencia}" placeholder="—" title="iguales = paralelas; vacío = se usa el grupo de la tabla 5" onchange="setFaseMapeoRow(${i},'secuencia',this.value)"></td><td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.sinCarga?'checked':''} onchange="setFaseMapeoRow(${i},'sinCarga',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.bloqueo?'checked':''} onchange="setFaseMapeoRow(${i},'bloqueo',this.checked)"></td>
       <td><input type="text" style="width:110px" value="${esc(r.excluye||'')}" placeholder="—" onchange="setFaseMapeoRow(${i},'excluye',this.value)"></td>
+      <td><select onchange="setNivelFase(${i},this.value)" title="a qué proceso de la nivelación de carga cuenta esta fase (solo Tela se define por fase; los de planta salen de la ruta)"><option value="">—</option>${PROC_NIVEL.map(p=>`<option value="${p.id}" ${r.nivel===p.id?'selected':''}>${esc(p.n)}</option>`).join('')}</select></td>
       <td><select onchange="setFaseMapeoRow(${i},'desde',this.value)"><option value="">(el propio)</option>${gruposOrdenados().map(s=>`<option ${r.desde===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td>${r.sistema==='textil'?`<select onchange="setFaseMapeoRow(${i},'tela',this.value)">${TELA_FASE.map(([v,l])=>`<option value="${v}" ${(r.tela||'')===v?'selected':''}>${l}</option>`).join('')}</select>`:'<span class="mut">—</span>'}</td>
       <td style="text-align:center"><input type="checkbox" ${r.montado?'checked':''} onchange="setFaseMapeoRow(${i},'montado',this.checked)"></td>

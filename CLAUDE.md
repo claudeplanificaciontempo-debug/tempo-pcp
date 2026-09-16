@@ -692,6 +692,22 @@ Las **abiertas incluyen las de diseño sin WH**, que no se pueden programar: par
 aparece una segunda definición de orden abierta, si las bases dejan de encajar o si una base inexistente no da
 error; un conteo que no sea de cartera se marca en su línea con el motivo. Ver `TIEMPOS_CORRECCION_BASE.md`.
 
+**Nivelación de carga — Paso 1 (16-sep-2026, motor y cuadrito; SIN pantalla todavía).** Del Excel de nivelación
+se tomó **solo el esquema**, **ningún dato**. `nivelar(e)` es el único cálculo (saldo → −maquila → neto → `capDia` →
+días necesarios → inicio → fin con `dsumLab` → compromiso → `diasHabilesEntre` → alcanzable → **rezago** → meta
+diaria → holgura), **en minutos** con unidades al lado por **SAM ponderado** (`samPonderado`/`aUnid`). Falta un dato
+→ **`null`** y *dato faltante* en pantalla; **capacidad 0 es 0** (alcanzable 0, rezago = todo el saldo). Comparte
+`capDia`, `labR`/`dsumLab`, `minPrenda` (vía `samOrdenCentro`, que devuelve **null, nunca 0**) y la tabla 1; **el motor de
+programación NO se tocó**. `PROC_NIVEL` = tela (**por fase**, columna *nivelación* de la tabla 1, `setNivelFase`) +
+corte/confección/empaque (**por RUTA**). `saldoProceso` = abiertas con el proceso en su ruta y sin `pasoHecho`, **estén
+en la fase que estén**: «**Saldo por procesar (incluye órdenes en fases anteriores)**», **distinto de la carga del
+centro** y la pantalla lo dice; horizonte por mes de entrega, por defecto el mes en curso. Grupos de módulos
+(`gruposMod`) **nacen vacíos**, se sugieren desde la polivalencia y un módulo repartido a **más del 100% es error
+visible** (`erroresGruposMod`). Maquila con `recursoFijo` **resta del saldo propio**; lo sugerido no. Tela:
+`capTelaReal()` (promedio de N días hábiles configurable **junto al valor planificado**, sin convertir horas ni
+kilos). El **inicio no puede ser anterior a hoy**. Todo lo editable exige el permiso **`programa`**, que hoy solo
+tienen **admin** y **planificacion**. Ver `NIVELACION_PASO1_MOTOR.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

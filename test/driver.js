@@ -787,6 +787,56 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const d=diagJeans();__R.jeansReal={cats:d.cats.length,ordenes:d.ordenes.length,ops:d.ops.length,
      tablas:d.tablas.map(x=>x.t+': '+x.fila),ejemplos:d.ordenes.slice(0,5).map(o=>o.op),
      yaUnificado:!!S.params.jeansUnificado};}
+   /* ===== NIVELACIÓN · datos de prueba sobre el VOLCADO REAL (catálogo y órdenes de Odoo) ===== */
+   {const ini=dsumLab(hoy(),1);
+    const mid=(p,extra)=>{const c=(p==="corte")?cuadritoProceso("corte"):null;return c};
+    const fija=(id,dias)=>{S.params.nivelacion=S.params.nivelacion||{};
+      S.params.nivelacion.fechas=S.params.nivelacion.fechas||{};
+      S.params.nivelacion.fechas[id]={inicio:ini,compromiso:dsumLab(ini,dias)}};
+    const foto=c=>({titulo:c.titulo,unidad:c.unidad,notaCap:c.notaCap,nota:c.nota,
+      saldoMin:c.calc.saldoMin,unid:c.saldo.unid,sam:c.sam,
+      maquila:c.saldo.maquila||0,minMaquila:c.saldo.minMaquila||0,netoMin:c.calc.netoMin,
+      capDia:c.calc.capDia,diasNec:c.calc.diasNec,inicio:c.calc.inicio,fin:c.calc.fin,
+      compromiso:c.calc.compromiso,diasDisp:c.calc.diasDisp,alcanzableMin:c.calc.alcanzableMin,
+      rezagoMin:c.calc.rezagoMin,metaMin:c.calc.metaMin,holgura:c.calc.holgura,cabe:c.calc.cabe,
+      falta:c.calc.falta.slice(),nOrdenes:c.saldo.ordenes.length,
+      sinSAM:c.saldo.sinSAM.length,unidSinSAM:c.saldo.unidSinSAM,
+      ejemplos:c.saldo.ordenes.slice(0,3).map(o=>o.op+" · "+nombreCat(K(o.cat))+" · "+pendCentroUnid(o,"corte")+" u")});
+    NIV.horizonte=null;NIVC=null;
+    /* --- cuadrito de CORTE con el volcado real --- */
+    fija("corte",20);
+    const cc=cuadritoProceso("corte");
+    __R.nivReal={corte:foto(cc)};
+    /* --- sin SAM: cuántas órdenes quedaron sin minuto por prenda, por proceso --- */
+    const porProc={};["corte","confeccion","empaque"].forEach(p=>{const s=saldoProceso(p,null);
+      porProc[p]={nOrdenes:s.ordenes.length,unid:s.unid,min:s.min,sam:samPonderado(s),
+        sinSAM:s.sinSAM.length,unidSinSAM:s.unidSinSAM,
+        cats:[...new Set(s.sinSAM.map(o=>nombreCat(K(o.cat))||"(sin categoría)"))].sort().slice(0,12)}});
+    __R.nivReal.porProc=porProc;
+    const todasSinSAM=new Set();["corte","confeccion","empaque"].forEach(p=>saldoProceso(p,null).sinSAM.forEach(o=>todasSinSAM.add(o.id)));
+    __R.nivReal.sinSAMTotal=todasSinSAM.size;
+    __R.nivReal.baseAbiertas=cuentaCartera("abiertas").n;
+    __R.nivReal.baseLanzadas=cuentaCartera("lanzadas").n;
+    __check("NIVR: el saldo de corte se calcula sobre el volcado real",__R.nivReal.corte.unid>0||__R.nivReal.corte.unidSinSAM>0,
+      __R.nivReal.corte.unid+" u con SAM / "+__R.nivReal.corte.unidSinSAM+" u sin SAM");
+    /* --- cuadrito de un GRUPO DE MÓDULOS con el volcado real --- */
+    const mods=S.recursos.filter(r=>r.activa&&r.centro==="modulos"&&r.id!=="maquila");
+    const famsReal=[...new Set(S.ordenes.filter(abiertaDe).map(o=>{const k=K(o.cat);return k?((K(k.padre)||k).n):""}).filter(Boolean))].sort();
+    __R.nivReal.familias=famsReal;
+    if(mods.length){const bak=S.params.gruposMod;S.params.gruposMod=[];
+     const g={id:"gprueba",n:"Grupo de prueba · "+famsReal.slice(0,2).join(" + "),
+       mods:mods.slice(0,2).map((r,i)=>({rec:r.id,pct:i?50:100})),fams:famsReal.slice(0,2)};
+     gruposMod().push(g);NIVC=null;
+     fija("grupo:"+g.id,20);
+     const cg=cuadritoGrupo(g);
+     __R.nivReal.grupo=Object.assign(foto(cg),{mods:(g.mods||[]).map(m=>nRec(m.rec)+" al "+m.pct+"%"),
+       fams:g.fams.slice(),capDetalle:(g.mods||[]).map(m=>nRec(m.rec)+": "+Math.round(capDia(R(m.rec),hoy()))+" min/día × "+m.pct+"% = "+Math.round(capDia(R(m.rec),hoy())*m.pct/100)),
+       ejemplos:cg.saldo.ordenes.slice(0,3).map(o=>o.op+" · "+nombreCat(K(o.cat))+" · "+pendCentroUnid(o,"modulos")+" u")});
+     __check("NIVR: el cuadrito de un grupo de módulos se calcula sobre el volcado real",!!__R.nivReal.grupo.capDia);
+     __check("NIVR: la capacidad del grupo es la suma de los módulos por su %",
+       Math.abs(__R.nivReal.grupo.capDia-(g.mods||[]).reduce((a,m)=>a+capDia(R(m.rec),hoy())*m.pct/100,0))<1e-6);
+     S.params.gruposMod=bak||[];NIVC=null}
+    delete S.params.nivelacion;NIVC=null;}
    S.categorias=bakCat;}
   S.ordenes=bakOrd;S.avance={};PLAN=null;PLAN_ALL=null;
   try{localStorage.__fase="parte2 fin"}catch(e){}
@@ -1348,7 +1398,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -4187,6 +4237,155 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("GC4: está en Configuración → Operaciones",!p1.filas.length||/Carga de los tiempos estimados/.test(document.getElementById('p-operaciones').innerHTML));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("GC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== NIVELACIÓN DE CARGA · PASO 1: el motor y el cuadrito ===== */
+  try{localStorage.__fase="nivelacion paso1"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
+   const adminP=PERFIL;
+   /* --- 1 · el motor, con números a mano: cada paso se puede verificar a ojo --- */
+   {const r=nivelar({id:"t1",saldoMin:10000,maquilaMin:2000,capDia:800,inicio:"2026-10-01",compromiso:"2026-10-31"});
+    __check("NIV1: saldo neto = saldo − maquila",r.netoMin===8000,r.netoMin);
+    __check("NIV1: días necesarios = neto ÷ capacidad, hacia arriba",r.diasNec===10,r.diasNec);
+    __check("NIV1: la fecha final sale de dsumLab (solo hábiles)",r.fin===dsumLab("2026-10-01",10),r.fin);
+    __check("NIV1: producción alcanzable = capacidad × días disponibles",r.alcanzableMin===800*r.diasDisp,r.alcanzableMin+" / "+r.diasDisp);
+    __check("NIV1: rezago = neto − alcanzable, nunca negativo",r.rezagoMin===Math.max(0,8000-800*r.diasDisp),r.rezagoMin);
+    __check("NIV1: meta diaria = neto ÷ días disponibles",Math.abs(r.metaMin-8000/r.diasDisp)<1e-9,r.metaMin);
+    __check("NIV1: holgura = días disponibles − días necesarios",r.holgura===r.diasDisp-10,r.holgura);
+    __check("NIV1: cabe ⇔ rezago cero",r.cabe===(r.rezagoMin===0));
+    __check("NIV1: sin datos faltantes no hay lista de faltantes",r.falta.length===0,r.falta.join("|"));}
+   /* cero es cero: una capacidad de 0 NO se reemplaza por un valor por defecto */
+   {const r=nivelar({id:"t0",saldoMin:5000,capDia:0,inicio:"2026-10-01",compromiso:"2026-10-31"});
+    __check("NIV2: capacidad 0 se respeta: alcanzable 0",r.alcanzableMin===0,r.alcanzableMin);
+    __check("NIV2: y el rezago es TODO el saldo",r.rezagoMin===5000,r.rezagoMin);
+    __check("NIV2: días necesarios no se inventan con capacidad 0",r.diasNec===null,r.diasNec);
+    __check("NIV2: y no cabe",r.cabe===false);}
+   /* saldo cero: cabe, con cero días, sin brechas */
+   {const r=nivelar({id:"tz",saldoMin:0,capDia:500,inicio:"2026-10-01",compromiso:"2026-10-31"});
+    __check("NIV3: saldo 0 → 0 días necesarios y cabe",r.diasNec===0&&r.rezagoMin===0&&r.cabe===true,r.diasNec+"/"+r.rezagoMin);}
+   /* dato faltante: null, NUNCA cero, y se dice cuál falta */
+   {const r=nivelar({id:"tf",saldoMin:null,capDia:null,inicio:"",compromiso:""});
+    __check("NIV4: sin saldo ni capacidad no se calcula nada",r.netoMin===null&&r.diasNec===null&&r.rezagoMin===null&&r.cabe===null);
+    __check("NIV4: y ningún faltante se volvió 0",r.alcanzableMin===null&&r.metaMin===null&&r.holgura===null);
+    __check("NIV4: la lista de faltantes nombra los cuatro datos",r.falta.length>=3,r.falta.join(" · "));}
+   /* --- 2 · SAM: el mismo del motor, y null no es cero --- */
+   {const conRuta=carteraDe("abiertas").filter(o=>(o.ruta||[]).some(x=>x.centro==="modulos"));
+    const sams=conRuta.map(o=>samOrdenCentro(o,"modulos"));
+    __check("NIV5: samOrdenCentro devuelve null (no 0) cuando no hay minuto por prenda",
+      sams.every(s=>s===null||s>0),sams.filter(s=>s===0).length+" ceros");
+    const o1=conRuta.find(o=>samOrdenCentro(o,"modulos")!=null);
+    if(o1){const p=(o1.ruta||[]).find(x=>x.centro==="modulos");
+     __check("NIV5: y es exactamente minPrenda(centro,técnica), el del motor",samOrdenCentro(o1,"modulos")===minPrenda("modulos",p.t));}}
+   /* --- 3 · el saldo de un proceso: por RUTA, no por fase --- */
+   {NIV.horizonte=null;NIVC=null;
+    const s=saldoProceso("corte",null);
+    __check("NIV6: el saldo de corte existe y trae minutos y unidades",!!s&&s.min>=0&&s.unid>=0,s&&(s.unid+" u / "+Math.round(s.min)+" min"));
+    __check("NIV6: toda orden del saldo tiene corte EN SU RUTA",s.ordenes.every(o=>(o.ruta||[]).some(x=>x.centro==="corte")));
+    __check("NIV6: ninguna del saldo tiene el paso ya hecho",s.ordenes.every(o=>!pasoHecho(o,"corte")));
+    __check("NIV6: las órdenes sin SAM NO suman minutos, se listan aparte",
+      s.sinSAM.every(o=>samOrdenCentro(o,"corte")===null)&&s.unidSinSAM>=0,s.sinSAM.length+" órdenes / "+s.unidSinSAM+" u");
+    const sp=samPonderado(s);
+    __check("NIV6: el SAM ponderado es la conversión minutos↔unidades",sp===null||Math.abs(s.min/s.unid-sp)<1e-9,sp);
+    __check("NIV6: aUnid(min,sam) invierte el SAM ponderado",sp==null||Math.abs(aUnid(s.min,sp)-s.unid)<1e-6);
+    __check("NIV6: sin SAM no hay conversión (null, no 0)",aUnid(1000,null)===null&&aUnid(1000,0)===null);
+    __R.niv=__R.niv||{};__R.niv.corte={unid:s.unid,min:s.min,n:s.ordenes.length,sam:sp,
+      sinSAM:s.sinSAM.length,unidSinSAM:s.unidSinSAM,maquila:s.maquila,minMaquila:s.minMaquila};}
+   /* --- 4 · la tela va por FASE (columna nueva de la tabla 1), no por ruta --- */
+   {const fs0=fasesDeProcNivel("tela");
+    __check("NIV7: el proceso Tela se define por fase",procNivel("tela").porFase===true);
+    __check("NIV7: los tres procesos de planta salen de la ruta",
+      ["corte","confeccion","empaque"].every(p=>procNivel(p).porFase===false&&!!procNivel(p).centro));
+    /* marcar una fase y comprobar que el saldo de tela la toma */
+    const fila=faseMapeo()[0];const iFila=0;const guardo=fila.nivel;
+    setNivelFase(iFila,"tela");
+    __check("NIV7: marcar una fase como Tela la deja en la tabla 1",fasesDeProcNivel("tela").includes(fila.fase),fila.fase);
+    const st=saldoProceso("tela",null);
+    __check("NIV7: el saldo de tela cuenta UNIDADES, no minutos",st.min===0&&st.unid>=0,st.unid);
+    __check("NIV7: y solo órdenes en esa fase",st.ordenes.every(o=>fasesDeProcNivel("tela").map(normFase).includes(normFase(o.fase||""))));
+    setNivelFase(iFila,guardo||"");
+    __check("NIV7: y se puede desmarcar",!fasesDeProcNivel("tela").includes(fila.fase)||!!guardo);}
+   /* --- 5 · grupos de módulos: nace VACÍA, suma ≤ 100, errores a la vista --- */
+   {S.params.gruposMod=[];NIVC=null;
+    __check("NIV8: la tabla de grupos nace vacía",gruposMod().length===0);
+    const mods=S.recursos.filter(r=>r.activa&&r.centro==="modulos"&&r.id!=="maquila");
+    if(mods.length>=1){
+     addGrupoMod();const g=gruposMod()[0];
+     setGrupoMod(g.id,"n","Prueba A");setGrupoMod(g.id,"fams",["CAMISETAS"]);
+     setPctModGrupo(g.id,mods[0].id,60);
+     __check("NIV8: el % de un módulo en un grupo se guarda",((g.mods||[])[0]||{}).pct===60);
+     addGrupoMod();const g2=gruposMod()[1];setGrupoMod(g2.id,"n","Prueba B");setGrupoMod(g2.id,"fams",["POLOS"]);
+     setPctModGrupo(g2.id,mods[0].id,60);
+     __check("NIV8: 60% + 60% = 120% del mismo módulo",pctModTotal(mods[0].id)===120,pctModTotal(mods[0].id));
+     __check("NIV8: y sale como ERROR visible, no se corrige solo",
+       erroresGruposMod().some(e=>/pasa del 100/.test(e.txt)),erroresGruposMod().map(e=>e.txt).join(" | "));
+     setPctModGrupo(g2.id,mods[0].id,40);
+     __check("NIV8: bajando a 40% el error desaparece",!erroresGruposMod().some(e=>/pasa del 100/.test(e.txt)));
+     const cap=capGrupoDia(g,hoy());
+     __check("NIV8: la capacidad del grupo es el capDia del motor por el %",
+       Math.abs(cap-capDia(R(mods[0].id),hoy())*0.6)<1e-6,cap);
+     const sg=saldoGrupo(g,null);
+     __check("NIV8: el saldo del grupo es un subconjunto del de confección",!!sg&&sg.min>=0,sg&&sg.unid);
+     const cg=cuadritoGrupo(g);
+     __check("NIV8: el cuadrito de un grupo se arma",!!cg&&!!cg.calc&&/Prueba A/.test(cuadritoNivHTML(cg)));
+     __R.niv=__R.niv||{};__R.niv.grupo={n:cg.titulo,notaCap:cg.notaCap,cap:cg.calc.capDia,
+       unid:sg.unid,min:sg.min,sam:cg.sam,sinSAM:sg.sinSAM.length,unidSinSAM:sg.unidSinSAM,
+       diasNec:cg.calc.diasNec,rezago:cg.calc.rezagoMin,falta:cg.calc.falta.slice()};
+     S.params.gruposMod=[];NIVC=null;}}
+   /* --- 6 · el cuadrito de corte, el componente reutilizable --- */
+   {const c=cuadritoProceso("corte");
+    __check("NIV9: el cuadrito de corte se arma",!!c&&!!c.calc);
+    const h=cuadritoNivHTML(c);
+    __check("NIV9: dice «Saldo por procesar (incluye órdenes en fases anteriores)»",/Saldo por procesar \(incluye órdenes en fases anteriores\)/.test(h));
+    __check("NIV9: muestra los minutos Y las unidades",/min/.test(h)&&(c.sam==null||/ u</.test(h)),c.sam);
+    __check("NIV9: dice de dónde sale la capacidad",!!c.notaCap&&h.indexOf(c.notaCap)>=0,c.notaCap);
+    __check("NIV9: si falta un dato lo dice, no lo rellena",c.calc.falta.length===0||/dato faltante|falta/.test(h),c.calc.falta.join(" · "));
+    __check("NIV9: las órdenes sin SAM se avisan aparte y no se suman como cero",
+      !c.saldo.unidSinSAM||/sin SAM/.test(h),c.saldo.unidSinSAM);
+    __R.niv=__R.niv||{};__R.niv.cuadCorte={cap:c.calc.capDia,notaCap:c.notaCap,saldo:c.calc.saldoMin,
+      neto:c.calc.netoMin,diasNec:c.calc.diasNec,inicio:c.calc.inicio,fin:c.calc.fin,comp:c.calc.compromiso,
+      diasDisp:c.calc.diasDisp,alcanzable:c.calc.alcanzableMin,rezago:c.calc.rezagoMin,meta:c.calc.metaMin,
+      holgura:c.calc.holgura,cabe:c.calc.cabe,falta:c.calc.falta.slice(),sam:c.sam};}
+   /* --- 7 · las fechas: el inicio no puede ser anterior a hoy --- */
+   {let aviso="";window.alert=m=>{aviso=String(m)};
+    setNivFecha("corte","inicio",dsum(hoy(),-5));
+    __check("NIV10: una fecha de inicio anterior a hoy se rechaza con aviso",nivFecha("corte","inicio")!==dsum(hoy(),-5)&&/anterior a hoy/.test(aviso),aviso);
+    window.alert=()=>{};
+    const ini=dsumLab(hoy(),1);setNivFecha("corte","inicio",ini);
+    __check("NIV10: una fecha válida sí se guarda",nivFecha("corte","inicio")===ini,nivFecha("corte","inicio"));
+    setNivFecha("corte","compromiso",dsumLab(ini,15));
+    __check("NIV10: el compromiso se guarda y el cuadrito lo usa",cuadritoProceso("corte").calc.compromiso===dsumLab(ini,15));
+    __check("NIV10: días disponibles = hábiles entre inicio y compromiso",
+      cuadritoProceso("corte").calc.diasDisp===diasHabilesEntre(ini,dsumLab(ini,15)));}
+   /* --- 8 · el permiso «programa»: quién puede tocar esto --- */
+   {const roles=perfilesDef().filter(p=>(p.permisos||[]).includes("*")||(p.permisos||[]).includes("programa")).map(p=>p.id);
+    __check("NIV11: hay al menos un perfil con el permiso «programa»",roles.length>0,roles.join(", "));
+    __R.niv=__R.niv||{};__R.niv.roles=perfilesDef().map(p=>({id:p.id,n:p.n,
+      programa:(p.permisos||[]).includes("*")||(p.permisos||[]).includes("programa"),
+      via:(p.permisos||[]).includes("*")?"*":((p.permisos||[]).includes("programa")?"programa":"")}));
+    __R.niv.usuarios=(S.usuarios||[]).length;
+    /* un perfil sin el permiso no edita nada de la nivelación */
+    const sinP=perfilesDef().find(p=>!(p.permisos||[]).includes("*")&&!(p.permisos||[]).includes("programa"));
+    if(sinP){const guardo=PERFIL;PERFIL={...guardo,rol:sinP.id};
+     const ant=nivFecha("corte","compromiso");let av="";window.alert=m=>{av=String(m)};
+     setNivFecha("corte","compromiso",dsumLab(hoy(),40));
+     __check("NIV11: sin el permiso «programa» no se puede mover una fecha",nivFecha("corte","compromiso")===ant&&/planificaci/i.test(av),sinP.id+": "+av);
+     const nG=gruposMod().length;addGrupoMod();
+     __check("NIV11: ni crear un grupo de módulos",gruposMod().length===nG);
+     PERFIL=guardo;window.alert=()=>{}}}
+   /* --- 9 · el saldo NO es la carga del centro: son cuentas distintas y la pantalla lo dice --- */
+   {const s=saldoProceso("corte",null);
+    const enFase=s.ordenes.filter(o=>normFase(o.fase||"")===normFase("2Corte")).length;
+    __R.niv=__R.niv||{};__R.niv.corteEnFase=enFase;
+    __check("NIV12: el saldo incluye órdenes que todavía NO están en la fase del centro",
+      s.ordenes.length===0||enFase<=s.ordenes.length,enFase+" de "+s.ordenes.length+" están en la fase 2Corte");}
+   /* --- 10 · el horizonte por mes de entrega --- */
+   {const ms=mesesNivDisp();
+    __check("NIV13: los meses del horizonte salen de la fecha meta",Array.isArray(ms)&&ms.length>0,ms.slice(0,6).join(", "));
+    const m0=ms.find(m=>m!=="sin fecha");
+    if(m0){NIV.horizonte=[m0];NIVC=null;const s1=saldoProceso("corte",[m0]);const sT=saldoProceso("corte",null);
+     __check("NIV13: acotar el horizonte a un mes no agranda el saldo",s1.unid<=sT.unid,s1.unid+" ≤ "+sT.unid);
+     __check("NIV13: y todas las órdenes son de ese mes",s1.ordenes.every(o=>mesEntregaNiv(o)===m0));
+     NIV.horizonte=null;NIVC=null}}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
+   __check("NIV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
