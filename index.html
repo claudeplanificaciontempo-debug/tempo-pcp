@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 11:51';
+const APP_BUILD='2026-09-16 13:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -779,9 +779,14 @@ function opsDe(k){if(!k)return[];const lista=(k.ops&&k.ops.length)?k.ops:(K(k.pa
 function telasDe(k){if(!k)return[];if(k.telas&&k.telas.length)return k.telas;const p=K(k.padre);return p?telasDe(p):[]}
 /* minutos por prenda por centro a partir de las operaciones */
 function defTiemposOjalBoton(){return [{match:'polo',ojales:0.47,botones:0.59},{match:'henley',ojales:0.47,botones:0.59},{match:'camisa',ojales:1.73,botones:0.36},{match:'capucha',ojales:0.26,botones:0},{match:'hoodie',ojales:0.26,botones:0},{match:'hoddie',ojales:0.26,botones:0},{match:'pantalon',ojales:0.26,botones:0},{match:'falda',ojales:0.26,botones:0},{match:'short',ojales:0.26,botones:0},{match:'vestido',ojales:0,botones:0,sinConfirmar:true},{match:'jean',ojales:0,botones:0,sinConfirmar:true},{match:'denim',ojales:0,botones:0,sinConfirmar:true}]}
-function tiemposOjalBoton(){if(!Array.isArray(S.params.tiemposOjalBoton))S.params.tiemposOjalBoton=defTiemposOjalBoton();const arr=S.params.tiemposOjalBoton;['vestido','jean','denim'].forEach(mm=>{if(!arr.some(r=>normFase(r.match)===normFase(mm)))arr.push({match:mm,ojales:0,botones:0,sinConfirmar:true})});return arr}
+function tiemposOjalBoton(){if(!Array.isArray(S.params.tiemposOjalBoton))S.params.tiemposOjalBoton=defTiemposOjalBoton();const arr=S.params.tiemposOjalBoton;
+  /* los tiempos de la tabla son DEFINITIVOS desde el 16-sep: ya no se reponen filas sin confirmar */
+  if(!S.params.ojalBotonConfirmado)['vestido','jean','denim'].forEach(mm=>{if(!arr.some(r=>normFase(r.match)===normFase(mm)))arr.push({match:mm,ojales:0,botones:0,sinConfirmar:true})});
+  return arr}
 function ojalBotonDe(k){if(!k)return null;const nm=normFase(k.n||''),pad=normFase((K(k.padre)||{}).n||'');return tiemposOjalBoton().find(r=>r.match&&(nm.includes(normFase(r.match))||pad.includes(normFase(r.match))))||null}
-function samPorCentro(k){const r={};opsDe(k).forEach(x=>{r[x.centro]=(r[x.centro]||0)+(+x.sam||0)});const ob=ojalBotonDe(k);if(ob&&!ob.sinConfirmar&&r.botones!=null)r.botones=(+ob.ojales||0)+(+ob.botones||0);return r} // Botones: ojales+botones de la tabla (override de la LMO)
+function samPorCentro(k){const r={};opsDe(k).forEach(x=>{if(!x.centro||!CE(x.centro))return;r[x.centro]=(r[x.centro]||0)+(+x.sam||0)});const ob=ojalBotonDe(k);if(ob&&!ob.sinConfirmar&&r.botones!=null)r.botones=(+ob.ojales||0)+(+ob.botones||0);
+  const et=(typeof etiquetaDe==='function')?etiquetaDe(k):null;if(et&&+et.min>0){const ce=et.centro||'etiquetas';if(CE(ce))r[ce]=(r[ce]||0)+(+et.min||0)}  // etiqueta de serigrafía: tabla de reglas, no LMO
+  return r} // Botones: ojales+botones de la tabla (override de la LMO)
 /* recalcula el paso de Botones en las órdenes ya cargadas con el tiempo corregido (sin esto, seguían con el valor viejo de la carga) */
 function aplicarTiemposBotones(){let n=0;const cache={};S.ordenes.forEach(o=>{const k=K(o.cat);if(!k)return;const key=k.id;const sp=cache[key]||(cache[key]=samPorCentro(k));if(sp.botones==null)return;['ruta','rutaCompleta'].forEach(rk=>{(o[rk]||[]).forEach(p=>{if(p.centro==='botones'&&p.t!==sp.botones){p.t=sp.botones;n++}})})});if(n){PLAN=null;PLAN_ALL=null}return n}
 function addTiempoOBRow(){tiemposOjalBoton().push({match:'',ojales:0,botones:0});save();render()}
@@ -1030,6 +1035,7 @@ function defEsperasPaso(){return [
   {paso:'lavado',match:'',dias:15,nota:'Lavado en Quito: prenda tinturada — el sistema no sabe qué órdenes son prenda tinturada; dime cómo se identifican',sinRegla:true}]}
 function esperasPaso(){if(!Array.isArray(S.params.esperasPaso))S.params.esperasPaso=defEsperasPaso();return S.params.esperasPaso}
 function esperaDeCentro(centro,o){const filas=esperasPaso().filter(f=>f.paso===centro&&!f.sinRegla);if(!filas.length)return 0;
+  if(centro==='lavado'&&o&&o.lavadoModo){const m=filas.find(f=>f.modo===o.lavadoModo);if(m)return +m.dias||0}  // el lavado se asigna a mano: manda la modalidad de la orden
   const k=o?K(o.cat):null;const nm=k?normFase(k.n||''):'';const pad=k?normFase((K(k.padre)||{}).n||''):'';
   const esp=filas.find(f=>f.match&&String(f.match).split(',').map(x=>normFase(x.trim())).filter(Boolean).some(t=>nm.includes(t)||pad.includes(t)));
   const gen=filas.find(f=>!f.match||!String(f.match).trim());const r=esp||gen;return r?(+r.dias||0):0}
@@ -3481,7 +3487,7 @@ function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.
 function togSet(obj,k,v){obj[k]=obj[k]||new Set();if(obj[k].has(v))obj[k].delete(v);else obj[k].add(v);if(!obj[k].size)obj[k]=null;render()}
 /* Ruta por defecto: marca editable por centro (Configuración → Centros). Se siembra UNA vez en corte, confección y
    empaque; si la usuaria la cambia, no se vuelve a pisar. */
-function sembrarRutaDefecto(){sembrarTerminados();sembrarCapPasos();if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
+function sembrarRutaDefecto(){sembrarTerminados();sembrarCapPasos();if(typeof sembrarDecisiones16==='function')sembrarDecisiones16();if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
 function centrosRutaDefecto(){sembrarRutaDefecto();return S.centros.filter(c=>c.area==='pro'&&c.rutaDefecto).map(c=>c.id)}
 /* órdenes cargadas que contradicen la ruta por defecto: les falta un paso marcado por defecto (o va por maquila) */
 function ordenesContraRutaDefecto(){const def=centrosRutaDefecto();const out=[];
@@ -3599,6 +3605,7 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
      <button class="btn ghost sm" onclick="LIB.sel=new Set(${ids(listas)});LIB.verLista=true;render()">Marcar todas</button>
      <button class="btn ghost sm" onclick="LIB.sel=new Set();render()">Ninguna</button>
      <button class="btn sm" ${sel.length?'':'disabled'} onclick="liberarA(${JSON.stringify(sel).replace(/"/g,'&quot;')},'${et}')">Liberar las marcadas (${sel.length})</button>`:''}
+    ${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="mLavado(${JSON.stringify(sel).replace(/"/g,'&quot;')})" title="agregar o quitar el lavado (planta o Quito) a las órdenes marcadas">Lavado de las marcadas (${sel.length})</button>`:''}
     ${et==='corte'?'<span class="mut" style="font-size:var(--fs-s)">Una por una: marca en cada orden la materia prima y los insumos verificados en bodega.</span>':''}
     ${famSel?`<button class="btn ghost sm" onclick="LIB.fam2=null;LIB.verLista=false;render()">← todas las familias</button>`
       :`<button class="btn ghost sm ${LIB.verLista?'on':''}" onclick="LIB.verLista=!LIB.verLista;render()">${verTodo?'▾':'▸'} Ver todas las pendientes (${pend.length})</button>`}
@@ -3852,7 +3859,7 @@ function diasEsperaCentro(cid){const f=esperasPaso().filter(x=>x.paso===cid&&!x.
 /* siembra idempotente de lo que la usuaria dictó (16-sep): plancha 2 min/prenda y lavado como proceso por días */
 function sembrarTerminados(){if(S.params.terminadosSembrado)return;
   {const e=CE('etiquetas');if(e&&e.grupoPlan===undefined){e.grupoPlan='estampado';if(typeof bitacora==='function')bitacora('Etiquetas pasa al ítem de planificación Estampado (serigrafía): sus dos operaciones «Etiquetar» son de SER-01, tampográfica y manual. Editable en Configuración → Centros.')}}
-  const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;p.minEstandarEstimado=true;if(typeof bitacora==='function')bitacora('Terminados: plancha sembrada en 2 min/prenda (dictado 16-sep; editable en Configuración → Centros)')}
+  const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;if(typeof bitacora==='function')bitacora('Terminados: plancha en 2 min/prenda (CONFIRMADO 16-sep; editable en Configuración → Centros)')}
   sembrarPerfilesEtiquetas();
   S.params.terminadosSembrado=new Date().toISOString()}
 /* etiquetas se va con estampado: el perfil que la ve pasa a ser el de corte/estampado/bordado, no el de terminados */
@@ -3862,6 +3869,293 @@ function sembrarPerfilesEtiquetas(){if(S.params.etiqPerfilSembrado)return;
   if(cor&&Array.isArray(cor.centros)&&!cor.centros.includes('etiquetas')){cor.centros=cor.centros.concat(['etiquetas']);cambios.push('Corte, estampado y bordado ahora ve Etiquetas')}
   S.params.etiqPerfilSembrado=new Date().toISOString();
   if(cambios.length&&typeof bitacora==='function')bitacora('Perfiles por el traslado de Etiquetas a Estampado: '+cambios.join(' · ')+' (editable en Configuración → Usuarios)')}
+/* ==================== DECISIONES DE PRODUCCIÓN (16-sep-2026, Jannine Cadena) ==================== */
+/* Todo lo que sigue es siembra inicial idempotente: lo que se edite en Configuración NO se vuelve a pisar. */
+
+/* ---------- 1 · ETIQUETADO: solo Level 1, Level 2, Camiseta CR y Camiseta CV ---------- */
+/* La etiqueta de serigrafía NO sale de la LMO (ninguna de esas cuatro categorías la tiene): sale de esta tabla. */
+function defReglasEtiqueta(){return ['Level 1','Level 2','Camiseta CR','Camiseta CV'].map(c=>({cat:c,min:0.5,centro:'etiquetas',confirmada:true}))}
+function reglasEtiqueta(){if(!Array.isArray(S.params.reglasEtiqueta))S.params.reglasEtiqueta=defReglasEtiqueta();return S.params.reglasEtiqueta}
+/* calce EXACTO por nombre de la categoría o de su padre: «Camiseta CR» no debe arrastrar a «Camiseta CV» */
+function etiquetaDe(k){if(!k)return null;const nm=normFase(k.n||''),pad=normFase((K(k.padre)||{}).n||'');
+  return reglasEtiqueta().find(r=>r.cat&&r.confirmada!==false&&(nm===normFase(r.cat)||pad===normFase(r.cat)))||null}
+function addReglaEtiqueta(){reglasEtiqueta().push({cat:'',min:0,centro:'etiquetas',confirmada:false});save();render()}
+function setReglaEtiqueta(i,k,v){const r=reglasEtiqueta()[i];if(!r)return;const antes=r[k];
+  r[k]=(k==='min')?(+String(v).replace(',','.')||0):(k==='confirmada'?!!v:v);
+  bitacora('Regla de etiqueta ['+(r.cat||'sin categoría')+'] · '+k+': '+antes+' → '+r[k]+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+function delReglaEtiqueta(i){const r=reglasEtiqueta()[i];if(!r)return;
+  if(!confirm('¿Quitar la regla de etiqueta de «'+(r.cat||'sin categoría')+'»?\n\nEsa categoría dejará de cargar sus '+num(r.min||0,2)+' min de etiqueta. La regla se pierde; las operaciones de la LMO no se tocan.'))return;
+  reglasEtiqueta().splice(i,1);bitacora('Quitada la regla de etiqueta de '+(r.cat||'sin categoría')+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+
+/* Operaciones que quedaron SIN centro: no se borran, se muestran para que ella decida a dónde van. */
+function opsSinCentro(){return (S.operaciones||[]).filter(o=>!o.centro||!CE(o.centro))}
+function setCentroOp(id,c){const o=(S.operaciones||[]).find(x=>x.id===id);if(!o)return;const antes=o.centro||'(sin centro)';
+  o.centro=c||'';if(c){delete o.centroPend;delete o.centroMotivo}
+  bitacora('Operación «'+(o.n||o.id)+'»'+((o.catP||o.cat)?' ['+(o.catP||o.cat)+']':'')+': centro '+antes+' → '+(c?nCen(c):'(sin centro)')+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+function opsSinCentroHTML(){const l=opsSinCentro();
+  const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  return `<div class="panel"${l.length?' style="border:2px solid var(--alerta)"':''}><h3>Operaciones sin centro <span class="note">${l.length} operaciones de la LMO que no cargan a ningún centro · decide tú a cuál pertenecen</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Estas operaciones <b>existen y no se borraron</b>: simplemente no suman minutos en ninguna parte hasta que les asignes un centro. Mientras tanto son una <b>brecha visible</b>, no un cero silencioso.</p>
+   ${l.length?`<div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th>Categoría LMO</th><th>Operación</th><th>Familia</th><th>Máquina</th><th class="num">Min</th><th>Por qué quedó sin centro</th><th>Centro</th></tr></thead><tbody>
+    ${l.slice(0,200).map(o=>`<tr><td>${esc(o.catP||o.cat||'—')}</td><td><b>${esc(o.n||'')}</b></td><td class="mut">${esc(o.famOp||'')}</td><td class="mut">${esc(o.maq||'')}</td><td class="num">${num(o.sam||0,2)}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${esc(o.centroMotivo||'no calzó con ninguna regla de la tabla familia de operación → centro')}</td>
+     <td><select onchange="setCentroOp('${o.id}',this.value)"><option value="">— sin centro —</option>${cens.map(c=>`<option value="${c.id}">${esc(c.n)}</option>`).join('')}</select></td></tr>`).join('')}
+    </tbody></table>${l.length>200?`<p class="mut">… y ${l.length-200} más</p>`:''}</div>`:'<div class="empty">Ninguna: todas las operaciones cargadas tienen centro.</div>'}
+  </div></div>`}
+
+/* La regla que mandaba «SERIGRAFIA + ETIQUETAR» a Etiquetas se retira: las dos operaciones que calzaban
+   (BVD y FITS) NO son la etiqueta de Level/Camiseta, así que no deben cargar a Estampado. */
+function sembrarEtiquetado(){if(S.params.etiquetadoSembrado)return;
+  const R=reglasFamCentro();const fuera=[];
+  for(let i=R.length-1;i>=0;i--){const r=R[i];
+    if(normTxt(r.familia)==='serigrafia'&&normTxt(r.prefijo||'').startsWith('etiquetar')){fuera.push(r);R.splice(i,1)}}
+  let n=0;(S.operaciones||[]).forEach(o=>{
+    if(o.centro!=='etiquetas')return;
+    o.centro='';o.centroPend=true;
+    o.centroMotivo='la etiqueta de serigrafía solo aplica a Level 1, Level 2, Camiseta CR y Camiseta CV (decisión 16-sep); dinos a qué centro pertenece esta';
+    n++});
+  reglasEtiqueta();                       // deja sembrada la tabla de las cuatro categorías
+  S.params.etiquetadoSembrado=new Date().toISOString();
+  if(typeof bitacora==='function')bitacora('Etiquetado (decisión 16-sep): solo Level 1, Level 2, Camiseta CR y Camiseta CV llevan etiqueta de serigrafía (0,5 min, tabla editable). '+(fuera.length?'Se retiró la regla «SERIGRAFIA + ETIQUETAR → Etiquetas». ':'')+n+' operaciones quedaron SIN centro (no se borraron) para que decidas a cuál pertenecen: Configuración → Operaciones.')}
+
+/* ---------- 2 · PLANCHA: 2 min/prenda CONFIRMADO (se quita la marca de «estimado») ---------- */
+function sembrarPlanchaConfirmada(){if(S.params.planchaConfirmada)return;
+  const p=CE('plancha');if(!p){S.params.planchaConfirmada=new Date().toISOString();return}
+  if(!(+p.minEstandar>0))p.minEstandar=2;
+  const era=p.minEstandarEstimado;delete p.minEstandarEstimado;
+  S.params.planchaConfirmada=new Date().toISOString();
+  if(era&&typeof bitacora==='function')bitacora('Plancha: 2 min/prenda CONFIRMADO (decisión 16-sep). Deja de ser un valor estimado; sigue editable en Configuración → Centros.')}
+
+/* ---------- 3 · LAVADO: modalidad por orden, a mano; nunca por regla automática ---------- */
+const LAVADO_MODOS=[['planta','Lavado en planta'],['quito','Lavado en Quito']];
+function lavadoModoTxt(m){const f=LAVADO_MODOS.find(x=>x[0]===m);return f?f[1]:''}
+function lavadoDe(o){return (o&&o.lavadoModo)||''}
+function sembrarLavado(){if(S.params.lavadoSembrado)return;
+  esperasPaso().forEach(f=>{if(f.paso!=='lavado')return;
+    if(/quito/i.test(f.nota||'')){f.dias=15;f.estimado=false;f.cap='no';f.modo='quito'}
+    else{f.dias=3;f.estimado=false;f.cap='no';f.modo='planta';
+      f.nota='Lavado en planta: 3 días (confirmado 16-sep) · ocupa capacidad propia; pendiente datos de lavadoras'}});
+  S.params.lavadoSembrado=new Date().toISOString();
+  if(typeof bitacora==='function')bitacora('Lavado (decisión 16-sep): en planta 3 días, en Quito 15 días. Por ahora los dos cuentan como SOLO tiempo de espera; el de planta ocupa capacidad propia y queda pendiente de los datos de las lavadoras. El lavado NO se asigna por regla: se agrega a mano a cada orden.')}
+/* aviso que acompaña siempre a la columna de capacidad del lavado en planta */
+function avisoLavadoPlanta(){const f=esperasPaso().find(x=>x.paso==='lavado'&&x.modo==='planta');
+  return (f&&f.cap==='no')?'ocupa capacidad propia; pendiente datos de lavadoras':''}
+/* dónde entra el lavado en la ruta: después de confección, antes de plancha/empaque */
+function posLavado(ru){const tras=['modulos','botones'];const antes=['plancha','empaque'];
+  let i=ru.findIndex(x=>antes.includes(x.centro));if(i>=0)return i;
+  for(let j=ru.length-1;j>=0;j--)if(tras.includes(ru[j].centro))return j+1;
+  return ru.length}
+function ordenesConLavado(){return S.ordenes.filter(o=>(o.ruta||[]).some(p=>p.centro==='lavado'))}
+function mLavado(ids){const L=(ids||[]).map(id=>S.ordenes.find(o=>o.id===id)).filter(Boolean);
+  if(!L.length){alert('Elige al menos una orden.');return}
+  if(!(puede('programa')||puede('ruta'))){alert('Tu perfil no cambia rutas.');return}
+  const con=L.filter(o=>(o.ruta||[]).some(p=>p.centro==='lavado'));
+  const man=L.filter(rutaEditadaAMano);
+  abrir(`<h3>Lavado <span class="note">${L.length} ${L.length===1?'orden':'órdenes'} elegidas</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">El lavado <b>no se asigna por regla automática</b>: se agrega a mano. Elige la modalidad y queda en la auditoría de ruta.</p>
+   <div class="kpis tarj-row" style="margin-bottom:10px">
+    <div class="kpi tarj"><div class="v">${L.length}</div><div class="k">Órdenes elegidas</div></div>
+    <div class="kpi tarj ${con.length?'ok':''}"><div class="v">${con.length}</div><div class="k">Ya tienen lavado</div></div>
+    <div class="kpi tarj ${man.length?'warn':''}"><div class="v">${man.length}</div><div class="k">Con ruta editada a mano</div></div>
+   </div>
+   ${man.length?`<p class="mut" style="font-size:var(--fs-s)">Las ${man.length} con ruta editada a mano <b>sí se tocan</b> si lo confirmas, pero se avisa aparte y cada cambio queda registrado.</p>`:''}
+   <label>Qué hacer</label>
+   <select id="lav-que">${LAVADO_MODOS.map(([k,n])=>`<option value="${k}">Agregar · ${esc(n)}</option>`).join('')}<option value="quitar">Quitar el lavado de la ruta</option></select>
+   <label style="margin-top:8px">Por qué (queda en la auditoría)</label>
+   <input id="lav-motivo" placeholder="p. ej.: el cliente pidió prelavado">
+   <div class="scroll" style="max-height:180px;margin-top:10px"><table style="font-size:var(--fs-xs)"><tbody>
+    ${L.slice(0,60).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="mut">${esc(nombreCat(K(o.cat))||'')}</td><td>${(o.ruta||[]).some(p=>p.centro==='lavado')?'<span class="tag t-ok">ya tiene lavado'+(lavadoDe(o)?' · '+esc(lavadoModoTxt(lavadoDe(o))):'')+'</span>':'<span class="mut">sin lavado</span>'}</td></tr>`).join('')}
+   </tbody></table>${L.length>60?`<p class="mut">… y ${L.length-60} más</p>`:''}</div>
+   </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>
+   <button class="btn" onclick="aplicarLavado(${JSON.stringify(L.map(o=>o.id)).replace(/"/g,'&quot;')},document.getElementById('lav-que').value,document.getElementById('lav-motivo').value)">Aplicar</button></div>`)}
+function aplicarLavado(ids,que,motivo){const L=(ids||[]).map(id=>S.ordenes.find(o=>o.id===id)).filter(Boolean);
+  if(!L.length)return;
+  if(!String(motivo||'').trim()){alert('Escribe por qué: queda en la auditoría de ruta.');return}
+  const quitar=que==='quitar';
+  if(!confirm((quitar?'Se quita el lavado de ':'Se agrega '+lavadoModoTxt(que)+' a ')+L.length+' '+(L.length===1?'orden':'órdenes')+'.\n\nNada se borra: cada cambio queda en la auditoría de ruta y en la bitácora.\n¿Aplicar?'))return;
+  let n=0;
+  L.forEach(o=>{const ru=(o.ruta||[]).slice();const antes=ru.map(x=>x.centro).join(' → ');
+    if(quitar){const i=ru.findIndex(x=>x.centro==='lavado');if(i<0)return;ru.splice(i,1);delete o.lavadoModo}
+    else{if(!ru.some(x=>x.centro==='lavado'))ru.splice(posLavado(ru),0,{centro:'lavado',t:+((CE('lavado')||{}).minEstandar)||0});
+      if(o.lavadoModo===que&&antes===ru.map(x=>x.centro).join(' → '))return;
+      o.lavadoModo=que}
+    o.ruta=ru;
+    o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),
+      mas:quitar?[]:['lavado'],menos:quitar?['lavado']:[],
+      motivo:(quitar?'quitar lavado':'lavado '+lavadoModoTxt(que))+' · '+motivo,etapa:'lavado a mano'}]);
+    registrarAuditoria('ruta',o,antes,ru.map(x=>x.centro).join(' → '),(quitar?'quitar lavado':'lavado '+lavadoModoTxt(que))+' · '+motivo,false);
+    bitacora('Lavado '+o.op+': '+(quitar?'quitado de la ruta':lavadoModoTxt(que))+' · '+motivo+' ('+quienFirma()+')');
+    n++});
+  PLAN=null;PLAN_ALL=null;save();cerrar();render();
+  alert(n+' '+(n===1?'orden actualizada':'órdenes actualizadas')+'. Nada se borró: todo quedó en la auditoría de ruta.')}
+
+/* ---------- 5 · RUTAS ESTIMADAS: se aprueban, pero se revisan una por una ---------- */
+/* Estampado y bordado dependen del diseño: no entran a la ruta estimada y la pantalla avisa que esa carga puede faltar. */
+const CENTROS_DISENO=['estampado','bordado','etiquetas'];
+const RUTA_ESTADOS=[['sinRevisar','estimada – sin revisar'],['revisada','estimada – revisada'],['real','real']];
+function estadoRuta(o){const r=rutaConf(o);
+  if(!r)return (o&&(o.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))?'':'';
+  if(r.estado==='confirmada')return 'real';
+  if(r.estado==='estimada')return r.revisada?'revisada':'sinRevisar';
+  return ''}
+function estadoRutaTxt(o){const e=estadoRuta(o);const f=RUTA_ESTADOS.find(x=>x[0]===e);return f?f[1]:'sin ruta definida'}
+function rutaEstimadaDe(o){const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+  const base=centrosRutaDefecto();
+  const cens=[...new Set(base.concat(Object.keys(sam).filter(c=>CE(c)&&CE(c).area==='pro'&&(+sam[c]>0))))]
+    .filter(c=>!CENTROS_DISENO.includes(c))
+    .sort((a,b)=>ordenPaso(a)-ordenPaso(b));
+  return cens.map(c=>({centro:c,t:+sam[c]||+((CE(c)||{}).minEstandar)||0}))}
+/* qué pasos se dejaron fuera por depender del diseño y aun así tienen minutos en la categoría */
+function disenoFueraDe(o){const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+  return CENTROS_DISENO.filter(c=>+sam[c]>0)}
+function ordenesSinRutaPro(){return S.ordenes.filter(o=>abierta(o)&&!pasosProDe(o).length)}
+function previaRutasEstimadas(){const l=ordenesSinRutaPro();
+  return {n:l.length,ordenes:l,conDiseno:l.filter(o=>disenoFueraDe(o).length),
+    sinCat:l.filter(o=>!K(o.cat))}}
+function generarRutasEstimadas(){if(!(puede('programa')||puede('ruta'))){alert('Tu perfil no cambia rutas.');return}
+  const p=previaRutasEstimadas();
+  if(!p.n){alert('No hay ninguna orden abierta sin ruta de producción.');return}
+  if(!confirm('Se va a poner una ruta ESTIMADA a '+p.n+' órdenes, con el estado «estimada – sin revisar».\n\n'
+    +'· Estampado y bordado NO entran (dependen del diseño): '+p.conDiseno.length+' órdenes podrían tener carga ahí que no se está contando.\n'
+    +'· Nada se borra y ninguna queda confirmada: hay que revisarlas una por una.\n¿Continuar?'))return;
+  let n=0;
+  p.ordenes.forEach(o=>{const ru=rutaEstimadaDe(o);if(!ru.length)return;
+    const antes=(o.ruta||[]).map(x=>x.centro).join(' → ')||'(sin ruta)';
+    o.ruta=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro')).concat(ru);
+    o.rutaConf={estado:'estimada',origen:'sistema',revisada:false,u:quienFirma(),ts:new Date().toISOString(),
+      nota:'ruta estimada por el sistema'+(disenoFueraDe(o).length?' · sin '+disenoFueraDe(o).map(nCen).join(' ni ')+' (depende del diseño)':'')};
+    registrarAuditoria('ruta',o,antes,o.ruta.map(x=>x.centro).join(' → '),'ruta estimada por el sistema (aprobado 16-sep)',false);
+    n++});
+  PLAN=null;PLAN_ALL=null;save();render();
+  alert(n+' rutas estimadas. Quedan como «estimada – sin revisar» en Órdenes → Rutas: revísalas una por una y márcalas como revisadas.')}
+function marcarRutaRevisada(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const r=rutaConf(o);
+  if(!r||r.estado!=='estimada'){alert('Esa orden no tiene una ruta estimada.');return}
+  r.revisada=true;r.revisadaPor=quienFirma();r.revisadaTs=new Date().toISOString();
+  registrarAuditoria('ruta',o,'estimada – sin revisar','estimada – revisada','revisión de ruta estimada',false);
+  bitacora('Ruta estimada revisada · '+o.op+' ('+quienFirma()+')');save();render()}
+function rutasEstimadas(){const l=S.ordenes.filter(o=>abierta(o)&&(rutaConf(o)||{}).estado==='estimada');
+  return {todas:l,sinRevisar:l.filter(o=>!rutaConf(o).revisada),revisadas:l.filter(o=>rutaConf(o).revisada),
+    conDiseno:l.filter(o=>disenoFueraDe(o).length)}}
+/* resumen compacto para Reportería: cuántas rutas estimadas quedan sin revisar */
+function rutasEstimadasResumenHTML(){const r=rutasEstimadas();const p=previaRutasEstimadas();
+  if(!r.todas.length&&!p.n)return '';
+  return `<div class="panel"${r.sinRevisar.length?' style="border:2px solid var(--aviso)"':''}><h3>Rutas estimadas <span class="note">${r.sinRevisar.length} sin revisar · la ruta la puso el sistema, no una persona</span></h3><div class="body">
+   <div class="kpis tarj-row">
+    <div class="kpi tarj ${r.sinRevisar.length?'warn':''}"><div class="v">${r.sinRevisar.length}</div><div class="k">Estimadas sin revisar</div></div>
+    <div class="kpi tarj ok"><div class="v">${r.revisadas.length}</div><div class="k">Estimadas revisadas</div></div>
+    <div class="kpi tarj ${p.n?'warn':''}"><div class="v">${p.n}</div><div class="k">Todavía sin ninguna ruta</div></div>
+    <div class="kpi tarj ${r.conDiseno.length?'warn':''}"><div class="v">${r.conDiseno.length}</div><div class="k">Podrían llevar estampado o bordado</div></div>
+   </div>
+   <p class="mut" style="font-size:var(--fs-s);margin:8px 0 0">${r.conDiseno.length?'<span class="tag t-alerta">ojo</span> estampado y bordado dependen del diseño y no entran en la ruta estimada: esa carga puede estar faltando en el plan. ':''}Se revisan una por una en <a href="#" onclick="ORDF.tab='rutas';ir('ordenes');return false">Órdenes → Rutas</a>.</p>
+  </div></div>`}
+function rutasEstimadasHTML(){const r=rutasEstimadas();const p=previaRutasEstimadas();
+  const L=RUT&&RUT.verRev?r.revisadas:r.sinRevisar;
+  return `<div class="panel"${r.sinRevisar.length?' style="border:2px solid var(--aviso)"':''}><h3>Rutas estimadas <span class="note">${r.sinRevisar.length} sin revisar · ${r.revisadas.length} revisadas</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Una ruta <b>estimada</b> la armó el sistema con la ruta por defecto y los minutos de la categoría. Sirve para planificar, pero <b>no está confirmada</b>: hay que mirarla orden por orden, corregirla si hace falta y marcarla como revisada.</p>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj ${p.n?'warn':''}"><div class="v">${p.n}</div><div class="k">Abiertas sin ruta de producción</div></div>
+    <div class="kpi tarj ${r.sinRevisar.length?'warn':''}"><div class="v">${r.sinRevisar.length}</div><div class="k">Estimadas sin revisar</div></div>
+    <div class="kpi tarj ok"><div class="v">${r.revisadas.length}</div><div class="k">Estimadas revisadas</div></div>
+    <div class="kpi tarj ${r.conDiseno.length?'warn':''}"><div class="v">${r.conDiseno.length}</div><div class="k">Podrían llevar estampado o bordado</div></div>
+   </div>
+   ${r.conDiseno.length?`<p class="mut" style="font-size:var(--fs-s);margin-top:8px"><span class="tag t-alerta">ojo</span> <b>Estampado y bordado dependen del diseño</b>, así que no entran en la ruta estimada. En ${r.conDiseno.length} de estas órdenes la categoría sí tiene minutos ahí: <b>esa carga puede estar faltando</b> en el plan hasta que revises la ruta.</p>`:''}
+   ${p.n&&(puede('programa')||puede('ruta'))?`<div class="row" style="margin-top:10px"><button class="btn" onclick="generarRutasEstimadas()">Poner ruta estimada a las ${p.n} sin ruta</button></div>`:''}
+   <div class="chips" style="margin-top:10px"><span class="chip ${RUT.verRev?'':'on'}" onclick="RUT.verRev=false;render()">Sin revisar (${r.sinRevisar.length})</span><span class="chip ${RUT.verRev?'on':''}" onclick="RUT.verRev=true;render()">Revisadas (${r.revisadas.length})</span></div>
+   ${L.length?`<div class="scroll" style="max-height:420px;margin-top:8px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Ruta estimada</th><th>Ojo</th><th></th></tr></thead><tbody>
+    ${L.slice(0,300).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td class="mut">${esc(nombreCat(K(o.cat))||'sin categoría')}</td>
+     <td style="font-size:var(--fs-xs)">${pasosProDe(o).map(c=>esc(nCen(c))).join(' → ')||'—'}</td>
+     <td>${disenoFueraDe(o).length?`<span class="tag t-alerta" title="La categoría tiene minutos en ${esc(disenoFueraDe(o).map(nCen).join(' y '))}, pero depende del diseño: no entró en la estimada">falta ${esc(disenoFueraDe(o).map(nCen).join(' / '))}</span>`:''}${K(o.cat)?'':'<span class="tag t-alerta">sin categoría</span>'}</td>
+     <td style="white-space:nowrap"><button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">ver / editar</button>${rutaConf(o).revisada?'':`<button class="btn sm" onclick="marcarRutaRevisada('${o.id}')">revisada</button>`}</td></tr>`).join('')}
+    </tbody></table>${L.length>300?`<p class="mut">Se muestran 300 de ${L.length}.</p>`:''}</div>`:`<div class="empty">${RUT.verRev?'Todavía no hay rutas estimadas revisadas.':'Ninguna ruta estimada pendiente de revisar.'}</div>`}
+  </div></div>`}
+
+/* ---------- 6 · CATÁLOGO: DENIM y JEANS son la misma familia ---------- */
+/* Primero se reporta qué apunta a JEANS / Jeans; mover NO borra nada. */
+const JEANS_ALIAS=['jeans','jean'];
+function esJeans(t){return JEANS_ALIAS.includes(normFase(String(t||'')))}
+function diagJeans(){const out={cats:[],ordenes:[],ops:[],tablas:[],destino:null};
+  out.destino=(S.categorias||[]).find(k=>!k.padre&&normFase(k.n||'')==='denim')||null;
+  (S.categorias||[]).forEach(k=>{if(esJeans(k.n))out.cats.push({k,padre:!k.padre,hijas:(S.categorias||[]).filter(x=>x.padre===k.id).length});
+    if(esJeans(k.familiaLMO))out.cats.push({k,fam:true,hijas:0})});
+  S.ordenes.forEach(o=>{const k=K(o.cat);if(!k)return;const pad=K(k.padre);
+    if(esJeans(k.n)||(pad&&esJeans(pad.n)))out.ordenes.push(o)});
+  (S.operaciones||[]).forEach(o=>{if(esJeans(o.catP||o.cat))out.ops.push(o)});
+  const m=mapaCatLMO();
+  Object.entries(m.porPadre||{}).forEach(([k,v])=>{if(esJeans(k)||esJeans(v))out.tablas.push({t:'Mapeo categoría → LMO',fila:k+' → '+v})});
+  tiemposOjalBoton().forEach((r,i)=>{if(esJeans(r.match))out.tablas.push({t:'Tiempos de ojales y botones',fila:'fila «'+r.match+'» ('+num(r.ojales||0,2)+' + '+num(r.botones||0,2)+')',i})});
+  esperasPaso().forEach(r=>{if(String(r.match||'').split(',').some(x=>esJeans(x.trim())))out.tablas.push({t:'Esperas por paso',fila:r.paso+' ['+r.match+'] '+r.dias+' días'})});
+  reglasEtiqueta().forEach(r=>{if(esJeans(r.cat))out.tablas.push({t:'Reglas de etiqueta',fila:r.cat})});
+  out.total=out.cats.length+out.ordenes.length+out.ops.length+out.tablas.length;
+  return out}
+function unificarJeansEnDenim(){if(!puede('categorias')&&!puede('config')){alert('Tu perfil no edita el catálogo.');return}
+  const d=diagJeans();
+  if(!d.total){alert('No queda nada apuntando a JEANS: el catálogo ya está unificado en DENIM.');return}
+  if(!confirm('Se unifica JEANS dentro de DENIM.\n\n'
+    +'· '+d.cats.length+' categorías del catálogo\n· '+d.ordenes.length+' órdenes\n· '+d.ops.length+' operaciones de la LMO\n· '+d.tablas.length+' filas de tablas de configuración\n\n'
+    +'NADA se borra: las categorías se renombran o se cuelgan de DENIM y todo queda en la auditoría.\n¿Continuar?'))return;
+  let destino=d.destino;
+  if(!destino){const pj=(S.categorias||[]).find(k=>!k.padre&&esJeans(k.n));
+    if(pj){const antes=pj.n;pj.n='DENIM';destino=pj;
+      registrarAuditoria('categoria',{id:pj.id,op:antes},antes,'DENIM','unificar JEANS en DENIM (decisión 16-sep)',false);
+      bitacora('Catálogo: la familia «'+antes+'» pasa a llamarse DENIM (decisión 16-sep). No se borró nada: es la misma fila.')}
+    else{destino={id:uid(),n:'DENIM'};S.categorias.push(destino);
+      bitacora('Catálogo: se creó la familia DENIM para unificar JEANS (decisión 16-sep)')}}
+  let movidas=0;
+  (S.categorias||[]).forEach(k=>{if(k===destino)return;
+    if(!k.padre&&esJeans(k.n)){                       // otra familia JEANS: sus hijas se cuelgan de DENIM
+      (S.categorias||[]).filter(x=>x.padre===k.id).forEach(x=>{x.padre=destino.id;movidas++});
+      k.unificadaEn=destino.id;k.n=k.n+' (unificada en DENIM)';k.inactiva=true;
+      bitacora('Catálogo: la familia «'+k.n+'» quedó unificada en DENIM; sus hijas se movieron. La fila NO se borró.')}
+    if(esJeans(k.familiaLMO)){k.familiaLMO='JEANS'}});  // la hoja LMO sigue llamándose JEANS: es su nombre de origen
+  const m=mapaCatLMO();m.porPadre=m.porPadre||{};m.porPadre.DENIM='JEANS';m.porPadre.JEANS='JEANS';
+  const ob=tiemposOjalBoton();const iJ=ob.findIndex(r=>normFase(r.match)==='jean'),iD=ob.findIndex(r=>normFase(r.match)==='denim');
+  if(iJ>=0&&iD>=0){const j=ob[iJ],dd=ob[iD];
+    if((+j.ojales||0)+(+j.botones||0)>0&&(+dd.ojales||0)+(+dd.botones||0)===0){dd.ojales=j.ojales;dd.botones=j.botones}
+    j.unificadaEn='denim';j.match='jean (unificado en denim)';
+    bitacora('Tiempos de ojales y botones: la fila «jean» quedó unificada en «denim». La fila NO se borró.')}
+  S.params.jeansUnificado=new Date().toISOString();
+  bitacora('Catálogo unificado (decisión 16-sep): JEANS → DENIM · '+d.ordenes.length+' órdenes, '+d.ops.length+' operaciones y '+d.tablas.length+' filas de configuración apuntaban a JEANS. '+movidas+' hijas movidas. Nada se borró.');
+  PLAN=null;PLAN_ALL=null;save();render();
+  alert('Unificado en DENIM. '+movidas+' categorías hijas movidas. Nada se borró: revisa la bitácora y la auditoría.')}
+function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
+  return `<div class="panel"${d.total&&!ya?' style="border:2px solid var(--aviso)"':''}><h3>DENIM y JEANS <span class="note">${ya?'unificado':'la misma familia con dos nombres'}</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">DENIM y JEANS son la <b>misma familia</b> (decisión 16-sep). Antes de mover nada, esto es todo lo que hoy apunta a JEANS. <b>Unificar no borra</b>: las categorías se renombran o se cuelgan de DENIM y todo queda en la auditoría.</p>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj"><div class="v">${d.cats.length}</div><div class="k">Categorías del catálogo</div></div>
+    <div class="kpi tarj"><div class="v">${d.ordenes.length}</div><div class="k">Órdenes</div></div>
+    <div class="kpi tarj"><div class="v">${d.ops.length}</div><div class="k">Operaciones de la LMO</div></div>
+    <div class="kpi tarj"><div class="v">${d.tablas.length}</div><div class="k">Filas de configuración</div></div>
+   </div>
+   ${d.tablas.length?`<table style="font-size:var(--fs-s);margin-top:10px"><thead><tr><th>Tabla</th><th>Fila que apunta a JEANS</th></tr></thead><tbody>${d.tablas.map(x=>`<tr><td>${esc(x.t)}</td><td class="mut">${esc(x.fila)}</td></tr>`).join('')}</tbody></table>`:''}
+   ${d.ordenes.length?`<div class="scroll" style="max-height:220px;margin-top:10px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th></tr></thead><tbody>${d.ordenes.slice(0,80).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td class="mut">${esc(nombreCat(K(o.cat))||'')}</td></tr>`).join('')}</tbody></table>${d.ordenes.length>80?`<p class="mut">… y ${d.ordenes.length-80} más</p>`:''}</div>`:''}
+   ${ya?`<p class="mut" style="margin-top:10px"><span class="tag t-ok">unificado</span> el ${fmtDia(String(S.params.jeansUnificado).slice(0,10))}. ${d.total?'Lo que sigue en la lista son nombres de origen de la hoja LMO, que no se cambian.':''}</p>`
+       :`<div class="row" style="margin-top:10px"><button class="btn" onclick="unificarJeansEnDenim()">Unificar en DENIM (sin borrar nada)</button></div>`}
+  </div></div>`}
+
+/* una sola siembra que corre con las demás */
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados()}
+/* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
+function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
+  const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
+  S.params.ojalBotonConfirmado=new Date().toISOString();
+  if(l.length&&typeof bitacora==='function')bitacora('Ojales y botones (decisión 16-sep): los tiempos de la tabla son DEFINITIVOS. Se confirmaron '+l.length+' filas que estaban sin confirmar ('+l.map(r=>r.match).join(', ')+'); un 0 confirmado aplica 0. Editable en Configuración.')}
+/* ---------- 1 · tabla editable de reglas de etiqueta (Configuración → Operaciones) ---------- */
+function reglasEtiquetaHTML(){const rs=reglasEtiqueta();
+  const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  const cats=[...new Set(S.categorias.map(k=>k.n).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const sinCat=rs.filter(r=>r.cat&&!cats.some(c=>normFase(c)===normFase(r.cat)));
+  return `<div class="panel"><h3>Etiqueta de serigrafía <span class="note">qué categorías llevan etiqueta y cuántos minutos · decisión del 16-sep</span><span class="spacer"></span><button class="btn ghost sm" onclick="addReglaEtiqueta()">+ categoría</button></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Solo estas categorías llevan etiqueta.</b> Ninguna de ellas tiene una operación de etiqueta en la hoja LMO, así que el minutaje sale de aquí: es la única fuente. Una regla sin confirmar no aplica y sale como brecha.</p>
+   <table><thead><tr><th>Categoría (padre o hija)</th><th class="num">Min/prenda</th><th>Centro</th><th>Confirmada</th><th></th></tr></thead><tbody>
+   ${rs.map((r,i)=>`<tr><td><input list="dl-cats-etiq" value="${esc(r.cat||'')}" onchange="setReglaEtiqueta(${i},'cat',this.value)" style="width:200px"></td>
+     <td class="num"><input type="number" step="0.01" style="width:90px" value="${r.min}" onchange="setReglaEtiqueta(${i},'min',this.value)"></td>
+     <td><select onchange="setReglaEtiqueta(${i},'centro',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
+     <td><input type="checkbox" ${r.confirmada!==false?'checked':''} onchange="setReglaEtiqueta(${i},'confirmada',this.checked)">${r.confirmada===false?' <span class="tag t-alerta" style="font-size:var(--fs-xs)">no aplica</span>':''}</td>
+     <td><button class="btn ghost sm" onclick="delReglaEtiqueta(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Sin reglas: ninguna categoría lleva etiqueta.</td></tr>'}
+   </tbody></table>
+   <datalist id="dl-cats-etiq">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+   ${sinCat.length?`<p class="mut" style="margin-top:8px"><span class="tag t-alerta">brecha</span> ${sinCat.length} ${sinCat.length===1?'regla apunta':'reglas apuntan'} a una categoría que no está en el catálogo: <b>${sinCat.map(r=>esc(r.cat)).join(', ')}</b>. Mientras no exista, esa etiqueta no carga en ninguna orden.</p>`:''}
+  </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -3910,8 +4204,8 @@ function rutasSinSecuenciaHTML(){const r=rutasSinSecuencia();
     ${filas.slice(0,300).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td>${esc(x.o.cliente||'')}</td><td><span class="tag t-alerta">${esc(x.m)}</span></td><td>${esc(x.det)}</td><td style="font-size:var(--fs-xs)">${pasosProDe(x.o).map(c=>esc(nCen(c))).join(' → ')||'—'}</td><td>${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${x.o.id}')">editar ruta</button>`:''}</td></tr>`).join('')}
     </tbody></table>${filas.length>300?`<p class="mut">… y ${filas.length-300} más</p>`:''}</div>`:'<div class="empty">Ninguna: todas las órdenes abiertas tienen una secuencia clara.</div>'}
   </div></div>`}
-function celdaCapPasoHTML(i,r){const v=r.cap||'pend';
-  return `<td><select onchange="setCapPaso(${i},this.value)">${CAP_PASO.map(([k,n])=>`<option value="${k}" ${v===k?'selected':''}>${esc(n)}</option>`).join('')}</select>${v==='pend'?'<br><span class="tag t-alerta" style="font-size:var(--fs-xs)">sin confirmar</span>':''}</td>`}
+function celdaCapPasoHTML(i,r){const v=r.cap||'pend';const av=(r.paso==='lavado'&&r.modo==='planta'&&v==='no')?(typeof avisoLavadoPlanta==='function'?avisoLavadoPlanta():''):'';
+  return `<td><select onchange="setCapPaso(${i},this.value)">${CAP_PASO.map(([k,n])=>`<option value="${k}" ${v===k?'selected':''}>${esc(n)}</option>`).join('')}</select>${v==='pend'?'<br><span class="tag t-alerta" style="font-size:var(--fs-xs)">sin confirmar</span>':''}${av?`<br><span class="tag t-aviso" style="font-size:var(--fs-xs)" title="No es definitivo">${esc(av)}</span>`:''}</td>`}
 function origenTiempoCentro(c){const ce=CE(c)||{};
   if(centroPorDias(c))return{txt:'días de proceso (tabla de esperas por paso)',det:'no consume capacidad de planta'};
   if(capacidadPendiente(c))return{txt:'días de proceso · falta decidir si ocupa planta',det:diasEsperaCentro(c)?num(diasEsperaCentro(c))+' días de espera cargados':'sin días cargados',brecha:'pendiente: dinos en la tabla de esperas por paso si esta modalidad ocupa capacidad de planta o es solo tiempo de espera. Mientras tanto no se asume ninguna de las dos.'};
@@ -4372,6 +4666,7 @@ function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;con
    <table><thead><tr><th>Paso</th><th>En la ruta</th><th class="num">Min/prenda</th><th>Estado</th></tr></thead><tbody>
    ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id);const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);const porDefecto=!p&&!o.rutaEditada&&centrosRutaDefecto().includes(c.id)&&!hecho;
      return `<tr><td>${esc(c.n)}${porDefecto?' <span class="tag t-ok" title="marcado en Configuración → Centros: va por defecto en toda ruta">por defecto</span>':''}</td><td><input type="checkbox" id="rc-${c.id}" ${(p||porDefecto)?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-s);margin:10px 0 0">Lavado: ${lavadoDe(o)?'esta orden va a <b>'+esc(lavadoModoTxt(lavadoDe(o)))+'</b>':'sin modalidad asignada'} · no se pone por regla automática. <button class="btn ghost sm" onclick="cerrar();mLavado(['${o.id}'])">agregar o quitar lavado</button></p>
    <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rc-motivo" placeholder="faltaba la operación, cambio de bordado a estampado, el cliente pidió lavado…"></div></div></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarRutaCentro('${o.id}')">Guardar ruta</button></div>`)}
 /* ================== RUTAS CONFIRMADAS ==================
@@ -4439,7 +4734,7 @@ function precargarRutasNuevas(){let n=0;S.ordenes.filter(abierta).forEach(o=>{if
 function faltaRutaConfirmada(o){return !rutaConfirmada(o)}
 function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'tela')||liberada(o,'corte'))&&!rutaConfirmada(o))}
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
-let RUT={q:'',ref:null,ver:'pend'};
+let RUT={q:'',ref:null,ver:'pend',verRev:false};
 function rutasTarjetaHTML(){const pd=rutasPorDefinir();const refs=Object.keys(refsPorDefinir()).length;
   const pz=pd.reduce((a,o)=>a+ +o.cant,0);
   return tarjetasResumenHTML([{id:'rut-pend',v:pd.length,k:'Faltan rutas por confirmar · '+refs+' referencias · '+num(pz)+' unidades',items:pd,porFam:true,cls:pd.length?'warn':''}])}
@@ -4532,6 +4827,7 @@ function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
   const conf=S.ordenes.filter(o=>abierta(o)&&rutaConfirmada(o)&&matchBusq(o,q,'RUT.q'));
   const an=analizarRutasOdoo();
   return `${rutasTarjetaHTML()}
+  ${rutasEstimadasHTML()}
   ${reglasRutaHTML()}
   <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
    <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
@@ -5394,7 +5690,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}${rutasSinSecuenciaHTML()}`;
+   ${resumen()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -5829,6 +6125,7 @@ function vCategorias(el){
   el.innerHTML=`<div class="pagehead"><h2>Categorías</h2></div>
   <p class="lede">La categoría dice qué es la prenda, cuánta tela consume por prenda y qué módulos pueden hacerla. Las carry over no cambian de consumo. Por dónde pasa cada orden se marca al crearla.</p>
 
+  ${jeansHTML()}
   <div class="panel"><h3>Categorías <span class="note">padre, hija, consumos y quién puede hacerla</span><span class="spacer"></span><button class="btn ghost sm" onclick="mPegarConsumos()">Pegar consumos</button> <button class="btn ghost sm" onclick="mPegarCats()">Pegar categorías</button> <button class="btn ghost sm" onclick="addCat(null)">Nuevo padre</button></h3>
    <div class="body"><table><thead><tr><th>Categoría</th><th>Consumo por prenda (kg)</th><th>Quién puede hacerla</th><th></th></tr></thead><tbody>
    ${padres.map(p=>filaCat(p,false)+S.categorias.filter(k=>k.padre===p.id).map(k=>filaCat(k,true)).join('')).join('')}
@@ -5927,6 +6224,8 @@ function vOperaciones(el){
   <div class="panel"><h3>Catálogo <span class="note">${S.operaciones.length} operaciones</span></h3>
    ${S.operaciones.length?`<div class="scroll" style="max-height:640px"><table><thead><tr><th>Familia de operación</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num">Sec.</th><th class="num">Tiempo (min)</th><th class="num">Usada en</th><th></th></tr></thead><tbody>${bloques}</tbody></table></div>`
    :'<div class="empty"><p>El catálogo está vacío.</p><button class="btn" onclick="mPegarOps()">Pegar catálogo desde Excel</button></div>'}</div>
+  ${reglasEtiquetaHTML()}
+  ${opsSinCentroHTML()}
   <div class="panel"><h3>Hoja de operaciones por familia</h3><div class="body"><table><thead><tr><th>Familia</th><th class="num">Operaciones</th><th>Min/prenda por centro</th><th class="num">Total</th><th></th></tr></thead><tbody>
    ${S.categorias.filter(k=>!k.padre).map(p=>[p,...S.categorias.filter(k=>k.padre===p.id)]).flat().map(k=>{const ops=opsDe(k),spc=samPorCentro(k),propias=!!(k.ops&&k.ops.length);
      return `<tr><td style="${k.padre?'padding-left:28px':'font-weight:600'}">${esc(k.n)}${k.padre&&!propias&&ops.length?' <span class="mut" style="font-size:var(--fs-xs)">hereda</span>':''}</td>

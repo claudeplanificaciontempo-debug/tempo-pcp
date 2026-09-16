@@ -931,7 +931,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const a=feas.find(o=>String(o.odc||'').trim());const b=a&&feas.find(o=>o!==a&&String(o.odc||'').trim()===String(a.odc).trim());
      if(a&&b){const fc=a.fechaCompromiso;a.fechaCompromiso=dsum(hoy(),-1);PLAN=null;const P3=programar();__check("motor: colección sintética: la hermana a fecha se marca tarde 'por su colección'",P3.ordenes[b.id].atraso===true&&P3.ordenes[b.id].atrasoPorColeccion===true&&P3.ordenes[b.id].coleccion.causantes.includes(a.op));a.fechaCompromiso=fc;PLAN=null;}}
    // esperas: sembradas de la usuaria; denim 15, general 3, sin regla no aplica
-   {const e=esperasPaso();__check("motor: esperas sembradas (lavado planta 3 est., Quito denim 15, prenda tinturada sin regla)",e.some(r=>r.paso==='lavado'&&!r.match&&r.dias===3&&r.estimado)&&e.some(r=>/denim/.test(r.match)&&r.dias===15)&&e.some(r=>r.sinRegla));
+   {const e=esperasPaso();__check("motor: esperas sembradas (lavado planta 3 CONFIRMADOS, Quito 15, prenda tinturada sin regla)",(sembrarLavado(),e.some(r=>r.paso==='lavado'&&r.modo==='planta'&&r.dias===3&&!r.estimado)&&e.some(r=>r.modo==='quito'&&r.dias===15)&&e.some(r=>r.sinRegla)));
      const kD=S.categorias.find(k=>/denim|jean/i.test(k.n)||/denim|jean/i.test((K(k.padre)||{}).n||''));const kO=S.categorias.find(k=>!/denim|jean/i.test(k.n)&&!/denim|jean/i.test((K(k.padre)||{}).n||''));
      __check("motor: esperaDeCentro lavado → 15 para denim, 3 general, 0 para un paso sin fila",(!kD||esperaDeCentro('lavado',{cat:kD.id})===15)&&(!kO||esperaDeCentro('lavado',{cat:kO.id})===3)&&esperaDeCentro('corte',{cat:(kO||kD||{}).id})===0);}
    // el otro motor sigue intacto y se puede comparar sin tocar la caché
@@ -1139,7 +1139,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -2746,11 +2746,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* TERMINADOS · de dónde sale el tiempo de cada sub-área */
   {const antes=__R.errors.length;
    __check("OT1: plancha viene con 2 min/prenda sembrados en la columna editable",(sembrarTerminados(),+((CE('plancha')||{}).minEstandar)===2));
-   __check("OT1: lavado NO se asume: queda pendiente de confirmar si ocupa planta, con sus días cargados",(sembrarCapPasos(),capacidadPaso('lavado')==='pend'&&centroPorDias('lavado')===false&&diasEsperaCentro('lavado')>=3));
+   __check("OT1: lavado queda como SOLO tiempo de espera (decisión 16-sep), con sus días cargados",(sembrarCapPasos(),sembrarLavado(),capacidadPaso('lavado')==='no'&&centroPorDias('lavado')===true&&diasEsperaCentro('lavado')>=3));
+   __check("OT1: y el aviso de que no es definitivo va pegado a la fila del lavado en planta",/pendiente datos de lavadoras/.test(avisoLavadoPlanta())&&/pendiente datos de lavadoras/.test(celdaCapPasoHTML(esperasPaso().findIndex(x=>x.modo==='planta'),esperasPaso().find(x=>x.modo==='planta'))));
    {const or=origenTiempoCentro('botones');
     __check("OT2: ojales y botones dice de dónde sale su tiempo (LMO y, si hay, la tabla de ojal/botón que la reemplaza)",/operaciones de la LMO/.test(or.txt)&&/operaciones mapeadas/.test(or.det));}
    __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('Min/prenda'));
-   __check("OT2: y el consolidado lo dice como brecha, no como 0 mudo",/falta decidir si ocupa planta/.test(origenTiempoCentro('lavado').txt)&&/pendiente/.test(origenTiempoCentro('lavado').brecha||''));
+   __check("OT2: y el consolidado del lavado dice que se mide en días y no consume capacidad",/días de proceso/.test(origenTiempoCentro('lavado').txt)&&/no consume capacidad/.test(origenTiempoCentro('lavado').det||''));
    __check("OT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* PISO · la secuencia de la ruta manda sobre el número de fase */
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
@@ -2836,9 +2837,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     delete S.params.capPasoSembrado;S.params.esperasPaso=JSON.parse(JSON.stringify(defEsperasPaso()));
     sembrarCapPasos();
     const f=esperasPaso().filter(x=>x.paso==='lavado'&&!x.sinRegla);
-    __check("LV1: la fila de Quito queda como lead time y la de planta, PENDIENTE de confirmar",f.some(x=>/quito/i.test(x.nota||'')&&x.cap==='no')&&f.some(x=>!/quito/i.test(x.nota||'')&&x.cap==='pend'));
-    __check("LV1: mientras haya una pendiente no se asume nada: ni ocupa ni deja de ocupar",capacidadPaso('lavado')==='pend'&&capacidadPendiente('lavado')===true&&centroPorDias('lavado')===false);
+    __check("LV1: sin la decisión del 16-sep, Quito queda como lead time y planta PENDIENTE (no se asume)",f.some(x=>/quito/i.test(x.nota||'')&&x.cap==='no')&&f.some(x=>!/quito/i.test(x.nota||'')&&x.cap==='pend'));
+    __check("LV1: y mientras haya una pendiente no se asume nada: ni ocupa ni deja de ocupar",capacidadPaso('lavado')==='pend'&&capacidadPendiente('lavado')===true&&centroPorDias('lavado')===false);
     __check("LV1: y la suposición anterior del centro quedó retirada",(CE('lavado')||{}).sinCapacidad===undefined);
+    {delete S.params.lavadoSembrado;sembrarLavado();
+     __check("LV1: la decisión del 16-sep la resuelve: planta 3 días y Quito 15, los dos como SOLO tiempo de espera",capacidadPaso('lavado')==='no'&&esperasPaso().some(x=>x.modo==='planta'&&x.dias===3&&x.cap==='no')&&esperasPaso().some(x=>x.modo==='quito'&&x.dias===15&&x.cap==='no'));
+     __check("LV1: pero deja dicho que NO es definitivo",/ocupa capacidad propia; pendiente datos de lavadoras/.test(avisoLavadoPlanta()));}
     esperasPaso().filter(x=>x.paso==='lavado'&&!/quito/i.test(x.nota||'')).forEach(x=>{x.cap='no'});
     __check("LV2: si confirmas que NO ocupa planta, pasa a medirse solo en días",capacidadPaso('lavado')==='no'&&centroPorDias('lavado')===true&&!capacidadPendiente('lavado'));
     esperasPaso().filter(x=>x.paso==='lavado'&&!/quito/i.test(x.nota||'')).forEach(x=>{x.cap='si'});
@@ -2904,6 +2908,84 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("MN4: Mi centro arma la cola de la sub-área, no la del grupo",Array.isArray(tabletFilas('plancha',rec,P))&&Array.isArray(tabletFilas('empaque',null,P)));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("MN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* DECISIONES DE PRODUCCIÓN 16-sep · etiquetado, plancha, lavado, ojales, rutas estimadas y DENIM */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   sembrarRutaDefecto();
+   /* 1 · ETIQUETADO */
+   {__check("D1: la etiqueta de serigrafía sale de una tabla editable con las CUATRO categorías dictadas",
+     ['Level 1','Level 2','Camiseta CR','Camiseta CV'].every(c=>reglasEtiqueta().some(r=>normFase(r.cat)===normFase(c)&&+r.min===0.5&&r.centro==='etiquetas'&&r.confirmada!==false)));
+    __check("D1: la regla «SERIGRAFIA + ETIQUETAR → Etiquetas» quedó retirada del mapeo",!reglasFamCentro().some(r=>normTxt(r.familia)==='serigrafia'&&normTxt(r.prefijo||'').startsWith('etiquetar')));
+    __check("D1: las operaciones de la LMO que iban a Etiquetas NO se borraron: quedaron SIN centro y con el motivo",
+     (S.operaciones||[]).every(o=>o.centro!=='etiquetas')&&(S.operaciones||[]).filter(o=>o.centroPend).every(o=>/Level 1/.test(o.centroMotivo||'')));
+    // calce EXACTO: Camiseta CR no debe arrastrar a Camiseta CV ni al revés
+    const cr=S.categorias.find(k=>k.n==='Camiseta CR'),cv=S.categorias.find(k=>k.n==='Camiseta CV');
+    __check("D1: Camiseta CR y Camiseta CV cargan cada una sus 0,50 min de etiqueta",!!etiquetaDe(cr)&&!!etiquetaDe(cv)&&+samPorCentro(cr).etiquetas===0.5);
+    const pol=S.categorias.find(k=>k.n==='Polo Basica');
+    __check("D1: y una categoría que NO está en la tabla no lleva etiqueta (ni 0 mudo: simplemente no aparece)",!etiquetaDe(pol)&&samPorCentro(pol).etiquetas===undefined);
+    // una regla sin confirmar no aplica
+    const rr=reglasEtiqueta().find(r=>normFase(r.cat)===normFase('Camiseta CR'));rr.confirmada=false;
+    __check("D1: una regla SIN CONFIRMAR no aplica",!etiquetaDe(cr)&&samPorCentro(cr).etiquetas===undefined);rr.confirmada=true;
+    const h=opsSinCentroHTML();
+    __check("D1: las operaciones sin centro se ven, con su motivo y un selector para asignarlas",/Operaciones sin centro/.test(h)&&(!opsSinCentro().length||/setCentroOp\(/.test(h)));
+    __check("D1: la tabla de etiqueta es editable desde Configuración → Operaciones",/Etiqueta de serigrafía/.test(reglasEtiquetaHTML())&&/setReglaEtiqueta\(/.test(reglasEtiquetaHTML()));}
+   /* 2 · PLANCHA CONFIRMADA */
+   {__check("D2: plancha queda en 2 min/prenda y ya NO dice «estimado»",+((CE('plancha')||{}).minEstandar)===2&&(CE('plancha')||{}).minEstandarEstimado===undefined);
+    __check("D2: y el consolidado deja de pedir que la confirmes",!/confírmalo/.test(origenTiempoCentro('plancha').det||''));}
+   /* 3 · LAVADO A MANO, POR ORDEN */
+   {const o=S.ordenes.find(x=>!(x.ruta||[]).some(p=>p.centro==='lavado'))||S.ordenes[0];
+    const nAud=(S.params.auditoriaCambios||[]).length;
+    aplicarLavado([o.id],'quito','prueba: el cliente lo pidió');
+    __check("D3: agregar lavado mete el paso en la ruta y guarda la modalidad en la orden",(o.ruta||[]).some(p=>p.centro==='lavado')&&o.lavadoModo==='quito');
+    __check("D3: el lavado entra antes de plancha y empaque, no al final de cualquier manera",(()=>{const r=(o.ruta||[]).map(x=>x.centro);const i=r.indexOf('lavado'),e=r.indexOf('empaque');return i>=0&&(e<0||i<e)})());
+    __check("D3: y queda en la auditoría de ruta con el motivo",(S.params.auditoriaCambios||[]).length>nAud&&(o.rutaEditada||[]).some(e=>/el cliente lo pidió/.test(e.motivo||'')));
+    __check("D3: la modalidad de la ORDEN manda sobre el calce por categoría (Quito = 15 días)",esperaDeCentro('lavado',o)===15);
+    aplicarLavado([o.id],'planta','prueba: se lava en casa');
+    __check("D3: cambiar de modalidad no duplica el paso y pasa a 3 días",(o.ruta||[]).filter(p=>p.centro==='lavado').length===1&&o.lavadoModo==='planta'&&esperaDeCentro('lavado',o)===3);
+    aplicarLavado([o.id],'quitar','prueba: al final no lleva');
+    __check("D3: quitar el lavado lo saca de la ruta y de la orden",!(o.ruta||[]).some(p=>p.centro==='lavado')&&!o.lavadoModo);
+    const nA2=(S.params.auditoriaCambios||[]).length;aplicarLavado([o.id],'quito','');
+    __check("D3: sin motivo no se aplica nada",(S.params.auditoriaCambios||[]).length===nA2&&!(o.ruta||[]).some(p=>p.centro==='lavado'));
+    mLavado([o.id]);const hm=document.getElementById('modal').innerHTML;
+    __check("D3: el modal ofrece las dos modalidades y quitar, y dice que no es por regla automática",/Lavado en planta/.test(hm)&&/Lavado en Quito/.test(hm)&&/Quitar el lavado/.test(hm)&&/no se asigna por regla automática/.test(hm));cerrar();
+    __check("D3: se llega desde cualquier orden por su ruta",(mRutaCentro(o.id),/mLavado\(/.test(document.getElementById('modal').innerHTML)));cerrar();}
+   /* 4 · OJALES Y BOTONES DEFINITIVOS */
+   {__check("D4: los tiempos de la tabla son definitivos: ninguna fila queda sin confirmar",!tiemposOjalBoton().some(r=>r.sinConfirmar));
+    const b=brechasOjalBoton();__check("D4: y por eso ya no hay categorías con regla sin confirmar",b.sinConf.length===0);
+    __check("D4: y renombrar o unificar una fila NO la repone sin confirmar",(tiemposOjalBoton(),!tiemposOjalBoton().some(r=>r.sinConfirmar)));
+    const k=S.categorias.find(x=>{const sp={};opsDe(x).forEach(y=>{if(y.centro)sp[y.centro]=(sp[y.centro]||0)+(+y.sam||0)});return sp.botones!=null});
+    if(k)__check("D4: una fila confirmada en 0 sigue aplicando 0 (cero es cero)",(()=>{const bak=JSON.stringify(S.params.tiemposOjalBoton);S.params.tiemposOjalBoton=[{match:k.n,ojales:0,botones:0}];const v=samPorCentro(k).botones;S.params.tiemposOjalBoton=JSON.parse(bak);return v===0})());}
+   /* 5 · RUTAS ESTIMADAS */
+   {const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+    const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/EST-1';o.estado='plan';o.cant=10;o.ruta=[];delete o.rutaConf;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];
+    __check("D5: una orden sin ruta de producción entra a la cola de estimadas",previaRutasEstimadas().ordenes.includes(o));
+    generarRutasEstimadas();
+    __check("D5: se le pone ruta y queda como «estimada – sin revisar», no confirmada",pasosProDe(o).length>0&&estadoRuta(o)==='sinRevisar'&&estadoRutaTxt(o)==='estimada – sin revisar'&&!rutaConfirmada(o));
+    __check("D5: estampado y bordado NO entran: dependen del diseño",!pasosProDe(o).some(c=>CENTROS_DISENO.includes(c)));
+    __check("D5: y la pantalla avisa que esa carga puede estar faltando",/dependen del diseño/.test(rutasEstimadasHTML())&&/puede estar faltando/.test(rutasEstimadasHTML()+rutasEstimadasResumenHTML()));
+    __check("D5: se revisa una por una, con la ruta a la vista y el botón de editar",/marcarRutaRevisada\(/.test(rutasEstimadasHTML())&&/mRutaCentro\(/.test(rutasEstimadasHTML()));
+    const nR=rutasEstimadas().sinRevisar.length;marcarRutaRevisada(o.id);
+    __check("D5: marcarla como revisada la mueve de lado y deja quién y cuándo",estadoRuta(o)==='revisada'&&rutasEstimadas().sinRevisar.length===nR-1&&!!rutaConf(o).revisadaTs);
+    page='reporteria';REP.vista='produccion';render();
+    __check("D5: Reportería cuenta cuántas quedan sin revisar",/Rutas estimadas/.test(document.getElementById('p-reporteria').innerHTML));
+    __check("D5: confirmar la ruta a mano la vuelve REAL",(confirmarRuta(o,'persona','prueba'),estadoRuta(o)==='real'&&estadoRutaTxt(o)==='real'));
+    S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id];}
+   /* 6 · DENIM y JEANS */
+   {const d0=diagJeans();
+    __check("D6: primero REPORTA qué apunta a JEANS: categorías, órdenes, operaciones y filas de configuración",
+     d0.total>0&&Array.isArray(d0.cats)&&Array.isArray(d0.ordenes)&&Array.isArray(d0.ops)&&Array.isArray(d0.tablas));
+    const hj=jeansHTML();
+    __check("D6: y lo muestra antes de mover nada, diciendo que no se borra",/DENIM y JEANS/.test(hj)&&/no borra|sin borrar/.test(hj));
+    const nCat=S.categorias.length,nOrd=S.ordenes.length,nOps=(S.operaciones||[]).length;
+    const padJ=S.categorias.find(k=>!k.padre&&esJeans(k.n));const hijasJ=padJ?S.categorias.filter(k=>k.padre===padJ.id).length:0;
+    delete S.params.jeansUnificado;unificarJeansEnDenim();
+    __check("D6: NADA se borra: ni categorías, ni órdenes, ni operaciones",S.categorias.length===nCat&&S.ordenes.length===nOrd&&(S.operaciones||[]).length===nOps);
+    const den=S.categorias.find(k=>!k.padre&&normFase(k.n)==='denim');
+    __check("D6: queda una sola familia DENIM y las hijas de JEANS cuelgan de ella",!!den&&(!hijasJ||S.categorias.filter(k=>k.padre===den.id).length>=hijasJ));
+    __check("D6: la fila «jean» de ojales y botones queda unificada en «denim», sin borrarse",(()=>{const j=tiemposOjalBoton().find(r=>/jean/.test(r.match||''));return !j||j.unificadaEn==='denim'})());
+    __check("D6: el mapeo a la hoja LMO sigue apuntando a JEANS, que es su nombre de origen",mapaCatLMO().porPadre.DENIM==='JEANS');
+    __check("D6: y todo queda en la bitácora",(S.bitacora||[]).some(b=>/JEANS/.test(b.txt||b.t||'')&&/DENIM/.test(b.txt||b.t||'')));}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("DEC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
