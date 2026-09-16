@@ -133,6 +133,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .fase-mini{font-size:10px;padding:0 5px;background:var(--field);color:var(--ink);border-color:var(--rule);vertical-align:middle;font-weight:400}.busq-menu{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);margin-top:4px;overflow:hidden}.busq-menu>div{padding:7px 12px;cursor:pointer;font-size:var(--fs-s);border-top:1px solid var(--rule2)}.busq-menu>div:first-child{border-top:0}.busq-menu>div:hover{background:var(--field)}
 .kpi.tarj{border-left:4px solid var(--t-accent);background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft));border-radius:8px}.kpi.tarj .v{color:var(--t-primary)}.kpi.tarj.clic{cursor:pointer}.kpi.tarj.clic:hover{filter:brightness(.97)}.kpi.tarj.abierta{outline:2px solid var(--t-accent)}.kpi.tarj.bad .v{color:var(--alerta)}.kpi.tarj.warn .v{color:var(--aviso)}.kpis.tarj-row{gap:8px;background:transparent;border:0}.panel h3{border-left:3px solid var(--t-accent)}.panel table thead th{background:var(--t-thead)}
 #navBtn{display:none;background:var(--t-accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:18px;cursor:pointer}
+@media (max-width:520px){.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
 @media (max-width:860px){#navBtn{display:inline-block}#app{grid-template-rows:auto auto 1fr!important}header{height:auto!important;min-height:52px;padding:8px 12px;gap:8px;row-gap:6px}header .saved{min-width:0;text-align:left;order:9}header h1{font-size:15px}header button{padding:6px 10px}nav{display:none;flex-direction:column;align-items:stretch;overflow:visible}nav.abierto{display:flex}nav .grp{display:block;padding:10px 14px}nav .gbody{position:static!important;display:none;left:auto!important}nav .gbody.abierto{display:block}.kpis,.kpis.tarj-row{flex-direction:column}.pagehead{flex-wrap:wrap}.tab-card .body{flex-direction:column}.tarjetas{grid-template-columns:1fr}.panel .body{overflow-x:auto}.scroll{overflow-x:auto}header{height:auto;flex-wrap:wrap;padding:8px 12px}header .sub{display:none}}
 .cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
@@ -580,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 18:01';
+const APP_BUILD='2026-09-15 20:42';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -937,6 +938,8 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   add('sinFecha','Órdenes sin fecha de entrega',ab.filter(o=>!o.fecha).length,'no se programan ni se liberan hasta tener fecha (Odoo)','Órdenes',"ir('ordenes')");
   add('sinOdc','Órdenes sin ODC asignado ("PENDIENTE ODC")',ab.filter(esOdcPendiente).length,'asígnalo a mano en Órdenes → Asignar ODC cuando el cliente libere su orden de compra','Órdenes',"ir('ordenes')");
   {const sm=ab.filter(o=>!mesPlan(o));add('sinMesProyecto','Órdenes sin mes de Proyecto: no entran al plan mensual',sm.length,'Proyecto vacío o sin mes reconocible: '+[...new Set(sm.map(o=>String(o.proyecto||'').trim()||'(vacío)'))].slice(0,6).map(x=>x).join(', ')+' · corregir el Proyecto en Odoo; no se asigna un mes por suposición','Órdenes',"ir('ordenes')")}
+  {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
+  {const pr=pedidosReprog().filter(p=>!p.atendida);add('reprog','El piso pide reprogramación',pr.length,pr.map(p=>p.op+' → '+nCen(p.centro)).slice(0,8).join(', ')+' · el operario buscó la WH en su centro y no está programada ahí','Programación del centro',"CEN.id=(pedidosReprog().filter(p=>!p.atendida)[0]||{}).centro||CEN.id;CEN.tab='prog';ir('centro')")}
   {const sinSec=fasesSinSecuencia();const enUso={};ab.forEach(o=>{if(o.fase&&sinSec.includes(o.fase))enUso[o.fase]=(enUso[o.fase]||0)+1});const usadas=Object.keys(enUso);
    add('faseSinSecuencia','Fases sin secuencia en la tabla 1',sinSec.length,'sin número de secuencia la devolución se decide por el grupo de la tabla 5 (menos preciso): '+(usadas.length?usadas.slice(0,8).join(', ')+(usadas.length>8?' y '+(usadas.length-8)+' más':'')+' · con órdenes abiertas hoy':sinSec.slice(0,8).join(', ')+(sinSec.length>8?' y '+(sinSec.length-8)+' más':''))+' · la secuencia la cargas tú: fases con el mismo número son paralelas','Configuración → Órdenes y materiales (tabla 1)',"CONF.tab='ordenes2';ir('config')")}
   {const faltan=[];if(!motivosDe('fase').length)faltan.push('devolución de fase');if(!motivosDe('liberacion').length)faltan.push('reversión de liberación');
@@ -1476,13 +1479,194 @@ function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delet
    ${nomC?`<span class="chip on" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;cursor:pointer;white-space:nowrap" onclick="setBusq('${id}',null)" title="quitar el campo y buscar en todos">${esc(nomC)} ✕</span>`:''}
    ${v&&!c?`<div class="busq-menu">${BUSQ_CAMPOS.map(([k,n])=>`<div onclick="setBusq('${id}','${k}')">Buscar <b>${n}</b> por: <i>${esc(v)}</i></div>`).join('')}<div class="mut" onclick="setBusq('${id}','*')">Buscar en todos los campos <span style="float:right">Enter</span></div></div>`:''}</div>`}
 /* ---------- A · Mi centro: pantalla de tablet por centro / módulo (el usuario ve solo lo suyo) ---------- */
-let TAB={centro:null,rec:null};
+let TAB={centro:null,rec:null,q:''};
 function tabletDe(){return (S.params.tablets||{})[(PERFIL&&PERFIL.id)||'']||{}}
 function setTablet(uid,k,v){S.params.tablets=S.params.tablets||{};const t=S.params.tablets[uid]=S.params.tablets[uid]||{};const antes=t[k]||'';t[k]=v||'';if(k==='centro')t.rec='';bitacora('Tablet '+String(uid).slice(0,8)+' · '+k+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');save()}
 function tabletSelHTML(uid){const t=(S.params.tablets||{})[uid]||{};const cens=S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));return `<select onchange="setTablet('${uid}','centro',this.value);render()"><option value="">—</option>${cens.map(c=>`<option value="${c.id}" ${t.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select> ${t.centro?`<select onchange="setTablet('${uid}','rec',this.value)"><option value="">todo el centro</option>${S.recursos.filter(r=>r.activa&&r.centro===t.centro).map(r=>`<option value="${r.id}" ${t.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select>`:''}`}
+/* ================= TALLAS: juegos configurables, carga masiva por WH y registro por talla desde el piso ================= */
+function tallasJuegos(){if(!Array.isArray(S.params.tallasJuegos))S.params.tallasJuegos=[];return S.params.tallasJuegos}
+function tallasCat(){if(!S.params.tallasCat||typeof S.params.tallasCat!=='object')S.params.tallasCat={};return S.params.tallasCat}
+function addTallaJuego(){tallasJuegos().push({id:uid(),n:'Juego nuevo',tallas:[],pendiente:true});save();render()}
+function setTallaJuego(i,k,v){const j=tallasJuegos()[i];if(!j)return;const antes=k==='tallas'?(j.tallas||[]).join(' '):j[k];
+  if(k==='tallas'){j.tallas=String(v||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean);j.pendiente=!j.tallas.length}else j[k]=v;
+  bitacora('Tallas · juego '+(j.n||'')+' · '+k+': '+(antes||'—')+' → '+(k==='tallas'?j.tallas.join(' '):v)+' ('+quienFirma()+')');save();render()}
+function delTallaJuego(i){const j=tallasJuegos()[i];if(!j)return;if(!confirm('¿Quitar el juego de tallas «'+(j.n||'')+'»? Las curvas ya cargadas en las órdenes se conservan.'))return;
+  Object.keys(tallasCat()).forEach(k=>{if(tallasCat()[k]===j.id)delete tallasCat()[k]});
+  tallasJuegos().splice(i,1);bitacora('Tallas · juego quitado: '+(j.n||'')+' ('+quienFirma()+')');save();render()}
+function setTallaCat(catId,juegoId){const antes=tallasCat()[catId]||'—';if(juegoId)tallasCat()[catId]=juegoId;else delete tallasCat()[catId];
+  bitacora('Tallas · categoría '+(nombreCat(K(catId))||catId)+': juego '+antes+' → '+(juegoId||'—')+' ('+quienFirma()+')');save();render()}
+function juegoDeOrden(o){const id=tallasCat()[o.cat]||tallasCat()[(K(o.cat)||{}).padre];return tallasJuegos().find(j=>j.id===id)||null}
+function tallasDeOrden(o){const j=juegoDeOrden(o);if(j&&j.tallas.length)return j.tallas.slice();
+  const c=curvaPedida(o)||curvaCorte(o);return c?Object.keys(c):[]}
+function curvaPedida(o){const t=o&&o.tallasPedido;return t&&Object.keys(t).length?t:null}
+function curvaCorte(o){const t=((S.avance[o.id]||{}).tallas||{})['corte'];return t&&Object.keys(t).length?t:null}
+/* contra qué se registra en cada centro: corte manda; si no hay corte, lo pedido; si no hay nada, solo total */
+function baseTallas(o,c){if(c!=='corte'){const cc=curvaCorte(o);if(cc)return {base:'corte',tallas:cc};}
+  const cp=curvaPedida(o);if(cp)return {base:'pedido',tallas:cp};return {base:null,tallas:null}}
+function sumaCurva(t){return Object.values(t||{}).reduce((a,b)=>a+(+b||0),0)}
+function ordenesSinCurva(){return S.ordenes.filter(o=>abierta(o)&&!curvaPedida(o)&&!curvaCorte(o))}
+/* --- registro por talla desde el piso --- */
+function mRegistroTallas(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
+  const b=baseTallas(o,c);const yaC=((S.avance[oid]||{}).tallas||{})[c]||{};
+  const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
+  if(!tallas.length){mHechoTotal(oid,c);return}
+  const nota=c==='corte'?'Lo que cortes es la <b>curva real</b>: los centros siguientes se miden contra esto.':(b.base==='corte'?'Se compara contra lo <b>cortado</b>.':'<span class="tag t-aviso">sin registro de corte</span> se compara contra lo <b>pedido</b>.');
+  abrir(`<h3>Registrar por talla · ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · ${esc(nombreCat(K(o.cat)))} · pedido <b>${num(o.cant)}</b> prendas. ${nota}</p>
+   <div class="scroll" style="max-height:320px"><table><thead><tr><th>Talla</th><th class="num">${c==='corte'?'Pedido':(b.base==='corte'?'Cortado':'Pedido')}</th><th class="num">Ya registrado</th><th class="num">Ahora</th></tr></thead><tbody>
+   ${tallas.map(t=>`<tr><td><b>${esc(t)}</b></td><td class="num">${num((b.tallas||{})[t]||0)}</td><td class="num">${num(yaC[t]||0)}</td><td class="num"><input type="number" min="0" style="width:80px" id="rt-${esc(t).replace(/[^A-Za-z0-9]/g,'_')}" data-t="${esc(t)}" value=""></td></tr>`).join('')}
+   </tbody></table></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Se suma a lo ya registrado. Pasar de lo ${b.base==='corte'?'cortado':'pedido'} se puede, pero avisa y queda marcado.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarRegistroTallas('${oid}','${c}')">Registrar</button></div>`)}
+function guardarRegistroTallas(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;
+  const b=baseTallas(o,c);const a=S.avance[oid]=S.avance[oid]||{};a.tallas=a.tallas||{};const prev=a.tallas[c]||{};
+  const nuevo={};let tot=0;[...document.querySelectorAll('[id^="rt-"]')].forEach(el=>{const t=el.getAttribute('data-t');const q=Math.max(0,Math.round(+el.value||0));if(q>0){nuevo[t]=q;tot+=q}});
+  if(!tot){alert('Escribe al menos una cantidad.');return}
+  const excede=[];Object.entries(nuevo).forEach(([t,q])=>{const lim=(b.tallas||{})[t];const ya=prev[t]||0;if(lim!=null&&ya+q>lim)excede.push(t+': '+num(ya+q)+' de '+num(lim))});
+  if(excede.length&&!confirm('Estas tallas pasan de lo '+(b.base==='corte'?'cortado':'pedido')+':\n'+excede.join('\n')+'\n¿Registrar igual? Queda marcado.'))return;
+  const u=quienFirma(),ts=new Date().toISOString();
+  a.tallasLog=a.tallasLog||[];
+  Object.entries(nuevo).forEach(([t,q])=>{prev[t]=(prev[t]||0)+q;a.tallasLog.push({ts,u,centro:c,talla:t,pz:q,base:b.base||'sin base',excede:excede.some(x=>x.startsWith(t+':'))})});
+  a.tallas[c]=prev;
+  const k=(a.crono||{})[c];if(k&&k.ini&&!k.fin){k.tallas=Object.assign({},k.tallas||{});Object.entries(nuevo).forEach(([t,q])=>k.tallas[t]=(k.tallas[t]||0)+q)}
+  bitacora('Tallas registradas en '+nCen(c)+' · '+o.op+': '+Object.entries(nuevo).map(([t,q])=>t+' '+num(q)).join(', ')+' ('+u+')'+(excede.length?' · PASA DE LO '+(b.base==='corte'?'CORTADO':'PEDIDO'):''));
+  a.centros=a.centros||{};a.centros[c]=Math.min(o.cant,sumaCurva(prev));
+  save();try{cerrar()}catch(e){}render()}
+function mHechoTotal(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  abrir(`<h3>Registrar en ${esc(nCen(c))} · solo total</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · esta orden <b>no tiene curva de tallas</b> ni registro de corte, así que solo se puede registrar el total. Queda avisado en Hoy → Pendientes para que carguen la curva.</p>
+   <label>Prendas buenas que salieron</label><input type="number" id="hc-q" min="0" style="width:130px" value="${num(Math.max(0,o.cant-(((S.avance[oid]||{}).centros||{})[c]||0)))}" autofocus></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarHechoCentro('${oid}','${c}')">Registrar</button></div>`)}
+function difTallasHTML(o,c){const b=baseTallas(o,c);const hechas=((S.avance[o.id]||{}).tallas||{})[c]||{};
+  if(!b.tallas)return '<span class="mut">sin curva de tallas</span>';
+  const tallas=Object.keys(b.tallas);
+  return `<table style="font-size:var(--fs-xs)"><thead><tr><th>Talla</th>${tallas.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+   <tr><td>${b.base==='corte'?'Cortado':'Pedido'}</td>${tallas.map(t=>`<td class="num">${num(b.tallas[t]||0)}</td>`).join('')}<td class="num">${num(sumaCurva(b.tallas))}</td></tr>
+   <tr><td>${esc(nCen(c))}</td>${tallas.map(t=>`<td class="num">${num(hechas[t]||0)}</td>`).join('')}<td class="num">${num(sumaCurva(hechas))}</td></tr>
+   <tr><td>Diferencia</td>${tallas.map(t=>{const d=(hechas[t]||0)-(b.tallas[t]||0);return `<td class="num">${d?'<span class="tag '+(d<0?'t-aviso':'t-alerta')+'">'+(d>0?'+':'')+num(d)+'</span>':'<span class="mut">·</span>'}</td>`}).join('')}<td class="num">${num(sumaCurva(hechas)-sumaCurva(b.tallas))}</td></tr>
+   </tbody></table>${b.base==='pedido'&&c!=='corte'?'<p class="mut" style="font-size:var(--fs-xs);margin-top:4px">Sin registro de corte: se compara contra lo pedido.</p>':''}`}
+/* --- pedir reprogramación desde el piso (el operario no reprograma) --- */
+function pedidosReprog(){if(!Array.isArray(S.params.pedidosReprog))S.params.pedidosReprog=[];return S.params.pedidosReprog}
+function pedirReprogramacion(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  if(pedidosReprog().some(p=>p.oid===oid&&p.centro===c&&!p.atendida)){alert('Ya está pedida la reprogramación de esta orden para '+nCen(c)+'.');return}
+  pedidosReprog().push({id:uid(),oid,op:o.op,centro:c,u:quienFirma(),ts:new Date().toISOString()});
+  bitacora('Piso pide reprogramación: '+o.op+' para '+nCen(c)+' ('+quienFirma()+')');save();render();
+  alert('Pedido enviado. Planificación lo ve en Hoy → Pendientes.')}
+function atenderReprog(id){const p=pedidosReprog().find(x=>x.id===id);if(!p)return;if(!(puede('programa')||puede('reprogramar'))){alert('Tu perfil no atiende reprogramaciones.');return}
+  p.atendida=true;p.atendidaU=quienFirma();p.atendidaTs=new Date().toISOString();bitacora('Reprogramación atendida: '+p.op+' ('+quienFirma()+')');save();render()}
+function reprogPanelHTML(){const l=pedidosReprog().filter(p=>!p.atendida);if(!l.length)return '';
+  return `<div class="panel" style="border:2px solid var(--aviso)"><h3>El piso pide reprogramación <span class="note">${l.length} · buscaron la WH en su centro y no está programada ahí</span></h3><div class="body"><table><thead><tr><th>Cuándo</th><th>Orden</th><th>Centro</th><th>Quién</th><th></th></tr></thead><tbody>
+   ${l.map(p=>{const o=S.ordenes.find(x=>x.id===p.oid);return `<tr><td style="white-space:nowrap">${new Date(p.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${o?whCell(o):esc(p.op)}</td><td>${esc(nCen(p.centro))}</td><td>${esc(p.u||'')}</td><td>${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="atenderReprog('${p.id}')">atendida</button>`:''}</td></tr>`}).join('')}
+   </tbody></table></div></div>`}
+/* --- cambio de fase desde el piso: observación de la tabla 15, sin texto libre --- */
+function mFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  abrir(`<h3>Cambiar fase desde piso · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · fase actual <b>${esc(o.fase||'—')}</b> · ${esc(nCen(c))}</p>
+   <label>Fase nueva</label><select id="fp-f">${fasesDisponibles().map(f=>`<option value="${esc(f)}" ${f===o.fase?'selected':''}>${esc(f)}</option>`).join('')}</select>
+   <label style="margin-top:8px">Observación de piso (de la tabla 15)</label>${selMotivoHTML('fp-obs','piso')}
+   <label style="margin-top:8px">Motivo <span class="mut">(solo si devuelves a una secuencia menor)</span></label>${selMotivoHTML('fp-m','fase')}
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Avanzar no pide motivo. La observación y el motivo salen de la tabla 15: no hay texto libre.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarFasePiso('${oid}','${c}')">Cambiar fase</button></div>`)}
+function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  const f=(document.getElementById('fp-f')||{}).value;const obs=String((document.getElementById('fp-obs')||{}).value||'').trim();const m=String((document.getElementById('fp-m')||{}).value||'').trim();
+  if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15 (uso «observación de piso»).');return}
+  const antes=o.fase;moverFases([oid],f,m);
+  if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
+/* --- buscador de Mi centro: solo lo programado en ese centro; si existe pero no está aquí, bloqueada --- */
+function tabletBuscadorHTML(c,cola){const q=normTxt(TAB.q||'');
+  const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label>Buscar una WH</label>${busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:18px;padding:10px')}</div>${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
+  if(!q)return cab;
+  const enCola=cola.filter(f=>normTxt(f.o.op).includes(q)||normTxt(f.o.ref||'').includes(q));
+  if(enCola.length)return cab;
+  const o=S.ordenes.find(x=>normTxt(x.op).includes(q));
+  if(!o)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
+  const pedida=pedidosReprog().some(p=>p.oid===o.id&&p.centro===c&&!p.atendida);
+  return cab+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:17px">
+   <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><div style="flex:none">${fotoDe(o)?fotoMini(o,110):''}</div>
+   <div style="flex:1;min-width:220px"><div><b style="font-size:20px">${esc(o.op)}</b> ${faseTag(o)}</div>
+    <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div>
+    <div class="tag t-alerta" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
+    <p class="mut" style="font-size:14px;margin:8px 0 0">Esta orden existe pero hoy no está programada en este centro, así que no se puede registrar aquí. Planificación decide: tú no reprogramas.</p></div>
+   <div style="flex:none">${pedida?'<span class="tag t-ok">ya pediste la reprogramación</span>':`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="pedirReprogramacion('${o.id}','${c}')">Pedir reprogramación</button>`}</div>
+  </div></div></div>`}
+/* ---------- Carga masiva del pedido por tallas (Excel o CSV), como las demás cargas por WH ---------- */
+let TALLAS_CARGA=null;
+function mCargarTallas(){abrir(`<h3>Cargar el pedido por tallas</h3><div class="body">
+  <p class="lede" style="margin-top:0">Archivo de Excel o CSV con la <b>WH</b>, la <b>talla</b> y la <b>cantidad</b>. Se leen las columnas por nombre y acepta las dos formas: <b>larga</b> (una fila por talla) o <b>ancha</b> (una columna por talla). Primero muestra la vista previa; no se guarda nada hasta que confirmes.</p>
+  <input type="file" id="f-tallas" accept=".xlsx,.xls,.csv"><div id="tallas-res" style="margin-top:14px"></div></div>
+  <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="tallas-ok" disabled onclick="aplicarTallas()">Aplicar</button></div>`);
+  const inp=document.getElementById('f-tallas');if(inp)inp.addEventListener('change',e=>planTallasArchivo(e.target.files[0]))}
+async function leerTabla(f){const nom=(f.name||'').toLowerCase();
+  if(nom.endsWith('.csv')){const txt=await f.text();const sep=(txt.split('\n')[0].match(/;/g)||[]).length>(txt.split('\n')[0].match(/,/g)||[]).length?';':',';
+    const lineas=txt.split(/\r?\n/).filter(x=>x.trim().length);const cab=lineas[0].split(sep).map(x=>x.trim().replace(/^"|"$/g,''));
+    return lineas.slice(1).map(l=>{const c=l.split(sep).map(x=>x.trim().replace(/^"|"$/g,''));const o={};cab.forEach((k,i)=>o[k]=c[i]);return o})}
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''})}
+function colDe(fila,nombres){const keys=Object.keys(fila);for(const n of nombres){const k=keys.find(k=>normTxt(k)===normTxt(n));if(k)return k}
+  for(const n of nombres){const k=keys.find(k=>normTxt(k).includes(normTxt(n)));if(k)return k}return null}
+async function planTallasArchivo(f){if(!f)return;const res=document.getElementById('tallas-res');res.innerHTML='Leyendo…';
+  let filas=[];try{filas=await leerTabla(f)}catch(e){res.innerHTML='<div class="warn">No pude leer el archivo: '+esc(e.message)+'</div>';return}
+  if(!filas.length){res.innerHTML='<div class="warn">El archivo no tiene filas.</div>';return}
+  const p=planTallas(filas,f.name);TALLAS_CARGA=p;
+  const btn=document.getElementById('tallas-ok');if(btn)btn.disabled=!p.aplicables.length;
+  res.innerHTML=previaTallasHTML(p)}
+function planTallas(filas,nombre){
+  const f0=filas[0];const cWH=colDe(f0,['WH','Orden de producción','orden','op','wh/mo']);
+  const cTalla=colDe(f0,['talla','size','tallas']);const cCant=colDe(f0,['cantidad','cant','unidades','pedido','qty','quantity','piezas']);
+  const juego=[...new Set(tallasJuegos().flatMap(j=>j.tallas))];
+  const formato=(cTalla&&cCant)?'largo':'ancho';
+  const anchoCols=formato==='ancho'?Object.keys(f0).filter(k=>k!==cWH&&(juego.some(t=>normTxt(t)===normTxt(k))||/^(xxs|xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|talla ?\d+|\d{1,2})$/i.test(String(k).trim()))):[];
+  const porWH={};const tallasVistas=new Set();let filasUsadas=0;
+  filas.forEach(r=>{const wh=String(r[cWH]||'').trim();if(!wh)return;
+    if(formato==='largo'){const t=String(r[cTalla]||'').trim();const q=Math.round(+String(r[cCant]||'').replace(',','.')||0);if(!t||!(q>0))return;
+      porWH[wh]=porWH[wh]||{};porWH[wh][t]=(porWH[wh][t]||0)+q;tallasVistas.add(t);filasUsadas++}
+    else{anchoCols.forEach(k=>{const q=Math.round(+String(r[k]||'').replace(',','.')||0);if(!(q>0))return;const t=String(k).trim();
+      porWH[wh]=porWH[wh]||{};porWH[wh][t]=(porWH[wh][t]||0)+q;tallasVistas.add(t);filasUsadas++})}});
+  const porOp={};S.ordenes.forEach(o=>porOp[normTxt(o.op)]=o);
+  const aplicables=[],sinOrden=[],difSuma=[];
+  Object.entries(porWH).forEach(([wh,curva])=>{const o=porOp[normTxt(wh)];
+    if(!o){sinOrden.push({wh,curva});return}
+    const suma=sumaCurva(curva);const fila={o,wh,curva,suma,dif:suma-(+o.cant||0)};
+    aplicables.push(fila);if(fila.dif!==0)difSuma.push(fila)});
+  const conocidas=new Set(juego.map(normTxt));
+  const tallasNuevas=[...tallasVistas].filter(t=>!conocidas.has(normTxt(t)));
+  return {nombre,formato,cWH,cTalla,cCant,anchoCols,filasUsadas,aplicables,sinOrden,difSuma,tallasNuevas,tallasVistas:[...tallasVistas]}}
+function previaTallasHTML(p){
+  if(!p.cWH)return '<div class="warn">No encontré la columna de la WH (busco «WH» u «Orden de producción»). Revisa los títulos de las columnas.</div>';
+  if(p.formato==='largo'&&!(p.cTalla&&p.cCant))return '<div class="warn">Formato largo sin columnas de talla y cantidad.</div>';
+  if(p.formato==='ancho'&&!p.anchoCols.length)return '<div class="warn">No encontré columnas de talla. En formato ancho cada talla es una columna (S, M, L…); en formato largo hacen falta las columnas «talla» y «cantidad».</div>';
+  return `<div class="panel"><div class="body">
+   <p style="font-size:var(--fs-s)"><b>Formato detectado: ${p.formato==='largo'?'largo (una fila por talla)':'ancho (una columna por talla)'}</b> · archivo ${esc(p.nombre||'')} · ${num(p.filasUsadas)} datos leídos${p.formato==='ancho'?' · columnas de talla: '+p.anchoCols.map(esc).join(', '):' · talla en «'+esc(p.cTalla)+'», cantidad en «'+esc(p.cCant)+'»'}</p>
+   ${tarjetasResumenHTML([
+     {id:'ct-ok',v:p.aplicables.length,k:'Órdenes encontradas'},
+     {id:'ct-sin',v:p.sinOrden.length,k:'WH que no existen en el sistema',cls:p.sinOrden.length?'bad':''},
+     {id:'ct-dif',v:p.difSuma.length,k:'Órdenes donde la suma por talla no cuadra con la cantidad',cls:p.difSuma.length?'warn':''},
+     {id:'ct-nt',v:p.tallasNuevas.length,k:'Tallas que no están en la tabla de tallas',cls:p.tallasNuevas.length?'warn':''}])}
+   ${p.sinOrden.length?`<details style="margin-top:8px"><summary style="cursor:pointer">WH que no existen (${p.sinOrden.length}) · no se cargan</summary><div class="mut" style="font-size:var(--fs-xs);margin-top:6px">${p.sinOrden.slice(0,60).map(x=>esc(x.wh)).join(', ')}${p.sinOrden.length>60?'…':''}</div></details>`:''}
+   ${p.difSuma.length?`<details style="margin-top:8px"><summary style="cursor:pointer">Suma por talla distinta a la cantidad de la orden (${p.difSuma.length}) · se cargan igual y quedan marcadas</summary><div class="scroll" style="max-height:200px;margin-top:6px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th class="num">Pedido</th><th class="num">Suma tallas</th><th class="num">Diferencia</th></tr></thead><tbody>${p.difSuma.slice(0,100).map(x=>`<tr><td>${esc(x.wh)}</td><td class="num">${num(x.o.cant)}</td><td class="num">${num(x.suma)}</td><td class="num"><span class="tag t-aviso">${x.dif>0?'+':''}${num(x.dif)}</span></td></tr>`).join('')}</tbody></table></div></details>`:''}
+   ${p.tallasNuevas.length?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)">Tallas que no están en ningún juego: <b>${p.tallasNuevas.map(esc).join(', ')}</b>. Se cargan en la orden, pero <b>no se crean solas</b>: agrégalas en Configuración → Órdenes y materiales → 16 · Tallas si corresponden.</div>`:''}
+  </div></div>`}
+function aplicarTallas(){const p=TALLAS_CARGA;if(!p||!p.aplicables.length)return;
+  if(!(puede('ordenes')||puede('programa'))){alert('Tu perfil no carga pedidos por talla.');return}
+  if(!confirm('Se va a cargar la curva de tallas en '+p.aplicables.length+' órdenes'+(p.difSuma.length?' ('+p.difSuma.length+' con suma distinta a la cantidad)':'')+'. ¿Aplicar?'))return;
+  const u=quienFirma(),ts=new Date().toISOString();let n=0;
+  p.aplicables.forEach(x=>{x.o.tallasPedido=Object.assign({},x.curva);x.o.tallasPedidoMeta={u,ts,archivo:p.nombre||'',suma:x.suma,dif:x.dif};n++});
+  bitacora('Pedido por tallas cargado: '+n+' órdenes desde '+(p.nombre||'archivo')+' (formato '+p.formato+')'+(p.sinOrden.length?' · '+p.sinOrden.length+' WH sin orden':'')+(p.difSuma.length?' · '+p.difSuma.length+' con suma distinta':'')+' ('+u+')');
+  S.params.tallasCarga={ts,u,archivo:p.nombre||'',n,sinOrden:p.sinOrden.map(x=>x.wh),difSuma:p.difSuma.map(x=>({op:x.wh,pedido:x.o.cant,suma:x.suma})),tallasNuevas:p.tallasNuevas,formato:p.formato};
+  TALLAS_CARGA=null;save();try{cerrar()}catch(e){}render();alert('Listo: '+n+' órdenes con su curva de tallas.')}
+function tallasPanelHTML(){const js=tallasJuegos();const cats=S.categorias.filter(k=>!k.padre);
+  return `<div class="panel"><h3>16 · Tallas <span class="note">juegos de tallas (en el orden en que se presentan) y qué juego usa cada categoría · ${js.length} juegos</span><span class="spacer"></span><button class="btn ghost sm" onclick="addTallaJuego()">+ Juego</button>${(puede('ordenes')||puede('programa'))?' <button class="btn ghost sm" onclick="mCargarTallas()">Cargar pedido por tallas</button>':''}</h3><div class="body">
+   <table><thead><tr><th>Juego</th><th>Tallas, en orden (separadas por espacio o coma)</th><th></th><th></th></tr></thead><tbody>
+   ${js.map((j,i)=>`<tr><td><input type="text" style="width:160px" value="${esc(j.n||'')}" onchange="setTallaJuego(${i},'n',this.value)"></td><td><input type="text" style="width:360px" value="${esc((j.tallas||[]).join(' '))}" placeholder="S M L XL" onchange="setTallaJuego(${i},'tallas',this.value)"></td><td>${j.pendiente?'<span class="tag t-aviso">sin tallas</span>':'<span class="mut">'+(j.tallas||[]).length+' tallas</span>'}</td><td><button class="btn ghost sm" onclick="delTallaJuego(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="mut">Sin juegos de tallas. Agrega uno y escribe sus tallas en el orden en que quieres verlas.</td></tr>'}
+   </tbody></table>
+   <h4 style="margin:14px 0 6px">Qué juego usa cada categoría</h4>
+   <div class="scroll" style="max-height:260px"><table style="font-size:var(--fs-s)"><thead><tr><th>Categoría</th><th>Juego de tallas</th></tr></thead><tbody>
+   ${cats.map(k=>`<tr><td>${esc(k.n)}</td><td><select onchange="setTallaCat('${k.id}',this.value)"><option value="">— sin definir —</option>${js.map(j=>`<option value="${j.id}" ${tallasCat()[k.id]===j.id?'selected':''}>${esc(j.n||'')}</option>`).join('')}</select></td></tr>`).join('')||'<tr><td colspan="2" class="mut">Sin categorías cargadas.</td></tr>'}
+   </tbody></table></div>
+   ${S.params.tallasCarga?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Última carga: ${new Date(S.params.tallasCarga.ts).toLocaleString('es-EC')} · ${esc(S.params.tallasCarga.u||'')} · ${S.params.tallasCarga.n} órdenes desde ${esc(S.params.tallasCarga.archivo||'')} (formato ${esc(S.params.tallasCarga.formato||'')})${S.params.tallasCarga.sinOrden.length?' · '+S.params.tallasCarga.sinOrden.length+' WH sin orden':''}${S.params.tallasCarga.difSuma.length?' · '+S.params.tallasCarga.difSuma.length+' con suma distinta':''}</p>`:''}
+  </div></div>`}
 function cronoTablet(oid,c,acc){const a=S.avance[oid]=S.avance[oid]||{};a.crono=a.crono||{};const k=a.crono[c]=a.crono[c]||{};const o=S.ordenes.find(x=>x.id===oid)||{};
-  if(acc==='ini'){k.ini=new Date().toISOString();delete k.fin;delete k.min;k.u=quienFirma()}else{if(!k.ini)return;k.fin=new Date().toISOString();k.min=Math.round((new Date(k.fin)-new Date(k.ini))/6e4);k.u=quienFirma()}
-  bitacora('Cronómetro '+(o.op||oid)+' en '+nCen(c)+': '+(acc==='ini'?'inicio':'fin · '+k.min+' min')+' ('+quienFirma()+')');save();render()}
+  if(acc==='ini'){k.ini=new Date().toISOString();delete k.fin;delete k.min;delete k.seg;delete k.tallas;k.u=quienFirma()}else{if(!k.ini)return;k.fin=new Date().toISOString();k.seg=Math.round((new Date(k.fin)-new Date(k.ini))/1000);k.min=+(k.seg/60).toFixed(2);k.u=quienFirma()}
+  bitacora('Cronómetro '+(o.op||oid)+' en '+nCen(c)+': '+(acc==='ini'?'inicio':'fin · '+cronoTxt(k)+(k.tallas?' · '+Object.entries(k.tallas).map(([t,q])=>t+' '+num(q)).join(', '):''))+' ('+quienFirma()+')');save();render()}
+function cronoTxt(k){const sg=k.seg!=null?k.seg:Math.round((k.min||0)*60);const m=Math.floor(sg/60),ss=sg%60;return m+' min '+String(ss).padStart(2,'0')+' s'}
+function cronoCorriendoTxt(ini){const sg=Math.round((Date.now()-new Date(ini))/1000);const m=Math.floor(sg/60),ss=sg%60;return m+':'+String(ss).padStart(2,'0')}
 function minEstandarOrden(o,c){const p=(o.ruta||[]).find(x=>x.centro===c)||{};return minPrenda(c,p.t)*(+o.cant||0)}
 function tabletFilas(c,rec,P){const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas);
   if(rec){const sec=((P.secMod||{})[rec]||[]).map(x=>x.oid);cola=cola.filter(f=>(f.paso.rec===rec)||((f.o.recursoFijo||{})[c]===rec)||sec.includes(f.o.id));if(sec.length)cola.sort((a,b)=>{const ia=sec.indexOf(a.o.id),ib=sec.indexOf(b.o.id);return (ia<0?9e9:ia)-(ib<0?9e9:ib)})}
@@ -1504,14 +1688,16 @@ function vTablet(el){
      <div style="flex:none">${fotoDe(o)?fotoMini(o,140):'<div class="mut" style="width:140px;height:140px;background:var(--field);border-radius:6px;display:flex;align-items:center;justify-content:center">sin foto</div>'}</div>
      <div style="flex:1;min-width:240px;font-size:18px;line-height:1.5"><div><span class="mut" style="font-size:14px">#${i+1}</span> <b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
       <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div><div class="mut">${esc(o.cliente||'')}</div>
-      <div><b>${num(f.hechas)}</b> / ${num(o.cant)} prendas · entrega <b>${esc(o.fecha||'—')}</b></div>${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
-      ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${num(cr.min)} min · estándar ${num(std)} min</div>`:''}</div>
+      <div><b>${num(f.hechas)}</b> / ${num(o.cant)} prendas</div>${(baseTallas(o,c).tallas?'<div style="font-size:15px">'+difTallasHTML(o,c)+'</div>':'<div class="tag t-aviso">sin curva de tallas: solo total</div>')}${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
+      ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${cronoTxt(cr)} · estándar ${num(std)} min${cr.tallas?' · '+Object.entries(cr.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(', '):''}</div>`:''}</div>
      <div style="flex:none;display:flex;flex-direction:column;gap:10px;min-width:170px">
-      <button class="btn" style="font-size:20px;padding:14px 18px" ${ok?'':'disabled'} onclick="marcarHechoCentro('${o.id}','${c}')">Hecho</button>
-      ${corriendo?`<button class="btn ghost" style="font-size:15px" onclick="cronoTablet('${o.id}','${c}','fin')">⏱ Terminar · ${num(Math.round((Date.now()-new Date(cr.ini))/6e4))} min</button>`:`<button class="btn ghost sm" style="opacity:.75" title="Opcional: mide cuánto tarda esta orden y se guarda para comparar con el estándar (${num(std)} min)" ${ok?'':'disabled'} onclick="cronoTablet('${o.id}','${c}','ini')">⏱ ${cr.fin?'medir de nuevo':'cronómetro'}</button>`}
+      <button class="btn" style="font-size:20px;padding:14px 18px" ${ok?'':'disabled'} onclick="${(baseTallas(o,c).tallas||tallasDeOrden(o).length)?'mRegistroTallas':'marcarHechoCentro'}('${o.id}','${c}')">Hecho</button>
+      <button class="btn ghost" style="font-size:15px" onclick="mFasePiso('${o.id}','${c}')">Cambiar fase</button>
+      ${corriendo?`<button class="btn ghost" style="font-size:15px" onclick="cronoTablet('${o.id}','${c}','fin')">⏱ Terminar · ${cronoCorriendoTxt(cr.ini)}</button>`:`<button class="btn ghost sm" style="opacity:.75" title="Opcional: mide cuánto tarda esta orden y se guarda para comparar con el estándar (${num(std)} min)" ${ok?'':'disabled'} onclick="cronoTablet('${o.id}','${c}','ini')">⏱ ${cr.fin?'medir de nuevo':'cronómetro'}</button>`}
      </div></div></div>`};
   el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
    ${tarjetasResumenHTML([{id:'tab-plan',v:num(planHoy),k:'Prendas del día'},{id:'tab-hechas',v:num(hechasHoy),k:'Hechas hoy'},{id:'tab-faltan',v:num(Math.max(0,planHoy-hechasHoy)),k:'Faltan',cls:planHoy-hechasHoy>0?'warn':''},{id:'tab-cola',v:cola.length,k:'Órdenes en cola',items:cola.map(f=>f.o)}])}
+   ${tabletBuscadorHTML(c,cola)}
    ${cola.map(card).join('')||'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'}
    <p class="mut no-print" style="font-size:var(--fs-xs)">"Hecho" registra la orden completa en este centro y la pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
@@ -1567,6 +1753,7 @@ function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia f
   let n=0,comp=0;ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=o.fase;const dev=esDevolucionFase(antes,f);if(!registrarFase(o,f,'manual'))return;o.fases[o.fases.length-1].motivo=motivo;registrarAuditoria('fase',o,antes,f,motivo,dev);n++;
     bitacora((dev?'Devolución de fase ':'Fase ')+o.op+': '+(antes||'—')+' → '+f+(motivo?' · '+motivo:'')+' ('+quienFirma()+')');if(esCompraDesdeTej(antes,f)){pasarACompras(o,motivo);comp++}});
   CTLF.sel=new Set();CTLF.motivo='';CTLF.nueva='';PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render();if(comp)alert(comp+' orden(es) pasaron a compras: la persona de compras tiene que pedirlas (aviso en Hoy → Pendientes y en Compras del mes).')}
+function mCambiarFasePiso(oid,c){return mFasePiso(oid,c)}
 function mCambiarFase(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeFases()){alert('Tu perfil no cambia fases.');return}
   abrir(`<h3>Cambiar fase · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${fotoMini(o)}${esc(o.op)} · ${esc(nombreCat(K(o.cat)))} · fase actual <b>${esc(o.fase||'—')}</b></p>
    <label>Fase nueva</label><select id="cf-f">${fasesDisponibles().map(f=>`<option value="${esc(f)}" ${f===o.fase?'selected':''}>${esc(f)}</option>`).join('')}</select>
@@ -1773,6 +1960,7 @@ function render(){CAPM=null;SEMC={};
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
+  if(page==='panorama'&&(puede('programa')||puede('reprogramar')))el.insertAdjacentHTML('beforeend',reprogPanelHTML());
   const P=S.ordenes.length?programar():null;
   document.getElementById('n-ord').textContent=S.ordenes.length||'';
   document.getElementById('n-ban').textContent=P?P.banos.length:'';
@@ -4845,6 +5033,7 @@ function vConfig(el){
    <div class="body"><table><thead><tr><th>Campo</th><th>Qué es</th><th>Conservar</th></tr></thead><tbody>${camposConservados().map((r,i)=>`<tr><td><code>${esc(r.campo)}</code></td><td>${esc(r.n)}</td><td style="text-align:center"><input type="checkbox" ${r.conservar?'checked':''} onchange="camposConservados()[${i}].conservar=this.checked;bitacora('Tabla 14 · '+'${esc(r.campo)}'+': conservar '+this.checked);save()"></td></tr>`).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
   ${motivosPanelHTML()}
+  ${tallasPanelHTML()}
 
   <div class="panel"><h3>13 · Qué le falta a la tela: propuesta por palabras del producto <span class="note">tintura · lavado de tela · nada; sin palabra: EXTERNA TEÑIDA → nada, lo demás → tintura. La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>
@@ -5890,7 +6079,7 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
    Lo conservado que ya no calza con el archivo nuevo no se retira solo: sale en la bandeja "decisiones que ya no calzan". */
-function defCamposConservados(){return [
+function defCamposConservados(){return [{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
   {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
   {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},

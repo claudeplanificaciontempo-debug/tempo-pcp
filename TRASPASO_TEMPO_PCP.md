@@ -204,6 +204,22 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.15 Piso: Mi centro, tallas y teléfono (15-sep-2026 noche)
+- **Mi centro** muestra solo lo programado en ese centro. El buscador por WH: si la orden existe pero no está
+  programada ahí, sale bloqueada con «no programada · pedir reprogramación»; el pedido avisa en Hoy → Pendientes a
+  quien puede reprogramar. El operario no reprograma.
+- **Carga del pedido por tallas** (Configuración → Órdenes y materiales → 16 · Tallas): Excel o CSV, columnas por
+  nombre, formato largo o ancho (dice cuál detectó), vista previa con WH inexistentes, sumas que no cuadran y tallas
+  nuevas (se proponen, no se crean solas). La curva se guarda en la orden y está en la tabla 14, así que las recargas
+  no la pisan.
+- **Registro por talla**: corte registra la curva real; los demás centros se miden contra lo cortado y, si no hay
+  corte, contra lo pedido (marcado). Pasarse avisa y queda marcado. Sin curva ni corte, solo total y aviso en Hoy.
+  Cada registro queda auditado con quién, cuándo, centro, talla y unidades.
+- **Cronómetro** en minutos y segundos, con las unidades por talla del tramo.
+- **Cambio de fase desde piso**: observación de la tabla 15 (uso «observación de piso»), sin texto libre; el motivo
+  solo se pide si la fase nueva tiene secuencia menor en la tabla 1.
+- **Teléfono**: Mi centro y Control de piso revisados a 375 px, respetando los perfiles.
+
 ### 2.14 Centros de producción (15-sep-2026 noche)
 - **Confección** se ve por **módulo**, con la **maquila aparte**: una tarjeta por puesto con prendas, minutos usados y
   capacidad; al abrirla salen sus órdenes por familia.

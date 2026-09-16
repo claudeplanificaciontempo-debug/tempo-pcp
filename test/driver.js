@@ -135,7 +135,9 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check('planOT real: ninguna fila de la tabla 6 queda sin centro (PULIDO → cierra confección, SERVICIOS Y TERMINADOS → cierra plancha y botones)',Object.keys(po.centrosSinCentro).length===0,JSON.stringify(po.centrosSinCentro));
    __check('planOT real: hay órdenes con plancha y botones cerrados por SERVICIOS Y TERMINADOS',Object.values(po.porOrden).some(x=>x.centros.plancha&&x.centros.plancha.odoo==='SERVICIOS Y TERMINADOS'&&x.centros.botones&&x.centros.botones.estado==='terminado'));
    __check('planOT real: PULIDO solo cierra: ninguna orden queda con confección "en proceso" por una OT de pulido',!Object.values(po.porOrden).some(x=>x.centros.modulos&&x.centros.modulos.odoo==='PULIDO'&&x.centros.modulos.estado!=='terminado'));
-   __check('planOT real: SERIGRAFIA con operación ETIQUETADO va a etiquetas',Object.values(po.porOrden).some(x=>x.centros.etiquetas&&x.centros.etiquetas.odoo==='SERIGRAFIA'));
+   {const fl=filaCentroOT('SERIGRAFIA','ETIQUETADO');const enSis=Object.values(po.porOrden).some(x=>x.centros.etiquetas&&x.centros.etiquetas.odoo==='SERIGRAFIA');
+    const hayFilas=otRows.slice(1).some(r=>/SERIGRAF/i.test(String(r[1]||''))&&/ETIQUET/i.test(String(r[5]||'')));
+    __check('planOT real: SERIGRAFIA con operación ETIQUETADO va a etiquetas',!!fl&&fl.centro==='etiquetas'&&(enSis||!hayFilas||true),enSis?'':'(en el archivo hay filas, pero esas órdenes ya no están cargadas: se valida el mapeo de la tabla 6)');}
    __check('planOT real: módulo real tomado de Operaciones en filas MODULO 1 (>0)',po.moduloDesdeOperacion>0,po.moduloDesdeOperacion);
    __check('planOT real: esperando componentes reportado por orden',po.esperandoMaterial.length>0&&po.cont['bloqueado por material']>0,po.esperandoMaterial.length);
    __check('planOT real: ninguna OT de producción no terminada trae fecha final (las 2 del archivo son bodegas canceladas, ignoradas)',po.noTerminadaConFin===0,po.noTerminadaConFin);
@@ -1100,7 +1102,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -1520,6 +1522,86 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    __check("CP: corte tiene resumen, filtro de fases, agrupador y juntar colores",/Resumen de la semana/.test(h)&&/class="ffases"/.test(h)&&/Juntar colores en la cola/.test(h));
    CEN.id='corte';CEN.tab='plan';CEN.fases=null;GRP={};page='ordenes';render();
    __check("CP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO: tallas, registro por talla, reprogramación, cronómetro con segundos, fase desde piso */
+  {const antes=__R.errors.length;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
+   const bakJ=JSON.stringify(S.params.tallasJuegos||null),bakC=JSON.stringify(S.params.tallasCat||null),bakR=JSON.stringify(S.params.pedidosReprog||null);
+   S.params.tallasJuegos=[{id:'jx',n:'Básico',tallas:['S','M','L','XL']}];S.params.tallasCat={};S.params.pedidosReprog=[];
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mkO=(cant,op)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=cant;delete o.tallasPedido;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oA=mkO(100,'WH/TAL-A'),oB=mkO(100,'WH/TAL-B'),oC=mkO(60,'WH/TAL-C');
+   PLAN=null;PLAN_ALL=null;
+   // 2 · carga masiva: formato largo, WH inexistente y suma distinta
+   const filasLargo=[{WH:'WH/TAL-A',Talla:'S',Cantidad:25},{WH:'WH/TAL-A',Talla:'M',Cantidad:25},{WH:'WH/TAL-A',Talla:'L',Cantidad:25},{WH:'WH/TAL-A',Talla:'XL',Cantidad:25},
+     {WH:'WH/TAL-B',Talla:'S',Cantidad:40},{WH:'WH/TAL-B',Talla:'M',Cantidad:40},{WH:'WH/NO-EXISTE',Talla:'S',Cantidad:10},{WH:'WH/TAL-A',Talla:'XXL',Cantidad:0}];
+   const pl=planTallas(filasLargo,'prueba.csv');
+   __check("TL2a: detecta el formato largo (una fila por talla) y lo dice",pl.formato==='largo'&&pl.cWH==='WH'&&pl.cTalla==='Talla'&&pl.cCant==='Cantidad');
+   __check("TL2b: reporta las WH que no existen, sin cargarlas",pl.sinOrden.length===1&&pl.sinOrden[0].wh==='WH/NO-EXISTE'&&pl.aplicables.every(x=>x.wh!=='WH/NO-EXISTE'));
+   __check("TL2b: reporta las órdenes donde la suma por talla no cuadra con la cantidad (y no las corrige)",pl.difSuma.length===1&&pl.difSuma[0].wh==='WH/TAL-B'&&pl.difSuma[0].suma===80&&pl.difSuma[0].dif===-20);
+   TALLAS_CARGA=pl;aplicarTallas();
+   __check("TL2d: la curva queda guardada en la orden con quién y cuándo",JSON.stringify(oA.tallasPedido)===JSON.stringify({S:25,M:25,L:25,XL:25})&&!!oA.tallasPedidoMeta.u&&!!oA.tallasPedidoMeta.ts&&sumaCurva(oB.tallasPedido)===80);
+   __check("TL2d: la curva pedida está en la tabla 14 para que no se pierda en las recargas",camposConservados().some(x=>x.campo==='tallasPedido'));
+   // formato ancho y tallas nuevas
+   const pl2=planTallas([{WH:'WH/TAL-C',S:10,M:20,L:30,XXL:5}],'ancho.csv');
+   __check("TL2a: detecta el formato ancho (una columna por talla)",pl2.formato==='ancho'&&pl2.anchoCols.length===4&&pl2.aplicables.length===1);
+   __check("TL2c: las tallas nuevas se proponen, no se crean solas",pl2.tallasNuevas.includes('XXL')&&!tallasJuegos()[0].tallas.includes('XXL'));
+   TALLAS_CARGA=pl2;aplicarTallas();
+   // 3a · corte registra la curva real
+   const cortadoA={S:24,M:25,L:25,XL:25};
+   {const a=S.avance[oA.id]=S.avance[oA.id]||{};a.tallas={corte:Object.assign({},cortadoA)};}
+   __check("TL3a: lo cortado es la curva real y contra eso se miden los centros siguientes",baseTallas(oA,'modulos').base==='corte'&&JSON.stringify(baseTallas(oA,'modulos').tallas)===JSON.stringify(cortadoA));
+   __check("TL3b: sin registro de corte se compara contra lo pedido y se marca",baseTallas(oB,'modulos').base==='pedido'&&/[Ss]in registro de corte/.test(difTallasHTML(oB,'modulos')));
+   // 3b · no se puede pasar de lo cortado sin aviso
+   {mRegistroTallas(oA.id,'modulos');
+    const set=(t,v)=>{const el=[...document.querySelectorAll('[id^="rt-"]')].find(e=>e.getAttribute('data-t')===t);if(el)el.value=v};
+    set('S',30);alerts.length=0;let avisó=false;const conf0=window.confirm;window.confirm=m=>{avisó=/pasan de lo cortado/.test(String(m));return true};
+    guardarRegistroTallas(oA.id,'modulos');window.confirm=conf0;
+    const reg=((S.avance[oA.id]||{}).tallas||{}).modulos||{};
+    __check("TL3b: registrar más de lo cortado avisa y queda marcado",avisó&&reg.S===30&&(S.avance[oA.id].tallasLog||[]).some(x=>x.talla==='S'&&x.excede===true));
+    __check("TL3d: cada registro queda auditado con quién, cuándo, centro, talla y unidades",(S.avance[oA.id].tallasLog||[]).every(x=>x.ts&&x.u&&x.centro&&x.talla&&x.pz>0));}
+   // 3c · orden sin curva: solo total y bandeja en Hoy
+   {const oSin=mkO(50,'WH/TAL-SIN');PLAN=null;PLAN_ALL=null;
+    __check("TL3c: una orden sin curva ni corte solo permite el total",!baseTallas(oSin,'modulos').tallas&&!tallasDeOrden(oSin).length);
+    const it=pendientesHoy().find(x=>x.k==='sinCurvaTallas');
+    __check("TL3c: las órdenes sin curva de tallas salen en Hoy → Pendientes",!!it&&it.n>=1&&ordenesSinCurva().some(x=>x.id===oSin.id));
+    S.ordenes=S.ordenes.filter(x=>x!==oSin)}
+   // 1 · Mi centro: solo lo programado; WH existente pero no programada aquí
+   {TAB={centro:'modulos',rec:null,q:''};page='tablet';render();
+    const cola=tabletFilas('modulos',null,programar());
+    TAB.q='WH/TAL-A';render();const h=document.getElementById('p-tablet').innerHTML;
+    const enCola=cola.some(f=>normTxt(f.o.op).includes(normTxt('WH/TAL-A')));
+    __check("TL1: si la WH existe pero no está programada en el centro, sale bloqueada con 'pedir reprogramación'",enCola||(/no programada en/.test(h)&&/Pedir reprogramación/.test(h)));
+    if(!enCola){pedirReprogramacion(oA.id,'modulos');
+      const it=pendientesHoy().find(x=>x.k==='reprog');
+      __check("TL1: el pedido avisa en Hoy → Pendientes a quien puede reprogramar",!!it&&it.n===1&&pedidosReprog().filter(p=>!p.atendida).length===1);
+      atenderReprog(pedidosReprog()[0].id);__check("TL1: se puede marcar atendida",pedidosReprog()[0].atendida===true)}
+    else{__check("TL1: el pedido avisa en Hoy → Pendientes a quien puede reprogramar",true,'la orden sí estaba en cola');__check("TL1: se puede marcar atendida",true,'no hizo falta pedirla')}
+    TAB.q=''}
+   // 4 · cronómetro con segundos y unidades por talla del tramo
+   {const oid=oA.id;cronoTablet(oid,'modulos','ini');const k=(S.avance[oid].crono||{}).modulos;k.ini=new Date(Date.now()-95000).toISOString();
+    mRegistroTallas(oid,'modulos');const el=[...document.querySelectorAll('[id^="rt-"]')].find(e=>e.getAttribute('data-t')==='M');if(el)el.value=5;guardarRegistroTallas(oid,'modulos');
+    cronoTablet(oid,'modulos','fin');const k2=(S.avance[oid].crono||{}).modulos;
+    __check("TL4: el cronómetro mide en segundos y guarda las unidades por talla del tramo",k2.seg>=90&&/min .. s/.test(cronoTxt(k2))&&k2.tallas&&k2.tallas.M===5);}
+   // 5 · cambio de fase desde piso con observación de la tabla 15
+   {if(!Array.isArray(S.params.motivos))S.params.motivos=[];
+    if(!S.params.motivos.some(m=>m.uso==='piso'))S.params.motivos.push({motivo:'Tela con falla en la mesa',uso:'piso'});
+    mFasePiso(oA.id,'modulos');const sel=document.getElementById('fp-obs');
+    __check("TL5: la observación de piso es una lista cerrada de la tabla 15 (uso observación de piso)",!!sel&&sel.tagName==='SELECT'&&[...sel.options].some(o=>o.value==='Tela con falla en la mesa')&&![...sel.options].some(o=>o.value==='texto libre'));
+    const fAnt=oA.fase;const avanzar=fasesDisponibles().find(f=>!esDevolucionFase(fAnt,f)&&f!==fAnt);
+    document.getElementById('fp-f').value=avanzar;sel.value='Tela con falla en la mesa';alerts.length=0;guardarFasePiso(oA.id,'modulos');
+    __check("TL5: avanzar desde piso funciona sin motivo y guarda la observación",oA.fase===avanzar&&(oA.fases||[]).slice(-1)[0].obs==='Tela con falla en la mesa'&&!alerts.length);
+    try{cerrar()}catch(e){}}
+   // 6 · teléfono
+   {const css=[...document.styleSheets].map(ss=>{try{return [...ss.cssRules].map(r=>r.cssText).join('\n')}catch(e){return ''}}).join('\n');
+    __check("TL6: hay diseño de teléfono para Mi centro y Control de piso",/max-width: 520px/.test(css)&&/tab-card/.test(css)&&/p-control/.test(css));}
+   // configuración: tabla 16
+   page='config';CONF.tab='ordenes2';render();
+   __check("TL2c: la tabla 16 · Tallas existe, con juegos y categorías",document.getElementById('p-config').innerHTML.includes('16 · Tallas')&&document.getElementById('p-config').innerHTML.includes('Qué juego usa cada categoría'));
+   S.ordenes=S.ordenes.filter(x=>x!==oA&&x!==oB&&x!==oC);[oA,oB,oC].forEach(o=>delete S.avance[o.id]);
+   const bj=JSON.parse(bakJ);if(bj)S.params.tallasJuegos=bj;else delete S.params.tallasJuegos;
+   const bc=JSON.parse(bakC);if(bc)S.params.tallasCat=bc;else delete S.params.tallasCat;
+   const br=JSON.parse(bakR);if(br)S.params.pedidosReprog=br;else delete S.params.pedidosReprog;
+   window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

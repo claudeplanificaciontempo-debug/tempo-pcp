@@ -335,6 +335,20 @@ motor). `marcaCentro(o,P)` reemplazó a la fecha de entrega en las vistas de cen
 `vCostura(el,embebido)` se renderiza como pestaña `CEN.tab==='costura'` del centro Confección y la entrada suelta del
 menú se quitó. Qué faltaría para secuenciar por color en el motor: ver `CENTROS_REPORTE.md`.
 
+**Piso y tallas (15-sep-2026 noche):** tabla **16 · Tallas** (`tallasJuegos`/`tallasCat`, juegos con orden de
+presentación y juego por categoría; `add/set/delTallaJuego` con bitácora, del en la lista GUARDIA). Carga masiva:
+`mCargarTallas`/`leerTabla` (xlsx por CDN o CSV)/`colDe` (columnas por nombre)/`planTallas` (detecta formato largo o
+ancho)/`previaTallasHTML` (encontradas, WH inexistentes, suma ≠ cantidad, tallas nuevas)/`aplicarTallas` (confirma,
+guarda `o.tallasPedido` + `tallasPedidoMeta`, bitácora, resumen en `S.params.tallasCarga`). `tallasPedido` está en la
+tabla 14 (`defCamposConservados`). Registro por talla: `baseTallas(o,c)` (corte manda; si no, lo pedido; si no, solo
+total), `mRegistroTallas`/`guardarRegistroTallas` (suma, avisa al exceder, `S.avance[oid].tallas[centro]` y
+`tallasLog[]` con quién/cuándo/centro/talla/unidades), `difTallasHTML`, `mHechoTotal`, `ordenesSinCurva` (bandeja
+`sinCurvaTallas`). Mi centro: `tabletBuscadorHTML` (solo lo programado; WH existente fuera del centro sale bloqueada)
++ `pedirReprogramacion`/`atenderReprog`/`reprogPanelHTML` (bandeja `reprog`). Cronómetro en segundos (`k.seg`,
+`cronoTxt`, `cronoCorriendoTxt`) y con `k.tallas` del tramo. `mFasePiso`/`guardarFasePiso`: observación de la tabla 15
+(uso piso) + motivo solo si la secuencia baja. Teléfono: `@media (max-width:520px)` para `.tab-card`, `#p-tablet` y
+`#p-control`. Ver `PISO_TALLAS_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
