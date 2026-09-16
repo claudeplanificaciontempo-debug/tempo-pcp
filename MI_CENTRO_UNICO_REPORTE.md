@@ -403,3 +403,32 @@ la orden sale de la cola · el siguiente centro trabaja contra 180 y no contra 2
 Control de piso y en el reporte de avance · la fase no cambia sola · sale en Hoy y en el panel del supervisor con los
 botones · el operario no puede reabrir y el supervisor sí, con motivo y auditoría · cierre completo sin preguntar ·
 el botón del tramo guarda primero y cierra después · y **todo el recorrido entrando como operario de tablet**.
+
+---
+
+# 10ª entrega (16-sep-2026) · el supervisor mueve fases y la cola avisa lo que ya puede empezar
+
+**Commits:** `8e20216` y `e04231e` · **Harness:** 1175 verdes.
+
+## El supervisor de piso vuelve a mover fases
+Corte, módulos y terminado quedan marcados como **supervisor de piso** (columna Piso de Configuración → Usuarios),
+y mueven la fase con la función `mover_fase` del servidor en lugar de escribir en la tabla de órdenes. Vale desde la
+etiqueta de fase de cualquier pantalla, desde Control de piso → Cambio de fases y desde la bandeja de órdenes
+terminadas con la fase sin actualizar, que era justo lo que la entrega anterior le pedía y él no podía hacer.
+Mientras no se ejecute `SUPABASE_MOVER_FASE.sql`, la app lo dice y no cambia nada. El operario de tablet sigue
+enviando la solicitud, y ahora la puede aplicar tanto planificación como el supervisor. El detalle está en
+`TABLET_PERMISOS_REPORTE.md` (3ª entrega).
+
+## «Listas para empezar · aún no programadas»
+En Centro → Programación, arriba de la cola, una sección con las órdenes cuyo **paso anterior ya cerró** —las
+prendas están en el centro— pero que el **motor programa más adelante** o todavía sin fecha. Cada fila trae:
+
+- la WH con su foto y su fase,
+- **dónde terminó y cuándo** (p. ej. «Corte · 16/09 08:12»),
+- **cuántas prendas salieron**, y si faltaron, cuántas y por qué,
+- cliente y fecha de entrega,
+- **para cuándo la programa el motor** (o «sin fecha en el programa»),
+- y, para quien puede reprogramar, el botón **adelantar**, que la pone primera en la cola de ese centro.
+
+A los perfiles de piso la sección les dice que adelantarla en la cola lo guarda planificación: hoy el orden de la
+cola vive en la orden, que ellos no escriben.

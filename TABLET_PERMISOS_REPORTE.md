@@ -151,3 +151,68 @@ aplica; el aviso nombra la tabla.
 Nada de esto cambia las políticas de Supabase. `SUPABASE_POLITICAS_TABLET.sql` sigue **sin ejecutarse**; lo que hay en
 producción son las políticas que ya cargaste. Si algún día quieres que un supervisor de centro vuelva a cambiar fases
 directo, basta con desmarcarle **Solo piso** y darle la política de escritura en `ordenes`.
+
+---
+
+# 3ª entrega (16-sep-2026) · los supervisores de piso vuelven a mover fases
+
+**Commits:** `8e20216` (perfiles + función + app) y `e04231e` (listas para empezar) · **Harness:** 1175 verdes.
+
+## Qué estaba mal
+Con la 2ª entrega, corte, módulos y terminado dejaron de escribir en `ordenes`, y con eso perdieron el cambio de
+fase. Pero esos tres **son los perfiles de los supervisores**, y el principio del proyecto es que el supervisor
+mueve fases. Encima, la bandeja «fase sin actualizar» le pedía justo eso.
+
+## 1 · Operario y supervisor de piso, en el catálogo
+Configuración → Usuarios → Perfiles tiene ahora la columna **Piso**, con tres opciones:
+
+| Valor | Quién | Qué puede |
+| --- | --- | --- |
+| — | planificación, liberación, tintorería, consulta | guardan todo lo de siempre |
+| **Operario** | tablet (y los perfiles antiguos de piso) | registra su trabajo y **pide** el cambio de fase |
+| **Supervisor de piso** | corte, módulos, terminado | registra y **mueve fases** con la función del servidor |
+
+Los dos tipos de piso siguen subiendo **solo** avance, bitácora, turnos y paros. La columna es un dato editable: lo
+que marques ahí manda sobre el valor que trae el código.
+
+## 2 · La función de la base (propuesta, sin ejecutar)
+`SUPABASE_MOVER_FASE.sql`. Dos funciones `security definer`:
+- **`puede_mover_fase(uid)`**: lee `perfiles.rol` y el catálogo de perfiles (que vive en `params`) y deja pasar a
+  quien tenga `piso = supervisor` o permisos `*`, `ordenes` o `programa`. O sea: **la regla de la base es la misma
+  configuración de la app**, con una lista de respaldo por si el catálogo aún no tiene la columna.
+- **`mover_fase(p_orden, p_fase, p_motivo)`**: cambia **solo** `data->>'fase'` y añade una entrada a
+  `data->'fases'` (el historial, con antes, quién, cuándo, origen y motivo). Ningún otro campo del jsonb —
+  cantidades, fechas, ruta, telas, liberaciones— se toca, ni otras filas, ni otras tablas salvo la línea de
+  **bitácora** con la auditoría. Valida que haya sesión, que el perfil pueda, que la fase no venga vacía, que la
+  orden exista y que la fase exista; si la fase es la misma, no hace nada.
+
+**Cómo está guardada la fase** (va explicado también dentro del archivo): no hay columna `fase`. Todas las tablas
+son `id text, data jsonb, actualizado, actualizado_por`, y la orden entera vive en `data`: la fase es
+`data->>'fase'` y el historial `data->'fases'`. Por eso la función usa `jsonb_set` sobre esas dos claves.
+
+El archivo **no se ejecutó**: lo revisas y lo corres tú. Trae al final las consultas para comprobarla y para
+quitarla.
+
+## 3 · En la app
+El supervisor de piso ya no guarda la fase con un upsert de `ordenes`: `moverFases` detecta su perfil y llama a
+`mover_fase` (rpc). Vale para **Control de piso → Cambio de fases**, para la etiqueta de fase de cualquier pantalla,
+para la **bandeja «terminadas con la fase sin actualizar»** y para **aplicar la solicitud del operario**. Si la
+función todavía no existe en la base, avisa **«Falta ejecutar SUPABASE_MOVER_FASE.sql»** y **no cambia nada** (ni en
+pantalla ni en el servidor). El operario de tablet sigue enviando solicitud, que ahora puede aplicar tanto
+planificación como el supervisor.
+
+De paso: si con tu perfil un cambio queda sin poder guardarse (la ruta o el orden de la cola, que también viven en
+`ordenes`), la pantalla lo dice —«con tu perfil no se guardan los cambios de órdenes»— en vez de perderlo en
+silencio.
+
+## 4 · Lo que sigue pendiente de decidir
+Reordenar la cola del centro (`progCentro.pri`) y editar la ruta también viven en `ordenes`, así que hoy el
+supervisor **tampoco los guarda**. Si quieres que pueda, hace falta otra función igual de acotada (misma forma que
+`mover_fase`). Dímelo y la propongo en el mismo archivo.
+
+## Qué se probó
+El catálogo separa operario de supervisor y la columna manda · el supervisor mueve la fase **por rpc** y en la base
+**solo cambian `fase` y `fases`** (se compara el jsonb entero antes y después) · no se manda ningún upsert de
+`ordenes` · queda la auditoría en avance y la bitácora del servidor · **sin la función, avisa y no cambia nada** ·
+el operario no mueve la fase, queda solicitud y no se llama a la función · el supervisor aplica esa solicitud y la
+fase cambia en la base · la bandeja «fase sin actualizar» le funciona.

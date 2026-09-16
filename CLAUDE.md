@@ -459,6 +459,19 @@ da lo que realmente llega a un centro (lo que salió del último paso cerrado an
 panel del supervisor (mover fase con `mCambiarFase(oid,sugerida)` o reabrir). `cierresConFaltanteHTML` en el reporte de
 avance y `cierresOrdenHTML` en la ficha. Ver `TABLET_PERMISOS_REPORTE.md` y `MI_CENTRO_UNICO_REPORTE.md`.
 
+**Fases desde el piso (16-sep-2026):** el catálogo de perfiles tiene `piso` = `operario` | `supervisor` | vacío
+(`PISO_TIPOS`, `PISO_DEF`, `tipoPiso(d)`, `tipoPisoActual()`, `esSupervisorPiso()`, `esOperarioTablet()`; `perfilSoloPiso()` = cualquiera de
+los dos y sigue mandando en `_save()`). El supervisor mueve fases por **rpc**: `moverFases` deriva a `moverFasesRPC` →
+`moverFaseServidor` → `sb.rpc('mover_fase',{p_orden,p_fase,p_motivo})`; si la función no existe devuelve `{falta:true}` y la app
+avisa «Falta ejecutar SUPABASE_MOVER_FASE.sql» sin tocar nada (ni memoria ni servidor). Propuesta SQL en
+`SUPABASE_MOVER_FASE.sql` (**sin ejecutar**): `puede_mover_fase(uid)` lee `perfiles.rol` + `params.data->perfilesDef` y
+`mover_fase()` hace `jsonb_set` solo sobre `{fase}` y `{fases}` de `ordenes.data` + una línea en `bitacora`. `guardarFasePiso` solo
+crea solicitud para `esOperarioTablet()`; `aplicarSolicitudFase` es async. `avisoGuardado()` avisa cuando `ULT_SALTADAS` (sin
+params) trae algo: «con tu perfil no se guardan los cambios de órdenes». **Centro → Programación**:
+`listasNoProgramadas(c,P,hasta)`/`listasNoProgramadasHTML` = paso anterior cerrado (`listaParaEmpezar`) y el motor sin
+fecha o más adelante; botón «adelantar» (`moverEnCola(oid,c,1)`) para quien puede reprogramar. El mock de pruebas
+tiene `sb.rpc` y `__RPC={falta,error,ultimo}`. Ver `TABLET_PERMISOS_REPORTE.md` (3ª entrega).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -204,6 +204,22 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.24 Fases desde el piso: operario que pide, supervisor que mueve (16-sep-2026)
+- El catálogo de perfiles tiene la columna **Piso** (Configuración → Usuarios): **operario** (tablet: registra y
+  **pide** el cambio de fase) y **supervisor de piso** (corte, módulos, terminado: registra y **mueve** fases).
+  Los dos siguen subiendo solo avance, bitácora, turnos y paros. Lo configurado manda sobre el código.
+- El supervisor mueve la fase llamando a **`mover_fase`** en la base (rpc), no escribiendo en `ordenes`. La propuesta
+  está en `SUPABASE_MOVER_FASE.sql` (**sin ejecutar**): valida al que llama leyendo `perfiles` y el catálogo, cambia
+  **solo** `data->>'fase'` y el historial `data->'fases'`, y escribe la auditoría en `bitacora`. Si la función no existe,
+  la app avisa «Falta ejecutar SUPABASE_MOVER_FASE.sql» y no cambia nada.
+- La solicitud del operario la puede aplicar planificación **o** el supervisor.
+- Si un cambio no se puede guardar con ese perfil (ruta, orden de la cola), la pantalla lo dice.
+  **Pendiente de decidir**: reordenar la cola y editar la ruta también viven en `ordenes`; haría falta otra función
+  igual de acotada si se quiere que el supervisor las guarde.
+- **Centro → Programación** abre con **«Listas para empezar · aún no programadas»**: paso anterior cerrado, prendas
+  ya en el centro, pero el motor las pone más adelante. Dice dónde terminó, cuándo, cuántas salieron y para cuándo
+  están programadas, con botón **adelantar** para quien puede reprogramar.
+
 ### 2.23 Piso: guardado del operario, total sin tallas y cierre del paso (16-sep-2026)
 - **El guardado del operario solo sube sus cuatro tablas**: `avance`, `bitacora`, `turnos` y `paros` (las mismas de las
   políticas RLS). Un perfil es «solo piso» por la columna **Solo piso** de Configuración → Usuarios (por defecto
