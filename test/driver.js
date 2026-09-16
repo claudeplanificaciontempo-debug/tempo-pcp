@@ -33,6 +33,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     porCentroT.corte===66&&porCentroT.modulos===448&&porCentroT.bordado===7&&porCentroT.empaque===47&&porCentroT.botones===16&&porCentroT.estampado===9&&porCentroT.etiquetas===2,
     JSON.stringify(porCentroT));
   LMO=plan;aplicarLMO();await __p(50);
+  /* MEDICIÓN de operaciones de etiquetas y de ojales/botones (LMO real) */
+  {const porCentro=c=>(S.operaciones||[]).filter(o=>o.centro===c).map(o=>({id:o.id,n:o.n,sam:o.sam,maq:o.maq||'',sub:o.sub||''}));
+   const catsCon=c=>S.categorias.filter(k=>opsDe(k).some(x=>x.centro===c)).map(k=>({cat:nombreCat(k),fam:(K(k.padre)||k).n,
+     ops:opsDe(k).filter(x=>x.centro===c).map(x=>({n:x.n,sam:x.sam})),tot:opsDe(k).filter(x=>x.centro===c).reduce((a,x)=>a+(+x.sam||0),0)}));
+   __R.lmo={etiquetas:{ops:porCentro('etiquetas'),cats:catsCon('etiquetas')},
+     botones:{ops:porCentro('botones'),cats:catsCon('botones')},
+     reglasOB:tiemposOjalBoton().map(r=>({match:r.match,ojales:r.ojales,botones:r.botones,sinConfirmar:!!r.sinConfirmar})),
+     camisetas:S.categorias.filter(k=>/camiseta|level/i.test(k.n||'')).map(k=>({cat:k.n,fam:(K(k.padre)||k).n,etiq:opsDe(k).filter(x=>x.centro==='etiquetas').map(x=>x.n+' '+x.sam),estampado:opsDe(k).filter(x=>x.centro==='estampado').map(x=>x.n+' '+x.sam)}))};
+   __check("MED-LMO: se midieron las operaciones de etiquetas y de ojales/botones",Array.isArray(__R.lmo.etiquetas.ops));}
   __check('aplicarLMO: 595 operaciones cargadas con id propio (no CODIGO GEN)',S.operaciones.length===595&&S.operaciones.every(o=>!o.id.includes('-')));
   __check('CAMISETAS/Camiseta CV vinculada por defecto del padre (CAMISETA)',hCamCV.familiaLMO==='CAMISETA'&&(hCamCV.ops||[]).length>0,(hCamCV.ops||[]).length);
   __check('SHORT PLANOS/Short Cargo usa la EXCEPCIÓN (SHORT CARGO), no el default del padre (SHORT PLANO)',hShortCargo.familiaLMO==='SHORT CARGO'&&(hShortCargo.ops||[]).length>0,hShortCargo.familiaLMO);
@@ -205,9 +214,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;
    __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet",perfilesDef().length===9&&perfilesDef().some(x=>x.id==='tablet')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
-   __check("perfil corte: ve corte, estampado y bordado; no confección ni configuración",veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&puede('ruta')&&puedeCentro('corte'));
+   __check("perfil corte: ve corte, estampado, bordado y etiquetas; no confección ni configuración",veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&puede('ruta')&&puedeCentro('corte'));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
-   PERFIL={rol:'terminado',modo:'editar',nombre:'PT'};__check("perfil producto terminado: plancha, botones, lavado, etiquetas y empaque",['plancha','botones','lavado','etiquetas','empaque'].every(veCentro)&&!veCentro('corte'));
+   PERFIL={rol:'terminado',modo:'editar',nombre:'PT'};__check("perfil producto terminado: plancha, botones, lavado y empaque (Etiquetas pasó a Estampado)",['plancha','botones','lavado','empaque'].every(veCentro)&&!veCentro('etiquetas')&&!veCentro('corte'));
    PERFIL={rol:'tintoreria',modo:'editar',nombre:'Tin'};__check("perfil tintorería: solo tintorería, registra y hace calidad",veArea('tin')&&!veArea('tej')&&!veArea('pro')&&puedeArea('tin')&&puede('calidadTin')&&!puede('liberar'));
    PERFIL={rol:'liberacion',modo:'editar',nombre:'Lib'};__check("perfil liberación: libera y ve la cola, no registra en piso",puede('liberar')&&!puede('avance')&&vePagina('liberacion')&&!vePagina('centro'));
    PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};__check("perfil módulos: ve los módulos y el balanceo",veCentro('modulos')&&vePagina('balanceo')&&!veCentro('corte'));
@@ -551,6 +560,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('reporteTarea: la carga pendiente nunca supera la completa',['2026-09','2026-10','2026-11'].every(m=>Object.keys(RT.cargaPendiente[m]).every(c=>RT.cargaPendiente[m][c]<=RT.cargaCompleta[m][c]+1e-6)));
   {const antes=__R.errors.length;mReporteTarea();__check('mReporteTarea renderiza sin errores',__R.errors.length===antes);cerrar()}
   {const antes=__R.errors.length;page='ordenes';render();__check('página órdenes renderiza con las órdenes de la Parte 2',__R.errors.length===antes);}
+  /* MEDICIÓN tardía: operaciones de etiquetas y ojales/botones YA vinculadas a categorías */
+  {const usos=c=>{const m={};S.categorias.forEach(k=>{opsDe(k).filter(x=>x.centro===c).forEach(x=>{const key=x.op;m[key]=m[key]||{op:x.n,sam:x.sam,maq:x.maq||'',cats:[]};m[key].cats.push(nombreCat(k))})});return Object.values(m)};
+   const porCat=c=>S.categorias.filter(k=>opsDe(k).some(x=>x.centro===c)).map(k=>({cat:nombreCat(k),fam:(K(k.padre)||k).n,
+     ops:opsDe(k).filter(x=>x.centro===c).map(x=>x.n+' '+x.sam+(x.maq?' ['+x.maq+']':'')),lmo:samPorCentro(k)[c],regla:(()=>{const ob=ojalBotonDe(k);return ob?(ob.match+(ob.sinConfirmar?' (SIN CONFIRMAR)':' = '+((+ob.ojales||0)+(+ob.botones||0)))):'—'})()}));
+   __R.lmo2={etiquetas:{usos:usos('etiquetas'),porCat:porCat('etiquetas')},botones:{usos:usos('botones'),porCat:porCat('botones')},
+     camisetasEtiq:S.categorias.filter(k=>/camiseta|level/i.test(k.n||'')).map(k=>({cat:nombreCat(k),etiq:opsDe(k).filter(x=>x.centro==='etiquetas').length,est:opsDe(k).filter(x=>x.centro==='estampado').map(x=>x.n+' '+x.sam)})),
+     ordEtiq:S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='etiquetas')).length,
+     ordEst:S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='estampado')).length};
+   __check("MED-LMO2: medición tardía de etiquetas y ojales/botones",!!__R.lmo2);}
   /* MEDICIÓN sobre las órdenes REALES cargadas del volcado (antes de restaurar el estado de prueba) */
   {const ab=S.ordenes.filter(abierta);
    const cd=cambiosDisponibilidad();const rs=rutasSinSecuencia();
@@ -835,7 +853,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('piso corte puede registrar en corte',puedeCentro('corte')&&!puedeCentro('modulos'));
   __check('piso corte no ve tejeduría ni tintorería',!veArea('tej')&&!veArea('tin')&&veArea('pro'));
   {const antes=__R.errors.length;page='control';CTL.area=null;render();const html=document.getElementById('p-'+page).innerHTML;__check('control de piso de piso corte solo muestra sus centros',__R.errors.length===antes&&CTL.area==='pro'&&html.includes('Corte')&&!html.includes('Confección</h3>'));
-   page='reporteria';REP.vista='textil';render();const h2=document.getElementById('p-'+page).innerHTML;__check('reportería de piso corte cae a producción y solo su área',REP.vista==='produccion'&&h2.includes('Corte, estampado y bordado')&&!h2.includes('Confección</h3>')&&!h2.includes('Tejeduría <span'));
+   page='reporteria';REP.vista='textil';render();const h2=document.getElementById('p-'+page).innerHTML;__check('reportería de piso corte cae a producción y solo su área',REP.vista==='produccion'&&h2.includes('Corte, estampado, bordado y etiquetas')&&!h2.includes('Confección</h3>')&&!h2.includes('Tejeduría <span'));
    __check('reportería piso sin errores',__R.errors.length===antes);}
   try{localStorage.__fase="perfil solo ver"}catch(e){}
   PERFIL={rol:'piso',area:'pro',subarea:'confeccion',modo:'ver',nombre:'Solo ve'};
@@ -2843,6 +2861,49 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.ordenes=S.ordenes.filter(o=>![oSin,oRep,oFue].includes(o));[oSin,oRep,oFue].forEach(o=>delete S.avance[o.id]);}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("AF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MENÚ · Terminados desplegable, Empaque dentro y Etiquetas con Estampado */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   sembrarRutaDefecto();  // dispara las siembras idempotentes
+   // 1 · Empaque ya no está en el primer nivel
+   {const pri=[...document.querySelectorAll('nav a[data-cen]:not([data-sub])')].map(a=>a.dataset.cen);
+    __check("MN1: Empaque sale del primer nivel del menú",!pri.includes('empaque')&&pri.includes('terminados'));
+    __check("MN1: y sigue siendo sub-área de Terminados por la columna «Ítem de planificación»",grupoPlanDe('empaque')==='terminados'&&subAreasDe('terminados').includes('empaque'));}
+   // 2 · Terminados despliega sus sub-áreas
+   {render();const subs=[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')];
+    __check("MN2: Terminados muestra un sub-ítem por cada sub-área, en el orden del proceso",subs.length===subAreasDe('terminados').length&&subs.map(a=>a.dataset.cen).join()===subAreasDe('terminados').join());
+    __check("MN2: los sub-ítems van indentados y llevan a la pantalla del centro",subs.every(a=>a.className==='subnav'&&a.dataset.p==='centro'));
+    __check("MN2: y llevan la alerta cuando la sub-área no tiene minutos o no está en ninguna ruta",subs.some(a=>!!a.dataset.av)&&subs.every(a=>!!a.dataset.av===/t-alerta/.test(a.innerHTML)));
+    // el menú se rehace solo si se mueve una sub-área
+    const bak=(CE('empaque')||{}).grupoPlan;setCentro('empaque','grupoPlan','modulos');render();
+    const subs2=[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].map(a=>a.dataset.cen);
+    const subm=[...document.querySelectorAll('nav a[data-sub][data-padre="modulos"]')].map(a=>a.dataset.cen);
+    __check("MN2: si cambias el «Ítem de planificación», el menú se actualiza solo",!subs2.includes('empaque')&&subm.includes('empaque')&&subm.includes('modulos'));
+    setCentro('empaque','grupoPlan',bak===undefined?'terminados':bak);render();
+    __check("MN2: y al devolverlo, vuelve",[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].map(a=>a.dataset.cen).includes('empaque'));
+    // el sub-ítem abre SOLO esa sub-área; el padre sigue siendo el consolidado
+    const cl=el=>{const ev=document.createEvent('MouseEvents');ev.initEvent('click',true,true);el.dispatchEvent(ev)};
+    cl([...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].find(a=>a.dataset.cen==='plancha'));
+    __check("MN2: tocar un sub-ítem abre ESA sub-área sola",CEN.id==='terminados'&&CEN.solo==='plancha');
+    page='centro';render();const hs=document.getElementById('p-centro').innerHTML;
+    __check("MN2: y la pantalla lo dice y deja volver al consolidado",/sub-área de Terminados/.test(hs)&&/ver las \d+ juntas/.test(hs));
+    cl(document.querySelector('nav a[data-cen="terminados"]:not([data-sub])'));
+    __check("MN2: y tocar Terminados vuelve a las sub-áreas juntas",CEN.id==='terminados'&&!CEN.solo);
+    page='centro';render();__check("MN2: el consolidado nombra las sub-áreas que junta",/sub-áreas juntas/.test(document.getElementById('p-centro').innerHTML));}
+   // 3 · Etiquetas con Estampado
+   {__check("MN3: Etiquetas queda en el ítem de planificación Estampado",grupoPlanDe('etiquetas')==='estampado'&&!subAreasDe('terminados').includes('etiquetas')&&subAreasDe('estampado').includes('etiquetas'));
+    __check("MN3: y por eso ya no sale bajo Terminados en el menú",![...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].some(a=>a.dataset.cen==='etiquetas'));
+    __check("MN3: la pantalla de Estampado la trae como sub-área propia",censDeGrupo('estampado').includes('etiquetas')&&censDeGrupo('estampado').includes('estampado'));
+    const cat=perfilesDef();const ter=cat.find(x=>x.id==='terminado'),cor=cat.find(x=>x.id==='corte');
+    __check("MN4: los perfiles cambian con ella: terminado deja de verla y corte/estampado/bordado la ve",!(ter.centros||[]).includes('etiquetas')&&(cor.centros||[]).includes('etiquetas'));
+    __check("MN3: las dos operaciones «Etiquetar» de la LMO son de serigrafía (SER-01), tampográfica y manual: ninguna es cosida",(S.operaciones||[]).filter(o=>o.centro==='etiquetas').every(o=>/etiquet/i.test(o.n||'')&&!/coser|cos[ei]/i.test(o.n||'')));}
+   // 4 · cada sub-área tiene su cola en Mi centro y la tablet apunta a la sub-área
+   {const cens=[...document.querySelectorAll('#p-config select')].length;
+    __check("MN4: la tablet se asigna a un CENTRO (sub-área), no a «Terminados»",!/>Terminados</.test(tabletSelHTML('u1'))&&/value="plancha"/.test(tabletSelHTML('u1'))&&/value="empaque"/.test(tabletSelHTML('u1')));
+    const rec=(S.recursos.find(r=>r.centro==='plancha'&&r.activa)||{}).id;
+    const P=S.ordenes.length?programar():{pro:[],ordenes:{},secMod:{}};
+    __check("MN4: Mi centro arma la cola de la sub-área, no la del grupo",Array.isArray(tabletFilas('plancha',rec,P))&&Array.isArray(tabletFilas('empaque',null,P)));}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("MN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

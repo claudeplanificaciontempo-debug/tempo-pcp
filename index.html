@@ -203,6 +203,7 @@ nav .grp .car{font-size:10px;transition:transform .15s}
 nav .grp.cerrado .car{transform:rotate(-90deg)}
 nav .gbody{position:absolute;top:100%;left:0;min-width:280px;max-height:calc(100vh - 120px);overflow:auto;background:var(--navy);border-radius:0 0 12px 12px;padding:8px;box-shadow:0 14px 30px rgba(0,0,0,.28);display:none;flex-direction:column;gap:1px;z-index:30}
 nav .gbody.abierto{display:flex}
+nav a.subnav{padding-left:26px;opacity:.92;font-size:var(--fs-s)}
 nav .grp{white-space:nowrap;border-radius:8px}
 nav .grp.abierto{background:rgba(255,255,255,.12);color:#fff}
 nav .grp.act{color:#fff;box-shadow:inset 0 -3px 0 var(--cobre2)}
@@ -312,7 +313,6 @@ tbody tr:hover td{background:var(--field)}
       <a data-p="centro" data-cen="estampado">Estampado</a>
       <a data-p="centro" data-cen="bordado">Bordado</a>
       <a data-p="centro" data-cen="terminados">Terminados</a>
-      <a data-p="centro" data-cen="empaque">Empaque</a>
       <a data-p="balanceo">Balanceo</a>
       <a data-p="imprimir">Programa del día</a>
       <a data-p="reporteria" data-rep="produccion">Reportería por área</a>
@@ -518,9 +518,9 @@ function defPerfiles(){return [
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
   {id:'tintoreria',n:'Tintorería',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','reporteria','imprimir'],desc:'Registra kilos hechos, faltantes y reprocesos; por ahora también hace calidad (rechaza → reproceso; aprueba → cola de producción). Ve solo tintorería.'},
   {id:'liberacion',n:'Liberación',permisos:['liberar'],centros:[],paginas:['liberacion','ordenes','wip'],desc:'Libera de la cola solo cuando los insumos están completos. Ve la cola de liberación y la ruta de cada orden.'},
-  {id:'corte',n:'Corte, estampado y bordado',permisos:['avance','reprogramar','ruta'],centros:['corte','estampado','bordado'],paginas:['centro','control','tablet','reporteria','imprimir'],desc:'Ve y programa esas tres áreas.'},
+  {id:'corte',n:'Corte, estampado y bordado',permisos:['avance','reprogramar','ruta'],centros:['corte','estampado','bordado','etiquetas'],paginas:['centro','control','tablet','reporteria','imprimir'],desc:'Ve y programa esas áreas, con etiquetas dentro de estampado (serigrafía).'},
   {id:'modulos',n:'Módulos (confección)',permisos:['avance','reprogramar','ruta'],centros:['modulos'],paginas:['centro','control','tablet','reporteria','imprimir','balanceo','costura'],desc:'Las dos personas ven los once módulos; no se reparten por módulo.'},
-  {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','reporteria','imprimir'],desc:'Plancha, botones, lavado, etiquetas y empaque: los procesos finales antes de facturar.'},
+  {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','reporteria','imprimir'],desc:'Ojales y botones, lavado, plancha y empaque: los procesos finales antes de facturar.'},
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
 function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['vistaordenes','wip','cumplimiento','avance','reporteria'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
   if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
@@ -538,8 +538,33 @@ const veCentro=c=>{if(!PERFIL)return false;const cs=centrosPerfil();if(cs.includ
 const puedeArea=a=>puede('avance')&&veArea(a);
 const puedeCentro=c=>veCentro(c)&&puedeArea((CE(c)||{}).area);
 const vePagina=p=>{const d=perfilDe(PERFIL);if(!d)return false;return d.paginas.includes('*')||d.paginas.includes(p)};
+/* ---------- el menú de un ítem de planificación con sub-áreas se arma desde la tabla de centros ---------- */
+function alertaSubArea(c){const or=origenTiempoCentro(c);const enRuta=S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c));
+  const av=[];
+  if(or.brecha)av.push(or.brecha);
+  if(!enRuta)av.push('ninguna orden la tiene en su ruta: su carga sale en 0 porque no hay nada programado ahí');
+  return av.join(' · ')}
+function armarNavSubCentros(){const nav=document.querySelector('nav');if(!nav||typeof S==='undefined'||!S||!S.centros)return;
+  let cambio=false;
+  nav.querySelectorAll('a[data-cen]:not([data-sub])').forEach(a=>{
+    const g=a.dataset.cen;const subs=subAreasDe(g);
+    const viejos=[];let n=a.nextElementSibling;
+    while(n&&n.matches&&n.matches('a[data-sub]')&&n.dataset.padre===g){viejos.push(n);n=n.nextElementSibling}
+    if(subs.length<2){viejos.forEach(x=>{x.remove();cambio=true});return}
+    const quiero=subs.map(c=>({c,txt:nCen(c),av:alertaSubArea(c)}));
+    const igual=viejos.length===quiero.length&&quiero.every((q,i)=>viejos[i].dataset.cen===q.c&&viejos[i].dataset.av===q.av);
+    if(igual)return;
+    viejos.forEach(x=>x.remove());
+    let ref=a;
+    quiero.forEach(q=>{const el=document.createElement('a');
+      el.dataset.p='centro';el.dataset.cen=q.c;el.dataset.sub='1';el.dataset.padre=g;el.dataset.av=q.av;
+      el.className='subnav';
+      el.innerHTML='↳ '+esc(q.txt)+(q.av?' <span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+esc(q.av)+'">!</span>':'');
+      ref.insertAdjacentElement('afterend',el);ref=el});
+    cambio=true});
+  if(cambio&&typeof aplicarNavPerfil==='function'){aplicarNavPerfil();if(typeof decorarNav==='function')decorarNav()}}
 function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||puede(need))&&vePagina(a.dataset.p);
-    if(ok&&a.dataset.cen){const cs=CENTROS_PROD[a.dataset.cen]||[a.dataset.cen];ok=cs.some(veCentro)}
+    if(ok&&a.dataset.cen){const cs=censDeGrupo(a.dataset.cen);ok=cs.some(veCentro)}
     if(ok&&a.dataset.rep){ok=a.dataset.rep==='textil'?(veArea('tej')||veArea('tin')):veArea('pro')}
     if(ok&&a.dataset.p==='tejeduria')ok=veArea('tej');if(ok&&a.dataset.p==='tintoreria')ok=veArea('tin');
     a.style.display=ok?'':'none'});
@@ -680,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 11:07';
+const APP_BUILD='2026-09-16 11:51';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2408,7 +2433,7 @@ let SIM={on:false,ym:null,rec:null,cambios:{},motivo:''};let SEMC={};
 function ajustesCap(){if(!S.params.ajustesCap||typeof S.params.ajustesCap!=='object')S.params.ajustesCap={};return S.params.ajustesCap}
 function semanasMes(ym){if(!SEMC[ym])SEMC[ym]=semanasLV(ym);return SEMC[ym]}
 function ajusteRecDia(r,d){if(!d)return null;const ym=d.slice(0,7);const w=semanasMes(ym).find(x=>x.dias.includes(d));if(!w)return null;const sim=SIM.on&&SIM.ym===ym&&SIM.cambios[w.ini]&&SIM.cambios[w.ini][r.id];if(sim)return sim;const a=(S.params.ajustesCap||{})[ym];return (a&&a.semanas&&a.semanas[w.ini]&&a.semanas[w.ini][r.id])||null}
-function tieneExtras(centroId,ym){const a=(S.params.ajustesCap||{})[ym];if(!a||!a.semanas)return false;const cens=CENTROS_PROD[centroId]||[centroId];return Object.values(a.semanas).some(sem=>Object.keys(sem).some(rid=>{const r=R(rid);return r&&cens.includes(r.centro)}))}
+function tieneExtras(centroId,ym){const a=(S.params.ajustesCap||{})[ym];if(!a||!a.semanas)return false;const cens=censDeGrupo(centroId);return Object.values(a.semanas).some(sem=>Object.keys(sem).some(rid=>{const r=R(rid);return r&&cens.includes(r.centro)}))}
 function capSemanaRec(r,w,modo){const was=SIM.on;if(modo==='vigente')SIM.on=false;let v=0;if(modo==='base'){v=w.dias.filter(d=>labR(d,r)).length*(r.pers||0)*(r.min||0)*((r.efic||0)/100)}else v=w.dias.reduce((a,d)=>a+capDia(r,d),0);SIM.on=was;return v}
 function cargaSemanaRec(P,r,w){return P.pro.filter(x=>x.rec===r.id&&w.dias.includes(x.dia)).reduce((a,x)=>a+(x.min||0),0)}
 function simSet(lun,rec,k,v){SIM.cambios[lun]=SIM.cambios[lun]||{};const o=SIM.cambios[lun][rec]=SIM.cambios[lun][rec]||{};if(v===''||v==null||isNaN(+v))delete o[k];else o[k]=+String(v).replace(',','.');if(!Object.keys(o).length)delete SIM.cambios[lun][rec]}
@@ -2566,6 +2591,7 @@ function render(){
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
+  if(typeof armarNavSubCentros==='function')armarNavSubCentros();
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
@@ -3811,10 +3837,11 @@ function listaDecisiones(P,max){const pend=(P.banosPend||[]);if(!pend.length)ret
    <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Se arman a mano en Tintorería · Armar baños.</p>`}
 
 /* ---------- Módulo por centro de producción: planificación · programación · ejecución ---------- */
-const CENTROS_PROD={corte:['corte'],modulos:['modulos'],estampado:['estampado'],bordado:['bordado'],terminados:['etiquetas','botones','lavado','plancha'],empaque:['empaque']};
 const CENTROS_PROD_N={corte:'Corte',modulos:'Confección',estampado:'Estampado',bordado:'Bordado',terminados:'Terminados',empaque:'Empaque'};
 /* ============ TERMINADOS POR SUB-ÁREA: a qué ítem de planificación pertenece cada centro, y su consolidado ============ */
-const GRUPO_PLAN_DEF={corte:'corte',modulos:'modulos',estampado:'estampado',bordado:'bordado',etiquetas:'terminados',botones:'terminados',lavado:'terminados',plancha:'terminados',empaque:'terminados'};
+const GRUPO_PLAN_DEF={corte:'corte',modulos:'modulos',estampado:'estampado',bordado:'bordado',etiquetas:'estampado',botones:'terminados',lavado:'terminados',plancha:'terminados',empaque:'terminados'};
+/* el respaldo (cuando todavía no hay centros cargados) sale de la MISMA siembra, para que no queden dos listas que se contradigan */
+const CENTROS_PROD=(()=>{const m={};Object.keys(GRUPO_PLAN_DEF).forEach(c=>{const g=GRUPO_PLAN_DEF[c];(m[g]=m[g]||[]).push(c)});Object.keys(CENTROS_PROD_N).forEach(g=>{if(!m[g])m[g]=[g]});return m})();
 function grupoPlanDe(cid){const c=CE(cid)||{};return c.grupoPlan||GRUPO_PLAN_DEF[cid]||cid}
 function subAreasDe(g){return S.centros.filter(c=>c.area==='pro'&&grupoPlanDe(c.id)===g).map(c=>c.id).sort((a,b)=>ordenPaso(a)-ordenPaso(b))}
 function censDeGrupo(g){const l=subAreasDe(g);return l.length?l:(CENTROS_PROD[g]||[g])}
@@ -3824,8 +3851,17 @@ function capacidadPendiente(c){return capacidadPaso(c)==='pend'}
 function diasEsperaCentro(cid){const f=esperasPaso().filter(x=>x.paso===cid&&!x.sinRegla);return f.length?Math.max(...f.map(x=>+x.dias||0)):0}
 /* siembra idempotente de lo que la usuaria dictó (16-sep): plancha 2 min/prenda y lavado como proceso por días */
 function sembrarTerminados(){if(S.params.terminadosSembrado)return;
+  {const e=CE('etiquetas');if(e&&e.grupoPlan===undefined){e.grupoPlan='estampado';if(typeof bitacora==='function')bitacora('Etiquetas pasa al ítem de planificación Estampado (serigrafía): sus dos operaciones «Etiquetar» son de SER-01, tampográfica y manual. Editable en Configuración → Centros.')}}
   const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;p.minEstandarEstimado=true;if(typeof bitacora==='function')bitacora('Terminados: plancha sembrada en 2 min/prenda (dictado 16-sep; editable en Configuración → Centros)')}
+  sembrarPerfilesEtiquetas();
   S.params.terminadosSembrado=new Date().toISOString()}
+/* etiquetas se va con estampado: el perfil que la ve pasa a ser el de corte/estampado/bordado, no el de terminados */
+function sembrarPerfilesEtiquetas(){if(S.params.etiqPerfilSembrado)return;
+  const cat=perfilesDef();const ter=cat.find(x=>x.id==='terminado'),cor=cat.find(x=>x.id==='corte');const cambios=[];
+  if(ter&&Array.isArray(ter.centros)&&ter.centros.includes('etiquetas')){ter.centros=ter.centros.filter(c=>c!=='etiquetas');cambios.push('Producto terminado ya no ve Etiquetas')}
+  if(cor&&Array.isArray(cor.centros)&&!cor.centros.includes('etiquetas')){cor.centros=cor.centros.concat(['etiquetas']);cambios.push('Corte, estampado y bordado ahora ve Etiquetas')}
+  S.params.etiqPerfilSembrado=new Date().toISOString();
+  if(cambios.length&&typeof bitacora==='function')bitacora('Perfiles por el traslado de Etiquetas a Estampado: '+cambios.join(' · ')+' (editable en Configuración → Usuarios)')}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -3913,7 +3949,7 @@ function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
    ${falta.length?`<div class="warn" style="margin-top:10px;font-size:var(--fs-s)"><b>${falta.length} ${falta.length===1?'sub-área':'sub-áreas'} sin minutos por prenda</b> (${falta.map(f=>esc(nCen(f.c))).join(', ')}): mientras falte ese dato su carga sale en <b>0 horas</b>, no porque no haya trabajo. Cárgalo en Configuración → Centros (columna «Min/prenda») o mapea sus operaciones en Configuración → Operaciones.</div>`:''}
    ${cens.some(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)))?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)"><b>Sub-áreas sin ninguna orden en su ruta:</b> ${cens.filter(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c))).map(c=>esc(nCen(c))).join(', ')}. El motor solo programa los pasos que están en la ruta de la orden: si la ruta no los trae, no hay nada que programar. Se corrige en Órdenes → Rutas.</div>`:''}
   </div></div>`}
-let CEN={id:'corte',tab:'plan',sem:0,q:'',niveles:null,todo:false,fases:null,cruce:'fam'};
+let CEN={id:'corte',solo:'',tab:'plan',sem:0,q:'',niveles:null,todo:false,fases:null,cruce:'fam'};
 /* ---------- Programación del centro: agrupar (cliente · familia · categoría · ODC, hasta 3 niveles) y ordenar arrastrando ----------
    La cola de un centro es UNA: el puesto es progCentro[c].pri, el mismo número que ya usaba el motor (prioCentro). Arrastrar renumera
    toda la cola 1..n; no hay otro sistema. Sin puesto = al final (SIN_PUESTO en prioCentro; decisión 14-sep). */
@@ -4238,13 +4274,17 @@ function modKPIsHTML(recs,P,dias,titulo){if(!recs.length)return '';
     return {id:'mod-'+r.id,v:num(pz),k:esc(r.n)+' · '+num(min)+' / '+num(cap)+' min'+(cap?' ('+Math.round(min/cap*100)+'%)':''),items:ords,porFam:true,cls:cap&&min>cap*1.02?'bad':''}});
   return `<div style="margin:16px 0 6px"><b>${esc(titulo)}</b> <span class="mut" style="font-size:var(--fs-xs)">· ${recs.length} ${recs.length===1?'puesto':'puestos'} · clic en una tarjeta abre sus órdenes por familia</span></div>${tarjetasResumenHTML(cards)}`}
 function vCentro(el){
-  const cid=CEN.id;const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
+  const cid=CEN.id;const todos=censDeGrupo(cid);
+  if(CEN.solo&&!todos.includes(CEN.solo))CEN.solo='';
+  const cens=CEN.solo?[CEN.solo]:todos;
+  const nombre=CEN.solo?nCen(CEN.solo):(CENTROS_PROD_N[cid]||nCen(cid));const h=hoy();
   const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
   const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
   const okPiso=puede('programa')||(puede('reprogramar')&&cens.some(veCentro));const q=normTxt(CEN.q);
   const fasesCEN=[...new Set(S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>cens.includes(p.centro))).map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
   const tabs=[['plan','Planificación'],['prog','Programación del centro'],['ejec','Ejecución y desviaciones']].concat(cid==='modulos'?[['costura','Costura: secuencia y rebalanceo']]:[]);
-  const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
+  const subTxt=CEN.solo?`<span class="note" style="margin-left:8px">sub-área de ${esc(CENTROS_PROD_N[cid]||nCen(cid))} · <a href="#" onclick="CEN.solo='';render();return false">ver las ${todos.length} juntas</a></span>`:(todos.length>1?`<span class="note" style="margin-left:8px">${todos.length} sub-áreas juntas: ${todos.map(nCen).map(esc).join(' · ')}</span>`:'');
+  const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2>${subTxt}<span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
    ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}${filtroFasesHTML(fasesCEN,CEN.fases,'CEN.fases','togFaseCEN')}${busqHTML('CEN.q',CEN.q,'CEN.q=v','width:200px')}</div>`;
@@ -5291,8 +5331,8 @@ function tablaMezcla(){
 
 /* ---------- Control ---------- */
 /* ---------- Perfiles por sub-área de producción y permiso ver/editar ---------- */
-const SUBAREAS={corte:{n:'Corte, estampado y bordado',centros:['corte','estampado','bordado']},confeccion:{n:'Confección',centros:['modulos']},
-  terminados:{n:'Terminados: etiquetas, botones, lavado y plancha',centros:['etiquetas','botones','lavado','plancha']},empaque:{n:'Empaque',centros:['empaque']}};
+const SUBAREAS={corte:{n:'Corte, estampado, bordado y etiquetas',centros:['corte','estampado','bordado','etiquetas']},confeccion:{n:'Confección',centros:['modulos']},
+  terminados:{n:'Terminados: botones, lavado, plancha y empaque',centros:['botones','lavado','plancha','empaque']},empaque:{n:'Empaque',centros:['empaque']}};
 const MODOS={editar:'Registra y edita',ver:'Solo ve (sin editar)'};
 /* ve: puede mirar el área/centro · puede: además puede registrar (según rol, área, sub-área y permiso) */
 /* veArea / veCentro / puedeCentro: definidos arriba, desde el catálogo de perfiles */
@@ -7800,7 +7840,9 @@ document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',e=>{
 document.querySelectorAll('nav .gbody a').forEach(a=>a.addEventListener('click',()=>navCerrarTodo()));
 document.addEventListener('click',e=>{if(!e.target.closest('nav'))navCerrarTodo()});
 document.querySelectorAll('nav a[data-lib]').forEach(a=>a.addEventListener('click',()=>{LIB.et=a.dataset.lib;LIB.sel=new Set();setTimeout(render,0)},true));
-document.querySelectorAll('nav a[data-cen]').forEach(a=>a.addEventListener('click',()=>{CEN.id=a.dataset.cen;CEN.q='';setTimeout(render,0)},true));
+document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.target.closest('nav a[data-cen]');if(!a)return;
+  if(a.dataset.sub){CEN.id=a.dataset.padre;CEN.solo=a.dataset.cen}else{CEN.id=a.dataset.cen;CEN.solo=''}
+  CEN.q='';setTimeout(render,0)},true);
 document.querySelectorAll('nav a[data-rep]').forEach(a=>a.addEventListener('click',()=>{REP.vista=a.dataset.rep;setTimeout(render,0)},true));
 document.addEventListener('click',e=>{document.querySelectorAll('details[open]').forEach(d=>{if(!d.contains(e.target))d.removeAttribute('open')})});
 </script>
