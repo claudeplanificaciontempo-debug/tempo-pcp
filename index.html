@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 16:03';
+const APP_BUILD='2026-09-16 16:23';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1313,7 +1313,7 @@ const corridas={};
       ro.tejStock=(ro.tejStock||0)+t});
     // programación manual de tejeduría, por fecha
     const manual=progTej().filter(p=>p.tela===c.tela&&(typeof tejCuentaComoLista!=='function'||tejCuentaComoLista(p)))
-      .map(p=>({p,kg:(typeof estadoTej==='function'&&estadoTej(p)==='tejido')?(p.kgReal!=null?(+p.kgReal||0):(+p.kg||0)):(+p.kg||0)}))
+      .map(p=>({p,kg:(typeof kgDeFilaTej==='function')?kgDeFilaTej(p):(+p.kg||0)}))
       .filter(x=>x.kg>0).sort((a,b)=>((a.p.dia||'9')<(b.p.dia||'9')?-1:1));
     c.items.forEach(it=>{while(it.pend>0&&manual.length){const m=manual[0];const t=Math.min(m.kg,it.pend);m.kg-=t;it.pend-=t;org.manual+=t;
         const ro=res.ordenes[it.o.id];const kh=kgHora(R(m.p.rec)||{},c.tela)||0;
@@ -5203,7 +5203,8 @@ function togTejEstricto(){if(!puede('programa')){alert('Solo planificación enci
   bitacora('Tejeduría: la regla «lo programado sin confirmar no es tela lista» queda '+(!on?'ENCENDIDA':'apagada')+' ('+quienFirma()+')');
   PLAN=null;PLAN_ALL=null;save();render()}
 function tejEstrictoPanelHTML(){const p=previaTejEstricto();const on=tejEstrictoOn();
-  if(!p.sin.length&&!on)return '';
+  const kr=efectoKgReales();
+  if(!p.sin.length&&!on&&!kr.filas.length)return '';
   return `<div class="panel"${p.sin.length&&!on?' style="border:2px solid var(--aviso)"':''}><h3>Tejido sin confirmar <span class="note">${p.sin.length} filas programadas cuyo día ya pasó y nadie marcó como tejidas · ${num(p.kg)} kg</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Hoy el motor <b>da por tejido todo lo que se programó</b>, se haya confirmado o no. Eso puede estar adelantando fechas de tela lista que no ocurrieron. Con la regla encendida, una fila programada con día pasado <b>deja de contar</b> hasta que alguien la marque como tejida.</p>
    <div class="kpis tarj-row">
@@ -5211,8 +5212,19 @@ function tejEstrictoPanelHTML(){const p=previaTejEstricto();const on=tejEstricto
     <div class="kpi tarj ${p.ordenes.length?'warn':''}"><div class="v">${p.ordenes.length}</div><div class="k">Órdenes que cambiarían su fecha de tela lista</div></div>
     <div class="kpi tarj ${on?'ok':''}"><div class="v">${on?'SÍ':'NO'}</div><div class="k">Regla encendida</div></div>
    </div>
+   ${kr.filas.length?`<div class="panel" style="border:2px solid var(--medio);margin-top:10px"><div class="body">
+    <p style="margin:0 0 6px"><span class="tag t-medio">ya aplicado</span> <b>Los kilos reales ya están moviendo fechas</b>, con la regla apagada.</p>
+    <p class="mut" style="font-size:var(--fs-s);margin:0 0 8px">Una fila marcada como <b>tejida</b> aporta sus <b>kilos reales</b>, no los programados, esté la regla encendida o no: es un hecho medido. Por eso, al marcar una fila con kilos distintos a los programados, <b>la fecha de tela lista de las órdenes que esperaban esa tela puede moverse</b>. Esto es <b>distinto</b> de lo que pasaría al encender la regla, que es dejar de contar lo no confirmado.</p>
+    <div class="kpis tarj-row">
+     <div class="kpi tarj"><div class="v">${kr.filas.length}</div><div class="k">Filas con kilos distintos a los programados <span class="mut">${kr.kg>0?'+':''}${num(kr.kg)} kg</span></div></div>
+     <div class="kpi tarj ${kr.ordenes.length?'warn':''}"><div class="v">${kr.ordenes.length}</div><div class="k">Órdenes que YA cambiaron su fecha de tela lista por eso</div></div>
+    </div>
+    ${kr.ordenes.length?`<div class="scroll" style="max-height:200px;margin-top:8px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP</th><th>Con los kg programados</th><th>Con los reales</th><th class="num">Días</th></tr></thead><tbody>
+     ${kr.ordenes.slice(0,40).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td class="mut">${x.antes?fmtDia(x.antes):'—'}</td><td><b>${x.despues?fmtDia(x.despues):'sin tela'}</b></td><td class="num">${x.dias!=null?(x.dias>0?'+'+x.dias:x.dias):'—'}</td></tr>`).join('')}
+    </tbody></table>${kr.ordenes.length>40?`<p class="mut">Se muestran 40 de ${kr.ordenes.length}.</p>`:''}</div>`:''}
+   </div></div>`:''}
    ${Object.keys(p.telas).length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0">Por tela: ${Object.entries(p.telas).sort((a,b)=>b[1]-a[1]).map(([t,k])=>esc(nTela(t))+' <b>'+num(k)+'</b> kg').join(' · ')}</p>`:''}
-   ${p.ordenes.length?`<div class="scroll" style="max-height:260px;margin-top:10px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Tela lista hoy</th><th>Quedaría</th><th class="num">Días</th></tr></thead><tbody>
+   ${p.ordenes.length?`<h4 style="margin:14px 0 6px">Si enciendes la regla <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· efecto distinto del de arriba: aquí se deja de contar lo no confirmado</span></h4><div class="scroll" style="max-height:260px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Tela lista hoy</th><th>Quedaría</th><th class="num">Días</th></tr></thead><tbody>
     ${p.ordenes.slice(0,60).map(x=>`<tr><td style="white-space:nowrap">${whCell(x.o)}</td><td>${x.antes?fmtDia(x.antes):'<span class="mut">—</span>'}</td><td><b>${x.despues?fmtDia(x.despues):'<span class="tag t-alerta">sin tela</span>'}</b></td><td class="num">${x.dias!=null?(x.dias>0?'+'+x.dias:x.dias):'—'}</td></tr>`).join('')}
    </tbody></table>${p.ordenes.length>60?`<p class="mut">Se muestran 60 de ${p.ordenes.length}.</p>`:''}</div>`:''}
    ${puede('programa')?`<div class="row" style="margin-top:10px"><button class="btn ${on?'ghost':''}" onclick="togTejEstricto()">${on?'Apagar la regla':'Encender la regla'}</button>
@@ -5222,6 +5234,77 @@ function tejEstrictoPanelHTML(){const p=previaTejEstricto();const on=tejEstricto
     ${p.sin.slice(0,80).map(x=>`<tr><td>${fmtDia(x.dia)}</td><td>${esc(nRec(x.rec))}</td><td>${esc(nTela(x.tela))}</td><td class="num">${num(x.kg)}</td>
      <td>${puedeTejer()?`<button class="btn sm" onclick="marcarTejido('${x.id}')">marcar como tejido</button>`:''}</td></tr>`).join('')}
    </tbody></table></div>`:''}
+  </div></div>`}
+/* ---------- los kg que el motor toma de una fila de tejeduría ----------
+   Una fila TEJIDA aporta sus kg REALES, esté la regla encendida o apagada: es un hecho medido.
+   Por eso marcar una fila con kilos distintos a los programados PUEDE MOVER la fecha de tela lista
+   de las órdenes que esperaban esa tela, aunque la regla esté apagada. TEJ_KG_MODO solo existe para
+   poder medir ese efecto (comparar «con kg reales» contra «como si fueran los programados»). */
+let TEJ_KG_MODO='real';
+function kgDeFilaTej(p){
+  if(typeof estadoTej!=='function'||estadoTej(p)!=='tejido')return +p.kg||0;
+  if(TEJ_KG_MODO==='prog')return +p.kg||0;
+  return p.kgReal!=null?(+p.kgReal||0):(+p.kg||0)}
+/* qué órdenes ya tienen otra fecha de tela lista por los kg reales (con la regla como esté) */
+function efectoKgReales(){
+  const dif=progTej().filter(p=>estadoTej(p)==='tejido'&&p.kgReal!=null&&(+p.kgReal||0)!==(+p.kg||0));
+  if(!dif.length)return {filas:[],kg:0,ordenes:[]};
+  const bak=TEJ_KG_MODO;let ordenes=[];
+  try{
+    TEJ_KG_MODO='prog';PLAN=null;PLAN_ALL=null;
+    const A=S.ordenes.length?programar():{ordenes:{}};
+    const fA={};Object.entries(A.ordenes||{}).forEach(([id,r])=>fA[id]=r.telaLista||null);
+    TEJ_KG_MODO='real';PLAN=null;PLAN_ALL=null;
+    const B=S.ordenes.length?programar():{ordenes:{}};
+    Object.entries(B.ordenes||{}).forEach(([id,r])=>{const a=fA[id],b=r.telaLista||null;
+      if(a!==b){const o=S.ordenes.find(x=>x.id===id);if(o)ordenes.push({o,antes:a,despues:b,dias:(a&&b)?diasEntre(a,b):null})}});
+  }finally{TEJ_KG_MODO=bak;PLAN=null;PLAN_ALL=null}
+  return {filas:dif,kg:dif.reduce((a,p)=>a+((+p.kgReal||0)-(+p.kg||0)),0),ordenes}}
+
+/* ---------- chequeo de que las siembras pendientes se aplicaron ---------- */
+/* Esperado = lo que la propia siembra midió ANTES de tocar nada. Encontrado = lo que se ve ahora. */
+function chequeoSiembras(){const out=[];
+  /* JEANS → DENIM */
+  {const pre=S.params.jeansUnificadoPrevio,hecho=S.params.jeansUnificado;
+   const d=(typeof diagJeans==='function')?diagJeans():null;
+   const den=S.categorias.find(k=>!k.padre&&normFase(k.n||'')==='denim');
+   out.push({k:'jeans',n:'JEANS → DENIM',aplicada:!!hecho,ts:hecho,
+     esperado:pre?(pre.ordenes+' órdenes · '+pre.cats+' categorías · '+pre.ops+' operaciones'):'—',
+     encontrado:den?('familia DENIM presente'+(d?' · '+d.ordenes.length+' órdenes bajo DENIM':'')):'NO existe la familia DENIM',
+     ok:!!hecho&&!!den,
+     nota:den?'':'la unificación dice que corrió pero no hay familia DENIM: revisar'})}
+  /* rutas corregidas para terminar en Empaque */
+  {const h=S.params.rutasEmpaqueCorregidas;
+   const conRuta=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).length);
+   const mal=conRuta.filter(o=>!rutaTerminaEnEmpaque(o));
+   const sinArreglo=(typeof diagRutasSinEmpaque==='function')?diagRutasSinEmpaque().sinArreglo.length:null;
+   out.push({k:'empaque',n:'Rutas corregidas para terminar en Empaque',aplicada:!!h,ts:h&&h.ts,
+     esperado:h?((h.n||0)+' rutas ('+(h.faltaban||0)+' completadas, '+(h.reordenadas||0)+' reordenadas)'):'—',
+     encontrado:(conRuta.length-mal.length)+' de '+conRuta.length+' terminan en Empaque · quedan '+mal.length,
+     ok:!!h&&(sinArreglo===null||mal.length<=sinArreglo),
+     nota:(!h)?'todavía no corrió':(mal.length>(sinArreglo||0)?'quedan más rutas malas de las que su categoría no puede arreglar: revisar':'')})}
+  /* ruta por defecto de las que ni su categoría tiene Empaque */
+  {const h=S.params.rutaDefectoAplicada;
+   const est=S.ordenes.filter(o=>abierta(o)&&(rutaConf(o)||{}).estado==='estimada'&&/ruta por defecto/.test((rutaConf(o)||{}).nota||''));
+   const falta=(typeof previaRutaDefecto==='function')?previaRutaDefecto().n:null;
+   out.push({k:'defecto',n:'Ruta por defecto (familias sin hoja de operaciones)',aplicada:!!h,ts:h&&h.ts,
+     esperado:h?((h.n||0)+' órdenes'+(h.sinMin?' · '+h.sinMin+' sin minuto estimado':'')):'—',
+     encontrado:est.length+' con ruta por defecto'+(falta!=null?' · faltan '+falta:''),
+     ok:!!h&&(falta===0||falta===null),
+     nota:(!h)?'todavía no corrió':(falta?falta+' órdenes siguen sin ruta hasta Empaque':'')})}
+  return out}
+function chequeoSiembrasHTML(){const l=chequeoSiembras();
+  const pend=l.filter(x=>!x.aplicada),mal=l.filter(x=>x.aplicada&&!x.ok);
+  return `<div class="panel"${(pend.length||mal.length)?' style="border:2px solid var(--aviso)"':''}><h3>Siembras pendientes de la puesta al día <span class="note">${l.filter(x=>x.aplicada&&x.ok).length} de ${l.length} aplicadas y verificadas</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Estas tres correcciones se aplican <b>solas, una única vez</b>, la primera vez que se abre la app con esta versión. Aquí se confirma que de verdad corrieron y que dejaron lo que debían: <b>lo esperado es lo que la propia siembra midió antes de tocar nada</b>, no un número escrito a mano.</p>
+   <table style="font-size:var(--fs-s)"><thead><tr><th>Corrección</th><th>Estado</th><th>Esperado</th><th>Encontrado</th><th>Cuándo</th></tr></thead><tbody>
+   ${l.map(x=>`<tr><td><b>${esc(x.n)}</b>${x.nota?`<br><span class="mut" style="font-size:var(--fs-xs)">${esc(x.nota)}</span>`:''}</td>
+    <td>${!x.aplicada?'<span class="tag t-aviso">pendiente</span>':x.ok?'<span class="tag t-ok">aplicada</span>':'<span class="tag t-alerta">revisar</span>'}</td>
+    <td class="mut">${esc(x.esperado)}</td><td>${esc(x.encontrado)}</td>
+    <td class="mut" style="font-size:var(--fs-xs)">${x.ts?new Date(x.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—'}</td></tr>`).join('')}
+   </tbody></table>
+   ${pend.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-aviso">pendiente</span> ${pend.map(x=>esc(x.n)).join(', ')}: ${pend.length===1?'no ha':'no han'} corrido todavía. Se aplican al abrir la app; si sigue así tras recargar, avisa.</p>`:''}
+   ${mal.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">revisar</span> ${mal.map(x=>esc(x.n)+' — '+esc(x.nota||'')).join(' · ')}</p>`:''}
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
@@ -6771,7 +6854,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}${brechaRegistroHTML()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
+   ${resumen()}${chequeoSiembrasHTML()}${brechaRegistroHTML()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];

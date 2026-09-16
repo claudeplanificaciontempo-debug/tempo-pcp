@@ -3989,6 +3989,52 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.params.progTej=bak;if(bakE===undefined)delete S.params.tejEstricto;else S.params.tejEstricto=bakE;}
    window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TJ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* KG REALES con la regla apagada · y el chequeo de las siembras */
+  {const antes=__R.errors.length;const adminP=PERFIL;const c0=window.confirm,a0=window.alert,p0=window.prompt;
+   window.alert=()=>{};window.confirm=()=>true;
+   PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};PLAN=null;PLAN_ALL=null;
+   /* los kg reales pesan aunque la regla esté apagada */
+   {const bak=JSON.parse(JSON.stringify(S.params.progTej||[]));const bakE=S.params.tejEstricto;
+    S.params.progTej=[];delete S.params.tejEstricto;
+    const tela=(S.telas.find(t=>!t.ext)||{}).id;const rec=(S.recursos.find(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej')||{}).id;
+    if(tela&&rec){
+     const f={id:uid(),tela,rec,dia:dsum(hoy(),2),kg:500,u:'t',ts:new Date().toISOString()};
+     S.params.progTej=[f];
+     __check("KR1: con la regla apagada, una fila programada aporta sus kg programados",!tejEstrictoOn()&&kgDeFilaTej(f)===500);
+     f.estado='tejido';f.kgReal=320;f.confU='t';f.confTs=new Date().toISOString();
+     __check("KR1: al marcarla TEJIDA, el motor pasa a usar los kg REALES aunque la regla siga apagada",!tejEstrictoOn()&&kgDeFilaTej(f)===320);
+     __check("KR1: y sigue contando como tela lista (los kg reales no dependen del interruptor)",tejCuentaComoLista(f)===true);
+     TEJ_KG_MODO='prog';
+     __check("KR1: el modo de medición permite comparar contra los programados",kgDeFilaTej(f)===500);
+     TEJ_KG_MODO='real';
+     __check("KR1: y vuelve a los reales",kgDeFilaTej(f)===320);
+     const kr=efectoKgReales();
+     __check("KR2: el efecto de los kg reales se mide aparte del de la regla",kr.filas.length===1&&kr.kg===-180&&Array.isArray(kr.ordenes));
+     __check("KR2: medirlo no deja el modo cambiado",TEJ_KG_MODO==='real');
+     const h=tejEstrictoPanelHTML();
+     __check("KR2: el panel avisa que los kg reales YA están moviendo fechas, con la regla apagada",/ya est\u00e1n moviendo fechas|ya están moviendo fechas/.test(h)&&/ya aplicado/.test(h));
+     __check("KR2: y lo separa de lo que pasaría al encender la regla",/efecto distinto del de arriba/.test(h)||!previaTejEstricto().ordenes.length);
+     __check("KR2: con kg iguales a los programados no hay efecto que reportar",(()=>{f.kgReal=500;return efectoKgReales().filas.length===0})());
+    }
+    S.params.progTej=bak;if(bakE===undefined)delete S.params.tejEstricto;else S.params.tejEstricto=bakE;PLAN=null;PLAN_ALL=null;}
+   /* el chequeo de las siembras */
+   {const l=chequeoSiembras();
+    __check("CS1: el chequeo cubre las tres siembras pendientes",l.length===3&&['jeans','empaque','defecto'].every(k=>l.some(x=>x.k===k)));
+    __check("CS1: cada una trae esperado, encontrado y si está aplicada",l.every(x=>'esperado' in x&&'encontrado' in x&&'aplicada' in x&&'ok' in x));
+    __check("CS1: lo ESPERADO sale de lo que la propia siembra midió, no de un número escrito a mano",
+     (!S.params.jeansUnificadoPrevio)||l.find(x=>x.k==='jeans').esperado.indexOf(String(S.params.jeansUnificadoPrevio.ordenes))>=0);
+    __check("CS1: con las siembras corridas, las tres salen aplicadas",l.every(x=>x.aplicada));
+    const h=chequeoSiembrasHTML();
+    __check("CS2: el panel las lista con esperado vs encontrado",/Siembras pendientes/.test(h)&&/Esperado/.test(h)&&/Encontrado/.test(h));
+    __check("CS2: y nombra las tres",/JEANS . DENIM|JEANS/.test(h)&&/terminar en Empaque/.test(h)&&/Ruta por defecto/.test(h));
+    // una siembra que no corrió sale como PENDIENTE
+    const bakJ=S.params.jeansUnificado;delete S.params.jeansUnificado;
+    __check("CS3: si una siembra no corrió, sale como pendiente",chequeoSiembras().find(x=>x.k==='jeans').aplicada===false&&/pendiente/.test(chequeoSiembrasHTML()));
+    S.params.jeansUnificado=bakJ;
+    page='reporteria';REP.vista='produccion';render();
+    __check("CS4: el chequeo está en Reportería",/Siembras pendientes/.test(document.getElementById('p-reporteria').innerHTML));}
+   window.confirm=c0;window.alert=a0;window.prompt=p0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("KR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
