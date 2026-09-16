@@ -607,6 +607,20 @@ tres números (590 / 1.155 / 1.206) porque `abierta()` miraba el estado interno,
 (`categoriasSinHojaHTML`), nunca un valor inventado, y un 0 a mano es 0 confirmado. **JEANS→DENIM** ya corre en
 `sembrarDecisiones16()` (autorizado 16-sep), una sola vez y sin borrar nada. Ver `DEFINICION_ORDEN_ABIERTA.md`.
 
+**Rutas que no terminan en Empaque (16-sep-2026, SIN aplicar).** Regla fija: **toda ruta de producción termina en
+Empaque**. El diagnóstico real: de 348 rutas malas, **0 contienen Empaque en otra posición** — están **incompletas**
+(338 con un solo paso, `tej → tin → bordado`), no mal ordenadas, y **ninguna tiene OT cargadas**. Causa:
+`armarRuta()` usa los centros de la hoja LMO de la categoría; cuando esas órdenes se crearon la categoría no
+resolvía su hoja, así que solo quedó lo que aporta la orden por técnica/puntadas. `rutaProSugerida(o)` rearma y
+`ordenarRutaPro(cens)` deja **Empaque último venga de donde venga el orden** (blinda el cierre tardío de OT).
+`diagRutasSinEmpaque()` separa falta / mal puesto / **editada a mano (NO se toca)** / categoría sin Empaque;
+`completarRutasSinEmpaque()` **no corre sola** (confirmación + `puedeEditarRuta()` + auditoría). Reales: **326 de 348**
+se corregirían, 22 no. Mientras quede una, `brechaHechas()`/`avisoHechasHTML()` marcan «Hechas» como afectado en el
+Resumen gerencial y `fotoCarteraMes` guarda `brechaRutas`; `recalcularCierreMesEnCurso()` rehace la foto del mes en
+curso al corregir y **nunca toca un mes cerrado**. **Tejeduría manual (`progTej`) es de PROGRAMACIÓN**: el motor la usa
+para `ro.telaDesde`, y una fecha pasada significa «ya se tejíó» — por eso **no** lleva el tope de «no antes de hoy»
+que sí tiene «Arranca». Ver `RUTAS_EMPAQUE_DIAGNOSTICO.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

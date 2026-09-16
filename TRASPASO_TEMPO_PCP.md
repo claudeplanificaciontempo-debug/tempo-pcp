@@ -204,6 +204,30 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.38 Rutas que no terminan en Empaque (16-sep) — diagnosticado, SIN aplicar
+- **No estaban mal ordenadas: estaban incompletas.** De 348 rutas malas, **0 contienen Empaque en otra posición**,
+  0 están desordenadas, 0 editadas a mano y **0 tienen OT cargadas**. 338 tienen **un solo paso** de producción
+  (`tej → tin → bordado`) y 10 tienen dos.
+- **Causa**: `armarRuta()` toma los centros de la **hoja LMO de la categoría**, les quita los que dependen de la orden
+  y suma los que la orden pide por técnica/puntadas. Cuando esas órdenes se crearon la categoría **no resolvía su
+  hoja** (la brecha del catálogo), así que solo quedó lo de la orden: bordado o estampado. El orden nunca fue el
+  problema — `RUTA_ORDEN` ya pone empaque último.
+- **Regla fija**: `rutaProSugerida(o)` (hoja de la categoría + lo que pide la orden + lo que ya tenía) y
+  `ordenarRutaPro(cens)`, que deja **Empaque siempre último venga de donde venga el orden** — blinda el caso del
+  cierre tardío de OT. Estampado y bordado conservan su lugar entre corte y confección.
+- `diagRutasSinEmpaque()` separa: **le falta Empaque** / **lo tiene mal puesto** / **editada a mano (no se toca)** /
+  **su categoría tampoco lo tiene**. `previaCompletarRutas()` + `rutasEmpaquePanelHTML()` muestran el antes y el
+  después; **`completarRutasSinEmpaque()` NO corre sola**: confirmación, `puedeEditarRuta()` y auditoría por cambio.
+- **Real: 326 de 348 se corregirían** y terminarían en Empaque; **22 no**, porque su categoría tampoco lo tiene.
+- **La brecha está marcada mientras tanto**: `brechaHechas()`/`avisoHechasHTML()` en el Resumen gerencial, y
+  `fotoCarteraMes` guarda `brechaRutas` para que la foto diga que se tomó con la brecha.
+  `recalcularCierreMesEnCurso()` la vuelve a tomar al corregir; **los meses cerrados no se tocan nunca**.
+- **Tejeduria manual es de PROGRAMACIÓN**, no de registro: el motor consume `progTej()` para saber cuándo estará
+  lista la tela (`ro.telaDesde`). Una fila con fecha pasada significa «ya se tejíó», así que **NO se le aplicó el tope
+  de «no antes de hoy»**: la bloquearía el registro de lo ya hecho. Para aplicarlo habría que distinguir primero
+  «programado» de «ya tejido» (pendiente de decisión).
+- Ver `RUTAS_EMPAQUE_DIAGNOSTICO.md`.
+
 ### 2.37 Definición única de orden abierta + DENIM + minuto estimado (16-sep)
 - **`abiertaDe(o)` es LA definición**, y `abierta()` delega en ella: no archivada (`ESTADOS_CERRADOS`) · **Estado OP de
   Odoo no cerrado** (`estadosOPCerrados()`, por defecto `done`/`cancel`, en `S.params.estadoOPCerrado`) · y **fase no de
