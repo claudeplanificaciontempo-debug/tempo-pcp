@@ -204,11 +204,20 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.25 Nadie pisa lo que cambió otra persona (16-sep-2026)
+Al leer se guarda el `actualizado` de cada fila. Antes de subir **órdenes** o **avance**, se relee del servidor lo que
+va a cambiar: si nadie la tocó, se sube igual que siempre; si la tocaron, se **fusiona campo por campo** (lo que esta
+sesión no cambió se queda como está en el servidor); y si los dos cambiaron el **mismo** campo no se sobrescribe:
+sale el aviso «otra persona cambió esta orden» con dos salidas —dejar lo mío o quedarme con lo del servidor— y la
+pantalla muestra lo del servidor hasta que se decida. Las demás tablas tienen un solo escritor o solo crecen
+(bitácora, turnos, paros); para sumar alguna basta agregarla a `TABLAS_FUSION`.
+
 ### 2.24 Fases desde el piso: operario que pide, supervisor que mueve (16-sep-2026)
 - El catálogo de perfiles tiene la columna **Piso** (Configuración → Usuarios): **operario** (tablet: registra y
   **pide** el cambio de fase) y **supervisor de piso** (corte, módulos, terminado: registra y **mueve** fases).
   Los dos siguen subiendo solo avance, bitácora, turnos y paros. Lo configurado manda sobre el código.
-- El supervisor mueve la fase llamando a **`mover_fase`** en la base (rpc), no escribiendo en `ordenes`. La propuesta
+- El supervisor mueve la fase llamando a **`mover_fase`** en la base (rpc) y reordena la cola de su centro con
+  **`set_prioridad_centro`**, no escribiendo en `ordenes`. Editar la ruta no se le habilita: la confirma planificación. La propuesta
   está en `SUPABASE_MOVER_FASE.sql` (**sin ejecutar**): valida al que llama leyendo `perfiles` y el catálogo, cambia
   **solo** `data->>'fase'` y el historial `data->'fases'`, y escribe la auditoría en `bitacora`. Si la función no existe,
   la app avisa «Falta ejecutar SUPABASE_MOVER_FASE.sql» y no cambia nada.

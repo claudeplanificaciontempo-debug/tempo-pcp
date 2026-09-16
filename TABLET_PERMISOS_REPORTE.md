@@ -224,3 +224,73 @@ El catálogo separa operario de supervisor y la columna manda · el supervisor m
 `ordenes` · queda la auditoría en avance y la bitácora del servidor · **sin la función, avisa y no cambia nada** ·
 el operario no mueve la fase, queda solicitud y no se llama a la función · el supervisor aplica esa solicitud y la
 fase cambia en la base · la bandeja «fase sin actualizar» le funciona.
+
+---
+
+# 4ª entrega (16-sep-2026) · correcciones del SQL, prioridad por función y guardado que no pisa
+
+**Commit:** `2d38f20` · **Harness:** 1188 verdes · `SUPABASE_MOVER_FASE.sql` **sigue sin ejecutar**.
+
+## 1 · La red de seguridad ya no le gana al catálogo
+`puede_mover_fase()` decide así, en este orden:
+1. si el perfil tiene permisos `*`, `ordenes` o `programa` → sí (administración y planificación);
+2. si su fila del catálogo **ya trae la clave `piso`** → manda esa: solo `"piso":"supervisor"` puede. Si le quitas
+   «supervisor» a corte, **corte deja de mover fases**, aunque esté en la lista;
+3. solo si la fila **no** tiene esa clave (o el perfil no está en el catálogo) se usa la lista fija
+   (`admin, planificacion, corte, modulos, terminado`).
+
+## 2 · Fuera la validación de la fase
+Se quitó el bloque que exigía que la fase existiera «en alguna orden»: eso rechazaba justamente a la primera orden
+que llegaba a una fase nueva. La validación se queda donde estaba: en la app, contra su catálogo de fases.
+
+## 3 · `puede_mover_fase()` sin parámetro y sin permiso de ejecución
+Usa `auth.uid()` por dentro y solo la llaman `mover_fase` y `set_prioridad_centro`, que corren como dueñas
+(`security definer`). El `grant execute` a `authenticated` se quitó.
+
+## 4 · `terminadaF`
+`mover_fase` replica la regla de la app: si la fase nueva es de facturado/terminada (**8 o 9**, con
+`fase_num()` = el dígito inicial, o 9 para «Facturado»), la anterior era menor que 8 y el campo estaba vacío,
+sella `terminadaF` con el día de hoy. En cualquier otro caso **no la toca** — nunca la pisa ni la borra.
+
+## 5 · `set_prioridad_centro(p_orden, p_centro, p_pri)`
+Mismo patrón: `security definer`, la misma validación de quién puede, y toca **solo**
+`data->'progCentro'-><centro>->'pri'` (crea las llaves si no existen; `p_pri` nulo o 0 quita el puesto y vuelve a
+«auto»). Deja su línea en `bitacora`. En la app, cuando el que reordena es un supervisor de piso, la cola se guarda
+llamando a esta función **una vez por cada orden cuyo puesto cambió** (no por toda la cola), y si la función todavía
+no existe **la cola vuelve a como estaba** y avisa. **Editar la ruta no se habilita para el piso**: la ruta la
+confirma planificación en Órdenes → Rutas.
+
+## 6 · No pisar lo que cambió otra persona
+
+**Cómo era hasta ahora:** al leer, la app guardaba una copia de cada fila (`BASE`). Al guardar, subía **toda** la
+fila cuyo JSON fuera distinto de esa copia. Si otra persona había cambiado algo de esa misma orden mientras tanto,
+su cambio se perdía sin que nadie se enterara: gana el último que guarda.
+
+**Cómo es ahora** (para `ordenes` y `avance`, que son las dos tablas que varias sesiones tocan a la vez):
+1. al leer se guarda también el **`actualizado`** de cada fila (`BASE_TS`);
+2. antes de subir, se releen del servidor solo las filas que van a cambiar y se compara su `actualizado`;
+3. si nadie la tocó, se sube como siempre;
+4. si la tocaron, se **fusiona campo por campo**: los campos que esta sesión no cambió se quedan **como están en el
+   servidor**, y los que sí cambió entran encima. Así, si un supervisor movió la fase y planificación estaba
+   editando la fecha, **quedan las dos cosas**;
+5. si los dos cambiaron **el mismo campo**, no se sobrescribe nada: aparece el aviso **«Otra persona cambió
+   WH/… mientras trabajabas: los dos tocaron <campo>. Lo tuyo no se guardó»** con dos botones — **Dejar lo mío**
+   (sube tu valor encima, con línea en bitácora) o **Quedarme con lo del servidor**. Mientras tanto la pantalla
+   muestra lo del servidor, para que nadie siga trabajando sobre un dato que ya no existe.
+
+La fusión **mantiene los objetos en memoria** en vez de reemplazarlos, para que una pantalla o un modal abierto no
+se quede apuntando a una copia vieja (esto lo destapó la propia prueba).
+
+**Alcance.** Se aplica a `ordenes` y `avance`. Las demás tablas tienen un solo escritor de hecho: la configuración
+(`params`, centros, recursos, telas, categorías…) la toca administración; `programas`, `cargas` y `propuestas` son
+resultados que reescribe el mismo proceso; `bitacora`, `turnos` y `paros` **solo crecen** (cada línea es una fila
+nueva con su id, así que dos personas no se pisan). Si algún día dos áreas editaran la misma configuración a la vez,
+el mismo mecanismo se extiende agregando la tabla a `TABLAS_FUSION`.
+
+## Qué se probó
+El catálogo manda sobre la lista fija (con «operario» en corte, corte no mueve la fase: queda solicitud; al
+devolverle «supervisor», vuelve a mover) · una fase que ninguna orden usa todavía se puede mover · el supervisor
+reordena la cola con `set_prioridad_centro` y sin ningún upsert de órdenes, y sin la función la cola vuelve a como
+estaba con su aviso · **la fase que movió otra persona se mantiene** cuando esta sesión guarda otro campo de la
+misma orden, y ese campo sí se guarda · con los dos cambiando el mismo campo sale el aviso, no se pisa, y «Dejar lo
+mío» sube el valor y cierra el aviso.

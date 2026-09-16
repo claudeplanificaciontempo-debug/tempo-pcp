@@ -472,6 +472,18 @@ params) trae algo: «con tu perfil no se guardan los cambios de órdenes». **Ce
 fecha o más adelante; botón «adelantar» (`moverEnCola(oid,c,1)`) para quien puede reprogramar. El mock de pruebas
 tiene `sb.rpc` y `__RPC={falta,error,ultimo}`. Ver `TABLET_PERMISOS_REPORTE.md` (3ª entrega).
 
+**Nadie pisa lo que cambió otra persona (16-sep-2026):** `cargarTodo` lee `id,data,actualizado` y guarda `BASE_TS[t][id]`.
+En `_save()`, para `TABLAS_FUSION=['ordenes','avance']`, `prepararSubida` relee del servidor las filas que van a subir
+(`filasServidor`): si el `actualizado` cambió, `fusionarFila(base,mio,suyo)` arma la fila campo por campo (lo que esta sesión no
+tocó se queda del servidor) y, si hay choque en el mismo campo, no sube nada y empuja a `CONFLICTOS` →
+`avisoConflictos()` (banner fijo) + `resolverConflicto(i,'mio'|'suyo')`. `aplicarFilaLocal` **muta** el objeto en sitio (no lo
+reemplaza) para no dejar pantallas apuntando a una copia vieja; `refrescarTS` actualiza los sellos tras subir.
+**Prioridad de la cola por rpc:** `setPrioridadServidor`/`guardarPrioridadesRPC` (`set_prioridad_centro`); `moverEnCola` calcula
+`priCambios` y, si `esSupervisorPiso()`, los manda por rpc y deshace la cola si falta la función. Un perfil `operario` que
+llame a `moverFases` genera **solicitud** en vez de cambiar la fase. Ver `SUPABASE_MOVER_FASE.sql` (v2, sin ejecutar:
+`fase_num`, `puede_mover_fase()` sin parámetro donde el catálogo manda sobre la lista fija, `mover_fase` con `terminadaF` y
+sin validar la fase, y `set_prioridad_centro`).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
