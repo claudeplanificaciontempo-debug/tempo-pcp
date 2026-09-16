@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 09:48';
+const APP_BUILD='2026-09-16 10:09';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2436,14 +2436,24 @@ function progTejPanelHTML(P){const ok=puedeArea('tej')||puede('programa');const 
   return resumen+comparaTejHTML()+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
 /* ===== COMPONENTES COMUNES (prompt 2): se construyen una vez y se reutilizan; no copiar por pantalla ===== */
 /* a) Filtro de fases: casillas agrupadas por grupo de la tabla 5, con Seleccionar todas / Limpiar (sentinel '∅' = ninguna) */
-function refEstado(nombre){const [obj,k]=nombre.split('.');const M={};try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}return {o:M[obj],k}}
+function refEstado(nombre){const [obj,k]=nombre.split('.');const M={};try{M.CEN=CEN}catch(e){}try{M.CG=CG}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}return {o:M[obj],k}}
 function gruposFasesDe(fasesAll){const m={};fasesAll.forEach(f=>{const r=grupoDe(f);const g=r?r.grupo:'sin grupo en la tabla 5';(m[g]=m[g]||[]).push(f)});return Object.keys(m).sort((a,b)=>{const oa=ordenGrupo(a),ob=ordenGrupo(b);return (oa<0?99:oa)-(ob<0?99:ob)}).map(g=>({g,n:(ordenGrupo(g)>0?(ordenGrupo(g)-1):'—')+' · '+g.toUpperCase(),fases:m[g].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b))}))}
+function togFaseFiltro(varName,f,fasesAll){const r=refEstado(varName);if(!r.o)return;const cur=r.o[r.k];
+  let set;
+  if(!cur||!cur.size)set=new Set(fasesAll);      // estaban TODAS: se parte de todas y se desmarca una
+  else if(cur.has('∅'))set=new Set();            // estaba NINGUNA: se parte de vacío y se marca una
+  else set=new Set(cur);
+  set.delete('∅');
+  if(set.has(f))set.delete(f);else set.add(f);
+  if(!set.size)set=new Set(['∅']);               // ninguna marcada: centinela, no es lo mismo que «todas»
+  else if(fasesAll.length&&set.size===fasesAll.length&&fasesAll.every(x=>set.has(x)))set=null;
+  r.o[r.k]=set;render()}
 function togGrupoFiltro(varName,fasesGrupo,on,fasesAll){const r=refEstado(varName);if(!r.o)return;const cur=r.o[r.k];let set=(!cur||!cur.size||cur.has('∅'))?(on?new Set():new Set(fasesAll)):new Set(cur);set.delete('∅');if(!cur||!cur.size){set=on?new Set():new Set(fasesAll)}fasesGrupo.forEach(f=>on?set.add(f):set.delete(f));if(set.size===0)set=new Set(['∅']);if(set.size===fasesAll.length&&fasesAll.every(f=>set.has(f)))set=null;r.o[r.k]=set;render()}
 function filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas){const ninguna=!!(sel&&sel.has&&sel.has('∅'));const todas=!sel||!sel.size;const n=sel&&sel.size&&!ninguna?sel.size:0;const grupos=gruposFasesDe(fasesAll);const J=JSON.stringify(fasesAll).replace(/"/g,'&quot;');
   return `<details class="ffases" style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${ninguna?'Ninguna fase':todas?'Todas las fases':n+' de '+fasesAll.length+' fases'} ▾</summary>
    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:320px;max-height:400px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
     <div style="margin-bottom:8px;display:flex;gap:6px"><button class="btn ghost sm" onclick="${varName}=null;render()">Seleccionar todas</button><button class="btn ghost sm" onclick="${varName}=new Set(['∅']);render()">Limpiar</button></div>
-    ${grupos.map(g=>{const all=!ninguna&&(todas||g.fases.every(f=>sel.has(f)));return `<div style="margin:8px 0 4px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);display:flex;justify-content:space-between"><span>${esc(g.n)}</span><a style="cursor:pointer" onclick="togGrupoFiltro('${varName}',${JSON.stringify(g.fases).replace(/"/g,'&quot;')},${all?'false':'true'},${J})">${all?'quitar':'todas'}</a></div>${g.fases.map(f=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${!ninguna&&(todas||sel.has(f))?'checked':''} onchange="${togFn}('${esc(f).replace(/'/g,"\\'")}')" onclick="event.stopPropagation()"> ${esc(f)}${cuentas&&cuentas[f]!=null?' <span class="mut">('+num(cuentas[f])+')</span>':''}</label>`).join('')}`}).join('')}</div></details>`}
+    ${grupos.map(g=>{const all=!ninguna&&(todas||g.fases.every(f=>sel.has(f)));return `<div style="margin:8px 0 4px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);display:flex;justify-content:space-between"><span>${esc(g.n)}</span><a style="cursor:pointer" onclick="togGrupoFiltro('${varName}',${JSON.stringify(g.fases).replace(/"/g,'&quot;')},${all?'false':'true'},${J})">${all?'quitar':'todas'}</a></div>${g.fases.map(f=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${!ninguna&&(todas||sel.has(f))?'checked':''} onchange="togFaseFiltro('${varName}','${esc(f).replace(/'/g,"\\'")}',${J})" onclick="event.stopPropagation()"> ${esc(f)}${cuentas&&cuentas[f]!=null?' <span class="mut">('+num(cuentas[f])+')</span>':''}</label>`).join('')}`}).join('')}</div></details>`}
 /* c) Tarjeta resumen: número grande + texto; clic despliega la lista (foto, WH, fase) debajo de la fila */
 let TARJ={exp:{}};
 function togTarj(id){TARJ.exp[id]=!TARJ.exp[id];render()}
@@ -3376,7 +3386,7 @@ let LIB={et:'tela',q:'',q4:'',fam:null,hija:null,cli:null,mes:null,fases:null,te
 function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.size:0;fmt=fmt||(x=>x);
   return `<div><label>${nombre}</label><details style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${n?n+' de '+items.length:'Todos'} ▾</summary>
    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:240px;max-height:360px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
-    <div style="margin-bottom:8px"><button class="btn ghost sm" onclick="${varName}=null;render()">Todos</button></div>
+    <div style="margin-bottom:8px;display:flex;gap:6px"><button class="btn ghost sm" onclick="${varName}=new Set(${JSON.stringify(items.map(String)).replace(/"/g,'&quot;')});render()">Seleccionar todos</button><button class="btn ghost sm" onclick="${varName}=null;render()">Limpiar</button></div>
     ${items.map(x=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${sel&&sel.has(x)?'checked':''} onchange="${togFn}('${esc(String(x)).replace(/'/g,"\\\\'")}')" onclick="event.stopPropagation()"> ${esc(fmt(x))}</label>`).join('')||'<span class="mut">Nada</span>'}</div></details></div>`}
 function togSet(obj,k,v){obj[k]=obj[k]||new Set();if(obj[k].has(v))obj[k].delete(v);else obj[k].add(v);if(!obj[k].size)obj[k]=null;render()}
 /* Ruta por defecto: marca editable por centro (Configuración → Centros). Se siembra UNA vez en corte, confección y
@@ -3402,9 +3412,14 @@ function recordarScroll(el){if(!el)return;LIB.scroll=el.scrollTop}
 function restaurarScrollLib(){const e=document.getElementById('lib-lista');if(e&&LIB.scroll)e.scrollTop=LIB.scroll}
 function bloqueLib(n,titulo,nota){return `<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Bloque ${n} · ${esc(titulo)}</span>${nota?' <span class="mut" style="font-size:var(--fs-xs)">'+esc(nota)+'</span>':''}</div>`}
 /* ============ LIBERACIÓN SEGÚN EL BOCETO: base = órdenes del Proyecto del mes ============ */
+function mesEnFiltro(o,ym){if(!ym)return true;const m=mesPlan(o)||'';
+  if(ym&&ym.has)return ym.size?ym.has(m):true;   // varios meses marcados
+  return m===ym}                                  // un solo mes (texto), como antes
+function mesesLibTxt(ym){if(!ym||(ym.has&&!ym.size))return 'todos los meses';
+  if(ym.has)return [...ym].sort().map(fmtMesEG).join(', ');return fmtMesEG(ym)}
 function baseLiberacion(et,ym){const todas=S.ordenes.filter(abierta);
   const yaHecha=o=>et==='tela'?!!((grupoDe(o.fase)||{}).libTela):faseEstado(o.fase,o).hechos.includes('corte');
-  return todas.filter(o=>!yaHecha(o)&&(!ym||mesPlan(o)===ym))}
+  return todas.filter(o=>!yaHecha(o)&&mesEnFiltro(o,ym))}
 function pendLiberacion(et,ym){return baseLiberacion(et,ym).filter(o=>!liberada(o,et))}
 function libLiberacion(et,ym){return baseLiberacion(et,ym).filter(o=>liberada(o,et))}
 function subcatDe(o){const k=K(o.cat);return k?k.n:'Sin categoría'}
@@ -3436,8 +3451,12 @@ function bloqueLibB2(et,ym,sel){const fmtU=v=>num(Math.round(v)),fmtK=v=>num(Mat
 /* ---------- B1 · Bloque 1: pendiente de liberar (tarjeta + filtros ODC/Familia/Cliente + tarjetas por familia + detalle) ---------- */
 function odcLib(o){return String((o&&o.odc)||'').trim()||'Sin ODC'}
 function okFiltrosB1(o){const ok=(set,v)=>!set||!set.size||set.has(v);
-  return ok(LIB.odc,odcLib(o))&&ok(LIB.fam,famDeOrden(o))&&ok(LIB.cli,o.cliente||'—')}
+  const hija=(K(o.cat)||{}).n||'';
+  const okTela=!LIB.tela||!LIB.tela.size||(o.telas||[]).some(t=>LIB.tela.has(t.tela));
+  return ok(LIB.odc,odcLib(o))&&ok(LIB.fam,famDeOrden(o))&&ok(LIB.cli,o.cliente||'—')
+    &&ok(LIB.hija,hija)&&okTela&&ok(LIB.fases,o.fase||'Sin fase')&&ok(LIB.mes,mesPlan(o)||'')}
 function togSetOdcLib(v){togSet(LIB,'odc',v)}
+function togSetYmLib(v){if(LIB.ym&&!LIB.ym.has)LIB.ym=new Set([LIB.ym]);togSet(LIB,'ym',v);LIB.fam2=null}
 function irRutaDeOrden(oid){const o=S.ordenes.find(x=>x.id===oid);ORDF.tab='rutas';RUT.ver='pend';RUT.q=o?refDe(o):'';ir('ordenes')}
 function celdaLibProd(o,lista,falta){const v=LIBV[o.id]||{};const rg=o.rutaRevGeneral;
   return `${rg?`<span class="tag t-ok" title="${esc(rg.u||'')} · ${new Date(rg.ts).toLocaleDateString('es-EC')}">ruta revisada en general</span>`:'<span class="tag t-aviso">ruta sin revisar en general</span>'} ${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')" title="revisar y corregir la ruta antes de liberar">ruta</button>`:''}<br>
@@ -3499,7 +3518,7 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
     :'<p class="mut" style="margin-top:10px;font-size:var(--fs-s)">Toca una familia para ver sus órdenes y elegir cuáles liberar, o abre «Ver todas las pendientes».</p>'}
   </div></div>`}
 function vLiberacion(el){
-  if(!LIB.ymAuto){LIB.ymAuto=true;if(S.ordenes.some(o=>abierta(o)&&mesPlan(o)===hoy().slice(0,7)))LIB.ym=hoy().slice(0,7)} // el mes en curso es solo el arranque: 'Todos los meses' se respeta
+  if(!LIB.ymAuto){LIB.ymAuto=true;if(S.ordenes.some(o=>abierta(o)&&mesPlan(o)===hoy().slice(0,7)))LIB.ym=new Set([hoy().slice(0,7)])} // el mes en curso es solo el arranque: 'Todos los meses' se respeta
   const et=LIB.et;const P=S.ordenes.length?programar():{ordenes:{},pro:[],tej:[],banos:[]};const q=normTxt(LIB.q);const todas=S.ordenes.filter(abierta);
   const padreDe=o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:''},hijaDe=o=>{const k=K(o.cat);return k?k.n:''};
   const fasesAll=[...new Set(todas.map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
@@ -3545,15 +3564,15 @@ function vLiberacion(el){
   <p class="lede">${et==='tela'?'La liberación principal: nada se teje, se tiñe ni entra a planta hasta que se libera aquí. Filtra con las casillas, revisa el resumen de lo que vas a liberar y libera en bloque; abajo ves cómo se van cargando tejeduría, tintorería y los centros con lo liberado.':'La orden entra a corte y a los demás centros solo con esta firma: la tela salió de tintorería con calidad aprobada (o llegó del proveedor) y planificación revisa y libera. Calidad no libera: solo aprueba la tela.'} Las órdenes que Odoo ya tiene con tela lista (2Planificación en adelante) se dan por liberadas.</p>
   ${totLibPend?`<div class="panel"><div class="body" style="display:flex;align-items:center;gap:16px">
     <div class="bar" style="flex:1;height:14px;background:var(--field);border-radius:7px;overflow:hidden"><i style="display:block;height:100%;width:${pctLib}%;background:var(--ok)"></i></div>
-    <span style="white-space:nowrap"><b>${pctLib}%</b> liberado <span class="mut">· ${num(bLibPz)} pz</span></span><span style="white-space:nowrap"><b>${100-pctLib}%</b> pendiente <span class="mut">· ${num(bPendPz)} pz</span></span> <span class="mut" style="font-size:var(--fs-xs)">de las órdenes del Proyecto de ${LIB.ym?fmtMesEG(LIB.ym):'todos los meses'}</span></div></div>`:''}
+    <span style="white-space:nowrap"><b>${pctLib}%</b> liberado <span class="mut">· ${num(bLibPz)} pz</span></span><span style="white-space:nowrap"><b>${100-pctLib}%</b> pendiente <span class="mut">· ${num(bPendPz)} pz</span></span> <span class="mut" style="font-size:var(--fs-xs)">de las órdenes del Proyecto de ${mesesLibTxt(LIB.ym)}</span></div></div>`:''}
   <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-    <div><label>Mes del Proyecto</label><select onchange="LIB.ym=this.value||null;LIB.fam2=null;render()"><option value="">Todos los meses</option>${[...new Set(S.ordenes.filter(abierta).map(mesPlan).filter(Boolean))].sort().map(m=>`<option value="${m}" ${LIB.ym===m?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div>
+    ${selMulti('Mes del Proyecto',[...new Set(S.ordenes.filter(abierta).map(mesPlan).filter(Boolean))].sort(),(LIB.ym&&LIB.ym.has)?LIB.ym:(LIB.ym?new Set([LIB.ym]):null),'LIB.ym','togSetYmLib',fmtMesEG)}
     ${selMulti('Categoría',hijas,LIB.hija,'LIB.hija','togSetHija')}${selMulti('Tipo de tela',telasDisp,LIB.tela,'LIB.tela','togSetTela',nTela)}
     <div><label>Fases</label>${selFases(fasesAll,LIB.fases,'LIB.fases','togFaseLib',cuentasFase)}</div>
-    ${selMulti('Mes de entrega',meses,LIB.mes,'LIB.mes','togSetMes')}
+
     ${(LIB.fam||LIB.hija||LIB.tela||LIB.cli||LIB.mes||LIB.fases||LIB.q)?`<div><button class="btn ghost sm" onclick="LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.q='';render()">Limpiar</button></div>`:''}</div></div>
   ${et==='tela'?contraRutaHTML():''}
-  ${bloqueLib('1','Pendiente de liberar a '+nombre,'base: órdenes del Proyecto de '+(LIB.ym?fmtMesEG(LIB.ym):'todos los meses')+' · filtra por ODC, familia y cliente; toca una familia para ver sus órdenes')}
+  ${bloqueLib('1','Pendiente de liberar a '+nombre,'base: órdenes del Proyecto de '+mesesLibTxt(LIB.ym)+' · los filtros de arriba y los del bloque acotan la lista, las tarjetas y el botón de liberar')}
   ${bloqueLibB1(et,LIB.ym)}
 
   ${bloqueLib('2','Resumen de lo liberado a '+nombre,'misma base del mes en los cuatro cuadrantes (liberado + pendiente = total); no cambia con los filtros del bloque 1')}

@@ -1439,10 +1439,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bakMot=JSON.stringify(S.params.motivos||null),bakAud=JSON.stringify(S.params.auditoriaCambios||null);
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];
    if(!S.params.motivos.some(m=>m.uso==='liberacion'))S.params.motivos.push({motivo:'Cliente cambió la orden',uso:'liberacion'});
-   page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.q4='';LIB.fases=null;LIB.verLista=false;GRP={};render();let h=document.getElementById('p-liberacion').innerHTML;
+   page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.q4='';LIB.fases=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.verLista=false;GRP={};render();let h=document.getElementById('p-liberacion').innerHTML;
    __check("LB1: Liberación está en tres bloques con nombre (pendiente de liberar, resumen, órdenes liberadas)",['Bloque 1','Bloque 2','Bloque 3'].every(b=>h.includes(b))&&!h.includes('Bloque 4')&&/Pendiente de liberar a la planta/.test(h)&&/Resumen de lo liberado a la planta/.test(h)&&/Órdenes liberadas/.test(h));
    __check("LB1: el encabezado y la explicación siguen",/<h2>Liberación<\/h2>/.test(h)&&/La liberación principal/.test(h));
-   __check("LB2: el bloque 1 abre con la tarjeta de pendientes, los filtros ODC/Familia/Cliente y las tarjetas por familia",h.includes('data-t="lb-pend"')&&h.includes('pendientes de liberar a la planta')&&h.includes('<label>ODC</label>')&&h.includes('LIB.fam2='));
+   {const oTmp=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/LB-B1';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
+    if(!rutaConfirmada(oTmp))confirmarRuta(oTmp,'persona','prueba del bloque 1');
+    render();const hb=document.getElementById('p-liberacion').innerHTML;
+    __check("LB2: el bloque 1 abre con la tarjeta de pendientes, los filtros ODC/Familia/Cliente y las tarjetas por familia",hb.includes('data-t=\"lb-pend\"')&&hb.includes('pendientes de liberar a la planta')&&hb.includes('<label>ODC</label>')&&hb.includes('LIB.fam2=')&&hb.includes(esc(oTmp.op)));
+    S.ordenes=S.ordenes.filter(x=>x!==oTmp);delete S.avance[oTmp.id];PLAN=null;PLAN_ALL=null;render();h=document.getElementById('p-liberacion').innerHTML}
    __check("LB2: el bloque 2 son cuatro cuadrantes con barra de % liberado",['Carga por familia','Por tipo de producto','Por tipo de tela','Por color'].every(x=>h.includes(x))&&h.includes('class="lib-grid"'));
    __check("LB2: lo que cargó lo liberado queda en un desplegable cerrado dentro del bloque 2",/<summary[^>]*><b>Qué cargó lo liberado<\/b>/.test(h)&&!/<details[^>]*open[^>]*><summary[^>]*><b>Qué cargó lo liberado/.test(h));
    // el «Elegir órdenes 1×1» y los desplegables del bloque 2 viejo se reemplazaron por las tarjetas por familia (bloque 1) y los cuatro cuadrantes (bloque 2)
@@ -2188,7 +2192,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     confirmarRuta(oB1,'persona','orden de prueba');LIB.q=''}
    {LIB.ym=null;render();const hT=document.getElementById('p-liberacion').innerHTML;
     __check("LBB1: elegir 'Todos los meses' se respeta y no vuelve solo al mes en curso",(render(),LIB.ym===null),'ymAuto='+LIB.ymAuto);
-    __check("LBB1: el selector de mes está arriba y ofrece todos los meses",hT.includes('<label>Mes del Proyecto</label>')&&hT.includes('Todos los meses')&&hT.includes('septiembre de 2026')&&LIB.ym===null);
+    __check("LBB1: el mes del Proyecto es multiselección, con «Seleccionar todos» y «Limpiar»",hT.includes('<label>Mes del Proyecto</label>')&&hT.includes("togSetYmLib('")&&/Seleccionar todos/.test(hT)&&/Limpiar/.test(hT));
     LIB.ym=ym}
    {const f=famDeOrden(oA1);const aF=resumenLibPor('tela',ym,famDeOrden,x=>+x.cant||0,null).find(x=>x.k===f);
     liberarA([oA1.id],'tela');const dF=resumenLibPor('tela',ym,famDeOrden,x=>+x.cant||0,null).find(x=>x.k===f);
@@ -2580,6 +2584,57 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    RECUPERANDO=false;verLogin('entrar');document.getElementById('login').classList.remove('on');
    window.alert=a0;page='ordenes';render();
    __check("RC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* LIBERACIÓN · meses en multiselección y el filtro de fases que no marcaba */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const bak={ym:LIB.ym,fases:LIB.fases,hija:LIB.hija,tela:LIB.tela,odc:LIB.odc,fam:LIB.fam,cli:LIB.cli};
+   page='liberacion';LIB.et='tela';LIB.q='';LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.fases=null;LIB.ym=null;LIB.verLista=true;GRP={};
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,proy,fase)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=100;o.proyecto=proy;o.fase=fase;delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const fA=FASES[1]||'1Tejeduria',fB=FASES[2]||'2Planificacion';
+   const oA=mk('WH/FIL-A','ENERO 2027',fA),oB=mk('WH/FIL-B','FEBRERO 2027',fB),oC=mk('WH/FIL-C','MARZO 2027',fA);
+   PLAN=null;PLAN_ALL=null;[oA,oB,oC].forEach(o=>{if(!rutaConfirmada(o))confirmarRuta(o,'persona','prueba de filtros')});
+   const pend=()=>pendLiberacion('tela',LIB.ym).filter(o=>okFiltrosB1(o));
+   // 1a · varios meses a la vez
+   __check("F1a: sin filtro de mes entran los tres meses",['WH/FIL-A','WH/FIL-B','WH/FIL-C'].every(op=>pend().some(o=>o.op===op)));
+   LIB.ym=new Set(['2027-01']);
+   __check("F1a: con un mes marcado solo entra ese",pend().some(o=>o.op==='WH/FIL-A')&&!pend().some(o=>o.op==='WH/FIL-B'));
+   togSetYmLib('2027-03');
+   __check("F1a: marcando un segundo mes entran los dos (multiselección)",LIB.ym.size===2&&pend().some(o=>o.op==='WH/FIL-A')&&pend().some(o=>o.op==='WH/FIL-C')&&!pend().some(o=>o.op==='WH/FIL-B'));
+   __check("F1a: el texto de la base nombra los meses elegidos",/enero de 2027/.test(mesesLibTxt(LIB.ym))&&/marzo de 2027/.test(mesesLibTxt(LIB.ym)));
+   LIB.ym=null;
+   // 1b · el filtro de fases
+   const fasesAll=[...new Set(S.ordenes.filter(abierta).map(o=>o.fase||'Sin fase'))];
+   LIB.fases=null;togFaseFiltro('LIB.fases',fA,fasesAll);
+   __check("F1b: partiendo de TODAS, desmarcar una fase deja todas MENOS esa (antes dejaba solo esa)",!!LIB.fases&&!LIB.fases.has(fA)&&LIB.fases.size===fasesAll.length-1&&!pend().some(o=>o.op==='WH/FIL-A')&&pend().some(o=>o.op==='WH/FIL-B'));
+   LIB.fases=new Set(['∅']);
+   __check("F1b: «Limpiar» deja ninguna fase y no pasa ninguna orden",pend().length===0);
+   togFaseFiltro('LIB.fases',fA,fasesAll);
+   __check("F1b: después de Limpiar, marcar una fase SÍ la marca (era el bug: se quedaba en «Ninguna fase»)",!!LIB.fases&&LIB.fases.has(fA)&&!LIB.fases.has('∅')&&LIB.fases.size===1&&pend().some(o=>o.op==='WH/FIL-A')&&!pend().some(o=>o.op==='WH/FIL-B'));
+   {const h=filtroFasesHTML(fasesAll,LIB.fases,'LIB.fases','togFaseLib',null);const trozo=h.split('<label').find(x=>x.includes('> '+esc(fA)+'</label>'));
+    __check("F1b: y en pantalla ese checkbox queda marcado y el resumen deja de decir «Ninguna fase»",!/Ninguna fase/.test(h)&&!!trozo&&/checked/.test(trozo));}
+   togFaseFiltro('LIB.fases',fA,fasesAll);
+   __check("F1b: desmarcar la única marcada vuelve a «ninguna», no a «todas»",!!LIB.fases&&LIB.fases.has('∅')&&pend().length===0);
+   LIB.fases=null;
+   __check("F1b: «Seleccionar todas» (fases = ninguna marca) vuelve a dejar pasar todo",pend().length>=3);
+   // TODAS / quitar por grupo
+   {const gs=gruposFasesDe(fasesAll);const g=gs.find(x=>x.fases.includes(fA))||gs[0];
+    togGrupoFiltro('LIB.fases',g.fases,false,fasesAll);
+    __check("F1b: «quitar» un grupo saca sus fases y deja las demás",!!LIB.fases&&g.fases.every(f=>!LIB.fases.has(f))&&LIB.fases.size===fasesAll.length-g.fases.length);
+    LIB.fases=new Set(['∅']);togGrupoFiltro('LIB.fases',g.fases,true,fasesAll);
+    __check("F1b: «todas» de un grupo marca solo ese grupo",!!LIB.fases&&g.fases.every(f=>LIB.fases.has(f))&&LIB.fases.size===g.fases.length);
+    LIB.fases=null}
+   // el filtro acota de verdad: tarjetas, conteo y el botón de liberar
+   {LIB.fases=new Set([fA]);LIB.fam2=null;LIB.verLista=true;render();
+    const h=document.getElementById('p-liberacion').innerHTML;
+    const listas=pend().filter(o=>puedeLiberarA(o,'tela'));
+    const s0=h.slice(h.indexOf('id="lib-lista"'));const tab=s0.slice(0,s0.indexOf('</table>'));
+    __check("F1b: el filtro acota la lista del bloque 1",tab.includes(esc('WH/FIL-A'))&&!tab.includes(esc('WH/FIL-B')));
+    __check("F1b: y acota el conteo de la tarjeta y el botón «Liberar todo lo filtrado»",h.includes('>'+pend().length+'<')&&h.includes('Liberar todo lo filtrado ('+listas.length+')'));
+    LIB.fases=null}
+   S.ordenes=S.ordenes.filter(o=>![oA,oB,oC].includes(o));[oA,oB,oC].forEach(o=>{delete S.avance[o.id]});
+   LIB.ym=bak.ym;LIB.fases=bak.fases;LIB.hija=bak.hija;LIB.tela=bak.tela;LIB.odc=bak.odc;LIB.fam=bak.fam;LIB.cli=bak.cli;LIB.fam2=null;LIB.verLista=false;
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("F1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
