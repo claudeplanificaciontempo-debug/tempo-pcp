@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 14:56';
+const APP_BUILD='2026-09-16 15:08';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4429,12 +4429,13 @@ function filtroMesesGERHTML(ords,P){
    <div class="kpis tarj-row">
     <div class="kpi tarj"><div class="v">${num(ords.length)}</div><div class="k">Órdenes</div></div>
     <div class="kpi tarj"><div class="v">${num(pz)}</div><div class="k">Prendas pedidas</div></div>
-    <div class="kpi tarj ok"><div class="v">${num(hechas)}</div><div class="k">Hechas · ${pz?Math.round(hechas/pz*100):0}%</div></div>
+    <div class="kpi tarj ${brechaHechas()?'warn':'ok'}"><div class="v">${num(hechas)}</div><div class="k">Hechas · ${pz?Math.round(hechas/pz*100):0}%${brechaHechas()?' <span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="hay rutas que no terminan en Empaque: el avance se mide en un paso que no es el final">con brecha</span>':''}</div></div>
     <div class="kpi tarj"><div class="v">${num(Math.max(0,pz-hechas))}</div><div class="k">Lo que falta</div></div>
     <div class="kpi tarj"><div class="v">$ ${num(usd)}</div><div class="k">Valor${ords.some(o=>!o.precio)?' <span class="mut">· '+ords.filter(o=>!o.precio).length+' sin precio</span>':''}</div></div>
     <div class="kpi tarj ${ven?'bad':''}"><div class="v">${num(ven)}</div><div class="k">Meta vencida</div></div>
     <div class="kpi tarj ${rie?'warn':''}"><div class="v">${num(rie)}</div><div class="k">La orden va tarde</div></div>
    </div>
+   ${avisoHechasHTML()}
   </div></div>`}
 /* prendas hechas de una orden: el último paso de producción de su ruta */
 function pzHechasOrden(o){const ru=pasosProDe(o);if(!ru.length)return 0;
@@ -4664,7 +4665,7 @@ function consultasGERHTML(ords,P){
   return `<div style="margin:18px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Consultas</span>
    <span class="mut" style="font-size:var(--fs-xs)">los cinco cortes de la misma cartera: los totales de «Pedidas» son idénticos en los cinco · un bloque abierto a la vez</span></div>
   ${GER_BLOQUES.map(b=>bloqueGERHTML(b,ords,P)).join('')}
-  ${rutasSinEmpaqueHTML(P)}
+  ${rutasEmpaquePanelHTML()}
   <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Márgenes y costo por prenda: pendiente de integrar con <b>Costos TEMPO</b> (el sistema de costos, otro repositorio). Aquí solo hay precio, así que un margen sería inventado.</p>`}
 
 /* ---------- cierre mensual: se empieza a guardar YA, para tener historia ---------- */
@@ -4674,7 +4675,9 @@ function fotoCarteraMes(ym,P){const ords=S.ordenes.filter(o=>(abierta(o)||o.esta
     const pz=+o.cant||0;r.n++;r.pz+=pz;r.hechas+=Math.min(pz,pzHechasOrden(o));r.usd+=(o.precio||0)*pz;
     if(esMetaVencida(o,P))r.venc++;else if(esOrdenVaTarde(o,P))r.tarde++});return m};
   const t=porClave(()=>'t')['t']||{n:0,pz:0,hechas:0,usd:0,venc:0,tarde:0};
+  const br=(typeof brechaHechas==='function')?brechaHechas():null;
   return {ym,ts:new Date().toISOString(),u:quienFirma(),
+    brechaRutas:br?{ordenes:br.n,de:br.de,pct:br.pct,pz:br.pz}:null,   // «hechas» medido con rutas que no terminan en Empaque
     ordenes:t.n,pz:t.pz,hechas:t.hechas,usd:t.usd,vencidas:t.venc,tarde:t.tarde,
     porCliente:porClave(o=>o.cliente||'Sin cliente'),
     porFamilia:porClave(o=>{const k=K(o.cat);return k?(K(k.padre)||k).n:'Sin familia'})}}
@@ -4694,7 +4697,9 @@ function cierresMesHTML(){const C=cierresMes();const yms=Object.keys(C).sort().r
    <p class="lede" style="margin-top:0">El sistema guarda una <b>foto de la cartera de cada mes</b> (órdenes, prendas, hechas, valor, vencidas y va tarde, con el desglose por cliente y por familia). El mes en curso se actualiza una vez al día; cuando el mes pasa, su foto <b>se congela</b> y ya no cambia. El gráfico de tendencia todavía no está: primero hay que juntar historia.</p>
    ${yms.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Mes</th><th class="num">Órdenes</th><th class="num">Pedidas</th><th class="num">Hechas</th><th class="num">Valor</th><th class="num">Vencidas</th><th class="num">Va tarde</th><th>Estado</th></tr></thead><tbody>
     ${yms.slice(0,24).map(ym=>{const f=C[ym];return `<tr><td><b>${esc(fmtMesGER(ym))}</b></td><td class="num">${num(f.ordenes)}</td><td class="num">${num(f.pz)}</td><td class="num">${num(f.hechas)}</td><td class="num">$ ${num(f.usd)}</td><td class="num">${f.vencidas}</td><td class="num">${f.tarde}</td>
-     <td>${f.cerrado?'<span class="tag t-ok" title="el mes ya pasó: esta foto no cambia">cerrado</span>':'<span class="tag t-medio" title="se actualiza una vez al día">en curso</span>'} <span class="mut" style="font-size:var(--fs-xs)">${new Date(f.ts).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})}</span></td></tr>`}).join('')}
+     <td>${f.cerrado?'<span class="tag t-ok" title="el mes ya pasó: esta foto no cambia">cerrado</span>':'<span class="tag t-medio" title="se actualiza una vez al día">en curso</span>'} <span class="mut" style="font-size:var(--fs-xs)">${new Date(f.ts).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})}</span>
+      ${f.brechaRutas&&f.brechaRutas.ordenes?'<br><span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+f.brechaRutas.ordenes+' de '+f.brechaRutas.de+' órdenes con ruta no terminaban en Empaque cuando se tomó esta foto: las hechas están medidas en un paso que no es el final">tomada con la brecha de rutas</span>':''}
+      ${f.recalculada?'<br><span class="tag t-ok" style="font-size:10px;padding:0 4px" title="'+esc(f.recalculada.motivo||'')+'">vuelta a tomar</span>':''}</td></tr>`}).join('')}
    </tbody></table>`:'<div class="empty">Todavía no hay fotos guardadas. Se toma la primera al abrir esta pantalla con órdenes cargadas.</div>'}
   </div></div>`}
 /* ==================== DECISIONES DEL 16-sep (segunda tanda) ==================== */
@@ -4782,6 +4787,102 @@ function categoriasSinHojaHTML(){const r=categoriasSinHoja();
    </tbody></table>
    ${r.sin.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">brecha</span> <b>${r.sin.length} categorías</b> (${num(r.sin.reduce((a,f)=>a+f.pz,0))} prendas abiertas) cargan <b>0 minutos</b> en confección. Su carga no aparece en ningún centro hasta que se les ponga la hoja o, mientras tanto, el minuto estimado.</p>`:''}
    ${r.est.length?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0">Las ${r.est.length} con estimado suman <b>${num(r.est.reduce((a,f)=>a+(f.min||0)*f.pz,0)/60)} horas</b> de confección que <b>hoy sí entran</b> al plan, marcadas como estimadas.</p>`:''}
+  </div></div>`}
+/* ==================== RUTAS QUE NO TERMINAN EN EMPAQUE (16-sep-2026) ==================== */
+/* Regla fija: toda ruta de producción termina en Empaque. Estampado y bordado conservan su lugar
+   empírico entre corte y confección, y NUNCA van después de Empaque, venga de donde venga el orden. */
+
+/* la ruta de producción que le corresponde a una orden: lo que dice su categoría (hoja LMO) más lo
+   que pide la propia orden (técnica, puntadas), ordenado por el proceso y con Empaque siempre al final */
+function rutaProSugerida(o){const k=K(o.cat);
+  const cs=new Set();
+  if(k)centrosDeCategoria(k).forEach(c=>cs.add(c));
+  if(typeof ordenCentrosAuto==='function')ordenCentrosAuto(o).forEach(c=>cs.add(c));
+  (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro')cs.add(p.centro)});  // lo que ya tenía no se pierde
+  const l=[...cs].filter(c=>CE(c)&&CE(c).area==='pro');
+  const emp=l.filter(c=>c==='empaque');
+  return l.filter(c=>c!=='empaque').sort((a,b)=>ordenPaso(a)-ordenPaso(b)).concat(emp.length?['empaque']:[])}
+/* el paso final SIEMPRE es Empaque: ni el orden de las OT ni un cierre tardío lo mueven de ahí */
+function ordenarRutaPro(cens){const l=cens.filter(c=>c!=='empaque').sort((a,b)=>ordenPaso(a)-ordenPaso(b));
+  return cens.includes('empaque')?l.concat(['empaque']):l}
+function diagRutasSinEmpaque(){const conRuta=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).length);
+  const mal=conRuta.filter(o=>!rutaTerminaEnEmpaque(o));
+  const fuera=[],falta=[],manual=[],sinArreglo=[];
+  mal.forEach(o=>{
+    if(rutaEditadaAMano(o)){manual.push(o);return}
+    if(pasosProDe(o).includes('empaque')){fuera.push(o);return}          // lo tiene, pero no al final
+    const s=rutaProSugerida(o);
+    if(s[s.length-1]==='empaque')falta.push({o,de:pasosProDe(o),a:s});   // le falta y se puede completar
+    else sinArreglo.push(o)});                                          // su categoría tampoco lo tiene
+  return {conRuta:conRuta.length,mal:mal.length,fuera,falta,manual,sinArreglo,
+    pz:mal.reduce((a,o)=>a+(+o.cant||0),0)}}
+function previaCompletarRutas(){const d=diagRutasSinEmpaque();
+  const cambios=d.falta.concat(d.fuera.map(o=>({o,de:pasosProDe(o),a:ordenarRutaPro(pasosProDe(o))})));
+  return {...d,cambios,n:cambios.length}}
+function completarRutasSinEmpaque(){
+  if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  const p=previaCompletarRutas();
+  if(!p.n){alert('No hay ninguna ruta que completar.');return}
+  if(!confirm('Se corrigen '+p.n+' rutas para que terminen en Empaque.\n\n'
+    +'· '+p.falta.length+' a las que les faltan pasos (se completan desde su categoría)\n'
+    +'· '+p.fuera.length+' que ya tienen Empaque pero no al final (se reordenan)\n'
+    +'· '+p.manual.length+' editadas a mano: NO se tocan\n'
+    +'· '+p.sinArreglo.length+' cuya categoría tampoco tiene Empaque: quedan como brecha\n\n'
+    +'Nada se borra: cada cambio queda en la auditoría de ruta.\n¿Aplicar?'))return;
+  let n=0;const k0=(o)=>K(o.cat);
+  p.cambios.forEach(({o,de,a})=>{const k=k0(o);const sam=k?(samPorCentro(k)||{}):{};
+    const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
+    const nuevos=a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)}));
+    const otros=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'));
+    o.ruta=otros.concat(nuevos);
+    const mas=a.filter(c=>!de.includes(c));
+    o.rutaEditada=(o.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas,menos:[],
+      motivo:'toda ruta termina en Empaque (corrección sistémica 16-sep)',etapa:'regla de empaque'}]);
+    registrarAuditoria('ruta',o,de.join(' → '),a.join(' → '),'toda ruta termina en Empaque',false);
+    n++});
+  S.params.rutasEmpaqueCorregidas={ts:new Date().toISOString(),u:quienFirma(),n,
+    faltaban:p.falta.length,reordenadas:p.fuera.length,manual:p.manual.length,sinArreglo:p.sinArreglo.length};
+  bitacora('Rutas corregidas para terminar en Empaque: '+n+' órdenes ('+p.falta.length+' completadas, '+p.fuera.length+' reordenadas). '+p.manual.length+' editadas a mano NO se tocaron. ('+quienFirma()+')');
+  if(typeof recalcularCierreMesEnCurso==='function')recalcularCierreMesEnCurso();
+  PLAN=null;PLAN_ALL=null;save();render();
+  alert(n+' rutas corregidas. La foto del mes en curso se volvió a tomar; las de meses cerrados no se tocan.')}
+/* ¿el número de «hechas» está afectado por esta brecha? */
+function brechaHechas(){const d=diagRutasSinEmpaque();
+  return d.mal?{n:d.mal,pz:d.pz,de:d.conRuta,pct:d.conRuta?Math.round(d.mal/d.conRuta*100):0}:null}
+function avisoHechasHTML(){const b=brechaHechas();if(!b)return '';
+  return `<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--alerta);background:var(--field)">
+   <span class="tag t-alerta">ojo</span> <b>«Hechas» está afectado por una brecha de rutas.</b>
+   ${b.n} de ${b.de} órdenes con ruta (${b.pct} %, ${num(b.pz)} prendas) <b>no terminan en Empaque</b>, así que su avance se mide en un paso que no es el final.
+   <a href="#" onclick="page='reporteria';REP.vista='produccion';render();return false">Ver la brecha y corregirla →</a></p>`}
+function recalcularCierreMesEnCurso(){const ym=hoy().slice(0,7);const C=cierresMes();
+  if(C[ym]&&C[ym].cerrado)return false;                 // un mes cerrado no se toca nunca
+  const P=S.ordenes.length?programarTodo():{ordenes:{}};
+  const f=fotoCarteraMes(ym,P);f.cerrado=false;f.recalculada={ts:new Date().toISOString(),u:quienFirma(),motivo:'rutas corregidas para terminar en Empaque'};
+  C[ym]=f;
+  bitacora('Foto de la cartera de '+ym+' vuelta a tomar tras corregir las rutas ('+quienFirma()+')');
+  return true}
+function rutasEmpaquePanelHTML(){const p=previaCompletarRutas();const hecho=S.params.rutasEmpaqueCorregidas;
+  const ej=p.cambios.slice(0,8);
+  return `<div class="panel"${p.mal?' style="border:2px solid var(--alerta)"':''}><h3>Ruta no termina en Empaque <span class="note">${p.mal} de ${p.conRuta} órdenes con ruta · ${num(p.pz)} prendas</span></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Regla fija: toda ruta termina en Empaque.</b> Mientras no se cumpla, «hechas» se mide en un paso que no es el final y el número queda mal. El diagnóstico dice que <b>no están mal ordenadas: están incompletas</b>.</p>
+   <div class="kpis tarj-row">
+    <div class="kpi tarj ${p.falta.length?'warn':''}"><div class="v">${p.falta.length}</div><div class="k">Les faltan pasos <span class="mut">se completan desde su categoría</span></div></div>
+    <div class="kpi tarj ${p.fuera.length?'warn':''}"><div class="v">${p.fuera.length}</div><div class="k">Tienen Empaque, pero no al final</div></div>
+    <div class="kpi tarj ${p.sinArreglo.length?'bad':''}"><div class="v">${p.sinArreglo.length}</div><div class="k">Su categoría tampoco tiene Empaque</div></div>
+    <div class="kpi tarj"><div class="v">${p.manual.length}</div><div class="k">Editadas a mano <span class="mut">no se tocan</span></div></div>
+   </div>
+   ${hecho?`<p class="mut" style="margin-top:10px"><span class="tag t-ok">corregidas</span> ${hecho.n} rutas el ${new Date(hecho.ts).toLocaleString('es-EC',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})} por ${esc(hecho.u||'—')}.</p>`:''}
+   ${p.n?`<h4 style="margin:14px 0 6px">Vista previa · ${p.n} rutas cambiarían</h4>
+    <div class="scroll" style="max-height:300px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP</th><th>Categoría</th><th>Ruta hoy</th><th>Quedaría</th></tr></thead><tbody>
+    ${ej.map(c=>`<tr><td style="white-space:nowrap">${whCell(c.o)}</td><td class="mut">${esc(nombreCat(K(c.o.cat))||'')}</td>
+     <td class="mut" style="font-size:var(--fs-xs)">${c.de.map(x=>esc(nCen(x))).join(' → ')}</td>
+     <td style="font-size:var(--fs-xs)">${c.a.map(x=>(c.de.includes(x)?'':'<b>')+esc(nCen(x))+(c.de.includes(x)?'':'</b>')).join(' → ')}</td></tr>`).join('')}
+    </tbody></table>${p.n>8?`<p class="mut">Se muestran 8 de ${p.n}; al aplicar se corrigen todas.</p>`:''}</div>
+    ${puedeEditarRuta()?`<div class="row" style="margin-top:10px"><button class="btn" onclick="completarRutasSinEmpaque()">Corregir las ${p.n} rutas</button>
+     <span class="mut" style="font-size:var(--fs-s)">no borra nada · queda en la auditoría de ruta · vuelve a tomar la foto del mes en curso</span></div>`:''}`:''}
+   ${p.manual.length?`<h4 style="margin:14px 0 6px">Editadas a mano · ${p.manual.length} <span class="mut" style="font-weight:400;font-size:var(--fs-s)">no se tocan: alguien decidió esa ruta</span></h4>
+    <div class="scroll" style="max-height:200px"><table style="font-size:var(--fs-xs)"><tbody>${p.manual.slice(0,60).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="mut">${pasosProDe(o).map(c=>esc(nCen(c))).join(' → ')}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}
+   ${p.sinArreglo.length?`<p class="mut" style="font-size:var(--fs-s);margin-top:10px"><span class="tag t-alerta">brecha</span> ${p.sinArreglo.length} órdenes cuya <b>categoría tampoco tiene Empaque</b> en su hoja de operaciones: no se pueden completar solas. Son de las familias sin hoja LMO.</p>`:''}
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */

@@ -641,6 +641,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __R.jeansMovido.despues={cats:diagJeans().cats.length,ordenes:diagJeans().ordenes.length};
     __R.jeansMovido.sinBorrar=(S.categorias.length===nCat&&S.ordenes.length===nOrd&&(S.operaciones||[]).length===nOps);
     __check('JD: la unificación autorizada corre sola y no borra nada',!!S.params.jeansUnificado&&__R.jeansMovido.sinBorrar);}
+   /* A1 · por qué hay rutas que no terminan en Empaque */
+   {const conRuta=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).length);
+    const mal=conRuta.filter(o=>!rutaTerminaEnEmpaque(o));
+    const contiene=mal.filter(o=>pasosProDe(o).includes('empaque'));
+    const noContiene=mal.filter(o=>!pasosProDe(o).includes('empaque'));
+    const porUlt={};mal.forEach(o=>{const r=pasosProDe(o);porUlt[r[r.length-1]]=(porUlt[r[r.length-1]]||0)+1});
+    const editadas=mal.filter(rutaEditadaAMano);
+    const ordenada=o=>{const r=pasosProDe(o);return r.every((c,k)=>k===0||ordenPaso(r[k-1])<=ordenPaso(c))};
+    __R.empDiag={conRuta:conRuta.length,mal:mal.length,
+      contieneEmpaque:contiene.length,noContieneEmpaque:noContiene.length,
+      porUltimo:porUlt,editadasAMano:editadas.length,
+      desordenadas:mal.filter(o=>!ordenada(o)).length,
+      conOT:mal.filter(o=>o.ot&&Object.keys(o.ot).length).length,
+      ejemplos:mal.slice(0,5).map(o=>({op:o.op,cat:nombreCat(K(o.cat)),
+        ruta:pasosProDe(o).join(' → '),
+        ot:Object.entries(o.ot||{}).map(([c,r])=>c+':'+(r.estado||'?')+(r.fin?' fin '+r.fin:'')),
+        editada:rutaEditadaAMano(o)}))};
+    // ¿la categoría tiene operaciones de empaque en la LMO?
+    __R.empDiag.catSinEmpaque=[...new Set(noContiene.map(o=>{const k=K(o.cat);
+      return (k?nombreCat(k):'sin categoría')+(k&&Object.keys(samPorCentro(k)).includes('empaque')?' [la categoría SÍ tiene empaque]':' [la categoría NO tiene empaque]')}))].slice(0,12);
+    // ¿cuántos pasos tienen las malas vs las buenas, y qué diría la ruta rearmada con el catálogo ya vinculado?
+    const bien=conRuta.filter(rutaTerminaEnEmpaque);
+    const nPasos=l=>{const m={};l.forEach(o=>{const n=pasosProDe(o).length;m[n]=(m[n]||0)+1});return m};
+    __R.empDiag.pasosMal=nPasos(mal);__R.empDiag.pasosBien=nPasos(bien);
+    __R.empDiag.rutaCompletaMal=[...new Set(mal.slice(0,400).map(o=>(o.ruta||[]).map(x=>x.centro).join(' → ')))].slice(0,8);
+    __R.empDiag.rutaCompletaBien=[...new Set(bien.slice(0,400).map(o=>(o.ruta||[]).map(x=>x.centro).join(' → ')))].slice(0,8);
+    // la ruta que saldría hoy de la categoría (hoja LMO ya vinculada) + lo que la orden pide por técnica/puntadas
+    const sugerida=o=>{const k=K(o.cat);if(!k)return [];
+      const cs=new Set([...centrosDeCategoria(k),...ordenCentrosAuto(o)]);
+      return [...cs].filter(c=>CE(c)&&CE(c).area==='pro').sort((a,b)=>ordenPaso(a)-ordenPaso(b))};
+    const cambian=mal.filter(o=>{const s=sugerida(o);return s.length&&s.join()!==pasosProDe(o).join()});
+    __R.empDiag.sugerenciaCambia=cambian.length;
+    __R.empDiag.sugerenciaTerminaEmpaque=cambian.filter(o=>{const s=sugerida(o);return s[s.length-1]==='empaque'}).length;
+    __R.empDiag.ejemploSugerida=cambian.slice(0,5).map(o=>({op:o.op,cat:nombreCat(K(o.cat)),antes:pasosProDe(o).join(' → '),despues:sugerida(o).join(' → ')}));
+    __R.empDiag.sinSugerencia=mal.filter(o=>!sugerida(o).length).length;
+    __check('EMP: se puede diagnosticar por qué las rutas no terminan en Empaque',__R.empDiag.mal>=0);}
    /* las 7 familias sin hoja, sobre el catálogo real */
    {const c=categoriasSinHoja();
     __R.sinHoja={total:c.total,sinValor:c.sin.length,conEstimado:c.est.length,
@@ -3495,6 +3531,85 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      if(kc)__check("ME: una categoría con hoja de operaciones no entra aquí",!categoriasSinHoja().sin.some(f=>f.k===kc)&&!categoriasSinHoja().est.some(f=>f.k===kc));}}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("D2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* RUTAS QUE NO TERMINAN EN EMPAQUE · diagnóstico, vista previa y corrección */
+  {const antes=__R.errors.length;const adminP=PERFIL;const c0=window.confirm,a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};sembrarRutaDefecto();PLAN=null;PLAN_ALL=null;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   /* una categoría de prueba CON hoja de operaciones: corte, confección y empaque */
+   const opsT=[['corte',1],['modulos',5],['empaque',1]].map(([c,t])=>{const id=uid();S.operaciones.push({id,centro:c,n:'prueba '+c,sam:t});return id});
+   const padT={id:uid(),n:'PRUEBA EMP'};const catT={id:uid(),padre:padT.id,n:'Prueba Empaque',ops:opsT.map(op=>({op}))};
+   S.categorias.push(padT,catT);
+   const mk=(op,ruta,ed)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.estado='plan';x.fase='2Planificacion';
+     delete x.estadoOP;x.cant=10;x.cat=catT.id;x.ruta=ruta;delete x.programa;delete x.rutaEditada;delete x.rutaConf;
+     if(ed)x.rutaEditada=[{ts:new Date().toISOString(),u:'alguien',motivo:'a mano'}];
+     S.ordenes.push(x);delete S.avance[x.id];return x};
+   /* 1 · el diagnóstico separa las tres causas */
+   {const incompleta=mk('WH/EMP-A',[{centro:'tej',t:0},{centro:'bordado',t:1}]);
+    const desordenada=mk('WH/EMP-B',[{centro:'corte',t:1},{centro:'empaque',t:1},{centro:'modulos',t:5}]);
+    const aMano=mk('WH/EMP-C',[{centro:'corte',t:1},{centro:'bordado',t:1}],true);
+    const buena=mk('WH/EMP-D',[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}]);
+    const d=diagRutasSinEmpaque();
+    __check("RE1: una ruta a la que le FALTA Empaque se separa de una que lo tiene mal puesto",
+     d.falta.some(x=>x.o===incompleta)&&d.fuera.includes(desordenada));
+    __check("RE1: una editada a mano se aparta y NO entra a la corrección",d.manual.includes(aMano)&&!d.falta.some(x=>x.o===aMano)&&!d.fuera.includes(aMano));
+    __check("RE1: una ruta correcta no aparece en el diagnóstico",!d.fuera.includes(buena)&&!d.falta.some(x=>x.o===buena)&&!d.manual.includes(buena));
+    /* 2 · la regla: Empaque siempre al final, estampado y bordado entre corte y confección */
+    __check("RE2: la ruta sugerida termina en Empaque",(()=>{const s=rutaProSugerida(desordenada);return s[s.length-1]==='empaque'})());
+    __check("RE2: y bordado/estampado quedan entre corte y confección, nunca después de Empaque",(()=>{
+      const s=ordenarRutaPro(['empaque','modulos','bordado','corte','estampado']);
+      return s.join()==='corte,estampado,bordado,modulos,empaque'})());
+    __check("RE2: aunque el orden venga con Empaque adelante (cierre tardío de una OT), no se queda ahí",
+     ordenarRutaPro(['empaque','corte','modulos']).join()==='corte,modulos,empaque');
+    __check("RE2: lo que la orden ya tenía no se pierde al sugerir",rutaProSugerida(incompleta).includes('bordado'));
+    /* 3 · vista previa, y NO se aplica sola */
+    const prev=previaCompletarRutas();
+    __check("RE3: la vista previa dice cuántas cambiarían y qué quedaría",prev.n>=2&&prev.cambios.every(c=>Array.isArray(c.de)&&Array.isArray(c.a)));
+    const ruta0=JSON.stringify(incompleta.ruta),rutaM0=JSON.stringify(aMano.ruta);
+    const h=rutasEmpaquePanelHTML();
+    __check("RE3: el panel muestra el antes y el después sin tocar nada",/Vista previa/.test(h)&&/Quedar\u00eda/.test(h)&&JSON.stringify(incompleta.ruta)===ruta0);
+    __check("RE3: y lista aparte las editadas a mano",/Editadas a mano/.test(h)&&h.includes(esc(aMano.op)));
+    window.confirm=()=>false;completarRutasSinEmpaque();
+    __check("RE3: si no se confirma, NO se cambia ninguna ruta",JSON.stringify(incompleta.ruta)===ruta0);
+    /* la corrección, ya confirmada */
+    window.confirm=()=>true;
+    const nAud=(S.params.auditoriaCambios||[]).length;
+    completarRutasSinEmpaque();
+    __check("RE4: al confirmar, la ruta incompleta se completa y termina en Empaque",rutaTerminaEnEmpaque(incompleta)&&pasosProDe(incompleta).includes('modulos'));
+    __check("RE4: la desordenada se reordena, con Empaque al final",rutaTerminaEnEmpaque(desordenada)&&pasosProDe(desordenada).join()==='corte,modulos,empaque');
+    __check("RE4: la editada a mano NO se tocó",JSON.stringify(aMano.ruta)===rutaM0);
+    __check("RE4: cada cambio queda en la auditoría de ruta",(S.params.auditoriaCambios||[]).length>nAud&&(incompleta.rutaEditada||[]).some(e=>/termina en Empaque/.test(e.motivo||'')));
+    __check("RE4: y queda registrado quién y cuándo",!!S.params.rutasEmpaqueCorregidas&&S.params.rutasEmpaqueCorregidas.u==='Jefa Prod');
+    /* 4 · el aviso de que «hechas» está afectado */
+    const maloExtra=mk('WH/EMP-E',[{centro:'corte',t:1},{centro:'bordado',t:1}]);
+    const b=brechaHechas();
+    __check("RE5: mientras quede una ruta mal, «hechas» se marca como afectado",!!b&&b.n>=1&&/afectado/.test(avisoHechasHTML()));
+    page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
+    __check("RE5: y el aviso se ve en el Resumen gerencial",/con brecha/.test(document.getElementById('p-gerencia').innerHTML));
+    /* 5 · la foto del mes: se marca, y al corregir se vuelve a tomar; las cerradas no se tocan */
+    {S.params.cierresMes={};const bakPro=S.ordenes.map(o=>o.proyecto);
+     const nomMes=m=>['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+m.slice(5,7)-1]+' '+m.slice(0,4);
+     const ym=hoy().slice(0,7);S.ordenes.forEach(o=>{o.proyecto=nomMes(ym)});
+     guardarCierresMes(programarTodo());
+     const f=cierresMes()[ym];
+     __check("RE6: la foto del mes deja dicho que se tomó con la brecha de rutas",!!f&&!!f.brechaRutas&&f.brechaRutas.ordenes>=1);
+     __check("RE6: y la pantalla lo muestra",/tomada con la brecha de rutas/.test(cierresMesHTML()));
+     // una foto CERRADA no se recalcula
+     const viejo='2020-01';cierresMes()[viejo]={ym:viejo,ts:'2020-02-01T00:00:00.000Z',cerrado:true,ordenes:9,pz:9,hechas:9,usd:0,vencidas:0,tarde:0,porCliente:{},porFamilia:{}};
+     recalcularCierreMesEnCurso();
+     __check("RE6: al recalcular, un mes CERRADO no se toca",cierresMes()[viejo].pz===9&&cierresMes()[viejo].ts==='2020-02-01T00:00:00.000Z');
+     __check("RE6: y el del mes en curso queda marcado como vuelto a tomar",!!cierresMes()[ym].recalculada&&/rutas corregidas/.test(cierresMes()[ym].recalculada.motivo||''));
+     S.params.cierresMes={};S.ordenes.forEach((o,k)=>{if(bakPro[k]===undefined)delete o.proyecto;else o.proyecto=bakPro[k]});}
+    /* permisos */
+    PERFIL={rol:'corte',modo:'editar',nombre:'Encargado'};
+    const r0=JSON.stringify(maloExtra.ruta);completarRutasSinEmpaque();
+    __check("RE7: un encargado de centro no puede corregir rutas",JSON.stringify(maloExtra.ruta)===r0);
+    PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa Prod'};
+    S.ordenes=S.ordenes.filter(o=>![incompleta,desordenada,aMano,buena,maloExtra].includes(o));
+    [incompleta,desordenada,aMano,buena,maloExtra].forEach(o=>delete S.avance[o.id]);
+    delete S.params.rutasEmpaqueCorregidas;
+    S.categorias=S.categorias.filter(k=>k!==padT&&k!==catT);S.operaciones=S.operaciones.filter(o=>!opsT.includes(o.id));}
+   window.confirm=c0;window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("RE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
