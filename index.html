@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 17:54';
+const APP_BUILD='2026-09-16 18:11';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -5486,7 +5486,8 @@ function samPonderado(s){return (s&&s.unid>0)?s.min/s.unid:null}
 /* ---------- 4 · grupos de módulos ---------- */
 function gruposMod(){if(!Array.isArray(S.params.gruposMod))S.params.gruposMod=[];return S.params.gruposMod}
 function addGrupoMod(){if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
-  gruposMod().push({id:uid(),n:'',mods:[],fams:[]});save();render()}
+  gruposMod().push({id:uid(),n:'',mods:[],fams:[],sugerido:true});   /* nace sugerido: nada se da por confirmado */
+  NIVC=null;save();render()}
 function setGrupoMod(id,k,v){const g=gruposMod().find(x=>x.id===id);if(!g)return;
   if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
   const antes=g[k];g[k]=v;bitacora('Grupo de módulos «'+(g.n||'sin nombre')+'»: '+k+' '+JSON.stringify(antes)+' → '+JSON.stringify(v)+' ('+quienFirma()+')');
@@ -5558,6 +5559,35 @@ function capTelaReal(){const n=+nivParam('diasTela',10)||10;
   return {dias:dias.length,conDato,unid:u,prom:dias.length?u/dias.length:null,
     suficiente:conDato>=Math.ceil(n/2)}}   // sin la mitad de los días con registro, no alcanza para un promedio
 
+/* ---------- UNA SOLA CONVENCIÓN DE DÍAS HÁBILES PARA LA NIVELACIÓN ----------
+   El día de inicio cuenta como DÍA 1 y el compromiso es el ÚLTIMO día disponible: los dos inclusive.
+   Hábil = `labDiaGeneral(d)` — el MISMO calendario del motor (área producción + excepciones «a todas»),
+   así que los festivos son los de Configuración → Calendario, no una lista aparte.
+   Ojo: `dsumLab(d,n)` NO se toca y NO usa esta convención: es un PLAZO («n días hábiles DESPUÉS de d»,
+   el lead time del proveedor en el motor), que es otra cosa y debe seguir siendo exclusivo. */
+const CONV_HABILES='el día de inicio cuenta como día 1 y el compromiso es el último día disponible (los dos inclusive)';
+function diasHabilesInc(a,b){if(!a||!b||b<a)return 0;let n=0,d=a,g=0;
+  while(d<=b&&g++<3000){if(labDiaGeneral(d))n++;d=dsum(d,1)}return n}
+/* el n-ésimo día hábil contando el inicio como día 1; si el inicio no es hábil, el día 1 es el
+   primer hábil a partir de él. Con n<=0 no hay fecha final que dar. */
+function finLabInc(ini,n){n=+n||0;if(!ini||n<=0)return null;let d=ini,c=0,g=0;
+  while(g++<3000){if(labDiaGeneral(d)){c++;if(c>=n)return d}d=dsum(d,1)}return null}
+/* los días NO hábiles que quedaron dentro del tramo, con el motivo: para el tooltip del cuadrito */
+function noHabilesEntre(a,b){const out=[];if(!a||!b||b<a)return out;let d=a,g=0;
+  while(d<=b&&g++<3000){if(!labDiaGeneral(d)){
+    const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&e.area==='todas');
+    out.push({fecha:d,motivo:ex?('excepción cargada'+(ex.nota?': '+ex.nota:'')):'fin de semana',excepcion:!!ex})}
+    d=dsum(d,1)}return out}
+/* meses del tramo SIN ninguna excepción cargada: no se inventa un festivo, se avisa (decisión 7) */
+function mesesSinFestivos(a,b){if(!a||!b||b<a)return [];const ms=[];let d=a,g=0;
+  while(d<=b&&g++<3000){const m=d.slice(0,7);if(!ms.includes(m))ms.push(m);d=dsum(d,1)}
+  return ms.filter(m=>!(S.params.excepciones||[]).some(e=>String(e.fecha||'').slice(0,7)===m))}
+/* el texto del tooltip: cuántos hábiles, cuántos no, y cuáles fueron las excepciones */
+function txtHabiles(a,b){if(!a||!b)return '';const nh=noHabilesEntre(a,b);const ex=nh.filter(x=>x.excepcion);
+  const sinF=mesesSinFestivos(a,b);
+  return CONV_HABILES+'. '+fmtDia(a)+' → '+fmtDia(b)+': '+diasHabilesInc(a,b)+' hábiles, '+nh.length+' no hábiles descontados'
+    +(ex.length?(' · excepciones: '+ex.map(x=>fmtDia(x.fecha)+' ('+x.motivo+')').join(', ')):' · ninguna excepción cargada en el tramo')
+    +(sinF.length?(' · SIN FESTIVOS CARGADOS para '+sinF.join(', ')):'')}
 /* ---------- 1 · EL MOTOR: un solo cálculo, en minutos ---------- */
 /* Devuelve todos los pasos del cuadrito. Lo que falte se devuelve como null y se muestra como
    «dato faltante»: nunca un valor por defecto silencioso. Cero es cero. */
@@ -5568,8 +5598,8 @@ function nivelar(e){
   const neto=(saldo==null)?null:Math.max(0,saldo-(+e.maquilaMin||0));
   const ini=e.inicio||null, comp=e.compromiso||null;
   const diasNec=(neto==null||capDiaMin==null||capDiaMin<=0)?null:Math.ceil(neto/capDiaMin);
-  const fin=(ini&&diasNec!=null)?dsumLab(ini,diasNec):null;
-  const diasDisp=(ini&&comp)?diasHabilesEntre(ini,comp):null;
+  const fin=(ini&&diasNec!=null)?finLabInc(ini,diasNec):null;   // inicio = día 1
+  const diasDisp=(ini&&comp)?diasHabilesInc(ini,comp):null;     // compromiso incluido
   const alcanzable=(capDiaMin!=null&&diasDisp!=null)?capDiaMin*diasDisp:null;
   const rezago=(neto!=null&&alcanzable!=null)?Math.max(0,neto-alcanzable):null;
   const meta=(neto!=null&&diasDisp!=null&&diasDisp>0)?neto/diasDisp:null;
@@ -5582,9 +5612,9 @@ function nivelar(e){
   if(diasDisp!=null&&diasDisp<=0)falta.push('el compromiso no deja días hábiles por delante');
   return {...o,capDia:capDiaMin,saldoMin:saldo,netoMin:neto,diasNec,inicio:ini,fin,compromiso:comp,
     diasDisp,alcanzableMin:alcanzable,rezagoMin:rezago,metaMin:meta,holgura,falta,
+    noHabiles:(ini&&comp)?noHabilesEntre(ini,comp):[],sinFestivos:(ini&&comp)?mesesSinFestivos(ini,comp):[],
+    txtDias:(ini&&comp)?txtHabiles(ini,comp):'',txtProd:(ini&&fin)?txtHabiles(ini,fin):'',
     cabe:(rezago!=null)?rezago===0:null}}
-function diasHabilesEntre(a,b){if(!a||!b||b<a)return 0;let n=0,d=a,g=0;
-  while(d<b&&g++<3000){d=dsum(d,1);if(labDiaGeneral(d))n++}return n}
 /* la conversión minutos → unidades, siempre con el SAM ponderado a la vista */
 function aUnid(min,sam){return (min==null||!(sam>0))?null:min/sam}
 /* ---------- el CUADRITO: un solo componente, lo usan la nivelación y el plan mensual ---------- */
@@ -5615,7 +5645,9 @@ function cuadritoNivHTML(cfg){
   const ok=puede('programa');
   const uni=cfg.unidad==='unidades';
   const val=(min,dec)=>uni?(min==null?faltaTxt():'<b>'+num(min,dec==null?0:dec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">u</span>'):minUni(min,sam,dec);
-  const fila=(k,v,nota)=>`<tr><td class="mut" style="white-space:nowrap">${esc(k)}</td><td class="num">${v}</td>${nota?`<td class="mut" style="font-size:var(--fs-xs)">${nota}</td>`:'<td></td>'}</tr>`;
+  const filaT=(k,v,nota,tip)=>`<tr${tip?' title="'+esc(tip)+'"':''}><td class="mut" style="white-space:nowrap">${esc(k)}${tip?' <span class="mut" style="cursor:help">\u24d8</span>':''}</td><td class="num">${v}</td>${nota?`<td class="mut" style="font-size:var(--fs-xs)">${nota}</td>`:'<td></td>'}</tr>`;
+  const fila=(k,v,nota)=>filaT(k,v,nota,'');
+  const _viejo=(k,v,nota)=>`<tr><td class="mut" style="white-space:nowrap">${esc(k)}</td><td class="num">${v}</td>${nota?`<td class="mut" style="font-size:var(--fs-xs)">${nota}</td>`:'<td></td>'}</tr>`;
   const estado=r.cabe===null?'<span class="tag t-alerta">no se puede calcular</span>'
     :r.cabe?'<span class="tag t-ok">cabe</span>':'<span class="tag t-alerta">no cabe</span>';
   return `<div class="panel" style="border:2px solid ${r.cabe===null?'var(--aviso)':r.cabe?'var(--ok)':'var(--alerta)'}">
@@ -5626,18 +5658,20 @@ function cuadritoNivHTML(cfg){
    ${(s&&s.maquila)?fila('− marcado a maquila',val(-s.minMaquila),num(s.maquila)+' prendas con recurso fijo maquila'):''}
    ${(s&&s.maquila)?fila('= Saldo neto',val(r.netoMin),'el propio, sin lo que va a maquila'):''}
    ${fila('Capacidad diaria',val(r.capDia,0),cfg.notaCap||'')}
-   ${fila('Días necesarios',r.diasNec==null?faltaTxt():'<b>'+num(r.diasNec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','saldo neto ÷ capacidad, redondeado hacia arriba')}
+   ${filaT('Días necesarios',r.diasNec==null?faltaTxt():'<b>'+num(r.diasNec)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','saldo neto ÷ capacidad, redondeado hacia arriba',r.txtProd)}
    <tr><td class="mut">Fecha de inicio</td><td class="num"><input type="date" value="${esc(r.inicio||'')}" min="${hoy()}" ${ok?'':'disabled'} onchange="setNivFecha('${id}','inicio',this.value)" style="padding:2px 4px"></td><td class="mut" style="font-size:var(--fs-xs)">no puede ser anterior a hoy</td></tr>
-   ${fila('Fecha final',r.fin?'<b>'+fmtDia(r.fin)+'</b>':faltaTxt(),'inicio + días necesarios, en hábiles')}
+   ${filaT('Fecha final',r.fin?'<b>'+fmtDia(r.fin)+'</b>':faltaTxt(),'el día '+(r.diasNec==null?'N':num(r.diasNec))+' hábil contando el inicio como día 1',r.txtProd)}
    <tr><td class="mut">Fecha de compromiso</td><td class="num"><input type="date" value="${esc(r.compromiso||'')}" ${ok?'':'disabled'} onchange="setNivFecha('${id}','compromiso',this.value)" style="padding:2px 4px"></td><td class="mut" style="font-size:var(--fs-xs)">editable</td></tr>
-   ${fila('Días disponibles',r.diasDisp==null?faltaTxt():'<b>'+num(r.diasDisp)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','entre el inicio y el compromiso')}
+   ${filaT('Días disponibles',r.diasDisp==null?faltaTxt():'<b>'+num(r.diasDisp)+'</b> <span class="mut" style="font-size:var(--fs-xs)">hábiles</span>','del inicio al compromiso, los dos inclusive',r.txtDias)}
+   ${(r.noHabiles&&r.noHabiles.length)?`<tr><td></td><td></td><td class="mut" style="font-size:var(--fs-xs)">\u2212 ${r.noHabiles.length} no hábiles: ${esc(r.noHabiles.slice(0,6).map(x=>fmtDia(x.fecha)).join(', '))}${r.noHabiles.length>6?' y '+(r.noHabiles.length-6)+' más':''}</td></tr>`:''}
    ${fila('Producción alcanzable',val(r.alcanzableMin),'capacidad × días disponibles')}
    <tr style="border-top:2px solid var(--rule)"><td class="mut"><b>Rezago</b></td><td class="num" style="${r.rezagoMin?'color:var(--alerta)':''}">${r.rezagoMin==null?faltaTxt():(r.rezagoMin?val(r.rezagoMin):'<b>0</b>')}</td><td class="mut" style="font-size:var(--fs-xs)">lo que no alcanza a salir</td></tr>
    ${fila('Meta diaria para cumplir',val(r.metaMin,0),'saldo neto ÷ días disponibles')}
    ${fila('Holgura',r.holgura==null?faltaTxt():'<b>'+num(r.holgura)+'</b> <span class="mut" style="font-size:var(--fs-xs)">días</span>',r.holgura!=null&&r.holgura<0?'faltan días':'')}
    </tbody></table>
    ${r.falta.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">falta</span> ${esc(r.falta.join(' · '))}. No se calcula con suposiciones.</p>`:''}
-   ${(s&&s.unidSinSAM)?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-alerta">sin SAM</span> <b>${num(s.unidSinSAM)} unidades</b> en ${s.sinSAM.length} órdenes no tienen minutos por prenda: <b>no se suman como cero</b> ni se descartan, quedan fuera del cálculo y a la vista.</p>`:''}
+   ${(s&&(s.unidSinSAM||(cfg.saldoTot&&cfg.saldoTot.unidSinSAM)))?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-alerta">sin SAM</span> <b>${num(s.unidSinSAM)} unidades</b> en ${s.sinSAM.length} \u00f3rdenes <b>en este horizonte</b> (${esc(cfg.horTxt||'')}) no tienen minutos por prenda${cfg.saldoTot?(' \u00b7 <b>'+num(cfg.saldoTot.unidSinSAM)+' u</b> en '+cfg.saldoTot.sinSAM.length+' \u00f3rdenes <b>en todo el saldo</b> (todos los meses)'):''}. <b>No se suman como cero</b> ni se descartan: quedan fuera del c\u00e1lculo y a la vista.</p>`:''}
+   ${(r.sinFestivos&&r.sinFestivos.length)?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-aviso">calendario</span> sin festivos cargados para <b>${esc(r.sinFestivos.join(', '))}</b>: solo se descontaron fines de semana. Se cargan en Configuraci\u00f3n \u2192 Calendario.</p>`:''}
    ${NIV.abierto===id&&s?rezagoListaHTML(id,s):''}
   </div></div>`}
 /* el rezago, con el componente de lista agrupada con fotos que ya existe */
@@ -5654,12 +5688,15 @@ function rezagoListaHTML(id,s){const gid='niv'+String(id).replace(/[^a-z0-9]/gi,
   return `<div style="margin-top:12px;border-top:2px solid var(--rule);padding-top:10px">
    <div class="row" style="margin:0 0 8px;align-items:center"><b>Saldo por orden</b> <span class="mut">· ${l.length} órdenes</span><span class="spacer"></span>${grpSelHTML(gid,true)}</div>
    <div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th class="num">Pendientes</th><th class="num">SAM</th><th class="num">Minutos</th><th>Entrega</th></tr></thead><tbody>
-   ${(grpSt(gid).todoAbierto=true,filasGRP(gid,l.slice(0,400),fila,7,o=>o,o=>{const c=(procNivel(id)||{}).centro;return c?pendCentroUnid(o,c):(+o.cant||0)}))}
+   ${(grpSt(gid).todoAbierto=true,grpSt(gid).sel=grpSt(gid).sel&&grpSt(gid).sel.length?grpSt(gid).sel:['hija','fase'],filasGRP(gid,l.slice(0,400),fila,7,o=>o,o=>{const c=(procNivel(id)||{}).centro;return c?pendCentroUnid(o,c):(+o.cant||0)}))}
    </tbody></table></div></div>`}
 
+/* el horizonte escrito, para que toda cifra diga a qué alcance corresponde */
+function horTxt(){const h=horizonteNiv();return (!h||!h.length)?'todos los meses':(h.length===1?h[0]:h.slice().sort().join(', '))}
 /* ---------- armar el cuadrito de un proceso ---------- */
 function cuadritoProceso(procId){const p=procNivel(procId);if(!p)return null;
   const hor=horizonteNiv();const s=saldoProceso(procId,hor);
+  const sTot=saldoProceso(procId,null);   // todo el saldo, para rotular el alcance de «sin SAM»
   const sam=samPonderado(s);
   let capD=null,notaCap='';
   if(p.porFase){const t=capTelaReal();const plan=nivParam('telaPlan','');
@@ -5672,15 +5709,114 @@ function cuadritoProceso(procId){const p=procNivel(procId);if(!p)return null;
     notaCap=recs.length?(recs.length+' recursos · capDia de hoy'):'sin recursos activos en el centro'}
   const calc=nivelar({id:procId,saldoMin:p.porFase?s.unid:s.min,maquilaMin:s.minMaquila||0,
     capDia:capD,inicio:nivFecha(procId,'inicio'),compromiso:nivFecha(procId,'compromiso')});
-  return {id:procId,titulo:p.n,unidad:p.unidad,saldo:s,sam,calc,notaCap,
+  return {id:procId,titulo:p.n,unidad:p.unidad,saldo:s,saldoTot:sTot,horTxt:horTxt(),sam,calc,notaCap,
     nota:'Saldo por procesar (incluye órdenes en fases anteriores) · distinto de la carga actual del centro'}}
-function cuadritoGrupo(g){const hor=horizonteNiv();const s=saldoGrupo(g,hor);const sam=samPonderado(s);
+function cuadritoGrupo(g){const hor=horizonteNiv();const s=saldoGrupo(g,hor);const sTot=saldoGrupo(g,null);const sam=samPonderado(s);
   const capD=capGrupoDia(g,hoy());
   const calc=nivelar({id:'grupo:'+g.id,saldoMin:s.min,capDia:(g.mods||[]).length?capD:null,
     inicio:nivFecha('grupo:'+g.id,'inicio'),compromiso:nivFecha('grupo:'+g.id,'compromiso')});
-  return {id:'grupo:'+g.id,titulo:g.n||'(grupo sin nombre)',unidad:'minutos',saldo:s,sam,calc,
+  return {id:'grupo:'+g.id,titulo:g.n||'(grupo sin nombre)',unidad:'minutos',saldo:s,saldoTot:sTot,horTxt:horTxt(),sam,calc,
     notaCap:(g.mods||[]).map(m=>nRec(m.rec)+' '+num(m.pct)+'%').join(' + ')||'sin módulos asignados',
     nota:(g.fams||[]).join(', ')||'sin familias asignadas'}}
+/* ---------- 5 · CONFIGURACIÓN de la nivelación: solo tabla y validaciones, sin vistas ---------- */
+/* Un grupo nace SUGERIDO (venga de la propuesta o de la mano) y sigue sugerido hasta que alguien lo
+   confirma con su nombre y la fecha. Nada se aplica solo por estar escrito. */
+function grupoConfirmado(g){return !!(g&&g.confirmado&&g.confirmado.ts)}
+function confirmarGrupoMod(id){const g=gruposMod().find(x=>x.id===id);if(!g)return;
+  if(!puede('programa')){alert('Solo planificación confirma los grupos.');return}
+  const err=erroresGruposMod().filter(e=>e.g===id);
+  if(err.length){alert('No se puede confirmar todavía:\n\n'+err.map(e=>'· '+e.txt).join('\n'));return}
+  if(!confirm('¿Confirmar el grupo «'+(g.n||'sin nombre')+'»?\n\n'
+    +(g.mods||[]).map(m=>'· '+nRec(m.rec)+' al '+num(m.pct)+'%').join('\n')
+    +'\nFamilias: '+((g.fams||[]).join(', ')||'ninguna')
+    +'\n\nQueda registrado con tu nombre y la fecha de hoy.'))return;
+  g.confirmado={u:quienFirma(),ts:new Date().toISOString()};g.sugerido=false;
+  bitacora('Grupo de módulos confirmado: «'+(g.n||'sin nombre')+'» ('+quienFirma()+')');
+  NIVC=null;save();render()}
+function desconfirmarGrupoMod(id){const g=gruposMod().find(x=>x.id===id);if(!g)return;
+  if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  if(!confirm('¿Quitar la confirmación del grupo «'+(g.n||'sin nombre')+'»? Vuelve a quedar como sugerido; no se pierde nada de lo escrito.'))return;
+  g.confirmado=null;g.sugerido=true;bitacora('Grupo de módulos vuelto a sugerido: «'+(g.n||'sin nombre')+'» ('+quienFirma()+')');
+  NIVC=null;save();render()}
+function togFamGrupo(gid,fam){const g=gruposMod().find(x=>x.id===gid);if(!g)return;
+  if(!puede('programa')){alert('Solo planificación edita los grupos.');return}
+  g.fams=g.fams||[];g.fams=g.fams.includes(fam)?g.fams.filter(f=>f!==fam):g.fams.concat([fam]);
+  if(grupoConfirmado(g)){g.confirmado=null;g.sugerido=true}    /* cambiarlo lo devuelve a sugerido */
+  bitacora('Grupo «'+(g.n||'sin nombre')+'»: familias → '+(g.fams.join(', ')||'ninguna')+' ('+quienFirma()+')');
+  NIVC=null;save();render()}
+/* las familias reales del catálogo (los padres), nunca una lista escrita en el código */
+function famsCatalogo(){return S.categorias.filter(k=>!k.padre&&!k.unificadaEn).map(k=>k.n).sort()}
+/* validación de la tabla completa, para mostrarla junta arriba */
+function validarGruposMod(){const errs=erroresGruposMod().slice();
+  const vistas={};gruposMod().forEach(g=>(g.fams||[]).forEach(f=>{(vistas[f]=vistas[f]||[]).push(g.n||'sin nombre')}));
+  Object.entries(vistas).forEach(([f,gs])=>{if(gs.length>1)
+    errs.push({txt:'La familia «'+f+'» está en '+gs.length+' grupos ('+gs.join(', ')+'): su saldo se contaría dos veces'})});
+  famsCatalogo().forEach(f=>{if(!vistas[f])errs.push({aviso:true,txt:'La familia «'+f+'» no está en ningún grupo: su saldo no entra en ninguna nivelación por módulos'})});
+  return errs}
+function gruposModHTML(){const ok=puede('programa');const errs=validarGruposMod();
+  const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
+  const fams=famsCatalogo();
+  const dur=errs.filter(e=>!e.aviso),avi=errs.filter(e=>e.aviso);
+  return `<div class="panel" id="bloque-grupos-mod"><h3>Grupos de módulos <span class="note">para la nivelación de carga · la tabla nace vacía y cada grupo queda «sugerido» hasta que alguien lo confirme</span></h3><div class="body">
+  ${!mods.length?'<div class="empty">No hay módulos activos en el centro Confección. Se cargan en la pestaña «Centros y recursos».</div>':''}
+  ${dur.length?`<p style="margin:0 0 10px"><span class="tag t-alerta">revisar</span> ${dur.map(e=>esc(e.txt)).join(' · ')}</p>`:''}
+  ${avi.length?`<details style="margin:0 0 10px"><summary class="mut" style="cursor:pointer;font-size:var(--fs-s)"><span class="tag t-aviso">aviso</span> ${avi.length} familias sin grupo</summary>
+    <p class="mut" style="font-size:var(--fs-s);margin:6px 0 0">${avi.map(e=>esc(e.txt)).join('<br>')}</p></details>`:''}
+  <div class="row" style="margin:0 0 10px;gap:8px">
+   <button class="btn ghost sm" ${ok?'':'disabled'} onclick="addGrupoMod()">+ grupo</button>
+   <button class="btn ghost sm" ${ok?'':'disabled'} onclick="aplicarSugerenciaGrupos()" title="propone grupos a partir de la polivalencia ya cargada en los módulos; son una propuesta y hay que confirmarlos">sugerir desde la polivalencia</button>
+   <span class="spacer"></span><span class="mut" style="font-size:var(--fs-xs)">${gruposMod().length} grupos · ${gruposMod().filter(grupoConfirmado).length} confirmados</span></div>
+  ${!gruposMod().length?'<div class="empty">Sin grupos todavía. La tabla nace vacía a propósito: nada se reparte solo.</div>':
+  `<div class="scroll"><table><thead><tr><th>Grupo</th><th>Módulos y % de su capacidad</th><th>Familias</th><th>Capacidad hoy</th><th>Estado</th><th></th></tr></thead><tbody>
+  ${gruposMod().map(g=>`<tr>
+   <td><input type="text" style="min-width:140px" value="${esc(g.n||'')}" ${ok?'':'disabled'} placeholder="nombre del grupo" onchange="setGrupoMod('${g.id}','n',this.value)"></td>
+   <td>${mods.map(r=>{const m=(g.mods||[]).find(x=>x.rec===r.id);const tot=pctModTotal(r.id);
+     return `<span style="display:inline-block;margin:0 8px 4px 0;white-space:nowrap" title="${esc(nRec(r.id))} está repartido al ${num(tot)}% entre todos los grupos">${esc(r.n)}
+      <input type="number" min="0" max="100" step="5" style="width:58px" value="${m?m.pct:''}" ${ok?'':'disabled'} placeholder="—" onchange="setPctModGrupo('${g.id}','${r.id}',this.value)">%
+      ${tot>100?'<span class="tag t-alerta" style="font-size:10px;padding:0 4px">'+num(tot)+'%</span>':''}</span>`}).join('')||'<span class="mut">sin módulos</span>'}</td>
+   <td><details style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${(g.fams||[]).length||'sin'} familias ▾</summary>
+    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:220px;max-height:320px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
+    ${fams.map(f=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${(g.fams||[]).includes(f)?'checked':''} ${ok?'':'disabled'} onclick="event.stopPropagation()" onchange="event.stopPropagation();togFamGrupo('${g.id}','${esc(f).replace(/'/g,"&#39;")}')"> ${esc(f)}</label>`).join('')}</div></details>
+    <div class="mut" style="font-size:var(--fs-xs);max-width:180px">${esc((g.fams||[]).join(', ')||'—')}</div></td>
+   <td class="num mut" title="suma del capDia de cada módulo por su %">${(g.mods||[]).length?num(capGrupoDia(g,hoy()))+' min/día':'—'}</td>
+   <td>${grupoConfirmado(g)
+     ?`<span class="tag t-ok">confirmado</span><div class="mut" style="font-size:var(--fs-xs)">${esc(g.confirmado.u||'')} · ${fmtDia(String(g.confirmado.ts).slice(0,10))}</div>`
+     :`<span class="tag t-aviso" title="mientras esté sugerido, es una propuesta: revísalo y confírmalo">sugerido</span>`}</td>
+   <td style="white-space:nowrap">${grupoConfirmado(g)
+     ?`<button class="btn ghost sm" ${ok?'':'disabled'} onclick="desconfirmarGrupoMod('${g.id}')">volver a sugerido</button>`
+     :`<button class="btn sm" ${ok?'':'disabled'} onclick="confirmarGrupoMod('${g.id}')">confirmar</button>`}
+    <button class="btn ghost sm" ${ok?'':'disabled'} onclick="delGrupoMod('${g.id}')">×</button></td></tr>`).join('')}
+  </tbody></table></div>`}
+  <p class="mut" style="font-size:var(--fs-xs);margin:10px 0 0">Un módulo repartido a más del 100% entre todos los grupos es un error y se muestra; no se corrige solo.
+   Cambiar un grupo confirmado lo devuelve a «sugerido». Los porcentajes multiplican la capacidad diaria real del módulo (<code>capDia</code>), la misma del motor.</p>
+  </div></div>`}
+function nivParamsHTML(){const ok=puede('programa');const t=capTelaReal();const plan=nivParam('telaPlan','');
+  return `<div class="panel" id="bloque-niv-tela"><h3>Tela por entregar <span class="note">capacidad para la nivelación · en unidades, sin convertir horas ni kilos</span></h3><div class="body">
+  <div class="grid2" style="gap:14px">
+   <div><label>Días hábiles del promedio real</label>
+    <input type="number" min="1" step="1" value="${esc(String(nivParam('diasTela',10)))}" ${ok?'':'disabled'} onchange="setNivParam('diasTela',this.value)">
+    <div class="mut" style="font-size:var(--fs-xs)">unidades que entraron a corte en los últimos N días hábiles de tejeduría/tintorería</div></div>
+   <div><label>Valor planificado (u/día)</label>
+    <input type="number" min="0" step="1" value="${esc(String(plan))}" ${ok?'':'disabled'} placeholder="vacío = usar el promedio real" onchange="setNivParam('telaPlan',this.value)">
+    <div class="mut" style="font-size:var(--fs-xs)">si lo pones, manda sobre el promedio real; <b>0 es 0</b>, no se reemplaza</div></div></div>
+  <p style="margin:12px 0 0;font-size:var(--fs-s)">
+   ${t.suficiente
+     ?`<span class="tag t-ok">real</span> <b>${num(t.prom,0)} u/día</b> — promedio de ${t.dias} días hábiles (${t.conDato} con registro, ${num(t.unid)} unidades en total).`
+     :`<span class="tag t-alerta">sin avance suficiente</span> solo ${t.conDato} de ${t.dias} días tienen registro: <b>no se calcula un promedio</b> con eso. Se necesita al menos la mitad.`}
+   ${plan===''||plan==null?' Como no hay valor planificado, la nivelación usa el promedio real.'
+     :` La nivelación usa el <b>valor planificado ${num(+plan,0)} u/día</b>${t.suficiente?` (el real es ${num(t.prom,0)})`:''}.`}</p>
+  <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">La tela se mide en <b>unidades</b> a propósito: no se convierte a horas ni a kilos.
+   Qué fases cuentan como «tela por entregar» se define fase por fase en la tabla de fases (columna «nivelación»), en «Órdenes y materiales».</p>
+  </div></div>`}
+function calendarioNivHTML(){const ms=[...new Set([hoy().slice(0,7)].concat(mesesNivDisp().filter(m=>m!=='sin fecha')))].sort().slice(0,6);
+  const sin=ms.filter(m=>!(S.params.excepciones||[]).some(e=>String(e.fecha||'').slice(0,7)===m));
+  return `<div class="panel"><h3>Días hábiles <span class="note">la nivelación usa el mismo calendario del motor</span></h3><div class="body">
+  <p style="margin:0;font-size:var(--fs-s)">Convención única: <b>${esc(CONV_HABILES)}</b>. Hábil = el calendario del sistema (<code>labDiaGeneral</code>): días por semana del área producción + las excepciones marcadas «a todas».</p>
+  ${sin.length?`<p style="margin:10px 0 0;font-size:var(--fs-s)"><span class="tag t-aviso">calendario</span> sin festivos cargados para <b>${esc(sin.join(', '))}</b>: en esos meses solo se descuentan fines de semana.
+   <a style="cursor:pointer;text-decoration:underline" onclick="CONF.tab='cal';render();setTimeout(()=>{const e=document.getElementById('bloque-cal');e&&e.scrollIntoView({behavior:'smooth'})},50)">cargar excepciones →</a></p>`
+   :`<p style="margin:10px 0 0;font-size:var(--fs-s)"><span class="tag t-ok">calendario</span> hay excepciones cargadas para ${esc(ms.join(', '))}.</p>`}
+  </div></div>`}
+function vNivelConfHTML(){return calendarioNivHTML()+gruposModHTML()+nivParamsHTML()}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
@@ -8094,7 +8230,7 @@ function procesarPasteFamOps(){const txt=document.getElementById('f-paste').valu
 
 /* ---------- Configuración ---------- */
 let CONF={tab:'recursos'};
-const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros'],['ordenes2','Órdenes y materiales (Parte 2)'],['borrado','Borrado (administrador)']];
+const CONF_TABS=[['recursos','Centros y recursos'],['telas','Telas y colores'],['bordado','Bordado y estampado'],['cal','Calendario y parametros'],['nivel','Nivelación de carga'],['ordenes2','Órdenes y materiales (Parte 2)'],['borrado','Borrado (administrador)']];
 function vConfig(el){
   const p=S.params;
   const inp=(k,l,step='1')=>`<div><label>${l}${(p.pendienteValidar||{})[k]?' <span class="tag t-aviso" title="valor inicial dado por planificación; al cambiarlo se quita la marca">PENDIENTE DE VALIDAR</span>':''}</label><input type="number" step="${step}" value="${p[k]==null?'':p[k]}" onchange="setParam('${k}',this.value)"></div>`;
@@ -8211,6 +8347,7 @@ function vConfig(el){
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">En Estampado, cada máquina puede limitarse a ciertas técnicas y tener prendas en paralelo (estaciones). En Bordado, cada bordadora tiene cabezas y puntadas por minuto; el tiempo de una orden sale de sus puntadas.</p></div></div>
 
 `:''}
+  ${CONF.tab==='nivel'?vNivelConfHTML():''}
   ${CONF.tab==='cal'?`  ${motorConfigHTML()}
   <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>

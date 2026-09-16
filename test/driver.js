@@ -836,6 +836,113 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("NIVR: la capacidad del grupo es la suma de los módulos por su %",
        Math.abs(__R.nivReal.grupo.capDia-(g.mods||[]).reduce((a,m)=>a+capDia(R(m.rec),hoy())*m.pct/100,0))<1e-6);
      S.params.gruposMod=bak||[];NIVC=null}
+    /* ===== CORRECCIONES: horizonte sep-dic, rezago forzado y categorías sin hoja ===== */
+    {const HOR=["2026-09","2026-10","2026-11","2026-12"];
+     NIV.horizonte=HOR.slice();NIVC=null;
+     const ini2=dsumLab(hoy(),1);
+     const fija2=(id,fin)=>{S.params.nivelacion=S.params.nivelacion||{};
+       S.params.nivelacion.fechas=S.params.nivelacion.fechas||{};
+       S.params.nivelacion.fechas[id]={inicio:ini2,compromiso:fin}};
+     const foto2=(c,cen)=>({titulo:c.titulo,horTxt:c.horTxt,notaCap:c.notaCap,
+       saldoMin:c.calc.saldoMin,unid:c.saldo.unid,sam:c.sam,
+       maquila:c.saldo.maquila||0,minMaquila:c.saldo.minMaquila||0,netoMin:c.calc.netoMin,
+       capDia:c.calc.capDia,diasNec:c.calc.diasNec,inicio:c.calc.inicio,fin:c.calc.fin,
+       compromiso:c.calc.compromiso,diasDisp:c.calc.diasDisp,alcanzableMin:c.calc.alcanzableMin,
+       rezagoMin:c.calc.rezagoMin,metaMin:c.calc.metaMin,holgura:c.calc.holgura,cabe:c.calc.cabe,
+       falta:c.calc.falta.slice(),nOrdenes:c.saldo.ordenes.length,
+       sinSAMHor:c.saldo.sinSAM.length,unidSinSAMHor:c.saldo.unidSinSAM,
+       sinSAMTot:c.saldoTot.sinSAM.length,unidSinSAMTot:c.saldoTot.unidSinSAM,
+       noHabiles:(c.calc.noHabiles||[]).map(x=>x.fecha+" ("+x.motivo+")"),
+       excepciones:(c.calc.noHabiles||[]).filter(x=>x.excepcion).map(x=>x.fecha+" "+x.motivo),
+       sinFestivos:(c.calc.sinFestivos||[]).slice(),txtDias:c.calc.txtDias});
+     /* el compromiso de la prueba: fin de diciembre, el último día del horizonte */
+     const COMP="2026-12-31";
+     fija2("corte",COMP);fija2("confeccion",COMP);
+     const cCorte=cuadritoProceso("corte"),cConf=cuadritoProceso("confeccion");
+     __R.c4={horizonte:HOR.slice(),inicio:ini2,compromiso:COMP,
+       corte:foto2(cCorte,"corte"),confeccion:foto2(cConf,"modulos")};
+     /* el detalle del calendario que pidió el punto 1, en el tramo real 17-sep → 15-oct */
+     {const a="2026-09-17",b="2026-10-15";
+      __R.c4.tramoEjemplo={a,b,habiles:diasHabilesInc(a,b),
+        noHabiles:noHabilesEntre(a,b).map(x=>x.fecha+" · "+x.motivo),
+        excepciones:noHabilesEntre(a,b).filter(x=>x.excepcion).map(x=>x.fecha+" · "+x.motivo),
+        sinFestivos:mesesSinFestivos(a,b),
+        finDe5DesdeEl17:finLabInc(a,5),finViejoDsumLab:dsumLab(a,5),
+        excepcionesCargadas:(S.params.excepciones||[]).map(e=>e.fecha+" "+(e.area||"")+" "+(e.tipo||"")).slice(0,30),
+        nExcepciones:(S.params.excepciones||[]).length};}
+     /* un grupo de módulos real sobre el mismo horizonte */
+     const mods2=S.recursos.filter(r=>r.activa&&r.centro==="modulos"&&r.id!=="maquila");
+     const fams2=[...new Set(S.ordenes.filter(abiertaDe).map(o=>{const k=K(o.cat);return k?((K(k.padre)||k).n):""}).filter(Boolean))].sort();
+     if(mods2.length){const bak2=S.params.gruposMod;S.params.gruposMod=[];
+      /* el grupo más cargado que se pueda armar: las familias con más saldo de confección */
+      const sConf=saldoProceso("confeccion",HOR);const porFam={};
+      sConf.ordenes.forEach(o=>{const k=K(o.cat);const f=k?((K(k.padre)||k).n):"";if(!f)return;
+        const u=pendCentroUnid(o,"modulos");const sam=samOrdenCentro(o,"modulos");
+        porFam[f]=porFam[f]||{u:0,min:0};porFam[f].u+=u;if(sam!=null)porFam[f].min+=u*sam});
+      const top=Object.entries(porFam).sort((a,b)=>b[1].min-a[1].min).slice(0,3).map(x=>x[0]);
+      const g2={id:"gc4",n:"Grupo "+top.join(" + "),mods:mods2.slice(0,2).map((r,i)=>({rec:r.id,pct:i?50:100})),fams:top,sugerido:true};
+      gruposMod().push(g2);NIVC=null;fija2("grupo:"+g2.id,COMP);
+      const cg2=cuadritoGrupo(g2);
+      __R.c4.grupo=Object.assign(foto2(cg2,"modulos"),{fams:top.slice(),
+        mods:(g2.mods||[]).map(m=>nRec(m.rec)+" al "+m.pct+"%"),
+        capDetalle:(g2.mods||[]).map(m=>nRec(m.rec)+": "+Math.round(capDia(R(m.rec),hoy()))+" × "+m.pct+"% = "+Math.round(capDia(R(m.rec),hoy())*m.pct/100)),
+        porFam:top.map(f=>f+": "+Math.round(porFam[f].min)+" min / "+porFam[f].u+" u")});
+      /* --- WHAT-IF: si ninguno da rezago, se fuerza uno bajando la capacidad --- */
+      const sinRezago=[cCorte,cConf,cg2].every(c=>c.calc.rezagoMin===0);
+      __R.c4.sinRezagoNatural=sinRezago;
+      /* dos formas de forzarlo, las dos sobre el MISMO saldo real */
+      const neto=cg2.calc.netoMin;const dd=cg2.calc.diasDisp;
+      const capFuerza=Math.floor(neto/dd*0.6);      // 60% de la capacidad que haría falta
+      const wf1=nivelar({id:"wf-cap",saldoMin:cg2.calc.saldoMin,capDia:capFuerza,inicio:ini2,compromiso:COMP});
+      /* sobre CORTE, que cabe con holgura: acortar el compromiso a la mitad de los días que necesita */
+      const compCorto=finLabInc(ini2,Math.max(1,Math.floor(cCorte.calc.diasNec*0.5)));
+      const wf2=nivelar({id:"wf-comp",saldoMin:cCorte.calc.saldoMin,capDia:cCorte.calc.capDia,inicio:ini2,compromiso:compCorto});
+      const ficha=r=>({capDia:r.capDia,saldoMin:r.saldoMin,netoMin:r.netoMin,diasNec:r.diasNec,
+        inicio:r.inicio,fin:r.fin,compromiso:r.compromiso,diasDisp:r.diasDisp,alcanzableMin:r.alcanzableMin,
+        rezagoMin:r.rezagoMin,metaMin:r.metaMin,holgura:r.holgura,cabe:r.cabe});
+      __R.c4.whatIfCapacidad=Object.assign(ficha(wf1),{sobre:"grupo de módulos",capOriginal:cg2.calc.capDia});
+      __R.c4.whatIfCompromiso=Object.assign(ficha(wf2),{sobre:"corte",compOriginal:cCorte.calc.compromiso,rezagoOriginal:cCorte.calc.rezagoMin});
+      __check("C4: bajando la capacidad aparece rezago",wf1.rezagoMin>0&&wf1.cabe===false,wf1.rezagoMin);
+      __check("C4: adelantando el compromiso aparece rezago donde antes cabía",
+        cCorte.calc.cabe===true&&wf2.rezagoMin>0&&wf2.cabe===false&&compCorto<cCorte.calc.compromiso,compCorto+" / "+wf2.rezagoMin);
+      __check("C4: el rezago es exactamente neto − alcanzable",
+        Math.abs(wf1.rezagoMin-(wf1.netoMin-wf1.alcanzableMin))<1e-6);
+      __check("C4: y la holgura es negativa cuando no cabe",wf2.holgura<0,wf2.holgura);
+      /* el despliegue del rezago: agrupado por tipo de producto, fase y orden */
+      {const cWF=Object.assign({},cg2,{calc:wf1,id:"wf-cap"});NIV.abierto="wf-cap";
+       const h=cuadritoNivHTML(cWF);
+       __check("C4: el cuadrito con rezago lo pinta como «no cabe»",/no cabe/.test(h));
+       const hl=rezagoListaHTML("confeccion",cg2.saldo);
+       __check("C4: el rezago se despliega con el componente de lista agrupada",
+         /Saldo por orden/.test(hl)&&/<table/.test(hl));
+       const gid="nivconfeccion";
+       __R.c4.rezagoGrupos={agrupadoPor:(grpSt(gid).sel||[]).slice(),
+         nOrdenes:cg2.saldo.ordenes.length,
+         porHija:Object.entries(cg2.saldo.ordenes.reduce((a,o)=>{const n=nombreCat(K(o.cat))||"(sin categoría)";
+           a[n]=a[n]||{u:0,min:0};const u=pendCentroUnid(o,"modulos"),sm=samOrdenCentro(o,"modulos");
+           a[n].u+=u;if(sm!=null)a[n].min+=u*sm;return a},{})).sort((x,y)=>y[1].min-x[1].min)
+           .map(([n,v])=>n+": "+v.u+" u · "+Math.round(v.min)+" min"),
+         porFase:Object.entries(cg2.saldo.ordenes.reduce((a,o)=>{const f=o.fase||"(sin fase)";
+           a[f]=a[f]||{u:0,n:0};a[f].u+=pendCentroUnid(o,"modulos");a[f].n++;return a},{})).sort((x,y)=>y[1].u-x[1].u)
+           .map(([f,v])=>f+": "+v.n+" órdenes · "+v.u+" u")};
+       __check("C4: la lista del rezago arranca agrupada por tipo de producto y fase",
+         (grpSt(gid).sel||[]).includes("hija")&&(grpSt(gid).sel||[]).includes("fase"),(grpSt(gid).sel||[]).join(","));
+       NIV.abierto=null;}
+      S.params.gruposMod=bak2||[];NIVC=null}
+     /* --- punto 7: las categorías sin hoja LMO, con órdenes y unidades en sep-dic --- */
+     {const porCat={};
+      ["corte","confeccion","empaque"].forEach(p=>{const sp=saldoProceso(p,HOR);
+        sp.sinSAM.forEach(o=>{const k=K(o.cat);const n=nombreCat(k)||"(sin categoría)";
+          const c=procNivel(p).centro;const u=pendCentroUnid(o,c);
+          porCat[n]=porCat[n]||{ordenes:new Set(),procesos:new Set(),u:{},familiaLMO:(k&&k.familiaLMO)||""};
+          porCat[n].ordenes.add(o.id);porCat[n].procesos.add(p);
+          porCat[n].u[p]=(porCat[n].u[p]||0)+u})});
+      __R.c4.sinHojaLMO=Object.entries(porCat).sort((a,b)=>b[1].ordenes.size-a[1].ordenes.size).map(([n,v])=>({
+        categoria:n,familiaLMO:v.familiaLMO||"(sin vínculo)",ordenes:v.ordenes.size,
+        procesos:[...v.procesos].join(", "),unidades:v.u}));
+      __R.c4.sinHojaTotalOrdenes=new Set([].concat(...Object.values(porCat).map(v=>[...v.ordenes]))).size;
+      __check("C4: se puede listar las categorías sin hoja LMO del horizonte",Array.isArray(__R.c4.sinHojaLMO));}
+     NIV.horizonte=null;NIVC=null;}
     delete S.params.nivelacion;NIVC=null;}
    S.categorias=bakCat;}
   S.ordenes=bakOrd;S.avance={};PLAN=null;PLAN_ALL=null;
@@ -4245,7 +4352,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const r=nivelar({id:"t1",saldoMin:10000,maquilaMin:2000,capDia:800,inicio:"2026-10-01",compromiso:"2026-10-31"});
     __check("NIV1: saldo neto = saldo − maquila",r.netoMin===8000,r.netoMin);
     __check("NIV1: días necesarios = neto ÷ capacidad, hacia arriba",r.diasNec===10,r.diasNec);
-    __check("NIV1: la fecha final sale de dsumLab (solo hábiles)",r.fin===dsumLab("2026-10-01",10),r.fin);
+    __check("NIV1: la fecha final cuenta el inicio como día 1",r.fin===finLabInc("2026-10-01",10),r.fin);
     __check("NIV1: producción alcanzable = capacidad × días disponibles",r.alcanzableMin===800*r.diasDisp,r.alcanzableMin+" / "+r.diasDisp);
     __check("NIV1: rezago = neto − alcanzable, nunca negativo",r.rezagoMin===Math.max(0,8000-800*r.diasDisp),r.rezagoMin);
     __check("NIV1: meta diaria = neto ÷ días disponibles",Math.abs(r.metaMin-8000/r.diasDisp)<1e-9,r.metaMin);
@@ -4352,8 +4459,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("NIV10: una fecha válida sí se guarda",nivFecha("corte","inicio")===ini,nivFecha("corte","inicio"));
     setNivFecha("corte","compromiso",dsumLab(ini,15));
     __check("NIV10: el compromiso se guarda y el cuadrito lo usa",cuadritoProceso("corte").calc.compromiso===dsumLab(ini,15));
-    __check("NIV10: días disponibles = hábiles entre inicio y compromiso",
-      cuadritoProceso("corte").calc.diasDisp===diasHabilesEntre(ini,dsumLab(ini,15)));}
+    __check("NIV10: días disponibles = hábiles del inicio al compromiso, inclusive",
+      cuadritoProceso("corte").calc.diasDisp===diasHabilesInc(ini,dsumLab(ini,15)));}
    /* --- 8 · el permiso «programa»: quién puede tocar esto --- */
    {const roles=perfilesDef().filter(p=>(p.permisos||[]).includes("*")||(p.permisos||[]).includes("programa")).map(p=>p.id);
     __check("NIV11: hay al menos un perfil con el permiso «programa»",roles.length>0,roles.join(", "));
@@ -4386,6 +4493,107 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      NIV.horizonte=null;NIVC=null}}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
    __check("NIV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== NIVELACIÓN · correcciones del Paso 1 ===== */
+  try{localStorage.__fase="nivelacion correcciones"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};const adminP=PERFIL;
+   /* --- C1 · una sola convención: inicio día 1, compromiso inclusive --- */
+   {/* un tramo de laboratorio sin excepciones: lunes 2026-10-05 a viernes 2026-10-09 */
+    const bakEx=S.params.excepciones;S.params.excepciones=[];
+    __check("C1: 5 días hábiles desde el lunes terminan el VIERNES de la misma semana",
+      finLabInc("2026-10-05",5)==="2026-10-09",finLabInc("2026-10-05",5));
+    __check("C1: 1 día hábil desde el lunes es el mismo lunes",finLabInc("2026-10-05",1)==="2026-10-05");
+    __check("C1: los días hábiles de lunes a viernes, los dos inclusive, son 5",diasHabilesInc("2026-10-05","2026-10-09")===5,diasHabilesInc("2026-10-05","2026-10-09"));
+    __check("C1: un solo día hábil contra sí mismo cuenta 1",diasHabilesInc("2026-10-05","2026-10-05")===1);
+    __check("C1: el fin de semana no cuenta",diasHabilesInc("2026-10-10","2026-10-11")===0);
+    __check("C1: si el inicio cae en sábado, el día 1 es el lunes siguiente",finLabInc("2026-10-10",1)==="2026-10-12",finLabInc("2026-10-10",1));
+    /* las dos funciones son coherentes entre sí: llegar al día N y contar hasta él da N */
+    let coh=true;for(let n=1;n<=20;n++){if(diasHabilesInc("2026-10-05",finLabInc("2026-10-05",n))!==n)coh=false}
+    __check("C1: contar hasta el día N devuelve exactamente N (las dos funciones concuerdan)",coh);
+    /* una excepción cargada se descuenta y se puede explicar */
+    S.params.excepciones=[{fecha:"2026-10-07",area:"todas",tipo:"no",nota:"prueba"}];
+    __check("C1: una excepción «a todas» quita un día hábil",diasHabilesInc("2026-10-05","2026-10-09")===4,diasHabilesInc("2026-10-05","2026-10-09"));
+    __check("C1: y 5 días hábiles ahora terminan el lunes siguiente",finLabInc("2026-10-05",5)==="2026-10-12",finLabInc("2026-10-05",5));
+    const nh=noHabilesEntre("2026-10-05","2026-10-12");
+    __check("C1: se puede decir QUÉ días se descontaron y por qué",
+      nh.some(x=>x.fecha==="2026-10-07"&&x.excepcion)&&nh.some(x=>x.fecha==="2026-10-10"&&!x.excepcion),JSON.stringify(nh));
+    __check("C1: el tooltip nombra la excepción y la convención",
+      /inclusive/.test(txtHabiles("2026-10-05","2026-10-12"))&&/prueba/.test(txtHabiles("2026-10-05","2026-10-12")));
+    /* meses sin festivos cargados: se avisa, no se inventa */
+    __check("C1: un mes sin excepciones cargadas se avisa",mesesSinFestivos("2026-11-02","2026-11-06").includes("2026-11"));
+    __check("C1: y un mes con excepciones no",!mesesSinFestivos("2026-10-05","2026-10-09").includes("2026-10"));
+    /* el motor entero usa la convención */
+    const r=nivelar({id:"cc",saldoMin:1000,capDia:200,inicio:"2026-10-05",compromiso:"2026-10-09"});
+    __check("C1: nivelar usa la convención inclusiva de punta a punta",
+      r.diasNec===5&&r.fin===finLabInc("2026-10-05",5)&&r.diasDisp===diasHabilesInc("2026-10-05","2026-10-09"),r.fin+" / "+r.diasDisp);
+    __check("C1: y trae el detalle para explicarlo en pantalla",Array.isArray(r.noHabiles)&&!!r.txtDias&&!!r.txtProd);
+    /* dsumLab NO cambió: sigue siendo un PLAZO (n días DESPUÉS), que es otra cosa */
+    S.params.excepciones=[];
+    __check("C1: dsumLab sigue siendo exclusivo (es el plazo del proveedor en el motor)",
+      dsumLab("2026-10-05",5)==="2026-10-12"&&finLabInc("2026-10-05",5)==="2026-10-09");
+    S.params.excepciones=bakEx;}
+   /* --- C3 · el compromiso NO tiene valor por defecto --- */
+   {const bak=S.params.nivelacion;delete S.params.nivelacion;NIVC=null;
+    __check("C3: sin nada guardado, el compromiso viene vacío",nivFecha("corte","compromiso")==="");
+    const c=cuadritoProceso("corte");
+    __check("C3: y el cuadrito lo declara dato faltante, no inventa una fecha",
+      c.calc.compromiso===null&&c.calc.falta.includes("fecha de compromiso"),JSON.stringify(c.calc.falta));
+    __check("C3: sin compromiso no hay días disponibles, ni alcanzable, ni rezago (null, no 0)",
+      c.calc.diasDisp===null&&c.calc.alcanzableMin===null&&c.calc.rezagoMin===null&&c.calc.cabe===null);
+    const h=cuadritoNivHTML(c);
+    __check("C3: y en pantalla sale «dato faltante»",/dato faltante/.test(h));
+    S.params.nivelacion=bak;NIVC=null;}
+   /* --- C2 · el alcance de cada cifra va rotulado --- */
+   {NIV.horizonte=null;NIVC=null;const c=cuadritoProceso("corte");const h=cuadritoNivHTML(c);
+    __check("C2: el cuadrito trae el saldo del horizonte Y el saldo total",!!c.saldo&&!!c.saldoTot);
+    __check("C2: el saldo del horizonte nunca es mayor que el total",c.saldo.unid<=c.saldoTot.unid&&c.saldo.sinSAM.length<=c.saldoTot.sinSAM.length);
+    if(c.saldo.unidSinSAM||c.saldoTot.unidSinSAM){
+     __check("C2: «sin SAM» dice en este horizonte y en todo el saldo",/en este horizonte/.test(h)&&/en todo el saldo/.test(h));
+     __check("C2: y escribe cuál es el horizonte",h.indexOf(c.horTxt)>=0,c.horTxt);}
+    NIVC=null;}
+   /* --- C5 · la configuración: tabla de grupos y parámetros de tela --- */
+   {const bakG=S.params.gruposMod;S.params.gruposMod=[];NIVC=null;
+    page="config";CONF.tab="nivel";render();let h=document.getElementById("p-config").innerHTML;
+    __check("C5: la pestaña «Nivelación de carga» existe en Configuración",/Grupos de m\u00f3dulos/.test(h)&&/Tela por entregar/.test(h));
+    __check("C5: la tabla de grupos se muestra vacía y lo dice",/nace vac\u00eda/.test(h));
+    __check("C5: los parámetros de tela están (N días y valor planificado)",/D\u00edas h\u00e1biles del promedio real/.test(h)&&/Valor planificado/.test(h));
+    __check("C5: y dice que no convierte horas ni kilos",/sin convertir horas ni kilos/.test(h));
+    __check("C5: avisa si faltan festivos del mes",/sin festivos cargados|hay excepciones cargadas/.test(h));
+    const mods=S.recursos.filter(r=>r.activa&&r.centro==="modulos"&&r.id!=="maquila");
+    if(mods.length){
+     addGrupoMod();const g=gruposMod()[0];
+     __check("C5: un grupo nuevo nace SUGERIDO, no confirmado",g.sugerido===true&&!grupoConfirmado(g));
+     render();h=document.getElementById("p-config").innerHTML;
+     __check("C5: y la tabla lo muestra como sugerido",/sugerido/.test(h));
+     /* sin módulos ni familias no se deja confirmar */
+     let av="";window.alert=m=>{av=String(m)};confirmarGrupoMod(g.id);
+     __check("C5: no se confirma un grupo sin módulos ni familias",!grupoConfirmado(g)&&/no tiene/i.test(av),av);
+     window.alert=()=>{};
+     setGrupoMod(g.id,"n","Grupo C5");setPctModGrupo(g.id,mods[0].id,100);togFamGrupo(g.id,famsCatalogo()[0]);
+     confirmarGrupoMod(g.id);
+     __check("C5: confirmado queda con responsable y fecha",grupoConfirmado(g)&&!!g.confirmado.u&&!!g.confirmado.ts,JSON.stringify(g.confirmado));
+     render();h=document.getElementById("p-config").innerHTML;
+     __check("C5: y la tabla muestra quién y cuándo",/confirmado/.test(h)&&h.indexOf(esc(g.confirmado.u))>=0);
+     /* tocarlo lo devuelve a sugerido: nada confirmado cambia a escondidas */
+     togFamGrupo(g.id,famsCatalogo()[1]||famsCatalogo()[0]);
+     __check("C5: cambiar un grupo confirmado lo devuelve a sugerido",!grupoConfirmado(g)&&g.sugerido===true);
+     /* la misma familia en dos grupos se cuenta dos veces: la validación lo dice */
+     confirmarGrupoMod(g.id);addGrupoMod();const g2=gruposMod()[1];
+     setGrupoMod(g2.id,"n","Grupo C5 bis");setPctModGrupo(g2.id,mods[0].id,10);
+     (g.fams||[]).forEach(f=>togFamGrupo(g2.id,f));
+     __check("C5: una familia en dos grupos sale como error de doble conteo",
+       validarGruposMod().some(e=>!e.aviso&&/dos veces/.test(e.txt)),validarGruposMod().filter(e=>!e.aviso).map(e=>e.txt).join(" | "));
+     __check("C5: y las familias sin ningún grupo salen como aviso, no como error",
+       validarGruposMod().some(e=>e.aviso&&/no est\u00e1 en ning\u00fan grupo/.test(e.txt)));
+     /* sin el permiso no se confirma nada */
+     const guardo=PERFIL;const sinP=perfilesDef().find(p=>!(p.permisos||[]).includes("*")&&!(p.permisos||[]).includes("programa"));
+     if(sinP){PERFIL={...guardo,rol:sinP.id};const g3=gruposMod()[1];const ant=grupoConfirmado(g3);
+      confirmarGrupoMod(g3.id);
+      __check("C5: sin el permiso «programa» no se confirma un grupo",grupoConfirmado(g3)===ant);
+      PERFIL=guardo}
+     S.params.gruposMod=[];NIVC=null}
+    S.params.gruposMod=bakG||[];NIVC=null;}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
+   __check("Correcciones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
