@@ -266,6 +266,16 @@ editor confirma (persona). El historial `rutaEditada` **no** es confirmación.
   registro por total; los registros viejos solo suman si esa orden no dejó línea ese día. El tramo también suma a la
   producción del turno, que es lo que leen Reportería y Ejecución.
 - **Cada paso del tramo guarda de inmediato**: si el servidor lo rechaza, queda en el aviso de reintento y no se pierde.
+- **Sin curva de tallas** (hoy son todas): al confirmar lo que salió hay una **fila única «Total»** con el mismo formato
+  que una talla (− / + / +10 / +25, número grande editable y segundas). Se guarda con la talla «(total)», suma en
+  «Hechas hoy» y sube el avance de la orden en ese centro. Guardar el tramo **con 0 unidades pregunta** (puede haber
+  sido solo un paro), ya no se bloquea.
+- **El resultado de la búsqueda se ve siempre** como tarjeta debajo del buscador (foto, WH, fase, color, prendas y
+  entrega), esté o no en la cola: **INICIO** si está programada en ese puesto, o bloqueada con «pedir reprogramación»
+  si no. Si hay un tramo abierto —o uno terminado sin confirmar— de otra orden, la tarjeta lo dice y lleva a ella.
+  Acepta «28513» o «WH/MO/28513» y muestra hasta seis coincidencias.
+- **Quién trabajó el tramo** se conserva: las unidades se guardan en `pz` (antes pisaban el campo de la persona, y la
+  columna «Quién» de «Lo registrado hoy» mostraba un número).
 - **Paro sin minutos**: se elige el motivo (tabla 15, uso «paro»). Almuerzo, Cierre del día y Fallo de máquina se
   aseguran siempre; los tipos de paro viejos quedan en la tabla pero **inactivos** (el operario solo ve los activos) y
   la duración la calcula el sistema al Reanudar. El cierre del día no cuenta como trabajo ni dispara el aviso de olvido.

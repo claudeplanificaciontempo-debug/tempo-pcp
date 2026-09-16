@@ -278,3 +278,61 @@ La cantidad de paros salía pegada al número de minutos por prenda. Ahora se es
 - El dato vive en `avance`, así que se mantiene al recargar.
 - Una orden sin curva registra el total, queda en tallasLog y suma, sin contarse dos veces con el registro rápido.
 - Mi centro y el panel del centro usan la función única, y el tramo suma a la producción del turno.
+
+---
+
+# 8ª entrega (16-sep-2026) · el campo de total sin tallas y el resultado de la búsqueda
+
+**Commit:** `4edbd33` · **Harness:** 1102 pruebas verdes, sin errores · **Motor:** no se tocó.
+
+## 1 · Sin tallas ya hay dónde registrar
+Hoy ninguna orden tiene curva de tallas cargada, y la pantalla «Confirma lo que salió» devolvía **solo el aviso**
+«se registra solo el total»: no dibujaba ningún campo, así que el operario terminaba el tramo y no podía anotar nada.
+
+Ahora, cuando la WH no tiene curva:
+- Sale una **fila única «Total»** con exactamente el mismo formato que una talla: **−**, el número grande **editable**
+  (teclado numérico en la tablet, se selecciona solo al tocarlo), **+**, los saltos rápidos **+10** y **+25**
+  (los de los parámetros `pasoRapido1` y `pasoRapido2`) y el campo de **segundas**.
+- A la derecha dice cuánto lleva la orden en ese centro: «20 de 300».
+- Se guarda en el tramo con la talla **`(total)`**, que es la misma marca que ya usaba el registro rápido, así que
+  suma en **Hechas hoy**, deja su línea en el registro por talla y **sube el avance de la orden en ese centro**.
+- El número editable también está ahora en las filas por talla: mismo formato en los dos casos.
+
+**Guardar sin unidades:** antes se bloqueaba con «Marca cuántas prendas salieron». Ahora **pregunta**
+(«¿Guardar el tramo sin unidades? Queda el tiempo trabajado y 0 prendas. Puede pasar si solo hubo paro») y, si
+confirmas, guarda el tramo con su tiempo y 0 prendas.
+
+## 2 · El resultado de la búsqueda se ve siempre
+Antes, si la WH **sí** estaba en la cola, el buscador devolvía solo el campo y confiaba en que la lista de abajo se
+filtrara; con un tramo abierto o con «Confirma lo que salió» pendiente esa lista no se dibuja, así que parecía que el
+buscador no hacía nada.
+
+Ahora el resultado aparece **siempre justo debajo del buscador**, como tarjeta grande: foto, WH, fase, tipo de
+producto, color, cuántas prendas faltan de cuántas y la fecha de entrega. Según el caso:
+
+| Caso | Qué muestra la tarjeta |
+| --- | --- |
+| Programada en mi puesto y sin nada abierto | Botón **INICIO** (arranca el tramo) |
+| No programada en este centro | «no programada en …» y botón **Pedir reprogramación** (o «ya pediste la reprogramación») |
+| Tengo un tramo **abierto** de otra orden | «tienes abierta la WH/MO/…: termínala primero» y botón para ir a ella |
+| Tengo un tramo **terminado sin confirmar** | «falta confirmar lo que salió de WH/MO/…: termínala primero» y botón para ir a ella |
+| Es la que tengo abierta | «la tienes abierta ahora» y botón para ir al cronómetro |
+
+Acepta **28513** o **WH/MO/28513** (también busca por referencia). Si hay varias coincidencias muestra hasta **seis**
+tarjetas —primero las de la cola— y dice cuántas quedan fuera. Si no existe ninguna, lo dice.
+
+## 3 · De paso: la columna «Quién» de «Lo registrado hoy»
+Al guardar un tramo, las unidades se escribían en `t.u`, que es el campo donde `iniciarTramo` guarda **quién empezó el
+tramo**. Por eso la tabla «Lo registrado hoy» mostraba un número en la columna **Quién**. Las unidades pasan a `t.pz`
+y la persona se conserva; en los tramos viejos, donde el nombre ya se había perdido, la columna usa quién cerró el
+tramo (`t.uFin`).
+
+## Qué se probó
+- Sin curva de tallas se dibuja la fila Total con − + rápidos, número editable y segundas, y dice «de 300».
+- El número editable guarda las unidades en el tramo; al guardar, **Hechas hoy suma 20**, el avance de la orden en el
+  centro sube a 20 y queda la línea `(total)` en el registro.
+- Guardar con 0 unidades pregunta antes; al confirmar queda el tramo con 0 prendas y su tiempo trabajado.
+- El tramo guardado conserva quién trabajó.
+- La WH de la cola sale como tarjeta con INICIO; acepta el número suelto y la WH completa.
+- Una WH que no está programada aquí sale bloqueada con «pedir reprogramación»; si no existe, lo dice.
+- Con un tramo abierto de otra orden, y con uno pendiente de confirmar, la tarjeta lo dice y ofrece ir a ella.
