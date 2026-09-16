@@ -579,6 +579,54 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      capLavado:capacidadPaso('lavado'),porDiasLavado:centroPorDias('lavado'),
      enRuta:{lavado:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='lavado')).length,plancha:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='plancha')).length,botones:ab.filter(o=>(o.ruta||[]).some(x=>x.centro==='botones')).length}};
    __check("MED: se pudo medir sobre las órdenes cargadas del volcado real",__R.real.abiertas>100,JSON.stringify({abiertas:__R.real.abiertas}));}
+  /* ===== CATÁLOGO REAL: se arma desde el volcado y se vincula con la tabla padre→LMO ===== */
+  {const bakCat=JSON.parse(JSON.stringify(S.categorias));
+   const pares={};(window.__tareaRows||[]).slice(1).forEach(r=>{const pa=String(r[7]||'').trim(),h=String(r[8]||'').trim();
+     if(!pa||!h)return;(pares[pa]=pares[pa]||new Set()).add(h)});
+   const nPares=Object.values(pares).reduce((a,x)=>a+x.size,0);
+   __check('CAT: el volcado real trae 22 familias y 51 categorías hija',Object.keys(pares).length===22&&nPares===51,Object.keys(pares).length+' / '+nPares);
+   // se reemplaza el catálogo del demo por el real (solo dentro de la prueba)
+   S.categorias=[];
+   Object.entries(pares).forEach(([pa,hs])=>{const pid=uid();S.categorias.push({id:pid,n:pa});
+     [...hs].forEach(h=>S.categorias.push({id:uid(),padre:pid,n:h}))});
+   __check('CAT: el catálogo real queda cargado en el simulador',S.categorias.filter(k=>k.padre).length===51&&S.categorias.filter(k=>!k.padre).length===22);
+   // reenlazar las órdenes al catálogo nuevo, por su padre/hija del volcado
+   {const porOp={};((window.__planT||{}).ordenes||[]).forEach(x=>{if(x.op&&x.catTxt)porOp[x.op]=String(x.catTxt).trim()});
+    const porNombre={};S.categorias.filter(k=>k.padre).forEach(k=>{porNombre[(K(k.padre)||{}).n+' / '+k.n]=k.id});
+    let re=0,sin=[];S.ordenes.forEach(o=>{const key=porOp[o.op];
+      if(key&&porNombre[key]){o.cat=porNombre[key];re++}else if(key)sin.push(key)});
+    __check('CAT: las 1.206 órdenes cargadas quedan enlazadas a su categoría del catálogo real',re===S.ordenes.length,re+' de '+S.ordenes.length+(sin.length?' · sin calzar: '+[...new Set(sin)].slice(0,5).join(', '):''));
+    __check('CAT: contra el catálogo del demo solo calzaban 133 de 1.206 (por eso la medición anterior salió distorsionada)',((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length===133,String(((window.__planT||{}).ordenes||[]).filter(x=>x.cat).length));}
+   const {vinc,sinMapeo}=aplicarMapeoCategorias();
+   const conOps=S.categorias.filter(k=>k.padre&&(k.ops||[]).length);
+   const conFam=S.categorias.filter(k=>k.padre&&k.familiaLMO);
+   const sinVinc=S.categorias.filter(k=>k.padre&&!k.familiaLMO);
+   __check('CAT: 40 de las 51 categorías hija quedan vinculadas a su familia de la LMO',conFam.length===40&&conOps.length===40,conFam.length+' vinculadas / '+conOps.length+' con operaciones');
+   __check('CAT: las 11 sin vínculo son las que producción marcó «sin operaciones»',sinVinc.length===11,sinVinc.map(k=>(K(k.padre)||{}).n+'/'+k.n).join(', '));
+   __check('CAT: y son familias enteras, no hijas sueltas: JOGGER, Fleece, TEJIDOS, FALDAS, ENTERIZO y ACCESORIOS',
+    [...new Set(sinVinc.map(k=>(K(k.padre)||{}).n))].sort().join('|')==='ACCESORIOS|ENTERIZO|FALDAS|Fleece Basico|Fleece Pesado|JOGGER|TEJIDOS');
+   // la regla de etiqueta contra el catálogo REAL
+   {const cuatro=['Level 1','Level 2','Camiseta CR','Camiseta CV'];
+    const ks=cuatro.map(n=>S.categorias.find(k=>k.padre&&k.n===n));
+    __check('ETIQ: las cuatro categorías de la regla SÍ existen en el catálogo real',ks.every(Boolean)&&ks.every(k=>(K(k.padre)||{}).n==='CAMISETAS'));
+    __check('ETIQ: y la regla les carga 0,50 min de etiqueta a las cuatro',ks.every(k=>!!etiquetaDe(k)&&+samPorCentro(k).etiquetas===0.5));
+    const otra=S.categorias.find(k=>k.padre&&k.n==='Polo Basica');
+    __check('ETIQ: y a una que no está en la regla, no',!!otra&&!etiquetaDe(otra)&&samPorCentro(otra).etiquetas===undefined);
+    // con las órdenes reales cargadas: cuántas llevan la etiqueta
+    const ids=new Set(ks.filter(Boolean).map(k=>k.id));
+    const conEtiq=S.ordenes.filter(o=>abierta(o)&&ids.has(o.cat));
+    __R.etiqReal={cats:cuatro,ordenes:conEtiq.length,pz:conEtiq.reduce((a,o)=>a+(+o.cant||0),0),
+      min:conEtiq.reduce((a,o)=>a+(+o.cant||0)*0.5,0)};}
+   // el reparto real que queda registrado para el reporte
+   __R.cat={padres:Object.keys(pares).length,hijas:nPares,vinculadas:conFam.length,sinVinculo:sinVinc.length,
+     detalleSinVinculo:sinVinc.map(k=>(K(k.padre)||{}).n+' / '+k.n),
+     opsLMO:(S.operaciones||[]).length,catsLMO:[...new Set((S.operaciones||[]).map(o=>o.catP).filter(Boolean))].length,
+     lmoSinUsar:[...new Set((S.operaciones||[]).map(o=>o.catP).filter(Boolean))].filter(c=>!S.categorias.some(k=>k.familiaLMO===c))};
+   // lo que movería la unificación JEANS→DENIM con el catálogo y las órdenes reales (NO se ejecuta)
+   {const d=diagJeans();__R.jeansReal={cats:d.cats.length,ordenes:d.ordenes.length,ops:d.ops.length,
+     tablas:d.tablas.map(x=>x.t+': '+x.fila),ejemplos:d.ordenes.slice(0,5).map(o=>o.op),
+     yaUnificado:!!S.params.jeansUnificado};}
+   S.categorias=bakCat;}
   S.ordenes=bakOrd;S.avance={};PLAN=null;PLAN_ALL=null;
   try{localStorage.__fase="parte2 fin"}catch(e){}
   /* ===== Arreglos previos al Bloque K: calendario manda, lo configurado no se sobrescribe, tabla de fases no se pisa ===== */
