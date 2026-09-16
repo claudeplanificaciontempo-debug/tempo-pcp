@@ -353,7 +353,6 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-avance"></section>
     <section class="page" id="p-auditoria"></section>
     <section class="page" id="p-capacidad"></section>
-    <section class="page" id="p-linea"></section>
     <section class="page" id="p-tablet"></section>
     <section class="page" id="p-vistaordenes"></section>
     <section class="page" id="p-asignacion"></section>
@@ -494,7 +493,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['linea','Modo línea'],['tablet','Mi centro (tablet)'],['vistaordenes','Vista general de órdenes (Reportería)'],['asignacion','Asignación por orden (Reportería)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['reporteria','Reportería'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['vistaordenes','Vista general de órdenes (Reportería)'],['asignacion','Asignación por orden (Reportería)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -582,7 +581,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-15 21:51';
+const APP_BUILD='2026-09-15 22:02';
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
@@ -793,7 +792,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={tablet:'factory',vistaordenes:'box',asignacion:'sheet',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',linea:'tablet',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
+const ICO_NAV={tablet:'factory',vistaordenes:'box',asignacion:'sheet',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -1744,28 +1743,56 @@ function tabletFilas(c,rec,P){const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6)
 function tramosDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!Array.isArray(a.tramos))a.tramos=[];return a.tramos}
 function todosTramos(){const out=[];S.ordenes.forEach(o=>{((S.avance[o.id]||{}).tramos||[]).forEach(t=>out.push({o,t}))});return out}
 function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
-function personasRec(rec,c){const r=rec?R(rec):null;
-  if(r&&+r.pers>0)return {pers:+r.pers,falta:false};
-  if(c==='modulos'&&!r)return {pers:1,falta:true};
-  return {pers:1,falta:true}}
-/* descansos del horario del centro: hoy NO hay tabla de horarios con descansos; se reporta y no se inventa nada */
-function descansosCentro(c){const h=(S.params.horarios||{})[c];const m=h&&+h.descansoMin;return {min:m>0?m:0,falta:!(m>0)}}
-function centrosSinDescansos(){return S.centros.filter(c=>c.area==='pro'&&descansosCentro(c.id).falta).map(c=>c.id)}
+/* personas del tramo: primero la asistencia real del día, después las del recurso, y solo si no hay, 1 */
+function personasTramo(rec,c,dia){const d=dia||hoy();const r=rec?R(rec):null;
+  if(r){const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===d&&x.pers!=null&&x.pers!=='');
+    if(t&&+t.pers>0)return {pers:+t.pers,fuente:'asistencia',txt:'asistencia del día'};
+    const aj=ajusteRecDia(r,d);if(aj&&+aj.pers>0)return {pers:+aj.pers,fuente:'ajuste',txt:'ajuste de capacidad de la semana'};
+    if(+r.pers>0)return {pers:+r.pers,fuente:'recurso',txt:'personas del recurso'}}
+  return {pers:1,fuente:'defecto',txt:'sin dato: se calcula con 1 persona'}}
+function personasRec(rec,c,dia){const p=personasTramo(rec,c,dia);return {pers:p.pers,falta:p.fuente==='defecto',fuente:p.fuente,txt:p.txt}}
+/* descansos: ventanas de hora (inicio–fin) por centro; se descuenta solo lo que cae dentro del tramo */
+function horarios(){if(!S.params.horarios||typeof S.params.horarios!=='object')S.params.horarios={};return S.params.horarios}
+function ventanasCentro(c){const h=horarios()[c];const v=h&&Array.isArray(h.ventanas)?h.ventanas:[];return v.filter(x=>x&&x.ini&&x.fin)}
+function addVentana(c){const h=horarios();h[c]=h[c]||{ventanas:[]};h[c].ventanas=h[c].ventanas||[];h[c].ventanas.push({ini:'12:30',fin:'13:30'});
+  bitacora('Horario de '+nCen(c)+': ventana de descanso agregada ('+quienFirma()+')');save();render()}
+function setVentana(c,i,k,v){const h=horarios();const w=((h[c]||{}).ventanas||[])[i];if(!w)return;const antes=w[k];w[k]=v;
+  bitacora('Horario de '+nCen(c)+' · descanso '+(i+1)+' '+k+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');save();render()}
+function delVentana(c,i){const h=horarios();const w=((h[c]||{}).ventanas||[])[i];if(!w)return;
+  if(!confirm('¿Quitar el descanso '+(w.ini||'')+'–'+(w.fin||'')+' de '+nCen(c)+'? Los tramos ya guardados conservan el tiempo con el que se calcularon.'))return;
+  h[c].ventanas.splice(i,1);bitacora('Horario de '+nCen(c)+': descanso quitado ('+quienFirma()+')');save();render()}
+function centrosSinDescansos(){return S.centros.filter(c=>c.area==='pro'&&!ventanasCentro(c.id).length).map(c=>c.id)}
+function minutosVentana(ini,fin,c){ // minutos de descanso que caen dentro del tramo [ini,fin]
+  const vs=ventanasCentro(c);if(!vs.length||!ini||!fin)return {min:0,falta:!vs.length};
+  let tot=0;const a=new Date(ini),b=new Date(fin);
+  for(let d=new Date(a.getFullYear(),a.getMonth(),a.getDate());d<=b;d.setDate(d.getDate()+1)){
+    vs.forEach(v=>{const[h1,m1]=String(v.ini).split(':').map(Number);const[h2,m2]=String(v.fin).split(':').map(Number);
+      if(isNaN(h1)||isNaN(h2))return;
+      const vi=new Date(d.getFullYear(),d.getMonth(),d.getDate(),h1,m1||0);const vf=new Date(d.getFullYear(),d.getMonth(),d.getDate(),h2,m2||0);
+      const ini2=Math.max(a.getTime(),vi.getTime()),fin2=Math.min(b.getTime(),vf.getTime());
+      if(fin2>ini2)tot+=(fin2-ini2)/6e4})}
+  return {min:tot,falta:false}}
+function descansosCentro(c){const vs=ventanasCentro(c);return {min:0,falta:!vs.length,ventanas:vs}}
+function horariosPanelHTML(){const cens=S.centros.filter(c=>c.area==='pro');
+  return `<div class="panel"><h3>18 · Descansos por centro <span class="note">ventanas de hora (almuerzo, refrigerio); el tiempo de un tramo descuenta solo la parte de la ventana que cae dentro</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th><th>Descansos</th><th></th></tr></thead><tbody>
+   ${cens.map(c=>{const vs=ventanasCentro(c.id);return `<tr><td>${esc(c.n)}</td><td>${vs.length?vs.map((v,i)=>`<span style="display:inline-flex;gap:4px;align-items:center;margin:0 10px 6px 0"><input type="time" value="${esc(v.ini)}" onchange="setVentana('${c.id}',${i},'ini',this.value)"><span>–</span><input type="time" value="${esc(v.fin)}" onchange="setVentana('${c.id}',${i},'fin',this.value)"><button class="btn ghost sm" onclick="delVentana('${c.id}',${i})">×</button></span>`).join(''):'<span class="tag t-aviso">sin descansos cargados: no se descuenta nada</span>'}</td><td><button class="btn ghost sm" onclick="addVentana('${c.id}')">+ descanso</button></td></tr>`}).join('')}
+   </tbody></table></div></div></div>`}
 /* fórmula única del tiempo real de un tramo */
 function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new Date(t.fin):null;
   const brutoMin=(ini&&fin)?Math.max(0,(fin-ini)/6e4):0;
   const paros=(t.paros||[]).reduce((a,p)=>a+(+p.min||0),0);
-  const des=descansosCentro(t.centro);
+  const vent=minutosVentana(t.ini,t.fin,t.centro);
+  const des={min:vent.min,falta:vent.falta};
   const trabajado=Math.max(0,brutoMin-paros-(des.min||0));
-  const pr=personasRec(t.rec,t.centro);
+  const pr=personasRec(t.rec,t.centro,t.ini?String(t.ini).slice(0,10):null);
   const minPersona=trabajado*pr.pers;
-  const u=sumaCurva(t.tallas||{});
-  const minPrendaReal=u>0?minPersona/u:null;
+  const u=sumaCurva(t.tallas||{});const seg=sumaCurva(t.segundas||{});const uTot=u+seg;
+  const minPrendaReal=u>0?minPersona/u:null;const minPrendaTot=uTot>0?minPersona/uTot:null;
   const paso=o?((o.ruta||[]).find(p=>p.centro===t.centro)||{}):{};
   const estandar=o?minPrenda(t.centro,paso.t||0):0;
   const tol=+prm('tolMinPrenda',15)||0;
   let sem='';if(minPrendaReal!=null&&estandar>0){const d=(minPrendaReal-estandar)/estandar*100;sem=d<=0?'ok':(d<=tol?'aviso':'alerta')}
-  return {brutoMin,paros,descansos:des.min||0,descansosFalta:des.falta,trabajado,pers:pr.pers,persFalta:pr.falta,minPersona,u,minPrendaReal,estandar,sem,tol}}
+  return {brutoMin,paros,descansos:des.min||0,descansosFalta:des.falta,trabajado,pers:pr.pers,persFalta:pr.falta,persFuente:pr.fuente,persTxt:pr.txt,minPersona,u,seg,uTot,minPrendaReal,minPrendaTot,estandar,sem,tol}}
 function fmtMinSeg(min){const sg=Math.round(min*60);const m=Math.floor(sg/60),s=sg%60;return m+' min '+String(s).padStart(2,'0')+' s'}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
@@ -1798,12 +1825,15 @@ function terminarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);if(!t|
 function cerrarTramoUI(){const {id,oid}=TRAMO;if(id&&oid)terminarTramo(id,oid)}
 function setTallaTramo(tid,oid,talla,delta){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
   t.tallas=t.tallas||{};const v=Math.max(0,(+t.tallas[talla]||0)+delta);if(v)t.tallas[talla]=v;else delete t.tallas[talla];render()}
+function setSegTramo(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
+  t.segundas=t.segundas||{};const v=Math.max(0,Math.round(+valor||0));if(v)t.segundas[talla]=v;else delete t.segundas[talla];save()}
 function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tramosDe(oid).find(x=>x.id===tid);if(!o||!t)return;
   const u=sumaCurva(t.tallas||{});if(!(u>0)){alert('Marca cuántas prendas salieron, por talla.');return}
   const b=baseTallas(o,t.centro);const a=S.avance[oid]=S.avance[oid]||{};a.tallas=a.tallas||{};const prev=a.tallas[t.centro]||{};
   const excede=[];Object.entries(t.tallas).forEach(([k,q])=>{const lim=(b.tallas||{})[k];if(lim!=null&&(prev[k]||0)+q>lim)excede.push(k+': '+num((prev[k]||0)+q)+' de '+num(lim))});
   if(excede.length&&!confirm('Estas tallas pasan de lo '+(b.base==='corte'?'cortado':'pedido')+':\n'+excede.join('\n')+'\n¿Guardar igual? Queda marcado.'))return;
-  const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.u=u;t.excede=excede.length>0;
+  const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.persFuente=c.persFuente;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.minPrendaTot=c.minPrendaTot!=null?+c.minPrendaTot.toFixed(3):null;t.u=u;t.seg=c.seg;t.excede=excede.length>0;
+  if(c.seg>0){const av=S.avance[oid];av.seg=av.seg||{};av.seg[t.centro]=Math.max(0,(+av.seg[t.centro]||0)+c.seg)} // el mismo dato que ve Control de piso
   a.tallasLog=a.tallasLog||[];const ts=new Date().toISOString();
   Object.entries(t.tallas).forEach(([k,q])=>{prev[k]=(prev[k]||0)+q;a.tallasLog.push({ts,u:quienFirma(),centro:t.centro,rec:t.rec||null,talla:k,pz:q,base:b.base||'sin base',tramo:t.id,min:t.min,minPersona:t.minPersona,excede:excede.some(x=>x.startsWith(k+':'))})});
   a.tallas[t.centro]=prev;a.centros=a.centros||{};a.centros[t.centro]=Math.min(o.cant,sumaCurva(prev));
@@ -1839,13 +1869,15 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
     if(o&&t){const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);const cal=calcTramo(t,o);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};
       return avisoOlv+`<div class="panel"><div class="body" style="font-size:18px">
        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
-       <div class="mut" style="margin:8px 0">Trabajado ${fmtMinSeg(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} · ${num(cal.minPersona)} min-persona</div>
+       <div class="mut" style="margin:8px 0">Trabajado ${fmtMinSeg(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
        <h3 style="margin:10px 0">¿Cuántas salieron, por talla?</h3>
        ${tallas.length?`<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>{const lim=(b.tallas||{})[tt];const v=(t.tallas||{})[tt]||0;const total=(ya[tt]||0)+v;
          return `<div style="display:flex;align-items:center;gap:12px"><b style="width:70px;font-size:20px">${esc(tt)}</b>
           <button class="btn ghost" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',-1)">−</button>
           <b style="font-size:24px;min-width:56px;text-align:center">${v}</b>
           <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
+          ${[+prm('pasoRapido1',10),+prm('pasoRapido2',25)].filter(n=>n>0).map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}
+          <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',this.value)"></label>
           <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}).join('')}</div>`
         :'<div class="warn">Esta orden no tiene curva de tallas ni registro de corte: solo se puede registrar el total (avisado en Hoy → Pendientes).</div>'}
        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
@@ -1868,8 +1900,8 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
    </div></div></div>`}
 function tramosDelDiaHTML(c,rec){const h=hoy();const l=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===h);
   if(!l.length)return '';
-  return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Min/prenda real</th><th>Quién</th></tr></thead><tbody>
-   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="estándar ${num(cal.estandar,3)} min/prenda · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="mut">${esc(t.u||'')}</td></tr>`}).join('')}
+  return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Segundas</th><th class="num">Min/prenda real</th><th class="num">Personas</th><th>Quién</th></tr></thead><tbody>
+   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="estándar ${num(cal.estandar,3)} min/prenda · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.pers}</td><td class="mut">${esc(t.u||'')}</td></tr>`}).join('')}
    </tbody></table></div>${descansosCentro(c).falta?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración → Centros cuando los definas.</p>`:''}${personasRec(rec,c).falta?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
 function vTablet(el){
   const asg=tabletDe();const admin=puede('usuarios')||puede('programa');
@@ -2163,7 +2195,7 @@ function render(){
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,linea:vLinea,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes,asignacion:vAsignacion}[page])(el);
+  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes,asignacion:vAsignacion}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -2966,33 +2998,6 @@ function vCumplimiento(el){
 }
 
 /* ---------- Modo línea (tablet): un módulo, botones grandes ---------- */
-let LIN={rec:null};
-function vLinea(el){ // pantalla vieja: ya no está en el menú; el enlace abre Mi centro del mismo módulo
-  if(LIN&&LIN.rec){TAB={centro:'modulos',rec:LIN.rec,q:''}}else{TAB={centro:'modulos',rec:null,q:''}}
-  page='tablet';vTablet(document.getElementById('p-tablet')||el);return;
-  /* eslint-disable no-unreachable */
-  const mods=S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro'&&r.activa&&r.centro==='modulos');
-  if(!LIN.rec||!mods.some(r=>r.id===LIN.rec))LIN.rec=(mods[0]||{}).id;const r=R(LIN.rec);const h=hoy();const ok=puedeArea('pro');
-  const P=S.ordenes.length?programar():{pro:[],ordenes:{}};
-  const activas=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos')).map(o=>{const ac=((S.avance[o.id]||{}).centros||{});const hecho=faseEstado(o.fase,o).hechos.includes('modulos')||(ac.modulos||0)>=o.cant;
-      const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro==='modulos')||{};const fijo=(o.recursoFijo||{}).modulos;const enHoy=P.pro.some(x=>x.dia===h&&x.rec===LIN.rec&&x.op===o.op);
-      return{o,ac,hecho,paso,fijo,enHoy}}).filter(x=>!x.hecho&&(x.fijo===LIN.rec||x.enHoy||(x.paso.rec===LIN.rec&&x.paso.ini<=dsum(h,1)))).sort((a,b)=>(b.enHoy-a.enHoy)||((a.paso.ini||'9')<(b.paso.ini||'9')?-1:1)).slice(0,6);
-  const t=(S.turnos||[]).find(x=>x.rec===LIN.rec&&x.d===h)||{};const paros=(S.paros||[]).filter(p=>p.rec===LIN.rec&&p.d===h);
-  const big='font-size:20px;padding:14px 18px;min-width:84px';
-  el.innerHTML=`<div class="pagehead"><h2>Módulo</h2><span class="spacer"></span><select style="font-size:18px;padding:8px" onchange="LIN.rec=this.value;render()">${mods.map(m=>`<option value="${m.id}" ${m.id===LIN.rec?'selected':''}>${esc(m.n)}</option>`).join('')}</select></div>
-  <div class="panel"><div class="body" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:18px">
-   <div>Personas hoy <input type="number" min="0" style="width:70px;font-size:20px;padding:6px" value="${t.pers??''}" placeholder="${r?r.pers:''}" ${ok?'':'disabled'} onchange="setAsist('${LIN.rec}',this.value)"></div>
-   <div>Prendas hoy <b>${num(t.pz||0)}</b></div><div>Paros hoy <b style="color:${paros.length?'var(--alerta)':'inherit'}">${paros.reduce((a,p)=>a+ +p.min,0)} min</b></div>
-   <span class="spacer"></span><button class="btn" style="${big};background:var(--alerta);border-color:var(--alerta)" ${ok?'':'disabled'} onclick="mParo()">PARO</button></div></div>
-  ${activas.map(({o,ac})=>{const v=ac.modulos||0;const seg=((S.avance[o.id]||{}).seg||{}).modulos||0;return `<div class="panel"><div class="body">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div style="font-size:22px">${fotoMini(o,40)}<b>${esc(o.op)}</b>${faseTag(o)} · ${esc(nombreCat(K(o.cat)))} · ${esc((C(o.color)||{}).n||'')}</div><div style="font-size:18px">${num(v)} / ${num(o.cant)} <span class="mut">entrega ${o.fecha}</span></div></div>
-    <div class="bar" style="height:14px;margin:10px 0"><i style="width:${Math.min(100,v/o.cant*100)}%"></i></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <span style="font-size:16px">Primeras</span>${[10,25,50,100].map(n=>`<button class="btn" style="${big}" ${ok?'':'disabled'} onclick="setAvance('${o.id}','modulos',${Math.min(o.cant,v+n)},${o.cant})">+${n}</button>`).join('')}
-      <input type="number" min="0" max="${o.cant}" style="width:100px;font-size:20px;padding:8px" value="${v||''}" ${ok?'':'disabled'} onchange="setAvance('${o.id}','modulos',this.value,${o.cant})">
-      <span style="font-size:16px;margin-left:14px">Segundas <b>${seg}</b></span><button class="btn ghost" style="${big}" ${ok?'':'disabled'} onclick="setSeg('${o.id}','modulos',${seg+1});render()">+1</button><button class="btn ghost" style="${big}" ${ok?'':'disabled'} onclick="setSeg('${o.id}','modulos',${seg+5});render()">+5</button></div></div></div>`}).join('')||'<div class="panel"><div class="empty">Este módulo no tiene órdenes activas hoy.</div></div>'}`;
-}
-
 /* ---------- Demanda agregada por familia y subcategoría ---------- */
 let FAM={per:'horizonte',metrica:'hconf',fases:null,fam:null,prev:true};
 const GRUPOS_FASE=[['0','Preproducción (diseño, compras)'],['1','Tela (tejeduría, tintorería)'],['2','Corte y preparación (2–4)'],['5','Confección y servicios (5–7)'],['8','Terminados (8)']];
@@ -5421,6 +5426,7 @@ function vConfig(el){
   ${motivosPanelHTML()}
   ${tallasPanelHTML()}
   ${ayudasPanelHTML()}
+  ${horariosPanelHTML()}
 
   <div class="panel"><h3>13 · Qué le falta a la tela: propuesta por palabras del producto <span class="note">tintura · lavado de tela · nada; sin palabra: EXTERNA TEÑIDA → nada, lo demás → tintura. La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>

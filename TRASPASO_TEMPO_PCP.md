@@ -218,6 +218,12 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - **Olvidos**: un inicio sin fin que pasa del tope avisa en Mi centro y en Hoy → Pendientes; el supervisor pone la hora
   real con motivo y queda en auditoría. El sistema no cierra solo.
 - **Una orden abierta por puesto**: iniciar otra pregunta si cierra la anterior.
+- **Personas del tramo**: manda la asistencia real del día; si no hay, el ajuste de la semana; si no, las personas
+  del recurso; y solo si no hay nada, 1, avisado. La pantalla dice de cuál salió.
+- **Descansos**: ventanas de hora por centro (tabla 18); se descuenta solo la parte que cae dentro del tramo.
+- **Segundas** por talla en el mismo flujo: los minutos por prenda se calculan sobre las buenas y también se muestran
+  con segundas. Es el mismo dato que ve Control de piso.
+- **Avance rápido**: botones +10 y +25 por talla, tomados de parámetros.
 - Cada tramo guarda quién, cuándo, centro, recurso, paros, tallas, tiempo y minutos-persona: es la base del
   seguimiento de avance del responsable de centro.
 

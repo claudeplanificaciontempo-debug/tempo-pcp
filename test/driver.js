@@ -700,7 +700,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','linea','categorias','operaciones','config','usuarios','albaran','reporteria'];
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','reporteria'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -1102,7 +1102,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -1723,7 +1723,7 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bakPers=rec?R(rec).pers:null;if(rec)R(rec).pers=8;
    // 1 · Modo línea ya no está en el menú ni en los perfiles
    __check("ML: Modo línea salió del menú y de los perfiles",!document.querySelector('nav a[data-p=\"linea\"]')&&!perfilesDef().some(p=>(p.paginas||[]).includes('linea')));
-   __check("ML: el enlace viejo abre Mi centro",vLinea.toString().includes("page='tablet'")&&vLinea.toString().includes('vTablet('));
+   __check("ML: el enlace viejo abre Mi centro",typeof vLinea==='undefined'&&!document.querySelector('nav a[data-p="linea"]'));
    // 2 · flujo: inicio
    iniciarTramo(oT.id,'modulos',rec);
    const tr=tramosDe(oT.id)[0];
@@ -1778,6 +1778,59 @@ async function __run(){try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=loc
    const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
    window.alert=a0;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
    __check("TR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* MI CENTRO · correcciones: personas reales, descansos por ventanas, segundas y avance rápido */
+  {const antes=__R.errors.length;window.confirm=()=>true;const adminP=PERFIL;
+   const bakH=JSON.stringify(S.params.horarios||null),bakT=JSON.stringify(S.turnos||null),bakM=JSON.stringify(S.params.motivos||null);
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];if(!S.params.motivos.some(m=>m.uso==='piso'))S.params.motivos.push({motivo:'Falta de tela',uso:'piso'});
+   // 1 · Modo línea borrado
+   __check("ML: Modo línea ya no existe (función, despachador, sección, catálogo, ícono y estado)",typeof vLinea==='undefined'&&typeof LIN==='undefined'&&!document.getElementById('p-linea')&&!PAGINAS_DEF.some(x=>x[0]==='linea')&&!ICO_NAV.linea);
+   __check("ML: asistencia, paros y segundas se siguen guardando",typeof setAsist==='function'&&typeof mParo==='function'&&typeof setSeg==='function');
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;const bakPers=rec?R(rec).pers:null;if(rec)R(rec).pers=8;
+   // 2 · personas del tramo: asistencia real manda
+   S.turnos=(S.turnos||[]).filter(x=>!(x.rec===rec&&x.d===hoy()));
+   __check("PT: sin asistencia del día usa las personas del recurso",personasTramo(rec,'modulos',hoy()).pers===8&&personasTramo(rec,'modulos',hoy()).fuente==='recurso');
+   S.turnos.push({id:rec+'|'+hoy(),rec,d:hoy(),pers:6});
+   __check("PT: un módulo de 8 personas con asistencia de 6 calcula con 6, y se ve de dónde salió",personasTramo(rec,'modulos',hoy()).pers===6&&personasTramo(rec,'modulos',hoy()).fuente==='asistencia'&&/asistencia/.test(personasTramo(rec,'modulos',hoy()).txt));
+   __check("PT: un recurso sin personas ni asistencia calcula con 1 y avisa",personasTramo(null,'corte',hoy()).pers===1&&personasTramo(null,'corte',hoy()).fuente==='defecto');
+   // 3 · descansos como ventanas
+   S.params.horarios={modulos:{ventanas:[{ini:'12:30',fin:'13:30'}]}};
+   const hoyD=hoy();
+   const t1={centro:'modulos',rec,ini:hoyD+'T09:00:00',fin:hoyD+'T09:30:00',paros:[],tallas:{}};
+   const t2={centro:'modulos',rec,ini:hoyD+'T12:00:00',fin:hoyD+'T14:00:00',paros:[],tallas:{}};
+   const mkFecha=(s)=>{const [f,h]=s.split('T');const [Y,M,D2]=f.split('-').map(Number);const [hh,mm]=h.split(':').map(Number);return new Date(Y,M-1,D2,hh,mm).toISOString()};
+   t1.ini=mkFecha(t1.ini);t1.fin=mkFecha(t1.fin);t2.ini=mkFecha(t2.ini);t2.fin=mkFecha(t2.fin);
+   const c1=calcTramo(t1,null),c2=calcTramo(t2,null);
+   __check("DE: un tramo de 9:00 a 9:30 no descuenta el almuerzo de 12:30 a 13:30",Math.abs(c1.brutoMin-30)<0.1&&c1.descansos===0&&Math.abs(c1.trabajado-30)<0.1);
+   __check("DE: un tramo de 12:00 a 14:00 descuenta los 60 minutos del almuerzo",Math.abs(c2.brutoMin-120)<0.1&&Math.abs(c2.descansos-60)<0.1&&Math.abs(c2.trabajado-60)<0.1);
+   S.params.horarios={};
+   __check("DE: sin ventanas cargadas no descuenta nada y lo avisa",calcTramo(t2,null).descansos===0&&calcTramo(t2,null).descansosFalta===true&&centrosSinDescansos().includes('modulos'));
+   page='config';CONF.tab='ordenes2';render();__check("DE: los descansos se editan en Configuración (tabla 18)",document.getElementById('p-config').innerHTML.includes('18 · Descansos por centro'));
+   // 4 · segundas en el flujo
+   S.params.horarios={modulos:{ventanas:[]}};
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oS=JSON.parse(JSON.stringify(base));oS.id=uid();oS.op='WH/SEG-1';oS.estado='plan';oS.cant=100;oS.tallasPedido={S:100};delete oS.programa;S.ordenes.push(oS);delete S.avance[oS.id];
+   iniciarTramo(oS.id,'modulos',rec);const tr=tramosDe(oS.id)[0];tr.ini=new Date(Date.now()-60*6e4).toISOString();terminarTramo(tr.id,oS.id);
+   setTallaTramo(tr.id,oS.id,'S',1);setSegTramo(tr.id,oS.id,'S',2);
+   {const cal=calcTramo(tr,oS);
+    __check("SG: los minutos por prenda salen de las unidades buenas y también se muestran sobre el total",cal.u===1&&cal.seg===2&&Math.abs(cal.minPrendaReal-cal.minPersona)<0.01&&Math.abs(cal.minPrendaTot-cal.minPersona/3)<0.01);}
+   const segAntes=((S.avance[oS.id]||{}).seg||{}).modulos||0;
+   guardarTramo(tr.id,oS.id);
+   __check("SG: las segundas del tramo son el mismo dato que ve Control de piso",(((S.avance[oS.id]||{}).seg||{}).modulos||0)===segAntes+2&&tr.seg===2);
+   // 5 · avance rápido
+   TAB={centro:'modulos',rec,q:''};iniciarTramo(oS.id,'modulos',rec);const tr2=tramosDe(oS.id).slice(-1)[0];terminarTramo(tr2.id,oS.id);
+   page='tablet';render();
+   {const h=document.getElementById('p-tablet').innerHTML;
+    __check("AR: junto a + y − hay botones de avance rápido tomados de parámetros",h.includes('>+'+num(prm('pasoRapido1',10))+'<')&&h.includes('>+'+num(prm('pasoRapido2',25))+'<')&&h.includes('setSegTramo('));}
+   setTallaTramo(tr2.id,oS.id,'S',+prm('pasoRapido2',25));
+   __check("AR: el botón rápido suma ese número de golpe",(tr2.tallas||{}).S===+prm('pasoRapido2',25));
+   TRAMO={paso:null,id:null,oid:null};
+   if(rec&&bakPers!=null)R(rec).pers=bakPers;
+   S.ordenes=S.ordenes.filter(o=>o!==oS);delete S.avance[oS.id];
+   const bh=JSON.parse(bakH);if(bh)S.params.horarios=bh;else delete S.params.horarios;
+   const bt=JSON.parse(bakT);if(bt)S.turnos=bt;else S.turnos=[];
+   const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();PERFIL=adminP;
+   __check("MC2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

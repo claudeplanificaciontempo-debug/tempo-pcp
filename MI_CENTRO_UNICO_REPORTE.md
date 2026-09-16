@@ -78,3 +78,48 @@ que salió. Son los datos que alimentan el seguimiento y el reporte de avance de
 - Los minutos por prenda reales salen de los minutos-persona entre las unidades, con semáforo.
 - Un inicio sin fin que pasa del tope avisa en Mi centro y en Hoy, no se cierra solo, y la corrección del supervisor
   queda en auditoría.
+
+---
+
+# Correcciones del tiempo (segunda entrega)
+
+Fecha: 15-sep-2026, más tarde. Pruebas del simulador: **970 (12 nuevas), todas verdes, 0 errores**.
+
+## 1 · Modo línea borrado
+Se eliminaron la función de la pantalla, su entrada en el despachador, la sección del HTML, la entrada del catálogo de
+páginas, su ícono y su estado. **Asistencia del día, paros y segundas siguen guardándose igual**, con las mismas
+funciones de siempre, que ahora se usan desde Mi centro y Control de piso.
+
+## 2 · Personas del tramo
+El número de personas sale, en este orden:
+1. la **asistencia real del día** de ese recurso, si está registrada;
+2. el **ajuste de capacidad de la semana**, si lo hay;
+3. las **personas del recurso**;
+4. y solo si no hay nada, **1 persona**, marcado como sin dato.
+
+La pantalla dice de cuál de los cuatro salió, tanto en el tramo abierto como en la tabla del día. Probado: un módulo de
+8 personas con asistencia de 6 calcula con 6.
+
+## 3 · Descansos como ventanas de hora
+El horario del centro dejó de ser un número de minutos: ahora es una **lista de ventanas** (por ejemplo 12:30 a 13:30),
+editable en Configuración → Órdenes y materiales → **18 · Descansos por centro**. El cálculo descuenta **solo la parte
+de cada ventana que cae dentro del tramo**, y lo hace día por día cuando un tramo cruza la medianoche. Sin ventanas
+cargadas no descuenta nada y lo avisa, como antes. Probado: un tramo de 9:00 a 9:30 no descuenta el almuerzo; uno de
+12:00 a 14:00 descuenta 60 minutos.
+
+## 4 · Segundas en el flujo
+Cada talla tiene, junto a los botones, un campo opcional de **segundas**. Los minutos por prenda reales se calculan
+sobre las **unidades buenas** y la pantalla muestra también el valor **con segundas incluidas**. Lo registrado ahí suma
+a las segundas del centro: es **el mismo dato** que ve Control de piso, no uno paralelo.
+
+## 5 · Avance rápido
+Junto a **+** y **−** de cada talla hay dos botones de salto, hoy **+10** y **+25**, que salen de los parámetros
+`pasoRapido1` y `pasoRapido2`. Cambiando esos parámetros cambian los botones, sin tocar código.
+
+## Qué se probó en esta entrega
+- Modo línea no existe en ninguna de sus seis partes, y asistencia, paros y segundas siguen disponibles.
+- Sin asistencia se usan las personas del recurso; con asistencia de 6 sobre un módulo de 8, se calcula con 6; sin
+  ningún dato, 1 y avisado.
+- Las ventanas de descanso se descuentan solo si se solapan con el tramo, y sin ventanas no se descuenta nada.
+- Las segundas por talla cambian los minutos por prenda con y sin segundas, y suman al mismo dato de Control de piso.
+- Los botones de avance rápido salen de parámetros y suman de golpe.

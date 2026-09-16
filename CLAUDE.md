@@ -376,7 +376,7 @@ producto, Color, ODC, Mes, Próximo paso, Proyecto, Etapa. La agrupación se gua
 de localStorage). Buscador común agregado en Entregas (`EG.q`), Costura (`COS.q`) y el detalle de Capacidad y decisiones
 (`CAPD.q` + `filasGRP('cap')`). Ver `BUSQUEDA_AGRUPADOR_REPORTE.md`.
 
-**Mi centro único: tramos de trabajo (15-sep-2026 noche):** `S.avance[oid].tramos[]` =
+**Mi centro único (15-sep-2026 noche, corregido):** Modo línea BORRADO (función, despachador, sección, catálogo, ícono y estado; asistencia/paros/segundas siguen). `personasTramo(rec,c,dia)` elige asistencia del día → ajuste de la semana → personas del recurso → 1 (y dice cuál usó en `persFuente`/`persTxt`). Descansos = **ventanas** por centro (`S.params.horarios[c].ventanas[{ini,fin}]`, tabla 18, `addVentana/setVentana/delVentana`); `minutosVentana(ini,fin,c)` descuenta solo el solape. Segundas por talla en el tramo (`t.segundas`, `setSegTramo`) suman a `S.avance[oid].seg[centro]` (un solo dato con Control de piso) y `calcTramo` da `minPrendaReal` (buenas) y `minPrendaTot`. Botones de avance rápido con `pasoRapido1`/`pasoRapido2`. **Tramos de trabajo:** `S.avance[oid].tramos[]` =
 `{id,centro,rec,ini,fin,u,uFin,paros:[{min,motivo,ts,u}],tallas:{},min,minPersona,pers,minPrenda,excede,corregido}`.
 Flujo en Mi centro con `flujoTramoHTML(c,rec,cola)` y estado `TRAMO` (elegir orden → `iniciarTramo` → `mParoTramo` →
 `terminarTramo` → unidades por talla con `setTallaTramo` → `guardarTramo`). Fórmula única en `calcTramo(t,o)`:
