@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:30';
+const APP_BUILD='2026-09-16 10:36';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2130,6 +2130,36 @@ function tablaTallasTramoHTML(o,t,c,editable){const b=baseTallas(o,c);const cur=
        <button class="btn" style="font-size:20px;padding:6px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',1)">+</button>
        ${rap.map(n=>`<button class="btn ghost" style="font-size:15px;padding:6px 10px" onclick="setTallaTramo('${t.id}','${o.id}','${esc(tt).replace(/'/g,"\\'")}',${n})">+${n}</button>`).join('')}</td>`:''}</tr>`}).join('')}
    </tbody></table></div>`}
+/* ---------- estado de una orden EN ESTE CENTRO: pendiente → en proceso → terminada ---------- */
+function tramoAbiertoOrden(oid,c,rec){return (tramosDe(oid)||[]).find(t=>t.centro===c&&(rec?(t.rec||null)===(rec||null):true)&&!t.fin)||null}
+function estadoOrdenCentro(o,c,rec){if(pasoHecho(o,c))return 'terminada';
+  const a=S.avance[o.id]||{};const hechas=(a.centros||{})[c]||0;
+  if(tramoAbiertoOrden(o.id,c,null)||hechas>0)return 'proceso';   // empezó: hay un inicio o ya registró cantidades
+  const et=centroEtapaDe(c);const g=grupoDe(o.fase);
+  if(et&&g){const oe=ordenGrupo(et),og=ordenGrupo(g.grupo);
+    if(oe>=0&&og>=0&&og<oe)return 'proxima'}                      // todavía en una fase anterior: se ve, no se inicia
+  return 'disponible'}
+function transcurridoTxt(ini){if(!ini)return '';const min=Math.max(0,(Date.now()-new Date(ini))/6e4);return fmtHMS(min)}
+function barraAvanceHTML(hechas,total){const p=total>0?Math.min(100,Math.round(hechas/total*100)):0;
+  return `<div class="bar" style="height:10px;margin:6px 0 2px"><i style="width:${p}%"></i></div><div class="mut" style="font-size:14px">${num(hechas)} de ${num(total)} · ${p}%</div>`}
+function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c);const hechas=f.hechas||0;
+  const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
+  const ab=tramoAbiertoOrden(o.id,c,null);
+  const btn=modo==='proxima'
+    ? '<span class="tag t-aviso" style="font-size:15px" title="su fase todavía es de un paso anterior: cuando llegue a este centro se puede iniciar">todavía no: '+esc(faseNombre(o.fase||'—'))+'</span>'
+    : (ab?`<button class="btn" style="font-size:20px;padding:14px 22px;background:var(--aviso);border-color:var(--aviso)" onclick="TRAMO={paso:null,id:null,oid:null};render()">EN CURSO · ${transcurridoTxt(ab.ini)}</button>`
+        :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`);
+  return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
+   ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
+    <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div>
+    ${modo==='proceso'?barraAvanceHTML(hechas,total):''}</div>
+   <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
+    ${modo==='proceso'?`<button class="btn ghost" style="font-size:15px" onclick="terminarOrdenCentro(null,'${o.id}','${c}')">Terminar orden</button>`:''}</div></div>`}
+function seccionColaTabletHTML(titulo,nota,filas,c,rec,modo,borde){if(!filas.length)return '';
+  return `<div class="panel"${borde?` style="border:2px solid ${borde}"`:''}><div class="body">
+   <h3 style="margin:0 0 4px">${esc(titulo)} <span class="note">${esc(nota)}</span></h3>
+   <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">${filas.slice(0,40).map(f=>filaColaTabletHTML(f,c,rec,modo)).join('')}</div>
+  </div></div>`}
 function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
   const olv=tramosOlvidados().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null));
   const avisoOlv=olv.length?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px">
@@ -2162,13 +2192,14 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
            <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mPararTramo('${t.id}','${o.id}')">Paro</button>`}</div>
      ${pa?'':tablaTallasTramoHTML(o,t,c,true)}
     </div></div>`}
-  return avisoOlv+`<div class="panel"><div class="body"><h3 style="margin:0 0 10px">Elige la orden y toca INICIO</h3>
-   <div style="display:flex;flex-direction:column;gap:10px">
-   ${cola.slice(0,40).map(f=>{const o=f.o;const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
-     return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
-     ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,cantCentro(o,c)-f.hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div></div>
-     <button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button></div>`}).join('')||'<span class="mut">No hay órdenes programadas en este centro.</span>'}
-   </div></div></div>`}
+  const est={proceso:[],disponible:[],proxima:[]};
+  cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
+  const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length;
+  return avisoOlv
+   +seccionColaTabletHTML('En proceso','lo que ya empezaste y no has terminado · toca CONTINUAR para seguir, o «Terminar orden» cuando salga todo',est.proceso,c,rec,'proceso','var(--t-accent)')
+   +seccionColaTabletHTML('Disponibles','ya están en la fase de este centro: se pueden iniciar',est.disponible,c,rec,'disponible',null)
+   +seccionColaTabletHTML('Próximas','vienen para acá, pero su fase todavía es de un paso anterior: se ven, no se inician',est.proxima,c,rec,'proxima',null)
+   +(vacio?'<div class="panel"><div class="empty">No hay órdenes programadas en este centro.</div></div>':'')}
 /* --- una fila de registro (talla o total) con − + rápidos, número editable y segundas --- */
 const TALLA_TOTAL='(total)';
 function setTallaTramoVal(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;

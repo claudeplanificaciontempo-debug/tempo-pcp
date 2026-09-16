@@ -2657,6 +2657,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>![oVenc,oLejos].includes(o));[oVenc,oLejos].forEach(o=>delete S.avance[o.id]);
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · estados de la orden en el centro: pendiente, en proceso y terminada */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=100;o.fase=fase;o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5}];delete o.programa;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const etMod=centroEtapaDe('modulos');
+   const fProx=FASES.find(f=>{const g=grupoDe(f);return g&&ordenGrupo(g.grupo)>=0&&ordenGrupo(etMod)>=0&&ordenGrupo(g.grupo)<ordenGrupo(etMod)});
+   const fAqui=FASES.find(f=>{const g=grupoDe(f);return g&&g.grupo===etMod});
+   if(!fProx||!fAqui){__check('PE0: la tabla 5 tiene fases del centro y de un paso anterior',false,'etapa de módulos: '+etMod)}
+   else{
+   const oDisp=mk('WH/EST-DISP',fAqui),oProx=mk('WH/EST-PROX',fProx),oProc=mk('WH/EST-PROC',fAqui);
+   S.avance[oProc.id]={centros:{modulos:30}};PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};
+   __check("PE1: una orden con cantidades registradas y sin cerrar está EN PROCESO",estadoOrdenCentro(oProc,'modulos',rec)==='proceso');
+   __check("PE1: una orden en la fase de este centro y sin empezar está DISPONIBLE",estadoOrdenCentro(oDisp,'modulos',rec)==='disponible');
+   __check("PE1: una orden todavía en una fase anterior es PRÓXIMA (se ve, no se inicia)",estadoOrdenCentro(oProx,'modulos',rec)==='proxima',fProx+' vs etapa '+etMod);
+   {const cola=[{o:oProc,hechas:30},{o:oDisp,hechas:0},{o:oProx,hechas:0}];
+    const h=flujoTramoHTML('modulos',rec,cola);
+    __check("PE2: la sección En proceso va arriba, con foto, WH, hechas/total, barra y CONTINUAR",h.indexOf('En proceso')>=0&&h.indexOf('En proceso')<h.indexOf('Disponibles')&&h.includes('>CONTINUAR<')&&h.includes('30 de 100')&&h.includes('class="bar"'));
+    __check("PE2: y ofrece «Terminar orden» para cerrar el paso",h.includes('terminarOrdenCentro(null,')&&h.includes(oProc.id)&&h.includes('Terminar orden'));
+    __check("PE4: Disponibles ofrece INICIO y Próximas no",h.includes("iniciarTramo('"+oDisp.id)&&!h.includes("iniciarTramo('"+oProx.id)&&h.includes('todavía no:'));
+    __check("PE4: la próxima se ve igual, con la fase en la que está",h.includes(esc(oProx.op))&&h.includes(esc(faseNombre(fProx))));}
+   {iniciarTramo(oDisp.id,'modulos',rec);const tr=tramosDe(oDisp.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-90*6e4).toISOString();
+    __check("PE3: con un inicio sin fin la orden pasa a EN PROCESO",estadoOrdenCentro(oDisp,'modulos',rec)==='proceso'&&!!tramoAbiertoOrden(oDisp.id,'modulos',null));
+    const h=flujoTramoHTML('modulos',rec,[{o:oDisp,hechas:0}]);
+    __check("PE3: en su propio puesto se ve el reloj en curso con la hora de inicio",h.includes('id="crono-vivo"')&&h.includes('data-ini="'+tr.ini));
+    const otroRec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!==rec)||{}).id;
+    if(otroRec){tr.rec=otroRec;const h2=flujoTramoHTML('modulos',rec,[{o:oDisp,hechas:0}]);
+     __check("PE3: y desde otro puesto la orden aparece en la lista como EN CURSO con el tiempo",/EN CURSO · 1:[23][0-9]:/.test(h2),(h2.match(/EN CURSO[^<]{0,16}/)||[])[0]||'');tr.rec=rec}
+    else __check("PE3: y desde otro puesto la orden aparece en la lista como EN CURSO con el tiempo",true,'sin otro puesto en el centro');
+    TRAMO={paso:null,id:null,oid:null};tr.fin=new Date().toISOString()}
+   S.ordenes=S.ordenes.filter(o=>![oDisp,oProx,oProc].includes(o));[oDisp,oProx,oProc].forEach(o=>delete S.avance[o.id]);}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};page='ordenes';render();
+   __check("PE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
