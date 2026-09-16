@@ -1,5 +1,9 @@
 # Menú de Planificación de producción — Terminados, Empaque y Etiquetas
 
+> **CORRECCIÓN (ver `RECONCILIACION_CATALOGO.md`).** El «solo 3 de 24 categorías tienen familia LMO vinculada» de este
+> reporte estaba **mal**: salía del catálogo de demostración del simulador. Lo real es **40 de 51 vinculadas, 11 sin
+> vínculo**, que son las siete familias que producción ya había marcado «sin operaciones».
+
 **Fecha:** 16-sep-2026 · **Commit:** `646008f` · **Harness:** 1.307 pruebas verdes, sin errores.
 
 ---

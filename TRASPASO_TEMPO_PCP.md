@@ -204,6 +204,24 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.35 Reconciliación del catálogo (16-sep) — CORRIGE cifras de 2.31 y 2.32
+- **Las brechas de catálogo reportadas el 16-sep estaban medidas contra el catálogo de DEMO del simulador**, cuyas
+  familias (CAM BÁSICA, POLO PIQUÉ, HOODIE, JEAN, Nuevo padre) no existen en Odoo; la tabla padre→LMO usa los nombres
+  reales, así que casi nada calzaba. Cargar el volcado **no crea categorías**: de 1.206 órdenes reales, solo **133**
+  resolvían su categoría contra el demo. De ahí salió el falso «3 de 24».
+- **Cifras reales** (simulador con el catálogo real cargado): **22 familias, 51 categorías hija, 40 vinculadas a su
+  familia de la LMO, 11 sin vínculo**; 595 operaciones, 18 categorías LMO, solo BOXER sin usar. Las 11 son siete
+  familias enteras — JOGGER, Fleece Basico, Fleece Pesado, TEJIDOS, FALDAS, ENTERIZO y ACCESORIOS — y coinciden con
+  las «⚠ SIN OPERACIONES» de `LISTADO_CATEGORIAS_PRODUCCION.md` (ahí son 14 porque incluye tres con 0 órdenes).
+- **La etiqueta SÍ carga**: Level 1, Level 2, Camiseta CR y Camiseta CV existen (familia CAMISETAS) y la regla aplica
+  0,50 min en **423 órdenes / 206.738 prendas / 103.369 min**.
+- **El simulador ahora arma el catálogo REAL** desde el volcado (22/51) y reenlaza las 1.206 órdenes por su `catTxt`
+  «PADRE / Hija» antes de medir, con pruebas que fijan esos números. Las brechas reportadas son las reales.
+- **JEANS→DENIM NO se ejecutó** y no corre en ninguna siembra: solo con el botón de Configuración → Categorías.
+  Movería 3 categorías, 13 órdenes abiertas (31 en todo el volcado), 49 operaciones y 4 filas de configuración.
+- Las **dos operaciones de etiqueta de BVD y FITS** siguen en «Operaciones sin centro»; nada les asigna centro solo.
+- Ver `RECONCILIACION_CATALOGO.md`.
+
 ### 2.34 Parte B — Reportería gerencial, sub-centros y congelado (16-sep)
 - **Resumen gerencial** pasó de Dirección a **Reportería** (menú + registro `REPORTES`). Filtro global de meses
   (`GER.meses`, multiselección que **suma**) aplicado en `vGerencia` sobre `ords`, así que manda sobre TODOS los

@@ -572,6 +572,17 @@ atrasadas, **agregadas** y **sacadas** contra la foto. Son DOS congelados distin
 mensual** fija qué órdenes entran al mes, el **semanal** fija cuándo y cuánto se hace en ese centro esa semana.
 Ver `PARTE_B_REPORTE.md`.
 
+**Medir brechas: contra el catálogo REAL, nunca contra el demo (16-sep-2026).** El simulador arranca con un catálogo
+de demostración cuyas familias (CAM BÁSICA, POLO PIQUÉ, HOODIE, JEAN, Nuevo padre) **no existen en Odoo**, y
+`aplicarTarea` **no crea categorías**: de las 1.206 órdenes reales que carga, solo **133** resuelven su categoría
+contra el demo. Cualquier cifra de catálogo medida ahí sale distorsionada — así se reportó un falso «3 de 24 con
+familia LMO». El driver ahora **arma el catálogo real** desde el volcado (22 familias, 51 hijas), reenlaza las órdenes
+por `o.catTxt` («PADRE / Hija», que el plan ya trae) y corre `aplicarMapeoCategorias()` antes de medir; los números
+quedan fijados en pruebas (`__R.cat`, `__R.etiqReal`, `__R.jeansReal`). **Reales: 40 de 51 vinculadas, 11 sin vínculo**
+(siete familias enteras sin hoja: JOGGER, Fleece Basico, Fleece Pesado, TEJIDOS, FALDAS, ENTERIZO, ACCESORIOS), que son
+las mismas «⚠ SIN OPERACIONES» de `LISTADO_CATEGORIAS_PRODUCCION.md`. La etiqueta de 0,5 min carga en **423 órdenes**.
+Antes de reportar una brecha de catálogo, comprobar contra qué catálogo se está midiendo. Ver `RECONCILIACION_CATALOGO.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

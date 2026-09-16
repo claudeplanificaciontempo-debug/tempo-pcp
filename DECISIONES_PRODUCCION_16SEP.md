@@ -1,5 +1,12 @@
 # Decisiones de producción del 16-sep-2026
 
+> **CORRECCIÓN (ver `RECONCILIACION_CATALOGO.md`).** Las cifras de catálogo de este reporte estaban **mal**: las medí
+> contra el **catálogo de demostración del simulador**, no contra el real. Lo correcto es: **22 familias y 51
+> categorías hija**, **40 vinculadas** a su familia de la LMO y **11 sin vínculo** (no «3 de 24»). **Level 1 y Level 2
+> SÍ existen** en el catálogo, y la etiqueta de 0,5 min carga en **423 órdenes / 206.738 prendas**. Lo demás de este
+> reporte (las operaciones de la LMO, las 16 de ojales y botones, las 2 de etiqueta de BVD y FITS) se midió contra la
+> hoja LMO real y sigue siendo correcto.
+
 **Commit:** `92a04fe` · **Harness:** 1.349 pruebas verdes, sin errores.
 
 Los seis puntos están implementados. Dos de ellos (1 y 6) los pediste **reportados antes de mover nada**:
