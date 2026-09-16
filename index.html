@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:13';
+const APP_BUILD='2026-09-16 10:19';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2226,7 +2226,7 @@ function vTablet(el){
    <p class="mut no-print" style="font-size:var(--fs-xs)">"Hecho" registra la orden completa en este centro y la pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
-function imprimirProgramaCentro(cid){const cens=CENTROS_PROD[cid]||[cid];const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
+function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
   const filas=filasDeCentros(cens,P,lun,dom,'');const secs=cens.map(c=>{const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=dom));
     return `<h2>${esc(nCen(c))} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)} · ${cola.length} órdenes</small></h2><table><thead><tr><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">Unidades</th><th class="n">Min. totales</th></tr></thead><tbody>
     ${cola.map((f,i)=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);return `<tr><td class="n"><b>${puestoDe(o,c)||i+1}</b></td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${num(mp,1)}</td><td class="n">${num(u)}</td><td class="n">${num(mp*u)}</td></tr>`}).join('')||'<tr><td colspan="9">Sin órdenes.</td></tr>'}</tbody></table>`}).join('');
@@ -3391,7 +3391,7 @@ function selMulti(nombre,items,sel,varName,togFn,fmt){const n=sel&&sel.size?sel.
 function togSet(obj,k,v){obj[k]=obj[k]||new Set();if(obj[k].has(v))obj[k].delete(v);else obj[k].add(v);if(!obj[k].size)obj[k]=null;render()}
 /* Ruta por defecto: marca editable por centro (Configuración → Centros). Se siembra UNA vez en corte, confección y
    empaque; si la usuaria la cambia, no se vuelve a pisar. */
-function sembrarRutaDefecto(){if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
+function sembrarRutaDefecto(){sembrarTerminados();if(S.params.rutaDefectoSembrada)return;['corte','modulos','empaque'].forEach(id=>{const c=CE(id);if(c&&c.rutaDefecto===undefined)c.rutaDefecto=true});S.params.rutaDefectoSembrada=true}
 function centrosRutaDefecto(){sembrarRutaDefecto();return S.centros.filter(c=>c.area==='pro'&&c.rutaDefecto).map(c=>c.id)}
 /* órdenes cargadas que contradicen la ruta por defecto: les falta un paso marcado por defecto (o va por maquila) */
 function ordenesContraRutaDefecto(){const def=centrosRutaDefecto();const out=[];
@@ -3745,6 +3745,46 @@ function listaDecisiones(P,max){const pend=(P.banosPend||[]);if(!pend.length)ret
 /* ---------- Módulo por centro de producción: planificación · programación · ejecución ---------- */
 const CENTROS_PROD={corte:['corte'],modulos:['modulos'],estampado:['estampado'],bordado:['bordado'],terminados:['etiquetas','botones','lavado','plancha'],empaque:['empaque']};
 const CENTROS_PROD_N={corte:'Corte',modulos:'Confección',estampado:'Estampado',bordado:'Bordado',terminados:'Terminados',empaque:'Empaque'};
+/* ============ TERMINADOS POR SUB-ÁREA: a qué ítem de planificación pertenece cada centro, y su consolidado ============ */
+const GRUPO_PLAN_DEF={corte:'corte',modulos:'modulos',estampado:'estampado',bordado:'bordado',etiquetas:'terminados',botones:'terminados',lavado:'terminados',plancha:'terminados',empaque:'terminados'};
+function grupoPlanDe(cid){const c=CE(cid)||{};return c.grupoPlan||GRUPO_PLAN_DEF[cid]||cid}
+function subAreasDe(g){return S.centros.filter(c=>c.area==='pro'&&grupoPlanDe(c.id)===g).map(c=>c.id).sort((a,b)=>ordenPaso(a)-ordenPaso(b))}
+function censDeGrupo(g){const l=subAreasDe(g);return l.length?l:(CENTROS_PROD[g]||[g])}
+/* un centro que se mide en DÍAS (lavado) no consume capacidad de planta: su tiempo es la espera del paso */
+function centroPorDias(cid){const c=CE(cid)||{};return !!c.sinCapacidad}
+function diasEsperaCentro(cid){const f=esperasPaso().filter(x=>x.paso===cid&&!x.sinRegla);return f.length?Math.max(...f.map(x=>+x.dias||0)):0}
+/* siembra idempotente de lo que la usuaria dictó (16-sep): plancha 2 min/prenda y lavado como proceso por días */
+function sembrarTerminados(){if(S.params.terminadosSembrado)return;
+  const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;p.minEstandarEstimado=true;if(typeof bitacora==='function')bitacora('Terminados: plancha sembrada en 2 min/prenda (dictado 16-sep; editable en Configuración → Centros)')}
+  const l=CE('lavado');if(l&&l.sinCapacidad===undefined){l.sinCapacidad=true;if(typeof bitacora==='function')bitacora('Terminados: lavado marcado como proceso por días (no consume capacidad de planta; la espera sale de la tabla de esperas por paso)')}
+  S.params.terminadosSembrado=new Date().toISOString()}
+/* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
+function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
+  const h=hoy();const filas=cens.map(c=>{const ce=CE(c)||{};
+    const ords=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c));
+    const pz=ords.reduce((a,o)=>a+Math.max(0,cantCentro(o,c)-(((S.avance[o.id]||{}).centros||{})[c]||0)),0);
+    const min=ords.reduce((a,o)=>a+minPendCentro(o,c),0);
+    const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
+    const capSem=(dias||[]).reduce((a,d)=>a+recs.reduce((x,r)=>x+(capDia(r,d)||0),0),0);
+    const prog=(P.pro||[]).filter(x=>x.centro===c&&(dias||[]).includes(x.dia)).reduce((a,x)=>a+(x.min||0),0);
+    const mp=((o=>{const p=(o&&o.ruta||[]).find(x=>x.centro===c)||{};return minPrenda(c,p.t)})(ords[0]))||+ce.minEstandar||0;
+    return {c,ce,ords:ords.length,pz,min,capSem,prog,mp,dias:diasEsperaCentro(c),porDias:centroPorDias(c),recs:recs.length}});
+  const falta=filas.filter(f=>!f.porDias&&f.ords&&!(f.mp>0));
+  return `<div class="panel"><h3>${esc(CENTROS_PROD_N[g]||g)} · las sub-áreas <span class="note">cada una con su capacidad, su cola y su programación; el orden entre ellas lo pone la ruta de cada orden</span></h3><div class="body">
+   <table><thead><tr><th>Sub-área</th><th class="num">Órdenes en cola</th><th class="num">Prendas por hacer</th><th class="num">Min/prenda</th><th class="num">Carga pendiente (h)</th><th class="num">Programado esta semana (h)</th><th class="num">Capacidad semana (h)</th><th>Ocupación</th><th>Cómo se mide</th></tr></thead><tbody>
+   ${filas.map(f=>{const ocup=f.capSem>0?Math.round(f.prog/f.capSem*100):null;
+     return `<tr><td><b>${esc(nCen(f.c))}</b> <span class="mut" style="font-size:var(--fs-xs)">${f.recs} ${f.recs===1?'puesto':'puestos'}</span></td>
+      <td class="num">${f.ords}</td><td class="num">${num(f.pz)}</td>
+      <td class="num">${f.porDias?'<span class="mut">—</span>':(f.mp>0?num(f.mp,2)+(f.ce.minEstandarEstimado?' <span class="tag t-aviso" title="sembrado, confírmalo">estimado</span>':''):'<span class="tag t-alerta" title="sin minutos por prenda no hay horas: cárgalo en Configuración → Centros o mapea sus operaciones">falta</span>')}</td>
+      <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.min/60)}</td>
+      <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.prog/60)}</td>
+      <td class="num">${f.porDias?'<span class="mut">—</span>':num(f.capSem/60)}</td>
+      <td>${f.porDias?'<span class="mut">no ocupa capacidad</span>':(ocup==null?'<span class="mut">—</span>':`<span class="tag ${ocup>100?'t-alerta':ocup>85?'t-aviso':'t-ok'}">${ocup}%</span>`)}</td>
+      <td style="font-size:var(--fs-xs)">${f.porDias?('por <b>días</b>: '+(f.dias?num(f.dias)+' días de espera':'<span class="tag t-alerta">sin días en la tabla de esperas</span>')+' · no consume capacidad de planta'):('por <b>minutos</b> de planta'+(f.dias?' · '+num(f.dias)+' días de espera antes del siguiente paso':''))}</td></tr>`}).join('')}
+   </tbody></table>
+   ${falta.length?`<div class="warn" style="margin-top:10px;font-size:var(--fs-s)"><b>${falta.length} ${falta.length===1?'sub-área':'sub-áreas'} sin minutos por prenda</b> (${falta.map(f=>esc(nCen(f.c))).join(', ')}): mientras falte ese dato su carga sale en <b>0 horas</b>, no porque no haya trabajo. Cárgalo en Configuración → Centros (columna «Min/prenda») o mapea sus operaciones en Configuración → Operaciones.</div>`:''}
+   ${cens.some(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)))?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)"><b>Sub-áreas sin ninguna orden en su ruta:</b> ${cens.filter(c=>!S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c))).map(c=>esc(nCen(c))).join(', ')}. El motor solo programa los pasos que están en la ruta de la orden: si la ruta no los trae, no hay nada que programar. Se corrige en Órdenes → Rutas.</div>`:''}
+  </div></div>`}
 let CEN={id:'corte',tab:'plan',sem:0,q:'',niveles:null,todo:false,fases:null,cruce:'fam'};
 /* ---------- Programación del centro: agrupar (cliente · familia · categoría · ODC, hasta 3 niveles) y ordenar arrastrando ----------
    La cola de un centro es UNA: el puesto es progCentro[c].pri, el mismo número que ya usaba el motor (prioCentro). Arrastrar renumera
@@ -4070,7 +4110,7 @@ function modKPIsHTML(recs,P,dias,titulo){if(!recs.length)return '';
     return {id:'mod-'+r.id,v:num(pz),k:esc(r.n)+' · '+num(min)+' / '+num(cap)+' min'+(cap?' ('+Math.round(min/cap*100)+'%)':''),items:ords,porFam:true,cls:cap&&min>cap*1.02?'bad':''}});
   return `<div style="margin:16px 0 6px"><b>${esc(titulo)}</b> <span class="mut" style="font-size:var(--fs-xs)">· ${recs.length} ${recs.length===1?'puesto':'puestos'} · clic en una tarjeta abre sus órdenes por familia</span></div>${tarjetasResumenHTML(cards)}`}
 function vCentro(el){
-  const cid=CEN.id;const cens=CENTROS_PROD[cid]||[cid];const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
+  const cid=CEN.id;const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const h=hoy();
   const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
   const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
   const okPiso=puede('programa')||(puede('reprogramar')&&cens.some(veCentro));const q=normTxt(CEN.q);
@@ -4101,7 +4141,7 @@ function vCentro(el){
   if(CEN.tab==='prog'){
     const niv=nivelesCEN();const hasta=dsum(dom,7);
     const sec=seccionesModulos(cens,P);const secciones=sec?(modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')):'';
-    const listas=cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
+    const listas=subAreasResumenHTML(cid,cens,P,dias)+cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
     const porQue={};cens.forEach(c=>{porQue[c]=porQueTardeHTML(colaCentro(c,filas),P,c)});
     const tablas=cens.map(c=>{const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
       const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const sinPuesto=colaAll.filter(f=>!puestoDe(f.o,c)).length;const numerada=sinPuesto<colaAll.length;
@@ -5994,11 +6034,13 @@ function vConfig(el){
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
   ${CONF.tab==='borrado'?panelBorradoHTML():''}
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
-   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th title="al abrir una orden sin ruta editada, este paso viene marcado">va por defecto en toda ruta</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
-   ${S.centros.map(c=>{const esLavPla=c.id==='lavado'||c.id==='plancha';const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
+   <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th title="al abrir una orden sin ruta editada, este paso viene marcado">va por defecto en toda ruta</th><th>Ítem de planificación</th><th title="procesos que se miden en días (lavado): no consumen capacidad de planta">Por días</th><th class="num">Recursos</th><th class="num">Min. estándar/prenda</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
+   ${S.centros.map(c=>{const esLavPla=c.area==='pro'&&(c.id==='lavado'||c.id==='plancha'||grupoPlanDe(c.id)==='terminados');const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
      <td><select onchange="setCentro('${c.id}','area',this.value)">${Object.entries(AREAS).map(([k,v])=>`<option value="${k}" ${c.area===k?'selected':''}>${v}</option>`).join('')}</select></td>
      <td>${c.area==='pro'?`<select onchange="setCentro('${c.id}','medida',this.value)">${Object.entries(MEDIDAS).filter(([k])=>k!=='dias').map(([k,v])=>`<option value="${k}" ${c.medida===k?'selected':''}>${v}</option>`).join('')}</select>`:'<span class="mut">'+({tej:'kg por hora',tin:'kg por baño',ext:'días de entrega'}[c.area]||'')+'</span>'}</td>
      <td style="text-align:center">${c.area==='pro'?`<input type="checkbox" ${(sembrarRutaDefecto(),c.rutaDefecto)?'checked':''} onchange="setCentro('${c.id}','rutaDefecto',this.checked)">`:'<span class="mut">—</span>'}</td>
+     <td>${c.area==='pro'?`<select onchange="setCentro('${c.id}','grupoPlan',this.value)">${[['','(el centro mismo)'],['corte','Corte'],['modulos','Confección'],['estampado','Estampado'],['bordado','Bordado'],['terminados','Terminados'],['empaque','Empaque']].map(([k,n])=>`<option value="${k}" ${(c.grupoPlan||'')===k?'selected':''}>${esc(n)}</option>`).join('')}</select>`:'<span class="mut">—</span>'}</td>
+     <td style="text-align:center">${c.area==='pro'?`<input type="checkbox" ${c.sinCapacidad?'checked':''} title="se mide en días (la espera del paso), no en minutos de planta" onchange="setCentro('${c.id}','sinCapacidad',this.checked)">`:'<span class="mut">—</span>'}</td>
      <td class="num"><a href="#bloque-${c.area}" style="color:var(--medio)">${S.recursos.filter(r=>r.centro===c.id).length}</a></td>
      <td class="num">${esLavPla?`<input type="number" step="0.01" style="width:70px" value="${c.minEstandar||''}" placeholder="0" onchange="setCentro('${c.id}','minEstandar',this.value)">`:'<span class="mut">—</span>'}</td>
      <td class="num">${esLavPla?`<input type="number" min="0" max="100" style="width:60px" value="${c.pctEstimado!=null?c.pctEstimado:''}" placeholder="0" onchange="setCentro('${c.id}','pctEstimado',this.value)">%${c.pctReal!=null?` <span class="mut" style="font-size:var(--fs-xs)">real ${num(c.pctReal,0)}%</span>`:''}`:'<span class="mut">—</span>'}</td>

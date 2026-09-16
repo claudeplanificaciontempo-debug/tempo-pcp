@@ -439,7 +439,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      // perfil sin permiso no mueve
      PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};const antesP=puestoDe(oA,'corte');moverEnCola(oA.id,'corte',{pos:1});__check("cola: un perfil de otro centro no puede mover",puestoDe(oA,'corte')===antesP);PERFIL=adminP;
      // terminados: una cola por centro
-     CEN.id='terminados';CEN.niveles=[];render();__check("cola: Terminados muestra una cola por centro",(html().match(/Cola de /g)||[]).length===4);
+     CEN.id='terminados';CEN.niveles=[];render();__check("cola: Terminados muestra una cola por cada sub-área",(html().match(/Cola de /g)||[]).length===censDeGrupo('terminados').length&&censDeGrupo('terminados').length>=4);
+     __check("cola: Terminados abre con el consolidado de sus sub-áreas",/Terminados · las sub-áreas/.test(html())&&/Ocupación/.test(html()));
      cola3.forEach(f=>{delete f.o.progCentro.corte.pri;if(!Object.keys(f.o.progCentro.corte).length)delete f.o.progCentro.corte;if(!Object.keys(f.o.progCentro).length)delete f.o.progCentro});PLAN=null;PLAN_ALL=null;}
    CEN.id='corte';CEN.todo=false;CEN.niveles=[];render();__check("cola sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* buscadores sin perder el foco; borrado fuera de Órdenes */
