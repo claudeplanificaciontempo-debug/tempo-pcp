@@ -705,6 +705,53 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        ejemplos:pd.filas.slice(0,5).map(f=>({op:f.o.op,cat:nombreCat(f.cat),min:f.min,de:f.de.join(' → '),a:f.a.join(' → ')}))};
      S.params.cierresMes=bakCierres;}
     __check('EMP: se puede diagnosticar por qué las rutas no terminan en Empaque',__R.empDiag.mal>=0);}
+   /* efecto de los tiempos estimados de Santiago Garzón, sobre el volcado real */
+   {delete S.params.tiemposSGSembrado;S.categorias.forEach(k=>{delete k.minEstConf;delete k.minEstConfMeta});
+    const cAntes=categoriasSinHoja();
+    const minSem=()=>{const P=programarTodo();const lun=lunesDe(hoy());const dom=dsum(lun,6);
+      return (P.pro||[]).filter(x=>x.centro==='modulos'&&x.dia>=lun&&x.dia<=dom).reduce((a,x)=>a+(x.min||0),0)};
+    const minMes=()=>{const P=programarTodo();const ym=hoy().slice(0,7);
+      return (P.pro||[]).filter(x=>x.centro==='modulos'&&String(x.dia||'').slice(0,7)===ym).reduce((a,x)=>a+(x.min||0),0)};
+    PLAN=null;PLAN_ALL=null;const semA=minSem(),mesA=minMes();
+    const PA=programarTodo();const fA={};Object.entries(PA.ordenes||{}).forEach(([id,r])=>fA[id]=r.finPro||null);
+    // el minuto estimado solo suma si la orden tiene el paso de confección en su ruta:
+    // por eso se mide con la ruta por defecto ya aplicada, que es como correrá en producción
+    {const cf=window.confirm,al=window.alert;window.confirm=()=>true;window.alert=()=>{};
+     delete S.params.rutasEmpaqueCorregidas;delete S.params.rutaDefectoAplicada;
+     sembrarRutasEmpaque();sembrarRutaDefecto22();
+     window.confirm=cf;window.alert=al}
+    PLAN=null;PLAN_ALL=null;const semA2=minSem(),mesA2=minMes();
+    const PA2=programarTodo();const fA2={};Object.entries(PA2.ordenes||{}).forEach(([id,r])=>fA2[id]=r.finPro||null);
+    sembrarTiemposSG();
+    PLAN=null;PLAN_ALL=null;const semB=minSem(),mesB=minMes();
+    const PB=programarTodo();let cambian=[];
+    Object.entries(PB.ordenes||{}).forEach(([id,r])=>{const a=fA2[id],b=r.finPro||null;
+      if(a!==b){const o=S.ordenes.find(x=>x.id===id);if(o)cambian.push({op:o.op,cat:nombreCat(K(o.cat)),antes:a,despues:b,dias:(a&&b)?diasEntre(a,b):null})}});
+    const cDesp=categoriasSinHoja();
+    const conMin=S.categorias.filter(k=>k.padre&&minEstimadoConf(k)!=null);
+    __R.tiemposSG={cargadas:conMin.length,noCalzan:(S.params.tiemposSGNoCalzan||[]),
+      antes:{sinValor:cAntes.sin.length,conEst:cAntes.est.length},
+      despues:{sinValor:cDesp.sin.length,conEst:cDesp.est.length},
+      minSemana:{antes:semA2,despues:semB,delta:semB-semA2},
+      minMes:{antes:mesA2,despues:mesB,delta:mesB-mesA2},
+      ordenesCambian:cambian.length,ejemplos:cambian.slice(0,8),
+      pendiente:(()=>{const k=S.categorias.find(x=>x.padre&&normFase(x.n||'')===normFase('Camiseta Tejida'));
+        const m=k?metaEstConf(k):null;return m?{min:minEstimadoConf(k),pendiente:!!m.pendiente,fuente:m.fuente}:null})(),
+      porCategoria:conMin.map(k=>({cat:nombreCat(k),min:minEstimadoConf(k),
+        ordenes:S.ordenes.filter(o=>abiertaDe(o)&&o.cat===k.id).length,
+        pz:S.ordenes.filter(o=>abiertaDe(o)&&o.cat===k.id).reduce((a,o)=>a+(+o.cant||0),0)}))};
+    // la carga que APARECERÁ cuando esas órdenes se liberen (hoy no están en el programa)
+    {const lib=S.ordenes.filter(o=>abiertaDe(o)&&liberadaCorte(o));
+     const pot=conMin.map(k=>{const os=S.ordenes.filter(o=>abiertaDe(o)&&o.cat===k.id);
+       const lo=os.filter(liberadaCorte);
+       return {cat:nombreCat(k),min:minEstimadoConf(k),ordenes:os.length,pz:os.reduce((a,o)=>a+(+o.cant||0),0),
+         liberadas:lo.length,pzLib:lo.reduce((a,o)=>a+(+o.cant||0),0)}});
+     __R.tiemposSG.potencial={porCat:pot,
+       minTot:pot.reduce((a,x)=>a+x.pz*x.min,0),minLib:pot.reduce((a,x)=>a+x.pzLib*x.min,0),
+       ordenes:pot.reduce((a,x)=>a+x.ordenes,0),pz:pot.reduce((a,x)=>a+x.pz,0),
+       liberadas:pot.reduce((a,x)=>a+x.liberadas,0)};
+     __check('SG: se puede medir la carga que agregan esos tiempos',__R.tiemposSG.potencial.minTot>0);}
+    __check('SG: los tiempos estimados se cargan sobre el catálogo real',conMin.length>=10,String(conMin.length));}
    /* las 7 familias sin hoja, sobre el catálogo real */
    {const c=categoriasSinHoja();
     __R.sinHoja={total:c.total,sinValor:c.sin.length,conEstimado:c.est.length,
@@ -3449,7 +3496,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     abrirBloqueGER('odc');
     __check("GB: y se recuerda cuál quedó abierto",(()=>{try{return localStorage['__ger_'+claveUsr()]==='odc'}catch(e){return true}})());
     page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
-    __check("GB: los cinco bloques están, y solo el abierto muestra su tabla",GER_BLOQUES.every(b=>h.includes(esc(b.n)))&&(h.match(/>Pedidas</g)||[]).length===1);
+    __check("GB: los cinco bloques están, y solo el abierto muestra su tabla",GER_BLOQUES.every(b=>h.includes(esc(b.n)))&&document.querySelectorAll('#p-gerencia [data-ger-abierto]').length===1&&document.querySelector('#p-gerencia [data-ger-abierto]').dataset.gerAbierto===GER.abierto);
     __check("GB: el detalle se abre al tocar una fila",/verDetalleGER\(/.test(h));
     GER.abierto=null;GER.det=null;}
    /* columnas propias de cada bloque */
@@ -4035,6 +4082,58 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("CS4: el chequeo está en Reportería",/Siembras pendientes/.test(document.getElementById('p-reporteria').innerHTML));}
    window.confirm=c0;window.alert=a0;window.prompt=p0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("KR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* TIEMPOS ESTIMADOS DE CONFECCIÓN (Santiago Garzón) */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};
+   {__check("SG1: la tabla trae las 14 categorías de la hoja",TIEMPOS_SG.length===14);
+    __check("SG1: con su minuto, su referencia y la observación de cada fila",TIEMPOS_SG.every(t=>t.cat&&t.fam&&+t.min>0&&'ref' in t));
+    __check("SG1: Camiseta Tejida viene marcada como pendiente de confirmar",(()=>{const t=TIEMPOS_SG.find(x=>/Camiseta Tejida/i.test(x.cat));return !!t&&t.pendiente===true&&t.min===4.57})());
+    __check("SG1: y es la ÚNICA marcada así",TIEMPOS_SG.filter(t=>t.pendiente).length===1);
+    __check("SG1: los valores son los de la hoja",(()=>{const m={};TIEMPOS_SG.forEach(t=>m[t.cat]=t.min);
+      return m['Crew Zip']===15.3&&m['Jogger Moda']===19.13&&m['Enterizo']===21.2&&m['Accesorios']===3&&m['Faldas']===11.87})());
+    /* la siembra, sobre una categoría de prueba */
+    const pad={id:uid(),n:'TEJIDOS'};const cat={id:uid(),padre:pad.id,n:'Camiseta Tejida'};
+    const pad2={id:uid(),n:'FALDAS'};const cat2={id:uid(),padre:pad2.id,n:'Faldas'};
+    S.categorias.push(pad,cat,pad2,cat2);
+    delete S.params.tiemposSGSembrado;delete cat.minEstConf;delete cat2.minEstConf;
+    sembrarTiemposSG();
+    __check("SG2: la siembra pone el minuto en la categoría que calza por familia y nombre",minEstimadoConf(cat)===4.57&&minEstimadoConf(cat2)===11.87);
+    __check("SG2: con la fuente y la observación guardadas",(()=>{const m=metaEstConf(cat2);
+      return !!m&&/Santiago Garz/.test(m.fuente)&&/16-sep-2026/.test(m.fuente)&&!!m.obs&&/promedio/.test(m.obs)})());
+    __check("SG2: Camiseta Tejida queda marcada pendiente de confirmar, con el motivo",(()=>{const m=metaEstConf(cat);
+      return !!m&&m.pendiente===true&&/tercio de Camiseta CR/.test(m.motivoPend||'')})());
+    __check("SG2: y Faldas NO queda pendiente",metaEstConf(cat2).pendiente===false);
+    __check("SG2: la marca se ve, con la fuente en el tooltip",/estimado/.test(marcaEstConfHTML(cat2))&&/Santiago/.test(marcaEstConfHTML(cat2)));
+    __check("SG2: y la de Camiseta Tejida trae además «pendiente de confirmar»",/pendiente de confirmar/.test(marcaEstConfHTML(cat)));
+    /* solo confección */
+    __check("SG3: el minuto estimado SOLO entra en confección",(()=>{const sp=samPorCentro(cat2);
+      return sp.modulos===11.87&&sp.corte===undefined&&sp.empaque===undefined&&sp.botones===undefined})());
+    __check("SG3: y no pisa la hoja LMO de una categoría que sí la tiene",(()=>{
+      const op=uid();S.operaciones.push({id:op,centro:'modulos',n:'z',sam:7});
+      cat2.ops=[{op}];const sp=samPorCentro(cat2);cat2.ops=undefined;
+      S.operaciones=S.operaciones.filter(x=>x.id!==op);return sp.modulos===7})());
+    /* la brecha cambia de estado */
+    __check("SG4: la categoría pasa de «carga 0» a «tiempo estimado»",
+     categoriasSinHoja().est.some(f=>f.k===cat2)&&!categoriasSinHoja().sin.some(f=>f.k===cat2));
+    const h=categoriasSinHojaHTML();
+    __check("SG4: y la pantalla muestra la observación de la fila",/Santiago Garz/.test(h)&&/promedio/.test(h));
+    /* idempotente y no pisa lo puesto a mano */
+    const ts0=S.params.tiemposSGSembrado;setMinEstConf(cat2.id,99);
+    delete S.params.tiemposSGSembrado;sembrarTiemposSG();
+    __check("SG5: no pisa un valor puesto a mano",minEstimadoConf(cat2)===99);
+    __check("SG5: y es idempotente",(()=>{const a=S.params.tiemposSGSembrado;sembrarTiemposSG();return S.params.tiemposSGSembrado===a})());
+    S.categorias=S.categorias.filter(k=>![pad,cat,pad2,cat2].includes(k));}
+   /* 3 · no se cambió ningún tiempo existente, y las alertas siguen visibles */
+   {const h=alertasTiemposHTML();
+    __check("SG6: la pantalla dice que la hoja volvió sin correcciones",/«¿Correcto\?» vac\u00eda|«¿Correcto\?» vacía/.test(h)&&/no se cambió ningún tiempo existente/.test(h));
+    __check("SG6: y HENLEY / «Nueva hija» queda dicho que NO se borra",/Nueva hija/.test(h)&&/No se borra/.test(h));
+    __check("SG6: la alerta de Short Cargo vs Pantalon Cargo se calcula sola, no está escrita a mano",
+     String(alertasTiempos).includes('Short Cargo')&&String(alertasTiempos).includes('samPorCentro'));
+    __check("SG6: y la de las categorías sin empaque también",String(alertasTiempos).includes('empaque'));
+    page='operaciones';render();
+    __check("SG6: el panel está en Configuración → Operaciones",/Tiempos por revisar/.test(document.getElementById('p-operaciones').innerHTML));}
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("SG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

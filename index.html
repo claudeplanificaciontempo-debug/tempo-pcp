@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 16:23';
+const APP_BUILD='2026-09-16 16:38';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4173,7 +4173,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -4627,7 +4627,7 @@ function bloqueGERHTML(b,ords,P){const abierto=GER.abierto===b.id;
   const nCols=9+extra.length;
   return `<div class="panel"><h3 style="cursor:pointer" onclick="abrirBloqueGER('${b.id}')">${abierto?'▾':'▸'} ${esc(b.n)}
    <span class="note">${abierto?filas.length+' '+(filas.length===1?'fila':'filas')+' · '+num(t.pz)+' prendas':'tocar para abrir'}</span></h3>
-   ${!abierto?'':`<div class="body">
+   ${!abierto?'':`<div class="body" data-ger-abierto="${b.id}">
    <div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>${esc(b.col)}</th>${extra.map(x=>`<th>${esc(x)}</th>`).join('')}<th class="num">Órdenes</th><th class="num">Pedidas</th><th class="num">Hechas</th><th class="num">Falta</th><th style="width:120px">% avance</th><th class="num">Valor</th><th class="num">Vencidas</th><th class="num">Va tarde</th></tr></thead><tbody>
    ${filas.slice(0,300).map(r=>`<tr class="${(GER.det&&GER.det.b===b.id&&GER.det.k===r.k)?'':''}" style="cursor:pointer${(GER.det&&GER.det.b===b.id&&GER.det.k===r.k)?';background:var(--field)':''}" onclick="verDetalleGER('${b.id}','${jsq(String(r.k))}')">
      <td><b>${esc(String(r.k))}</b></td>${cel(r)}
@@ -4769,7 +4769,8 @@ function categoriasSinHojaHTML(){const r=categoriasSinHoja();
   const fila=(f,conEst)=>`<tr><td><b>${esc(nombreCat(f.k))}</b></td>
    <td class="num">${f.ordenes}</td><td class="num">${num(f.pz)}</td>
    <td class="num"><input type="number" step="0.01" style="width:96px" value="${f.min==null?'':f.min}" placeholder="sin valor" ${(puede('categorias')||puede('config'))?'':'disabled'} onchange="setMinEstConf('${f.k.id}',this.value)"></td>
-   <td>${conEst?`<span class="tag t-aviso" title="lo escribió producción a mano: no viene de la hoja de operaciones">estimado</span> <span class="mut" style="font-size:var(--fs-xs)">${num((f.min||0)*f.pz/60)} h</span>`:'<span class="tag t-alerta" title="sin minuto por prenda esta categoría carga 0 en confección">carga 0</span>'}</td></tr>`;
+   <td>${conEst?(marcaEstConfHTML(f.k)||'<span class="tag t-aviso">estimado</span>')+' <span class="mut" style="font-size:var(--fs-xs)">'+num((f.min||0)*f.pz/60)+' h</span>':'<span class="tag t-alerta" title="sin minuto por prenda esta categoría carga 0 en confección">carga 0</span>'}</td></tr>
+   ${(conEst&&metaEstConf(f.k)&&metaEstConf(f.k).obs)?`<tr><td colspan="5" class="mut" style="font-size:var(--fs-xs);padding:0 0 6px 14px;border-top:none">${esc(metaEstConf(f.k).fuente)} · «${esc(metaEstConf(f.k).obs)}»${metaEstConf(f.k).ref?' · referencia: '+esc(metaEstConf(f.k).ref):''}</td></tr>`:''}`;
   return `<div class="panel"${r.sin.length?' style="border:2px solid var(--alerta)"':''}><h3>Categorías sin hoja de operaciones <span class="note">${r.total} categorías · ${r.est.length} con minuto estimado, ${r.sin.length} todavía en 0</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Estas categorías <b>no tienen hoja de operaciones en la LMO</b>, así que el sistema no sabe cuántos minutos de confección lleva cada prenda. Mientras tanto, producción puede escribir aquí un <b>minuto estimado por prenda</b>: se usa para planificar y queda <b>marcado como estimado</b> en todas las pantallas. <b>Sin valor cargado la categoría sigue en 0</b> — no se inventa ninguno.</p>
    <table style="font-size:var(--fs-s)"><thead><tr><th>Categoría</th><th class="num">Órdenes abiertas</th><th class="num">Prendas</th><th class="num">Min/prenda estimado</th><th>Estado</th></tr></thead><tbody>
@@ -5305,6 +5306,76 @@ function chequeoSiembrasHTML(){const l=chequeoSiembras();
    </tbody></table>
    ${pend.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-aviso">pendiente</span> ${pend.map(x=>esc(x.n)).join(', ')}: ${pend.length===1?'no ha':'no han'} corrido todavía. Se aplican al abrir la app; si sigue así tras recargar, avisa.</p>`:''}
    ${mal.length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0"><span class="tag t-alerta">revisar</span> ${mal.map(x=>esc(x.n)+' — '+esc(x.nota||'')).join(' · ')}</p>`:''}
+  </div></div>`}
+/* ==================== TIEMPOS ESTIMADOS DE CONFECCIÓN (Santiago Garzón, 16-sep-2026) ====================
+   Las 14 categorías sin hoja de operaciones ya tienen un minuto por prenda estimado. Es SOLO confección:
+   no toca corte, empaque ni botones, que salen de la hoja LMO. Reemplaza el 0 que tenían. */
+const TIEMPOS_SG_FUENTE='Santiago Garzón, 16-sep-2026';
+const TIEMPOS_SG=[
+  {fam:"TEJIDOS",cat:"Camiseta Tejida",min:4.57,ref:"Camiseta CR lleva 13,46 min",obs:"Camisetas tejidas listadas tiene un SAM de 4,57 min",pendiente:true},
+  {fam:"Fleece Pesado",cat:"Crew Moda",min:12.12,ref:"Hoodie lleva 13,56 min; un Crew sin capucha debería ser menos",obs:"Los Crew moda por lo general tiene cortes o cuello camisero, se hizo un promedio con tres referencias y nos da un SAM de 12,12 min"},
+  {fam:"Fleece Pesado",cat:"Crew Zip",min:15.3,ref:"Debería estar por encima del Crew, por el cierre",obs:"Este producto tiene muchas variantes, se hizo un promedio por los cortes con los que se la lanza este producto a confección "},
+  {fam:"JOGGER",cat:"Jogger Moda",min:19.13,ref:"Short Flecce lleva 12,44 min; un jogger largo debería ser más",obs:"El jogger moda lleva como promedio ese minutaje dado que llevan vivos en los costados o aberturas en la basta "},
+  {fam:"Fleece Basico",cat:"Crew",min:9.89,ref:"Hoodie lleva 13,56 min, sin capucha ni cierre",obs:"El Crew básicotine un minutaje de 8.5 pero hay que considerar el tipo de pespuntes que se piden en cada referencia, es por esto que se hace un promedio con ese tiempo "},
+  {fam:"FALDAS",cat:"Faldas",min:11.87,ref:"Sin referencia directa",obs:"Se sacó un promedio con 4 referencias dado que varios productos viene  con bolsillos cargo o tiene  forros internos (falda short)"},
+  {fam:"JOGGER",cat:"Jogger",min:12.06,ref:"Short Flecce lleva 12,44 min",obs:"Se hizo un promedio con 3 referencias dado que este tipo de producto se lo pide con diferente tipo de bolsillo (Costado o perdido) ademas de los pespuntes que pueden variar entre recta o recubridora "},
+  {fam:"TEJIDOS",cat:"Henley Tejida",min:15.55,ref:"Henley MC lleva 14,58 min",obs:"Este producto tiene variantes en el cuello, se sacón un promedio ya que se ingresa con cuello henley o cuello con collarete "},
+  {fam:"ENTERIZO",cat:"Enterizo",min:21.2,ref:"Sin referencia directa",obs:"Se hizo un promedio con 4 referencias, ya que unas llevan cierre y otras no tienen "},
+  {fam:"TEJIDOS",cat:"Polo Tejida",min:15.9,ref:"Polo Basica lleva 13,69 min",obs:"Este tipo de referencia por lo general viene con manga larga o empalmado de lineas es por eso el tiempo de confeccion "},
+  {fam:"TEJIDOS",cat:"Hoodie Tejido",min:14.84,ref:"Hoodies lleva 13,56 min",obs:"Esta referencia suma este tiempo de confeccion dado que el hoodie tejido es listado y hay que empalmar lineas "},
+  {fam:"ENTERIZO",cat:"JUMPER",min:21.2,ref:"Sin referencia directa",obs:""},
+  {fam:"CHALECOS",cat:"Chalecos",min:17.29,ref:"Sin referencia directa",obs:"Se hizo un promedio ya que estas referencias viene con forro interno y cortes "},
+  {fam:"ACCESORIOS",cat:"Accesorios",min:3,ref:"Sin referencia directa",obs:""}
+];
+function sembrarTiemposSG(){if(S.params.tiemposSGSembrado)return;
+  const hechas=[],noCalzan=[];
+  TIEMPOS_SG.forEach(t=>{
+    const k=S.categorias.find(x=>x.padre&&normFase(x.n||'')===normFase(t.cat)&&normFase((K(x.padre)||{}).n||'')===normFase(t.fam))
+      ||S.categorias.find(x=>x.padre&&normFase(x.n||'')===normFase(t.cat));
+    if(!k){noCalzan.push(t.fam+' / '+t.cat);return}
+    if(k.minEstConf!=null)return;                      // ya tenía un valor puesto a mano: no se pisa
+    k.minEstConf=t.min;
+    k.minEstConfMeta={fuente:TIEMPOS_SG_FUENTE,ts:new Date().toISOString(),obs:t.obs||'',ref:t.ref||'',
+      pendiente:!!t.pendiente,
+      motivoPend:t.pendiente?'es un tercio de Camiseta CR (13,46) y el resto de TEJIDOS está por encima de su equivalente: confírmalo':''};
+    hechas.push(nombreCat(k)+' '+num(t.min,2)+' min')});
+  S.params.tiemposSGSembrado=new Date().toISOString();
+  if(typeof bitacora==='function')bitacora('Tiempos estimados de confección cargados ('+TIEMPOS_SG_FUENTE+'): '+hechas.length+' categorías. Son ESTIMADOS y solo aplican a confección; editables en Configuración → Operaciones.'
+    +(noCalzan.length?' No calzaron con el catálogo: '+noCalzan.join(', ')+'.':''));
+  if(noCalzan.length)S.params.tiemposSGNoCalzan=noCalzan}
+/* lo que se ve junto al minuto estimado */
+function metaEstConf(k){const m=k&&(k.minEstConfMeta||((K(k.padre)||{}).minEstConfMeta));return m||null}
+function marcaEstConfHTML(k){const m=metaEstConf(k);if(!m)return '';
+  return '<span class="tag t-aviso" style="font-size:10px;padding:0 4px" title="'+esc(m.fuente+(m.obs?' · '+m.obs:''))+'">estimado</span>'
+    +(m.pendiente?' <span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+esc(m.motivoPend||'')+'">pendiente de confirmar</span>':'')}
+/* ---------- alertas de tiempos que producción dejó SIN corregir (hoja «Tiempos actuales», 16-sep) ----------
+   La columna «¿Correcto?» vino vacía: NO se cambió ningún tiempo. Las incoherencias siguen ahí y se ven. */
+function alertasTiempos(){const out=[];
+  const byN=n=>S.categorias.find(k=>k.padre&&normFase(k.n||'')===normFase(n));
+  const sam=k=>{if(!k)return null;const s=samPorCentro(k)||{};return s};
+  /* un short no puede llevar más trabajo que el pantalón del mismo tipo */
+  {const sc=byN('Short Cargo'),pc=byN('Pantalon Cargo');
+   const a=sc?(sam(sc).modulos||0):0,b=pc?(sam(pc).modulos||0):0;
+   if(sc&&pc&&a>b&&b>0)out.push({k:'shortcargo',n:'Short Cargo lleva más que Pantalon Cargo',
+     det:'Short Cargo '+num(a,2)+' min contra Pantalon Cargo '+num(b,2)+' min. Un short no debería llevar más trabajo que el pantalón del mismo tipo.',
+     cats:[sc,pc]})}
+  /* una categoría que pasa por confección y no tiene empaque carga 0 ahí */
+  S.categorias.filter(k=>k.padre).forEach(k=>{const s=sam(k);
+    if(!s||s.modulos==null)return;
+    if(s.empaque==null)out.push({k:'sinempaque:'+k.id,n:nombreCat(k)+' no tiene tiempo de empaque',
+      det:'Tiene corte y confección pero ninguna operación de empaque: hoy carga 0 minutos en ese centro.',cats:[k]})});
+  return out}
+function alertasTiemposHTML(){const l=alertasTiempos();
+  const sg=S.params.tiemposSGSembrado;
+  return `<div class="panel"${l.length?' style="border:2px solid var(--aviso)"':''}><h3>Tiempos por revisar <span class="note">${l.length} incoherencias que producción todavía no corrigió</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">La hoja de tiempos volvió con la columna <b>«¿Correcto?» vacía</b>: <b>no se cambió ningún tiempo existente</b>. Estas incoherencias siguen ahí, a la vista, hasta que alguien decida.</p>
+   ${l.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Qué</th><th>Detalle</th><th>Categorías</th></tr></thead><tbody>
+    ${l.map(x=>`<tr><td><b>${esc(x.n)}</b></td><td class="mut">${esc(x.det)}</td>
+     <td>${(x.cats||[]).map(k=>`<button class="btn ghost sm" onclick="mFamOps('${k.id}')">${esc(nombreCat(k))}</button>`).join(' ')}</td></tr>`).join('')}
+   </tbody></table>`:'<div class="empty">Ninguna: los tiempos son coherentes entre sí.</div>'}
+   ${sg?`<p class="mut" style="font-size:var(--fs-s);margin:10px 0 0"><span class="tag t-ok">cargado</span> Los <b>tiempos estimados de confección</b> de las categorías sin hoja se cargaron el ${fmtDia(String(sg).slice(0,10))} (${esc(TIEMPOS_SG_FUENTE)}). Son estimados y solo aplican a confección.</p>`:''}
+   ${(S.params.tiemposSGNoCalzan||[]).length?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0"><span class="tag t-alerta">brecha</span> No calzaron con el catálogo: <b>${(S.params.tiemposSGNoCalzan||[]).map(esc).join(', ')}</b>. Esas categorías siguen en 0.</p>`:''}
+   <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0"><b>HENLEY / «Nueva hija»</b>: producción confirmó que es una categoría real. <b>No se borra</b>; queda pendiente de nombre definitivo.</p>
   </div></div>`}
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
@@ -7391,6 +7462,7 @@ function vOperaciones(el){
    :'<div class="empty"><p>El catálogo está vacío.</p><button class="btn" onclick="mPegarOps()">Pegar catálogo desde Excel</button></div>'}</div>
   ${reglasEtiquetaHTML()}
   ${categoriasSinHojaHTML()}
+  ${alertasTiemposHTML()}
   ${opsSinCentroHTML()}
   <div class="panel"><h3>Hoja de operaciones por familia</h3><div class="body"><table><thead><tr><th>Familia</th><th class="num">Operaciones</th><th>Min/prenda por centro</th><th class="num">Total</th><th></th></tr></thead><tbody>
    ${S.categorias.filter(k=>!k.padre).map(p=>[p,...S.categorias.filter(k=>k.padre===p.id)]).flat().map(k=>{const ops=opsDe(k),spc=samPorCentro(k),propias=!!(k.ops&&k.ops.length);
