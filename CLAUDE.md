@@ -484,6 +484,16 @@ llame a `moverFases` genera **solicitud** en vez de cambiar la fase. Ver `SUPABA
 `fase_num`, `puede_mover_fase()` sin parámetro donde el catálogo manda sobre la lista fija, `mover_fase` con `terminadaF` y
 sin validar la fase, y `set_prioridad_centro`).
 
+**Recuperar contraseña (16-sep-2026):** la ventana de ingreso tiene tres caras (`#login-entrar` / `#login-olvide` /
+`#login-nueva`, se cambian con `verLogin(cual)`). `pedirReset()` llama a `sb.auth.resetPasswordForEmail(correo,{redirectTo:urlApp()})`
+y SIEMPRE muestra el mismo texto (`MSG_RESET`), exista o no el correo. La vuelta del enlace se detecta por el evento
+`PASSWORD_RECOVERY` (suscrito ANTES de `getSession`) o por `esVueltaDeRecuperacion()` (`type=recovery` en la URL): `RECUPERANDO=true`
+y se abre «Nueva contraseña» en vez de entrar. `guardarPassNueva()` exige 8 caracteres y las dos iguales, llama a
+`updateUser({password})` y entra con la sesión del enlace. En Usuarios, `restablecerClave(id,correo)` manda ese mismo
+enlace (con confirmación y bitácora): la app NO puede poner la contraseña de otro (haría falta la `service_role`, que
+no puede estar en una página pública). Configuración de Supabase pendiente de la usuaria (URL Configuration, SMTP
+propio y límites): ver `LOGIN_RECUPERAR_CONTRASENA.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

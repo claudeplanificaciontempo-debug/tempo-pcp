@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.26 Entrar: recuperar la contraseña (16-sep-2026)
+- La ventana de ingreso tiene **«¿Olvidaste tu contraseña?»**: pide el correo, manda el enlace y responde siempre
+  lo mismo exista o no el correo («Si el correo está registrado, te llegará un enlace. Revisa también spam»).
+- Al volver del enlace, la app **no entra directo**: pide la contraseña nueva dos veces (mínimo 8) y recién ahí entra.
+- En **Configuración → Usuarios**, columna **Contraseña** → «enviar enlace» manda el mismo correo y queda en bitácora.
+  La app **no puede poner la contraseña de otra persona** (haría falta la clave de servicio, que no puede vivir en
+  una página pública): nadie ve ni elige la contraseña ajena.
+- **Pendiente de la usuaria en Supabase**: URL Configuration (Site URL y Redirect URLs), plantilla del correo, y
+  sobre todo un **SMTP propio**, porque el de Supabase manda muy pocos correos por hora. Paso a paso en
+  `LOGIN_RECUPERAR_CONTRASENA.md`.
+
 ### 2.25 Nadie pisa lo que cambió otra persona (16-sep-2026)
 Al leer se guarda el `actualizado` de cada fila. Antes de subir **órdenes** o **avance**, se relee del servidor lo que
 va a cambiar: si nadie la tocó, se sube igual que siempre; si la tocaron, se **fusiona campo por campo** (lo que esta

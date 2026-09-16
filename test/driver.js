@@ -2539,6 +2539,47 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oX.id);
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("FU sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* INGRESO · recuperar la contraseña */
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
+   const q=id=>document.getElementById(id);
+   verLogin('entrar');
+   __check("RC1: la pantalla de ingreso tiene el enlace «¿Olvidaste tu contraseña?» debajo de Entrar",!!q('l-olvide')&&/Olvidaste tu contraseña/.test(q('l-olvide').textContent)&&q('login-entrar').style.display!=='none');
+   verLogin('olvide');
+   __check("RC1: el enlace abre la pantalla del correo y esconde la de ingreso",q('login-olvide').style.display!=='none'&&q('login-entrar').style.display==='none'&&/Recuperar el acceso/.test(q('login-tit').textContent));
+   __AUTH.reset=null;q('l-remail').value='no-es-un-correo';await pedirReset();await __p(30);
+   __check("RC1: con un correo mal escrito no se manda nada y lo dice",!__AUTH.reset&&/correo válido/.test(q('l-rmsg').textContent));
+   q('l-remail').value='alguien@tempo.local';await pedirReset();await __p(40);
+   const msg1=q('l-rmsg').textContent;
+   __check("RC1: pide el enlace con resetPasswordForEmail y la URL de vuelta es la de la app",!!__AUTH.reset&&__AUTH.reset.email==='alguien@tempo.local'&&(__AUTH.reset.opts||{}).redirectTo===location.origin+location.pathname);
+   __check("RC1: el mensaje no dice si el correo existe y menciona el spam",/Si el correo está registrado/.test(msg1)&&/spam/i.test(msg1));
+   __AUTH.reset=null;q('l-remail').value='nadie-inventado@tempo.local';await pedirReset();await __p(40);
+   __check("RC1: con un correo que no existe el mensaje es exactamente el mismo",q('l-rmsg').textContent===msg1&&!!__AUTH.reset);
+   // al volver del enlace: pantalla de contraseña nueva
+   {const entrarReal=entrar;let entro=null;entrar=async u=>{entro=u};
+    if(typeof __AUTH.cb==='function')__AUTH.cb('PASSWORD_RECOVERY',{user:{id:'u1'}});
+    __check("RC1: al volver desde el enlace se abre «Nueva contraseña»",RECUPERANDO===true&&q('login-nueva').style.display!=='none'&&/Nueva contraseña/.test(q('login-tit').textContent));
+    __AUTH.updated=null;q('l-p1').value='corta';q('l-p2').value='corta';await guardarPassNueva();await __p(30);
+    __check("RC1: menos de 8 caracteres no se guarda",!__AUTH.updated&&/8 caracteres/.test(q('l-nmsg').textContent));
+    q('l-p1').value='unaClaveLarga';q('l-p2').value='otraClaveLarga';await guardarPassNueva();await __p(30);
+    __check("RC1: si las dos no son iguales tampoco",!__AUTH.updated&&/no son iguales/.test(q('l-nmsg').textContent));
+    q('l-p1').value='unaClaveLarga';q('l-p2').value='unaClaveLarga';await guardarPassNueva();await __p(60);
+    __check("RC1: con las dos iguales llama a updateUser y entra",!!__AUTH.updated&&__AUTH.updated.password==='unaClaveLarga'&&!!entro&&RECUPERANDO===false);
+    __check("RC1: los campos quedan vacíos y no se guarda la contraseña en pantalla",q('l-p1').value===''&&q('l-p2').value==='');
+    // si el servidor rechaza, lo dice y no entra
+    __AUTH.err='El enlace ya venció';__AUTH.updated=null;entro=null;q('l-p1').value='otraClaveLarga';q('l-p2').value='otraClaveLarga';
+    await guardarPassNueva();await __p(40);
+    __check("RC1: si el enlace venció, lo dice y no entra",/No se pudo guardar/.test(q('l-nmsg').textContent)&&/venció/.test(q('l-nmsg').textContent)&&!entro);
+    __AUTH.err=null;entrar=entrarReal}
+   // restablecer desde administración: el mismo enlace, sin ver ni elegir la contraseña
+   {const cp=window.confirm;window.confirm=()=>true;__AUTH.reset=null;const nb=S.bitacora.length;
+    await restablecerClave('u1','prueba@tempo.local');await __p(60);
+    __check("RC2: administración manda el enlace de restablecimiento y queda en bitácora",!!__AUTH.reset&&__AUTH.reset.email==='prueba@tempo.local'&&(__AUTH.reset.opts||{}).redirectTo===location.origin+location.pathname&&S.bitacora.length>nb);
+    window.confirm=cp}
+   {page='usuarios';render();await __p(120);const h=document.getElementById('p-usuarios').innerHTML;
+    __check("RC2: la columna Contraseña con «enviar enlace» sale en Usuarios",/>Contraseña</.test(h)&&h.includes('restablecerClave(')&&/enviar enlace/.test(h));}
+   RECUPERANDO=false;verLogin('entrar');document.getElementById('login').classList.remove('on');
+   window.alert=a0;page='ordenes';render();
+   __check("RC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

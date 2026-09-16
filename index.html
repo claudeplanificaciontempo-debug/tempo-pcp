@@ -378,13 +378,32 @@ tbody tr:hover td{background:var(--field)}
 </div>
 
 <div class="veil on" id="login" style="background:var(--ink)"><div class="modal" style="max-width:380px">
-  <h3>Planificación y control · TEMPO</h3>
-  <div class="body">
+  <h3 id="login-tit">Planificación y control · TEMPO</h3>
+  <div id="login-entrar">
+   <div class="body">
     <label>Correo</label><input type="text" id="l-email" autocomplete="username">
     <label style="margin-top:12px">Contraseña</label><input type="password" id="l-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
     <p id="login-msg" style="color:var(--alerta);font-size:var(--fs-s);min-height:18px;margin:10px 0 0;line-height:1.4"></p>
+   </div>
+   <div class="foot" style="justify-content:space-between;align-items:center"><a id="l-olvide" style="cursor:pointer;font-size:var(--fs-s);text-decoration:underline" onclick="verLogin('olvide')">¿Olvidaste tu contraseña?</a><button class="btn" onclick="login()">Entrar</button></div>
   </div>
-  <div class="foot"><button class="btn" onclick="login()">Entrar</button></div>
+  <div id="login-olvide" style="display:none">
+   <div class="body">
+    <p class="mut" style="font-size:var(--fs-s);margin:0 0 10px">Escribe tu correo y te llega un enlace para poner una contraseña nueva.</p>
+    <label>Correo</label><input type="text" id="l-remail" autocomplete="username" onkeydown="if(event.key==='Enter')pedirReset()">
+    <p id="l-rmsg" style="font-size:var(--fs-s);min-height:18px;margin:10px 0 0;line-height:1.4"></p>
+   </div>
+   <div class="foot" style="justify-content:space-between;align-items:center"><a style="cursor:pointer;font-size:var(--fs-s);text-decoration:underline" onclick="verLogin('entrar')">← volver</a><button class="btn" id="l-rbtn" onclick="pedirReset()">Enviar enlace</button></div>
+  </div>
+  <div id="login-nueva" style="display:none">
+   <div class="body">
+    <p class="mut" style="font-size:var(--fs-s);margin:0 0 10px">Pon tu contraseña nueva. Mínimo 8 caracteres.</p>
+    <label>Contraseña nueva</label><input type="password" id="l-p1" autocomplete="new-password">
+    <label style="margin-top:12px">Repítela</label><input type="password" id="l-p2" autocomplete="new-password" onkeydown="if(event.key==='Enter')guardarPassNueva()">
+    <p id="l-nmsg" style="font-size:var(--fs-s);min-height:18px;margin:10px 0 0;line-height:1.4"></p>
+   </div>
+   <div class="foot"><button class="btn" id="l-nbtn" onclick="guardarPassNueva()">Guardar y entrar</button></div>
+  </div>
 </div></div>
 <div class="veil" id="veil"><div class="modal" id="modal"></div></div>
 <script>
@@ -661,19 +680,55 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 09:23';
+const APP_BUILD='2026-09-16 09:48';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
       b.innerHTML='Estás viendo una <b>versión vieja</b> (v '+esc(APP_BUILD)+'). Publicada: v '+esc(m[1])+'. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>'}}catch(e){}}
 /* ---------- sesión ---------- */
+/* ---------- recuperar la contraseña: pedir el enlace y poner una nueva al volver ---------- */
+const MSG_RESET='Si el correo está registrado, te llegará un enlace. Revisa también spam.';
+let RECUPERANDO=false,PIDIENDO_RESET=false;
+function urlApp(){return location.origin+location.pathname}
+function verLogin(cual){['entrar','olvide','nueva'].forEach(k=>{const e=document.getElementById('login-'+k);if(e)e.style.display=(k===cual)?'':'none'});
+  const t=document.getElementById('login-tit');if(t)t.textContent=cual==='nueva'?'Nueva contraseña':cual==='olvide'?'Recuperar el acceso':'Planificación y control · TEMPO';
+  const l=document.getElementById('login');if(l)l.classList.add('on');
+  const foco={entrar:'l-email',olvide:'l-remail',nueva:'l-p1'}[cual];const e=document.getElementById(foco);
+  if(e)setTimeout(()=>{try{e.focus()}catch(x){}},30)}
+function msgLogin(id,txt,ok){const m=document.getElementById(id);if(!m)return;m.style.color=ok?'var(--ok)':'var(--alerta)';m.textContent=txt}
+async function pedirReset(){if(!sb||PIDIENDO_RESET)return;
+  const correo=String((document.getElementById('l-remail')||{}).value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)){msgLogin('l-rmsg','Escribe un correo válido.');return}
+  PIDIENDO_RESET=true;const b=document.getElementById('l-rbtn');if(b)b.disabled=true;
+  try{await sb.auth.resetPasswordForEmail(correo,{redirectTo:urlApp()})}catch(e){}
+  // el mensaje es SIEMPRE el mismo, exista o no el correo: no se dice qué correos están registrados
+  msgLogin('l-rmsg',MSG_RESET,true);
+  if(b)b.disabled=false;PIDIENDO_RESET=false}
+async function guardarPassNueva(){if(!sb)return;
+  const p1=String((document.getElementById('l-p1')||{}).value||''),p2=String((document.getElementById('l-p2')||{}).value||'');
+  if(p1.length<8){msgLogin('l-nmsg','La contraseña necesita al menos 8 caracteres.');return}
+  if(p1!==p2){msgLogin('l-nmsg','Las dos contraseñas no son iguales.');return}
+  const b=document.getElementById('l-nbtn');if(b)b.disabled=true;
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(b)b.disabled=false;
+  if(error){msgLogin('l-nmsg','No se pudo guardar: '+error.message);return}
+  msgLogin('l-nmsg','Contraseña guardada.',true);
+  RECUPERANDO=false;try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  const p1e=document.getElementById('l-p1'),p2e=document.getElementById('l-p2');if(p1e)p1e.value='';if(p2e)p2e.value='';
+  const {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user)await entrar(session.user);else{verLogin('entrar');msgLogin('login-msg','Listo: entra con tu contraseña nueva.',true)}}
+function esVueltaDeRecuperacion(){const h=String(location.hash||'')+'&'+String(location.search||'');return /type=recovery/.test(h)}
 async function iniciar(){
   if(SUPABASE_URL.startsWith('PEGA')){mostrarLogin('Falta configurar la conexión: abre el archivo y pega la URL y la clave del proyecto al inicio del script.');return}
   sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  RECUPERANDO=esVueltaDeRecuperacion();
+  sb.auth.onAuthStateChange((ev)=>{ // se escucha ANTES de mirar la sesión: el enlace del correo avisa por aquí
+    if(ev==='PASSWORD_RECOVERY'){RECUPERANDO=true;mostrarLogin();verLogin('nueva');return}
+    if(ev==='SIGNED_OUT'){USER=null;PERFIL=null;RECUPERANDO=false;mostrarLogin()}});
   const {data:{session}}=await sb.auth.getSession();
+  if(RECUPERANDO){mostrarLogin();verLogin('nueva');return} // viene del enlace: primero la contraseña nueva
   if(session)await entrar(session.user);else mostrarLogin();
-  sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){USER=null;PERFIL=null;mostrarLogin()}});
 }
 async function entrar(user){
   USER=user;const {data}=await sb.from('perfiles').select('*').eq('id',user.id).single();
@@ -684,7 +739,7 @@ async function entrar(user){
   aplicarNavPerfil();decorarNav();LISTO=true; // recién ahora se dibuja: nunca se ve el menú de otro perfil
   page=vePagina('ordenes')?'ordenes':primeraPagina();render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);setInterval(revisarDatos,3*60*1000);
 }
-function mostrarLogin(msg){document.getElementById('login').classList.add('on');document.getElementById('login-msg').textContent=msg||''}
+function mostrarLogin(msg){document.getElementById('login').classList.add('on');document.getElementById('login-msg').textContent=msg||'';if(!RECUPERANDO&&typeof verLogin==='function')verLogin('entrar')}
 async function login(){if(!sb)return;const e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value;
   const {data,error}=await sb.auth.signInWithPassword({email:e,password:p});
   if(error){document.getElementById('login-msg').textContent='Correo o contraseña incorrectos.';return}
@@ -5379,14 +5434,22 @@ async function vUsuarios(el){
   const {data,error}=await sb.from('perfiles').select('*').order('email');const pan=document.getElementById('pan-usuarios');if(!pan)return;
   if(error){pan.innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
   const porPerfil={};data.forEach(u=>{const d=perfilDe(u);porPerfil[d?d.id:'?']=(porPerfil[d?d.id:'?']||0)+1});
-  pan.innerHTML=`<h3>Cuentas <span class="note">${data.length} · ${Object.entries(porPerfil).map(([k,v])=>ROLES[k]+' '+v).join(' · ')}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Perfil</th><th>Permiso</th><th>Tablet (centro · recurso)</th><th>Perfil viejo (área / sub-área)</th></tr></thead><tbody>
+  pan.innerHTML=`<h3>Cuentas <span class="note">${data.length} · ${Object.entries(porPerfil).map(([k,v])=>ROLES[k]+' '+v).join(' · ')}</span></h3><div class="body"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Perfil</th><th>Permiso</th><th>Tablet (centro · recurso)</th><th>Contraseña</th><th>Perfil viejo (área / sub-área)</th></tr></thead><tbody>
   ${data.map(u=>{const d=perfilDe(u);const viejo=!cat.some(x=>x.id===u.rol);return `<tr><td>${esc(u.email)}${u.id===(USER&&USER.id)?' <span class="tag t-ok">tú</span>':''}</td><td><input type="text" value="${esc(u.nombre||'')}" onchange="setPerfil('${u.id}','nombre',this.value)"></td>
     <td><select onchange="setPerfil('${u.id}','rol',this.value)">${cat.map(x=>`<option value="${x.id}" ${u.rol===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}${viejo?`<option value="${esc(u.rol)}" selected>(viejo) ${esc(u.rol)}${u.area?' · '+esc(u.area):''}${u.subarea?' · '+esc(u.subarea):''}</option>`:''}</select></td>
     <td><select title="necesita la columna modo (texto) en la tabla perfiles; ver SUPABASE_PERFILES.sql" onchange="setPerfil('${u.id}','modo',this.value)">${Object.entries(MODOS).map(([k,v])=>`<option value="${k}" ${(u.modo||'editar')===k?'selected':''}>${v}</option>`).join('')}</select></td><td>${tabletSelHTML(u.id)}</td>
+    <td style="white-space:nowrap"><button class="btn ghost sm" title="le manda por correo el mismo enlace de «¿Olvidaste tu contraseña?». Nadie más ve ni elige su contraseña." onclick="restablecerClave('${u.id}','${esc(u.email||'')}')">enviar enlace</button></td>
     <td class="mut" style="font-size:var(--fs-xs)">${viejo?esc((d?d.n:'?')+' · '+(u.area||'todas')+(u.subarea?' / '+u.subarea:'')):'—'}</td></tr>`}).join('')}
   </tbody></table>
   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">"Nuevo usuario" crea la cuenta en Supabase con una contraseña inicial y le asigna el perfil. Si el proyecto exige confirmar el correo, la persona recibe un correo y debe confirmarlo antes de entrar. Las cuentas también se pueden crear en Supabase → Authentication → Users; aparecen aquí con perfil Consulta hasta que les asignes uno.</p></div>`;
 }
+async function restablecerClave(id,correo){if(!puede('usuarios')){alert('Tu perfil no administra usuarios.');return}
+  correo=String(correo||'').trim();if(!correo){alert('Esa cuenta no tiene correo.');return}
+  if(!confirm('¿Mandar a '+correo+' un enlace para poner una contraseña nueva?\n\nLa contraseña actual sigue funcionando hasta que la persona use el enlace. Tú no ves ni eliges su contraseña.'))return;
+  const {error}=await sb.auth.resetPasswordForEmail(correo,{redirectTo:urlApp()});
+  if(error){alert('No se pudo enviar: '+error.message);return}
+  bitacora('Restablecimiento de contraseña enviado a '+correo+' ('+quienFirma()+')');save();
+  alert('Enlace enviado a '+correo+'. Dile que revise también spam; el enlace vence en una hora.')}
 async function setPerfil(id,k,v){const {data:antes}=await sb.from('perfiles').select('email,nombre,rol,modo').eq('id',id).single();const {error}=await sb.from('perfiles').update({[k]:v||null}).eq('id',id);
   if(error){alert('No se pudo actualizar: '+error.message+(/check constraint "perfiles_rol/i.test(error.message)?'\n\nLa tabla perfiles de Supabase todavía tiene la restricción de los roles viejos (admin, planificacion, carga, piso, consulta). Ejecuta SUPABASE_PERFILES.sql en Supabase → SQL Editor y vuelve a intentar.':'')+(/column|columna/i.test(error.message)?'\n\nFalta la columna "'+k+'" en la tabla perfiles de Supabase: créala como texto (Table editor → perfiles → New column).':''));return}
   bitacora('Usuario '+((antes&&antes.email)||id)+' · '+k+': '+((antes&&antes[k])||'—')+' → '+(v||'—'));save()}
