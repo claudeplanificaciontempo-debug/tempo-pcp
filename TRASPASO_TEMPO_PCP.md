@@ -204,6 +204,23 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.22 Rutas confirmadas (15-sep-2026 noche, PARTE A)
+**Ninguna orden se libera —ni textil ni a producción— sin RUTA CONFIRMADA.** Cada orden tiene `rutaConf`
+(estado, origen `persona` u `Odoo OT`, quién, cuándo, nota), en auditoría y en la tabla 14 (se conserva en las
+recargas). La ruta por defecto de Configuración **no confirma**: solo precarga el editor. Guardar la ruta en el
+editor confirma (persona). El historial `rutaEditada` **no** es confirmación.
+- **Confirmación automática (A2)**: solo si el conjunto de centros de las OT de Odoo (en cualquier estado, sin
+  canceladas ni bodegas, todas con centro TEMPO en la tabla 6, sin contradicción fase vs OT) es **idéntico** a los
+  pasos de la ruta actual. Lo demás queda «por definir» **sin tocar su ruta** y la pantalla dice en qué difiere.
+  Nunca pisa una confirmación de una persona. El botón **«Confirmar las que coinciden con Odoo (N)»** está en la
+  pestaña Rutas junto a la línea «Qué dice Odoo hoy: N coinciden · N difieren · N sin mapear · N contradicción ·
+  N sin OT»: **el conteo se ve antes de aplicar**.
+- **Pestaña Rutas** (Dirección → Órdenes de producción): tarjeta «Faltan N rutas por confirmar», lista **Por
+  definir agrupada por referencia** (editar y confirmar, confirmar como está, solo esta WH) y lista de confirmadas
+  con origen, quién y cuándo. Una WH nueva de una referencia confirmada entra precargada y por definir.
+- **Freno**: «Qué la frena» dice «falta confirmar ruta →» y enlaza a Rutas; las ya liberadas sin ruta confirmada
+  **no se desliberan** y salen en Hoy → Pendientes (`libSinRuta`, `rutasPorDefinir`).
+
 ### 2.20 Centros: limpieza de la pestaña Planificación (15-sep-2026 noche)
 - El **total de órdenes de la semana** va en grande y con el color del tema; siguen ordenadas por fecha de inicio.
 - **Vienen después** está en el mismo bloque, por fecha de inicio, con la columna **Dónde está** (de dondeEsta(), con
@@ -322,19 +339,27 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - Las vistas de centro **no muestran la fecha de entrega**: muestran plan inicio → fin y una marca (prioridad / va tarde).
 - **Costura: secuencia y rebalanceo** es una pestaña del centro Confección; ya no está suelta en el menú.
 
-### 2.13 Liberación y Liberación a producción por bloques (15-sep-2026 noche)
-Las dos páginas tienen la misma estructura, con los componentes comunes:
-- **Bloque 1 · Por liberar**: arriba los botones (liberar todo lo filtrado, elegir órdenes 1×1, marcar todas, liberar
-  las marcadas) y la lista agrupada, con «seleccionar todo» por grupo. Familias y tela/color quedan en desplegables
-  cerrados que ya muestran los totales. Abrir y cerrar una orden no pierde la selección ni la posición.
-- **Bloque 2 · Liberadas**: por familia y por tela y color.
-- **Bloque 3 · Resumen de lo liberado**: órdenes, referencias distintas, kilos de tela cruda y horas de planta, más lo
-  que cargó tejeduría y los baños que armó tintorería.
-- **Bloque 4 · Órdenes liberadas**: buscador común (WH, ODC, cliente, referencia), revertir la liberación con motivo de
-  la tabla 15 y devolver la fase según la secuencia de la tabla 1. Todo queda en auditoría.
+### 2.13 Liberación y Liberación a producción, tres bloques sobre la base del mes (15-sep-2026 noche, PARTE B)
+Las dos páginas comparten pantalla. **La base es una sola: las órdenes del Proyecto del mes elegido**, con el
+selector «Mes del Proyecto» arriba (arranca en el mes en curso; «Todos los meses» se respeta). Sobre esa base,
+**liberado + pendiente = total** en órdenes, prendas y kilos.
+- **Bloque 1 · Pendiente de liberar**: fila superior a todo el ancho con la tarjeta «N órdenes · N unidades» y, al
+  lado, ODC / Familia / Cliente, agrupador y buscador comunes; los botones de liberar (en producción no hay botón
+  masivo: una por una con las dos verificaciones); **tarjetas por familia** con sus unidades pendientes de mayor a
+  menor; al tocar una familia se abre su **detalle** (foto, WH, fase, cliente, color, prendas, entrega, chips «qué
+  le falta» por tela, control de ruta y **Qué la frena**) con selección para liberar. «Ver todas las pendientes»
+  abre la lista completa, y al buscar o agrupar se abre sola.
+- **Bloque 2 · Resumen de lo liberado**: grilla 2 × 2 (en teléfono, en columna) — carga por familia, por tipo de
+  producto, por tipo de tela en kilos y por color — con barra y **% = liberado ÷ total**; con órdenes marcadas la
+  fila y la barra muestran a cuánto subiría. **Misma base y mismo cálculo en los cuatro cuadrantes**, y no cambian
+  con los filtros del bloque 1 (la nota del bloque lo dice). Debajo, las tarjetas del resumen (órdenes,
+  referencias, kilos, horas) y el desplegable «Qué cargó lo liberado» (tejeduría, tintorería y centros).
+- **Bloque 3 · Órdenes liberadas**: buscador común, revertir la liberación con motivo de la tabla 15 y devolver la
+  fase según la secuencia de la tabla 1. Todo queda en auditoría.
 - **Ruta por defecto**: en Configuración → Centros, la marca «va por defecto en toda ruta» (sembrada en corte,
   confección y empaque, editable, con bitácora). Al abrir una orden sin ruta editada esos pasos vienen marcados, y
-  Liberación avisa cuáles de las órdenes cargadas contradicen esa ruta.
+  Liberación avisa cuáles de las órdenes cargadas contradicen esa ruta. **Esa ruta por defecto no confirma nada.**
+- El mapa completo de «qué había antes y dónde está ahora» está en `RUTAS_Y_LIBERACION_REPORTE.md`.
 
 ### 2.12 Tejeduría en el motor y Bloque 2 contra la fecha meta (15-sep-2026 noche)
 - **Tejeduría**: al programar, los kilos de cada tela se cubren en este orden: **stock de tela cruda** (la orden con la
@@ -406,6 +431,8 @@ Botón **Respaldo** (arriba) = `exportJSON`: todo `S` (datos + configuración + 
 `perfiles`) ni las imágenes (Storage). Detalle y recomendaciones en `AUDITORIA_BORRADOS_Y_RESPALDO.md`.
 
 ## 5 · Pendientes (estado 15-sep-2026)
+0. **Sin ejecutar, esperando su revisión:** el paso A2 de rutas (botón «Confirmar las que coinciden con
+   Odoo» en Órdenes → Rutas) y `SUPABASE_POLITICAS_TABLET.sql`. Ver `RUTAS_Y_LIBERACION_REPORTE.md`.
 1. Ella: crear los 11 usuarios de módulo (perfil Tablet) y asignar centro/recurso; agregar órdenes al plan de
    septiembre y congelar; reintentar la foto WH/MO/29252; tabla 6 "T-BIANCO-SINTEC(COMPACTADORA)"; confirmar días de
    proveedor; tiempos LMO de las 14 categorías sin operaciones; ficha real de bordado; lavado/plancha (marcas, minutos,
@@ -424,6 +451,7 @@ Motor y planificación: `MOTOR_HACIA_ATRAS_REPORTE.md`, `MOTOR_FASES_LIBERACION_
 `ASIGNACION_POR_ORDEN_REPORTE.md`, `PLAN_MENSUAL_FLUJO_REPORTE.md`.
 Textil: `TINTORERIA_REGLAS_MAQUINA_COLOR_REPORTE.md`, `CUATRO_COSAS_PROVEEDOR_BOTONES_LIBERACIONES_TINTORERIA.md`,
 `COMPRAS_Y_REGISTRO_CENTRO_REPORTE.md`, `SIGUIENTE_PASO_STOCK_BORDADO.md`.
+Rutas y liberación: `RUTAS_Y_LIBERACION_REPORTE.md`.
 Pantalla y piso: `PANTALLA_MENU_PENDIENTES_ODC_REPORTE.md`, `FOTOS_FASE_BUSCADOR_REPORTE.md`,
 `CONTROL_LINEA_PDF_FASES_REPORTE.md`, `PERFILES_CENTROS_BALANCEO_REPORTE.md`, `VARIAS_COSAS_15SEP_REPORTE.md`.
 Técnico: `CLAUDE.md` (resumen técnico y reglas de tintorería), `CONFIGURACION_CENTROS.md`, `SUPABASE_PERFILES.sql`,

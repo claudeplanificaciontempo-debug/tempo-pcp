@@ -416,6 +416,21 @@ referencia en las WH nuevas, sin confirmar. `puedeLiberarA` devuelve false sin r
 dice «falta confirmar ruta»; bandejas `rutasPorDefinir` y `libSinRuta` en Hoy. `rutaConf` está en la tabla 14.
 Ver `RUTAS_Y_LIBERACION_REPORTE.md`.
 
+**Liberación según el boceto (15-sep-2026 noche, PARTE B):** las dos páginas (`LIB.et` tela | corte) quedan en TRES
+bloques sobre una sola base: **las órdenes del Proyecto del mes** (`baseLiberacion(et,ym)`, selector «Mes del Proyecto»
+con `LIB.ym`; arranca en el mes en curso una sola vez por `LIB.ymAuto`, «Todos los meses» = `null` y se respeta).
+`pendLiberacion`/`libLiberacion` parten esa base y **liberado + pendiente = total** (probado en órdenes, prendas y kg).
+**Bloque 1** `bloqueLibB1`: fila superior a todo el ancho (tarjeta de pendientes + ODC/Familia/Cliente + agrupador +
+buscador; `LIB.odc` nuevo, Familia y Cliente reusan `LIB.fam`/`LIB.cli` y salieron del panel de arriba), botones de
+liberar, **tarjetas por familia** de mayor a menor (`LIB.fam2`) y detalle al tocar una (`filaLibB1`: foto, WH, fase,
+cliente, color, prendas, entrega, chips «qué le falta» por tela, control de ruta y **Qué la frena** con «falta
+confirmar ruta →» → `irRutaDeOrden`). `LIB.verLista` = «Ver todas las pendientes»; al buscar o agrupar se abre sola.
+Producción sigue una por una (`celdaLibProd`, las dos verificaciones). **Bloque 2** `bloqueLibB2`: grilla 2×2
+(`.lib-grid`, una columna ≤520px) con familia, tipo de producto, tela en kg y color, todas con `resumenLibPor` +
+`barraLib` (**% = liberado ÷ total**; con `LIB.sel` la barra pinta en `--t-accent` cuánto subiría). No la tocan los
+filtros del bloque 1 y la nota lo dice. Debajo, las tarjetas del resumen y el desplegable «Qué cargó lo liberado»
+(tejeduría, tintorería y centros). **Bloque 3**: Órdenes liberadas con buscador y reversión auditada.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
