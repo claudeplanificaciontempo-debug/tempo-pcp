@@ -601,7 +601,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 08:36';
+const APP_BUILD='2026-09-16 08:52';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -724,7 +724,7 @@ const SIN_PUESTO=1e9; // decisión 14-sep-2026: una orden sin puesto en ningún 
 function prioCentro(o){const p=o.progCentro||{};let m=SIN_PUESTO;Object.values(p).forEach(x=>{if(x&&x.pri&&x.pri<m)m=x.pri});return m}
 /* lo que falta por hacer de una orden según fase y avance */
 function kgPendiente(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(a.tejida||fe.tejida||a.tinturada||fe.tinturada||a.lista)return 0;return (o.telas||[]).filter(t=>!t.ext).reduce((x,t)=>x+kgCrudo(t.tela,t.kg),0)}
-function minPendiente(o){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);return (o.ruta||[]).reduce((x,p)=>{const c=CE(p.centro);if(!c||c.area!=='pro')return x;const hechas=fe.hechos.includes(p.centro)?o.cant:(ac[p.centro]||0);return x+Math.max(0,o.cant-hechas)*minPrenda(p.centro,p.t)},0)}
+function minPendiente(o){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);return (o.ruta||[]).reduce((x,p)=>{const c=CE(p.centro);if(!c||c.area!=='pro')return x;const hechas=pasoHecho(o,p.centro,fe)?o.cant:(ac[p.centro]||0);return x+Math.max(0,o.cant-hechas)*minPrenda(p.centro,p.t)},0)}
 function TEC(id){return S.tecnicas.find(t=>t.id===id)}
 const COLOR_NOMBRES=[[/negro|black|onyx|carbon|ebony|jet/,'#1d1f24'],[/blanco|white|bleach|snow|marshmallow|crudo|egret|birch|tofu|natural|ivory|ivor/,'#ece7dc'],[/navy|marino|naval|midnight|indigo|dark sapphire|black iris|azul marino/,'#20315a'],
   [/celeste|light blue|sky|blue light|surf spray|pastel blue|vapor|azul claro/,'#9cc4e0'],[/azul|blue|cadet|cobalt|denim|ocean|kentucky|french blue|suede blue|loch/,'#3a63a8'],[/turquesa|turquoise|teal|aqua|seafoam|celestial/,'#2f8f98'],
@@ -964,6 +964,7 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
+  {const cf=cierresSinFase();add('cierreSinFase','Órdenes terminadas en un centro con fase sin actualizar',cf.length,cf.map(x=>x.o.op+' en '+nCen(x.c)).slice(0,8).join(', ')+' · el piso cerró el paso; la fase la mueves tú','Control de piso → Cambio de fases',"CTL.area='fases';ir('control')")}
   {const sp=solicitudesPiso();add('solicPiso','El piso pide un cambio de fase',sp.length,sp.map(x=>x.op+' → '+faseNombre(x.f||'')).slice(0,8).join(', ')+' · el operario no cambia fases: lo pide y tú lo aplicas','Control de piso → Cambio de fases',"CTL.area='fases';ir('control')")}
   {const pr=pedidosReprog().filter(p=>!p.atendida);add('reprog','El piso pide reprogramación',pr.length,pr.map(p=>p.op+' → '+nCen(p.centro)).slice(0,8).join(', ')+' · el operario buscó la WH en su centro y no está programada ahí','Programación del centro',"CEN.id=(pedidosReprog().filter(p=>!p.atendida)[0]||{}).centro||CEN.id;CEN.tab='prog';ir('centro')")}
   {const sinSec=fasesSinSecuencia();const enUso={};ab.forEach(o=>{if(o.fase&&sinSec.includes(o.fase))enUso[o.fase]=(enUso[o.fase]||0)+1});const usadas=Object.keys(enUso);
@@ -1014,7 +1015,7 @@ let APO={niveles:null,cli:'',cen:'',mes:'',q:''};
 const APO_CAMPOS=[['cliente','Cliente'],['odc','ODC'],['fam','Familia'],['cat','Categoría'],['centro','Próximo paso (centro)'],['mes','Mes de entrega (meta)']];
 function colchonDias(){if(typeof S.params.colchonDias!=='number'||isNaN(S.params.colchonDias)){S.params.colchonDias=3;S.params.colchonEstimado=true}return S.params.colchonDias}
 function setColchon(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia el colchón.');return}const n=+String(v).replace(',','.');if(!(n>=0)){alert('Colchón inválido.');return}const antes=colchonDias();S.params.colchonDias=n;S.params.colchonEstimado=false;bitacora('Colchón de entrega: '+antes+' → '+n+' días ('+quienFirma()+')');save();render()}
-function pasosPendPro(o){const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};return (o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!fe.hechos.includes(p.centro)&&(ac[p.centro]||0)<o.cant)}
+function pasosPendPro(o){const fe=faseEstado(o.fase,o);return (o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!pasoHecho(o,p.centro,fe))}
 function clasificarAsig(o,P){const ro=P.ordenes[o.id];const meta=fechaMetaDe(o);const h=hoy();const pend=pasosPendPro(o);
   if(meta&&meta<dsum(h,-30)&&pend.length===1)return{estado:'vencidaUnPaso',paso:pend[0].centro,diasVenc:diasEntre(meta,h)};
   if(!ro)return{estado:'sinProgramar',motivo:o.sinLanzar?'sin WH (no lanzada en Odoo)':o.sinFechaEntrega?'sin fecha de entrega':'no entra al programa'};
@@ -1036,7 +1037,7 @@ function mDetalleAsig(oid,extra){const o=S.ordenes.find(x=>x.id===oid);if(!o)ret
    <p style="font-size:var(--fs-s)">Entrega meta <b>${meta?fmtDia(meta):'—'}</b>${o.fechaCompromiso?' (compromiso)':' (pedida)'} · termina <b>${ro.finPro?fmtDia(ro.finPro):'—'}</b> · tela lista ${ro.telaLista?fmtDia(ro.telaLista):'—'}${ro.coleccion?' · colección '+esc(ro.coleccion.key)+' ('+ro.coleccion.n+')':''}${c.estado==='noLlega'?' · <span class="tag t-alerta">'+c.dias+' días tarde · '+esc(c.atasco)+'</span>'+(ro.fechaPosible?' · fecha posible '+fmtDia(ro.fechaPosible):''):c.estado==='sinProgramar'?' · <span class="tag t-aviso">sin programar: '+esc(c.motivo)+'</span>':c.holg!=null?' · holgura '+c.holg+' d':''}</p>
    <table><thead><tr><th>Paso</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Límite (para llegar)</th><th class="num">Min</th><th>Estado</th></tr></thead><tbody>
    ${(ro.pasos||[]).map(p=>`<tr><td>${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''}</td><td>${p.rec?esc(nRec(p.rec)):'—'}</td><td>${p.ini?fmtDia(p.ini):'—'}</td><td>${p.fin?fmtDia(p.fin):'—'}</td><td>${p.limite?fmtDia(p.limite):'<span class="mut">—</span>'}</td><td class="num">${num(p.min||0)}</td><td>${p.hecho?'<span class="tag t-ok">hecho</span>':p.error?'<span class="tag t-alerta">'+esc(p.error)+'</span>':(p.limite&&p.fin>p.limite?'<span class="tag t-alerta">se pasa '+diasEntre(p.limite,p.fin)+' d</span>':'<span class="tag t-medio">programado</span>')}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin pasos programados.</td></tr>'}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>${extra||''}
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>${cierresOrdenHTML(o)}${extra||''}
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div></div>`,true)}
 function asignacionPorOrdenHTML(P){const h=hoy();const q=normTxt(APO.q);const todas=S.ordenes.filter(o=>abierta(o));
   const clis=[...new Set(todas.map(o=>o.cliente||'Sin cliente'))].sort((a,b)=>a.localeCompare(b,'es'));const cens=S.centros.filter(c=>c.area==='pro');const meses=[...new Set(todas.map(o=>(fechaMetaDe(o)||'').slice(0,7)).filter(Boolean))].sort();
@@ -1377,7 +1378,7 @@ const corridas={};
     ro.telaLista=cursor;
     // preparación de cada paso: pendientes, tiempo, candidatos y recurso fijo — idéntico en los dos motores
     const prep=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>{
-      const hechas=fe.hechos.includes(p.centro)?o.cant:((av.centros||{})[p.centro]||0);const pend=Math.max(0,o.cant-hechas);
+      const hechas=(fe.hechos.includes(p.centro)||pasoCerrado(o,p.centro))?o.cant:((av.centros||{})[p.centro]||0);const pend=Math.max(0,o.cant-hechas); // el cierre del piso cuenta como paso terminado
       const tPaso=(p.centro==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
       const minRef=pend*minPrenda(p.centro,tPaso);
       let cand=S.recursos.filter(r=>r.activa&&r.centro===p.centro&&capDia(r)>0);
@@ -1493,7 +1494,7 @@ function setGran(g){GRAN=g;render()}
 let _qTimer=null;
 /* ---------- Fase junto a la WH y foto en toda lista de órdenes ---------- */
 function faseTag(o){const f=faseNombre(o&&o.fase);if(!f)return '';const clic=o&&o.id&&typeof puedeFases==='function'&&puedeFases();return ` <span class="tag fase-mini" ${clic?`style="cursor:pointer" onclick="event.stopPropagation();mCambiarFase('${o.id}')" title="fase de Odoo · clic para cambiarla"`:'title="fase de Odoo"'}>${esc(f)}</span>`}
-function whCell(o,px){return fotoMini(o,px)+esc((o&&o.op)||'')+faseTag(o)}
+function whCell(o,px){return fotoMini(o,px)+esc((o&&o.op)||'')+faseTag(o)+(typeof tagCierre==='function'?tagCierre(o):'')}
 /* ---------- Buscador como Odoo: un campo que ofrece buscar por WH, ODC, estilo, color, fase, cliente o categoría ---------- */
 const BUSQ={};
 const BUSQ_CAMPOS=[['op','Orden de producción'],['odc','ODC'],['ref','Referencia (estilo)'],['color','Color'],['fase','Fase'],['cliente','Cliente'],['cat','Categoría']];
@@ -1825,7 +1826,8 @@ function cronoTablet(oid,c,acc){const a=S.avance[oid]=S.avance[oid]||{};a.crono=
 function cronoTxt(k){const sg=k.seg!=null?k.seg:Math.round((k.min||0)*60);const m=Math.floor(sg/60),ss=sg%60;return m+' min '+String(ss).padStart(2,'0')+' s'}
 function cronoCorriendoTxt(ini){const sg=Math.round((Date.now()-new Date(ini))/1000);const m=Math.floor(sg/60),ss=sg%60;return m+':'+String(ss).padStart(2,'0')}
 function minEstandarOrden(o,c){const p=(o.ruta||[]).find(x=>x.centro===c)||{};return minPrenda(c,p.t)*(+o.cant||0)}
-function tabletFilas(c,rec,P){const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas);
+function tabletFilas(c,rec,P){ // una orden cerrada en este centro ya no aparece
+const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas);
   if(rec){const sec=((P.secMod||{})[rec]||[]).map(x=>x.oid);cola=cola.filter(f=>(f.paso.rec===rec)||((f.o.recursoFijo||{})[c]===rec)||sec.includes(f.o.id));if(sec.length)cola.sort((a,b)=>{const ia=sec.indexOf(a.o.id),ib=sec.indexOf(b.o.id);return (ia<0?9e9:ia)-(ib<0?9e9:ib)})}
   return cola}
 /* ============ TRAMOS DE TRABAJO: inicio, fin, paros y unidades por talla (Mi centro) ============ */
@@ -1963,12 +1965,12 @@ function setTallaTramo(tid,oid,talla,delta){const t=tramosDe(oid).find(x=>x.id==
   t.tallas=t.tallas||{};const v=Math.max(0,(+t.tallas[talla]||0)+delta);if(v)t.tallas[talla]=v;else delete t.tallas[talla];render()}
 function setSegTramo(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
   t.segundas=t.segundas||{};const v=Math.max(0,Math.round(+valor||0));if(v)t.segundas[talla]=v;else delete t.segundas[talla];save()}
-function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tramosDe(oid).find(x=>x.id===tid);if(!o||!t)return;
+function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tramosDe(oid).find(x=>x.id===tid);if(!o||!t)return false;
   const u=sumaCurva(t.tallas||{});
-  if(!(u>0)&&!confirm('¿Guardar el tramo sin unidades?\n\nQueda el tiempo trabajado y 0 prendas. Puede pasar si solo hubo paro.'))return;
+  if(!(u>0)&&!confirm('¿Guardar el tramo sin unidades?\n\nQueda el tiempo trabajado y 0 prendas. Puede pasar si solo hubo paro.'))return false;
   const b=baseTallas(o,t.centro);const a=S.avance[oid]=S.avance[oid]||{};a.tallas=a.tallas||{};const prev=a.tallas[t.centro]||{};
   const excede=[];Object.entries(t.tallas).forEach(([k,q])=>{const lim=(b.tallas||{})[k];if(lim!=null&&(prev[k]||0)+q>lim)excede.push(k+': '+num((prev[k]||0)+q)+' de '+num(lim))});
-  if(excede.length&&!confirm('Estas tallas pasan de lo '+(b.base==='corte'?'cortado':'pedido')+':\n'+excede.join('\n')+'\n¿Guardar igual? Queda marcado.'))return;
+  if(excede.length&&!confirm('Estas tallas pasan de lo '+(b.base==='corte'?'cortado':'pedido')+':\n'+excede.join('\n')+'\n¿Guardar igual? Queda marcado.'))return false;
   const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.persFuente=c.persFuente;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.minPrendaTot=c.minPrendaTot!=null?+c.minPrendaTot.toFixed(3):null;t.pz=u;t.seg=c.seg;t.excede=excede.length>0; // las unidades van en t.pz: t.u es QUIÉN empezó el tramo
   if(c.seg>0){const av=S.avance[oid];av.seg=av.seg||{};av.seg[t.centro]=Math.max(0,(+av.seg[t.centro]||0)+c.seg)} // el mismo dato que ve Control de piso
   a.tallasLog=a.tallasLog||[];const ts=new Date().toISOString();
@@ -1977,7 +1979,7 @@ function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tra
   if(t.rec&&u>0){S.turnos=S.turnos||[];const tid=t.rec+'|'+hoy();let tu=S.turnos.find(x=>x.id===tid);if(!tu){tu={id:tid,rec:t.rec,d:hoy()};S.turnos.push(tu)}
     const paso=(o.ruta||[]).find(p=>p.centro===t.centro)||{};tu.pz=(tu.pz||0)+u;tu.std=(tu.std||0)+u*minPrenda(t.centro,paso.t||0);tu.ops=[...new Set([...(tu.ops||[]),o.op])]} // Reportería y Ejecución leen los turnos
   bitacora('Tramo guardado · '+o.op+' en '+nCen(t.centro)+(t.rec?' ('+nRec(t.rec)+')':'')+': '+num(u)+' prendas en '+fmtMinSeg(t.min)+' · '+num(t.minPersona)+' min-persona'+(t.minPrenda!=null?' · '+num(t.minPrenda,3)+' min/prenda':'')+((t.paros||[]).length?' · '+(t.paros||[]).length+' paros':'')+(excede.length?' · PASA DE LO '+(b.base==='corte'?'CORTADO':'PEDIDO'):'')+' ('+quienFirma()+')');
-  TRAMO={paso:null,id:null,oid:null};save();render()}
+  TRAMO={paso:null,id:null,oid:null};save();render();return true}
 /* --- olvidos: inicios que pasan del tope de horas sin fin --- */
 function tramosOlvidados(){const tope=+prm('topeHorasTramo',10)||10;const ahora=Date.now();
   // se mide el tiempo EFECTIVO: lo que está en paro (almuerzo, cierre del día) no cuenta como trabajo
@@ -2029,6 +2031,7 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
        ${tallasSegHTML(o,t,c,tallas)}
        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn" style="font-size:22px;padding:16px 26px" onclick="guardarTramo('${t.id}','${o.id}')">Guardar</button>
+        <button class="btn" style="font-size:20px;padding:16px 22px;background:var(--ok);border-color:var(--ok)" title="cierra el PASO de esta orden en este centro, aunque falten prendas; el tramo se guarda primero" onclick="terminarOrdenCentro('${t.id}','${o.id}','${c}')">Terminé esta orden en mi centro</button>
         <button class="btn ghost" style="font-size:18px;padding:14px 20px" onclick="TRAMO={paso:null,id:null,oid:null};render()">Ahora no</button></div>
       </div></div>`}}
   if(ab){const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
@@ -2048,7 +2051,7 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
    <div style="display:flex;flex-direction:column;gap:10px">
    ${cola.slice(0,40).map(f=>{const o=f.o;const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
      return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
-     ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,o.cant-f.hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div></div>
+     ${fotoMini(o,64)}<div style="flex:1;min-width:150px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,cantCentro(o,c)-f.hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div></div>
      <button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button></div>`}).join('')||'<span class="mut">No hay órdenes programadas en este centro.</span>'}
    </div></div></div>`}
 /* --- una fila de registro (talla o total) con − + rápidos, número editable y segundas --- */
@@ -2091,7 +2094,7 @@ function vTablet(el){
      <div style="flex:none">${fotoDe(o)?fotoMini(o,140):'<div class="mut" style="width:140px;height:140px;background:var(--field);border-radius:6px;display:flex;align-items:center;justify-content:center">sin foto</div>'}</div>
      <div style="flex:1;min-width:240px;font-size:18px;line-height:1.5"><div><span class="mut" style="font-size:14px">#${i+1}</span> <b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
       <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div><div class="mut">${esc(o.cliente||'')}</div>
-      <div><b>${num(f.hechas)}</b> / ${num(o.cant)} prendas</div>${(baseTallas(o,c).tallas?'<div style="font-size:15px">'+difTallasHTML(o,c)+'</div>':'<div class="tag t-aviso">sin curva de tallas: solo total</div>')}${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
+      <div><b>${num(f.hechas)}</b> / ${num(cantCentro(o,c))} prendas${cantCentro(o,c)!==(+o.cant||0)?' <span class="mut" style="font-size:14px">(de '+num(o.cant)+' del pedido: el paso anterior cerró con menos)</span>':''}</div>${tagListaEmpezar(o,c)}${(baseTallas(o,c).tallas?'<div style="font-size:15px">'+difTallasHTML(o,c)+'</div>':'<div class="tag t-aviso">sin curva de tallas: solo total</div>')}${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
       ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${cronoTxt(cr)} · estándar ${num(std)} min${cr.tallas?' · '+Object.entries(cr.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(', '):''}</div>`:''}</div>
      <div style="flex:none;display:flex;flex-direction:column;gap:10px;min-width:170px">
       <button class="btn" style="font-size:20px;padding:14px 18px" ${ok?'':'disabled'} onclick="${(baseTallas(o,c).tallas||tallasDeOrden(o).length)?'mRegistroTallas':'marcarHechoCentro'}('${o.id}','${c}')">Hecho</button>
@@ -2160,9 +2163,9 @@ function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia f
     bitacora((dev?'Devolución de fase ':'Fase ')+o.op+': '+(antes||'—')+' → '+f+(motivo?' · '+motivo:'')+' ('+quienFirma()+')');if(esCompraDesdeTej(antes,f)){pasarACompras(o,motivo);comp++}});
   CTLF.sel=new Set();CTLF.motivo='';CTLF.nueva='';PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render();if(comp)alert(comp+' orden(es) pasaron a compras: la persona de compras tiene que pedirlas (aviso en Hoy → Pendientes y en Compras del mes).')}
 function mCambiarFasePiso(oid,c){return mFasePiso(oid,c)}
-function mCambiarFase(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeFases()){alert('Tu perfil no cambia fases.');return}
+function mCambiarFase(oid,sug){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeFases()){alert('Tu perfil no cambia fases.');return}
   abrir(`<h3>Cambiar fase · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${fotoMini(o)}${esc(o.op)} · ${esc(nombreCat(K(o.cat)))} · fase actual <b>${esc(o.fase||'—')}</b></p>
-   <label>Fase nueva</label><select id="cf-f">${fasesDisponibles().map(f=>`<option value="${esc(f)}" ${f===o.fase?'selected':''}>${esc(f)}</option>`).join('')}</select>
+   <label>Fase nueva</label><select id="cf-f">${fasesDisponibles().map(f=>`<option value="${esc(f)}" ${f===(sug||o.fase)?'selected':''}>${esc(f)}</option>`).join('')}</select>
    <label style="margin-top:8px">Motivo <span class="mut">(obligatorio solo si devuelves: la fase nueva tiene secuencia menor${(secuenciaDe(o.fase)===null?' · esta fase no tiene secuencia: manda el grupo de la tabla 5':'')})</span></label>${selMotivoHTML('cf-m','fase')}
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Avanzar o moverse dentro del mismo grupo no pide motivo; igual queda registrado quién y cuándo. De 1Tejeduria a 0Ord Compras la tela pasa a comprarse (ruta con proveedor, alerta a compras).</p></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="moverFases(['${o.id}'],document.getElementById('cf-f').value,document.getElementById('cf-m').value)">Cambiar</button></div>`)}
@@ -2333,7 +2336,7 @@ function tarjetasResumenHTML(cards){const ab=cards.find(c=>c.items&&c.items.leng
       return `<tr class="grp-row" style="background:var(--field);font-weight:700"><td colspan="7" style="border-top:2px solid var(--rule)">${esc(f)}<span style="float:right">${xs.length} ${xs.length===1?'orden':'órdenes'} · ${num(xs.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+xs.map(filaOrd).join('')}).join('')};
   return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div></div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${ab.items.length} órdenes${ab.porFam?' · agrupadas por familia':''}</span></h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
 /* e) Devolver/revertir: el motivo sale de la tabla 15 (lista cerrada, sin texto libre) */
-const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso']];
+const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante']];
 function motivos(){if(!Array.isArray(S.params.motivos))S.params.motivos=[];migrarMotivosReproceso();return S.params.motivos}
 // los motivos de reproceso viven ahora en la tabla 15 (uso 'reproceso'); se migra una vez y NO se borra el arreglo viejo
 function migrarMotivosReproceso(){const t=S.params.motivos;if(S.params.motivosMigrados)return;const viejos=Array.isArray(S.params.motivosReproceso)&&S.params.motivosReproceso.length?S.params.motivosReproceso:defMotivosReproceso();let n=0;viejos.forEach(r=>{const m=String(r.motivo||'').trim();if(!m)return;if(t.some(x=>x.uso==='reproceso'&&x.motivo===m))return;t.push({motivo:m,uso:'reproceso',tejeduria:!!r.tejeduria});n++});S.params.motivosMigrados=true;if(n&&typeof bitacora==='function')bitacora('Motivos de reproceso unificados en la tabla 15: '+n+' motivos (el arreglo anterior se conserva)')}
@@ -2351,7 +2354,7 @@ function registrarAuditoria(tipo,o,antes,despues,motivo,dev){const e={id:uid(),t
 function auditoriaTodo(){const l=auditoriaCambios().slice();Object.values(S.avance||{}).forEach(a=>(a.auditoria||[]).forEach(e=>l.push(e)));return l.sort((x,y)=>(x.ts||'')<(y.ts||'')?-1:1)}
 function motivosPanelHTML(){const t=motivos();return `<div class="panel"><h3>15 · Motivos <span class="note">lista cerrada: devolver una fase a un grupo anterior, revertir una liberación, reproceso de tintorería u observación de piso · sin texto libre · ${t.length} motivos</span><span class="spacer"></span>${USOS_MOTIVO.map(([k,n])=>`<button class="btn ghost sm" onclick="addMotivoRow('${k}')">+ ${esc(n)}</button>`).join(' ')}</h3><div class="body"><table><thead><tr><th>Motivo</th><th>Uso</th><th>¿Viene de tejeduría?</th><th>Activo</th><th>Almuerzo</th><th>Cierre del día</th><th></th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td><input type="text" style="width:320px" value="${esc(r.motivo||'')}" onchange="setMotivoRow(${i},'motivo',this.value)"></td><td><select onchange="setMotivoRow(${i},'uso',this.value)">${USOS_MOTIVO.map(([k,n])=>`<option value="${k}" ${r.uso===k?'selected':''}>${esc(n)}</option>`).join('')}</select></td><td>${r.uso==='reproceso'?`<label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoRow(${i},'tejeduria',this.checked)"> falla de tela</label>`:'<span class="mut">—</span>'}</td><td style="text-align:center"><input type="checkbox" ${r.activo!==false?'checked':''} onchange="setMotivoRow(${i},'activo',this.checked)" title="si está apagado, el operario no lo ve"></td><td style="text-align:center">${r.uso==='paro'?`<input type="checkbox" ${r.esAlmuerzo?'checked':''} onchange="setMotivoRow(${i},'esAlmuerzo',this.checked)" title="marcarlo evita que el descanso del horario se descuente dos veces">`:'<span class="mut">—</span>'}</td><td style="text-align:center">${r.uso==='paro'?`<input type="checkbox" ${r.cierreDia?'checked':''} onchange="setMotivoRow(${i},'cierreDia',this.checked)" title="pausa el tramo hasta el día siguiente; la noche no cuenta ni dispara el aviso de olvido">`:'<span class="mut">—</span>'}</td><td>${r.pendiente?'<span class="tag t-aviso">sin texto</span>':''}</td><td><button class="btn ghost sm" onclick="delMotivoRow(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="8" class="mut">Sin motivos. Agrega al menos uno de devolución de fase y uno de reversión de liberación: sin ellos no se puede devolver ni revertir (avanzar de fase sí).</td></tr>'}</tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El motivo se exige solo al <b>devolver</b> una fase (la fase nueva cae en un grupo anterior de la tabla 5) y al <b>revertir</b> una liberación; avanzar o moverse dentro del mismo grupo no lo pide. Los motivos de <b>reproceso de tintorería</b> son estas mismas filas (el panel de Tintorería las edita). Todo queda en Auditoría de replanificación con usuario, fecha, antes y después.</p></div></div>`}
 function mRetirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;abrir(`<h3>Revertir liberación · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · ${esc(nombreCat(K(o.cat)))} · liberación <b>${et==='tela'?'textil':'a producción'}</b>. La orden vuelve a la cola de liberación y sale del programa hasta liberarla de nuevo.</p><label>Motivo (obligatorio, de la tabla 15)</label>${selMotivoHTML('rl-m','liberacion')}</div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="retirarLib('${o.id}','${et}',document.getElementById('rl-m').value)">Revertir</button></div>`)}
-function auditoriaCambiosHTML(){const L=auditoriaTodo().slice().reverse();return `<div class="panel"><h3>Cambios de fase y reversiones de liberación <span class="note">${L.length} · las devoluciones y las reversiones llevan motivo de la tabla 15 · usuario, fecha, antes y después</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${L.slice(0,300).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);return `<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('es-EC')}</td><td>${esc(e.u||'')}</td><td>${e.tipo==='fase'?(e.dev?'<b>devolución de fase</b>':'cambio de fase'):'reversión de liberación'}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${esc(e.antes||'—')}</td><td>${esc(e.despues||'—')}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Sin registros.</td></tr>'}</tbody></table></div></div></div>`}
+function auditoriaCambiosHTML(){const L=auditoriaTodo().slice().reverse();return `<div class="panel"><h3>Cambios de fase y reversiones de liberación <span class="note">${L.length} · las devoluciones y las reversiones llevan motivo de la tabla 15 · usuario, fecha, antes y después</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${L.slice(0,300).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);return `<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('es-EC')}</td><td>${esc(e.u||'')}</td><td>${e.tipo==='fase'?(e.dev?'<b>devolución de fase</b>':'cambio de fase'):e.tipo==='liberacion'?'reversión de liberación':e.tipo==='cierre'?(e.dev?'<b>cierre reabierto</b>':'cierre en un centro'):e.tipo==='ruta'?'ruta confirmada':e.tipo==='tramo'?'corrección de tramo':esc(e.tipo)}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${esc(e.antes||'—')}</td><td>${esc(e.despues||'—')}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Sin registros.</td></tr>'}</tbody></table></div></div></div>`}
 /* f) Navegación: "← atrás" cuando se llega a una pantalla desde un clic en otra; vuelve con filtros y scroll */
 let NAVH=[];let NAV_PROG=false;
 function navRefs(){const M={};try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.CTL=CTL}catch(e){}try{M.CEN=CEN}catch(e){}try{M.APO=APO}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.VO=VO}catch(e){}try{M.CTLF=CTLF}catch(e){}try{M.PM=PM}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.REP=REP}catch(e){}try{M.NLF=NLF}catch(e){}try{M.TAB=TAB}catch(e){}try{M.WIP=WIP}catch(e){}try{M.AUD=AUD}catch(e){}try{M.FAM=FAM}catch(e){}try{M.TARJ=TARJ}catch(e){}return M}
@@ -3061,7 +3064,7 @@ function vWIP(el){
   const agg={};grupos.forEach(([k])=>agg[k]={pz:0,min:0,ops:new Set()});
   ords.forEach(o=>{const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);
     (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(!c||c.area!=='pro')return;const grp=grupos.find(g=>g[2].includes(p.centro));if(!grp)return;
-      const hechas=fe.hechos.includes(p.centro)?o.cant:(ac[p.centro]||0);const pend=Math.max(0,o.cant-hechas);if(pend<=0)return;
+      const hechas=pasoHecho(o,p.centro,fe)?o.cant:(ac[p.centro]||0);const pend=Math.max(0,o.cant-hechas);if(pend<=0)return;
       agg[grp[0]].pz+=pend;agg[grp[0]].min+=pend*minPrenda(p.centro,p.t);agg[grp[0]].ops.add(o.op)})});
   el.innerHTML=cab+`<div class="panel"><h3>Por etapa <span class="note">prendas y minutos pendientes en cada centro, con lo que ya está en la cartera</span></h3><div class="body"><table><thead><tr><th>Etapa</th><th class="num">Prendas pendientes</th><th class="num">Minutos</th><th class="num">Horas</th><th class="num">Órdenes</th></tr></thead><tbody>
    ${grupos.map(([k,n])=>`<tr><td style="cursor:pointer" onclick="CEN.id='${k==='estampado'?'estampado':k==='confeccion'?'modulos':k==='terminados'?'terminados':k}';ir('centro')">${esc(n)}</td><td class="num">${num(agg[k].pz)}</td><td class="num">${num(agg[k].min)}</td><td class="num">${num(agg[k].min/60)}</td><td class="num">${agg[k].ops.size}</td></tr>`).join('')}
@@ -3098,7 +3101,7 @@ function cumplimientoFacturacionHTML(){const R=cumplimientoFacturacion();const p
    en el mes y cuántas unidades ya estaban hechas al congelar (h0). Avance = (hechas hoy − h0) contra las planificadas del mes,
    nunca contra el total de la orden. Sin plan congelado, la base es el programa de hoy y todo parte en 0 (se avisa).
    Hechas: control de piso (prendas por centro) y centros cerrados por orden de trabajo / fase. Sin registro = no se sabe, no es 0. */
-function hechasCentro(o,c){const fe=faseEstado(o.fase,o);const ot=(o.ot||{})[c];if((ot&&ot.estado==='terminado')||fe.hechos.includes(c))return{pz:+o.cant||0,reg:ot&&ot.estado==='terminado'?'ot':'fase'};
+function hechasCentro(o,c){const fe=faseEstado(o.fase,o);const ci=cierreCentro(o,c);if(ci)return{pz:+ci.pz||0,reg:'cierre',cierre:ci};const ot=(o.ot||{})[c];if((ot&&ot.estado==='terminado')||fe.hechos.includes(c))return{pz:+o.cant||0,reg:ot&&ot.estado==='terminado'?'ot':'fase'};
   const ac=(S.avance[o.id]||{}).centros||{};if(ac[c]!=null)return{pz:+ac[c]||0,reg:'piso'};return{pz:null,reg:null}}
 function planMesFilas(ym){const P=S.ordenes.length?programar():{pro:[]};const m={};P.pro.filter(x=>(x.dia||'').startsWith(ym)&&x.pz>0).forEach(x=>{const k=x.op+'|'+x.centro;m[k]=m[k]||{op:x.op,centro:x.centro,pz:0,min:0};m[k].pz+=x.pz||0;m[k].min+=x.min||0});
   return Object.values(m).map(f=>{const o=S.ordenes.find(z=>z.op===f.op);const h=o?hechasCentro(o,f.centro):{pz:null,reg:null};return{oid:o?o.id:null,op:f.op,centro:f.centro,pz:Math.round(f.pz),min:+f.min.toFixed(1),h0:h.pz==null?0:h.pz,reg0:h.reg}})}
@@ -3126,6 +3129,13 @@ function filasArbolAV(arbol,prof,conCentros){prof=prof||0;if(arbol.hojas)return 
   return arbol.grupos.map(g=>{const nomNivel=(AV_CAMPOS.find(x=>x[0]===arbol.nivel)||[])[1]||'';const hoja=!!g.sub.hojas;
     return `<tr class="av-g av-g${prof}" style="background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><td style="padding-left:${8+prof*18}px"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nomNivel)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.s.n} orden·centro</span></td>${celdasAV(g.s)}</tr>`+
       (conCentros&&arbol.nivel!=='centro'&&(hoja||prof===0)?g.porCentro.map(c=>`<tr class="av-c" style="font-size:var(--fs-xs)"><td style="padding-left:${26+prof*18}px" class="mut">↳ ${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join(''):'')+filasArbolAV(g.sub,prof+1,conCentros)}).join('')}
+function cierresConFaltante(){const l=[];S.ordenes.forEach(o=>{const cs=((S.avance[o.id]||{}).cierres)||{};Object.keys(cs).forEach(c=>{const ci=cierreCentro(o,c);if(ci&&ci.faltan>0)l.push({o,c,ci})})});
+  return l.sort((a,b)=>(a.ci.ts||'')<(b.ci.ts||'')?1:-1)}
+function cierresConFaltanteHTML(){const l=cierresConFaltante();if(!l.length)return '';
+  const pz=l.reduce((a,x)=>a+(+x.ci.faltan||0),0);
+  return `<div class="panel"><h3>Cerradas con faltante <span class="note">${l.length} pasos · ${num(pz)} prendas que no salieron · lo que sigue adelante es lo que realmente salió</span></h3><div class="scroll" style="max-height:340px"><table><thead><tr><th>Cuándo</th><th>OP · fase</th><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Quién</th></tr></thead><tbody>
+   ${l.slice(0,300).map(({o,c,ci})=>`<tr><td style="white-space:nowrap">${new Date(ci.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nCen(c))}</td><td class="num">${num(ci.pz)} de ${num(ci.cant)}</td><td class="num"><span class="tag t-alerta">${num(ci.faltan)}</span></td><td>${esc(ci.motivo||'')}</td><td class="mut">${esc(ci.u||'')}</td></tr>`).join('')}
+  </tbody></table></div></div>`}
 function vAvance(el){const h=hoy();if(!AV.mes)AV.mes=h.slice(0,7);const ym=AV.mes;const {B,filas:todas}=filasAvance(ym);
   const ok=(campo,v)=>!AV.f[campo]||!AV.f[campo].size||AV.f[campo].has(v);const filas=todas.filter(r=>AV_CAMPOS.every(([k])=>ok(k,claveAV(k,r))));
   const niveles=nivelesAV();const arbol=arbolAV(filas,niveles);const T=sumAV(filas);const TT=sumAV(todas);
@@ -3146,7 +3156,7 @@ function vAvance(el){const h=hoy();if(!AV.mes)AV.mes=h.slice(0,7);const ym=AV.me
   ${filas.length?`<div class="panel"><h3>Por ${esc(niveles.length?niveles.map(k=>(AV_CAMPOS.find(x=>x[0]===k)||[])[1]).join(' → '):'todo')} <span class="note">debajo de cada grupo, el desglose por centro para ver dónde está el atraso</span></h3><div class="scroll"><table><thead><tr><th>Grupo</th><th class="num">Unid. plan</th><th class="num">Hechas</th><th class="num">Faltan</th><th class="num">% avance</th><th class="num">Min plan</th><th class="num">Min hechos</th><th class="num">Min faltan</th><th class="num">Sin registro (unid.)</th></tr></thead><tbody>
    <tr style="font-weight:700;background:var(--ink);color:#fff"><td>Total${filtrosActivos.length?' (filtrado)':''}</td>${celdasAV(T).replace(/class="mut"/g,'style="opacity:.6"')}</tr>${niveles.length?filasArbolAV(arbol,0,true):porCentroAV(filas).map(c=>`<tr><td>${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join('')}</tbody></table></div></div>
   <div class="panel"><h3>Por centro <span class="note">todo lo visible, cortado por centro</span></h3><div class="body"><table><thead><tr><th>Centro</th><th class="num">Unid. plan</th><th class="num">Hechas</th><th class="num">Faltan</th><th class="num">% avance</th><th class="num">Min plan</th><th class="num">Min hechos</th><th class="num">Min faltan</th><th class="num">Sin registro (unid.)</th></tr></thead><tbody>${porCentroAV(filas).map(c=>`<tr><td>${esc(c.n)}</td>${celdasAV(c.s)}</tr>`).join('')}</tbody></table></div></div>
-  ${T.sinReg?`<div class="panel"><h3>Sin registro de avance <span class="note">${T.sinReg} orden·centro · ${num(T.pzSinReg)} unidades planificadas · no es lo mismo no haber hecho nada que no haber registrado nada</span></h3><div class="scroll" style="max-height:360px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th>Centro</th><th class="num">Unid. plan del mes</th><th class="num">Min plan</th></tr></thead><tbody>${filas.filter(r=>r.sinReg).slice(0,400).map(r=>`<tr><td>${esc(r.op)}</td><td>${esc(r.cliente)}</td><td>${esc(r.cat)}</td><td>${esc(r.centroN)}</td><td class="num">${num(r.pz)}</td><td class="num">${num(r.min)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`:'<div class="panel"><div class="empty">Nada planificado en este mes con estos filtros.</div></div>'}`}
+  ${T.sinReg?`<div class="panel"><h3>Sin registro de avance <span class="note">${T.sinReg} orden·centro · ${num(T.pzSinReg)} unidades planificadas · no es lo mismo no haber hecho nada que no haber registrado nada</span></h3><div class="scroll" style="max-height:360px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th>Centro</th><th class="num">Unid. plan del mes</th><th class="num">Min plan</th></tr></thead><tbody>${filas.filter(r=>r.sinReg).slice(0,400).map(r=>`<tr><td>${esc(r.op)}</td><td>${esc(r.cliente)}</td><td>${esc(r.cat)}</td><td>${esc(r.centroN)}</td><td class="num">${num(r.pz)}</td><td class="num">${num(r.min)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`:'<div class="panel"><div class="empty">Nada planificado en este mes con estos filtros.</div></div>'}${cierresConFaltanteHTML()}`}
 function exportarAvanceCSV(){const ym=AV.mes||hoy().slice(0,7);const {filas:todas}=filasAvance(ym);const ok=(campo,v)=>!AV.f[campo]||!AV.f[campo].size||AV.f[campo].has(v);const filas=todas.filter(r=>AV_CAMPOS.every(([k])=>ok(k,claveAV(k,r))));
   const niveles=nivelesAV();const arbol=arbolAV(filas,niveles);const rows=[['Nivel','Grupo','Centro','Unid plan','Hechas','Faltan','% avance','Min plan','Min hechos','Min faltan','Unid sin registro']];
   const fila=(niv,grupo,centro,s)=>rows.push([niv,grupo,centro,s.pz,s.hechas,s.faltan,s.pct==null?'':Math.round(s.pct),s.min,+s.minHechos.toFixed(1),+s.minFaltan.toFixed(1),s.pzSinReg]);
@@ -3608,7 +3618,7 @@ function selNivelesCEN(){const n=nivelesCEN();const sel=(i)=>`<select onchange="
 function puestoDe(o,c){return ((o.progCentro||{})[c]||{}).pri||0}
 /* órdenes abiertas con paso en los centros dados (q = buscador; '' = todas) */
 function filasDeCentros(cens,P,lun,dom,q){q=normTxt(q||'');const filas=[];S.ordenes.filter(abierta).forEach(o=>{cens.forEach(c=>{const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c);const enRuta=(o.ruta||[]).some(p=>p.centro===c);if(!enRuta)return;
-    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hecho=fe.hechos.includes(c)||(ac[c]||0)>=o.cant;
+    const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hecho=pasoHecho(o,c,fe);
     const pzSem=P.pro.filter(x=>x.op===o.op&&x.centro===c&&x.dia>=lun&&x.dia<=dom).reduce((s,x)=>s+(x.pz||0),0);
     if(matchBusq(o,q,'CEN.q'))filas.push({o,c,paso:paso||{},hecho,pzSem,hechas:hecho?o.cant:(ac[c]||0),bloq:(P.ordenes[o.id]||{}).bloqueo})})});return filas}
 /* la cola del centro: pendientes, en el orden del motor (puesto; sin puesto = 3; empate: inicio planificado, luego entrega) */
@@ -3638,6 +3648,90 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
    Por ahora COMPLETO (todo el paso). Los módulos podrían registrar parcial cuando tengan tablet: preparado pero apagado (S.params.modulosParcial). */
 function regHechoOk(c){return puedeCentro(c)||(puede('avance')&&veCentro(c))}
 function permiteParcial(c){return c==='modulos'&&!!(S.params&&S.params.modulosParcial)}
+/* ---------- Cerrar la orden en un centro aunque falten prendas (el tramo cierra el turno; esto cierra el PASO) ---------- */
+function cierresDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!a.cierres||typeof a.cierres!=='object')a.cierres={};return a.cierres}
+function cierreCentro(o,c){const x=(((S.avance[(o||{}).id]||{}).cierres)||{})[c];return (x&&!x.reabierto)?x:null}
+function pasoCerrado(o,c){return !!cierreCentro(o,c)}
+/* un paso está hecho por la fase de Odoo, porque salieron todas las prendas o porque el piso lo cerró */
+function pasoHecho(o,c,fe){if(!o)return false;if(pasoCerrado(o,c))return true;
+  fe=fe||faseEstado(o.fase,o);if((fe.hechos||[]).includes(c))return true;
+  const ac=(S.avance[o.id]||{}).centros||{};return (ac[c]||0)>=(+o.cant||0)}
+function centroAnteriorPro(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>p.centro);const i=ru.indexOf(c);return i>0?ru[i-1]:null}
+/* lo que de verdad le llega a este centro: lo que salió del último paso cerrado antes de él */
+function cantCentro(o,c){let cur=centroAnteriorPro(o,c),g=0;
+  while(cur&&g++<20){const ci=cierreCentro(o,cur);if(ci)return Math.max(0,+ci.pz||0);cur=centroAnteriorPro(o,cur)}
+  return +o.cant||0}
+function faltanteCierre(o,c){const cant=cantCentro(o,c);const hechas=((S.avance[o.id]||{}).centros||{})[c]||0;return {cant,hechas,faltan:Math.max(0,cant-hechas)}}
+function faltanteTallas(o,c){const b=baseTallas(o,c);if(!b.tallas)return null;const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};const out={};
+  Object.entries(b.tallas).forEach(([t,q])=>{const d=(+q||0)-(+ya[t]||0);if(d>0)out[t]=d});return Object.keys(out).length?out:null}
+function faseSugeridaTrasCierre(o,c){const sig=centroSiguiente(o,c);const et=centroEtapaDe(sig||c);if(!et)return '';
+  return fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&g.grupo===et&&!esDevolucionFase(o.fase,f)})||''}
+function cerrarCentro(oid,c,motivo){const o=S.ordenes.find(x=>x.id===oid);if(!o)return false;
+  if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return false}
+  const f=faltanteCierre(o,c);motivo=String(motivo||'').trim();
+  if(f.faltan>0&&!motivoValido('cierre',motivo)){alert('Cerrar con faltante exige un motivo de la tabla 15 (uso «cierre con faltante»).'+(motivosDe('cierre').length?'':'\nLa tabla está vacía: cárgalos en Configuración → Órdenes y materiales → 15 · Motivos.'));return false}
+  const prev=cierresDe(oid)[c];if(prev){const a=S.avance[oid];a.cierresHist=a.cierresHist||[];a.cierresHist.push(Object.assign({centro:c},prev))} // nada se pierde
+  const reg={pz:f.hechas,cant:f.cant,faltan:f.faltan,tallas:f.faltan>0?faltanteTallas(o,c):null,motivo,u:quienFirma(),ts:new Date().toISOString()};
+  cierresDe(oid)[c]=reg;
+  const a=S.avance[oid];a.centros=a.centros||{};a.centros[c]=f.hechas; // el paso queda en lo que realmente salió
+  registrarAuditoria('cierre',o,nCen(c)+' · '+num(f.hechas)+' de '+num(f.cant),f.faltan?('cerrado con '+num(f.faltan)+' de faltante'):'cerrado completo',motivo,false);
+  bitacora('Orden cerrada en '+nCen(c)+' · '+o.op+': salieron '+num(f.hechas)+' de '+num(f.cant)+(f.faltan?' · faltan '+num(f.faltan)+' · '+motivo:'')+' · la fase NO cambia ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();return true}
+function mCerrarCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  const f=faltanteCierre(o,c);const sig=centroSiguiente(o,c);
+  if(!f.faltan){if(cerrarCentro(oid,c,'')){try{cerrar()}catch(e){}render();alert('Listo: la orden queda terminada en '+nCen(c)+(sig?'. Pasa a '+nCen(sig)+'.':'.')+' La fase la actualiza el supervisor.')}return}
+  const ft=faltanteTallas(o,c);const ms=motivosDe('cierre');
+  abrir(`<h3>Terminé esta orden en ${esc(nCen(c))}</h3><div class="body" style="font-size:17px">
+   <p>${whCell(o)} · ${esc(nombreCat(K(o.cat)))}</p>
+   <div class="warn" style="font-size:18px"><b>Faltan ${num(f.faltan)} prendas</b>: salieron ${num(f.hechas)} de ${num(f.cant)}.</div>
+   ${ft?`<table style="font-size:16px;margin-top:10px"><thead><tr><th>Talla</th><th class="num">Faltan</th></tr></thead><tbody>${Object.entries(ft).map(([t,q])=>`<tr><td><b>${esc(t)}</b></td><td class="num">${num(q)}</td></tr>`).join('')}</tbody></table>`:''}
+   <label style="margin-top:10px">Motivo del faltante <span class="mut">(tabla 15, uso «cierre con faltante»)</span></label>${selMotivoHTML('cc-m','cierre')}
+   ${ms.length?'':'<div class="warn" style="font-size:15px;margin-top:8px">La tabla 15 no tiene motivos de «cierre con faltante»: cárgalos en Configuración → Órdenes y materiales antes de cerrar con faltante.</div>'}
+   <p class="mut" style="font-size:15px;margin-top:10px">Al cerrar, el paso queda terminado${sig?' y la orden pasa a <b>'+esc(nCen(sig))+'</b> con las '+num(f.hechas)+' prendas que salieron':''}. <b>La fase no cambia</b>: queda para el supervisor.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="cerrarCentroDesdeModal('${oid}','${c}')">Terminé esta orden</button></div>`)}
+function cerrarCentroDesdeModal(oid,c){const m=String((document.getElementById('cc-m')||{}).value||'').trim();
+  if(cerrarCentro(oid,c,m)){try{cerrar()}catch(e){}render()}}
+function terminarOrdenCentro(tid,oid,c){if(tid&&oid){const t=tramosDe(oid).find(x=>x.id===tid);if(t&&t.pz===undefined&&!guardarTramo(tid,oid))return}
+  mCerrarCentro(oid,c)}
+function reabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
+  if(!(puede('programa')||puede('reprogramar'))){alert('Solo el supervisor reabre un cierre.');return}
+  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.</p>
+   <label>Motivo (tabla 15, uso «cierre con faltante»)</label>${selMotivoHTML('rc-m','cierre')}</div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarReabrirCierre('${oid}','${c}')">Reabrir el paso</button></div>`)}
+function confirmarReabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
+  const m=String((document.getElementById('rc-m')||{}).value||'').trim();
+  if(!motivoValido('cierre',m)){alert('Elige el motivo de la tabla 15 (uso «cierre con faltante»).');return}
+  if(!confirm('¿Reabrir '+nCen(c)+' de '+o.op+'? Vuelve a la cola del centro.'))return;
+  ci.reabierto={u:quienFirma(),ts:new Date().toISOString(),motivo:m};
+  registrarAuditoria('cierre',o,'cerrada en '+nCen(c)+' ('+num(ci.pz)+' de '+num(ci.cant)+')','reabierta',m,true);
+  bitacora('Cierre reabierto · '+o.op+' en '+nCen(c)+' · '+m+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render()}
+/* cerradas cuya fase todavía no se movió: el supervisor la mueve con la regla de secuencia de siempre */
+function cierresSinFase(){const out=[];S.ordenes.filter(abierta).forEach(o=>{const cs=((S.avance[o.id]||{}).cierres)||{};const fe=faseEstado(o.fase,o);
+    Object.keys(cs).forEach(c=>{const ci=cierreCentro(o,c);if(!ci)return;if((fe.hechos||[]).includes(c))return;out.push({o,c,cierre:ci})})});
+  return out.sort((a,b)=>(a.cierre.ts||'')<(b.cierre.ts||'')?1:-1)}
+function ultimoCierre(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};let mejor=null,cen=null;
+  Object.keys(cs).forEach(c=>{const ci=cierreCentro(o,c);if(!ci)return;if(!mejor||(ci.ts||'')>(mejor.ts||'')){mejor=ci;cen=c}});
+  return mejor?{centro:cen,cierre:mejor}:null}
+function tagCierre(o){const u=ultimoCierre(o);if(!u)return '';const fe=faseEstado(o.fase,o);
+  const sinFase=!(fe.hechos||[]).includes(u.centro);
+  return ` <span class="tag ${sinFase?'t-aviso':'t-ok'}" title="${esc(u.cierre.u||'')} · ${new Date(u.cierre.ts).toLocaleString('es-EC')}${u.cierre.faltan?' · faltan '+num(u.cierre.faltan)+' ('+esc(u.cierre.motivo||'')+')':''}">terminada en ${esc(nCen(u.centro))}${sinFase?' · fase sin actualizar':''}</span>`}
+function cierresSinFaseHTML(){const l=cierresSinFase();if(!l.length)return '';
+  return `<div class="panel" style="border:2px solid var(--aviso)"><h3>Terminadas en un centro con la fase sin actualizar <span class="note">${l.length} · el piso cerró el paso; la fase la mueves tú, con la regla de secuencia y la auditoría de siempre</span></h3><div class="body">
+   <table><thead><tr><th>Cuándo</th><th>Orden</th><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Siguiente</th><th></th></tr></thead><tbody>
+   ${l.map(({o,c,cierre})=>{const sig=centroSiguiente(o,c);const fs=faseSugeridaTrasCierre(o,c);
+     return `<tr><td style="white-space:nowrap">${new Date(cierre.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nCen(c))}</td><td class="num">${num(cierre.pz)} de ${num(cierre.cant)}</td><td class="num">${cierre.faltan?'<span class="tag t-alerta">'+num(cierre.faltan)+'</span>':'—'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(cierre.motivo||'')}</td><td>${sig?esc(nCen(sig)):'<span class="mut">última etapa</span>'}</td>
+      <td style="white-space:nowrap">${puedeFases()?`<button class="btn sm" onclick="mCambiarFase('${o.id}'${fs?",'"+jsq(fs)+"'":''})">mover fase${fs?' → '+esc(faseNombre(fs)):''}</button> `:''}${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="reabrirCierre('${o.id}','${c}')">reabrir</button>`:''}</td></tr>`}).join('')}
+   </tbody></table></div></div>`}
+function cierresOrdenHTML(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};const ks=Object.keys(cs).filter(c=>cierreCentro(o,c));if(!ks.length)return '';
+  return `<h4 style="margin:12px 0 6px">Cerrada en estos centros</h4><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Quién · cuándo</th><th>Tallas que faltaron</th></tr></thead><tbody>
+   ${ks.map(c=>{const x=cs[c];return `<tr><td>${esc(nCen(c))}</td><td class="num">${num(x.pz)} de ${num(x.cant)}</td><td class="num">${x.faltan?'<span class="tag t-alerta">'+num(x.faltan)+'</span>':'—'}</td><td>${esc(x.motivo||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(x.u||'')} · ${new Date(x.ts).toLocaleString('es-EC')}</td><td class="mut" style="font-size:var(--fs-xs)">${x.tallas?Object.entries(x.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(' · '):'—'}</td></tr>`}).join('')}
+   </tbody></table>`}
+function listaParaEmpezar(o,c){const ant=centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;
+  const ac=((S.avance[o.id]||{}).centros)||{};if((ac[c]||0)>0)return null; // ya se empezó aquí
+  return {centro:ant,ci}}
+function tagListaEmpezar(o,c){const l=listaParaEmpezar(o,c);if(!l)return '';
+  return ' <span class="tag t-ok" title="salieron '+num(l.ci.pz)+' de '+num(l.ci.cant)+(l.ci.faltan?' · faltan '+num(l.ci.faltan)+' ('+esc(l.ci.motivo||'')+')':'')+'">lista para empezar · terminada en '+esc(nCen(l.centro))+' · '+new Date(l.ci.ts).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>'}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
   const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const pend=Math.max(0,o.cant-hechasPrev);const parc=permiteParcial(c);
@@ -3953,12 +4047,14 @@ function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
 /* dónde está la orden ahora: primer paso pendiente de la ruta, o sin liberar, o textil */
 function dondeEsta(o,P){if(!liberada(o,'tela'))return{k:'sin_liberar',n:'Sin liberar (planificación)'};const ro=(P.ordenes||{})[o.id]||{};const fe=faseEstado(o.fase,o);const a=S.avance[o.id]||{};const ac=a.centros||{};
   if(!liberada(o,'corte')){if(ro.bloqueo&&/tela|baño|tint/i.test(ro.bloqueo))return{k:'textil',n:'Textil: '+ro.bloqueo};return{k:'por_liberar_prod',n:'Textil lista · por liberar a producción'}}
-  const pend=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!fe.hechos.includes(p.centro)&&(ac[p.centro]||0)<o.cant);
-  if(!pend.length)return{k:'fin',n:'Terminada en producción'};return{k:pend[0].centro,n:'En '+nCen(pend[0].centro)}}
+  const pend=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!pasoHecho(o,p.centro,fe));
+  if(!pend.length)return{k:'fin',n:'Terminada en producción'};
+  const u=ultimoCierre(o);if(u&&centroSiguiente(o,u.centro)===pend[0].centro)return{k:pend[0].centro,n:'Esperando en '+nCen(pend[0].centro)};
+  return{k:pend[0].centro,n:'En '+nCen(pend[0].centro)}}
 /* pestaña "Carga que viene" del centro: qué le va a llegar y de dónde, más lo programado del mes que aún no está liberado */
 function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);const PA=S.ordenes.length?programarTodo():{pro:[],ordenes:{}};
   const filas=[];S.ordenes.filter(abierta).forEach(o=>{const c=cens.find(x=>(o.ruta||[]).some(p=>p.centro===x));if(!c)return;const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};
-    if(fe.hechos.includes(c)||(ac[c]||0)>=o.cant)return;const d=dondeEsta(o,P);if(d.k===c||d.k==='fin')return;const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};const pasoA=((PA.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
+    if(pasoHecho(o,c,fe))return;const d=dondeEsta(o,P);if(d.k===c||d.k==='fin')return;const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};const pasoA=((PA.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
     filas.push({o,c,d,ini:paso.ini||null,iniTodo:pasoA.ini||null,pz:o.cant-(ac[c]||0)})});
   const grupos={};filas.forEach(f=>{grupos[f.d.n]=grupos[f.d.n]||{n:0,pz:0,f:[]};grupos[f.d.n].n++;grupos[f.d.n].pz+=f.pz;grupos[f.d.n].f.push(f)});
   const ordenG=k=>/^Sin liberar/.test(k)?0:/^Textil/.test(k)?1:/por liberar/.test(k)?2:3+(ordenPaso((Object.values(grupos[k].f)[0]||{}).d.k)||0);
@@ -4110,7 +4206,7 @@ function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
 let CAPD={sel:null,cen:'',cmp:false,q:''};let CAPM=null;
 const CAP_TEXTIL={tej:'Tejeduría',tin:'Tintorería'};
 function nombreCentroCap(c){return CAP_TEXTIL[c]||nCen(c)}
-function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);const hechas=fe.hechos.includes(c)?o.cant:(ac[c]||0);const pend=Math.max(0,o.cant-hechas);if(!pend)return 0;
+function minPendCentro(o,c){const a=S.avance[o.id]||{};const ac=a.centros||{};const fe=faseEstado(o.fase,o);if(pasoCerrado(o,c))return 0;const hechas=fe.hechos.includes(c)?o.cant:(ac[c]||0);const pend=Math.max(0,cantCentro(o,c)-hechas);if(!pend)return 0;
   const pt=(CE(c)||{}).medida==='puntadas'; // bordado: puntadas pendientes (el motor divide por cabezas de cada máquina; aquí la capacidad va en puntadas)
   return (o.ruta||[]).filter(p=>p.centro===c).reduce((x,p)=>{const t=(c==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;return x+pend*(pt?(+t||0):minPrenda(c,t))},0)}
 function ptDia(r,d){return capDia(r,d)*((+r.ppm>0?+r.ppm:(velBordado()||0))*(+r.cabezas||1))} // puntadas por día de una bordadora: min-máquina × ppm × cabezas (misma regla que minPrendaR)
@@ -4745,7 +4841,7 @@ function vReporteria(el){
       <p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Horas de baño programadas contra la capacidad semanal; debajo del nombre, baños y kg por semana.</p></div></div>`};
   const secPro=(sa)=>{const cens=sa.centros.filter(veCentro);if(!cens.length)return'';
     const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro));
-    const filas=[];ords.forEach(o=>{cens.forEach(c=>{if(!(o.ruta||[]).some(p=>p.centro===c))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase,o).hechos.includes(c)||(ac[c]||0)>=o.cant)return;filas.push({o,c,hechas:ac[c]||0,atraso:(P.ordenes[o.id]||{}).atraso})})});
+    const filas=[];ords.forEach(o=>{cens.forEach(c=>{if(!(o.ruta||[]).some(p=>p.centro===c))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(pasoHecho(o,c))return;filas.push({o,c,hechas:ac[c]||0,atraso:(P.ordenes[o.id]||{}).atraso})})});
     const pzPend=filas.reduce((a,f)=>a+(f.o.cant-f.hechas),0);const atras=filas.filter(f=>f.atraso).length;
     const pzSem=w=>(P.pro||[]).filter(x=>cens.includes(x.centro)&&lunesDe(x.dia)===w).reduce((a,x)=>a+(x.pz||0),0);
     const realSem=w=>(S.turnos||[]).filter(t=>t.d&&lunesDe(t.d)===w&&recs.some(r=>r.id===t.rec)).reduce((a,t)=>a+(t.pz||0),0);
@@ -4760,7 +4856,7 @@ function vReporteria(el){
       let nOrd=0,pend=0,atras=0,u='';
       if(c.area==='tej'){const l=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida));nOrd=l.length;pend=l.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);u='kg';atras=l.filter(o=>(P.ordenes[o.id]||{}).atraso).length}
       else if(c.area==='tin'){const l=ords.filter(o=>etapas(o).tin&&!((S.avance[o.id]||{}).calidadOk||faseEstado(o.fase,o).lista));nOrd=l.length;pend=(P.banos||[]).filter(b=>!b.error).reduce((a,b)=>a+b.kg,0);u='kg';atras=(P.banos||[]).filter(b=>b.tarde).length}
-      else{ords.forEach(o=>{if(!(o.ruta||[]).some(p=>p.centro===c.id))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(faseEstado(o.fase,o).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant)return;nOrd++;pend+=o.cant-(ac[c.id]||0);if((P.ordenes[o.id]||{}).atraso)atras++});u='pz'}
+      else{ords.forEach(o=>{if(!(o.ruta||[]).some(p=>p.centro===c.id))return;const a=S.avance[o.id]||{},ac=a.centros||{};if(pasoHecho(o,c.id))return;nOrd++;pend+=cantCentro(o,c.id)-(ac[c.id]||0);if((P.ordenes[o.id]||{}).atraso)atras++});u='pz'}
       const p=pct(carga,cap);
       return `<tr><td><b>${esc(c.n)}</b> <span class="mut" style="font-size:var(--fs-xs)">${esc(AREAS[c.area]||c.area)}</span></td><td class="num">${nOrd}</td><td class="num">${num(pend)} ${u}</td><td class="num">${recs.length}</td><td class="num" style="${p>102?'color:var(--alerta);font-weight:600':''}">${p}%</td><td class="num" style="${atras?'color:var(--alerta);font-weight:600':''}">${atras}</td></tr>`}).join('');
     return `<div class="panel"><h3>Resumen de todos los procesos <span class="note">próximas ${REP.sem} semanas</span></h3><div class="body"><table><thead><tr><th>Centro</th><th class="num">Órdenes con trabajo</th><th class="num">Pendiente</th><th class="num">Recursos</th><th class="num">Ocupación</th><th class="num">Atrasadas</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="mut">Nada que mostrar para tu perfil.</td></tr>'}</tbody></table></div></div>`};
@@ -4872,7 +4968,7 @@ function vControl(el){
       <div><label>&nbsp;</label><label class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=!CTL.todo;render()">${CTL.todo?'todas las órdenes':'solo lo activo'}</label></div></div></div>
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
-  if(CTL.area==='fases'){cuerpo=solicitudesPisoHTML()+fasesCentralHTML(P)}else if(CTL.area==='tej'){
+  if(CTL.area==='fases'){cuerpo=cierresSinFaseHTML()+solicitudesPisoHTML()+fasesCentralHTML(P)}else if(CTL.area==='tej'){
     const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase,o).tejida;return{o,r,a,hecha}})
       .filter(x=>CTL.todo||!x.hecha).sort((x,y)=>(x.r.finTej||'9')<(y.r.finTej||'9')?-1:1);
     cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
@@ -4895,7 +4991,7 @@ function vControl(el){
     const asistencia=(!CTL.centro||CTL.centro==='modulos')?`<div class="panel"><h3>Asistencia de hoy por módulo <span class="note">manda sobre las personas teóricas en la capacidad del día</span></h3><div class="body"><div class="chips">
       ${mods.map(r=>{const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===h);return `<span class="chip" style="cursor:default">${esc(r.n)} <input type="number" min="0" max="60" style="width:48px;margin-left:6px;padding:2px 4px" value="${t?t.pers:''}" placeholder="${r.pers}" ${ok?'':'disabled'} onchange="setAsist('${r.id}',this.value)"></span>`}).join('')}</div>
       <div style="margin-top:10px"><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mParo()">Registrar paro</button> ${(S.paros||[]).filter(p=>p.d===h).length?`<span class="mut" style="font-size:var(--fs-s)">${(S.paros||[]).filter(p=>p.d===h).length} paros hoy · ${num((S.paros||[]).filter(p=>p.d===h).reduce((a,p)=>a+ +p.min,0))} min</span>`:''}</div></div></div>`:'';
-    cuerpo=asistencia+cens.map(c=>{const ok=puedeCentro(c.id);const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=faseEstado(o.fase,o).hechos.includes(c.id)||(ac[c.id]||0)>=o.cant;
+    cuerpo=asistencia+cens.map(c=>{const ok=puedeCentro(c.id);const lista=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c.id)&&filtro(o)).map(o=>{const a=S.avance[o.id]||{},ac=a.centros||{};const hecho=pasoHecho(o,c.id);
         const r=P.ordenes[o.id]||{};const paso=(r.pasos||[]).find(p=>p.centro===c.id)||{};const enHoy=hoyOps[c.id+'|'+o.op]||0;return{o,a,ac,hecho,paso,enHoy}})
         .filter(x=>CTL.todo||(!x.hecho&&(x.enHoy||(x.paso.ini&&x.paso.ini<=dsum(h,1))||(x.ac[c.id]||0)>0)));
       if(!lista.length&&!CTL.centro)return'';
@@ -4904,12 +5000,19 @@ function vControl(el){
        ${grpMap('ctl',lista.slice(0,200),11,x=>x.o,({o,ac,hecho,paso,enHoy})=>{const v=hecho?o.cant:(ac[c.id]||0);const seg=((S.avance[o.id]||{}).seg||{})[c.id]||0;return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td>
          <td><select style="width:auto;max-width:150px;font-size:var(--fs-xs)" ${puede('avance')?'':'disabled'} onchange="setFase('${o.id}',this.value)"><option value="">—</option>${FASES.map(f=>`<option value="${esc(f)}" ${o.fase===f?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
          <td style="font-size:var(--fs-xs)">${paso.rec?esc(nRec(paso.rec))+((o.recursoFijo||{})[c.id]?' ⚲':''):'—'}</td><td class="num">${enHoy?num(enHoy):'<span class="mut">·</span>'}</td>
-         <td class="num">${hecho?`<span class="tag t-ok">${num(o.cant)}</span>`:!liberadaCorte(o)?`<span class="tag t-alerta" title="${esc(faltaLiberar(o).join(', ')||'falta la firma de liberación')}">sin liberar</span>`:`<input type="number" min="0" max="${o.cant}" style="width:70px" value="${ac[c.id]||''}" ${ok?'':'disabled'} onchange="setAvance('${o.id}','${c.id}',this.value,${o.cant})">`}</td>
+         <td class="num">${celdaPisoAvanceHTML(o,c.id,ok,hecho)}</td
          <td class="num"><input type="number" min="0" style="width:56px" value="${seg||''}" title="segundas" ${ok?'':'disabled'} onchange="setSeg('${o.id}','${c.id}',this.value)"></td>
          <td class="num">${barra(v,o.cant)}</td><td>${o.fecha}</td></tr>`}).join('')||'<tr><td colspan="11" class="mut">Nada activo.</td></tr>'}</tbody></table></div></div>`}).join('')||'<div class="panel"><div class="empty">Nada activo en planta con este filtro.</div></div>';
   }
   el.innerHTML=cab+cuerpo;
 }
+/* celda de avance en Control de piso: si el paso está cerrado, lo dice (con el faltante) y el supervisor puede reabrir */
+function celdaPisoAvanceHTML(o,c,ok,hecho){const ci=cierreCentro(o,c);
+  if(ci)return `<span class="tag ${ci.faltan?'t-aviso':'t-ok'}" title="${esc(ci.u||'')} · ${new Date(ci.ts).toLocaleString('es-EC')}${ci.faltan?' · '+esc(ci.motivo||''):''}">cerrada ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' · faltan '+num(ci.faltan):''}</span>${(puede('programa')||puede('reprogramar'))?` <button class="btn ghost sm" onclick="reabrirCierre('${o.id}','${c}')">reabrir</button>`:''}`;
+  if(hecho)return `<span class="tag t-ok">${num(o.cant)}</span>`;
+  if(!liberadaCorte(o))return `<span class="tag t-alerta" title="${esc(faltaLiberar(o).join(', ')||'falta la firma de liberación')}">sin liberar</span>`;
+  const cant=cantCentro(o,c);const ac=((S.avance[o.id]||{}).centros)||{};
+  return `<input type="number" min="0" max="${cant}" style="width:70px" value="${ac[c]||''}" ${ok?'':'disabled'} onchange="setAvance('${o.id}','${c}',this.value,${cant})">${cant!==(+o.cant||0)?`<div class="mut" style="font-size:var(--fs-xs)">de ${num(cant)} que salieron antes</div>`:''}`}
 function setAsist(rid,v){const h=hoy();S.turnos=S.turnos||[];const id=rid+'|'+h;let t=S.turnos.find(x=>x.id===id);if(v===''){S.turnos=S.turnos.filter(x=>x.id!==id)}else{if(!t){t={id,rec:rid,d:h};S.turnos.push(t)}t.pers=+v}
   S.turnos=S.turnos.filter(x=>x.d>=dsum(h,-90));bitacora('Asistencia '+nRec(rid)+' '+h+': '+(v===''?'sin dato':v));save();render()}
 function setSeg(oid,c,v){if(!S.avance[oid])S.avance[oid]={};const a=S.avance[oid];if(!a.seg)a.seg={};a.seg[c]=Math.max(0,+v||0);save()}

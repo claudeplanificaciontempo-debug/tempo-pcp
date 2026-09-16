@@ -2312,6 +2312,103 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    TAB.centro=null;TAB.rec=null;TAB.q='';TRAMO={paso:null,id:null,oid:null};
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("P1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · cerrar la orden en el centro aunque falten prendas */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const bakMot=JSON.stringify(S.params.motivos||null);
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];
+   __check("CC0: la tabla 15 tiene el uso «cierre con faltante» y NO viene sembrado",USOS_MOTIVO.some(u=>u[0]==='cierre')&&motivosDe('cierre').length===0);
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='corte')&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
+   const mk=op=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=200;o.fase='4CD Ensamble';delete o.tallasPedido;delete o.programa;
+     o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:0.5}];S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oC=mk('WH/CIERRE-1');PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};
+   // 3.1 · con faltante y sin motivo NO cierra
+   S.avance[oC.id]={centros:{corte:180}};
+   {const n=alerts.length;const ok=cerrarCentro(oC.id,'corte','');
+    __check("CC1: cerrar con faltante y sin motivo de la tabla 15 no cierra y lo dice",ok===false&&!pasoCerrado(oC,'corte')&&alerts.length>n&&/motivo/i.test(alerts[alerts.length-1]));}
+   S.params.motivos.push({motivo:'Merma de corte',uso:'cierre'});
+   {const ok=cerrarCentro(oC.id,'corte','Inventado');
+    __check("CC1: el motivo tiene que salir de la tabla 15",ok===false&&!pasoCerrado(oC,'corte'));}
+   {const ok=cerrarCentro(oC.id,'corte','Merma de corte');const ci=cierreCentro(oC,'corte');
+    __check("CC1: con motivo cierra y guarda unidades, faltante, quién y cuándo",ok===true&&!!ci&&ci.pz===180&&ci.cant===200&&ci.faltan===20&&ci.motivo==='Merma de corte'&&!!ci.u&&!!ci.ts);
+    __check("CC2: queda en auditoría",auditoriaTodo().some(x=>x.tipo==='cierre'&&x.oid===oC.id));
+    __check("CC2: el paso queda terminado para el motor y para las listas",pasoHecho(oC,'corte')&&!pasosPendPro(oC).some(x=>x.centro==='corte')&&minPendCentro(oC,'corte')===0);}
+   // 3.2 · sale de la cola del centro y el recurso queda libre
+   {PLAN=null;PLAN_ALL=null;const P=programar();const filas=filasDeCentros(['corte'],P,lunesDe(hoy()),dsum(lunesDe(hoy()),6),'');
+    __check("CC2: la orden sale de la cola de corte",!colaCentro('corte',filas).some(f=>f.o.id===oC.id));}
+   // 3.3 · los centros siguientes trabajan contra lo que salió
+   __check("CC3: el siguiente centro trabaja contra lo que realmente salió (180, no 200)",cantCentro(oC,'modulos')===180&&cantCentro(oC,'corte')===200);
+   __check("CC3: el faltante se ve en la ficha de la orden",/Cerrada en estos centros/.test(cierresOrdenHTML(oC))&&cierresOrdenHTML(oC).includes('Merma de corte'));
+   {page='avance';AV.mes=hoy().slice(0,7);render();const ha=document.getElementById('p-avance').innerHTML;
+    __check("CC3: el reporte de avance tiene el panel de cerradas con faltante",/Cerradas con faltante/.test(ha)&&ha.includes(esc(oC.op))&&/Merma de corte/.test(ha)&&cierresConFaltante().some(x=>x.o.id===oC.id));}
+   {page='control';CTL.area='pro';CTL.q='';const bakTodo=CTL.todo;CTL.todo=true;render();const h=document.getElementById('p-control').innerHTML;
+    __check("CC3: Control de piso muestra el cierre con el faltante y el botón de reabrir",h.includes(esc(oC.op))&&/cerrada 180 de 200/.test(h)&&/faltan 20/.test(h)&&h.includes('reabrirCierre('));CTL.todo=bakTodo;}
+   // 3.5 · la fase NO cambia y la orden aparece lista en el siguiente centro
+   __check("CC5: la fase no cambia sola al cerrar",oC.fase==='4CD Ensamble');
+   __check("CC5: en el siguiente centro aparece lista para empezar, con dónde terminó y las prendas que salieron",/lista para empezar/.test(tagListaEmpezar(oC,'modulos'))&&/terminada en /.test(tagListaEmpezar(oC,'modulos')));
+   __check("CC5: en las listas dice «terminada en … · fase sin actualizar»",/terminada en /.test(whCell(oC))&&/fase sin actualizar/.test(whCell(oC)));
+   __check("CC5: «Dónde está» dice que espera en el siguiente centro",(()=>{PLAN=null;const P=programar();const d=dondeEsta(oC,P);return d.k==='modulos'&&/Esperando en /.test(d.n)})());
+   {const it=pendientesHoy().find(x=>x.k==='cierreSinFase');
+    __check("CC5: sale en Hoy → Pendientes del supervisor",!!it&&it.n>=1);
+    page='control';CTL.area='fases';render();const h=document.getElementById('p-control').innerHTML;
+    __check("CC5: el panel del supervisor la lista con botón para mover la fase y para reabrir",/Terminadas en un centro con la fase sin actualizar/.test(h)&&h.includes(esc(oC.op))&&/mover fase/.test(h)&&/reabrirCierre\(/.test(h));}
+   {const oM=mk('WH/CIERRE-3');S.avance[oM.id]={centros:{}};PLAN=null;PLAN_ALL=null;
+    const iniAntes=((programar().ordenes[oM.id]||{}).pasos||[]).find(x=>x.centro==='modulos')||{};
+    S.avance[oM.id].centros.corte=180;cerrarCentro(oM.id,'corte','Merma de corte');PLAN=null;PLAN_ALL=null;
+    const P2=programar();const psM=((P2.ordenes[oM.id]||{}).pasos||[]).find(x=>x.centro==='modulos')||{};
+    __check("CC5: al cerrar corte, el motor deja de pedir tiempo ahí y no retrasa el siguiente paso",minPendCentro(oM,'corte')===0&&!!psM.ini&&(!iniAntes.ini||psM.ini<=iniAntes.ini),JSON.stringify({antes:iniAntes.ini,despues:psM.ini}));
+    __check("CC5: el siguiente centro la ve en su cola, lista para empezar",(()=>{const f=filasDeCentros(['modulos'],P2,lunesDe(hoy()),dsum(lunesDe(hoy()),6),'');return colaCentro('modulos',f).some(x=>x.o.id===oM.id)})());
+    S.ordenes=S.ordenes.filter(x=>x!==oM);delete S.avance[oM.id];PLAN=null;PLAN_ALL=null}
+   // 3.4 · reabrir: solo supervisor, con motivo y auditoría
+   {const admin=PERFIL;PERFIL={id:'u1',rol:'tablet'};const n=alerts.length;reabrirCierre(oC.id,'corte');
+    __check("CC4: el operario no puede reabrir un cierre",alerts.length>n&&/supervisor/i.test(alerts[alerts.length-1])&&pasoCerrado(oC,'corte'));
+    PERFIL=admin;reabrirCierre(oC.id,'corte');const m=document.getElementById('rc-m');if(m)m.value='Merma de corte';
+    const nA=auditoriaTodo().length;confirmarReabrirCierre(oC.id,'corte');
+    __check("CC4: el supervisor reabre con motivo, queda auditado y vuelve a la cola",!pasoCerrado(oC,'corte')&&auditoriaTodo().length===nA+1&&!pasoHecho(oC,'corte'));
+    __check("CC4: nada se pierde: el cierre reabierto queda con quién y por qué",!!((S.avance[oC.id]||{}).cierres||{}).corte.reabierto);}
+   // 3.1 · cierre completo: sin preguntar
+   {S.avance[oC.id].centros.corte=200;const ok=cerrarCentro(oC.id,'corte','');const ci=cierreCentro(oC,'corte');
+    __check("CC1: si lo registrado es igual a la cantidad, cierra sin pedir motivo",ok===true&&!!ci&&ci.faltan===0&&ci.pz===200);}
+   // 3.1 · el botón vive en «Confirma lo que salió»
+   {const oT=mk('WH/CIERRE-2');PLAN=null;PLAN_ALL=null;
+    iniciarTramo(oT.id,'modulos',rec);const tr=tramosDe(oT.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-30*6e4).toISOString();terminarTramo(tr.id,oT.id);
+    const h=flujoTramoHTML('modulos',rec,[]);
+    __check("CC1: «Confirma lo que salió» tiene el botón de terminar la orden en el centro",/Terminé esta orden en mi centro/.test(h)&&h.includes("terminarOrdenCentro('"+tr.id));
+    setTallaTramoVal(tr.id,oT.id,'(total)',150);terminarOrdenCentro(tr.id,oT.id,'modulos');
+    const m2=document.getElementById('cc-m');if(m2)m2.value='Merma de corte';cerrarCentroDesdeModal(oT.id,'modulos');
+    const ci2=cierreCentro(oT,'modulos');
+    __check("CC1: el tramo se guarda primero y después se cierra el paso con su faltante",tramosDe(oT.id)[0].pz===150&&!!ci2&&ci2.pz===150&&ci2.faltan===50&&pasoHecho(oT,'modulos'));
+    S.ordenes=S.ordenes.filter(x=>x!==oT);delete S.avance[oT.id];TRAMO={paso:null,id:null,oid:null}}
+   S.ordenes=S.ordenes.filter(o=>o!==oC);delete S.avance[oC.id];
+   const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;CTL.area='pro';page='ordenes';render();
+   __check("CC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · las tres partes entrando como operario de tablet (no admin) */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const oO=JSON.parse(JSON.stringify(base));oO.id=uid();oO.op='WH/MO/28513';oO.estado='plan';oO.cant=100;delete oO.tallasPedido;delete oO.programa;oO.ruta=[{centro:'modulos',t:5}];S.ordenes.push(oO);delete S.avance[oO.id];
+   if(!Array.isArray(S.params.motivos))S.params.motivos=[];const hayM=motivosDe('cierre').length;if(!hayM)S.params.motivos.push({motivo:'Merma de confección',uso:'cierre'});
+   S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec};
+   PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};TRAMO={paso:null,id:null,oid:null};TAB.centro='modulos';TAB.rec=rec;TAB.q='';PLAN=null;PLAN_ALL=null;
+   __check("OP: el operario entra a Mi centro y solo ve su página",esOperario()&&vePagina('tablet')&&!vePagina('ordenes')&&regHechoOk('modulos'));
+   {TAB.q='28513';const h=tabletBuscadorHTML('modulos',[{o:oO,hechas:0}],rec);
+    __check("OP (parte 2): busca la WH por el número y le sale la tarjeta con INICIO",h.includes(esc(oO.op))&&h.includes('>INICIO<'));TAB.q=''}
+   iniciarTramo(oO.id,'modulos',rec);const trO=tramosDe(oO.id).find(x=>!x.fin);trO.ini=new Date(Date.now()-60*6e4).toISOString();terminarTramo(trO.id,oO.id);
+   {const h=flujoTramoHTML('modulos',rec,[]);
+    __check("OP (parte 2): sin tallas ve la fila Total para registrar",/>Total</.test(h)&&h.includes('setTallaTramoVal('));
+    __check("OP (parte 3): ve el botón de terminar la orden en su centro",/Terminé esta orden en mi centro/.test(h));}
+   setTallaTramoVal(trO.id,oO.id,'(total)',80);await __p(40);
+   terminarOrdenCentro(trO.id,oO.id,'modulos');
+   {const m=document.getElementById('cc-m');if(m)m.value=(motivosDe('cierre')[0]||{}).motivo||'';cerrarCentroDesdeModal(oO.id,'modulos');await __p(60);
+    const ci=cierreCentro(oO,'modulos');
+    __check("OP (parte 3): el operario cierra su paso con faltante y queda registrado",!!ci&&ci.pz===80&&ci.faltan===20&&!!ci.motivo&&pasoHecho(oO,'modulos'));
+    __check("OP (parte 1): todo eso se guardó sin error de permisos",!SAVE_ERR,SAVE_ERR?JSON.stringify(SAVE_ERR.errs):'');
+    __check("OP (parte 3): la fase no cambió sola",oO.fase===base.fase);}
+   PERFIL=adminP;if(!hayM)S.params.motivos=S.params.motivos.filter(m=>m.motivo!=='Merma de confección');
+   S.ordenes=S.ordenes.filter(o=>o!==oO);delete S.avance[oO.id];
+   TAB.centro=null;TAB.rec=null;TAB.q='';TRAMO={paso:null,id:null,oid:null};window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("OP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
