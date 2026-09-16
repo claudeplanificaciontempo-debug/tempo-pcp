@@ -1111,7 +1111,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -2751,6 +2751,38 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>![oA,oB,oC,oD,oE].includes(o));[oA,oB,oC,oD,oE].forEach(o=>delete S.avance[o.id]);
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("SQ sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* D · reglas de ruta: vista previa, respeto a lo editado a mano y auditoría */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const bakR=JSON.stringify(S.params.reglasRuta||null);S.params.reglasRuta=[];
+   const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
+   const mk=(op,extra)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=20;o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:0.5}];delete o.rutaEditada;delete o.rutaConf;delete o.programa;Object.assign(o,extra||{});S.ordenes.push(o);delete S.avance[o.id];return o};
+   const fam=famDeOrden(base);
+   const oR1=mk('WH/REG-1'),oR2=mk('WH/REG-2'),oMan=mk('WH/REG-MAN',{rutaEditada:[{ts:new Date().toISOString(),u:'alguien',motivo:'a mano'}]});
+   const oYa=mk('WH/REG-YA',{ruta:[{centro:'corte',t:1},{centro:'plancha',t:2},{centro:'empaque',t:0.5}]});
+   __check("DR0: la tabla de reglas arranca VACÍA (las reglas reales las carga la usuaria)",reglasRuta().length===0);
+   addReglaRuta();const r=reglasRuta()[0];
+   setReglaRuta(r.id,'familia',fam);setReglaRuta(r.id,'subarea','plancha');setReglaRuta(r.id,'pos','antes');setReglaRuta(r.id,'ref','empaque');
+   __check("DR1: una regla nueva nace APAGADA: no toca nada hasta que la enciendas",r.activa===false&&previaReglasRuta().filas[0].aplica.length===0);
+   setReglaRuta(r.id,'activa',true);
+   {const pv=previaReglasRuta();const f=pv.filas[0];
+    __check("DR2: la vista previa dice a cuántas órdenes afecta, sin tocar ninguna",f.aplica.some(o=>o.op==='WH/REG-1')&&f.aplica.some(o=>o.op==='WH/REG-2')&&!(oR1.ruta||[]).some(x=>x.centro==='plancha'));
+    __check("DR2: las que ya tienen esa sub-área no se cuentan",f.yaTiene>=1&&!f.aplica.some(o=>o.op==='WH/REG-YA'));
+    __check("DR2: las rutas editadas a mano quedan APARTE, no se aplican",f.manual>=1&&!f.aplica.some(o=>o.op==='WH/REG-MAN')&&pv.manual.some(o=>o.op==='WH/REG-MAN'));}
+   {const h=reglasRutaHTML();
+    __check("DR3: la pantalla muestra la tabla, la previa y la lista de las editadas a mano",/Reglas para agregar sub-áreas a la ruta/.test(h)&&/Aplicar a /.test(h)&&/editada a mano/.test(h)&&h.includes(esc('WH/REG-MAN')));}
+   {const nAud=auditoriaTodo().length;const nBit=S.bitacora.length;
+    aplicarReglasRuta();
+    const i1=(oR1.ruta||[]).findIndex(x=>x.centro==='plancha');const iE=(oR1.ruta||[]).findIndex(x=>x.centro==='empaque');
+    __check("DR4: al aplicar, la sub-área entra en el lugar pedido (antes de empaque)",i1>=0&&iE>i1);
+    __check("DR4: la orden editada a mano NO se tocó",!(oMan.ruta||[]).some(x=>x.centro==='plancha'));
+    __check("DR4: cada cambio de ruta queda en auditoría y en la bitácora",auditoriaTodo().length>=nAud+2&&S.bitacora.length>nBit&&auditoriaTodo().some(x=>x.tipo==='ruta'&&/regla de ruta/.test(x.motivo||'')));
+    __check("DR4: y queda registrado en el historial de ruta de la orden",(oR1.rutaEditada||[]).some(x=>/regla de ruta/.test(x.motivo||'')));}
+   {const pv2=previaReglasRuta();
+    __check("DR5: volver a aplicar no duplica el paso",pv2.filas[0].aplica.length===0&&(oR1.ruta||[]).filter(x=>x.centro==='plancha').length===1);}
+   S.ordenes=S.ordenes.filter(o=>![oR1,oR2,oMan,oYa].includes(o));[oR1,oR2,oMan,oYa].forEach(o=>delete S.avance[o.id]);
+   const br=JSON.parse(bakR);if(br)S.params.reglasRuta=br;else delete S.params.reglasRuta;
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';ORDF.tab='ord';render();
+   __check("DR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

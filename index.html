@@ -680,7 +680,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 10:50';
+const APP_BUILD='2026-09-16 10:54';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4351,6 +4351,88 @@ let RUT={q:'',ref:null,ver:'pend'};
 function rutasTarjetaHTML(){const pd=rutasPorDefinir();const refs=Object.keys(refsPorDefinir()).length;
   const pz=pd.reduce((a,o)=>a+ +o.cant,0);
   return tarjetasResumenHTML([{id:'rut-pend',v:pd.length,k:'Faltan rutas por confirmar · '+refs+' referencias · '+num(pz)+' unidades',items:pd,porFam:true,cls:pd.length?'warn':''}])}
+/* ============ D · REGLAS DE RUTA: agregar sub-áreas de terminados a las rutas, desde una tabla editable ============ */
+/* Cada fila: familia (padre) + categoría (hija) + atributo → sub-área a insertar y dónde. Nada fijo en el código.
+   El atributo es un texto que se busca en la orden (producto, referencia, color o categoría): sirve para «denim»,
+   «prenda tinturada», etc. Mientras no se defina, la fila queda marcada y no se aplica. */
+const POS_REGLA=[['antes','antes de un paso'],['despues','después de un paso'],['fin','al final de la ruta']];
+function reglasRuta(){if(!Array.isArray(S.params.reglasRuta))S.params.reglasRuta=[];return S.params.reglasRuta}
+function addReglaRuta(){reglasRuta().push({id:uid(),familia:'',categoria:'',atributo:'',subarea:'plancha',pos:'antes',ref:'empaque',activa:false,nota:''});save();render()}
+function setReglaRuta(id,k,v){const r=reglasRuta().find(x=>x.id===id);if(!r)return;const antes=r[k];
+  r[k]=(k==='activa')?!!v:String(v||'').trim();
+  bitacora('Regla de ruta ['+(r.subarea||'?')+']: '+k+' '+(antes===''||antes==null?'—':antes)+' → '+(r[k]===''?'—':r[k])+' ('+quienFirma()+')');save();render()}
+function delReglaRuta(id){const r=reglasRuta().find(x=>x.id===id);if(!r)return;
+  if(!confirm('¿Quitar esta regla de ruta? No cambia ninguna ruta ya aplicada.'))return;
+  S.params.reglasRuta=reglasRuta().filter(x=>x.id!==id);bitacora('Regla de ruta quitada: '+(r.subarea||'?')+' ('+quienFirma()+')');save();render()}
+/* ¿esta orden cumple la regla? familia y categoría por nombre exacto; atributo, por texto en producto/ref/color/categoría */
+function ordenCumpleRegla(o,r){
+  if(r.familia&&famDeOrden(o)!==r.familia)return false;
+  if(r.categoria&&((K(o.cat)||{}).n||'')!==r.categoria)return false;
+  if(r.atributo){const t=normTxt([o.producto,o.ref,(C(o.color)||{}).n,nombreCat(K(o.cat)),o.op].filter(Boolean).join(' '));
+    if(!t.includes(normTxt(r.atributo)))return false}
+  return true}
+function rutaEditadaAMano(o){return !!(o.rutaEditada&&o.rutaEditada.length)||!!(o.rutaConf&&o.rutaConf.origen==='persona')}
+/* qué haría cada regla, sin tocar nada */
+function previaReglasRuta(){const out=[];const manual=[];
+  reglasRuta().forEach(r=>{const fila={r,aplica:[],yaTiene:0,manual:0,sinRef:0};
+    if(!r.activa||!r.subarea){out.push(fila);return}
+    S.ordenes.filter(abierta).forEach(o=>{
+      if(!ordenCumpleRegla(o,r))return;
+      if((o.ruta||[]).some(p=>p.centro===r.subarea)){fila.yaTiene++;return}
+      if(rutaEditadaAMano(o)){fila.manual++;if(manual.indexOf(o)<0)manual.push(o);return}
+      if(r.pos!=='fin'&&!(o.ruta||[]).some(p=>p.centro===r.ref)){fila.sinRef++;return}
+      fila.aplica.push(o)});
+    out.push(fila)});
+  return{filas:out,manual}}
+/* aplicar: inserta el paso, deja auditoría y nunca toca una ruta editada a mano */
+function aplicarReglasRuta(){if(!(puede('programa')||puede('ruta'))){alert('Tu perfil no cambia rutas.');return}
+  const p=previaReglasRuta();const n=p.filas.reduce((a,f)=>a+f.aplica.length,0);
+  if(!n){alert('No hay ninguna orden que cambiar con las reglas activas.');return}
+  if(!confirm('Se va a agregar la sub-área a '+n+' órdenes.\n\nLas rutas editadas a mano NO se tocan ('+p.manual.length+' quedan aparte para decidirlas una por una).\n¿Aplicar?'))return;
+  let hechas=0;
+  p.filas.forEach(f=>{const r=f.r;f.aplica.forEach(o=>{
+    const ru=(o.ruta||[]).slice();const t=+((CE(r.subarea)||{}).minEstandar)||0;
+    const paso={centro:r.subarea,t};
+    let i=ru.length;
+    if(r.pos!=='fin'){const j=ru.findIndex(x=>x.centro===r.ref);if(j>=0)i=(r.pos==='antes')?j:j+1}
+    const antes=ru.map(x=>x.centro).join(' → ');
+    ru.splice(i,0,paso);o.ruta=ru;
+    o.rutaEditada=o.rutaEditada||[];o.rutaEditada.push({ts:new Date().toISOString(),u:quienFirma(),motivo:'regla de ruta: '+nCen(r.subarea),etapa:'reglas de ruta'});
+    registrarAuditoria('ruta',o,antes,ru.map(x=>x.centro).join(' → '),'regla de ruta: '+nCen(r.subarea),false);
+    bitacora('Ruta '+o.op+': agregado '+nCen(r.subarea)+' por regla ('+antes+' → '+ru.map(x=>x.centro).join(' → ')+') ('+quienFirma()+')');
+    hechas++})});
+  PLAN=null;PLAN_ALL=null;save();render();
+  alert('Listo: '+hechas+' rutas actualizadas. Nada se borró: cada cambio quedó en la auditoría de ruta y en la bitácora.')}
+function reglasRutaHTML(){const rs=reglasRuta();const p=previaReglasRuta();
+  const fams=[...new Set(S.ordenes.filter(abierta).map(famDeOrden))].sort();
+  const cats=[...new Set(S.categorias.map(k=>k.n).filter(Boolean))].sort();
+  const subs=subAreasDe('terminados').length?subAreasDe('terminados'):S.centros.filter(c=>c.area==='pro').map(c=>c.id);
+  const cens=S.centros.filter(c=>c.area==='pro').map(c=>c.id);
+  const ok=puede('programa')||puede('ruta');
+  const total=p.filas.reduce((a,f)=>a+f.aplica.length,0);
+  return `<div class="panel"><h3>Reglas para agregar sub-áreas a la ruta <span class="note">${rs.length} reglas · la tabla manda: aquí no hay nada fijo en el código · se aplican solo al apretar el botón</span><span class="spacer"></span>${ok?`<button class="btn ghost sm" onclick="addReglaRuta()">+ Regla</button>`:''}</h3><div class="body">
+   <p class="lede" style="margin-top:0">Cada regla dice: <b>a qué órdenes</b> (familia, categoría y un atributo de texto) se les agrega <b>qué sub-área</b> y <b>en qué lugar</b> de la ruta. Primero mira la vista previa; nada cambia hasta que aprietes «Aplicar».</p>
+   <div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Activa</th><th>Familia</th><th>Categoría</th><th>Atributo (texto en producto, referencia, color o categoría)</th><th>Sub-área que se agrega</th><th>Dónde</th><th>Paso de referencia</th><th>Nota</th><th class="num">Afecta</th><th></th></tr></thead><tbody>
+   ${rs.map(r=>{const f=p.filas.find(x=>x.r.id===r.id)||{aplica:[],yaTiene:0,manual:0,sinRef:0};
+     return `<tr><td style="text-align:center"><input type="checkbox" ${r.activa?'checked':''} ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','activa',this.checked)"></td>
+      <td><select ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','familia',this.value)"><option value="">(cualquiera)</option>${fams.map(x=>`<option value="${esc(x)}" ${r.familia===x?'selected':''}>${esc(x)}</option>`).join('')}</select></td>
+      <td><select ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','categoria',this.value)"><option value="">(cualquiera)</option>${cats.map(x=>`<option value="${esc(x)}" ${r.categoria===x?'selected':''}>${esc(x)}</option>`).join('')}</select></td>
+      <td><input type="text" style="width:170px" value="${esc(r.atributo||'')}" placeholder="p. ej. denim" ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','atributo',this.value)"></td>
+      <td><select ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','subarea',this.value)">${subs.map(x=>`<option value="${x}" ${r.subarea===x?'selected':''}>${esc(nCen(x))}</option>`).join('')}</select></td>
+      <td><select ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','pos',this.value)">${POS_REGLA.map(([k,n])=>`<option value="${k}" ${r.pos===k?'selected':''}>${esc(n)}</option>`).join('')}</select></td>
+      <td>${r.pos==='fin'?'<span class="mut">—</span>':`<select ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','ref',this.value)">${cens.map(x=>`<option value="${x}" ${r.ref===x?'selected':''}>${esc(nCen(x))}</option>`).join('')}</select>`}</td>
+      <td><input type="text" style="width:150px" value="${esc(r.nota||'')}" ${ok?'':'disabled'} onchange="setReglaRuta('${r.id}','nota',this.value)"></td>
+      <td class="num">${!r.activa?'<span class="mut">apagada</span>':`<b>${f.aplica.length}</b>${f.yaTiene?` <span class="mut" title="ya tienen esa sub-área en la ruta">· ${f.yaTiene} ya la tienen</span>`:''}${f.manual?` <span class="tag t-aviso" title="rutas editadas a mano: no se tocan">${f.manual} a mano</span>`:''}${f.sinRef?` <span class="tag t-alerta" title="no tienen el paso de referencia en su ruta">${f.sinRef} sin el paso de referencia</span>`:''}`}</td>
+      <td>${ok?`<button class="btn ghost sm" onclick="delReglaRuta('${r.id}')">×</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin reglas. Agrega una con «+ Regla»: la tabla arranca vacía a propósito, las reglas reales las cargas tú.</td></tr>'}
+   </tbody></table></div>
+   <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    ${ok?`<button class="btn" ${total?'':'disabled'} onclick="aplicarReglasRuta()">Aplicar a ${total} ${total===1?'orden':'órdenes'}</button>`:''}
+    <span class="mut" style="font-size:var(--fs-s)">Las rutas editadas a mano nunca se pisan.</span></div>
+   ${p.manual.length?`<details style="margin-top:10px"><summary style="cursor:pointer"><b>${p.manual.length} órdenes con la ruta editada a mano</b> <span class="mut">· quedan fuera de las reglas: decídelas una por una</span></summary>
+     <div class="scroll" style="max-height:300px;margin-top:8px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Familia</th><th>Ruta actual</th><th></th></tr></thead><tbody>
+     ${p.manual.slice(0,200).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(famDeOrden(o))}</td><td>${pasosRutaDe(o).map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta</span>'}</td><td>${(puede('programa')||puede('ruta'))?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:''}</td></tr>`).join('')}
+     </tbody></table></div></details>`:''}
+  </div></div>`}
 function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
   const pend=rutasPorDefinir().filter(o=>matchBusq(o,q,'RUT.q'));
   const porRef={};pend.forEach(o=>{const r=refDe(o);(porRef[r]=porRef[r]||[]).push(o)});
@@ -4358,6 +4440,7 @@ function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
   const conf=S.ordenes.filter(o=>abierta(o)&&rutaConfirmada(o)&&matchBusq(o,q,'RUT.q'));
   const an=analizarRutasOdoo();
   return `${rutasTarjetaHTML()}
+  ${reglasRutaHTML()}
   <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
    <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
    ${grpSelHTML('rut')}
