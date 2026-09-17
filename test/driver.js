@@ -561,7 +561,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* órdenes sin WH (no lanzadas) y precio por prenda fuera de rango */
   {const antes=__R.errors.length;const rows0=window.__tareaRows;if(rows0){const H=rows0[0];const col=n=>H.indexOf(n);const fila=new Array(H.length).fill(null);fila[col('Proyecto')]='NOVIEMBRE 2026';fila[col('Cliente')]='CLIENTE PRUEBA';fila[col('ODC')]='3033';fila[col('Stilo')]='6446';fila[col('Categoría Padre')]='CAMISETAS';fila[col('Categoría Hija')]='Camiseta CR';fila[col('Color')]='BIRCH';fila[col('Fase')]='0Recetas Insumos';fila[col('Pedido')]=1091;fila[col('Total $')]=1190281;fila[col('Fecha Entrega')]=46342;
     const rows=[rows0[0],...rows0.slice(1,400),fila,...rows0.slice(400)];const p=planTarea(rows,'sinwh.xlsx');const o=p.ordenes.find(x=>x.sinLanzar&&x.cliente==='CLIENTE PRUEBA');
-    __check("sin WH: la fila sin número pero con cliente/fase es una orden, no un componente",p.sinLanzar>=1&&!!o&&o.id.startsWith('sl_')&&o.op.startsWith('SIN WH')&&o.cliente==='CLIENTE PRUEBA'&&o.cant===1091&&(o.fecha||'').startsWith('2026-'),JSON.stringify(o&&{id:o.id,op:o.op,fecha:o.fecha}));
+    __check("sin WH: la fila sin número pero con cliente/fase es una orden, no un componente",p.sinLanzar>=1&&!!o&&o.id.startsWith('sin_')&&o.op.startsWith('SIN WH')&&o.cliente==='CLIENTE PRUEBA'&&o.cant===1091&&(o.fecha||'').startsWith('2026-'),JSON.stringify(o&&{id:o.id,op:o.op,fecha:o.fecha}));
     __check("sin WH: entra al plan (abierta) pero no se libera ni se programa",o.estado==='plan'&&!liberada(o,'tela')&&!puedeLiberarA(o,'tela')&&faltaLiberarA(o,'tela').includes('sin lanzar en Odoo (sin WH)'));
     __check("precio raro: $1.091/pz se reporta y no se corrige",p.precioRaro.some(x=>x.op===o.op&&Math.abs(x.precio-1091)<1e-6)&&o.precio===1091,JSON.stringify(p.precioRaro));
     const p2=planTarea(rows,'sinwh.xlsx');__check("sin WH: el identificador provisional es estable entre cargas",p2.ordenes.find(x=>x.sinLanzar&&x.cliente==='CLIENTE PRUEBA').id===o.id);}
@@ -6024,6 +6024,110 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("P3: con la fila desmarcada, el archivo sí actualiza la fase (la tabla manda)",normFase(oT.fase)===normFase("2Planificacion"),oT.fase);
      camposConservados()[i].conservar=bak;ODOO=null;PLAN=null;PLAN_ALL=null}}
    __check("P2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
+  try{localStorage.__fase="clave unica"}catch(e){}
+  {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
+   /* K1 · la función */
+   __check("K1: con WH la clave es op:normFase(op)",claveOrden({op:" WH/MO/28300 "}).clave==="op:wh/mo/28300"&&claveOrden({op:"wh/mo/28300"}).clave==="op:wh/mo/28300"&&claveOrden({op:"WH / MO / 28300"}).clave==="op:wh/mo/28300");
+   __check("K1: sin WH la clave es sin:cliente|proyecto|stilo|color|ODC",claveOrden({op:"",cliente:"Fashion Club",proyecto:"NOVIEMBRE 2026",stilo:"8383",colorN:"Cadet Navy",odc:"3033"}).clave==="sin:fashionclub|noviembre2026|8383|cadetnavy|3033");
+   __check("K1: no lleva fecha ni cantidad: cambiarlas no cambia la clave",claveOrden({op:"",cliente:"A",proyecto:"P",stilo:"S",colorN:"C",odc:"1",fecha:"2026-01-01",cant:5}).clave===claveOrden({op:"",cliente:"A",proyecto:"P",stilo:"S",colorN:"C",odc:"1",fecha:"2026-12-31",cant:999}).clave);
+   __check("K1: ODC distinta = orden distinta (los 7 pares que Odoo fundía)",claveOrden({op:"",cliente:"A",proyecto:"P",stilo:"4238",colorN:"OLIVINE",odc:"3036"}).clave!==claveOrden({op:"",cliente:"A",proyecto:"P",stilo:"4238",colorN:"OLIVINE",odc:"3037"}).clave);
+   {const k=claveOrden({op:"",cliente:"A",proyecto:"P",stilo:"S",colorN:"C",odc:""});
+    __check("K1: un componente vacío = clave incompleta, sin clave",k.incompleta===true&&k.clave===null&&k.faltan.join()==="ODC",JSON.stringify(k));}
+   __check("K1: una orden con etiqueta «SIN WH #…» se clasifica como sin WH (no por la etiqueta)",claveOrden({op:"SIN WH #abc",cliente:"A",proyecto:"P",stilo:"S",colorN:"C",odc:"1"}).clave==="sin:a|p|s|c|1");
+   __check("K1: el id de una WH nueva sale de la clave y es el de siempre",idDeClave("op:wh/mo/28300")==="op_wh_mo_28300");
+   /* K2 · los cuatro cargadores usan la misma función y ninguno arma la suya */
+   {const fn=[["planTarea",planTarea],["aplicarTarea",aplicarTarea],["planOdoo",planOdoo],["planOT",planOT],["planFotos",planFotos]];
+    const propia=fn.filter(([n,f])=>{const t=String(f);return /clavePrev|hsh=5381|porOp\[|normTxt\(o\.op\)|normFase\(o\.op\)|prev\[normTxt/.test(t)}).map(x=>x[0]);
+    const usan=fn.filter(([n,f])=>/claveOrden\(|indiceClaves\(|claveDeOrden\(/.test(String(f))||n==="aplicarTarea").map(x=>x[0]);
+    __check("K2: ningún cargador arma su clave por su cuenta",propia.length===0,propia.join(", "));
+    __check("K2: tareas, Odoo, OT y fotos pasan por claveOrden/indiceClaves",usan.length===fn.length,usan.join(", "));}
+   /* K3 · Parte 2 con el volcado: sin WH estables, repetidas, incompletas, sin WH → WH */
+   {const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
+    const sinWH=S.ordenes.filter(o=>o.sinLanzar);
+    __check("K3: las 496 sin WH del volcado tienen clave completa y única",sinWH.length>=490&&sinWH.every(o=>o.clave&&/^sin:/.test(o.clave))&&new Set(sinWH.map(o=>o.clave)).size===sinWH.length,sinWH.length+" / "+new Set(sinWH.map(o=>o.clave)).size);
+    __check("K3: ninguna orden nueva lleva id de la clave vieja (sl_/prev_)",!S.ordenes.some(o=>/^sl_|^prev_/.test(o.id)));
+    /* misma fila sin WH con OTRA cantidad y OTRA fecha: antes era una orden nueva; ahora es la misma */
+    const H=tareaRows[0];const col=n=>H.indexOf(n);const oS=sinWH[0];const nAntes=S.ordenes.length;
+    const rows2=tareaRows.map((r,i)=>{if(!i)return r;const x=r.slice();if(!String(x[col("Orden de producción")]||"").trim()&&String(x[col("Cliente")]||"")===oS.cliente&&String(x[col("Stilo")]||"")===oS.ref&&String(x[col("ODC")]||"")===oS.odc&&String(x[col("Color")]||"").toUpperCase()===oS.colorOdoo&&String(x[col("Proyecto")]||"")===oS.proyecto){x[col("Pedido")]=(+x[col("Pedido")]||0)+7;x[col("Fecha Entrega")]="2027-01-15"}return x});
+    const p1=planTarea(rows2,"TAREA_K3.xlsx");const o1=p1.ordenes.find(o=>o.clave===oS.clave);
+    __check("K3: la misma orden sin WH con otra cantidad y otra fecha conserva su id (no nace otra)",!!o1&&o1.id===oS.id&&o1.cant===oS.cant+7&&o1.fecha==="2027-01-15",JSON.stringify(o1&&{id:o1.id,idAntes:oS.id,cant:o1.cant,f:o1.fecha}));
+    TAREA=p1;aplicarTarea();await __p(50);
+    __check("K3: y tras aplicar la cartera no crece ni queda una noArchivo por ese cambio",S.ordenes.length===nAntes&&(S.ordenes.find(o=>o.id===oS.id)||{}).estado!=="noArchivo",S.ordenes.length+" vs "+nAntes);
+    /* clave incompleta: sin ODC → no entra, se reporta */
+    const fila=new Array(H.length).fill(null);fila[col("Proyecto")]="NOVIEMBRE 2026";fila[col("Cliente")]="CLIENTE K3";fila[col("ODC")]="";fila[col("Stilo")]="9999";fila[col("Categoría Padre")]="CAMISETAS";fila[col("Categoría Hija")]="Camiseta CR";fila[col("Color")]="BIRCH";fila[col("Fase")]="0Diseño";fila[col("Pedido")]=10;fila[col("Fecha Entrega")]="2026-12-01";
+    const p2=planTarea([tareaRows[0],fila,...tareaRows.slice(1)],"TAREA_K3b.xlsx");
+    __check("K3: una cabecera sin WH y sin ODC es «clave incompleta»: no se crea y se reporta con lo que falta",!p2.ordenes.some(o=>o.cliente==="CLIENTE K3")&&p2.claveIncompleta.length===1&&p2.claveIncompleta[0].faltan.join()==="ODC"&&/CLAVE INCOMPLETA/.test(resumenTareaHTML(p2)),JSON.stringify(p2.claveIncompleta));
+    /* clave repetida en el archivo: dos filas iguales → no se funden, se reportan las dos */
+    const filaA=fila.slice();filaA[col("ODC")]="7777";const filaB=filaA.slice();filaB[col("Pedido")]=20;
+    const p3=planTarea([tareaRows[0],filaA,filaB,...tareaRows.slice(1)],"TAREA_K3c.xlsx");
+    __check("K3: dos filas con la misma clave no se funden: entran aparte y se reportan las dos",p3.ordenes.filter(o=>o.cliente==="CLIENTE K3").length===2&&p3.claveRepetida.filter(x=>x.cliente==="CLIENTE K3").length===2&&/clave repetida/i.test(resumenTareaHTML(p3)),p3.claveRepetida.length);
+    /* sin WH → WH: la fila recibe WH; se reconoce por la clave anterior UNA vez y se guarda claveAnterior */
+    const oS2=S.ordenes.find(o=>o.sinLanzar&&o.clave);const nb=S.bitacora.length;
+    const rows4=tareaRows.map((r,i)=>{if(!i)return r;const x=r.slice();if(!String(x[col("Orden de producción")]||"").trim()&&String(x[col("Cliente")]||"")===oS2.cliente&&String(x[col("Stilo")]||"")===oS2.ref&&String(x[col("ODC")]||"")===oS2.odc&&String(x[col("Color")]||"").toUpperCase()===oS2.colorOdoo&&String(x[col("Proyecto")]||"")===oS2.proyecto){x[col("Orden de producción")]="WH/MO/99001";x[col("Fase")]="2Planificacion"}return x});
+    S.avance[oS2.id]={centros:{corte:3}};oS2.foto="https://x/k3.jpg";
+    const p4=planTarea(rows4,"TAREA_K3d.xlsx");const o4=p4.ordenes.find(o=>o.op==="WH/MO/99001");
+    __check("K3: al recibir WH se reconoce por la clave sin WH: mismo id, claveAnterior guardada",!!o4&&o4.id===oS2.id&&o4.claveAnterior===oS2.clave&&o4.clave==="op:wh/mo/99001"&&p4.prevAWh.length===1,JSON.stringify(o4&&{id:o4.id,ant:o4.claveAnterior,cl:o4.clave}));
+    TAREA=p4;aplicarTarea();await __p(50);const o5=S.ordenes.find(o=>o.id===oS2.id);
+    __check("K3: tras aplicar, avance y foto siguen en la misma orden, y queda en bitácora",!!o5&&o5.op==="WH/MO/99001"&&(((S.avance[o5.id]||{}).centros)||{}).corte===3&&o5.foto==="https://x/k3.jpg"&&S.bitacora.slice(nb).some(b=>/clave anterior/.test(b.t)),JSON.stringify(o5&&{op:o5.op,foto:o5.foto}));
+    /* la segunda vez ya no es «paso a WH»: se reconoce por la WH */
+    const p5=planTarea(rows4,"TAREA_K3e.xlsx");
+    __check("K3: la segunda carga la reconoce por la WH (una sola vez el paso)",p5.prevAWh.length===0&&(p5.ordenes.find(o=>o.op==="WH/MO/99001")||{}).id===oS2.id);
+    delete S.avance[oS2.id];
+    const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
+   /* K4 · migración: vista previa y aplicación; decisiones, fotos, firmas, fases, progCentro y avance siguen en su orden */
+   {/* se simulan órdenes viejas: id sl_… (Parte 2 vieja) y prev_… (Odoo) con las mismas claves que dos sin WH actuales */
+    const sw=S.ordenes.filter(o=>o.sinLanzar).slice(0,2);const [a,b]=sw;
+    const viejaA=Object.assign(JSON.parse(JSON.stringify(a)),{id:"sl_sin_wh_viej1",op:"SIN WH #viej1",clave:undefined,claveAnterior:undefined});
+    const viejaB=Object.assign(JSON.parse(JSON.stringify(b)),{id:"prev_vieja_2",op:"",estado:"prevision",clave:undefined,claveAnterior:undefined});
+    S.ordenes=S.ordenes.filter(o=>o.id!==a.id&&o.id!==b.id).concat([viejaA,viejaB]);
+    const ts=new Date().toISOString();
+    viejaA.lib={tela:{ok:true,u:"k4",ts}};viejaA.fases=[{f:viejaA.fase,ts,u:"k4",origen:"app",antes:null,motivo:"m"}];viejaA.progCentro={corte:{pri:2,u:"k4"}};viejaA.foto="https://x/k4.jpg";viejaA.prio=1;
+    S.avance[viejaA.id]={centros:{corte:5},tramos:[{id:"t-k4",centro:"corte",rec:null,ini:ts,fin:ts,u:"k4",paros:[]}]};
+    const d=diagClaves();
+    __check("K4: la vista previa cuenta las viejas por id (sl_/prev_) y dice cuántas se reconocen",d.viejas===2&&d.reconocibles===d.total-d.incompletas.length&&d.sinClaveGuardada>=2,JSON.stringify({v:d.viejas,r:d.reconocibles,t:d.total,inc:d.incompletas.length}));
+    page="config";CONF.tab="ordenes2";render();const hc=document.getElementById("p-config").innerHTML;
+    __check("K4: Configuración muestra la vista previa y el botón de guardar",/Clave única de orden/.test(hc)&&/aplicarMigracionClaves\(/.test(hc)&&/Alcance de las cargas/.test(hc));
+    const cf=window.confirm;window.confirm=()=>true;const nb=S.bitacora.length;aplicarMigracionClaves();window.confirm=cf;
+    __check("K4: al aplicar se guarda clave y claveAnterior, nada se borra ni se renombra",viejaA.clave===claveDeOrden(viejaA).clave&&viejaA.claveAnterior==="SIN WH #viej1"&&viejaB.clave&&viejaB.claveAnterior==="prev_vieja_2"&&S.ordenes.some(o=>o.id==="sl_sin_wh_viej1")&&S.ordenes.some(o=>o.id==="prev_vieja_2")&&S.bitacora.length>nb,JSON.stringify({a:viejaA.claveAnterior,b:viejaB.claveAnterior}));
+    /* recarga: las dos viejas se reconocen por su clave; todo lo suyo sigue ahí */
+    const nAntes=S.ordenes.length;const p6=planTarea(tareaRows,"TAREA_K4.xlsx");
+    __check("K4: la recarga reconoce las viejas por su clave y les conserva el id",(p6.ordenes.find(o=>o.clave===viejaA.clave)||{}).id==="sl_sin_wh_viej1"&&(p6.ordenes.find(o=>o.clave===viejaB.clave)||{}).id==="prev_vieja_2");
+    TAREA=p6;aplicarTarea();await __p(50);const A=S.ordenes.find(o=>o.id==="sl_sin_wh_viej1");
+    __check("K4: después de migrar y recargar: firma, fases con motivo, progCentro, foto, prioridad y avance siguen en la orden correcta",
+      !!A&&A.estado!=="noArchivo"&&!!(A.lib||{}).tela&&(A.fases||[]).some(f=>f.u==="k4"&&f.motivo==="m")&&!!(A.progCentro||{}).corte&&A.foto==="https://x/k4.jpg"&&A.prio===1&&(((S.avance[A.id]||{}).centros)||{}).corte===5&&((S.avance[A.id]||{}).tramos||[]).length===1&&S.ordenes.length===nAntes,
+      JSON.stringify(A&&{e:A.estado,lib:!!A.lib,f:(A.fases||[]).length,pc:!!A.progCentro,foto:A.foto,prio:A.prio,av:S.avance[A.id],n:S.ordenes.length+"/"+nAntes}));
+    /* se deja como estaba */
+    delete S.avance["sl_sin_wh_viej1"];S.ordenes=S.ordenes.filter(o=>o.id!=="sl_sin_wh_viej1"&&o.id!=="prev_vieja_2").concat([a,b]);
+    const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
+   /* K5 · regla de alcance única, parámetros, sin hoy+21, fechas legibles */
+   {__check("K5: la regla es una función y Parte 2 y Odoo la llaman",/alcanceOrden\(/.test(String(planTarea))&&/alcanceOrden\(/.test(String(planOdoo)));
+    __check("K5: los parámetros son prm() y se ven en Configuración",/prm\(.alcanceDiasAtras.,\s*0\)/.test(String(alcanceParams))&&/prm\(.alcanceSinFechaConProyecto.,\s*1\)/.test(String(alcanceParams))&&/setAlcanceParam\(/.test(document.getElementById("p-config").innerHTML));
+    __check("K5: cancel fuera; entrega pasada + fase de cierre fuera; abierta con entrega pasada dentro; sin fecha con Proyecto dentro; sin fecha sin Proyecto fuera",
+      !alcanceOrden({fase:"Cancelado",fecha:"2027-01-01"}).dentro&&!alcanceOrden({fase:"Facturado",fecha:dsum(hoy(),-1)}).dentro&&alcanceOrden({fase:"2Planificacion",fecha:dsum(hoy(),-30)}).dentro&&alcanceOrden({fase:"0Diseño",fecha:null,proyecto:"NOVIEMBRE 2026"}).dentro&&!alcanceOrden({fase:"0Diseño",fecha:null,proyecto:""}).dentro);
+    {const bak=S.params.alcanceDiasAtras;S.params.alcanceDiasAtras=10;
+     __check("K5: días hacia atrás manda: una cerrada de hace 5 días entra con 10 días",alcanceOrden({fase:"Facturado",fecha:dsum(hoy(),-5)}).dentro&&!alcanceOrden({fase:"Facturado",fecha:dsum(hoy(),-15)}).dentro);
+     S.params.alcanceDiasAtras=bak;if(bak===undefined)delete S.params.alcanceDiasAtras;}
+    {const bak=S.params.alcanceSinFechaConProyecto;S.params.alcanceSinFechaConProyecto=0;
+     __check("K5: con «nunca entra», sin fecha queda fuera aunque tenga Proyecto (0 es 0)",!alcanceOrden({fase:"0Diseño",fecha:null,proyecto:"NOVIEMBRE 2026"}).dentro);
+     S.params.alcanceSinFechaConProyecto=bak;if(bak===undefined)delete S.params.alcanceSinFechaConProyecto;}
+    __check("K5: ya no existe el hoy+21 inventado",!/dsum\(hoy\(\),21\)/.test(String(nuevaOrden))&&!/\-28'/.test(String(planOdoo)));
+    /* Odoo con el volcado: lo fuera de alcance no se crea; lo existente fuera de alcance se marca, no se borra */
+    const pO=planOdoo(tareaRows,"ODOO_K5.xlsx");
+    const fa=resumenAlcance(pO.fueraAlcance);
+    __check("K5: Odoo deja fuera lo mismo que Parte 2: ~3.019 cerradas/stand by con entrega pasada, y no las crea",pO.nuevas.filter(o=>o.estado!=="prevision").length<50&&(fa.entregaPasadaCerrada||{}).n>=3000,JSON.stringify({nuevasWH:pO.nuevas.filter(o=>o.estado!=="prevision").length,fa}));
+    __check("K5: y reconoce las sin WH por la clave única: cero previsiones nuevas",pO.prevNuevas===0&&pO.nuevas.filter(o=>o.estado==="prevision").length===0,pO.prevNuevas);
+    __R.odooMatch2={reconocidas:pO.act.length+pO.sinCambio,nuevas:pO.nuevas.length,fuera:pO.fueraAlcance.length,cartera:S.ordenes.length};
+    __check("K5: «Actualizar desde Odoo» sobre el mismo archivo ya no duplica: reconoce ~1.206 y crea 0",pO.nuevas.length===0&&pO.act.length+pO.sinCambio>=1200,JSON.stringify(__R.odooMatch2));
+    /* fechas: serial numérico → excelFecha; ilegible → reportada, sin inventar */
+    {const H=tareaRows[0];const iF=H.indexOf("Fecha Entrega"),iO=H.indexOf("Orden de producción");const r0=tareaRows.findIndex((r,i)=>i&&String(r[iO]||"").startsWith("WH/"));const r1=tareaRows.findIndex((r,i)=>i>r0&&String(r[iO]||"").startsWith("WH/"));
+     const rows=tareaRows.map((r,i)=>{if(i!==r0&&i!==r1)return r;const x=r.slice();if(i===r0)x[iF]=46283.75;else x[iF]="fecha rara";return x});
+     const pS=planOdoo(rows,"ODOO_K5b.xlsx");const opA=String(tareaRows[r0][iO]);
+     const enPlan=[...pS.nuevas,...pS.act.map(a=>a.o)].find(o=>o.op===opA);const datosA=(pS.act.find(a=>a.o.op===opA)||{}).datos;
+     __check("K5: un serial numérico se lee con excelFecha (46283,75 = 2026-09-18, sin redondear al día siguiente)",excelFecha(46283.75)==="2026-09-18"&&(!datosA||datosA.fecha==="2026-09-18"),JSON.stringify({d:datosA&&datosA.fecha}));
+     __check("K5: una fecha ilegible se reporta y no se inventa",pS.fechasIlegibles.length===1&&/fecha rara/.test(pS.fechasIlegibles[0].valor),JSON.stringify(pS.fechasIlegibles));}
+    ODOO=null;PLAN=null;PLAN_ALL=null;}
+   window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

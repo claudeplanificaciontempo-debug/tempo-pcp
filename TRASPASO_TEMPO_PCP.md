@@ -204,6 +204,16 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.54 Cargas: clave única, migración y regla de alcance (17-sep)
+- `claveOrden()` única para tareas, Odoo, OT y fotos (con WH: la WH; sin WH: cliente+proyecto+stilo+color+ODC). Clave
+  incompleta = no se reconoce ni se crea, se reporta. Repetida en el archivo = entran aparte y se reportan las dos.
+- El id de una orden existente no cambia: `planTarea` lo resuelve por clave contra el sistema. Sin WH → WH una sola vez
+  con `claveAnterior`. Migración en Configuración → Órdenes → «Clave única de orden» (vista previa + guardar).
+- `alcanceOrden()` única, parámetros `alcanceDiasAtras` y `alcanceSinFechaConProyecto` en Configuración → Órdenes →
+  «Alcance de las cargas». Fuera de alcance = marcada (`fueraAlcance`), nunca borrada. Sin `hoy+21`; `fechaDe` con
+  `excelFecha` y fechas ilegibles reportadas. Odoo sobre el mismo archivo: 1.206 reconocidas, 0 nuevas (antes 710 / 3.508).
+  Ver `CARGAS_CLAVE_UNICA.md`.
+
 ### 2.53 Tablet del operario: ajustes aprobados (17-sep)
 - Fallo de `programar()`: además del aviso en la tablet, UNA alerta por falla en bitácora (`k:'errProg'`, hora, error,
   centro) y en Hoy → Pendientes para admin y planificación, con «atendida» (`S.params.errProgAtendidos`).

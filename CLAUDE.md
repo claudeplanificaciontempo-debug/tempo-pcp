@@ -792,6 +792,19 @@ Parte 2 y `prev_…` en Odoo). Cuatro cargadores, tres normalizaciones (`normTxt
 `normFase` OT). Propuesta de clave única y SQL de duplicados (sin ejecutar) en `CARGAS_DIAGNOSTICO_CLAVES.md`
 y `SUPABASE_DUPLICADOS_ORDENES.sql`. `S.cargas` aún se recorta a 60 (lo quita el punto 8). Ver `CARGAS_1_A_3.md`.
 
+**Clave única y regla de alcance (17-sep-2026).** `claveOrden(d)` es la ÚNICA clave de orden: con WH `op:`+`normFase(op)`;
+sin WH `sin:`+`normFase(cliente|proyecto|stilo|color|ODC)` (sin fecha ni cantidad); componente vacío = `incompleta` (no se
+reconoce ni se crea, se reporta); `claveDeOrden(o)`, `indiceClaves()` (clave → orden, `repetidas`), `idDeClave` (id de las
+nuevas: `op_…`/`sin_…`), `opSinWH` (etiqueta «SIN WH #hash de la clave»). **Los cuatro cargadores la usan y la prueba K2 falla
+si alguno arma la suya.** `planTarea` resuelve el id contra el sistema por clave (**el id de una orden existente nunca
+cambia**; las `sl_`/`prev_` viejas se reconocen igual) y el paso sin WH → WH se hace una vez guardando `claveAnterior`;
+`aplicarTarea` cruza por id. Migración: Configuración → Órdenes → «Clave única de orden» (`diagClaves`,
+`aplicarMigracionClaves`: guarda `clave`/`claveAnterior`, no borra ni renombra). **`alcanceOrden(d)`** es la única regla de
+alcance (cancel fuera; sin fecha entra solo con Proyecto; entrega pasada + fase de cierre fuera) con `prm('alcanceDiasAtras',0)`
+y `prm('alcanceSinFechaConProyecto',1)` editables (`alcanceConfHTML`); lo fuera de alcance queda `noArchivo` + `fueraAlcance`
+(nunca borrado). Sin `hoy+21` ni «día 28 del Proyecto»; `fechaDe` de Odoo usa `excelFecha` y reporta `fechasIlegibles`.
+Con esto «Actualizar desde Odoo» sobre el mismo archivo reconoce 1.206 y crea 0 (antes 710 / 3.508). Ver `CARGAS_CLAVE_UNICA.md`.
+
 **Nivelación Paso 2 · Etapa A (17-sep-2026):** boceto navegable con datos fijos (`NIVD`, `NIVV`, `vNivelacion`,
 página `nivelacion`, desde Configuración → Nivelación → «Ver el boceto →»); NO conectado al motor. Al aprobarse,
 el boceto pasa a prefijo `nivUI*` y se agrega una prueba de funciones duplicadas en todo `index.html`.
