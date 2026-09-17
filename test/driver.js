@@ -6062,6 +6062,25 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const filaA=fila.slice();filaA[col("ODC")]="7777";const filaB=filaA.slice();filaB[col("Pedido")]=20;
     const p3=planTarea([tareaRows[0],filaA,filaB,...tareaRows.slice(1)],"TAREA_K3c.xlsx");
     __check("K3: dos filas con la misma clave no se funden: entran aparte y se reportan las dos",p3.ordenes.filter(o=>o.cliente==="CLIENTE K3").length===2&&p3.claveRepetida.filter(x=>x.cliente==="CLIENTE K3").length===2&&/clave repetida/i.test(resumenTareaHTML(p3)),p3.claveRepetida.length);
+    /* K6 · clave repetida ya en el sistema: NO se reasignan decisiones (el orden de las filas no es criterio) */
+    {TAREA=p3;aplicarTarea();await __p(50);const dos=S.ordenes.filter(o=>o.cliente==="CLIENTE K3");
+     __check("K6: las dos entran marcadas «clave repetida — revisar»",dos.length===2&&dos.every(o=>o.claveRepetida&&/revisar/.test(o.claveRepetida.txt)),dos.length);
+     dos[0].lib={tela:{ok:true,u:"k6",ts:new Date().toISOString()}};dos[0].prio=1;const idA=dos[0].id,idB=dos[1].id;const cantA=dos[0].cant,cantB=dos[1].cant;
+     /* el mismo archivo con las filas AL REVÉS y otras cantidades: nada se les aplica */
+     const filaA2=filaA.slice();filaA2[col("Pedido")]=333;const filaB2=filaB.slice();filaB2[col("Pedido")]=444;
+     const p3b=planTarea([tareaRows[0],filaB2,filaA2,...tareaRows.slice(1)],"TAREA_K6.xlsx");const nb=S.bitacora.length;
+     TAREA=p3b;aplicarTarea();await __p(50);
+     const A=S.ordenes.find(o=>o.id===idA),B=S.ordenes.find(o=>o.id===idB);
+     __check("K6: en la carga siguiente las existentes quedan como están: mismas cantidades, misma firma, no noArchivo",!!A&&!!B&&A.cant===cantA&&B.cant===cantB&&!!(A.lib||{}).tela&&A.prio===1&&A.estado!=="noArchivo"&&B.estado!=="noArchivo"&&S.ordenes.filter(o=>o.cliente==="CLIENTE K3").length===2,JSON.stringify({a:A&&[A.cant,A.estado],b:B&&[B.cant,B.estado]}));
+     __check("K6: y queda dicho en bitácora y en la carga",S.bitacora.slice(nb).some(b=>/clave repetida NO aplicadas/.test(b.t))&&(S.params.tareaCarga||{}).claveRepetidaNoAplicadas===2);
+     __check("K6: Hoy → Pendientes las reporta hasta que alguien las distinga",(()=>{const it=pendientesHoy().find(x=>x.k==="claveRepetida");return !!it&&it.n>=2})());
+     __check("K6: la regla está escrita en aplicarTarea (no depende del orden de filas)",/clavesExistRep/.test(String(aplicarTarea)));
+     S.ordenes=S.ordenes.filter(o=>o.cliente!=="CLIENTE K3");}
+    /* botón de guardar la clave: solo administrador, con aviso */
+    {const bakP=PERFIL;PERFIL={id:"u-pl3",rol:"planificacion"};let av="";const a1=window.alert;window.alert=m=>{av=String(m)};aplicarMigracionClaves();window.alert=a1;PERFIL=bakP;
+     __check("K6: planificación no puede guardar la clave; el aviso dice después de revisar duplicados",/administrador/.test(av)&&/duplicados en producci/.test(av),av);
+     page="config";CONF.tab="ordenes2";render();const h=document.getElementById("p-config").innerHTML;
+     __check("K6: el panel avisa «ejecutar después de revisar duplicados en producción»",/Ejecutar después de revisar duplicados en producción/.test(h)||!/aplicarMigracionClaves\(/.test(h));}
     /* sin WH → WH: la fila recibe WH; se reconoce por la clave anterior UNA vez y se guarda claveAnterior */
     const oS2=S.ordenes.find(o=>o.sinLanzar&&o.clave);const nb=S.bitacora.length;
     const rows4=tareaRows.map((r,i)=>{if(!i)return r;const x=r.slice();if(!String(x[col("Orden de producción")]||"").trim()&&String(x[col("Cliente")]||"")===oS2.cliente&&String(x[col("Stilo")]||"")===oS2.ref&&String(x[col("ODC")]||"")===oS2.odc&&String(x[col("Color")]||"").toUpperCase()===oS2.colorOdoo&&String(x[col("Proyecto")]||"")===oS2.proyecto){x[col("Orden de producción")]="WH/MO/99001";x[col("Fase")]="2Planificacion"}return x});

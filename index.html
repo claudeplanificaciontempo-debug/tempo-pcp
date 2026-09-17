@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 10:49';
+const APP_BUILD='2026-09-17 11:41';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1114,6 +1114,8 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   {const pd=rutasPorDefinir();add('rutasPorDefinir','Rutas por confirmar',pd.length,Object.keys(refsPorDefinir()).length+' referencias · ninguna se puede liberar hasta confirmar su ruta','Órdenes de producción → Rutas',"ORDF.tab='rutas';ir('ordenes')")}
   if(puede('config')||puede('programa')){const ep=erroresProgAbiertos();add('errorProg','Errores en la programación vistos desde una tablet',ep.length,
     ep.slice(-3).map(b=>new Date(b.ts).toLocaleString('es-EC')+' · '+(b.centro?nCen(b.centro):'—')+' · '+b.err).join(' · ')+' · el operario no ve órdenes mientras dure; corregir y marcar atendida','Errores',"mErroresProg()")}
+  {const cr=S.ordenes.filter(o=>o.claveRepetida);add('claveRepetida','Órdenes con clave repetida — revisar',cr.length,
+    cr.slice(0,6).map(o=>o.op+' ('+(o.cliente||'')+' · '+num(o.cant)+')').join(' · ')+' · dos filas del archivo con la misma clave: una carga no puede saber cuál es cuál, así que no se les cambia nada hasta que se distingan (p. ej. WH distinta en Odoo)','Órdenes',"ir('ordenes')")}
   {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
@@ -10406,10 +10408,10 @@ function clavesConfHTML(){const d=diagClaves();
    ${d.repetidas.length?`<tr><td><b>${num(d.repetidas.length)}</b></td><td><b>claves repetidas en el sistema</b> (dos órdenes con la misma clave: la carga actualiza la primera; revisar si son duplicadas): ${esc(d.repetidas.slice(0,10).map(x=>x.ids.join(' = ')).join(' · '))}</td></tr>`:''}
    <tr><td><b>${num(d.viejas)}</b></td><td>órdenes sin WH con id de la clave anterior (<code>sl_…</code> / <code>prev_…</code>): se reconocen igual por su clave; el id no cambia</td></tr>
    <tr><td><b>${num(d.conClaveGuardada)}</b> / ${num(d.sinClaveGuardada)}</td><td>con la clave guardada en la orden / todavía sin guardar</td></tr></tbody></table>
-   ${d.sinClaveGuardada&&(puede('config')||puede('programa'))?`<button class="btn ghost sm" style="margin-top:8px" onclick="aplicarMigracionClaves()">Guardar la clave en las ${num(d.sinClaveGuardada)} órdenes</button> <span class="mut" style="font-size:var(--fs-xs)">guarda <code>clave</code> y <code>claveAnterior</code> (la etiqueta o id viejo); no borra ni renombra nada</span>`:''}
+   ${d.sinClaveGuardada&&puede('config')?`<div class="warn" style="font-size:var(--fs-s);margin-top:8px"><b>Ejecutar después de revisar duplicados en producción</b> (SUPABASE_DUPLICADOS_ORDENES.sql). Guarda <code>clave</code> y <code>claveAnterior</code> (la etiqueta o id viejo); no borra ni renombra nada. Solo el administrador.</div><button class="btn ghost sm" style="margin-top:8px" onclick="aplicarMigracionClaves()">Guardar la clave en las ${num(d.sinClaveGuardada)} órdenes</button>`:(d.sinClaveGuardada?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Solo el administrador puede guardar la clave, después de revisar duplicados en producción.</p>`:'')}
   </div></div>`}
-function aplicarMigracionClaves(){if(!(puede('config')||puede('programa'))){alert('Tu perfil no puede hacerlo.');return}
-  const d=diagClaves();if(!confirm('Se guarda la clave única en '+d.sinClaveGuardada+' órdenes ('+d.incompletas.length+' quedan sin clave por incompleta). No se borra ni se renombra nada. ¿Continuar?'))return;
+function aplicarMigracionClaves(){if(!puede('config')){alert('Solo el administrador puede guardar la clave, después de revisar duplicados en producción.');return}
+  const d=diagClaves();if(!confirm('EJECUTAR DESPUÉS DE REVISAR DUPLICADOS EN PRODUCCIÓN (SUPABASE_DUPLICADOS_ORDENES.sql). Se guarda la clave única en '+d.sinClaveGuardada+' órdenes ('+d.incompletas.length+' quedan sin clave por incompleta). No se borra ni se renombra nada. ¿Continuar?'))return;
   let n=0;S.ordenes.forEach(o=>{const k=claveDeOrden(o);if(!k.clave||o.clave===k.clave)return;if(!o.claveAnterior)o.claveAnterior=o.clave||(k.tipo==='sin'?(o.op||o.id):o.id);o.clave=k.clave;n++});
   bitacora('Clave única guardada en '+n+' órdenes ('+d.incompletas.length+' con clave incompleta quedan sin clave) ('+quienFirma()+')');save();render()}
 
@@ -10439,6 +10441,7 @@ function planTarea(rows,nombre){
   cab.forEach(d=>{if(!d.clave)d.clave=claveOrden({op:d.op}).clave});
   const cuentaOp={};cab.forEach(d=>{cuentaOp[d.clave]=(cuentaOp[d.clave]||0)+1});
   /* clave repetida en el archivo: NO se funden; se cargan aparte y se reportan las dos */
+  cab.forEach(d=>{if(cuentaOp[d.clave]>1)d.claveRepetida=true});
   plan.duplicados=cab.filter(d=>cuentaOp[d.clave]>1).map(d=>({op:d.op,clave:d.clave,fila:d.fila,estadoOP:d.estadoOP,fase:d.fase,cant:d.cant,fecha:d.fecha,total:d.total,catP:d.catP,catH:d.catH,cliente:d.cliente}));plan.claveRepetida=plan.duplicados;
   const idx=indiceClaves();plan.claveRepetidaSistema=idx.repetidas;
   cab.forEach(d=>d.comp.forEach(c=>{const niv=c.ruta.split("/").map(s=>s.trim());const n2=niv[1]||"",n3=niv[2]||"",n4=niv[3]||"";
@@ -10501,7 +10504,7 @@ function planTarea(rows,nombre){
       cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
       tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
       vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
-      clave:d.clave,claveAnterior,sinLanzar:!!d.sinLanzar,sinFechaEntrega:!!d.sinFechaEntrega,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+      clave:d.clave,claveAnterior,claveRepetida:!!d.claveRepetida,sinLanzar:!!d.sinLanzar,sinFechaEntrega:!!d.sinFechaEntrega,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
@@ -10510,7 +10513,7 @@ function planTarea(rows,nombre){
 function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';
   return `${resumenAlcanceHTML((p.excluidas||{}).alcance,'Fuera de alcance en este archivo')}<table><tbody>${li(p.cabeceras,'cabeceras de orden en el archivo ('+p.componentes+' líneas de componentes)')}${li(p.ordenes.length,'órdenes que se cargan (incluye '+p.historia+' done como historia y '+p.vencidas+' vencidas abiertas)')}
    ${li(p.excluidas.cancel.length,'excluidas por fase Cancelado')}${li(p.excluidas.fueraRango.length,'excluidas: entrega pasada y fase de cierre (regla de alcance)')}${li(p.sinFecha.length,'sin Fecha Entrega → bandeja "órdenes sin fecha" (no se cargan, no se inventa fecha)')}
-   ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con la MISMA CLAVE en el archivo (clave repetida: se cargan aparte, sin fusionar, y se reportan las dos): '+esc(p.duplicados.map(x=>x.op+' (fila '+x.fila+')').join(', ')))}${li((p.claveIncompleta||[]).length,'cabeceras sin WH con CLAVE INCOMPLETA (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')))}${li((p.prevAWh||[]).length,'órdenes que pasaron de sin WH a WH (reconocidas por su clave anterior, una sola vez)')}${li((p.claveRepetidaSistema||[]).length,'claves repetidas YA en el sistema (dos órdenes con la misma clave; se actualiza la primera): '+esc((p.claveRepetidaSistema||[]).map(x=>x.ids.join(' = ')).join(', ')))}
+   ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con la MISMA CLAVE en el archivo (clave repetida — revisar: si la clave ya existe en el sistema NO se aplican y las existentes quedan como están; si no existe, entran las dos marcadas): '+esc(p.duplicados.map(x=>x.op+' (fila '+x.fila+')').join(', ')))}${li((p.claveIncompleta||[]).length,'cabeceras sin WH con CLAVE INCOMPLETA (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')))}${li((p.prevAWh||[]).length,'órdenes que pasaron de sin WH a WH (reconocidas por su clave anterior, una sola vez)')}${li((p.claveRepetidaSistema||[]).length,'claves repetidas YA en el sistema (dos órdenes con la misma clave; se actualiza la primera): '+esc((p.claveRepetidaSistema||[]).map(x=>x.ids.join(' = ')).join(', ')))}
    ${li(Object.keys(p.nivel2NoRec).length,'segundos niveles de material no reconocidos: '+esc(Object.keys(p.nivel2NoRec).join(', ')))}${li(Object.keys(p.telaSinCatalogo).length,'telas en kg sin tela del catálogo en la tabla 8 (no entran al motor de tejeduría/tintorería): '+esc(Object.entries(p.telaSinCatalogo).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(Object.keys(p.telaSinClasificar).length,'tipos de tela SIN CLASIFICAR con órdenes: '+esc(Object.keys(p.telaSinClasificar).join(', ')))}${li(Object.keys(p.telaEnMetros||{}).length,'telas planas en metros (se quedan en metros; los kilos se registran por tanda en tintorería): '+esc(Object.entries(p.telaEnMetros||{}).map(([k,v])=>k+' ('+v+')').join(', ')))}
    ${li(p.contradicciones.length,'contradicciones Estado OP vs Fase (bandeja aparte)')}${li(p.sinLanzar,'órdenes SIN número de WH (no lanzadas en Odoo: 0Diseño, 0Recetas Insumos…): entran con identificador provisional, cuentan en Plan mensual y Entregas, no se liberan ni se programan')}${li((p.precioRaro||[]).length,'órdenes con precio por prenda fuera de rango (≥ 10× la mediana del archivo): se reportan, no se corrigen: '+esc((p.precioRaro||[]).map(x=>x.op+' '+(x.odc||'')+' '+(x.ref||'')+' '+(x.color||'')+' $'+num(x.precio,2)+'/pz').join('; ')))}${li(p.coloresNuevos.length,'colores nuevos creados en el catálogo por nombre')}</tbody></table>
    <p class="warn" style="font-size:var(--fs-s);margin-top:10px">Al aplicar, lo que viene del archivo se <b>actualiza</b> (cantidades, cliente, categoría, color, materiales, técnica, precio, ruta; la fecha solo si no se cambió aquí) y <b>la fase de las órdenes que ya existen no se toca</b> (la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja) y lo que decidió una persona se <b>conserva</b> por número de OP según la tabla 14 (liberación, prioridad, programación, módulo fijo, compromiso, fotos, fases, ajustes, telas, rutas editadas, OT, avance de piso). Las órdenes que ya no vienen en el archivo se eliminan y se cuentan. Lo conservado que ya no calce con el archivo nuevo sale en una bandeja; no se retira solo. El reporte completo queda en Órdenes → "Reporte Parte 2".</p>`}
@@ -10555,12 +10558,22 @@ function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.
   const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
   /* el cruce ya lo hizo la clave única en planTarea: cada orden del plan trae el id de la existente (o uno nuevo) */
-  const prev={};S.ordenes.forEach(o=>{prev[o.id]=o});const idsNuevos=new Set(p.ordenes.map(o=>o.id));
+  const prev={};S.ordenes.forEach(o=>{prev[o.id]=o});
+  /* CLAVE REPETIDA EN EL ARCHIVO (dos filas con la misma clave): el emparejamiento con lo que ya existe dependería del
+     orden de las filas del Excel, que no es un criterio. Por eso, si esa clave YA está en el sistema, esas filas NO se
+     aplican: las órdenes existentes quedan como están, marcadas «clave repetida — revisar», hasta que alguien las
+     distinga (p. ej. Odoo les dé WH distintas). Si la clave no existe todavía, entran las dos, marcadas. */
+  const clavesRep=new Set(p.ordenes.filter(o=>o.claveRepetida).map(o=>o.clave));
+  const existRep=S.ordenes.filter(o=>clavesRep.has((claveDeOrden(o)||{}).clave));const clavesExistRep=new Set(existRep.map(o=>claveDeOrden(o).clave));
+  const ordenesPlan=p.ordenes.filter(o=>!(o.claveRepetida&&clavesExistRep.has(o.clave)));
+  const repNoAplicadas=p.ordenes.length-ordenesPlan.length;
+  existRep.forEach(o=>{o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'}});
+  const idsNuevos=new Set(ordenesPlan.map(o=>o.id).concat(existRep.map(o=>o.id)));
   const fueraAlc={};((p.excluidas||{}).alcance||[]).forEach(x=>{if(x.clave)fueraAlc[x.clave]=x});
   const cons={fase:0,fecha:0,lib:0,prio:0,progCentro:0,recursoFijo:0,fechaCompromiso:0,foto:0,fases:0,opsSam:0,faltaConf:0,rutaEditada:0,ot:0,terminadaF:0,avance:0};const noCalzan=[];
   const eliminadas=S.ordenes.filter(o=>!idsNuevos.has(o.id));const elimConDec=eliminadas.filter(o=>o.lib||o.prio===1||o.progCentro||o.recursoFijo||o.fechaCompromiso||o.opsSam||(S.avance[o.id]&&Object.keys(S.avance[o.id]).length));
   let actualizadas=0,nuevas=0;
-  p.ordenes.forEach(o=>{const v=prev[o.id];const nueva=o.fase;
+  ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];return}
     actualizadas++;if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;if(o.claveAnterior)bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior);
     if(conserva('fase')&&v.fase!=null){if(normFase(v.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+v.fase,motivo:'el archivo trae '+(o.fase||'(vacía)')+'; se conserva la del sistema',tipo:'fase',sistema:v.fase,archivo:o.fase||''});aplicarFaseSistema(o,v.fase);cons.fase++}
@@ -10587,17 +10600,17 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
      la fila «avance» vaciaba la tabla entera y se perdía el avance de toda la planta sin preguntar. */
   const avanceEliminado=[];
   Object.keys(S.avance).forEach(id=>{if(!idsNuevos.has(id)){avanceEliminado.push(id);return}
-    const a=S.avance[id];const o=p.ordenes.find(x=>x.id===id);
+    const a=S.avance[id];const o=ordenesPlan.find(x=>x.id===id);
     if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});
     if(a.centros)cons.avance++});
-  S.ordenes=p.ordenes.slice().concat(eliminadas.map(o=>{const fa=fueraAlc[(claveDeOrden(o)||{}).clave];/* fuera de alcance: marcada, nunca borrada */
+  S.ordenes=ordenesPlan.slice().concat(existRep).concat(eliminadas.map(o=>{const fa=fueraAlc[(claveDeOrden(o)||{}).clave];/* fuera de alcance: marcada, nunca borrada */
     return Object.assign(o,{estado:'noArchivo',noArchivo:{ts:new Date().toISOString(),archivo:p.archivo||'',estadoAntes:o.estado||'plan',fueraAlcance:fa?fa.motivo:undefined}},fa?{fueraAlcance:{ts:new Date().toISOString(),motivo:fa.motivo,txt:fa.txt,archivo:p.archivo||''}}:{})}));colgarFotos();/* las que ya no vienen en el archivo NO se borran: quedan como noArchivo con todo lo suyo */
-  S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
+  S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:ordenesPlan.length,claveRepetidaNoAplicadas:repNoAplicadas,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
     devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,sinLanzar:p.sinLanzar,precioRaro:p.precioRaro||[],
     recarga:{actualizadas,nuevas,eliminadas:eliminadas.length,eliminadasConDecision:elimConDec.map(o=>o.op).slice(0,200),avanceEliminado:avanceEliminado.length,conservado:cons,noCalzan:noCalzan.slice(0,500)}};
-  bitacora('Recarga Parte 2 '+p.archivo+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
+  bitacora('Recarga Parte 2 '+p.archivo+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(repNoAplicadas?', '+repNoAplicadas+' filas con clave repetida NO aplicadas (ya existen: revisar)':'')+'; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
   TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Recarga aplicada: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
 
 /* ---------- reporte (BLOQUE K): se calcula desde las órdenes cargadas + lo guardado en la carga; la carga por centro se
