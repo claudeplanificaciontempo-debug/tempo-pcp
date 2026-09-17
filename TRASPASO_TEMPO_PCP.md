@@ -204,6 +204,28 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.49 Búsquedas y filtros: correcciones (16-sep)
+- **Un temporizador POR buscador** (`_qTimers[id]`) y espera **`prm('msBuscar',150)`** editable; ya no depende de
+  tener más de 300 órdenes. `estadosPantalla()` es el único mapa de estados (17 buscadores); `refEstado` y `navRefs`
+  lo usan. `normTxt(0)` es `"0"`.
+- **Filtro de fases, una semántica**: `estadoFases(sel)` → todas | ninguna | seleccion; `faseOkFiltro(sel,fase)`
+  decide; `podarFases` conserva el centinela `FASE_NINGUNA`. Las cinco pantallas pasan por ahí; se quitó la poda
+  de Órdenes que dejaba «Limpiar» en «todas». El botón dice «Limpiar (ninguna)».
+- **Base acotada**: `fueraDeBase(id,dentro)` + `avisoFueraDeBaseHTML(id,dentro,filtroTxt)` en Liberación, Centro,
+  Órdenes, Carga general, Resumen gerencial, Plan→agregar, Entregas y Producto en proceso: «N órdenes coinciden
+  fuera de <filtro>» + Ver (marcadas, sin cambiar filtros). Cada pantalla pasa SU lista ya filtrada.
+- **Redibujo parcial**: `listaRegistrar(id,fn)` + `<div data-lista="<id>">` + `redibujarLista(id)`; `buscarQ` lo
+  intenta y solo si no puede cae a `render()`. Hecho en **Órdenes** (`listaOrdHTML`), **cola del centro**
+  (`colaCentroHTML(c,ctx)`, extraída sin cambio: 17 fotos del DOM lo vigilan) y **Liberación** (`listaLibB1HTML`,
+  ídem). Medido con 1.210 órdenes: cola 57–70 → 11–24 ms por tecla; Liberación 327–365 → 11–21 ms. **Regla: antes
+  de extraer una lista, fijar su DOM con pruebas; si se pierde algo, revertir.** El operario de tablet busca al
+  escribir y conserva el botón Buscar. Quedan 14 pantallas (commit 5, pendiente de aprobación).
+- **Menú**: «Nivelación de carga» es la primera entrada de Planificación de producción; por ahora abre
+  Configuración → Nivelación de carga (`data-conf`), porque la pantalla propia es el Paso 2 sin aprobar.
+- **Tablet del operario**: solo Paso 0 (`TABLET_OPERARIO_PASO0.md`): la lista no exige programa por recurso, el
+  buscador muestra órdenes fuera del plan, no hay ventana parametrizada y **`cerrarCentro` no valida tramo ni
+  tiempo**. No hay rpc de cierre. Ver `BUSQUEDAS_CORRECCIONES.md` y `BUSQUEDAS_CORRECCIONES_2.md`.
+
 ### 2.48 La cola del centro se ordena por CERCANÍA a llegar (16-sep)
 - **`cercaniaCentro(o,c,P)`** es la única función y no crea ninguna definición nueva: se apoya en
   **`secuenciaCentro`** (clasifica y **manda** si hay desacuerdo), **`centroAnteriorPro`** (el paso anterior) y

@@ -742,6 +742,21 @@ NUNCA es «disponible»**. `colaCentro` ordena: **puesto manual → cercanía �
 `excelFecha`. **Hallazgo sin corregir:** `excelFecha` usa `Math.round`, así que **toda hora ≥ 12:00 se guarda un día
 tarde** (24.727 de 45.421 fechas de OT del volcado, 54,4 %). Ver `COLA_CERCANIA_REPORTE.md`.
 
+**Búsquedas y filtros (16-sep-2026).** `buscarQ` tiene **un temporizador por buscador** y la espera es
+`prm('msBuscar',150)` (0 = cada tecla). `estadosPantalla()` es el único mapa de estados de pantalla y debe
+listar TODO estado con buscador o filtro (`refEstado` falla en silencio si falta). **Filtro de fases**: `estadoFases`
+/ `faseOkFiltro` / `podarFases` con el centinela `FASE_NINGUNA` — ninguna pantalla interpreta el Set por su cuenta
+ni poda el centinela. **Base acotada**: toda pantalla cuya base filtra antes del buscador muestra
+`avisoFueraDeBaseHTML(id,dentro,filtroTxt)` con SU lista ya filtrada. **Redibujo parcial**: `listaRegistrar(id,fn)` +
+`<div data-lista="<id>">`; el buscador vive FUERA del contenedor. Está en Órdenes (`listaOrdHTML`), cola del centro
+(`colaCentroHTML(c,ctx)`) y Liberación (`listaLibB1HTML(et,ctx)`). **Antes de extraer una lista a su función, fijar su
+DOM con pruebas (columnas, celdas, botones, agrupación, conteos) y extraerla sin cambiar una letra; si algo se
+pierde, revertir.** La única vez que se perdió algo (casillas de tintura/lavado de Liberación) fue por reescribir
+la lista a mano. **Menú**: «Nivelación de carga» primera en Planificación de producción (`data-conf="nivel"` abre
+la pestaña de Configuración hasta que se apruebe el Paso 2). **Tablet del operario**: `cerrarCentro` hoy solo
+valida permiso y motivo con faltante — ni tramo ni tiempo; no hay rpc de cierre. Ver `BUSQUEDAS_CORRECCIONES_2.md` y
+`TABLET_OPERARIO_PASO0.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
