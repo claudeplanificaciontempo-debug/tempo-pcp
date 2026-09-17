@@ -134,6 +134,58 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planTarea: ruta textil por las tres dimensiones (propia → tej; pedir → proveedor; falta tintura/lavado → tin; sin clasificar → sin textil)',planT.ordenes.every(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))===JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})))&&planT.ordenes.filter(o=>lineasTelaDe(o.materiales).some(m=>m.produce==='propia'&&m.kg>0)).every(o=>o.rutaCompleta[0]&&o.rutaCompleta[0].centro==='tej')&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))),(()=>{const m=planT.ordenes.find(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))!==JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})));return m?m.op+' '+JSON.stringify(m.rutaCompleta.slice(0,3))+' vs '+JSON.stringify(rutaTextilDe({telas:lineasTelaDe(m.materiales)}))+' telas '+JSON.stringify(m.telas.map(t=>[t.tela,t.kg,t.produce,t.disp,t.falta,t.sinConv])):''})());
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
   TAREA=planT;aplicarTarea();await __p(100);
+  /* ===== CARGAS · qué dato trabajado sobrevive a la Recarga Parte 2 (diagnóstico) ===== */
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
+   const abiertas=S.ordenes.filter(o=>abierta(o)&&o.op);
+   const muestra=abiertas.slice(0,6);
+   if(muestra.length>=6){
+    const [oA,oB,oC,oD,oE,oF]=muestra;
+    /* se marcan datos trabajados de todo tipo */
+    oA.progCentro={corte:{pri:1,rec:null,desde:null}};                       // puesto manual
+    S.avance[oA.id]=Object.assign(S.avance[oA.id]||{},{centros:{corte:5},cierres:{corte:{pz:5,cant:oA.cant,faltan:0,u:"piso",ts:new Date().toISOString()}}});
+    oB.recursoFijo={modulos:"maquila"};                                        // maquila
+    oC.odc="ODC-MANUAL-1";oC.odcManual={u:"prueba",ts:new Date().toISOString()};
+    S.avance[oD.id]=Object.assign(S.avance[oD.id]||{},{cierres:{corte:{pz:10,cant:oD.cant,faltan:0,u:"piso",ts:new Date().toISOString()}},
+      tramos:[{id:"t1",centro:"corte",rec:null,ini:new Date(Date.now()-36e5).toISOString(),fin:new Date().toISOString(),u:"piso",paros:[]}]});
+    oE.lib={tela:{ok:true,u:"lib",ts:new Date().toISOString()}};                // liberación
+    oF.rutaEditada=[{centro:"corte",t:1},{centro:"modulos",t:5},{centro:"empaque",t:1}];oF.foto="https://x/foto.jpg";
+    oF.fechaCompromiso="2026-12-01";oF.prio=1;
+    S.params.pendPospuestos=Object.assign(S.params.pendPospuestos||{},{["x-"+oA.id]:{hasta:"2026-12-31",motivo:"prueba"}});   // una decisión
+    const bakPlanes=JSON.stringify(S.planes||[]);S.planes=(S.planes||[]).concat([{id:"plan-prueba",ym:"2026-10",oids:[oA.id,oB.id],ver:1}]); // plan congelado
+    const antesF={pri:oA.progCentro.corte.pri,maq:oB.recursoFijo.modulos,odc:oC.odc,cierre:!!S.avance[oD.id].cierres.corte,tramos:S.avance[oD.id].tramos.length,
+      lib:!!(oE.lib&&oE.lib.tela&&oE.lib.tela.ok),ruta:oF.rutaEditada.length,foto:oF.foto,comp:oF.fechaCompromiso,prio:oF.prio,planes:S.planes.length};
+    /* 1 · recarga con el MISMO archivo */
+    const p2=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p2;aplicarTarea();await __p(50);
+    const g=id=>S.ordenes.find(x=>x.id===id)||{};
+    const despues={pri:((g(oA.id).progCentro||{}).corte||{}).pri||0,maq:(g(oB.id).recursoFijo||{}).modulos||null,odc:g(oC.id).odc,
+      cierre:!!(((S.avance[oD.id]||{}).cierres)||{}).corte,tramos:((S.avance[oD.id]||{}).tramos||[]).length,
+      lib:!!((g(oE.id).lib||{}).tela||{}).ok,ruta:(g(oF.id).rutaEditada||[]).length,foto:g(oF.id).foto||null,comp:g(oF.id).fechaCompromiso||null,prio:g(oF.id).prio,
+      planes:(S.planes||[]).length,estadoA:g(oA.id).estado};
+    __R.recarga={mismoArchivo:{antes:antesF,despues,
+      sobrevive:{puestoManual:despues.pri===antesF.pri,maquila:despues.maq===antesF.maq,odcManual:despues.odc===antesF.odc,
+        cierres:despues.cierre===antesF.cierre,tramos:despues.tramos===antesF.tramos,liberacion:despues.lib===antesF.lib,
+        rutaEditada:despues.ruta===antesF.ruta,foto:despues.foto===antesF.foto,fechaCompromiso:despues.comp===antesF.comp,
+        prio:despues.prio===antesF.prio,planCongelado:despues.planes===antesF.planes,decisionPospuesta:!!(S.params.pendPospuestos||{})["x-"+oA.id]}}};
+    __check("CARGA: tras la Recarga Parte 2 con el mismo archivo, cada dato trabajado sobrevive (tabla 14)",
+      Object.values(__R.recarga.mismoArchivo.sobrevive).every(Boolean),JSON.stringify(__R.recarga.mismoArchivo.sobrevive));
+    /* 2 · recarga con un archivo al que le FALTA la orden A: ¿se borra o queda marcada? */
+    const iOP=(tareaRows[0]||[]).findIndex(x=>normTxt(x)===normTxt("Orden de produccion")||normTxt(x)==="op"||/orden de producci/.test(normTxt(x)));
+    const rows2=tareaRows.filter((r,k)=>k===0||String(r[iOP]||"").trim()!==oA.op);
+    const p3=planTarea(rows2,"TAREA_SIN_A.xlsx");TAREA=p3;aplicarTarea();await __p(50);
+    const oA2=S.ordenes.find(x=>x.id===oA.id);
+    __R.recarga.faltaEnArchivo={sigueEnElSistema:!!oA2,estado:oA2&&oA2.estado,marca:oA2&&oA2.noArchivo?"noArchivo":"(sin marca)",
+      conservaPuesto:!!(oA2&&((oA2.progCentro||{}).corte||{}).pri),conservaAvance:!!(S.avance[oA.id]&&S.avance[oA.id].cierres&&S.avance[oA.id].cierres.corte)};
+    __check("CARGA: una orden que ya no viene en el archivo NO se borra: queda marcada noArchivo con lo suyo",
+      !!oA2&&oA2.estado==="noArchivo"&&!!oA2.noArchivo,JSON.stringify(__R.recarga.faltaEnArchivo));
+    /* se deja todo como estaba: recarga con el archivo completo y se quitan las marcas de prueba */
+    const p4=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p4;aplicarTarea();await __p(50);
+    [oA,oB,oC,oE,oF].forEach(o=>{const x=S.ordenes.find(z=>z.id===o.id);if(!x)return;delete x.progCentro;delete x.recursoFijo;delete x.odcManual;delete x.lib;delete x.rutaEditada;delete x.fechaCompromiso;if(x.prio===1)x.prio=3;if(x.foto==="https://x/foto.jpg")delete x.foto});
+    delete S.avance[oD.id];delete S.avance[oA.id];delete (S.params.pendPospuestos||{})["x-"+oA.id];S.planes=JSON.parse(bakPlanes);PLAN=null;PLAN_ALL=null;}
+   /* «Actualizar desde Odoo» no se puede ejercitar: su plan se arma dentro de leerOdoo(ev) (manejador del <input file>) */
+   __R.recarga=__R.recarga||{};__R.recarga.odooEjercitable=(typeof planOdoo==="function");
+   __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas (para poder probarlo)",typeof planOdoo==="function","no existe planOdoo(rows): el plan vive dentro de leerOdoo(ev)");
+   window.alert=a0;
+   __check("CARGA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* OT reales contra las órdenes reales (fixture local, no publicado) */
   {const otRows=await (await fetch('fixtures/ot_rows.json')).json();window.__otRows=otRows;__check('fixture OT: 27.336 filas incl. header',otRows.length===27336,otRows.length);
    const po=planOT(otRows,'Orden_de_trabajo.xlsx');
