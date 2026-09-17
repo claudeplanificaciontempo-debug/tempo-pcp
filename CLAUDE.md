@@ -757,6 +757,19 @@ la pestaña de Configuración hasta que se apruebe el Paso 2). **Tablet del oper
 valida permiso y motivo con faltante — ni tramo ni tiempo; no hay rpc de cierre. Ver `BUSQUEDAS_CORRECCIONES_2.md` y
 `TABLET_OPERARIO_PASO0.md`.
 
+**Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
+para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
+hábiles. **Recurso fijo o secuencia SIN programa ya no dan visibilidad.** Si `programar()` falla, el operario ve
+**cero** órdenes y sale «Error en la programación — avise al supervisor»: **nunca mostrar todo por si acaso**.
+Una orden iniciada fuera del plan sigue visible **solo mientras el tramo esté abierto**, sin INICIO. Un paso sin
+minutos (`pasoSinTiempo`) no llega al operario salvo que el supervisor le fije recurso y fecha («asignar a
+operario»); entonces va marcado «sin tiempo estándar». **CIERRE: hace falta tiempo corrido.**
+`puedeCerrarPaso(oid,c)` es la **única puerta** (`cerrarCentro`, `confirmarHechoCentro` y `terminarOrdenCentro`
+pasan por ella): suma `calcTramo().trabajado` de TODOS los tramos de esa orden en ese centro y exige
+`prm('minMinutosCierre',5)`. Por debajo del estándar marca `tiempoBajo` sin bloquear, y **sin SAM no marca**.
+El supervisor puede cerrar sin tiempo con **motivo obligatorio** (tabla 15, uso `cierreSinTiempo`), que queda
+en bitácora y auditoría. Ver `TABLET_OPERARIO_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

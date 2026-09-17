@@ -204,6 +204,33 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.50 Tablet del operario: solo lo programado y cierre con tiempo (17-sep)
+- **`programadoPara(o,c,rec,P)`** es la ÚNICA definición de «programado para mí»: exige carga del motor en
+  `P.pro` para ese centro y recurso, entre hoy y `finVentanaTablet()` (**`prm('diasVentanaTablet',5)`** días
+  hábiles). La usan `tabletFilas`, `ordenesQueVe` y el buscador. **Se quitó la entrada por `recursoFijo` o por
+  secuencia sin programa.**
+- **Sin fallback**: si `programar()` falla, el operario ve **cero** órdenes y sale «Error en la programación —
+  avise al supervisor» (`ERR_PROG`, `errProgHTML`). Nunca se muestra todo.
+- **Fuera del plan**: una orden que ese puesto empezó sigue visible mientras el tramo esté abierto, marcada y
+  **sin INICIO**; al terminarlo desaparece. El supervisor la ve como «en proceso fuera del plan»
+  (`enProcesoFueraDelPlan`).
+- **Pasos sin minutos** (`pasoSinTiempo`): el motor no los programa y el operario no los ve, salvo que el
+  supervisor les fije recurso y fecha (`fijadaPara`, acción **«asignar a operario»** en la cola). Entonces salen
+  marcados **«sin tiempo estándar»** y el tramo registra tiempo real igual.
+- Cola vacía: **«Sin programación cargada — avise al supervisor»**. Buscador fuera del plan: **«No está
+  programada — consulte al supervisor»**, sin INICIO.
+- **CIERRE CON TIEMPO**: `tiempoEfectivoCentro` suma `calcTramo().trabajado` de **todos** los tramos de esa
+  orden en ese centro (varios operarios y días). **`puedeCerrarPaso(oid,c)`** bloquea sin tramo o por debajo de
+  **`prm('minMinutosCierre',5)`**; por encima permite y marca **`tiempoBajo`** si queda por debajo de
+  `unidades × SAM × (1 − tolMinPrenda)`. **Sin SAM no marca** (dato faltante, no falso positivo).
+- **UNA sola puerta**: `cerrarCentro`, `confirmarHechoCentro` y `terminarOrdenCentro` pasan por
+  `puedeCerrarPaso`. El supervisor puede cerrar sin tiempo con **motivo obligatorio** (tabla 15, uso nuevo
+  **`cierreSinTiempo`**): `cierres[c].sinTiempo`, bitácora y auditoría. Los cierres guardan `minutos`,
+  `tiempoBajo` y `sinEstandar`.
+- **Encaje con la revisión 3 del motor**: `programadoPara` mira `P.pro`, y un paso sin duración no genera
+  `P.pro` ni ahora ni con el paso conservado en error. El camino del operario no cambia.
+- Ver `TABLET_OPERARIO_REPORTE.md` y `TABLET_OPERARIO_PASO0.md`.
+
 ### 2.49 Búsquedas y filtros: correcciones (16-sep)
 - **Un temporizador POR buscador** (`_qTimers[id]`) y espera **`prm('msBuscar',150)`** editable; ya no depende de
   tener más de 300 órdenes. `estadosPantalla()` es el único mapa de estados (17 buscadores); `refEstado` y `navRefs`
