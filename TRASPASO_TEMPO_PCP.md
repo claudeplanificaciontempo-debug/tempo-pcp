@@ -209,7 +209,10 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   parámetros con enlace «Configurar». Meses multiselección, filtros cliente/familia, recuadros por área (centros
   configurados), detalle: tabla cliente × mes y cuadrito de 13 filas (4 se escriben). Motor del Paso 1 intacto.
 - Órdenes de demostración: `esDemo`, `carteraAbiertaCarga()` para el freno; no existen en producción.
-- Ver `NIVELACION_PANTALLA_CORTE.md`.
+- La nivelación NO lista WH: «ver órdenes» abre Carga general → «Saldo por procesar en <área>» (misma función
+  `saldoAreaNiv`), con «← volver a la nivelación»; al llegar así, el resto de Carga general queda colapsado.
+- Tela y Maquila por fase (tabla 1, columna nivelación); Lavado y Plancha por días, sin cuadrito; todas las áreas conectadas.
+- Ver `NIVELACION_PANTALLA_CORTE.md`, `NIVELACION_SALDO_TRES_CORRECCIONES.md`, `NIVELACION_DECISIONES_17SEP.md`.
 
 ### 2.56 Restaurar con respaldo automático y registro unificado de cargas (17-sep)
 - Restaurar: solo administrador, palabra RESTAURAR, respaldo automático descargado Y subido a Storage (bucket privado

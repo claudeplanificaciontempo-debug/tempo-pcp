@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 13:52';
+const APP_BUILD='2026-09-17 14:21';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -5650,7 +5650,8 @@ const PROC_NIVEL=[
   {id:'tela',    n:'Tela por entregar', porFase:true,  centro:null,      area:'tej', unidad:'unidades'},
   {id:'corte',   n:'Corte',             porFase:false, centro:'corte',   area:'pro', unidad:'minutos'},
   {id:'confeccion',n:'Confección',      porFase:false, centro:'modulos', area:'pro', unidad:'minutos'},
-  {id:'empaque', n:'Empaque',           porFase:false, centro:'empaque', area:'pro', unidad:'minutos'}];
+  {id:'empaque', n:'Empaque',           porFase:false, centro:'empaque', area:'pro', unidad:'minutos'},
+  {id:'maquila', n:'Maquila (por fase)', porFase:true,  centro:null,      area:'pro', unidad:'unidades'}];   /* decisión 17-sep: la maquila se cuenta por fase; recursoFijo solo sirve para las decisiones */
 function procNivel(id){const p=PROC_NIVEL.find(p=>p.id===id);if(p)return p;
   /* cualquier centro de producción configurado también es un proceso de nivelación (por ruta) */
   const c=CE(id);return (c&&c.area==='pro')?{id,n:c.n,porFase:false,centro:id,area:'pro',unidad:'minutos'}:null}
@@ -6050,10 +6051,11 @@ function nivUIClaveFila(o,por){por=por||NIVUI.filaPor||'familia';if(por==='clien
 function nivUIFilaTxt(por){return (NIVUI_FILAS.find(x=>x[0]===(por||NIVUI.filaPor))||NIVUI_FILAS[0])[1].toLowerCase()}
 const NIVUI_LISTA='nivui';
 /* áreas con el cuadrito conectado; las demás esperan aprobación una por una */
-const NIVUI_CONECTADAS=['corte'];
+/* 17-sep: todas las áreas conectadas; las «por días» (sin capacidad) muestran saldo y órdenes, sin cuadrito */
+function nivUIConectada(a){return !!a&&!a.porDias}
 /* --- las áreas salen de los centros configurados (área pro) en orden de proceso, más Tela y Maquila --- */
 function nivUIAreas(){const pro=S.centros.filter(c=>c.area==='pro'&&c.activo!==false).map(c=>c.id).sort((a,b)=>ordenPaso(a)-ordenPaso(b));
-  return [{id:'tela',n:'Tela',tipo:'tela'}].concat(pro.map(c=>({id:c,n:nCen(c),tipo:'centro'}))).concat([{id:'maquila',n:'Maquila',tipo:'maquila'}])}
+  return [{id:'tela',n:'Tela',tipo:'tela',porFase:true}].concat(pro.map(c=>({id:c,n:nCen(c),tipo:'centro',porDias:centroPorDias(c)}))).concat([{id:'maquila',n:'Maquila',tipo:'maquila',porFase:true}])}
 function nivUIArea(id){return nivUIAreas().find(a=>a.id===id)||null}
 /* meses marcados: al menos uno; por defecto el mes en curso si tiene saldo, si no el primero con saldo */
 function nivUIMesesDisp(){return mesesNivDisp().filter(m=>m!=='sin fecha')}
@@ -6070,9 +6072,7 @@ function nivUIOpciones(k){const set=new Set();S.ordenes.filter(abiertaDe).forEac
 /* el saldo de un área con un filtro cualquiera: la nivelación (con sus filtros de pantalla) y Carga general (con la
    selección que llega por «ver órdenes») llaman EXACTAMENTE a esta función, así que listan lo mismo que se sumó */
 function saldoAreaNiv(areaId,meses,f){const a=nivUIArea(areaId);if(!a)return null;
-  if(a.tipo==='maquila'){const s=saldoProceso('modulos',meses,f);if(!s)return null;
-    const ords=S.ordenes.filter(o=>abiertaDe(o)&&(!f||f(o))&&(!meses||!meses.length||meses.includes(mesEntregaNiv(o)))&&((o.recursoFijo||{}).modulos==='maquila')&&(o.ruta||[]).some(x=>x.centro==='modulos')&&!pasoHecho(o,'modulos'));
-    return {proc:'maquila',ordenes:ords,unid:s.maquila,min:s.minMaquila,sinSAM:[],unidSinSAM:0,maquila:0,minMaquila:0}}
+  /* Tela y Maquila se cuentan POR FASE (columna «nivelación» de la tabla 1); los centros, por ruta */
   return saldoProceso(areaId,meses,f)}
 function nivUISaldo(areaId,meses){return saldoAreaNiv(areaId,meses,nivUIFiltro())}
 /* el filtro que arma una selección (cliente, familia, tipo de producto) — el mismo para las dos pantallas */
@@ -6090,7 +6090,8 @@ function nivUIVolver(){const v=CG.det&&CG.det.volver;if(v){NIVUI.meses=v.meses;N
 function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null,detalle:[],nota:'área desconocida'};
   if(a.tipo==='tela'){const t=capTelaReal();const plan=nivParam('telaPlan','');const cap=(plan===''||plan==null)?(t.suficiente?t.prom:null):+plan;
     return {cap,unidad:'u/día',detalle:[],nota:(plan===''||plan==null)?(t.suficiente?('promedio real de '+t.dias+' días hábiles ('+t.conDato+' con registro)'):('sin avance suficiente: '+t.conDato+' de '+t.dias+' días con registro')):('valor planificado en Configuración')}}
-  if(a.tipo==='maquila')return {cap:null,unidad:'min/día',detalle:[],nota:'la maquila no tiene capacidad propia: sus unidades se escriben en el área que la usa'};
+  if(a.tipo==='maquila')return {cap:null,unidad:'u/día',detalle:[],nota:'la maquila no tiene capacidad propia en la planta: dato faltante (se cuenta por fase; sus unidades entran como «Maquila» en el área que las recibe)'};
+  if(a.porDias)return {cap:null,unidad:'min/día',detalle:[],nota:'por días, sin capacidad: '+nCen(a.id)+' no consume capacidad (columna «Por días» de Configuración → Centros). Para nivelarlo harían falta: minutos por prenda en la hoja de operaciones o un mínimo estimado por categoría, y un recurso con personas, minutos y eficiencia (o una capacidad en unidades por día); hoy solo tiene un plazo de espera'};
   const d=hoy();const recs=S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila');
   const detalle=recs.map(r=>{const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===d);const aj=ajusteRecDia(r,d);
     let pers=(t&&t.pers!=null)?t.pers:(r.pers||0),min=r.min||0,efic=r.efic||0;if(aj){if(aj.pers!=null&&!(t&&t.pers!=null))pers=+aj.pers;if(aj.min!=null)min=+aj.min;if(aj.efic!=null)efic=+aj.efic}
@@ -6111,7 +6112,7 @@ function nivUIDescartar(areaId){delete NIVUI.esc[areaId];render()}
 /* --- el cálculo del área: nivelar() del Paso 1 + las tres filas derivadas (adicionales, maquila escrita, total) --- */
 function nivUICalcular(areaId){const a=nivUIArea(areaId);if(!a)return null;const meses=nivUIMeses();
   const s=nivUISaldo(areaId,meses);const cap=nivUICapacidad(areaId);const e=nivUIEsc(areaId);const sam=samPonderado(s);
-  const enMin=a.tipo!=='tela';                           // tela se mide en unidades; planta en minutos
+  const enMin=!a.porFase;                                 // tela y maquila (por fase) se miden en unidades; la planta en minutos
   const saldo=s?(enMin?s.min:s.unid):null;
   /* maquila: lo escrito manda; si no hay nada escrito, la suma de órdenes marcadas a maquila (del saldo) */
   const maqU=(e.maquilaU!==''&&e.maquilaU!=null)?+e.maquilaU:(s&&s.maquila?s.maquila:0);
@@ -6123,16 +6124,16 @@ function nivUICalcular(areaId){const a=nivUIArea(areaId);if(!a)return null;const
   const total=(planta==null)?null:planta+(maqMin==null?0:maqMin);
   const deficit=(saldo==null||total==null)?null:Math.max(0,saldo-total);
   const sobra=(saldo==null||total==null)?null:Math.max(0,total-saldo);
-  const sinFases=a.tipo==='tela'&&!fasesDeProcNivel('tela').length;
+  const sinFases=!!(a.porFase&&!fasesDeProcNivel(a.id).length);
   const estado=(deficit==null||sinFases)?'faltante':(deficit>0?'deficit':((c.holgura!=null&&c.holgura<=prm('colchonDias',3))?'riesgo':'ok'));
   return {area:a,meses,saldo:s,sam,enMin,cap,esc:e,calc:c,adic,diasTot,plantaMin:planta,maqU,maqMin,totalMin:total,deficitMin:deficit,sobraMin:sobra,estado,
-    falta:c.falta.slice().concat(sam==null&&enMin&&s&&s.unid>0?['SAM ponderado (saldo sin minutos)']:[]).concat(a.tipo==='tela'&&!fasesDeProcNivel('tela').length?['fases de Tela en la tabla 1 (columna «nivelación» vacía: el saldo de tela no se puede contar)']:[]),
-    sinFasesTela:a.tipo==='tela'&&!fasesDeProcNivel('tela').length}}
+    falta:c.falta.slice().concat(sam==null&&enMin&&s&&s.unid>0?['SAM ponderado (saldo sin minutos)']:[]).concat(a.porFase&&!fasesDeProcNivel(a.id).length?['fases de '+a.n+' en la tabla 1 (columna «nivelación» vacía: el saldo no se puede contar)']:[]),
+    sinFasesTela:!!(a.porFase&&!fasesDeProcNivel(a.id).length),porDias:!!a.porDias}}
 /* --- lo que NO entra: las órdenes que quedan fuera del total del período, de la más lejana a la más cercana --- */
 function nivUINoEntra(r){if(!r||r.deficitMin==null||r.deficitMin<=0||!r.saldo)return [];
-  const c=r.area.tipo==='centro'?r.area.id:'modulos';
+  const c=r.area.tipo==='centro'?r.area.id:'modulos';const porFase=r.area.porFase;
   const ords=r.saldo.ordenes.slice().sort((a,b)=>String(fechaMetaDe(b)||'')<String(fechaMetaDe(a)||'')?-1:1);
-  const out=[];let acum=0;for(const o of ords){if(acum>=r.deficitMin)break;const u=r.area.tipo==='tela'?(+o.cant||0):pendCentroUnid(o,c);const m=r.enMin?u*(samOrdenCentro(o,c)||0):u;out.push({o,u,min:m});acum+=m}
+  const out=[];let acum=0;for(const o of ords){if(acum>=r.deficitMin)break;const u=porFase?(+o.cant||0):pendCentroUnid(o,c);const m=r.enMin?u*(samOrdenCentro(o,c)||0):u;out.push({o,u,min:m});acum+=m}
   return out}
 /* --- guardar escenario: inicio/compromiso por el camino del Paso 1, adicionales y maquila en escenarios[] --- */
 function nivUIGuardar(areaId){if(!puede('programa')){alert('Solo planificación guarda escenarios.');return}
@@ -6156,19 +6157,19 @@ function nivUIFiltrosHTML(){const sel=(k,lab)=>`<div><label>${lab}</label><selec
   return sel('cliente','Cliente')+sel('familia','Familia')}
 function nivUIRecuadrosHTML(){const meses=nivUIMeses();
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px">${nivUIAreas().map(a=>{const r=nivUICalcular(a.id);const on=NIVUI.area===a.id;
-    const saldo=r&&r.saldo?((r.sinFasesTela)?'<span class="tag t-alerta" style="font-size:9px;padding:0 4px">sin fases marcadas</span>':(r.enMin?num(aUnid(r.saldo.min,r.sam)||0,0)+' u':num(r.saldo.unid,0)+' u')+(r.saldo.sinSAM&&r.saldo.sinSAM.length?' <span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="'+r.saldo.sinSAM.length+' órdenes sin SAM no suman">+'+num(r.saldo.unidSinSAM,0)+' u sin SAM</span>':'')):'—';
-    const fin=(NIVUI_CONECTADAS.includes(a.id)&&r&&r.calc.fin)?fmtDia(r.calc.fin):'—';
+    const saldo=r&&r.saldo?((r.sinFasesTela)?'<span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="marca en Configuración → Órdenes y materiales → tabla 1, columna nivelación, qué fases cuentan">sin fases marcadas · dato faltante</span>':(r.enMin?num(aUnid(r.saldo.min,r.sam)||0,0)+' u':num(r.saldo.unid,0)+' u')+(r.saldo.sinSAM&&r.saldo.sinSAM.length?' <span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="'+r.saldo.sinSAM.length+' órdenes sin SAM no suman">+'+num(r.saldo.unidSinSAM,0)+' u sin SAM</span>':'')):'—';
+    const fin=(nivUIConectada(a)&&r&&r.calc.fin)?fmtDia(r.calc.fin):'—';
     return `<div onclick="NIVUI.area='${a.id}';NIVUI.celda=null;NIVUI.noEntra=false;render()" style="cursor:pointer;border:2px solid ${on?'var(--t-primary,var(--ink))':'var(--rule)'};border-radius:6px;padding:6px 10px;min-width:118px;background:${on?'var(--t-accent-soft,var(--field))':'var(--card)'}">
       <div style="font-weight:600;font-size:13px">${esc(a.n)}</div>
       <div style="font-size:12px">saldo <b>${saldo}</b></div>
       <div style="font-size:11px" class="mut">fin ${esc(fin)}</div>
-      <div>${NIVUI_CONECTADAS.includes(a.id)?nivUIEstadoHTML(r?r.estado:'faltante',true):'<span class="mut" style="font-size:11px">pendiente de conectar</span>'}</div></div>`}).join('')}</div>`}
+      <div>${a.porDias?'<span class="mut" style="font-size:11px" title="no consume capacidad: no se nivela por capacidad">por días, sin capacidad</span>':nivUIEstadoHTML(r?r.estado:'faltante',true)}</div></div>`}).join('')}</div>`}
 /* tabla FAMILIA × mes (unidades del saldo): para nivelar se mira el tipo de producto, no las órdenes una por una.
    Las filas se pueden agrupar por familia (por defecto), tipo de producto o cliente; el cálculo no cambia.
    Clic en una celda → debajo, ESA fila y ese mes: primero por tipo de producto con sus unidades, y ahí sí las
    órdenes con foto/WH/fase (filasGRP + whCell). Las WH quedan en el último nivel. */
 function nivUIOrdenesSaldo(r){return r.saldo.ordenes.concat(r.saldo.sinSAM||[]).filter((o,i,arr)=>arr.indexOf(o)===i)}
-function nivUIUnidDe(r){const c=r.area.tipo==='centro'?r.area.id:'modulos';return o=>r.area.tipo==='tela'?(+o.cant||0):pendCentroUnid(o,c)}
+function nivUIUnidDe(r){const c=r.area.tipo==='centro'?r.area.id:'modulos';return o=>r.area.porFase?(+o.cant||0):pendCentroUnid(o,c)}
 function nivUITablaHTML(r){if(!r||!r.saldo)return '';const meses=r.meses;const uDe=nivUIUnidDe(r);const por=NIVUI.filaPor||'familia';
   const ords=nivUIOrdenesSaldo(r);
   const m={};ords.forEach(o=>{const f=nivUIClaveFila(o,por);const mes=mesEntregaNiv(o);m[f]=m[f]||{};m[f][mes]=(m[f][mes]||0)+uDe(o)});
@@ -6240,7 +6241,7 @@ function vNivelacion(el){
     <a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline" onclick="page='config';CONF.tab='nivel';render()">Configurar</a></div>
    <div class="row" style="align-items:flex-end;gap:14px">${nivUIMesesHTML()}${nivUIFiltrosHTML()}</div>
    ${nivUIRecuadrosHTML()}
-   ${r?nivUITablaHTML(r)+(NIVUI_CONECTADAS.includes(r.area.id)?nivUICuadritoHTML(r):`<div class="panel"><div class="body warn" style="font-size:var(--fs-s)"><b>${esc(r.area.n)} todavía no está conectada a la nivelación.</b> Solo Corte está conectada (17-sep-2026); las demás áreas se conectan una por una después de aprobar Corte. El saldo de arriba sí es real (mismo motor).</div></div>`):'<div class="panel"><div class="empty">Sin áreas configuradas.</div></div>'}`}
+   ${r?nivUITablaHTML(r)+(nivUIConectada(r.area)?nivUICuadritoHTML(r):`<div class="panel"><div class="body warn" style="font-size:var(--fs-s)"><b>${esc(r.area.n)}: por días, sin capacidad.</b> Muestra saldo y órdenes, sin cuadrito ni fecha calculada. ${esc(r.cap.nota)}</div></div>`):'<div class="panel"><div class="empty">Sin áreas configuradas.</div></div>'}`}
 
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
@@ -8036,7 +8037,7 @@ function vPro(el){
     /* la MISMA función que sumó el cuadrito de la nivelación: saldoAreaNiv(área, meses, filtro) */
     const sd=saldoAreaNiv(d.area,d.meses,filtroSelNiv(d))||{ordenes:[],sinSAM:[],unid:0,unidSinSAM:0};
     let base=sd.ordenes.concat(sd.sinSAM||[]).filter((o,i,arr)=>arr.indexOf(o)===i);if(d.ids){const set=new Set(d.ids);base=base.filter(o=>set.has(o.id))}
-    const c=a.tipo==='centro'?a.id:'modulos';const uDe=o=>a.tipo==='tela'?(+o.cant||0):pendCentroUnid(o,c);
+    const c=a.tipo==='centro'?a.id:'modulos';const uDe=o=>a.porFase?(+o.cant||0):pendCentroUnid(o,c);
     const dets=base.filter(o=>faseOkCG(o)&&(!CG.q||matchBusq(o,CG.q,'CG.q')));
     const uTot=base.reduce((x,o)=>x+uDe(o),0);
     const selTxt=[(d.meses||[]).join(', ')||'todos los meses',d.fam?'familia '+d.fam:'',d.hija?'tipo '+d.hija:'',d.cli?'cliente '+d.cli:'',d.txt||''].filter(Boolean).map(esc).join(' · ');
@@ -8054,6 +8055,8 @@ function vPro(el){
      </tbody></table></div></div></div>`}
   const cvCen=CG.centro||(CG.area==='pro'?'':'');
   const cargaViene=(CG.area==='pro'&&cvCen)?`<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Carga que viene · ${esc(nCen(cvCen))}</span></div>${cargaQueVieneHTML([cvCen],nCen(cvCen),P||programar())}`:(CG.area==='pro'?'<p class="mut" style="margin-top:18px">Elige un centro arriba para ver <b>Carga que viene</b>: lo que va a llegar y dónde está ahora.</p>':'');
+  /* llegando desde la nivelación: solo el saldo por procesar; el resto queda colapsado hasta cerrar o pedirlo */
+  if(CG.det&&CG.det.saldo&&!CG.det.verResto){el.innerHTML=cab+bloque3+`<p class="mut" style="font-size:var(--fs-s);margin-top:12px">El resto de Carga general (carga por semana, familia por centro, carga que viene, sin liberar) está colapsado para no confundir el saldo con lo programado de la semana. <a style="cursor:pointer;text-decoration:underline" onclick="CG.det.verResto=true;render()">ver el resto de Carga general</a></p>`;return}
   el.innerHTML=cab+bloque1+bloque2+bloque3+avisoFueraDeBaseHTML('CG.q',ordsF,'el área o centro elegido y el filtro de fases')+cargaViene;
 }
 function togFaseCG(f){togSet(CG,'fases',f)}

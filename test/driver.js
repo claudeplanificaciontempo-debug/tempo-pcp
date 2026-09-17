@@ -6198,8 +6198,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("N3: Tela sin fases marcadas en la tabla 1 es «dato faltante», no «0 u · llega»",fasesDeProcNivel("tela").length>0||(rT.sinFasesTela===true&&rT.estado==="faltante"&&/sin fases marcadas/.test(h)&&rT.falta.some(f=>/fases de Tela/.test(f))),JSON.stringify({fases:fasesDeProcNivel("tela").length,e:rT.estado}));
      __check("N3: un área cuyas órdenes no tienen SAM lo dice en el recuadro (+N u sin SAM)",!(rE.saldo&&rE.saldo.sinSAM.length)||new RegExp("\\+"+num(rE.saldo.unidSinSAM,0).replace(/\./g,"\\.")+" u sin SAM").test(h),JSON.stringify(rE.saldo&&{n:rE.saldo.sinSAM.length,u:rE.saldo.unidSinSAM}));}
     NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;
-    __check("N3: clic en un recuadro muestra SOLO esa área abajo (y las no conectadas lo dicen, sin cuadrito)",/Confección todavía no está conectada/.test(h2)&&!/Nivelación de Corte/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1&&!/se escribe/.test(h2));
+    __check("N3: clic en un recuadro muestra SOLO esa área abajo",/Nivelación de Confección/.test(h2)&&!/Nivelación de Corte/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1);
     NIVUI.area="corte";render();}
+   /* N8 · decisiones 17-sep: Tela y Maquila por fase (al marcar fases el recuadro calcula); Lavado/Plancha por días; todas conectadas */
+   {const tabla=faseMapeo();const bak=tabla.map(r=>r.nivel);
+    __check("N8: la tabla 1 ofrece Maquila en la columna «nivelación» (PROC_NIVEL) y se cuenta por fase",PROC_NIVEL.some(p=>p.id==="maquila"&&p.porFase)&&nivUIArea("maquila").porFase===true&&!/recursoFijo/.test(String(saldoAreaNiv)));
+    const rM0=nivUICalcular("maquila");
+    __check("N8: Maquila sin fases marcadas = «sin fases marcadas · dato faltante», nunca 0",fasesDeProcNivel("maquila").length>0||(rM0.sinFasesTela===true&&rM0.estado==="faltante"&&/sin fases marcadas · dato faltante/.test(document.getElementById("p-nivelacion").innerHTML)));
+    tabla.forEach(r=>{if(/^5.*maquila/i.test(r.fase||""))r.nivel="maquila";if(/^1(Tejeduria|Tintoreria|CD Tintoreria|INCOMPLETOS)/i.test(r.fase||""))r.nivel="tela"});NIVC=null;render();
+    const rM=nivUICalcular("maquila"),rT=nivUICalcular("tela");const h=document.getElementById("p-nivelacion").innerHTML;
+    __check("N8: al marcar las fases 5Maquila…, Maquila calcula su saldo por fase (unidades y órdenes) y deja de decir sin fases",rM.sinFasesTela===false&&rM.saldo.unid>0&&rM.saldo.ordenes.length>0&&!rM.enMin,JSON.stringify({u:rM.saldo.unid,n:rM.saldo.ordenes.length}));
+    __check("N8: al marcar las fases de Tela, el recuadro calcula y deja de decir «sin fases marcadas»",rT.sinFasesTela===false&&rT.saldo.unid>0&&!/Tela<\/div>[^]*?sin fases marcadas/.test(h.slice(0,h.indexOf("Corte</div>"))),JSON.stringify({u:rT.saldo.unid,n:rT.saldo.ordenes.length}));
+    tabla.forEach((r,i)=>{r.nivel=bak[i]});NIVC=null;
+    const pd=nivUIAreas().filter(a=>a.porDias);
+    __check("N8: Lavado y Plancha (por días) siguen en los recuadros marcados «por días, sin capacidad», sin cuadrito, y dicen qué haría falta",pd.length>=1&&pd.some(a=>a.id==="lavado")&&pd.every(a=>centroPorDias(a.id))&&(()=>{NIVUI.area="lavado";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /por días, sin capacidad/.test(h2)&&!/se escribe/.test(h2)&&/harían falta/.test(h2)&&/Saldo por familia/.test(h2)})(),pd.map(a=>a.id).join(","));
+    __check("N8: las demás áreas quedaron conectadas (Confección con cuadrito)",(()=>{NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /Nivelación de Confección/.test(h2)&&/se escribe/.test(h2)&&!/pendiente de conectar/.test(document.getElementById("p-nivelacion").innerHTML)})());}
    /* N4 · detalle de Corte: tabla cliente × mes y cuadrito */
    {const r=nivUICalcular("corte");const h=()=>document.getElementById("p-nivelacion").innerHTML;
     __check("N4: la tabla tiene una columna por mes marcado y fila de totales",nivUIMeses().every(m=>new RegExp("<th class=\"num\">"+m+"</th>").test(h()))&&/<td>Total<\/td>/.test(h()));
@@ -6221,6 +6234,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        __check("N4→CG: abre Carga general en «Saldo por procesar en Corte» con la selección en el encabezado",page==="produccion"&&!!cab&&/Corte/.test(cab[1])&&new RegExp(sel.meses[0]).test(cab[2])&&new RegExp(esc(sel.hija)).test(cab[2]),cab?cab[0].slice(0,160):hc.slice(0,120));
        __check("N4→CG: el número de órdenes y unidades del detalle coincide EXACTO con la fila de la nivelación",!!cab&&+cab[3]===nFila&&+cab[4].replace(/\./g,"")===uFila,JSON.stringify({cg:cab&&[cab[3],cab[4]],fila:[nFila,uFila]}));
        __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a la nivelación/.test(hc)&&/whCell|WH\//.test(hc));
+       __check("N4→CG: al llegar desde la nivelación SOLO se ve el bloque de saldo; el resto queda colapsado con «ver el resto de Carga general»",!/Carga contra capacidad por semana/.test(hc)&&!/Familia por centro/.test(hc)&&!/Carga que viene · /.test(hc)&&/ver el resto de Carga general/.test(hc));
+       CG.det.verResto=true;render();const hc2=document.getElementById("p-produccion").innerHTML;
+       __check("N4→CG: «ver el resto» despliega la pantalla completa sin perder el bloque de saldo",/Carga contra capacidad por semana/.test(hc2)&&/Saldo por procesar en/.test(hc2));
        nivUIVolver();await __p(30);
        __check("N4→CG: «← volver a la nivelación» regresa con área, meses, filtros y celda como estaban",page==="nivelacion"&&JSON.stringify({meses:nivUIMeses(),cliente:NIVUI.cliente,familia:NIVUI.familia,area:NIVUI.area,filaPor:NIVUI.filaPor,celda:NIVUI.celda})===bakNIV&&CG.det===null);}}
      /* cambiar el agrupamiento no cambia el total */

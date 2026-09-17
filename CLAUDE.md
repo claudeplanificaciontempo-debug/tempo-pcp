@@ -849,7 +849,13 @@ tres filas (días disponibles + adicionales, maquila escrita, total del período
 `saldoProceso(procId,horizonte,filtro)` ganó un filtro opcional y `procNivel(id)` acepta cualquier centro `pro` (por ruta).
 `nivUICapacidad` suma `capDia` de los recursos activos del centro (sin `maquila`) y expone personas/min/eficiencia por
 recurso para «Ver cálculo». Configuración → Nivelación conserva grupos, fases y parámetros y solo enlaza a la pantalla.
-Prueba N0: ninguna función declarada dos veces en `index.html`. Ver `NIVELACION_PANTALLA_CORTE.md`.
+Prueba N0: ninguna función declarada dos veces en `index.html`. **Decisiones 17-sep (todas las áreas conectadas):** Tela y
+**Maquila se cuentan POR FASE** (`PROC_NIVEL` tiene `maquila` porFase; columna «nivelación» de la tabla 1; `recursoFijo`
+solo alimenta la fila Maquila del cuadrito); sin fases marcadas = «sin fases marcadas · dato faltante», nunca 0. Lavado y
+Plancha (`centroPorDias`) quedan «por días, sin capacidad»: saldo y tabla, sin cuadrito (`nivUIConectada`). Al llegar a
+Carga general desde la nivelación solo se ve el bloque de saldo (`CG.det.verResto` despliega el resto). Bordado en
+producción: `SUPABASE_BORDADO_UNICO_PASO.sql` (solo lectura). Ver `NIVELACION_PANTALLA_CORTE.md`,
+`NIVELACION_SALDO_TRES_CORRECCIONES.md` y `NIVELACION_DECISIONES_17SEP.md`.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
