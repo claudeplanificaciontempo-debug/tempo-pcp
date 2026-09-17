@@ -204,6 +204,25 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.52 Cargas: diagnóstico de claves y duplicados (17-sep) — SOLO REPORTE
+- Cuatro cargadores, tres normalizaciones de la WH: `normTxt` (Parte 2, Fotos), texto crudo (Odoo), `normFase` (OT).
+- La orden **sin WH** tiene dos claves: Parte 2 `SIN WH #<hash de cliente|ODC|stilo|catHija|color|fecha|pedido|proyecto>`
+  (única pero inestable: cambia si cambian cantidad o fecha) y Odoo `prev_<cliente|proyecto|stilo|color>` (estable pero
+  7 pares chocan). Propuesta: `claveOrden` única — con WH `normFase(op)`; sin WH cliente+proyecto+stilo+color+ODC.
+- «Actualizar desde Odoo» sobre el mismo archivo: 710 reconocidas; 3.019 nuevas por ALCANCE (fuera de la regla de
+  Parte 2) y 489 por RECONOCIMIENTO (las 496 sin WH). Regla única → 0 por alcance; clave única → 0 por reconocimiento.
+- `SUPABASE_DUPLICADOS_ORDENES.sql` (solo SELECT, sin ejecutar). `S.cargas` se recorta a 60: lo quita el punto 8.
+  Ver `CARGAS_DIAGNOSTICO_CLAVES.md`.
+
+### 2.51 Cargas: protección inmediata (17-sep)
+- `aplicarTarea` ya no vacía `S.avance` (guardia en el harness). Tabla 14: `avance`, `lib`, `fases` (historial) y
+  `progCentro` bloqueados «siempre» (`CAMPOS_BLOQUEADOS`); la fase actual sigue editable en la tabla.
+- `planOdoo(rows,nombre)` es función pura; `aplicarOdoo` respeta la tabla 14 y manda lo que no calza a la misma
+  bandeja `noCalzan` con `tipo` (fase, fecha, tela, ruta).
+- «Actualizar desde Odoo» DESHABILITADO (`ODOO_DESHABILITADO`): botón inactivo «Temporalmente deshabilitado — use
+  Recarga Parte 2»; solo admin lo fuerza escribiendo FORZAR, con aviso de duplicados y bitácora. Se quita con el
+  camino único (punto 6). Ver `CARGAS_1_A_3.md`.
+
 ### 2.50 Tablet del operario: solo lo programado y cierre con tiempo (17-sep)
 - **`programadoPara(o,c,rec,P)`** es la ÚNICA definición de «programado para mí»: exige carga del motor en
   `P.pro` para ese centro y recurso, entre hoy y `finVentanaTablet()` (**`prm('diasVentanaTablet',5)`** días

@@ -770,6 +770,22 @@ pasan por ella): suma `calcTramo().trabajado` de TODOS los tramos de esa orden e
 El supervisor puede cerrar sin tiempo con **motivo obligatorio** (tabla 15, uso `cierreSinTiempo`), que queda
 en bitácora y auditoría. Ver `TABLET_OPERARIO_REPORTE.md`.
 
+**Cargas (17-sep-2026, puntos 1–3 + protección).** `aplicarTarea` **ya no vacía `S.avance`**; la tabla 14 tiene
+filas bloqueadas (`CAMPOS_BLOQUEADOS` = avance, lib, fases, progCentro; «siempre»: `conserva()` devuelve true y
+`setCampoConservado` avisa) — la fase ACTUAL sigue siendo decisión de la tabla. `planOdoo(rows,nombre)` es el plan
+de «Actualizar desde Odoo» como función pura; `aplicarOdoo` consulta la tabla 14 (fase, fecha, telas con
+`faltaConf`, ruta editada/confirmada → bandeja `noCalzan` con `tipo`). **«Actualizar desde Odoo» está
+DESHABILITADO** (`ODOO_DESHABILITADO`, `odooBotonHTML`, `forzarOdoo` solo admin escribiendo FORZAR, bitácora)
+hasta el camino único: sobre el mismo archivo reconoce 710 de 1.211 y crea 3.508 (3.019 por ALCANCE —fuera de
+la regla de Parte 2— y 489 por RECONOCIMIENTO —las órdenes sin WH tienen dos claves: `sl_sin_wh_<hash>` en
+Parte 2 y `prev_…` en Odoo). Cuatro cargadores, tres normalizaciones (`normTxt` Parte 2/Fotos, cruda Odoo,
+`normFase` OT). Propuesta de clave única y SQL de duplicados (sin ejecutar) en `CARGAS_DIAGNOSTICO_CLAVES.md`
+y `SUPABASE_DUPLICADOS_ORDENES.sql`. `S.cargas` aún se recorta a 60 (lo quita el punto 8). Ver `CARGAS_1_A_3.md`.
+
+**Nivelación Paso 2 · Etapa A (17-sep-2026):** boceto navegable con datos fijos (`NIVD`, `NIVV`, `vNivelacion`,
+página `nivelacion`, desde Configuración → Nivelación → «Ver el boceto →»); NO conectado al motor. Al aprobarse,
+el boceto pasa a prefijo `nivUI*` y se agrega una prueba de funciones duplicadas en todo `index.html`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
