@@ -204,6 +204,17 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.58 Cola por fase: la lista de fases del centro decide (17-sep)
+- `S.params.fasesCentro[centro]={fases,sugerido,confirmado,origen,ts}`: lista de fases visibles por centro, editable en
+  Configuración → Calendario y parámetros (subir/bajar/quitar/agregar/volver a la sugerida/confirmar; permiso `programa`).
+  Sembrada «sugerido» desde la tabla 1 hacia atrás desde la etapa (tabla 4); Corte incluye 1Calidad Tintoreria; un centro
+  sin etapa no recibe lista y sale en la bandeja `colaSinLista`. El umbral en pasos (`umbralCercania`) ya no existe.
+- Grupos: Con puesto manual (siempre a la vista) · Disponible (por fase; «en proceso aquí» = fase del propio grupo, con
+  etiqueta) · Por llegar (solo fases de la lista, en su orden) · Revisar ruta · Todo lo que viene (fuera de la lista; «llega
+  ya» solo etiqueta) · Ya salió de aquí (CD del propio grupo o posterior con el paso sin cerrar; bandeja `colaYaSalio`).
+- Ruta incompleta (único paso de producción, no el primero, fase antes) nunca es «lista para empezar»: Todo lo que viene +
+  bandeja `colaRutaIncompleta`. Reales: Bordado 114, Estampado 17. Ver `COLA_POR_FASE_REPORTE.md`.
+
 ### 2.57 Nivelación: pantalla propia, un área a la vez (17-sep) — solo Corte conectado
 - «Nivelación de carga» abre su pantalla (`vNivelacion`, prefijo `nivUI*`); Configuración conserva grupos, fases y
   parámetros con enlace «Configurar». Meses multiselección, filtros cliente/familia, recuadros por área (centros
@@ -327,9 +338,8 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   los dos casos reales son el **tramo no secuencial** (estampado/bordado/confección, donde mandan las OT) y el
   **primer centro de producción**.
 - Cuatro grupos (`CERCANIA_GRUPOS`): **Disponible** · **Por llegar** · **Revisar ruta** (`sinSecuencia`,
-  colapsado) · **Lejanas** (colapsado, con `filasGRP`). Umbral en **pasos pendientes**,
-  **`prm('umbralCercania',2)`** (`setUmbralCercania`, Configuración → Calendario y parámetros): **ningún número
-  en el código**.
+  colapsado) · **Lejanas** (colapsado, con `filasGRP`). El umbral en pasos pendientes se **retiró el 17-sep**: decide
+  la lista de fases de cada centro (2.58).
 - **Etiqueta de llegada** (`txtLlegada`/`llegadaHTML`, columna «Llega», en negrita): **hoy** · **mañana** ·
   **en X días hábiles** · **sin programar** · **atrasado X días** · **llegaron X de Y** (`cantCentro`) ·
   **sin dato de llegada**. Sale del **fin programado del paso anterior** (`P.ordenes[oid].pasos[].fin`) y se
@@ -356,7 +366,7 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 - **Punto flaco medido**: el grupo se decide en **pasos** y la etiqueta en **días**, y no siempre coinciden. En
   el volcado, **4 de 48 lejanas de botones y 14 de 160 de empaque llegan hoy o mañana** y quedan en el grupo
   colapsado. Propuesta pendiente: que llegar hoy/mañana (o estar atrasada) saque a una orden de Lejanas.
-- Ver `COLA_CERCANIA_REPORTE.md` y `COLA_CERCANIA_PASO0.md`.
+- Ver `COLA_CERCANIA_REPORTE.md`, `COLA_CERCANIA_PASO0.md`, `COLA_POR_FASE_PASO0.md` y `COLA_POR_FASE_REPORTE.md` (17-sep: la lista de fases reemplaza al umbral).
 
 ### 2.47 Nivelación — correcciones del Paso 1 (16-sep)
 - **UNA convención de días hábiles** (`CONV_HABILES`): **el inicio cuenta como día 1 y el compromiso es el

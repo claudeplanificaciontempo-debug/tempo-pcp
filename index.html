@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 14:21';
+const APP_BUILD='2026-09-17 16:30';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1116,6 +1116,10 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
     ep.slice(-3).map(b=>new Date(b.ts).toLocaleString('es-EC')+' · '+(b.centro?nCen(b.centro):'—')+' · '+b.err).join(' · ')+' · el operario no ve órdenes mientras dure; corregir y marcar atendida','Errores',"mErroresProg()")}
   {const cr=S.ordenes.filter(o=>o.claveRepetida);add('claveRepetida','Órdenes con clave repetida — revisar',cr.length,
     cr.slice(0,6).map(o=>o.op+' ('+(o.cliente||'')+' · '+num(o.cant)+')').join(' · ')+' · dos filas del archivo con la misma clave: una carga no puede saber cuál es cuál, así que no se les cambia nada hasta que se distingan (p. ej. WH distinta en Odoo)','Órdenes',"ir('ordenes')")}
+  {const an=anomaliasCola();const ys=an.filter(x=>x.tipo==='yaSalio'),ri=an.filter(x=>x.tipo==='rutaIncompleta');
+   add('colaYaSalio','Órdenes que ya salieron de un centro pero el paso no está cerrado',ys.length,ys.slice(0,6).map(x=>x.op+' en '+nCen(x.c)+' (fase '+x.fase+')').join(' · ')+(ys.length?' · cerrar el paso o corregir la fase':''),'Centro',"ir('centro')");
+   add('colaRutaIncompleta','Órdenes con ruta incompleta en la cola de un centro',ri.length,ri.slice(0,6).map(x=>x.op+' en '+nCen(x.c)+' (fase '+x.fase+')').join(' · ')+(ri.length?' · un solo paso de producción y la fase está antes: revisar la ruta en Órdenes → Rutas':''),'Órdenes',"ir('ordenes')");
+   const sl=S.centros.filter(c=>c.area==='pro'&&c.activo!==false&&!fasesCentroDe(c.id));add('colaSinLista','Centros sin lista de fases para su cola',sl.length,sl.map(c=>c.n).join(', ')+' · Configuración → Calendario y parámetros → Fases visibles',"Configuración","CONF.tab='cal';ir('config')")}
   {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar minutos por prenda y % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
@@ -2800,7 +2804,7 @@ function buscarQ(el,fn){const id=el.dataset.q||'_';clearTimeout(_qTimers[id]);
   if(espera>0)_qTimers[id]=setTimeout(run,espera);else run()}
 let ERR_PROG=null;   // si programar() falla para un operario, se avisa en vez de mostrar todo
 let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
-function render(){
+function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
@@ -6351,18 +6355,63 @@ function filasDeCentros(cens,P,lun,dom,q){q=normTxt(q||'');const filas=[];S.orde
    Si `secuenciaCentro` y `centroAnteriorPro` no coinciden, MANDA `secuenciaCentro` y la diferencia
    queda anotada en `desacuerdo` (se ve en el tooltip, no se esconde). */
 const CERCANIA_GRUPOS=[
+  ['puesto','Con puesto manual','alguien las puso a mano en este orden: van primero, siempre a la vista'],
   ['disponible','Disponible','el paso anterior ya terminó: se puede jalar ahora'],
-  ['porLlegar','Por llegar','faltan pocos pasos para que llegue'],
+  ['porLlegar','Por llegar','la fase está en la lista de fases de este centro, de la más cercana a la más lejana'],
   ['revisar','Revisar ruta','no se puede saber la secuencia: el centro se repite en la ruta o la orden no tiene ruta'],
-  ['lejana','Lejanas','faltan más pasos que el umbral configurado']];
+  ['lejana','Todo lo que viene','fases más atrás de la última visible de este centro'],
+  ['anomalia','Ya salió de aquí','la fase de Odoo es del propio grupo o posterior, pero el paso no está cerrado aquí: cerrar el paso o corregir la fase']];
 function nGrupoCerc(g){const r=CERCANIA_GRUPOS.find(x=>x[0]===g);return r?r[1]:g}
 function notaGrupoCerc(g){const r=CERCANIA_GRUPOS.find(x=>x[0]===g);return r?r[2]:''}
 /* el umbral, en PASOS pendientes. Valor inicial 2, editable en Configuración → Calendario y parámetros. */
-function umbralCercania(){return prm('umbralCercania',2)}
-function setUmbralCercania(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia el umbral.');return}
-  const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('El umbral tiene que ser 0 o más pasos.');return}
-  const antes=umbralCercania();S.params.umbralCercania=n;
-  bitacora('Umbral de cercanía en la cola: '+antes+' → '+n+' pasos pendientes ('+quienFirma()+')');save();render()}
+/* ---------- FASES VISIBLES EN LA COLA DE CADA CENTRO (decisión 17-sep-2026) ----------
+   Reemplaza al umbral en pasos pendientes. Por centro, la lista ORDENADA de fases que se muestran en su cola
+   (la primera es la más cercana; la última es el límite: lo que está más atrás va a «Todo lo que viene»,
+   colapsado). Se siembra una propuesta desde la tabla 1 (grupo de la tabla 5, esCola, tela, excluye, sinCarga)
+   marcada «sugerido» hasta que alguien con permiso programa la confirme; tocarla la devuelve a sugerido.
+   Cada centro tiene su propia lista (Botones y Empaque no la comparten). Nada fijo en código. */
+function fasesCentroTabla(){if(!S.params.fasesCentro||typeof S.params.fasesCentro!=='object')S.params.fasesCentro={};return S.params.fasesCentro}
+function fasesCentroDe(c){const t=fasesCentroTabla();return t[c]||null}
+/* la posición de una fase en la lista del centro (0 = la más cercana); -1 = fuera de la lista; null = centro sin lista */
+function rangoFaseCentro(c,fase){const e=fasesCentroDe(c);if(!e||!Array.isArray(e.fases)||!e.fases.length)return null;
+  const k=normFase(fase||'');const i=e.fases.findIndex(f=>normFase(f)===k);return i}
+function esPrimerCentroPro(c){const pro=RUTA_ORDEN.filter(x=>CE(x)&&CE(x).area==='pro');return pro.length?pro[0]===c:false}
+/* la propuesta: de la tabla 1, hacia atrás desde la etapa del centro (tabla 4) */
+function sugerirFasesCentro(c){const etapa=centroEtapaDe(c);const oe=etapa?ordenGrupo(etapa):-1;if(oe<0)return null;
+  const rows=faseMapeo();const grupos=faseGrupos().slice().sort((a,b)=>b.orden-a.orden).filter(g=>g.orden<oe);
+  const out=[];const primero=esPrimerCentroPro(c);let ancla=false;
+  for(const g of grupos){
+    if(g.grupo==='previo a producción'||g.orden===1)break;                       // nunca: todavía no hay nada que jalar
+    const enGrupo=rows.filter(r=>r.sistema===g.grupo&&!r.sinCarga&&!String(r.excluye||'').split(',').map(x=>x.trim()).includes(c)).slice().reverse();
+    if(g.orden===2){ /* textil: solo para el primer centro de producción, y solo la tela ya tinturada/lista (1Calidad Tintoreria) */
+      if(primero)enGrupo.filter(r=>['tinturada','lista'].includes(r.tela)).forEach(r=>out.push(r.fase));break}
+    if(g.grupo==='maquila externa'){enGrupo.filter(r=>r.desde&&r.desde===etapa).forEach(r=>out.push(r.fase));continue}
+    enGrupo.forEach(r=>out.push(r.fase));
+    if(!primero&&enGrupo.some(r=>r.esCola)&&ancla)break;                          // ya pasamos la cola (CD) anterior: hasta aquí
+    if(!primero&&enGrupo.some(r=>r.esCola))ancla=true}
+  return out}
+function sembrarFasesCentro(){const t=fasesCentroTabla();let n=0;
+  S.centros.filter(c=>c.area==='pro'&&c.activo!==false).forEach(c=>{if(t[c.id])return;const l=sugerirFasesCentro(c.id);if(!l||!l.length)return;
+    t[c.id]={fases:l,sugerido:true,confirmado:null,origen:'siembra',ts:new Date().toISOString()};n++});
+  if(n)bitacora('Fases visibles por centro: '+n+' listas sembradas desde la tabla 1, marcadas «sugerido» (se confirman en Configuración)');return n}
+function setFasesCentro(c,fases,motivo){if(!puede('programa')){alert('Solo planificación edita las fases de la cola.');return}
+  const t=fasesCentroTabla();const antes=(t[c]&&t[c].fases||[]).join(' › ');
+  t[c]={fases:fases.slice(),sugerido:true,confirmado:null,origen:'persona',ts:new Date().toISOString()};   /* tocarla la devuelve a sugerido */
+  bitacora('Fases visibles en la cola de '+nCen(c)+': '+(antes||'(sin lista)')+' → '+fases.join(' › ')+(motivo?' · '+motivo:'')+' ('+quienFirma()+')');NIVC=null;save();render()}
+function moverFaseCentro(c,i,d){const e=fasesCentroDe(c);if(!e)return;const l=e.fases.slice();const j=i+d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];setFasesCentro(c,l,'reordenada')}
+function quitarFaseCentro(c,i){const e=fasesCentroDe(c);if(!e)return;const l=e.fases.slice();if(l.length<=1){alert('La lista tiene que quedar con al menos una fase.');return}const q=l[i];if(!confirm('¿Quitar «'+q+'» de la lista de fases de este centro? Las órdenes en esa fase pasan a «Todo lo que viene». Se puede volver a la lista sugerida.'))return;l.splice(i,1);setFasesCentro(c,l,'quitada '+q)}
+function agregarFaseCentro(c,fase){if(!fase)return;const e=fasesCentroDe(c);const l=e?e.fases.slice():[];if(l.some(f=>normFase(f)===normFase(fase)))return;l.push(fase);setFasesCentro(c,l,'agregada '+fase)}
+function confirmarFasesCentro(c){if(!puede('programa')){alert('Solo planificación confirma las fases de la cola.');return}const e=fasesCentroDe(c);if(!e)return;
+  e.sugerido=false;e.confirmado={u:quienFirma(),ts:new Date().toISOString()};bitacora('Fases visibles en la cola de '+nCen(c)+' confirmadas: '+e.fases.join(' › ')+' ('+quienFirma()+')');save();render()}
+function volverSugeridaFasesCentro(c){if(!puede('programa')){alert('Solo planificación edita las fases de la cola.');return}const l=sugerirFasesCentro(c);if(!l){alert('No se puede sugerir: el centro no tiene etapa en la tabla 4.');return}setFasesCentro(c,l,'vuelta a la propuesta de la tabla 1')}
+function fasesCentroPanelHTML(){const ok=puede('programa');const cens=S.centros.filter(c=>c.area==='pro'&&c.activo!==false).sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  const todas=faseMapeo().filter(r=>!r.sinCarga).map(r=>r.fase);
+  return `<div class="panel"><h3>Fases visibles en la cola de cada centro <span class="note">la cola se ordena por la fase en que está la orden, de la más cercana al centro a la más lejana, y se corta en la última visible; lo de más atrás va a «Todo lo que viene» · una lista por centro</span></h3><div class="body">
+   ${cens.map(c=>{const e=fasesCentroDe(c.id);if(!e)return `<div style="margin-bottom:10px"><b>${esc(c.n)}</b> <span class="tag t-alerta">sin lista</span> ${ok?`<button class="btn ghost sm" onclick="volverSugeridaFasesCentro('${c.id}')">sugerir desde la tabla 1</button>`:''}</div>`;
+     return `<div style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--rule2)"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(c.n)}</b> ${e.sugerido?'<span class="tag t-aviso" title="propuesta sembrada desde la tabla 1; confírmala cuando la revises con producción">sugerido</span>':`<span class="tag t-ok" title="${esc((e.confirmado||{}).u||'')} · ${esc(((e.confirmado||{}).ts||'').slice(0,10))}">confirmada</span>`}<span class="mut" style="font-size:var(--fs-xs)">última visible: <b>${esc(e.fases[e.fases.length-1]||'—')}</b></span><span class="spacer"></span>${ok?`${e.sugerido?`<button class="btn sm" onclick="confirmarFasesCentro('${c.id}')">Confirmar</button>`:''} <button class="btn ghost sm" onclick="volverSugeridaFasesCentro('${c.id}')" title="vuelve a la propuesta de la tabla 1">volver a la sugerida</button>`:''}</div>
+      <ol style="margin:6px 0 0 18px;padding:0;font-size:var(--fs-s)">${e.fases.map((f,i)=>`<li style="margin:2px 0">${esc(f)} ${ok?`<span class="mut" style="font-size:var(--fs-xs)"><a style="cursor:pointer" onclick="moverFaseCentro('${c.id}',${i},-1)">▲</a> <a style="cursor:pointer" onclick="moverFaseCentro('${c.id}',${i},1)">▼</a> <a style="cursor:pointer" onclick="quitarFaseCentro('${c.id}',${i})">quitar</a></span>`:''}</li>`).join('')}</ol>
+      ${ok?`<div style="margin-top:6px"><select style="width:auto;font-size:var(--fs-xs)" onchange="agregarFaseCentro('${c.id}',this.value);this.value=''"><option value="">+ agregar fase al final…</option>${todas.filter(f=>!e.fases.some(x=>normFase(x)===normFase(f))).map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('')}</select></div>`:''}</div>`}).join('')}
+   <p class="mut" style="font-size:var(--fs-xs)">Dentro de cada fase, primero el puesto manual y luego lo programado. Una orden cuya fase no está en la lista de su centro no aparece en la cola: queda en «Todo lo que viene» (colapsado). Las fases de cierre (Facturado, Stand by, prenda terminada) nunca entran. Cada cambio queda en bitácora.</p></div></div>`}
 
 /* ---------- los días hábiles que faltan hasta una fecha ----------
    CONVENCIÓN (distinta a propósito de la de la nivelación): esto es un PLAZO, como `dsumLab`.
@@ -6420,11 +6469,23 @@ function llegadaTela(o,ro){
      · tela en tejeduría / tintorería / calidad         → POR LLEGAR, con fecha si la hay
      · tela lista y sin bloqueo                         → DISPONIBLE
    La llegada se calcula siempre, aunque el grupo sea Lejanas: no se pierde la información. */
-function grupoTela(o,l){
+function grupoTela(o,l,c,ctx){
   const g=grupoDe(o.fase);const orden=g?ordenGrupo(g.grupo):-1;
   const sinWH=!o.op||!!o.sinLanzar;
   const previo=(orden===1)||!g;                    // «previo a producción» es el primer grupo de la tabla 5
   const textil=(orden===2);                        // tejeduría, tintorería y calidad textil
+  const rango=c?rangoFaseCentro(c,o.fase):null;const enLista=rango!=null&&rango>=0;const sinLista=rango==null;
+  const av=S.avance[o.id]||{};
+  /* la LIBERACIÓN a corte (que ya exige calidad) manda sobre una fase textil rezagada en Odoo */
+  if(l&&l.tipo==='lista'&&av.lista&&!sinWH)return{grupo:'disponible',porQue:'liberada a corte: la liberación manda sobre la fase «'+esc(o.fase||'')+'»'};
+  /* fase del propio grupo del centro o posterior con el paso sin cerrar: anomalía, nunca «lista para empezar» */
+  if(c&&posicionFaseCentro(o,c)==='yaSalio')return{grupo:'anomalia',porQue:'la fase «'+esc(o.fase||'')+'» es del propio grupo o posterior a '+nCen(c)+' y el paso no está cerrado',anomalia:{tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya pasó de '+nCen(c)+', pero el paso no está cerrado aquí. Cerrar el paso o corregir la fase.'}};
+  /* fase del propio grupo del centro (no CD): la orden está AQUÍ según Odoo → Disponible con etiqueta, esté o no en la lista (la lista solo trae fases anteriores) */
+  if(c&&!sinWH&&posicionFaseCentro(o,c)==='enProceso')return{grupo:'disponible',porQue:'la fase «'+esc(o.fase||'')+'» ya es la de '+nCen(c)+': en proceso aquí',anomalia:{tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro'},desacuerdo:(l&&l.tipo==='lista')?'':('la fase de Odoo dice que la orden está en '+nCen(c)+', pero la tela no figura como lista ('+((l&&l.tipo)||'sin dato')+')')};
+  /* ruta incompleta: este centro es el único paso de producción y no es el primero del flujo (p. ej. [bordado] solo) y la fase está antes: no es «lista para empezar», es una ruta a revisar */
+  if(c&&!esPrimerCentroPro(c)&&pasosProDe(o).length<=1&&posicionFaseCentro(o,c)==='antes')return{grupo:'lejana',porQue:'ruta incompleta',rutaIncompleta:true,desacuerdo:'ruta incompleta: '+nCen(c)+' es el único paso de producción de la ruta y la fase de Odoo («'+(o.fase||'')+'») está antes de este centro: probablemente faltan pasos (corte, confección…). Revisar la ruta.'};
+  /* tela lista pero la fase NO está en la lista del centro: la ruta dice que está aquí y la fase dice otra cosa */
+  if(l&&l.tipo==='lista'&&!sinLista&&!enLista&&!textil&&!previo)return{grupo:'lejana',porQue:'la fase «'+esc(o.fase||'')+'» está fuera de la lista de '+nCen(c),desacuerdo:'la ruta dice que la orden está lista para '+nCen(c)+', pero la fase de Odoo («'+(o.fase||'')+'») no está en la lista de fases de este centro'+((pasosProDe(o).length<=1)?' · ruta incompleta (un solo paso de producción)':'')};
   /* La FASE manda sobre la falta de WH: si la tela ya está en tejeduría, tintorería o calidad,
      la orden está viniendo de verdad aunque todavía no tenga número de WH en Odoo. */
   if(textil)return{grupo:'porLlegar',porQue:'la tela está en '+g.grupo+(sinWH?': la fase manda sobre la falta de WH':'')};
@@ -6432,8 +6493,8 @@ function grupoTela(o,l){
   if(sinWH&&previo)return{grupo:'lejana',porQue:'sin WH y en fase «'+esc(o.fase||'sin fase')+'» (previa a producción)'};
   if(previo)return{grupo:'lejana',porQue:'fase «'+esc(o.fase||'sin fase')+'»'+(g?' (grupo '+g.grupo+')':' (sin grupo en la tabla 5)')+': todavía es previa a producción'};
   if(sinWH)return{grupo:'porLlegar',porQue:'sin WH, pero la fase «'+esc(o.fase||'')+'» ya pasó de «previo a producción»'};   // sin WH nunca es «disponible»
-  if(l&&l.tipo==='lista')return{grupo:'disponible',porQue:'la tela está lista y sin bloqueo'};
-  return{grupo:'porLlegar',porQue:g?('la tela está en '+g.grupo):'la tela todavía no está lista'}}
+  if(l&&l.tipo==='lista')return{grupo:'disponible',porQue:'la tela está lista y sin bloqueo'+(c&&ctx&&ctx.posFase==='enProceso'?' · en proceso aquí':'')};
+  return{grupo:(sinLista||enLista)?'porLlegar':'lejana',porQue:g?('la tela está en '+g.grupo+(!sinLista&&!enLista?' · fase fuera de la lista de '+nCen(c):'')):'la tela todavía no está lista'}}
 /* ---------- pasos de la ruta que el motor no programa porque no tienen minutos ----------
    `programar()` omite de `ro.pasos` un paso cuyo tiempo por prenda es 0 (sin técnica, sin puntadas,
    sin SAM). `pasoHecho()` NO lo da por hecho, así que la cercanía lo cuenta como pendiente: los dos
@@ -6445,12 +6506,23 @@ function pasosSinTiempo(o,pendientes,ro){
     if(p.error)return false;                 // tiene otro problema, y el motor lo dice
     return !(+p.min>0)&&!p.hecho})}          // aparece con 0 minutos
 /* ---------- LA función ---------- */
+/* dónde está la fase de la orden respecto de la etapa del centro (tabla 4 + tabla 5): antes, en el centro, ya salió */
+function posicionFaseCentro(o,c){const g=grupoDe(o.fase);const of=g?ordenGrupo(g.grupo):-1;const etapa=centroEtapaDe(c);const oe=etapa?ordenGrupo(etapa):-1;
+  const fila=filaFaseDe(o.fase||'')||{};
+  if(fila.sinCarga||faseDeCierre(o.fase))return 'yaSalio';
+  if(oe<0||of<0)return 'antes';
+  if(of>oe)return 'yaSalio';                                   // fase de un grupo posterior a la etapa del centro
+  if(of===oe)return fila.esCola?'yaSalio':'enProceso';         // CD del propio grupo = esperando al SIGUIENTE centro
+  return 'antes'}
 function cercaniaCentro(o,c,P){
   const sec=secuenciaCentro(o,c);                 // manda para clasificar
   const ant=centroAnteriorPro(o,c);
   const ro=(P&&P.ordenes&&P.ordenes[o.id])||{};
+  const rango=rangoFaseCentro(c,o.fase);          // posición en la lista de fases del centro; -1 fuera; null sin lista
+  const enLista=rango!=null&&rango>=0;
+  const pos=posicionFaseCentro(o,c);
   const out={centro:c,estado:sec.estado,motivoSec:sec.motivo||'',ant,pasosPend:0,pendientes:[],
-    grupo:'porLlegar',llegada:null,orden:9e9,desacuerdo:''};
+    grupo:'porLlegar',llegada:null,orden:9e9,desacuerdo:'',faseRank:enLista?rango:(pos==='enProceso'?-1:999),enLista,sinLista:rango==null,posFase:pos};
   if(sec.estado==='sinSecuencia'){out.grupo='revisar';out.llegada={tipo:'sinDato',motivo:sec.motivo};return out}
   const ru=pasosProDe(o);const i=ru.indexOf(c);
   const pend=(i>0?ru.slice(0,i):[]).filter(x=>!pasoHecho(o,x));
@@ -6458,7 +6530,8 @@ function cercaniaCentro(o,c,P){
   /* primer centro de producción: la llegada sale de la tela, no de la ruta */
   if(!ant){
     const l=llegadaTela(o,ro);out.llegada=l;
-    const gt=grupoTela(o,l);out.grupo=gt.grupo;out.porQueTela=gt.porQue;
+    const gt=grupoTela(o,l,c,out);out.grupo=gt.grupo;out.porQueTela=gt.porQue;if(gt.desacuerdo)out.desacuerdo=gt.desacuerdo;if(gt.anomalia)out.anomalia=gt.anomalia;if(gt.rutaIncompleta)out.rutaIncompleta=true;
+    if(out.grupo==='lejana'&&llegaYa(l)){out.llegaYaFuera=true}   /* fuera de la lista: etiqueta, no cambia de grupo */
     /* dentro del grupo, lo que tiene fecha va antes que lo que no se sabe */
     out.orden=(l.tipo==='fecha')?(l.dias||0):(l.tipo==='lista'?-1:9e8);
     if(sec.estado!=='disponible')out.desacuerdo='la ruta dice que faltan '+pend.map(nCen).join(', ')+', pero este es el primer centro de producción de la ruta';
@@ -6468,13 +6541,17 @@ function cercaniaCentro(o,c,P){
   const antHecho=pasoHecho(o,ant);
   if(sec.estado==='disponible'){
     out.grupo='disponible';out.orden=-1;
+    if(pos==='yaSalio'){out.grupo='anomalia';out.anomalia={tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») es del propio grupo o posterior a '+nCen(c)+', pero el paso no está cerrado aquí. Cerrar el paso (o corregir la fase) para que deje de aparecer.'}}
+    else if(pos==='enProceso')out.anomalia={tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro'};
     if(!antHecho)out.desacuerdo='tramo no secuencial: '+(sec.motivo||'el orden real lo dan las órdenes de trabajo de Odoo');
     const cant=cantCentro(o,c);const ci=cierreCentro(o,ant);
     out.llegada=(ci&&(+ci.faltan||0)>0)?{tipo:'llegaron',pz:cant,cant:(+ci.cant||+o.cant||0),ant,motivo:ci.motivo||''}
       :{tipo:'lista',ant};
     return out}
-  /* proxima */
-  out.grupo=(pend.length<=umbralCercania())?'porLlegar':'lejana';
+  /* proxima: la LISTA de fases del centro decide (sin lista: todo es Por llegar y se avisa) */
+  if(pos==='yaSalio'){out.grupo='anomalia';out.anomalia={tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») es del propio grupo o posterior a '+nCen(c)+', pero según la ruta todavía faltan pasos anteriores ('+pend.map(nCen).join(', ')+'). Revisar fase o ruta.'}}
+  else if(pos==='enProceso'){out.grupo='disponible';out.anomalia={tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro, aunque según la ruta faltan pasos anteriores ('+pend.map(nCen).join(', ')+')'};out.desacuerdo='la fase de Odoo dice que la orden está en '+nCen(c)+', pero según la ruta faltan '+pend.map(nCen).join(', ')+' (paso sin cerrar)'}
+  else out.grupo=(rango==null||enLista)?'porLlegar':'lejana';
   const rec=paso.rec||null;const recTxt=rec?nRec(rec):null;
   if(!paso.fin){out.llegada={tipo:'sinProgramar',ant};out.orden=9e8}
   else if(paso.fin<hoy()&&!antHecho){out.llegada={tipo:'atrasado',ant,fin:paso.fin,dias:habilesDesde(paso.fin,rec),recTxt};out.orden=-0.5}
@@ -6487,48 +6564,58 @@ function cercaniaCentro(o,c,P){
       +'El motor no programa ese paso y la cercanía SÍ lo cuenta como pendiente: por eso salen más pasos de los que parece. Es un dato que falta, no un error de ruta.'};
   else if(out.grupo==='lejana'&&llegaYa(out.llegada))out.marca={tipo:'revisar',
     txt:'revisar ruta',
-    tip:'quedan '+pend.length+' pasos por delante ('+pend.map(nCen).join(', ')+') y todos tienen tiempo, pero el programa ya termina el paso anterior. '
-      +'Las fechas del motor y la ruta no concuerdan: hay que revisar la ruta de esta orden.'};
-  /* REGLA DE ESCAPE: si llega hoy, mañana o va atrasada, no se esconde en Lejanas */
-  if(out.grupo==='lejana'&&llegaYa(out.llegada)){out.grupo='porLlegar';out.escapo=true}
+    tip:'la fase de Odoo («'+(o.fase||'')+'») está fuera de la lista de '+nCen(c)+' (quedan '+pend.length+' pasos: '+pend.map(nCen).join(', ')+'), pero el programa ya termina el paso anterior. '
+      +'Las fechas del motor y la fase no concuerdan: hay que revisar la ruta o la fase de esta orden.'};
+  /* «llega ya» (hoy, mañana o atrasada): SOLO cambia de grupo si la fase está en la lista; fuera de la lista es una etiqueta (decisión 17-sep) */
+  if(out.grupo==='lejana'&&llegaYa(out.llegada)){out.llegaYaFuera=true}
   return out}
 /* «llega ya» = hoy, mañana o atrasada */
 function llegaYa(l){if(!l)return false;
   if(l.tipo==='atrasado')return true;
   return l.tipo==='fecha'&&l.dias!=null&&l.dias<=1}
 /* el orden dentro de la cola: primero el grupo, después la fecha de llegada */
-const ORDEN_GRUPO_CERC={disponible:0,porLlegar:1,revisar:2,lejana:3};
-function ordenCercania(x){return (ORDEN_GRUPO_CERC[x.grupo]!=null?ORDEN_GRUPO_CERC[x.grupo]:9)*1e6+Math.min(9e5,(x.orden||0)+1e3)}
+const ORDEN_GRUPO_CERC={disponible:0,porLlegar:1,revisar:2,lejana:3,anomalia:4};
+/* grupo · 1e9 + fase · 1e6 + llegada: cada llave pesa más que todo lo que viene después (la fórmula sin reescalar dejaba una fase cercana sin programar detrás de todas las demás) */
+function ordenCercania(x){const fr=(x.faseRank==null)?999:Math.max(0,Math.min(999,x.faseRank+1));return (ORDEN_GRUPO_CERC[x.grupo]!=null?ORDEN_GRUPO_CERC[x.grupo]:9)*1e9+fr*1e6+Math.min(9e5,(x.orden||0)+1e3)}
+/* las anomalías «ya salió de aquí» de todos los centros (para la bandeja de Hoy) */
+function anomaliasCola(){let P=null;try{P=programar()}catch(e){return []}const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const out=[];
+  S.centros.filter(c=>c.area==='pro'&&c.activo!==false).forEach(c=>{filasDeCentros([c.id],P,lun,dom,'').filter(f=>!f.hecho&&!f.bloq&&f.cerc&&(f.cerc.grupo==='anomalia'||f.cerc.rutaIncompleta)).forEach(f=>out.push({op:f.o.op,id:f.o.id,c:c.id,fase:f.o.fase,tipo:f.cerc.grupo==='anomalia'?'yaSalio':'rutaIncompleta',rutaIncompleta:!!f.cerc.rutaIncompleta||pasosProDe(f.o).length<=1}))});return out}
 /* la etiqueta para la fila, en negrita roja cuando toca */
 function llegadaHTML(x){const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
   if(x&&x.porQueTela)t.tip=(t.tip?t.tip+' · ':'')+x.porQueTela;
   const m=x&&x.marca;
   const esc2=v=>esc(String(v==null?'':v));
   const etq=m?(' <span class="tag '+(m.tipo==='revisar'?'t-alerta':'t-aviso')+'" style="font-size:9px;padding:0 4px" title="'+esc2(m.tip)+'">'+esc2(m.txt)+'</span>'):'';
-  const esp=(x&&x.escapo)?' <span class="tag t-medio" style="font-size:9px;padding:0 4px" title="tiene más pasos pendientes que el umbral, pero llega hoy, mañana o va atrasada: no se esconde en Lejanas">llega ya</span>':'';
-  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+etq+esp
+  const esp=(x&&x.llegaYaFuera)?' <span class="tag t-medio" style="font-size:9px;padding:0 4px" title="llega hoy, mañana o va atrasada según el programa, pero su fase está fuera de la lista de este centro: se queda en Todo lo que viene, solo se marca">llega ya</span>':'';
+  const an=(x&&x.anomalia)?' <span class="tag '+(x.anomalia.tipo==='yaSalio'?'t-alerta':'t-ok')+'" style="font-size:9px;padding:0 4px" title="'+esc2(x.anomalia.tip)+'">'+esc2(x.anomalia.txt)+'</span>':'';
+  const sl=(x&&x.sinLista)?' <span class="tag t-aviso" style="font-size:9px;padding:0 4px" title="este centro no tiene lista de fases en Configuración: todo lo que no está disponible se muestra como Por llegar">sin lista de fases</span>':'';
+  if(x&&x.anomalia&&x.anomalia.tipo==='yaSalio')return '<b class="mut" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+an+sl;   /* nunca «lista para empezar» en negrita verde: ya salió */
+  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+etq+esp+an+sl
     +(x.desacuerdo?' <span class="tag t-aviso" style="font-size:9px;padding:0 4px" title="'+esc(x.desacuerdo)+'">ojo</span>':'')}
 /* arriba de la cola: de dónde sale el orden y qué significa «en X días hábiles» */
 function ordenColaNotaHTML(cola){const n=cola.length;if(!n)return '';
   const conPuesto=cola.filter(f=>puestoDe(f.o,f.c)>0).length;
   const m={};cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';m[g]=(m[g]||0)+1});
   return '<p class="mut" style="font-size:var(--fs-xs);margin:2px 0 8px"><b>Orden de la cola:</b> '
-   +'primero el <b>puesto manual</b> ('+conPuesto+' de '+n+' lo tienen), después la <b>cercanía a llegar a este centro</b>, '
+   +'primero el <b>puesto manual</b> ('+conPuesto+' de '+n+' lo tienen), después la <b>cercanía a llegar a este centro</b> (Disponible = el paso anterior ya terminó; Por llegar = la fase está en la lista de fases de este centro, en su orden; Todo lo que viene = fases más atrás de la última visible), '
    +'luego la fecha de llegada y la entrega. '
    +CERCANIA_GRUPOS.filter(([g])=>m[g]).map(([g])=>esc(nGrupoCerc(g))+' '+m[g]).join(' \u00b7 ')
    +'. <b>Cu\u00e1ndo llega</b> sale del <b>fin programado del paso anterior</b> de esa orden; se cuenta en d\u00edas h\u00e1biles del calendario del recurso de ese paso, '
    +'<b>hoy no cuenta</b> (el siguiente d\u00eda h\u00e1bil es \u00abma\u00f1ana\u00bb). Lo que no se sabe dice \u00absin programar\u00bb o \u00absin dato de llegada\u00bb: no se estima. '
-   +'Umbral de \u00ablejanas\u00bb: m\u00e1s de <b>'+umbralCercania()+'</b> pasos pendientes (Configuraci\u00f3n \u2192 Calendario y par\u00e1metros).</p>'}
+   +'Lista de fases visibles de este centro: Configuraci\u00f3n \u2192 Calendario y par\u00e1metros'+((cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido)?' (<b>sugerida, sin confirmar</b>)':'')+'.</p>'}
 /* los grupos colapsables de la cola: Revisar ruta y Lejanas vienen cerrados (decisión 1) */
-const CERC_ABIERTO={disponible:true,porLlegar:true,revisar:false,lejana:false};
+const CERC_ABIERTO={puesto:true,disponible:true,porLlegar:true,revisar:false,lejana:false,anomalia:true};
 /* Si hay buscador, filtro de fases o filtro de día puesto, NINGÚN grupo se queda cerrado:
    esconder una coincidencia dentro de un grupo colapsado es la peor forma de «no encontrar». */
 function filtroActivoCEN(){return !!(String(CEN.q||'').trim()||(CEN.fases&&CEN.fases.size)||CEN.dia)}
 function cercAbierto(g){if(filtroActivoCEN())return true;const m=(CEN.cercAbre||{});return (m[g]==null)?CERC_ABIERTO[g]:m[g]}
 function togCercCEN(g){CEN.cercAbre=CEN.cercAbre||{};CEN.cercAbre[g]=!cercAbierto(g);render()}
 /* parte la cola en los cuatro grupos, en el orden de pantalla */
-function partirPorCercania(cola){const m={disponible:[],porLlegar:[],revisar:[],lejana:[]};
-  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';(m[g]||m.porLlegar).push(f)});return m}
+function partirPorCercania(cola){const m={puesto:[],disponible:[],porLlegar:[],revisar:[],lejana:[],anomalia:[]};
+  cola.forEach(f=>{if(puestoDe(f.o,f.c)>0){m.puesto.push(f);return}const g=(f.cerc&&f.cerc.grupo)||'porLlegar';(m[g]||m.porLlegar).push(f)});return m}
+/* dentro de Por llegar / Disponible: una subcabecera por FASE, en el orden de la lista del centro (la cola ya viene ordenada así) */
+function porFaseHTML(l,fila,pzDe,nCols){let out='',ult=null;l.forEach(f=>{const k=f.o.fase||'Sin fase';if(k!==ult){ult=k;const del=l.filter(x=>(x.o.fase||'Sin fase')===k);
+    out+='<tr class="grp-row fase-row" style="background:var(--field)"><td colspan="'+nCols+'" style="padding:3px 10px 3px 24px;font-size:var(--fs-xs)"><b>'+esc(k)+'</b> <span class="mut">'+del.length+' '+(del.length===1?'orden':'órdenes')+' · '+num(del.reduce((a,x)=>a+pzDe(x),0))+' prendas'+((f.cerc&&f.cerc.faseRank===999&&f.cerc.grupo==='porLlegar')?' · fase fuera de la lista':'')+'</span></td></tr>'}out+=fila(f)});return out}
 /* la cabecera de cada grupo, dentro de la misma tabla */
 function cabGrupoCercHTML(g,n,pz,nCols){const ab=cercAbierto(g);
   return '<tr class="grp-row" style="cursor:pointer;background:var(--t-thead,var(--field));font-weight:700" onclick="togCercCEN(\''+g+'\')"><td colspan="'+nCols+'" style="border-top:2px solid var(--rule)">'
@@ -6538,7 +6625,9 @@ function cabGrupoCercHTML(g,n,pz,nCols){const ab=cercAbierto(g);
 /* la cola del centro: puesto manual primero; después CERCANÍA, fecha de llegada y entrega */
 function colaCentro(c,filas){return filas.filter(f=>f.c===c&&!f.hecho&&!f.bloq).sort((a,b)=>
   (puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)   /* 1 · el puesto manual sigue mandando */
-  ||ordenCercania(a.cerc||{})-ordenCercania(b.cerc||{})          /* 2 · grupo de cercanía y 3 · fecha de llegada */
+  ||Math.floor(ordenCercania(a.cerc||{})/1e6)-Math.floor(ordenCercania(b.cerc||{})/1e6)   /* 2 · grupo de cercanía y posición de la fase en la lista */
+  ||((a.o.fase||'')<(b.o.fase||'')?-1:(a.o.fase||'')>(b.o.fase||'')?1:0)  /* misma posición (en proceso aquí, fuera de la lista): la misma fase queda junta */
+  ||ordenCercania(a.cerc||{})-ordenCercania(b.cerc||{})          /* 3 · fecha de llegada */
   ||((a.o.fecha||'')<(b.o.fecha||'')?-1:1))}                     /* 4 · entrega */
 function agruparCola(lista,niveles){if(!niveles.length)return{hojas:lista};const k=niveles[0];const m={};const orden=[];lista.forEach(f=>{const c=claveEG(k,f.o);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(f)});
   return{nivel:k,grupos:orden.map(c=>({clave:c,n:m[c].length,pz:m[c].reduce((a,f)=>a+Math.max(0,(+f.o.cant||0)-(f.hechas||0)),0),sub:agruparCola(m[c],niveles.slice(1))}))}} // grupos en orden de aparición en la cola
@@ -6990,7 +7079,7 @@ function colaCentroHTML(c,ctx){
        <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td>
        <td style="white-space:nowrap">${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="mAsignarOperario('${f.o.id}','${f.c}')" title="asignar esta orden a un operario (recurso y día). Es lo que hace visible en la tablet un paso que el motor no programa por no tener minutos">asignar a operario</button> `:''}${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button> `:''}${regHechoOk(f.c)?`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`:''}</td></tr>`};
       return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha puesto puestos a mano: la cola se ordena por cercanía a llegar a este centro y, dentro de cada grupo, por fecha de llegada. Arrastrar una orden le pone puesto manual solo a ella (y a las que queden por encima, si la bajas); el resto sigue por cercanía.">cola sin numerar: se ordena por cercanía a llegar a este centro</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="body" style="padding-bottom:0">${ordenColaNotaHTML(cola)}${porQue[c]||''}</div><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Marca</th><th></th></tr></thead><tbody>
-       ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),14)+(cercAbierto(g)?filasGRP('cen',l,fila,14,f=>f.o,pzDe):'')}).join('');return sec||'<tr><td colspan="14" class="mut">Nada por programar.</td></tr>'})())}
+       ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length&&g==='puesto'&&cola.length)return cabGrupoCercHTML(g,0,0,14)+'<tr class="grp-row fase-row"><td colspan="14" class="mut" style="padding:3px 10px 3px 24px;font-size:var(--fs-xs)">ninguna: nadie ha puesto puestos a mano en '+esc(nCen(c))+'. Arrastra una orden al puesto 1 o escribe el número en la columna Puesto; el resto sigue por cercanía.</td></tr>';if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),14)+(cercAbierto(g)?((g==='porLlegar'||g==='disponible')&&!grpSt('cen').niveles.length?porFaseHTML(l,fila,pzDe,14):filasGRP('cen',l,fila,14,f=>f.o,pzDe)):'')}).join('');return sec||'<tr><td colspan="14" class="mut">Nada por programar.</td></tr>'})())}
        ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="14">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hd=hechasDelDia(c,null,h);const hh=hd.detalle.map(x=>x.o);const pzDe=o=>(hd.detalle.find(x=>x.o===o)||{}).pz||0;const tot=hd.pz;
        return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · ya libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const det=hd.detalle.find(x=>x.o===o)||{};const hc=Object.assign({pz:det.pz||0,u:(det.fuente==='tramo'?'registro por talla':''),ts:det.ts||new Date().toISOString(),dif:0},((S.avance[o.id]||{}).hechoC||{})[c]||{});const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${(regHechoOk(c)&&((S.avance[o.id]||{}).hechoC||{})[c])?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()
 }
@@ -9131,7 +9220,7 @@ function vConfig(el){
 
 `:''}
   ${CONF.tab==='nivel'?vNivelConfHTML():''}
-  ${CONF.tab==='cal'?`  ${motorConfigHTML()}
+  ${CONF.tab==='cal'?`  ${motorConfigHTML()}${fasesCentroPanelHTML()}
   <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
     ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div><div><label>Tablet: ventana de lo programado (días hábiles)</label>
@@ -9142,7 +9231,7 @@ function vConfig(el){
 <div class="mut" style="font-size:var(--fs-xs)">tiempo efectivo (sin paros ni descansos) que debe haber corrido antes de poder cerrar un paso. <b>0 = sin mínimo</b></div>
 <details style="margin-top:6px"><summary style="cursor:pointer;font-size:var(--fs-xs)">por centro (vacío = usa el general)${Object.keys(S.params.minMinutosCierreCentro||{}).length?' · '+Object.keys(S.params.minMinutosCierreCentro).length+' con valor propio':''}</summary>
 ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id)).map(x=>{const m=(S.params.minMinutosCierreCentro||{})[x.id];return `<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><span style="min-width:140px;font-size:var(--fs-s)">${esc(x.n)}</span><input type="number" min="0" step="1" style="width:90px" placeholder="general ${esc(String(prm('minMinutosCierre',5)))}" value="${m!=null?esc(String(m)):''}" onchange="setMinMinutosCierreCentro('${x.id}',this.value)"><span class="mut" style="font-size:var(--fs-xs)">${m!=null?'propio':'usa el general'}</span></div>`}).join('')}</details></div>
-<div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div><div><label>Cola del centro: umbral de «lejanas» (pasos pendientes)</label><input type="number" min="0" step="1" value="${esc(String(umbralCercania()))}" onchange="setUmbralCercania(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con más de estos pasos pendientes antes del centro va al grupo <b>Lejanas</b>, colapsado al final de la cola</div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
+<div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>

@@ -121,7 +121,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
   /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo.
      ?captura=fases: diagnóstico (JSON en <pre id="diag">) de la cola completa de cada centro de producción por fase de Odoo y grupo de cercanía. */
-  if(/captura=(niv|fases)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
+  if(/captura=(niv|fases|cola)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
     NIVUI={meses:['2026-09','2026-10','2026-11'],cliente:'',familia:'',area:'corte',celda:null,filaPor:'familia',esc:{},verCalc:false,noEntra:false};
     if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
       const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={por:'familia',fila:famDeOrden(r.saldo.ordenes[0]),mes:'2026-10'}}
@@ -146,6 +146,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
         const porGrupo={};cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'(sin cerc)';porGrupo[g]=(porGrupo[g]||0)+1});
         out.porCentro.push({centro:c,nombre:cen.nombre||c,total:cola.length,filas:filas.length,hechas:filas.filter(f=>f.hecho).length,bloqueadas:filas.filter(f=>!f.hecho&&f.bloq).length,porGrupo,fases})});
       document.body.innerHTML='<pre id="diag">'+JSON.stringify(out)+'</pre>';__R.done=true;return}
+    /* captura=cola1 (Corte) | cola2 (Confección): la cola por fase del centro, con «ver todas» (cola1b / cola2b = solo la semana, como abre por defecto);
+       se ocultan menú, cabecera y los bloques de arriba de la cola para que la captura arranque en la cola misma */
+    if(/captura=cola/.test(location.search)){const cual=(location.search.match(/captura=cola([0-9a-z]+)/)||[])[1]||"1";const c=/^2/.test(cual)?"modulos":"corte";
+      NAVH.length=0;irCentro(c,null,"prog");CEN.todo=!/b$/.test(cual);render();
+      const pc=document.getElementById("p-centro");let el=pc&&pc.querySelector(".panel.cola");
+      if(el){let n=el;while(n&&n!==pc){let sb=n.previousElementSibling;while(sb){sb.style.display="none";sb=sb.previousElementSibling}n=n.parentElement}}
+      const sinRecorte=()=>{document.querySelectorAll("main,#app").forEach(m=>{m.style.height="auto";m.style.maxHeight="none";m.style.overflow="visible"});document.querySelectorAll("#p-centro .panel.cola .scroll").forEach(sc=>{sc.style.maxHeight="none"});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove())};sinRecorte();
+      if(el){const ocultar=(padre)=>{[...padre.children].forEach(x=>{if(x===el)return;if(x.contains(el)){ocultar(x);return}const r=x.getBoundingClientRect();if(r.bottom<=el.getBoundingClientRect().top+1&&getComputedStyle(x).position!=="fixed")x.style.display="none"})};ocultar(document.body);[800,2000,4000].forEach(ms=>setTimeout(()=>{const e2=document.querySelector("#p-centro .panel.cola");if(e2){el=e2;sinRecorte();ocultar(document.body)}},ms))}
+      document.body.classList.add("captura");__R.done=true;return}
     if(/niv4/.test(location.search)){const r=nivUICalcular('corte');const cd=NIVUI.celda;irSaldoCentro(nivUISelDe(r,cd,'Short Cargo'))}
     document.body.classList.add('captura');__R.done=true;return}
   __check('planTarea reconoce columnas',!!planT);
@@ -1233,7 +1242,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const porPasos={};(m.lejana||[]).forEach(f=>{const k=f.cerc.pasosPend;porPasos[k]=(porPasos[k]||0)+1});
        return {centro:c,existe:true,nombre:nCen(c),total:cola.length,
          conPuesto:cola.filter(f=>puestoDe(f.o,c)>0).length,grupos:gr,ejemplos:ej,tipos,
-         umbral:umbralCercania(),
+         umbral:null,   /* el umbral en pasos se retiró el 17-sep: ahora manda la lista de fases del centro */
          lejanasQueLleganYa:escondidas.length,
          lejanasQueLleganYaEj:escondidas.slice(0,3).map(f=>f.o.op+" · "+f.cerc.pasosPend+" pasos pendientes · "+txtLlegada(f.cerc.llegada).txt),
          lejanasPorPasos:porPasos,
@@ -1316,7 +1325,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const m=partirPorCercania(colaCentro(c,filas));
        /* con la regla de escape ya no están en Lejanas: se buscan por la marca y por el escape */
        const todas=[].concat(...CERCANIA_GRUPOS.map(([g])=>m[g]||[]));
-       const raras=todas.filter(f=>f.cerc.escapo||(f.cerc.marca&&f.cerc.pasosPend>umbralCercania()));
+       const raras=todas.filter(f=>f.cerc.llegaYaFuera||(f.cerc.marca&&f.cerc.grupo==="lejana"));
        return raras.map(f=>{const o=f.o,x=f.cerc;
          const ru=pasosProDe(o);const i=ru.indexOf(c);
          const ro=(Pc.ordenes[o.id])||{};
@@ -1971,7 +1980,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -5084,28 +5093,41 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       else if(sec.estado==="sinSecuencia"){ok=false;mal=o.op+"/"+c}
       if(x.grupo==="disponible")nDisp++;
       if(x.grupo!=="revisar"&&sec.estado==="proxima"&&x.ant){
-        const esperado=(x.pasosPend<=umbralCercania())?"porLlegar":"lejana";
-        if(x.grupo!==esperado){ok=false;mal=o.op+"/"+c+" "+x.grupo+"!="+esperado}}})});
+        if(x.grupo==="anomalia")return;const r=rangoFaseCentro(c,o.fase);const esperado=(r==null||r>=0)?"porLlegar":"lejana";
+        if(x.grupo!==esperado){ok=false;mal=o.op+"/"+c+" "+x.grupo+"!="+esperado+" (fase "+o.fase+")"}}})});
     __check("CC1: «Revisar ruta» es exactamente sinSecuencia de secuenciaCentro",ok,mal);
-    __check("CC1: el umbral parte porLlegar de lejana por pasos pendientes",ok,"umbral="+umbralCercania());
+    __check("CC1: la LISTA de fases del centro parte Por llegar de Todo lo que viene (ya no los pasos pendientes)",ok,mal);
     __check("CC1: manda secuenciaCentro y el desacuerdo se anota, no se esconde",(()=>{
       let anotados=0,contradice=0;
       cens.forEach(c=>S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c)).slice(0,120).forEach(o=>{
         const x=cercaniaCentro(o,c,P);if(x.desacuerdo)anotados++;
         if(x.grupo==="disponible"&&x.ant&&!pasoHecho(o,x.ant)&&!x.desacuerdo)contradice++}));
       __R.cc=__R.cc||{};__R.cc.desacuerdos=anotados;return contradice===0})());}
-   /* --- 2 · el umbral es un parámetro, no un número en el código --- */
-   {const src=document.documentElement.innerHTML;
-    __check("CC2: el umbral sale de prm(), con 2 de valor inicial",/prm\(.umbralCercania.,\s*2\)/.test(src)&&umbralCercania()===2,umbralCercania());
-    const bak=S.params.umbralCercania;setUmbralCercania(0);
-    __check("CC2: se puede poner en 0 y se respeta (cero es cero)",umbralCercania()===0);
-    setUmbralCercania(5);__check("CC2: y en 5",umbralCercania()===5);
-    let av="";window.alert=m=>{av=String(m)};setUmbralCercania(-1);
-    __check("CC2: un umbral negativo se rechaza con aviso",umbralCercania()===5&&/0 o m\u00e1s/.test(av),av);
-    window.alert=()=>{};S.params.umbralCercania=bak;
-    page="config";CONF.tab="cal";render();
-    __check("CC2: y se edita en Configuración → Calendario y parámetros",
-      /umbral de .lejanas./i.test(document.getElementById("p-config").innerHTML));}
+   /* --- 2 · la lista de fases visibles por centro (tabla nueva) reemplaza al umbral en pasos --- */
+   {__check("CC2: el umbral en pasos se retiró (ni función ni parámetro)",typeof umbralCercania==="undefined"&&typeof setUmbralCercania==="undefined"&&!/umbralCercania/.test(String(cercaniaCentro)));
+    const t=fasesCentroTabla();const pro=S.centros.filter(c=>c.area==="pro"&&c.activo!==false).map(c=>c.id);
+    const conEtapa=pro.filter(c=>centroEtapaDe(c)),sinEtapa=pro.filter(c=>!centroEtapaDe(c));
+    __check("CC2: cada centro de producción con etapa (tabla 4) tiene su lista sembrada desde la tabla 1, marcada «sugerido»",conEtapa.length>=8&&conEtapa.every(c=>t[c]&&t[c].fases.length&&t[c].sugerido===true),conEtapa.filter(c=>!t[c]).join(","));
+    __check("CC2: un centro sin etapa no recibe lista inventada y sale en la bandeja «Centros sin lista de fases» de Hoy",sinEtapa.every(c=>!t[c])&&(sinEtapa.length===0||pendientesHoy().some(p=>p.k==="colaSinLista"&&sinEtapa.every(c=>p.detalle.includes(nCen(c))))),sinEtapa.join(","));
+    const lc=(t.corte||{}).fases||[];
+    __check("CC2: Corte: 3CD CORTE · Trazos · AEROPUERTO · Planificación · Calidad tintorería (última visible), y nada textil ni de diseño",normFase(lc[0]||"")==="3cdcorte"&&normFase(lc[lc.length-1]||"")==="1calidadtintoreria"&&lc.some(f=>/trazos/i.test(f))&&lc.some(f=>/planificacion/i.test(f))&&!lc.some(f=>/^1tejeduria|^1tintoreria|^0/i.test(normFase(f))),lc.join(" › "));
+    __check("CC2: 1Calidad Tintoreria entra desde la tabla 1 (columna tela), aunque no venga de Odoo",lc.some(f=>normFase(f)==="1calidadtintoreria")&&!(window.__tareaRows||[]).some(r=>normFase(String(r[11]||""))==="1calidadtintoreria"));
+    __check("CC2: Botones y Empaque tienen listas propias (se pueden editar por separado)",!!t.botones&&!!t.empaque&&t.botones!==t.empaque&&t.botones.fases!==t.empaque.fases);
+    __check("CC2: rangoFaseCentro: 0 la más cercana, -1 fuera, null sin lista, y compara con normFase",rangoFaseCentro("corte","3CD CORTE")===0&&rangoFaseCentro("corte","3 cd corte")===0&&rangoFaseCentro("corte","1Tejeduria")===-1&&rangoFaseCentro("centro-inexistente","x")===null);
+    /* editar, confirmar, volver a la sugerida; permisos */
+    const bakT=JSON.stringify(t.corte);const nb=S.bitacora.length;
+    setFasesCentro("corte",["3CD CORTE","3Trazos"],"prueba");
+    __check("CC2: editar la lista la deja «sugerido» y va a bitácora",t.corte.fases.length===2&&t.corte.sugerido===true&&S.bitacora.slice(nb).some(b=>/Fases visibles en la cola de Corte/.test(b.t)));
+    confirmarFasesCentro("corte");__check("CC2: confirmar la marca confirmada (con quién y cuándo)",t.corte.sugerido===false&&!!(t.corte.confirmado||{}).ts);
+    moverFaseCentro("corte",1,-1);__check("CC2: mover una fase la reordena y vuelve a sugerido",normFase(t.corte.fases[0])==="3trazos"&&t.corte.sugerido===true);
+    let av="";window.alert=m=>{av=String(m)};quitarFaseCentro("corte",0);quitarFaseCentro("corte",0);window.alert=()=>{};
+    __check("CC2: nunca queda una lista vacía",t.corte.fases.length===1&&/al menos una fase/.test(av),av);
+    volverSugeridaFasesCentro("corte");__check("CC2: «volver a la sugerida» rehace la propuesta de la tabla 1",normFase(t.corte.fases[0])==="3cdcorte"&&t.corte.fases.length>=4);
+    {const bakP=PERFIL;PERFIL={id:"u-op7",rol:"corte",nombre:"Op"};av="";window.alert=m=>{av=String(m)};setFasesCentro("corte",["3Trazos"],"x");window.alert=()=>{};PERFIL=bakP;
+     __check("CC2: sin permiso programa no se edita",/Solo planificaci/.test(av)&&normFase(t.corte.fases[0])==="3cdcorte",av);}
+    t.corte=JSON.parse(bakT);
+    page="config";CONF.tab="cal";render();const hc=document.getElementById("p-config").innerHTML;
+    __check("CC2: la tabla se edita en Configuración → Calendario y parámetros, y el umbral ya no está",/Fases visibles en la cola de cada centro/.test(hc)&&/sugerido/.test(hc)&&/confirmarFasesCentro\(/.test(hc)&&!/umbral de .lejanas./i.test(hc));}
    /* --- 3 · la etiqueta de llegada, caso por caso --- */
    {__check("CC3: hoy no cuenta; el siguiente día hábil es 1",habilesHasta(hoy(),null)===0&&habilesHasta(dsumLab(hoy(),1),null)===1,
       habilesHasta(dsumLab(hoy(),1),null));
@@ -5196,9 +5218,51 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      /* llamarlo dos veces avisa y no rompe */
      let av="";const a1=window.alert;window.alert=m=>{av=String(m)};volverACercania(c);window.alert=a1;
      __check("CC5b: si no hay puestos manuales, avisa y no hace nada",/ya se ordena por cercan\u00eda/.test(av),av);}}
+   /* ===== CF · cola por fase con corte de profundidad (17-sep) ===== */
+   {const c="corte";PLAN=null;PLAN_ALL=null;const Pf=programar();const lun=lunesDe(hoy());
+    const filas=filasDeCentros([c],Pf,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);const m=partirPorCercania(cola);
+    __check("CF: los grupos de pantalla son Con puesto manual · Disponible · Por llegar · Revisar ruta · Todo lo que viene · Ya salió de aquí",CERCANIA_GRUPOS.map(g=>g[0]).join()==="puesto,disponible,porLlegar,revisar,lejana,anomalia"&&"puesto" in m&&"anomalia" in m);
+    /* el orden: grupo → posición de la fase en la lista → llegada; la fórmula no deja que una llave pise a la anterior */
+    __check("CF: una orden de la primera fase sin programar va ANTES que una de la segunda fase que llega en 2 días",ordenCercania({grupo:"porLlegar",faseRank:0,orden:9e8})<ordenCercania({grupo:"porLlegar",faseRank:1,orden:2}));
+    __check("CF: dentro de Por llegar la cola va por fase en el orden de la lista",(()=>{const l=m.porLlegar;for(let i=1;i<l.length;i++){if((l[i-1].cerc.faseRank||0)>(l[i].cerc.faseRank||0))return false}return true})(),m.porLlegar.map(f=>f.o.fase+"#"+f.cerc.faseRank).slice(0,8).join(" | "));
+    __check("CF: nada con fase fuera de la lista queda en Por llegar (va a Todo lo que viene), salvo anomalías",m.porLlegar.every(f=>f.cerc.enLista||f.cerc.sinLista)&&m.lejana.every(f=>!f.cerc.enLista),m.porLlegar.filter(f=>!f.cerc.enLista).map(f=>f.o.op+" "+f.o.fase).slice(0,3).join(","));
+    /* escape «llega ya»: fuera de la lista NO cambia de grupo, solo etiqueta */
+    {const oL=(m.lejana[0]||{}).o;if(oL){const x=cercaniaCentro(oL,c,Pf);const ro=Pf.ordenes[oL.id]||{};
+      const l2=Object.assign({},x,{llegada:{tipo:"fecha",dias:1,ant:x.ant}});
+      __check("CF: «llega ya» con fase fuera de la lista se queda en Todo lo que viene con etiqueta",!x.escapo&&(x.grupo!=="porLlegar"||x.enLista)&&/llega ya/.test(llegadaHTML(Object.assign({},l2,{llegaYaFuera:true})))&&!/llegaYaFuera|escapo=true/.test("")&&!/out\.grupo='porLlegar';out\.escapo=true/.test(String(cercaniaCentro)));}}
+    /* con puesto manual: arriba de todo, aunque su fase esté fuera de la lista */
+    {const oLej=(m.lejana[0]||{}).o;if(oLej&&puede("programa")){const bakPC=JSON.stringify(oLej.progCentro||null);
+      moverEnCola(oLej.id,c,{pos:1});const cola2=colaCentro(c,filasDeCentros([c],Pf,lun,dsum(lun,6),""));const m2=partirPorCercania(cola2);
+      CEN.id=c;CEN.solo="";CEN.tab="prog";CEN.q="";CEN.fases=null;CEN.todo=false;page="centro";render();const h=document.getElementById("p-centro").innerHTML;
+      const iP=h.indexOf("Con puesto manual"),iD=h.indexOf("Disponible"),iOp=h.indexOf(esc(oLej.op));
+      __check("CF: una orden con puesto manual sale en «Con puesto manual», arriba de todo y a la vista, aunque su fase esté fuera de la lista",m2.puesto.length>=1&&m2.puesto[0].o.id===oLej.id&&iP>=0&&iP<iD&&iOp>iP&&iOp<iD,JSON.stringify({iP,iD,iOp}));
+      __check("CF: la cola muestra subcabeceras por fase dentro de Por llegar",/fase-row/.test(h));
+      oLej.progCentro=bakPC==="null"?undefined:JSON.parse(bakPC);if(oLej.progCentro===undefined)delete oLej.progCentro;PLAN=null;PLAN_ALL=null;}}
+    /* anomalías: fase del propio grupo o posterior con el paso sin cerrar */
+    {const oA=cola.find(f=>f.cerc.posFase==="enProceso");const oS=filas.find(f=>!f.hecho&&!f.bloq&&f.cerc&&f.cerc.grupo==="anomalia");
+     {const oP={id:"x-cf-p",op:"WH/CF-2",fase:"4Corte Planta",ruta:[{centro:"corte",t:1},{centro:"modulos",t:1},{centro:"empaque",t:1}]};const g1=grupoTela(oP,{tipo:"lista"},"corte",{}),g2=grupoTela(oP,{tipo:"sinDato"},"corte",{});
+      __check("CF: fase del propio grupo del centro (4Corte Planta en Corte, fuera de la lista) = «en proceso aquí»: Disponible con etiqueta, y con la tela sin dato sigue en Disponible pero con desacuerdo a la vista",g1.grupo==="disponible"&&g1.anomalia&&g1.anomalia.tipo==="enProceso"&&!g1.desacuerdo&&g2.grupo==="disponible"&&/tela no figura/.test(g2.desacuerdo),JSON.stringify([g1.grupo,g2.grupo,g2.desacuerdo]));
+      __check("CF: en la misma posición de la lista, la misma fase queda junta (una sola subcabecera por fase)",(()=>{const l=m.disponable||m.disponible;const vistas=new Set();let ult=null;for(const f of l){const k=f.o.fase||"";if(k!==ult){if(vistas.has(k))return false;vistas.add(k);ult=k}}return true})(),m.disponible.map(f=>f.o.fase).join(",").slice(0,200));}
+     __check("CF: «en proceso aquí» se queda en Disponible con etiqueta",!oA||(oA.cerc.grupo==="disponible"&&/en proceso aquí/.test(llegadaHTML(oA.cerc))),oA?oA.o.fase:"(ninguna en el volcado)");
+     __check("CF: «ya salió de aquí» va al final en su propio grupo, a la vista, y a la bandeja de Hoy",!oS||(oS.cerc.grupo==="anomalia"&&/ya salió de aquí/.test(llegadaHTML(oS.cerc))&&CERC_ABIERTO.anomalia===true&&anomaliasCola().some(x=>x.id===oS.o.id)&&pendientesHoy().some(i=>i.k==="colaYaSalio"&&i.n>=1)),oS?oS.o.op+" "+oS.o.fase:"(ninguna)");
+     /* de las anomalías, cuántas vienen de rutas incompletas (un solo paso de producción) */
+     const an=anomaliasCola();__R.cf={anomalias:an.length,rutaIncompleta:an.filter(x=>x.rutaIncompleta).length,porCentro:{}};an.forEach(x=>{const k=x.c;__R.cf.porCentro[k]=__R.cf.porCentro[k]||{n:0,ri:0};__R.cf.porCentro[k].n++;if(x.rutaIncompleta)__R.cf.porCentro[k].ri++});
+     __check("CF: se puede medir qué parte de las anomalías viene de rutas incompletas",typeof __R.cf.anomalias==="number",JSON.stringify(__R.cf));}
+    /* liberada a corte manda sobre una fase textil rezagada */
+    {const oT=S.ordenes.find(o=>abierta(o)&&o.op&&!o.sinLanzar&&(o.ruta||[]).some(p=>p.centro==="corte")&&!pasoHecho(o,"corte")&&/^1/.test(o.fase||""));
+     if(oT){const bakA=JSON.stringify(S.avance[oT.id]||null);S.avance[oT.id]=Object.assign(S.avance[oT.id]||{},{lista:true});
+      const gt=grupoTela(oT,{tipo:"lista"},"corte",{});
+      __check("CF: liberada a corte (avance.lista) manda sobre la fase textil rezagada: Disponible",gt.grupo==="disponible"&&/liberaci/.test(gt.porQue),gt.grupo+" · "+gt.porQue);
+      S.avance[oT.id]=bakA==="null"?undefined:JSON.parse(bakA);if(S.avance[oT.id]===undefined)delete S.avance[oT.id];}
+     else __check("CF: liberada a corte manda sobre la fase textil (sin orden textil con corte pendiente en el volcado)",true);}
+    /* primer centro: tela lista pero fase fuera de la lista → desacuerdo, no «lista para empezar» */
+    {const gt=grupoTela({id:"x-cf",op:"WH/CF-1",fase:"3CD CORTE",ruta:[{centro:"bordado",t:1}]},{tipo:"lista"},"bordado",{});
+     __check("CF: ruta incompleta ([bordado] solo, fase 3CD CORTE) NO es «lista para empezar»: queda en Todo lo que viene con desacuerdo «ruta incompleta»",gt.grupo==="lejana"&&gt.rutaIncompleta===true&&/ruta incompleta/.test(gt.desacuerdo),JSON.stringify(gt));}
+    PLAN=null;PLAN_ALL=null;}
    /* --- 4d · el tooltip del arrastre lo explica (decisión 4) --- */
    {page="centro";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true;CEN.q="";render();
     const h=document.getElementById("p-centro").innerHTML;
+    __check("CF: «Con puesto manual» está siempre a la vista arriba de la cola, aunque nadie haya numerado (entonces lo dice)",/Con puesto manual/.test(h)&&h.indexOf("</span>Con puesto manual")>=0&&h.indexOf("</span>Con puesto manual")<h.indexOf("</span>Disponible")&&(S.ordenes.some(o=>puestoDe(o,"corte")>0)||/ninguna: nadie ha puesto puestos a mano/.test(h)));
     __check("CC4b: el tooltip del arrastre dice que bajar una orden numera las de encima",
       /bajar una orden numera tambi\u00e9n las que quedan por encima/.test(h));}
    /* --- 5 · el orden de la cola --- */
@@ -6326,7 +6390,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    while(guardando)await __p(20);await save();while(guardando)await __p(20);await __p(50);   /* lo sembrado llega a la base simulada, como pasaría en producción (save() se salta si otro guardado está en curso) */
    const foto={centros:S.centros.length,recursos:S.recursos.map(r=>[r.id,r.pers,r.efic,r.min]).sort().join("|"),cal:JSON.stringify(S.params.cal||null),exc:(S.params.excepciones||[]).length,
      nivelTela:faseMapeo().filter(r=>r.nivel).length,t14:camposConservados().length,t15:motivos().length,t18:JSON.stringify(S.params.horarios),gm:gruposMod().length,telas:S.telas.length,colores:S.colores.length,ops:S.operaciones.length,
-     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",2)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
+     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",0)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
      fotosIdx:Object.keys(S.params.fotosIdx||{}).length,bucket:Object.keys((sb.storage.__FILES||{})).length,esc:JSON.stringify(S.params.nivelacion.escenarios),bit:S.bitacora.length,categorias:S.categorias.length,tecnicas:S.tecnicas.length,rutas:(S.rutas||[]).length,maquinas:(S.maquinas||[]).length};
    const c=cuentaBorrado();const frase="BORRAR "+c.ordenes+" ORDENES Y "+c.avance+" AVANCES";
    const diag={writes:__W.writes.slice(-20).map(w=>w.t+":"+w.op+":"+w.n),saveErr:SAVE_ERR,db:await (async()=>{const r=await sb.from("centros").select("id,data");return (r.data||[]).filter(x=>x.data&&x.data.rutaDefecto).map(x=>x.id)})(),mem:S.centros.filter(x=>x.rutaDefecto).map(x=>x.id),base:Object.entries(BASE.centros||{}).filter(([id,j])=>/rutaDefecto/.test(j)).map(([id])=>id),puede:puedeSubirTabla("centros"),rol:PERFIL&&PERFIL.rol};
@@ -6336,7 +6400,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    while(guardando)await __p(20);await ejecutarBorrado("operativo",frase);while(guardando)await __p(20);await __p(80);inp.remove();
    const despues={centros:S.centros.length,recursos:S.recursos.map(r=>[r.id,r.pers,r.efic,r.min]).sort().join("|"),cal:JSON.stringify(S.params.cal||null),exc:(S.params.excepciones||[]).length,
      nivelTela:faseMapeo().filter(r=>r.nivel).length,t14:camposConservados().length,t15:motivos().length,t18:JSON.stringify(S.params.horarios),gm:gruposMod().length,telas:S.telas.length,colores:S.colores.length,ops:S.operaciones.length,
-     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",2)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
+     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",0)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
      fotosIdx:Object.keys(S.params.fotosIdx||{}).length,bucket:Object.keys((sb.storage.__FILES||{})).length,esc:JSON.stringify((S.params.nivelacion||{}).escenarios),bit:S.bitacora.length,categorias:S.categorias.length,tecnicas:S.tecnicas.length,rutas:(S.rutas||[]).length,maquinas:(S.maquinas||[]).length};
    const dif=Object.keys(foto).filter(k=>k!=="bit"&&foto[k]!==despues[k]);
    __check("B0: tras el borrado se conserva TODA la configuración (centros, recursos con personas y eficiencia, calendario y festivos, tabla 1 con nivelación, 14, 15, 18, grupos de módulos, telas, colores, operaciones, parámetros, usuarios, rutas por defecto, fotos del bucket, escenarios)",dif.length===0,dif.map(k=>k+": "+String(foto[k]).slice(0,40)+" → "+String(despues[k]).slice(0,40)).join(" | "));

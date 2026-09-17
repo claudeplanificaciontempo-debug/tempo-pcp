@@ -728,7 +728,7 @@ y **tocarlo lo devuelve a sugerido**; `validarGruposMod()` marca como **error** 
 función y **no crea definiciones nuevas**: `secuenciaCentro` clasifica y **manda** si discrepa de
 `centroAnteriorPro` (el desacuerdo se anota y sale como etiqueta «ojo», no se esconde), y `pasoHecho` dice si
 terminó. Cuatro grupos: **Disponible · Por llegar · Revisar ruta** (`sinSecuencia`, colapsado) **· Lejanas**
-(colapsado, `filasGRP`). Umbral en **pasos pendientes**, `prm('umbralCercania',2)`, editable en Configuración.
+(colapsado, `filasGRP`). ~~Umbral en pasos pendientes~~ (retirado el 17-sep: la lista de fases del centro decide, ver más abajo).
 **Etiqueta de llegada** en columna propia: hoy · mañana · en X días hábiles · sin programar · atrasado X días ·
 llegaron X de Y · sin dato de llegada. Sale del **fin programado del paso anterior** y se cuenta con **`labR` del
 recurso de ese paso**. **CONVENCIÓN: hoy NO cuenta, el siguiente hábil es «mañana»** — es un **plazo** como
@@ -756,6 +756,23 @@ la lista a mano. **Menú**: «Nivelación de carga» primera en Planificación d
 la pestaña de Configuración hasta que se apruebe el Paso 2). **Tablet del operario**: `cerrarCentro` hoy solo
 valida permiso y motivo con faltante — ni tramo ni tiempo; no hay rpc de cierre. Ver `BUSQUEDAS_CORRECCIONES_2.md` y
 `TABLET_OPERARIO_PASO0.md`.
+
+**Cola por fase (17-sep-2026, reemplaza al umbral en pasos).** `S.params.fasesCentro[centro]={fases,sugerido,confirmado,
+origen,ts}` es la **lista de fases visibles** de cada centro (Configuración → Calendario y parámetros → «Fases visibles en la
+cola de cada centro»; `fasesCentroTabla/fasesCentroDe/rangoFaseCentro` (0 = la más cercana, −1 fuera, null sin lista, compara
+con `normFase`), `sugerirFasesCentro` (tabla 1 hacia atrás desde la etapa de la tabla 4; textil solo para el primer centro
+de producción y solo tela tinturada/lista; maquila solo si `desde` = etapa; para en la segunda cola CD), `sembrarFasesCentro`
+(idempotente, corre en `render()`, solo centros sin lista; sin etapa → nada y bandeja `colaSinLista`), `set/mover/quitar/
+agregar/confirmar/volverSugeridaFasesCentro` (permiso `programa`; tocarla la devuelve a sugerido). **`umbralCercania` ya no
+existe.** Grupos de la cola (`CERCANIA_GRUPOS`): **Con puesto manual** (siempre a la vista) · **Disponible** (subcabecera por fase;
+incluye «en proceso aquí» = `posicionFaseCentro(o,c)===enProceso`, fase del propio grupo no CD, esté o no en la lista) ·
+**Por llegar** (solo fases dentro de la lista, en su orden) · **Revisar ruta** · **Todo lo que viene** (fuera de la lista; «llega ya»
+es **solo etiqueta**, `llegaYaFuera`) · **Ya salió de aquí** (`posicionFaseCentro===yaSalio`: CD del propio grupo o
+posterior con el paso sin cerrar; `anomalia`, al final, abierto, bandeja `colaYaSalio`). Orden: puesto → `ordenCercania`
+(grupo·10⁹ + posición·10⁶ + llegada) → misma fase junta → entrega. **Ruta incompleta** (`rutaIncompleta`: único paso de
+producción, no es el primero del flujo, fase antes) nunca es «lista para empezar»: Todo lo que viene + bandeja
+`colaRutaIncompleta` (reales: Bordado 114, Estampado 17). `anomaliasCola()` las cuenta. Capturas del driver
+`?captura=cola1|cola2`. Ver `COLA_POR_FASE_REPORTE.md`.
 
 **Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
 para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
