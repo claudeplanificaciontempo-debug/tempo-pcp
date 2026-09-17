@@ -205,6 +205,48 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("P1: ya no queda ningún borrado masivo de S.avance en el código",
        !/S\.avance=\{\}/.test(String(aplicarTarea)));
      delete S.avance[oA2.id];PLAN=null;PLAN_ALL=null}}
+   /* ===== 1b · lib, fases (historial) y progCentro bloqueados igual que avance ===== */
+   {const oB2=S.ordenes.find(o=>abierta(o)&&o.op);
+    if(oB2){
+     const ts=new Date().toISOString();
+     oB2.lib=Object.assign(oB2.lib||{},{tela:{ok:true,u:"prueba-lib",ts}});
+     oB2.fases=(oB2.fases||[]).concat([{f:oB2.fase||null,ts,u:"prueba-fases",origen:"app",antes:null,motivo:"motivo de prueba"}]);
+     oB2.progCentro=Object.assign(oB2.progCentro||{},{corte:{pri:1,u:"prueba-prog"}});
+     const nFases=oB2.fases.length;
+     ["lib","fases","progCentro"].forEach(k=>{
+      __check("P1b: la fila «"+k+"» de la tabla 14 no se puede desmarcar",campoBloqueado(k)&&conserva(k));
+      const i=camposConservados().findIndex(x=>x.campo===k);
+      let av="";const a1=window.alert;window.alert=m=>{av=String(m)};setCampoConservado(i,false);window.alert=a1;
+      __check("P1b: intentar desmarcar «"+k+"» avisa y no cambia nada",conserva(k)&&camposConservados()[i].conservar!==false&&/no se puede desmarcar/.test(av),av.slice(0,80));});
+     __check("P1b: la fase ACTUAL sigue siendo decisión de la tabla (no está bloqueada)",!campoBloqueado("fase"));
+     /* aunque alguien fuerce las tres filas a false, la recarga NO las borra */
+     const idx=["lib","fases","progCentro"].map(k=>camposConservados().findIndex(x=>x.campo===k));
+     const baks=idx.map(i=>camposConservados()[i].conservar);idx.forEach(i=>{camposConservados()[i].conservar=false});
+     const p9b=planTarea(tareaRows,"TAREA_PROT2.xlsx");TAREA=p9b;aplicarTarea();await __p(50);
+     idx.forEach((i,k)=>{camposConservados()[i].conservar=baks[k]});
+     const oB3=S.ordenes.find(x=>x.id===oB2.id)||{};
+     __check("P1b: tras recargar con las filas forzadas a false, la firma de liberación sigue",!!(((oB3.lib||{}).tela)||{}).ok&&(oB3.lib.tela.u==="prueba-lib"),JSON.stringify(oB3.lib));
+     __check("P1b: el historial de fases sigue completo, con su motivo",(oB3.fases||[]).length>=nFases&&(oB3.fases||[]).some(f=>f.u==="prueba-fases"&&f.motivo==="motivo de prueba"),String((oB3.fases||[]).length));
+     __check("P1b: la programación del centro sigue",!!((oB3.progCentro||{}).corte)&&oB3.progCentro.corte.u==="prueba-prog",JSON.stringify(oB3.progCentro));
+     const p9c=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p9c;aplicarTarea();await __p(50);
+     const oB4=S.ordenes.find(x=>x.id===oB2.id);if(oB4){delete oB4.lib;delete oB4.progCentro;oB4.fases=(oB4.fases||[]).filter(f=>f.u!=="prueba-fases")}PLAN=null;PLAN_ALL=null}}
+   /* ===== 1a · «Actualizar desde Odoo» deshabilitado hasta el camino único ===== */
+   {const veilOn=()=>document.getElementById("veil").classList.contains("on");cerrar();
+    __check("P1a: «Actualizar desde Odoo» está deshabilitado",ODOO_DESHABILITADO===true);
+    ir("ordenes");await __p(80);
+    const bO=[...document.querySelectorAll("#p-ordenes button")].find(b=>/Actualizar desde Odoo/.test(b.textContent));
+    __check("P1a: el botón se ve pero está inactivo, con el texto acordado",!!bO&&bO.disabled&&/Temporalmente deshabilitado — use Recarga Parte 2/.test((bO.parentElement||{}).textContent||""),bO?String(bO.disabled):"sin botón");
+    let av="";const a1=window.alert;window.alert=m=>{av=String(m)};mOdoo();window.alert=a1;
+    __check("P1a: llamar a mOdoo() sin forzar no abre nada y avisa",!veilOn()&&/deshabilitado/.test(av),av);
+    const pr0=window.prompt;const nb=S.bitacora.length;
+    window.prompt=()=>"no";forzarOdoo();
+    __check("P1a: forzar con otra palabra no abre nada ni deja rastro",!veilOn()&&S.bitacora.length===nb);
+    window.prompt=()=>"FORZAR";forzarOdoo();window.prompt=pr0;
+    __check("P1a: el administrador lo fuerza escribiendo FORZAR: abre, avisa que puede duplicar y queda en bitácora",
+      !!veilOn()&&/puede duplicar/.test(document.getElementById("modal").textContent)&&S.bitacora.length===nb+1&&/FORZADO/.test(S.bitacora.slice(-1)[0].t),S.bitacora.slice(-1)[0].t);
+    cerrar();
+    const bakP=PERFIL;PERFIL={id:"u-pl",rol:"planificacion"};let av2="";window.alert=m=>{av2=String(m)};window.prompt=()=>"FORZAR";forzarOdoo();window.prompt=pr0;window.alert=a1;PERFIL=bakP;
+    __check("P1a: quien no es administrador no puede forzarlo",!veilOn()&&/administrador/.test(av2),av2);cerrar()}
    /* «Actualizar desde Odoo» no se puede ejercitar: su plan se arma dentro de leerOdoo(ev) (manejador del <input file>) */
    __R.recarga=__R.recarga||{};__R.recarga.odooEjercitable=(typeof planOdoo==="function");
    __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas",typeof planOdoo==="function");
