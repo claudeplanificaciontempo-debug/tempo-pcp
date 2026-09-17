@@ -724,6 +724,24 @@ y **tocarlo lo devuelve a sugerido**; `validarGruposMod()` marca como **error** 
 **La clave pública de Supabase no lee nada sin sesión** (RLS): la anon key devuelve 0 filas en `perfiles`,
 `params`, `ordenes` y `centros`. Ver `NIVELACION_PASO1_CORRECCIONES.md`.
 
+**La cola del centro se ordena por CERCANÍA a llegar (16-sep-2026).** `cercaniaCentro(o,c,P)` es la única
+función y **no crea definiciones nuevas**: `secuenciaCentro` clasifica y **manda** si discrepa de
+`centroAnteriorPro` (el desacuerdo se anota y sale como etiqueta «ojo», no se esconde), y `pasoHecho` dice si
+terminó. Cuatro grupos: **Disponible · Por llegar · Revisar ruta** (`sinSecuencia`, colapsado) **· Lejanas**
+(colapsado, `filasGRP`). Umbral en **pasos pendientes**, `prm('umbralCercania',2)`, editable en Configuración.
+**Etiqueta de llegada** en columna propia: hoy · mañana · en X días hábiles · sin programar · atrasado X días ·
+llegaron X de Y · sin dato de llegada. Sale del **fin programado del paso anterior** y se cuenta con **`labR` del
+recurso de ese paso**. **CONVENCIÓN: hoy NO cuenta, el siguiente hábil es «mañana»** — es un **plazo** como
+`dsumLab`, **distinta a propósito** de la inclusiva de la nivelación (`diasHabilesInc`/`finLabInc`): son tres
+semánticas de días hábiles y cada una está escrita donde se usa. **Primer centro de producción** (`llegadaTela`):
+la llegada sale de la tela — `ro.bloqueo` **manda**, luego `avance.lista`/fase, luego `ro.telaLista`; **sin dato
+NUNCA es «disponible»**. `colaCentro` ordena: **puesto manual → cercanía → llegada → entrega**, y `moverEnCola`
+**ya no renumera la cola entera** (solo la movida, las que ya tenían puesto y, si se la baja, las de encima).
+`ordenarColaPorColor` **apaga la cercanía** porque numera todas: avisa en el diálogo y en bitácora. La ODC va en
+**columna propia**: **no meterla en `whCell`**. Al cargar OT se guardan `iniTs`/`finTs` con la hora sin tocar
+`excelFecha`. **Hallazgo sin corregir:** `excelFecha` usa `Math.round`, así que **toda hora ≥ 12:00 se guarda un día
+tarde** (24.727 de 45.421 fechas de OT del volcado, 54,4 %). Ver `COLA_CERCANIA_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

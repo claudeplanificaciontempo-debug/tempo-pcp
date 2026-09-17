@@ -204,6 +204,44 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.48 La cola del centro se ordena por CERCANÍA a llegar (16-sep)
+- **`cercaniaCentro(o,c,P)`** es la única función y no crea ninguna definición nueva: se apoya en
+  **`secuenciaCentro`** (clasifica y **manda** si hay desacuerdo), **`centroAnteriorPro`** (el paso anterior) y
+  **`pasoHecho`** (si terminó). El desacuerdo se anota en `desacuerdo` y sale como etiqueta «ojo» con su motivo:
+  los dos casos reales son el **tramo no secuencial** (estampado/bordado/confección, donde mandan las OT) y el
+  **primer centro de producción**.
+- Cuatro grupos (`CERCANIA_GRUPOS`): **Disponible** · **Por llegar** · **Revisar ruta** (`sinSecuencia`,
+  colapsado) · **Lejanas** (colapsado, con `filasGRP`). Umbral en **pasos pendientes**,
+  **`prm('umbralCercania',2)`** (`setUmbralCercania`, Configuración → Calendario y parámetros): **ningún número
+  en el código**.
+- **Etiqueta de llegada** (`txtLlegada`/`llegadaHTML`, columna «Llega», en negrita): **hoy** · **mañana** ·
+  **en X días hábiles** · **sin programar** · **atrasado X días** · **llegaron X de Y** (`cantCentro`) ·
+  **sin dato de llegada**. Sale del **fin programado del paso anterior** (`P.ordenes[oid].pasos[].fin`) y se
+  cuenta con **`labR` del recurso de ese paso** (`habilesHasta`/`habilesDesde`).
+- **CONVENCIÓN: hoy NO cuenta; el siguiente día hábil es 1 («mañana»)** — es un **plazo**, como `dsumLab`, y
+  **distinta a propósito** de la convención inclusiva de la nivelación (`diasHabilesInc`/`finLabInc`). No
+  mezclarlas. Cada etiqueta lleva tooltip con la fecha, el recurso y la convención.
+- **Primer centro de producción** (`llegadaTela`): `centroAnteriorPro` da null, así que la llegada sale de la
+  tela, en este orden: **`ro.bloqueo` manda** (si el motor no la puede programar, NO se dice «lista») →
+  `avance.lista`/`faseEstado().lista` → `ro.telaLista` → **«sin dato de llegada»**. **Sin dato NUNCA es
+  «disponible»**, y hay una prueba sobre las órdenes reales que lo verifica.
+- **`colaCentro` ordena**: puesto manual → grupo de cercanía → fecha de llegada → entrega. La cercanía se
+  calcula una vez por fila en `filasDeCentros` (que sí tiene `P`) y viaja en `f.cerc`.
+- **`moverEnCola` ya NO renumera la cola entera**: numera la movida, las que ya tenían puesto y —**solo si se
+  la baja**— las que quedan por encima, porque una orden CON puesto siempre va delante de una SIN puesto y el
+  destino no se puede expresar de otra forma. Lo de abajo sigue por cercanía; la bitácora lo dice.
+- **`ordenarColaPorColor` entra en conflicto a propósito**: numera TODAS y el puesto manual manda, así que
+  después de usarlo la cola deja de ordenarse por cercanía. No se bloquea; **avisa en el diálogo y en bitácora**.
+- **ODC en columna propia**; **`whCell` NO se tocó** (hay una prueba que falla si alguien le mete la ODC).
+- **Hora de las OT**: al cargar se guardan **`o.ot[c].iniTs`/`finTs`** (`excelFechaHora`, `traeHora`).
+  **`excelFecha` no se tocó** y `ini`/`fin` siguen en `YYYY-MM-DD`. **HALLAZGO sin corregir:** `excelFecha` usa
+  `Math.round`, así que **toda hora ≥ 12:00 se guarda como el día siguiente** — **24.727 de 45.421 fechas de OT
+  del volcado (54,4 %) están corridas un día**. El arreglo es `Math.floor`; pendiente de autorización.
+- **Punto flaco medido**: el grupo se decide en **pasos** y la etiqueta en **días**, y no siempre coinciden. En
+  el volcado, **4 de 48 lejanas de botones y 14 de 160 de empaque llegan hoy o mañana** y quedan en el grupo
+  colapsado. Propuesta pendiente: que llegar hoy/mañana (o estar atrasada) saque a una orden de Lejanas.
+- Ver `COLA_CERCANIA_REPORTE.md` y `COLA_CERCANIA_PASO0.md`.
+
 ### 2.47 Nivelación — correcciones del Paso 1 (16-sep)
 - **UNA convención de días hábiles** (`CONV_HABILES`): **el inicio cuenta como día 1 y el compromiso es el
   último día disponible, los dos inclusive**. `finLabInc(ini,n)` y `diasHabilesInc(a,b)` la implementan y
