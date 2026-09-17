@@ -216,6 +216,9 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   alcance, no vinieron, no calzan, clave incompleta, clave repetida, fechas ilegibles, errores.
 - Archivo sin componentes: aviso y solo actualiza lo que viene. Pasos 2 y 3 avisan órdenes no encontradas.
 - Retirados «Actualizar desde Odoo» (con su plan y su aplicar), «Recarga Parte 2» y los diálogos sueltos de OT y fotos.
+- Freno por archivo incompleto (umbral % de la cartera abierta en Configuración, 10): aviso rojo, desglose por cliente y
+  mes, y confirmación escrita APLICAR. Pasos 2 y 3: «Conviene cargar primero las tareas» si no se cargaron en la sesión o
+  hace más de 1 día.
 - Clave repetida en el archivo con clave ya existente: no se aplica, se marca «clave repetida — revisar» (Hoy).
 - Reconocidas exactas sobre el volcado: 1.206 = 1.211 − 5 de demostración. Ver `CARGAS_CAMINO_UNICO.md`.
 

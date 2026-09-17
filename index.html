@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 11:59';
+const APP_BUILD='2026-09-17 12:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10332,8 +10332,11 @@ function mActualizarDatos(paso){if(!puede('ordenes')){alert('Tu perfil no carga 
    :`<p class="lede" style="margin-top:0">Sube un CSV con columnas <b>Orden de produccion</b> y <b>Avatar</b> (imagen en base64). Cada foto va al almacenamiento (bucket <code>${esc(fotoBucket())}</code>) y en la orden queda el enlace; por tandas, la que ya existe se reemplaza. Las fotos de órdenes que no estén en el sistema se avisan: se suben igual y se cuelgan cuando llegue la orden.</p>
      <p style="font-size:var(--fs-s)"><b>${Object.keys(ix).length}</b> fotos en el almacenamiento · <b>${conFoto}</b> órdenes con foto de ${S.ordenes.length}${CF?` · última carga ${new Date(CF.fecha).toLocaleString('es-EC')}: ${CF.subidas} subidas, ${fmtBytes(CF.bytes)}`:''}</p>
      <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>`;
+  const avisoTareas=(()=>{if(ACT.paso===1)return '';const hace=CT&&CT.fecha?(Date.now()-new Date(CT.fecha))/864e5:null;
+    if(ACT.tareasEnSesion&&hace!=null&&hace<=1)return '';
+    return `<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px"><b>Conviene cargar primero las tareas</b> (paso 1): ${!ACT.tareasEnSesion?'en esta sesión no se han cargado':''}${!ACT.tareasEnSesion&&hace!=null&&hace>1?' y ':''}${hace==null?'nunca se han cargado':(hace>1?'la última carga fue hace '+num(hace,1)+' días':'')}. ${ACT.paso===2?'Las órdenes de trabajo':'Las fotos'} de órdenes que no estén en el sistema no se cuelgan de nada.</div>`})();
   const pie=ACT.paso===1?`<button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar</button>`:ACT.paso===2?`<button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button>`:`<button class="btn" id="fotos-ok" disabled onclick="aplicarFotos()">Subir fotos</button>`;
-  abrir(`<h3>Actualizar datos</h3><div class="body"><div class="chips" style="margin-bottom:12px">${chip(1,'Tareas de Odoo')}${chip(2,'Órdenes de trabajo')}${chip(3,'Fotos')}</div>${cuerpo}</div>
+  abrir(`<h3>Actualizar datos</h3><div class="body"><div class="chips" style="margin-bottom:12px">${chip(1,'Tareas de Odoo')}${chip(2,'Órdenes de trabajo')}${chip(3,'Fotos')}</div>${avisoTareas}${cuerpo}</div>
    <div class="foot"><span class="mut" style="font-size:var(--fs-xs);margin-right:auto">Nada se guarda antes de confirmar.</span><button class="btn ghost" onclick="cerrar()">Cancelar</button>${pie}</div>`,true);
   const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:leerFotos)}
 async function leerTarea(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('tarea-res');res.innerHTML='<span class="mut">Leyendo…</span>';
@@ -10400,7 +10403,7 @@ function alcanceOrden(d){const P=alcanceParams();
   return {dentro:true}}
 const ALCANCE_MOTIVO_TXT={cancel:'fase Cancelado',sinFecha:'sin fecha de entrega y sin Proyecto con mes',entregaPasadaCerrada:'entrega pasada y fase de cierre'};
 function setAlcanceParam(k,v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
-  const n=+String(v).replace(',','.');if(!(n>=0)){alert('Debe ser 0 o más.');return}const antes=prm(k,k==='alcanceDiasAtras'?0:1);S.params[k]=n;
+  const n=+String(v).replace(',','.');if(!(n>=0)){alert('Debe ser 0 o más.');return}const antes=prm(k,k==='alcanceDiasAtras'?0:(k==='umbralArchivoIncompleto'?10:1));S.params[k]=n;
   bitacora('Alcance de las cargas · '+k+': '+antes+' → '+n+' ('+quienFirma()+')');save();render()}
 /* resumen antes/después de aplicar la regla: cuántas quedan fuera, por motivo, con unidades */
 function resumenAlcance(lista){const r={};(lista||[]).forEach(x=>{const k=x.motivo||'otro';r[k]=r[k]||{n:0,u:0,existentes:0};r[k].n++;r[k].u+=(+x.cant||0);if(x.existe)r[k].existentes++});return r}
@@ -10411,7 +10414,8 @@ function alcanceConfHTML(){const P=alcanceParams();
   return `<div class="panel"><h3>Alcance de las cargas <span class="note">una sola regla para tareas, Odoo, OT y fotos · lo que queda fuera no se crea; si ya existía, se marca «fuera de alcance» y no se borra</span></h3><div class="body"><div class="row">
    <div><label>Entrega pasada: días hacia atrás desde hoy</label><input type="number" min="0" step="1" value="${esc(String(P.diasAtras))}" onchange="setAlcanceParam('alcanceDiasAtras',this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con <b>fase de cierre</b> (columna «sistema» = cerrada en la tabla 1) y entrega anterior a hoy − N días queda fuera. <b>0 = anterior a hoy</b></div></div>
    <div><label>Sin fecha de entrega</label><select onchange="setAlcanceParam('alcanceSinFechaConProyecto',this.value)"><option value="1" ${P.sinFechaConProyecto!==0?'selected':''}>entra si el Proyecto trae un mes</option><option value="0" ${P.sinFechaConProyecto===0?'selected':''}>nunca entra</option></select><div class="mut" style="font-size:var(--fs-xs)">nunca se inventa una fecha: sin fecha y sin Proyecto queda fuera y se reporta</div></div>
-   <div><label>Fase Cancelado</label><div class="mut" style="font-size:var(--fs-s)">siempre fuera (la fase decide, no el Estado OP)</div></div></div>
+   <div><label>Fase Cancelado</label><div class="mut" style="font-size:var(--fs-s)">siempre fuera (la fase decide, no el Estado OP)</div></div>
+   <div><label>Archivo incompleto: % de la cartera abierta que falta</label><input type="number" min="0" step="1" value="${esc(String(prm('umbralArchivoIncompleto',10)))}" onchange="setAlcanceParam('umbralArchivoIncompleto',this.value)"><div class="mut" style="font-size:var(--fs-xs)">si en «Actualizar datos» las órdenes que no vinieron superan este % de las abiertas, aviso rojo y confirmación escrita para aplicar. <b>0 = frena con una sola</b></div></div></div>
    ${(()=>{const fa=S.ordenes.filter(o=>o.fueraAlcance);return fa.length?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>${fa.length}</b> órdenes marcadas «fuera de alcance» en cargas anteriores (no se borraron): ${esc(Object.entries(resumenAlcance(fa.map(o=>({motivo:o.fueraAlcance.motivo,cant:o.cant})))).map(([k,v])=>v.n+' por '+(ALCANCE_MOTIVO_TXT[k]||k)).join(' · '))}</p>`:''})()}
   </div></div>`}
 /* ---------- migración a la clave única: vista previa y aplicación (nada se borra) ---------- */
@@ -10542,13 +10546,21 @@ function planTarea(rows,nombre){
      const a=S.avance[o.id];if(a&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)plan.prev.noCalzan.push({op:o.op,tipo:'avance',sistema:nCen(c)+' '+n,archivo:o.cant})})});
    const alc=new Set(plan.excluidas.alcance.map(x=>x.clave));
    S.ordenes.forEach(o=>{if(ids.has(o.id)||o.estado==='noArchivo'||rep.has((claveDeOrden(o)||{}).clave))return;const k=(claveDeOrden(o)||{}).clave;
-     plan.prev.noVinieron.push({id:o.id,op:o.op,cliente:o.cliente,cant:o.cant,fase:o.fase,motivo:alc.has(k)?'fuera de alcance':(k?'no viene en el archivo':'clave incompleta')})});}
+     plan.prev.noVinieron.push({id:o.id,op:o.op,cliente:o.cliente,cant:o.cant,fase:o.fase,mes:mesPlan(o)||(o.fecha?String(o.fecha).slice(0,7):'(sin mes)'),motivo:alc.has(k)?'fuera de alcance':(k?'no viene en el archivo':'clave incompleta')})});
+   /* FRENO: si las que no vinieron (sin contar las fuera de alcance) superan el umbral de la cartera abierta, el archivo parece
+      incompleto (¿exportado con filtros?) y aplicar exige confirmación escrita. Desglose por cliente y mes para ver el filtro. */
+   {const nv=plan.prev.noVinieron.filter(x=>x.motivo!=='fuera de alcance');const abiertas=S.ordenes.filter(abiertaDe).length;
+    const umbral=prm('umbralArchivoIncompleto',10);const pct=abiertas?nv.length/abiertas*100:0;
+    const porCliente={},porMes={};nv.forEach(x=>{const c=x.cliente||'(sin cliente)';porCliente[c]=(porCliente[c]||0)+1;porMes[x.mes]=(porMes[x.mes]||0)+1});
+    plan.prev.incompleto={faltan:nv.length,abiertas,pct:+pct.toFixed(1),umbral,frena:abiertas>0&&pct>umbral,porCliente,porMes}}}
   {const ps=plan.ordenes.map(o=>o.precio).filter(v=>v>0).sort((a,b)=>a-b);const med=ps.length?ps[Math.floor(ps.length/2)]:0;if(med>0)plan.precioRaro=plan.ordenes.filter(o=>o.precio>0&&o.precio>=med*10).map(o=>({op:o.op,cliente:o.cliente,odc:o.odc,ref:o.ref,cat:o.catTxt,color:o.colorOdoo,fase:o.fase,cant:o.cant,total:o.total,precio:o.precio,mediana:med}))}
   return plan}
 function vistaPreviaTareaHTML(p){const v=p.prev||{};const li=(n,t,cls)=>`<tr${cls?' class="'+cls+'"':''}><td class="num"><b>${num(n||0)}</b></td><td>${t}</td></tr>`;
   const nv=v.noVinieron||[];const nvA=nv.filter(x=>x.motivo==='fuera de alcance').length,nvN=nv.length-nvA;
   const err=(p.fasesNoCalzan?Object.keys(p.fasesNoCalzan).length:0)+(p.contradicciones||[]).length;
-  return `<div class="panel" style="margin:0 0 10px"><h3>Qué pasará al aplicar <span class="note">nada se guarda hasta confirmar</span></h3><div class="body"><table style="font-size:var(--fs-s)"><tbody>
+  const inc=v.incompleto||{};const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,n])=>esc(k)+' <b>'+num(n)+'</b>').join(' · ');
+  const freno=inc.frena?`<div class="warn" style="border:2px solid var(--alerta);font-size:var(--fs-s);margin-bottom:10px"><b>El archivo parece incompleto: faltan ${num(inc.faltan)} órdenes (${inc.pct} % de las ${num(inc.abiertas)} abiertas). ¿Exportaste con filtros?</b> Umbral ${inc.umbral} % (Configuración → Órdenes y materiales → Alcance de las cargas). Para aplicar igual hay que escribir la palabra. <div style="margin-top:6px">Las que no vinieron, por cliente: ${top(inc.porCliente)}</div><div>Por mes: ${top(inc.porMes)}</div></div>`:'';
+  return `${freno}<div class="panel" style="margin:0 0 10px"><h3>Qué pasará al aplicar <span class="note">nada se guarda hasta confirmar</span></h3><div class="body"><table style="font-size:var(--fs-s)"><tbody>
    ${li(v.nuevas,'órdenes <b>nuevas</b>')}${li(v.actualizadas,'órdenes <b>actualizadas</b> (lo del archivo se actualiza; lo decidido aquí se conserva según la tabla 14)')}${li(v.cerradas,'de ellas, <b>cerradas</b> (fase de cierre: quedan como historia)')}
    ${li(((p.excluidas||{}).alcance||[]).length,'<b>fuera de alcance</b> en el archivo (no se crean; '+nvA+' que ya estaban quedan marcadas «fuera de alcance», no se borran)')}
    ${li(nvN,'órdenes del sistema que <b>no vinieron</b> en el archivo (quedan «no está en el archivo», no se borran)'+(nvN?': '+esc(nv.filter(x=>x.motivo!=='fuera de alcance').slice(0,8).map(x=>x.op).join(', '))+(nvN>8?'…':''):''))}
@@ -10605,6 +10617,9 @@ function aceptarFasesArchivo(){const rc=(S.params.tareaCarga||{}).recarga;if(!rc
 function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.faseSistema=fila?fila.sistema:null;o.esCola=!!(fila&&fila.esCola);o.sinCarga=!!(fila&&fila.sinCarga);o.faseNoCalza=!fila;o.bloqueada=!!(fila&&fila.bloqueo);
   const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
+  {const inc=(p.prev||{}).incompleto;if(inc&&inc.frena){const t=prompt('El archivo parece incompleto: faltan '+inc.faltan+' órdenes ('+inc.pct+' % de la cartera abierta). Si se aplica, esas órdenes quedan «no está en el archivo» (no se borran). ¿Exportaste con filtros? Para aplicar igual escribe exactamente: APLICAR');
+    if(String(t||'').trim()!=='APLICAR')return;bitacora('Actualizar datos: archivo incompleto ('+inc.faltan+' órdenes, '+inc.pct+' %) aplicado con confirmación escrita por '+quienFirma())}}
+  ACT.tareasEnSesion=ts;
   /* el cruce ya lo hizo la clave única en planTarea: cada orden del plan trae el id de la existente (o uno nuevo) */
   (p.coloresNuevosObj||[]).forEach(c=>{if(!S.colores.some(x=>x.id===c.id))S.colores.push(c)}); /* los colores nuevos entran recién ahora */
   const prev={};S.ordenes.forEach(o=>{prev[o.id]=o});
@@ -10654,7 +10669,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});
     if(a.centros)cons.avance++});
   S.ordenes=ordenesPlan.slice().concat(existRep).concat(eliminadas.map(o=>{const fa=fueraAlc[(claveDeOrden(o)||{}).clave];/* fuera de alcance: marcada, nunca borrada */
-    return Object.assign(o,{estado:'noArchivo',noArchivo:{ts:new Date().toISOString(),archivo:p.archivo||'',estadoAntes:o.estado||'plan',fueraAlcance:fa?fa.motivo:undefined}},fa?{fueraAlcance:{ts:new Date().toISOString(),motivo:fa.motivo,txt:fa.txt,archivo:p.archivo||''}}:{})}));colgarFotos();/* las que ya no vienen en el archivo NO se borran: quedan como noArchivo con todo lo suyo */
+    /* la que ya estaba «no está en el archivo» conserva su primera marca (cuándo dejó de venir) */
+    return Object.assign(o,o.estado==='noArchivo'&&o.noArchivo?{}:{estado:'noArchivo',noArchivo:{ts:new Date().toISOString(),archivo:p.archivo||'',estadoAntes:o.estado||'plan',fueraAlcance:fa?fa.motivo:undefined}},fa?{fueraAlcance:{ts:new Date().toISOString(),motivo:fa.motivo,txt:fa.txt,archivo:p.archivo||''}}:{})}));colgarFotos();/* las que ya no vienen en el archivo NO se borran: quedan como noArchivo con todo lo suyo */
   S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:ordenesPlan.length,claveRepetidaNoAplicadas:repNoAplicadas,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,

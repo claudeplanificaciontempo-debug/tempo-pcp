@@ -814,6 +814,12 @@ NO se aplican y las existentes quedan `o.claveRepetida={ts,archivo,txt}` (bandej
 Excel no es criterio de emparejamiento. `aplicarMigracionClaves` solo con `config` y con aviso de revisar duplicados en
 producción. Ver `CARGAS_CAMINO_UNICO.md`.
 
+**Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
+alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
+desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan
+«Conviene cargar primero las tareas» si no se aplicó el paso 1 en la sesión (`ACT.tareasEnSesion`) o la última carga tiene más
+de 1 día. Una orden ya `noArchivo` conserva su primera marca.
+
 **Restaurar y registro de cargas (17-sep-2026).** `restaurarDesde(nuevo,nombre)` es el único camino de Restaurar (`importJSON`
 solo lee el archivo): solo `config`, palabra escrita `RESTAURAR`, **descarga `respaldo_automatico_antes_de_restaurar_<ts>.json`
 ANTES de reemplazar** (`descargarJSON`), une la bitácora, registra en bitácora y en `S.params.restauraciones`. **Registro

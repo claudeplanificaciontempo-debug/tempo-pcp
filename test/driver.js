@@ -5950,6 +5950,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* ===== CARGAS · el camino único sobre el mismo archivo: reconoce todo, no duplica, no pisa (17-sep) ===== */
   try{localStorage.__fase="carga unica"}catch(e){}
   {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
+   /* la cartera del simulador son 5 órdenes de demostración: cualquier archivo real dispara el freno de «archivo incompleto» */
+   const prF=window.prompt;window.prompt=()=>"APLICAR";
    const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
    const demo=S.ordenes.filter(o=>/^OP-/.test(o.op||"")).length;const cartera=S.ordenes.length;
    const p=planTarea(tareaRows,"TAREA_OTRA_VEZ.xlsx");
@@ -5989,7 +5991,38 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("G8: Configuración → Órdenes y materiales muestra el registro con la última carga de cada tipo y la tabla",/Registro de cargas/.test(h)&&/Tareas de Odoo/.test(h)&&/REG_T\.xlsx/.test(h)&&/REG_F\.csv/.test(h)&&/nunca se recorta/.test(h));
     __check("G8: el texto del resumen dice qué pasó (actualizadas, no vinieron, fuera de alcance…)",/actualizadas/.test(resumenCargaTxt(cT))&&/no vinieron/.test(resumenCargaTxt(cT))&&/fuera de alcance/.test(resumenCargaTxt(cT)),resumenCargaTxt(cT));
     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
-   window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   /* ===== 6b · freno por archivo incompleto + aviso en pasos 2 y 3 ===== */
+   {const H=tareaRows[0];const iC=H.indexOf("Cliente"),iO=H.indexOf("Orden de producción");
+    const cnt={};tareaRows.slice(1).forEach(r=>{if(String(r[iO]||"").trim()){const c=String(r[iC]||"");cnt[c]=(cnt[c]||0)+1}});const cli=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+    /* archivo filtrado a UN cliente (con sus componentes: se arrastra el bloque de cada cabecera) */
+    const rows=[tareaRows[0]];let dentro=false;tareaRows.slice(1).forEach(r=>{const esCab=String(r[iO]||"").trim()||String(r[iC]||"").trim();if(esCab)dentro=String(r[iC]||"")===cli;if(dentro)rows.push(r)});
+    const abiertas=S.ordenes.filter(abiertaDe).length;const nOrd=S.ordenes.length;const nb=S.bitacora.length;
+    const p=planTarea(rows,"SOLO_"+cli.slice(0,8)+".xlsx");const inc=p.prev.incompleto;
+    __check("F6: un archivo filtrado a un cliente dispara el freno: faltan N (X %) sobre la cartera abierta",!!inc&&inc.frena===true&&inc.faltan>abiertas*0.1&&inc.abiertas===abiertas&&inc.umbral===10,JSON.stringify(inc&&{f:inc.faltan,a:inc.abiertas,p:inc.pct}));
+    const h=vistaPreviaTareaHTML(p);
+    __check("F6: aviso rojo con el texto acordado y el desglose por cliente y mes",/El archivo parece incompleto: faltan/.test(h)&&/¿Exportaste con filtros\?/.test(h)&&/por cliente:/.test(h)&&/Por mes:/.test(h)&&Object.keys(inc.porCliente).length>=1&&!(cli in inc.porCliente)&&Object.keys(inc.porMes).length>=1,Object.keys(inc.porCliente).slice(0,3).join(" | "));
+    const pr0=window.prompt;window.prompt=()=>"";TAREA=p;aplicarTarea();await __p(50);
+    __check("F6: sin la palabra APLICAR no se aplica (cartera intacta, sin bitácora nueva)",S.ordenes.length===nOrd&&S.bitacora.length===nb&&!S.ordenes.some(o=>o.noArchivo&&o.noArchivo.archivo===p.archivo));
+    window.prompt=()=>"APLICAR";TAREA=p;aplicarTarea();await __p(50);window.prompt=pr0;
+    __check("F6: con APLICAR se aplica, queda en bitácora, y las que faltaban quedan «no está en el archivo» (no se borran)",S.ordenes.length===nOrd&&S.bitacora.slice(nb).some(b=>/archivo incompleto/.test(b.t)&&/confirmación escrita/.test(b.t))&&S.ordenes.filter(o=>o.estado==="noArchivo"&&o.noArchivo&&o.noArchivo.archivo===p.archivo).length===inc.faltan,S.ordenes.filter(o=>o.estado==="noArchivo").length+" noArchivo");
+    /* se restaura la cartera completa */
+    {const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
+    /* el umbral es parámetro: con 100 % no frena */
+    {const bak=S.params.umbralArchivoIncompleto;S.params.umbralArchivoIncompleto=100;const p2=planTarea(rows,"SOLO2.xlsx");
+     __check("F6: el umbral es parámetro (100 % = no frena) y se ve en Configuración",p2.prev.incompleto.frena===false&&p2.prev.incompleto.umbral===100&&(()=>{page="config";CONF.tab="ordenes2";render();return /umbralArchivoIncompleto/.test(document.getElementById("p-config").innerHTML)})());
+     S.params.umbralArchivoIncompleto=bak;if(bak===undefined)delete S.params.umbralArchivoIncompleto;}
+    /* pasos 2 y 3: conviene cargar primero las tareas */
+    {const m=()=>document.getElementById("modal").textContent;const bakSes=ACT.tareasEnSesion;const CT=S.params.tareaCarga;const bakF=CT&&CT.fecha;
+     delete ACT.tareasEnSesion;mActualizarDatos(2);
+     __check("F6: en el paso 2 sin tareas cargadas en esta sesión sale «Conviene cargar primero las tareas»",/Conviene cargar primero las tareas/.test(m())&&/en esta sesión no se han cargado/.test(m()));
+     mActualizarDatos(3);__check("F6: en el paso 3 también",/Conviene cargar primero las tareas/.test(m()));
+     ACT.tareasEnSesion=new Date().toISOString();if(CT)CT.fecha=new Date().toISOString();mActualizarDatos(2);
+     __check("F6: con tareas cargadas hoy en esta sesión, no hay aviso",!/Conviene cargar primero/.test(m()));
+     if(CT)CT.fecha=new Date(Date.now()-2*864e5).toISOString();mActualizarDatos(3);
+     __check("F6: si la última carga de tareas tiene más de 1 día, avisa aunque sea la misma sesión",/Conviene cargar primero las tareas/.test(m())&&/hace 2/.test(m()),m().slice(m().indexOf("Conviene"),m().indexOf("Conviene")+140));
+     mActualizarDatos(1);__check("F6: en el paso 1 no hay aviso",!/Conviene cargar primero/.test(m()));cerrar();
+     if(CT)CT.fecha=bakF;ACT.tareasEnSesion=bakSes;}}
+   window.prompt=prF;window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
   try{localStorage.__fase="clave unica"}catch(e){}
   {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
@@ -6008,6 +6041,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const usan=fn.filter(([n,f])=>/claveOrden\(|indiceClaves\(|claveDeOrden\(/.test(String(f))||n==="aplicarTarea").map(x=>x[0]);
     __check("K2: ningún cargador arma su clave por su cuenta",propia.length===0,propia.join(", "));
     __check("K2: tareas, OT y fotos pasan por claveOrden/indiceClaves",usan.length===fn.length,usan.join(", "));}
+   const prK=window.prompt;window.prompt=()=>"APLICAR";
    /* K3 · Parte 2 con el volcado: sin WH estables, repetidas, incompletas, sin WH → WH */
    {const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
     const sinWH=S.ordenes.filter(o=>o.sinLanzar);
@@ -6104,7 +6138,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("K5: un serial numérico se lee con excelFecha (46283,75 = 2026-09-18, sin redondear al día siguiente)",excelFecha(46283.75)==="2026-09-18"&&(!oA||oA.fecha==="2026-09-18"),JSON.stringify({d:oA&&oA.fecha}));
      __check("K5: una fecha ilegible se reporta y no se inventa",pS.fechasIlegibles.length===1&&/fecha rara/.test(pS.fechasIlegibles[0].valor)&&/fechas ilegibles/.test(vistaPreviaTareaHTML(pS)),JSON.stringify(pS.fechasIlegibles));}
     PLAN=null;PLAN_ALL=null;}
-   window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   window.prompt=prK;window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
