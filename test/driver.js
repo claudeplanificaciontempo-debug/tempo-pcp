@@ -1632,7 +1632,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-operaciones').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';}
   try{localStorage.__fase="fuzz"}catch(e){}
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
-  window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
+  window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|restaurarDesde|descargarJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
   for(const p of paginas){page=p;try{render()}catch(e){}
     const ctrls=[...document.querySelectorAll('#p-'+page+' [onclick], #p-'+page+' button')].filter(el=>!omit.test(el.getAttribute('onclick')||'')).slice(0,120);
     let n=0;for(const el of ctrls){const antes=__R.errors.length;const oc=(el.getAttribute('onclick')||el.textContent||'').slice(0,70);
@@ -5958,6 +5958,20 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("U6: nada queda como «no vino» (las de demostración ya estaban marcadas no está en el archivo)",p.prev.noVinieron.length===0,JSON.stringify(p.prev.noVinieron.map(x=>x.op)));
    const fotoDe2=()=>JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant,o.estado]).sort((a,b)=>a[0]<b[0]?-1:1));const foto=fotoDe2();TAREA=p;aplicarTarea();await __p(50);
    __check("U6: aplicar el mismo archivo no cambia la cartera (ni id, ni fase, ni cantidad, ni estado)",S.ordenes.length===cartera&&fotoDe2()===foto,S.ordenes.length+" vs "+cartera);
+   /* ===== 7 · Restaurar: solo admin, respaldo automático ANTES, confirmación escrita, nada se pierde de la bitácora ===== */
+   {const copia=JSON.stringify(S);const nOrd=S.ordenes.length,nBit=S.bitacora.length;
+    const nuevo=JSON.parse(copia);nuevo.ordenes=nuevo.ordenes.slice(1);nuevo.bitacora=[];
+    let bajadas=[];const dj0=window.descargarJSON;window.descargarJSON=(n,o)=>{bajadas.push({n,ordenes:(o.ordenes||[]).length})};
+    const pr0=window.prompt;let av="";const a1=window.alert;window.alert=m=>{av=String(m)};
+    const bakP=PERFIL;PERFIL={id:"u-pl7",rol:"planificacion"};window.prompt=()=>"RESTAURAR";const r1=restaurarDesde(nuevo,"resp.json");PERFIL=bakP;
+    __check("R7: planificación no puede restaurar",r1===false&&/administrador/.test(av)&&S.ordenes.length===nOrd&&bajadas.length===0,av);
+    window.prompt=()=>"si";const r2=restaurarDesde(nuevo,"resp.json");
+    __check("R7: sin la palabra RESTAURAR no pasa nada (ni respaldo ni reemplazo)",r2===false&&S.ordenes.length===nOrd&&bajadas.length===0);
+    window.prompt=()=>"RESTAURAR";const r3=restaurarDesde(nuevo,"resp.json");
+    __check("R7: con RESTAURAR: primero baja el respaldo automático de lo que había, después reemplaza",r3===true&&bajadas.length===1&&/respaldo_automatico_antes_de_restaurar_/.test(bajadas[0].n)&&bajadas[0].ordenes===nOrd&&S.ordenes.length===nOrd-1,JSON.stringify(bajadas));
+    __check("R7: la bitácora se conserva y se une, y la restauración queda registrada",S.bitacora.length>=nBit+1&&/RESTAURADO desde «resp.json»/.test(S.bitacora.slice(-1)[0].t)&&(S.params.restauraciones||[]).slice(-1)[0].archivo==="resp.json"&&(S.params.restauraciones||[]).slice(-1)[0].antes.ordenes===nOrd,S.bitacora.length+" vs "+nBit);
+    __check("R7: el flujo pide la palabra y no usa confirm() suelto",/prompt\(/.test(String(restaurarDesde))&&/RESTAURAR/.test(String(restaurarDesde))&&!/confirm\(/.test(String(restaurarDesde))&&/puede\(.config.\)/.test(String(importJSON)));
+    window.prompt=pr0;window.alert=a1;window.descargarJSON=dj0;S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;}
    window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
   try{localStorage.__fase="clave unica"}catch(e){}

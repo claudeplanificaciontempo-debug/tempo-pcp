@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 11:48';
+const APP_BUILD='2026-09-17 11:56';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10782,9 +10782,24 @@ function demo(){if(!puede('ordenes'))return;if(S.ordenes.length){alert('El ejemp
 /* ---------- modales y datos ---------- */
 function abrir(h,wide){const m=document.getElementById('modal');m.innerHTML=h;m.classList.toggle('wide',!!wide);document.getElementById('veil').classList.add('on')}
 function cerrar(){document.getElementById('veil').classList.remove('on')}
-function exportJSON(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='planificacion_tempo_'+hoy()+'.json';a.click()}
-function importJSON(){if(!puede('config')){alert('Solo el administrador puede importar.');return}const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const r=new FileReader();
-  r.onload=()=>{try{const nuevo=JSON.parse(r.result);if(!nuevo||!nuevo.params){alert('El archivo no parece un respaldo del sistema.');return}if(!confirm('Vas a REEMPLAZAR los datos actuales ('+S.ordenes.length+' órdenes, '+(S.bitacora||[]).length+' entradas de bitácora, toda la configuración) por los del respaldo ('+((nuevo.ordenes||[]).length)+' órdenes). Lo que no esté en el archivo se pierde; la bitácora se conserva y se une. ¿Continuar?'))return;const bitAntes=S.bitacora||[];S=Object.assign(seed(),nuevo);S.bitacora=S.bitacora||[];bitAntes.forEach(b=>{if(!S.bitacora.some(x=>x.id===b.id))S.bitacora.push(b)});S.bitacora.sort((a,b)=>(a.ts||'')<(b.ts||'')?-1:1);bitacora('Respaldo restaurado desde archivo ('+quienFirma()+')');save();render()}catch(err){alert('El archivo no se pudo leer.')}};r.readAsText(e.target.files[0])};i.click()}
+function descargarJSON(nombre,obj){const b=new Blob([JSON.stringify(obj,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;a.click()}
+function exportJSON(){descargarJSON('planificacion_tempo_'+hoy()+'.json',S)}
+/* RESTAURAR (17-sep-2026): solo el administrador; ANTES de tocar nada se descarga un respaldo automático de lo que hay;
+   confirmación ESCRITA (la palabra RESTAURAR); la bitácora se conserva y se une; queda en bitácora y en
+   S.params.restauraciones (qué archivo, cuántas órdenes había y cuántas trae, quién, cuándo). */
+function restaurarDesde(nuevo,nombre){if(!puede('config')){alert('Solo el administrador puede restaurar.');return false}
+  if(!nuevo||!nuevo.params){alert('El archivo no parece un respaldo del sistema.');return false}
+  const antes={ordenes:S.ordenes.length,bitacora:(S.bitacora||[]).length,avance:Object.keys(S.avance||{}).length};
+  const t=prompt('Vas a REEMPLAZAR los datos actuales ('+antes.ordenes+' órdenes, '+antes.avance+' órdenes con avance, '+antes.bitacora+' entradas de bitácora y toda la configuración) por los del respaldo «'+(nombre||'')+'» ('+((nuevo.ordenes||[]).length)+' órdenes). Antes se descarga un respaldo automático de lo que hay ahora. Lo que no esté en el archivo se pierde; la bitácora se conserva y se une. Para continuar escribe exactamente: RESTAURAR');
+  if(String(t||'').trim()!=='RESTAURAR')return false;
+  const ts=new Date().toISOString();const respaldo='respaldo_automatico_antes_de_restaurar_'+ts.replace(/[:.]/g,'-')+'.json';
+  descargarJSON(respaldo,S);   /* primero el respaldo, después el reemplazo */
+  const bitAntes=S.bitacora||[];S=Object.assign(seed(),nuevo);S.bitacora=S.bitacora||[];bitAntes.forEach(b=>{if(!S.bitacora.some(x=>x.id===b.id))S.bitacora.push(b)});S.bitacora.sort((a,b)=>(a.ts||'')<(b.ts||'')?-1:1);
+  S.params.restauraciones=(S.params.restauraciones||[]).concat([{ts,u:quienFirma(),archivo:nombre||'',respaldo,antes,despues:{ordenes:S.ordenes.length}}]);
+  bitacora('RESTAURADO desde «'+(nombre||'')+'» por '+quienFirma()+': había '+antes.ordenes+' órdenes, trae '+S.ordenes.length+'; respaldo automático previo: '+respaldo);
+  save();render();return true}
+function importJSON(){if(!puede('config')){alert('Solo el administrador puede restaurar.');return}const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];const r=new FileReader();
+  r.onload=()=>{let nuevo=null;try{nuevo=JSON.parse(r.result)}catch(err){alert('El archivo no se pudo leer.');return}restaurarDesde(nuevo,f&&f.name)};r.readAsText(f)};i.click()}
 
 document.getElementById('nav').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;if(!NAV_PROG)NAVH.length=0;document.getElementById('nav').classList.remove('abierto');page=a.dataset.p;render()});
 document.getElementById('veil').addEventListener('click',e=>{if(e.target.id==='veil')cerrar()});
