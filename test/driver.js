@@ -5482,6 +5482,38 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const ths=[...document.querySelectorAll('[data-lista="CEN.q"] thead th')].map(t=>t.textContent.trim());
      __check("AB10: las 14 columnas siguen en su orden tras el repintado parcial",ths.slice(0,14).join("|")==="Puesto|OP|ODC|Llega|Cliente|Categoría|Color|Pendientes|Min|Recurso|Arranca|Plan: inicio → fin|Marca|",ths.join("|"));
      CEN.q="";render()}}
+   /* ---------- 3m · redibujo parcial en LIBERACIÓN (2b) ---------- */
+   {page="liberacion";LIB.et="tela";LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q="";LIB.fases=null;LIB.verLista=true;LIB.sel=new Set();GRP={};FUERA["LIB.q"]=false;render();
+    const sel='input[data-q="LIB.q"]';
+    __check("AB11: Liberación registró su lista para el redibujo parcial",!!LISTAS["LIB.q"]&&!!listaHost("LIB.q"));
+    /* tiempo por tecla: pantalla entera vs solo la lista */
+    {const tC=[];for(let k=0;k<3;k++){const a=performance.now();render();tC.push(performance.now()-a)}
+     LIB.q="2";const tP=[];for(let k=0;k<3;k++){const a=performance.now();redibujarLista("LIB.q");tP.push(performance.now()-a)}
+     LIB.q="";render();
+     __R.bus=__R.bus||{};__R.bus.parcialLIB={ordenes:S.ordenes.length,completoMs:Math.round(Math.max(...tC)),parcialMs:Math.round(Math.max(...tP))};
+     __check("AB11: repintar solo la lista no cuesta más que la pantalla entera",Math.min(...tP)<=Math.max(...tC)+1,JSON.stringify(__R.bus.parcialLIB));}
+    const primero=document.querySelector(sel);   /* DESPUÉS de medir: medir redibuja la pantalla */
+    if(primero){primero.focus();await __p(120);
+     let txt="",reemplazos=0;
+     for(const ch of "22918"){txt+=ch;primero.value=txt;
+       try{primero.setSelectionRange(txt.length,txt.length)}catch(e){}
+       primero.dispatchEvent(new Event("input",{bubbles:true}));
+       await __p(260);
+       if(document.querySelector(sel)!==primero)reemplazos++}
+     __check("AB11: el buscador de Liberación NO se destruye al escribir",reemplazos===0,reemplazos+" reemplazos");
+     __check("AB11: conserva el texto completo",primero.value==="22918",primero.value);
+     __check("AB11: conserva la posición del cursor",primero.selectionStart===5,primero.selectionStart);
+     __check("AB11: y el texto llegó al estado",LIB.q==="22918",LIB.q);
+     /* la lista de verdad se filtró y conserva su estructura */
+     const host=listaHost("LIB.q");
+     const filas=host?[...host.querySelectorAll("#lib-lista tbody tr")].filter(tr=>!tr.classList.contains("grp-row")&&/WH\//.test(tr.textContent)):[];
+     __check("AB11: la lista se filtró con el texto (solo filas que calzan)",filas.every(tr=>/22918/.test(tr.textContent)),filas.length+" filas");
+     const ths=host?[...host.querySelectorAll("#lib-lista thead th")].map(t=>t.textContent.trim().replace(/\s+/g," ")):[];
+     __check("AB11: las 8 columnas siguen en su orden tras el repintado parcial (o no hay lista porque nada calza)",
+       ths.length===0||(ths.length===8&&ths[1]==="OP · fase"&&ths[7]==="Qué la frena"),ths.join("|"));
+     /* el aviso de base acotada también vive dentro del contenedor y se repinta con la lista */
+     __check("AB11: el aviso de «fuera del filtro» se repinta junto con la lista",!!host&&(/coinciden fuera de|coincide fuera de/.test(host.innerHTML)||!fueraDeBase("LIB.q",pendLiberacion("tela",LIB.ym))));
+     LIB.q="";render()}}
    /* ---------- 4 · el debounce y el redibujo: la causa de fondo ---------- */
    {const src=String(buscarQ);
     __R.bus.buscarQ=src;

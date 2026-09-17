@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 21:32';
+const APP_BUILD='2026-09-16 23:06';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3720,6 +3720,16 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
   const ids=xs=>JSON.stringify(xs.map(o=>o.id)).replace(/"/g,'&quot;');
   const cab=`<thead><tr><th style="width:26px"></th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th>Tela · qué le falta <span class="mut">(propuesta del catálogo → confirmar)</span></th>':''}<th>Qué la frena</th></tr></thead>`;
   const nCols=et==='tela'?8:7;grpSt('lib').selFn='selGrupoLib';
+  /* la lista se puede repintar sola: mismas cuentas que arriba, con el texto nuevo del buscador */
+  listaRegistrar('LIB.q',()=>{const q2=normTxt(LIB.q);
+    const pend2=pendLiberacion(et,ym).filter(o=>okFiltrosB1(o)&&matchBusq(o,q2,'LIB.q'));
+    const pf={};pend2.forEach(o=>{const f=famDeOrden(o);pf[f]=pf[f]||{n:0,pz:0,ords:[]};pf[f].n++;pf[f].pz+=+o.cant||0;pf[f].ords.push(o)});
+    const fs2=Object.entries(pf).sort((a,b)=>b[1].pz-a[1].pz);
+    const fam2=(LIB.fam2&&pf[LIB.fam2])?LIB.fam2:(fs2.length===1?fs2[0][0]:null);
+    const ver2=!fam2&&(!!LIB.q||grpSt('lib').niveles.length>0||LIB.verLista);
+    const det2=fam2?pf[fam2].ords:(ver2?pend2:null);
+    return listaLibB1HTML(et,{detalle:det2,famSel:fam2,cab,nCols})
+      +avisoFueraDeBaseHTML('LIB.q',pend2,'el mes del Proyecto y los filtros de esta pantalla')});
   return `<div class="panel"><div class="body">
    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
     <div style="flex:0 0 auto;min-width:230px">${tarjetasResumenHTML([{id:'lb-pend',v:pend.length,k:'órdenes pendientes de liberar a '+nombre+' · <b>'+num(pz)+'</b> unidades',items:pend,porFam:true,cls:pend.length?'warn':''}])}</div>
@@ -3747,8 +3757,8 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
    <div class="kpis tarj-row" style="margin-top:8px">
     ${fams.map(([f,v])=>`<div class="kpi tarj clic ${famSel===f?'abierta':''}" onclick="LIB.fam2=${famSel===f?'null':"'"+jsq(f)+"'"};render()"><div class="v">${num(v.pz)}</div><div class="k">${esc(f)} <span class="mut" style="font-size:var(--fs-xs)">${v.n} ${v.n===1?'orden':'órdenes'} ${famSel===f?'▾':'▸'}</span></div></div>`).join('')||'<span class="mut">Nada pendiente con estos filtros.</span>'}
    </div>
-   ${listaLibB1HTML(et,{detalle,famSel,cab,nCols})}
-   ${avisoFueraDeBaseHTML('LIB.q',pend,'el mes del Proyecto y los filtros de esta pantalla')}
+   <div data-lista="LIB.q">${listaLibB1HTML(et,{detalle,famSel,cab,nCols})}
+   ${avisoFueraDeBaseHTML('LIB.q',pend,'el mes del Proyecto y los filtros de esta pantalla')}</div>
   </div></div>`}
 function vLiberacion(el){
   if(!LIB.ymAuto){LIB.ymAuto=true;if(S.ordenes.some(o=>abierta(o)&&mesPlan(o)===hoy().slice(0,7)))LIB.ym=new Set([hoy().slice(0,7)])} // el mes en curso es solo el arranque: 'Todos los meses' se respeta
