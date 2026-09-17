@@ -7,7 +7,7 @@ al elegirlas se ve la tabla cliente × mes y un aviso, sin cuadrito.
 
 Capturas (Chrome sin cabeza sobre el simulador con el volcado real, 1.400 px de ancho):
 `capturas/nivelacion_corte_1.png` (tres meses marcados, recuadros de área, Corte sin fechas → dato faltante),
-`capturas/nivelacion_corte_2.png` (detalle de Corte con celda abierta, escenario sin guardar, «Ver cálculo» abierto),
+`capturas/nivelacion_corte_2.png` (tabla por familia con la celda SHORT PLANOS · 2026-10 abierta: tipos de producto → órdenes; escenario sin guardar; «Ver cálculo» abierto),
 `capturas/nivelacion_corte_3.png` (déficit y «qué no entra»).
 
 ## Antes: órdenes de demostración (punto 1)
@@ -34,8 +34,12 @@ Capturas (Chrome sin cabeza sobre el simulador con el volcado real, 1.400 px de 
   Etiquetas · Lavado · Plancha · Empaque · Maquila (los sub-centros de Terminados también son centros configurados: si
   no deben aparecer, es una decisión de configuración, no de código). Cada uno: saldo, fecha final y estado con ícono,
   color y texto (✓ llega · ⚠ riesgo, holgura ≤ `colchonDias` · ✕ déficit · ? dato faltante). Clic → abajo solo esa área.
-- **2.4a** Tabla cliente × mes de entrega (unidades por procesar), filas ordenadas por saldo, columna y fila de totales; clic en
-  una celda → lista de órdenes con foto/WH/fase (`filasGRP('nivui')` + `whCell`) y agrupador común.
+- **2.4a (cambiado a pedido, mismo día)** Tabla **familia × mes de entrega** (unidades por procesar): para nivelar se mira el tipo de
+  producto, no las órdenes una por una. Filas ordenadas por saldo, totales de fila y columna. Selector «filas por»: **Familia**
+  (por defecto) · Tipo de producto (categoría hija) · Cliente — cambia solo el agrupamiento, no el cálculo (probado: mismo total).
+  Clic en una celda → debajo, ESA familia y ese mes: **primero por tipo de producto con sus unidades**, y adentro las órdenes con
+  foto/WH/fase (`filasGRP('nivui')` + `whCell`, agrupador común); las WH quedan en el último nivel (probado). Título: «Saldo por
+  familia y mes de entrega» (o tipo de producto / cliente según el selector). Aplica a todas las áreas.
 - **2.4b** Cuadrito con las trece filas, en ese orden y con esos nombres. Solo **Fecha inicio, Fecha compromiso, Días
   adicionales y Maquila** se escriben (fondo distinto, etiqueta «se escribe»); lo demás es solo lectura. Cambiar un valor
   recalcula al instante en memoria (`NIVUI.esc`); nada se guarda hasta «Guardar escenario» (motivo obligatorio, permiso
@@ -84,4 +88,4 @@ a la vista. Convención del Paso 1: el inicio cuenta como día 1 y el compromiso
 
 Prueba N0 nueva: **ninguna función declarada dos veces en `index.html`** (1.494 funciones) y el prefijo `nivUI*`. Pruebas
 N1–N7 (pantalla propia, meses, recuadros, tabla y cuadrito, coherencia, escribir/guardar/permisos/dato faltante, qué no entra)
-y D1 (demo). **2.332 checks, 0 errores, 0 rojas.**
+y D1 (demo). **2.335 checks, 0 errores, 0 rojas** (tras la tabla por familia).

@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 12:43';
+const APP_BUILD='2026-09-17 13:04';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6042,7 +6042,12 @@ function vNivelConfHTML(){
    `saldoProceso`, `capDia`, `diasHabilesInc`/`finLabInc`): aquí no se calcula nada nuevo, solo se
    presenta y se derivan tres filas del cuadrito (días adicionales, maquila escrita, total del período).
    Del Excel se tomó la forma; ninguno de sus números. Nada de configuración vive aquí: enlace «Configurar». */
-let NIVUI={meses:null,cliente:'',familia:'',area:'corte',celda:null,esc:{},verCalc:false,noEntra:false};
+let NIVUI={meses:null,cliente:'',familia:'',area:'corte',celda:null,filaPor:'familia',esc:{},verCalc:false,noEntra:false};
+/* cómo se agrupan las FILAS de la tabla de saldo (no cambia el cálculo): familia (categoría padre) por defecto */
+const NIVUI_FILAS=[['familia','Familia'],['hija','Tipo de producto'],['cliente','Cliente']];
+function nivUIClaveFila(o,por){por=por||NIVUI.filaPor||'familia';if(por==='cliente')return String(o.cliente||'(sin cliente)');
+  if(por==='hija'){const k=K(o.cat);return k?k.n:'Sin categoría'}return famDeOrden(o)}
+function nivUIFilaTxt(por){return (NIVUI_FILAS.find(x=>x[0]===(por||NIVUI.filaPor))||NIVUI_FILAS[0])[1].toLowerCase()}
 const NIVUI_LISTA='nivui';
 /* áreas con el cuadrito conectado; las demás esperan aprobación una por una */
 const NIVUI_CONECTADAS=['corte'];
@@ -6142,23 +6147,34 @@ function nivUIRecuadrosHTML(){const meses=nivUIMeses();
       <div style="font-size:12px">saldo <b>${saldo}</b></div>
       <div style="font-size:11px" class="mut">fin ${esc(fin)}</div>
       <div>${NIVUI_CONECTADAS.includes(a.id)?nivUIEstadoHTML(r?r.estado:'faltante',true):'<span class="mut" style="font-size:11px">pendiente de conectar</span>'}</div></div>`}).join('')}</div>`}
-/* tabla cliente × mes (unidades del saldo); clic en celda → lista */
-function nivUITablaHTML(r){if(!r||!r.saldo)return '';const meses=r.meses;const c=r.area.tipo==='centro'?r.area.id:'modulos';
-  const uDe=o=>r.area.tipo==='tela'?(+o.cant||0):pendCentroUnid(o,c);
-  const ords=r.saldo.ordenes.concat(r.saldo.sinSAM||[]).filter((o,i,arr)=>arr.indexOf(o)===i);
-  const m={};ords.forEach(o=>{const cl=String(o.cliente||'(sin cliente)');const mes=mesEntregaNiv(o);m[cl]=m[cl]||{};m[cl][mes]=(m[cl][mes]||0)+uDe(o)});
-  const clientes=Object.keys(m).sort((a,b)=>Object.values(m[b]).reduce((x,y)=>x+y,0)-Object.values(m[a]).reduce((x,y)=>x+y,0));
-  const tot={};clientes.forEach(cl=>meses.forEach(mes=>{tot[mes]=(tot[mes]||0)+(m[cl][mes]||0)}));
-  const celda=(cl,mes,v)=>{const on=NIVUI.celda&&NIVUI.celda.cliente===cl&&NIVUI.celda.mes===mes;return `<td class="num" style="cursor:${v?'pointer':'default'};${on?'background:var(--t-accent-soft,var(--field));font-weight:600':''}" ${v?`onclick="NIVUI.celda=${on?'null':`{cliente:'${esc(cl).replace(/'/g,'&#39;')}',mes:'${mes}'}`};render()"`:''}>${v?num(v,0):'<span class="mut">·</span>'}</td>`};
-  return `<div class="panel"><h3>Saldo por cliente y mes de entrega <span class="note">unidades por procesar · clic en una celda para ver las órdenes</span></h3><div class="body"><div class="scroll"><table><thead><tr><th>Cliente</th>${meses.map(mes=>`<th class="num">${esc(mes)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
-   ${clientes.map(cl=>`<tr><td>${esc(cl)}</td>${meses.map(mes=>celda(cl,mes,m[cl][mes]||0)).join('')}<td class="num"><b>${num(meses.reduce((x,mes)=>x+(m[cl][mes]||0),0),0)}</b></td></tr>`).join('')||'<tr><td colspan="99" class="mut">Sin saldo con estos meses y filtros.</td></tr>'}
-   ${clientes.length?`<tr style="border-top:2px solid var(--rule);font-weight:600"><td>Total</td>${meses.map(mes=>`<td class="num">${num(tot[mes]||0,0)}</td>`).join('')}<td class="num">${num(meses.reduce((x,mes)=>x+(tot[mes]||0),0),0)}</td></tr>`:''}
-  </tbody></table></div>${nivUIListaCeldaHTML(r,ords,uDe)}</div></div>`}
-function nivUIListaCeldaHTML(r,ords,uDe){const cd=NIVUI.celda;if(!cd)return '';
-  const l=ords.filter(o=>String(o.cliente||'(sin cliente)')===cd.cliente&&mesEntregaNiv(o)===cd.mes);
-  const fila=o=>`<tr><td>${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(uDe(o),0)}</td><td>${fechaMetaDe(o)?fmtDia(fechaMetaDe(o)):'<span class="mut">sin fecha</span>'}</td></tr>`;
-  return `<div style="margin-top:10px"><b>${esc(cd.cliente)} · ${esc(cd.mes)}</b> <span class="mut">${l.length} órdenes</span> ${grpSelHTML(NIVUI_LISTA,true)}
-   <table style="margin-top:6px"><thead><tr><th>Orden</th><th>Producto</th><th>Color</th><th class="num">Por procesar</th><th>Entrega</th></tr></thead><tbody>${filasGRP(NIVUI_LISTA,l,fila,5)}</tbody></table></div>`}
+/* tabla FAMILIA × mes (unidades del saldo): para nivelar se mira el tipo de producto, no las órdenes una por una.
+   Las filas se pueden agrupar por familia (por defecto), tipo de producto o cliente; el cálculo no cambia.
+   Clic en una celda → debajo, ESA fila y ese mes: primero por tipo de producto con sus unidades, y ahí sí las
+   órdenes con foto/WH/fase (filasGRP + whCell). Las WH quedan en el último nivel. */
+function nivUIOrdenesSaldo(r){return r.saldo.ordenes.concat(r.saldo.sinSAM||[]).filter((o,i,arr)=>arr.indexOf(o)===i)}
+function nivUIUnidDe(r){const c=r.area.tipo==='centro'?r.area.id:'modulos';return o=>r.area.tipo==='tela'?(+o.cant||0):pendCentroUnid(o,c)}
+function nivUITablaHTML(r){if(!r||!r.saldo)return '';const meses=r.meses;const uDe=nivUIUnidDe(r);const por=NIVUI.filaPor||'familia';
+  const ords=nivUIOrdenesSaldo(r);
+  const m={};ords.forEach(o=>{const f=nivUIClaveFila(o,por);const mes=mesEntregaNiv(o);m[f]=m[f]||{};m[f][mes]=(m[f][mes]||0)+uDe(o)});
+  const filas=Object.keys(m).sort((a,b)=>Object.values(m[b]).reduce((x,y)=>x+y,0)-Object.values(m[a]).reduce((x,y)=>x+y,0));
+  const tot={};filas.forEach(f=>meses.forEach(mes=>{tot[mes]=(tot[mes]||0)+(m[f][mes]||0)}));
+  const celda=(f,mes,v)=>{const on=NIVUI.celda&&NIVUI.celda.fila===f&&NIVUI.celda.mes===mes&&NIVUI.celda.por===por;
+    return `<td class="num" style="cursor:${v?'pointer':'default'};${on?'background:var(--t-accent-soft,var(--field));font-weight:600':''}" ${v?`onclick="NIVUI.celda=${on?'null':`{por:'${por}',fila:'${esc(f).replace(/'/g,'&#39;')}',mes:'${mes}'}`};render()"`:''}>${v?num(v,0):'<span class="mut">·</span>'}</td>`};
+  const sel=`<select style="font-size:var(--fs-xs);width:auto;min-width:150px" onchange="NIVUI.filaPor=this.value;NIVUI.celda=null;render()">${NIVUI_FILAS.map(([k,n])=>`<option value="${k}" ${por===k?'selected':''}>${n}</option>`).join('')}</select>`;
+  return `<div class="panel"><h3>Saldo por ${esc(nivUIFilaTxt(por))} y mes de entrega <span class="note">unidades por procesar · clic en una celda para ver el detalle</span><span class="spacer"></span><span class="mut" style="font-size:var(--fs-xs)">filas por</span> ${sel}</h3><div class="body"><div class="scroll"><table><thead><tr><th>${esc(nivUIFilaTxt(por)).replace(/^./,c=>c.toUpperCase())}</th>${meses.map(mes=>`<th class="num">${esc(mes)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
+   ${filas.map(f=>`<tr><td>${esc(f)}</td>${meses.map(mes=>celda(f,mes,m[f][mes]||0)).join('')}<td class="num"><b>${num(meses.reduce((x,mes)=>x+(m[f][mes]||0),0),0)}</b></td></tr>`).join('')||'<tr><td colspan="99" class="mut">Sin saldo con estos meses y filtros.</td></tr>'}
+   ${filas.length?`<tr style="border-top:2px solid var(--rule);font-weight:600"><td>Total</td>${meses.map(mes=>`<td class="num">${num(tot[mes]||0,0)}</td>`).join('')}<td class="num">${num(meses.reduce((x,mes)=>x+(tot[mes]||0),0),0)}</td></tr>`:''}
+  </tbody></table></div>${nivUIDetalleCeldaHTML(r,ords,uDe)}</div></div>`}
+/* detalle de una celda: tipo de producto (con unidades) → órdenes (foto, WH, fase) */
+function nivUIDetalleCeldaHTML(r,ords,uDe){const cd=NIVUI.celda;if(!cd||cd.por!==(NIVUI.filaPor||'familia'))return '';
+  const l=ords.filter(o=>nivUIClaveFila(o,cd.por)===cd.fila&&mesEntregaNiv(o)===cd.mes);if(!l.length)return '';
+  const porHija={};l.forEach(o=>{const h=nivUIClaveFila(o,'hija');(porHija[h]=porHija[h]||[]).push(o)});
+  const hijas=Object.keys(porHija).sort((a,b)=>porHija[b].reduce((x,o)=>x+uDe(o),0)-porHija[a].reduce((x,o)=>x+uDe(o),0));
+  const fila=o=>`<tr><td>${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(uDe(o),0)}</td><td>${fechaMetaDe(o)?fmtDia(fechaMetaDe(o)):'<span class="mut">sin fecha</span>'}</td></tr>`;
+  return `<div style="margin-top:10px"><b>${esc(cd.fila)} · ${esc(cd.mes)}</b> <span class="mut">${num(l.reduce((x,o)=>x+uDe(o),0),0)} u · ${l.length} órdenes · ${hijas.length} tipos de producto</span>
+   <table style="margin-top:6px"><thead><tr><th>Tipo de producto</th><th class="num">Unidades</th><th class="num">Órdenes</th></tr></thead><tbody>${hijas.map(h=>`<tr><td>${esc(h)}</td><td class="num"><b>${num(porHija[h].reduce((x,o)=>x+uDe(o),0),0)}</b></td><td class="num">${porHija[h].length}</td></tr>`).join('')}</tbody></table>
+   ${hijas.map(h=>`<details style="margin-top:8px" ${hijas.length===1?'open':''}><summary style="cursor:pointer;font-size:var(--fs-s)"><b>${esc(h)}</b> · ${num(porHija[h].reduce((x,o)=>x+uDe(o),0),0)} u · ${porHija[h].length} órdenes</summary>
+    <div style="margin:6px 0 0 12px">${grpSelHTML(NIVUI_LISTA,true)}<table style="margin-top:6px"><thead><tr><th>Orden</th><th>Cliente</th><th>Color</th><th class="num">Por procesar</th><th>Entrega</th></tr></thead><tbody>${filasGRP(NIVUI_LISTA,porHija[h],fila,5)}</tbody></table></div></details>`).join('')}</div>`}
 /* el cuadrito: catorce filas, en este orden, con estos nombres; solo las «se escribe» son editables */
 function nivUICuadritoHTML(r){if(!r)return '';const c=r.calc,e=r.esc,ok=puede('programa'),id=r.area.id;
   const ro=(n,v,nota)=>`<tr><td>${n}</td><td class="num">${v}</td><td class="mut" style="font-size:var(--fs-xs)">${nota||''}</td></tr>`;

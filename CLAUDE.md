@@ -838,7 +838,8 @@ Sigue la lógica del Excel, un área a la vez. `vNivelacion` (página `nivelacio
 como chips de selección múltiple (`nivUIMeses`/`nivUITogMes`, al menos uno), filtros cliente y familia (`nivUIFiltro`),
 recuadros por área desde los centros configurados (`nivUIAreas`: Tela + centros `pro` en `ordenPaso` + Maquila) con saldo,
 fin y estado (`nivUIEstadoHTML`: ✓ llega / ⚠ riesgo (holgura ≤ `colchonDias`) / ✕ déficit / ? dato faltante); clic → solo
-esa área: tabla cliente × mes (`nivUITablaHTML`, celda → lista con `filasGRP`+`whCell`) y el cuadrito de trece filas
+esa área: tabla FAMILIA × mes (`nivUITablaHTML`; `NIVUI.filaPor` = familia | hija | cliente solo cambia las filas; celda →
+`nivUIDetalleCeldaHTML`: tipos de producto con unidades y adentro las órdenes con `filasGRP`+`whCell`) y el cuadrito de trece filas
 (`nivUICuadritoHTML`; solo Fecha inicio, Fecha compromiso, Días adicionales y Maquila se escriben, `nivUISet`, en
 `NIVUI.esc` hasta «Guardar escenario» con motivo y permiso `programa`, `nivUIGuardar` → inicio/compromiso por `setNivFecha`
 del Paso 1 y `S.params.nivelacion.escenarios[area]`). **El motor no cambió**: `nivUICalcular` llama a `nivelar()` y deriva
