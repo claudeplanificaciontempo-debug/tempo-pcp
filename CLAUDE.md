@@ -784,9 +784,7 @@ falta; la decisión sigue siendo `puedeCerrarPaso`, sin segundo criterio en la v
 filas bloqueadas (`CAMPOS_BLOQUEADOS` = avance, lib, fases, progCentro; «siempre»: `conserva()` devuelve true y
 `setCampoConservado` avisa) — la fase ACTUAL sigue siendo decisión de la tabla. `planOdoo(rows,nombre)` es el plan
 de «Actualizar desde Odoo» como función pura; `aplicarOdoo` consulta la tabla 14 (fase, fecha, telas con
-`faltaConf`, ruta editada/confirmada → bandeja `noCalzan` con `tipo`). **«Actualizar desde Odoo» está
-DESHABILITADO** (`ODOO_DESHABILITADO`, `odooBotonHTML`, `forzarOdoo` solo admin escribiendo FORZAR, bitácora)
-hasta el camino único: sobre el mismo archivo reconoce 710 de 1.211 y crea 3.508 (3.019 por ALCANCE —fuera de
+`faltaConf`, ruta editada/confirmada → bandeja `noCalzan` con `tipo`). **«Actualizar desde Odoo» quedó deshabilitado y luego RETIRADO** (ver el camino único): sobre el mismo archivo reconoce 710 de 1.211 y crea 3.508 (3.019 por ALCANCE —fuera de
 la regla de Parte 2— y 489 por RECONOCIMIENTO —las órdenes sin WH tienen dos claves: `sl_sin_wh_<hash>` en
 Parte 2 y `prev_…` en Odoo). Cuatro cargadores, tres normalizaciones (`normTxt` Parte 2/Fotos, cruda Odoo,
 `normFase` OT). Propuesta de clave única y SQL de duplicados (sin ejecutar) en `CARGAS_DIAGNOSTICO_CLAVES.md`
@@ -804,6 +802,17 @@ alcance (cancel fuera; sin fecha entra solo con Proyecto; entrega pasada + fase 
 y `prm('alcanceSinFechaConProyecto',1)` editables (`alcanceConfHTML`); lo fuera de alcance queda `noArchivo` + `fueraAlcance`
 (nunca borrado). Sin `hoy+21` ni «día 28 del Proyecto»; `fechaDe` de Odoo usa `excelFecha` y reporta `fechasIlegibles`.
 Con esto «Actualizar desde Odoo» sobre el mismo archivo reconoce 1.206 y crea 0 (antes 710 / 3.508). Ver `CARGAS_CLAVE_UNICA.md`.
+
+**UN solo camino de carga: «Actualizar datos» (17-sep-2026).** `mActualizarDatos(paso)` (estado `ACT`): 1) Tareas de Odoo =
+`planTarea`/`aplicarTarea`, 2) Órdenes de trabajo (`leerOT`/`aplicarOT`), 3) Fotos (`leerFotos`/`aplicarFotos`). **Se retiraron**
+`mOdoo`, `planOdoo`, `nuevaOrden`, `aplicarOdoo`, `leerOdoo`, `odooBotonHTML`, `forzarOdoo`, `mCargarTarea`, `mOT` y `mFotos`: no
+volver a crear un segundo cargador de órdenes. **Nada se escribe en S durante la vista previa** (los colores nuevos van en
+`plan.coloresNuevosObj` y entran al aplicar). `vistaPreviaTareaHTML(p)` (`p.prev`: nuevas, actualizadas, cerradas, noVinieron,
+noCalzan, repetidasNoAplicadas) va arriba del detalle. Archivo **sin componentes** (`p.sinComponentes`): se lee, se avisa y las
+órdenes existentes conservan telas, materiales, ruta e insumos. **Clave repetida en el archivo** cuya clave ya existe: las filas
+NO se aplican y las existentes quedan `o.claveRepetida={ts,archivo,txt}` (bandeja `claveRepetida` en Hoy) — el orden de filas del
+Excel no es criterio de emparejamiento. `aplicarMigracionClaves` solo con `config` y con aviso de revisar duplicados en
+producción. Ver `CARGAS_CAMINO_UNICO.md`.
 
 **Nivelación Paso 2 · Etapa A (17-sep-2026):** boceto navegable con datos fijos (`NIVD`, `NIVV`, `vNivelacion`,
 página `nivelacion`, desde Configuración → Nivelación → «Ver el boceto →»); NO conectado al motor. Al aprobarse,

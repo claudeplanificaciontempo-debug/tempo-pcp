@@ -230,26 +230,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("P1b: la programación del centro sigue",!!((oB3.progCentro||{}).corte)&&oB3.progCentro.corte.u==="prueba-prog",JSON.stringify(oB3.progCentro));
      const p9c=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p9c;aplicarTarea();await __p(50);
      const oB4=S.ordenes.find(x=>x.id===oB2.id);if(oB4){delete oB4.lib;delete oB4.progCentro;oB4.fases=(oB4.fases||[]).filter(f=>f.u!=="prueba-fases")}PLAN=null;PLAN_ALL=null}}
-   /* ===== 1a · «Actualizar desde Odoo» deshabilitado hasta el camino único ===== */
+   /* ===== 6 · UN solo camino de carga: «Actualizar datos» (17-sep) ===== */
    {const veilOn=()=>document.getElementById("veil").classList.contains("on");cerrar();
-    __check("P1a: «Actualizar desde Odoo» está deshabilitado",ODOO_DESHABILITADO===true);
-    ir("ordenes");await __p(80);
-    const bO=[...document.querySelectorAll("#p-ordenes button")].find(b=>/Actualizar desde Odoo/.test(b.textContent));
-    __check("P1a: el botón se ve pero está inactivo, con el texto acordado",!!bO&&bO.disabled&&/Temporalmente deshabilitado — use Recarga Parte 2/.test((bO.parentElement||{}).textContent||""),bO?String(bO.disabled):"sin botón");
-    let av="";const a1=window.alert;window.alert=m=>{av=String(m)};mOdoo();window.alert=a1;
-    __check("P1a: llamar a mOdoo() sin forzar no abre nada y avisa",!veilOn()&&/deshabilitado/.test(av),av);
-    const pr0=window.prompt;const nb=S.bitacora.length;
-    window.prompt=()=>"no";forzarOdoo();
-    __check("P1a: forzar con otra palabra no abre nada ni deja rastro",!veilOn()&&S.bitacora.length===nb);
-    window.prompt=()=>"FORZAR";forzarOdoo();window.prompt=pr0;
-    __check("P1a: el administrador lo fuerza escribiendo FORZAR: abre, avisa que puede duplicar y queda en bitácora",
-      !!veilOn()&&/puede duplicar/.test(document.getElementById("modal").textContent)&&S.bitacora.length===nb+1&&/FORZADO/.test(S.bitacora.slice(-1)[0].t),S.bitacora.slice(-1)[0].t);
+    __check("U6: ya no existen «Actualizar desde Odoo», «Recarga Parte 2», mOT ni mFotos como diálogos",typeof mOdoo==="undefined"&&typeof planOdoo==="undefined"&&typeof aplicarOdoo==="undefined"&&typeof mCargarTarea==="undefined"&&typeof mOT==="undefined"&&typeof mFotos==="undefined"&&typeof odooBotonHTML==="undefined");
+    ir("ordenes");await __p(80);const bs=[...document.querySelectorAll("#p-ordenes button")].map(b=>b.textContent.trim());
+    __check("U6: en Órdenes hay UN botón «Actualizar datos» y ninguno de los viejos",bs.some(t=>/Actualizar datos/.test(t))&&!bs.some(t=>/Actualizar desde Odoo|Recarga Parte 2|Temporalmente/.test(t)),bs.filter(t=>/Actualizar|Recarga/.test(t)).join(" | "));
+    mActualizarDatos(1);const m=()=>document.getElementById("modal");
+    __check("U6: la pantalla tiene los tres pasos y arranca en Tareas de Odoo",veilOn()&&/1 · Tareas de Odoo/.test(m().textContent)&&/2 · Órdenes de trabajo/.test(m().textContent)&&/3 · Fotos/.test(m().textContent)&&!!document.getElementById("f-tarea")&&!!document.getElementById("tarea-ok")&&document.getElementById("tarea-ok").disabled);
+    __check("U6: dice que nada se guarda antes de confirmar",/Nada se guarda antes de confirmar/.test(m().textContent));
+    mActualizarDatos(2);__check("U6: paso 2 = órdenes de trabajo, con su entrada y su Aplicar",!!document.getElementById("f-ot")&&!!document.getElementById("ot-ok")&&/no estén en el sistema se avisan/.test(m().textContent));
+    mActualizarDatos(3);__check("U6: paso 3 = fotos, con su entrada y su Subir",!!document.getElementById("f-fotos")&&!!document.getElementById("fotos-ok")&&/no estén en el sistema se avisan/.test(m().textContent));
     cerrar();
-    const bakP=PERFIL;PERFIL={id:"u-pl",rol:"planificacion"};let av2="";window.alert=m=>{av2=String(m)};window.prompt=()=>"FORZAR";forzarOdoo();window.prompt=pr0;window.alert=a1;PERFIL=bakP;
-    __check("P1a: quien no es administrador no puede forzarlo",!veilOn()&&/administrador/.test(av2),av2);cerrar()}
-   /* «Actualizar desde Odoo» no se puede ejercitar: su plan se arma dentro de leerOdoo(ev) (manejador del <input file>) */
-   __R.recarga=__R.recarga||{};__R.recarga.odooEjercitable=(typeof planOdoo==="function");
-   __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas",typeof planOdoo==="function");
+    /* la vista previa NO escribe en S */
+    {const H=tareaRows[0];const col=n=>H.indexOf(n);const opAb=new Set(S.ordenes.filter(o=>abierta(o)&&o.op).map(o=>o.op));const r0=tareaRows.findIndex((r,i)=>i&&opAb.has(String(r[col("Orden de producción")]||"")));const rows=tareaRows.map((r,i)=>{if(i!==r0)return r;const x=r.slice();x[col("Color")]="COLOR-NUEVO-U6";return x});
+     const nCol=S.colores.length,nOrd=S.ordenes.length,nCat=S.categorias.length,nTec=S.tecnicas.length,jsonOrd=JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant]));
+     const p=planTarea(rows,"U6.xlsx");
+     __check("U6: la vista previa no escribe en S (órdenes, colores, categorías, técnicas)",S.colores.length===nCol&&S.ordenes.length===nOrd&&S.categorias.length===nCat&&S.tecnicas.length===nTec&&JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant]))===jsonOrd&&p.coloresNuevosObj.length===1&&p.coloresNuevosObj[0].n==="COLOR-NUEVO-U6",JSON.stringify({col:S.colores.length-nCol,nuevos:p.coloresNuevos}));
+     const h=vistaPreviaTareaHTML(p);
+     __check("U6: la vista previa lista nuevas, actualizadas, cerradas, fuera de alcance, no vinieron, no calzan, clave incompleta, clave repetida, fechas ilegibles y errores",["nuevas","actualizadas","cerradas","fuera de alcance","no vinieron","no calzan","clave incompleta","clave repetida","fechas ilegibles","errores"].every(t=>h.includes(t)),["nuevas","actualizadas","cerradas","fuera de alcance","no vinieron","no calzan","clave incompleta","clave repetida","fechas ilegibles","errores"].filter(t=>!h.includes(t)).join(", "));
+     __check("U6: la vista previa cuadra: nuevas + actualizadas + no aplicadas = órdenes del plan",p.prev.nuevas+p.prev.actualizadas+p.prev.repetidasNoAplicadas===p.ordenes.length&&p.prev.actualizadas>1000,JSON.stringify(p.prev&&{n:p.prev.nuevas,a:p.prev.actualizadas,r:p.prev.repetidasNoAplicadas,t:p.ordenes.length}));
+     TAREA=p;aplicarTarea();await __p(50);
+     __check("U6: el color nuevo entra recién al aplicar",S.colores.length===nCol+1&&S.colores.some(c=>c.n==="COLOR-NUEVO-U6"));
+     S.colores=S.colores.filter(c=>c.n!=="COLOR-NUEVO-U6");}
+    /* archivo SIN componentes: aviso y solo se actualiza lo que viene */
+    {const H=tareaRows[0];const quitar=new Set(H.map((h,i)=>/Componentes/.test(String(h))?i:-1).filter(i=>i>=0));
+     const rows=tareaRows.filter((r,i)=>!i||String(r[H.indexOf("Orden de producción")]||"").trim()||String(r[H.indexOf("Cliente")]||"").trim()).map(r=>r.filter((c,i)=>!quitar.has(i)));
+     const oX=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).length&&(o.ruta||[]).length);const telasAntes=JSON.stringify(oX.telas),rutaAntes=JSON.stringify(oX.ruta);
+     const p=planTarea(rows,"U6_sincomp.xlsx");
+     __check("U6: un archivo sin componentes se lee y se avisa",!!p&&p.sinComponentes===true&&/Archivo sin componentes/.test(vistaPreviaTareaHTML(p)),p&&p.ordenes.length);
+     TAREA=p;aplicarTarea();await __p(50);const oY=S.ordenes.find(o=>o.id===oX.id);
+     __check("U6: sin componentes, telas y ruta de las órdenes existentes se conservan",!!oY&&JSON.stringify(oY.telas)===telasAntes&&JSON.stringify(oY.ruta)===rutaAntes,JSON.stringify(oY&&{t:(oY.telas||[]).length,r:(oY.ruta||[]).length}));
+     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
+    cerrar()}
+   __check("CARGA: el único camino de carga es planTarea/aplicarTarea (no queda planificador de Odoo)",typeof planOdoo==="undefined"&&typeof mActualizarDatos==="function");
    window.alert=a0;
    __check("CARGA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* OT reales contra las órdenes reales (fixture local, no publicado) */
@@ -298,7 +311,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const p=planFotos(csv,"fotos.csv");__check("fotos: planFotos lee OP y base64 por cabecera",p&&p.filas===6&&p.fotos.length===4&&p.sinOp===1&&p.sinImg.length===1,JSON.stringify(p&&{filas:p.filas,n:p.fotos.length,sinOp:p.sinOp,sinImg:p.sinImg}));
    __check("fotos: cruza con órdenes sin importar mayúsculas y reporta las que no existen",p.conOrden===3&&p.sinOrden.length===1&&p.sinOrden[0]==="WH/MO/999999",JSON.stringify(p.sinOrden));
    __check("fotos: repetidas en el archivo se reportan",p.dupl.length===1);
-   mFotos();FOTOS=p;await aplicarFotos();await __p(50);const ix=S.params.fotosIdx||{};
+   mActualizarDatos(3);FOTOS=p;await aplicarFotos();await __p(50);const ix=S.params.fotosIdx||{};
    __check("fotos: sube todas (la repetida una sola vez) al bucket simulado",Object.keys(ix).length===3&&S.params.fotosCarga.subidas===3,JSON.stringify(S.params.fotosCarga));
    __check("fotos: PNG de 900 px se convierte a JPG ≤600",S.params.fotosCarga.convertidas===1);
    __check("fotos: la orden guarda solo el enlace (no base64)",typeof o1.foto==="string"&&o1.foto.startsWith("http")&&o1.foto.length<200&&!o1.foto.includes("/9j/"),o1.foto);
@@ -5934,96 +5947,18 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    delete S.params.tablets[uid0];
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
    __check("TO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
-  /* ===== CARGAS · punto 2: qué pisa «Actualizar desde Odoo» (al final: toca la cartera entera) ===== */
-  try{localStorage.__fase="carga odoo"}catch(e){}
-  {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];
-   /* al final del guión la cartera está reducida: se vuelve a cargar el volcado para medir de verdad */
-   if(tareaRows.length){const pR=planTarea(tareaRows,'TAREA_PARTE2.xlsx');TAREA=pR;aplicarTarea();await __p(50)}
-   /* ===== 2 · los doce datos trabajados, ahora sobre «Actualizar desde Odoo» ===== */
-   {const ab2=S.ordenes.filter(o=>abierta(o)&&o.op).slice(0,6);
-    if(ab2.length>=6&&typeof planOdoo==="function"){
-     const [oA,oB,oC,oD,oE,oF]=ab2;
-     oA.progCentro={corte:{pri:1,rec:null,desde:null}};
-     oB.recursoFijo={modulos:"maquila"};
-     oC.odc="ODC-ODOO-1";oC.odcManual={u:"prueba",ts:new Date().toISOString()};
-     S.avance[oD.id]=Object.assign(S.avance[oD.id]||{},{centros:{corte:9},
-       cierres:{corte:{pz:9,cant:oD.cant,faltan:0,u:"piso",ts:new Date().toISOString()}},
-       tramos:[{id:"t-odoo",centro:"corte",rec:null,ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:"piso",paros:[]}]});
-     oE.lib={tela:{ok:true,u:"lib",ts:new Date().toISOString()}};
-     oF.rutaEditada=[{centro:"corte",t:1},{centro:"empaque",t:1}];oF.ruta=oF.rutaEditada.slice();
-     oF.foto="https://x/odoo.jpg";oF.fechaCompromiso="2026-12-15";oF.prio=1;
-     const faseF=oF.fase;
-     const bakPl=JSON.stringify(S.planes||[]);S.planes=(S.planes||[]).concat([{id:"plan-odoo",ym:"2026-10",oids:[oA.id],ver:1}]);
-     const antesO={pri:1,maq:"maquila",odc:"ODC-ODOO-1",cierre:true,tramos:1,lib:true,ruta:2,foto:oF.foto,comp:"2026-12-15",prio:1,planes:S.planes.length,fase:faseF};
-     /* se arma el plan de Odoo con el MISMO archivo de tareas y se aplica */
-     let fotoOrd,fotoJSON;
-     let pO=null;try{pO=planOdoo(tareaRows,"ODOO.xlsx")}catch(e){pO=null;__R.odooErr=String(e&&e.message)}
-     __check("P2: planOdoo(rows) arma un plan con el volcado real",!!pO&&Array.isArray(pO.nuevas)&&Array.isArray(pO.act),pO?(pO.nuevas.length+" nuevas / "+pO.act.length+" actualizadas"):__R.odooErr);
-     if(pO){
-      /* foto de la cartera: esta medición no puede dejar rastro */
-      fotoOrd=S.ordenes.slice();fotoJSON=JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant,o.estado]));
-      __R.odooMatch={enElArchivo:pO.nuevas.length+pO.act.length+(pO.sinCambio||0),
-        reconocidas:pO.act.length,sinCambio:pO.sinCambio||0,nuevas:pO.nuevas.length,
-        carteraAntes:S.ordenes.length};
-      const al=window.alert;window.alert=()=>{};ODOO=pO;aplicarOdoo();window.alert=al;
-      __R.odooMatch.carteraDespues=S.ordenes.length;
-      __check("P2: «Actualizar desde Odoo» reconoce las órdenes que ya están, no las duplica",
-        S.ordenes.length<=__R.odooMatch.carteraAntes,JSON.stringify(__R.odooMatch));
-      const g=id=>S.ordenes.find(x=>x.id===id)||{};
-      const desO={pri:((g(oA.id).progCentro||{}).corte||{}).pri||0,maq:(g(oB.id).recursoFijo||{}).modulos||null,odc:g(oC.id).odc,
-        cierre:!!(((S.avance[oD.id]||{}).cierres)||{}).corte,tramos:((S.avance[oD.id]||{}).tramos||[]).length,
-        lib:!!((g(oE.id).lib||{}).tela||{}).ok,ruta:(g(oF.id).rutaEditada||[]).length,rutaReal:(g(oF.id).ruta||[]).length,
-        foto:g(oF.id).foto||null,comp:g(oF.id).fechaCompromiso||null,prio:g(oF.id).prio,planes:(S.planes||[]).length,fase:g(oF.id).fase};
-      __R.odoo={antes:antesO,despues:desO,pisa:{
-        puestoManual:desO.pri!==antesO.pri,maquila:desO.maq!==antesO.maq,odcManual:desO.odc!==antesO.odc,
-        cierres:desO.cierre!==antesO.cierre,tramos:desO.tramos!==antesO.tramos,liberacion:desO.lib!==antesO.lib,
-        rutaEditada:desO.ruta!==antesO.ruta||desO.rutaReal!==antesO.ruta,foto:desO.foto!==antesO.foto,
-        fechaCompromiso:desO.comp!==antesO.comp,prio:desO.prio!==antesO.prio,planCongelado:desO.planes!==antesO.planes,
-        fase:String(desO.fase||"")!==String(antesO.fase||"")}};
-      __check("P2: se puede medir qué pisa «Actualizar desde Odoo»",!!__R.odoo,JSON.stringify(__R.odoo.pisa));
-      __check("P2: el avance de piso (cierres y tramos) NO lo toca",!__R.odoo.pisa.cierres&&!__R.odoo.pisa.tramos);
-      __check("P2: el puesto manual y la maquila tampoco",!__R.odoo.pisa.puestoManual&&!__R.odoo.pisa.maquila);}
-     [oA,oB,oC,oE,oF].forEach(o=>{const x=S.ordenes.find(z=>z.id===o.id);if(!x)return;
-       delete x.progCentro;delete x.recursoFijo;delete x.odcManual;delete x.lib;delete x.rutaEditada;delete x.fechaCompromiso;if(x.prio===1)x.prio=3;if(x.foto==="https://x/odoo.jpg")delete x.foto});
-     delete S.avance[oD.id];S.planes=JSON.parse(bakPl);ODOO=null;PLAN=null;PLAN_ALL=null;
-     /* se deshace la medición: la cartera vuelve EXACTAMENTE a como estaba */
-     if(typeof fotoOrd!=='undefined'){S.ordenes=fotoOrd;JSON.parse(fotoJSON).forEach(([id,fase,cant,estado])=>{
-       const o=S.ordenes.find(x=>x.id===id);if(o){o.fase=fase;o.cant=cant;o.estado=estado}})}
-     PLAN=null;PLAN_ALL=null}}
-   /* ===== 3 · la tabla 14 manda también en «Actualizar desde Odoo» ===== */
-   {const src=String(aplicarOdoo);
-    __check("P3: aplicarOdoo consulta la tabla 14",/conserva\(/.test(src),"");
-    __check("P3: y no toca una ruta editada a mano ni confirmada",/rutaEditada/.test(src)&&/rutaConfirmada\(/.test(src));
-    /* caso construido: una orden con fase movida aquí, telas decididas y ruta editada */
-    const oT=S.ordenes.find(o=>abierta(o)&&o.op&&(o.telas||[]).length);
-    if(oT&&typeof planOdoo==="function"){
-     const faseMia="8Embodegado";oT.fase=faseMia;
-     oT.rutaEditada=[{centro:"corte",t:1},{centro:"empaque",t:1}];oT.ruta=oT.rutaEditada.slice();
-     (oT.telas||[]).forEach(t=>{t.faltaConf={v:"nada",u:"prueba",ts:new Date().toISOString()}});
-     const telasAntes=JSON.stringify(oT.telas);const rutaAntes=oT.ruta.length;
-     const rc0=(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length;
-     /* el archivo trae OTRA fase, otras telas y técnica (que pediría un paso de estampado) */
-     const d={fase:"2Planificacion",cant:oT.cant,fecha:oT.fecha,color:oT.color,cat:oT.cat,colorOdoo:oT.colorOdoo,estado:"plan",
-       telas:[{tela:(S.telas[0]||{}).id,kg:10}],tecnica:(S.tecnicas[0]||{}).id,punt:0,lavado:true,hayBoton:true,hayCordon:false,insumos:[]};
-     ODOO={nuevas:[],act:[{o:oT,datos:d}],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],alertas:[],
-       coloresNuevos:new Set(),catsNuevas:new Set(),archivo:"ODOO-T14.xlsx"};
-     const al=window.alert;window.alert=()=>{};aplicarOdoo();window.alert=al;
-     __check("P3: la fase movida aquí NO se pisa",normFase(oT.fase)===normFase(faseMia),oT.fase);
-     __check("P3: las telas con decisión confirmada tampoco",JSON.stringify(oT.telas)===telasAntes);
-     __check("P3: no se agregan pasos a una ruta editada a mano",oT.ruta.length===rutaAntes,oT.ruta.map(p=>p.centro).join("→"));
-     const rc=(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]);
-     __check("P3: todo eso va a la bandeja «decisiones que ya no calzan»",rc.length>rc0,(rc.length-rc0)+" entradas nuevas");
-     __check("P3: la bandeja dice qué tipo de contradicción es",
-       rc.slice(rc0).some(x=>x.tipo==="fase")&&rc.slice(rc0).some(x=>x.tipo==="ruta"),
-       JSON.stringify(rc.slice(rc0).map(x=>x.tipo)));
-     /* si la fila de la tabla 14 se desmarca, el archivo SÍ manda (es lo que dice la tabla) */
-     const i=camposConservados().findIndex(x=>x.campo==="fase");const bak=camposConservados()[i].conservar;
-     camposConservados()[i].conservar=false;
-     ODOO={nuevas:[],act:[{o:oT,datos:{fase:"2Planificacion",cant:oT.cant,cat:oT.cat,estado:"plan"}}],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],alertas:[],coloresNuevos:new Set(),catsNuevas:new Set(),archivo:"x"};
-     window.alert=()=>{};aplicarOdoo();window.alert=al;
-     __check("P3: con la fila desmarcada, el archivo sí actualiza la fase (la tabla manda)",normFase(oT.fase)===normFase("2Planificacion"),oT.fase);
-     camposConservados()[i].conservar=bak;ODOO=null;PLAN=null;PLAN_ALL=null}}
-   __check("P2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* ===== CARGAS · el camino único sobre el mismo archivo: reconoce todo, no duplica, no pisa (17-sep) ===== */
+  try{localStorage.__fase="carga unica"}catch(e){}
+  {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
+   const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
+   const demo=S.ordenes.filter(o=>/^OP-/.test(o.op||"")).length;const cartera=S.ordenes.length;
+   const p=planTarea(tareaRows,"TAREA_OTRA_VEZ.xlsx");
+   __R.odooMatch={cartera,demo,reconocidas:p.prev.actualizadas,nuevas:p.prev.nuevas,fuera:p.excluidas.alcance.length,noVinieron:p.prev.noVinieron.length};
+   __check("U6: el mismo archivo otra vez: reconoce TODAS las órdenes menos las de demostración, y no crea ninguna",p.prev.nuevas===0&&p.prev.actualizadas+p.prev.repetidasNoAplicadas===cartera-demo,JSON.stringify(__R.odooMatch));
+   __check("U6: nada queda como «no vino» (las de demostración ya estaban marcadas no está en el archivo)",p.prev.noVinieron.length===0,JSON.stringify(p.prev.noVinieron.map(x=>x.op)));
+   const fotoDe2=()=>JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant,o.estado]).sort((a,b)=>a[0]<b[0]?-1:1));const foto=fotoDe2();TAREA=p;aplicarTarea();await __p(50);
+   __check("U6: aplicar el mismo archivo no cambia la cartera (ni id, ni fase, ni cantidad, ni estado)",S.ordenes.length===cartera&&fotoDe2()===foto,S.ordenes.length+" vs "+cartera);
+   window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
   try{localStorage.__fase="clave unica"}catch(e){}
   {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
@@ -6037,11 +5972,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("K1: una orden con etiqueta «SIN WH #…» se clasifica como sin WH (no por la etiqueta)",claveOrden({op:"SIN WH #abc",cliente:"A",proyecto:"P",stilo:"S",colorN:"C",odc:"1"}).clave==="sin:a|p|s|c|1");
    __check("K1: el id de una WH nueva sale de la clave y es el de siempre",idDeClave("op:wh/mo/28300")==="op_wh_mo_28300");
    /* K2 · los cuatro cargadores usan la misma función y ninguno arma la suya */
-   {const fn=[["planTarea",planTarea],["aplicarTarea",aplicarTarea],["planOdoo",planOdoo],["planOT",planOT],["planFotos",planFotos]];
+   {const fn=[["planTarea",planTarea],["aplicarTarea",aplicarTarea],["planOT",planOT],["planFotos",planFotos]];
     const propia=fn.filter(([n,f])=>{const t=String(f);return /clavePrev|hsh=5381|porOp\[|normTxt\(o\.op\)|normFase\(o\.op\)|prev\[normTxt/.test(t)}).map(x=>x[0]);
     const usan=fn.filter(([n,f])=>/claveOrden\(|indiceClaves\(|claveDeOrden\(/.test(String(f))||n==="aplicarTarea").map(x=>x[0]);
     __check("K2: ningún cargador arma su clave por su cuenta",propia.length===0,propia.join(", "));
-    __check("K2: tareas, Odoo, OT y fotos pasan por claveOrden/indiceClaves",usan.length===fn.length,usan.join(", "));}
+    __check("K2: tareas, OT y fotos pasan por claveOrden/indiceClaves",usan.length===fn.length,usan.join(", "));}
    /* K3 · Parte 2 con el volcado: sin WH estables, repetidas, incompletas, sin WH → WH */
    {const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
     const sinWH=S.ordenes.filter(o=>o.sinLanzar);
@@ -6120,7 +6055,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     delete S.avance["sl_sin_wh_viej1"];S.ordenes=S.ordenes.filter(o=>o.id!=="sl_sin_wh_viej1"&&o.id!=="prev_vieja_2").concat([a,b]);
     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
    /* K5 · regla de alcance única, parámetros, sin hoy+21, fechas legibles */
-   {__check("K5: la regla es una función y Parte 2 y Odoo la llaman",/alcanceOrden\(/.test(String(planTarea))&&/alcanceOrden\(/.test(String(planOdoo)));
+   {__check("K5: la regla es una función y el cargador de tareas la llama",/alcanceOrden\(/.test(String(planTarea)));
     __check("K5: los parámetros son prm() y se ven en Configuración",/prm\(.alcanceDiasAtras.,\s*0\)/.test(String(alcanceParams))&&/prm\(.alcanceSinFechaConProyecto.,\s*1\)/.test(String(alcanceParams))&&/setAlcanceParam\(/.test(document.getElementById("p-config").innerHTML));
     __check("K5: cancel fuera; entrega pasada + fase de cierre fuera; abierta con entrega pasada dentro; sin fecha con Proyecto dentro; sin fecha sin Proyecto fuera",
       !alcanceOrden({fase:"Cancelado",fecha:"2027-01-01"}).dentro&&!alcanceOrden({fase:"Facturado",fecha:dsum(hoy(),-1)}).dentro&&alcanceOrden({fase:"2Planificacion",fecha:dsum(hoy(),-30)}).dentro&&alcanceOrden({fase:"0Diseño",fecha:null,proyecto:"NOVIEMBRE 2026"}).dentro&&!alcanceOrden({fase:"0Diseño",fecha:null,proyecto:""}).dentro);
@@ -6130,22 +6065,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const bak=S.params.alcanceSinFechaConProyecto;S.params.alcanceSinFechaConProyecto=0;
      __check("K5: con «nunca entra», sin fecha queda fuera aunque tenga Proyecto (0 es 0)",!alcanceOrden({fase:"0Diseño",fecha:null,proyecto:"NOVIEMBRE 2026"}).dentro);
      S.params.alcanceSinFechaConProyecto=bak;if(bak===undefined)delete S.params.alcanceSinFechaConProyecto;}
-    __check("K5: ya no existe el hoy+21 inventado",!/dsum\(hoy\(\),21\)/.test(String(nuevaOrden))&&!/\-28'/.test(String(planOdoo)));
-    /* Odoo con el volcado: lo fuera de alcance no se crea; lo existente fuera de alcance se marca, no se borra */
-    const pO=planOdoo(tareaRows,"ODOO_K5.xlsx");
-    const fa=resumenAlcance(pO.fueraAlcance);
-    __check("K5: Odoo deja fuera lo mismo que Parte 2: ~3.019 cerradas/stand by con entrega pasada, y no las crea",pO.nuevas.filter(o=>o.estado!=="prevision").length<50&&(fa.entregaPasadaCerrada||{}).n>=3000,JSON.stringify({nuevasWH:pO.nuevas.filter(o=>o.estado!=="prevision").length,fa}));
-    __check("K5: y reconoce las sin WH por la clave única: cero previsiones nuevas",pO.prevNuevas===0&&pO.nuevas.filter(o=>o.estado==="prevision").length===0,pO.prevNuevas);
-    __R.odooMatch2={reconocidas:pO.act.length+pO.sinCambio,nuevas:pO.nuevas.length,fuera:pO.fueraAlcance.length,cartera:S.ordenes.length};
-    __check("K5: «Actualizar desde Odoo» sobre el mismo archivo ya no duplica: reconoce ~1.206 y crea 0",pO.nuevas.length===0&&pO.act.length+pO.sinCambio>=1200,JSON.stringify(__R.odooMatch2));
-    /* fechas: serial numérico → excelFecha; ilegible → reportada, sin inventar */
+    __check("K5: ya no existe el hoy+21 inventado ni la fecha desde el Proyecto",!/dsum\(hoy\(\),21\)/.test(String(planTarea))&&!/\-28'/.test(String(planTarea)));
+    /* fechas: serial numérico → excelFecha; ilegible → reportada, sin inventar (en el cargador único) */
     {const H=tareaRows[0];const iF=H.indexOf("Fecha Entrega"),iO=H.indexOf("Orden de producción");const r0=tareaRows.findIndex((r,i)=>i&&String(r[iO]||"").startsWith("WH/"));const r1=tareaRows.findIndex((r,i)=>i>r0&&String(r[iO]||"").startsWith("WH/"));
      const rows=tareaRows.map((r,i)=>{if(i!==r0&&i!==r1)return r;const x=r.slice();if(i===r0)x[iF]=46283.75;else x[iF]="fecha rara";return x});
-     const pS=planOdoo(rows,"ODOO_K5b.xlsx");const opA=String(tareaRows[r0][iO]);
-     const enPlan=[...pS.nuevas,...pS.act.map(a=>a.o)].find(o=>o.op===opA);const datosA=(pS.act.find(a=>a.o.op===opA)||{}).datos;
-     __check("K5: un serial numérico se lee con excelFecha (46283,75 = 2026-09-18, sin redondear al día siguiente)",excelFecha(46283.75)==="2026-09-18"&&(!datosA||datosA.fecha==="2026-09-18"),JSON.stringify({d:datosA&&datosA.fecha}));
-     __check("K5: una fecha ilegible se reporta y no se inventa",pS.fechasIlegibles.length===1&&/fecha rara/.test(pS.fechasIlegibles[0].valor),JSON.stringify(pS.fechasIlegibles));}
-    ODOO=null;PLAN=null;PLAN_ALL=null;}
+     const pS=planTarea(rows,"K5b.xlsx");const opA=String(tareaRows[r0][iO]);const oA=pS.ordenes.find(o=>o.op===opA);
+     __check("K5: un serial numérico se lee con excelFecha (46283,75 = 2026-09-18, sin redondear al día siguiente)",excelFecha(46283.75)==="2026-09-18"&&(!oA||oA.fecha==="2026-09-18"),JSON.stringify({d:oA&&oA.fecha}));
+     __check("K5: una fecha ilegible se reporta y no se inventa",pS.fechasIlegibles.length===1&&/fecha rara/.test(pS.fechasIlegibles[0].valor)&&/fechas ilegibles/.test(vistaPreviaTareaHTML(pS)),JSON.stringify(pS.fechasIlegibles));}
+    PLAN=null;PLAN_ALL=null;}
    window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }

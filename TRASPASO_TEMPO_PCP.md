@@ -204,6 +204,15 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.55 Cargas: UN solo camino, «Actualizar datos» (17-sep)
+- Una pantalla con tres pasos (tareas de Odoo → `planTarea`/`aplicarTarea`; órdenes de trabajo; fotos). Nada se escribe en
+  S durante la vista previa; nada se guarda antes de confirmar. Vista previa: nuevas, actualizadas, cerradas, fuera de
+  alcance, no vinieron, no calzan, clave incompleta, clave repetida, fechas ilegibles, errores.
+- Archivo sin componentes: aviso y solo actualiza lo que viene. Pasos 2 y 3 avisan órdenes no encontradas.
+- Retirados «Actualizar desde Odoo» (con su plan y su aplicar), «Recarga Parte 2» y los diálogos sueltos de OT y fotos.
+- Clave repetida en el archivo con clave ya existente: no se aplica, se marca «clave repetida — revisar» (Hoy).
+- Reconocidas exactas sobre el volcado: 1.206 = 1.211 − 5 de demostración. Ver `CARGAS_CAMINO_UNICO.md`.
+
 ### 2.54 Cargas: clave única, migración y regla de alcance (17-sep)
 - `claveOrden()` única para tareas, Odoo, OT y fotos (con WH: la WH; sin WH: cliente+proyecto+stilo+color+ODC). Clave
   incompleta = no se reconoce ni se crea, se reporta. Repetida en el archivo = entran aparte y se reportan las dos.

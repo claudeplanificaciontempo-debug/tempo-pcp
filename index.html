@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 11:41';
+const APP_BUILD='2026-09-17 11:48';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2987,7 +2987,7 @@ function vPanorama(el){
    <div class="panel"><h3>Última carga de Odoo</h3><div class="body" style="font-size:var(--fs-s)">
     ${ultima?`<div><b>${new Date(ultima.ts).toLocaleString('es-EC')}</b> · ${esc(ultima.usuario||'')}</div><div class="mut">${ultima.tipo==='ot'?'órdenes de trabajo: '+ultima.act+' órdenes con centros cerrados':ultima.nuevas+' nuevas, '+ultima.act+' actualizadas, '+ultima.cerradas+' cerradas'}</div>
       ${(ultima.alertas||[]).length?`<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--alerta)">${ultima.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${ultima.alertas.slice(0,15).map(esc).join('<br>')}</div></details>`:''}`:'<span class="mut">Todavía no se ha cargado desde Odoo.</span>'}
-    ${puede('ordenes')?`<div style="margin-top:10px">${odooBotonHTML('btn ghost sm')} <button class="btn ghost sm" onclick="mOT()">Órdenes de trabajo</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button> <button class="btn ghost sm" onclick="mFotos()">Fotos</button></div>`:''}</div></div>
+    ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mActualizarDatos(1)">Actualizar datos</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button></div>`:''}</div></div>
   </div>`;
 }
 function ir(p){const a=document.querySelector('nav a[data-p="'+p+'"]');if(!a)return;if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
@@ -7957,7 +7957,7 @@ function vOrdenes(el){
   rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips" style="margin-right:10px">${[['ord','Órdenes'],['rutas','Rutas'+(rutasPorDefinir().length?' · '+rutasPorDefinir().length:'')]].map(([k,n])=>`<span class="chip ${(ORDF.tab||'ord')===k?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div>
-    ${puede('ordenes')?`${odooBotonHTML('btn tint tb',ICO.sync+' ')}<button class="btn ghost" onclick="mCargarTarea()">Recarga Parte 2 (tareas)</button><button class="btn ghost" onclick="mReporteTarea()">Reporte Parte 2</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
+    ${puede('ordenes')?`<button class="btn tint tb" onclick="mActualizarDatos(1)">${ICO.sync} Actualizar datos</button><button class="btn ghost" onclick="mReporteTarea()">Reporte de la última carga</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
   ${(()=>{const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${sf.length} órdenes sin fecha de entrega</b>: ${enPlan.length} entran al plan por su Proyecto (${num(enPlan.reduce((a,o)=>a+ +o.cant,0))} prendas; no se programan ni se liberan hasta tener fecha) y ${sf.filter(x=>!x.entra).length} sin Proyecto quedan fuera. Ponles fecha en Odoo. ${sf.map(x=>esc(x.op)+' ('+esc(x.fase)+(x.proyecto?' · '+esc(x.proyecto):' · sin proyecto')+')').join(', ')}</div>`:''})()}
   ${panelODCHTML()}
@@ -9599,11 +9599,6 @@ function togEstadoOTRow(i){const r=estadoOT()[i];r.pendiente=!r.pendiente;save()
 function delEstadoOTRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;estadoOT().splice(i,1);save();render()}
 
 let OT=null;
-function mOT(){abrir(`<h3>Órdenes de trabajo de Odoo (mrp.workorder)</h3><div class="body">
-   <p class="lede" style="margin-top:0">Sube la exportación de órdenes de trabajo. Columnas que se leen: <b>Orden de fabricación</b> (WH/MO/…), <b>Centro de trabajo</b>, <b>Estado</b>, y si vienen, <b>Fecha de inicio</b> y <b>Fecha de fin</b>. Solo lo <b>terminado</b> cambia la carga: ese centro queda hecho en la orden y manda sobre la fase. Centros de trabajo o estados que no estén en las tablas 6 y 7 de Configuración → Órdenes y materiales se reportan, no se adivinan. Se puede recargar cuando quieras: el archivo reemplaza lo que se sabía de cada orden que trae.</p>
-   <input type="file" id="f-ot" accept=".xlsx,.xls,.csv"><div id="ot-res" style="margin-top:14px"></div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button></div>`);
-  document.getElementById('f-ot').addEventListener('change',leerOT)}
 async function leerOT(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('ot-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
   const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
@@ -9646,8 +9641,8 @@ function planOT(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));
     if(faseHecho&&reg.estado!=='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'hecho',otDice:reg.estado});
     if(!faseHecho&&reg.estado==='terminado')plan.contradicciones.push({op:o.op,centro:c,fase:o.fase,faseDice:'pendiente',otDice:'terminado'})})});
   return plan}
-function resumenOTHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';const ords=Object.keys(p.porOrden).length;
-  return `<table><tbody>${li(p.filas,'filas de órdenes de trabajo leídas ('+p.ordenesArchivo.size+' órdenes en el archivo)')}${li(p.cruce.enArchivo,'órdenes del sistema que cruzan con el archivo (de '+p.cruce.total+')')}${li(ords,'órdenes del sistema con información de centros')}${li(Object.values(p.ignoradas).reduce((a,b)=>a+b,0),'filas de bodegas (baja de materiales) ignoradas: '+esc(Object.entries(p.ignoradas).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(p.cont['bloqueado por material'],'OT esperando componentes (bloqueadas por material) en '+p.esperandoMaterial.length+' órdenes')}${li(p.cont['esperando'],'esperando a otra orden de trabajo')}${li(p.moduloDesdeOperacion,'módulo real tomado de la columna Operaciones (MODULO 1 / PLANTA)')}${li(p.noTerminadaConFin,'OT no terminadas que traen fecha final')}
+function resumenOTHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';const ords=Object.keys(p.porOrden).length;const nne=Object.keys(p.ordenesNoEncontradas).length;
+  return `${nne?`<div class="warn" style="font-size:var(--fs-s);margin-bottom:8px"><b>${nne}</b> órdenes del archivo <b>no están en el sistema</b> (se ignoran; si deberían estar, carga primero las tareas de Odoo): ${esc(Object.keys(p.ordenesNoEncontradas).slice(0,12).join(', '))}${nne>12?'…':''}</div>`:''}<table><tbody>${li(p.filas,'filas de órdenes de trabajo leídas ('+p.ordenesArchivo.size+' órdenes en el archivo)')}${li(p.cruce.enArchivo,'órdenes del sistema que cruzan con el archivo (de '+p.cruce.total+')')}${li(ords,'órdenes del sistema con información de centros')}${li(Object.values(p.ignoradas).reduce((a,b)=>a+b,0),'filas de bodegas (baja de materiales) ignoradas: '+esc(Object.entries(p.ignoradas).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(p.cont['bloqueado por material'],'OT esperando componentes (bloqueadas por material) en '+p.esperandoMaterial.length+' órdenes')}${li(p.cont['esperando'],'esperando a otra orden de trabajo')}${li(p.moduloDesdeOperacion,'módulo real tomado de la columna Operaciones (MODULO 1 / PLANTA)')}${li(p.noTerminadaConFin,'OT no terminadas que traen fecha final')}
    ${li(p.cont.terminado,'OT terminadas (cierran el centro en la orden)')}${li(p.cont['en proceso'],'en proceso')}${li(p.cont['para hacer'],'para hacer')}${li(p.cancelados,'canceladas (se ignoran)')}
    ${li(Object.keys(p.ordenesNoEncontradas).length,'órdenes del archivo que no están en el sistema (se ignoran): '+esc(Object.keys(p.ordenesNoEncontradas).slice(0,12).join(', '))+(Object.keys(p.ordenesNoEncontradas).length>12?'…':''))}
    ${li(Object.keys(p.centrosNoMapeados).length,'centros de trabajo de Odoo que NO están en la tabla 6 (no se asignan por parecido): '+esc(Object.entries(p.centrosNoMapeados).map(([k,v])=>k+' ('+v+')').join(', ')))}
@@ -9817,13 +9812,6 @@ function mFoto(id){const o=S.ordenes.find(x=>x.id===id);const u=fotoDe(o);if(!u)
 /* al cargar/recargar órdenes: colgar el enlace por OP desde el índice (no toca fotos ya puestas) */
 function colgarFotos(lista){const ix=(S.params&&S.params.fotosIdx)||{};let n=0;(lista||S.ordenes).forEach(o=>{if(o.foto)return;const e=ix[normTxt(o.op)];if(e){o.foto=fotoURLde(o.op,e.ts);n++}});return n}
 let FOTOS=null;
-function mFotos(){const ix=(S.params&&S.params.fotosIdx)||{};const con=S.ordenes.filter(o=>fotoDe(o)).length;const C=S.params.fotosCarga;
-  abrir(`<h3>Fotos de las órdenes</h3><div class="body">
-   <p class="lede" style="margin-top:0">Sube un CSV con columnas <b>Orden de produccion</b> y <b>Avatar</b> (imagen en base64). Cada foto se guarda en el almacenamiento de Supabase (bucket <code>${esc(fotoBucket())}</code>, público) y en la orden queda solo el enlace. Se puede cargar por tandas: una foto que ya existe se reemplaza, las demás se conservan. Si una imagen viene sin comprimir (más de ${FOTO_MAX_PX} px o no es JPG) se convierte a JPG de ${FOTO_MAX_PX} px antes de subirla. El archivo no se guarda.</p>
-   <p style="font-size:var(--fs-s)"><b>${Object.keys(ix).length}</b> fotos en el almacenamiento · <b>${con}</b> órdenes con foto de ${S.ordenes.length}${C?` · última carga ${new Date(C.fecha).toLocaleString('es-EC')}: ${C.subidas} subidas, ${fmtBytes(C.bytes)}`:''}</p>
-   <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="fotos-ok" disabled onclick="aplicarFotos()">Subir fotos</button></div>`);
-  document.getElementById('f-fotos').addEventListener('change',leerFotos)}
 function fmtBytes(b){b=+b||0;return b>=1048576?(b/1048576).toFixed(1)+' MB':b>=1024?Math.round(b/1024)+' KB':b+' B'}
 /* CSV: columnas por cabecera; el base64 no lleva comas; admite comillas */
 function planFotos(txt,nombre){const lines=txt.split(/\r?\n/);const h=(lines[0]||'').split(',').map(x=>normTxt(x.replace(/"/g,'')));
@@ -9837,7 +9825,7 @@ function planFotos(txt,nombre){const lines=txt.split(/\r?\n/);const h=(lines[0]|
   return{archivo:nombre,filas,fotos,sinOp,sinImg,dupl,conOrden:fotos.filter(f=>f.orden).length,sinOrden:fotos.filter(f=>!f.orden).map(f=>f.op),bytes:fotos.reduce((a,f)=>a+Math.round(f.b64.length*0.75),0)}}
 async function leerFotos(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('fotos-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   const txt=await f.text();const p=planFotos(txt,f.name);if(!p){res.innerHTML='No encuentro las columnas "Orden de produccion" y "Avatar".';return}
-  FOTOS=p;res.innerHTML=`<table><tbody><tr><td><b>${p.filas}</b></td><td>filas</td></tr><tr><td><b>${p.fotos.length}</b></td><td>fotos (${fmtBytes(p.bytes)} decodificadas)</td></tr><tr><td><b>${p.conOrden}</b></td><td>con orden en el sistema</td></tr><tr><td><b>${p.sinOrden.length}</b></td><td>sin orden en el sistema (se suben igual y se cuelgan cuando llegue la orden)${p.sinOrden.length?': '+esc(p.sinOrden.slice(0,8).join(', '))+(p.sinOrden.length>8?'…':''):''}</td></tr>
+  FOTOS=p;res.innerHTML=`${p.sinOrden.length?`<div class="warn" style="font-size:var(--fs-s);margin-bottom:8px"><b>${p.sinOrden.length}</b> fotos de órdenes que <b>no están en el sistema</b>: se suben igual y se cuelgan cuando llegue la orden: ${esc(p.sinOrden.slice(0,8).join(', '))}${p.sinOrden.length>8?'…':''}</div>`:''}<table><tbody><tr><td><b>${p.filas}</b></td><td>filas</td></tr><tr><td><b>${p.fotos.length}</b></td><td>fotos (${fmtBytes(p.bytes)} decodificadas)</td></tr><tr><td><b>${p.conOrden}</b></td><td>con orden en el sistema</td></tr><tr><td><b>${p.sinOrden.length}</b></td><td>sin orden en el sistema (se suben igual y se cuelgan cuando llegue la orden)${p.sinOrden.length?': '+esc(p.sinOrden.slice(0,8).join(', '))+(p.sinOrden.length>8?'…':''):''}</td></tr>
    ${p.sinOp?`<tr><td><b>${p.sinOp}</b></td><td>filas sin orden: se descartan</td></tr>`:''}${p.sinImg.length?`<tr><td><b>${p.sinImg.length}</b></td><td>órdenes sin imagen: se descartan</td></tr>`:''}${p.dupl.length?`<tr><td><b>${p.dupl.length}</b></td><td>órdenes repetidas en el archivo (queda la última): ${esc(p.dupl.slice(0,6).join(', '))}</td></tr>`:''}</tbody></table>`;
   document.getElementById('fotos-ok').disabled=!p.fotos.length}
 function b64aBlob(b64){const s=atob(b64.replace(/^data:[^,]*,/,'').replace(/\s/g,''));const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);const mime=u[0]===0x89?'image/png':(u[0]===0x47?'image/gif':(u[0]===0x52?'image/webp':'image/jpeg'));return new Blob([u],{type:mime})}
@@ -10310,11 +10298,25 @@ function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice()
 
 /* ---------- lectura del archivo ---------- */
 let TAREA=null;
-function mCargarTarea(){abrir(`<h3>Recarga Parte 2 · Órdenes y materiales</h3><div class="body">
-   <p class="lede" style="margin-top:0">Sube la exportación de tareas (<b>Tarea__project_task</b>, hoja Sheet1). Cabecera = fila con "Orden de producción"; sus componentes van debajo hasta la siguiente cabecera. Alcance: entrega ≥ hoy, o entrega vencida con Estado OP abierto (carga vencida). Se excluye cancel; done se carga como historia sin carga. Todo lo que no calce con las tablas de Configuración → Órdenes y materiales se carga marcado y se reporta.</p>
-   <input type="file" id="f-tarea" accept=".xlsx,.xls"><div id="tarea-res" style="margin-top:14px"></div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar (reemplaza las órdenes)</button></div>`);
-  document.getElementById('f-tarea').addEventListener('change',leerTarea)}
+/* ---------- ACTUALIZAR DATOS: el ÚNICO camino de carga (17-sep-2026) ----------
+   Tres pasos en una pantalla: 1) Tareas de Odoo (planTarea/aplicarTarea: clave única, regla de alcance, tabla 14),
+   2) Órdenes de trabajo, 3) Fotos. Nada se escribe en S durante la vista previa; nada se guarda antes de confirmar.
+   Reemplaza a «Actualizar desde Odoo», «Recarga Parte 2», «Órdenes de trabajo» y «Fotos» como diálogos sueltos. */
+let ACT={paso:1};
+function mActualizarDatos(paso){if(!puede('ordenes')){alert('Tu perfil no carga datos.');return}ACT.paso=paso||ACT.paso||1;TAREA=null;OT=null;FOTOS=null;
+  const chip=(n,t)=>`<span class="chip ${ACT.paso===n?'on':''}" style="cursor:pointer" onclick="mActualizarDatos(${n})">${n} · ${t}</span>`;
+  const ix=(S.params&&S.params.fotosIdx)||{};const conFoto=S.ordenes.filter(o=>fotoDe(o)).length;const CF=S.params.fotosCarga;const CT=S.params.tareaCarga;const CO=S.params.otCarga;
+  const cuerpo=ACT.paso===1?`<p class="lede" style="margin-top:0">Sube la exportación de tareas de Odoo (<b>Tarea__project_task</b>, hoja Sheet1, con o sin componentes). Las órdenes se reconocen por su <b>clave única</b> (WH, o cliente + proyecto + stilo + color + ODC si no tiene WH); el <b>alcance</b> es el de Configuración → Órdenes y materiales; lo que decidió una persona se conserva según la <b>tabla 14</b>. Lo que queda fuera de alcance o ya no viene <b>no se borra</b>: queda marcado. ${CT?`<span class="mut">Última carga: ${new Date(CT.fecha).toLocaleString('es-EC')} · ${esc(CT.archivo||'')}</span>`:''}</p>
+     <input type="file" id="f-tarea" accept=".xlsx,.xls"><div id="tarea-res" style="margin-top:14px"></div>`
+   :ACT.paso===2?`<p class="lede" style="margin-top:0">Sube la exportación de órdenes de trabajo (mrp.workorder). Columnas: <b>Orden de fabricación</b>, <b>Centro de trabajo</b>, <b>Estado</b> y, si vienen, fechas de inicio y fin. Solo lo <b>terminado</b> cambia la carga. Centros o estados fuera de las tablas 6 y 7 se reportan, no se adivinan. Las órdenes del archivo que no estén en el sistema se avisan y se ignoran. ${CO?`<span class="mut">Última carga: ${new Date(CO.fecha).toLocaleString('es-EC')} · ${esc(CO.archivo||'')}</span>`:''}</p>
+     <input type="file" id="f-ot" accept=".xlsx,.xls,.csv"><div id="ot-res" style="margin-top:14px"></div>`
+   :`<p class="lede" style="margin-top:0">Sube un CSV con columnas <b>Orden de produccion</b> y <b>Avatar</b> (imagen en base64). Cada foto va al almacenamiento (bucket <code>${esc(fotoBucket())}</code>) y en la orden queda el enlace; por tandas, la que ya existe se reemplaza. Las fotos de órdenes que no estén en el sistema se avisan: se suben igual y se cuelgan cuando llegue la orden.</p>
+     <p style="font-size:var(--fs-s)"><b>${Object.keys(ix).length}</b> fotos en el almacenamiento · <b>${conFoto}</b> órdenes con foto de ${S.ordenes.length}${CF?` · última carga ${new Date(CF.fecha).toLocaleString('es-EC')}: ${CF.subidas} subidas, ${fmtBytes(CF.bytes)}`:''}</p>
+     <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>`;
+  const pie=ACT.paso===1?`<button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar</button>`:ACT.paso===2?`<button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button>`:`<button class="btn" id="fotos-ok" disabled onclick="aplicarFotos()">Subir fotos</button>`;
+  abrir(`<h3>Actualizar datos</h3><div class="body"><div class="chips" style="margin-bottom:12px">${chip(1,'Tareas de Odoo')}${chip(2,'Órdenes de trabajo')}${chip(3,'Fotos')}</div>${cuerpo}</div>
+   <div class="foot"><span class="mut" style="font-size:var(--fs-xs);margin-right:auto">Nada se guarda antes de confirmar.</span><button class="btn ghost" onclick="cerrar()">Cancelar</button>${pie}</div>`,true);
+  const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:leerFotos)}
 async function leerTarea(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('tarea-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
   const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
@@ -10419,23 +10421,23 @@ function planTarea(rows,nombre){
   const h=(rows[0]||[]).map(x=>normTxt(x));const col=n=>h.findIndex(x=>x===normTxt(n));
   const I={op:col('Orden de producción'),proy:col('Proyecto'),cli:col('Cliente'),tit:col('Título'),odc:col('ODC'),stilo:col('Stilo'),dep:col('Departamento'),catP:col('Categoría Padre'),catH:col('Categoría Hija'),color:col('Color'),estado:col('Estado OP'),fase:col('Fase'),pedido:col('Pedido'),total:col('Total $'),
     prod:col('Orden de producción/Componentes/Producto'),costo:col('Orden de producción/Componentes/Costo'),dem:col('Orden de producción/Componentes/Demanda'),catProd:col('Orden de producción/Componentes/Categoria Producto'),udm:col('Orden de producción/Componentes/UdM'),fecha:col('Fecha Entrega'),tec:col('Tecnica'),punt:col('Numero Puntadas')};
-  if(I.op<0||I.fase<0||I.fecha<0||I.prod<0)return null;
+  if(I.op<0||I.fase<0||I.fecha<0)return null;const sinComponentes=I.prod<0; /* archivo sin componentes: solo se actualiza lo que viene */
   const HOY=hoy();const str=v=>v==null?'':String(v).trim();
   // 1) agrupar cabeceras y componentes
   const cab=[];let cur=null;let nLineasComp=0;
   let plan_sinLanzar=0;const claveIncompleta=[];
   for(let r=1;r<rows.length;r++){const x=rows[r];if(!x)continue;
     if(str(x[I.op])){cur={fila:r+1,op:str(x[I.op]),proyecto:str(x[I.proy]),cliente:str(x[I.cli]),titulo:str(x[I.tit]),odc:str(x[I.odc]),stilo:str(x[I.stilo]),depto:str(x[I.dep]),catP:str(x[I.catP]),catH:str(x[I.catH]),colorN:str(x[I.color]).toUpperCase(),
-      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur)}
+      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),fechaRaw:x[I.fecha],tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur)}
     else if(str(x[I.cli])||str(x[I.fase])||str(x[I.odc])){ // cabecera SIN WH: orden no lanzada en Odoo (0Diseño, 0Recetas Insumos…); identificador provisional estable
       const ck=claveOrden({op:'',cliente:str(x[I.cli]),proyecto:str(x[I.proy]),stilo:str(x[I.stilo]),colorN:str(x[I.color]).toUpperCase(),odc:str(x[I.odc])});
       if(ck.incompleta){claveIncompleta.push({fila:r+1,cliente:str(x[I.cli]),proyecto:str(x[I.proy]),stilo:str(x[I.stilo]),color:str(x[I.color]).toUpperCase(),odc:str(x[I.odc]),fase:str(x[I.fase]),cant:+x[I.pedido]||0,faltan:ck.faltan});cur=null;continue}
       cur={fila:r+1,op:opSinWH(ck.clave),clave:ck.clave,sinLanzar:true,proyecto:str(x[I.proy]),cliente:str(x[I.cli]),titulo:str(x[I.tit]),odc:str(x[I.odc]),stilo:str(x[I.stilo]),depto:str(x[I.dep]),catP:str(x[I.catP]),catH:str(x[I.catH]),colorN:str(x[I.color]).toUpperCase(),
-      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur);plan_sinLanzar++}
+      estadoOP:str(x[I.estado]).toLowerCase()||null,fase:str(x[I.fase]),cant:+x[I.pedido]||0,total:+x[I.total]||0,fecha:excelFecha(x[I.fecha]),fechaRaw:x[I.fecha],tecnicaTxt:str(x[I.tec]),puntadas:+x[I.punt]||0,comp:[]};cab.push(cur);plan_sinLanzar++}
     else nLineasComp++;
-    if(cur&&str(x[I.prod]))cur.comp.push({prod:str(x[I.prod]),costo:+x[I.costo]||0,dem:+x[I.dem]||0,ruta:str(x[I.catProd]),udm:str(x[I.udm])})}
+    if(cur&&!sinComponentes&&str(x[I.prod]))cur.comp.push({prod:str(x[I.prod]),costo:+x[I.costo]||0,dem:+x[I.dem]||0,ruta:str(x[I.catProd]),udm:str(x[I.udm])})}
   const plan={archivo:nombre,hoy:HOY,filas:rows.length-1,cabeceras:cab.length,lineasComp:nLineasComp,componentes:cab.reduce((a,o)=>a+o.comp.length,0),telaSinCatalogo:{},telaEnMetros:{},sinLanzar:plan_sinLanzar,precioRaro:[],
-    ordenes:[],excluidas:{cancel:[],fueraRango:[],alcance:[]},sinFecha:[],duplicados:[],claveIncompleta,claveRepetida:[],prevAWh:[],fasesNoCalzan:{},fasesTablaSinUso:[],nivel2NoRec:{},nivel3NoRec:{},coloresNuevos:[],tecnicasNoEncontradas:{},porFase:{},porEstadoOP:{},catSinMapeo:{},telaSinClasificar:{},contradicciones:[],devoluciones:0,bloqueadas:0,vencidas:0,historia:0};
+    ordenes:[],excluidas:{cancel:[],fueraRango:[],alcance:[]},sinFecha:[],duplicados:[],claveIncompleta,claveRepetida:[],prevAWh:[],sinComponentes,fechasIlegibles:[],coloresNuevosObj:[],fasesNoCalzan:{},fasesTablaSinUso:[],nivel2NoRec:{},nivel3NoRec:{},coloresNuevos:[],tecnicasNoEncontradas:{},porFase:{},porEstadoOP:{},catSinMapeo:{},telaSinClasificar:{},contradicciones:[],devoluciones:0,bloqueadas:0,vencidas:0,historia:0};
   const fasesVistas=new Set();const vistos={};
   // pasada previa sobre TODO el archivo (dentro o fuera del alcance): números repetidos y niveles de material no reconocidos
   cab.forEach(d=>{if(!d.clave)d.clave=claveOrden({op:d.op}).clave});
@@ -10447,7 +10449,9 @@ function planTarea(rows,nombre){
   cab.forEach(d=>d.comp.forEach(c=>{const niv=c.ruta.split("/").map(s=>s.trim());const n2=niv[1]||"",n3=niv[2]||"",n4=niv[3]||"";
     if(!clasifDe(n2)){const key=n2||"(vacío: "+(niv[0]||"")+")";plan.nivel2NoRec[key]=(plan.nivel2NoRec[key]||0)+1}
     else if(clasifDe(n2)==="tela"&&!origenDeTela(n3,n4))plan.nivel3NoRec[n3||"(vacío)"]=(plan.nivel3NoRec[n3||"(vacío)"]||0)+1}));
-  const colorDe=n=>{let c=S.colores.find(x=>normTxt(x.n)===normTxt(n));if(!c){c={id:uid(),n:n||'SIN COLOR',cod:''};S.colores.push(c);plan.coloresNuevos.push(c.n)}return c};
+  /* la vista previa NO escribe en S: los colores nuevos se guardan en el plan y entran al aplicar */
+  const colorDe=n=>{let c=S.colores.find(x=>normTxt(x.n)===normTxt(n))||plan.coloresNuevosObj.find(x=>normTxt(x.n)===normTxt(n));if(!c){c={id:uid(),n:n||'SIN COLOR',cod:''};plan.coloresNuevosObj.push(c);plan.coloresNuevos.push(c.n)}return c};
+  cab.forEach(d=>{if(d.fechaRaw!=null&&d.fechaRaw!==''&&!d.fecha)plan.fechasIlegibles.push({op:d.op,fila:d.fila,valor:String(d.fechaRaw)})});
   cab.forEach(d=>{
     const fila=faseMapeo().find(x=>normFase(x.fase)===normFase(d.fase))||null;if(fila)fasesVistas.add(normFase(fila.fase));
     plan.porFase[d.fase]=plan.porFase[d.fase]||{n:0,prendas:0,sistema:fila?fila.sistema:null};plan.porFase[d.fase].n++;plan.porFase[d.fase].prendas+=d.cant;
@@ -10508,10 +10512,35 @@ function planTarea(rows,nombre){
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
+  /* VISTA PREVIA (solo lectura): qué pasaría al aplicar */
+  {const porId={};S.ordenes.forEach(o=>{porId[o.id]=o});const ids=new Set(plan.ordenes.map(o=>o.id));
+   const rep=new Set(plan.ordenes.filter(o=>o.claveRepetida&&porId[o.id]).map(o=>o.clave));
+   plan.prev={nuevas:0,actualizadas:0,cerradas:0,noVinieron:[],noCalzan:[],repetidasNoAplicadas:0};
+   plan.ordenes.forEach(o=>{const v=porId[o.id];if(o.claveRepetida&&rep.has(o.clave)){plan.prev.repetidasNoAplicadas++;return}
+     if(o.faseSistema==='cerrada')plan.prev.cerradas++;if(!v){plan.prev.nuevas++;return}plan.prev.actualizadas++;
+     if(conserva('fase')&&v.fase!=null&&normFase(v.fase)!==normFase(o.fase||''))plan.prev.noCalzan.push({op:o.op,tipo:'fase',sistema:v.fase,archivo:o.fase});
+     if(conserva('fecha')&&v.fechaManual&&v.fecha&&v.fecha!==o.fecha)plan.prev.noCalzan.push({op:o.op,tipo:'fecha',sistema:v.fecha,archivo:o.fecha});
+     const a=S.avance[o.id];if(a&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)plan.prev.noCalzan.push({op:o.op,tipo:'avance',sistema:nCen(c)+' '+n,archivo:o.cant})})});
+   const alc=new Set(plan.excluidas.alcance.map(x=>x.clave));
+   S.ordenes.forEach(o=>{if(ids.has(o.id)||o.estado==='noArchivo'||rep.has((claveDeOrden(o)||{}).clave))return;const k=(claveDeOrden(o)||{}).clave;
+     plan.prev.noVinieron.push({id:o.id,op:o.op,cliente:o.cliente,cant:o.cant,fase:o.fase,motivo:alc.has(k)?'fuera de alcance':(k?'no viene en el archivo':'clave incompleta')})});}
   {const ps=plan.ordenes.map(o=>o.precio).filter(v=>v>0).sort((a,b)=>a-b);const med=ps.length?ps[Math.floor(ps.length/2)]:0;if(med>0)plan.precioRaro=plan.ordenes.filter(o=>o.precio>0&&o.precio>=med*10).map(o=>({op:o.op,cliente:o.cliente,odc:o.odc,ref:o.ref,cat:o.catTxt,color:o.colorOdoo,fase:o.fase,cant:o.cant,total:o.total,precio:o.precio,mediana:med}))}
   return plan}
+function vistaPreviaTareaHTML(p){const v=p.prev||{};const li=(n,t,cls)=>`<tr${cls?' class="'+cls+'"':''}><td class="num"><b>${num(n||0)}</b></td><td>${t}</td></tr>`;
+  const nv=v.noVinieron||[];const nvA=nv.filter(x=>x.motivo==='fuera de alcance').length,nvN=nv.length-nvA;
+  const err=(p.fasesNoCalzan?Object.keys(p.fasesNoCalzan).length:0)+(p.contradicciones||[]).length;
+  return `<div class="panel" style="margin:0 0 10px"><h3>Qué pasará al aplicar <span class="note">nada se guarda hasta confirmar</span></h3><div class="body"><table style="font-size:var(--fs-s)"><tbody>
+   ${li(v.nuevas,'órdenes <b>nuevas</b>')}${li(v.actualizadas,'órdenes <b>actualizadas</b> (lo del archivo se actualiza; lo decidido aquí se conserva según la tabla 14)')}${li(v.cerradas,'de ellas, <b>cerradas</b> (fase de cierre: quedan como historia)')}
+   ${li(((p.excluidas||{}).alcance||[]).length,'<b>fuera de alcance</b> en el archivo (no se crean; '+nvA+' que ya estaban quedan marcadas «fuera de alcance», no se borran)')}
+   ${li(nvN,'órdenes del sistema que <b>no vinieron</b> en el archivo (quedan «no está en el archivo», no se borran)'+(nvN?': '+esc(nv.filter(x=>x.motivo!=='fuera de alcance').slice(0,8).map(x=>x.op).join(', '))+(nvN>8?'…':''):''))}
+   ${li((v.noCalzan||[]).length,'decisiones del sistema que el archivo contradice (<b>no calzan</b>: se conserva la del sistema y van a la bandeja)'+((v.noCalzan||[]).length?': '+esc(v.noCalzan.slice(0,6).map(x=>x.op+' '+x.tipo).join(', ')):''))}
+   ${li((p.claveIncompleta||[]).length,'cabeceras con <b>clave incompleta</b> (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).slice(0,8).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')),(p.claveIncompleta||[]).length?'warn':'')}
+   ${li((p.duplicados||[]).length,'filas con <b>clave repetida</b> en el archivo'+(v.repetidasNoAplicadas?' · '+v.repetidasNoAplicadas+' NO se aplican porque la clave ya existe (revisar)':'')+': '+esc((p.duplicados||[]).slice(0,8).map(x=>x.op+' (fila '+x.fila+')').join(', ')))}
+   ${li((p.fechasIlegibles||[]).length,'<b>fechas ilegibles</b> (quedan sin fecha, no se inventan): '+esc((p.fechasIlegibles||[]).slice(0,8).map(x=>x.op+' «'+x.valor+'»').join(', ')))}
+   ${li(err,'<b>errores</b> del archivo: '+(Object.keys(p.fasesNoCalzan||{}).length?'fases que no están en la tabla 1 ('+esc(Object.keys(p.fasesNoCalzan).join(', '))+')':'')+((p.contradicciones||[]).length?' · '+(p.contradicciones||[]).length+' contradicciones Estado OP vs Fase':''))}
+  </tbody></table>${p.sinComponentes?`<div class="warn" style="font-size:var(--fs-s);margin-top:8px"><b>Archivo sin componentes</b>: no trae telas ni materiales. Solo se actualiza lo que viene (fase, cantidades, fechas, cliente, categoría, color); telas, materiales y ruta de las órdenes existentes se conservan como están.</div>`:''}</div></div>`}
 function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</td></tr>`:'';
-  return `${resumenAlcanceHTML((p.excluidas||{}).alcance,'Fuera de alcance en este archivo')}<table><tbody>${li(p.cabeceras,'cabeceras de orden en el archivo ('+p.componentes+' líneas de componentes)')}${li(p.ordenes.length,'órdenes que se cargan (incluye '+p.historia+' done como historia y '+p.vencidas+' vencidas abiertas)')}
+  return `${vistaPreviaTareaHTML(p)}${resumenAlcanceHTML((p.excluidas||{}).alcance,'Fuera de alcance en este archivo')}<table><tbody>${li(p.cabeceras,'cabeceras de orden en el archivo ('+p.componentes+' líneas de componentes)')}${li(p.ordenes.length,'órdenes que se cargan (incluye '+p.historia+' done como historia y '+p.vencidas+' vencidas abiertas)')}
    ${li(p.excluidas.cancel.length,'excluidas por fase Cancelado')}${li(p.excluidas.fueraRango.length,'excluidas: entrega pasada y fase de cierre (regla de alcance)')}${li(p.sinFecha.length,'sin Fecha Entrega → bandeja "órdenes sin fecha" (no se cargan, no se inventa fecha)')}
    ${li(Object.keys(p.fasesNoCalzan).length,'valores de Fase que no calzan con la tabla (se cargan con ruta completa y se reportan): '+esc(Object.keys(p.fasesNoCalzan).join(', ')))}${li(p.duplicados.length,'filas con la MISMA CLAVE en el archivo (clave repetida — revisar: si la clave ya existe en el sistema NO se aplican y las existentes quedan como están; si no existe, entran las dos marcadas): '+esc(p.duplicados.map(x=>x.op+' (fila '+x.fila+')').join(', ')))}${li((p.claveIncompleta||[]).length,'cabeceras sin WH con CLAVE INCOMPLETA (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')))}${li((p.prevAWh||[]).length,'órdenes que pasaron de sin WH a WH (reconocidas por su clave anterior, una sola vez)')}${li((p.claveRepetidaSistema||[]).length,'claves repetidas YA en el sistema (dos órdenes con la misma clave; se actualiza la primera): '+esc((p.claveRepetidaSistema||[]).map(x=>x.ids.join(' = ')).join(', ')))}
    ${li(Object.keys(p.nivel2NoRec).length,'segundos niveles de material no reconocidos: '+esc(Object.keys(p.nivel2NoRec).join(', ')))}${li(Object.keys(p.telaSinCatalogo).length,'telas en kg sin tela del catálogo en la tabla 8 (no entran al motor de tejeduría/tintorería): '+esc(Object.entries(p.telaSinCatalogo).map(([k,v])=>k+' ('+v+')').join(', ')))}${li(Object.keys(p.telaSinClasificar).length,'tipos de tela SIN CLASIFICAR con órdenes: '+esc(Object.keys(p.telaSinClasificar).join(', ')))}${li(Object.keys(p.telaEnMetros||{}).length,'telas planas en metros (se quedan en metros; los kilos se registran por tanda en tintorería): '+esc(Object.entries(p.telaEnMetros||{}).map(([k,v])=>k+' ('+v+')').join(', ')))}
@@ -10558,6 +10587,7 @@ function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.
   const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
   /* el cruce ya lo hizo la clave única en planTarea: cada orden del plan trae el id de la existente (o uno nuevo) */
+  (p.coloresNuevosObj||[]).forEach(c=>{if(!S.colores.some(x=>x.id===c.id))S.colores.push(c)}); /* los colores nuevos entran recién ahora */
   const prev={};S.ordenes.forEach(o=>{prev[o.id]=o});
   /* CLAVE REPETIDA EN EL ARCHIVO (dos filas con la misma clave): el emparejamiento con lo que ya existe dependería del
      orden de las filas del Excel, que no es un criterio. Por eso, si esa clave YA está en el sistema, esas filas NO se
@@ -10575,7 +10605,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   let actualizadas=0,nuevas=0;
   ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];return}
-    actualizadas++;if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;if(o.claveAnterior)bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior);
+    actualizadas++;if(p.sinComponentes){['telas','materiales','origenTela','origenesTela','kgTej','kgTin','sinTelaKg','telaSinClasificar','ruta','rutaCompleta','insumos','sinTiempo'].forEach(k=>{if(v[k]!==undefined)o[k]=v[k]})} /* sin componentes: lo de telas y ruta se queda */
+    if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;if(o.claveAnterior)bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior);
     if(conserva('fase')&&v.fase!=null){if(normFase(v.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+v.fase,motivo:'el archivo trae '+(o.fase||'(vacía)')+'; se conserva la del sistema',tipo:'fase',sistema:v.fase,archivo:o.fase||''});aplicarFaseSistema(o,v.fase);cons.fase++}
     if(conserva('fecha')&&v.fechaManual&&v.fecha){if(v.fecha!==o.fecha)noCalzan.push({op:o.op,decision:'fecha de entrega cambiada aquí: '+v.fecha+' ('+(v.fechaManual.u||'')+')',motivo:'el archivo trae '+(o.fecha||'(vacía)')+'; se conserva la del sistema',tipo:'fecha'});o.fecha=v.fecha;o.fechaManual=v.fechaManual;o.vencida=!!(o.fecha&&o.fecha<hoy()&&!o.historia);cons.fecha++}
     if(conserva('lib')&&v.lib){o.lib=v.lib;cons.lib++;const g=grupoDe(o.fase);const sist=(filaFaseDe(o.fase)||{}).sistema;if(v.lib.corte&&v.lib.corte.ok&&sist&&['textil','previo a producción'].includes(sist))noCalzan.push({op:o.op,decision:'liberada a producción ('+(v.lib.corte.u||'')+')',motivo:'la fase nueva es '+o.fase+' (antes de producción)'});
@@ -10610,8 +10641,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
     devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,sinLanzar:p.sinLanzar,precioRaro:p.precioRaro||[],
     recarga:{actualizadas,nuevas,eliminadas:eliminadas.length,eliminadasConDecision:elimConDec.map(o=>o.op).slice(0,200),avanceEliminado:avanceEliminado.length,conservado:cons,noCalzan:noCalzan.slice(0,500)}};
-  bitacora('Recarga Parte 2 '+p.archivo+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(repNoAplicadas?', '+repNoAplicadas+' filas con clave repetida NO aplicadas (ya existen: revisar)':'')+'; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
-  TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Recarga aplicada: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
+  bitacora('Actualizar datos · tareas de Odoo '+p.archivo+(p.sinComponentes?' (sin componentes)':'')+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(repNoAplicadas?', '+repNoAplicadas+' filas con clave repetida NO aplicadas (ya existen: revisar)':'')+'; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
+  TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Datos actualizados: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
 
 /* ---------- reporte (BLOQUE K): se calcula desde las órdenes cargadas + lo guardado en la carga; la carga por centro se
    calcula aquí directamente (cant × minPrenda del motor, por mes de entrega; vencidas al mes en curso), NO con programar(). ---------- */
@@ -10686,183 +10717,7 @@ function catInsumo(nombre,catOdoo){const nc=normTxt(catOdoo||'');
   if(/funda|empaque|caja|bolsa|carton|papel/.test(n))return'Empaque';
   if(/apliqu|parche|termo|transfer/.test(n))return'Aplicaciones';
   return'Otros insumos'}
-/* «Actualizar desde Odoo» queda DESHABILITADO hasta que exista el camino único de carga (punto 6):
-   medido el 17-sep-2026 sobre el mismo archivo que ya cargó la Parte 2, reconoce 710 de 1.211 órdenes
-   existentes y crea 3.508 como nuevas (cartera 1.211 → 4.719). Solo el administrador puede forzarlo,
-   escribiendo la palabra, y queda en bitácora. */
-const ODOO_DESHABILITADO=true;
-const ODOO_TXT_DESHAB='Temporalmente deshabilitado — use Recarga Parte 2';
-function odooBotonHTML(cls,ico){ico=ico||'';
-  if(!ODOO_DESHABILITADO)return `<button class="${cls}" onclick="mOdoo()">${ico}Actualizar desde Odoo</button>`;
-  return `<button class="${cls}" disabled title="${ODOO_TXT_DESHAB}" style="opacity:.5;cursor:not-allowed">${ico}Actualizar desde Odoo</button><span class="mut" style="font-size:var(--fs-xs)">${ODOO_TXT_DESHAB}${puede('config')?` · <a href="#" onclick="forzarOdoo();return false">forzar (solo administrador)</a>`:''}</span>`}
-function forzarOdoo(){if(!puede('config')){alert('Solo el administrador puede forzar esta carga.');return}
-  const t=prompt('«Actualizar desde Odoo» está deshabilitado porque PUEDE DUPLICAR ÓRDENES: sobre el mismo archivo que ya cargó la Recarga Parte 2 reconoce solo una parte de las órdenes existentes y crea el resto como nuevas. Use Recarga Parte 2. Si aun así quiere forzarla, escriba exactamente: FORZAR');
-  if(String(t||'').trim()!=='FORZAR')return;
-  bitacora('Actualizar desde Odoo FORZADO por '+quienFirma()+' estando deshabilitado (puede duplicar órdenes)');save();mOdoo(true)}
-function mOdoo(forzado){if(ODOO_DESHABILITADO&&!forzado){alert(ODOO_TXT_DESHAB);return}
-  abrir(`<h3>Actualizar desde Odoo</h3><div class="body">${forzado?`<div class="warn" style="margin-bottom:8px"><b>Carga forzada.</b> Esta carga está deshabilitada porque puede duplicar órdenes; lo que haga queda en bitácora.</div>`:''}
-   <p class="lede" style="margin-top:0">Sube la exportación de tareas de Odoo (el mismo Excel de siempre, con o sin componentes). La aplicación crea las órdenes nuevas, actualiza fase y cantidades de las existentes, cierra las que Odoo marca done o to_close, y te muestra qué cambió antes de guardar.</p>
-   <input type="file" id="f-odoo" accept=".xlsx,.xls,.csv">
-   <div id="odoo-res" style="margin-top:14px"></div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="odoo-ok" disabled onclick="aplicarOdoo()">Aplicar cambios</button></div>`);
-  document.getElementById('f-odoo').addEventListener('change',leerOdoo)}
-let ODOO=null;
-/* ---------- el plan de «Actualizar desde Odoo», como función pura (17-sep-2026) ----------
-   Es EXACTAMENTE lo que vivía dentro de leerOdoo: se movió, no se cambió. Existe aparte para poder
-   probarlo con filas (antes el plan se armaba dentro del manejador del <input file> y no había forma
-   de ejercitarlo ni de medir qué pisa). */
-function planOdoo(rows,nombre){
-  const h=(rows[0]||[]).map(x=>normTxt(x));
-  const col=(...names)=>{for(const n of names){const i=h.findIndex(x=>x&&x.includes(normTxt(n))&&!x.includes('componentes'));if(i>=0)return i}return -1};
-  const iOP=col('orden de produccion'),iCli=col('cliente'),iFec=col('fecha entrega'),iProy=col('proyecto'),iOdc=col('odc'),iSt=col('stilo','estilo'),iPad=col('categoria padre'),iHij=col('categoria hija'),
-        iCol=col('color'),iEst=col('estado op'),iFase=col('fase'),iPun=col('puntadas'),iDep=col('departamento'),iPed=col('pedido'),iPre=col('pvp','precio'),iTot=col('total'),iTec=col('tecnica'),iPan=col('pantone'),iProd=col('produccion total'),
-        iCP=h.findIndex(x=>x&&x.includes('componentes/producto')),iCD=h.findIndex(x=>x&&x.includes('componentes/demanda')),iCC=h.findIndex(x=>x&&x.includes('componentes/categoria')),iCU=h.findIndex(x=>x&&x.includes('componentes/udm'));
-  if(iOP<0||iHij<0)return null;
-  const conComp=iCP>=0;const esTarea=r=>r[iProy]!=null&&String(r[iProy]).trim()!=='';
-  /* la clave única (claveOrden): con WH por la WH; sin WH por cliente|proyecto|stilo|color|ODC. Incompleta = se reporta y no entra;
-     repetida en el archivo = se reportan las dos y NO se funden (entran aparte) */
-  const claveIncompleta=[],claveRepetida=[];const cuentaClave={};
-  const ops=new Map();let cur=null;
-  rows.slice(1).forEach((r,ri)=>{if(esTarea(r)){const op=r[iOP]?String(r[iOP]).trim():'';const ck=claveOrden({op,cliente:r[iCli],proyecto:r[iProy],stilo:r[iSt],colorN:r[iCol],odc:iOdc>=0?r[iOdc]:''});
-      if(ck.incompleta){claveIncompleta.push({fila:ri+2,cliente:String(r[iCli]||''),proyecto:String(r[iProy]||''),stilo:String(r[iSt]||''),color:String(r[iCol]||''),odc:String(iOdc>=0?(r[iOdc]||''):''),faltan:ck.faltan});cur=null;return}
-      cuentaClave[ck.clave]=(cuentaClave[ck.clave]||0)+1;const key=cuentaClave[ck.clave]>1?ck.clave+'#dup'+cuentaClave[ck.clave]:ck.clave;if(cuentaClave[ck.clave]>1)claveRepetida.push({clave:ck.clave,op,fila:ri+2});
-      cur=key;if(!ops.has(key))ops.set(key,{r,op,clave:ck.clave,comp:[]})}
-    if(cur&&iCP>=0&&r[iCP])ops.get(cur).comp.push({prod:String(r[iCP]),dem:+r[iCD]||0,cat:String(r[iCC]||''),udm:String(r[iCU]||'')})});
-  /* la fecha sale SOLO de la columna: seriales numéricos y textos con excelFecha; lo ilegible se reporta. Antes un serial
-     numérico caía a «día 28 del mes del Proyecto» (fecha inventada). */
-  const fechasIlegibles=[];
-  const fechaDe=r=>{const v=iFec>=0?r[iFec]:null;if(v==null||v==='')return null;const f=excelFecha(v);if(!f)fechasIlegibles.push({op:String(r[iOP]||''),valor:String(v)});return f};
-  const mapaTela=cat=>{const n2=normFase(String(cat||'').split('/')[1]||'');if(n2!==normFase('MP'))return 'SERV';return telaDeRuta(cat)||'EXT'};
-  const estadoDe=(op,est,fase)=>{const fz=normTxt(fase);if(!op)return(fz.startsWith('factur')||fz.startsWith('stand'))?null:'prevision';if(est==='cancel')return'anulada';if(fz.startsWith('stand'))return'standby';if(fz.startsWith('factur')||est==='done'||est==='to_close')return'cerrada';return'plan'};
-  const plan={nuevas:[],act:[],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],sinCambio:0,coloresNuevos:new Set(),catsNuevas:new Set(),tecNuevas:new Set(),telasSinKg:0,alertas:[],archivo:nombre||'',hayPrev:false,conComp,
-    claveIncompleta,claveRepetida,fechasIlegibles,fueraAlcance:[],marcarFuera:[]};
-  const idx=indiceClaves();plan.claveRepetidaSistema=idx.repetidas;const porPrev={};S.ordenes.forEach(o=>{if(o.estado==='prevision')porPrev[o.id]=o});
-  const vistasPrev=new Set();
-  const colorPorCodigo=(cod,nombre)=>{let c=S.colores.find(x=>x.cod===cod);if(!c){c={id:'col_'+cod.replace('-','_'),n:(nombre||('PANTONE '+cod)).toUpperCase(),cod,fam:cod.slice(0,2)==='11'?'claro':(+cod.slice(0,2)>=12&&+cod.slice(0,2)<=17)?'medio':'oscuro'};S.colores.push(c);plan.coloresNuevos.add(c.n+' '+cod)}
-    else if(nombre&&/^PANTONE /.test(c.n)){c.n=nombre.toUpperCase()}return c};
-  ops.forEach((v,key)=>{const r=v.r,op=v.op,clave=v.clave;const est=String(r[iEst]||'').toLowerCase();const fase=String(r[iFase]||'').trim();const estado=estadoDe(op,est,fase);if(!estado)return;
-    const exClave=idx.get(clave)||null;
-    const padre=String(r[iPad]||'').trim(),hija=String(r[iHij]||'').trim();let colN=normTxt(r[iCol]).toUpperCase().trim();colN=SIN_COLOR[colN]||colN;
-    const cant=+r[iPed]||0,punt=+(iPun>=0?r[iPun]:0)||0,fecha=fechaDe(r),prodTot=iProd>=0?(+r[iProd]||0):null;const tecTxt=iTec>=0?String(r[iTec]||'').trim():'';
-    // categoría
-    let k=S.categorias.find(x=>x.padre&&normTxt(x.n)===normTxt(hija)&&normTxt((K(x.padre)||{}).n)===normTxt(padre));
-    if(!k){let p=S.categorias.find(x=>!x.padre&&normTxt(x.n)===normTxt(padre));if(!p){p={id:uid(),n:padre||'SIN PADRE',padre:null,recursos:[]};S.categorias.push(p);plan.catsNuevas.add(padre)}
-      k=S.categorias.find(x=>x.padre===p.id&&normTxt(x.n)===normTxt(hija||''));if(!k){k={id:uid(),n:hija||p.n,padre:p.id,recursos:[]};S.categorias.push(k);plan.catsNuevas.add(padre+' / '+(hija||p.n))}}
-    // técnica de estampado
-    let tec=null;if(tecTxt){tec=S.tecnicas.find(t=>normTxt(t.n)===normTxt(tecTxt));if(!tec){tec={id:uid(),n:tecTxt,t:1.2,maq:'',prov:true};S.tecnicas.push(tec);plan.tecNuevas.add(tecTxt)}}
-    // telas desde componentes, con Pantone por tela
-    let telas=null,lavado=false,insumos=[],hayBoton=false,hayCordon=false;
-    if(conComp&&op){const acc={};v.comp.forEach(cp=>{const t=mapaTela(cp.cat);if(t==='SERV'){if(normTxt(cp.prod).includes('servicio de lavado')||normTxt(cp.cat).includes('lavanderia'))lavado=true;return}
-        if(t==='UDS'||cp.udm==='Uds'){const nm=(cp.prod||'').replace(/^\[[^\]]*\]\s*/,'').trim();if(nm){insumos.push({n:nm,cant:+cp.dem||0,ud:cp.udm||'uds',ok:false,cat:catInsumo(nm,cp.cat)});const nn=normTxt(nm+' '+cp.cat);if(/boton|bot[oó]n|ojal|broche/.test(nn))hayBoton=true;if(/cord[oó]n|cordon|jareta|pasador/.test(nn))hayCordon=true}return}
-        const m=(cp.prod||'').match(/(\d{2}-\d{4})/);const cod=m?m[1]:'';const stock=/segunda|falla|tercera/.test(normTxt(cp.cat));
-        const key2=t+'|'+cod+'|'+cp.udm+'|'+(stock?'S':'');acc[key2]=(acc[key2]||0)+cp.dem});
-      telas=Object.entries(acc).filter(([,kg])=>kg>0).sort((x,y)=>y[1]-x[1]).map(([key2,kg],i)=>{const [t,cod,udm,st]=key2.split('|');const colT=cod?colorPorCodigo(cod,null):null;
-        return{tela:t==='EXT'?'t12':t,kg:+kg.toFixed(3),ud:udm,rol:i===0?'base':'complemento',ext:t==='EXT'?'ext':(st==='S'?'stock':null),color:colT?colT.id:null}});
-      if(!telas.length&&estado==='plan')plan.telasSinKg++}
-    // color de la orden: Pantone de la tela con más kilos → columna Pantone → nombre comercial
-    let c=null;if(telas){const base=telas.find(t=>t.color&&t.ud==='kg')||telas.find(t=>t.color);if(base){c=C(base.color);
-      const cods=new Set(telas.filter(t=>t.color).map(t=>t.color));if(c&&cods.size===1&&/^PANTONE /.test(c.n)&&colN&&!/COMBINADO|JAS\b|WASH|\//.test(colN))c.n=colN}}
-    if(!c&&iPan>=0&&r[iPan]){const m=String(r[iPan]).match(/(\d{2}-\d{4})\s*(.*)$/);if(m)c=colorPorCodigo(m[1],m[2].trim()||null)}
-    if(!c){const ex0=exClave;if(ex0&&C(ex0.color)&&C(ex0.color).cod)c=C(ex0.color);}
-    if(!c){c=S.colores.find(x=>normTxt(x.n)===normTxt(colN));if(!c){c={id:uid(),n:colN||'SIN COLOR',cod:'',fam:'medio'};S.colores.push(c);plan.coloresNuevos.add(colN)}}
-    const precioU=(()=>{const u=iPre>=0?+r[iPre]:0;const t=iTot>=0?+r[iTot]:0;return u>0?u:(t>0&&cant>0?t/cant:0)})();
-    const datos={cliente:String(r[iCli]||''),ref:String(r[iSt]||''),cat:k.id,color:c.id,cant,fecha,fase,depto:String(r[iDep]||''),odc:String(r[iOdc]||''),proyecto:String(r[iProy]||''),colorOdoo:colN,tecnica:tec?tec.id:null,punt,lavado,telas,insumos:insumos.length?insumos:null,hayBoton,hayCordon,precio:precioU>0?+precioU.toFixed(4):null,prodTot,estado};
-    /* regla de alcance única: lo que queda fuera no se crea; si ya existe, se marca (no se borra) */
-    {const al=alcanceOrden({fase,fecha,proyecto:datos.proyecto});
-     if(!al.dentro){plan.fueraAlcance.push({op:op||opSinWH(clave),clave,motivo:al.motivo,txt:al.txt,cant,fecha,fase,estado,existe:!!exClave});if(exClave)plan.marcarFuera.push({id:exClave.id,motivo:al.motivo,txt:al.txt});return}
-     if(al.sinFecha)datos.sinFechaEntrega=true}
-    if(!op){plan.hayPrev=true;const ex=exClave;if(ex)vistasPrev.add(ex.id);
-      if(ex){Object.assign(ex,{cliente:datos.cliente,cat:k.id,color:c.id,cant,fecha:fecha||ex.fecha,fase,proyecto:datos.proyecto,precio:datos.precio||ex.precio,clave});plan.sinCambio++}
-      else{const n=nuevaOrden(idDeClave(clave),opSinWH(clave),datos,k);n.clave=clave;n.sinLanzar=true;plan.nuevas.push(n);plan.prevNuevas++}
-      return}
-    // una WH que antes estaba sin WH: se reconoce por su clave sin WH UNA vez; no se borra nada, se guarda la clave anterior
-    let ex=exClave;
-    if(!ex){const cs=claveOrden({op:'',cliente:r[iCli],proyecto:r[iProy],stilo:r[iSt],colorN:r[iCol],odc:iOdc>=0?r[iOdc]:''});const ex2=cs.clave?idx.get(cs.clave):null;
-      if(ex2&&claveDeOrden(ex2).tipo==='sin'){ex=ex2;datos.opNuevo=op;datos.claveAnterior=cs.clave;vistasPrev.add(ex2.id);plan.prevAWh++}}
-    if(ex){const cambios=[],al=[];if(datos.opNuevo)cambios.push('pasa de sin WH a '+op);
-      if(datos.precio&&Math.abs((ex.precio||0)-datos.precio)>0.001)cambios.push('precio → '+datos.precio.toFixed(2));
-      if(ex.fase!==fase&&fase){cambios.push('fase '+faseNombre(ex.fase||'—')+' → '+faseNombre(fase));if(faseNum(fase)<faseNum(ex.fase)&&faseNum(fase)>0)al.push('retrocedió de fase: '+faseNombre(ex.fase)+' → '+faseNombre(fase))}
-      if(cant&&ex.cant!==cant){cambios.push('prendas '+ex.cant+' → '+cant);if(Math.abs(cant-ex.cant)/Math.max(1,ex.cant)>0.2)al.push('cantidad cambió '+ex.cant+' → '+cant)}
-      if(fecha&&iFec>=0&&ex.fecha!==fecha){cambios.push('entrega '+ex.fecha+' → '+fecha);if(fecha<ex.fecha)al.push('entrega se adelantó a '+fecha)}
-      if(ex.color!==c.id&&(c.cod||!(C(ex.color)||{}).cod)){cambios.push('color → '+c.n);if((C(ex.color)||{}).cod&&c.cod)al.push('cambió de color a '+c.n)}
-      if((ex.estado||'plan')!==estado){cambios.push('estado → '+ESTADOS_ORD[estado]);if(estado==='cerrada'&&faseNum(ex.fase)<8&&faseNum(fase)<8)al.push('cerrada por Odoo estando en '+faseNombre(fase||ex.fase||'sin fase'));if(estado==='cerrada')plan.cerradas++}
-      if(tec&&ex.tecnica!==tec.id)cambios.push('técnica → '+tec.n);if(iPun>=0&&punt!==(((ex.ruta||[]).find(p=>p.centro==='bordado')||{}).t||0))cambios.push('puntadas → '+punt);
-      if(estado==='plan')al.forEach(x=>plan.alertas.push(op+': '+x));
-      if(cambios.length)plan.act.push({o:ex,datos,cambios});else plan.sinCambio++}
-    else{if(estado==='plan'){if(cant>=1000)plan.alertas.push(op+': orden nueva grande, '+num(cant)+' prendas');if(fecha&&fecha<dsum(hoy(),14))plan.alertas.push(op+': orden nueva con entrega a menos de 2 semanas ('+fecha+')')}
-      {const n=nuevaOrden(idDeClave(clave)+(key.includes('#dup')?'_'+key.split('#dup')[1]:''),op,datos,k);n.clave=clave;plan.nuevas.push(n)}if(estado==='cerrada')plan.cerradas++}
-  });
-  if(plan.hayPrev)plan.prevQuitadas=Object.keys(porPrev).filter(id=>!vistasPrev.has(id));
-  plan.archivo=nombre||plan.archivo||'';
-  return plan}
-async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('odoo-res');res.innerHTML='<span class="mut">Leyendo…</span>';
-  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel (sin internet).';return})}
-  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
-  const plan=planOdoo(rows,f.name);if(!plan){res.innerHTML='No encuentro las columnas "Orden de producción" y "Categoría Hija". ¿Es la exportación de tareas?';return}const conComp=plan.conComp;
-  ODOO=plan;/* conteo del ARCHIVO que se va a cargar, no de la cartera: aquí el estado viene del archivo */const nPlan=plan.nuevas.filter(o=>o.estado==='plan').length,nCer=plan.nuevas.filter(o=>o.estado==='cerrada').length,nSb=plan.nuevas.filter(o=>o.estado==='standby').length;
-  res.innerHTML=`${resumenAlcanceHTML(plan.fueraAlcance,'Fuera de alcance en este archivo')}${plan.claveIncompleta.length?`<div class="warn" style="font-size:var(--fs-s);margin-top:8px"><b>${plan.claveIncompleta.length}</b> cabeceras sin WH con <b>clave incompleta</b> (no se reconocen ni se crean): ${esc(plan.claveIncompleta.map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', '))}</div>`:''}${plan.claveRepetida.length?`<div class="warn" style="font-size:var(--fs-s);margin-top:8px"><b>${plan.claveRepetida.length}</b> filas con <b>clave repetida en el archivo</b> (entran aparte, no se funden): ${esc(plan.claveRepetida.map(x=>(x.op||x.clave)+' (fila '+x.fila+')').join(', '))}</div>`:''}${plan.fechasIlegibles.length?`<div class="warn" style="font-size:var(--fs-s);margin-top:8px"><b>${plan.fechasIlegibles.length}</b> fechas de entrega <b>ilegibles</b> (quedan sin fecha, no se inventan): ${esc(plan.fechasIlegibles.slice(0,8).map(x=>x.op+' «'+x.valor+'»').join(', '))}</div>`:''}<table><tbody>
-    <tr><td><b>${nPlan}</b></td><td>órdenes abiertas nuevas${conComp?' (con telas y Pantone de la receta)':' (sin componentes: telas desde el consumo de la categoría)'}</td></tr>
-    ${nCer?`<tr><td><b>${nCer}</b></td><td>órdenes cerradas o facturadas nuevas (historial)</td></tr>`:''}${nSb?`<tr><td><b>${nSb}</b></td><td>órdenes en stand by nuevas</td></tr>`:''}
-    ${plan.prevNuevas?`<tr><td><b>${plan.prevNuevas}</b></td><td>previsiones nuevas (sin WH)</td></tr>`:''}${plan.prevAWh?`<tr><td><b>${plan.prevAWh}</b></td><td>previsiones que pasaron a WH</td></tr>`:''}${plan.prevQuitadas.length?`<tr><td><b>${plan.prevQuitadas.length}</b></td><td>previsiones que ya no están en Odoo: quedan como «no está en el archivo» (no se borran)</td></tr>`:''}
-    <tr><td><b>${plan.act.length}</b></td><td>órdenes con cambios (fase, cantidad, entrega, color, técnica, precio, estado)</td></tr>
-    <tr><td><b>${plan.sinCambio}</b></td><td>sin cambios</td></tr>
-    ${plan.tecNuevas.size?`<tr><td><b>${plan.tecNuevas.size}</b></td><td>técnicas nuevas (tiempo provisional 1,2 min): ${[...plan.tecNuevas].map(esc).join(', ')}</td></tr>`:''}
-    ${plan.coloresNuevos.size?`<tr><td><b>${plan.coloresNuevos.size}</b></td><td>colores nuevos: ${[...plan.coloresNuevos].slice(0,12).map(esc).join(', ')}${plan.coloresNuevos.size>12?'…':''}</td></tr>`:''}
-    ${plan.catsNuevas.size?`<tr><td><b>${plan.catsNuevas.size}</b></td><td>categorías nuevas: ${[...plan.catsNuevas].map(esc).join(', ')}</td></tr>`:''}
-    ${plan.telasSinKg?`<tr><td><b>${plan.telasSinKg}</b></td><td>órdenes abiertas sin tela reconocible en la receta</td></tr>`:''}</tbody></table>
-    ${plan.alertas.length?`<div class="warn" style="margin-top:10px"><b>Revisar (${plan.alertas.length}):</b><br>${plan.alertas.slice(0,25).map(esc).join('<br>')}${plan.alertas.length>25?'<br>…':''}</div>`:''}
-    ${plan.act.length?`<details style="margin-top:8px"><summary class="mut" style="cursor:pointer">Ver cambios</summary><div style="max-height:200px;overflow:auto;font-size:var(--fs-xs)">${plan.act.slice(0,400).map(a=>`<div>${esc(a.o.op)}: ${esc(a.cambios.join(' · '))}</div>`).join('')}</div></details>`:''}`;
-  document.getElementById('odoo-ok').disabled=!(plan.nuevas.length||plan.act.length||plan.prevQuitadas.length)}
-function nuevaOrden(id,op,d,k){const propia=!d.telas||d.telas.some(t=>!t.ext);const opts=[];if(d.punt>0)opts.push('bordado');if(d.tecnica)opts.push('estampado');if(d.lavado)opts.push('lavado');if(d.hayBoton)opts.push('botones');if(d.hayCordon)opts.push('plancha');
-  let ruta=armarRuta(propia?'propia':'externa',0,opts,[]).map(p=>p.centro==='bordado'?{centro:'bordado',t:d.punt}:p.centro==='lavado'?{centro:'lavado',t:120}:p.centro==='estampado'?{centro:'estampado',t:tecnicaT({tecnica:d.tecnica})||1}:p);
-  const spc=samPorCentro(k);ruta=ruta.map(p=>spc[p.centro]&&!(p.t>0)?{centro:p.centro,t:+spc[p.centro].toFixed(3)}:p);
-  const o={id,op,cliente:d.cliente,ref:d.ref,cat:k.id,color:d.color,colorOdoo:d.colorOdoo,cant:d.cant,fecha:d.fecha||null,sinFechaEntrega:!d.fecha,prio:3,fase:d.fase,depto:d.depto,odc:d.odc,proyecto:d.proyecto,tecnica:d.tecnica||null,
-    telas:d.telas||(op?telasDe(k).map(t=>({tela:t.tela,kg:+(t.kg*d.cant).toFixed(3),rol:t.rol||'base',color:null})):[]),ruta,insumos:d.insumos||[],estado:d.estado||'plan',precio:d.precio,prodTot:d.prodTot,samProv:!!Object.keys(spc).length&&S.operaciones.some(x=>x.sub==='Provisional')};
-  if(o.estado==='cerrada'&&!o.terminadaF)o.terminadaF=null;return o}
-/* Antes esta carga escribía encima sin consultar la tabla 14: pisaba la fase que mueven los
-   supervisores, las telas y hasta metía pasos en una ruta editada a mano. Ahora respeta lo mismo que
-   la Recarga Parte 2 y lo que no calza va a la MISMA bandeja de «decisiones que ya no calzan». */
-function aplicarOdoo(){if(!ODOO)return;const p=ODOO;const noCalzan=[];const ts0=new Date().toISOString();
-  /* nada se borra: las previsiones que ya no vienen quedan noArchivo; lo fuera de alcance queda marcado */
-  p.prevQuitadas.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(o&&o.estado!=='noArchivo'){o.estado='noArchivo';o.noArchivo={ts:ts0,archivo:p.archivo||'',estadoAntes:o.estado||'prevision'}}});
-  (p.marcarFuera||[]).forEach(m=>{const o=S.ordenes.find(x=>x.id===m.id);if(!o)return;o.fueraAlcance={ts:ts0,motivo:m.motivo,txt:m.txt,archivo:p.archivo||''};if(o.estado!=='noArchivo'){o.noArchivo={ts:ts0,archivo:p.archivo||'',estadoAntes:o.estado||'plan',fueraAlcance:m.motivo};o.estado='noArchivo'}});
-  p.act.forEach(a=>{const o=a.o,d=a.datos;
-    if(d.opNuevo){o.claveAnterior=d.claveAnterior;o.op=d.opNuevo;o.clave=claveOrden({op:d.opNuevo}).clave;o.sinLanzar=false;bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+d.claveAnterior)}
-    /* la FASE la mueven los supervisores: si el archivo trae otra, se reporta y no se pisa */
-    if(d.fase){if(conserva('fase')){if(normFase(d.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+(o.fase||'(vacía)'),motivo:'el archivo trae '+d.fase+'; se conserva la del sistema',tipo:'fase'})}
-      else registrarFase(o,d.fase,'archivo')}
-    if(d.cant)o.cant=d.cant;
-    /* la fecha de entrega cambiada aquí no se pisa */
-    if(d.fecha){if(conserva('fecha')&&o.fechaManual){if(d.fecha!==o.fecha)noCalzan.push({op:o.op,decision:'fecha de entrega cambiada aquí: '+o.fecha+' ('+((o.fechaManual||{}).u||'')+')',motivo:'el archivo trae '+d.fecha+'; se conserva la del sistema',tipo:'fecha'})}
-      else o.fecha=d.fecha}
-    if(d.color&&(C(d.color)||{}).cod||!(C(o.color)||{}).cod)o.color=d.color;o.cat=d.cat;o.colorOdoo=d.colorOdoo;o.estado=d.estado;
-    /* las telas: si hay decisiones de tintura/lavado confirmadas aquí, se reportan y no se pisan */
-    if(d.telas&&d.telas.length&&!o.telasManual){
-      const conDec=conserva('faltaConf')&&(o.telas||[]).some(t=>t.faltaConf);
-      if(conDec)noCalzan.push({op:o.op,decision:'decisiones de tela confirmadas aquí (tintura/lavado)',motivo:'el archivo trae otras telas; se conservan las del sistema',tipo:'tela'});
-      else o.telas=d.telas}
-    if(d.precio)o.precio=d.precio;if(d.prodTot!=null)o.prodTot=d.prodTot;if(d.cliente)o.cliente=d.cliente;
-    /* una ruta editada a mano (o confirmada) no se toca: los pasos que el archivo querría agregar
-       se reportan como que ya no calzan, en vez de aparecer solos en la ruta */
-    const rutaFija=(conserva('rutaEditada')&&(o.rutaEditada||[]).length)||(conserva('rutaConf')&&rutaConfirmada(o));
-    const pasoNuevo=(cen,por)=>{if(rutaFija){noCalzan.push({op:o.op,decision:'ruta definida aquí'+((o.rutaEditada||[]).length?' (editada a mano)':' (confirmada)'),motivo:'el archivo pediría agregar '+nCen(cen)+' por '+por+'; no se toca la ruta',tipo:'ruta'});return false}return true};
-    if(d.tecnica){o.tecnica=d.tecnica;if(!(o.ruta||[]).some(x=>x.centro==='estampado')&&pasoNuevo('estampado','la técnica')){const idx=RUTA_ORDEN.indexOf('estampado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'estampado',t:tecnicaT({tecnica:d.tecnica})||1})}}
-    if(d.punt>0){const b=(o.ruta||[]).find(x=>x.centro==='bordado');if(b)b.t=d.punt;else if(pasoNuevo('bordado','las puntadas')){const idx=RUTA_ORDEN.indexOf('bordado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'bordado',t:d.punt})}}
-    if(d.lavado&&!(o.ruta||[]).some(x=>x.centro==='lavado')&&pasoNuevo('lavado','el servicio de lavado')){const idx=RUTA_ORDEN.indexOf('lavado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'lavado',t:120})}
-    if(d.hayBoton&&!(o.ruta||[]).some(x=>x.centro==='botones')&&pasoNuevo('botones','los botones de la receta')){const idx=RUTA_ORDEN.indexOf('botones');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'botones',t:(samPorCentro(K(o.cat))||{}).botones||1})}
-    if(d.hayCordon&&!(o.ruta||[]).some(x=>x.centro==='plancha')&&pasoNuevo('plancha','el cordón de la receta')){const idx=RUTA_ORDEN.indexOf('plancha');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'plancha',t:(samPorCentro(K(o.cat))||{}).plancha||1})}
-    if(d.insumos&&d.insumos.length){o.insumos=o.insumos||[];d.insumos.forEach(ni=>{if(!o.insumos.some(x=>normTxt(x.n)===normTxt(ni.n)))o.insumos.push(ni)})}});
-  p.nuevas.forEach(o=>{if(!S.ordenes.some(x=>x.id===o.id))S.ordenes.push(o)});
-  /* la misma bandeja de «decisiones que ya no calzan» de la Recarga Parte 2 */
-  if(noCalzan.length){S.params.tareaCarga=S.params.tareaCarga||{};const rc=S.params.tareaCarga.recarga=S.params.tareaCarga.recarga||{};
-    rc.noCalzan=(rc.noCalzan||[]).concat(noCalzan).slice(-500);rc.origen='Actualizar desde Odoo · '+(p.archivo||'');
-    bitacora('Actualizar desde Odoo: '+noCalzan.length+' decisiones del sistema que el archivo contradice; se conservaron las del sistema ('+quienFirma()+')')}
-  S.cargas.push({id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:p.archivo||'',nuevas:p.nuevas.length,act:p.act.length,cerradas:p.cerradas,prev:p.prevNuevas,prevAWh:p.prevAWh,noCalzan:noCalzan.length,
-    alertas:p.alertas.slice(0,60),coloresNuevos:[...p.coloresNuevos],catsNuevas:[...p.catsNuevas]});
-  /* el registro de cargas NO se recorta (decisión 17-sep-2026): antes se quedaba con las últimas 60 */
-  ODOO=null;save();cerrar();render();
-  alert(`Aplicado: ${p.nuevas.length} nuevas, ${p.act.length} actualizadas, ${p.cerradas} cerradas.`+(p.prevAWh?` ${p.prevAWh} previsiones pasaron a WH.`:'')+(p.alertas.length?` ${p.alertas.length} puntos para revisar quedan en "Últimas cargas".`:''))}
+/* «Actualizar desde Odoo» se retiró el 17-sep-2026: el único camino de carga es «Actualizar datos» (planTarea/aplicarTarea). */
 function mPrecios(){abrir(`<h3>Precios por orden</h3><div class="body"><p class="lede" style="margin-top:0">Pega desde Excel: la WH y el precio unitario de venta (dólares por prenda). Si en vez del unitario pegas el total de la orden en una tercera columna, se divide entre las prendas.</p>
    <p style="font-size:var(--fs-s);background:var(--field);border:1px solid var(--rule);padding:9px 11px;border-radius:2px">WH · Precio unitario · Total (opcional)</p>
    <textarea id="f-paste" placeholder="WH/MO/28950&#9;5.85&#10;WH/MO/28951&#9;&#9;2620.80"></textarea></div>
