@@ -135,8 +135,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
   TAREA=planT;aplicarTarea();await __p(100);
   /* OT reales contra las órdenes reales (fixture local, no publicado) */
-  {const otRows=await (await fetch('fixtures/ot_rows.json')).json();__check('fixture OT: 27.336 filas incl. header',otRows.length===27336,otRows.length);
+  {const otRows=await (await fetch('fixtures/ot_rows.json')).json();window.__otRows=otRows;__check('fixture OT: 27.336 filas incl. header',otRows.length===27336,otRows.length);
    const po=planOT(otRows,'Orden_de_trabajo.xlsx');
+   /* ===== impacto del arreglo de excelFecha sobre el ARCHIVO ===== */
+   {const hh=otRows[0].map(x=>String(x).toLowerCase());
+    const iI=hh.findIndex(x=>x.includes("inicio")),iF=hh.findIndex(x=>x.includes("final"));
+    let num=0,conHora=0,cambian=0;const ejemplos=[];
+    otRows.slice(1).forEach(r=>{[iI,iF].forEach(i=>{const v=r[i];
+      if(typeof v!=="number"||v<20000||v>60000)return;num++;
+      if(Math.abs(v-Math.floor(v))>1e-9)conHora++;
+      if(excelFecha(v)!==excelFechaRedondeada(v)){cambian++;
+        if(ejemplos.length<3)ejemplos.push(r[0]+" · "+r[1]+" · "+String(excelFechaHora(v)).replace("T"," ").slice(0,16)+" · antes "+excelFechaRedondeada(v)+" → ahora "+excelFecha(v))}})});
+    __R.excel={fechasOT:num,conHora,cambian,pct:num?+(cambian/num*100).toFixed(1):0,ejemplos};
+    __check("EXR: se mide cuántas fechas del archivo de OT cambian",cambian>0,cambian+" de "+num+" ("+__R.excel.pct+"%)");}
    __check('planOT real: 27.335 filas, 3.987 órdenes en el archivo',po&&po.filas===27335&&po.ordenesArchivo.size===3987,po&&po.filas+'/'+po.ordenesArchivo.size);
    __check('planOT real: bodegas ignoradas = 5.768 filas (BODEGA INSUMOS 3.218 + BODEGA MP 2.550)',Object.values(po.ignoradas).reduce((a,b)=>a+b,0)===5768,JSON.stringify(po.ignoradas));
    __check('planOT real: estados todos reconocidos (6 valores en la tabla 7)',Object.keys(po.estadosNoReconocidos).length===0,JSON.stringify(po.estadosNoReconocidos));
@@ -438,14 +449,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      {const oF=cola3[0].o;delete oF.progCentro.corte.pri;PLAN=null;PLAN_ALL=null;render();const c4=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
       __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · la ordena la cercanía'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
      // agrupar: reordena y suma, no esconde
+     CEN.cercAbre={disponible:true,porLlegar:true,revisar:true,lejana:true};   /* los grupos de cercanía nacen colapsados: aquí se miran TODAS las filas */
      GRP={};grpSt('cen').niveles=['cliente','cat'];render();const hc=html();const pend3=cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0);
      const sumaGrp=(hc.match(/prendas · [\d.,]+ h \([\d.,]+ min\)<\/span>/g)||[]).length;
      __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes (agrupador común)",hc.includes('Cliente:')&&(hc.match(/draggable="true"/g)||[]).length===cola3.length&&sumaGrp>0&&hc.includes(num(pend3)+' prendas'));
      GRP={};
      // prio global manda: la pantalla lo dice
-     const pr=oA.prio;oA.prio=1;render();__check("cola: si la orden tiene prio global, la pantalla dice que manda",html().includes('prio global 1 manda'));oA.prio=pr;
+     const pr=oA.prio;oA.prio=1;render();__check("cola: si la orden tiene prio global, la pantalla dice que manda",html().includes('prio global 1 manda'),(cercaniaCentro(oA,'corte',programar())||{}).grupo);oA.prio=pr;
      // otro centro con menor puesto
-     oA.progCentro.modulos={pri:1};render();__check("cola: si otro centro la tiene en menor puesto, la pantalla lo dice",html().includes('la tiene en 1: manda ese'));delete oA.progCentro.modulos;
+     oA.progCentro.modulos={pri:1};render();__check("cola: si otro centro la tiene en menor puesto, la pantalla lo dice",html().includes('la tiene en 1: manda ese'),(cercaniaCentro(oA,'corte',programar())||{}).grupo);delete oA.progCentro.modulos;
+     CEN.cercAbre=null;
      // perfil sin permiso no mueve
      PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};const antesP=puestoDe(oA,'corte');moverEnCola(oA.id,'corte',{pos:1});__check("cola: un perfil de otro centro no puede mover",puestoDe(oA,'corte')===antesP);PERFIL=adminP;
      // terminados: una cola por centro
@@ -980,6 +993,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CCR: se puede medir la cola de corte sobre el volcado real",__R.cc.real.corte.existe&&__R.cc.real.corte.total>=0,
        __R.cc.real.corte.total+" órdenes");
      __check("CCR: y la de botones",__R.cc.real.botones.existe,__R.cc.real.botones.total);
+     /* ===== 3a · DIAGNÓSTICO: lejanas con llegada hoy/mañana o atrasadas ===== */
+     {const diag=(c)=>{if(!CE(c))return null;
+       const filas=filasDeCentros([c],Pc,lun,dsum(lun,6),"");
+       const m=partirPorCercania(colaCentro(c,filas));
+       const raras=(m.lejana||[]).filter(f=>{const l=f.cerc.llegada||{};
+         return (l.tipo==="fecha"&&l.dias<=1)||l.tipo==="atrasado"});
+       return raras.map(f=>{const o=f.o,x=f.cerc;
+         const ru=pasosProDe(o);const i=ru.indexOf(c);
+         const ro=(Pc.ordenes[o.id])||{};
+         const pasos=(ro.pasos||[]).map(p=>p.centro+":"+(p.hecho?"hecho":(p.error?("ERROR "+p.error):((p.ini?fmtDia(p.ini):"?")+"→"+(p.fin?fmtDia(p.fin):"?"))))+(p.min!=null?" ("+Math.round(p.min)+" min)":""));
+         /* posibles causas, comprobadas una por una */
+         const causas=[];
+         const et=centroEtapaDe(c);const gr=et?faseGrupos().find(g=>g.grupo===et):null;
+         if(gr&&gr.secuencial===false)causas.push("tramo NO secuencial ("+et+"): el orden real lo dan las OT de Odoo");
+         const cero=x.pendientes.filter(p=>{const pp=(ro.pasos||[]).find(z=>z.centro===p);return pp&&(+pp.min||0)===0});
+         if(cero.length)causas.push("pasos de 0 minutos pendientes: "+cero.map(nCen).join(", "));
+         const sinFecha=x.pendientes.filter(p=>{const pp=(ro.pasos||[]).find(z=>z.centro===p);return !pp||!pp.fin});
+         if(sinFecha.length)causas.push("pasos pendientes SIN fecha en el programa: "+sinFecha.map(nCen).join(", "));
+         /* ¿el fin del paso anterior es coherente con los pasos que quedan antes de él? */
+         const antP=(ro.pasos||[]).find(z=>z.centro===x.ant);
+         const previos=ru.slice(0,ru.indexOf(x.ant)).filter(z=>!pasoHecho(o,z));
+         const inconsistentes=previos.filter(z=>{const pp=(ro.pasos||[]).find(y=>y.centro===z);return pp&&pp.fin&&antP&&antP.fin&&pp.fin>antP.fin});
+         if(inconsistentes.length)causas.push("el programa termina "+inconsistentes.map(nCen).join(", ")+" DESPUÉS de "+nCen(x.ant)+": las fechas del motor no son coherentes con la ruta");
+         const dup=ru.filter((z,k)=>ru.indexOf(z)!==k);
+         if(dup.length)causas.push("la ruta repite centros: "+[...new Set(dup)].map(nCen).join(", "));
+         if(antP&&antP.fin&&antP.fin<hoy())causas.push("el paso anterior ya debía haber terminado ("+fmtDia(antP.fin)+"): la cadena va comprimida porque va tarde");
+         if(!causas.length)causas.push("sin causa evidente: el motor termina el paso anterior ya, aunque queden pasos antes");
+         return {op:o.op,odc:String(o.odc||"—"),fase:o.fase||"(sin fase)",cat:nombreCat(K(o.cat))||"",
+           etiqueta:txtLlegada(x.llegada).txt,pasosPend:x.pasosPend,
+           pendientes:x.pendientes.map(nCen),pasoAnterior:nCen(x.ant),
+           ruta:ru.map(z=>nCen(z)+(pasoHecho(o,z)?" ✓":"")).join(" → "),
+           programa:pasos,causas}})};
+      __R.cc=__R.cc||{};
+      __R.cc.diag3a={botones:diag("botones"),empaque:diag("empaque"),modulos:diag("modulos")};
+      const tot=["botones","empaque","modulos"].reduce((n,k)=>n+((__R.cc.diag3a[k]||[]).length),0);
+      __check("CC3A: se puede explicar cada lejana que llega hoy/mañana o atrasada",tot>=0,tot+" casos");}
      /* la prueba del arrastre (decisión 6) sobre el volcado real */
      {const c=["corte","modulos","empaque"].find(x=>colaCentro(x,filasDeCentros([x],Pc,lun,dsum(lun,6),"")).length>=5);
       if(c){const cola0=colaCentro(c,filasDeCentros([c],Pc,lun,dsum(lun,6),""));
@@ -1000,6 +1049,48 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        __check("CCR: tras arrastrar, solo la movida tiene puesto y el resto sigue por cercanía",
          __R.cc.arrastreReal.conPuestoDespues.length===1&&ok,JSON.stringify(__R.cc.arrastreReal.conPuestoDespues));
        cola0.forEach(f=>{if((f.o.progCentro||{})[c])delete f.o.progCentro[c].pri});PLAN=null;PLAN_ALL=null}}}
+   /* ===== efecto AGUAS ABAJO del arreglo, sin dejar rastro ===== */
+   {const foto=()=>({ord:S.ordenes.map(o=>({o,ot:JSON.stringify(o.ot||null),rf:JSON.stringify(o.recursoFijo||null),em:JSON.stringify(o.esperandoMaterial||null),ts:o.otTs})),
+      av:JSON.stringify(S.avance),carga:JSON.stringify(S.params.otCarga||null),nCargas:S.cargas.length});
+    const volver=f=>{f.ord.forEach(x=>{x.ot==="null"?delete x.o.ot:x.o.ot=JSON.parse(x.ot);
+        x.rf==="null"?delete x.o.recursoFijo:x.o.recursoFijo=JSON.parse(x.rf);
+        x.em==="null"?delete x.o.esperandoMaterial:x.o.esperandoMaterial=JSON.parse(x.em);
+        if(x.ts===undefined)delete x.o.otTs;else x.o.otTs=x.ts});
+      const a2=JSON.parse(f.av);Object.keys(S.avance).forEach(k=>{if(!(k in a2))delete S.avance[k]});Object.assign(S.avance,a2);
+      if(f.carga==="null")delete S.params.otCarga;else S.params.otCarga=JSON.parse(f.carga);
+      S.cargas.length=f.nCargas;PLAN=null;PLAN_ALL=null};
+    const mide=()=>{PLAN=null;PLAN_ALL=null;const P=programar();
+      const ab=S.ordenes.filter(abiertaDe);
+      const hechos={},pend={};
+      ["corte","modulos","empaque","botones"].forEach(c=>{const conRuta=ab.filter(o=>(o.ruta||[]).some(p=>p.centro===c));
+        hechos[c]=conRuta.filter(o=>pasoHecho(o,c)).length;pend[c]=conRuta.length-hechos[c]});
+      const lun=lunesDe(hoy());
+      const cola=c=>{if(!CE(c))return null;const m=partirPorCercania(colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),"")));
+        const r={};CERCANIA_GRUPOS.forEach(([g])=>r[g]=(m[g]||[]).length);r.total=Object.values(r).reduce((x,y)=>x+y,0);return r};
+      return {pasosHechos:hechos,pasosPendientes:pend,
+        atrasadas:ab.filter(o=>{const d=diagAtraso(o,P,null);return d.orden}).length,
+        metaVencida:ab.filter(o=>{const d=diagAtraso(o,P,null);return d.vencida}).length,
+        contradicciones:((S.params.otCarga||{}).contradicciones||[]).length,
+        ordenesConOT:S.ordenes.filter(o=>Object.keys(o.ot||{}).length).length,
+        botones:cola("botones"),corte:cola("corte")}};
+    const f0=foto();const al=window.alert;window.alert=()=>{};
+    try{
+      /* ANTES: cargar las OT con la conversión vieja */
+      const bueno=window.excelFecha;window.excelFecha=excelFechaRedondeada;
+      OT=planOT(window.__otRows,"antes.xlsx");aplicarOT();
+      window.excelFecha=bueno;
+      __R.excelAntes=mide();
+      volver(f0);
+      /* DESPUÉS: con la conversión arreglada */
+      OT=planOT(window.__otRows,"Orden_de_trabajo.xlsx");aplicarOT();
+      __R.excelDespues=mide();
+    }catch(e){__R.excelAntes={error:String(e&&e.message)}}
+    window.alert=al;volver(f0);OT=null;
+    __check("EXR: se pudo comparar el antes y el después aguas abajo",!!(__R.excelDespues&&!(__R.excelAntes||{}).error),
+      JSON.stringify((__R.excelAntes||{}).error||"ok"));
+    __check("EXR: la medición no dejó rastro (las OT vuelven a como estaban)",
+      S.ordenes.filter(o=>Object.keys(o.ot||{}).length).length===f0.ord.filter(x=>x.ot!=="null"&&x.ot!=="{}").length,
+      S.ordenes.filter(o=>Object.keys(o.ot||{}).length).length);}
    S.categorias=bakCat;}
   S.ordenes=bakOrd;S.avance={};PLAN=null;PLAN_ALL=null;
   try{localStorage.__fase="parte2 fin"}catch(e){}
@@ -4735,6 +4826,58 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CC4: con la tela bloqueada dice sin dato y NO disponible",
        (x.llegada||{}).tipo==="sinDato"&&x.grupo!=="disponible"&&/sin liberar/.test(x.llegada.motivo||""),JSON.stringify(x.llegada));
      ro.bloqueo=bb;if(bt)ro.telaLista=bt}}
+   /* --- 4b · el primer centro se agrupa por el estado de la TELA --- */
+   {const P2=programar();
+    const conCorte=S.ordenes.filter(o=>abierta(o)&&!pasoHecho(o,"corte")&&(o.ruta||[]).some(p=>p.centro==="corte")&&!centroAnteriorPro(o,"corte"));
+    let malSinWH=null,malPrevio=null,malLista=null;
+    conCorte.forEach(o=>{const x=cercaniaCentro(o,"corte",P2);
+      const g=grupoDe(o.fase);const orden=g?ordenGrupo(g.grupo):-1;
+      if((!o.op||o.sinLanzar)&&x.grupo!=="lejana")malSinWH=o.op||"(sin WH)";
+      if(o.op&&!o.sinLanzar&&(orden===1||!g)&&x.grupo!=="lejana")malPrevio=o.op+" · "+o.fase;
+      if(x.grupo==="disponible"&&(x.llegada||{}).tipo!=="lista")malLista=o.op});
+    __check("CT1: sin WH → Lejanas",!malSinWH,malSinWH);
+    __check("CT1: fase del grupo «previo a producción» → Lejanas",!malPrevio,malPrevio);
+    __check("CT1: Disponible en el primer centro solo con la tela lista",!malLista,malLista);
+    __check("CT1: y cada caso dice por qué está en ese grupo",
+      conCorte.length===0||conCorte.every(o=>!!cercaniaCentro(o,"corte",P2).porQueTela),
+      (conCorte[0]&&cercaniaCentro(conCorte[0],"corte",P2).porQueTela)||"");
+    /* la tela bloqueada nunca es disponible, aunque la fase diga que está lista */
+    const o1=conCorte[0];
+    if(o1){const ro=P2.ordenes[o1.id]||{};const bb=ro.bloqueo;ro.bloqueo="sin liberar";
+     const x=cercaniaCentro(o1,"corte",P2);
+     __check("CT1: con la tela bloqueada no es disponible",x.grupo!=="disponible"&&(x.llegada||{}).tipo==="sinDato",x.grupo);
+     ro.bloqueo=bb}}
+   /* --- 4c · volver al orden por cercanía (decisión 5) --- */
+   {const c="corte";const P2=programar();const lun=lunesDe(hoy());
+    const cola=colaCentro(c,filasDeCentros([c],P2,lun,dsum(lun,6),""));
+    if(cola.length>=2){
+     cola.slice(0,2).forEach((f,i)=>{f.o.progCentro=f.o.progCentro||{};f.o.progCentro[c]=Object.assign({},f.o.progCentro[c],{pri:i+1,porColor:true})});
+     __check("CC5b: hay órdenes con puesto manual para deshacer",ordenesConPuesto(c).length===2,ordenesConPuesto(c).length);
+     /* sin el permiso no se puede */
+     const guardo=PERFIL;const sinP=perfilesDef().find(p=>!(p.permisos||[]).includes("*")&&!(p.permisos||[]).includes("programa"));
+     if(sinP){PERFIL={...guardo,rol:sinP.id};volverACercania(c);
+      __check("CC5b: sin el permiso «programa» no se pueden quitar los puestos",ordenesConPuesto(c).length===2);
+      PERFIL=guardo}
+     const nb=S.bitacora.length;const na=(S.params.auditoriaCambios||[]).length;
+     volverACercania(c);
+     __check("CC5b: quita el puesto manual de todas las órdenes del centro",ordenesConPuesto(c).length===0);
+     __check("CC5b: y también la marca de «juntar colores»",
+       !S.ordenes.some(o=>(((o.progCentro||{})[c])||{}).porColor));
+     __check("CC5b: queda en bitácora con quién y cuándo",
+       S.bitacora.slice(nb).some(b=>/se quitaron los puestos manuales/.test(b.t)&&b.u&&b.ts),
+       JSON.stringify(S.bitacora.slice(nb,nb+1)));
+     __check("CC5b: y en auditoría, una línea por orden",(S.params.auditoriaCambios||[]).length>=na+2);
+     const cola2=colaCentro(c,filasDeCentros([c],programar(),lun,dsum(lun,6),""));
+     let ok=true;for(let i=1;i<cola2.length;i++){if(ordenCercania(cola2[i-1].cerc)>ordenCercania(cola2[i].cerc)+1e-9)ok=false}
+     __check("CC5b: la cola vuelve a ordenarse sola por cercanía",ok,cola2.length+" órdenes");
+     /* llamarlo dos veces avisa y no rompe */
+     let av="";const a1=window.alert;window.alert=m=>{av=String(m)};volverACercania(c);window.alert=a1;
+     __check("CC5b: si no hay puestos manuales, avisa y no hace nada",/ya se ordena por cercan\u00eda/.test(av),av);}}
+   /* --- 4d · el tooltip del arrastre lo explica (decisión 4) --- */
+   {page="centro";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true;CEN.q="";render();
+    const h=document.getElementById("p-centro").innerHTML;
+    __check("CC4b: el tooltip del arrastre dice que bajar una orden numera las de encima",
+      /bajar una orden numera tambi\u00e9n las que quedan por encima/.test(h));}
    /* --- 5 · el orden de la cola --- */
    {const c=["botones","corte","modulos","empaque"].find(x=>CE(x))||"corte";
     const lun=lunesDe(hoy());const filas=filasDeCentros([c],P,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);
@@ -4819,8 +4962,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const v=46020.74831018518;   // 29-dic-2025 17:57 según el archivo
      const conHora=String(excelFechaHora(v)).slice(0,10), soloFecha=excelFecha(v);
      __check("CC9: la hora nueva dice el día real del archivo",conHora==="2025-12-29",conHora);
-     __check("CC9: excelFecha (Math.round) lo corre al día siguiente — no se toca, se reporta",
-       soloFecha==="2025-12-30"&&soloFecha!==conHora,soloFecha+" vs "+conHora);
+     __check("CC9: excelFecha ya NO corre el día (arreglado el 16-sep: Math.floor)",
+       soloFecha==="2025-12-29"&&soloFecha===conHora,soloFecha+" vs "+conHora);
      __R.cc=__R.cc||{};__R.cc.excelRedondeo={ejemplo:v,real:excelFechaHora(v),guardado:soloFecha};
      const v2=46020.2;   // la misma fecha por la mañana: ahí sí coinciden
      __check("CC9: con hora < 12:00 las dos coinciden",String(excelFechaHora(v2)).slice(0,10)===excelFecha(v2));}
