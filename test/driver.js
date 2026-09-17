@@ -332,6 +332,51 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      setFaltaTela(oT.id,i,'tintura');__check("liberación: volver a tintura restaura el paso tin",necesitaTin(tl)&&((oT.ruta||[]).some(p=>p.centro==='tin')===rutaTinAntes||faseEstado(oT.fase,oT).tinturada));
      page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.verLista=true;render();const hl=document.getElementById('p-liberacion').innerHTML;const chT=chipsFaltaTela(oT);
      __check("liberación: casillas tintura / lavado de tela por tela",hl.includes('qué le falta')&&chT.includes('lavado de tela')&&chT.includes('setFaltaTela(')&&(!pendLiberacion('tela',null).length||hl.includes('setFaltaTela(')));LIB.verLista=false;}
+     /* ===== 2a · FOTO del DOM de la lista del bloque 1 de Liberación, ANTES de extraerla ===== */
+     {page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.fases=null;LIB.verLista=true;LIB.sel=new Set();GRP={};render();
+      const host=document.getElementById('p-liberacion');const lista=document.getElementById('lib-lista');
+      const pendV=pendLiberacion('tela',null).filter(o=>okFiltrosB1(o));
+      __check("2a LIB DOM: existe #lib-lista cuando «Ver todas las pendientes» está abierto",!!lista===(pendV.length>0),pendV.length);
+      if(lista){const tabla=lista.querySelector('table');
+       const ths=[...tabla.querySelectorAll('thead th')].map(t=>t.textContent.trim().replace(/\s+/g,' '));
+       __check("2a LIB DOM: 8 columnas de tela, en este orden",ths.length===8&&ths[1]==='OP · fase'&&ths[2]==='Cliente'&&ths[3]==='Color'&&ths[4]==='Prendas'&&ths[5]==='Entrega'&&/^Tela · qué le falta/.test(ths[6])&&ths[7]==='Qué la frena',ths.join('|'));
+       const trs=[...tabla.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row'));
+       __check("2a LIB DOM: tantas filas como pendientes (tope 400)",trs.length===Math.min(400,pendV.length),trs.length+' vs '+pendV.length);
+       __check("2a LIB DOM: el encabezado de la lista dice cuántas órdenes",/Todas las pendientes · \d+ (orden|órdenes)/.test(lista.textContent));
+       if(trs.length){const tr=trs[0];const tds=[...tr.querySelectorAll('td')];
+        __check("2a LIB DOM: cada fila tiene 8 celdas",tds.length===8,tds.length);
+        __check("2a LIB DOM: celda 2 = foto/WH/fase (whCell)",!!tr.querySelector('td:nth-child(2) .fase-mini')||/WH\//.test(tds[1].textContent));
+        __check("2a LIB DOM: celda 7 = tela · qué le falta, con las casillas tintura/lavado por tela (setFaltaTela)",/setFaltaTela\(/.test(tds[6].innerHTML)||/sin tela/.test(tds[6].textContent));
+        __check("2a LIB DOM: celda 8 = qué la frena + control de ruta",/lista para liberar|falta|tag/.test(tds[7].innerHTML));
+        /* la casilla de seleccionar solo sale en las que ya se pueden liberar */
+        const conCheck=trs.filter(t=>t.querySelector('td:nth-child(1) input[type=checkbox]')).length;
+        const listas=pendV.filter(o=>puedeLiberarA(o,'tela')).length;
+        __check("2a LIB DOM: hay casilla de selección exactamente en las órdenes listas para liberar",conCheck===Math.min(400,listas),conCheck+' vs '+listas);
+        /* estado seleccionado: marcar una y que se vea marcada tras redibujar */
+        const o0=pendV.find(o=>puedeLiberarA(o,'tela'));
+        if(o0){LIB.sel=new Set([o0.id]);render();
+         const tr0=[...document.querySelectorAll('#lib-lista tbody tr')].find(t=>t.innerHTML.indexOf("togLib('"+o0.id+"'")>=0);
+         __check("2a LIB DOM: la orden seleccionada sale con su casilla marcada tras el redibujo",!!tr0&&!!tr0.querySelector('input[type=checkbox]:checked'));
+         LIB.sel=new Set();render()}}
+       /* agrupación común: agrupar por cliente conserva las filas y muestra cabeceras con conteo */
+       grpSt('lib').niveles=['cliente'];render();
+       const t2=document.querySelector('#lib-lista table');
+       const trs2=t2?[...t2.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')):[];
+       __check("2a LIB DOM: agrupar por cliente arranca con los grupos CERRADOS (0 filas visibles)",trs2.length===0,trs2.length);
+       const cabs=t2?[...t2.querySelectorAll('tbody tr.grp-row')]:[];
+       const suma=cabs.reduce((a,c)=>{const m=c.textContent.match(/(\d+)\s+(orden|órdenes)/);return a+(m?+m[1]:0)},0);
+       __check("2a LIB DOM: las cabeceras de grupo suman todas las filas de la lista",suma===trs.length,suma+' vs '+trs.length);
+       if(cabs[0]){const k=(cabs[0].getAttribute('onclick')||'').match(/togGRP\('lib','([^']*)'\)/);
+        if(k){togGRP('lib',k[1].replace(/\\'/g,"'"));const t3=document.querySelector('#lib-lista table');
+         const abiertas=t3?[...t3.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')).length:0;
+         __check("2a LIB DOM: abrir un grupo muestra sus filas",abiertas>0,abiertas);}}
+       __check("2a LIB DOM: y las cabeceras de grupo traen «seleccionar todo» y conteo",!!t2&&/Cliente:/.test(t2.innerHTML)&&/seleccionar todo|marcar el grupo/.test(t2.innerHTML)&&/prendas/.test(t2.innerHTML));
+       GRP={};render();
+       __R.libDOM={ths,filas:trs.length,pend:pendV.length};}
+      /* sin «Ver todas» y sin familia elegida, no hay lista: solo el aviso */
+      LIB.verLista=false;LIB.fam2=null;LIB.q='';render();
+      __check("2a LIB DOM: sin abrir «Ver todas» la lista no se dibuja y se muestra la ayuda",!document.getElementById('lib-lista')&&/Toca una familia/.test(document.getElementById('p-liberacion').innerHTML));
+      LIB.verLista=false;}
    page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: ya no dice que jaspe y llano van separados",!hm.includes('se tinturan separados')&&hm.includes('pueden ir en el mismo baño'));
    page='config';CONF.tab='ordenes2';render();__check("config: tabla 13 de propuesta 'qué le falta'",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
    page='ordenes';render();__check("tela 3 dimensiones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
