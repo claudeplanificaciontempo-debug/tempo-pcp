@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 20:43';
+const APP_BUILD='2026-09-16 21:04';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6092,10 +6092,26 @@ function grupoTela(o,l){
   const g=grupoDe(o.fase);const orden=g?ordenGrupo(g.grupo):-1;
   const sinWH=!o.op||!!o.sinLanzar;
   const previo=(orden===1)||!g;                    // «previo a producción» es el primer grupo de la tabla 5
-  if(sinWH)return{grupo:'lejana',porQue:'sin WH: la orden todavía no está lanzada en Odoo'};
+  const textil=(orden===2);                        // tejeduría, tintorería y calidad textil
+  /* La FASE manda sobre la falta de WH: si la tela ya está en tejeduría, tintorería o calidad,
+     la orden está viniendo de verdad aunque todavía no tenga número de WH en Odoo. */
+  if(textil)return{grupo:'porLlegar',porQue:'la tela está en '+g.grupo+(sinWH?': la fase manda sobre la falta de WH':'')};
+  /* «Sin WH» solo manda a Lejanas si ADEMÁS está en fases previas a producción */
+  if(sinWH&&previo)return{grupo:'lejana',porQue:'sin WH y en fase «'+esc(o.fase||'sin fase')+'» (previa a producción)'};
   if(previo)return{grupo:'lejana',porQue:'fase «'+esc(o.fase||'sin fase')+'»'+(g?' (grupo '+g.grupo+')':' (sin grupo en la tabla 5)')+': todavía es previa a producción'};
+  if(sinWH)return{grupo:'porLlegar',porQue:'sin WH, pero la fase «'+esc(o.fase||'')+'» ya pasó de «previo a producción»'};   // sin WH nunca es «disponible»
   if(l&&l.tipo==='lista')return{grupo:'disponible',porQue:'la tela está lista y sin bloqueo'};
   return{grupo:'porLlegar',porQue:g?('la tela está en '+g.grupo):'la tela todavía no está lista'}}
+/* ---------- pasos de la ruta que el motor no programa porque no tienen minutos ----------
+   `programar()` omite de `ro.pasos` un paso cuyo tiempo por prenda es 0 (sin técnica, sin puntadas,
+   sin SAM). `pasoHecho()` NO lo da por hecho, así que la cercanía lo cuenta como pendiente: los dos
+   criterios no coinciden. Aquí se NOMBRA la causa en vez de esconderla. El motor no se toca. */
+function pasosSinTiempo(o,pendientes,ro){
+  return (pendientes||[]).filter(c=>{
+    const p=((ro&&ro.pasos)||[]).find(x=>x.centro===c);
+    if(!p)return true;                       // ni siquiera aparece en el programa
+    if(p.error)return false;                 // tiene otro problema, y el motor lo dice
+    return !(+p.min>0)&&!p.hecho})}          // aparece con 0 minutos
 /* ---------- LA función ---------- */
 function cercaniaCentro(o,c,P){
   const sec=secuenciaCentro(o,c);                 // manda para clasificar
@@ -6131,14 +6147,34 @@ function cercaniaCentro(o,c,P){
   if(!paso.fin){out.llegada={tipo:'sinProgramar',ant};out.orden=9e8}
   else if(paso.fin<hoy()&&!antHecho){out.llegada={tipo:'atrasado',ant,fin:paso.fin,dias:habilesDesde(paso.fin,rec),recTxt};out.orden=-0.5}
   else{const dias=habilesHasta(paso.fin,rec);out.llegada={tipo:'fecha',ant,fin:paso.fin,dias,recTxt};out.orden=dias}
+  /* por qué cuenta tantos pasos pendientes: hay pasos que el motor no programa por falta de tiempo */
+  out.sinTiempo=pasosSinTiempo(o,pend,ro);
+  if(out.sinTiempo.length)out.marca={tipo:'sinTiempo',centros:out.sinTiempo,
+    txt:'paso sin tiempo: '+out.sinTiempo.map(nCen).join(', '),
+    tip:'la ruta pasa por '+out.sinTiempo.map(nCen).join(', ')+', pero esa orden no tiene el tiempo por prenda cargado (técnica, puntadas o SAM). '
+      +'El motor no programa ese paso y la cercanía SÍ lo cuenta como pendiente: por eso salen más pasos de los que parece. Es un dato que falta, no un error de ruta.'};
+  else if(out.grupo==='lejana'&&llegaYa(out.llegada))out.marca={tipo:'revisar',
+    txt:'revisar ruta',
+    tip:'quedan '+pend.length+' pasos por delante ('+pend.map(nCen).join(', ')+') y todos tienen tiempo, pero el programa ya termina el paso anterior. '
+      +'Las fechas del motor y la ruta no concuerdan: hay que revisar la ruta de esta orden.'};
+  /* REGLA DE ESCAPE: si llega hoy, mañana o va atrasada, no se esconde en Lejanas */
+  if(out.grupo==='lejana'&&llegaYa(out.llegada)){out.grupo='porLlegar';out.escapo=true}
   return out}
+/* «llega ya» = hoy, mañana o atrasada */
+function llegaYa(l){if(!l)return false;
+  if(l.tipo==='atrasado')return true;
+  return l.tipo==='fecha'&&l.dias!=null&&l.dias<=1}
 /* el orden dentro de la cola: primero el grupo, después la fecha de llegada */
 const ORDEN_GRUPO_CERC={disponible:0,porLlegar:1,revisar:2,lejana:3};
 function ordenCercania(x){return (ORDEN_GRUPO_CERC[x.grupo]!=null?ORDEN_GRUPO_CERC[x.grupo]:9)*1e6+Math.min(9e5,(x.orden||0)+1e3)}
 /* la etiqueta para la fila, en negrita roja cuando toca */
 function llegadaHTML(x){const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
   if(x&&x.porQueTela)t.tip=(t.tip?t.tip+' · ':'')+x.porQueTela;
-  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'
+  const m=x&&x.marca;
+  const esc2=v=>esc(String(v==null?'':v));
+  const etq=m?(' <span class="tag '+(m.tipo==='revisar'?'t-alerta':'t-aviso')+'" style="font-size:9px;padding:0 4px" title="'+esc2(m.tip)+'">'+esc2(m.txt)+'</span>'):'';
+  const esp=(x&&x.escapo)?' <span class="tag t-medio" style="font-size:9px;padding:0 4px" title="tiene más pasos pendientes que el umbral, pero llega hoy, mañana o va atrasada: no se esconde en Lejanas">llega ya</span>':'';
+  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+etq+esp
     +(x.desacuerdo?' <span class="tag t-aviso" style="font-size:9px;padding:0 4px" title="'+esc(x.desacuerdo)+'">ojo</span>':'')}
 /* arriba de la cola: de dónde sale el orden y qué significa «en X días hábiles» */
 function ordenColaNotaHTML(cola){const n=cola.length;if(!n)return '';

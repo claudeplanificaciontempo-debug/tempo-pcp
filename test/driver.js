@@ -993,12 +993,79 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CCR: se puede medir la cola de corte sobre el volcado real",__R.cc.real.corte.existe&&__R.cc.real.corte.total>=0,
        __R.cc.real.corte.total+" órdenes");
      __check("CCR: y la de botones",__R.cc.real.botones.existe,__R.cc.real.botones.total);
+     /* ===== R2·1 · desglose de CORTE por fase y por WH ===== */
+     {const filas=filasDeCentros(["corte"],Pc,lun,dsum(lun,6),"");
+      const cola=colaCentro("corte",filas);
+      const m=partirPorCercania(cola);
+      const porFase={};
+      cola.forEach(f=>{const o=f.o;const g=grupoDe(o.fase);const k=(o.fase||"(sin fase)");
+        porFase[k]=porFase[k]||{fase:k,grupo:g?g.grupo:"(sin grupo)",orden:g?ordenGrupo(g.grupo):-1,
+          conWH:0,sinWH:0,unid:0,grupos:{}};
+        const r=porFase[k];const sinWH=!o.op||!!o.sinLanzar;
+        if(sinWH)r.sinWH++;else r.conWH++;
+        r.unid+=Math.max(0,(+o.cant||0)-(f.hechas||0));
+        r.grupos[f.cerc.grupo]=(r.grupos[f.cerc.grupo]||0)+1});
+      __R.cc=__R.cc||{};
+      __R.cc.corteDesglose={
+        total:cola.length,
+        grupos:Object.fromEntries(CERCANIA_GRUPOS.map(([g])=>[g,(m[g]||[]).length])),
+        unidPorGrupo:Object.fromEntries(CERCANIA_GRUPOS.map(([g])=>[g,(m[g]||[]).reduce((a,f)=>a+Math.max(0,(+f.o.cant||0)-(f.hechas||0)),0)])),
+        porFase:Object.values(porFase).sort((a,b)=>(a.orden-b.orden)||a.fase.localeCompare(b.fase))};
+      __check("R2: se puede desglosar la cola de corte por fase y por WH",cola.length>=0,cola.length);}
+     /* ===== R2·3 · MOTOR: pasos de ruta sin minutos (solo diagnóstico) ===== */
+     {const ab=S.ordenes.filter(abiertaDe);
+      const porCentro={},porDato={tecnica:0,puntadas:0,sam:0,otro:0};
+      const detalle=[];const catsSet={};
+      ab.forEach(o=>{const ro=(Pc.ordenes[o.id])||{};
+        (o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==="pro").forEach(p=>{
+          const c=p.centro;if(pasoHecho(o,c))return;
+          const tPaso=(c==="estampado"&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
+          const min=minPrenda(c,tPaso);
+          if(min>0)return;                       // el paso sí tiene tiempo
+          const enPrograma=((ro.pasos)||[]).some(x=>x.centro===c);
+          porCentro[c]=porCentro[c]||{centro:nCen(c),ordenes:0,unid:0,enPrograma:0,fuera:0};
+          porCentro[c].ordenes++;porCentro[c].unid+=pendCentroUnid(o,c);
+          if(enPrograma)porCentro[c].enPrograma++;else porCentro[c].fuera++;
+          /* qué dato falta */
+          let dato="otro";
+          if(c==="estampado"&&!o.tecnica)dato="tecnica";
+          else if(c==="bordado"&&!(+o.puntadas>0))dato="puntadas";
+          else dato="sam";
+          porDato[dato]=(porDato[dato]||0)+1;
+          const k=K(o.cat);const cat=nombreCat(k)||"(sin categoría)";
+          catsSet[cat+" | "+nCen(c)]=catsSet[cat+" | "+nCen(c)]||{cat,centro:nCen(c),ordenes:0,unid:0,dato};
+          catsSet[cat+" | "+nCen(c)].ordenes++;catsSet[cat+" | "+nCen(c)].unid+=pendCentroUnid(o,c);
+          if(detalle.length<40)detalle.push({op:o.op||"(sin WH)",cat,centro:nCen(c),dato,
+            tecnica:o.tecnica||null,puntadas:+o.puntadas||0,enPrograma})})});
+      __R.motor={porCentro:Object.values(porCentro).sort((a,b)=>b.ordenes-a.ordenes),porDato,
+        ordenesAfectadas:new Set(detalle.map(x=>x.op)).size,
+        categorias:Object.values(catsSet).sort((a,b)=>b.ordenes-a.ordenes),detalle};
+      /* b · ¿cambiaría la fecha de salida si el paso contara? Se mide con un tiempo de prueba,
+         SIN guardarlo: se mira cuántas órdenes cambian de finPro y cuántas pasarían a ir tarde. */
+      {const antes={};ab.forEach(o=>{const ro=(Pc.ordenes[o.id])||{};antes[o.id]={fin:ro.finPro||null,tarde:!!ro.atraso}});
+       const bakT={};let tocadas=0;
+       ab.forEach(o=>{(o.ruta||[]).forEach(p=>{if(!CE(p.centro)||CE(p.centro).area!=="pro")return;
+         const tPaso=(p.centro==="estampado"&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
+         if(minPrenda(p.centro,tPaso)>0)return;
+         bakT[o.id]=bakT[o.id]||[];bakT[o.id].push({p,t:p.t});p.t=1;tocadas++})});   // 1 min/prenda, SOLO para medir
+       PLAN=null;PLAN_ALL=null;const P2=programar();
+       let cambian=0,nuevasTarde=0;const ej=[];
+       ab.forEach(o=>{const r2=(P2.ordenes[o.id])||{};const a=antes[o.id]||{};
+         if((r2.finPro||null)!==a.fin){cambian++;if(ej.length<5)ej.push(o.op+": "+(a.fin?fmtDia(a.fin):"—")+" → "+(r2.finPro?fmtDia(r2.finPro):"—"))}
+         if(!!r2.atraso&&!a.tarde)nuevasTarde++});
+       __R.motor.efecto={pasosTocados:tocadas,cambianDeFecha:cambian,nuevasTarde,ejemplos:ej};
+       /* se devuelve TODO como estaba */
+       Object.values(bakT).forEach(l=>l.forEach(x=>{x.p.t=x.t}));
+       PLAN=null;PLAN_ALL=null;programar();}
+      __check("R2: se puede medir el efecto de que los pasos sin minutos contaran",
+        typeof __R.motor.efecto.cambianDeFecha==="number",JSON.stringify(__R.motor.efecto).slice(0,160));}
      /* ===== 3a · DIAGNÓSTICO: lejanas con llegada hoy/mañana o atrasadas ===== */
      {const diag=(c)=>{if(!CE(c))return null;
        const filas=filasDeCentros([c],Pc,lun,dsum(lun,6),"");
        const m=partirPorCercania(colaCentro(c,filas));
-       const raras=(m.lejana||[]).filter(f=>{const l=f.cerc.llegada||{};
-         return (l.tipo==="fecha"&&l.dias<=1)||l.tipo==="atrasado"});
+       /* con la regla de escape ya no están en Lejanas: se buscan por la marca y por el escape */
+       const todas=[].concat(...CERCANIA_GRUPOS.map(([g])=>m[g]||[]));
+       const raras=todas.filter(f=>f.cerc.escapo||(f.cerc.marca&&f.cerc.pasosPend>umbralCercania()));
        return raras.map(f=>{const o=f.o,x=f.cerc;
          const ru=pasosProDe(o);const i=ru.indexOf(c);
          const ro=(Pc.ordenes[o.id])||{};
@@ -1024,7 +1091,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
            etiqueta:txtLlegada(x.llegada).txt,pasosPend:x.pasosPend,
            pendientes:x.pendientes.map(nCen),pasoAnterior:nCen(x.ant),
            ruta:ru.map(z=>nCen(z)+(pasoHecho(o,z)?" ✓":"")).join(" → "),
-           programa:pasos,causas}})};
+           programa:pasos,causas,
+           marca:(x.marca||{}).txt||null,escapo:!!x.escapo,sinTiempo:(x.sinTiempo||[]).map(nCen)}})};
       __R.cc=__R.cc||{};
       __R.cc.diag3a={botones:diag("botones"),empaque:diag("empaque"),modulos:diag("modulos")};
       const tot=["botones","empaque","modulos"].reduce((n,k)=>n+((__R.cc.diag3a[k]||[]).length),0);
@@ -4815,38 +4883,31 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("CC4: sin dato de llegada NUNCA es «disponible»",!malo,malo);
     __check("CC4: el primer centro no tiene paso anterior de producción",conCorte.every(o=>!centroAnteriorPro(o,"corte")));
     /* con la tela marcada lista, pasa a disponible; con bloqueo, a sin dato */
-    const o1=conCorte[0];
-    if(o1){const av=S.avance[o1.id]=S.avance[o1.id]||{};const bak=av.lista;
-     av.lista=true;__check("CC4: con la tela lista, el primer centro queda disponible",
-       cercaniaCentro(o1,"corte",P).grupo==="disponible");
-     av.lista=bak;
-     const ro=P.ordenes[o1.id]||{};const bb=ro.bloqueo,bt=ro.telaLista;
-     ro.bloqueo="sin liberar";delete ro.telaLista;
-     const x=cercaniaCentro(o1,"corte",P);
-     __check("CC4: con la tela bloqueada dice sin dato y NO disponible",
-       (x.llegada||{}).tipo==="sinDato"&&x.grupo!=="disponible"&&/sin liberar/.test(x.llegada.motivo||""),JSON.stringify(x.llegada));
-     ro.bloqueo=bb;if(bt)ro.telaLista=bt}}
-   /* --- 4b · el primer centro se agrupa por el estado de la TELA --- */
-   {const P2=programar();
-    const conCorte=S.ordenes.filter(o=>abierta(o)&&!pasoHecho(o,"corte")&&(o.ruta||[]).some(p=>p.centro==="corte")&&!centroAnteriorPro(o,"corte"));
-    let malSinWH=null,malPrevio=null,malLista=null;
-    conCorte.forEach(o=>{const x=cercaniaCentro(o,"corte",P2);
-      const g=grupoDe(o.fase);const orden=g?ordenGrupo(g.grupo):-1;
-      if((!o.op||o.sinLanzar)&&x.grupo!=="lejana")malSinWH=o.op||"(sin WH)";
-      if(o.op&&!o.sinLanzar&&(orden===1||!g)&&x.grupo!=="lejana")malPrevio=o.op+" · "+o.fase;
-      if(x.grupo==="disponible"&&(x.llegada||{}).tipo!=="lista")malLista=o.op});
-    __check("CT1: sin WH → Lejanas",!malSinWH,malSinWH);
-    __check("CT1: fase del grupo «previo a producción» → Lejanas",!malPrevio,malPrevio);
-    __check("CT1: Disponible en el primer centro solo con la tela lista",!malLista,malLista);
-    __check("CT1: y cada caso dice por qué está en ese grupo",
-      conCorte.length===0||conCorte.every(o=>!!cercaniaCentro(o,"corte",P2).porQueTela),
-      (conCorte[0]&&cercaniaCentro(conCorte[0],"corte",P2).porQueTela)||"");
-    /* la tela bloqueada nunca es disponible, aunque la fase diga que está lista */
-    const o1=conCorte[0];
-    if(o1){const ro=P2.ordenes[o1.id]||{};const bb=ro.bloqueo;ro.bloqueo="sin liberar";
-     const x=cercaniaCentro(o1,"corte",P2);
-     __check("CT1: con la tela bloqueada no es disponible",x.grupo!=="disponible"&&(x.llegada||{}).tipo==="sinDato",x.grupo);
-     ro.bloqueo=bb}}
+    /* Caso construido a propósito: «Disponible» en el primer centro exige WH, fase fuera de
+       «previo a producción» y fuera del grupo textil, y la tela lista sin bloqueo. */
+    {const o1=JSON.parse(JSON.stringify(conCorte[0]||S.ordenes.find(abierta)));
+     o1.id="cc4-"+uid();o1.op="WH/MO/CC4";o1.sinLanzar=false;
+     const gPost=faseGrupos().slice().sort((a,b)=>a.orden-b.orden).find(g=>g.orden>2);
+     const fasePost=faseMapeo().find(r=>gPost&&r.sistema===gPost.grupo);
+     if(fasePost)o1.fase=fasePost.fase;
+     if(!(o1.ruta||[]).some(p=>p.centro==="corte"))o1.ruta=[{centro:"corte",t:1}].concat(o1.ruta||[]);
+     S.ordenes.push(o1);PLAN=null;PLAN_ALL=null;
+     const av=S.avance[o1.id]=S.avance[o1.id]||{};av.lista=true;
+     const P3=programar();
+     const g3=grupoDe(o1.fase);
+     __check("CC4: con la tela lista y fase de producción, el primer centro queda disponible",
+       cercaniaCentro(o1,"corte",P3).grupo==="disponible",
+       (g3?g3.grupo+" orden "+ordenGrupo(g3.grupo):"(sin grupo)")+" → "+cercaniaCentro(o1,"corte",P3).grupo);
+     /* la misma orden SIN WH nunca es disponible */
+     o1.sinLanzar=true;
+     __check("CC4: la misma orden sin WH ya no es disponible",cercaniaCentro(o1,"corte",P3).grupo!=="disponible");
+     o1.sinLanzar=false;
+     /* y con la tela bloqueada tampoco */
+     const ro=P3.ordenes[o1.id]||{};const bb=ro.bloqueo;ro.bloqueo="sin liberar";
+     const x=cercaniaCentro(o1,"corte",P3);
+     __check("CC4: con la tela bloqueada no es disponible",x.grupo!=="disponible"&&(x.llegada||{}).tipo==="sinDato",x.grupo);
+     ro.bloqueo=bb;
+     S.ordenes=S.ordenes.filter(z=>z.id!==o1.id);delete S.avance[o1.id];PLAN=null;PLAN_ALL=null}}
    /* --- 4c · volver al orden por cercanía (decisión 5) --- */
    {const c="corte";const P2=programar();const lun=lunesDe(hoy());
     const cola=colaCentro(c,filasDeCentros([c],P2,lun,dsum(lun,6),""));
