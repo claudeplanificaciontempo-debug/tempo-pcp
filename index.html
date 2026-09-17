@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 07:18';
+const APP_BUILD='2026-09-17 07:36';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9324,8 +9324,8 @@ function vConfig(el){
    <div class="body"><div class="row">${palabrasJaspe().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPalabraJaspeRow(${i},this.value)"> <button class="btn ghost sm" onclick="delPalabraJaspeRow(${i})">×</button></span>`).join('')}</div></div></div>
 
   <div class="panel"><h3>14 · Qué se conserva al recargar la Parte 2 <span class="note">decisiones de persona que no se pisan con el archivo; se cruzan por número de OP</span></h3>
-   <div class="body"><table><thead><tr><th>Campo</th><th>Qué es</th><th>Conservar</th></tr></thead><tbody>${camposConservados().map((r,i)=>`<tr><td><code>${esc(r.campo)}</code></td><td>${esc(r.n)}</td><td style="text-align:center"><input type="checkbox" ${r.conservar?'checked':''} onchange="camposConservados()[${i}].conservar=this.checked;bitacora('Tabla 14 · '+'${esc(r.campo)}'+': conservar '+this.checked);save()"></td></tr>`).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
+   <div class="body"><table><thead><tr><th>Campo</th><th>Qué es</th><th>Conservar</th></tr></thead><tbody>${camposConservados().map((r,i)=>`<tr><td><code>${esc(r.campo)}</code></td><td>${esc(r.n)}</td><td style="text-align:center">${campoBloqueado(r.campo)?`<input type="checkbox" checked disabled title="no se puede desmarcar: es trabajo del piso"> <span class="tag t-ok" style="font-size:9px;padding:0 4px">siempre</span>`:`<input type="checkbox" ${r.conservar?'checked':''} onchange="setCampoConservado(${i},this.checked)">`}</td></tr>`).join('')}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>El avance de piso no se puede desmarcar</b>: unidades, tramos, paros, tallas y cierres los registran las personas y ningún archivo los devuelve. Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
   ${motivosPanelHTML()}
   ${tallasPanelHTML()}
   ${ayudasPanelHTML()}
@@ -10401,7 +10401,15 @@ function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (qu
   {campo:'rutaEditada',n:'Pasos agregados/quitados por el centro',conservar:true},{campo:'ot',n:'Cierres de órdenes de trabajo (hasta la siguiente carga de OT)',conservar:true},{campo:'terminadaF',n:'Fecha en que terminó (cumplimiento del programa)',conservar:true},
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
 function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;if(!t.some(r=>r.campo==='odc'))t.push({campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true});return t}
-function conserva(campo){const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
+/* filas de la tabla 14 que NO se pueden desmarcar: su desmarcado borraría trabajo de personas que
+   ningún archivo puede devolver. Hoy solo el avance de piso; si aparece otra, va aquí. */
+const CAMPOS_BLOQUEADOS=['avance'];
+function campoBloqueado(c){return CAMPOS_BLOQUEADOS.includes(c)}
+function conserva(campo){if(campoBloqueado(campo))return true;
+  const r=camposConservados().find(x=>x.campo===campo);return !!(r&&r.conservar)}
+function setCampoConservado(i,on){const r=camposConservados()[i];if(!r)return;
+  if(campoBloqueado(r.campo)){alert('«'+r.n+'» no se puede desmarcar: es trabajo registrado por las personas del piso y ningún archivo lo puede devolver.');render();return}
+  r.conservar=!!on;bitacora('Tabla 14 · '+r.campo+': conservar '+(!!on)+' ('+quienFirma()+')');save();render()}
 /* aplica una fase a una orden recalculando lo que depende de ella (estado, historia, ruta pendiente) sin tocar lo del archivo */
 let BND={sel:new Set(),abierta:false};
 /* la recarga no trae la hora de exportación del Odoo (el archivo no la incluye); se guarda editable en la bandeja. Por defecto, el inicio del día del archivo (ajústala a la real). No se inventa una hora oculta: es un campo visible. */
@@ -10445,7 +10453,14 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;cons.ot++}
     if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}});
   // avance de piso: se conserva; se quitan solo las entradas de órdenes eliminadas; lo que ya no calza se reporta
-  const avanceEliminado=[];if(conserva('avance')){Object.keys(S.avance).forEach(id=>{if(!idsNuevos.has(id)){avanceEliminado.push(id);return}/* el avance de piso no se borra ni de paso */const a=S.avance[id];const o=p.ordenes.find(x=>x.id===id);if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});if(a.centros)cons.avance++})}else S.avance={};
+  /* El avance de piso (unidades, tramos, cierres, tallas) NO se borra desde una carga, pase lo que
+     pase con la tabla 14: es trabajo hecho por personas y no lo trae ningún archivo. Antes, desmarcar
+     la fila «avance» vaciaba la tabla entera y se perdía el avance de toda la planta sin preguntar. */
+  const avanceEliminado=[];
+  Object.keys(S.avance).forEach(id=>{if(!idsNuevos.has(id)){avanceEliminado.push(id);return}
+    const a=S.avance[id];const o=p.ordenes.find(x=>x.id===id);
+    if(o&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)noCalzan.push({op:o.op,decision:'avance en '+nCen(c)+': '+n+' prendas',motivo:'la cantidad nueva es '+o.cant})});
+    if(a.centros)cons.avance++});
   S.ordenes=p.ordenes.slice().concat(eliminadas.map(o=>Object.assign(o,{estado:'noArchivo',noArchivo:{ts:new Date().toISOString(),archivo:p.archivo||'',estadoAntes:o.estado||'plan'}})));colgarFotos();/* las que ya no vienen en el archivo NO se borran: quedan como noArchivo con todo lo suyo */
   S.params.tareaCarga={archivo:p.archivo,fecha:ts,hoy:p.hoy,filas:p.filas,cabeceras:p.cabeceras,lineasComp:p.lineasComp,componentes:p.componentes,cargadas:p.ordenes.length,
     excluidas:{cancel:p.excluidas.cancel.length,fueraRango:p.excluidas.fueraRango.length,fueraRangoDetalle:p.excluidas.fueraRango.slice(0,3000)},sinFecha:p.sinFecha,duplicados:p.duplicados,fasesNoCalzan:p.fasesNoCalzan,fasesTablaSinUso:p.fasesTablaSinUso,

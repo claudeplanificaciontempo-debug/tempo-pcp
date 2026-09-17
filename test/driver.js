@@ -181,6 +181,30 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const p4=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p4;aplicarTarea();await __p(50);
     [oA,oB,oC,oE,oF].forEach(o=>{const x=S.ordenes.find(z=>z.id===o.id);if(!x)return;delete x.progCentro;delete x.recursoFijo;delete x.odcManual;delete x.lib;delete x.rutaEditada;delete x.fechaCompromiso;if(x.prio===1)x.prio=3;if(x.foto==="https://x/foto.jpg")delete x.foto});
     delete S.avance[oD.id];delete S.avance[oA.id];delete (S.params.pendPospuestos||{})["x-"+oA.id];S.planes=JSON.parse(bakPlanes);PLAN=null;PLAN_ALL=null;}
+   /* ===== 1 · el avance de piso NO se borra desde una carga ===== */
+   {const oA2=S.ordenes.find(o=>abierta(o)&&o.op);
+    if(oA2){
+     S.avance[oA2.id]=Object.assign(S.avance[oA2.id]||{},{centros:{corte:7},
+       tramos:[{id:"t-prot",centro:"corte",rec:null,ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:"piso",paros:[]}],
+       cierres:{corte:{pz:7,cant:oA2.cant,faltan:0,u:"piso",ts:new Date().toISOString()}}});
+     const nAv=Object.keys(S.avance).length;
+     /* la fila «avance» de la tabla 14 está bloqueada */
+     __check("P1: la fila «avance» de la tabla 14 no se puede desmarcar",campoBloqueado("avance")&&conserva("avance"));
+     const i=camposConservados().findIndex(x=>x.campo==="avance");
+     let av="";const a1=window.alert;window.alert=m=>{av=String(m)};
+     setCampoConservado(i,false);window.alert=a1;
+     __check("P1: intentar desmarcarla avisa y no cambia nada",conserva("avance")&&camposConservados()[i].conservar!==false&&/no se puede desmarcar/.test(av),av.slice(0,80));
+     /* aunque alguien fuerce la fila a false, la recarga NO borra el avance */
+     const bak=camposConservados()[i].conservar;camposConservados()[i].conservar=false;
+     const p9=planTarea(tareaRows,"TAREA_PROT.xlsx");TAREA=p9;aplicarTarea();await __p(50);
+     camposConservados()[i].conservar=bak;
+     const a2=S.avance[oA2.id]||{};
+     __check("P1: tras recargar con la fila forzada a false, el avance sigue intacto",
+       Object.keys(S.avance).length>=nAv&&(a2.centros||{}).corte===7&&((a2.tramos||[]).length>=1)&&!!((a2.cierres||{}).corte),
+       JSON.stringify({n:Object.keys(S.avance).length,c:(a2.centros||{}).corte,t:(a2.tramos||[]).length,ci:!!((a2.cierres||{}).corte)}));
+     __check("P1: ya no queda ningún borrado masivo de S.avance en el código",
+       !/S\.avance=\{\}/.test(String(aplicarTarea)));
+     delete S.avance[oA2.id];PLAN=null;PLAN_ALL=null}}
    /* «Actualizar desde Odoo» no se puede ejercitar: su plan se arma dentro de leerOdoo(ev) (manejador del <input file>) */
    __R.recarga=__R.recarga||{};__R.recarga.odooEjercitable=(typeof planOdoo==="function");
    __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas (para poder probarlo)",typeof planOdoo==="function","no existe planOdoo(rows): el plan vive dentro de leerOdoo(ev)");
