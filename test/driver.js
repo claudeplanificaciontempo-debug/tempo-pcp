@@ -3502,7 +3502,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const cola=[{o:oProc,hechas:30},{o:oDisp,hechas:0},{o:oProx,hechas:0}];
     const h=flujoTramoHTML('modulos',rec,cola);
     __check("PE2: la sección En proceso va arriba, con foto, WH, hechas/total, barra y CONTINUAR",h.indexOf('En proceso')>=0&&h.indexOf('En proceso')<h.indexOf('Disponibles')&&h.includes('>CONTINUAR<')&&h.includes('30 de 100')&&h.includes('class="bar"'));
-    __check("PE2: y ofrece «Terminar orden» para cerrar el paso",h.includes('terminarOrdenCentro(null,')&&h.includes(oProc.id)&&h.includes('Terminar orden'));
+    /* decisión 17-sep: sin tiempo corrido NO aparece «Terminar orden»; con tiempo, sí */
+    __check("PE2: sin tiempo corrido NO ofrece «Terminar orden»: dice qué falta",!h.includes('terminarOrdenCentro(null,')&&/Hecho aparece con tiempo corrido/.test(h));
+    {const tr=tramosDe(oProc.id);tr.push({id:"t-pe2",centro:'modulos',rec:rec||null,ini:new Date(Date.now()-8*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});
+     const h2=flujoTramoHTML('modulos',rec,cola);
+     __check("PE2: con tiempo corrido ofrece «Terminar orden» para cerrar el paso",h2.includes('terminarOrdenCentro(null,')&&h2.includes(oProc.id)&&h2.includes('Terminar orden'));}
     __check("PE4: Disponibles ofrece INICIO y Próximas no",h.includes("iniciarTramo('"+oDisp.id)&&!h.includes("iniciarTramo('"+oProx.id)&&h.includes('todavía no ·'));
     __check("PE4: la próxima se ve igual, con la fase en la que está",h.includes(esc(oProx.op))&&h.includes(esc(faseNombre(fProx))));}
    {iniciarTramo(oDisp.id,'modulos',rec);const tr=tramosDe(oDisp.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-90*6e4).toISOString();
@@ -5866,6 +5870,65 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      /* B3 · la misma puerta en el ✓ hecho del supervisor */
      __check("B3: confirmarHechoCentro pasa por puedeCerrarPaso",/puedeCerrarPaso\(/.test(String(confirmarHechoCentro)));
      __check("B3: y cerrarCentro también (una sola puerta)",/puedeCerrarPaso\(/.test(String(cerrarCentro)));
+     /* ===== AJUSTES (17-sep) ===== */
+     /* A2 · mínimo por centro: vacío = general */
+     delete (S.avance[oC.id]||{}).cierres;tramosDe(oC.id).length=0;
+     tramosDe(oC.id).push({id:"t3",centro:C,rec:rec||null,ini:new Date(Date.now()-6*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});
+     __check("TA2: sin valor propio, el centro usa el general",minMinutosCierre(C)===5&&fuenteMinCierre(C)==="general"&&puedeCerrarPaso(oC.id,C).ok);
+     {const nb=S.bitacora.length;setMinMinutosCierreCentro(C,12);
+      __check("TA2: con valor propio manda el del centro y el general no cambia",minMinutosCierre(C)===12&&fuenteMinCierre(C)==="centro"&&minMinutosCierre()===5&&prm("minMinutosCierre",5)===5,minMinutosCierre(C)+"/"+minMinutosCierre());
+      const r2=puedeCerrarPaso(oC.id,C);
+      __check("TA2: puedeCerrarPaso usa el mínimo del centro y dice de dónde salió",!r2.ok&&r2.minimo===12&&r2.fuente==="centro",JSON.stringify({ok:r2.ok,min:r2.minimo,f:r2.fuente}));
+      __check("TA2: el cambio queda en bitácora",S.bitacora.length>nb&&/Minutos mínimos para cerrar en/.test(S.bitacora.slice(-1)[0].t));
+      page="config";CONF.tab="cal";render();const hc=document.getElementById("p-config").innerHTML;
+      __check("TA2: Configuración muestra el mínimo por centro con «vacío = usa el general»",/setMinMinutosCierreCentro\(/.test(hc)&&/vacío = usa el general/.test(hc)&&/1 con valor propio/.test(hc));
+      setMinMinutosCierreCentro(C,"");
+      __check("TA2: vaciarlo vuelve al general",minMinutosCierre(C)===5&&fuenteMinCierre(C)==="general"&&!(S.params.minMinutosCierreCentro||{})[C]&&puedeCerrarPaso(oC.id,C).ok);}
+     /* A4 · sin tiempo corrido NO aparece «Hecho» ni «Terminar orden» */
+     {S.params.tablets[uid0]={centro:C,rec:rec||null};
+      tramosDe(oC.id).length=0;
+      const h0=comoOperario(()=>{page="tablet";render();return document.getElementById("p-tablet").innerHTML});
+      const cardOf=(h,id)=>{const i=h.indexOf(id);return i<0?"":h.slice(Math.max(0,i-2500),i+3500)};
+      const enPantalla=/data-oid|onclick="iniciarTramo/.test(h0);
+      const enTarjeta=h=>h.includes("mFasePiso('"+oC.id+"'");
+      const btnHecho=(h,id)=>new RegExp("(marcarHechoCentro|mRegistroTallas)\\('"+id+"'").test(h);
+      __check("TA4: sin ningún tramo, la tarjeta no ofrece «Hecho»: dice qué falta",enTarjeta(h0)?(!btnHecho(h0,oC.id)&&/Hecho aparece con tiempo corrido/.test(h0)):true,enTarjeta(h0)?"":"no está en la cola (se acepta)");
+      __check("TA4: la función que decide es la misma puerta (puedeCerrarPaso) — no hay un segundo criterio en la vista",/puedeCerrarPaso\(o\.id,c\)\.ok\?/.test(String(vTablet))&&/puedeCerrarPaso\(o\.id,c\)\.ok\?/.test(String(filaColaTabletHTML))&&/puedeCerrarPaso\(oid,c\)/.test(String(hintCierreHTML)));
+      /* con tiempo suficiente, aparece */
+      tramosDe(oC.id).push({id:"t4",centro:C,rec:rec||null,ini:new Date(Date.now()-9*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});
+      const h1=comoOperario(()=>{page="tablet";render();return document.getElementById("p-tablet").innerHTML});
+      const seg1=cardOf(h1,oC.op);
+      __check("TA4: con tiempo corrido la tarjeta sí ofrece «Hecho»",enTarjeta(h1)?btnHecho(h1,oC.id):true,enTarjeta(h1)?"":"no está en la cola (se acepta)");
+      __check("TA4: el texto de espera nombra los minutos que faltan y el mínimo",(()=>{tramosDe(oC.id).length=0;tramosDe(oC.id).push({id:"t5",centro:C,rec:rec||null,ini:new Date(Date.now()-2*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});const t=hintCierreHTML(oC.id,C);return /Hecho aparece con tiempo corrido: [\d,\.]+ de 5 min/.test(t)})(),hintCierreHTML(oC.id,C));
+      tramosDe(oC.id).length=0;
+      __check("TA4: sin tramo el texto pide iniciar",/inicia el tramo/.test(hintCierreHTML(oC.id,C)),hintCierreHTML(oC.id,C));}
+     /* A1 · fallo de programar(): alerta en Hoy (admin/planificación), una por falla, con hora y error, y bitácora */
+     {const bak=window.programar;const bakPlan=PLAN;const nb=S.bitacora.length;
+      window.programar=()=>{throw new Error("fallo de prueba A1")};PLAN=null;
+      comoOperario(()=>ordenesQueVe());comoOperario(()=>ordenesQueVe());comoOperario(()=>ordenesQueVe());
+      const ep=erroresProgAbiertos();
+      __check("TA1: la falla queda en bitácora con hora y error",S.bitacora.slice(nb).some(b=>b.k==="errProg"&&/fallo de prueba A1/.test(b.err)&&b.ts),S.bitacora.slice(nb).map(b=>b.t).join(" | ").slice(0,160));
+      __check("TA1: UNA sola alerta por falla aunque se repita la pantalla",ep.filter(b=>/fallo de prueba A1/.test(b.err)).length===1,ep.length);
+      window.programar=bak;PLAN=bakPlan;ERR_PROG=null;PLAN=null;PLAN_ALL=null;
+      __check("TA1: el operario no ve la alerta en Pendientes",comoOperario(()=>!pendientesHoy().some(i=>i.k==="errorProg"&&i.n>0)));
+      const it=pendientesHoy().find(i=>i.k==="errorProg");
+      __check("TA1: admin la ve en Hoy → Pendientes con hora y error",!!it&&it.n>=1&&/fallo de prueba A1/.test(it.detalle)&&/\d{1,2}:\d{2}/.test(it.detalle),it&&it.detalle.slice(0,120));
+      const bakP2=PERFIL;PERFIL={id:"u-pl2",rol:"planificacion"};const itP=pendientesHoy().find(i=>i.k==="errorProg");PERFIL=bakP2;
+      __check("TA1: planificación también",!!itP&&itP.n>=1);
+      mErroresProg();__check("TA1: el listado abre con la falla y el botón atendida",/fallo de prueba A1/.test(document.getElementById("modal").textContent)&&/atenderErrProg\(/.test(document.getElementById("modal").innerHTML));cerrar();
+      const id=ep.find(b=>/fallo de prueba A1/.test(b.err)).id;atenderErrProg(id);
+      __check("TA1: atendida sale de Hoy pero la bitácora se conserva",!erroresProgAbiertos().some(b=>b.id===id)&&S.bitacora.some(b=>b.id===id)&&!!(S.params.errProgAtendidos||{})[id]);
+      P=programar();}
+     /* A3 · avisos de tabla 15 y 18 vacías */
+     {const bakM=S.params.motivos;const bakH=JSON.stringify(S.params.horarios||{});
+      S.params.motivos=(bakM||[]).filter(m=>m.uso!=="cierreSinTiempo");
+      page="config";CONF.tab="ordenes2";render();let hx=document.getElementById("p-config").innerHTML;
+      __check("TA3: tabla 15 avisa «sin motivos de cierre sin tiempo» y qué deja de funcionar",/sin motivos de cierre sin tiempo/.test(hx)&&/no puede cerrar un paso sin tiempo corrido/.test(hx));
+      S.params.motivos=bakM;render();hx=document.getElementById("p-config").innerHTML;
+      __check("TA3: con motivos cargados el aviso de ese uso desaparece",!/sin motivos de cierre sin tiempo/.test(hx));
+      S.params.horarios={};render();hx=document.getElementById("p-config").innerHTML;
+      __check("TA3: tabla 18 avisa «Sin ventanas de descanso» y el efecto (minuto real inflado)",/Sin ventanas de descanso en ningún centro/.test(hx)&&/no descuenta almuerzo/.test(hx));
+      S.params.horarios=JSON.parse(bakH);}
      /* se deja como estaba */
      S.avance[oC.id]=JSON.parse(bakAv);const tr=tramosDe(oC.id);tr.length=0;JSON.parse(bakTr).forEach(t=>tr.push(t));PLAN=null;PLAN_ALL=null}}
    delete S.params.tablets[uid0];

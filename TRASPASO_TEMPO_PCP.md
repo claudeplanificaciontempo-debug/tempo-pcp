@@ -204,6 +204,15 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.53 Tablet del operario: ajustes aprobados (17-sep)
+- Fallo de `programar()`: además del aviso en la tablet, UNA alerta por falla en bitácora (`k:'errProg'`, hora, error,
+  centro) y en Hoy → Pendientes para admin y planificación, con «atendida» (`S.params.errProgAtendidos`).
+- `minMinutosCierre(c)`: general en `S.params.minMinutosCierre` y por centro en `S.params.minMinutosCierreCentro[c]`
+  (vacío = general); `puedeCerrarPaso` dice de dónde salió el mínimo (`fuente`).
+- Tablas 15 y 18 avisan cuando están vacías y qué deja de funcionar.
+- Sin tiempo corrido la tablet NO muestra «Hecho» ni «Terminar orden»: muestra cuánto lleva y el mínimo (`hintCierreHTML`).
+- `S.cargas` ya no se recorta (antes 60). Ver `TABLET_OPERARIO_REPORTE.md`.
+
 ### 2.52 Cargas: diagnóstico de claves y duplicados (17-sep) — SOLO REPORTE
 - Cuatro cargadores, tres normalizaciones de la WH: `normTxt` (Parte 2, Fotos), texto crudo (Odoo), `normFase` (OT).
 - La orden **sin WH** tiene dos claves: Parte 2 `SIN WH #<hash de cliente|ODC|stilo|catHija|color|fecha|pedido|proyecto>`

@@ -769,6 +769,16 @@ pasan por ella): suma `calcTramo().trabajado` de TODOS los tramos de esa orden e
 `prm('minMinutosCierre',5)`. Por debajo del estándar marca `tiempoBajo` sin bloquear, y **sin SAM no marca**.
 El supervisor puede cerrar sin tiempo con **motivo obligatorio** (tabla 15, uso `cierreSinTiempo`), que queda
 en bitácora y auditoría. Ver `TABLET_OPERARIO_REPORTE.md`.
+**Tablet · ajustes (17-sep-2026):** (1) un fallo de `programar()` visto desde una tablet deja **una alerta por falla**
+(mismo error y centro, no atendida) en la **bitácora** (`registrarErrProg`, entrada con `k:'errProg'`, hora y error;
+es la única tabla que el piso puede escribir) y Hoy → Pendientes la muestra a admin y planificación (`errorProg`,
+`erroresProgAbiertos`, `mErroresProg`, `atenderErrProg` → `S.params.errProgAtendidos`; atender no corrige nada).
+`vTablet` también captura el fallo (antes reventaba el render). (2) `minMinutosCierre(c)`: valor general +
+`S.params.minMinutosCierreCentro[c]` (vacío = general; `fuenteMinCierre`, `setMinMinutosCierreCentro`, editable en
+Calendario y parámetros bajo el general). (3) Tabla 15 avisa por cada uso sin motivos qué deja de funcionar
+(`SIN_MOTIVO_EFECTO`, `avisosMotivosVaciosHTML`); tabla 18 avisa los centros sin ventanas y el efecto (minuto real
+inflado). (4) **Sin tiempo corrido no aparece «Hecho» ni «Terminar orden»** en la tablet: `hintCierreHTML` dice qué
+falta; la decisión sigue siendo `puedeCerrarPaso`, sin segundo criterio en la vista.
 
 **Cargas (17-sep-2026, puntos 1–3 + protección).** `aplicarTarea` **ya no vacía `S.avance`**; la tabla 14 tiene
 filas bloqueadas (`CAMPOS_BLOQUEADOS` = avance, lib, fases, progCentro; «siempre»: `conserva()` devuelve true y
