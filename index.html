@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 23:06';
+const APP_BUILD='2026-09-16 23:13';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1253,7 +1253,7 @@ function wipOrdenesHTML(P){const q=normTxt(WIPL.q);const lista=S.ordenes.filter(
   const niv=nivelesWIP();const sel=i=>`<select onchange="setNivelWIP(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${WIP_CAMPOS.map(([k,v])=>`<option value="${k}" ${niv[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
   const fila=o=>{const ro=P.ordenes[o.id]||{};const d=dondeEsta(o,P);const pend=pasosPendPro(o);return `<tr><td style="white-space:nowrap">${fotoMini(o)}<a href="#" onclick="mDetalleAsig('${o.id}');return false"><b>${esc(o.op)}</b></a>${faseTag(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'').trim()||'—')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(d.n)}</td><td class="mut" style="font-size:var(--fs-xs)">${pend.map(p=>esc(nCen(p.centro))).join(' → ')||'—'}</td><td>${ro.finTin&&!ro.tinturadaHecha?fmtDia(ro.finTin):(ro.telaLista?fmtDia(ro.telaLista):'—')}</td><td>${ro.finPro?fmtDia(ro.finPro):'—'}</td></tr>`};
   return `<div class="panel"><h3>Órdenes en proceso <span class="note">${lista.length} liberadas · foto, etapa actual y pasos pendientes; clic en la orden abre la ruta</span></h3><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding-bottom:6px"><div><label>Agrupar por <span class="mut">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=niv.length).map(sel).join('')}</div></div><div style="flex:1;min-width:160px"><label>Buscar</label>${busqHTML('WIPL.q',WIPL.q,'WIPL.q=v','')}</div></div>
-   <div class="scroll" style="max-height:600px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Etapa actual</th><th>Pasos pendientes</th><th>Tela lista (est.)</th><th>Termina</th></tr></thead><tbody>${(grpSt('wip').niveles=niv.slice(0,3),filasGRP('wip',lista,fila,10))||'<tr><td colspan="10" class="mut">Nada.</td></tr>'}</tbody></table></div></div>`}
+   <div class="scroll" style="max-height:600px"><table><thead><tr><th>OP</th><th>Cliente</th><th>ODC</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Etapa actual</th><th>Pasos pendientes</th><th>Tela lista (est.)</th><th>Termina</th></tr></thead><tbody>${(grpSt('wip').niveles=niv.slice(0,3),filasGRP('wip',lista,fila,10))||'<tr><td colspan="10" class="mut">Nada.</td></tr>'}</tbody></table></div>${avisoFueraDeBaseHTML('WIPL.q',lista,'lo liberado a planta (esta pantalla solo muestra producto en proceso)')}</div>`}
 function programar(){
   if(PLAN&&!LIB_ALL)return PLAN;
   const carga={}; S.recursos.forEach(r=>carga[r.id]={});
@@ -2988,6 +2988,7 @@ function vGerencia(el){
   ${avisos.length?`<p class="mut" style="font-size:var(--fs-xs);margin:16px 0 0;line-height:1.5"><b>Notas:</b> ${avisos.map(esc).join(' ')}</p>`:''}
   </section>
   ${consultasGERHTML(ords,P)}
+  ${avisoFueraDeBaseHTML('GER.q',ords,'los meses, el cliente y el estado del filtro')}
   ${cierresMesHTML()}`;
 }
 
@@ -3115,7 +3116,7 @@ function agregarAlPlanHTML(ym,c){
       <div><label>&nbsp;</label><button class="btn" ${marc.length?'':'disabled'} onclick="planMesAgregar('${ym}',${JSON.stringify(marc).replace(/"/g,'&quot;')})">Agregar al plan (${marc.length})</button></div>
       ${marc.length?`<div><label>&nbsp;</label><button class="btn ghost sm" onclick="PMADD.sel=new Set();render()">Desmarcar</button></div>`:''}</div>
     <div style="padding:8px 10px;border:1px solid var(--rule);border-radius:8px;margin-bottom:10px;font-size:var(--fs-s)">${head}</div>
-    <div class="scroll" style="max-height:460px"><table><thead><tr><th style="width:26px"></th><th>OP</th><th>Fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th></tr></thead><tbody>${cuerpo}</tbody></table></div></div></div>`;
+    <div class="scroll" style="max-height:460px"><table><thead><tr><th style="width:26px"></th><th>OP</th><th>Fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th></tr></thead><tbody>${cuerpo}</tbody></table></div>${avisoFueraDeBaseHTML('PMADD.q',cand,'el mes del plan y los grupos que se pueden agregar')}</div></div>`;
   return panelA+panelB;
 }
 function vPlan(el){
@@ -3355,6 +3356,7 @@ function vEntregas(el){
   <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes abiertas (liberadas o no)</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div><div class="kpi ${sinLib.length?'warn':''}"><div class="v">${sinLib.length}</div><div class="k">Sin liberar · ${num(sinLibPz)} prendas · por resolver antes de comprometer</div></div><div class="kpi"><div class="v">${lista.filter(o=>o.fechaCompromiso).length}</div><div class="k">Con fecha de compromiso</div></div></div>
   ${lista.length?`<table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
    ${filasArbolEG(arbol,fila,12)}</tbody></table>`:'<p class="mut">Nada pendiente con estos filtros.</p>'}
+  ${avisoFueraDeBaseHTML('EG.q',lista,'los meses, la familia, el tipo de producto y la tela del filtro')}
   </section>`;
   __listaEG=lista;
 }
@@ -6562,6 +6564,9 @@ function modKPIsHTML(recs,P,dias,titulo){if(!recs.length)return '';
     const cap=dias.reduce((a,d)=>a+(labR(d,r)?capDia(r,d):0),0);const ords=[...new Set(xs.map(x=>x.op))].map(op=>byOp[op]).filter(Boolean);
     return {id:'mod-'+r.id,v:num(pz),k:esc(r.n)+' · '+num(min)+' / '+num(cap)+' min'+(cap?' ('+Math.round(min/cap*100)+'%)':''),items:ords,porFam:true,cls:cap&&min>cap*1.02?'bad':''}});
   return `<div style="margin:16px 0 6px"><b>${esc(titulo)}</b> <span class="mut" style="font-size:var(--fs-xs)">· ${recs.length} ${recs.length===1?'puesto':'puestos'} · clic en una tarjeta abre sus órdenes por familia</span></div>${tarjetasResumenHTML(cards)}`}
+/* las órdenes que de verdad se ven en la cola: pendientes del centro y dentro de la semana (o toda la cola) */
+function colaVisible(cens,filas,hasta){return [].concat(...cens.map(c=>{const all=colaCentro(c,filas);
+  return (CEN.todo?all:all.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta))).map(f=>f.o)}))}
 /* ---------- la cola de UN centro, a su propia función (16-sep-2026, punto 2a) ----------
    Es EXACTAMENTE la plantilla que antes vivía dentro de vCentro: se movió, no se cambió. Recibe en
    `ctx` las variables de las que dependía (filas, hasta, okPiso, P, h, porQue). Existe para poder
@@ -6626,11 +6631,12 @@ function vCentro(el){
     listaRegistrar('CEN.q',()=>{
       const f2=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
       const pq={};cens.forEach(c=>{pq[c]=porQueTardeHTML(colaCentro(c,f2),P,c)});
-      return cens.map(c=>colaCentroHTML(c,{filas:f2,hasta,okPiso,P,h,porQue:pq})).join('')});
+      return cens.map(c=>colaCentroHTML(c,{filas:f2,hasta,okPiso,P,h,porQue:pq})).join('')
+        +avisoFueraDeBaseHTML('CEN.q',colaVisible(cens,f2,hasta),'este centro y la semana que se está mirando')});
     el.innerHTML=cab+resumenDiaFamiliaHTML(cens,P,dias,nombre)+secciones+`<div class="no-print" style="margin:-4px 0 10px"><button class="btn ghost sm" onclick="imprimirProgramaCentro('${cid}')">PDF del programa (para operarios)</button>${(cid==='corte'||cid==='modulos')?' <button class="btn ghost sm" onclick="ordenarColaPorColor(\''+cens[0]+'\')" title="junta los colores en la cola para bajar cambios de hilo; es solo el orden de los puestos, el motor no cambia">Juntar colores en la cola</button> <span class="mut" style="font-size:var(--fs-xs)">agrupar por color es vista y orden manual: el motor no secuencia por color</span>':''} ${cens.map(c=>ordenesConPuesto(c).length?' <button class="btn ghost sm" title="quita el puesto manual de las '+ordenesConPuesto(c).length+' órdenes de '+esc(nCen(c))+' para que la cola vuelva a ordenarse por cercanía a llegar" onclick="volverACercania(\''+c+'\')">Volver al orden por cercanía'+(cens.length>1?' · '+esc(nCen(c)):'')+'</button>':'').join('')} <span class="mut" style="font-size:var(--fs-xs)">puesto, foto, WH, cliente, producto, color, minutos estándar y unidades · horizontal · sin datos internos</span></div>`+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${grpSelHTML('cen')}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
     ${listas}
-    <div data-lista="CEN.q">${tablas}</div>
+    <div data-lista="CEN.q">${tablas}${avisoFueraDeBaseHTML('CEN.q',colaVisible(cens,filas,hasta),'este centro y la semana que se está mirando')}</div>
     ${avanceCongeladoHTML(cens,P,lun,dom)}
     <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. Las prendas de cada grupo son las pendientes en el centro. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p>`;
     return}
@@ -7390,7 +7396,8 @@ function vOrdenes(el){
   const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
     const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
     return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
-     +`<div class="scroll"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,10)||'<tr><td colspan="10" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`};
+     +`<div class="scroll"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,10)||'<tr><td colspan="10" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
+     +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')};
   listaRegistrar('ORDF.q',listaOrdHTML);
   let rows;
   rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
@@ -7418,7 +7425,7 @@ function vOrdenes(el){
   <div data-lista="ORDF.q"><div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
     <span class="spacer"></span></h3>
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
-    <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+    <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div></div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas desde Odoo <span class="note">qué cambió en cada actualización</span></h3><div class="body">
     ${S.cargas.slice().reverse().slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${c.tipo==='ot'?`órdenes de trabajo: ${c.act} órdenes con centros cerrados${(c.samReal||[]).length?', '+c.samReal.length+' tiempos reales medidos':''}`:`${c.nuevas} nuevas, ${c.act} actualizadas, ${c.cerradas} cerradas`}${(c.coloresNuevos||[]).length?', '+c.coloresNuevos.length+' colores nuevos':''}${(c.catsNuevas||[]).length?', '+c.catsNuevas.length+' categorías nuevas':''}</div>
@@ -7627,7 +7634,7 @@ function vPro(el){
      </tbody></table></div></div></div>`}
   const cvCen=CG.centro||(CG.area==='pro'?'':'');
   const cargaViene=(CG.area==='pro'&&cvCen)?`<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">Carga que viene · ${esc(nCen(cvCen))}</span></div>${cargaQueVieneHTML([cvCen],nCen(cvCen),P||programar())}`:(CG.area==='pro'?'<p class="mut" style="margin-top:18px">Elige un centro arriba para ver <b>Carga que viene</b>: lo que va a llegar y dónde está ahora.</p>':'');
-  el.innerHTML=cab+bloque1+bloque2+bloque3+cargaViene;
+  el.innerHTML=cab+bloque1+bloque2+bloque3+avisoFueraDeBaseHTML('CG.q',ordsF,'el área o centro elegido y el filtro de fases')+cargaViene;
 }
 function togFaseCG(f){togSet(CG,'fases',f)}
 /* Asignación por orden: ahora vive en Reportería (no se borró) */

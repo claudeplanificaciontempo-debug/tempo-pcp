@@ -5435,6 +5435,43 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* la función común no inventa: si todo está dentro de la base, no hay aviso */
     __check("AB8: si no hay coincidencias fuera, la función devuelve null",
       fueraDeBase("LIB.q",S.ordenes)===null);}
+   /* ---------- 3n · el aviso de base acotada, en las SIETE pantallas, con la misma función ---------- */
+   {const bakO=S.ordenes.slice();
+    /* una orden de laboratorio que EXISTE pero cae fuera de la base de cada pantalla:
+       cerrada en Odoo (fuera de «abiertas»), sin liberar, entrega en un mes lejano */
+    const oX=JSON.parse(JSON.stringify(S.ordenes.find(abierta)||S.ordenes[0]));
+    oX.id="fuera-"+uid();oX.op="WH/MO/77777";oX.estado="plan";oX.fase="0Diseño";oX.fecha="2031-01-15";delete oX.lib;oX.odc="ODC-FUERA";
+    S.ordenes.push(oX);PLAN=null;PLAN_ALL=null;
+    const PANT=[
+      ["Centro","CEN.q","centro",()=>{CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=false;CEN.fases=null;CEN.cercAbre=null}],
+      ["Órdenes","ORDF.q","ordenes",()=>{ORDF.tab="lista";ORDF.estado="cerrada";ORDF.fases=null}],
+      ["Carga general","CG.q","produccion",()=>{CG.centro="corte";CG.area="pro";CG.fases=null}],
+      ["Resumen gerencial","GER.q","gerencia",()=>{GER.meses=new Set([hoy().slice(0,7)]);GER.cli=null;GER.estado=null}],
+      ["Plan → agregar","PMADD.q","plan",()=>{PMADD.sel=new Set();PMADD.incluirSig=false}],
+      ["Entregas","EG.q","entregas",()=>{EG.meses=new Set([hoy().slice(0,7)]);EG.cli=null;EG.fam=null;EG.hija=null;EG.tela=null}],
+      ["Producto en proceso","WIPL.q","wip",()=>{}]];
+    for(const [pant,id,pag,prep] of PANT){
+      const r=refEstado(id);if(!r.o){__check("AB12 "+pant+": refEstado alcanza "+id,false,id);continue}
+      try{prep()}catch(e){}
+      FUERA[id]=false;r.o[r.k]="";page=pag;render();
+      const sinQ=document.getElementById("p-"+pag).innerHTML;
+      __check("AB12 "+pant+": sin búsqueda no hay aviso de «fuera del filtro»",!/coinciden fuera de|coincide fuera de/.test(sinQ));
+      r.o[r.k]="77777";render();
+      let h=document.getElementById("p-"+pag).innerHTML;
+      const enLista=!!listaHost(id)&&listaHost(id).innerHTML.indexOf("WH/MO/77777")>=0&&!/fuera del filtro/.test(listaHost(id).innerHTML);
+      const hayAviso=/coinciden fuera de|coincide fuera de/.test(h);
+      __check("AB12 "+pant+": la WH que existe fuera de la base sale en el aviso (o está dentro de la lista)",hayAviso||enLista,hayAviso?"aviso":(enLista?"en la lista":"ni aviso ni lista"));
+      if(hayAviso){
+       __check("AB12 "+pant+": el aviso dice qué filtro la deja fuera",/fuera de <\/b>|fuera de [a-záéíóú]/.test(h.replace(/<b>/g,"")),"");
+       const antes=JSON.stringify(Object.fromEntries(Object.entries(r.o).filter(([k,v])=>k!==r.k&&typeof v!=="function").map(([k,v])=>[k,v instanceof Set?[...v]:v])));
+       verFueraDeBase(id,true);render();
+       h=document.getElementById("p-"+pag).innerHTML;
+       __check("AB12 "+pant+": «Ver» la muestra marcada como fuera del filtro",/fuera del filtro/.test(h)&&h.indexOf("WH/MO/77777")>=0);
+       const despues=JSON.stringify(Object.fromEntries(Object.entries(r.o).filter(([k,v])=>k!==r.k&&typeof v!=="function").map(([k,v])=>[k,v instanceof Set?[...v]:v])));
+       __check("AB12 "+pant+": y no cambió ningún filtro de la pantalla",antes===despues);
+       verFueraDeBase(id,false);}
+      r.o[r.k]="";render()}
+    S.ordenes=bakO;PLAN=null;PLAN_ALL=null;}
    /* ---------- 3k · redibujo parcial: el input NO se destruye ---------- */
    {page="ordenes";ORDF.tab="lista";ORDF.q="";ORDF.estado="plan";ORDF.fases=null;render();
     const sel='input[data-q="ORDF.q"]';
