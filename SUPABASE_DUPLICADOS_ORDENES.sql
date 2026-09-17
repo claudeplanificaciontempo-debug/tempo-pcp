@@ -132,3 +132,43 @@ where not (data ? 'origenParte2')
   and (data ? 'samProv' or id like 'prev\_%')
   and data->>'estado' in ('cerrada','anulada','standby')
 group by 1 order by 2 desc;
+
+-- 5) ÓRDENES FUNDIDAS POR LA CLAVE DE ODOO (previsiones sin WH, id 'prev_…')
+--    La clave de Odoo es cliente|proyecto|stilo|color y NO lleva ODC: si en los
+--    datos existe esa combinación con MÁS DE UNA ODC, Odoo la fundió en una.
+--    Con qué se cruza: NO hay tabla de tareas/ODC en Supabase (el archivo de
+--    tareas no se guarda; solo quedan las órdenes que cada cargador creó).
+--    Por eso se cruza contra la propia tabla ordenes: las 'SIN WH #…' de la
+--    Parte 2 sí conservan su ODC (data->>'odc'), y una 'prev_…' cuyo
+--    cliente|proyecto|stilo|color calce con 2+ ODC distintas ahí es un par fundido.
+--    Si en producción no hay 'SIN WH #…' cargadas, este bloque devuelve 0 filas y
+--    NO significa que no haya fundidas: significa que no hay con qué cruzar.
+with prev as (
+  select id,
+         lower(trim(coalesce(data->>'cliente','')))||'|'||lower(trim(coalesce(data->>'proyecto','')))||'|'||
+         lower(trim(coalesce(data->>'ref','')))||'|'||upper(trim(coalesce(data->>'colorOdoo',''))) as k,
+         (data->>'cant')::numeric as cant, data->>'fecha' as fecha, data->>'fase' as fase, actualizado
+  from ordenes
+  where id like 'prev\_%'
+), sinwh as (
+  select id,
+         lower(trim(coalesce(data->>'cliente','')))||'|'||lower(trim(coalesce(data->>'proyecto','')))||'|'||
+         lower(trim(coalesce(data->>'ref','')))||'|'||upper(trim(coalesce(data->>'colorOdoo',''))) as k,
+         coalesce(data->>'odc','') as odc, (data->>'cant')::numeric as cant, data->>'fecha' as fecha
+  from ordenes
+  where data->>'op' like 'SIN WH%'
+), odcs as (
+  select k, count(distinct odc) as n_odc,
+         string_agg(distinct odc||' ('||coalesce(cant::text,'')||' u · '||coalesce(fecha,'')||')', ' | ') as odcs
+  from sinwh group by k having count(distinct odc) > 1
+)
+select p.id as prev_id, p.k as clave_odoo, p.cant as cant_prev, p.fecha as fecha_prev, p.fase,
+       o.n_odc as odc_distintas, o.odcs as odc_en_parte2
+from prev p join odcs o using (k)
+order by o.n_odc desc, p.k;
+
+-- 5b) Cuántas 'prev_…' hay en total y cuántas 'SIN WH #…' (para saber si el
+--     bloque 5 tenía con qué cruzar)
+select count(*) filter (where id like 'prev\_%') as previsiones_odoo,
+       count(*) filter (where data->>'op' like 'SIN WH%') as sin_wh_parte2
+from ordenes;
