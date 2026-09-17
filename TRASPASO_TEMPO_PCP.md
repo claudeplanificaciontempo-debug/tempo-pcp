@@ -204,6 +204,13 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.57 Nivelación: pantalla propia, un área a la vez (17-sep) — solo Corte conectado
+- «Nivelación de carga» abre su pantalla (`vNivelacion`, prefijo `nivUI*`); Configuración conserva grupos, fases y
+  parámetros con enlace «Configurar». Meses multiselección, filtros cliente/familia, recuadros por área (centros
+  configurados), detalle: tabla cliente × mes y cuadrito de 13 filas (4 se escriben). Motor del Paso 1 intacto.
+- Órdenes de demostración: `esDemo`, `carteraAbiertaCarga()` para el freno; no existen en producción.
+- Ver `NIVELACION_PANTALLA_CORTE.md`.
+
 ### 2.56 Restaurar con respaldo automático y registro unificado de cargas (17-sep)
 - Restaurar: solo administrador, palabra RESTAURAR, respaldo automático descargado Y subido a Storage (bucket privado
   `respaldos`, carpeta respaldos/; si la subida falla no se restaura) antes de reemplazar, bitácora unida,

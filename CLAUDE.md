@@ -828,9 +828,25 @@ unificado**: `registrarCarga(tipo,archivo,resumen)` es la única escritura a `S.
 `TIPOS_CARGA`, `resumenCargaTxt`), nunca se recorta; `registroCargasHTML()` en Configuración → Órdenes y materiales; Hoy y
 Órdenes muestran «Última(s) carga(s)» desde el mismo registro. Ver `CARGAS_7_Y_8.md`.
 
-**Nivelación Paso 2 · Etapa A (17-sep-2026):** boceto navegable con datos fijos (`NIVD`, `NIVV`, `vNivelacion`,
-página `nivelacion`, desde Configuración → Nivelación → «Ver el boceto →»); NO conectado al motor. Al aprobarse,
-el boceto pasa a prefijo `nivUI*` y se agrega una prueba de funciones duplicadas en todo `index.html`.
+**Órdenes de demostración (17-sep-2026):** `demo()` las marca `demo:true`; `esDemo(o)` (marca u OP en `OPS_DEMO`);
+`carteraAbiertaCarga()` = abiertas sin demo y es la base del freno de archivo incompleto. `abiertaDe` NO las excluye: el
+simulador entero (tintorería, liberación, tablet) corre sobre ellas como cartera abierta. En producción no existen
+(SQL del 17-sep: 100 % Parte 2).
+
+**Nivelación · pantalla (diseño 17-sep-2026, prefijo `nivUI*`, SOLO Corte conectado; el resto de áreas espera aprobación).**
+Sigue la lógica del Excel, un área a la vez. `vNivelacion` (página `nivelacion`, entrada del menú sin `data-conf`): meses
+como chips de selección múltiple (`nivUIMeses`/`nivUITogMes`, al menos uno), filtros cliente y familia (`nivUIFiltro`),
+recuadros por área desde los centros configurados (`nivUIAreas`: Tela + centros `pro` en `ordenPaso` + Maquila) con saldo,
+fin y estado (`nivUIEstadoHTML`: ✓ llega / ⚠ riesgo (holgura ≤ `colchonDias`) / ✕ déficit / ? dato faltante); clic → solo
+esa área: tabla cliente × mes (`nivUITablaHTML`, celda → lista con `filasGRP`+`whCell`) y el cuadrito de trece filas
+(`nivUICuadritoHTML`; solo Fecha inicio, Fecha compromiso, Días adicionales y Maquila se escriben, `nivUISet`, en
+`NIVUI.esc` hasta «Guardar escenario» con motivo y permiso `programa`, `nivUIGuardar` → inicio/compromiso por `setNivFecha`
+del Paso 1 y `S.params.nivelacion.escenarios[area]`). **El motor no cambió**: `nivUICalcular` llama a `nivelar()` y deriva
+tres filas (días disponibles + adicionales, maquila escrita, total del período = planta + maquila; déficit = saldo − total).
+`saldoProceso(procId,horizonte,filtro)` ganó un filtro opcional y `procNivel(id)` acepta cualquier centro `pro` (por ruta).
+`nivUICapacidad` suma `capDia` de los recursos activos del centro (sin `maquila`) y expone personas/min/eficiencia por
+recurso para «Ver cálculo». Configuración → Nivelación conserva grupos, fases y parámetros y solo enlaza a la pantalla.
+Prueba N0: ninguna función declarada dos veces en `index.html`. Ver `NIVELACION_PANTALLA_CORTE.md`.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

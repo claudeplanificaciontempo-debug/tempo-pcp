@@ -118,6 +118,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('fixture tareas: 65.002 filas incl. header',tareaRows.length===65002,tareaRows.length);
   const bakOrd=S.ordenes;S.ordenes=[];
   const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
+  /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo */
+  if(/captura=niv/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
+    NIVUI={meses:['2026-09','2026-10','2026-11'],cliente:'',familia:'',area:'corte',celda:null,esc:{},verCalc:false,noEntra:false};
+    if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
+      const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={cliente:cl,mes:'2026-10'}}
+    if(/niv3/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),3));nivUISet('corte','diasAdic',0);NIVUI.noEntra=true;NIVUI.verCalc=false}
+    page='nivelacion';render();document.body.classList.add('captura');__R.done=true;return}
   __check('planTarea reconoce columnas',!!planT);
   __check('planTarea: 4.235 cabeceras (3.733 con WH + 502 sin WH) y 60.766 líneas de componentes',planT.cabeceras===4235&&planT.sinLanzar===502&&planT.lineasComp===60766,planT.cabeceras+' / '+planT.sinLanzar+' / '+planT.lineasComp);
   __check('planTarea: la fase decide: los 2 Estado OP cancel son Facturado con fecha pasada → fuera de rango por la fase; 5 sin fecha en bandeja (4 con WH + 1 sin WH); las que tienen Proyecto entran al plan sin fecha y no se liberan ni programan',planT.excluidas.cancel.length===0&&planT.excluidas.fueraRango.filter(x=>x.estadoOP==='cancel').length===2&&planT.sinFecha.length===5&&planT.ordenes.filter(o=>o.sinFechaEntrega).length===planT.sinFecha.filter(x=>x.entra).length&&planT.ordenes.filter(o=>o.sinFechaEntrega).every(o=>!o.fecha&&mesPlan(o)&&!liberada(o,'tela')&&!puedeLiberarA(o,'tela')),planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
@@ -5950,8 +5957,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* ===== CARGAS · el camino único sobre el mismo archivo: reconoce todo, no duplica, no pisa (17-sep) ===== */
   try{localStorage.__fase="carga unica"}catch(e){}
   {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
-   /* la cartera del simulador son 5 órdenes de demostración: cualquier archivo real dispara el freno de «archivo incompleto» */
-   const prF=window.prompt;window.prompt=()=>"APLICAR";
+   __check("D1: las órdenes de demostración no cuentan como cartera abierta para la carga",S.ordenes.filter(esDemo).length>=1&&!carteraAbiertaCarga().some(esDemo)&&/demo:true/.test(String(window.demo))&&/carteraAbiertaCarga\(/.test(String(planTarea)),S.ordenes.filter(esDemo).length);
+   {const pD=planTarea(tareaRows,"D1.xlsx");__check("D1: por eso cargar el volcado real sobre la cartera de demostración NO dispara el freno",!(pD.prev.incompleto||{}).frena,JSON.stringify(pD.prev.incompleto));}
    const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
    const demo=S.ordenes.filter(o=>/^OP-/.test(o.op||"")).length;const cartera=S.ordenes.length;
    const p=planTarea(tareaRows,"TAREA_OTRA_VEZ.xlsx");
@@ -6002,7 +6009,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cnt={};tareaRows.slice(1).forEach(r=>{if(String(r[iO]||"").trim()){const c=String(r[iC]||"");cnt[c]=(cnt[c]||0)+1}});const cli=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
     /* archivo filtrado a UN cliente (con sus componentes: se arrastra el bloque de cada cabecera) */
     const rows=[tareaRows[0]];let dentro=false;tareaRows.slice(1).forEach(r=>{const esCab=String(r[iO]||"").trim()||String(r[iC]||"").trim();if(esCab)dentro=String(r[iC]||"")===cli;if(dentro)rows.push(r)});
-    const abiertas=S.ordenes.filter(abiertaDe).length;const nOrd=S.ordenes.length;const nb=S.bitacora.length;
+    const abiertas=carteraAbiertaCarga().length;const nOrd=S.ordenes.length;const nb=S.bitacora.length;
     const p=planTarea(rows,"SOLO_"+cli.slice(0,8)+".xlsx");const inc=p.prev.incompleto;
     __check("F6: un archivo filtrado a un cliente dispara el freno: faltan N (X %) sobre la cartera abierta",!!inc&&inc.frena===true&&inc.faltan>abiertas*0.1&&inc.abiertas===abiertas&&inc.umbral===10,JSON.stringify(inc&&{f:inc.faltan,a:inc.abiertas,p:inc.pct}));
     const h=vistaPreviaTareaHTML(p);
@@ -6028,7 +6035,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("F6: si la última carga de tareas tiene más de 1 día, avisa aunque sea la misma sesión",/Conviene cargar primero las tareas/.test(m())&&/hace 2/.test(m()),m().slice(m().indexOf("Conviene"),m().indexOf("Conviene")+140));
      mActualizarDatos(1);__check("F6: en el paso 1 no hay aviso",!/Conviene cargar primero/.test(m()));cerrar();
      if(CT)CT.fecha=bakF;ACT.tareasEnSesion=bakSes;}}
-   window.prompt=prF;window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
   try{localStorage.__fase="clave unica"}catch(e){}
   {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];const al=window.alert;window.alert=()=>{};
@@ -6047,7 +6054,6 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const usan=fn.filter(([n,f])=>/claveOrden\(|indiceClaves\(|claveDeOrden\(/.test(String(f))||n==="aplicarTarea").map(x=>x[0]);
     __check("K2: ningún cargador arma su clave por su cuenta",propia.length===0,propia.join(", "));
     __check("K2: tareas, OT y fotos pasan por claveOrden/indiceClaves",usan.length===fn.length,usan.join(", "));}
-   const prK=window.prompt;window.prompt=()=>"APLICAR";
    /* K3 · Parte 2 con el volcado: sin WH estables, repetidas, incompletas, sin WH → WH */
    {const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
     const sinWH=S.ordenes.filter(o=>o.sinLanzar);
@@ -6144,7 +6150,94 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("K5: un serial numérico se lee con excelFecha (46283,75 = 2026-09-18, sin redondear al día siguiente)",excelFecha(46283.75)==="2026-09-18"&&(!oA||oA.fecha==="2026-09-18"),JSON.stringify({d:oA&&oA.fecha}));
      __check("K5: una fecha ilegible se reporta y no se inventa",pS.fechasIlegibles.length===1&&/fecha rara/.test(pS.fechasIlegibles[0].valor)&&/fechas ilegibles/.test(vistaPreviaTareaHTML(pS)),JSON.stringify(pS.fechasIlegibles));}
     PLAN=null;PLAN_ALL=null;}
-   window.prompt=prK;window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* ===== NIVELACIÓN · pantalla nueva (diseño 17-sep), solo Corte conectado ===== */
+  try{localStorage.__fase="nivelacion pantalla"}catch(e){}
+  {const antes=__R.errors.length;const al=window.alert;let av="";window.alert=m=>{av=String(m)};const adminP=PERFIL;
+   /* funciones duplicadas en todo index.html: ninguna */
+   {const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||"";
+    const names=[...src.matchAll(/^(?:async )?function ([A-Za-z0-9_$]+)\(/gm)].map(x=>x[1]);const c={};names.forEach(n=>c[n]=(c[n]||0)+1);const dup=Object.keys(c).filter(n=>c[n]>1);
+    __check("N0: no hay funciones declaradas dos veces en index.html",dup.length===0,dup.join(", "));
+    __check("N0: la pantalla usa el prefijo nivUI* y el boceto de la etapa A se retiró",names.filter(n=>/^nivUI/.test(n)).length>=15&&!names.some(n=>/^nivTarjetaHTML$|^nivLineaHTML$|^nivSimHTML$/.test(n))&&typeof NIVD==="undefined"&&typeof NIVV==="undefined");}
+   /* N1 · pantalla propia */
+   {const a=document.querySelector('nav a[data-p="nivelacion"]');
+    __check("N1: «Nivelación de carga» abre SU pantalla (no Configuración)",!!a&&!a.dataset.conf&&!document.querySelector('nav a[data-conf="nivel"]'));
+    PERFIL={id:"u-niv",rol:"planificacion",nombre:"Plan"};NIVUI={meses:null,cliente:"",familia:"",area:"corte",celda:null,esc:{},verCalc:false,noEntra:false};
+    page="nivelacion";render();const h=()=>document.getElementById("p-nivelacion").innerHTML;
+    __check("N1: arriba a la derecha solo el enlace «Configurar»; nada de configuración adentro",/>Configurar</.test(h())&&!/Grupos de módulos|setNivParam\(|setNivelFase\(/.test(h()));
+    {const pp=PERFIL;PERFIL=adminP;page="config";CONF.tab="nivel";render();PERFIL=pp}const hc=document.getElementById("p-config").innerHTML;
+    __check("N1: Configuración ya no tiene el botón «Ver el boceto» y conserva grupos, fases y parámetros",!/Ver el boceto/.test(hc)&&/Grupos de m|gruposMod|addGrupoMod/.test(hc),JSON.stringify({len:hc.length,tab:CONF.tab,page,boceto:/Ver el boceto/.test(hc),h3:[...hc.matchAll(/<h3>([^<]{0,40})/g)].map(m=>m[1]).slice(0,5)}));
+    page="nivelacion";render();}
+   /* N2 · meses como botones de selección múltiple */
+   {const h=()=>document.getElementById("p-nivelacion").innerHTML;const disp=nivUIMesesDisp();
+    __check("N2: hay meses disponibles y arranca con uno marcado",disp.length>=3&&nivUIMeses().length===1&&/nivUITogMes\(/.test(h()),disp.length+" / "+nivUIMeses().join(","));
+    const m0=nivUIMeses()[0];const otros=disp.filter(m=>m!==m0).slice(0,2);otros.forEach(m=>nivUITogMes(m));
+    __check("N2: clic marca varios (tres marcados)",nivUIMeses().length===3&&otros.every(m=>nivUIMeses().includes(m))&&(h().match(/class="chip on"/g)||[]).length>=3,nivUIMeses().join(","));
+    av="";nivUIMeses().slice().forEach(m=>nivUITogMes(m));
+    __check("N2: no se puede desmarcar el último",nivUIMeses().length===1&&/al menos un mes/.test(av),av);
+    otros.forEach(m=>nivUITogMes(m));
+    __check("N2: los filtros visibles son solo cliente y familia",(h().match(/<select /g)||[]).length===2&&/Todos los clientes/.test(h())&&/Todas las familias/.test(h()));}
+   /* N3 · recuadros de área desde los centros configurados */
+   {const areas=nivUIAreas();const pro=S.centros.filter(c=>c.area==="pro"&&c.activo!==false).length;
+    __check("N3: un recuadro por área: Tela, los centros de producción configurados en orden de proceso, Maquila",areas.length===pro+2&&areas[0].id==="tela"&&areas[1].id==="corte"&&areas[areas.length-1].id==="maquila"&&areas.findIndex(a=>a.id==="modulos")>areas.findIndex(a=>a.id==="corte"),areas.map(a=>a.id).join(" → "));
+    const h=document.getElementById("p-nivelacion").innerHTML;
+    __check("N3: cada recuadro trae saldo, fecha final y estado con ícono",areas.every(a=>h.includes("NIVUI.area='"+a.id+"'"))&&(h.match(/saldo <b>/g)||[]).length===areas.length&&(h.match(/>fin /g)||[]).length===areas.length&&/[✓⚠✕?] (llega|riesgo|déficit|dato faltante)/.test(h));
+    NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;
+    __check("N3: clic en un recuadro muestra SOLO esa área abajo (y las no conectadas lo dicen, sin cuadrito)",/Confección todavía no está conectada/.test(h2)&&!/Nivelación de Corte/.test(h2)&&(h2.match(/Saldo por cliente y mes/g)||[]).length===1&&!/se escribe/.test(h2));
+    NIVUI.area="corte";render();}
+   /* N4 · detalle de Corte: tabla cliente × mes y cuadrito */
+   {const r=nivUICalcular("corte");const h=()=>document.getElementById("p-nivelacion").innerHTML;
+    __check("N4: la tabla tiene una columna por mes marcado y fila de totales",nivUIMeses().every(m=>new RegExp("<th class=\"num\">"+m+"</th>").test(h()))&&/<td>Total<\/td>/.test(h()));
+    const cel=h().match(/onclick="NIVUI.celda=\{cliente:'([^']+)',mes:'([^']+)'\}/);
+    __check("N4: hay celdas con saldo",!!cel,"sin celdas");
+    if(cel){NIVUI.celda={cliente:cel[1].replace(/&#39;/g,"'"),mes:cel[2]};render();
+     __check("N4: clic en una celda lista las órdenes con foto/WH (whCell + filasGRP)",/órdenes<\/span>/.test(h())&&/setNivelGRP\('nivui'/.test(h())&&/fase-mini|foto-mini|WH\//.test(h()));NIVUI.celda=null;render();}
+    const filas=[...h().matchAll(/<tr[^>]*><td>([^<]+?)(?: <span class="tag"[^>]*>se escribe<\/span>)?<\/td>/g)].map(x=>x[1].trim());
+    const esperado=["Saldo actual","Capacidad día planta","Días lab. necesarios","Fecha inicio","Fecha finalización","Fecha compromiso","Días disponibles","Días adicionales","Días disponibles + adic.","Producción planta","Maquila","Total del período","Déficit"];
+    const idx=esperado.map(n=>filas.indexOf(n));
+    __check("N4: el cuadrito tiene las trece filas, con esos nombres y en ese orden",idx.every(i=>i>=0)&&idx.every((v,i)=>i===0||v>idx[i-1]),filas.join(" | "));
+    __check("N4: solo las cuatro filas «se escribe» tienen entrada, con fondo distinto",(h().match(/se escribe<\/span>/g)||[]).length===4&&(h().match(/onchange="nivUISet\(/g)||[]).length===4);
+    __check("N4: hay «Ver cálculo» colapsado con minutos, SAM ponderado y festivos",/<details[^>]*><summary[^>]*>Ver cálculo/.test(h())&&/SAM ponderado/.test(h())&&/Días hábiles/.test(h()));
+    __check("N4: el saldo sale del mismo saldoProceso del Paso 1 y el cálculo de nivelar()",!!r&&r.saldo&&r.saldo.unid>0&&/saldoProceso\(/.test(String(nivUISaldo))&&/nivelar\(/.test(String(nivUICalcular)),JSON.stringify(r&&{u:r.saldo.unid,min:r.saldo.min}));
+    __R.nivUI={saldo:r&&{u:r.saldo.unid,min:r.saldo.min,ordenes:r.saldo.ordenes.length,sinSAM:r.saldo.sinSAM.length,uSinSAM:r.saldo.unidSinSAM},cap:r&&r.cap.cap,capDet:r&&r.cap.detalle,meses:nivUIMeses()};}
+   /* N5 · coherencia: saldo de Corte del cuadrito vs Carga general (misma base, mismos meses) */
+   {const meses=nivUIMeses();const r=nivUICalcular("corte");
+    const ords=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o)));
+    const cg=cargaUnica("abiertas",{ordenes:ords}).centros.corte||{pz:0,n:0,total:0};
+    const propio=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==="corte")&&!pasoHecho(o,"corte")).reduce((a,o)=>a+pendCentroUnid(o,"corte"),0);
+    __R.nivUI.coherencia={cuadritoConSAM:r.saldo.unid,cuadritoSinSAM:r.saldo.unidSinSAM,cuadritoTotal:r.saldo.unid+r.saldo.unidSinSAM,cargaGeneralPz:cg.pz,cargaGeneralN:cg.n,cargaGeneralMin:Math.round(cg.total),propio};
+    __check("N5: el saldo de Corte (con SAM + sin SAM) coincide con la suma de órdenes por cortar de la misma base",r.saldo.unid+r.saldo.unidSinSAM===propio,JSON.stringify(__R.nivUI.coherencia));
+    __check("N5: y contra Carga general (misma base y meses) coincide o la diferencia es solo cantCentro/sin SAM",Math.abs((r.saldo.unid)-cg.pz)<=r.saldo.unidSinSAM+ords.reduce((a,o)=>a+Math.max(0,(+o.cant||0)-cantCentro(o,"corte")),0),JSON.stringify(__R.nivUI.coherencia));}
+   /* N6 · escribir recalcula al instante y no guarda; guardar exige motivo y permiso programa */
+   {const bakNiv=JSON.stringify(S.params.nivelacion||null);const nb=S.bitacora.length;const r0=nivUICalcular("corte");
+    const ini=dsum(hoy(),1);nivUISet("corte","inicio",ini);nivUISet("corte","compromiso",dsum(hoy(),30));nivUISet("corte","diasAdic",2);
+    const r1=nivUICalcular("corte");
+    __check("N6: escribir inicio, compromiso y días adicionales recalcula al instante (fin, días, producción, déficit)",r1.esc.inicio===ini&&r1.calc.diasDisp>0&&r1.diasTot===r1.calc.diasDisp+2&&(r1.calc.fin!=null||r1.calc.capDia==null)&&r1.deficitMin!=null,JSON.stringify({d:r1.calc.diasDisp,t:r1.diasTot,fin:r1.calc.fin,def:r1.deficitMin}));
+    __check("N6: nada se guardó todavía (ni params ni bitácora) y la pantalla dice «sin guardar»",JSON.stringify(S.params.nivelacion||null)===bakNiv&&S.bitacora.length===nb&&r1.esc.sinGuardar===true&&/sin guardar/.test(document.getElementById("p-nivelacion").innerHTML));
+    av="";nivUISet("corte","inicio",dsum(hoy(),-3));
+    __check("N6: la fecha de inicio no puede ser anterior a hoy",/anterior a hoy/.test(av)&&nivUICalcular("corte").esc.inicio===ini,av);
+    __check("N6: maquila escrita manda sobre la suma de órdenes marcadas",(()=>{nivUISet("corte","maquilaU",500);const r=nivUICalcular("corte");return r.maqU===500&&(r.sam==null||Math.abs(r.maqMin-500*r.sam)<1e-6)})());
+    const pr0=window.prompt;window.prompt=()=>"";nivUIGuardar("corte");
+    __check("N6: sin motivo no se guarda",JSON.stringify(S.params.nivelacion||null)===bakNiv&&S.bitacora.length===nb);
+    window.prompt=()=>"prueba de escenario";nivUIGuardar("corte");window.prompt=pr0;
+    const g=((S.params.nivelacion||{}).escenarios||{}).corte;
+    __check("N6: con motivo se guarda (inicio/compromiso por el camino del Paso 1, adicionales y maquila en escenarios) y queda en bitácora",!!g&&g.diasAdic===2&&g.maquilaU===500&&g.motivo==="prueba de escenario"&&nivFecha("corte","inicio")===ini&&nivFecha("corte","compromiso")===dsum(hoy(),30)&&S.bitacora.slice(nb).some(b=>/escenario de Corte guardado/.test(b.t))&&!NIVUI.esc.corte,JSON.stringify(g));
+    const bakP=PERFIL;PERFIL={id:"u-op",rol:"corte",nombre:"Op"};av="";nivUISet("corte","diasAdic",5);
+    __check("N6: sin permiso programa no se edita",/Solo planificación/.test(av)&&!NIVUI.esc.corte,av);PERFIL=bakP;
+    /* dato faltante: sin compromiso */
+    nivUISet("corte","compromiso","");const rf=nivUICalcular("corte");
+    __check("N6: sin compromiso, días disponibles y déficit son «dato faltante», nunca un número",rf.calc.diasDisp==null&&rf.deficitMin==null&&rf.estado==="faltante"&&/dato faltante/.test(document.getElementById("p-nivelacion").innerHTML));
+    nivUIDescartar("corte");S.params.nivelacion=bakNiv==="null"?undefined:JSON.parse(bakNiv);if(S.params.nivelacion===undefined)delete S.params.nivelacion;NIVC=null;}
+   /* N7 · qué no entra: con déficit, lista con foto de las de entrega más lejana */
+   {const recsC=S.recursos.filter(r=>r.activa&&r.centro==="corte");const bakPers=recsC.map(r=>r.pers);recsC.forEach(r=>{r.pers=0});   /* sin personas montadas: capacidad 0 → todo el saldo es déficit */
+    nivUISet("corte","inicio",hoy());nivUISet("corte","compromiso",dsum(hoy(),2));nivUISet("corte","diasAdic",0);nivUISet("corte","maquilaU",0);
+    const r=nivUICalcular("corte");
+    if(r.deficitMin>0){NIVUI.noEntra=true;render();const h=document.getElementById("p-nivelacion").innerHTML;const l=nivUINoEntra(r);
+     __check("N7: con déficit, clic muestra «qué no entra» con foto/WH, de la entrega más lejana hacia atrás",/Qué no entra/.test(h)&&l.length>=1&&l.reduce((a,x)=>a+x.min,0)>=r.deficitMin&&(l.length<2||String(fechaMetaDe(l[0].o))>=String(fechaMetaDe(l[l.length-1].o))),l.length+" órdenes");}
+    else __check("N7: con déficit, clic muestra «qué no entra»",false,"no hubo déficit con capacidad 0: "+JSON.stringify({def:r.deficitMin,cap:r.calc.capDia,saldo:r.saldo&&r.saldo.min}));
+    recsC.forEach((r,i)=>{r.pers=bakPers[i]});NIVUI.noEntra=false;nivUIDescartar("corte");}
+   window.alert=al;PERFIL=adminP;NIVUI={meses:null,cliente:"",familia:"",area:"corte",celda:null,esc:{},verCalc:false,noEntra:false};page="ordenes";render();
+   __check("NIVUI sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
