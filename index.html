@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 20:14';
+const APP_BUILD='2026-09-16 20:43';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1642,7 +1642,7 @@ function setGran(g){GRAN=g;render()}
 /* ================= VISTAS ================= */
 /* buscadores: el redibujo completo recreaba el input y se perdía el cursor. buscarQ guarda el campo (data-q) y el cursor, espera unos ms
    después de la última tecla (solo si hay más de 300 órdenes) y tras render() devuelve el foco al mismo campo en la misma posición */
-let _qTimer=null;
+let _qTimer=null; // en desuso desde el 16-sep: ahora hay uno por buscador en _qTimers
 /* ---------- Fase junto a la WH y foto en toda lista de órdenes ---------- */
 function faseTag(o){const f=faseNombre(o&&o.fase);if(!f)return '';const clic=o&&o.id&&typeof puedeFases==='function'&&puedeFases();return ` <span class="tag fase-mini" ${clic?`style="cursor:pointer" onclick="event.stopPropagation();mCambiarFase('${o.id}')" title="fase de Odoo · clic para cambiarla"`:'title="fase de Odoo"'}>${esc(f)}</span>`}
 function whCell(o,px){return fotoMini(o,px)+esc((o&&o.op)||'')+faseTag(o)+(typeof tagCierre==='function'?tagCierre(o):'')}
@@ -1656,6 +1656,48 @@ function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delet
   return `<div class="busq" style="position:relative;${extra||''}"><input type="text" value="${esc(v)}" placeholder="${esc(ayuda('busq.placeholder'))}" data-q="${id}" oninput="buscarQ(this,v=>${setter})" onkeydown="if(event.key==='Enter'){event.preventDefault();setBusq('${id}','*')}else if(event.key==='Escape'){setBusq('${id}','*')}" style="width:100%;${nomC?'padding-right:150px':''}">
    ${nomC?`<span class="chip on" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;cursor:pointer;white-space:nowrap" onclick="setBusq('${id}',null)" title="quitar el campo y buscar en todos">${esc(nomC)} ✕</span>`:''}
    ${v&&!c?`<div class="busq-menu"><div class="mut" style="font-size:var(--fs-xs)">Ya está buscando en todos los campos · ${esc(ayuda('busq.solo'))}</div>${BUSQ_CAMPOS.map(([k,n])=>`<div onclick="setBusq('${id}','${k}')">solo <b>${n}</b></div>`).join('')}<div class="mut" onclick="setBusq('${id}','*')">seguir en todos <span style="float:right">Enter</span></div></div>`:''}</div>`}
+/* ================= BASE ACOTADA: «no aparece» no es «no existe» =================
+   Varias pantallas filtran su base ANTES de que el buscador vea nada (el mes del Proyecto en
+   Liberación, el centro en Carga general, los meses del Resumen gerencial…). Entonces buscar una WH
+   que existe pero cayó fuera de esa base no devuelve nada, y la pantalla no lo dice. Esto lo dice.
+   `dentro` es la lista que la pantalla YA filtró; se compara contra todo lo que el perfil puede ver. */
+const FUERA={};                       // id del buscador -> true cuando el usuario pide verlas
+function verFueraDeBase(id,on){FUERA[id]=!!on;if(!redibujarLista(id))render()}
+function fueraDeBase(id,dentro){
+  const r=refEstado(id);const q=r.o?String(r.o[r.k]||''):'';
+  if(!q.trim())return null;
+  const ids=new Set((dentro||[]).map(o=>o.id));
+  const qn=normTxt(q);
+  const fuera=ordenesQueVe().filter(o=>!ids.has(o.id)&&matchBusq(o,qn,id));
+  return fuera.length?{n:fuera.length,ordenes:fuera,q}:null}
+/* el aviso, con el botón para verlas sin tocar ningún filtro */
+function avisoFueraDeBaseHTML(id,dentro,filtroTxt){
+  const r=fueraDeBase(id,dentro);if(!r)return '';
+  const abierto=!!FUERA[id];
+  return `<div class="warn" style="margin-top:10px">
+   <b>${r.n} ${r.n===1?'orden coincide':'órdenes coinciden'} fuera de ${esc(filtroTxt||'los filtros de esta pantalla')}</b>
+   <span class="mut" style="font-size:var(--fs-xs)"> · la búsqueda «${esc(r.q)}» sí las encuentra, pero esta pantalla no las muestra por sus filtros</span>
+   <button class="btn ghost sm" style="margin-left:8px" onclick="verFueraDeBase('${id}',${abierto?'false':'true'})">${abierto?'Ocultar':'Ver'}</button>
+   ${abierto?`<div class="scroll" style="max-height:260px;margin-top:8px"><table style="font-size:var(--fs-xs)">
+     <thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Entrega</th><th>Por qué no sale</th><th></th></tr></thead><tbody>
+     ${r.ordenes.slice(0,200).map(o=>`<tr style="opacity:.75"><td style="white-space:nowrap">${whCell(o)} <span class="tag t-aviso" style="font-size:9px;padding:0 4px">fuera del filtro</span></td>
+       <td>${esc(o.cliente||'')}</td><td>${esc(String(o.odc||'—'))}</td><td>${esc(o.fecha||'—')}</td>
+       <td class="mut">${esc(filtroTxt||'')}</td>
+       <td><a style="cursor:pointer;text-decoration:underline" onclick="irEstadoOrden('${o.id}')">ver la orden →</a></td></tr>`).join('')}
+     </tbody></table></div>
+     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Se muestran marcadas como <b>fuera del filtro</b> y <b>no se cambió ningún filtro</b>: la lista de arriba sigue siendo la de esta pantalla.</p>`:''}
+  </div>`}
+/* ---------- REDIBUJO PARCIAL: la pantalla registra cómo repintar SOLO su lista ----------
+   Cada pantalla que quiera evitar el redibujo completo envuelve su lista en un contenedor con
+   data-lista="<id del buscador>" y registra aquí la función que la vuelve a pintar. Así el input
+   NO se destruye y el foco, el texto y el cursor se quedan donde estaban. */
+const LISTAS={};
+function listaRegistrar(id,fn){LISTAS[id]=fn}
+function listaHost(id){return document.querySelector('[data-lista="'+CSS.escape(id)+'"]')}
+function redibujarLista(id){const fn=LISTAS[id];if(!fn)return false;
+  const host=listaHost(id);if(!host)return false;
+  try{host.innerHTML=fn()}catch(e){return false}
+  return true}
 /* ================= BÚSQUEDA GENERAL: una barra arriba, en todas las pantallas y en teléfono ================= */
 /* textos que se pueden cambiar sin tocar código (tabla de ayudas, Configuración → Órdenes y materiales) */
 const AYUDAS_DEF={
@@ -1881,7 +1923,7 @@ function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
    </div></div></div>`}
 function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const simple=esOperario(); // el operario no elige campos: escribe la WH y listo
-  const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
+  const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" data-q="TAB.q" oninput="buscarQ(this,v=>TAB.q=v)" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
   const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${campo}</div>${simple?`<button class="btn" style="font-size:20px;padding:14px 20px" onclick="TAB.q=(document.getElementById('tab-wh')||{}).value||'';render()">Buscar</button>`:''}${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
   if(!q)return cab;
   const soloNum=x=>String(x||'').replace(/\D+/g,'');
@@ -2547,24 +2589,57 @@ function progTejPanelHTML(P){const ok=puedeArea('tej')||puede('programa');const 
   <td style="white-space:nowrap">${puedeTejer()?(estadoTej(p)==='tejido'?`<button class="btn ghost sm" onclick="desmarcarTejido('${p.id}')" title="volver a programado: pide motivo">deshacer</button>`:`<button class="btn sm" onclick="marcarTejido('${p.id}')">marcar como tejido</button>`):''} ${ok?`<button class="btn ghost sm" onclick="delProgTejRow('${p.id}')">quitar</button>`:''}</td></tr>`).join('')}</tbody></table>`:'';
   return resumen+comparaTejHTML()+tejEstrictoPanelHTML()+`<div class="panel"><h3>Programación manual de tejeduría <span class="note">la persona de tejeduría decide qué máquina hace qué tela cada día (los cambios de calibración son frecuentes); queda en bitácora</span></h3><div class="body">${form}${grid}${tabla}</div></div>`}
 /* ===== COMPONENTES COMUNES (prompt 2): se construyen una vez y se reutilizan; no copiar por pantalla ===== */
-/* a) Filtro de fases: casillas agrupadas por grupo de la tabla 5, con Seleccionar todas / Limpiar (sentinel '∅' = ninguna) */
-function refEstado(nombre){const [obj,k]=nombre.split('.');const M={};try{M.CEN=CEN}catch(e){}try{M.CG=CG}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}return {o:M[obj],k}}
+/* ================= FILTRO DE FASES: UNA sola semántica =================
+   El estado tiene TRES valores explícitos y ninguno depende de que un Set esté vacío:
+     · «todas»     → null (o un Set con todas las fases)
+     · «ninguna»   → Set que contiene el centinela FASE_NINGUNA
+     · «selección» → Set con las fases marcadas
+   `estadoFases(sel)` lo dice en una palabra y `faseOkFiltro(sel,fase)` decide si una orden pasa.
+   Ninguna pantalla vuelve a interpretar el Set por su cuenta: eso era lo que hacía que «Limpiar»
+   en Órdenes acabara significando «todas». */
+const FASE_NINGUNA='\u2205';
+function estadoFases(sel,fasesAll){
+  if(!sel||!sel.size)return 'todas';
+  if(sel.has(FASE_NINGUNA))return 'ninguna';
+  if(fasesAll&&fasesAll.length&&fasesAll.every(f=>sel.has(f)))return 'todas';
+  return 'seleccion'}
+function faseOkFiltro(sel,fase){const e=estadoFases(sel);
+  if(e==='todas')return true;
+  if(e==='ninguna')return false;
+  return sel.has(fase||'Sin fase')}
+/* quita de la selección las fases que ya no existen SIN tocar el centinela (ese era el bug de Órdenes) */
+function podarFases(sel,fasesAll){if(!sel||!sel.size)return sel;
+  if(sel.has(FASE_NINGUNA))return sel;
+  const keep=new Set(fasesAll);const out=new Set([...sel].filter(f=>keep.has(f)));
+  return out.size?out:new Set([FASE_NINGUNA])}   // si no queda ninguna, es «ninguna», NO «todas»
+/* a) Filtro de fases: casillas agrupadas por grupo de la tabla 5, con Seleccionar todas / Limpiar (sentinel FASE_NINGUNA = ninguna) */
+/* El mapa de estados de pantalla. Tiene que estar COMPLETO: `togFaseFiltro` y los avisos de base
+   acotada lo usan, y si falta uno fallan en silencio. Las pruebas comprueban que están los 17. */
+function estadosPantalla(){const M={};
+  try{M.CEN=CEN}catch(e){}try{M.CG=CG}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.PMADD=PMADD}catch(e){}
+  try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}
+  try{M.APO=APO}catch(e){}try{M.VO=VO}catch(e){}try{M.TAB=TAB}catch(e){}try{M.CTLF=CTLF}catch(e){}
+  try{M.EG=EG}catch(e){}try{M.GER=GER}catch(e){}try{M.RUT=RUT}catch(e){}try{M.COS=COS}catch(e){}
+  try{M.CAPD=CAPD}catch(e){}try{M.NLF=NLF}catch(e){}try{M.PM=PM}catch(e){}try{M.REP=REP}catch(e){}
+  try{M.WIP=WIP}catch(e){}try{M.AUD=AUD}catch(e){}try{M.TARJ=TARJ}catch(e){}try{M.SIM=SIM}catch(e){}
+  return M}
+function refEstado(nombre){const [obj,k]=nombre.split('.');return {o:estadosPantalla()[obj],k}}
 function gruposFasesDe(fasesAll){const m={};fasesAll.forEach(f=>{const r=grupoDe(f);const g=r?r.grupo:'sin grupo en la tabla 5';(m[g]=m[g]||[]).push(f)});return Object.keys(m).sort((a,b)=>{const oa=ordenGrupo(a),ob=ordenGrupo(b);return (oa<0?99:oa)-(ob<0?99:ob)}).map(g=>({g,n:(ordenGrupo(g)>0?(ordenGrupo(g)-1):'—')+' · '+g.toUpperCase(),fases:m[g].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b))}))}
 function togFaseFiltro(varName,f,fasesAll){const r=refEstado(varName);if(!r.o)return;const cur=r.o[r.k];
   let set;
   if(!cur||!cur.size)set=new Set(fasesAll);      // estaban TODAS: se parte de todas y se desmarca una
-  else if(cur.has('∅'))set=new Set();            // estaba NINGUNA: se parte de vacío y se marca una
+  else if(cur.has(FASE_NINGUNA))set=new Set();            // estaba NINGUNA: se parte de vacío y se marca una
   else set=new Set(cur);
-  set.delete('∅');
+  set.delete(FASE_NINGUNA);
   if(set.has(f))set.delete(f);else set.add(f);
-  if(!set.size)set=new Set(['∅']);               // ninguna marcada: centinela, no es lo mismo que «todas»
+  if(!set.size)set=new Set([FASE_NINGUNA]);       // ninguna marcada: centinela, no es lo mismo que «todas»
   else if(fasesAll.length&&set.size===fasesAll.length&&fasesAll.every(x=>set.has(x)))set=null;
   r.o[r.k]=set;render()}
-function togGrupoFiltro(varName,fasesGrupo,on,fasesAll){const r=refEstado(varName);if(!r.o)return;const cur=r.o[r.k];let set=(!cur||!cur.size||cur.has('∅'))?(on?new Set():new Set(fasesAll)):new Set(cur);set.delete('∅');if(!cur||!cur.size){set=on?new Set():new Set(fasesAll)}fasesGrupo.forEach(f=>on?set.add(f):set.delete(f));if(set.size===0)set=new Set(['∅']);if(set.size===fasesAll.length&&fasesAll.every(f=>set.has(f)))set=null;r.o[r.k]=set;render()}
-function filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas){const ninguna=!!(sel&&sel.has&&sel.has('∅'));const todas=!sel||!sel.size;const n=sel&&sel.size&&!ninguna?sel.size:0;const grupos=gruposFasesDe(fasesAll);const J=JSON.stringify(fasesAll).replace(/"/g,'&quot;');
+function togGrupoFiltro(varName,fasesGrupo,on,fasesAll){const r=refEstado(varName);if(!r.o)return;const cur=r.o[r.k];let set=(!cur||!cur.size||cur.has(FASE_NINGUNA))?(on?new Set():new Set(fasesAll)):new Set(cur);set.delete(FASE_NINGUNA);if(!cur||!cur.size){set=on?new Set():new Set(fasesAll)}fasesGrupo.forEach(f=>on?set.add(f):set.delete(f));if(set.size===0)set=new Set([FASE_NINGUNA]);if(set.size===fasesAll.length&&fasesAll.every(f=>set.has(f)))set=null;r.o[r.k]=set;render()}
+function filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas){const _e=estadoFases(sel,fasesAll);const ninguna=_e==='ninguna';const todas=_e==='todas';const n=sel&&sel.size&&!ninguna?sel.size:0;const grupos=gruposFasesDe(fasesAll);const J=JSON.stringify(fasesAll).replace(/"/g,'&quot;');
   return `<details class="ffases" style="position:relative"><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${ninguna?'Ninguna fase':todas?'Todas las fases':n+' de '+fasesAll.length+' fases'} ▾</summary>
    <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;top:100%;left:0;margin-top:4px;min-width:320px;max-height:400px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
-    <div style="margin-bottom:8px;display:flex;gap:6px"><button class="btn ghost sm" onclick="${varName}=null;render()">Seleccionar todas</button><button class="btn ghost sm" onclick="${varName}=new Set(['∅']);render()">Limpiar</button></div>
+    <div style="margin-bottom:8px;display:flex;gap:6px"><button class="btn ghost sm" title="quita el filtro: pasan todas las fases" onclick="${varName}=null;render()">Seleccionar todas</button><button class="btn ghost sm" title="deja la lista VACÍA: ninguna fase pasa el filtro" onclick="${varName}=new Set([FASE_NINGUNA]);render()">Limpiar (ninguna)</button></div>
     ${grupos.map(g=>{const all=!ninguna&&(todas||g.fases.every(f=>sel.has(f)));return `<div style="margin:8px 0 4px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);display:flex;justify-content:space-between"><span>${esc(g.n)}</span><a style="cursor:pointer" onclick="togGrupoFiltro('${varName}',${JSON.stringify(g.fases).replace(/"/g,'&quot;')},${all?'false':'true'},${J})">${all?'quitar':'todas'}</a></div>${g.fases.map(f=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${!ninguna&&(todas||sel.has(f))?'checked':''} onchange="togFaseFiltro('${varName}','${esc(f).replace(/'/g,"\\'")}',${J})" onclick="event.stopPropagation()"> ${esc(f)}${cuentas&&cuentas[f]!=null?' <span class="mut">('+num(cuentas[f])+')</span>':''}</label>`).join('')}`}).join('')}</div></details>`}
 /* c) Tarjeta resumen: número grande + texto; clic despliega la lista (foto, WH, fase) debajo de la fila */
 let TARJ={exp:{}};
@@ -2599,15 +2674,33 @@ function mRetirarLib(id,et){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)r
 function auditoriaCambiosHTML(){const L=auditoriaTodo().slice().reverse();return `<div class="panel"><h3>Cambios de fase y reversiones de liberación <span class="note">${L.length} · las devoluciones y las reversiones llevan motivo de la tabla 15 · usuario, fecha, antes y después</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${L.slice(0,300).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);return `<tr><td style="white-space:nowrap">${new Date(e.ts).toLocaleString('es-EC')}</td><td>${esc(e.u||'')}</td><td>${e.tipo==='fase'?(e.dev?'<b>devolución de fase</b>':'cambio de fase'):e.tipo==='liberacion'?'reversión de liberación':e.tipo==='cierre'?(e.dev?'<b>cierre reabierto</b>':'cierre en un centro'):e.tipo==='ruta'?'ruta confirmada':e.tipo==='tramo'?'corrección de tramo':esc(e.tipo)}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${esc(e.antes||'—')}</td><td>${esc(e.despues||'—')}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="7" class="mut">Sin registros.</td></tr>'}</tbody></table></div></div></div>`}
 /* f) Navegación: "← atrás" cuando se llega a una pantalla desde un clic en otra; vuelve con filtros y scroll */
 let NAVH=[];let NAV_PROG=false;
-function navRefs(){const M={};try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.CTL=CTL}catch(e){}try{M.CEN=CEN}catch(e){}try{M.APO=APO}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.VO=VO}catch(e){}try{M.CTLF=CTLF}catch(e){}try{M.PM=PM}catch(e){}try{M.PMADD=PMADD}catch(e){}try{M.REP=REP}catch(e){}try{M.NLF=NLF}catch(e){}try{M.TAB=TAB}catch(e){}try{M.WIP=WIP}catch(e){}try{M.AUD=AUD}catch(e){}try{M.FAM=FAM}catch(e){}try{M.TARJ=TARJ}catch(e){}return M}
+function navRefs(){return estadosPantalla()}   // un solo mapa de estados para todo el sistema
 function clonEstado(v){if(v instanceof Set)return {__set:[...v]};if(Array.isArray(v))return v.map(clonEstado);if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,clonEstado(x)]));return v}
 function desclon(v){if(v&&typeof v==='object'&&v.__set)return new Set(v.__set);if(Array.isArray(v))return v.map(desclon);if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,desclon(x)]));return v}
 function navSnap(){const R=navRefs();const st={};Object.keys(R).forEach(k=>{if(R[k]&&typeof R[k]==='object')st[k]=clonEstado(R[k])});const m=document.querySelector('main');return {page,scroll:m?m.scrollTop:0,st,grp:JSON.stringify(Object.fromEntries(Object.entries(GRP||{}).map(([k,v])=>[k,{niveles:v.niveles,exp:[...v.exp]}]))),busq:JSON.stringify(BUSQ||{})}}
 function volver(){const s=NAVH.pop();if(!s)return;const R=navRefs();Object.keys(s.st).forEach(k=>{if(R[k]&&typeof R[k]==='object'){Object.keys(R[k]).forEach(x=>delete R[k][x]);Object.assign(R[k],desclon(s.st[k]))}});try{const g=JSON.parse(s.grp);Object.keys(GRP).forEach(k=>delete GRP[k]);Object.keys(g).forEach(k=>{GRP[k]={niveles:g[k].niveles,exp:new Set(g[k].exp)}})}catch(e){}try{Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,JSON.parse(s.busq))}catch(e){}page=s.page;render();setTimeout(()=>{const m=document.querySelector('main');if(m)m.scrollTop=s.scroll},30)}
 function nombrePagina(p){const e=(typeof PAGINAS_DEF!=='undefined'?PAGINAS_DEF:[]).find(x=>x[0]===p);return e?e[1]:p}
 function atrasHTML(){if(!NAVH.length)return '';const s=NAVH[NAVH.length-1];return `<div class="no-print atras" style="margin:0 0 10px"><a class="chip on" style="cursor:pointer" onclick="volver()">← atrás</a> <span class="mut" style="font-size:var(--fs-xs)">vuelve a ${esc(nombrePagina(s.page))} con sus filtros y su posición</span></div>`}
-function buscarQ(el,fn){clearTimeout(_qTimer);const id=el.dataset.q;const run=()=>{const v=el.value,pos=el.selectionStart;fn(v);render();const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}};
-  const espera=(S&&S.ordenes&&S.ordenes.length>300)?150:0;if(espera)_qTimer=setTimeout(run,espera);else run()}
+/* UN temporizador POR buscador: antes había uno solo para todo el sistema, así que escribir en un
+   buscador y pasar a otro antes del debounce CANCELABA el primero y lo escrito se perdía entero. */
+const _qTimers={};
+/* la espera al escribir, en milisegundos. Parámetro visible, no un número en el código.
+   0 es 0: filtra en cada tecla, sin esperar. */
+function msBuscar(){return prm('msBuscar',150)}
+function setMsBuscar(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
+  const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('La espera tiene que ser 0 o más milisegundos.');return}
+  const antes=msBuscar();S.params.msBuscar=n;
+  bitacora('Espera de los buscadores: '+antes+' → '+n+' ms ('+quienFirma()+')');save();render()}
+function buscarQ(el,fn){const id=el.dataset.q||'_';clearTimeout(_qTimers[id]);
+  const run=()=>{delete _qTimers[id];const v=el.value,pos=el.selectionStart;fn(v);
+    /* si la pantalla registró su lista, se redibuja SOLO la lista y el input ni se toca */
+    if(redibujarLista(id)){
+      /* el input ni se tocó; si algo le robó el foco, se lo devolvemos con el cursor donde estaba */
+      if(document.activeElement!==el){try{el.focus();el.setSelectionRange(pos,pos)}catch(e){}}
+    }else{render();
+      const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}}};
+  const espera=msBuscar();
+  if(espera>0)_qTimers[id]=setTimeout(run,espera);else run()}
 let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
 function render(){
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
@@ -3454,7 +3547,7 @@ function vFamilias(el){
   const horasConf=o=>o.cant*minConf(o)/60;const horasPlanta=o=>o.cant*(o.ruta||[]).reduce((a,p)=>a+minPrenda(p.centro,p.t),0)/60;
   const fasesAll=[...new Set(ords.map(o=>o.fase||'Sin fase'))].sort();if(!FAM.fases)FAM.fases=new Set(fasesAll);
   const meses=[...new Set(ords.map(mesDe))].sort();const horizonte=meses.filter(m=>m!=='Sin fecha'&&m>=h.slice(0,7)).slice(0,6);
-  let rows=ords.filter(o=>FAM.fases.has(o.fase||'Sin fase'));
+  let rows=ords.filter(o=>faseOkFiltro(FAM.fases,o.fase));
   if(FAM.per==='horizonte')rows=rows.filter(o=>horizonte.includes(mesDe(o)));else if(FAM.per==='meses')rows=rows.filter(o=>FAM.meses&&FAM.meses.has(mesDe(o)));else if(FAM.per!=='todo')rows=rows.filter(o=>mesDe(o)===FAM.per);
   const padreDe=o=>{const k=K(o.cat);if(!k)return'—';const p=K(k.padre);return p?p.n:k.n};const hijaDe=o=>{const k=K(o.cat);return k?k.n:'—'};
   const agg=(list,key)=>{const m={};list.forEach(o=>{const k=key(o);if(!m[k])m[k]={n:k,pz:0,hconf:0,hpl:0,ords:0,prev:0};m[k].pz+=+o.cant;m[k].hconf+=horasConf(o);m[k].hpl+=horasPlanta(o);m[k].ords++;if(o.estado==='prevision')m[k].prev++});return Object.values(m)};
@@ -3464,7 +3557,7 @@ function vFamilias(el){
   const hijas=agg(rows.filter(o=>padreDe(o)===FAM.fam),hijaDe).sort((a,b)=>b[mk]-a[mk]);const totF=hijas.reduce((a,x)=>a+x[mk],0)||1;const mxH=Math.max(1,...hijas.map(x=>x[mk]));
   const sinSam=rows.filter(o=>minConf(o)<=0).reduce((a,o)=>a+ +o.cant,0);
   // mensual apilado (horizonte) con la capacidad de confección del mes como referencia
-  const rowsH=ords.filter(o=>FAM.fases.has(o.fase||'Sin fase')&&horizonte.includes(mesDe(o)));const lideres=agg(rowsH,padreDe).sort((a,b)=>b[mk]-a[mk]).slice(0,7).map(x=>x.n);
+  const rowsH=ords.filter(o=>faseOkFiltro(FAM.fases,o.fase)&&horizonte.includes(mesDe(o)));const lideres=agg(rowsH,padreDe).sort((a,b)=>b[mk]-a[mk]).slice(0,7).map(x=>x.n);
   const pal=['#1f3a5f','#3b6ea5','#7aa6d6','#c8a24a','#8a5a3c','#5c7a4a','#9b6b9e','#9a9a9a'];
   const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);
   const capMes=m=>{const [y,mm]=m.split('-').map(Number);const nd=new Date(y,mm,0).getDate();let c=0;for(let d=1;d<=nd;d++){const ds=m+'-'+String(d).padStart(2,'0');mods.forEach(r=>{if(labR(ds,r))c+=capDia(r,ds)})}return c/60};
@@ -3581,7 +3674,7 @@ function okFiltrosB1(o){const ok=(set,v)=>!set||!set.size||set.has(v);
   const hija=(K(o.cat)||{}).n||'';
   const okTela=!LIB.tela||!LIB.tela.size||(o.telas||[]).some(t=>LIB.tela.has(t.tela));
   return ok(LIB.odc,odcLib(o))&&ok(LIB.fam,famDeOrden(o))&&ok(LIB.cli,o.cliente||'—')
-    &&ok(LIB.hija,hija)&&okTela&&ok(LIB.fases,o.fase||'Sin fase')&&ok(LIB.mes,mesEntregaDe(o))}
+    &&ok(LIB.hija,hija)&&okTela&&faseOkFiltro(LIB.fases,o.fase)&&ok(LIB.mes,mesEntregaDe(o))}
 function togSetOdcLib(v){togSet(LIB,'odc',v)}
 function togSetYmLib(v){if(LIB.ym&&!LIB.ym.has)LIB.ym=new Set([LIB.ym]);togSet(LIB,'ym',v);LIB.fam2=null}
 function irRutaDeOrden(oid){const o=S.ordenes.find(x=>x.id===oid);ORDF.tab='rutas';RUT.ver='pend';RUT.q=o?refDe(o):'';ir('ordenes')}
@@ -3646,6 +3739,7 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
      <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">${famSel?'Detalle de <b>'+esc(famSel)+'</b>':'Todas las pendientes'} · ${detalle.length} ${detalle.length===1?'orden':'órdenes'}${detalle.length>400?' (se muestran las primeras 400)':''}</p>
      <table>${cab}<tbody>${filasGRP('lib',detalle.slice(0,400),o=>filaLibB1(o,et),nCols)||`<tr><td colspan="${nCols}" class="mut">Nada pendiente con estos filtros.</td></tr>`}</tbody></table></div>`
     :'<p class="mut" style="margin-top:10px;font-size:var(--fs-s)">Toca una familia para ver sus órdenes y elegir cuáles liberar, o abre «Ver todas las pendientes».</p>'}
+   ${avisoFueraDeBaseHTML('LIB.q',pend,'el mes del Proyecto y los filtros de esta pantalla')}
   </div></div>`}
 function vLiberacion(el){
   if(!LIB.ymAuto){LIB.ymAuto=true;if(S.ordenes.some(o=>abierta(o)&&mesPlan(o)===hoy().slice(0,7)))LIB.ym=new Set([hoy().slice(0,7)])} // el mes en curso es solo el arranque: 'Todos los meses' se respeta
@@ -3655,7 +3749,7 @@ function vLiberacion(el){
   const ok=set=>v=>!set||!set.size||set.has(v);
   const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
   const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
-  const base=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)(mesEntregaDe(o))&&ok(LIB.fases)(o.fase||'Sin fase')&&okTela(LIB.tela)(o)&&(matchBusq(o,q,'LIB.q')));
+  const base=todas.filter(o=>ok(LIB.fam)(padreDe(o))&&ok(LIB.hija)(hijaDe(o))&&ok(LIB.cli)(o.cliente||'—')&&ok(LIB.mes)(mesEntregaDe(o))&&faseOkFiltro(LIB.fases,o.fase)&&okTela(LIB.tela)(o)&&(matchBusq(o,q,'LIB.q')));
   const yaHecha=o=>et==='tela'?!!((grupoDe(o.fase)||{}).libTela):faseEstado(o.fase,o).hechos.includes('corte');
   const pend=base.filter(o=>!liberada(o,et)&&!yaHecha(o));const listas=pend.filter(o=>puedeLiberarA(o,et)),noListas=pend.filter(o=>!puedeLiberarA(o,et));
   const liberadas=todas.filter(o=>!yaHecha(o)&&liberada(o,et)&&(et==='tela'?!(o.lib&&o.lib.corte&&o.lib.corte.ok&&false):true));
@@ -6315,7 +6409,7 @@ function mandaCola(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);if(!p&&col
   const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');return t.join(' ')}
 /* ---------- Centros de producción: filtro de fases común, resumen día × familia, cruce familia × fase, color ---------- */
 function togFaseCEN(f){togSet(CEN,'fases',f)}
-function faseOkCEN(o){const s=CEN.fases;if(!s||!s.size)return true;if(s.has('∅'))return false;return s.has(o.fase||'Sin fase')}
+function faseOkCEN(o){return faseOkFiltro(CEN.fases,o.fase)}
 /* marca que reemplaza a la fecha de entrega en las vistas de centro */
 function dondeEstaCentro(o,P,c){let d={k:null,n:'—'};try{d=dondeEsta(o,P)}catch(e){}
   const n=d&&d.n?d.n:'—';const k=d&&d.k;
@@ -7207,9 +7301,9 @@ function vOrdenes(el){
   if(ORDF.tab==='rutas'){el.innerHTML=`<div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips">${[['ord','Órdenes'],['rutas','Rutas']].map(([k,n])=>`<span class="chip ${ORDF.tab===k||(k==='ord'&&!ORDF.tab)?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div></div>`+rutasHTML();return}
   const P=S.ordenes.length?programar():null;
   const cnt={};S.ordenes.forEach(o=>{const e=(o.estado||'plan')==='standby'?'cerrada':(o.estado||'plan');cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
-  const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&(!ORDF.fases||!ORDF.fases.size||ORDF.fases.has(o.fase||'Sin fase'))&&(matchBusq(o,q,'ORDF.q')));
+  const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&faseOkFiltro(ORDF.fases,o.fase)&&(matchBusq(o,q,'ORDF.q')));
   const fasesAll=[...new Set(S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
-  if(ORDF.fases&&ORDF.fases.size){const keep=new Set(fasesAll);ORDF.fases=new Set([...ORDF.fases].filter(f=>keep.has(f)))}
+  ORDF.fases=podarFases(ORDF.fases,fasesAll);   // conserva el centinela: «ninguna» no se convierte en «todas»
   const filtros=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
@@ -7224,6 +7318,12 @@ function vOrdenes(el){
       <td style="white-space:nowrap">${o.fecha}</td>
       <td style="white-space:nowrap">${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
   const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead>`;
+  /* la lista de Órdenes se puede repintar sola, sin tocar el buscador (redibujo parcial) */
+  const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
+    const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
+    return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
+     +`<div class="scroll"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,10)||'<tr><td colspan="10" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`};
+  listaRegistrar('ORDF.q',listaOrdHTML);
   let rows;
   rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
   el.innerHTML=`
@@ -7247,11 +7347,11 @@ function vOrdenes(el){
   ${(()=>{const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · fase que no calza con la tabla (${sf.length} órdenes)</b>: el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración → Órdenes y materiales → tabla 1. ${[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")}</div>`:""})()}
   ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}
   ${filtros}
-  <div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
+  <div data-lista="ORDF.q"><div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
     <span class="spacer"></span></h3>
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
     <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-  :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div>
+  :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div></div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas desde Odoo <span class="note">qué cambió en cada actualización</span></h3><div class="body">
     ${S.cargas.slice().reverse().slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${c.tipo==='ot'?`órdenes de trabajo: ${c.act} órdenes con centros cerrados${(c.samReal||[]).length?', '+c.samReal.length+' tiempos reales medidos':''}`:`${c.nuevas} nuevas, ${c.act} actualizadas, ${c.cerradas} cerradas`}${(c.coloresNuevos||[]).length?', '+c.coloresNuevos.length+' colores nuevos':''}${(c.catsNuevas||[]).length?', '+c.catsNuevas.length+' categorías nuevas':''}</div>
       ${(c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--alerta);font-size:var(--fs-s)">${c.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${c.alertas.map(esc).join('<br>')}</div></details>`:'<span class="mut" style="font-size:var(--fs-s)">sin alertas</span>'}</div>`).join('')}
@@ -7395,7 +7495,7 @@ let CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:''};
 function semanasCarga(){const n=+prm('semCarga',8)||8;const lun=lunesDe(hoy());const out=[];for(let i=0;i<n;i++)out.push(dsum(lun,7*i));return out}
 function capSemCentro(c,w){const recs=S.recursos.filter(r=>r.activa&&r.centro===c);const dias=[];for(let i=0;i<7;i++)dias.push(dsum(w,i));
   return recs.reduce((a,r)=>a+dias.reduce((b,d)=>b+(labR(d,r)?capDia(r,d):0),0),0)}
-function faseOkCG(o){const s=CG.fases;if(!s||!s.size)return true;if(s.has('∅'))return false;return s.has(o.fase||'Sin fase')}
+function faseOkCG(o){return faseOkFiltro(CG.fases,o.fase)}
 function cargaSemanaCentro(c,w,base){const P=S.ordenes.length?programar():{pro:[]};const fin=dsum(w,6);
   const byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);const ords=new Set(ordenesBase(base).filter(faseOkCG).map(o=>o.id));
   let firme=0,proceso=0,pz=0;const ops=new Set();
@@ -8384,7 +8484,7 @@ function mPegarOps(){abrir(`<h3>Pegar catálogo de operaciones</h3><div class="b
    <p style="font-size:var(--fs-s);background:var(--field);border:1px solid var(--rule);padding:9px 11px;border-radius:2px">Centro · Subproceso · Operación · Tiempo estándar · Máquina (opcional)</p>
    <textarea id="f-paste" placeholder="Confección&#9;Cuello&#9;Unir cuello a cuerpo&#9;0.45&#10;Corte&#9;Tendido&#9;Tender tela jersey&#9;0.12"></textarea></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="procesarPasteOps()">Cargar</button></div>`)}
-const normTxt=x=>String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const normTxt=x=>String(x==null?'':x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();   // x==null, no x||'': un 0 es un 0
 function buscarCentroPro(n){const t=normTxt(n);return S.centros.find(c=>c.area==='pro'&&(normTxt(c.n)===t||c.id===t))||(t.startsWith('confec')||t.startsWith('modul')?CE('modulos'):null)}
 function procesarPasteOps(){const txt=document.getElementById('f-paste').value.trim();if(!txt){cerrar();return}
   let n=0,a=0,sc=[];
@@ -8536,7 +8636,7 @@ function vConfig(el){
   ${CONF.tab==='cal'?`  ${motorConfigHTML()}
   <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
-    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div><div><label>Cola del centro: umbral de «lejanas» (pasos pendientes)</label><input type="number" min="0" step="1" value="${esc(String(umbralCercania()))}" onchange="setUmbralCercania(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con más de estos pasos pendientes antes del centro va al grupo <b>Lejanas</b>, colapsado al final de la cola</div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
+    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div><div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div><div><label>Cola del centro: umbral de «lejanas» (pasos pendientes)</label><input type="number" min="0" step="1" value="${esc(String(umbralCercania()))}" onchange="setUmbralCercania(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con más de estos pasos pendientes antes del centro va al grupo <b>Lejanas</b>, colapsado al final de la cola</div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>

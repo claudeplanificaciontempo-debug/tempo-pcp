@@ -2571,7 +2571,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {S.params.tablets=S.params.tablets||{};S.params.tablets['op-b']={centro:'modulos',rec};
     PERFIL={id:'op-b',nombre:'Operaria',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
     const h=document.getElementById('p-tablet').innerHTML;
-    __check("BQ2: el operario ve un campo simple, sin menú «buscar solo en…» ni opciones de campo",h.includes('id="tab-wh"')&&!h.includes('data-q="TAB.q"')&&!/busq-menu/.test(h)&&/inputmode="numeric"/.test(h));
+    __check("BQ2: el operario ve un campo simple, sin menú «buscar solo en…» (ahora sí busca al escribir)",h.includes('id="tab-wh"')&&!/busq-menu/.test(h)&&/inputmode="numeric"/.test(h)&&h.includes('oninput="buscarQ(')&&h.includes('Buscar</button>'));
     TAB.q='28300';render();const h2=document.getElementById('p-tablet').innerHTML;
     const enCola=tabletFilas('modulos',rec,programar()).some(f=>f.o.op==='WH/MO/28300');
     __check("BQ2: escribir solo el número encuentra la WH (programada abre su tarjeta; si no, sale bloqueada)",enCola?/WH\/MO\/28300/.test(h2):(/no programada en/.test(h2)&&/Pedir reprogramación/.test(h2)));
@@ -5050,7 +5050,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ["GER.q","Resumen gerencial","gerencia",()=>{GER.q=""}],
      ["EG.q","Entregas","entregas",()=>{EG.q=""}],
      ["COS.q","Costura","costura",()=>{COS.q=""}],
-     ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q=""}],
+     ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q="";/* el buscador vive en el detalle de una celda: se abre la primera que tenga órdenes */CAPD.sel=null;page="capacidad";render();const M=(typeof CAPM!=="undefined"&&CAPM)||null;if(M&&M.celdas){const k=Object.keys(M.celdas).find(k=>((M.celdas[k]||{}).det||[]).length);if(k)CAPD.sel=k}}],
      ["PMADD.q","Plan mensual → agregar","plan",()=>{PMADD.q=""}],
      ["TAB.q","Mi centro (tablet)","tablet",()=>{TAB.q="";TAB.centro="corte"}]];
     const inp=id=>document.querySelector('input[data-q="'+id+'"]');
@@ -5119,11 +5119,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const h=document.getElementById("p-"+pag).innerHTML;
       anotar(pant,varName,"y se ve marcada en pantalla después del redibujo",
         (h.match(/type="checkbox" checked/g)||[]).length>0||/checked/.test(h));
-      /* limpiar: el centinela ∅ */
-      const set2=refEstado(varName).o[refEstado(varName).k];
-      refEstado(varName).o[refEstado(varName).k]=new Set(["∅"]);render();
-      anotar(pant,varName,"«ninguna fase» (centinela ∅) se respeta y no se convierte en «todas»",
-        refEstado(varName).o[refEstado(varName).k].has("∅"));
+      /* limpiar: el centinela de «ninguna» */
+      refEstado(varName).o[refEstado(varName).k]=new Set([FASE_NINGUNA]);render();
+      anotar(pant,varName,"«ninguna fase» se respeta y no se convierte en «todas»",
+        estadoFases(refEstado(varName).o[refEstado(varName).k])==="ninguna",
+        JSON.stringify([...(refEstado(varName).o[refEstado(varName).k]||[])]));
       prep();render()}
     /* 3c · búsqueda + filtro juntos, en Órdenes */
     {ORDF.tab="lista";ORDF.q="";ORDF.fases=null;page="ordenes";render();
@@ -5161,15 +5161,73 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const grupos=reales.filter(f=>!grupoDe(f));
      anotar("Filtro de fases","grupos","toda fase real tiene grupo en la tabla 5",grupos.length===0,grupos.join(" | "));}
     /* selMulti: marcar y que quede marcado */
-    {page="entregas";EG.mes=null;render();
-     const ms=[...new Set(S.ordenes.filter(abierta).map(mesEntregaDe))].filter(Boolean);
-     if(ms.length){EG.mes=new Set([ms[0]]);render();
+    {page="entregas";EG.meses=null;render();
+     const ms=[...new Set(S.ordenes.filter(abierta).map(o=>(o.fecha||"").slice(0,7)))].filter(Boolean);
+     if(ms.length){EG.meses=new Set([ms[0]]);render();
       const h=document.getElementById("p-entregas").innerHTML;
       anotar("Entregas","selMulti meses","al marcar un mes queda marcado tras el redibujo",
         /type="checkbox" checked/.test(h)||/checked/.test(h),ms[0]);
-      anotar("Entregas","selMulti meses","y el estado lo guarda como Set",!!(EG.mes&&EG.mes.has&&EG.mes.has(ms[0])));
-      EG.mes=null;render()}}}
+      anotar("Entregas","selMulti meses","y el estado lo guarda como Set",!!(EG.meses&&EG.meses.has&&EG.meses.has(ms[0])));
+      anotar("Entregas","selMulti meses","y la lista se filtra de verdad",(()=>{
+        const conF=(document.getElementById("p-entregas").innerText.match(/WH\/MO\//g)||[]).length;
+        EG.meses=null;render();
+        const sinF=(document.getElementById("p-entregas").innerText.match(/WH\/MO\//g)||[]).length;
+        EG.meses=new Set([ms[0]]);render();return conF<=sinF})());
+      EG.meses=null;render()}}}
 
+   /* ---------- 3i · UNA sola semántica para los cinco filtros de fase ---------- */
+   {const fasesAll=[...new Set(S.ordenes.filter(abierta).map(o=>o.fase||"Sin fase"))];
+    /* la función común, en seco */
+    __check("AB7: null es «todas»",estadoFases(null,fasesAll)==="todas"&&faseOkFiltro(null,"1Tejeduria"));
+    __check("AB7: un Set vacío también es «todas» (no hay ambigüedad)",estadoFases(new Set(),fasesAll)==="todas");
+    __check("AB7: el centinela es «ninguna» y NADA pasa el filtro",
+      estadoFases(new Set([FASE_NINGUNA]),fasesAll)==="ninguna"&&!faseOkFiltro(new Set([FASE_NINGUNA]),"1Tejeduria"));
+    __check("AB7: una selección deja pasar solo lo marcado",
+      estadoFases(new Set(["1Tejeduria"]),fasesAll)==="seleccion"
+      &&faseOkFiltro(new Set(["1Tejeduria"]),"1Tejeduria")&&!faseOkFiltro(new Set(["1Tejeduria"]),"2Corte"));
+    __check("AB7: marcarlas TODAS equivale a «todas»",estadoFases(new Set(fasesAll),fasesAll)==="todas");
+    __check("AB7: podar fases que ya no existen NO borra el centinela",
+      podarFases(new Set([FASE_NINGUNA]),fasesAll).has(FASE_NINGUNA));
+    __check("AB7: y si al podar no queda ninguna, es «ninguna», no «todas»",
+      estadoFases(podarFases(new Set(["fase-que-no-existe"]),fasesAll),fasesAll)==="ninguna");
+    /* las cinco pantallas, con el mismo botón «Limpiar (ninguna)» */
+    const CINCO=[["Órdenes","ORDF.fases","ordenes",()=>{ORDF.tab="lista";ORDF.q="";ORDF.fases=null;ORDF.estado="plan"}],
+      ["Centro","CEN.fases","centro",()=>{CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.fases=null}],
+      ["Carga general","CG.fases","produccion",()=>{CG.centro="corte";CG.q="";CG.fases=null}],
+      ["Liberación","LIB.fases","liberacion",()=>{LIB.et="tela";LIB.q="";LIB.ym=null;LIB.fases=null;LIB.verLista=true}],
+      ["Familias","FAM.fases","familias",()=>{FAM.fases=null}]];
+    for(const [pant,varName,pag,prep] of CINCO){
+      prep();page=pag;render();
+      const r=refEstado(varName);
+      if(!r.o){__check("AB7 "+pant+": refEstado alcanza su estado",false,varName);continue}
+      /* Se mide SIEMPRE la misma tabla: la de resultados es la que más órdenes tiene con el filtro
+         en «todas». Otras tablas de la pantalla (avisos, diagnósticos) también nombran órdenes. */
+      const marc=()=>document.querySelector("#p-"+pag+" [data-lista]");
+      const tablas=()=>{const m=marc();return [...(m||document.getElementById("p-"+pag)).querySelectorAll("table")]};
+      const filasDe=t=>[...t.querySelectorAll("tbody tr")].filter(tr=>/WH\/MO\//.test(tr.textContent)).length;
+      let iLista=-1,conTodas=0;
+      tablas().forEach((t,i)=>{const n=filasDe(t);if(n>conTodas){conTodas=n;iLista=i}});
+      const cuenta=()=>{const ts=tablas();return (iLista>=0&&ts[iLista])?filasDe(ts[iLista]):0};
+      /* «Limpiar (ninguna)»: la lista se queda VACÍA en las cinco */
+      r.o[r.k]=new Set([FASE_NINGUNA]);render();
+      const conNinguna=cuenta();
+      __check("AB7 "+pant+": «Limpiar (ninguna)» deja la lista vacía",conNinguna===0,conNinguna+" órdenes (con todas: "+conTodas+")");
+      __check("AB7 "+pant+": y el estado sigue siendo «ninguna» después del redibujo",
+        estadoFases(refEstado(varName).o[refEstado(varName).k])==="ninguna",
+        JSON.stringify([...(refEstado(varName).o[refEstado(varName).k]||[])]));
+      /* «Seleccionar todas»: vuelve todo */
+      r.o[r.k]=null;render();
+      __check("AB7 "+pant+": «Seleccionar todas» devuelve la lista completa",cuenta()===conTodas,cuenta()+" vs "+conTodas);
+      /* y el botón dice lo que hace */
+      const h=document.getElementById("p-"+pag).innerHTML;
+      __check("AB7 "+pant+": el botón dice «Limpiar (ninguna)»",/Limpiar \(ninguna\)/.test(h));
+      prep();render()}
+    /* ninguna pantalla interpreta el Set por su cuenta */
+    const src=document.documentElement.innerHTML;
+    __check("AB7: ya no queda ninguna poda que borre el centinela",
+      !/filter\(f=>keep\.has\(f\)\)/.test(src)||/podarFases/.test(src));
+    __check("AB7: los cinco filtros pasan por faseOkFiltro",
+      (src.match(/faseOkFiltro\(/g)||[]).length>=6,(src.match(/faseOkFiltro\(/g)||[]).length);}
    /* ---------- 3f · DOS buscadores en la misma pantalla se cancelan entre sí ---------- */
    {const bakOrds=S.ordenes.slice();
     /* el debounce de buscarQ solo se arma con MÁS de 300 órdenes: hay que estar en esa condición */
@@ -5191,6 +5249,64 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("AB4 Liberación · base: el buscador solo ve las órdenes del mes del Proyecto seleccionado",
       /mesEnFiltro/.test(src),"baseLiberacion filtra por mes ANTES de buscar");
     __R.bus.baseFiltrada=/mesEnFiltro/.test(src);}
+   /* ---------- 3h · el parámetro de espera vive en Configuración ---------- */
+   {const bak=S.params.msBuscar;
+    __check("AB6: la espera al escribir arranca en 150 ms",msBuscar()===150,msBuscar());
+    setMsBuscar(300);__check("AB6: se puede cambiar",msBuscar()===300);
+    setMsBuscar(0);__check("AB6: y 0 es 0 (filtrar en cada tecla), no se reemplaza",msBuscar()===0);
+    let av="";const a1=window.alert;window.alert=m=>{av=String(m)};setMsBuscar(-5);window.alert=a1;
+    __check("AB6: un valor negativo se rechaza con aviso",msBuscar()===0&&/0 o m\u00e1s/.test(av),av);
+    page="config";CONF.tab="cal";render();
+    __check("AB6: y se edita en Configuración → Calendario y parámetros",
+      /Buscadores: espera al escribir/.test(document.getElementById("p-config").innerHTML));
+    if(bak===undefined)delete S.params.msBuscar;else S.params.msBuscar=bak;}
+   /* ---------- 3j · la base acotada: «no aparece» no es «no existe» ---------- */
+   {LIB.et="tela";LIB.q="";LIB.verLista=true;LIB.fases=null;FUERA["LIB.q"]=false;
+    const meses=[...new Set(S.ordenes.filter(abierta).map(o=>mesPlan(o)).filter(Boolean))].sort();
+    __R.bus.baseAcotada={meses:meses.length};
+    if(meses.length>=2){
+      const porMes={};S.ordenes.filter(abierta).forEach(o=>{const m=mesPlan(o);if(m)(porMes[m]=porMes[m]||[]).push(o)});
+      const mA=meses[0],mB=meses[1];const oA=(porMes[mA]||[])[0];
+      if(oA){const num=String(oA.op||"").replace(/\D/g,"")||String(oA.op||"");
+       LIB.ym=new Set([mB]);LIB.q=num;page="liberacion";render();
+       const h=document.getElementById("p-liberacion").innerHTML;
+       __R.bus.baseAcotada.caso={op:oA.op,suMes:mA,mirando:mB};
+       __check("AB8 Liberación: una WH de otro mes del Proyecto sale en el aviso de «fuera del filtro»",
+         /coinciden fuera de|coincide fuera de/.test(h),h.length);
+       __check("AB8: y el aviso dice cuál es el filtro que la deja fuera",/mes del Proyecto/.test(h));
+       /* al pulsar «Ver» se muestran marcadas, sin tocar los filtros */
+       const ymAntes=[...(LIB.ym||[])].join(),qAntes=LIB.q;
+       verFueraDeBase("LIB.q",true);render();
+       const h2=document.getElementById("p-liberacion").innerHTML;
+       __check("AB8: «Ver» las muestra marcadas como fuera del filtro",/fuera del filtro/.test(h2)&&h2.indexOf(esc(oA.op))>=0);
+       __check("AB8: y NO cambió ningún filtro",[...(LIB.ym||[])].join()===ymAntes&&LIB.q===qAntes,
+         [...(LIB.ym||[])].join()+" / "+LIB.q);
+       verFueraDeBase("LIB.q",false);}
+      LIB.ym=null;LIB.q="";render();}
+    /* sin búsqueda no hay aviso */
+    LIB.q="";render();
+    __check("AB8: sin búsqueda no se avisa de nada",!/coinciden fuera de/.test(document.getElementById("p-liberacion").innerHTML));
+    /* la función común no inventa: si todo está dentro de la base, no hay aviso */
+    __check("AB8: si no hay coincidencias fuera, la función devuelve null",
+      fueraDeBase("LIB.q",S.ordenes)===null);}
+   /* ---------- 3k · redibujo parcial: el input NO se destruye ---------- */
+   {page="ordenes";ORDF.tab="lista";ORDF.q="";ORDF.estado="plan";ORDF.fases=null;render();
+    const sel='input[data-q="ORDF.q"]';
+    const primero=document.querySelector(sel);
+    __check("AB9: Órdenes registró su lista para el redibujo parcial",!!LISTAS["ORDF.q"]&&!!listaHost("ORDF.q"));
+    if(primero){primero.focus();await __p(120);
+     let txt="",reemplazos=0;
+     for(const ch of "22918"){txt+=ch;primero.value=txt;
+       try{primero.setSelectionRange(txt.length,txt.length)}catch(e){}
+       primero.dispatchEvent(new Event("input",{bubbles:true}));
+       await __p(260);
+       if(document.querySelector(sel)!==primero)reemplazos++}
+     __R.bus.parcial={reemplazos,texto:primero.value,cursor:primero.selectionStart};
+     __check("AB9: el buscador de Órdenes NO se destruye al escribir (redibujo parcial)",reemplazos===0,reemplazos+" reemplazos");
+     __check("AB9: conserva el texto completo",primero.value==="22918",primero.value);
+     __check("AB9: conserva la posición del cursor",primero.selectionStart===5,primero.selectionStart);
+     __check("AB9: y el texto llegó al estado",ORDF.q==="22918",ORDF.q);
+     ORDF.q="";render()}}
    /* ---------- 4 · el debounce y el redibujo: la causa de fondo ---------- */
    {const src=String(buscarQ);
     __R.bus.buscarQ=src;
@@ -5199,15 +5315,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const fijo=src.match(/>\s*300\)\s*\?\s*(\d+)\s*:\s*0/);
     __R.bus.debounce={fijoMs:fijo?+fijo[1]:null,umbralOrdenes:/300/.test(src)?300:null,
       enConfiguracion:/prm\(/.test(src)};
-    __check("AB5 causa: el debounce es un número FIJO en el código, no un parámetro",
-      !!fijo&&!/prm\(/.test(src),"espera="+(fijo?fijo[1]:"?")+"ms, umbral 300 órdenes, prm()="+/prm\(/.test(src));
-    __check("AB5 causa: con 300 órdenes o menos NO hay espera: se redibuja en cada tecla",
-      /:0/.test(src.replace(/\s/g,"")),"S.ordenes="+S.ordenes.length);
-    __check("AB5 causa: el temporizador es UNO solo para todos los buscadores",
-      /_qTimer/.test(src)&&(document.documentElement.innerHTML.match(/_qTimer/g)||[]).length>=2);
+    __check("AB5: el debounce es un PARÁMETRO (prm), no un número en el código",
+      !fijo&&/msBuscar\(\)/.test(src)&&/prm\(.msBuscar.,\s*150\)/.test(String(msBuscar)+String(window.msBuscar||"")),
+      "espera="+msBuscar()+"ms");
+    __check("AB5: la espera es la misma con cualquier cantidad de órdenes (ya no depende de 300)",
+      !/300/.test(src),"S.ordenes="+S.ordenes.length+" espera="+msBuscar()+"ms");
+    __check("AB5: hay un temporizador POR buscador, no uno global",
+      /_qTimers\[/.test(src)&&!/clearTimeout\(_qTimer\)/.test(src),src.slice(0,90));
     /* refEstado no conoce todos los estados: un filtro de una pantalla no listada no se guardaría */
     const src2=document.documentElement.innerHTML;
-    const conocidos=[...new Set([...String(refEstado).matchAll(/M\.([A-Z]+)=/g)].map(x=>x[1]))];
+    const conocidos=Object.keys(estadosPantalla());
     const usados=[...new Set([...src2.matchAll(/busqHTML\('([A-Z]+)\./g)].map(x=>x[1]))];
     const noConoce=usados.filter(x=>!conocidos.includes(x));
     __R.bus.refEstado={conoce:conocidos,usan:usados,noConoce};
