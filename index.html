@@ -136,7 +136,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 @media (max-width:520px){.lib-grid{grid-template-columns:1fr!important}#busg-host{order:9;flex:1 0 100%!important;min-width:0;margin-top:6px}#busg-host>div{max-width:none!important;width:100%}#busg{font-size:16px;padding:10px}header{row-gap:8px}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
 @media (max-width:860px){#navBtn{display:inline-block}#app{grid-template-rows:auto auto 1fr!important}header{height:auto!important;min-height:52px;padding:8px 12px;gap:8px;row-gap:6px}header .saved{min-width:0;text-align:left;order:9}header h1{font-size:15px}header button{padding:6px 10px}nav{display:none;flex-direction:column;align-items:stretch;overflow:visible}nav.abierto{display:flex}nav .grp{display:block;padding:10px 14px}nav .gbody{position:static!important;display:none;left:auto!important}nav .gbody.abierto{display:block}.kpis,.kpis.tarj-row{flex-direction:column}.pagehead{flex-wrap:wrap}.tab-card .body{flex-direction:column}.tarjetas{grid-template-columns:1fr}.panel .body{overflow-x:auto}.scroll{overflow-x:auto}header{height:auto;flex-wrap:wrap;padding:8px 12px}header .sub{display:none}}
 #app.cargando nav,#app.cargando main,#app.cargando header button,#app.cargando #busg-host{display:none!important}#app.cargando::after{content:'Cargando…';display:block;padding:40px;text-align:center;color:var(--ink3);font-size:18px}
-.cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}.cerc-mal{color:var(--alerta);font-weight:700;white-space:nowrap}.cerc-ok{color:var(--ok);font-weight:700;white-space:nowrap}
+.cola tr[draggable="true"]{cursor:grab}.cola tr.dd-over td{border-top:3px solid var(--ink)}.cola .hand{color:var(--mut);margin-right:6px;font-size:16px;cursor:grab;user-select:none}.cola tr.dd-fin td{text-align:center;color:var(--mut);padding:10px}.nivgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:14px}@media(max-width:700px){.nivgrid{grid-template-columns:1fr}}.cerc-mal{color:var(--alerta);font-weight:700;white-space:nowrap}.cerc-ok{color:var(--ok);font-weight:700;white-space:nowrap}
 .bath .bath-x{position:absolute;top:2px;right:4px;font-size:16px;font-weight:700;line-height:1;cursor:pointer;color:inherit;opacity:.9;padding:2px 4px;border-radius:4px}
 .bath .bath-x:hover{background:var(--alerta);color:#fff;opacity:1}
 .bath.low{box-shadow:inset 0 0 0 2px var(--alerta)}
@@ -372,6 +372,7 @@ tbody tr:hover td{background:var(--field)}
     <section class="page" id="p-imprimir"></section>
     <section class="page" id="p-categorias"></section>
     <section class="page" id="p-operaciones"></section>
+    <section class="page" id="p-nivelacion"></section>
     <section class="page" id="p-config"></section>
     <section class="page" id="p-usuarios"></section>
   </main>
@@ -705,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 07:00';
+const APP_BUILD='2026-09-17 07:18';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -959,7 +960,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={tablet:'factory',vistaordenes:'box',asignacion:'sheet',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
+const ICO_NAV={nivelacion:'scale',tablet:'factory',vistaordenes:'box',asignacion:'sheet',reporteria:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale',compras:'tag'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -2779,7 +2780,7 @@ function render(){
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes,asignacion:vAsignacion}[page])(el);
+  ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,reporteria:vReporteria,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios,vistaordenes:vVistaOrdenes,asignacion:vAsignacion}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -5996,7 +5997,367 @@ function calendarioNivHTML(){const ms=[...new Set([hoy().slice(0,7)].concat(mese
    <a style="cursor:pointer;text-decoration:underline" onclick="CONF.tab='cal';render();setTimeout(()=>{const e=document.getElementById('bloque-cal');e&&e.scrollIntoView({behavior:'smooth'})},50)">cargar excepciones →</a></p>`
    :`<p style="margin:10px 0 0;font-size:var(--fs-s)"><span class="tag t-ok">calendario</span> hay excepciones cargadas para ${esc(ms.join(', '))}.</p>`}
   </div></div>`}
-function vNivelConfHTML(){return calendarioNivHTML()+gruposModHTML()+nivParamsHTML()}
+function vNivelConfHTML(){
+  return `<div class="panel" style="border:2px solid var(--t-primary,var(--ink))"><div class="body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+   <div style="flex:1;min-width:260px"><b style="font-size:18px">Boceto de la pantalla nueva</b>
+    <div class="mut" style="font-size:var(--fs-s)">Esta pestaña es la configuración (tablas y parámetros). La pantalla para planificación está en boceto, con datos de prueba, esperando tu aprobación.</div></div>
+   <button class="btn" onclick="page='nivelacion';render()">Ver el boceto →</button>
+  </div></div>`+calendarioNivHTML()+gruposModHTML()+nivParamsHTML()}
+/* ================= NIVELACIÓN · PANTALLA (Paso 2) · ETAPA A: BOCETO =================
+   Pantalla navegable con DATOS DE PRUEBA FIJOS. No lee el motor ni la nivelación del Paso 1:
+   `NIVD` es un dibujo para poder aprobar la forma antes de conectarla (etapa B).
+   La regla: en pocos segundos se lee CAPACIDAD → CARGA → FECHA → COMPROMISO → BRECHA → SOLUCIÓN. */
+const NIVD={
+  hoy:'2026-09-17',
+  compromiso:'2026-11-25',
+  avisos:[
+    {t:'22 órdenes sin minutos por prenda',d:'No entran en el cálculo ni se cuentan como cero: quedan fuera y a la vista. Son las categorías sin hoja LMO.',ir:'operaciones'},
+    {t:'Sin festivos cargados para octubre y noviembre',d:'Solo se descuentan sábados y domingos. Se cargan en Configuración → Calendario.',ir:'config'},
+    {t:'3 procesos sin fecha de compromiso',d:'Sin compromiso no se puede decir si llega: se muestra «dato faltante», no se inventa una fecha.',ir:null}],
+  procesos:[
+    {id:'tela',n:'Tela',unidad:'u',pend:64800,min:null,termina:'2026-10-28',compromiso:'2026-11-25',pct:72,
+     meta:1850,capDia:2600,dias:24,falta:0,
+     calc:[['Saldo por procesar','64.800 u','incluye órdenes en fases anteriores'],['− marcado a maquila','0 u',''],['= Saldo neto','64.800 u',''],['Capacidad diaria','2.600 u/día','promedio real de 10 días hábiles'],['Días necesarios','25 hábiles','saldo ÷ capacidad, hacia arriba'],['Días disponibles','48 hábiles','del inicio al compromiso, inclusive'],['Producción alcanzable','124.800 u',''],['Meta diaria','1.850 u/día','']],
+     grupos:[]},
+    {id:'corte',n:'Corte',unidad:'u',pend:152047,min:88919,termina:'2026-10-26',compromiso:'2026-11-25',pct:64,
+     meta:2001,capDia:3264,dias:28,falta:0,sam:0.5848,
+     calc:[['Saldo por procesar','152.047 u · 88.919 min','incluye órdenes en fases anteriores'],['− marcado a maquila','0','']  ,['= Saldo neto','88.919 min',''],['Capacidad diaria','3.264 min/día','1 recurso · capDia de hoy'],['Días necesarios','28 hábiles',''],['Días disponibles','48 hábiles',''],['Producción alcanzable','156.672 min',''],['SAM ponderado','0,5848 min/prenda','minutos ÷ unidades'],['Meta diaria','1.852 min/día','']],
+     grupos:[]},
+    {id:'confeccion',n:'Confección',unidad:'u',pend:162468,min:520000,termina:'2026-11-27',compromiso:'2026-11-25',pct:108,
+     meta:3420,capDia:62016,dias:39,falta:4468,faltaDias:2,sam:15.2,
+     calc:[['Saldo por procesar','162.468 u · 520.000 min','incluye órdenes en fases anteriores'],['− marcado a maquila','8.200 u · 124.640 min','órdenes con recurso fijo maquila'],['= Saldo neto','395.360 min',''],['Capacidad diaria','62.016 min/día','12 módulos · capDia de hoy'],['Días necesarios','39 hábiles',''],['Días disponibles','37 hábiles','del inicio al compromiso, inclusive'],['Producción alcanzable','458.918 min',''],['SAM ponderado','15,20 min/prenda',''],['Meta diaria','3.420 u/día · 51.984 min/día','saldo neto ÷ días disponibles']],
+     grupos:[
+       {id:'polos',n:'Grupo Polos',pend:74200,termina:'2026-11-29',compromiso:'2026-11-25',pct:116,falta:3120,faltaDias:3,meta:1680,capDia:24480,
+        mods:[{id:'m1',n:'Módulo 1',pct:118,pend:31200,termina:'2026-11-30',falta:1640,meta:720,pers:14},
+              {id:'m2',n:'Módulo 2',pct:112,pend:24000,termina:'2026-11-27',falta:980,meta:560,pers:12},
+              {id:'m3',n:'Módulo 3',pct:104,pend:19000,termina:'2026-11-26',falta:500,meta:400,pers:10}]},
+       {id:'camisetas',n:'Grupo Camisetas',pend:61268,termina:'2026-11-24',compromiso:'2026-11-25',pct:97,falta:0,meta:1390,capDia:22032,
+        mods:[{id:'m4',n:'Módulo 4',pct:99,pend:22000,termina:'2026-11-24',falta:0,meta:500,pers:11},
+              {id:'m5',n:'Módulo 5',pct:96,pend:20268,termina:'2026-11-23',falta:0,meta:460,pers:11},
+              {id:'m6',n:'Módulo 6',pct:95,pend:19000,termina:'2026-11-22',falta:0,meta:430,pers:10}]},
+       {id:'shorts',n:'Grupo Shorts',pend:27000,termina:'2026-11-18',compromiso:'2026-11-25',pct:84,falta:0,meta:350,capDia:15504,
+        mods:[{id:'m7',n:'Módulo 7',pct:86,pend:14000,termina:'2026-11-18',falta:0,meta:180,pers:9},
+              {id:'m8',n:'Módulo 8',pct:82,pend:13000,termina:'2026-11-17',falta:0,meta:170,pers:9}]}]},
+    {id:'empaque',n:'Empaque',unidad:'u',pend:163877,min:67690,termina:'2026-11-21',compromiso:'2026-11-25',pct:88,
+     meta:1900,capDia:5400,dias:34,falta:0,sam:0.4131,
+     calc:[['Saldo por procesar','163.877 u · 67.690 min',''],['= Saldo neto','67.690 min',''],['Capacidad diaria','5.400 min/día','3 recursos'],['Días necesarios','34 hábiles',''],['Días disponibles','48 hábiles',''],['Meta diaria','1.900 u/día','']],
+     grupos:[]},
+    {id:'maquila',n:'Maquila',unidad:'u',pend:8200,min:124640,termina:null,compromiso:null,pct:null,
+     meta:null,capDia:null,dias:null,falta:null,sinDato:'sin capacidad ni compromiso cargados para maquila',
+     calc:[['Saldo por procesar','8.200 u · 124.640 min','órdenes marcadas a maquila'],['Capacidad diaria','dato faltante',''],['Compromiso','dato faltante','']],
+     grupos:[]}],
+  /* «qué no entra»: las órdenes del rezago, con lo que necesita whCell */
+  noEntra:[
+    {op:'WH/MO/28918',cli:'Almacén Éxito',hija:'CAMISETAS / Camiseta CR',fase:'4CD Ensamble',u:1640,min:24928,ent:'2026-11-20',mod:'Módulo 1'},
+    {op:'WH/MO/28741',cli:'Almacén Éxito',hija:'CAMISETAS / Camiseta CR',fase:'4CD Ensamble',u:980,min:14896,ent:'2026-11-21',mod:'Módulo 2'},
+    {op:'WH/MO/28753',cli:'Koaj',hija:'POLOS / Polo Basica',fase:'4Preparacion Insumos',u:500,min:7600,ent:'2026-11-22',mod:'Módulo 3'},
+    {op:'WH/MO/28808',cli:'Koaj',hija:'POLOS / Polo Basica',fase:'3CD CORTE',u:620,min:9424,ent:'2026-11-23',mod:'Módulo 1'},
+    {op:'WH/MO/28926',cli:'Arturo Calle',hija:'POLOS / Polo Moda',fase:'3CD CORTE',u:410,min:6232,ent:'2026-11-24',mod:'Módulo 2'},
+    {op:'WH/MO/29001',cli:'Arturo Calle',hija:'CAMISETAS / Level 2',fase:'2Planificacion',u:318,min:4834,ent:'2026-11-24',mod:'Módulo 3'}],
+  clientes:['Todos','Almacén Éxito','Koaj','Arturo Calle'],
+  familias:['Todas','CAMISETAS','POLOS','SHORT PLANOS','HODDIE']};
+/* estado de la pantalla: qué horizonte, qué filtros, dónde estoy y qué estoy simulando */
+let NIVV={hor:'3m',cliente:'Todos',familia:'Todas',masFiltros:false,avisos:false,
+  ruta:[],                 // [] = planta · ['confeccion'] · ['confeccion','polos']
+  calc:{},                 // qué «Ver cálculo» está abierto
+  noEntra:null,            // id del proceso/grupo cuya lista está abierta
+  sim:null,                // {ambito, pers, extraMin, extraDias, efic, maquila:Set, compromiso}
+  tab:'resumen'};          // resumen | semanal
+
+/* ---------- piezas comunes de la pantalla ---------- */
+/* el estado SIEMPRE con ícono + color + texto: nunca solo color */
+function nivEstado(pct,falta){
+  if(pct==null)return {k:'sindato',txt:'Sin dato',ico:'?',col:'var(--mut)',bg:'var(--field)'};
+  if(falta>0||pct>100)return {k:'no',txt:'No llegamos',ico:'✕',col:'var(--alerta)',bg:'#FDEEEA'};
+  if(pct>=95)return {k:'riesgo',txt:'En riesgo',ico:'⚠',col:'#B26A00',bg:'#FFF6E5'};
+  return {k:'si',txt:'Llegamos',ico:'✓',col:'var(--ok)',bg:'#EAF6EE'};
+}
+function nivChip(e,extra){return `<span style="display:inline-flex;align-items:center;gap:6px;background:${e.bg};color:${e.col};border:1px solid ${e.col}33;border-radius:999px;padding:3px 12px;font-weight:700;font-size:var(--fs-s);white-space:nowrap">
+  <span style="font-size:15px;line-height:1">${e.ico}</span>${esc(e.txt)}${extra?' <span style="font-weight:400">'+esc(extra)+'</span>':''}</span>`}
+/* la barra de ocupación: llena hasta 100 y lo que se pasa, en rojo */
+function nivBarra(pct){if(pct==null)return `<div style="height:14px;background:var(--field);border-radius:999px"></div>`;
+  const dentro=Math.min(100,pct),fuera=Math.max(0,pct-100);
+  const e=nivEstado(pct,fuera>0?1:0);
+  return `<div style="display:flex;align-items:center;gap:10px">
+   <div style="flex:1;height:14px;background:var(--field);border-radius:999px;overflow:hidden;display:flex">
+    <div style="width:${dentro}%;background:${e.col};opacity:.85"></div>
+    ${fuera?`<div style="width:${Math.min(20,fuera)}%;background:repeating-linear-gradient(45deg,var(--alerta),var(--alerta) 4px,#fff 4px,#fff 8px)"></div>`:''}
+   </div><b style="font-size:17px;color:${e.col};min-width:54px;text-align:right">${num(pct)} %</b></div>`}
+/* una cifra: unidades en grande, minutos en pequeño al lado */
+function nivCifra(u,min,uni){return `<b style="font-size:21px">${u==null?'<span class="mut" style="font-size:15px">dato faltante</span>':num(u)}</b>${u!=null?' <span class="mut" style="font-size:13px">'+esc(uni||'u')+'</span>':''}`
+  +(min!=null?` <span class="mut" style="font-size:13px">(≈ ${num(min)} min)</span>`:'')}
+function nivFechaTxt(f){return f?`<b style="font-size:17px">${fmtDia(f)}</b>`:'<span class="mut">dato faltante</span>'}
+
+/* ---------- 1 · encabezado ---------- */
+function nivRespuestaGlobal(){
+  const ps=NIVD.procesos.filter(p=>p.pct!=null);
+  const malos=ps.filter(p=>(p.falta||0)>0);
+  const faltaU=malos.reduce((a,p)=>a+(p.falta||0),0);
+  if(malos.length)return {e:nivEstado(101,1),txt:'No llegamos: faltan '+num(faltaU)+' unidades',det:malos.map(p=>p.n).join(', ')+(malos.length===1?' se pasa del compromiso':' se pasan del compromiso')};
+  if(ps.some(p=>p.pct>=95))return {e:nivEstado(96,0),txt:'En riesgo',det:'ningún proceso se pasa, pero alguno va muy justo'};
+  return {e:nivEstado(60,0),txt:'Sí, con holgura',det:'todos los procesos terminan antes del compromiso'};
+}
+function nivCabeceraHTML(){
+  const r=nivRespuestaGlobal();const n=NIVD.avisos.length;
+  const hb=(k,t)=>`<span class="chip ${NIVV.hor===k?'on':''}" onclick="NIVV.hor='${k}';render()">${t}</span>`;
+  return `<div class="panel" style="border:2px solid ${r.e.col}"><div class="body">
+   <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1;min-width:280px">
+     <div class="mut" style="font-size:var(--fs-s)">Planta completa · compromiso ${fmtDia(NIVD.compromiso)}</div>
+     <div style="font-size:27px;font-weight:700;line-height:1.25;margin:2px 0 6px">¿Llegamos al compromiso?</div>
+     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${nivChip(r.e)}
+      <b style="font-size:19px;color:${r.e.col}">${esc(r.txt)}</b></div>
+     <div class="mut" style="font-size:var(--fs-s);margin-top:4px">${esc(r.det)}</div>
+    </div>
+    <div style="flex:none;text-align:right">
+     <div class="mut" style="font-size:var(--fs-xs);margin-bottom:4px">Horizonte</div>
+     <div class="chips" style="margin:0">${hb('1m','1 mes')}${hb('3m','3 meses')}${hb('6m','6 meses')}${hb('x','Personalizado')}</div>
+     <a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline;display:inline-block;margin-top:8px" onclick="page='config';CONF.tab='nivel';render()">Configurar</a>
+    </div>
+   </div>
+   <div class="row" style="margin:14px 0 0;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div><label>Cliente</label><select onchange="NIVV.cliente=this.value;render()">${NIVD.clientes.map(c=>`<option ${NIVV.cliente===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    <div><label>Familia</label><select onchange="NIVV.familia=this.value;render()">${NIVD.familias.map(c=>`<option ${NIVV.familia===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    <div><label>&nbsp;</label><button class="btn ghost sm" onclick="NIVV.masFiltros=!NIVV.masFiltros;render()">${NIVV.masFiltros?'Menos filtros':'Más filtros'}</button></div>
+    <span class="spacer"></span>
+    <div><label>&nbsp;</label><button class="btn ghost sm" style="border-color:#B26A0055;color:#B26A00" onclick="NIVV.avisos=!NIVV.avisos;render()">⚠ ${n} aviso${n===1?'':'s'} ${NIVV.avisos?'▴':'▾'}</button></div>
+   </div>
+   ${NIVV.masFiltros?`<div class="row" style="margin-top:10px;gap:12px;flex-wrap:wrap;border-top:1px solid var(--rule2);padding-top:10px">
+     <div><label>ODC</label><select><option>Todas</option></select></div>
+     <div><label>Tipo de producto</label><select><option>Todos</option></select></div>
+     <div><label>Fase</label><select><option>Todas</option></select></div>
+     <div><label>Proyecto</label><select><option>Todos</option></select></div>
+     <div><label>Color</label><select><option>Todos</option></select></div>
+    </div>`:''}
+   ${NIVV.avisos?`<div style="margin-top:12px;border-top:1px solid var(--rule2);padding-top:10px">
+     ${NIVD.avisos.map(a=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
+       <b style="color:#B26A00">⚠ ${esc(a.t)}</b>
+       <div class="mut" style="font-size:var(--fs-s)">${esc(a.d)}${a.ir?' <a style="cursor:pointer;text-decoration:underline" onclick="page=\''+a.ir+'\';render()">ir →</a>':''}</div></div>`).join('')}
+    </div>`:''}
+  </div></div>`}
+
+/* ---------- 2 · una tarjeta por proceso ---------- */
+function nivTarjetaHTML(p,chico){
+  const e=nivEstado(p.pct,p.falta);const id=p.id;
+  const abierto=!!NIVV.calc[id];
+  return `<div class="panel" style="border:2px solid ${e.col};margin:0"><div class="body" style="padding:${chico?'12px':'16px'}">
+   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <b style="font-size:${chico?'16px':'19px'};letter-spacing:.02em;text-transform:uppercase">${esc(p.n)}</b>
+    <span class="spacer"></span>${nivChip(e)}</div>
+   <div style="margin:10px 0 12px">${nivBarra(p.pct)}</div>
+   ${p.sinDato?`<div class="mut" style="font-size:var(--fs-s);background:var(--field);padding:8px 10px;border-radius:4px">${esc(p.sinDato)}</div>`:`
+   <table style="width:100%;font-size:var(--fs-s)"><tbody>
+    <tr><td class="mut" style="width:96px">Pendiente</td><td>${nivCifra(p.pend,p.min,'u')}</td></tr>
+    <tr><td class="mut">Termina</td><td>${nivFechaTxt(p.termina)}</td></tr>
+    <tr><td class="mut">Compromiso</td><td>${nivFechaTxt(p.compromiso)}</td></tr>
+    ${(p.falta||0)>0?`<tr><td class="mut">Faltan</td><td><b style="font-size:19px;color:var(--alerta)">${num(p.falta)}</b> <span class="mut" style="font-size:13px">u</span>${p.faltaDias?` · <b style="color:var(--alerta)">${num(p.faltaDias)} día${p.faltaDias===1?'':'s'}</b>`:''}</td></tr>`:''}
+   </tbody></table>
+   ${p.meta!=null?`<div style="margin-top:10px;background:var(--field);border-radius:4px;padding:7px 10px;font-size:var(--fs-s)"><b>Para llegar:</b> ${num(p.meta)} u/día</div>`:''}`}
+   <div class="row" style="margin:12px 0 0;gap:8px">
+    ${(p.falta||0)>0?`<button class="btn sm" onclick="NIVV.noEntra='${id}';render()">Ver qué no entra</button>`:''}
+    ${p.pct!=null?`<button class="btn ghost sm" onclick="nivAbrirSim('${id}')">Simular solución</button>`:''}
+    ${(p.grupos&&p.grupos.length)?`<button class="btn ghost sm" onclick="NIVV.ruta=['${id}'];render()">Abrir</button>`:''}
+   </div>
+   ${p.calc?`<div style="margin-top:10px"><a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline" onclick="NIVV.calc['${id}']=!NIVV.calc['${id}'];render()">${abierto?'Ocultar cálculo':'Ver cálculo'}</a>
+    ${abierto?`<table style="font-size:var(--fs-xs);margin-top:6px;width:100%"><tbody>${p.calc.map(([k,v,n])=>`<tr><td class="mut">${esc(k)}</td><td class="num"><b>${esc(v)}</b></td><td class="mut">${esc(n||'')}</td></tr>`).join('')}</tbody></table>`:''}</div>`:''}
+  </div></div>`}
+
+/* ---------- 3 · línea de tiempo: una barra por proceso y la raya del compromiso ---------- */
+function nivLineaHTML(items){
+  const fechas=items.map(p=>p.termina).filter(Boolean).concat([NIVD.compromiso]);
+  if(!fechas.length)return '';
+  const ini=NIVD.hoy;const fin=fechas.sort()[fechas.length-1];
+  const tot=Math.max(1,diasEntre(ini,fin));
+  const pos=f=>Math.max(0,Math.min(100,diasEntre(ini,f)/tot*100));
+  const xc=pos(NIVD.compromiso);
+  return `<div class="panel"><h3>Cuándo termina cada proceso <span class="note">de hoy al compromiso · la raya es el ${fmtDia(NIVD.compromiso)}</span></h3><div class="body">
+   <div style="position:relative;padding:6px 0 2px">
+    <div style="position:absolute;left:${xc}%;top:0;bottom:18px;width:2px;background:var(--ink);z-index:2"></div>
+    <div style="position:absolute;left:${xc}%;top:-2px;transform:translateX(-50%);font-size:var(--fs-xs);font-weight:700;background:var(--paper);padding:0 4px;z-index:3">compromiso</div>
+    <div style="margin-top:16px">
+    ${items.map(p=>{const e=nivEstado(p.pct,p.falta);
+      if(!p.termina)return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <div style="width:110px;font-size:var(--fs-s);font-weight:600">${esc(p.n)}</div>
+        <div style="flex:1"><span class="mut" style="font-size:var(--fs-xs)">sin fecha: dato faltante</span></div></div>`;
+      const w=pos(p.termina);const wOk=Math.min(w,xc);const wMal=Math.max(0,w-xc);
+      return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+       <div style="width:110px;font-size:var(--fs-s);font-weight:600">${esc(p.n)}</div>
+       <div style="flex:1;position:relative;height:20px;background:var(--field);border-radius:4px;overflow:hidden;display:flex">
+        <div style="width:${wOk}%;background:${wMal?'var(--alerta)':e.col};opacity:.75"></div>
+        ${wMal?`<div style="width:${wMal}%;background:var(--alerta)"></div>`:''}
+       </div>
+       <div style="width:120px;text-align:right;font-size:var(--fs-s)${wMal?';color:var(--alerta);font-weight:700':''}">${fmtDia(p.termina)}${wMal?' · se pasa':''}</div></div>`}).join('')}
+    </div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Cada barra va de hoy a la fecha en que ese proceso termina lo que tiene pendiente. Lo que cruza la raya del compromiso sale en rojo.</p>
+  </div></div>`}
+
+/* ---------- 4 · migas y drill-down ---------- */
+function nivMigasHTML(){
+  const pasos=[{t:'Planta',ir:'[]'}];
+  const p=NIVV.ruta[0]?NIVD.procesos.find(x=>x.id===NIVV.ruta[0]):null;
+  if(p)pasos.push({t:p.n,ir:"['"+p.id+"']"});
+  const g=(p&&NIVV.ruta[1])?(p.grupos||[]).find(x=>x.id===NIVV.ruta[1]):null;
+  if(g)pasos.push({t:g.n,ir:"['"+p.id+"','"+g.id+"']"});
+  return `<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:var(--fs-s);flex-wrap:wrap">
+   ${pasos.map((x,i)=>`${i?'<span class="mut">›</span>':''}${i===pasos.length-1?`<b>${esc(x.t)}</b>`:`<a style="cursor:pointer;text-decoration:underline" onclick="NIVV.ruta=${x.ir};NIVV.noEntra=null;render()">${esc(x.t)}</a>`}`).join('')}
+  </div>`}
+/* la lista de «qué no entra», con el agrupador común y foto */
+function nivNoEntraHTML(titulo,lista){
+  const gid='nivno';grpSt(gid).todoAbierto=true;
+  if(!grpSt(gid).niveles.length)grpSt(gid).niveles=['hija'];
+  const fila=o=>`<tr><td style="white-space:nowrap">${nivFotoFalsa(o)}<b>${esc(o.op)}</b> <span class="tag fase-mini">${esc(o.fase)}</span></td>
+    <td>${esc(o.cli)}</td><td class="mut">${esc(o.hija)}</td><td>${esc(o.mod||'')}</td>
+    <td class="num"><b>${num(o.u)}</b></td><td class="num mut">${num(o.min)} min</td><td>${fmtDia(o.ent)}</td>
+    <td><label style="font-size:var(--fs-xs);white-space:nowrap"><input type="checkbox" ${(NIVV.sim&&NIVV.sim.maquila&&NIVV.sim.maquila[o.op])?'checked':''} onchange="nivTogMaquila('${o.op}',this.checked)"> a maquila</label></td></tr>`;
+  const tot=lista.reduce((a,o)=>a+o.u,0);
+  return `<div class="panel" style="border:2px solid var(--alerta)"><h3>Qué no entra · ${esc(titulo)} <span class="note">${lista.length} órdenes · ${num(tot)} unidades</span>
+   <span class="spacer"></span><span style="font-weight:400">${nivGrpSel()}</span>
+   <button class="btn ghost sm" style="margin-left:8px" onclick="NIVV.noEntra=null;render()">Cerrar</button></h3><div class="body">
+   <div class="scroll" style="max-height:340px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Tipo de producto</th><th>Módulo</th><th class="num">Unidades</th><th class="num">Minutos</th><th>Entrega</th><th>Maquila</th></tr></thead><tbody>
+   ${filasGRP(gid,lista,fila,8,o=>({id:o.op,op:o.op,cliente:o.cli,cat:null,cant:o.u,fase:o.fase,ruta:[]}),o=>o.u)||lista.map(fila).join('')}
+   </tbody></table></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Marcar «a maquila» no cambia nada todavía: entra en la simulación de al lado y solo se guarda al <b>Aplicar</b>.</p>
+  </div></div>`}
+/* un cuadrito de foto: en el boceto no hay fotos reales */
+function nivFotoFalsa(o){return `<span style="display:inline-block;width:26px;height:26px;border-radius:4px;background:var(--field);border:1px solid var(--rule);margin-right:7px;vertical-align:middle"></span>`}
+function nivGrpSel(){const gid='nivno';const n=grpSt(gid).niveles[0]||'';
+  const ops=[['hija','Tipo de producto'],['cliente','Cliente'],['fase','Fase'],['','Sin agrupar']];
+  return `<select style="width:auto;font-size:var(--fs-xs)" onchange="grpSt('nivno').niveles=this.value?[this.value]:[];grpSt('nivno').exp=new Set();render()">
+   ${ops.map(([k,t])=>`<option value="${k}" ${n===k?'selected':''}>Agrupar: ${t}</option>`).join('')}</select>`}
+
+/* ---------- 5 · simular solución: panel lateral, dos columnas ---------- */
+function nivAmbito(id){
+  const p=NIVD.procesos.find(x=>x.id===id);if(p)return {tipo:'proceso',n:p.n,o:p};
+  for(const pr of NIVD.procesos){const g=(pr.grupos||[]).find(x=>x.id===id);if(g)return {tipo:'grupo',n:g.n,o:g,padre:pr}}
+  for(const pr of NIVD.procesos)for(const g of (pr.grupos||[])){const m=(g.mods||[]).find(x=>x.id===id);if(m)return {tipo:'módulo',n:m.n,o:m,padre:g}}
+  return null}
+function nivAbrirSim(id){NIVV.sim={ambito:id,pers:0,extraMin:0,extraDias:0,efic:0,maquila:{},compromiso:null};render()}
+function nivSimSet(k,v){if(!NIVV.sim)return;NIVV.sim[k]=(k==='compromiso')?v:(+v||0);render()}
+function nivTogMaquila(op,on){if(!NIVV.sim){const a=NIVV.ruta[1]||NIVV.ruta[0]||'confeccion';nivAbrirSim(a)}
+  NIVV.sim.maquila=NIVV.sim.maquila||{};if(on)NIVV.sim.maquila[op]=true;else delete NIVV.sim.maquila[op];render()}
+/* el cálculo del boceto: aritmética simple sobre los datos de prueba, para que se vea el efecto.
+   En la etapa B esto pasa por ajusteRecDia() y el motor del Paso 1; aquí NO se escribe nada. */
+function nivSimCalc(){const s=NIVV.sim;const a=nivAmbito(s.ambito);if(!a)return null;
+  const o=a.o;const capBase=o.capDia||(o.pers?o.pers*480:480*10);
+  const minPers=480;                                   // una persona, una jornada
+  const capNueva=Math.max(1,capBase+(s.pers*minPers)+(s.extraMin*(s.extraDias>0?1:0)))*(1+(s.efic/100));
+  const quitados=Object.keys(s.maquila||{}).reduce((x,op)=>{const r=NIVD.noEntra.find(z=>z.op===op);return x+(r?r.u:0)},0);
+  const pendAntes=o.pend||0;const pendDesp=Math.max(0,pendAntes-quitados);
+  const factor=(pendDesp/Math.max(1,pendAntes))*(capBase/Math.max(1,capNueva));
+  const pctAntes=o.pct||0;const pctDesp=Math.round(pctAntes*factor);
+  const compAntes=o.compromiso||NIVD.compromiso;
+  const compDesp=s.compromiso||compAntes;
+  const diasAntes=o.termina?diasEntre(NIVD.hoy,o.termina):0;
+  const terminaDesp=o.termina?dsum(NIVD.hoy,Math.max(1,Math.round(diasAntes*factor))):null;
+  const faltaAntes=o.falta||0;
+  const faltaDesp=Math.max(0,Math.round(faltaAntes*factor)-quitados);
+  const diasTarde=(terminaDesp&&compDesp&&terminaDesp>compDesp)?diasEntre(compDesp,terminaDesp):0;
+  return {a,pctAntes,pctDesp,terminaAntes:o.termina,terminaDesp,compAntes,compDesp,
+    faltaAntes,faltaDesp,quitados,capBase:Math.round(capBase),capNueva:Math.round(capNueva),diasTarde}}
+function nivSimHTML(){
+  if(!NIVV.sim)return '';
+  const r=nivSimCalc();if(!r)return '';
+  const s=NIVV.sim;
+  const col=(t,pct,termina,falta,comp,fuerte)=>{const e=nivEstado(pct,falta);
+    return `<div style="flex:1;min-width:190px;background:${fuerte?e.bg:'var(--field)'};border:${fuerte?'2px solid '+e.col:'1px solid var(--rule)'};border-radius:6px;padding:12px">
+     <div class="mut" style="font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">${esc(t)}</div>
+     <div style="margin:8px 0">${nivChip(e)}</div>
+     <table style="width:100%;font-size:var(--fs-s)"><tbody>
+      <tr><td class="mut">Ocupación</td><td class="num"><b>${num(pct)} %</b></td></tr>
+      <tr><td class="mut">Termina</td><td class="num">${termina?fmtDia(termina):'—'}</td></tr>
+      <tr><td class="mut">Compromiso</td><td class="num">${comp?fmtDia(comp):'—'}</td></tr>
+      <tr><td class="mut">Faltan</td><td class="num"><b style="color:${falta>0?'var(--alerta)':'var(--ok)'}">${falta>0?num(falta)+' u':'nada'}</b></td></tr>
+     </tbody></table></div>`};
+  const dif=r.faltaAntes-r.faltaDesp;
+  const pal=(lbl,cur,k,min,max,paso,uni,nota)=>`<div style="margin:12px 0">
+    <div style="display:flex;align-items:center;gap:10px"><b style="font-size:var(--fs-s);flex:1">${esc(lbl)}</b>
+     <button class="btn ghost sm" onclick="nivSimSet('${k}',${cur-paso})">−</button>
+     <b style="min-width:70px;text-align:center;font-size:17px">${cur>0?'+':''}${num(cur)}${uni?' '+uni:''}</b>
+     <button class="btn ghost sm" onclick="nivSimSet('${k}',${cur+paso})">+</button></div>
+    ${nota?`<div class="mut" style="font-size:var(--fs-xs)">${esc(nota)}</div>`:''}</div>`;
+  return `<div class="panel" style="border:2px solid var(--t-primary,var(--ink))"><h3>Simular solución · ${esc(r.a.n)}
+    <span class="note">nada cambia hasta que toques Aplicar</span><span class="spacer"></span>
+    <button class="btn ghost sm" onclick="NIVV.sim=null;render()">Cerrar</button></h3><div class="body">
+   <div style="display:flex;gap:14px;flex-wrap:wrap">${col('Actual',r.pctAntes,r.terminaAntes,r.faltaAntes,r.compAntes,false)}
+    <div style="flex:none;display:flex;align-items:center;font-size:24px;color:var(--mut)">→</div>
+    ${col('Simulado',r.pctDesp,r.terminaDesp,r.faltaDesp,r.compDesp,true)}</div>
+   ${dif!==0?`<div style="margin-top:12px;padding:10px 12px;border-radius:6px;background:${dif>0?'#EAF6EE':'#FDEEEA'};border:1px solid ${dif>0?'var(--ok)':'var(--alerta)'}33">
+     <b style="font-size:17px;color:${dif>0?'var(--ok)':'var(--alerta)'}">${dif>0?'Se resuelven '+num(dif)+' unidades':'Empeora en '+num(-dif)+' unidades'}</b>
+     ${r.faltaDesp===0?' <b style="color:var(--ok)">· con esto llegamos</b>':' <span class="mut">· todavía faltan '+num(r.faltaDesp)+'</span>'}
+    </div>`:'<div class="mut" style="margin-top:12px;font-size:var(--fs-s)">Mueve una palanca para ver el efecto.</div>'}
+   <div style="margin-top:14px;border-top:1px solid var(--rule2);padding-top:10px">
+    <b style="font-size:var(--fs-s);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)">Qué puedo mover</b>
+    ${pal('Personas',s.pers,'pers',-20,20,1,'','cada persona suma una jornada de trabajo al día')}
+    ${pal('Horas extra (minutos por día)',s.extraMin,'extraMin',0,480,30,'min','se aplican a los días que marques abajo')}
+    ${pal('Días con horas extra',s.extraDias,'extraDias',0,30,1,'días','')}
+    ${pal('Eficiencia',s.efic,'efic',-30,30,5,'%','sube o baja el rendimiento del puesto')}
+    <div style="margin:12px 0"><b style="font-size:var(--fs-s)">Mandar a maquila</b>
+     <div class="mut" style="font-size:var(--fs-xs)">${Object.keys(s.maquila||{}).length} órdenes marcadas · ${num(r.quitados)} unidades salen de este puesto</div>
+     <button class="btn ghost sm" style="margin-top:6px" onclick="NIVV.noEntra='${NIVV.ruta[1]||NIVV.ruta[0]||'confeccion'}';render()">Elegir de la lista «qué no entra»</button></div>
+    <div style="margin:12px 0"><b style="font-size:var(--fs-s)">Mover el compromiso</b>
+     <div><input type="date" value="${esc(s.compromiso||r.compAntes||'')}" onchange="nivSimSet('compromiso',this.value)"></div>
+     <div class="mut" style="font-size:var(--fs-xs)">mover la fecha no produce más: solo cambia contra qué se compara</div></div>
+   </div>
+   <div class="mut" style="font-size:var(--fs-xs);border-top:1px solid var(--rule2);padding-top:8px;margin-top:6px">
+    Capacidad del puesto: <b>${num(r.capBase)}</b> → <b>${num(r.capNueva)}</b> min/día. Todo pasa por los ajustes de capacidad por semana (<code>ajusteRecDia</code>); no se escriben unidades por día a mano.</div>
+   <div class="row" style="margin-top:12px;gap:8px">
+    <button class="btn ghost" onclick="NIVV.sim=null;render()">Descartar</button>
+    <button class="btn ghost" onclick="alert('Boceto: aquí se guardaría el escenario con su nombre, sin aplicar nada.')">Guardar escenario</button>
+    <span class="spacer"></span>
+    <button class="btn" onclick="alert('Boceto: Aplicar pedirá motivo y solo lo puede hacer un perfil con permiso «programa». Nada cambia todavía.')">Aplicar…</button>
+   </div>
+  </div></div>`}
+
+/* ---------- la pantalla ---------- */
+function vNivelacion(el){
+  const p=NIVV.ruta[0]?NIVD.procesos.find(x=>x.id===NIVV.ruta[0]):null;
+  const g=(p&&NIVV.ruta[1])?(p.grupos||[]).find(x=>x.id===NIVV.ruta[1]):null;
+  /* la lista de «qué no entra» del ámbito abierto */
+  const noEntraDe=id=>{const a=nivAmbito(id);if(!a)return [];
+    if(a.tipo==='módulo')return NIVD.noEntra.filter(o=>o.mod===a.o.n);
+    if(a.tipo==='grupo')return NIVD.noEntra.filter(o=>(a.o.mods||[]).some(m=>m.n===o.mod));
+    return NIVD.noEntra};
+  const tabs=`<div class="chips" style="margin:0 0 14px">
+    <span class="chip ${NIVV.tab==='resumen'?'on':''}" onclick="NIVV.tab='resumen';render()">Resumen</span>
+    <span class="chip ${NIVV.tab==='semanal'?'on':''}" onclick="NIVV.tab='semanal';render()">Detalle semanal</span></div>`;
+  const aviso=`<div class="warn" style="margin-bottom:14px"><b>Boceto con datos de prueba.</b> Los números son inventados para poder aprobar la forma de la pantalla: <b>todavía no está conectada al motor</b>. La conexión es la etapa B.</div>`;
+
+  if(NIVV.tab==='semanal'){
+    el.innerHTML=`<div class="pagehead"><h2>Nivelación de carga</h2><span class="spacer"></span>
+      <a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline" onclick="page='config';CONF.tab='nivel';render()">Configurar</a></div>`+aviso+tabs+
+     `<div class="panel"><h3>Detalle semanal <span class="note">la vista de siempre del simulador de capacidad, semana por semana</span></h3><div class="body">
+       <div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Puesto</th>${[1,2,3,4,5,6].map(i=>`<th class="num">Sem ${i}</th>`).join('')}</tr></thead><tbody>
+        ${NIVD.procesos[2].grupos.map(gr=>(gr.mods||[]).map(m=>`<tr><td><b>${esc(m.n)}</b> <span class="mut">${esc(gr.n)}</span></td>
+          ${[0,1,2,3,4,5].map(i=>{const pc=Math.max(60,m.pct-8+i*3);const e=nivEstado(pc,pc>100?1:0);
+            return `<td class="num" style="color:${e.col};font-weight:${pc>100?700:400}">${num(pc)} %</td>`}).join('')}</tr>`).join('')).join('')}
+       </tbody></table></div>
+       <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Aquí vivirá el simulador semana a semana que ya existe (personas, minutos y eficiencia por semana). Se conserva tal cual.</p>
+      </div></div>`;return}
+
+  let cuerpo='';
+  if(!p){
+    cuerpo=`<div class="nivgrid">${NIVD.procesos.map(x=>nivTarjetaHTML(x)).join('')}</div>`
+      +nivLineaHTML(NIVD.procesos);
+  }else if(!g){
+    cuerpo=nivMigasHTML()+`<div class="nivgrid">${nivTarjetaHTML(p)}</div>`
+      +((p.grupos||[]).length?`<div style="margin:18px 0 8px"><b style="font-size:var(--fs-s);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)">Grupos de ${esc(p.n)}</b></div>
+        <div class="nivgrid">${p.grupos.map(x=>nivTarjetaHTML(Object.assign({},x,{calc:null,grupos:x.mods}),true)).join('')}</div>`
+        :'<div class="empty">Este proceso no se reparte en grupos.</div>')
+      +nivLineaHTML(p.grupos||[]);
+  }else{
+    cuerpo=nivMigasHTML()+`<div class="nivgrid">${nivTarjetaHTML(Object.assign({},g,{calc:null,grupos:null}))}</div>`
+      +`<div style="margin:18px 0 8px"><b style="font-size:var(--fs-s);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)">Módulos de ${esc(g.n)}</b></div>
+        <div class="nivgrid">${(g.mods||[]).map(m=>nivTarjetaHTML(Object.assign({},m,{compromiso:g.compromiso,calc:null,grupos:null}),true)).join('')}</div>`
+      +nivLineaHTML(g.mods||[]);
+  }
+  const lista=NIVV.noEntra?noEntraDe(NIVV.noEntra):null;
+  el.innerHTML=`<div class="pagehead"><h2>Nivelación de carga</h2><span class="spacer"></span>
+    <a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline" onclick="page='config';CONF.tab='nivel';render()">Configurar</a></div>`
+   +aviso+tabs+nivCabeceraHTML()+cuerpo
+   +(lista?nivNoEntraHTML((nivAmbito(NIVV.noEntra)||{}).n||'',lista):'')
+   +nivSimHTML();
+}
+
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
 function brechasOjalBoton(){const sinConf=[],sinRegla=[],conCero=[];
