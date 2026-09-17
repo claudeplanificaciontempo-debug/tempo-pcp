@@ -662,7 +662,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* registrar hecho desde la cola del centro */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const c='corte';const P0=programar();const lun=lunesDe(hoy());const cola=colaCentro(c,filasDeCentros([c],P0,lun,dsum(lun,6),''));
+   /* el cierre exige tiempo corrido: se registra un tramo como lo haría el operario */
+   const conTiempo=(oid,cen)=>{const tr=tramosDe(oid);
+     if(!tr.some(t=>t.centro===cen&&t.fin))tr.push({id:'t-prev-'+uid(),centro:cen,rec:null,
+       ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:'operario',paros:[],tallas:{}})};
    if(cola.length){const o=cola[0].o;CEN.id='corte';CEN.tab='prog';CEN.todo=true;page='centro';render();
+     conTiempo(o.id,c);
      __check("registrar: la fila de la cola tiene botón ✓ hecho",document.getElementById('p-centro').innerHTML.includes("marcarHechoCentro('"+o.id+"','corte')"));
      const sig=centroSiguiente(o,'corte');
      // registrar completo
@@ -673,7 +678,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      render();__check("registrar: la cola muestra 'Hecho hoy' con el total y 'lista para' el siguiente",document.getElementById('p-centro').innerHTML.includes('Hecho hoy en Corte')&&(sig?document.getElementById('p-centro').innerHTML.includes('lista para '+nCen(sig)):true));
      // diferencia
      const o2=cola.length>1?cola[1].o:null;
-     if(o2){window.confirm=m=>true;marcarHechoCentro(o2.id,c);document.getElementById('hc-q').value=String(Math.max(1,o2.cant-5));confirmarHechoCentro(o2.id,c);window.confirm=cp;
+     if(o2){conTiempo(o2.id,c);window.confirm=m=>true;marcarHechoCentro(o2.id,c);document.getElementById('hc-q').value=String(Math.max(1,o2.cant-5));confirmarHechoCentro(o2.id,c);window.confirm=cp;
        const hc2=S.avance[o2.id].hechoC[c];__check("registrar: cantidad distinta al pedido queda marcada como diferencia",hc2.dif===(Math.max(1,o2.cant-5)-o2.cant)&&hc2.dif<0);}
      // deshacer con motivo
      const pr=window.prompt;window.prompt=()=>'me equivoqué';deshacerHechoCentro(o.id,c);window.prompt=pr;
@@ -2725,7 +2730,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];const oX=JSON.parse(JSON.stringify(base));oX.id=uid();oX.op='WH/NOAQUI';oX.estado='plan';delete oX.programa;S.ordenes.push(oX);delete S.avance[oX.id];PLAN=null;PLAN_ALL=null;
     TAB.q='WH/NOAQUI';render();const h=document.getElementById('p-tablet').innerHTML;
     const enCola=tabletFilas('modulos',rec,programar()).some(f=>f.o.op==='WH/NOAQUI');
-    __check("BQ: una WH que existe pero no está programada en mi recurso sale bloqueada",enCola||(/no programada en/.test(h)&&/Pedir reprogramación/.test(h)));
+    __check("BQ: una WH que existe pero no está programada en mi recurso sale bloqueada",
+      enCola||((/No est\u00e1 programada — consulte al supervisor/.test(h)||/no programada en/.test(h))&&!/iniciarTramo\(/.test(h)),h.length);
     S.ordenes=S.ordenes.filter(x=>x!==oX);TAB.q=''}
    const bt=JSON.parse(bakTb);if(bt)S.params.tablets=bt;else delete S.params.tablets;
    PERFIL=adminP;TAB={centro:null,rec:null,q:''};PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -2821,6 +2827,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 2 · sin curva de tallas, el registro por total también queda en tallasLog y suma
    {const oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/HECHAS-2';oT.estado='plan';oT.cant=15;delete oT.tallasPedido;delete oT.programa;S.ordenes.push(oT);delete S.avance[oT.id];
     const antes2=hechasDelDia('modulos',rec,hoy()).pz;
+    /* el ✓ hecho exige tiempo corrido (17-sep): se registra el tramo como en la planta */
+    tramosDe(oT.id).push({id:'t-hh-'+uid(),centro:'modulos',rec:rec||null,ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:'operario',paros:[],tallas:{}});
     mHechoTotal(oT.id,'modulos');document.getElementById('hc-q').value=15;confirmarHechoCentro(oT.id,'modulos');
     __check("HH: una orden sin curva registra el total, queda en tallasLog y también suma",((S.avance[oT.id]||{}).tallasLog||[]).some(x=>x.talla==='(total)'&&x.pz===15)&&hechasDelDia('modulos',null,hoy()).pz>=antes2+15);
     __check("HH: no se cuenta dos veces (tramo y registro rápido de la misma orden)",hechasDelDia('modulos',null,hoy()).pz===antes2+15);
@@ -3075,10 +3083,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='corte')&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
    const mk=op=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=200;o.fase='4CD Ensamble';delete o.tallasPedido;delete o.programa;
-     o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:0.5}];S.ordenes.push(o);delete S.avance[o.id];return o};
+     o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:0.5}];S.ordenes.push(o);delete S.avance[o.id];
+     /* tiempo corrido en corte: sin él, cerrar el paso está bloqueado a propósito */
+     tramosDe(o.id).push({id:'t-cc-'+uid(),centro:'corte',rec:null,ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:'operario',paros:[],tallas:{}});
+     return o};
    const oC=mk('WH/CIERRE-1');PLAN=null;PLAN_ALL=null;TRAMO={paso:null,id:null,oid:null};
    // 3.1 · con faltante y sin motivo NO cierra
-   S.avance[oC.id]={centros:{corte:180}};
+   S.avance[oC.id]=Object.assign(S.avance[oC.id]||{},{centros:{corte:180}});
    {const n=alerts.length;const ok=cerrarCentro(oC.id,'corte','');
     __check("CC1: cerrar con faltante y sin motivo de la tabla 15 no cierra y lo dice",ok===false&&!pasoCerrado(oC,'corte')&&alerts.length>n&&/motivo/i.test(alerts[alerts.length-1]));}
    S.params.motivos.push({motivo:'Merma de corte',uso:'cierre'});
@@ -3107,7 +3118,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("CC5: sale en Hoy → Pendientes del supervisor",!!it&&it.n>=1);
     page='control';CTL.area='fases';render();const h=document.getElementById('p-control').innerHTML;
     __check("CC5: el panel del supervisor la lista con botón para mover la fase y para reabrir",/Terminadas en un centro con la fase sin actualizar/.test(h)&&h.includes(esc(oC.op))&&/mover fase/.test(h)&&/reabrirCierre\(/.test(h));}
-   {const oM=mk('WH/CIERRE-3');S.avance[oM.id]={centros:{}};PLAN=null;PLAN_ALL=null;
+   {const oM=mk('WH/CIERRE-3');S.avance[oM.id]=Object.assign(S.avance[oM.id]||{},{centros:{}});PLAN=null;PLAN_ALL=null;
     const iniAntes=((programar().ordenes[oM.id]||{}).pasos||[]).find(x=>x.centro==='modulos')||{};
     S.avance[oM.id].centros.corte=180;cerrarCentro(oM.id,'corte','Merma de corte');PLAN=null;PLAN_ALL=null;
     const P2=programar();const psM=((P2.ordenes[oM.id]||{}).pasos||[]).find(x=>x.centro==='modulos')||{};
@@ -3132,7 +3143,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     setTallaTramoVal(tr.id,oT.id,'(total)',150);terminarOrdenCentro(tr.id,oT.id,'modulos');
     const m2=document.getElementById('cc-m');if(m2)m2.value='Merma de corte';cerrarCentroDesdeModal(oT.id,'modulos');
     const ci2=cierreCentro(oT,'modulos');
-    __check("CC1: el tramo se guarda primero y después se cierra el paso con su faltante",tramosDe(oT.id)[0].pz===150&&!!ci2&&ci2.pz===150&&ci2.faltan===50&&pasoHecho(oT,'modulos'));
+    __check("CC1: el tramo se guarda primero y después se cierra el paso con su faltante",(tramosDe(oT.id).find(t=>t.centro==='modulos')||{}).pz===150&&!!ci2&&ci2.pz===150&&ci2.faltan===50&&pasoHecho(oT,'modulos'));
     S.ordenes=S.ordenes.filter(x=>x!==oT);delete S.avance[oT.id];TRAMO={paso:null,id:null,oid:null}}
    S.ordenes=S.ordenes.filter(o=>o!==oC);delete S.avance[oC.id];
    const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
@@ -5650,6 +5661,149 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      excelFecha("2026-03-04")==="2026-03-04"&&excelFecha("4/3/2026")==="2026-03-04",excelFecha("4/3/2026"));
    __check("EX5: un Date sigue dando su día local",excelFecha(new Date(2026,2,4,23,30))==="2026-03-04",excelFecha(new Date(2026,2,4,23,30)));
    __check("EX sin errores",__R.errors.length===antes);}
+  /* ===== TABLET DEL OPERARIO: solo lo programado y cierre con tiempo ===== */
+  try{localStorage.__fase="tablet operario"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};const adminP=PERFIL;
+   const C="corte";
+   const rec=(S.recursos.find(r=>r.activa&&r.centro===C)||{}).id||null;
+   /* un operario de verdad: perfil tablet con centro y recurso asignados */
+   const uid0="op-"+uid();
+   S.params.tablets=S.params.tablets||{};S.params.tablets[uid0]={centro:C,rec};
+   const comoOperario=f=>{const g=PERFIL;PERFIL={id:uid0,rol:"tablet",modo:"editar",nombre:"Operario prueba"};
+     try{return f()}finally{PERFIL=g}};
+   __check("TO0: el perfil de prueba es operario",comoOperario(()=>esOperario()));
+   PLAN=null;PLAN_ALL=null;let P=programar();
+   /* --- A1 · programadoPara es la única definición --- */
+   {const conRuta=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===C)&&!pasoHecho(o,C));
+    const prog=conRuta.filter(o=>programadoPara(o,C,rec,P));
+    __R.tab={conRuta:conRuta.length,programadas:prog.length,ventana:diasVentanaTablet(),hasta:finVentanaTablet()};
+    __check("TO1: programadoPara solo acepta órdenes con carga del motor en ese centro y recurso, dentro de la ventana",
+      prog.every(o=>(P.pro||[]).some(x=>x.op===o.op&&x.centro===C&&(!rec||x.rec===rec)&&x.dia>=hoy()&&x.dia<=finVentanaTablet())),prog.length+" de "+conRuta.length);
+    __check("TO1: la ventana son 5 días hábiles y es parámetro",diasVentanaTablet()===5&&/prm\(.diasVentanaTablet.,\s*5\)/.test(String(diasVentanaTablet)),diasVentanaTablet());
+    /* recurso fijo SIN programa ya no entra */
+    const sinProg=conRuta.find(o=>!programadoPara(o,C,rec,P));
+    if(sinProg&&rec){const bak=JSON.stringify(sinProg.recursoFijo||null);sinProg.recursoFijo=Object.assign({},sinProg.recursoFijo,{[C]:rec});
+     const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+     __check("TO1: una orden con recurso fijo pero SIN programa no aparece en la tablet",!cola.some(f=>f.o.id===sinProg.id),sinProg.op);
+     if(bak==="null")delete sinProg.recursoFijo;else sinProg.recursoFijo=JSON.parse(bak)}}
+   /* --- A2 · la programada aparece, la no programada no --- */
+   {const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+    __R.tab.enCola=cola.length;
+    __check("TO2: todo lo que ve el operario está programado para su puesto",
+      cola.every(f=>f.fueraDelPlan||visibleOperario(f.o,C,rec,PLAN)),cola.length+" en cola");
+    const fuera=S.ordenes.filter(o=>abierta(o)&&!visibleOperario(o,C,rec,PLAN));
+    __check("TO2: ninguna orden no programada se cuela en la cola",!cola.some(f=>!f.fueraDelPlan&&fuera.some(x=>x.id===f.o.id)));
+    /* ordenesQueVe usa la misma definición */
+    const ve=comoOperario(()=>ordenesQueVe());
+    __check("TO2: ordenesQueVe (rama operario) usa la misma definición",ve.every(o=>visibleOperario(o,C,rec,PLAN)),ve.length);}
+   /* --- A3 · si la programación falla, se avisa; nunca se muestra todo --- */
+   {const bak=window.programar;const bakPlan=PLAN;
+    window.programar=()=>{throw new Error("fallo de prueba")};PLAN=null;
+    const ve=comoOperario(()=>ordenesQueVe());
+    __check("TO3: si programar() falla, el operario no ve NINGUNA orden",ve.length===0,ve.length);
+    __check("TO3: y queda el aviso para la pantalla",!!ERR_PROG&&/fallo de prueba/.test(ERR_PROG),ERR_PROG);
+    __check("TO3: el mensaje dice «Error en la programación — avise al supervisor»",/Error en la programaci\u00f3n — avise al supervisor/.test(errProgHTML()));
+    window.programar=bak;PLAN=bakPlan;ERR_PROG=null;PLAN=null;PLAN_ALL=null;P=programar();}
+   /* --- A4 · «fuera del plan»: visible solo mientras el tramo esté abierto --- */
+   {const fueraP=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===C)&&!pasoHecho(o,C)&&!visibleOperario(o,C,rec,P));
+    if(fueraP){
+     const t={id:"t-fuera",centro:C,rec:rec||null,ini:new Date(Date.now()-40*6e4).toISOString(),u:"operario",paros:[],tallas:{}};
+     tramosDe(fueraP.id).push(t);
+     const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+     const fila=cola.find(f=>f.o.id===fueraP.id);
+     __check("TO4: una orden iniciada fuera del plan sigue visible, marcada",!!fila&&!!fila.fueraDelPlan,fueraP.op);
+     __check("TO4: y la cola del supervisor la marca «en proceso fuera del plan»",
+       /en proceso fuera del plan/.test(mandaCola(fueraP,C,true)));
+     {const hf=filaColaTabletHTML(fila,C,rec,"disponible");
+      __check("TO4: sin INICIO: solo se puede terminar",!/iniciarTramo\(/.test(hf),hf.slice(0,120));}
+     /* al terminar el tramo desaparece */
+     t.fin=new Date().toISOString();
+     const cola2=comoOperario(()=>tabletFilas(C,rec,programar()));
+     __check("TO4: al terminar el tramo deja de aparecer",!cola2.some(f=>f.o.id===fueraP.id));
+     __check("TO4: y el supervisor ya no la marca",!/en proceso fuera del plan/.test(mandaCola(fueraP,C,true)));
+     tramosDe(fueraP.id).splice(tramosDe(fueraP.id).indexOf(t),1);}}
+   /* --- A5 · pasos sin tiempo: invisibles salvo que el supervisor los asigne --- */
+   {const sinT=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===C)&&!pasoHecho(o,C)&&pasoSinTiempo(o,C));
+    __R.tab.sinTiempo=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===C)&&!pasoHecho(o,C)&&pasoSinTiempo(o,C)).length;
+    if(sinT&&rec){
+     __check("TO5: un paso sin minutos no lo programa el motor, así que el operario no lo ve",!programadoPara(sinT,C,rec,P),sinT.op);
+     const bak=JSON.stringify(sinT.progCentro||null);
+     sinT.progCentro=Object.assign({},sinT.progCentro,{[C]:{rec,desde:hoy()}});
+     __check("TO5: si el supervisor le fija recurso y fecha, pasa a ser visible",fijadaPara(sinT,C,rec)&&visibleOperario(sinT,C,rec,P));
+     const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+     const fila=cola.find(f=>f.o.id===sinT.id);
+     __check("TO5: y aparece marcada «sin tiempo estándar» en Mi centro",!!fila&&comoOperario(()=>{
+       TAB.centro=C;TAB.rec=rec;page="tablet";render();
+       return /sin tiempo est\u00e1ndar/.test(document.getElementById("p-tablet").innerHTML)}),sinT.op);
+     __check("TO5: el tramo registra tiempo real igual (no depende del estándar)",(()=>{
+       const t={id:"t-st",centro:C,rec:rec||null,ini:new Date(Date.now()-20*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}};
+       const r=calcTramo(t,sinT);return r.trabajado>15&&r.trabajado<25})());
+     if(bak==="null")delete sinT.progCentro;else sinT.progCentro=JSON.parse(bak)}
+    /* la acción del supervisor existe en la cola */
+    page="centro";CEN.id=C;CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.cercAbre=null;render();
+    __check("TO5: la cola del supervisor ofrece «asignar a operario»",/asignar a operario/.test(document.getElementById("p-centro").innerHTML));}
+   /* --- A6/A7 · cola vacía y buscador fuera del plan --- */
+   {__check("TO6: la cola vacía dice «Sin programación cargada — avise al supervisor»",
+      /Sin programaci\u00f3n cargada — avise al supervisor/.test(sinProgramaHTML(C,rec)));
+    const fueraP=S.ordenes.find(o=>o.op&&!visibleOperario(o,C,rec,P));
+    if(fueraP){const bakq=TAB.q;TAB.q=String(fueraP.op).replace(/\D/g,"")||fueraP.op;
+     const h=comoOperario(()=>tabletBuscadorHTML(C,[],rec));
+     __check("TO7: buscar una orden fuera del plan avisa y no deja iniciarla",
+       /No est\u00e1 programada — consulte al supervisor/.test(h)&&!/iniciarTramo\(/.test(h),fueraP.op);
+     TAB.q=bakq}}
+   /* --- B · cierre con tiempo --- */
+   {const oC=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===C)&&!pasoHecho(o,C));
+    if(oC){const bakTr=JSON.stringify(tramosDe(oC.id));const bakAv=JSON.stringify(S.avance[oC.id]||{});
+     __check("B1: el mínimo son 5 minutos y es parámetro",minMinutosCierre()===5&&/prm\(.minMinutosCierre.,\s*5\)/.test(String(minMinutosCierre)));
+     /* sin tramo: bloquea */
+     tramosDe(oC.id).length=0;
+     let r=puedeCerrarPaso(oC.id,C);
+     __check("B2: sin ningún inicio no se puede cerrar",!r.ok&&r.sinTramo&&/Debe iniciar y registrar tiempo antes de cerrar/.test(r.motivo),r.motivo);
+     let av="";window.alert=m=>{av=String(m)};
+     __check("B2: y cerrarCentro lo impide con ese mensaje",cerrarCentro(oC.id,C,"")===false&&/Debe iniciar y registrar tiempo/.test(av),av);
+     window.alert=()=>{};
+     /* tramo corto: sigue bloqueando */
+     tramosDe(oC.id).push({id:"t1",centro:C,rec:rec||null,ini:new Date(Date.now()-2*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});
+     r=puedeCerrarPaso(oC.id,C);
+     __check("B2: con menos minutos que el mínimo tampoco",!r.ok&&r.minutos<minMinutosCierre(),num(r.minutos,1)+" min");
+     /* dos tramos que SUMAN por encima del mínimo: permite */
+     tramosDe(oC.id).push({id:"t2",centro:C,rec:rec||null,ini:new Date(Date.now()-6*6e4).toISOString(),fin:new Date(Date.now()-2*6e4).toISOString(),u:"op2",paros:[],tallas:{}});
+     r=puedeCerrarPaso(oC.id,C);
+     __check("B2: el tiempo de DOS tramos se suma y permite cerrar",r.ok&&r.minutos>=minMinutosCierre(),num(r.minutos,1)+" min de "+tiempoEfectivoCentro(oC.id,C).tramos+" tramos");
+     /* tiempoBajo: marca pero no bloquea (con SAM) */
+     const paso=(oC.ruta||[]).find(p=>p.centro===C)||{};const bakT=paso.t;
+     const a=S.avance[oC.id]=S.avance[oC.id]||{};a.centros=Object.assign({},a.centros,{[C]:cantCentro(oC,C)});
+     if(!motivosDe("cierre").length){S.params.motivos=S.params.motivos||[];S.params.motivos.push({motivo:"faltante de prueba",uso:"cierre"})}
+     paso.t=10;   // muchas prendas × 10 min: muy por encima de los ~6 min registrados
+     r=puedeCerrarPaso(oC.id,C);
+     __check("B2: tiempo muy por debajo del estándar: se permite y se MARCA tiempoBajo",r.ok&&r.tiempoBajo===true,JSON.stringify({ok:r.ok,bajo:r.tiempoBajo}));
+     __check("B2: y el cierre lo deja registrado",(()=>{cerrarCentro(oC.id,C,"");const ci=(((S.avance[oC.id]||{}).cierres)||{})[C];return !!(ci&&ci.tiempoBajo&&ci.minutos>0)})());
+     /* sin SAM no se marca: es dato faltante, no un falso positivo */
+     delete (S.avance[oC.id]||{}).cierres;
+     paso.t=0;
+     r=puedeCerrarPaso(oC.id,C);
+     __check("B2: sin SAM NO se marca tiempoBajo (dato faltante, no falso positivo)",r.ok&&!r.tiempoBajo&&r.sinEstandar===true,JSON.stringify({bajo:!!r.tiempoBajo,sinEst:r.sinEstandar}));
+     paso.t=bakT;
+     /* B4 · el supervisor puede cerrar sin tiempo, con motivo obligatorio */
+     delete (S.avance[oC.id]||{}).cierres;tramosDe(oC.id).length=0;
+     if(!motivosDe("cierreSinTiempo").length){S.params.motivos=S.params.motivos||[];S.params.motivos.push({motivo:"cierre administrativo",uso:"cierreSinTiempo"})}
+     av="";window.alert=m=>{av=String(m)};
+     __check("B4: sin motivo válido no se cierra",cerrarCentro(oC.id,C,"",{sinTiempo:true,motivoSinTiempo:"inventado"})===false&&/motivo de la tabla 15/.test(av),av);
+     window.alert=()=>{};
+     const nb=S.bitacora.length;const na=(S.params.auditoriaCambios||[]).length;
+     const ok=cerrarCentro(oC.id,C,"",{sinTiempo:true,motivoSinTiempo:"cierre administrativo"});
+     const ci=(((S.avance[oC.id]||{}).cierres)||{})[C];
+     __check("B4: con motivo válido sí, y queda marcado sinTiempo",ok===true&&!!ci&&ci.sinTiempo===true&&ci.motivoSinTiempo==="cierre administrativo",JSON.stringify(ci&&{st:ci.sinTiempo,m:ci.motivoSinTiempo}));
+     __check("B4: con bitácora y auditoría",S.bitacora.slice(nb).some(b=>/Cierre SIN TIEMPO/.test(b.t))&&(S.params.auditoriaCambios||[]).length>na);
+     __check("B4: «cierre sin tiempo» es un uso de la tabla 15",USOS_MOTIVO.some(u=>u[0]==="cierreSinTiempo"));
+     /* B3 · la misma puerta en el ✓ hecho del supervisor */
+     __check("B3: confirmarHechoCentro pasa por puedeCerrarPaso",/puedeCerrarPaso\(/.test(String(confirmarHechoCentro)));
+     __check("B3: y cerrarCentro también (una sola puerta)",/puedeCerrarPaso\(/.test(String(cerrarCentro)));
+     /* se deja como estaba */
+     S.avance[oC.id]=JSON.parse(bakAv);const tr=tramosDe(oC.id);tr.length=0;JSON.parse(bakTr).forEach(t=>tr.push(t));PLAN=null;PLAN_ALL=null}}
+   delete S.params.tablets[uid0];
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
+   __check("TO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

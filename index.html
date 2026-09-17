@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 23:13';
+const APP_BUILD='2026-09-17 07:00';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1718,7 +1718,9 @@ let BUSG={q:'',abierto:false,oid:null};
 function ordenesQueVe(){const ab=S.ordenes.filter(o=>abierta(o)||o.estado==='cerrada'||o.estado==='prevision');
   if(!PERFIL)return ab;
   if(esOperario()){const a=tabletDe();if(!a.centro)return [];
-    try{const P=programar();const ops=new Set((P.pro||[]).filter(x=>x.centro===a.centro&&(!a.rec||x.rec===a.rec)).map(x=>x.op));return ab.filter(o=>ops.has(o.op))}catch(e){return ab.filter(o=>(o.ruta||[]).some(p=>p.centro===a.centro))}}
+    /* si la programación falla NO se muestra todo: se avisa. `ERR_PROG` lo pinta Mi centro. */
+    let P=null;try{P=programar();ERR_PROG=null}catch(e){ERR_PROG=String((e&&e.message)||e);return []}
+    return ab.filter(o=>visibleOperario(o,a.centro,a.rec||null,P))}
   if(puede('programa')||puede('ordenes')||puede('usuarios'))return ab;
   const cens=S.centros.filter(c=>veCentro(c.id)).map(c=>c.id);
   if(!cens.length)return [];
@@ -1922,6 +1924,16 @@ function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
      ${nota}</div>
     <div style="flex:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end">${accion}</div>
    </div></div></div>`}
+/* el aviso cuando la programación falla: nunca se muestra todo «por si acaso» */
+function errProgHTML(){return ERR_PROG?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:19px">
+  <b>Error en la programación — avise al supervisor.</b>
+  <div class="mut" style="font-size:var(--fs-s);margin-top:6px">No se pudo calcular el programa, así que no se puede saber qué te toca. No se muestra nada por seguridad.</div>
+  </div></div>`:''}
+/* la cola vacía no es un vacío cualquiera: dice qué hacer */
+function sinProgramaHTML(c,rec){return `<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:19px">
+  <b>Sin programación cargada — avise al supervisor.</b>
+  <div class="mut" style="font-size:var(--fs-s);margin-top:6px">No hay ninguna orden programada para ${esc(nCen(c))}${rec?' · '+esc(nRec(rec)):''} en los próximos ${num(diasVentanaTablet())} días hábiles.</div>
+  </div></div>`}
 function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const simple=esOperario(); // el operario no elige campos: escribe la WH y listo
   const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" data-q="TAB.q" oninput="buscarQ(this,v=>TAB.q=v)" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
@@ -1933,6 +1945,12 @@ function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const TOPE=6;
   const enCola=cola.filter(f=>calza(f.o));
   const otras=S.ordenes.filter(o=>calza(o)&&!enCola.some(f=>f.o.id===o.id));
+  if(esOperario()&&otras.length&&!enCola.length)return cab+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:19px">
+   <b>No está programada — consulte al supervisor.</b>
+   <div class="mut" style="font-size:var(--fs-s);margin-top:6px">${otras.length===1?'La orden':'Las '+otras.length+' órdenes'} que coincide${otras.length===1?'':'n'} con «${esc(TAB.q)}» existe${otras.length===1?'':'n'}, pero no está${otras.length===1?'':'n'} programada${otras.length===1?'':'s'} para ${esc(nCen(c))}${rec?' · '+esc(nRec(rec)):''} en los próximos ${num(diasVentanaTablet())} días hábiles.</div>
+   <div class="mut" style="font-size:var(--fs-xs);margin-top:8px">${esc(otras.slice(0,6).map(o=>o.op).join(' · '))}</div>
+   </div></div>`;
+  if(esOperario())return cab+`<div style="display:flex;flex-direction:column;gap:10px">${enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f)).join('')}</div>`;
   if(!enCola.length&&!otras.length)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
   const cards=enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f));
   otras.slice(0,Math.max(0,TOPE-cards.length)).forEach(o=>cards.push(tarjetaWHTabletHTML(o,c,rec,null)));
@@ -2020,8 +2038,49 @@ function cronoTablet(oid,c,acc){const a=S.avance[oid]=S.avance[oid]||{};a.crono=
 function cronoTxt(k){const sg=k.seg!=null?k.seg:Math.round((k.min||0)*60);const m=Math.floor(sg/60),ss=sg%60;return m+' min '+String(ss).padStart(2,'0')+' s'}
 function cronoCorriendoTxt(ini){const sg=Math.round((Date.now()-new Date(ini))/1000);const m=Math.floor(sg/60),ss=sg%60;return m+':'+String(ss).padStart(2,'0')}
 function minEstandarOrden(o,c){const p=(o.ruta||[]).find(x=>x.centro===c)||{};return minPrenda(c,p.t)*(+o.cant||0)}
+/* ================= TABLET DEL OPERARIO: solo lo PROGRAMADO =================
+   Una sola definición de «programado para mí», usada por la cola, por lo que el operario puede ver y
+   por el buscador. Antes bastaba con tener recurso fijo o estar en la secuencia de costura: una orden
+   SIN programa aparecía igual. Ahora hace falta carga real del motor (`P.pro`) en ese centro, en ese
+   recurso, dentro de la ventana. */
+function diasVentanaTablet(){return prm('diasVentanaTablet',5)}
+function setDiasVentanaTablet(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
+  const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('La ventana tiene que ser 0 o más días hábiles.');return}
+  const antes=diasVentanaTablet();S.params.diasVentanaTablet=n;
+  bitacora('Ventana de la tablet: '+antes+' → '+n+' días hábiles ('+quienFirma()+')');save();render()}
+/* el último día de la ventana: hoy más N días hábiles (hoy cuenta como día 1) */
+function finVentanaTablet(){const n=diasVentanaTablet();return n<=0?hoy():finLabInc(hoy(),n)||hoy()}
+/* ¿el motor programó ESTA orden en ESTE centro y recurso, dentro de la ventana? */
+function programadoPara(o,c,rec,P){if(!o||!c)return false;
+  const pp=P||PLAN;if(!pp||!pp.pro)return false;
+  const hasta=finVentanaTablet();const h=hoy();
+  return (pp.pro||[]).some(x=>x.op===o.op&&x.centro===c&&(!rec||x.rec===rec)&&(+x.pz>0||+x.min>0)&&x.dia>=h&&x.dia<=hasta)}
+/* el supervisor puede FIJAR una orden a un operario aunque el motor no la programe (paso sin tiempo):
+   recurso y fecha de arranque en progCentro. Eso cuenta como programado, y se marca en pantalla. */
+function fijadaPara(o,c,rec){const pc=((o||{}).progCentro||{})[c];
+  if(!pc||!pc.rec||!pc.desde)return false;
+  if(rec&&pc.rec!==rec)return false;
+  return pc.desde<=finVentanaTablet()}
+function visibleOperario(o,c,rec,P){return programadoPara(o,c,rec,P)||fijadaPara(o,c,rec)}
+/* un paso de la ruta que el motor no programa por falta de minutos (ver revisión 3 del motor) */
+function pasoSinTiempo(o,c){const p=(o.ruta||[]).find(x=>x.centro===c);if(!p)return false;
+  const t=(c==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
+  return !(minPrenda(c,t)>0)}
 function tabletFilas(c,rec,P){ // una orden cerrada en este centro ya no aparece
 const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas);
+  if(esOperario()){
+    /* SOLO lo programado para este puesto dentro de la ventana; nada de recurso fijo sin programa */
+    cola=cola.filter(f=>visibleOperario(f.o,c,rec,P));
+    /* excepción única: una orden que ESTE puesto ya empezó sigue visible hasta cerrar el tramo */
+    const ab=tramoAbiertoDe(c,rec||null);
+    if(ab&&!cola.some(f=>f.o.id===ab.o.id)){
+      const fe=filas.find(f=>f.o.id===ab.o.id);
+      if(fe)cola=[Object.assign({},fe,{fueraDelPlan:true})].concat(cola);
+      else{const paso=((P.ordenes[ab.o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
+        cola=[{o:ab.o,c,paso,hecho:false,pzSem:0,hechas:(((S.avance[ab.o.id]||{}).centros)||{})[c]||0,bloq:null,cerc:null,fueraDelPlan:true}].concat(cola)}}
+    if(rec){const sec=((P.secMod||{})[rec]||[]).map(x=>x.oid);
+      if(sec.length)cola.sort((a,b)=>{const ia=sec.indexOf(a.o.id),ib=sec.indexOf(b.o.id);return (ia<0?9e9:ia)-(ib<0?9e9:ib)})}
+    return cola}
   if(rec){const sec=((P.secMod||{})[rec]||[]).map(x=>x.oid);cola=cola.filter(f=>(f.paso.rec===rec)||((f.o.recursoFijo||{})[c]===rec)||sec.includes(f.o.id));if(sec.length)cola.sort((a,b)=>{const ia=sec.indexOf(a.o.id),ib=sec.indexOf(b.o.id);return (ia<0?9e9:ia)-(ib<0?9e9:ib)})}
   return cola}
 /* ============ TRAMOS DE TRABAJO: inicio, fin, paros y unidades por talla (Mi centro) ============ */
@@ -2248,13 +2307,15 @@ function transcurridoTxt(ini){if(!ini)return '';const min=Math.max(0,(Date.now()
 function barraAvanceHTML(hechas,total){const p=total>0?Math.min(100,Math.round(hechas/total*100)):0;
   return `<div class="bar" style="height:10px;margin:6px 0 2px"><i style="width:${p}%"></i></div><div class="mut" style="font-size:14px">${num(hechas)} de ${num(total)} · ${p}%</div>`}
 function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c);const hechas=f.hechas||0;
+  const fuera=!!f.fueraDelPlan;   // iniciada aquí pero sin programa: solo se puede terminar
   const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
   const ab=tramoAbiertoOrden(o.id,c,null);
   const mot=motivoEstadoCentro(o,c);
   const btn=modo==='proxima'
     ? '<span class="tag t-aviso" style="font-size:15px" title="'+esc(mot)+'">todavía no · '+esc(mot)+'</span>'
     : (ab?`<button class="btn" style="font-size:20px;padding:14px 22px;background:var(--aviso);border-color:var(--aviso)" onclick="TRAMO={paso:null,id:null,oid:null};render()">EN CURSO · ${transcurridoTxt(ab.ini)}</button>`
-        :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`);
+        :(fuera&&modo!=='proceso'?'<span class="mut" style="font-size:15px">fuera del plan: no se puede iniciar</span>'
+          :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`));
   return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
    ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
     <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div>
@@ -2348,6 +2409,8 @@ function vTablet(el){
      <div style="flex:none">${fotoDe(o)?fotoMini(o,140):'<div class="mut" style="width:140px;height:140px;background:var(--field);border-radius:6px;display:flex;align-items:center;justify-content:center">sin foto</div>'}</div>
      <div style="flex:1;min-width:240px;font-size:18px;line-height:1.5"><div><span class="mut" style="font-size:14px">#${i+1}</span> <b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
       <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div><div class="mut">${esc(o.cliente||'')}</div>
+      ${f.fueraDelPlan?'<div><span class="tag t-alerta" title="esta orden no está programada para este puesto; la empezaste y por eso sigue aquí. Solo se puede TERMINAR.">fuera del plan · solo terminar</span></div>':''}
+      ${(!f.fueraDelPlan&&pasoSinTiempo(o,c))?'<div><span class="tag t-aviso" title="el supervisor te la asignó a mano: la ruta pasa por aquí pero no tiene minutos por prenda cargados. El tiempo real se registra igual.">sin tiempo estándar</span></div>':''}
       <div><b>${num(f.hechas)}</b> / ${num(cantCentro(o,c))} prendas${cantCentro(o,c)!==(+o.cant||0)?' <span class="mut" style="font-size:14px">(de '+num(o.cant)+' del pedido: el paso anterior cerró con menos)</span>':''}</div>${tagListaEmpezar(o,c)}${(baseTallas(o,c).tallas?'<div style="font-size:15px">'+difTallasHTML(o,c)+'</div>':'<div class="tag t-aviso">sin curva de tallas: solo total</div>')}${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
       ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${cronoTxt(cr)} · estándar ${num(std)} min${cr.tallas?' · '+Object.entries(cr.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(', '):''}</div>`:''}</div>
      <div style="flex:none;display:flex;flex-direction:column;gap:10px;min-width:170px">
@@ -2358,10 +2421,11 @@ function vTablet(el){
   el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
    ${tarjetasResumenHTML([{id:'tab-plan',v:num(planHoy),k:'Prendas del día'},{id:'tab-hechas',v:num(hechasHoy),k:'Hechas hoy'},{id:'tab-faltan',v:num(Math.max(0,planHoy-hechasHoy)),k:'Faltan',cls:planHoy-hechasHoy>0?'warn':''},{id:'tab-cola',v:cola.length,k:'Órdenes en cola',items:cola.map(f=>f.o)}])}
    <div id="aviso-guardado"></div>
+   ${errProgHTML()}
    ${tabletBuscadorHTML(c,cola,rec)}
    ${flujoTramoHTML(c,rec,cola)}
    ${tramosDelDiaHTML(c,rec)}
-   ${cola.map(card).join('')||'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'}
+   ${cola.map(card).join('')||(ERR_PROG?'':(esOperario()?sinProgramaHTML(c,rec):'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))}
    <p class="mut no-print" style="font-size:var(--fs-xs)">"Hecho" registra la orden completa en este centro y la pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
@@ -2654,7 +2718,7 @@ function tarjetasResumenHTML(cards){const ab=cards.find(c=>c.items&&c.items.leng
       return `<tr class="grp-row" style="background:var(--field);font-weight:700"><td colspan="7" style="border-top:2px solid var(--rule)">${esc(f)}<span style="float:right">${xs.length} ${xs.length===1?'orden':'órdenes'} · ${num(xs.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+xs.map(filaOrd).join('')}).join('')};
   return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div></div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${ab.items.length} órdenes${ab.porFam?' · agrupadas por familia':''}</span></h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
 /* e) Devolver/revertir: el motivo sale de la tabla 15 (lista cerrada, sin texto libre) */
-const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante']];
+const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante'],['cierreSinTiempo','cierre sin tiempo']];
 function motivos(){if(!Array.isArray(S.params.motivos))S.params.motivos=[];migrarMotivosReproceso();return S.params.motivos}
 // los motivos de reproceso viven ahora en la tabla 15 (uso 'reproceso'); se migra una vez y NO se borra el arreglo viejo
 function migrarMotivosReproceso(){const t=S.params.motivos;if(S.params.motivosMigrados)return;const viejos=Array.isArray(S.params.motivosReproceso)&&S.params.motivosReproceso.length?S.params.motivosReproceso:defMotivosReproceso();let n=0;viejos.forEach(r=>{const m=String(r.motivo||'').trim();if(!m)return;if(t.some(x=>x.uso==='reproceso'&&x.motivo===m))return;t.push({motivo:m,uso:'reproceso',tejeduria:!!r.tejeduria});n++});S.params.motivosMigrados=true;if(n&&typeof bitacora==='function')bitacora('Motivos de reproceso unificados en la tabla 15: '+n+' motivos (el arreglo anterior se conserva)')}
@@ -2702,6 +2766,7 @@ function buscarQ(el,fn){const id=el.dataset.q||'_';clearTimeout(_qTimers[id]);
       const n=document.querySelector('input[data-q="'+id+'"]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}}};
   const espera=msBuscar();
   if(espera>0)_qTimers[id]=setTimeout(run,espera);else run()}
+let ERR_PROG=null;   // si programar() falla para un operario, se avisa en vez de mostrar todo
 let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
 function render(){
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
@@ -6307,19 +6372,77 @@ function faltanteTallas(o,c){const b=baseTallas(o,c);if(!b.tallas)return null;co
   Object.entries(b.tallas).forEach(([t,q])=>{const d=(+q||0)-(+ya[t]||0);if(d>0)out[t]=d});return Object.keys(out).length?out:null}
 function faseSugeridaTrasCierre(o,c){const sig=centroSiguiente(o,c);const et=centroEtapaDe(sig||c);if(!et)return '';
   return fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&g.grupo===et&&!esDevolucionFase(o.fase,f)})||''}
-function cerrarCentro(oid,c,motivo){const o=S.ordenes.find(x=>x.id===oid);if(!o)return false;
+/* ================= CIERRE CON TIEMPO CORRIDO =================
+   El tiempo efectivo es la SUMA de `calcTramo` de TODOS los tramos de esa orden en ese centro: varios
+   operarios y varios días cuentan juntos. Paros y descansos ya vienen descontados por `calcTramo`. */
+function minMinutosCierre(){return prm('minMinutosCierre',5)}
+function setMinMinutosCierre(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
+  const n=+String(v).replace(',','.');if(!(n>=0)){alert('El mínimo tiene que ser 0 o más minutos.');return}
+  const antes=minMinutosCierre();S.params.minMinutosCierre=n;
+  bitacora('Minutos mínimos para cerrar un paso: '+antes+' → '+n+' ('+quienFirma()+')');save();render()}
+function tiempoEfectivoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid)||{};
+  const ts=(tramosDe(oid)||[]).filter(t=>t.centro===c&&t.ini);
+  const min=ts.reduce((a,t)=>a+(calcTramo(t,o).trabajado||0),0);
+  return {min,tramos:ts.length,abiertos:ts.filter(t=>!t.fin).length}}
+/* ¿se puede cerrar? Una sola respuesta para todas las puertas. */
+function puedeCerrarPaso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return{ok:false,motivo:'la orden no existe'};
+  const e=tiempoEfectivoCentro(oid,c);const min=minMinutosCierre();
+  if(!e.tramos)return{ok:false,sinTramo:true,minutos:0,motivo:'Debe iniciar y registrar tiempo antes de cerrar'};
+  if(e.min<min)return{ok:false,minutos:e.min,minimo:min,motivo:'Debe iniciar y registrar tiempo antes de cerrar'};
+  /* pasa, pero ¿el tiempo es creíble contra el estándar? Sin SAM no se marca nada: es dato faltante. */
+  const paso=(o.ruta||[]).find(p=>p.centro===c)||{};
+  const est=minPrenda(c,(c==='estampado'&&o.tecnica)?(tecnicaT(o)||paso.t):paso.t);
+  const u=Math.max(0,+((S.avance[oid]||{}).centros||{})[c]||0)||(+o.cant||0);
+  if(est>0&&u>0){const tol=(+prm('tolMinPrenda',15)||0)/100;const esperado=u*est*(1-tol);
+    if(e.min<esperado)return{ok:true,minutos:e.min,minimo:min,tiempoBajo:true,esperado,
+      motivo:'se cierra, pero el tiempo registrado ('+num(e.min,1)+' min) es menor que el estándar esperado ('+num(esperado,1)+' min para '+num(u)+' prendas)'}}
+  return{ok:true,minutos:e.min,minimo:min,sinEstandar:!(est>0)}}
+/* el aviso, en una sola frase, para pintarlo donde haga falta */
+function txtCierreBloqueado(r){return (r&&r.motivo)||'Debe iniciar y registrar tiempo antes de cerrar'}
+function cerrarCentro(oid,c,motivo,opts){const o=S.ordenes.find(x=>x.id===oid);if(!o)return false;
   if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return false}
+  /* LA puerta: sin tiempo corrido no se cierra. El supervisor puede saltarla CON motivo. */
+  const t=puedeCerrarPaso(oid,c);const sup=!!(opts&&opts.sinTiempo);
+  if(!t.ok&&!sup){alert(txtCierreBloqueado(t));return false}
+  if(!t.ok&&sup){if(!(puede('programa')||puede('reprogramar'))){alert('Solo el supervisor cierra un paso sin tiempo.');return false}
+    if(!motivoValido('cierreSinTiempo',String((opts&&opts.motivoSinTiempo)||''))){
+      alert('Cerrar sin tiempo exige un motivo de la tabla 15 (uso «cierre sin tiempo»).'+(motivosDe('cierreSinTiempo').length?'':String.fromCharCode(10)+'La tabla está vacía: cárgalos en Configuración → Órdenes y materiales → 15 · Motivos.'));return false}}
   const f=faltanteCierre(o,c);motivo=String(motivo||'').trim();
   if(f.faltan>0&&!motivoValido('cierre',motivo)){alert('Cerrar con faltante exige un motivo de la tabla 15 (uso «cierre con faltante»).'+(motivosDe('cierre').length?'':'\nLa tabla está vacía: cárgalos en Configuración → Órdenes y materiales → 15 · Motivos.'));return false}
   const prev=cierresDe(oid)[c];if(prev){const a=S.avance[oid];a.cierresHist=a.cierresHist||[];a.cierresHist.push(Object.assign({centro:c},prev))} // nada se pierde
-  const reg={pz:f.hechas,cant:f.cant,faltan:f.faltan,tallas:f.faltan>0?faltanteTallas(o,c):null,motivo,u:quienFirma(),ts:new Date().toISOString()};
+  const reg={pz:f.hechas,cant:f.cant,faltan:f.faltan,tallas:f.faltan>0?faltanteTallas(o,c):null,motivo,u:quienFirma(),ts:new Date().toISOString(),
+    minutos:t.minutos||0,tiempoBajo:!!t.tiempoBajo,sinEstandar:!!t.sinEstandar};
+  if(!t.ok&&sup){reg.sinTiempo=true;reg.motivoSinTiempo=String((opts&&opts.motivoSinTiempo)||'');
+    bitacora('Cierre SIN TIEMPO · '+o.op+' en '+nCen(c)+' · motivo: '+reg.motivoSinTiempo+' ('+quienFirma()+')');
+    registrarAuditoria('cierre',o,nCen(c)+' · sin tiempo registrado',(reg.sinTiempo?'cerrado sin tiempo':''),reg.motivoSinTiempo,false)}
+  if(t.tiempoBajo)bitacora('Cierre con TIEMPO BAJO · '+o.op+' en '+nCen(c)+' · '+num(t.minutos,1)+' min contra '+num(t.esperado,1)+' esperados ('+quienFirma()+')');
   cierresDe(oid)[c]=reg;
   const a=S.avance[oid];a.centros=a.centros||{};a.centros[c]=f.hechas; // el paso queda en lo que realmente salió
   registrarAuditoria('cierre',o,nCen(c)+' · '+num(f.hechas)+' de '+num(f.cant),f.faltan?('cerrado con '+num(f.faltan)+' de faltante'):'cerrado completo',motivo,false);
   bitacora('Orden cerrada en '+nCen(c)+' · '+o.op+': salieron '+num(f.hechas)+' de '+num(f.cant)+(f.faltan?' · faltan '+num(f.faltan)+' · '+motivo:'')+' · la fase NO cambia ('+quienFirma()+')');
   PLAN=null;PLAN_ALL=null;save();return true}
+/* cerrar un paso SIN tiempo: solo el supervisor y con motivo de la tabla 15 */
+function mCerrarSinTiempo(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  const t=puedeCerrarPaso(oid,c);const ms=motivosDe('cierreSinTiempo');const f=faltanteCierre(o,c);
+  abrir(`<h3>Cerrar sin tiempo · ${esc(nCen(c))}</h3><div class="body">
+   <p>${whCell(o)} · ${esc(nombreCat(K(o.cat)))}</p>
+   <div class="warn"><b>${esc(txtCierreBloqueado(t))}.</b> ${t.sinTramo?'No hay ningún inicio registrado en este centro.':'Se registraron '+num(t.minutos,1)+' minutos y el mínimo es '+num(t.minimo)+'.'}</div>
+   <p style="font-size:var(--fs-s)">Cerrarlo igual queda marcado como <b>cierre sin tiempo</b>, con tu nombre y la fecha, y sale en reportería. El avance y las prendas no cambian.</p>
+   <label>Motivo <span class="mut">(tabla 15, uso «cierre sin tiempo»)</span></label>${selMotivoHTML('cst-m','cierreSinTiempo')}
+   ${ms.length?'':'<div class="warn" style="margin-top:8px">La tabla 15 no tiene motivos de «cierre sin tiempo»: cárgalos en Configuración → Órdenes y materiales.</div>'}
+   ${f.faltan?`<label style="margin-top:10px">Motivo del faltante <span class="mut">(faltan ${num(f.faltan)} prendas)</span></label>${selMotivoHTML('cst-f','cierre')}`:''}</div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>
+    <button class="btn" ${ms.length?'':'disabled'} onclick="confirmarCierreSinTiempo('${oid}','${c}')">Cerrar sin tiempo</button></div>`)}
+function confirmarCierreSinTiempo(oid,c){const m=String((document.getElementById('cst-m')||{}).value||'').trim();
+  const mf=String((document.getElementById('cst-f')||{}).value||'').trim();
+  if(cerrarCentro(oid,c,mf,{sinTiempo:true,motivoSinTiempo:m})){try{cerrar()}catch(e){}render();
+    alert('Cerrado sin tiempo. Queda registrado con tu nombre, la fecha y el motivo.')}}
 function mCerrarCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   const f=faltanteCierre(o,c);const sig=centroSiguiente(o,c);
+  /* si no hay tiempo corrido: al operario se le explica; al supervisor se le ofrece el camino con motivo */
+  {const t=puedeCerrarPaso(oid,c);
+   if(!t.ok){if(puede('programa')||puede('reprogramar')){mCerrarSinTiempo(oid,c);return}
+     alert(txtCierreBloqueado(t)+String.fromCharCode(10)+String.fromCharCode(10)+'Avisa al supervisor si hay que cerrarla igual.');return}}
   if(!f.faltan){if(cerrarCentro(oid,c,'')){try{cerrar()}catch(e){}render();alert('Listo: la orden queda terminada en '+nCen(c)+(sig?'. Pasa a '+nCen(sig)+'.':'.')+' La fase la actualiza el supervisor.')}return}
   const ft=faltanteTallas(o,c);const ms=motivosDe('cierre');
   abrir(`<h3>Terminé esta orden en ${esc(nCen(c))}</h3><div class="body" style="font-size:17px">
@@ -6434,6 +6557,7 @@ function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)re
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Si es distinto al pedido se registra igual y queda marcado como <b>diferencia</b> (faltantes reales). Marcar hecho <b>no reprograma nada</b>: la orden ya estaba planificada; esto solo avisa que queda libre para el centro siguiente. Queda quién, cuándo y cuántas en el avance de piso y en la bitácora.</p>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarHechoCentro('${oid}','${c}')">Registrar hecho</button></div></div>`)}
 function confirmarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const el=document.getElementById('hc-q');const q=Math.max(0,Math.round(+((el&&el.value)||0)));
+  {const t=puedeCerrarPaso(oid,c);if(!t.ok){alert(txtCierreBloqueado(t)+String.fromCharCode(10)+String.fromCharCode(10)+'Si hay que cerrarlo igual, usa «Terminar orden» y deja el motivo.');return}}
   if(!(q>0)){alert('Escribe cuántas prendas salieron.');return}
   const dif=q-o.cant;if(dif!==0&&!confirm('Registraste '+num(q)+' de '+num(o.cant)+' prendas ('+(dif<0?'faltan '+num(-dif):num(dif)+' de más')+'). Se marca como diferencia. ¿Registrar igual?'))return;
   const a=S.avance[oid]=S.avance[oid]||{};a.centros=a.centros||{};const prev=a.centros[c]||0;
@@ -6461,9 +6585,40 @@ function outCola(ev){ev.currentTarget.classList.remove('dd-over')}
 function finArrastreCola(ev){ev.currentTarget.style.opacity='';DRAGC=null}
 function soltarCola(ev,c,antesOid){ev.preventDefault();ev.currentTarget.classList.remove('dd-over');if(!DRAGC||DRAGC.c!==c)return;const d=DRAGC;DRAGC=null;if(d.oid===antesOid)return;moverEnCola(d.oid,c,antesOid?{antes:antesOid}:{final:true})}
 /* qué manda sobre esta orden además del puesto del centro (la pantalla lo dice) */
+/* ¿alguien está trabajando esta orden aquí sin que esté programada para su puesto? */
+function enProcesoFueraDelPlan(o,c){const ts=(((S.avance[o.id]||{}).tramos)||[]).filter(t=>t.centro===c&&!t.fin);
+  if(!ts.length)return null;
+  const P=PLAN;const alguno=ts.some(t=>!visibleOperario(o,c,t.rec||null,P));
+  return alguno?ts[0]:null}
+/* fijar una orden a un operario: recurso y fecha de arranque. Es lo que hace visible en la tablet
+   un paso que el motor no programa por no tener minutos (ver revisión 3 del motor). */
+function mAsignarOperario(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  if(!(puede('programa')||puede('reprogramar'))){alert('Solo planificación o el supervisor asignan una orden a un operario.');return}
+  const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
+  const pc=(o.progCentro||{})[c]||{};
+  abrir(`<h3>Asignar a un operario · ${esc(nCen(c))}</h3><div class="body">
+   <p>${whCell(o)} · ${esc(nombreCat(K(o.cat)))}</p>
+   ${pasoSinTiempo(o,c)?'<div class="warn">Este paso <b>no tiene minutos por prenda</b> (falta técnica, puntadas o SAM), así que el motor no lo programa y el operario no lo ve. Asignarlo a mano lo hace visible, marcado <b>«sin tiempo estándar»</b>. El tiempo real se registra igual.</div>':''}
+   <div class="grid2" style="gap:14px;margin-top:10px">
+    <div><label>Operario / puesto</label><select id="ao-rec">${recs.map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')||'<option value="">(sin recursos activos)</option>'}</select></div>
+    <div><label>Arranca</label><input type="date" id="ao-dia" value="${esc(pc.desde||hoy())}" min="${hoy()}"></div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Queda en la programación del centro (recurso y fecha) y en la bitácora. No cambia la ruta ni el programa del motor.</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>
+    <button class="btn" ${recs.length?'':'disabled'} onclick="asignarOperario('${oid}','${c}')">Asignar</button></div>`)}
+function asignarOperario(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  const rec=String((document.getElementById('ao-rec')||{}).value||'');
+  const dia=String((document.getElementById('ao-dia')||{}).value||'');
+  if(!rec||!dia){alert('Elige el operario y el día de arranque.');return}
+  setProgCen(oid,c,'rec',rec);setProgCen(oid,c,'desde',dia);
+  bitacora('Orden asignada a operario · '+o.op+' en '+nCen(c)+' → '+nRec(rec)+' desde '+fmtDia(dia)+' ('+quienFirma()+')'+(pasoSinTiempo(o,c)?' · el paso no tiene minutos por prenda':''));
+  try{cerrar()}catch(e){}save();render()}
 function mandaCola(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);if(!p&&colaNumerada)t.push('<span class="tag t-aviso" title="Sin puesto manual: la ordena la cercanía (qué tan cerca está de llegar a este centro), detrás de las que sí tienen puesto.">sin puesto · la ordena la cercanía</span>');
   if(o.prio&&o.prio!==3)t.push('<span class="tag t-alerta" title="La prioridad global de la orden (Órdenes) va antes que el puesto del centro en el motor.">prio global '+o.prio+' manda</span>');
-  const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');return t.join(' ')}
+  const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');
+  const fp=enProcesoFueraDelPlan(o,c);
+  if(fp)t.push('<span class="tag t-alerta" title="alguien la empezó en este centro sin que estuviera programada para su puesto: sigue visible en su tablet solo para terminarla">en proceso fuera del plan</span>');
+  if(pasoSinTiempo(o,c))t.push('<span class="tag t-aviso" title="la ruta pasa por aquí pero el paso no tiene minutos por prenda: el motor no lo programa y el operario no lo ve hasta que se le asigne">paso sin tiempo</span>');
+  return t.join(' ')}
 /* ---------- Centros de producción: filtro de fases común, resumen día × familia, cruce familia × fase, color ---------- */
 function togFaseCEN(f){togSet(CEN,'fases',f)}
 function faseOkCEN(o){return faseOkFiltro(CEN.fases,o.fase)}
@@ -6580,7 +6735,7 @@ function colaCentroHTML(c,ctx){
        <td style="white-space:nowrap">${whCell(f.o)} ${mandaCola(f.o,f.c,numerada)}</td><td style="white-space:nowrap">${esc(String(f.o.odc||'')) ||'<span class="mut">\u2014</span>'}</td><td style="white-space:nowrap">${llegadaHTML(f.cerc)}</td><td>${esc(f.o.cliente||'')}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
        <td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">auto (${esc(nRec(f.paso.rec))})</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
        <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td>
-       <td style="white-space:nowrap">${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button> `:''}${regHechoOk(f.c)?`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`:''}</td></tr>`};
+       <td style="white-space:nowrap">${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="mAsignarOperario('${f.o.id}','${f.c}')" title="asignar esta orden a un operario (recurso y día). Es lo que hace visible en la tablet un paso que el motor no programa por no tener minutos">asignar a operario</button> `:''}${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button> `:''}${regHechoOk(f.c)?`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`:''}</td></tr>`};
       return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha puesto puestos a mano: la cola se ordena por cercanía a llegar a este centro y, dentro de cada grupo, por fecha de llegada. Arrastrar una orden le pone puesto manual solo a ella (y a las que queden por encima, si la bajas); el resto sigue por cercanía.">cola sin numerar: se ordena por cercanía a llegar a este centro</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="body" style="padding-bottom:0">${ordenColaNotaHTML(cola)}${porQue[c]||''}</div><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Marca</th><th></th></tr></thead><tbody>
        ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),14)+(cercAbierto(g)?filasGRP('cen',l,fila,14,f=>f.o,pzDe):'')}).join('');return sec||'<tr><td colspan="14" class="mut">Nada por programar.</td></tr>'})())}
        ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="14">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hd=hechasDelDia(c,null,h);const hh=hd.detalle.map(x=>x.o);const pzDe=o=>(hd.detalle.find(x=>x.o===o)||{}).pz||0;const tot=hd.pz;
@@ -8711,7 +8866,13 @@ function vConfig(el){
   ${CONF.tab==='cal'?`  ${motorConfigHTML()}
   <div class="panel"><h3>Parámetros</h3><div class="body"><div class="row">
     <div><label>Inicio del programa</label><input type="date" value="${p.inicio}" onchange="setParam('inicio',this.value)"></div>
-    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div><div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div><div><label>Cola del centro: umbral de «lejanas» (pasos pendientes)</label><input type="number" min="0" step="1" value="${esc(String(umbralCercania()))}" onchange="setUmbralCercania(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con más de estos pasos pendientes antes del centro va al grupo <b>Lejanas</b>, colapsado al final de la cola</div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
+    ${inp('pctBueno','Baño bueno desde % de capacidad (corre solo)')}${inp('pctAprob','Baño con aprobación desde % de capacidad')}${inp('umbral','Llenado mínimo % (STUART)')}${inp('tol','Tolerancia chica %')}${inp('tolGrande','Tolerancia grande %')}${inp('diasTintBodega','Días tintorería → bodega')}${inp('ventanaColor','Confección: ventana de color (días, 0 = sin agrupar)')}${inp('tinHorizonteDias','Tintorería: horizonte de baños (días); más allá solo para completar')}${inp('planaHoras','Tela plana: horas por tanda (tiempo de máquina)')}${inp('minEtiqEmbodegado','Embodegado: minutos de etiquetado por prenda (centro Etiquetas, paso extra de la tabla 1)')}<div><label>Tela plana: máquina grande${(p.pendienteValidar||{}).planaMaquina?' <span class="tag t-aviso">PENDIENTE DE VALIDAR</span>':''}</label><select onchange="S.params.planaMaquina=this.value||null;if(S.params.pendienteValidar)delete S.params.pendienteValidar.planaMaquina;bitacora('Máquina de tela plana: '+(this.value?nRec(this.value):'—'));save();render()"><option value="">— elegir —</option>${S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin').map(r=>`<option value="${r.id}" ${S.params.planaMaquina===r.id?'selected':''}>${esc(r.n)} · ${num(r.cap)} kg</option>`).join('')}</select></div><div><label>Tablet: ventana de lo programado (días hábiles)</label>
+<input type="number" min="0" step="1" value="${esc(String(diasVentanaTablet()))}" onchange="setDiasVentanaTablet(this.value)">
+<div class="mut" style="font-size:var(--fs-xs)">el operario ve lo programado para su puesto desde hoy hasta ese día hábil. <b>0 = solo hoy</b></div></div>
+<div><label>Cierre del paso: minutos mínimos</label>
+<input type="number" min="0" step="1" value="${esc(String(minMinutosCierre()))}" onchange="setMinMinutosCierre(this.value)">
+<div class="mut" style="font-size:var(--fs-xs)">tiempo efectivo (sin paros ni descansos) que debe haber corrido antes de poder cerrar un paso. <b>0 = sin mínimo</b></div></div>
+<div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div><div><label>Cola del centro: umbral de «lejanas» (pasos pendientes)</label><input type="number" min="0" step="1" value="${esc(String(umbralCercania()))}" onchange="setUmbralCercania(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con más de estos pasos pendientes antes del centro va al grupo <b>Lejanas</b>, colapsado al final de la cola</div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>
    <div class="row">${[['minCorte','$ / min corte'],['minConf','$ / min confección'],['minEmp','$ / min empaque'],['minMaquila','$ / min maquila'],['bano','$ fijo por baño'],['kgTela','$ / kg tela propia'],['atrasoDiaPz','$ por prenda y día de atraso']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.0001" style="width:110px" value="${(p.costos||{})[k]??''}" onchange="setCosto('${k}',this.value)"></div>`).join('')}</div>
