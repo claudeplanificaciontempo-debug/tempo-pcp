@@ -5965,13 +5965,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const nuevo=JSON.parse(copia);nuevo.ordenes=nuevo.ordenes.slice(1);nuevo.bitacora=[];
     let bajadas=[];const dj0=window.descargarJSON;window.descargarJSON=(n,o)=>{bajadas.push({n,ordenes:(o.ordenes||[]).length})};
     const pr0=window.prompt;let av="";const a1=window.alert;window.alert=m=>{av=String(m)};
-    const bakP=PERFIL;PERFIL={id:"u-pl7",rol:"planificacion"};window.prompt=()=>"RESTAURAR";const r1=restaurarDesde(nuevo,"resp.json");PERFIL=bakP;
+    const bakP=PERFIL;PERFIL={id:"u-pl7",rol:"planificacion"};window.prompt=()=>"RESTAURAR";const r1=await restaurarDesde(nuevo,"resp.json");PERFIL=bakP;
     __check("R7: planificación no puede restaurar",r1===false&&/administrador/.test(av)&&S.ordenes.length===nOrd&&bajadas.length===0,av);
-    window.prompt=()=>"si";const r2=restaurarDesde(nuevo,"resp.json");
+    window.prompt=()=>"si";const r2=await restaurarDesde(nuevo,"resp.json");
     __check("R7: sin la palabra RESTAURAR no pasa nada (ni respaldo ni reemplazo)",r2===false&&S.ordenes.length===nOrd&&bajadas.length===0);
-    window.prompt=()=>"RESTAURAR";const r3=restaurarDesde(nuevo,"resp.json");
+    /* si el respaldo no sube al servidor, NO se restaura (la descarga local sí ocurre) */
+    {const st=sb.storage;const bakFrom=st.from;st.from=()=>({upload:async()=>({data:null,error:{message:"bucket no existe"}})});
+     const nb0=S.bitacora.length;window.prompt=()=>"RESTAURAR";const rF=await restaurarDesde(nuevo,"resp.json");st.from=bakFrom;
+     __check("R7: si la subida del respaldo al servidor falla, NO se restaura y se avisa",rF===false&&S.ordenes.length===nOrd&&/NO se restauró/.test(av)&&/bucket no existe/.test(av)&&S.bitacora.slice(nb0).some(b=>/Restaurar CANCELADO/.test(b.t)),av.slice(0,120));
+     __check("R7: la descarga local igual se hizo",bajadas.length===1&&bajadas[0].ordenes===nOrd);bajadas=[];}
+    window.prompt=()=>"RESTAURAR";const r3=await restaurarDesde(nuevo,"resp.json");
     __check("R7: con RESTAURAR: primero baja el respaldo automático de lo que había, después reemplaza",r3===true&&bajadas.length===1&&/respaldo_automatico_antes_de_restaurar_/.test(bajadas[0].n)&&bajadas[0].ordenes===nOrd&&S.ordenes.length===nOrd-1,JSON.stringify(bajadas));
     __check("R7: la bitácora se conserva y se une, y la restauración queda registrada",S.bitacora.length>=nBit+1&&/RESTAURADO desde «resp.json»/.test(S.bitacora.slice(-1)[0].t)&&(S.params.restauraciones||[]).slice(-1)[0].archivo==="resp.json"&&(S.params.restauraciones||[]).slice(-1)[0].antes.ordenes===nOrd,S.bitacora.length+" vs "+nBit);
+    __check("R7: el respaldo también quedó en el servidor (carpeta respaldos/) y la ruta en restauraciones",(()=>{const r=(S.params.restauraciones||[]).slice(-1)[0];const F=(sb.storage.__FILES||{});return !!r&&/^respaldos\/respaldos\/respaldo_automatico/.test(r.rutaServidor||"")&&Object.keys(F).some(k=>k===r.rutaServidor)})(),JSON.stringify((S.params.restauraciones||[]).slice(-1)[0]));
     __check("R7: el flujo pide la palabra y no usa confirm() suelto",/prompt\(/.test(String(restaurarDesde))&&/RESTAURAR/.test(String(restaurarDesde))&&!/confirm\(/.test(String(restaurarDesde))&&/puede\(.config.\)/.test(String(importJSON)));
     window.prompt=pr0;window.alert=a1;window.descargarJSON=dj0;S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;}
    /* ===== 8 · registro unificado de cargas ===== */

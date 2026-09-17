@@ -822,7 +822,8 @@ de 1 día. Una orden ya `noArchivo` conserva su primera marca.
 
 **Restaurar y registro de cargas (17-sep-2026).** `restaurarDesde(nuevo,nombre)` es el único camino de Restaurar (`importJSON`
 solo lee el archivo): solo `config`, palabra escrita `RESTAURAR`, **descarga `respaldo_automatico_antes_de_restaurar_<ts>.json`
-ANTES de reemplazar** (`descargarJSON`), une la bitácora, registra en bitácora y en `S.params.restauraciones`. **Registro
+ANTES de reemplazar** (`descargarJSON`) **y lo sube a Storage** (`subirRespaldo`, bucket privado `respaldosBucket()` = `respaldos`,
+carpeta `respaldos/`; si falla, NO restaura y avisa; ruta en `restauraciones[].rutaServidor`), une la bitácora, registra en bitácora y en `S.params.restauraciones`. **Registro
 unificado**: `registrarCarga(tipo,archivo,resumen)` es la única escritura a `S.cargas` (tipos `tareas` | `ot` | `fotos`,
 `TIPOS_CARGA`, `resumenCargaTxt`), nunca se recorta; `registroCargasHTML()` en Configuración → Órdenes y materiales; Hoy y
 Órdenes muestran «Última(s) carga(s)» desde el mismo registro. Ver `CARGAS_7_Y_8.md`.

@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 12:07';
+const APP_BUILD='2026-09-17 12:14';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10823,16 +10823,26 @@ function exportJSON(){descargarJSON('planificacion_tempo_'+hoy()+'.json',S)}
 /* RESTAURAR (17-sep-2026): solo el administrador; ANTES de tocar nada se descarga un respaldo automático de lo que hay;
    confirmación ESCRITA (la palabra RESTAURAR); la bitácora se conserva y se une; queda en bitácora y en
    S.params.restauraciones (qué archivo, cuántas órdenes había y cuántas trae, quién, cuándo). */
-function restaurarDesde(nuevo,nombre){if(!puede('config')){alert('Solo el administrador puede restaurar.');return false}
+/* el respaldo automático también va al servidor (Supabase Storage, bucket privado «respaldos», carpeta respaldos/):
+   si la subida falla, NO se restaura y se avisa. La descarga local se mantiene. */
+function respaldosBucket(){return (S.params&&S.params.respaldosBucket)||'respaldos'}
+async function subirRespaldo(nombre,obj){try{const blob=new Blob([JSON.stringify(obj)],{type:'application/json'});
+  const r=await sb.storage.from(respaldosBucket()).upload('respaldos/'+nombre,blob,{upsert:false,contentType:'application/json'});
+  if(r&&r.error)return {ok:false,error:r.error.message||String(r.error)};return {ok:true,ruta:respaldosBucket()+'/respaldos/'+nombre}}
+  catch(e){return {ok:false,error:String((e&&e.message)||e)}}}
+async function restaurarDesde(nuevo,nombre){if(!puede('config')){alert('Solo el administrador puede restaurar.');return false}
   if(!nuevo||!nuevo.params){alert('El archivo no parece un respaldo del sistema.');return false}
   const antes={ordenes:S.ordenes.length,bitacora:(S.bitacora||[]).length,avance:Object.keys(S.avance||{}).length};
   const t=prompt('Vas a REEMPLAZAR los datos actuales ('+antes.ordenes+' órdenes, '+antes.avance+' órdenes con avance, '+antes.bitacora+' entradas de bitácora y toda la configuración) por los del respaldo «'+(nombre||'')+'» ('+((nuevo.ordenes||[]).length)+' órdenes). Antes se descarga un respaldo automático de lo que hay ahora. Lo que no esté en el archivo se pierde; la bitácora se conserva y se une. Para continuar escribe exactamente: RESTAURAR');
   if(String(t||'').trim()!=='RESTAURAR')return false;
   const ts=new Date().toISOString();const respaldo='respaldo_automatico_antes_de_restaurar_'+ts.replace(/[:.]/g,'-')+'.json';
-  descargarJSON(respaldo,S);   /* primero el respaldo, después el reemplazo */
+  descargarJSON(respaldo,S);   /* primero el respaldo local… */
+  const up=await subirRespaldo(respaldo,S);   /* …y el del servidor: sin él NO se restaura */
+  if(!up.ok){bitacora('Restaurar CANCELADO: el respaldo automático no se pudo subir al servidor ('+up.error+') ('+quienFirma()+')');save();
+    alert('NO se restauró: el respaldo automático no se pudo subir al servidor ('+up.error+'). El archivo local sí se descargó. Revisa que exista el bucket privado «'+respaldosBucket()+'» en Supabase Storage y vuelve a intentar.');return false}
   const bitAntes=S.bitacora||[];S=Object.assign(seed(),nuevo);S.bitacora=S.bitacora||[];bitAntes.forEach(b=>{if(!S.bitacora.some(x=>x.id===b.id))S.bitacora.push(b)});S.bitacora.sort((a,b)=>(a.ts||'')<(b.ts||'')?-1:1);
-  S.params.restauraciones=(S.params.restauraciones||[]).concat([{ts,u:quienFirma(),archivo:nombre||'',respaldo,antes,despues:{ordenes:S.ordenes.length}}]);
-  bitacora('RESTAURADO desde «'+(nombre||'')+'» por '+quienFirma()+': había '+antes.ordenes+' órdenes, trae '+S.ordenes.length+'; respaldo automático previo: '+respaldo);
+  S.params.restauraciones=(S.params.restauraciones||[]).concat([{ts,u:quienFirma(),archivo:nombre||'',respaldo,rutaServidor:up.ruta,antes,despues:{ordenes:S.ordenes.length}}]);
+  bitacora('RESTAURADO desde «'+(nombre||'')+'» por '+quienFirma()+': había '+antes.ordenes+' órdenes, trae '+S.ordenes.length+'; respaldo automático previo: '+respaldo+' (local y en '+up.ruta+')');
   save();render();return true}
 function importJSON(){if(!puede('config')){alert('Solo el administrador puede restaurar.');return}const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];const r=new FileReader();
   r.onload=()=>{let nuevo=null;try{nuevo=JSON.parse(r.result)}catch(err){alert('El archivo no se pudo leer.');return}restaurarDesde(nuevo,f&&f.name)};r.readAsText(f)};i.click()}

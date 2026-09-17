@@ -12,6 +12,10 @@
    cuántas entradas de bitácora hay ahora, cuántas trae el archivo, que lo que no esté en el archivo se pierde y que la bitácora
    se conserva y se une. Cualquier otra respuesta = nada.
 4. **Antes de tocar nada** se descarga `respaldo_automatico_antes_de_restaurar_<fecha-hora>.json` con TODO lo que hay.
+   **Y el mismo JSON se sube a Supabase Storage** (bucket privado `respaldos`, carpeta `respaldos/`, `subirRespaldo`). **Si la
+   subida falla, NO se restaura**: aviso con el motivo, línea «Restaurar CANCELADO» en bitácora; la descarga local ya ocurrió.
+   La ruta en el servidor queda en `S.params.restauraciones[].rutaServidor`. **Hay que crear el bucket `respaldos` (privado) en
+   Supabase Storage**; hasta entonces Restaurar avisa y no reemplaza nada (es lo pedido: sin respaldo en el servidor, no se restaura).
 5. Recién entonces se reemplaza; la bitácora anterior se une a la del archivo; queda una línea en bitácora
    («RESTAURADO desde «x» por quién: había N órdenes, trae M; respaldo automático previo: …») y una fila en
    `S.params.restauraciones` (quién, cuándo, archivo, respaldo, antes/después).
