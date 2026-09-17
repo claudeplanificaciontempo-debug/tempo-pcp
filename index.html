@@ -305,6 +305,7 @@ tbody tr:hover td{background:var(--field)}
     </div>
     <div class="grp" data-g="prod">Planificación de producción <span class="car">▾</span></div>
     <div class="gbody" data-g="prod">
+      <a data-p="config" data-conf="nivel" title="por ahora abre las tablas y parámetros de la nivelación (Configuración); la pantalla completa es el Paso 2, pendiente de aprobación">Nivelación de carga</a>
       <a data-p="liberacion" data-lib="corte">Liberación a producción</a>
       <a data-p="produccion">Carga general <span class="n" id="n-atr" style="color:#E0917F"></span></a>
       <a data-p="centro" data-cen="corte">Corte</a>
@@ -704,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 21:04';
+const APP_BUILD='2026-09-16 21:13';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2708,7 +2709,7 @@ function render(){
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
   if(typeof recalcularRutas==='function'&&typeof rutasPorRecalcular==='function'){const _r=rutasPorRecalcular();if(_r.total)recalcularRutas()}
   if(typeof armarNavSubCentros==='function')armarNavSubCentros();
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.conf||a.dataset.conf===(typeof CONF!=='undefined'?CONF.tab:''))&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))&&(!a.dataset.rep||a.dataset.rep===(typeof REP!=='undefined'?REP.vista:'textil'))));
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
@@ -10158,6 +10159,7 @@ document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',e=>{
 document.querySelectorAll('nav .gbody a').forEach(a=>a.addEventListener('click',()=>navCerrarTodo()));
 document.addEventListener('click',e=>{if(!e.target.closest('nav'))navCerrarTodo()});
 document.querySelectorAll('nav a[data-lib]').forEach(a=>a.addEventListener('click',()=>{LIB.et=a.dataset.lib;LIB.sel=new Set();setTimeout(render,0)},true));
+document.querySelectorAll('nav a[data-conf]').forEach(a=>a.addEventListener('click',()=>{CONF.tab=a.dataset.conf;setTimeout(render,0)},true));
 document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.target.closest('nav a[data-cen]');if(!a)return;
   if(a.dataset.sub){CEN.id=a.dataset.padre;CEN.solo=a.dataset.cen}else{CEN.id=a.dataset.cen;CEN.solo=''}
   CEN.q='';setTimeout(render,0)},true);

@@ -432,6 +432,46 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const P0=programar();const lun=lunesDe(hoy());const cola=colaCentro('corte',filasDeCentros(['corte'],P0,lun,dsum(lun,6),''));
    __check("cola: Corte tiene cola con órdenes pendientes",cola.length>=3,cola.length);
    const html=()=>document.getElementById('p-centro').innerHTML;
+   /* ===== 2a · FOTO del DOM de la cola ANTES de extraerla: nada de esto puede cambiar ===== */
+   {CEN.cercAbre={disponible:true,porLlegar:true,revisar:true,lejana:true};render();
+    const host=document.getElementById("p-centro");
+    const tabla=[...host.querySelectorAll(".panel.cola table")][0];
+    __check("2a DOM: existe la tabla de la cola dentro de .panel.cola",!!tabla);
+    const ths=tabla?[...tabla.querySelectorAll("thead th")].map(t=>t.textContent.trim()):[];
+    __check("2a DOM: las 14 columnas, en este orden",ths.join("|")==="Puesto|OP|ODC|Llega|Cliente|Categoría|Color|Pendientes|Min|Recurso|Arranca|Plan: inicio → fin|Marca|",ths.join("|"));
+    const filas=tabla?[...tabla.querySelectorAll("tbody tr[draggable]")]:[];
+    const P1=programar();const lun1=lunesDe(hoy());
+    const colaV=colaCentro("corte",filasDeCentros(["corte"],P1,lun1,dsum(lun1,6),CEN.q).filter(f=>faseOkCEN(f.o)));
+    __check("2a DOM: hay tantas filas arrastrables como órdenes en la cola",filas.length===colaV.length,filas.length+" vs "+colaV.length);
+    if(filas.length){const tr=filas[0];const tds=[...tr.querySelectorAll("td")];
+     __check("2a DOM: cada fila tiene 14 celdas",tds.length===14,tds.length);
+     __check("2a DOM: celda 1 = asa de arrastre + puesto numérico",!!tr.querySelector("td:nth-child(1) .hand")&&!!tr.querySelector("td:nth-child(1) input[type=number]"));
+     __check("2a DOM: celda 2 = foto/WH/fase (whCell) con la marca de puesto",!!tr.querySelector("td:nth-child(2) .fase-mini")||/fase/.test(tds[1].innerHTML));
+     __check("2a DOM: celda 10 = selector de recurso con opción auto",!!tr.querySelector("td:nth-child(10) select option[value=\"\"]"));
+     __check("2a DOM: celda 11 = fecha de arranque",!!tr.querySelector("td:nth-child(11) input[type=date]"));
+     __check("2a DOM: celda 14 = acciones (ruta / ✓ hecho)",/ruta|hecho/.test(tds[13].innerHTML));
+     __check("2a DOM: los eventos de arrastre están en la fila",["ondragstart","ondragend","ondragover","ondragleave","ondrop"].every(a=>tr.hasAttribute(a)));}
+    /* cabeceras de grupo de cercanía y agrupación */
+    const grp=tabla?[...tabla.querySelectorAll("tbody tr.grp-row")]:[];
+    __check("2a DOM: hay cabeceras de grupo (cercanía) en la tabla",grp.length>=1,grp.length);
+    __check("2a DOM: la fila «soltar al final» está y tiene colspan 14",!!(tabla&&tabla.querySelector("tr.dd-fin td[colspan=\"14\"]")));
+    /* cabecera del panel: conteo y nota del orden */
+    const h3=host.querySelector(".panel.cola h3");
+    __check("2a DOM: la cabecera dice cuántas órdenes pendientes y prendas por hacer",!!h3&&/órdenes pendientes/.test(h3.textContent)&&/prendas por hacer/.test(h3.textContent),h3&&h3.textContent.slice(0,80));
+    __check("2a DOM: la nota del orden de la cola está arriba de la tabla",/Orden de la cola:/.test(host.querySelector(".panel.cola .body").innerHTML));
+    /* agrupación común: seleccionar cliente→categoría conserva las filas */
+    GRP={};grpSt("cen").niveles=["cliente","cat"];render();
+    const t2=[...document.querySelectorAll("#p-centro .panel.cola table")][0];
+    __check("2a DOM: agrupar por cliente→categoría conserva todas las filas arrastrables",
+      t2&&[...t2.querySelectorAll("tbody tr[draggable]")].length===filas.length,t2&&t2.querySelectorAll("tbody tr[draggable]").length);
+    __check("2a DOM: y muestra las cabeceras de agrupación con conteo de órdenes y prendas",t2&&/Cliente:/.test(t2.innerHTML)&&/prendas/.test(t2.innerHTML));
+    GRP={};
+    /* «Hecho hoy» aparece solo si hubo hechas hoy: se fija la condición, no el contenido */
+    const hd=hechasDelDia("corte",null,hoy());
+    __check("2a DOM: el panel «Hecho hoy» aparece exactamente cuando hay hechas hoy",
+      (/Hecho hoy en /.test(host.innerHTML))===(hd.detalle.length>0),hd.detalle.length);
+    __R.colaDOM={ths,filas:filas.length,grupos:grp.length};
+    CEN.cercAbre=null;render();}
    __check("cola: la tabla es arrastrable y tiene puesto numérico y zona 'al final'",/draggable="true"/.test(html())&&/onchange="moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
    __check("cola: sin numerar la pantalla dice que se ordena por cercanía",html().includes("cola sin numerar: se ordena por cercanía a llegar a este centro"));
    if(cola.length>=3){const oA=cola[cola.length-1].o,oB=cola[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
