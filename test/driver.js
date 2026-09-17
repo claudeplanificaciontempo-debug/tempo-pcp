@@ -207,7 +207,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      delete S.avance[oA2.id];PLAN=null;PLAN_ALL=null}}
    /* «Actualizar desde Odoo» no se puede ejercitar: su plan se arma dentro de leerOdoo(ev) (manejador del <input file>) */
    __R.recarga=__R.recarga||{};__R.recarga.odooEjercitable=(typeof planOdoo==="function");
-   __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas (para poder probarlo)",typeof planOdoo==="function","no existe planOdoo(rows): el plan vive dentro de leerOdoo(ev)");
+   __check("CARGA: «Actualizar desde Odoo» tiene un planificador llamable con filas",typeof planOdoo==="function");
    window.alert=a0;
    __check("CARGA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* OT reales contra las órdenes reales (fixture local, no publicado) */
@@ -5828,6 +5828,63 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    delete S.params.tablets[uid0];
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
    __check("TO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== CARGAS · punto 2: qué pisa «Actualizar desde Odoo» (al final: toca la cartera entera) ===== */
+  try{localStorage.__fase="carga odoo"}catch(e){}
+  {const antes=__R.errors.length;const tareaRows=window.__tareaRows||[];
+   /* al final del guión la cartera está reducida: se vuelve a cargar el volcado para medir de verdad */
+   if(tareaRows.length){const pR=planTarea(tareaRows,'TAREA_PARTE2.xlsx');TAREA=pR;aplicarTarea();await __p(50)}
+   /* ===== 2 · los doce datos trabajados, ahora sobre «Actualizar desde Odoo» ===== */
+   {const ab2=S.ordenes.filter(o=>abierta(o)&&o.op).slice(0,6);
+    if(ab2.length>=6&&typeof planOdoo==="function"){
+     const [oA,oB,oC,oD,oE,oF]=ab2;
+     oA.progCentro={corte:{pri:1,rec:null,desde:null}};
+     oB.recursoFijo={modulos:"maquila"};
+     oC.odc="ODC-ODOO-1";oC.odcManual={u:"prueba",ts:new Date().toISOString()};
+     S.avance[oD.id]=Object.assign(S.avance[oD.id]||{},{centros:{corte:9},
+       cierres:{corte:{pz:9,cant:oD.cant,faltan:0,u:"piso",ts:new Date().toISOString()}},
+       tramos:[{id:"t-odoo",centro:"corte",rec:null,ini:new Date(Date.now()-30*6e4).toISOString(),fin:new Date().toISOString(),u:"piso",paros:[]}]});
+     oE.lib={tela:{ok:true,u:"lib",ts:new Date().toISOString()}};
+     oF.rutaEditada=[{centro:"corte",t:1},{centro:"empaque",t:1}];oF.ruta=oF.rutaEditada.slice();
+     oF.foto="https://x/odoo.jpg";oF.fechaCompromiso="2026-12-15";oF.prio=1;
+     const faseF=oF.fase;
+     const bakPl=JSON.stringify(S.planes||[]);S.planes=(S.planes||[]).concat([{id:"plan-odoo",ym:"2026-10",oids:[oA.id],ver:1}]);
+     const antesO={pri:1,maq:"maquila",odc:"ODC-ODOO-1",cierre:true,tramos:1,lib:true,ruta:2,foto:oF.foto,comp:"2026-12-15",prio:1,planes:S.planes.length,fase:faseF};
+     /* se arma el plan de Odoo con el MISMO archivo de tareas y se aplica */
+     let fotoOrd,fotoJSON;
+     let pO=null;try{pO=planOdoo(tareaRows,"ODOO.xlsx")}catch(e){pO=null;__R.odooErr=String(e&&e.message)}
+     __check("P2: planOdoo(rows) arma un plan con el volcado real",!!pO&&Array.isArray(pO.nuevas)&&Array.isArray(pO.act),pO?(pO.nuevas.length+" nuevas / "+pO.act.length+" actualizadas"):__R.odooErr);
+     if(pO){
+      /* foto de la cartera: esta medición no puede dejar rastro */
+      fotoOrd=S.ordenes.slice();fotoJSON=JSON.stringify(S.ordenes.map(o=>[o.id,o.fase,o.cant,o.estado]));
+      __R.odooMatch={enElArchivo:pO.nuevas.length+pO.act.length+(pO.sinCambio||0),
+        reconocidas:pO.act.length,sinCambio:pO.sinCambio||0,nuevas:pO.nuevas.length,
+        carteraAntes:S.ordenes.length};
+      const al=window.alert;window.alert=()=>{};ODOO=pO;aplicarOdoo();window.alert=al;
+      __R.odooMatch.carteraDespues=S.ordenes.length;
+      __check("P2: «Actualizar desde Odoo» reconoce las órdenes que ya están, no las duplica",
+        S.ordenes.length<=__R.odooMatch.carteraAntes,JSON.stringify(__R.odooMatch));
+      const g=id=>S.ordenes.find(x=>x.id===id)||{};
+      const desO={pri:((g(oA.id).progCentro||{}).corte||{}).pri||0,maq:(g(oB.id).recursoFijo||{}).modulos||null,odc:g(oC.id).odc,
+        cierre:!!(((S.avance[oD.id]||{}).cierres)||{}).corte,tramos:((S.avance[oD.id]||{}).tramos||[]).length,
+        lib:!!((g(oE.id).lib||{}).tela||{}).ok,ruta:(g(oF.id).rutaEditada||[]).length,rutaReal:(g(oF.id).ruta||[]).length,
+        foto:g(oF.id).foto||null,comp:g(oF.id).fechaCompromiso||null,prio:g(oF.id).prio,planes:(S.planes||[]).length,fase:g(oF.id).fase};
+      __R.odoo={antes:antesO,despues:desO,pisa:{
+        puestoManual:desO.pri!==antesO.pri,maquila:desO.maq!==antesO.maq,odcManual:desO.odc!==antesO.odc,
+        cierres:desO.cierre!==antesO.cierre,tramos:desO.tramos!==antesO.tramos,liberacion:desO.lib!==antesO.lib,
+        rutaEditada:desO.ruta!==antesO.ruta||desO.rutaReal!==antesO.ruta,foto:desO.foto!==antesO.foto,
+        fechaCompromiso:desO.comp!==antesO.comp,prio:desO.prio!==antesO.prio,planCongelado:desO.planes!==antesO.planes,
+        fase:String(desO.fase||"")!==String(antesO.fase||"")}};
+      __check("P2: se puede medir qué pisa «Actualizar desde Odoo»",!!__R.odoo,JSON.stringify(__R.odoo.pisa));
+      __check("P2: el avance de piso (cierres y tramos) NO lo toca",!__R.odoo.pisa.cierres&&!__R.odoo.pisa.tramos);
+      __check("P2: el puesto manual y la maquila tampoco",!__R.odoo.pisa.puestoManual&&!__R.odoo.pisa.maquila);}
+     [oA,oB,oC,oE,oF].forEach(o=>{const x=S.ordenes.find(z=>z.id===o.id);if(!x)return;
+       delete x.progCentro;delete x.recursoFijo;delete x.odcManual;delete x.lib;delete x.rutaEditada;delete x.fechaCompromiso;if(x.prio===1)x.prio=3;if(x.foto==="https://x/odoo.jpg")delete x.foto});
+     delete S.avance[oD.id];S.planes=JSON.parse(bakPl);ODOO=null;PLAN=null;PLAN_ALL=null;
+     /* se deshace la medición: la cartera vuelve EXACTAMENTE a como estaba */
+     if(typeof fotoOrd!=='undefined'){S.ordenes=fotoOrd;JSON.parse(fotoJSON).forEach(([id,fase,cant,estado])=>{
+       const o=S.ordenes.find(x=>x.id===id);if(o){o.fase=fase;o.cant=cant;o.estado=estado}})}
+     PLAN=null;PLAN_ALL=null}}
+   __check("P2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

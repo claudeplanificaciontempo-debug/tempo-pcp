@@ -10550,10 +10550,12 @@ function mOdoo(){abrir(`<h3>Actualizar desde Odoo</h3><div class="body">
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="odoo-ok" disabled onclick="aplicarOdoo()">Aplicar cambios</button></div>`);
   document.getElementById('f-odoo').addEventListener('change',leerOdoo)}
 let ODOO=null;
-async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('odoo-res');res.innerHTML='<span class="mut">Leyendo…</span>';
-  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel (sin internet).';return})}
-  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});const h=rows[0].map(x=>normTxt(x));
+/* ---------- el plan de «Actualizar desde Odoo», como función pura (17-sep-2026) ----------
+   Es EXACTAMENTE lo que vivía dentro de leerOdoo: se movió, no se cambió. Existe aparte para poder
+   probarlo con filas (antes el plan se armaba dentro del manejador del <input file> y no había forma
+   de ejercitarlo ni de medir qué pisa). */
+function planOdoo(rows,nombre){
+  const h=(rows[0]||[]).map(x=>normTxt(x));
   const col=(...names)=>{for(const n of names){const i=h.findIndex(x=>x&&x.includes(normTxt(n))&&!x.includes('componentes'));if(i>=0)return i}return -1};
   const iOP=col('orden de produccion'),iCli=col('cliente'),iFec=col('fecha entrega'),iProy=col('proyecto'),iOdc=col('odc'),iSt=col('stilo','estilo'),iPad=col('categoria padre'),iHij=col('categoria hija'),
         iCol=col('color'),iEst=col('estado op'),iFase=col('fase'),iPun=col('puntadas'),iDep=col('departamento'),iPed=col('pedido'),iPre=col('pvp','precio'),iTot=col('total'),iTec=col('tecnica'),iPan=col('pantone'),iProd=col('produccion total'),
@@ -10569,7 +10571,7 @@ async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=do
     const p=String(r[iProy]||'').trim().split(/\s+/);const mm=MESES[normTxt(p[0]).toUpperCase()];if(p.length===2&&mm)return p[1]+'-'+String(mm).padStart(2,'0')+'-28';return null};
   const mapaTela=cat=>{const n2=normFase(String(cat||'').split('/')[1]||'');if(n2!==normFase('MP'))return 'SERV';return telaDeRuta(cat)||'EXT'};
   const estadoDe=(op,est,fase)=>{const fz=normTxt(fase);if(!op)return(fz.startsWith('factur')||fz.startsWith('stand'))?null:'prevision';if(est==='cancel')return'anulada';if(fz.startsWith('stand'))return'standby';if(fz.startsWith('factur')||est==='done'||est==='to_close')return'cerrada';return'plan'};
-  const plan={nuevas:[],act:[],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],sinCambio:0,coloresNuevos:new Set(),catsNuevas:new Set(),tecNuevas:new Set(),telasSinKg:0,alertas:[],archivo:f.name,hayPrev:false};
+  const plan={nuevas:[],act:[],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],sinCambio:0,coloresNuevos:new Set(),catsNuevas:new Set(),tecNuevas:new Set(),telasSinKg:0,alertas:[],archivo:nombre||'',hayPrev:false};
   const porOp={},porPrev={};S.ordenes.forEach(o=>{if(o.op&&o.estado!=='prevision')porOp[o.op]=o;else if(o.estado==='prevision')porPrev[o.id]=o});
   const vistasPrev=new Set();
   const colorPorCodigo=(cod,nombre)=>{let c=S.colores.find(x=>x.cod===cod);if(!c){c={id:'col_'+cod.replace('-','_'),n:(nombre||('PANTONE '+cod)).toUpperCase(),cod,fam:cod.slice(0,2)==='11'?'claro':(+cod.slice(0,2)>=12&&+cod.slice(0,2)<=17)?'medio':'oscuro'};S.colores.push(c);plan.coloresNuevos.add(c.n+' '+cod)}
@@ -10621,6 +10623,13 @@ async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=do
       plan.nuevas.push(nuevaOrden('op_'+op.toLowerCase().replace(/[^a-z0-9]+/g,'_'),op,datos,k));if(estado==='cerrada')plan.cerradas++}
   });
   if(plan.hayPrev)plan.prevQuitadas=Object.keys(porPrev).filter(id=>!vistasPrev.has(id));
+  plan.archivo=nombre||plan.archivo||'';
+  return plan}
+async function leerOdoo(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('odoo-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel (sin internet).';return})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  const plan=planOdoo(rows,f.name);
   ODOO=plan;/* conteo del ARCHIVO que se va a cargar, no de la cartera: aquí el estado viene del archivo */const nPlan=plan.nuevas.filter(o=>o.estado==='plan').length,nCer=plan.nuevas.filter(o=>o.estado==='cerrada').length,nSb=plan.nuevas.filter(o=>o.estado==='standby').length;
   res.innerHTML=`<table><tbody>
     <tr><td><b>${nPlan}</b></td><td>órdenes abiertas nuevas${conComp?' (con telas y Pantone de la receta)':' (sin componentes: telas desde el consumo de la categoría)'}</td></tr>
