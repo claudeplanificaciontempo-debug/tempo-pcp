@@ -119,8 +119,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('fixture tareas: 65.002 filas incl. header',tareaRows.length===65002,tareaRows.length);
   const bakOrd=S.ordenes;S.ordenes=[];
   const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
-  /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo */
-  if(/captura=niv/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
+  /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo.
+     ?captura=fases: diagnóstico (JSON en <pre id="diag">) de la cola completa de cada centro de producción por fase de Odoo y grupo de cercanía. */
+  if(/captura=(niv|fases)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
     NIVUI={meses:['2026-09','2026-10','2026-11'],cliente:'',familia:'',area:'corte',celda:null,filaPor:'familia',esc:{},verCalc:false,noEntra:false};
     if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
       const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={por:'familia',fila:famDeOrden(r.saldo.ordenes[0]),mes:'2026-10'}}
@@ -135,6 +136,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        out.__estampadoT=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==='estampado')).map(o=>[(o.ruta.find(p=>p.centro==='estampado')||{}).t,o.tecnica?1:0,tecnicaT(o)]).slice(0,6);}
       out.__fasesTela=fasesDeProcNivel('tela');out.__abiertas=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))).length;out.__rutasSample=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))).slice(0,400).map(o=>(o.ruta||[]).map(p=>p.centro).join('>')).reduce((m,k)=>{m[k]=(m[k]||0)+1;return m},{});
       document.body.innerHTML='<pre id="diag">'+JSON.stringify(out,null,1)+'</pre>';__R.done=true;return}
+    /* captura=fases: por CADA centro de producción (area 'pro', en orden ordenPaso) la cola completa de la semana en curso
+       (filasDeCentros → colaCentro, sin buscador) contada por fase de Odoo, y por cada fase cuántas caen en cada grupo de cercanía (f.cerc.grupo) */
+    if(/captura=fases/.test(location.search)){const P=programar();const lun=lunesDe(hoy()),dom=dsum(lun,6);const out={hoy:hoy(),lun,dom,porCentro:[]};
+      const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+      cens.forEach(cen=>{const c=cen.id;const filas=filasDeCentros([c],P,lun,dom,'');const cola=colaCentro(c,filas);const porFase={};
+        cola.forEach(f=>{const k=f.o.fase||'(sin fase)';const g=(f.cerc&&f.cerc.grupo)||'(sin cerc)';if(!porFase[k])porFase[k]={n:0,grupos:{}};porFase[k].n++;porFase[k].grupos[g]=(porFase[k].grupos[g]||0)+1});
+        const fases=Object.keys(porFase).map(k=>{const gs=porFase[k].grupos;const may=Object.keys(gs).sort((a,b)=>gs[b]-gs[a])[0];return{fase:k,n:porFase[k].n,grupo:may,grupos:gs}}).sort((a,b)=>b.n-a.n);
+        const porGrupo={};cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'(sin cerc)';porGrupo[g]=(porGrupo[g]||0)+1});
+        out.porCentro.push({centro:c,nombre:cen.nombre||c,total:cola.length,filas:filas.length,hechas:filas.filter(f=>f.hecho).length,bloqueadas:filas.filter(f=>!f.hecho&&f.bloq).length,porGrupo,fases})});
+      document.body.innerHTML='<pre id="diag">'+JSON.stringify(out)+'</pre>';__R.done=true;return}
     if(/niv4/.test(location.search)){const r=nivUICalcular('corte');const cd=NIVUI.celda;irSaldoCentro(nivUISelDe(r,cd,'Short Cargo'))}
     document.body.classList.add('captura');__R.done=true;return}
   __check('planTarea reconoce columnas',!!planT);

@@ -8,3 +8,6 @@ test/fixtures/ot_rows.json
 test/fixtures/macro_valid.json
 
 test/fixtures/fotos_*.csv
+
+# configuración local de la herramienta (no del proyecto)
+.claude/
