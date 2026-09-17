@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 09:48';
+const APP_BUILD='2026-09-17 10:23';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9626,7 +9626,7 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
     o.otTs=ts});
   S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
   S.cargas.push({id:uid(),ts,usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',archivo:p.archivo,tipo:'ot',nuevas:0,act:Object.keys(p.porOrden).length,cerradas:0,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
-  if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
+  /* el registro de cargas NO se recorta (decisión 17-sep-2026): antes se quedaba con las últimas 60 */
   OT=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
   alert('Órdenes de trabajo aplicadas: '+Object.keys(p.porOrden).length+' órdenes, '+cierres+' centros cerrados. '+p.contradicciones.length+' contradicciones fase vs OT (ver Órdenes → Reporte OT).')}
 function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha cargado ningún archivo de órdenes de trabajo.');return}
@@ -10703,7 +10703,7 @@ function aplicarOdoo(){if(!ODOO)return;const p=ODOO;const noCalzan=[];
     bitacora('Actualizar desde Odoo: '+noCalzan.length+' decisiones del sistema que el archivo contradice; se conservaron las del sistema ('+quienFirma()+')')}
   S.cargas.push({id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:p.archivo||'',nuevas:p.nuevas.length,act:p.act.length,cerradas:p.cerradas,prev:p.prevNuevas,prevAWh:p.prevAWh,noCalzan:noCalzan.length,
     alertas:p.alertas.slice(0,60),coloresNuevos:[...p.coloresNuevos],catsNuevas:[...p.catsNuevas]});
-  if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
+  /* el registro de cargas NO se recorta (decisión 17-sep-2026): antes se quedaba con las últimas 60 */
   ODOO=null;save();cerrar();render();
   alert(`Aplicado: ${p.nuevas.length} nuevas, ${p.act.length} actualizadas, ${p.cerradas} cerradas.`+(p.prevAWh?` ${p.prevAWh} previsiones pasaron a WH.`:'')+(p.alertas.length?` ${p.alertas.length} puntos para revisar quedan en "Últimas cargas".`:''))}
 function mPrecios(){abrir(`<h3>Precios por orden</h3><div class="body"><p class="lede" style="margin-top:0">Pega desde Excel: la WH y el precio unitario de venta (dólares por prenda). Si en vez del unitario pegas el total de la orden en una tercera columna, se divide entre las prendas.</p>
