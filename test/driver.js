@@ -4829,6 +4829,249 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       /o\.ot\[c\]=\{estado:reg\.estado,ini:reg\.ini,fin:reg\.fin,odoo:reg\.odoo,iniTs:/.test(document.documentElement.innerHTML));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";render();
    __check("CC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== AUDITORÍA DE BÚSQUEDAS Y FILTROS · PASO 0 (diagnóstico, NO se corrige nada) ===== */
+  try{localStorage.__fase="auditoria busquedas"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};const adminP=PERFIL;
+   __R.bus={inventario:[],foco:[],wh:[],campos:{},filtros:[],causas:{}};
+   const F=(n,ok,det)=>{__check(n,ok,det);return !!ok};
+
+   /* ---------- 1 · INVENTARIO desde el código ---------- */
+   {const src=document.documentElement.innerHTML;
+    const ids=[...new Set([...src.matchAll(/busqHTML\('([^']+)'/g)].map(x=>x[1]))];
+    __R.bus.idsBusq=ids;
+    __check("AB0: hay un solo componente de buscador (busqHTML) y N pantallas lo usan",ids.length>=15,ids.join(", "));
+    const sueltos=[...src.matchAll(/oninput="(?!buscarQ)/g)].length;
+    __R.bus.buscadoresSueltos=sueltos;
+    __check("AB0: cuántos inputs con oninput NO pasan por buscarQ (buscadores propios)",true,sueltos);
+    __R.bus.usosMatchBusq=(src.match(/matchBusq\(/g)||[]).length;
+    __R.bus.usosNormTxt=(src.match(/normTxt\(/g)||[]).length;}
+
+   /* ---------- 2b/2d/2e · la lógica de comparación, con una orden de laboratorio ---------- */
+   {const oT={id:"busq-test",op:"WH/MO/22918",odc:2723,ref:"EST-CONFECCIÓN",cliente:"Almacén Éxito",
+      color:(S.colores[0]||{}).id,cat:(S.categorias.find(k=>k.padre)||{}).id,fase:"7Confección",cant:10};
+    const bak=JSON.parse(JSON.stringify(BUSQ));Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);
+    const m=q=>matchBusq(oT,q,"AUD.test");
+    __R.bus.wh=[
+      ["WH/MO/22918 completo",m("WH/MO/22918")],
+      ["minúsculas wh/mo/22918",m("wh/mo/22918")],
+      ["solo el número 22918",m("22918")],
+      ["parcial 2291",m("2291")],
+      ["con espacio delante ' 22918'",m(" 22918")],
+      ["con espacio detrás '22918 '",m("22918 ")],
+      ["con espacios a los dos lados",m("  22918  ")],
+      ["un solo dígito 2",m("2")],
+      ["ODC numérica 2723",m("2723")],
+      ["cliente con acento 'almacen exito'",m("almacen exito")],
+      ["fase sin acento 'confeccion'",m("confeccion")],
+      ["referencia sin acento 'est-confeccion'",m("est-confeccion")],
+      ["algo que NO está",!m("zzzz-no-existe")]];
+    __R.bus.wh.forEach(([n,ok])=>F("AB1 búsqueda: "+n,ok));
+    /* 2e · números: op numérico en vez de texto */
+    const oNum={id:"busq-num",op:22918,odc:2723,cant:5};
+    F("AB1 búsqueda: una OP guardada como NÚMERO igual se encuentra",matchBusq(oNum,"22918","AUD.test"));
+    F("AB1 búsqueda: y parcial sobre esa OP numérica",matchBusq(oNum,"2291","AUD.test"));
+    /* normalización */
+    F("AB1 normTxt: baja mayúsculas, quita acentos y recorta espacios",
+      normTxt("  Confección  ")==="confeccion",normTxt("  Confección  "));
+    F("AB1 normTxt: un 0 no se convierte en vacío",normTxt(0)==="0",JSON.stringify(normTxt(0)));
+    /* 2c · los campos que el buscador dice buscar */
+    const campos=BUSQ_CAMPOS.map(x=>x[0]);
+    __R.bus.campos.declarados=BUSQ_CAMPOS.map(x=>x[1]);
+    __R.bus.campos.placeholder=ayuda("busq.placeholder");
+    const faltan=campos.filter(k=>{try{return valBusq(oT,k)===undefined}catch(e){return true}});
+    F("AB1 campos: todos los campos del menú tienen valor en valBusq",faltan.length===0,faltan.join(", "));
+    /* lo que el placeholder promete vs lo que se busca */
+    const prom=normTxt(ayuda("busq.placeholder"));
+    __R.bus.campos.promesaCumple={wh:/wh/.test(prom),odc:/odc/.test(prom),cliente:/cliente/.test(prom),ref:/referencia/.test(prom)};
+    F("AB1 campos: el buscador incluye OP, ODC, referencia, color, fase, cliente y categoría",
+      ["op","odc","ref","color","fase","cliente","cat"].every(k=>campos.includes(k)),campos.join(","));
+    /* acotar a un campo */
+    BUSQ["AUD.test"]="op";
+    F("AB1 campos: acotado a OP, el cliente ya NO encuentra",!matchBusq(oT,"almacen","AUD.test"));
+    F("AB1 campos: y la OP sí",matchBusq(oT,"22918","AUD.test"));
+    Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,bak);}
+
+   /* ---------- 2a · FOCO: escribir carácter por carácter en cada buscador ---------- */
+   {const PANT=[
+     ["ORDF.q","Órdenes","ordenes",()=>{ORDF.q="";ORDF.tab="lista"}],
+     ["RUT.q","Órdenes → Rutas","ordenes",()=>{RUT.q="";ORDF.tab="rutas"}],
+     ["LIB.q","Liberación","liberacion",()=>{LIB.q="";LIB.et="tela";LIB.verLista=true}],
+     ["LIB.q4","Liberación · bloque 4","liberacion",()=>{LIB.q4="";LIB.et="tela"}],
+     ["CEN.q","Centro","centro",()=>{CEN.q="";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true}],
+     ["CTL.q","Control de piso","control",()=>{CTL.q="";CTL.area="pro";CTL.centro="corte"}],
+     ["CTLF.q","Control → Cambio de fases","control",()=>{CTL.area="fases";CTLF.q=""}],
+     ["CG.q","Carga general","produccion",()=>{CG.q="";CG.centro="corte"}],
+     ["WIPL.q","Producto en proceso","wip",()=>{WIPL.q=""}],
+     ["VO.q","Vista general de órdenes","vistaordenes",()=>{VO.q=""}],
+     ["APO.q","Asignación por orden","asignacion",()=>{APO.q=""}],
+     ["GER.q","Resumen gerencial","gerencia",()=>{GER.q=""}],
+     ["EG.q","Entregas","entregas",()=>{EG.q=""}],
+     ["COS.q","Costura","costura",()=>{COS.q=""}],
+     ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q=""}],
+     ["PMADD.q","Plan mensual → agregar","plan",()=>{PMADD.q=""}],
+     ["TAB.q","Mi centro (tablet)","tablet",()=>{TAB.q="";TAB.centro="corte"}]];
+    const inp=id=>document.querySelector('input[data-q="'+id+'"]');
+    for(const [id,pant,pag,prep] of PANT){
+      try{prep()}catch(e){}
+      page=pag;render();
+      let el=inp(id);
+      const reg={id,pantalla:pant,pagina:pag,existe:!!el,foco:null,texto:null,cursor:null,perdidas:0,detalle:""};
+      if(!el){reg.detalle="el buscador no se dibuja en esta pantalla con este estado";__R.bus.foco.push(reg);
+        __check("AB2 foco · "+pant+": el buscador está en pantalla (si falla, es que solo aparece en cierto estado)",false,"no se encontró input[data-q="+id+"] · ver el inventario");continue}
+      /* se escribe 2-2-9-1-8, una tecla a la vez, como una persona */
+      let txt="",okFoco=true,okTxt=true,okCur=true;
+      el.focus();await __p(120);   /* el navegador aplica el foco de forma asincrona tras insertar el nodo */
+      for(const ch of "22918"){
+        el=inp(id);if(!el){okFoco=false;break}
+        txt+=ch;el.value=txt;el.setSelectionRange(txt.length,txt.length);
+        el.dispatchEvent(new Event("input",{bubbles:true}));
+        await __p(260);                       /* más que el debounce fijo de 150 ms */
+        const n=inp(id);
+        if(!n){okFoco=false;reg.detalle="el input desaparece del DOM al escribir";break}
+        if(document.activeElement!==n){okFoco=false;reg.perdidas++}
+        if(n.value!==txt){okTxt=false;reg.detalle="el texto quedó en «"+n.value+"» y se escribió «"+txt+"»"}
+        if(n.selectionStart!==txt.length){okCur=false;reg.detalle=(reg.detalle?reg.detalle+" · ":"")+"el cursor quedó en "+n.selectionStart+" de "+txt.length}}
+      reg.foco=okFoco;reg.texto=okTxt;reg.cursor=okCur;
+      __R.bus.foco.push(reg);
+      __check("AB2 foco · "+pant+": conserva el foco al escribir 22918",okFoco,reg.perdidas+" pérdidas · "+reg.detalle);
+      __check("AB2 foco · "+pant+": conserva el texto completo",okTxt,reg.detalle);
+      __check("AB2 foco · "+pant+": conserva la posición del cursor",okCur,reg.detalle);
+      /* y que de verdad haya filtrado */
+      const r=refEstado(id);
+      __check("AB2 · "+pant+": refEstado alcanza el estado de este buscador (hace falta para el filtro de fases)",!!(r.o&&String(r.o[r.k]||"")==="22918"),
+        r.o?JSON.stringify(r.o[r.k]):"refEstado no conoce "+id);
+      try{prep()}catch(e){}}}
+
+   /* ---------- 2b sobre la pantalla real: buscar una WH que existe ---------- */
+   {const o=S.ordenes.find(x=>abierta(x)&&/^WH\/MO\//.test(x.op||""));
+    if(o){const numero=String(o.op).replace(/\D/g,"");
+     const casos=[o.op,String(o.op).toLowerCase(),numero,numero.slice(0,4)," "+numero,numero+" "];
+     page="ordenes";ORDF.tab="lista";
+     const res=casos.map(q=>{ORDF.q=q;render();
+       const h=document.getElementById("p-ordenes").innerHTML;return {q,encontrada:h.indexOf(esc(o.op))>=0}});
+     __R.bus.whPantalla={op:o.op,casos:res};
+     res.forEach(x=>__check("AB3 Órdenes: buscar «"+x.q+"» encuentra "+o.op,x.encontrada));
+     ORDF.q="";render()}}
+
+   /* ---------- 3 · FILTROS ---------- */
+   {const anotar=(pant,filtro,prueba,ok,det)=>{__R.bus.filtros.push({pantalla:pant,filtro,prueba,ok:!!ok,detalle:det||""});
+     __check("AB4 "+pant+" · "+filtro+": "+prueba,ok,det)};
+    /* 3a/3b · filtro de fases común, en las cuatro pantallas que lo usan */
+    const FAS=[["Órdenes","ORDF.fases","ordenes",()=>{ORDF.tab="lista";ORDF.q="";ORDF.fases=null}],
+      ["Centro","CEN.fases","centro",()=>{CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.fases=null}],
+      ["Carga general","CG.fases","produccion",()=>{CG.centro="corte";CG.q="";CG.fases=null}],
+      ["Liberación","LIB.fases","liberacion",()=>{LIB.et="tela";LIB.q="";LIB.fases=null}]];
+    for(const [pant,varName,pag,prep] of FAS){
+      prep();page=pag;render();
+      const r=refEstado(varName);
+      if(!r.o){anotar(pant,varName,"refEstado conoce el estado",false,"refEstado NO conoce "+varName);continue}
+      anotar(pant,varName,"refEstado conoce el estado",true);
+      const fases=[...new Set(S.ordenes.filter(abierta).map(x=>x.fase||"Sin fase"))];
+      const f0=fases.find(f=>S.ordenes.filter(x=>abierta(x)&&(x.fase||"Sin fase")===f).length>0);
+      if(!f0)continue;
+      /* marcar una sola fase */
+      togFaseFiltro(varName,f0,fases);render();
+      const cur=refEstado(varName).o[refEstado(varName).k];
+      anotar(pant,varName,"al marcar una fase queda guardada en el estado",!!(cur&&cur.size!=null),cur?("size="+cur.size):"null");
+      const h=document.getElementById("p-"+pag).innerHTML;
+      anotar(pant,varName,"y se ve marcada en pantalla después del redibujo",
+        (h.match(/type="checkbox" checked/g)||[]).length>0||/checked/.test(h));
+      /* limpiar: el centinela ∅ */
+      const set2=refEstado(varName).o[refEstado(varName).k];
+      refEstado(varName).o[refEstado(varName).k]=new Set(["∅"]);render();
+      anotar(pant,varName,"«ninguna fase» (centinela ∅) se respeta y no se convierte en «todas»",
+        refEstado(varName).o[refEstado(varName).k].has("∅"));
+      prep();render()}
+    /* 3c · búsqueda + filtro juntos, en Órdenes */
+    {ORDF.tab="lista";ORDF.q="";ORDF.fases=null;page="ordenes";render();
+     const o=S.ordenes.find(x=>abierta(x)&&x.fase&&x.cliente);
+     if(o){const fases=[...new Set(S.ordenes.filter(abierta).map(x=>x.fase||"Sin fase"))];
+      togFaseFiltro("ORDF.fases",o.fase,fases);ORDF.q=String(o.op).replace(/\D/g,"");render();
+      const h=document.getElementById("p-ordenes").innerHTML;
+      anotar("Órdenes","fases + buscador","los dos se aplican a la vez (no se pisan)",
+        h.indexOf(esc(o.op))>=0&&!!(ORDF.fases&&ORDF.fases.size)&&ORDF.q!=="",
+        "q="+ORDF.q+" fases="+(ORDF.fases?ORDF.fases.size:"null"));
+      ORDF.q="";ORDF.fases=null;render()}}
+    /* 3d · al cambiar de pantalla y volver, ¿se conserva o se limpia? */
+    {const casos=[["Órdenes","ORDF.q","ordenes",()=>{ORDF.tab="lista"}],
+       ["Liberación","LIB.q","liberacion",()=>{LIB.et="tela"}],
+       ["Centro","CEN.q","centro",()=>{CEN.id="corte";CEN.solo=null;CEN.tab="prog"}],
+       ["Carga general","CG.q","produccion",()=>{CG.centro="corte"}]];
+     __R.bus.persistencia=[];
+     for(const [pant,varName,pag,prep] of casos){
+       prep();const r=refEstado(varName);if(!r.o)continue;
+       r.o[r.k]="22918";page=pag;render();
+       page="panorama";render();            /* se va a otra pantalla */
+       prep();page=pag;render();            /* y vuelve */
+       const sigue=String(refEstado(varName).o[refEstado(varName).k]||"")==="22918";
+       __R.bus.persistencia.push({pantalla:pant,filtro:varName,conserva:sigue});
+       anotar(pant,varName,"al salir y volver "+(sigue?"CONSERVA":"LIMPIA")+" el buscador",true,sigue?"conserva":"limpia");
+       refEstado(varName).o[refEstado(varName).k]="";render()}}
+    /* 3e · las fases del filtro contra las fases reales de Odoo */
+    {const reales=[...new Set(S.ordenes.filter(abierta).map(x=>x.fase).filter(Boolean))];
+     const enTabla=faseMapeo().map(r=>r.fase);
+     const sinFila=reales.filter(f=>!enTabla.some(x=>normFase(x)===normFase(f)));
+     const soloPorNorm=reales.filter(f=>!enTabla.includes(f)&&enTabla.some(x=>normFase(x)===normFase(f)));
+     __R.bus.fases={reales:reales.length,enTabla:enTabla.length,sinFila,soloPorNorm};
+     anotar("Filtro de fases","catálogo","toda fase real de Odoo tiene fila en la tabla 1",sinFila.length===0,sinFila.join(" | "));
+     anotar("Filtro de fases","catálogo","y calzan exactamente, no solo tras normalizar",soloPorNorm.length===0,soloPorNorm.join(" | "));
+     const grupos=reales.filter(f=>!grupoDe(f));
+     anotar("Filtro de fases","grupos","toda fase real tiene grupo en la tabla 5",grupos.length===0,grupos.join(" | "));}
+    /* selMulti: marcar y que quede marcado */
+    {page="entregas";EG.mes=null;render();
+     const ms=[...new Set(S.ordenes.filter(abierta).map(mesEntregaDe))].filter(Boolean);
+     if(ms.length){EG.mes=new Set([ms[0]]);render();
+      const h=document.getElementById("p-entregas").innerHTML;
+      anotar("Entregas","selMulti meses","al marcar un mes queda marcado tras el redibujo",
+        /type="checkbox" checked/.test(h)||/checked/.test(h),ms[0]);
+      anotar("Entregas","selMulti meses","y el estado lo guarda como Set",!!(EG.mes&&EG.mes.has&&EG.mes.has(ms[0])));
+      EG.mes=null;render()}}}
+
+   /* ---------- 3f · DOS buscadores en la misma pantalla se cancelan entre sí ---------- */
+   {const bakOrds=S.ordenes.slice();
+    /* el debounce de buscarQ solo se arma con MÁS de 300 órdenes: hay que estar en esa condición */
+    while(S.ordenes.length<=300){const o=JSON.parse(JSON.stringify(bakOrds[S.ordenes.length%bakOrds.length]||{}));
+      o.id="clon-busq-"+S.ordenes.length;o.op="WH/MO/"+(90000+S.ordenes.length);S.ordenes.push(o)}
+    PLAN=null;PLAN_ALL=null;
+    LIB.et="tela";LIB.q="";LIB.q4="";LIB.verLista=true;LIB.ym=null;page="liberacion";render();
+    const a=document.querySelector('input[data-q="LIB.q"]'),b=document.querySelector('input[data-q="LIB.q4"]');
+    if(a&&b){a.value="229";a.dispatchEvent(new Event("input",{bubbles:true}));
+     await __p(50);                                  /* menos que el debounce */
+     b.value="777";b.dispatchEvent(new Event("input",{bubbles:true}));
+     await __p(500);
+     __R.bus.colision={LIBq:LIB.q,LIBq4:LIB.q4};
+     __check("AB4 Liberación · dos buscadores: lo escrito en el primero NO se pierde al pasar al segundo",
+       LIB.q==="229"&&LIB.q4==="777","LIB.q="+JSON.stringify(LIB.q)+" LIB.q4="+JSON.stringify(LIB.q4));}
+    LIB.q="";LIB.q4="";S.ordenes=bakOrds;PLAN=null;PLAN_ALL=null;render();}
+   /* ---------- 3g · la búsqueda solo ve la BASE ya filtrada de la pantalla ---------- */
+   {const src=String(baseLiberacion);
+    __check("AB4 Liberación · base: el buscador solo ve las órdenes del mes del Proyecto seleccionado",
+      /mesEnFiltro/.test(src),"baseLiberacion filtra por mes ANTES de buscar");
+    __R.bus.baseFiltrada=/mesEnFiltro/.test(src);}
+   /* ---------- 4 · el debounce y el redibujo: la causa de fondo ---------- */
+   {const src=String(buscarQ);
+    __R.bus.buscarQ=src;
+    __check("AB5 causa: buscarQ llama a render() COMPLETO en cada tecla",/render\(\)/.test(src));
+    __check("AB5 causa: y vuelve a buscar el input para devolverle el foco",/focus\(\)/.test(src)&&/setSelectionRange/.test(src));
+    const fijo=src.match(/>\s*300\)\s*\?\s*(\d+)\s*:\s*0/);
+    __R.bus.debounce={fijoMs:fijo?+fijo[1]:null,umbralOrdenes:/300/.test(src)?300:null,
+      enConfiguracion:/prm\(/.test(src)};
+    __check("AB5 causa: el debounce es un número FIJO en el código, no un parámetro",
+      !!fijo&&!/prm\(/.test(src),"espera="+(fijo?fijo[1]:"?")+"ms, umbral 300 órdenes, prm()="+/prm\(/.test(src));
+    __check("AB5 causa: con 300 órdenes o menos NO hay espera: se redibuja en cada tecla",
+      /:0/.test(src.replace(/\s/g,"")),"S.ordenes="+S.ordenes.length);
+    __check("AB5 causa: el temporizador es UNO solo para todos los buscadores",
+      /_qTimer/.test(src)&&(document.documentElement.innerHTML.match(/_qTimer/g)||[]).length>=2);
+    /* refEstado no conoce todos los estados: un filtro de una pantalla no listada no se guardaría */
+    const src2=document.documentElement.innerHTML;
+    const conocidos=[...new Set([...String(refEstado).matchAll(/M\.([A-Z]+)=/g)].map(x=>x[1]))];
+    const usados=[...new Set([...src2.matchAll(/busqHTML\('([A-Z]+)\./g)].map(x=>x[1]))];
+    const noConoce=usados.filter(x=>!conocidos.includes(x));
+    __R.bus.refEstado={conoce:conocidos,usan:usados,noConoce};
+    __check("AB5 causa: refEstado conoce el estado de TODA pantalla con buscador",noConoce.length===0,noConoce.join(", "));}
+
+   window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";ORDF.q="";ORDF.tab="lista";render();
+   __check("AB sin errores de ejecución",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
