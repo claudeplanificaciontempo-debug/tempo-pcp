@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 07:36';
+const APP_BUILD='2026-09-17 07:39';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10650,18 +10650,42 @@ function nuevaOrden(id,op,d,k){const propia=!d.telas||d.telas.some(t=>!t.ext);co
   const o={id,op,cliente:d.cliente,ref:d.ref,cat:k.id,color:d.color,colorOdoo:d.colorOdoo,cant:d.cant,fecha:d.fecha||dsum(hoy(),21),prio:3,fase:d.fase,depto:d.depto,odc:d.odc,proyecto:d.proyecto,tecnica:d.tecnica||null,
     telas:d.telas||(op?telasDe(k).map(t=>({tela:t.tela,kg:+(t.kg*d.cant).toFixed(3),rol:t.rol||'base',color:null})):[]),ruta,insumos:d.insumos||[],estado:d.estado||'plan',precio:d.precio,prodTot:d.prodTot,samProv:!!Object.keys(spc).length&&S.operaciones.some(x=>x.sub==='Provisional')};
   if(o.estado==='cerrada'&&!o.terminadaF)o.terminadaF=null;return o}
-function aplicarOdoo(){if(!ODOO)return;const p=ODOO;
+/* Antes esta carga escribía encima sin consultar la tabla 14: pisaba la fase que mueven los
+   supervisores, las telas y hasta metía pasos en una ruta editada a mano. Ahora respeta lo mismo que
+   la Recarga Parte 2 y lo que no calza va a la MISMA bandeja de «decisiones que ya no calzan». */
+function aplicarOdoo(){if(!ODOO)return;const p=ODOO;const noCalzan=[];
   p.prevQuitadas.forEach(id=>{S.ordenes=S.ordenes.filter(x=>x.id!==id)});
-  p.act.forEach(a=>{const o=a.o,d=a.datos;if(d.fase)registrarFase(o,d.fase,'archivo');if(d.cant)o.cant=d.cant;if(d.fecha)o.fecha=d.fecha;if(d.color&&(C(d.color)||{}).cod||!(C(o.color)||{}).cod)o.color=d.color;o.cat=d.cat;o.colorOdoo=d.colorOdoo;o.estado=d.estado;
-    if(d.telas&&d.telas.length&&!o.telasManual)o.telas=d.telas;if(d.precio)o.precio=d.precio;if(d.prodTot!=null)o.prodTot=d.prodTot;if(d.cliente)o.cliente=d.cliente;
-    if(d.tecnica){o.tecnica=d.tecnica;if(!(o.ruta||[]).some(x=>x.centro==='estampado')){const idx=RUTA_ORDEN.indexOf('estampado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'estampado',t:tecnicaT({tecnica:d.tecnica})||1})}}
-    if(d.punt>0){const b=(o.ruta||[]).find(x=>x.centro==='bordado');if(b)b.t=d.punt;else{const idx=RUTA_ORDEN.indexOf('bordado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'bordado',t:d.punt})}}
-    if(d.lavado&&!(o.ruta||[]).some(x=>x.centro==='lavado')){const idx=RUTA_ORDEN.indexOf('lavado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'lavado',t:120})}
-    if(d.hayBoton&&!(o.ruta||[]).some(x=>x.centro==='botones')){const idx=RUTA_ORDEN.indexOf('botones');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'botones',t:(samPorCentro(K(o.cat))||{}).botones||1})}
-    if(d.hayCordon&&!(o.ruta||[]).some(x=>x.centro==='plancha')){const idx=RUTA_ORDEN.indexOf('plancha');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'plancha',t:(samPorCentro(K(o.cat))||{}).plancha||1})}
+  p.act.forEach(a=>{const o=a.o,d=a.datos;
+    /* la FASE la mueven los supervisores: si el archivo trae otra, se reporta y no se pisa */
+    if(d.fase){if(conserva('fase')){if(normFase(d.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+(o.fase||'(vacía)'),motivo:'el archivo trae '+d.fase+'; se conserva la del sistema',tipo:'fase'})}
+      else registrarFase(o,d.fase,'archivo')}
+    if(d.cant)o.cant=d.cant;
+    /* la fecha de entrega cambiada aquí no se pisa */
+    if(d.fecha){if(conserva('fecha')&&o.fechaManual){if(d.fecha!==o.fecha)noCalzan.push({op:o.op,decision:'fecha de entrega cambiada aquí: '+o.fecha+' ('+((o.fechaManual||{}).u||'')+')',motivo:'el archivo trae '+d.fecha+'; se conserva la del sistema',tipo:'fecha'})}
+      else o.fecha=d.fecha}
+    if(d.color&&(C(d.color)||{}).cod||!(C(o.color)||{}).cod)o.color=d.color;o.cat=d.cat;o.colorOdoo=d.colorOdoo;o.estado=d.estado;
+    /* las telas: si hay decisiones de tintura/lavado confirmadas aquí, se reportan y no se pisan */
+    if(d.telas&&d.telas.length&&!o.telasManual){
+      const conDec=conserva('faltaConf')&&(o.telas||[]).some(t=>t.faltaConf);
+      if(conDec)noCalzan.push({op:o.op,decision:'decisiones de tela confirmadas aquí (tintura/lavado)',motivo:'el archivo trae otras telas; se conservan las del sistema',tipo:'tela'});
+      else o.telas=d.telas}
+    if(d.precio)o.precio=d.precio;if(d.prodTot!=null)o.prodTot=d.prodTot;if(d.cliente)o.cliente=d.cliente;
+    /* una ruta editada a mano (o confirmada) no se toca: los pasos que el archivo querría agregar
+       se reportan como que ya no calzan, en vez de aparecer solos en la ruta */
+    const rutaFija=(conserva('rutaEditada')&&(o.rutaEditada||[]).length)||(conserva('rutaConf')&&rutaConfirmada(o));
+    const pasoNuevo=(cen,por)=>{if(rutaFija){noCalzan.push({op:o.op,decision:'ruta definida aquí'+((o.rutaEditada||[]).length?' (editada a mano)':' (confirmada)'),motivo:'el archivo pediría agregar '+nCen(cen)+' por '+por+'; no se toca la ruta',tipo:'ruta'});return false}return true};
+    if(d.tecnica){o.tecnica=d.tecnica;if(!(o.ruta||[]).some(x=>x.centro==='estampado')&&pasoNuevo('estampado','la técnica')){const idx=RUTA_ORDEN.indexOf('estampado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'estampado',t:tecnicaT({tecnica:d.tecnica})||1})}}
+    if(d.punt>0){const b=(o.ruta||[]).find(x=>x.centro==='bordado');if(b)b.t=d.punt;else if(pasoNuevo('bordado','las puntadas')){const idx=RUTA_ORDEN.indexOf('bordado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'bordado',t:d.punt})}}
+    if(d.lavado&&!(o.ruta||[]).some(x=>x.centro==='lavado')&&pasoNuevo('lavado','el servicio de lavado')){const idx=RUTA_ORDEN.indexOf('lavado');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'lavado',t:120})}
+    if(d.hayBoton&&!(o.ruta||[]).some(x=>x.centro==='botones')&&pasoNuevo('botones','los botones de la receta')){const idx=RUTA_ORDEN.indexOf('botones');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'botones',t:(samPorCentro(K(o.cat))||{}).botones||1})}
+    if(d.hayCordon&&!(o.ruta||[]).some(x=>x.centro==='plancha')&&pasoNuevo('plancha','el cordón de la receta')){const idx=RUTA_ORDEN.indexOf('plancha');let pos=o.ruta.length;for(let i=0;i<o.ruta.length;i++){if(RUTA_ORDEN.indexOf(o.ruta[i].centro)>idx){pos=i;break}}o.ruta.splice(pos,0,{centro:'plancha',t:(samPorCentro(K(o.cat))||{}).plancha||1})}
     if(d.insumos&&d.insumos.length){o.insumos=o.insumos||[];d.insumos.forEach(ni=>{if(!o.insumos.some(x=>normTxt(x.n)===normTxt(ni.n)))o.insumos.push(ni)})}});
   p.nuevas.forEach(o=>{if(!S.ordenes.some(x=>x.id===o.id))S.ordenes.push(o)});
-  S.cargas.push({id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:p.archivo||'',nuevas:p.nuevas.length,act:p.act.length,cerradas:p.cerradas,prev:p.prevNuevas,prevAWh:p.prevAWh,
+  /* la misma bandeja de «decisiones que ya no calzan» de la Recarga Parte 2 */
+  if(noCalzan.length){S.params.tareaCarga=S.params.tareaCarga||{};const rc=S.params.tareaCarga.recarga=S.params.tareaCarga.recarga||{};
+    rc.noCalzan=(rc.noCalzan||[]).concat(noCalzan).slice(-500);rc.origen='Actualizar desde Odoo · '+(p.archivo||'');
+    bitacora('Actualizar desde Odoo: '+noCalzan.length+' decisiones del sistema que el archivo contradice; se conservaron las del sistema ('+quienFirma()+')')}
+  S.cargas.push({id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:p.archivo||'',nuevas:p.nuevas.length,act:p.act.length,cerradas:p.cerradas,prev:p.prevNuevas,prevAWh:p.prevAWh,noCalzan:noCalzan.length,
     alertas:p.alertas.slice(0,60),coloresNuevos:[...p.coloresNuevos],catsNuevas:[...p.catsNuevas]});
   if(S.cargas.length>60)S.cargas=S.cargas.slice(-60);
   ODOO=null;save();cerrar();render();

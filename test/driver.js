@@ -5884,6 +5884,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      if(typeof fotoOrd!=='undefined'){S.ordenes=fotoOrd;JSON.parse(fotoJSON).forEach(([id,fase,cant,estado])=>{
        const o=S.ordenes.find(x=>x.id===id);if(o){o.fase=fase;o.cant=cant;o.estado=estado}})}
      PLAN=null;PLAN_ALL=null}}
+   /* ===== 3 · la tabla 14 manda también en «Actualizar desde Odoo» ===== */
+   {const src=String(aplicarOdoo);
+    __check("P3: aplicarOdoo consulta la tabla 14",/conserva\(/.test(src),"");
+    __check("P3: y no toca una ruta editada a mano ni confirmada",/rutaEditada/.test(src)&&/rutaConfirmada\(/.test(src));
+    /* caso construido: una orden con fase movida aquí, telas decididas y ruta editada */
+    const oT=S.ordenes.find(o=>abierta(o)&&o.op&&(o.telas||[]).length);
+    if(oT&&typeof planOdoo==="function"){
+     const faseMia="8Embodegado";oT.fase=faseMia;
+     oT.rutaEditada=[{centro:"corte",t:1},{centro:"empaque",t:1}];oT.ruta=oT.rutaEditada.slice();
+     (oT.telas||[]).forEach(t=>{t.faltaConf={v:"nada",u:"prueba",ts:new Date().toISOString()}});
+     const telasAntes=JSON.stringify(oT.telas);const rutaAntes=oT.ruta.length;
+     const rc0=(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length;
+     /* el archivo trae OTRA fase, otras telas y técnica (que pediría un paso de estampado) */
+     const d={fase:"2Planificacion",cant:oT.cant,fecha:oT.fecha,color:oT.color,cat:oT.cat,colorOdoo:oT.colorOdoo,estado:"plan",
+       telas:[{tela:(S.telas[0]||{}).id,kg:10}],tecnica:(S.tecnicas[0]||{}).id,punt:0,lavado:true,hayBoton:true,hayCordon:false,insumos:[]};
+     ODOO={nuevas:[],act:[{o:oT,datos:d}],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],alertas:[],
+       coloresNuevos:new Set(),catsNuevas:new Set(),archivo:"ODOO-T14.xlsx"};
+     const al=window.alert;window.alert=()=>{};aplicarOdoo();window.alert=al;
+     __check("P3: la fase movida aquí NO se pisa",normFase(oT.fase)===normFase(faseMia),oT.fase);
+     __check("P3: las telas con decisión confirmada tampoco",JSON.stringify(oT.telas)===telasAntes);
+     __check("P3: no se agregan pasos a una ruta editada a mano",oT.ruta.length===rutaAntes,oT.ruta.map(p=>p.centro).join("→"));
+     const rc=(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]);
+     __check("P3: todo eso va a la bandeja «decisiones que ya no calzan»",rc.length>rc0,(rc.length-rc0)+" entradas nuevas");
+     __check("P3: la bandeja dice qué tipo de contradicción es",
+       rc.slice(rc0).some(x=>x.tipo==="fase")&&rc.slice(rc0).some(x=>x.tipo==="ruta"),
+       JSON.stringify(rc.slice(rc0).map(x=>x.tipo)));
+     /* si la fila de la tabla 14 se desmarca, el archivo SÍ manda (es lo que dice la tabla) */
+     const i=camposConservados().findIndex(x=>x.campo==="fase");const bak=camposConservados()[i].conservar;
+     camposConservados()[i].conservar=false;
+     ODOO={nuevas:[],act:[{o:oT,datos:{fase:"2Planificacion",cant:oT.cant,cat:oT.cat,estado:"plan"}}],cerradas:0,prevNuevas:0,prevAWh:0,prevQuitadas:[],alertas:[],coloresNuevos:new Set(),catsNuevas:new Set(),archivo:"x"};
+     window.alert=()=>{};aplicarOdoo();window.alert=al;
+     __check("P3: con la fila desmarcada, el archivo sí actualiza la fase (la tabla manda)",normFase(oT.fase)===normFase("2Planificacion"),oT.fase);
+     camposConservados()[i].conservar=bak;ODOO=null;PLAN=null;PLAN_ALL=null}}
    __check("P2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
