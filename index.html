@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 21:24';
+const APP_BUILD='2026-09-16 21:32';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3692,6 +3692,17 @@ function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const 
    <td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'—')}</td>
    ${et==='tela'?`<td>${chipsFaltaTela(o)}</td>`:''}
    <td style="font-size:var(--fs-xs)${et==='corte'?';min-width:340px':''}">${et==='corte'?celdaLibProd(o,lista,falta):frena+' '+rutaCtrlLib(o)}</td></tr>`}
+/* ---------- la lista del bloque 1 de Liberación, a su propia función (16-sep-2026, punto 2a) ----------
+   Es EXACTAMENTE la plantilla que vivía dentro de bloqueLibB1: se movió, no se cambió. Recibe en `ctx`
+   lo que necesita (detalle, famSel, cab, nCols). Existe para poder repintar SOLO la lista al escribir
+   en el buscador (redibujo parcial, punto 2b). */
+function listaLibB1HTML(et,ctx){
+  const detalle=ctx.detalle,famSel=ctx.famSel,cab=ctx.cab,nCols=ctx.nCols;
+  return detalle?`<div class="scroll" id="lib-lista" style="max-height:440px;margin-top:12px" onscroll="recordarScroll(this)">
+     <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">${famSel?'Detalle de <b>'+esc(famSel)+'</b>':'Todas las pendientes'} · ${detalle.length} ${detalle.length===1?'orden':'órdenes'}${detalle.length>400?' (se muestran las primeras 400)':''}</p>
+     <table>${cab}<tbody>${filasGRP('lib',detalle.slice(0,400),o=>filaLibB1(o,et),nCols)||`<tr><td colspan="${nCols}" class="mut">Nada pendiente con estos filtros.</td></tr>`}</tbody></table></div>`
+    :'<p class="mut" style="margin-top:10px;font-size:var(--fs-s)">Toca una familia para ver sus órdenes y elegir cuáles liberar, o abre «Ver todas las pendientes».</p>'
+}
 function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';const puedeF=puede('programa')||puede('liberar');
   const q=normTxt(LIB.q);const baseP=pendLiberacion(et,ym);
   const pend=baseP.filter(o=>okFiltrosB1(o)&&matchBusq(o,q,'LIB.q'));
@@ -3736,10 +3747,7 @@ function bloqueLibB1(et,ym){const nombre=et==='tela'?'la planta':'producción';c
    <div class="kpis tarj-row" style="margin-top:8px">
     ${fams.map(([f,v])=>`<div class="kpi tarj clic ${famSel===f?'abierta':''}" onclick="LIB.fam2=${famSel===f?'null':"'"+jsq(f)+"'"};render()"><div class="v">${num(v.pz)}</div><div class="k">${esc(f)} <span class="mut" style="font-size:var(--fs-xs)">${v.n} ${v.n===1?'orden':'órdenes'} ${famSel===f?'▾':'▸'}</span></div></div>`).join('')||'<span class="mut">Nada pendiente con estos filtros.</span>'}
    </div>
-   ${detalle?`<div class="scroll" id="lib-lista" style="max-height:440px;margin-top:12px" onscroll="recordarScroll(this)">
-     <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">${famSel?'Detalle de <b>'+esc(famSel)+'</b>':'Todas las pendientes'} · ${detalle.length} ${detalle.length===1?'orden':'órdenes'}${detalle.length>400?' (se muestran las primeras 400)':''}</p>
-     <table>${cab}<tbody>${filasGRP('lib',detalle.slice(0,400),o=>filaLibB1(o,et),nCols)||`<tr><td colspan="${nCols}" class="mut">Nada pendiente con estos filtros.</td></tr>`}</tbody></table></div>`
-    :'<p class="mut" style="margin-top:10px;font-size:var(--fs-s)">Toca una familia para ver sus órdenes y elegir cuáles liberar, o abre «Ver todas las pendientes».</p>'}
+   ${listaLibB1HTML(et,{detalle,famSel,cab,nCols})}
    ${avisoFueraDeBaseHTML('LIB.q',pend,'el mes del Proyecto y los filtros de esta pantalla')}
   </div></div>`}
 function vLiberacion(el){
