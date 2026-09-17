@@ -814,6 +814,13 @@ NO se aplican y las existentes quedan `o.claveRepetida={ts,archivo,txt}` (bandej
 Excel no es criterio de emparejamiento. `aplicarMigracionClaves` solo con `config` y con aviso de revisar duplicados en
 producción. Ver `CARGAS_CAMINO_UNICO.md`.
 
+**Restaurar y registro de cargas (17-sep-2026).** `restaurarDesde(nuevo,nombre)` es el único camino de Restaurar (`importJSON`
+solo lee el archivo): solo `config`, palabra escrita `RESTAURAR`, **descarga `respaldo_automatico_antes_de_restaurar_<ts>.json`
+ANTES de reemplazar** (`descargarJSON`), une la bitácora, registra en bitácora y en `S.params.restauraciones`. **Registro
+unificado**: `registrarCarga(tipo,archivo,resumen)` es la única escritura a `S.cargas` (tipos `tareas` | `ot` | `fotos`,
+`TIPOS_CARGA`, `resumenCargaTxt`), nunca se recorta; `registroCargasHTML()` en Configuración → Órdenes y materiales; Hoy y
+Órdenes muestran «Última(s) carga(s)» desde el mismo registro. Ver `CARGAS_7_Y_8.md`.
+
 **Nivelación Paso 2 · Etapa A (17-sep-2026):** boceto navegable con datos fijos (`NIVD`, `NIVV`, `vNivelacion`,
 página `nivelacion`, desde Configuración → Nivelación → «Ver el boceto →»); NO conectado al motor. Al aprobarse,
 el boceto pasa a prefijo `nivUI*` y se agrega una prueba de funciones duplicadas en todo `index.html`.

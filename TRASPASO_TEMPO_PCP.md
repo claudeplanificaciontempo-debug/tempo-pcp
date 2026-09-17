@@ -204,6 +204,12 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.56 Restaurar con respaldo automático y registro unificado de cargas (17-sep)
+- Restaurar: solo administrador, palabra RESTAURAR, respaldo automático descargado antes de reemplazar, bitácora unida,
+  `S.params.restauraciones`.
+- `registrarCarga()` única para tareas, OT y fotos → `S.cargas` (nunca se recorta), visible en Configuración → Órdenes y
+  materiales → Registro de cargas. Ver `CARGAS_7_Y_8.md`.
+
 ### 2.55 Cargas: UN solo camino, «Actualizar datos» (17-sep)
 - Una pantalla con tres pasos (tareas de Odoo → `planTarea`/`aplicarTarea`; órdenes de trabajo; fotos). Nada se escribe en
   S durante la vista previa; nada se guarda antes de confirmar. Vista previa: nuevas, actualizadas, cerradas, fuera de

@@ -706,7 +706,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 11:56';
+const APP_BUILD='2026-09-17 11:59';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2984,9 +2984,9 @@ function vPanorama(el){
    <div class="panel"><h3>Mes en curso <span class="note">${new Date(y,m-1,15).toLocaleDateString('es-EC',{month:'long',year:'numeric'})}</span><span class="spacer"></span><a class="mut" style="font-size:var(--fs-xs);cursor:pointer" onclick="ir('config')">planificar días</a></h3><div class="body">
     <table><thead><tr><th>Área</th><th class="num">Días (restan)</th><th class="num">Carga</th><th class="num">Capacidad</th><th style="width:130px">Uso</th><th></th></tr></thead><tbody>
     ${mes.map(x=>`<tr><td>${AREAS[x.a]}</td><td class="num">${fmtDiasMes(x.a,ym)} <span class="mut">(${x.restan})</span></td><td class="num">${num(x.carga)} ${u[x.a]}</td><td class="num">${num(x.cap)} ${u[x.a]}</td><td>${barra(x.carga,x.cap)}</td><td>${x.faltan?`<span class="tag t-alerta">faltan ${x.faltan} días</span>`:x.carga?'<span class="tag t-ok">alcanza</span>':'<span class="mut">·</span>'}</td></tr>`).join('')}</tbody></table></div></div>
-   <div class="panel"><h3>Última carga de Odoo</h3><div class="body" style="font-size:var(--fs-s)">
-    ${ultima?`<div><b>${new Date(ultima.ts).toLocaleString('es-EC')}</b> · ${esc(ultima.usuario||'')}</div><div class="mut">${ultima.tipo==='ot'?'órdenes de trabajo: '+ultima.act+' órdenes con centros cerrados':ultima.nuevas+' nuevas, '+ultima.act+' actualizadas, '+ultima.cerradas+' cerradas'}</div>
-      ${(ultima.alertas||[]).length?`<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--alerta)">${ultima.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${ultima.alertas.slice(0,15).map(esc).join('<br>')}</div></details>`:''}`:'<span class="mut">Todavía no se ha cargado desde Odoo.</span>'}
+   <div class="panel"><h3>Última carga <span class="note">registro completo en Configuración → Órdenes y materiales</span></h3><div class="body" style="font-size:var(--fs-s)">
+    ${ultima?`<div><b>${new Date(ultima.ts).toLocaleString('es-EC')}</b> · ${esc(TIPOS_CARGA[ultima.tipo]||'carga')} · ${esc(ultima.usuario||'')}</div><div class="mut">${esc(ultima.archivo||'')} · ${esc(resumenCargaTxt(ultima))}</div>
+      `:'<span class="mut">Todavía no hay cargas.</span>'}
     ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mActualizarDatos(1)">Actualizar datos</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button></div>`:''}</div></div>
   </div>`;
 }
@@ -7981,9 +7981,9 @@ function vOrdenes(el){
   ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
     <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div></div>
-  ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas desde Odoo <span class="note">qué cambió en cada actualización</span></h3><div class="body">
-    ${S.cargas.slice().reverse().slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${c.tipo==='ot'?`órdenes de trabajo: ${c.act} órdenes con centros cerrados${(c.samReal||[]).length?', '+c.samReal.length+' tiempos reales medidos':''}`:`${c.nuevas} nuevas, ${c.act} actualizadas, ${c.cerradas} cerradas`}${(c.coloresNuevos||[]).length?', '+c.coloresNuevos.length+' colores nuevos':''}${(c.catsNuevas||[]).length?', '+c.catsNuevas.length+' categorías nuevas':''}</div>
-      ${(c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--alerta);font-size:var(--fs-s)">${c.alertas.length} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${c.alertas.map(esc).join('<br>')}</div></details>`:'<span class="mut" style="font-size:var(--fs-s)">sin alertas</span>'}</div>`).join('')}
+  ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas <span class="note">registro completo en Configuración → Órdenes y materiales</span></h3><div class="body">
+    ${S.cargas.slice().sort((x,y)=>x.ts<y.ts?1:-1).slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> · ${esc(TIPOS_CARGA[c.tipo]||'Actualizar desde Odoo (retirado)')} <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${esc(resumenCargaTxt(c))}</div>
+      ${((c.resumen||{}).alertas||c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--alerta);font-size:var(--fs-s)">${((c.resumen||{}).alertas||c.alertas).length} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${((c.resumen||{}).alertas||c.alertas).map(esc).join('<br>')}</div></details>`:''}</div>`).join('')}
   </div></div>`:''}`;
 }
 function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]||{};const pierde=[o.foto?'su foto':'',o.ot?'sus órdenes de trabajo':'',(a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada?'su avance de piso':'',(o.fases||[]).length>1?'su historial de fases':''].filter(Boolean);
@@ -9368,6 +9368,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>Cuatro filas no se pueden desmarcar</b> (marcadas «siempre»): el avance de piso (unidades, tramos, paros, tallas y cierres), las firmas de liberación, el historial de fases con sus motivos y la programación por centro. Todo eso lo registran las personas y ningún archivo lo devuelve. La fase actual sí es decisión de esta tabla. Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
   ${alcanceConfHTML()}
   ${clavesConfHTML()}
+  ${registroCargasHTML()}
   ${motivosPanelHTML()}
   ${tallasPanelHTML()}
   ${ayudasPanelHTML()}
@@ -9662,7 +9663,7 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
     o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
     o.otTs=ts});
   S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
-  S.cargas.push({id:uid(),ts,usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',archivo:p.archivo,tipo:'ot',nuevas:0,act:Object.keys(p.porOrden).length,cerradas:0,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
+  registrarCarga('ot',p.archivo,{ordenes:Object.keys(p.porOrden).length,cierres,noEncontradas:Object.keys(p.ordenesNoEncontradas).length,contradicciones:p.contradicciones.length,filas:p.filas,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
   /* el registro de cargas NO se recorta (decisión 17-sep-2026): antes se quedaba con las últimas 60 */
   OT=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
   alert('Órdenes de trabajo aplicadas: '+Object.keys(p.porOrden).length+' órdenes, '+cierres+' centros cerrados. '+p.contradicciones.length+' contradicciones fase vs OT (ver Órdenes → Reporte OT).')}
@@ -9845,6 +9846,7 @@ async function aplicarFotos(){if(!FOTOS)return;const p=FOTOS;const res=document.
   let i=0;const worker=async()=>{while(i<lista.length){const f=lista[i++];await una(f)}};await Promise.all([1,2,3,4,5].map(worker));
   const total=Object.values(ix).reduce((a,e)=>a+(e.b||0),0);
   S.params.fotosCarga={archivo:p.archivo,fecha:new Date().toISOString(),filas:p.filas,fotos:lista.length,subidas,reemplazadas,convertidas,errores:errores.slice(0,50),nErrores:errores.length,conOrden:p.conOrden,sinOrden:p.sinOrden.length,sinOrdenLista:p.sinOrden.slice(0,500),bytes,totalBytes:total,totalFotos:Object.keys(ix).length};
+  registrarCarga('fotos',p.archivo,{subidas,reemplazadas,convertidas,sinOrden:p.sinOrden.length,errores:errores.length,fotos:lista.length,bytes});
   const con=S.ordenes.filter(o=>fotoDe(o)).length;FOTOS=null;await save();
   res.innerHTML=`<table><tbody><tr><td><b>${subidas}</b></td><td>fotos subidas (${fmtBytes(bytes)}); ${reemplazadas} reemplazaban una existente; ${convertidas} convertidas a JPG ${FOTO_MAX_PX} px</td></tr><tr><td><b>${con}</b></td><td>órdenes del sistema con foto · <b>${S.ordenes.length-con}</b> sin foto</td></tr><tr><td><b>${Object.keys(ix).length}</b></td><td>fotos en el almacenamiento · ${fmtBytes(total)} en total</td></tr>${errores.length?`<tr><td><b>${errores.length}</b></td><td style="color:var(--alerta)">errores: ${esc(errores.slice(0,10).join('; '))}</td></tr>`:''}</tbody></table>`;
   btn.textContent='Listo';btn.onclick=()=>{cerrar();render()};btn.disabled=false;render()}
@@ -10298,6 +10300,23 @@ function pasosPendientes(rutaCompleta,fila){if(!fila)return rutaCompleta.slice()
 
 /* ---------- lectura del archivo ---------- */
 let TAREA=null;
+/* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
+   Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
+   archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración → Órdenes y materiales → Registro de cargas. */
+const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos'};
+function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
+  S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
+function resumenCargaTxt(c){const r=c.resumen||{};
+  if(c.tipo==='tareas')return [r.actualizadas+' actualizadas',r.nuevas+' nuevas',r.noVinieron+' no vinieron',r.fueraAlcance+' fuera de alcance',r.noCalzan+' no calzan',r.claveIncompleta?r.claveIncompleta+' clave incompleta':'',r.claveRepetida?r.claveRepetida+' clave repetida':'',r.fechasIlegibles?r.fechasIlegibles+' fechas ilegibles':'',r.sinComponentes?'SIN componentes':''].filter(Boolean).join(' · ');
+  if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
+  if(c.tipo==='fotos')return [r.subidas+' subidas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' sin orden':'',r.errores?r.errores+' errores':''].filter(Boolean).join(' · ');
+  /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?c.nuevas+' nuevas':'',c.act!=null?c.act+' actualizadas':'',c.cerradas?c.cerradas+' cerradas':''].filter(Boolean).join(' · ')}
+function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});
+  return `<div class="panel"><h3>Registro de cargas <span class="note">todas las cargas de tareas de Odoo, órdenes de trabajo y fotos · ${L.length} · nunca se recorta</span></h3><div class="body" style="font-size:var(--fs-s)">
+   <div class="row" style="margin-bottom:8px">${['tareas','ot','fotos'].map(t=>`<div><label>${TIPOS_CARGA[t]}</label>${ult[t]?`<b>${new Date(ult[t].ts).toLocaleString('es-EC')}</b> · ${esc(ult[t].usuario||'')}<div class="mut" style="font-size:var(--fs-xs)">${esc(ult[t].archivo||'')} · ${esc(resumenCargaTxt(ult[t]))}</div>`:'<span class="mut">sin cargas todavía</span>'}</div>`).join('')}</div>
+   ${L.length?`<div class="scroll" style="max-height:320px"><table><thead><tr><th>Cuándo</th><th>Tipo</th><th>Quién</th><th>Archivo</th><th>Qué pasó</th></tr></thead><tbody>${L.slice(0,300).map(c=>`<tr><td style="white-space:nowrap">${new Date(c.ts).toLocaleString('es-EC')}</td><td>${esc(TIPOS_CARGA[c.tipo]||(c.tipo==='ot'?'Órdenes de trabajo':'Actualizar desde Odoo (retirado)'))}</td><td>${esc(c.usuario||'')}</td><td>${esc(c.archivo||'')}</td><td class="mut">${esc(resumenCargaTxt(c))}</td></tr>`).join('')}</tbody></table></div>${L.length>300?'<p class="mut" style="font-size:var(--fs-xs)">Se muestran las últimas 300; el registro completo está en la tabla cargas.</p>':''}`:''}
+  </div></div>`}
+
 /* ---------- ACTUALIZAR DATOS: el ÚNICO camino de carga (17-sep-2026) ----------
    Tres pasos en una pantalla: 1) Tareas de Odoo (planTarea/aplicarTarea: clave única, regla de alcance, tabla 14),
    2) Órdenes de trabajo, 3) Fotos. Nada se escribe en S durante la vista previa; nada se guarda antes de confirmar.
@@ -10641,6 +10660,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     nivel2NoRec:p.nivel2NoRec,nivel3NoRec:p.nivel3NoRec,telaSinCatalogo:p.telaSinCatalogo,telaEnMetros:p.telaEnMetros,coloresNuevos:p.coloresNuevos,tecnicasNoEncontradas:p.tecnicasNoEncontradas,porFase:p.porFase,porEstadoOP:p.porEstadoOP,catSinMapeo:p.catSinMapeo,telaSinClasificar:p.telaSinClasificar,contradicciones:p.contradicciones,
     devoluciones:p.devoluciones,bloqueadas:p.bloqueadas,vencidas:p.vencidas,historia:p.historia,sinLanzar:p.sinLanzar,precioRaro:p.precioRaro||[],
     recarga:{actualizadas,nuevas,eliminadas:eliminadas.length,eliminadasConDecision:elimConDec.map(o=>o.op).slice(0,200),avanceEliminado:avanceEliminado.length,conservado:cons,noCalzan:noCalzan.slice(0,500)}};
+  registrarCarga('tareas',p.archivo,{actualizadas,nuevas,noVinieron:eliminadas.length,fueraAlcance:((p.excluidas||{}).alcance||[]).length,noCalzan:noCalzan.length,claveIncompleta:(p.claveIncompleta||[]).length,claveRepetida:(p.duplicados||[]).length,claveRepetidaNoAplicadas:repNoAplicadas,fechasIlegibles:(p.fechasIlegibles||[]).length,sinComponentes:!!p.sinComponentes,cargadas:ordenesPlan.length,conservado:cons});
   bitacora('Actualizar datos · tareas de Odoo '+p.archivo+(p.sinComponentes?' (sin componentes)':'')+': '+actualizadas+' actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(repNoAplicadas?', '+repNoAplicadas+' filas con clave repetida NO aplicadas (ya existen: revisar)':'')+'; conservado '+JSON.stringify(cons)+'; '+noCalzan.length+' decisiones que ya no calzan');
   TAREA=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();alert('Datos actualizados: '+actualizadas+' órdenes actualizadas, '+nuevas+' nuevas, '+eliminadas.length+' eliminadas'+(elimConDec.length?' ('+elimConDec.length+' tenían decisiones de persona)':'')+'. Decisiones conservadas: fase '+cons.fase+', fecha '+cons.fecha+', liberación '+cons.lib+', prioridad '+cons.prio+', programación '+cons.progCentro+', módulo fijo '+cons.recursoFijo+', compromiso '+cons.fechaCompromiso+', fotos '+cons.foto+', fases '+cons.fases+', ajustes '+cons.opsSam+', telas '+cons.faltaConf+', rutas '+cons.rutaEditada+', OT '+cons.ot+', avance '+cons.avance+'. '+(noCalzan.length?noCalzan.length+' decisiones ya no calzan: revisa la bandeja en Órdenes.':'')+' '+p.sinFecha.length+' sin fecha en bandeja.')}
 

@@ -5972,6 +5972,23 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("R7: la bitácora se conserva y se une, y la restauración queda registrada",S.bitacora.length>=nBit+1&&/RESTAURADO desde «resp.json»/.test(S.bitacora.slice(-1)[0].t)&&(S.params.restauraciones||[]).slice(-1)[0].archivo==="resp.json"&&(S.params.restauraciones||[]).slice(-1)[0].antes.ordenes===nOrd,S.bitacora.length+" vs "+nBit);
     __check("R7: el flujo pide la palabra y no usa confirm() suelto",/prompt\(/.test(String(restaurarDesde))&&/RESTAURAR/.test(String(restaurarDesde))&&!/confirm\(/.test(String(restaurarDesde))&&/puede\(.config.\)/.test(String(importJSON)));
     window.prompt=pr0;window.alert=a1;window.descargarJSON=dj0;S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;}
+   /* ===== 8 · registro unificado de cargas ===== */
+   {const n0=(S.cargas||[]).length;
+    const pT=planTarea(tareaRows,"REG_T.xlsx");TAREA=pT;aplicarTarea();await __p(50);
+    const cT=S.cargas.slice(-1)[0];
+    __check("G8: la carga de tareas deja UNA fila en S.cargas con tipo, hora, quién, archivo y resumen",S.cargas.length===n0+1&&cT.tipo==="tareas"&&cT.archivo==="REG_T.xlsx"&&!!cT.ts&&cT.resumen&&cT.resumen.actualizadas>1000&&cT.resumen.nuevas===0&&"noVinieron" in cT.resumen&&"fueraAlcance" in cT.resumen&&"noCalzan" in cT.resumen,JSON.stringify(cT&&cT.resumen));
+    /* OT */
+    {const otRows=window.__otRows||[];if(otRows.length){const pO=planOT(otRows,"REG_OT.xlsx");if(pO){OT=pO;aplicarOT();await __p(50);const cO=S.cargas.slice(-1)[0];
+      __check("G8: la carga de OT deja su fila con el mismo formato",cO.tipo==="ot"&&cO.archivo==="REG_OT.xlsx"&&cO.resumen&&"ordenes" in cO.resumen&&"cierres" in cO.resumen&&"noEncontradas" in cO.resumen,JSON.stringify(cO&&cO.resumen));}}}
+    /* fotos */
+    {const o1=S.ordenes.find(o=>abierta(o)&&o.op);const jpg=(px)=>{const cv=document.createElement("canvas");cv.width=cv.height=px;const cx=cv.getContext("2d");cx.fillStyle="#3a3";cx.fillRect(0,0,px,px);return cv.toDataURL("image/jpeg",0.8).split(",")[1]};
+     const csv="Orden de produccion,Avatar\n"+o1.op+","+jpg(40)+"\nWH/MO/999998,"+jpg(40);const pF=planFotos(csv,"REG_F.csv");mActualizarDatos(3);FOTOS=pF;await aplicarFotos();await __p(50);const cF=S.cargas.slice(-1)[0];
+     __check("G8: la carga de fotos deja su fila, con las que no tienen orden",cF.tipo==="fotos"&&cF.archivo==="REG_F.csv"&&cF.resumen&&cF.resumen.subidas>=1&&cF.resumen.sinOrden===1,JSON.stringify(cF&&cF.resumen));}
+    __check("G8: los tres cargadores pasan por registrarCarga y nadie escribe S.cargas.push por su cuenta",/registrarCarga\(/.test(String(aplicarTarea))&&/registrarCarga\(/.test(String(aplicarOT))&&/registrarCarga\(/.test(String(aplicarFotos))&&(()=>{const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||"";return src.split("S.cargas.push(").length===2})());
+    page="config";CONF.tab="ordenes2";render();const h=document.getElementById("p-config").innerHTML;
+    __check("G8: Configuración → Órdenes y materiales muestra el registro con la última carga de cada tipo y la tabla",/Registro de cargas/.test(h)&&/Tareas de Odoo/.test(h)&&/REG_T\.xlsx/.test(h)&&/REG_F\.csv/.test(h)&&/nunca se recorta/.test(h));
+    __check("G8: el texto del resumen dice qué pasó (actualizadas, no vinieron, fuera de alcance…)",/actualizadas/.test(resumenCargaTxt(cT))&&/no vinieron/.test(resumenCargaTxt(cT))&&/fuera de alcance/.test(resumenCargaTxt(cT)),resumenCargaTxt(cT));
+    const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
    window.alert=al;__check("U6 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== CARGAS · clave única, migración y regla de alcance (17-sep) ===== */
   try{localStorage.__fase="clave unica"}catch(e){}
