@@ -5,6 +5,7 @@ window.confirm=()=>true;
 async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>ms)throw new Error('timeout esperando');await new Promise(r=>setTimeout(r,50))}}
 function __check(nombre,cond,detalle){__R.checks.push({nombre,ok:!!cond,detalle:detalle===undefined?'':String(detalle)})}
 const __p=ms=>new Promise(r=>setTimeout(r,ms));
+function adminP0(){return {id:"u-adm",rol:"admin",nombre:"Admin",modo:"editar"}}
 async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
@@ -6294,6 +6295,48 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     recsC.forEach((r,i)=>{r.pers=bakPers[i]});NIVUI.noEntra=false;nivUIDescartar("corte");}
    window.alert=al;PERFIL=adminP;NIVUI={meses:null,cliente:"",familia:"",area:"corte",celda:null,filaPor:"familia",esc:{},verCalc:false,noEntra:false};page="ordenes";render();
    __check("NIVUI sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== BORRADO · Paso 0: qué borra y qué conserva «Borrar todos los datos operativos» (diagnóstico con prueba) ===== */
+  try{localStorage.__fase="borrado paso0"}catch(e){}
+  {const antes=__R.errors.length;const al=window.alert;window.alert=()=>{};PERFIL=adminP0();
+   const copia=JSON.stringify(S);
+   /* se siembra de todo un poco para ver qué sobrevive */
+   S.params.excepciones=(S.params.excepciones||[]).concat([{fecha:"2026-12-25",area:"todas",tipo:"no",nota:"Navidad (prueba)"}]);
+   {const t=faseMapeo();const r=t.find(x=>/^1Tejeduria/i.test(x.fase||""));if(r)r.nivel="tela"}
+   S.params.horarios=S.params.horarios||{};S.params.horarios.corte=S.params.horarios.corte||{};S.params.horarios.corte.ventanas=[{ini:"12:00",fin:"13:00"}];
+   S.params.motivos=(S.params.motivos||[]).concat([{motivo:"motivo de prueba borrado",uso:"cierre"}]);
+   gruposMod().push({id:"g-b0",n:"grupo prueba",mods:[],fams:["CAMISETAS"],sugerido:true});
+   S.params.msBuscar=222;S.params.umbralArchivoIncompleto=33;S.params.nivelacion=S.params.nivelacion||{};S.params.nivelacion.escenarios={corte:{diasAdic:1,maquilaU:5,motivo:"p",u:"p",ts:new Date().toISOString()}};
+   const oA=S.ordenes.find(o=>abiertaDe(o)&&o.op);S.params.pendPospuestos=Object.assign(S.params.pendPospuestos||{},{["x-"+oA.id]:{hasta:"2026-12-31",motivo:"p"}});
+   S.params.planMes=Object.assign(S.params.planMes||{},{"2026-12":{oids:[oA.id]}});S.params.progCongelado=(S.params.progCongelado||[]).concat([{id:"pc-b0",centro:"corte",lun:"2026-09-14",oids:[oA.id],hechasAl:{}}]);
+   S.params.alertasCompras=(S.params.alertasCompras||[]).concat([{id:"ac-b0",oid:oA.id,op:oA.op}]);S.params.auditoriaCambios=(S.params.auditoriaCambios||[]).concat([{ts:"x",u:"p",tipo:"fase",oid:oA.id,op:oA.op}]);
+   S.planes=(S.planes||[]).concat([{id:"plan-b0",ym:"2026-12",oids:[oA.id],ver:1}]);S.avance[oA.id]={centros:{corte:5},tramos:[{id:"t-b0",centro:"corte",ini:new Date().toISOString(),fin:new Date().toISOString()}],cierres:{corte:{pz:5}}};oA.lib={tela:{ok:true,u:"p"}};
+   /* la base simulada se pone al día con la memoria (en producción BASE siempre refleja la última subida; en el harness algunas pruebas tocan sb.__DB a mano) */
+   TABLAS.forEach(t=>{BASE[t]={}});BASE.params=null;
+   while(guardando)await __p(20);await save();while(guardando)await __p(20);await __p(50);   /* lo sembrado llega a la base simulada, como pasaría en producción (save() se salta si otro guardado está en curso) */
+   const foto={centros:S.centros.length,recursos:S.recursos.map(r=>[r.id,r.pers,r.efic,r.min]).sort().join("|"),cal:JSON.stringify(S.params.cal||null),exc:(S.params.excepciones||[]).length,
+     nivelTela:faseMapeo().filter(r=>r.nivel).length,t14:camposConservados().length,t15:motivos().length,t18:JSON.stringify(S.params.horarios),gm:gruposMod().length,telas:S.telas.length,colores:S.colores.length,ops:S.operaciones.length,
+     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",2)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
+     fotosIdx:Object.keys(S.params.fotosIdx||{}).length,bucket:Object.keys((sb.storage.__FILES||{})).length,esc:JSON.stringify(S.params.nivelacion.escenarios),bit:S.bitacora.length,categorias:S.categorias.length,tecnicas:S.tecnicas.length,rutas:(S.rutas||[]).length,maquinas:(S.maquinas||[]).length};
+   const c=cuentaBorrado();const frase="BORRAR "+c.ordenes+" ORDENES Y "+c.avance+" AVANCES";
+   const diag={writes:__W.writes.slice(-20).map(w=>w.t+":"+w.op+":"+w.n),saveErr:SAVE_ERR,db:await (async()=>{const r=await sb.from("centros").select("id,data");return (r.data||[]).filter(x=>x.data&&x.data.rutaDefecto).map(x=>x.id)})(),mem:S.centros.filter(x=>x.rutaDefecto).map(x=>x.id),base:Object.entries(BASE.centros||{}).filter(([id,j])=>/rutaDefecto/.test(j)).map(([id])=>id),puede:puedeSubirTabla("centros"),rol:PERFIL&&PERFIL.rol};
+   __check("B0: el borrado exige permiso config y la frase exacta con los conteos actuales",/puede\(.config.\)/.test(String(mBorrar))&&/puede\(.config.\)/.test(String(borrarOperativo))&&/borrar-frase/.test(String(ejecutarBorrado)));
+   __check("B0: hoy NO hay respaldo automático antes de borrar (ni local ni en Storage)",!/descargarJSON|subirRespaldo/.test(String(ejecutarBorrado)+String(borrarOperativo)));
+   const inp=document.createElement("input");inp.id="borrar-frase";inp.value=frase;document.body.appendChild(inp);
+   while(guardando)await __p(20);await ejecutarBorrado("operativo",frase);while(guardando)await __p(20);await __p(80);inp.remove();
+   const despues={centros:S.centros.length,recursos:S.recursos.map(r=>[r.id,r.pers,r.efic,r.min]).sort().join("|"),cal:JSON.stringify(S.params.cal||null),exc:(S.params.excepciones||[]).length,
+     nivelTela:faseMapeo().filter(r=>r.nivel).length,t14:camposConservados().length,t15:motivos().length,t18:JSON.stringify(S.params.horarios),gm:gruposMod().length,telas:S.telas.length,colores:S.colores.length,ops:S.operaciones.length,
+     prm:[prm("msBuscar",150),prm("umbralArchivoIncompleto",10),prm("minMinutosCierre",5),prm("umbralCercania",2)].join(","),perfiles:JSON.stringify(S.params.perfilesDef||null),rutaDef:S.centros.map(c=>c.rutaDefecto?1:0).join(""),
+     fotosIdx:Object.keys(S.params.fotosIdx||{}).length,bucket:Object.keys((sb.storage.__FILES||{})).length,esc:JSON.stringify((S.params.nivelacion||{}).escenarios),bit:S.bitacora.length,categorias:S.categorias.length,tecnicas:S.tecnicas.length,rutas:(S.rutas||[]).length,maquinas:(S.maquinas||[]).length};
+   const dif=Object.keys(foto).filter(k=>k!=="bit"&&foto[k]!==despues[k]);
+   __check("B0: tras el borrado se conserva TODA la configuración (centros, recursos con personas y eficiencia, calendario y festivos, tabla 1 con nivelación, 14, 15, 18, grupos de módulos, telas, colores, operaciones, parámetros, usuarios, rutas por defecto, fotos del bucket, escenarios)",dif.length===0,dif.map(k=>k+": "+String(foto[k]).slice(0,40)+" → "+String(despues[k]).slice(0,40)).join(" | "));
+   __check("B0: se borran órdenes, avance, planes y lo operativo; la bitácora NO",S.ordenes.length===0&&Object.keys(S.avance).length===0&&(S.planes||[]).length===0&&(S.banos_conf||[]).length===0&&(S.salidas_tin||[]).length===0&&(S.turnos||[]).length===0&&(S.paros||[]).length===0&&(S.cargas||[]).length===0&&S.bitacora.length>=foto.bit,JSON.stringify({o:S.ordenes.length,a:Object.keys(S.avance).length,p:(S.planes||[]).length,b:S.bitacora.length}));
+   /* huérfanos en params: referencias a órdenes que ya no existen */
+   const huer={pendPospuestos:Object.keys(S.params.pendPospuestos||{}).filter(k=>k.startsWith("x-")).length,planMesOids:Object.values(S.params.planMes||{}).reduce((a,m)=>a+((m.oids||[]).length),0),progCongelado:(S.params.progCongelado||[]).reduce((a,p)=>a+((p.oids||[]).length),0),
+     alertasCompras:(S.params.alertasCompras||[]).length,auditoriaCambios:(S.params.auditoriaCambios||[]).length,noCalzan:(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length,tareaCarga:!!S.params.tareaCarga,otCarga:!!S.params.otCarga,fotosIdx:Object.keys(S.params.fotosIdx||{}).length,cierresMes:Object.keys(S.params.cierresMes||{}).length,pedidosReprog:Object.keys(S.params.pedidosReprog||{}).length};
+   __R.borrado={frase,foto,despues,huer,diag,cargasBorradas:(S.cargas||[]).length===0};
+   __check("B0: hallazgo (rojo a propósito hasta construir) — quedan huérfanos en params: pendientes pospuestos, plan mensual, congelados, alertas de compras, bandeja no calzan y resúmenes de la última carga",huer.pendPospuestos+huer.planMesOids+huer.progCongelado+huer.alertasCompras+huer.noCalzan===0&&!huer.tareaCarga&&!huer.otCarga,JSON.stringify(huer));
+   S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;NIVC=null;window.alert=al;page="ordenes";render();
+   __check("BORRADO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
