@@ -705,7 +705,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 21:18';
+const APP_BUILD='2026-09-16 21:24';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6604,10 +6604,15 @@ function vCentro(el){
     const listas=subAreasResumenHTML(cid,cens,P,dias)+cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
     const porQue={};cens.forEach(c=>{porQue[c]=porQueTardeHTML(colaCentro(c,filas),P,c)});
     const tablas=cens.map(c=>colaCentroHTML(c,{filas,hasta,okPiso,P,h,porQue})).join('');
+    /* la cola se puede repintar sola: mismas variables, solo `filas` y `porQue` se recalculan con el texto nuevo */
+    listaRegistrar('CEN.q',()=>{
+      const f2=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
+      const pq={};cens.forEach(c=>{pq[c]=porQueTardeHTML(colaCentro(c,f2),P,c)});
+      return cens.map(c=>colaCentroHTML(c,{filas:f2,hasta,okPiso,P,h,porQue:pq})).join('')});
     el.innerHTML=cab+resumenDiaFamiliaHTML(cens,P,dias,nombre)+secciones+`<div class="no-print" style="margin:-4px 0 10px"><button class="btn ghost sm" onclick="imprimirProgramaCentro('${cid}')">PDF del programa (para operarios)</button>${(cid==='corte'||cid==='modulos')?' <button class="btn ghost sm" onclick="ordenarColaPorColor(\''+cens[0]+'\')" title="junta los colores en la cola para bajar cambios de hilo; es solo el orden de los puestos, el motor no cambia">Juntar colores en la cola</button> <span class="mut" style="font-size:var(--fs-xs)">agrupar por color es vista y orden manual: el motor no secuencia por color</span>':''} ${cens.map(c=>ordenesConPuesto(c).length?' <button class="btn ghost sm" title="quita el puesto manual de las '+ordenesConPuesto(c).length+' órdenes de '+esc(nCen(c))+' para que la cola vuelva a ordenarse por cercanía a llegar" onclick="volverACercania(\''+c+'\')">Volver al orden por cercanía'+(cens.length>1?' · '+esc(nCen(c)):'')+'</button>':'').join('')} <span class="mut" style="font-size:var(--fs-xs)">puesto, foto, WH, cliente, producto, color, minutos estándar y unidades · horizontal · sin datos internos</span></div>`+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${grpSelHTML('cen')}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
     ${listas}
-    ${tablas}
+    <div data-lista="CEN.q">${tablas}</div>
     ${avanceCongeladoHTML(cens,P,lun,dom)}
     <p class="mut" style="font-size:var(--fs-xs);padding:8px 16px">Recurso y fecha fijados por el centro se marcan con ⚲ en la planificación. Las prendas de cada grupo son las pendientes en el centro. ${cid==='modulos'?'La secuencia por color y el rebalanceo con aprobación están en Costura.':''}</p>`;
     return}

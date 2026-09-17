@@ -5408,6 +5408,35 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("AB9: conserva la posición del cursor",primero.selectionStart===5,primero.selectionStart);
      __check("AB9: y el texto llegó al estado",ORDF.q==="22918",ORDF.q);
      ORDF.q="";render()}}
+   /* ---------- 3l · redibujo parcial en la COLA DEL CENTRO (2b) ---------- */
+   {page="centro";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.fases=null;CEN.cercAbre=null;render();
+    const sel='input[data-q="CEN.q"]';
+    __check("AB10: la cola del centro registró su lista para el redibujo parcial",!!LISTAS["CEN.q"]&&!!listaHost("CEN.q"));
+    /* tiempo por tecla: redibujo completo vs solo la cola */
+    {const tC=[];for(let k=0;k<3;k++){const a=performance.now();render();tC.push(performance.now()-a)}
+     CEN.q="2";const tP=[];for(let k=0;k<3;k++){const a=performance.now();redibujarLista("CEN.q");tP.push(performance.now()-a)}
+     CEN.q="";render();
+     __R.bus=__R.bus||{};__R.bus.parcialCEN={ordenes:S.ordenes.length,completoMs:Math.round(Math.max(...tC)),parcialMs:Math.round(Math.max(...tP))};
+     __check("AB10: repintar solo la cola no cuesta más que la pantalla entera",Math.min(...tP)<=Math.max(...tC)+1,JSON.stringify(__R.bus.parcialCEN));}
+    const primero=document.querySelector(sel);   /* DESPUÉS de medir: medir redibuja la pantalla */
+    if(primero){primero.focus();await __p(120);
+     let txt="",reemplazos=0;
+     for(const ch of "22918"){txt+=ch;primero.value=txt;
+       try{primero.setSelectionRange(txt.length,txt.length)}catch(e){}
+       primero.dispatchEvent(new Event("input",{bubbles:true}));
+       await __p(260);
+       if(document.querySelector(sel)!==primero)reemplazos++}
+     __check("AB10: el buscador de la cola NO se destruye al escribir",reemplazos===0,reemplazos+" reemplazos");
+     __check("AB10: conserva el texto completo",primero.value==="22918",primero.value);
+     __check("AB10: conserva la posición del cursor",primero.selectionStart===5,primero.selectionStart);
+     __check("AB10: y el texto llegó al estado",CEN.q==="22918",CEN.q);
+     /* la cola de verdad se filtró: con «22918» no debe quedar ninguna fila de otra WH */
+     const filas=[...document.querySelectorAll('[data-lista="CEN.q"] tbody tr[draggable]')];
+     __check("AB10: la cola se filtró con el texto (solo filas que calzan)",filas.every(tr=>/22918/.test(tr.textContent)),filas.length+" filas");
+     /* y sigue siendo la misma cola: cabeceras y estructura intactas tras el repintado parcial */
+     const ths=[...document.querySelectorAll('[data-lista="CEN.q"] thead th')].map(t=>t.textContent.trim());
+     __check("AB10: las 14 columnas siguen en su orden tras el repintado parcial",ths.slice(0,14).join("|")==="Puesto|OP|ODC|Llega|Cliente|Categoría|Color|Pendientes|Min|Recurso|Arranca|Plan: inicio → fin|Marca|",ths.join("|"));
+     CEN.q="";render()}}
    /* ---------- 4 · el debounce y el redibujo: la causa de fondo ---------- */
    {const src=String(buscarQ);
     __R.bus.buscarQ=src;
