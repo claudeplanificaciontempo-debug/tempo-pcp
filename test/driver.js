@@ -1690,7 +1690,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const veFase=(pg,pre)=>{page=pg;if(pre)pre();render();const h=document.getElementById('p-'+pg).innerHTML;const re=new RegExp('WH/TEST-FF(</b></a>)? <span class="tag fase-mini"[^>]*>CD Ensamble');return re.test(h)};
    __check("FF: Liberación muestra la fase junto a la WH",veFase('liberacion',()=>{LIB.et='corte';LIB.q='WH/TEST-FF';LIB.verLista=true}));
    __check("FF: Control de piso usa foto+WH+fase en las filas de las tres áreas (y se ve cuando hay filas)",(()=>{const src=vControl.toString();const usa=src.split('whCell(o)').length>=3;page='control';CTL.area='pro';CTL.q='';CTL.centro=null;render();const h=document.getElementById('p-control').innerHTML;const filas=(h.match(/<tr><td style="white-space:nowrap">/g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
-   __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
+   __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString()+colaCentroHTML.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
    __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:[],q:'WH/TEST-FF'}}));
    __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('asignacion',()=>{APO.q='WH/TEST-FF';APO.niveles=[]}));
    __check("FF: Costura · secuencia por módulo usa foto+WH+fase",(()=>{const src=vCostura.toString();return src.includes('whCell(o)')})());
@@ -2729,7 +2729,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("HH: no se cuenta dos veces (tramo y registro rápido de la misma orden)",hechasDelDia('modulos',null,hoy()).pz===antes2+15);
     S.ordenes=S.ordenes.filter(x=>x!==oT);delete S.avance[oT.id]}
    // 3 · las otras pantallas leen lo mismo
-   __check("HH: Mi centro y «Hecho hoy» del centro usan la función única",vTablet.toString().includes('hechasDelDia(')&&vCentro.toString().includes('hechasDelDia('));
+   __check("HH: Mi centro y «Hecho hoy» del centro usan la función única",vTablet.toString().includes('hechasDelDia(')&&(vCentro.toString()+colaCentroHTML.toString()).includes('hechasDelDia('));
    __check("HH: el tramo también suma a la producción del turno (Reportería y Ejecución)",(S.turnos||[]).some(t=>t.rec===rec&&t.d===hoy()&&(t.pz||0)>=20));
    page='centro';CEN.id='modulos';CEN.tab='prog';render();
    __check("HH: «Hecho hoy» del centro muestra la orden del tramo",/Hecho hoy en/.test(document.getElementById('p-centro').innerHTML));
