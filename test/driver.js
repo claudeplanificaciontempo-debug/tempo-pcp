@@ -124,7 +124,18 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
       const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={por:'familia',fila:famDeOrden(r.saldo.ordenes[0]),mes:'2026-10'}}
     if(/niv3/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),3));nivUISet('corte','diasAdic',0);NIVUI.noEntra=true;NIVUI.verCalc=false}
-    page='nivelacion';render();document.querySelectorAll('#p-nivelacion details').forEach(d=>{d.open=true});document.body.classList.add('captura');__R.done=true;return}
+    page='nivelacion';render();document.querySelectorAll('#p-nivelacion details').forEach(d=>{d.open=true});
+    if(/nivdiag/.test(location.search)){const meses=['2026-09','2026-10','2026-11'];const out={};nivUIAreas().forEach(ar=>{const sd=saldoAreaNiv(ar.id,meses,null)||{};const c=ar.tipo==='centro'?ar.id:null;
+      const enRuta=c?S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))&&(o.ruta||[]).some(p=>p.centro===c)):[];const hechas=c?enRuta.filter(o=>pasoHecho(o,c)):[];
+      const porFase={};(ar.tipo==='tela'?S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))):enRuta.filter(o=>!pasoHecho(o,c))).forEach(o=>{porFase[o.fase||'(sin)']=(porFase[o.fase||'(sin)']||0)+1});
+      out[ar.id]={unid:sd.unid,min:Math.round(sd.min||0),n:(sd.ordenes||[]).length,sinSAM:(sd.sinSAM||[]).length,uSinSAM:sd.unidSinSAM,enRuta:enRuta.length,hechas:hechas.length,porFase}});
+      {const ords=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o)));const cg=cargaUnica('abiertas',{ordenes:ords}).centros;out.__cargaGeneral={};Object.keys(cg).forEach(c=>{out.__cargaGeneral[c]={pz:cg[c].pz,n:cg[c].n,min:Math.round(cg[c].total)}});
+       out.__maquilaFase=ords.filter(o=>/maquila/i.test(o.fase||'')).length;out.__sinModulosConEmpaque=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==='empaque')&&!(o.ruta||[]).some(p=>p.centro==='modulos')).length;out.__bordadoSolo=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==='bordado')&&!(o.ruta||[]).some(p=>['corte','modulos','empaque'].includes(p.centro))).length;out.__bordadoSoloU=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==='bordado')&&!(o.ruta||[]).some(p=>['corte','modulos','empaque'].includes(p.centro))).reduce((x,o)=>x+pendCentroUnid(o,'bordado'),0);
+       out.__estampadoT=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==='estampado')).map(o=>[(o.ruta.find(p=>p.centro==='estampado')||{}).t,o.tecnica?1:0,tecnicaT(o)]).slice(0,6);}
+      out.__fasesTela=fasesDeProcNivel('tela');out.__abiertas=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))).length;out.__rutasSample=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))).slice(0,400).map(o=>(o.ruta||[]).map(p=>p.centro).join('>')).reduce((m,k)=>{m[k]=(m[k]||0)+1;return m},{});
+      document.body.innerHTML='<pre id="diag">'+JSON.stringify(out,null,1)+'</pre>';__R.done=true;return}
+    if(/niv4/.test(location.search)){const r=nivUICalcular('corte');const cd=NIVUI.celda;irSaldoCentro(nivUISelDe(r,cd,'Short Cargo'))}
+    document.body.classList.add('captura');__R.done=true;return}
   __check('planTarea reconoce columnas',!!planT);
   __check('planTarea: 4.235 cabeceras (3.733 con WH + 502 sin WH) y 60.766 líneas de componentes',planT.cabeceras===4235&&planT.sinLanzar===502&&planT.lineasComp===60766,planT.cabeceras+' / '+planT.sinLanzar+' / '+planT.lineasComp);
   __check('planTarea: la fase decide: los 2 Estado OP cancel son Facturado con fecha pasada → fuera de rango por la fase; 5 sin fecha en bandeja (4 con WH + 1 sin WH); las que tienen Proyecto entran al plan sin fecha y no se liberan ni programan',planT.excluidas.cancel.length===0&&planT.excluidas.fueraRango.filter(x=>x.estadoOP==='cancel').length===2&&planT.sinFecha.length===5&&planT.ordenes.filter(o=>o.sinFechaEntrega).length===planT.sinFecha.filter(x=>x.entra).length&&planT.ordenes.filter(o=>o.sinFechaEntrega).every(o=>!o.fecha&&mesPlan(o)&&!liberada(o,'tela')&&!puedeLiberarA(o,'tela')),planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
@@ -6182,6 +6193,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("N3: un recuadro por área: Tela, los centros de producción configurados en orden de proceso, Maquila",areas.length===pro+2&&areas[0].id==="tela"&&areas[1].id==="corte"&&areas[areas.length-1].id==="maquila"&&areas.findIndex(a=>a.id==="modulos")>areas.findIndex(a=>a.id==="corte"),areas.map(a=>a.id).join(" → "));
     const h=document.getElementById("p-nivelacion").innerHTML;
     __check("N3: cada recuadro trae saldo, fecha final y estado con ícono",areas.every(a=>h.includes("NIVUI.area='"+a.id+"'"))&&(h.match(/saldo <b>/g)||[]).length===areas.length&&(h.match(/>fin /g)||[]).length===areas.length&&/[✓⚠✕?] (llega|riesgo|déficit|dato faltante)/.test(h));
+    /* lo que no suma se dice: sin fases marcadas (Tela) y sin SAM (Estampado) — nunca un cero que parece bueno */
+    {const rT=nivUICalcular("tela");const rE=nivUICalcular("estampado");
+     __check("N3: Tela sin fases marcadas en la tabla 1 es «dato faltante», no «0 u · llega»",fasesDeProcNivel("tela").length>0||(rT.sinFasesTela===true&&rT.estado==="faltante"&&/sin fases marcadas/.test(h)&&rT.falta.some(f=>/fases de Tela/.test(f))),JSON.stringify({fases:fasesDeProcNivel("tela").length,e:rT.estado}));
+     __check("N3: un área cuyas órdenes no tienen SAM lo dice en el recuadro (+N u sin SAM)",!(rE.saldo&&rE.saldo.sinSAM.length)||new RegExp("\\+"+num(rE.saldo.unidSinSAM,0).replace(/\./g,"\\.")+" u sin SAM").test(h),JSON.stringify(rE.saldo&&{n:rE.saldo.sinSAM.length,u:rE.saldo.unidSinSAM}));}
     NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;
     __check("N3: clic en un recuadro muestra SOLO esa área abajo (y las no conectadas lo dicen, sin cuadrito)",/Confección todavía no está conectada/.test(h2)&&!/Nivelación de Corte/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1&&!/se escribe/.test(h2));
     NIVUI.area="corte";render();}
@@ -6192,9 +6207,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cel=h().match(/onclick="NIVUI.celda=\{por:'familia',fila:'([^']+)',mes:'([^']+)'\}/);
     __check("N4: hay celdas con saldo",!!cel,"sin celdas");
     if(cel){NIVUI.celda={por:"familia",fila:cel[1].replace(/&#39;/g,"'"),mes:cel[2]};render();
-     __check("N4: clic en una celda abre el detalle: primero tipos de producto con unidades, y adentro las órdenes con foto/WH/fase (whCell + filasGRP)",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th>/.test(h())&&/<details[^>]*><summary[^>]*><b>/.test(h())&&/setNivelGRP\('nivui'/.test(h())&&/fase-mini|foto-mini|WH\//.test(h()));
-     /* las WH van en el último nivel: la primera tabla del detalle es de tipos de producto, no de órdenes */
-     __check("N4: las WH quedan en el último nivel, no en el primero",(()=>{const i=h().indexOf("tipos de producto</span>");const seg=h().slice(i,i+1500);const m=seg.match(/<tbody><tr><td>([^<]+)<\/td>/);return !!m&&!/^WH\/|^SIN WH/.test(m[1])})());
+     __check("N4: clic en una celda abre el detalle SOLO hasta tipo de producto: unidades, número de órdenes y «ver órdenes»",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th><th class="num">Órdenes<\/th>/.test(h())&&(h().match(/irSaldoCentro\(/g)||[]).length>=2&&!/<details/.test(h().slice(h().indexOf("tipos de producto"),h().indexOf("Nivelación de Corte"))));
+     /* la nivelación NO lista WH en ningún punto */
+     const sinWH=html=>!/WH\/MO\/|SIN WH #|whCell|foto-mini|fase-mini/.test(html);
+     __check("N4: con la celda abierta no aparece ninguna WH en la pantalla de nivelación",sinWH(h()),(h().match(/WH\/MO\/[0-9]+/g)||[]).slice(0,3).join(","));
+     /* «ver órdenes» → Carga general: el detalle nuevo sale de saldoProceso y cuadra EXACTO con la fila */
+     {const m=h().match(/<tr><td>([^<]+)<\/td><td class="num"><b>([^<]+)<\/b><\/td><td class="num">(\d+)<\/td><td><a[^>]*onclick="irSaldoCentro\(([^"]+)\)"/);
+      __check("N4: cada fila de tipo de producto tiene su «ver órdenes»",!!m,"sin fila");
+      if(m){const sel=JSON.parse(m[4].replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&"));const uFila=+m[2].replace(/\./g,""),nFila=+m[3];
+       const bakNIV=JSON.stringify({meses:nivUIMeses(),cliente:NIVUI.cliente,familia:NIVUI.familia,area:NIVUI.area,filaPor:NIVUI.filaPor,celda:NIVUI.celda});
+       irSaldoCentro(sel);await __p(30);const hc=document.getElementById("p-produccion").innerHTML;
+       const cab=hc.match(/Saldo por procesar en ([^<]+) <span class="note">([^<]*)<b>(\d+)<\/b> órdenes · <b>([^<]+)<\/b> u/);
+       __check("N4→CG: abre Carga general en «Saldo por procesar en Corte» con la selección en el encabezado",page==="produccion"&&!!cab&&/Corte/.test(cab[1])&&new RegExp(sel.meses[0]).test(cab[2])&&new RegExp(esc(sel.hija)).test(cab[2]),cab?cab[0].slice(0,160):hc.slice(0,120));
+       __check("N4→CG: el número de órdenes y unidades del detalle coincide EXACTO con la fila de la nivelación",!!cab&&+cab[3]===nFila&&+cab[4].replace(/\./g,"")===uFila,JSON.stringify({cg:cab&&[cab[3],cab[4]],fila:[nFila,uFila]}));
+       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a la nivelación/.test(hc)&&/whCell|WH\//.test(hc));
+       nivUIVolver();await __p(30);
+       __check("N4→CG: «← volver a la nivelación» regresa con área, meses, filtros y celda como estaban",page==="nivelacion"&&JSON.stringify({meses:nivUIMeses(),cliente:NIVUI.cliente,familia:NIVUI.familia,area:NIVUI.area,filaPor:NIVUI.filaPor,celda:NIVUI.celda})===bakNIV&&CG.det===null);}}
      /* cambiar el agrupamiento no cambia el total */
      const totalDe=()=>{const mm=h().match(/<td>Total<\/td>(?:<td class="num">[^<]*<\/td>)*<td class="num">([^<]+)<\/td>/);return mm?mm[1]:null};const tF=totalDe();
      NIVUI.filaPor="hija";NIVUI.celda=null;render();const tH=totalDe();NIVUI.filaPor="cliente";render();const tC=totalDe();
@@ -6206,7 +6234,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("N4: el cuadrito tiene las trece filas, con esos nombres y en ese orden",idx.every(i=>i>=0)&&idx.every((v,i)=>i===0||v>idx[i-1]),filas.join(" | "));
     __check("N4: solo las cuatro filas «se escribe» tienen entrada, con fondo distinto",(h().match(/se escribe<\/span>/g)||[]).length===4&&(h().match(/onchange="nivUISet\(/g)||[]).length===4);
     __check("N4: hay «Ver cálculo» colapsado con minutos, SAM ponderado y festivos",/<details[^>]*><summary[^>]*>Ver cálculo/.test(h())&&/SAM ponderado/.test(h())&&/Días hábiles/.test(h()));
-    __check("N4: el saldo sale del mismo saldoProceso del Paso 1 y el cálculo de nivelar()",!!r&&r.saldo&&r.saldo.unid>0&&/saldoProceso\(/.test(String(nivUISaldo))&&/nivelar\(/.test(String(nivUICalcular)),JSON.stringify(r&&{u:r.saldo.unid,min:r.saldo.min}));
+    __check("N4: el saldo sale del mismo saldoProceso del Paso 1 y el cálculo de nivelar()",!!r&&r.saldo&&r.saldo.unid>0&&/saldoAreaNiv\(/.test(String(nivUISaldo))&&/saldoProceso\(/.test(String(saldoAreaNiv))&&/nivelar\(/.test(String(nivUICalcular)),JSON.stringify(r&&{u:r.saldo.unid,min:r.saldo.min}));
     __R.nivUI={saldo:r&&{u:r.saldo.unid,min:r.saldo.min,ordenes:r.saldo.ordenes.length,sinSAM:r.saldo.sinSAM.length,uSinSAM:r.saldo.unidSinSAM},cap:r&&r.cap.cap,capDet:r&&r.cap.detalle,meses:nivUIMeses()};}
    /* N5 · coherencia: saldo de Corte del cuadrito vs Carga general (misma base, mismos meses) */
    {const meses=nivUIMeses();const r=nivUICalcular("corte");
@@ -6241,7 +6269,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     nivUISet("corte","inicio",hoy());nivUISet("corte","compromiso",dsum(hoy(),2));nivUISet("corte","diasAdic",0);nivUISet("corte","maquilaU",0);
     const r=nivUICalcular("corte");
     if(r.deficitMin>0){NIVUI.noEntra=true;render();const h=document.getElementById("p-nivelacion").innerHTML;const l=nivUINoEntra(r);
-     __check("N7: con déficit, clic muestra «qué no entra» con foto/WH, de la entrega más lejana hacia atrás",/Qué no entra/.test(h)&&l.length>=1&&l.reduce((a,x)=>a+x.min,0)>=r.deficitMin&&(l.length<2||String(fechaMetaDe(l[0].o))>=String(fechaMetaDe(l[l.length-1].o))),l.length+" órdenes");}
+     __check("N7: con déficit, «qué no entra» es un resumen por familia y tipo de producto (unidades y órdenes), sin WH",/Qué no entra/.test(h)&&/<th>Familia<\/th><th>Tipo de producto<\/th>/.test(h)&&!/WH\/MO\/|SIN WH #|whCell|foto-mini/.test(h)&&l.length>=1&&l.reduce((a,x)=>a+x.min,0)>=r.deficitMin,l.length+" órdenes");
+     {const m=h.match(/<tr><td>([^<]+)<\/td><td>([^<]+)<\/td><td class="num"><b>([^<]+)<\/b><\/td><td class="num">(\d+)<\/td><td><a[^>]*onclick="irSaldoCentro\(([^"]+)\)"/);
+      if(m){const sel=JSON.parse(m[5].replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&"));irSaldoCentro(sel);await __p(30);const hc=document.getElementById("p-produccion").innerHTML;const cab=hc.match(/<b>(\d+)<\/b> órdenes · <b>([^<]+)<\/b> u/);
+       __check("N7→CG: «ver órdenes» de qué no entra lista exactamente esas órdenes (mismo número y unidades)",!!cab&&+cab[1]===+m[4]&&+cab[2].replace(/\./g,"")===+m[3].replace(/\./g,"")&&/qué no entra/.test(hc),JSON.stringify({cg:cab&&[cab[1],cab[2]],fila:[m[4],m[3]]}));nivUIVolver();await __p(30);}
+      else __check("N7→CG: hay «ver órdenes» en el resumen de qué no entra",false,"sin fila");}}
     else __check("N7: con déficit, clic muestra «qué no entra»",false,"no hubo déficit con capacidad 0: "+JSON.stringify({def:r.deficitMin,cap:r.calc.capDia,saldo:r.saldo&&r.saldo.min}));
     recsC.forEach((r,i)=>{r.pers=bakPers[i]});NIVUI.noEntra=false;nivUIDescartar("corte");}
    window.alert=al;PERFIL=adminP;NIVUI={meses:null,cliente:"",familia:"",area:"corte",celda:null,filaPor:"familia",esc:{},verCalc:false,noEntra:false};page="ordenes";render();

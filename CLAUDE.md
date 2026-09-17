@@ -839,7 +839,9 @@ como chips de selección múltiple (`nivUIMeses`/`nivUITogMes`, al menos uno), f
 recuadros por área desde los centros configurados (`nivUIAreas`: Tela + centros `pro` en `ordenPaso` + Maquila) con saldo,
 fin y estado (`nivUIEstadoHTML`: ✓ llega / ⚠ riesgo (holgura ≤ `colchonDias`) / ✕ déficit / ? dato faltante); clic → solo
 esa área: tabla FAMILIA × mes (`nivUITablaHTML`; `NIVUI.filaPor` = familia | hija | cliente solo cambia las filas; celda →
-`nivUIDetalleCeldaHTML`: tipos de producto con unidades y adentro las órdenes con `filasGRP`+`whCell`) y el cuadrito de trece filas
+`nivUIDetalleCeldaHTML`: tipos de producto con unidades y órdenes + «ver órdenes»; **la nivelación NO lista WH**: `irSaldoCentro(sel)` abre
+Carga general con `CG.det={saldo:true,area,meses,fam,hija,cli,ids?,volver}` = «Saldo por procesar en <área>», lista de la MISMA
+`saldoAreaNiv(area,meses,filtroSelNiv(sel))`, distinto del detalle por semana programada; `nivUIVolver()` regresa) y el cuadrito de trece filas
 (`nivUICuadritoHTML`; solo Fecha inicio, Fecha compromiso, Días adicionales y Maquila se escriben, `nivUISet`, en
 `NIVUI.esc` hasta «Guardar escenario» con motivo y permiso `programa`, `nivUIGuardar` → inicio/compromiso por `setNivFecha`
 del Paso 1 y `S.params.nivelacion.escenarios[area]`). **El motor no cambió**: `nivUICalcular` llama a `nivelar()` y deriva

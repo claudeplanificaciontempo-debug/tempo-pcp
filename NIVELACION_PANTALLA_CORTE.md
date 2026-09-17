@@ -8,7 +8,7 @@ al elegirlas se ve la tabla cliente × mes y un aviso, sin cuadrito.
 Capturas (Chrome sin cabeza sobre el simulador con el volcado real, 1.400 px de ancho):
 `capturas/nivelacion_corte_1.png` (tres meses marcados, recuadros de área, Corte sin fechas → dato faltante),
 `capturas/nivelacion_corte_2.png` (tabla por familia con la celda SHORT PLANOS · 2026-10 abierta: tipos de producto → órdenes; escenario sin guardar; «Ver cálculo» abierto),
-`capturas/nivelacion_corte_3.png` (déficit y «qué no entra»).
+`capturas/nivelacion_corte_3.png` (déficit y «qué no entra»), `capturas/nivelacion_corte_4_carga_general.png` (a dónde lleva «ver órdenes»).
 
 ## Antes: órdenes de demostración (punto 1)
 
@@ -34,11 +34,13 @@ Capturas (Chrome sin cabeza sobre el simulador con el volcado real, 1.400 px de 
   Etiquetas · Lavado · Plancha · Empaque · Maquila (los sub-centros de Terminados también son centros configurados: si
   no deben aparecer, es una decisión de configuración, no de código). Cada uno: saldo, fecha final y estado con ícono,
   color y texto (✓ llega · ⚠ riesgo, holgura ≤ `colchonDias` · ✕ déficit · ? dato faltante). Clic → abajo solo esa área.
-- **2.4a (cambiado a pedido, mismo día)** Tabla **familia × mes de entrega** (unidades por procesar): para nivelar se mira el tipo de
+- **2.4a (cambiado a pedido, mismo día; y luego SIN WH — ver `NIVELACION_ENLACE_VER_ORDENES.md`)** Tabla **familia × mes de entrega** (unidades por procesar): para nivelar se mira el tipo de
   producto, no las órdenes una por una. Filas ordenadas por saldo, totales de fila y columna. Selector «filas por»: **Familia**
   (por defecto) · Tipo de producto (categoría hija) · Cliente — cambia solo el agrupamiento, no el cálculo (probado: mismo total).
-  Clic en una celda → debajo, ESA familia y ese mes: **primero por tipo de producto con sus unidades**, y adentro las órdenes con
-  foto/WH/fase (`filasGRP('nivui')` + `whCell`, agrupador común); las WH quedan en el último nivel (probado). Título: «Saldo por
+  Clic en una celda → debajo, ESA familia y ese mes: **tipo de producto con unidades y número de órdenes** y un enlace **«ver
+  órdenes»** que abre Carga general → «Saldo por procesar en <área>» con la selección aplicada (`irSaldoCentro`, misma
+  función `saldoAreaNiv`/`saldoProceso`; «← volver a la nivelación» regresa con todo como estaba). **La nivelación no lista
+  ninguna WH** (probado). «Qué no entra» también va resumido por familia y tipo, con «ver órdenes» (las órdenes exactas viajan por id). Título: «Saldo por
   familia y mes de entrega» (o tipo de producto / cliente según el selector). Aplica a todas las áreas.
 - **2.4b** Cuadrito con las trece filas, en ese orden y con esos nombres. Solo **Fecha inicio, Fecha compromiso, Días
   adicionales y Maquila** se escriben (fondo distinto, etiqueta «se escribe»); lo demás es solo lectura. Cambiar un valor
