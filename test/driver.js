@@ -5072,6 +5072,28 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
 
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page="ordenes";ORDF.q="";ORDF.tab="lista";render();
    __check("AB sin errores de ejecución",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== excelFecha: la parte entera del serial es el día (antes se redondeaba) ===== */
+  try{localStorage.__fase="excelFecha"}catch(e){}
+  {const antes=__R.errors.length;
+   /* 29-dic-2025: el mismo día, a distintas horas */
+   const dia=Math.floor(46020.74831018518);   // la parte entera
+   const mañana="2025-12-29";
+   const casos=[[dia+0.0,"00:00"],[dia+0.2,"04:48"],[dia+0.4999,"11:59"],
+     [dia+0.5,"12:00"],[dia+0.7235,"17:22"],[dia+0.999,"23:58"]];
+   let ok=true,det=[];
+   casos.forEach(([v,h])=>{const f=excelFecha(v);det.push(h+"→"+f);if(f!==mañana)ok=false});
+   __check("EX1: todas las horas del mismo día dan el MISMO día, antes y después de las 12:00",ok,det.join(" · "));
+   __check("EX1: y ese día es el que dice el archivo",excelFecha(dia)===mañana,excelFecha(dia));
+   __check("EX2: la conversión vieja (Math.round) sí cambiaba de día a partir de las 12:00",
+     excelFechaRedondeada(dia+0.4999)===mañana&&excelFechaRedondeada(dia+0.5)!==mañana,
+     excelFechaRedondeada(dia+0.4999)+" / "+excelFechaRedondeada(dia+0.5));
+   __check("EX3: excelFechaHora conserva la hora y coincide en el día con excelFecha",
+     String(excelFechaHora(dia+0.7235)).slice(0,10)===excelFecha(dia+0.7235)&&/T\d{2}:\d{2}/.test(String(excelFechaHora(dia+0.7235))),
+     excelFechaHora(dia+0.7235));
+   __check("EX4: los otros formatos no cambiaron (texto ISO y dd/mm/aaaa)",
+     excelFecha("2026-03-04")==="2026-03-04"&&excelFecha("4/3/2026")==="2026-03-04",excelFecha("4/3/2026"));
+   __check("EX5: un Date sigue dando su día local",excelFecha(new Date(2026,2,4,23,30))==="2026-03-04",excelFecha(new Date(2026,2,4,23,30)));
+   __check("EX sin errores",__R.errors.length===antes);}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

@@ -704,7 +704,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-16 19:33';
+const APP_BUILD='2026-09-16 20:14';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9557,8 +9557,14 @@ function excelFechaHora(v){if(v==null||v==='')return null;
 function traeHora(v){if(typeof v==='number')return Math.abs(v-Math.floor(v))>1e-9;
   if(v instanceof Date)return !(v.getHours()===0&&v.getMinutes()===0&&v.getSeconds()===0);
   return /\d{1,2}:\d{2}/.test(String(v||''))}
+/* solo para medir el impacto del cambio: es la conversión VIEJA, con Math.round. No usarla en pantalla. */
+const EXCEL_FECHA_BUENA=excelFecha;   /* referencia fija: si alguien sustituye el global para medir, esta no cambia */
+function excelFechaRedondeada(v){if(typeof v!=='number')return EXCEL_FECHA_BUENA(v);
+  return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10)}
 function excelFecha(v){if(v==null||v==='')return null;if(v instanceof Date)return isNaN(v)?null:new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);
-  if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5).toISOString().slice(0,10);
+  /* la parte ENTERA del serial es el día; la fracción es la hora. Redondear (lo que hacía antes)
+     mandaba al día siguiente toda hora >= 12:00 — 54,4 % de las fechas de OT del volcado. */
+  if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.floor(v)*864e5).toISOString().slice(0,10);
   const s=String(v).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');return null}
 function planTarea(rows,nombre){
   const h=(rows[0]||[]).map(x=>normTxt(x));const col=n=>h.findIndex(x=>x===normTxt(n));
