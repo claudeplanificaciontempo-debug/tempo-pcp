@@ -772,15 +772,23 @@ posterior con el paso sin cerrar; `anomalia`, al final, abierto, bandeja `colaYa
 (grupo·10⁹ + posición·10⁶ + llegada) → misma fase junta → entrega. **Ruta incompleta** (`rutaIncompleta`: único paso de
 producción, no es el primero del flujo, fase antes) nunca es «lista para empezar»: Todo lo que viene + bandeja
 `colaRutaIncompleta` (reales: Bordado 114, Estampado 17). `anomaliasCola()` las cuenta. Capturas del driver
-`?captura=cola1|cola2`. Ver `COLA_POR_FASE_REPORTE.md`.
+`?captura=cola1|cola2`. Ver `COLA_POR_FASE_REPORTE.md`. **Correcciones (17-sep, tarde):** «asignar a operario» se **retiró** (botón,
+modal y función; el supervisor fija recurso y fecha en la fila); acciones en un menú **«⋯»** (`accionesColaHTML`, `details.acc`:
+✓ hecho · quitar lo fijado · **ruta** solo con `puedeEditarRuta()`, los demás **«ver ruta»** → `abrirFichaOrden`); cabecera en
+tres líneas (conteos `.cola-conteos`, orden en una línea, `Marcas:` con % por color) y el texto largo en el **«?»** común
+`ayudaTipHTML` (`.ayuda`); `MARCAS_CEN` con nombres cortos y **graduación: rojo solo meta vencida, ámbar va tarde / paso tarde**
+(`colorMarca`, `conteoColoresCola`); **corte por fecha** `prm('diasPorLlegar',15)` (`diasPorLlegar`/`setDiasPorLlegar`, Calendario y
+parámetros): `cortePorFecha(out)` en los dos caminos de `cercaniaCentro` baja de Por llegar a Todo lo que viene lo que llega a
+más de N días hábiles, marcado `lejosPorFecha` («llega en X días · más de N»); 0 = solo hoy. Ver `COLA_POR_FASE_CORRECCIONES.md`.
 
 **Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
 para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
 hábiles. **Recurso fijo o secuencia SIN programa ya no dan visibilidad.** Si `programar()` falla, el operario ve
 **cero** órdenes y sale «Error en la programación — avise al supervisor»: **nunca mostrar todo por si acaso**.
 Una orden iniciada fuera del plan sigue visible **solo mientras el tramo esté abierto**, sin INICIO. Un paso sin
-minutos (`pasoSinTiempo`) no llega al operario salvo que el supervisor le fije recurso y fecha («asignar a
-operario»); entonces va marcado «sin tiempo estándar». **CIERRE: hace falta tiempo corrido.**
+minutos (`pasoSinTiempo`) no llega al operario salvo que el supervisor le fije recurso y fecha en la fila de la cola
+(columnas Recurso y Arranca, con «toda la cola» activado; el botón «asignar a operario» se retiró el 17-sep); entonces va
+marcado «sin tiempo estándar». **CIERRE: hace falta tiempo corrido.**
 `puedeCerrarPaso(oid,c)` es la **única puerta** (`cerrarCentro`, `confirmarHechoCentro` y `terminarOrdenCentro`
 pasan por ella): suma `calcTramo().trabajado` de TODOS los tramos de esa orden en ese centro y exige
 `prm('minMinutosCierre',5)`. Por debajo del estándar marca `tiempoBajo` sin bloquear, y **sin SAM no marca**.

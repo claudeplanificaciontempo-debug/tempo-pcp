@@ -100,6 +100,8 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .t-alerta{background:#FBECE9;border-color:#E8C3BB;color:var(--alerta)}
 .t-ok{background:#E8F3ED;border-color:#BCDCCB;color:var(--ok)}
 .t-aviso{background:#FBF3E2;border-color:#E7D2A6;color:#8A6417}
+.acc{display:inline-block}.acc summary{list-style:none;cursor:pointer;display:inline-block;padding:0 9px;border:1px solid var(--rule);border-radius:999px;font-weight:700;line-height:18px;user-select:none}.acc summary::-webkit-details-marker{display:none}.acc[open] summary{background:var(--field)}.acc .acc-m{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}
+.ayuda-d{display:inline}.ayuda{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--rule);color:var(--ink3);font-size:11px;font-weight:700;cursor:help;vertical-align:middle;margin-left:4px;background:var(--paper)}.ayuda-d.abierto .ayuda{background:var(--field)}.ayuda-txt{display:none}.ayuda-d.abierto .ayuda-txt{display:block;margin:4px 0 6px;padding:6px 10px;border-left:3px solid var(--rule);color:var(--ink2);font-size:var(--fs-xs);white-space:normal;font-weight:400}
 .mut{color:var(--ink3)}
 .foto-mini{object-fit:cover;border-radius:4px;background:var(--field);vertical-align:middle;cursor:zoom-in;margin-right:6px;flex:none}
 @media print{.foto-mini{width:54px!important;height:54px!important;cursor:default}}
@@ -706,7 +708,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 16:30';
+const APP_BUILD='2026-09-17 21:29';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2076,6 +2078,13 @@ function setDiasVentanaTablet(v){if(!(puede('config')||puede('programa'))){alert
   const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('La ventana tiene que ser 0 o más días hábiles.');return}
   const antes=diasVentanaTablet();S.params.diasVentanaTablet=n;
   bitacora('Ventana de la tablet: '+antes+' → '+n+' días hábiles ('+quienFirma()+')');save();render()}
+/* Cola del centro: una orden cuya fase está en la lista pero cuya llegada programada supera N días hábiles
+   baja a «Todo lo que viene» con la etiqueta «llega en X días» (decisión 17-sep). Parámetro editable; 0 = solo lo que llega hoy. */
+function diasPorLlegar(){return prm('diasPorLlegar',15)}
+function setDiasPorLlegar(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
+  const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('El corte tiene que ser 0 o más días hábiles.');return}
+  const antes=diasPorLlegar();S.params.diasPorLlegar=n;
+  bitacora('Cola del centro · Por llegar hasta: '+antes+' → '+n+' días hábiles ('+quienFirma()+')');save();render()}
 /* el último día de la ventana: hoy más N días hábiles (hoy cuenta como día 1) */
 function finVentanaTablet(){const n=diasVentanaTablet();return n<=0?hoy():finLabInc(hoy(),n)||hoy()}
 /* ¿el motor programó ESTA orden en ESTE centro y recurso, dentro de la ventana? */
@@ -5136,11 +5145,11 @@ function tarjetasDiaCENHTML(cens,P,dias,recs){
 /* ---------- 4 · una sola marca: la más grave, el resto en el tooltip ---------- */
 /* El cálculo NO cambia: sigue saliendo de diagAtraso(). Solo cambia qué se pinta. */
 const MARCAS_CEN=[
-  {k:'vencida',n:'meta vencida',cls:'t-alerta',test:d=>d.orden&&d.vencida,
+  {k:'vencida',n:'meta vencida',cls:'t-alerta',color:'rojo',test:d=>d.orden&&d.vencida,
    txt:(d,c)=>'La fecha meta de la orden ('+fmtDia(d.meta)+') YA PASÓ: la orden llega tarde desde antes de entrar a este centro.'},
-  {k:'tarde',n:'la orden va tarde',cls:'t-alerta',test:d=>d.orden&&!d.vencida,
+  {k:'tarde',n:'va tarde',cls:'t-aviso',color:'ambar',test:d=>d.orden&&!d.vencida,
    txt:(d,c)=>'La ORDEN no llega a su fecha meta: meta '+fmtDia(d.meta)+', el programa la termina el '+fmtDia(d.finPro)+(d.dias?' ('+d.dias+' días tarde)':'')+'.'},
-  {k:'paso',n:'este paso va tarde',cls:'t-aviso',test:d=>d.pasoTarde,
+  {k:'paso',n:'paso tarde',cls:'t-aviso',color:'ambar',test:d=>d.pasoTarde,
    txt:(d,c)=>'El paso de '+nCen(c)+' tenía que terminar el '+fmtDia(d.paso.limite)+' y el programa lo termina el '+fmtDia(d.paso.fin)+'.'}];
 function marcasDe(o,P,c){const d=diagAtraso(o,P,c);return MARCAS_CEN.filter(m=>m.test(d)).map(m=>({...m,det:m.txt(d,c)}))}
 /* una sola etiqueta, la más grave; las demás van en el tooltip */
@@ -5150,7 +5159,9 @@ function marcaCentroUna(o,P,c){const l=marcasDe(o,P,c);
   const g=l[0];
   const otras=l.slice(1);
   const tip=g.det+(otras.length?'\n\nTambién aplica: '+otras.map(m=>m.n+' — '+m.det).join('\n'):'');
-  return pri+'<span class="tag '+g.cls+'" title="'+esc(tip)+'">'+esc(g.n)+(otras.length?' <b>+'+otras.length+'</b>':'')+'</span>'}
+  return pri+'<span class="tag '+g.cls+'" style="white-space:nowrap" title="'+esc(tip)+'">'+esc(g.n)+(otras.length?' <b>+'+otras.length+'</b>':'')+'</span>'}
+/* color de la fila según la marca más grave: rojo = meta vencida · ámbar = va tarde / paso tarde · ninguno */
+function colorMarca(o,P,c){const l=marcasDe(o,P,c);return l.length?l[0].color:'ninguno'}
 
 /* ---------- 5 · avance de la semana, arriba de la pestaña Planificación ---------- */
 function avanceSemanaCentro(cens,P,dias,recs){
@@ -6362,7 +6373,9 @@ const CERCANIA_GRUPOS=[
   ['lejana','Todo lo que viene','fases más atrás de la última visible de este centro'],
   ['anomalia','Ya salió de aquí','la fase de Odoo es del propio grupo o posterior, pero el paso no está cerrado aquí: cerrar el paso o corregir la fase']];
 function nGrupoCerc(g){const r=CERCANIA_GRUPOS.find(x=>x[0]===g);return r?r[1]:g}
-function notaGrupoCerc(g){const r=CERCANIA_GRUPOS.find(x=>x[0]===g);return r?r[2]:''}
+function notaGrupoCerc(g){const r=CERCANIA_GRUPOS.find(x=>x[0]===g);const t=r?r[2]:'';
+  if(g==='porLlegar')return t+' · llega dentro de '+diasPorLlegar()+' días hábiles, o sin fecha conocida (sin programar, sin dato, atrasada)';
+  if(g==='lejana')return t+', o llegada programada a más de '+diasPorLlegar()+' días hábiles';return t}
 /* el umbral, en PASOS pendientes. Valor inicial 2, editable en Configuración → Calendario y parámetros. */
 /* ---------- FASES VISIBLES EN LA COLA DE CADA CENTRO (decisión 17-sep-2026) ----------
    Reemplaza al umbral en pasos pendientes. Por centro, la lista ORDENADA de fases que se muestran en su cola
@@ -6531,7 +6544,8 @@ function cercaniaCentro(o,c,P){
   if(!ant){
     const l=llegadaTela(o,ro);out.llegada=l;
     const gt=grupoTela(o,l,c,out);out.grupo=gt.grupo;out.porQueTela=gt.porQue;if(gt.desacuerdo)out.desacuerdo=gt.desacuerdo;if(gt.anomalia)out.anomalia=gt.anomalia;if(gt.rutaIncompleta)out.rutaIncompleta=true;
-    if(out.grupo==='lejana'&&llegaYa(l)){out.llegaYaFuera=true}   /* fuera de la lista: etiqueta, no cambia de grupo */
+    cortePorFecha(out);
+    if(out.grupo==='lejana'&&llegaYa(l)){out.llegaYaFuera=true}   /* fuera de la lista (o movida por fecha): etiqueta, no cambia de grupo */
     /* dentro del grupo, lo que tiene fecha va antes que lo que no se sabe */
     out.orden=(l.tipo==='fecha')?(l.dias||0):(l.tipo==='lista'?-1:9e8);
     if(sec.estado!=='disponible')out.desacuerdo='la ruta dice que faltan '+pend.map(nCen).join(', ')+', pero este es el primer centro de producción de la ruta';
@@ -6567,8 +6581,13 @@ function cercaniaCentro(o,c,P){
     tip:'la fase de Odoo («'+(o.fase||'')+'») está fuera de la lista de '+nCen(c)+' (quedan '+pend.length+' pasos: '+pend.map(nCen).join(', ')+'), pero el programa ya termina el paso anterior. '
       +'Las fechas del motor y la fase no concuerdan: hay que revisar la ruta o la fase de esta orden.'};
   /* «llega ya» (hoy, mañana o atrasada): SOLO cambia de grupo si la fase está en la lista; fuera de la lista es una etiqueta (decisión 17-sep) */
+  cortePorFecha(out);
   if(out.grupo==='lejana'&&llegaYa(out.llegada)){out.llegaYaFuera=true}
   return out}
+/* corte por fecha dentro de Por llegar (17-sep): fase en la lista, pero la llegada programada supera diasPorLlegar()
+   → baja a «Todo lo que viene», marcada lejosPorFecha (etiqueta «llega en X días»). No toca Disponible ni las anomalías. */
+function cortePorFecha(out){if(out.grupo!=='porLlegar')return;const l=out.llegada;if(!l||l.tipo!=='fecha')return;
+  const n=diasPorLlegar();if((l.dias||0)>n){out.grupo='lejana';out.lejosPorFecha=true;out.diasCorte=n;out.faseRank=999}}   /* 999: dentro de Todo lo que viene se ordena por fecha junto a las demás, no encima de las que llegan ya */
 /* «llega ya» = hoy, mañana o atrasada */
 function llegaYa(l){if(!l)return false;
   if(l.tipo==='atrasado')return true;
@@ -6588,21 +6607,29 @@ function llegadaHTML(x){const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
   const etq=m?(' <span class="tag '+(m.tipo==='revisar'?'t-alerta':'t-aviso')+'" style="font-size:9px;padding:0 4px" title="'+esc2(m.tip)+'">'+esc2(m.txt)+'</span>'):'';
   const esp=(x&&x.llegaYaFuera)?' <span class="tag t-medio" style="font-size:9px;padding:0 4px" title="llega hoy, mañana o va atrasada según el programa, pero su fase está fuera de la lista de este centro: se queda en Todo lo que viene, solo se marca">llega ya</span>':'';
   const an=(x&&x.anomalia)?' <span class="tag '+(x.anomalia.tipo==='yaSalio'?'t-alerta':'t-ok')+'" style="font-size:9px;padding:0 4px" title="'+esc2(x.anomalia.tip)+'">'+esc2(x.anomalia.txt)+'</span>':'';
+  const lf=(x&&x.lejosPorFecha)?' <span class="tag t-medio" style="font-size:9px;padding:0 4px" title="la fase está en la lista de este centro, pero el programa la trae a más de '+esc2(x.diasCorte)+' días hábiles (Configuración → Calendario y parámetros → «Por llegar» hasta): se queda en Todo lo que viene hasta que se acerque">'+(((x.llegada||{}).dias===1)?'llega mañana':'llega en '+esc2((x.llegada||{}).dias)+' días')+' · más de '+esc2(x.diasCorte)+'</span>':'';
   const sl=(x&&x.sinLista)?' <span class="tag t-aviso" style="font-size:9px;padding:0 4px" title="este centro no tiene lista de fases en Configuración: todo lo que no está disponible se muestra como Por llegar">sin lista de fases</span>':'';
   if(x&&x.anomalia&&x.anomalia.tipo==='yaSalio')return '<b class="mut" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+an+sl;   /* nunca «lista para empezar» en negrita verde: ya salió */
-  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+etq+esp+an+sl
+  return '<b class="'+t.cls+'" title="'+esc(t.tip)+'">'+esc(t.txt)+'</b>'+etq+esp+an+lf+sl
     +(x.desacuerdo?' <span class="tag t-aviso" style="font-size:9px;padding:0 4px" title="'+esc(x.desacuerdo)+'">ojo</span>':'')}
 /* arriba de la cola: de dónde sale el orden y qué significa «en X días hábiles» */
+/* «?» común: la explicación larga va al tooltip, la pantalla queda en una línea (17-sep) */
+function ayudaTipHTML(txt){const t=esc(String(txt||''));return '<span class="ayuda-d"><span class="ayuda" role="button" title="'+t+'" onclick="this.parentElement.classList.toggle(\x27abierto\x27)">?</span><span class="ayuda-txt">'+t+'</span></span>'}   /* span, no details: un details dentro de un <p> lo parte */
+/* dos líneas cortas arriba de la cola: los conteos por grupo y el orden (la explicación completa en el «?») */
 function ordenColaNotaHTML(cola){const n=cola.length;if(!n)return '';
   const conPuesto=cola.filter(f=>puestoDe(f.o,f.c)>0).length;
-  const m={};cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';m[g]=(m[g]||0)+1});
-  return '<p class="mut" style="font-size:var(--fs-xs);margin:2px 0 8px"><b>Orden de la cola:</b> '
-   +'primero el <b>puesto manual</b> ('+conPuesto+' de '+n+' lo tienen), después la <b>cercanía a llegar a este centro</b> (Disponible = el paso anterior ya terminó; Por llegar = la fase está en la lista de fases de este centro, en su orden; Todo lo que viene = fases más atrás de la última visible), '
-   +'luego la fecha de llegada y la entrega. '
-   +CERCANIA_GRUPOS.filter(([g])=>m[g]).map(([g])=>esc(nGrupoCerc(g))+' '+m[g]).join(' \u00b7 ')
-   +'. <b>Cu\u00e1ndo llega</b> sale del <b>fin programado del paso anterior</b> de esa orden; se cuenta en d\u00edas h\u00e1biles del calendario del recurso de ese paso, '
-   +'<b>hoy no cuenta</b> (el siguiente d\u00eda h\u00e1bil es \u00abma\u00f1ana\u00bb). Lo que no se sabe dice \u00absin programar\u00bb o \u00absin dato de llegada\u00bb: no se estima. '
-   +'Lista de fases visibles de este centro: Configuraci\u00f3n \u2192 Calendario y par\u00e1metros'+((cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido)?' (<b>sugerida, sin confirmar</b>)':'')+'.</p>'}
+  const m={};cola.forEach(f=>{const g=puestoDe(f.o,f.c)>0?'puesto':((f.cerc&&f.cerc.grupo)||'porLlegar');m[g]=(m[g]||0)+1});
+  const fijos=['disponible','porLlegar','lejana','anomalia'];
+  const conteos=CERCANIA_GRUPOS.filter(([g])=>fijos.includes(g)||m[g]).map(([g])=>esc(nGrupoCerc(g))+' <b>'+(m[g]||0)+'</b>').join(' \u00b7 ');
+  const tip='Orden de la cola: primero el puesto manual ('+conPuesto+' de '+n+' lo tienen), después la cercanía a llegar a este centro '
+   +'(Disponible = el paso anterior ya terminó; Por llegar = la fase está en la lista de fases de este centro, en su orden, y llega dentro de '+diasPorLlegar()+' días hábiles; '
+   +'Todo lo que viene = fases más atrás de la última visible, o llegada programada a más de '+diasPorLlegar()+' días hábiles; Ya salió de aquí = la fase ya pasó de este centro y el paso no está cerrado), '
+   +'luego la fecha de llegada y la entrega. Cuándo llega sale del fin programado del paso anterior de esa orden; se cuenta en días hábiles del calendario del recurso de ese paso, '
+   +'hoy no cuenta (el siguiente día hábil es «mañana»). Lo que no se sabe dice «sin programar» o «sin dato de llegada»: no se estima. '
+   +'Lista de fases visibles de este centro: Configuración → Calendario y parámetros'+((cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido)?' (sugerida, sin confirmar)':'')+'.';
+  return '<p class="cola-conteos" style="font-size:var(--fs-s);margin:2px 0 4px">'+conteos+'</p>'
+   +'<p class="mut cola-orden" style="font-size:var(--fs-xs);margin:0 0 6px"><b>Orden de la cola:</b> puesto manual ('+conPuesto+' de '+n+') \u2192 cercan\u00eda a llegar \u2192 fecha de llegada \u2192 entrega'
+   +((cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido)?' \u00b7 lista de fases <b>sugerida, sin confirmar</b>':'')+ayudaTipHTML(tip)+'</p>'}
 /* los grupos colapsables de la cola: Revisar ruta y Lejanas vienen cerrados (decisión 1) */
 const CERC_ABIERTO={puesto:true,disponible:true,porLlegar:true,revisar:false,lejana:false,anomalia:true};
 /* Si hay buscador, filtro de fases o filtro de día puesto, NINGÚN grupo se queda cerrado:
@@ -6626,7 +6653,7 @@ function cabGrupoCercHTML(g,n,pz,nCols){const ab=cercAbierto(g);
 function colaCentro(c,filas){return filas.filter(f=>f.c===c&&!f.hecho&&!f.bloq).sort((a,b)=>
   (puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)   /* 1 · el puesto manual sigue mandando */
   ||Math.floor(ordenCercania(a.cerc||{})/1e6)-Math.floor(ordenCercania(b.cerc||{})/1e6)   /* 2 · grupo de cercanía y posición de la fase en la lista */
-  ||((a.o.fase||'')<(b.o.fase||'')?-1:(a.o.fase||'')>(b.o.fase||'')?1:0)  /* misma posición (en proceso aquí, fuera de la lista): la misma fase queda junta */
+  ||((['disponible','porLlegar'].includes((a.cerc||{}).grupo))?((a.o.fase||'')<(b.o.fase||'')?-1:(a.o.fase||'')>(b.o.fase||'')?1:0):0)  /* misma posición (en proceso aquí): la misma fase queda junta bajo su subcabecera; en Todo lo que viene manda la fecha */
   ||ordenCercania(a.cerc||{})-ordenCercania(b.cerc||{})          /* 3 · fecha de llegada */
   ||((a.o.fecha||'')<(b.o.fecha||'')?-1:1))}                     /* 4 · entrega */
 function agruparCola(lista,niveles){if(!niveles.length)return{hojas:lista};const k=niveles[0];const m={};const orden=[];lista.forEach(f=>{const c=claveEG(k,f.o);if(!m[c]){m[c]=[];orden.push(c)}m[c].push(f)});
@@ -6934,32 +6961,12 @@ function enProcesoFueraDelPlan(o,c){const ts=(((S.avance[o.id]||{}).tramos)||[])
   return alguno?ts[0]:null}
 /* fijar una orden a un operario: recurso y fecha de arranque. Es lo que hace visible en la tablet
    un paso que el motor no programa por no tener minutos (ver revisión 3 del motor). */
-function mAsignarOperario(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
-  if(!(puede('programa')||puede('reprogramar'))){alert('Solo planificación o el supervisor asignan una orden a un operario.');return}
-  const recs=S.recursos.filter(r=>r.activa&&r.centro===c);
-  const pc=(o.progCentro||{})[c]||{};
-  abrir(`<h3>Asignar a un operario · ${esc(nCen(c))}</h3><div class="body">
-   <p>${whCell(o)} · ${esc(nombreCat(K(o.cat)))}</p>
-   ${pasoSinTiempo(o,c)?'<div class="warn">Este paso <b>no tiene minutos por prenda</b> (falta técnica, puntadas o SAM), así que el motor no lo programa y el operario no lo ve. Asignarlo a mano lo hace visible, marcado <b>«sin tiempo estándar»</b>. El tiempo real se registra igual.</div>':''}
-   <div class="grid2" style="gap:14px;margin-top:10px">
-    <div><label>Operario / puesto</label><select id="ao-rec">${recs.map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')||'<option value="">(sin recursos activos)</option>'}</select></div>
-    <div><label>Arranca</label><input type="date" id="ao-dia" value="${esc(pc.desde||hoy())}" min="${hoy()}"></div></div>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:10px">Queda en la programación del centro (recurso y fecha) y en la bitácora. No cambia la ruta ni el programa del motor.</p></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>
-    <button class="btn" ${recs.length?'':'disabled'} onclick="asignarOperario('${oid}','${c}')">Asignar</button></div>`)}
-function asignarOperario(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
-  const rec=String((document.getElementById('ao-rec')||{}).value||'');
-  const dia=String((document.getElementById('ao-dia')||{}).value||'');
-  if(!rec||!dia){alert('Elige el operario y el día de arranque.');return}
-  setProgCen(oid,c,'rec',rec);setProgCen(oid,c,'desde',dia);
-  bitacora('Orden asignada a operario · '+o.op+' en '+nCen(c)+' → '+nRec(rec)+' desde '+fmtDia(dia)+' ('+quienFirma()+')'+(pasoSinTiempo(o,c)?' · el paso no tiene minutos por prenda':''));
-  try{cerrar()}catch(e){}save();render()}
 function mandaCola(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);if(!p&&colaNumerada)t.push('<span class="tag t-aviso" title="Sin puesto manual: la ordena la cercanía (qué tan cerca está de llegar a este centro), detrás de las que sí tienen puesto.">sin puesto · la ordena la cercanía</span>');
   if(o.prio&&o.prio!==3)t.push('<span class="tag t-alerta" title="La prioridad global de la orden (Órdenes) va antes que el puesto del centro en el motor.">prio global '+o.prio+' manda</span>');
   const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');
   const fp=enProcesoFueraDelPlan(o,c);
   if(fp)t.push('<span class="tag t-alerta" title="alguien la empezó en este centro sin que estuviera programada para su puesto: sigue visible en su tablet solo para terminarla">en proceso fuera del plan</span>');
-  if(pasoSinTiempo(o,c))t.push('<span class="tag t-aviso" title="la ruta pasa por aquí pero el paso no tiene minutos por prenda: el motor no lo programa y el operario no lo ve hasta que se le asigne">paso sin tiempo</span>');
+  if(pasoSinTiempo(o,c))t.push('<span class="tag t-aviso" title="la ruta pasa por aquí pero el paso no tiene minutos por prenda: el motor no lo programa y el operario no lo ve hasta que se le fije recurso y fecha en esta fila (columnas Recurso y Arranca; con «toda la cola» activado si no tiene fecha). Así queda visible en la tablet, marcado «sin tiempo estándar»; el tiempo real se registra igual">paso sin tiempo</span>');
   return t.join(' ')}
 /* ---------- Centros de producción: filtro de fases común, resumen día × familia, cruce familia × fase, color ---------- */
 function togFaseCEN(f){togSet(CEN,'fases',f)}
@@ -6979,23 +6986,24 @@ function diagAtraso(o,P,c){const ro=(P&&P.ordenes&&P.ordenes[o.id])||{};const me
   const paso=c?(((ro.pasos)||[]).find(x=>x.centro===c)||null):null;
   return {ro,meta,vencida:!!(meta&&meta<h),orden:!!ro.atraso,finPro:ro.finPro||null,dias:ro.diasTarde||0,
     paso,pasoTarde:!!(paso&&paso.fin&&paso.limite&&paso.fin>paso.limite),sinMeta:!meta}}
-function marcaCentro(o,P,c){const t=[];const d=diagAtraso(o,P,c);
+function marcaCentro(o,P,c){const t=[];   /* todas las marcas que aplican (Costura); mismos nombres y colores que la cola: MARCAS_CEN */
   if((o.prio||3)<=2)t.push('<span class="tag t-aviso" title="prioridad puesta en la orden">prioridad</span>');
-  if(d.pasoTarde)t.push('<span class="tag t-alerta" title="El paso de '+esc(nCen(c))+' tenía que terminar el '+fmtDia(d.paso.limite)+' para que la orden llegue, y el programa lo termina el '+fmtDia(d.paso.fin)+'.">este paso va tarde</span>');
-  if(d.orden){
-    if(d.vencida)t.push('<span class="tag t-alerta" title="La fecha meta de la orden ('+fmtDia(d.meta)+') YA PASÓ: la orden llega tarde desde antes de entrar a este centro. No dice nada de este paso.">meta vencida</span>');
-    else t.push('<span class="tag t-alerta" title="La ORDEN no llega a su fecha meta: meta '+fmtDia(d.meta)+', el programa la termina el '+fmtDia(d.finPro)+(d.dias?' ('+d.dias+' días tarde)':'')+'. Es de la orden completa, no de este paso.">la orden va tarde</span>');}
+  marcasDe(o,P,c).forEach(m=>t.push('<span class="tag '+m.cls+'" style="white-space:nowrap" title="'+esc(m.det)+'">'+esc(m.n)+'</span>'));
   return t.join(' ')}
 /* resumen honesto arriba de la cola: de las que van tarde, cuántas por cada causa */
+/* una línea: cuántas filas quedan en rojo (meta vencida), en ámbar (va tarde / paso tarde) y sin marca; la explicación en el «?» */
+function conteoColoresCola(cola,P,c){const r={rojo:0,ambar:0,ninguno:0,venc:0,noLlega:0,paso:0,sinMeta:0};
+  cola.forEach(f=>{const d=diagAtraso(f.o,P,c);r[colorMarca(f.o,P,c)]++;if(d.pasoTarde)r.paso++;if(!d.orden)return;if(d.sinMeta){r.sinMeta++;return}if(d.vencida)r.venc++;else r.noLlega++});
+  r.n=cola.length;r.pctRojo=r.n?Math.round(100*r.rojo/r.n):0;r.pctAmbar=r.n?Math.round(100*r.ambar/r.n):0;r.pctNinguno=r.n?Math.round(100*r.ninguno/r.n):0;return r}
 function porQueTardeHTML(cola,P,c){const n=cola.length;if(!n)return '';
-  let venc=0,noLlega=0,paso=0,sinMeta=0;
-  cola.forEach(f=>{const d=diagAtraso(f.o,P,c);if(d.pasoTarde)paso++;if(!d.orden)return;if(d.sinMeta){sinMeta++;return}if(d.vencida)venc++;else noLlega++});
-  if(!venc&&!noLlega&&!paso&&!sinMeta)return '';
-  return '<p class="mut" style="font-size:var(--fs-xs);margin:2px 0 8px"><b>Por qué aparecen «tarde»:</b> la marca se calcula contra la <b>fecha meta de la orden</b> (el compromiso si existe, si no la fecha de Odoo), comparada con el día en que el programa <b>termina la orden completa</b> — no con este paso. De las '+n+' de la cola: '+
-    [venc?venc+' con la <b>meta ya vencida</b> (llegan tarde desde antes de entrar aquí)':'',
-     noLlega?noLlega+' que <b>la orden no alcanza</b> a terminar antes de su meta':'',
-     sinMeta?sinMeta+' <b>sin fecha meta</b>':'',
-     paso?paso+' donde <b>este paso</b> se pasa de su propio límite':''].filter(Boolean).join(' · ')+'.</p>'}
+  const r=conteoColoresCola(cola,P,c);
+  if(!r.venc&&!r.noLlega&&!r.paso&&!r.sinMeta)return '';
+  const tip='Por qué aparecen «tarde»: la marca se calcula contra la fecha meta de la orden (el compromiso si existe, si no la fecha de Odoo), comparada con el día en que el programa termina la orden completa — no con este paso. '
+   +'Rojo = meta ya vencida (llegan tarde desde antes de entrar aquí). Ámbar = la orden no alcanza a terminar antes de su meta, o este paso se pasa de su propio límite. Cada fila cuenta UNA sola vez, por su marca más grave (una con la meta vencida y el paso tarde es roja). Causas, que sí se pueden sumar: de las '+n+' de la cola: '
+   +[r.venc?r.venc+' con la meta ya vencida':'',r.noLlega?r.noLlega+' que la orden no alcanza a terminar antes de su meta':'',r.sinMeta?r.sinMeta+' sin fecha meta':'',r.paso?r.paso+' donde este paso se pasa de su propio límite':''].filter(Boolean).join(' · ')+'.';
+  return '<p class="mut cola-marcas" style="font-size:var(--fs-xs);margin:0 0 6px"><b>Marcas:</b> '
+   +'<span class="tag t-alerta" style="font-size:9px;padding:0 4px">'+r.rojo+' rojas</span> meta vencida ('+r.pctRojo+'%) \u00b7 '
+   +'<span class="tag t-aviso" style="font-size:9px;padding:0 4px">'+r.ambar+' \u00e1mbar</span> va tarde / paso tarde ('+r.pctAmbar+'%) \u00b7 '+r.ninguno+' sin marca ('+r.pctNinguno+'%)'+ayudaTipHTML(tip)+'</p>'}
 function planIniFin(o,c,P){const p=(((P&&P.ordenes&&P.ordenes[o.id])||{}).pasos||[]).find(x=>x.centro===c)||{};
   return (p.ini?fmtDia(p.ini):'—')+' → '+(p.fin?fmtDia(p.fin):'—')}
 /* 3 · resumen del centro al programar: día × familia, con unidades y horas */
@@ -7064,21 +7072,30 @@ function modKPIsHTML(recs,P,dias,titulo){if(!recs.length)return '';
 /* las órdenes que de verdad se ven en la cola: pendientes del centro y dentro de la semana (o toda la cola) */
 function colaVisible(cens,filas,hasta){return [].concat(...cens.map(c=>{const all=colaCentro(c,filas);
   return (CEN.todo?all:all.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta))).map(f=>f.o)}))}
+/* acciones de la fila en un menú «⋯» (17-sep): ✓ hecho, quitar lo fijado, ruta (editar solo con permiso ruta; los demás la ven en la ficha) */
+function accionesColaHTML(f,pc){const acc=[];
+  if(regHechoOk(f.c))acc.push(`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`);
+  if(pc.rec||pc.desde||pc.pri)acc.push(`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar lo fijado</button>`);
+  if(puedeEditarRuta())acc.push(`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros (permiso ruta)">ruta</button>`);
+  else acc.push(`<button class="btn ghost sm" onclick="abrirFichaOrden('${f.o.id}')" title="ver la ruta y el paso actual de la orden (solo lectura: editar la ruta es de planificación)">ver ruta</button>`);
+  if(!acc.length)return '<span class="mut">·</span>';
+  return `<details class="acc"><summary title="acciones de esta orden">⋯</summary><span class="acc-m">${acc.join(' ')}</span></details>`}
 /* ---------- la cola de UN centro, a su propia función (16-sep-2026, punto 2a) ----------
    Es EXACTAMENTE la plantilla que antes vivía dentro de vCentro: se movió, no se cambió. Recibe en
    `ctx` las variables de las que dependía (filas, hasta, okPiso, P, h, porQue). Existe para poder
    repintar SOLO la cola cuando se escribe en el buscador (redibujo parcial, punto 2b). */
+const LEDE_COLA='Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: subir una orden al puesto 1 le pone puesto manual SOLO a ella; bajarla numera también las que quedan por encima; lo demás sigue por cercanía. Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo. Acciones de cada fila en el menú «⋯»: ✓ hecho, quitar lo fijado y la ruta (editarla es de planificación; los demás la ven).';
 function colaCentroHTML(c,ctx){
-  const filas=ctx.filas,hasta=ctx.hasta,okPiso=ctx.okPiso,P=ctx.P,h=ctx.h,porQue=ctx.porQue;
+  const filas=ctx.filas,hasta=ctx.hasta,okPiso=ctx.okPiso,P=ctx.P,h=ctx.h;
       const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
       const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const sinPuesto=colaAll.filter(f=>!puestoDe(f.o,c)).length;const numerada=sinPuesto<colaAll.length;
       const fila=f=>{const pc=(f.o.progCentro||{})[f.c]||{};return `<tr draggable="${okPiso?'true':'false'}" ondragstart="arrastrarCola(event,'${f.o.id}','${f.c}')" ondragend="finArrastreCola(event)" ondragover="overCola(event,'${f.c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${f.c}','${f.o.id}')">
        <td style="white-space:nowrap">${okPiso?'<span class="hand" title="arrastra para cambiar el puesto. Subirla al puesto 1 le pone puesto manual SOLO a ella; bajar una orden numera también las que quedan por encima (una orden con puesto siempre va delante de una sin puesto). Lo que quede por debajo sigue ordenándose por cercanía.">⠿</span>':''}<input type="number" min="1" style="width:58px" value="${pc.pri||''}" placeholder="—" ${okPiso?'':'disabled'} onchange="moverEnCola('${f.o.id}','${f.c}',{pos:+this.value})" title="puesto en la cola de ${esc(nCen(f.c))}: es el número de prioridad que usa el motor. arrastra para cambiar el puesto. Subirla al puesto 1 le pone puesto manual SOLO a ella; bajar una orden numera también las que quedan por encima (una orden con puesto siempre va delante de una sin puesto). Lo que quede por debajo sigue ordenándose por cercanía."></td>
        <td style="white-space:nowrap">${whCell(f.o)} ${mandaCola(f.o,f.c,numerada)}</td><td style="white-space:nowrap">${esc(String(f.o.odc||'')) ||'<span class="mut">\u2014</span>'}</td><td style="white-space:nowrap">${llegadaHTML(f.cerc)}</td><td>${esc(f.o.cliente||'')}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant-f.hechas)}</td><td class="num">${num(f.paso.min||0)}</td>
        <td><select style="width:auto" ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">auto (${esc(nRec(f.paso.rec))})</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
-       <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td>
-       <td style="white-space:nowrap">${(puede('programa')||puede('reprogramar'))?`<button class="btn ghost sm" onclick="mAsignarOperario('${f.o.id}','${f.c}')" title="asignar esta orden a un operario (recurso y día). Es lo que hace visible en la tablet un paso que el motor no programa por no tener minutos">asignar a operario</button> `:''}${(pc.rec||pc.desde||pc.pri)?`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar</button> `:''}${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros">ruta</button> `:''}${regHechoOk(f.c)?`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`:''}</td></tr>`};
-      return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha puesto puestos a mano: la cola se ordena por cercanía a llegar a este centro y, dentro de cada grupo, por fecha de llegada. Arrastrar una orden le pone puesto manual solo a ella (y a las que queden por encima, si la bajas); el resto sigue por cercanía.">cola sin numerar: se ordena por cercanía a llegar a este centro</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="body" style="padding-bottom:0">${ordenColaNotaHTML(cola)}${porQue[c]||''}</div><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Marca</th><th></th></tr></thead><tbody>
+       <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td><td style="white-space:nowrap">${fmtDia(f.paso.ini)} → ${fmtDia(f.paso.fin)}</td><td style="white-space:nowrap">${marcaCentroUna(f.o,P,f.c)}</td>
+       <td style="white-space:nowrap">${accionesColaHTML(f,pc)}</td></tr>`};
+      return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))}${ayudaTipHTML(LEDE_COLA)} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha puesto puestos a mano: la cola se ordena por cercanía a llegar a este centro y, dentro de cada grupo, por fecha de llegada. Arrastrar una orden le pone puesto manual solo a ella (y a las que queden por encima, si la bajas); el resto sigue por cercanía.">cola sin numerar: se ordena por cercanía a llegar a este centro</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="body" style="padding-bottom:0">${ordenColaNotaHTML(cola)}${porQueTardeHTML(cola,P,c)}</div><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Marca</th><th></th></tr></thead><tbody>
        ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length&&g==='puesto'&&cola.length)return cabGrupoCercHTML(g,0,0,14)+'<tr class="grp-row fase-row"><td colspan="14" class="mut" style="padding:3px 10px 3px 24px;font-size:var(--fs-xs)">ninguna: nadie ha puesto puestos a mano en '+esc(nCen(c))+'. Arrastra una orden al puesto 1 o escribe el número en la columna Puesto; el resto sigue por cercanía.</td></tr>';if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),14)+(cercAbierto(g)?((g==='porLlegar'||g==='disponible')&&!grpSt('cen').niveles.length?porFaseHTML(l,fila,pzDe,14):filasGRP('cen',l,fila,14,f=>f.o,pzDe)):'')}).join('');return sec||'<tr><td colspan="14" class="mut">Nada por programar.</td></tr>'})())}
        ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="14">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hd=hechasDelDia(c,null,h);const hh=hd.detalle.map(x=>x.o);const pzDe=o=>(hd.detalle.find(x=>x.o===o)||{}).pz||0;const tot=hd.pz;
        return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · ya libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const det=hd.detalle.find(x=>x.o===o)||{};const hc=Object.assign({pz:det.pz||0,u:(det.fuente==='tramo'?'registro por talla':''),ts:det.ts||new Date().toISOString(),dif:0},((S.avance[o.id]||{}).hechoC||{})[c]||{});const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${(regHechoOk(c)&&((S.avance[o.id]||{}).hechoC||{})[c])?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()
@@ -7122,15 +7139,13 @@ function vCentro(el){
     const niv=nivelesCEN();const hasta=dsum(dom,7);
     const sec=seccionesModulos(cens,P);const secciones=sec?(modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')):'';
     const listas=subAreasResumenHTML(cid,cens,P,dias)+cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
-    const porQue={};cens.forEach(c=>{porQue[c]=porQueTardeHTML(colaCentro(c,filas),P,c)});
-    const tablas=cens.map(c=>colaCentroHTML(c,{filas,hasta,okPiso,P,h,porQue})).join('');
+    const tablas=cens.map(c=>colaCentroHTML(c,{filas,hasta,okPiso,P,h})).join('');   /* la línea de marcas se calcula adentro, sobre la cola que se ve */
     /* la cola se puede repintar sola: mismas variables, solo `filas` y `porQue` se recalculan con el texto nuevo */
     listaRegistrar('CEN.q',()=>{
       const f2=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
-      const pq={};cens.forEach(c=>{pq[c]=porQueTardeHTML(colaCentro(c,f2),P,c)});
-      return cens.map(c=>colaCentroHTML(c,{filas:f2,hasta,okPiso,P,h,porQue:pq})).join('')
+      return cens.map(c=>colaCentroHTML(c,{filas:f2,hasta,okPiso,P,h})).join('')
         +avisoFueraDeBaseHTML('CEN.q',colaVisible(cens,f2,hasta),'este centro y la semana que se está mirando')});
-    el.innerHTML=cab+resumenDiaFamiliaHTML(cens,P,dias,nombre)+secciones+`<div class="no-print" style="margin:-4px 0 10px"><button class="btn ghost sm" onclick="imprimirProgramaCentro('${cid}')">PDF del programa (para operarios)</button>${(cid==='corte'||cid==='modulos')?' <button class="btn ghost sm" onclick="ordenarColaPorColor(\''+cens[0]+'\')" title="junta los colores en la cola para bajar cambios de hilo; es solo el orden de los puestos, el motor no cambia">Juntar colores en la cola</button> <span class="mut" style="font-size:var(--fs-xs)">agrupar por color es vista y orden manual: el motor no secuencia por color</span>':''} ${cens.map(c=>ordenesConPuesto(c).length?' <button class="btn ghost sm" title="quita el puesto manual de las '+ordenesConPuesto(c).length+' órdenes de '+esc(nCen(c))+' para que la cola vuelva a ordenarse por cercanía a llegar" onclick="volverACercania(\''+c+'\')">Volver al orden por cercanía'+(cens.length>1?' · '+esc(nCen(c)):'')+'</button>':'').join('')} <span class="mut" style="font-size:var(--fs-xs)">puesto, foto, WH, cliente, producto, color, minutos estándar y unidades · horizontal · sin datos internos</span></div>`+`<p class="lede">Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el motor: arrastrar renumera la cola completa del centro (1..n). Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo.</p>
+    el.innerHTML=cab+resumenDiaFamiliaHTML(cens,P,dias,nombre)+secciones+`<div class="no-print" style="margin:-4px 0 10px"><button class="btn ghost sm" onclick="imprimirProgramaCentro('${cid}')">PDF del programa (para operarios)</button>${(cid==='corte'||cid==='modulos')?' <button class="btn ghost sm" onclick="ordenarColaPorColor(\''+cens[0]+'\')" title="junta los colores en la cola para bajar cambios de hilo; es solo el orden de los puestos, el motor no cambia">Juntar colores en la cola</button> <span class="mut" style="font-size:var(--fs-xs)">agrupar por color es vista y orden manual: el motor no secuencia por color</span>':''} ${cens.map(c=>ordenesConPuesto(c).length?' <button class="btn ghost sm" title="quita el puesto manual de las '+ordenesConPuesto(c).length+' órdenes de '+esc(nCen(c))+' para que la cola vuelva a ordenarse por cercanía a llegar" onclick="volverACercania(\''+c+'\')">Volver al orden por cercanía'+(cens.length>1?' · '+esc(nCen(c)):'')+'</button>':'').join('')} <span class="mut" style="font-size:var(--fs-xs)">puesto, foto, WH, cliente, producto, color, minutos estándar y unidades · horizontal · sin datos internos</span></div>`+`
     <div class="row" style="margin:0 0 12px;align-items:flex-end;gap:14px">${grpSelHTML('cen')}<label style="display:flex;align-items:center;gap:6px;margin:0 0 6px"><input type="checkbox" ${CEN.todo?'checked':''} onchange="CEN.todo=this.checked;render()"> toda la cola (no solo esta semana y la siguiente)</label></div>
     ${listas}
     <div data-lista="CEN.q">${tablas}${avisoFueraDeBaseHTML('CEN.q',colaVisible(cens,filas,hasta),'este centro y la semana que se está mirando')}</div>
@@ -9231,6 +9246,7 @@ function vConfig(el){
 <div class="mut" style="font-size:var(--fs-xs)">tiempo efectivo (sin paros ni descansos) que debe haber corrido antes de poder cerrar un paso. <b>0 = sin mínimo</b></div>
 <details style="margin-top:6px"><summary style="cursor:pointer;font-size:var(--fs-xs)">por centro (vacío = usa el general)${Object.keys(S.params.minMinutosCierreCentro||{}).length?' · '+Object.keys(S.params.minMinutosCierreCentro).length+' con valor propio':''}</summary>
 ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id)).map(x=>{const m=(S.params.minMinutosCierreCentro||{})[x.id];return `<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><span style="min-width:140px;font-size:var(--fs-s)">${esc(x.n)}</span><input type="number" min="0" step="1" style="width:90px" placeholder="general ${esc(String(prm('minMinutosCierre',5)))}" value="${m!=null?esc(String(m)):''}" onchange="setMinMinutosCierreCentro('${x.id}',this.value)"><span class="mut" style="font-size:var(--fs-xs)">${m!=null?'propio':'usa el general'}</span></div>`}).join('')}</details></div>
+<div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>
 <div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
    <h4 style="margin:12px 0 6px">Costos para valorar decisiones</h4>

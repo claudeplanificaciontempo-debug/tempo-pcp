@@ -1253,6 +1253,36 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CCR: se puede medir la cola de corte sobre el volcado real",__R.cc.real.corte.existe&&__R.cc.real.corte.total>=0,
        __R.cc.real.corte.total+" órdenes");
      __check("CCR: y la de botones",__R.cc.real.botones.existe,__R.cc.real.botones.total);
+     /* ===== CF2R · corte por fecha y colores, medidos sobre el volcado real (las pruebas de la demo pasan en vacío) ===== */
+     {const cens=S.centros.filter(x=>x.area==="pro"&&x.activo!==false).map(x=>x.id);const bak=S.params.diasPorLlegar;
+      const cuenta=()=>{const r={};cens.forEach(cc=>{const cola=colaCentro(cc,filasDeCentros([cc],Pc,lun,dsum(lun,6),""));const m=partirPorCercania(cola);
+        r[cc]={n:cola.length,porLlegar:m.porLlegar.length,lejana:m.lejana.length,movidas:cola.filter(f=>f.cerc.lejosPorFecha).length,
+          movidasOk:cola.filter(f=>f.cerc.lejosPorFecha).every(f=>f.cerc.grupo==="lejana"&&f.cerc.enLista===true&&f.cerc.faseRank===999&&f.cerc.llegada.tipo==="fecha"&&f.cerc.llegada.dias>diasPorLlegar()&&/llega (en \d+ días|mañana) · más de/.test(llegadaHTML(f.cerc))),
+          fuera:m.porLlegar.filter(f=>f.cerc.llegada&&f.cerc.llegada.tipo==="fecha"&&(f.cerc.llegada.dias||0)>diasPorLlegar()).length,
+          dias:cola.filter(f=>f.cerc.lejosPorFecha).map(f=>f.cerc.llegada.dias).sort((a,b)=>a-b),
+          /* dentro de Todo lo que viene, ninguna movida por fecha queda ENCIMA de una que llega ya */
+          ordenOk:(()=>{const l=m.lejana;let vistaMovida=false;for(const f of l){if(f.cerc.lejosPorFecha)vistaMovida=true;else if(f.cerc.llegaYaFuera&&vistaMovida)return false}return true})()}});return r};
+      const con15=cuenta();S.params.diasPorLlegar=100000;const sinCorte=cuenta();S.params.diasPorLlegar=0;const cero=cuenta();
+      if(bak==null)delete S.params.diasPorLlegar;else S.params.diasPorLlegar=bak;
+      __R.cf=__R.cf||{};__R.cf.lejosPorFecha={};cens.forEach(cc=>{__R.cf.lejosPorFecha[cc]={movidas:con15[cc].movidas,porLlegarAntes:sinCorte[cc].porLlegar,porLlegar:con15[cc].porLlegar,dias:con15[cc].dias}});
+      __check("CF2R: sobre el volcado real el corte de 15 días mueve órdenes en Confección y Empaque (las que el motor programa para enero–febrero) y ninguna en Corte",con15.modulos.movidas>=1&&con15.empaque.movidas>=1&&con15.corte.movidas===0,JSON.stringify(__R.cf.lejosPorFecha));
+      __check("CF2R: cada movida queda en Todo lo que viene, con la fase en la lista, ordenada por fecha (faseRank 999), llegada a más de 15 y etiqueta «llega en X días · más de 15»",cens.every(cc=>con15[cc].movidasOk),JSON.stringify(cens.filter(cc=>!con15[cc].movidasOk)));
+      __check("CF2R: Por llegar (con corte) + movidas = Por llegar (sin corte), y en Por llegar no queda nada a más de 15 días",cens.every(cc=>con15[cc].porLlegar+con15[cc].movidas===sinCorte[cc].porLlegar&&con15[cc].fuera===0),JSON.stringify(con15));
+      __check("CF2R: dentro de Todo lo que viene las movidas por fecha no quedan encima de las que llegan ya",cens.every(cc=>con15[cc].ordenOk),JSON.stringify(cens.filter(cc=>!con15[cc].ordenOk)));
+      __check("CF2R: 0 es 0: con el corte en 0 en Por llegar solo queda lo de hoy o sin fecha, y mueve más que con 15; con N enorme no mueve nada",cens.every(cc=>cero[cc].fuera===0&&cero[cc].movidas>=con15[cc].movidas&&sinCorte[cc].movidas===0)&&cens.some(cc=>cero[cc].movidas>con15[cc].movidas),JSON.stringify(cens.map(cc=>[cc,cero[cc].movidas,con15[cc].movidas])));
+      /* colores: rojo solo la meta vencida */
+      __R.cf.colores={};cens.forEach(cc=>{const cola=colaCentro(cc,filasDeCentros([cc],Pc,lun,dsum(lun,6),""));if(!cola.length)return;const r=conteoColoresCola(cola,Pc,cc);__R.cf.colores[cc]={n:r.n,rojo:r.rojo,ambar:r.ambar,ninguno:r.ninguno,pctRojo:r.pctRojo,pctAmbar:r.pctAmbar,pctNinguno:r.pctNinguno}});
+      __check("CF2R: en cada centro rojo + ámbar + sin marca = toda la cola, y el rojo son exactamente las de meta vencida",cens.filter(cc=>__R.cf.colores[cc]).every(cc=>{const r=__R.cf.colores[cc];const cola=colaCentro(cc,filasDeCentros([cc],Pc,lun,dsum(lun,6),""));const venc=cola.filter(f=>{const d=diagAtraso(f.o,Pc,cc);return d.orden&&d.vencida}).length;return r.rojo+r.ambar+r.ninguno===r.n&&r.rojo===venc}),JSON.stringify(__R.cf.colores));
+      __check("CF2R: Corte y Confección tienen filas de los tres colores y el rojo ya no cubre a las que solo van tarde",["corte","modulos"].every(cc=>{const r=__R.cf.colores[cc]||{};return r.rojo>0&&r.ambar>0&&r.ninguno>0&&r.pctRojo<50}),JSON.stringify([__R.cf.colores.corte,__R.cf.colores.modulos]));
+      /* la línea «Marcas:» de la pantalla cuenta sobre las filas que se ven, con «toda la cola» y sin ella */
+      {const bakCEN=JSON.stringify(CEN);const bakP=page;[true,false].forEach(todo=>{page="centro";CEN.id="corte";CEN.solo="";CEN.tab="prog";CEN.q="";CEN.fases=null;CEN.dia=null;CEN.todo=todo;render();
+        const host=document.getElementById("p-centro");const p=host.querySelector(".panel.cola .cola-marcas");const hasta=dsum(dsum(lun,6),7);
+        /* la base de la línea es la cola de la tabla (grupos colapsados incluidos, sus cabeceras traen el conteo): toda, o solo la semana y la siguiente */
+        const colaAllV=colaCentro("corte",filasDeCentros(["corte"],Pc,lun,dsum(lun,6),""));const filas=todo?colaAllV:colaAllV.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
+        const rojas=filas.filter(f=>colorMarca(f.o,Pc,"corte")==="rojo").length;const amb=filas.filter(f=>colorMarca(f.o,Pc,"corte")==="ambar").length;
+        const txt=p?p.textContent.replace(/\s+/g," "):"";const mR=txt.match(/(\d+) rojas/),mA=txt.match(/(\d+) ámbar/),mN=txt.match(/(\d+) sin marca \((\d+)%\)/);
+        __check("CF2R: la línea «Marcas:» cuenta las mismas filas que se ven en la tabla ("+(todo?"toda la cola":"solo la semana")+"): rojas, ámbar y sin marca suman las filas, y el % es sobre ellas",!!p&&!!mR&&!!mA&&!!mN&&+mR[1]===rojas&&+mA[1]===amb&&(+mR[1]+ +mA[1]+ +mN[1])===filas.length&&+mN[2]===Math.round(100*(+mN[1])/filas.length),JSON.stringify({txt:txt.slice(0,120),filas:filas.length,todas:colaAllV.length,rojas,amb}));});
+       Object.assign(CEN,JSON.parse(bakCEN));page=bakP;render();}}
      /* ===== R2·1 · desglose de CORTE por fase y por WH ===== */
      {const filas=filasDeCentros(["corte"],Pc,lun,dsum(lun,6),"");
       const cola=colaCentro("corte",filas);
@@ -3529,7 +3559,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const m=marcaCentro(oLejos,P,'corte');
     __check("VT2: una orden con margen de sobra no lleva ninguna marca de atraso",!/va tarde|meta vencida/.test(m),m);}
    {const h=porQueTardeHTML([{o:oVenc},{o:oLejos}],P,'corte');
-    __check("VT3: la cola explica arriba contra qué fecha se compara y cuántas por cada causa",/Por qué aparecen/.test(h)&&/fecha meta de la orden/.test(h)&&/meta ya vencida/.test(h));}
+    __check("VT3: la línea «Marcas:» va arriba de la cola y su «?» explica contra qué fecha se compara y cuántas por cada causa",/cola-marcas/.test(h)&&/rojas/.test(h)&&/class="ayuda"[^>]*title="[^"]*Por qué aparecen[^"]*fecha meta de la orden[^"]*meta ya vencida/.test(h));}
    S.ordenes=S.ordenes.filter(o=>![oVenc,oLejos].includes(o));[oVenc,oLejos].forEach(o=>delete S.avance[o.id]);
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
@@ -4403,12 +4433,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("CN4: se pinta UNA sola etiqueta de atraso",(h.match(/t-alerta|t-aviso/g)||[]).length<=1);
     __check("CN4: y es la más grave de las que aplican",!l.length||h.includes(esc(l[0].n)));
     __check("CN4: si aplican varias, las demás van en el tooltip con un contador",l.length<2||(/\+\d/.test(h)&&h.includes('También aplica')));
-    __check("CN4: el orden de gravedad es meta vencida > la orden va tarde > este paso va tarde",
-     MARCAS_CEN.map(m=>m.n).join('|')==='meta vencida|la orden va tarde|este paso va tarde');
+    __check("CN4: el orden de gravedad es meta vencida > va tarde > paso tarde (nombres cortos, una línea)",
+     MARCAS_CEN.map(m=>m.n).join('|')==='meta vencida|va tarde|paso tarde');
+    __check("CN4: graduación: rojo SOLO la meta vencida; va tarde y paso tarde en ámbar",
+     MARCAS_CEN.map(m=>m.k+':'+m.cls+':'+m.color).join('|')==='vencida:t-alerta:rojo|tarde:t-aviso:ambar|paso:t-aviso:ambar');
+    __check("CN4: la marca no se parte en varias líneas",!l.length||/white-space:nowrap/.test(h));
     __check("CN4: el cálculo sigue saliendo de diagAtraso, no de una cuenta nueva",
      l.every(m=>m.test(diagAtraso(o,P,'corte')))&&JSON.stringify(diagAtraso(o,P,'corte'))===JSON.stringify(orig));
     page='centro';CEN.id='corte';CEN.tab='prog';render();
-    __check("CN4: la línea resumen de causas sigue arriba de la cola",/porQueTardeHTML|contra qué fecha|se compara/.test(document.getElementById('p-centro').innerHTML)||true);}
+    {const h2=document.getElementById('p-centro').innerHTML;const P5=programar();const lun5=lunesDe(hoy());const hasta5=dsum(dsum(lun5,6),7);
+     const colaV=colaCentro('corte',filasDeCentros(['corte'],P5,lun5,dsum(lun5,6),'')).filter(f=>CEN.todo||f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta5));const r=conteoColoresCola(colaV,P5,'corte');
+     __check("CN4: la línea «Marcas:» está arriba de la cola exactamente cuando alguna fila visible lleva marca, y cuenta sobre las filas que se ven",((r.venc+r.noLlega+r.paso+r.sinMeta)>0)===/cola-marcas/.test(h2)&&(!/cola-marcas/.test(h2)||new RegExp(r.rojo+' rojas').test(h2)),JSON.stringify({venc:r.venc,paso:r.paso,rojo:r.rojo,n:r.n}));}}
    /* 5 · avance de la semana arriba de Planificación */
    {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
     const h=document.getElementById('p-centro').innerHTML;
@@ -5225,7 +5260,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* el orden: grupo → posición de la fase en la lista → llegada; la fórmula no deja que una llave pise a la anterior */
     __check("CF: una orden de la primera fase sin programar va ANTES que una de la segunda fase que llega en 2 días",ordenCercania({grupo:"porLlegar",faseRank:0,orden:9e8})<ordenCercania({grupo:"porLlegar",faseRank:1,orden:2}));
     __check("CF: dentro de Por llegar la cola va por fase en el orden de la lista",(()=>{const l=m.porLlegar;for(let i=1;i<l.length;i++){if((l[i-1].cerc.faseRank||0)>(l[i].cerc.faseRank||0))return false}return true})(),m.porLlegar.map(f=>f.o.fase+"#"+f.cerc.faseRank).slice(0,8).join(" | "));
-    __check("CF: nada con fase fuera de la lista queda en Por llegar (va a Todo lo que viene), salvo anomalías",m.porLlegar.every(f=>f.cerc.enLista||f.cerc.sinLista)&&m.lejana.every(f=>!f.cerc.enLista),m.porLlegar.filter(f=>!f.cerc.enLista).map(f=>f.o.op+" "+f.o.fase).slice(0,3).join(","));
+    __check("CF: nada con fase fuera de la lista queda en Por llegar (va a Todo lo que viene), salvo anomalías",m.porLlegar.every(f=>f.cerc.enLista||f.cerc.sinLista)&&m.lejana.every(f=>!f.cerc.enLista||f.cerc.lejosPorFecha),m.porLlegar.filter(f=>!f.cerc.enLista).map(f=>f.o.op+" "+f.o.fase).slice(0,3).join(","));
     /* escape «llega ya»: fuera de la lista NO cambia de grupo, solo etiqueta */
     {const oL=(m.lejana[0]||{}).o;if(oL){const x=cercaniaCentro(oL,c,Pf);const ro=Pf.ordenes[oL.id]||{};
       const l2=Object.assign({},x,{llegada:{tipo:"fecha",dias:1,ant:x.ant}});
@@ -5262,6 +5297,30 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* --- 4d · el tooltip del arrastre lo explica (decisión 4) --- */
    {page="centro";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true;CEN.q="";render();
     const h=document.getElementById("p-centro").innerHTML;
+    /* --- CF2 · correcciones del 17-sep sobre la cola construida --- */
+    {const host=document.getElementById("p-centro");
+     __check("CF2: el texto explicativo de la pestaña ya no ocupa pantalla: va en un «?» junto al título de la cola",!/<p class="lede">/.test(h)&&!!host.querySelector(".panel.cola h3 .ayuda")&&/puesto manual SOLO a ella/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title"))&&!/renumera la cola completa/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title")));
+     const body=host.querySelector(".panel.cola .body");
+     __check("CF2: conteos en una sola línea: Disponible N · Por llegar N · Todo lo que viene N · Ya salió N",(()=>{const p=body&&body.querySelector(".cola-conteos");if(!p)return false;const t=p.textContent;const u=t.replace(/\s+/g," ");const i=["Disponible ","Por llegar ","Todo lo que viene ","Ya salió de aquí "].map(k=>u.indexOf(k));return i.every(x=>x>=0)&&i[0]<i[1]&&i[1]<i[2]&&i[2]<i[3]&&/Disponible \d+/.test(u)&&/Por llegar \d+/.test(u)&&/Todo lo que viene \d+/.test(u)&&/Ya salió de aquí \d+/.test(u)&&!/<p/.test(u)&&(u.match(/·/g)||[]).length>=3})(),body&&(body.querySelector(".cola-conteos")||{}).textContent);
+     __check("CF2: la nota «Orden de la cola» es una línea con «?» (la explicación completa, incluida la convención de días, va en el tooltip)",(()=>{const ps=[...body.querySelectorAll("p")];const p=ps.find(x=>/Orden de la cola:/.test(x.textContent));if(!p)return false;const q=p.querySelector(".ayuda-d > .ayuda");const tx=p.querySelector(".ayuda-txt");return !/white-space:nowrap|text-overflow/.test(p.getAttribute("style")||"")&&!!q&&/hoy no cuenta/.test(q.getAttribute("title"))&&!!tx&&/hoy no cuenta/.test(tx.textContent)&&p.textContent.replace(tx.textContent,"").length<160})());
+     __check("CF2: el «?» sirve en tablet: es un details que al abrirse muestra el mismo texto del tooltip debajo, y cerrado no ocupa espacio",(()=>{const d=host.querySelector(".panel.cola h3 .ayuda-d");if(!d)return false;const tx=d.querySelector(".ayuda-txt");const cerrado=tx.getBoundingClientRect().height;d.querySelector(".ayuda").click();const abierto=tx.getBoundingClientRect().height;d.querySelector(".ayuda").click();const cerrado2=tx.getBoundingClientRect().height;return cerrado===0&&abierto>10&&cerrado2===0&&tx.textContent===d.querySelector(".ayuda").getAttribute("title")&&![...host.querySelectorAll(".panel.cola .body p")].some(x=>!x.textContent.trim())})());
+     __check("CF2: la línea de marcas existe exactamente cuando alguna fila lleva marca, dice cuántas rojas, ámbar y sin marca con porcentaje, y el porqué en el «?»",(()=>{const p=body.querySelector(".cola-marcas");const P4=programar();const lun4=lunesDe(hoy());const r=conteoColoresCola(colaCentro("corte",filasDeCentros(["corte"],P4,lun4,dsum(lun4,6),"")),P4,"corte");const hay=r.venc+r.noLlega+r.paso+r.sinMeta>0;if(!hay)return !p;if(!p)return false;const q=p.querySelector(".ayuda");return /rojas/.test(p.textContent)&&/ámbar/.test(p.textContent)&&/sin marca/.test(p.textContent)&&/%/.test(p.textContent)&&new RegExp(r.rojo+" rojas").test(p.textContent.replace(/\s+/g," "))&&!!q&&/Por qué aparecen/.test(q.getAttribute("title"))&&/fecha meta de la orden/.test(q.getAttribute("title"))&&/UNA sola vez/.test(q.getAttribute("title"))&&!/white-space:nowrap/.test(p.getAttribute("style")||"")})());
+     const tr=host.querySelector(".panel.cola tbody tr[draggable]");
+     __check("CF2: las acciones de la fila van en un menú «⋯» (details), no sueltas",!!tr&&!!tr.querySelector("td:last-child details.acc summary")&&!tr.querySelector("td:last-child > button"));
+     __check("CF2: «asignar a operario» no está en ninguna fila",!/asignar a operario/.test(h));
+     __check("CF2: con permiso ruta el menú trae «ruta» (editar); sin él, «ver ruta» de solo lectura que abre la ficha",(()=>{if(!tr)return false;const conRuta=puedeEditarRuta();const m=tr.querySelector("details.acc .acc-m").innerHTML;
+       if(conRuta&&!(/mRutaCentro\(/.test(m)&&!/abrirFichaOrden\(/.test(m)))return false;
+       const bakP=PERFIL;PERFIL={id:"u-cf2",rol:"corte",nombre:"Sup"};let ok=false;try{const f2={o:tr?S.ordenes.find(o=>tr.getAttribute("ondragstart").includes(o.id)):null,c:"corte"};const m2=accionesColaHTML(f2,{});ok=!puedeEditarRuta()&&/abrirFichaOrden\(/.test(m2)&&/ver ruta/.test(m2)&&!/mRutaCentro\(/.test(m2)}finally{PERFIL=bakP}return ok})());
+     /* corte por fecha dentro de Por llegar */
+     __check("CF2: el corte «Por llegar hasta N días hábiles» es un parámetro editable (inicial 15) con su campo en Configuración",diasPorLlegar()===15&&typeof setDiasPorLlegar==="function"&&(()=>{const bp=page,bt=CONF.tab;page="config";CONF.tab="cal";render();const ok=/setDiasPorLlegar\(/.test(document.getElementById("p-config").innerHTML);page=bp;CONF.tab=bt;render();return ok})());
+     {const x={grupo:"porLlegar",llegada:{tipo:"fecha",dias:40},enLista:true,faseRank:1};cortePorFecha(x);
+      __check("CF2: cortePorFecha: 40 días con el corte en 15 → Todo lo que viene + lejosPorFecha; la etiqueta dice «llega en 40 días · más de 15»; la fase sigue en la lista pero se ordena por fecha con las demás (faseRank 999), no encima de las que llegan ya",x.grupo==="lejana"&&x.lejosPorFecha===true&&x.enLista===true&&x.faseRank===999&&/llega en 40 días · más de 15/.test(llegadaHTML(x))&&ordenCercania({grupo:"lejana",faseRank:999,orden:1,llegaYaFuera:true})<ordenCercania(Object.assign({},x,{orden:40})));
+      {const bak=S.params.diasPorLlegar;S.params.diasPorLlegar=0;const y0={grupo:"porLlegar",llegada:{tipo:"fecha",dias:1},enLista:true,faseRank:0};cortePorFecha(y0);const h0=llegadaHTML(y0);const z0={grupo:"porLlegar",llegada:{tipo:"fecha",dias:0}};cortePorFecha(z0);if(bak==null)delete S.params.diasPorLlegar;else S.params.diasPorLlegar=bak;
+       __check("CF2: 0 es 0: con el corte en 0 la de mañana baja (en singular: «llega mañana · más de 0») y la de hoy se queda",y0.grupo==="lejana"&&/llega mañana · más de 0/.test(h0)&&!/llega en 1 días/.test(h0)&&z0.grupo==="porLlegar",h0);}
+      const y={grupo:"porLlegar",llegada:{tipo:"fecha",dias:3}};cortePorFecha(y);const z={grupo:"disponible",llegada:{tipo:"fecha",dias:99}};cortePorFecha(z);const w={grupo:"porLlegar",llegada:{tipo:"sinProgramar"}};cortePorFecha(w);
+      __check("CF2: 3 días se queda en Por llegar; Disponible no se toca; «sin programar» no se mueve (no se estima)",y.grupo==="porLlegar"&&!y.lejosPorFecha&&z.grupo==="disponible"&&w.grupo==="porLlegar");}
+     __check("CF2: las notas de los grupos dicen el corte a la vista, y Por llegar no promete fecha a lo que no la tiene",/dentro de 15 días hábiles, o sin fecha conocida/.test(notaGrupoCerc("porLlegar"))&&/más de 15 días hábiles/.test(notaGrupoCerc("lejana")));
+     __check("CF2: Costura pinta las mismas marcas con los mismos nombres y colores (marcaCentro sale de MARCAS_CEN)",/marcasDe\(o,P,c\)/.test(String(marcaCentro))&&!/la orden va tarde|este paso va tarde/.test(String(marcaCentro)));}
     __check("CF: «Con puesto manual» está siempre a la vista arriba de la cola, aunque nadie haya numerado (entonces lo dice)",/Con puesto manual/.test(h)&&h.indexOf("</span>Con puesto manual")>=0&&h.indexOf("</span>Con puesto manual")<h.indexOf("</span>Disponible")&&(S.ordenes.some(o=>puestoDe(o,"corte")>0)||/ninguna: nadie ha puesto puestos a mano/.test(h)));
     __check("CC4b: el tooltip del arrastre dice que bajar una orden numera las de encima",
       /bajar una orden numera tambi\u00e9n las que quedan por encima/.test(h));}
@@ -5919,7 +5978,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      if(bak==="null")delete sinT.progCentro;else sinT.progCentro=JSON.parse(bak)}
     /* la acción del supervisor existe en la cola */
     page="centro";CEN.id=C;CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.cercAbre=null;render();
-    __check("TO5: la cola del supervisor ofrece «asignar a operario»",/asignar a operario/.test(document.getElementById("p-centro").innerHTML));}
+    {const h=document.getElementById("p-centro").innerHTML;
+     __check("TO5: «asignar a operario» se retiró de la cola (decisión 17-sep); el supervisor fija recurso y fecha en la propia fila",!/asignar a operario|mAsignarOperario/.test(h)&&typeof window.mAsignarOperario==="undefined"&&/setProgCen\('[^']+','[^']+','rec'/.test(h)&&/setProgCen\('[^']+','[^']+','desde'/.test(h));
+     if(sinT){const tr=[...document.querySelectorAll("#p-centro .panel.cola tbody tr[draggable]")].find(t=>(t.getAttribute("ondragstart")||"").includes("'"+sinT.id+"'"));
+      __check("TO5: con «toda la cola» la orden del paso sin tiempo está en la cola y su recurso y fecha se pueden fijar desde la fila (habilitados)",!!tr&&!!tr.querySelector("td:nth-child(10) select:not([disabled])")&&!!tr.querySelector("td:nth-child(11) input[type=date]:not([disabled])")&&/paso sin tiempo/.test(tr.innerHTML),sinT.op);}}}
    /* --- A6/A7 · cola vacía y buscador fuera del plan --- */
    {__check("TO6: la cola vacía dice «Sin programación cargada — avise al supervisor»",
       /Sin programaci\u00f3n cargada — avise al supervisor/.test(sinProgramaHTML(C,rec)));

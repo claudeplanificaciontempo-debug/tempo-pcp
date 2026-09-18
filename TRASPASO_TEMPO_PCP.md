@@ -214,6 +214,10 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   ya» solo etiqueta) · Ya salió de aquí (CD del propio grupo o posterior con el paso sin cerrar; bandeja `colaYaSalio`).
 - Ruta incompleta (único paso de producción, no el primero, fase antes) nunca es «lista para empezar»: Todo lo que viene +
   bandeja `colaRutaIncompleta`. Reales: Bordado 114, Estampado 17. Ver `COLA_POR_FASE_REPORTE.md`.
+- Correcciones (17-sep tarde): sin «asignar a operario»; acciones en menú «⋯» (ruta editable solo con permiso `ruta`, «ver ruta»
+  para el resto); cabecera en tres líneas con «?»; marcas cortas, rojo solo meta vencida y ámbar el resto (% por color a la vista);
+  corte por fecha `diasPorLlegar` (15, editable, 0 = solo hoy): lo que llega a más de N días baja a Todo lo que viene marcado.
+  Ver `COLA_POR_FASE_CORRECCIONES.md`.
 
 ### 2.57 Nivelación: pantalla propia, un área a la vez (17-sep) — solo Corte conectado
 - «Nivelación de carga» abre su pantalla (`vNivelacion`, prefijo `nivUI*`); Configuración conserva grupos, fases y
@@ -293,7 +297,8 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   **sin INICIO**; al terminarlo desaparece. El supervisor la ve como «en proceso fuera del plan»
   (`enProcesoFueraDelPlan`).
 - **Pasos sin minutos** (`pasoSinTiempo`): el motor no los programa y el operario no los ve, salvo que el
-  supervisor les fije recurso y fecha (`fijadaPara`, acción **«asignar a operario»** en la cola). Entonces salen
+  supervisor les fije recurso y fecha (`fijadaPara`; desde el 17-sep en la propia fila de la cola, columnas Recurso y
+  Arranca con «toda la cola» activado — el botón «asignar a operario» se retiró). Entonces salen
   marcados **«sin tiempo estándar»** y el tramo registra tiempo real igual.
 - Cola vacía: **«Sin programación cargada — avise al supervisor»**. Buscador fuera del plan: **«No está
   programada — consulte al supervisor»**, sin INICIO.
