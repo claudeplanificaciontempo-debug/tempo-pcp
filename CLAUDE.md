@@ -513,7 +513,11 @@ de cada cola contra qué fecha se compara. La marca SIEMPRE fue contra `fechaMet
 Terminados. `armarNavSubCentros()` (corre en `render()`, antes de marcar la entrada activa) cuelga un
 `<a class="subnav" data-sub="1" data-padre="<grupo>" data-cen="<centro>">` por cada sub-área de **todo** ítem de
 planificación con `subAreasDe(g).length>=2` (hoy Terminados y Estampado), en el orden de `ordenPaso`, con el `!`
-de `alertaSubArea(c)` (= brecha de `origenTiempoCentro(c)` + «ninguna orden la tiene en su ruta»). El clic del menú
+de `alertaSubArea(c)` (= brecha de `origenTiempoCentro(c)` + «ninguna orden la tiene en su ruta»). Desde el 18-sep el
+«!» lleva tooltip en toda la entrada del menú con el nombre del centro, cada causa (⚠) y «Para que desaparezca: …»
+(`alertasSubArea(c)` devuelve `[{k:tiempo|ruta,txt,que}]`; `comoEntraEnRuta(c)` dice cómo entra ese centro a las rutas:
+lavado por orden, plancha por la marca «Lleva plancha» de la categoría o a mano, etiquetas solo a mano por ser centro de
+diseño). `origenTiempoCentro` reconoce la tabla de reglas de etiqueta como fuente de minutos (antes decía «sin origen»). El clic del menú
 pasó a **delegación** (los sub-ítems se inyectan después). **`CEN.solo`**: el sub-ítem abre esa sub-área sola
 (`cens=[CEN.solo]` en `vCentro`, con enlace «ver las N juntas»); el ítem padre sigue siendo el consolidado.
 **Etiquetas pasó al ítem Estampado** (`GRUPO_PLAN_DEF.etiquetas='estampado'` + siembra idempotente en

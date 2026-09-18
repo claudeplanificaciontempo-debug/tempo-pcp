@@ -542,11 +542,22 @@ const puedeArea=a=>puede('avance')&&veArea(a);
 const puedeCentro=c=>veCentro(c)&&puedeArea((CE(c)||{}).area);
 const vePagina=p=>{const d=perfilDe(PERFIL);if(!d)return false;return d.paginas.includes('*')||d.paginas.includes(p)};
 /* ---------- el menú de un ítem de planificación con sub-áreas se arma desde la tabla de centros ---------- */
-function alertaSubArea(c){const or=origenTiempoCentro(c);const enRuta=S.ordenes.some(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c));
+/* el «!» rojo junto a una sub-área del menú (Terminados → Botones/Lavado/Plancha/Empaque, Estampado → Estampado/Etiquetas).
+   Dos causas, cada una con lo que hay que hacer para que desaparezca:
+   (1) TIEMPO: el centro no tiene de dónde sacar minutos por prenda (origenTiempoCentro().brecha) o le falta una decisión;
+   (2) RUTA: ninguna orden ABIERTA tiene el centro en su ruta → su carga es 0 y su cola está vacía. */
+function comoEntraEnRuta(c){
+  if(c==='lavado')return 'el lavado se agrega POR ORDEN: en Liberación (en lote) o desde la ruta de la orden, botón «Lavado» (planta o Quito); no sale de las operaciones de la LMO';
+  if(c==='plancha')return 'marca «Lleva plancha» en las categorías que planchan (Configuración → Órdenes y materiales → categoría) para que entre en las rutas de las órdenes NUEVAS, y agrégalo a mano en la ruta de las órdenes ya cargadas (Órdenes → Rutas, o el botón «ruta» de la cola); no sale de las operaciones de la LMO';
+  if(c==='etiquetas')return 'es un centro de diseño: NO entra solo a las rutas (CENTROS_DISENO). Agrégalo a mano en la ruta de las órdenes que llevan etiqueta de serigrafía (las categorías de la tabla de reglas de etiqueta: Level 1, Level 2, Camiseta CR y CV), desde Órdenes → Rutas o el botón «ruta» de la cola';
+  return 'las rutas salen de las operaciones de la LMO de cada categoría: mapea una operación a este centro (Configuración → Operaciones → Mapeo) o agrégalo a mano en la ruta de las órdenes (Órdenes → Rutas)'}
+function alertasSubArea(c){const or=origenTiempoCentro(c);const n=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)).length;
   const av=[];
-  if(or.brecha)av.push(or.brecha);
-  if(!enRuta)av.push('ninguna orden la tiene en su ruta: su carga sale en 0 porque no hay nada programado ahí');
-  return av.join(' · ')}
+  if(or.brecha)av.push({k:'tiempo',txt:or.brecha,que:or.que||'carga una fuente de minutos: «Min/prenda» del centro (Configuración → Centros y recursos), operaciones de la LMO mapeadas a él (Configuración → Operaciones → Mapeo) o reglas confirmadas que le apunten'});
+  if(!n)av.push({k:'ruta',txt:'ninguna orden abierta tiene este centro en su ruta: su carga sale en 0 y su cola está vacía',que:'que al menos una orden abierta pase por él — '+comoEntraEnRuta(c)});
+  return av}
+function alertaSubArea(c){const av=alertasSubArea(c);if(!av.length)return '';
+  return nCen(c)+' — '+av.map(a=>'⚠ '+a.txt+'. Para que desaparezca: '+a.que).join(' · ')}
 function armarNavSubCentros(){const nav=document.querySelector('nav');if(!nav||typeof S==='undefined'||!S||!S.centros)return;
   let cambio=false;
   nav.querySelectorAll('a[data-cen]:not([data-sub])').forEach(a=>{
@@ -562,6 +573,7 @@ function armarNavSubCentros(){const nav=document.querySelector('nav');if(!nav||t
     quiero.forEach(q=>{const el=document.createElement('a');
       el.dataset.p='centro';el.dataset.cen=q.c;el.dataset.sub='1';el.dataset.padre=g;el.dataset.av=q.av;
       el.className='subnav';
+      if(q.av)el.title=q.av;else el.removeAttribute('title');
       el.innerHTML='↳ '+esc(q.txt)+(q.av?' <span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+esc(q.av)+'">!</span>':'');
       ref.insertAdjacentElement('afterend',el);ref=el});
     cambio=true});
@@ -713,7 +725,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-18 08:43';
+const APP_BUILD='2026-09-18 17:54';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6322,7 +6334,12 @@ function origenTiempoCentro(c){const ce=CE(c)||{};
       brecha:(b.sinConf.length?b.sinConf.length+' categorías con una regla SIN CONFIRMAR: hoy usan el SAM de la LMO. Confírmalas o quítalas: '+b.sinConf.slice(0,6).join(', '):'')+(b.sinRegla.length?(b.sinConf.length?' · ':'')+b.sinRegla.length+' categorías pasan por ojales y botones y no tienen regla':'')}}
   if(+ce.minEstandar>0)return{txt:'columna «Min/prenda» del centro',det:num(ce.minEstandar,2)+' min'+(ce.minEstandarEstimado?' (sembrado, confírmalo)':'')};
   const n=(S.operaciones||[]).filter(x=>x.centro===c).length;
-  return n?{txt:'operaciones de la LMO',det:n+' operaciones mapeadas'}:{txt:'sin origen',det:'ni min/prenda en el centro ni operaciones mapeadas',brecha:'sin minutos por prenda no hay horas'}}
+  if(n)return{txt:'operaciones de la LMO',det:n+' operaciones mapeadas'};
+  /* reglas de etiqueta (tabla editable) que apuntan a este centro: son su fuente de minutos por prenda */
+  const re=(typeof reglasEtiqueta==='function')?reglasEtiqueta().filter(r=>(r.centro||'etiquetas')===c&&r.cat):[];const reOk=re.filter(r=>r.confirmada!==false&&+r.min>0);
+  if(reOk.length)return{txt:'tabla de reglas de etiqueta (Configuración → Operaciones)',det:reOk.length+' reglas confirmadas: '+reOk.map(r=>r.cat+' '+num(r.min,2)+' min').join(', ')+(re.length>reOk.length?' · '+(re.length-reOk.length)+' sin confirmar o en 0 (no cuentan)':'')};
+  if(re.length)return{txt:'tabla de reglas de etiqueta',det:re.length+' reglas, ninguna confirmada con minutos',brecha:'las reglas de etiqueta que le apuntan están sin confirmar o en 0',que:'confirma las reglas de etiqueta (Configuración → Operaciones → reglas de etiqueta) o ponles minutos'};
+  return{txt:'sin origen',det:'ni min/prenda en el centro ni operaciones mapeadas ni reglas que le apunten',brecha:'sin minutos por prenda no hay horas'}}
 function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
   const h=hoy();const filas=cens.map(c=>{const ce=CE(c)||{};
     const ords=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)&&!pasoHecho(o,c));
