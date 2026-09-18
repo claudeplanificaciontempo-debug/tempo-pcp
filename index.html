@@ -597,14 +597,14 @@ async function cargarTodo(){
   BASE_TS={};CONFLICTOS=[];if(typeof avisoConflictos==='function')avisoConflictos();
   for(const t of [...TABLAS,'params','avance']){
     const {data,error}=await leer(t);
-    if(error){alert('No se pudo leer '+t+': '+error.message);return}
+    if(error){CARGA_INCOMPLETA=t;alert('No se pudo leer '+t+': '+error.message+'. No se guardará nada hasta recargar la página.');return false}
     if(t==='params'){const r=data.find(x=>x.id==='global');if(r)S.params=Object.assign({},sd.params,r.data);BASE.params=JSON.stringify(S.params);continue}
     BASE_TS[t]=Object.fromEntries(data.map(r=>[r.id,r.actualizado]));
     if(t==='avance'){data.forEach(r=>S.avance[r.id]=r.data);BASE.avance=Object.fromEntries(data.map(r=>[r.id,JSON.stringify(r.data)]));continue}
     S[t]=data.map(r=>Object.assign({id:r.id},r.data));
     BASE[t]=Object.fromEntries(data.map(r=>[r.id,JSON.stringify(r.data)]));
   }
-  PLAN=null;ULT_DATOS=await maxActualizado();const av=document.getElementById('aviso-datos');if(av)av.remove();
+  PLAN=null;ULT_DATOS=await maxActualizado();const av=document.getElementById('aviso-datos');if(av)av.remove();CARGA_INCOMPLETA=null;return true
 }
 /* ---------- datos nuevos guardados por otra sesión: una pestaña abierta no se entera sola; se revisa cada 3 min y se avisa ---------- */
 let ULT_DATOS=null;
@@ -672,10 +672,15 @@ async function refrescarTS(t,ids){if(!TABLAS_FUSION.includes(t)||!ids.length)ret
   BASE_TS[t]=BASE_TS[t]||{};Object.values(rows).forEach(r=>{BASE_TS[t][r.id]=r.actualizado})}
 /* guarda solo lo que cambió respecto a lo leído del servidor; si la base rechaza algo (permisos), recarga */
 let guardando=false,pendiente=false;
+let BORRANDO=false,SAVE_DESDE_BORRADO=false;   /* mientras corre el borrado de datos de prueba solo guarda el propio borrado */
+let CARGA_INCOMPLETA=null;                     /* tabla en la que falló la última carga desde el servidor: hasta recargar la página no se guarda nada (un save() con S a medias borraría configuración y bitácora en el servidor) */
 let SAVE_ERR=null,ULT_SALTADAS=[];
 function avisoGuardado(){const n=document.getElementById('aviso-guardado');if(!n)return;
   n.innerHTML=(!SAVE_ERR&&(ULT_SALTADAS||[]).filter(t=>t!=='params').length)?'<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:16px"><b>Ojo:</b> con tu perfil no se guardan los cambios de <b>'+esc((ULT_SALTADAS||[]).filter(t=>t!=='params').map(nTabla).join(', '))+'</b> (eso lo guarda planificación). Lo que registras de tu trabajo sí se guardó.</div></div>':SAVE_ERR?'<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px"><b>No se guardó en el servidor</b> (falló en: '+esc((SAVE_ERR.tablas||[]).join(', ')||'el servidor')+'). Lo que registraste sigue aquí: <b>avisa a planificación</b> y vuelve a tocar Guardar. <button class="btn" style="margin-left:10px" onclick="save()">Reintentar</button><div class="mut" style="font-size:13px;margin-top:6px">'+(SAVE_ERR.permiso?'El usuario no tiene permiso para escribir en el servidor (falta la política de la base de datos).':esc(SAVE_ERR.errs.join(' · ')))+'</div></div></div>':''}
-async function save(){PLAN=null;PLAN_ALL=null;if(guardando){pendiente=true;return}guardando=true;
+async function save(){PLAN=null;PLAN_ALL=null;
+  if(CARGA_INCOMPLETA){const st=document.getElementById('saved');if(st)st.textContent='No se guarda: la carga falló en '+nTabla(CARGA_INCOMPLETA)+' · recarga la página';return}
+  if(BORRANDO&&!SAVE_DESDE_BORRADO){return}   /* durante el borrado, ningún guardado ajeno */
+  if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
 async function _save(){
   const errs=[];
@@ -708,7 +713,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-17 21:29';
+const APP_BUILD='2026-09-18 08:43';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -7948,31 +7953,167 @@ function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=
   if(!confirm('¿Borrar la orden '+o.op+' ('+num(o.cant)+' prendas, '+esc(o.cliente||'')+')?'+(pierde.length?'\nSe pierde también: '+pierde.join(', ')+'.':'')+'\nSi vuelve en la próxima carga de Odoo, entrará como nueva.'))return;
   bitacora('Orden borrada a mano: '+o.op+' · '+num(o.cant)+' prendas · '+(o.cliente||''));S.ordenes=S.ordenes.filter(x=>x.id!==id);save();render()}
 /* borra por lotes TODOS los datos operativos (órdenes, avance, baños, salidas, programas, novedades, bitácora…); conserva configuración, maestros, categorías y operaciones */
-const TABLAS_OPERATIVAS=['ordenes','avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','planes'];/* la bitácora nunca se borra */
-async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return} // solo desde ejecutarBorrado (Configuración → Borrado), que ya pidió la frase
-  const st=document.getElementById('saved');const errs=[];
-  for(const t of TABLAS_OPERATIVAS){let {data,error}=await sb.from(t).select('id');if(error){errs.push(t+': '+error.message);continue}
-    const ids=(data||[]).map(r=>r.id);for(let i=0;i<ids.length;i+=200){if(st)st.textContent='Borrando '+t+' '+Math.min(i+200,ids.length)+'/'+ids.length;const {error:e2}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(e2){errs.push(t+': '+e2.message);break}}}
-  if(errs.length){alert('No se pudo borrar todo:\n'+errs.join('\n'));}
-  await cargarTodo();PLAN=null;PLAN_ALL=null;render();if(st)st.textContent='Datos operativos borrados';
-  if(!errs.length)alert('Listo: datos operativos borrados. Ya puedes cargar el archivo desde Órdenes.')}
-function cuentaBorrado(){const fotos=S.ordenes.filter(o=>o.foto).length;const av=Object.values(S.avance||{}).filter(a=>a&&((a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada||a.lista||a.calidadOk)).length;
-  return{ordenes:S.ordenes.length,fotos,avance:av,ot:S.ordenes.filter(o=>o.ot).length,fasesApp:S.ordenes.filter(o=>(o.fases||[]).some(f=>f.origen==='app')).length,banos:(S.banos_conf||[]).length,salidas:(S.salidas_tin||[]).length,programas:(S.programas||[]).length,novedades:(S.paros||[]).length+(S.turnos||[]).length,bitacora:(S.bitacora||[]).length}}
-function panelBorradoHTML(){if(!puede('config'))return '';const c=cuentaBorrado();
-  return `<div class="panel" style="border-color:var(--alerta)"><h3 style="color:var(--alerta)">Borrado <span class="note">solo administrador · estos datos son los definitivos: un clic por error borra días de trabajo</span></h3><div class="body">
-   <p style="font-size:var(--fs-s)">Hoy hay <b>${num(c.ordenes)} órdenes</b>, ${num(c.fotos)} con foto, ${num(c.ot)} con órdenes de trabajo, ${num(c.fasesApp)} con fases movidas aquí, <b>${num(c.avance)} registros de avance de piso</b>, ${c.banos} baños confirmados, ${c.salidas} salidas de tintorería, ${c.programas} programas guardados, ${c.novedades} novedades y ${num(c.bitacora)} líneas de bitácora.</p>
-   <p style="font-size:var(--fs-s)">Ninguna de estas acciones se deshace. Cada una pide escribir exactamente lo que se va a perder.</p>
-   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" style="color:var(--alerta)" onclick="mBorrar('ordenes')">Quitar todas las órdenes…</button><button class="btn ghost" style="color:var(--alerta)" onclick="mBorrar('operativo')">Borrar todos los datos operativos…</button></div></div></div>`}
-function mBorrar(tipo){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return}const c=cuentaBorrado();const frase=tipo==='ordenes'?'BORRAR '+c.ordenes+' ORDENES':'BORRAR '+c.ordenes+' ORDENES Y '+c.avance+' AVANCES';
-  abrir(`<h3 style="color:var(--alerta)">${tipo==='ordenes'?'Quitar todas las órdenes':'Borrar todos los datos operativos'}</h3>
-   <p style="font-size:var(--fs-s)">Se pierde: <b>${num(c.ordenes)} órdenes</b> (${num(c.fotos)} con foto, ${num(c.ot)} con órdenes de trabajo, ${num(c.fasesApp)} con fases movidas por supervisores)${tipo==='ordenes'?'. El avance de piso queda huérfano (sin orden) y no se recupera al recargar.':', <b>'+num(c.avance)+' registros de avance de piso</b>, '+c.banos+' baños confirmados, '+c.salidas+' salidas de tintorería, '+c.programas+' programas guardados, '+c.novedades+' novedades y toda la bitácora ('+num(c.bitacora)+' líneas).'}</p>
-   <p style="font-size:var(--fs-s)">Se conservan centros, recursos, telas, colores, categorías, operaciones, parámetros, tablas de configuración y usuarios. Las fotos en el almacén siguen ahí, pero las órdenes pierden el enlace.</p>
-   <label>Para confirmar, escribe exactamente: <b>${frase}</b></label><input type="text" id="borrar-frase" style="width:100%" autocomplete="off">
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" style="background:var(--alerta)" onclick="ejecutarBorrado('${tipo}','${frase}')">Borrar</button></div>`)}
-async function ejecutarBorrado(tipo,frase){const v=(document.getElementById('borrar-frase')||{}).value||'';if(v.trim().toUpperCase().replace(/Ó/g,'O')!==frase){alert('La frase no coincide. No se borró nada.');return}
-  const c=cuentaBorrado();cerrar();bitacora((tipo==='ordenes'?'BORRADO: todas las órdenes':'BORRADO: todos los datos operativos')+' · '+num(c.ordenes)+' órdenes, '+num(c.avance)+' avances');
-  if(tipo==='ordenes'){S.ordenes=[];await save();render();return}
-  await borrarOperativo()}
+const TABLAS_OPERATIVAS=['avance','banos_conf','salidas_tin','programas','cargas','propuestas','paros','turnos','planes','ordenes'];/* la bitácora nunca se borra · las órdenes van al final: si algo falla a mitad, lo que queda no son avances huérfanos */
+/* ---------- BORRAR DATOS DE PRUEBA (17-sep-2026, decisión de la usuaria; reemplaza a los dos botones anteriores: el que quitaba solo las órdenes dejaba huérfano el avance) ----------
+   Un solo camino: (1) esperar el guardado en curso y guardar, (2) releer TODO del servidor (el respaldo es del servidor, no de la memoria),
+   (3) respaldo local + Supabase Storage (respaldos/) y verificación de que el del servidor se puede cargar con Restaurar — si algo falla, NO se borra,
+   (4) confirmación escrita BORRAR con el detalle y los conteos, (5) marca «borrado en curso» + bitácora INICIADO guardadas antes de tocar nada,
+   (6) borrado tabla por tabla, leyendo por páginas hasta que la tabla queda vacía y comprobando que el servidor de verdad borró (un delete negado por
+   RLS no da error: se detecta releyendo), parando en el primer fallo (queda INCOMPLETO, nunca «terminado», con «Restaurar el respaldo» a mano),
+   (7) verificación final: las diez tablas en cero, (8) limpieza de lo que en params apunta a órdenes; se conservan auditoría (la del piso se copia a
+   Configuración antes de borrar avance), bitácora, cierres de mes y toda la configuración, (9) bitácora con usuario, fecha, conteos y ruta del
+   respaldo, (10) pantalla «Base vacía · configuración conservada». Mientras corre, los guardados ajenos al borrado se bloquean (BORRANDO) y hay un velo. */
+const PALABRA_BORRAR='BORRAR';
+function esRespaldoValido(o){return !!(o&&typeof o==='object'&&o.params&&typeof o.params==='object'&&Array.isArray(o.ordenes))}
+async function saveBorrado(){SAVE_DESDE_BORRADO=true;try{while(guardando)await new Promise(r=>setTimeout(r,50));await save();while(guardando)await new Promise(r=>setTimeout(r,50))}finally{SAVE_DESDE_BORRADO=false}}
+function veloBorrado(txt){let v=document.getElementById('borrando-velo');if(!txt){if(v)v.remove();return}
+  if(!v){v=document.createElement('div');v.id='borrando-velo';v.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:9998;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;text-align:center;padding:20px';document.body.appendChild(v)}
+  v.textContent=txt;const st=document.getElementById('saved');if(st)st.textContent=txt}
+function cuentaHuerfanosBorrado(){const p=S.params||{};return{
+  pendPospuestos:Object.keys(p.pendPospuestos||{}).length,                   /* las bandejas pospuestas (por tipo) se pospusieron sobre la cartera que se va */
+  planMesOids:Object.values(p.planMes||{}).reduce((a,m)=>a+(((m&&m.oids)||[]).length),0),
+  planMesCongelados:Object.values(p.planMes||{}).filter(m=>m&&m.congelado).length,
+  progCongelado:(p.progCongelado||[]).length,
+  alertasCompras:(p.alertasCompras||[]).length,
+  advertencias:(p.advertencias||[]).length,
+  noCalzan:(((p.tareaCarga||{}).recarga||{}).noCalzan||[]).length,
+  resumenes:['tareaCarga','otCarga','fotosCarga','tallasCarga'].filter(k=>p[k]).length,
+  pedidosReprog:(Array.isArray(p.pedidosReprog)?p.pedidosReprog.length:0),
+  fotosIdx:Object.keys(p.fotosIdx||{}).length}}
+/* deja params sin referencias a órdenes; NO toca auditoría, cierres de mes, restauraciones, metas, tejeduría ni configuración. Solo la llama ejecutarBorrado. */
+function limpiarHuerfanosTrasBorrado(conservarFotosIdx){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return null}const p=S.params;const h=cuentaHuerfanosBorrado();
+  p.pendPospuestos={};
+  Object.keys(p.planMes||{}).forEach(ym=>{p.planMes[ym]={oids:[]}});      /* el mes queda; el borrador y el congelado apuntaban a órdenes que ya no existen (las metas viven aparte, en params.metas) */
+  if(Array.isArray(p.progCongelado))p.progCongelado=[];
+  if(Array.isArray(p.alertasCompras))p.alertasCompras=[];
+  if(Array.isArray(p.advertencias))p.advertencias=[];
+  ['tareaCarga','otCarga','fotosCarga','tallasCarga'].forEach(k=>{delete p[k]});
+  if(Array.isArray(p.pedidosReprog))p.pedidosReprog=[];
+  if(!conservarFotosIdx)delete p.fotosIdx;
+  return h}
+/* la auditoría que escribió el piso vive dentro de avance: se copia a la auditoría de Configuración antes de borrar la tabla */
+function conservarAuditoriaPiso(ts){let n=0;const dest=(S.params.auditoriaCambios=S.params.auditoriaCambios||[]);
+  Object.entries(S.avance||{}).forEach(([oid,a])=>{(a&&Array.isArray(a.auditoria)?a.auditoria:[]).forEach(e=>{dest.push(Object.assign({},e,{oid:e.oid||oid,origen:e.origen||'piso',conservadaEnBorrado:ts}));n++})});return n}
+function cuentaBorrado(){const fotos=S.ordenes.filter(o=>o.foto).length;const av=Object.values(S.avance||{}).filter(a=>a&&((a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada||a.lista||a.calidadOk||(a.tramos||[]).length||(a.cierres&&Object.keys(a.cierres).length))).length;
+  const audPiso=Object.values(S.avance||{}).reduce((n,a)=>n+((a&&Array.isArray(a.auditoria))?a.auditoria.length:0),0);
+  return{ordenes:S.ordenes.length,fotos,avance:av,avanceReg:Object.keys(S.avance||{}).length,audPiso,ot:S.ordenes.filter(o=>o.ot).length,fasesApp:S.ordenes.filter(o=>(o.fases||[]).some(f=>f.origen==='app')).length,
+    banos:(S.banos_conf||[]).length,salidas:(S.salidas_tin||[]).length,programas:(S.programas||[]).length,cargas:(S.cargas||[]).length,propuestas:(S.propuestas||[]).length,paros:(S.paros||[]).length,turnos:(S.turnos||[]).length,planes:(S.planes||[]).length,
+    novedades:(S.paros||[]).length+(S.turnos||[]).length,bitacora:(S.bitacora||[]).length,auditoria:(S.params.auditoriaCambios||[]).length,cierresMes:Object.keys(S.params.cierresMes||{}).length,huerfanos:cuentaHuerfanosBorrado()}}
+/* lo que queda después: la configuración, contada */
+function conteoConservadoHTML(extra){const p=S.params||{};const e=extra||{};
+  const f=[['Centros',S.centros.length],['Recursos (máquinas, módulos, puestos)',S.recursos.length],['Telas',S.telas.length],['Colores',S.colores.length],['Operaciones (hoja LMO)',S.operaciones.length],['Categorías (padre / hija)',S.categorias.length],['Técnicas',(S.tecnicas||[]).length],['Máquinas',(S.maquinas||[]).length],['Rutas por categoría',(S.rutas||[]).length],
+    ['Fases de la tabla 1',faseMapeo().length],['Motivos (tabla 15)',motivos().length],['Ventanas de descanso (tabla 18)',Object.values(p.horarios||{}).reduce((a,h)=>a+(((h&&h.ventanas)||[]).length),0)],['Grupos de módulos',gruposMod().length],['Perfiles del catálogo',perfilesDef().length],['Usuarios',e.usuarios==null?'—':e.usuarios],
+    ['Parámetros en Configuración',Object.keys(p).length],['Excepciones del calendario',(p.excepciones||[]).length],['Programación manual de tejeduría (filas, no se tocan)',(p.progTej||[]).length],['Stock de tela cruda (telas con kg, no se toca)',Object.keys(p.stockTela||{}).length],['Líneas de bitácora',(S.bitacora||[]).length],['Auditoría de cambios (incluida la copiada del piso)',(p.auditoriaCambios||[]).length],['Cierres de mes',Object.keys(p.cierresMes||{}).length],
+    ['Archivos de fotos en el almacén (se conservan; sin índice no se muestran hasta recargar fotos)',e.fotosBucket==null?'—':e.fotosBucket],['Índice de fotos por OP',Object.keys(p.fotosIdx||{}).length]];
+  return '<table><tbody>'+f.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td class="num"><b>'+(typeof v==='number'?num(v):esc(String(v)))+'</b></td></tr>').join('')+'</tbody></table>'}
+async function conteosExternosBorrado(){const e={usuarios:null,fotosBucket:null};
+  try{const r=await sb.from('perfiles').select('id');if(r&&!r.error&&Array.isArray(r.data))e.usuarios=r.data.length}catch(x){}
+  try{const r=await sb.storage.from(fotoBucket()).list('',{limit:1000});if(r&&!r.error&&Array.isArray(r.data))e.fotosBucket=r.data.length>=1000?'≥ 1.000':r.data.length}catch(x){}
+  return e}
+function panelBorradoHTML(){if(!puede('config'))return '';const c=cuentaBorrado();const h=c.huerfanos;const ult=(S.params.borrados||[]).slice(-1)[0];const inc=S.params.borradoIncompleto;const enc=(!BORRANDO&&S.params.borradoEnCurso)||null;
+  return `<div class="panel" style="border-color:var(--alerta)"><h3 style="color:var(--alerta)">Borrar datos de prueba <span class="note">solo administrador · conserva la configuración · antes se guarda, se relee el servidor y se respalda (local y servidor)</span></h3><div class="body">
+   ${enc?`<div class="warn"><b>Hay un borrado INTERRUMPIDO</b> (empezó el ${esc(fmtDia((enc.ts||'').slice(0,10)))}, ${esc(enc.u||'')}, y no llegó a terminar: se cerró la pestaña o se cayó la red). La base puede estar a medias. Respaldo previo: ${esc(enc.respaldo||'')}${enc.rutaServidor?' · '+esc(enc.rutaServidor):''}. Vuelve a ejecutar el borrado para terminar, o <a href="#" onclick="restaurarRespaldoServidor('${esc(enc.rutaServidor||'')}');return false">restaura el respaldo</a>.</div>`:''}
+   ${inc?`<div class="warn"><b>El último borrado quedó INCOMPLETO</b> (${esc(fmtDia((inc.ts||'').slice(0,10)))}, ${esc(inc.u||'')}): se borró ${esc((inc.borradas||[]).map(x=>nTabla(x.t)+' '+num(x.n)).join(', ')||'nada')} y falló en <b>${esc(nTabla(inc.fallo&&inc.fallo.t))}</b> (${esc((inc.fallo||{}).error||'')}). Quedan sin borrar: ${esc((inc.pendientes||[]).map(nTabla).join(', ')||'—')}. Respaldo previo: ${esc(inc.respaldo||'')}${inc.rutaServidor?' · '+esc(inc.rutaServidor):''}. Vuelve a ejecutar el borrado para terminar, o <a href="#" onclick="restaurarRespaldoServidor('${esc(inc.rutaServidor||'')}');return false">restaura el respaldo</a>.</div>`:''}
+   <p style="font-size:var(--fs-s)">Hoy hay <b>${num(c.ordenes)} órdenes</b>, ${num(c.fotos)} con foto, ${num(c.ot)} con órdenes de trabajo, ${num(c.fasesApp)} con fases movidas aquí, <b>${num(c.avanceReg)} registros de avance de piso</b>, ${num(c.planes)} planes congelados, ${c.banos} baños confirmados, ${c.salidas} salidas de tintorería, ${c.programas} programas guardados, ${num(c.cargas)} cargas registradas, ${num(c.novedades)} novedades (turnos y paros) y ${num(c.bitacora)} líneas de bitácora.</p>
+   <p style="font-size:var(--fs-s)">Un solo botón: borra todo lo operativo y lo que en Configuración apunta a esas órdenes (${num(h.pendPospuestos)} bandejas pospuestas, ${num(h.planMesOids)} órdenes en borradores del plan, ${num(h.progCongelado)} congelados semanales, ${num(h.alertasCompras)} alertas de compras, ${num(h.advertencias)} advertencias de fecha, ${num(h.noCalzan)} en la bandeja «no calzan», ${num(h.resumenes)} resúmenes de la última carga, ${num(h.pedidosReprog)} pedidos de reprogramación, ${num(h.fotosIdx)} fotos en el índice). <b>Conserva</b> centros, recursos, telas, colores, operaciones, categorías, todas las tablas y parámetros de Configuración, usuarios, bitácora, auditoría y cierres de mes. No se deshace: por eso antes se guarda, se relee el servidor, se descarga un respaldo y se sube al servidor, y solo si el respaldo del servidor se pudo leer se borra.</p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" style="color:var(--alerta)" onclick="mBorrar()">Borrar datos de prueba (conserva la configuración)…</button></div>
+   ${ult?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:var(--fs-s)">Último borrado: ${esc(fmtDia((ult.ts||'').slice(0,10)))} · ${esc(ult.u||'')} · ${num((ult.conteos||{}).ordenes||0)} órdenes · respaldo ${esc(ult.respaldo||'')}</summary><div style="font-size:var(--fs-xs);margin-top:6px">${esc(ult.resumen||'')}${ult.rutaServidor?' · servidor: '+esc(ult.rutaServidor):''}${ult.respaldoPrevio?' · respaldo del intento anterior (completo): '+esc(ult.respaldoPrevio.rutaServidor||ult.respaldoPrevio.respaldo||''):''}</div></details>`:''}</div></div>`}
+function mBorrar(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return}const c=cuentaBorrado();const h=c.huerfanos;
+  const li=(k,v)=>'<li>'+esc(k)+': <b>'+num(v)+'</b></li>';
+  abrir(`<h3 style="color:var(--alerta)">Borrar datos de prueba (conserva la configuración)</h3>
+   <div class="grid2" style="gap:16px">
+    <div><b style="color:var(--alerta)">Se borra</b><ul style="margin:6px 0 0 18px;padding:0;font-size:var(--fs-s)">
+     ${li('Órdenes',c.ordenes)}${li('… con foto enlazada',c.fotos)}${li('… con órdenes de trabajo',c.ot)}${li('Registros de avance de piso (unidades, tramos, cierres, tallas, solicitudes)',c.avanceReg)}${li('Planes congelados del plan mensual',c.planes)}${li('Baños confirmados',c.banos)}${li('Salidas de tintorería',c.salidas)}${li('Programas guardados',c.programas)}${li('Cargas registradas',c.cargas)}${li('Propuestas',c.propuestas)}${li('Turnos (asistencia)',c.turnos)}${li('Paros',c.paros)}</ul>
+     <div style="font-size:var(--fs-xs);margin-top:6px">Y en Configuración, lo que apunta a esas órdenes: ${num(h.pendPospuestos)} bandejas pospuestas · ${num(h.planMesOids)} órdenes en borradores del plan y ${num(h.planMesCongelados)} meses marcados congelados · ${num(h.progCongelado)} congelados semanales · ${num(h.alertasCompras)} alertas de compras · ${num(h.advertencias)} advertencias de fecha · ${num(h.noCalzan)} en la bandeja «no calzan» · ${num(h.resumenes)} resúmenes de la última carga · ${num(h.pedidosReprog)} pedidos de reprogramación · ${num(h.fotosIdx)} fotos en el índice por OP.</div>
+     <label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:var(--fs-xs)"><input type="checkbox" id="borrar-fotosidx"> conservar el índice de fotos por OP (${num(h.fotosIdx)}), para que las fotos se cuelguen solas cuando lleguen las WH reales</label></div>
+    <div><b style="color:var(--ok)">Se conserva</b><ul style="margin:6px 0 0 18px;padding:0;font-size:var(--fs-s)">
+     ${li('Centros',S.centros.length)}${li('Recursos',S.recursos.length)}${li('Telas',S.telas.length)}${li('Colores',S.colores.length)}${li('Operaciones',S.operaciones.length)}${li('Categorías',S.categorias.length)}${li('Fases de la tabla 1',faseMapeo().length)}${li('Motivos',motivos().length)}${li('Grupos de módulos',gruposMod().length)}${li('Parámetros y tablas de Configuración',Object.keys(S.params||{}).length)}${li('Líneas de bitácora',c.bitacora)}${li('Auditoría de cambios',c.auditoria)}${li('… más la auditoría registrada desde el piso, que se copia antes de borrar el avance',c.audPiso)}${li('Cierres de mes',c.cierresMes)}${li('Programación manual de tejeduría (no se toca; si es de prueba, límpiala en Tejeduría)',(S.params.progTej||[]).length)}${li('Stock de tela cruda (no se toca)',Object.keys(S.params.stockTela||{}).length)}</ul>
+     <div style="font-size:var(--fs-xs);margin-top:6px">También los usuarios y los archivos de fotos del almacén (solo se vacía el índice, salvo que marques conservarlo).</div></div></div>
+   <p style="font-size:var(--fs-s);margin-top:12px"><b>Pasos:</b> 1) se espera el guardado en curso y se guarda · 2) se relee todo del servidor · 3) se pide la descarga de un respaldo (revísala en Descargas) y se sube a Storage (${esc(respaldosBucket())}/respaldos/), y se comprueba que ese respaldo se puede cargar con Restaurar — <b>si algo de eso falla, no se borra nada</b> · 4) se borra tabla por tabla comprobando que el servidor borró de verdad; si algo falla se para, queda registrado como incompleto y se puede restaurar el respaldo · 5) se limpia lo que apunta a órdenes · 6) queda en bitácora (quién, cuándo, conteos, ruta del respaldo) y se muestra el resumen. <b>Cierra las demás sesiones (tablets) antes</b>: lo que escriban mientras corre no queda en la copia.</p>
+   <label>Para confirmar, escribe exactamente: <b>${PALABRA_BORRAR}</b></label><input type="text" id="borrar-frase" style="width:100%" autocomplete="off">
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" style="background:var(--alerta)" onclick="ejecutarBorrado()">Borrar</button></div>`,true)}
+/* el respaldo del servidor se baja y se valida con el mismo criterio de Restaurar (esRespaldoValido) y con el conteo de órdenes */
+async function verificarRespaldoServidor(nombre,nOrdenes){try{const r=await sb.storage.from(respaldosBucket()).download('respaldos/'+nombre);
+  if(!r||r.error||!r.data)return {ok:false,error:(r&&r.error&&(r.error.message||String(r.error)))||'sin datos'};
+  const txt=await (typeof r.data.text==='function'?r.data.text():Promise.resolve(String(r.data)));let obj=null;try{obj=JSON.parse(txt)}catch(e){return {ok:false,error:'el archivo del servidor no es JSON legible'}}
+  if(!esRespaldoValido(obj))return {ok:false,error:'el archivo del servidor no pasa la validación de Restaurar'};
+  if(obj.ordenes.length!==nOrdenes)return {ok:false,error:'el respaldo trae '+obj.ordenes.length+' órdenes y hay '+nOrdenes};
+  return {ok:true,ordenes:obj.ordenes.length}}catch(e){return {ok:false,error:String((e&&e.message)||e)}}}
+/* deshacer: bajar el respaldo del servidor y cargarlo con Restaurar (pide la palabra RESTAURAR y hace su propio respaldo previo) */
+async function restaurarRespaldoServidor(ruta){if(!puede('config')){alert('Solo el administrador puede restaurar.');return false}
+  const nombre=String(ruta||'').split('/').pop();if(!nombre){alert('No hay ruta de respaldo.');return false}
+  const r=await sb.storage.from(respaldosBucket()).download('respaldos/'+nombre);if(!r||r.error||!r.data){alert('No se pudo bajar el respaldo '+ruta+': '+((r&&r.error&&r.error.message)||'sin datos'));return false}
+  let obj=null;try{obj=JSON.parse(await (typeof r.data.text==='function'?r.data.text():Promise.resolve(String(r.data))))}catch(e){alert('El respaldo del servidor no se pudo leer.');return false}
+  try{cerrar()}catch(e){}return await restaurarDesde(obj,nombre)}
+/* una página de ids (Supabase devuelve como máximo 1000 filas por consulta) */
+async function leerIdsPagina(t){const {data,error}=await sb.from(t).select('id').order('id').range(0,999);if(error)return {error:error.message};return {ids:(data||[]).map(r=>r.id)}}
+/* borra tabla por tabla: lee por páginas hasta que la tabla queda vacía; primero lee TODAS (si una lectura falla no se borra nada);
+   después de cada lote relee y comprueba que el servidor borró de verdad (un delete negado por RLS no da error); se detiene en el primer fallo;
+   al final verifica que las diez tablas quedaron en cero */
+async function borrarOperativo(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return {ok:false,borradas:[],fallo:{t:'-',error:'sin permiso'},pendientes:TABLAS_OPERATIVAS.slice()}}
+  const fallo=(t,error,borradas,n)=>({ok:false,borradas:(n!=null?borradas.concat([{t,n,parcial:true}]):borradas),fallo:{t,error},pendientes:TABLAS_OPERATIVAS.slice(TABLAS_OPERATIVAS.indexOf(t))});
+  for(const t of TABLAS_OPERATIVAS){const r=await leerIdsPagina(t);if(r.error)return fallo(t,'no se pudo leer: '+r.error,[])}
+  const borradas=[];
+  for(const t of TABLAS_OPERATIVAS){let n=0,pasadas=0;
+    while(true){const r=await leerIdsPagina(t);if(r.error)return fallo(t,'no se pudo leer: '+r.error,borradas,n);const l=r.ids;if(!l.length)break;
+      if(++pasadas>200)return fallo(t,'demasiadas pasadas: la tabla no se vacía',borradas,n);
+      for(let i=0;i<l.length;i+=200){veloBorrado('Borrando '+nTabla(t)+' · '+num(n+Math.min(i+200,l.length))+' filas… no cierres la pestaña');
+        const {error}=await sb.from(t).delete().in('id',l.slice(i,i+200));if(error)return fallo(t,error.message,borradas,n+i)}
+      const r2=await leerIdsPagina(t);if(r2.error)return fallo(t,'no se pudo releer: '+r2.error,borradas,n);
+      const pedidos=new Set(l);const quedan=r2.ids.filter(id=>pedidos.has(id)).length;
+      if(quedan)return fallo(t,'el servidor no borró '+num(quedan)+' de '+num(l.length)+' filas (sin permiso de borrado en la tabla: política RLS)',borradas,n+(l.length-quedan));
+      n+=l.length}
+    borradas.push({t,n})}
+  for(const t of TABLAS_OPERATIVAS){const r=await leerIdsPagina(t);if(r.error||r.ids.length)return {ok:false,borradas,fallo:{t,error:r.error?'no se pudo verificar: '+r.error:'quedan '+num(r.ids.length)+' filas después de borrar'},pendientes:[t]}}
+  return {ok:true,borradas,fallo:null,pendientes:[]}}
+function modalIncompletoBorrado(r,nombre,ruta){
+  abrir('<h3 style="color:var(--alerta)">Borrado INCOMPLETO</h3><p style="font-size:var(--fs-s)">Se borró: <b>'+esc(r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)+(x.parcial?' (a medias)':'')).join(', ')||'nada')+'</b>. Falló en <b>'+esc(nTabla(r.fallo.t))+'</b>: '+esc(r.fallo.error)+'.<br>Quedan sin borrar: <b>'+esc(r.pendientes.map(nTabla).join(', '))+'</b>. Nada de Configuración se tocó y lo que apunta a órdenes se limpiará cuando el borrado termine.</p><p style="font-size:var(--fs-s)">Respaldo previo: '+esc(nombre)+' (descarga local) y '+esc(ruta)+' (servidor, verificado). Puedes volver a ejecutar el borrado para terminar, o deshacer restaurando ese respaldo.</p><div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn ghost" onclick="restaurarRespaldoServidor(\''+esc(ruta)+'\')">Restaurar el respaldo (deshacer)</button><button class="btn" style="background:var(--alerta)" onclick="cerrar();mBorrar()">Volver a intentar</button></div>')}
+async function ejecutarBorrado(){if(!puede('config')){alert('Solo el administrador puede borrar los datos.');return false}
+  const v=String((document.getElementById('borrar-frase')||{}).value||'').trim().toUpperCase();if(v!==PALABRA_BORRAR){alert('La palabra no coincide. No se borró nada.');return false}
+  if(BORRANDO){alert('Ya hay un borrado en curso.');return false}
+  const conservarFotosIdx=!!((document.getElementById('borrar-fotosidx')||{}).checked);
+  cerrar();BORRANDO=true;const fin=(ok)=>{BORRANDO=false;veloBorrado('');return ok};
+  try{
+  /* 1 · esperar el guardado en curso y guardar: nada pendiente en memoria se queda fuera del respaldo */
+  veloBorrado('Guardando antes de borrar…');await saveBorrado();
+  if(SAVE_ERR){bitacora('BORRADO CANCELADO: no se pudo guardar antes de borrar ('+SAVE_ERR.errs.join('; ')+') ('+quienFirma()+')');alert('NO se borró nada: no se pudo guardar antes ('+SAVE_ERR.errs.join('; ')+'). Corrige eso y vuelve a intentar.');return fin(false)}
+  /* 2 · releer TODO del servidor: el respaldo es del servidor, no de la memoria de esta pestaña */
+  veloBorrado('Releyendo el servidor…');const okCarga=await cargarTodo();
+  if(!okCarga){alert('NO se borró nada: no se pudo releer la base del servidor. Recarga la página y vuelve a intentar.');return fin(false)}
+  /* 3 · respaldo local + servidor, y comprobación de que el del servidor se puede cargar con Restaurar */
+  const c=cuentaBorrado();const ts=new Date().toISOString();const nombre='respaldo_antes_de_borrar_'+ts.replace(/[:.]/g,'-')+'.json';
+  veloBorrado('Respaldando antes de borrar…');descargarJSON(nombre,S);
+  const up=await subirRespaldo(nombre,S);
+  if(!up.ok){bitacora('BORRADO CANCELADO: el respaldo no se pudo subir al servidor ('+up.error+'); se pidió la descarga local '+nombre+' ('+quienFirma()+')');await saveBorrado();
+    alert('NO se borró nada: el respaldo no se pudo subir al servidor ('+up.error+'). Se pidió la descarga local ('+nombre+'): revísala en Descargas. Revisa que exista el bucket privado «'+respaldosBucket()+'» en Supabase Storage con permiso de subir y leer, y vuelve a intentar.');return fin(false)}
+  const ver=await verificarRespaldoServidor(nombre,c.ordenes);
+  if(!ver.ok){bitacora('BORRADO CANCELADO: el respaldo del servidor ('+up.ruta+') no se pudo verificar ('+ver.error+') ('+quienFirma()+')');await saveBorrado();
+    alert('NO se borró nada: el respaldo quedó en el servidor pero no se pudo leer y validar como lo haría Restaurar ('+ver.error+'). Revisa el bucket (permiso de lectura) y vuelve a intentar.');return fin(false)}
+  /* 4 · marca «en curso» + auditoría del piso a Configuración + bitácora INICIADO, guardadas ANTES de tocar nada */
+  const audPiso=conservarAuditoriaPiso(ts);
+  S.params.borradoEnCurso={ts,u:quienFirma(),respaldo:nombre,rutaServidor:up.ruta,conteos:{ordenes:c.ordenes,avance:c.avanceReg}};
+  bitacora('BORRADO de datos de prueba INICIADO por '+quienFirma()+': '+num(c.ordenes)+' órdenes, '+num(c.avanceReg)+' avances, '+num(c.planes)+' planes, '+c.banos+' baños, '+c.salidas+' salidas, '+c.programas+' programas, '+num(c.cargas)+' cargas, '+c.propuestas+' propuestas, '+num(c.turnos)+' turnos, '+num(c.paros)+' paros'+(audPiso?' · '+num(audPiso)+' líneas de auditoría del piso copiadas a Configuración':'')+' · respaldo '+nombre+' (local y '+up.ruta+')');
+  await saveBorrado();
+  if(SAVE_ERR){delete S.params.borradoEnCurso;bitacora('BORRADO CANCELADO: no se pudo guardar la marca de inicio ('+SAVE_ERR.errs.join('; ')+') ('+quienFirma()+')');await saveBorrado();alert('NO se borró nada: no se pudo guardar el registro de inicio ('+SAVE_ERR.errs.join('; ')+'). Vuelve a intentar.');return fin(false)}
+  /* 5 · borrar, tabla por tabla, parando en el primer fallo */
+  const r=await borrarOperativo();
+  veloBorrado('Recargando…');const okCarga2=await cargarTodo();PLAN=null;PLAN_ALL=null;
+  if(!okCarga2){veloBorrado('');abrir('<h3 style="color:var(--alerta)">Borrado '+(r.ok?'ejecutado':'INCOMPLETO')+', pero no se pudo releer la base</h3><p style="font-size:var(--fs-s)">'+(r.ok?'Las diez tablas se borraron y verificaron.':'Se borró '+esc(r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)).join(', ')||'nada')+' y falló en '+esc(nTabla(r.fallo.t))+' ('+esc(r.fallo.error)+').')+' Después no se pudo releer el servidor, así que <b>no se guardó nada más</b> (los guardados quedan bloqueados). <b>Recarga la página</b>: la marca de borrado en curso sigue en el servidor y el panel dirá qué falta. Respaldo previo: '+esc(nombre)+' y '+esc(up.ruta)+'.</p><div class="foot"><button class="btn" onclick="location.reload()">Recargar la página</button></div>');return fin(false)}
+  if(!r.ok){S.params.borradoIncompleto={ts,u:quienFirma(),borradas:r.borradas,fallo:r.fallo,pendientes:r.pendientes,respaldo:nombre,rutaServidor:up.ruta};delete S.params.borradoEnCurso;
+    bitacora('BORRADO INCOMPLETO ('+quienFirma()+'): se borró '+(r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)).join(', ')||'nada')+' y falló en '+nTabla(r.fallo.t)+' ('+r.fallo.error+'); quedan '+r.pendientes.map(nTabla).join(', ')+' · respaldo '+nombre+' ('+up.ruta+')');
+    await saveBorrado();render();veloBorrado('');modalIncompletoBorrado(r,nombre,up.ruta);return fin(false)}
+  /* 6 · limpiar lo que en params apunta a órdenes; 7 · registro */
+  const h=limpiarHuerfanosTrasBorrado(conservarFotosIdx)||{};const previo=S.params.borradoIncompleto;delete S.params.borradoIncompleto;delete S.params.borradoEnCurso;
+  const resumen='borradas '+r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)).join(', ')+' (verificadas en cero) · limpiados en Configuración: '+num(h.pendPospuestos)+' bandejas pospuestas, '+num(h.planMesOids)+' órdenes en borradores del plan, '+num(h.planMesCongelados)+' meses congelados, '+num(h.progCongelado)+' congelados semanales, '+num(h.alertasCompras)+' alertas de compras, '+num(h.advertencias)+' advertencias de fecha, '+num(h.noCalzan)+' «no calzan», '+num(h.resumenes)+' resúmenes de carga, '+num(h.pedidosReprog)+' pedidos de reprogramación, '+(conservarFotosIdx?'índice de fotos conservado ('+num(h.fotosIdx)+')':num(h.fotosIdx)+' fotos del índice')+' · conservados: configuración completa, '+num((S.bitacora||[]).length)+' líneas de bitácora, '+num((S.params.auditoriaCambios||[]).length)+' de auditoría ('+num(audPiso)+' copiadas del piso) y '+num(Object.keys(S.params.cierresMes||{}).length)+' cierres de mes';
+  S.params.borrados=(S.params.borrados||[]).concat([{ts,u:quienFirma(),conteos:{ordenes:c.ordenes,avance:c.avanceReg,planes:c.planes,banos:c.banos,salidas:c.salidas,programas:c.programas,cargas:c.cargas,propuestas:c.propuestas,turnos:c.turnos,paros:c.paros},huerfanos:h,audPiso,conservarFotosIdx,respaldo:nombre,rutaServidor:up.ruta,respaldoPrevio:previo?{respaldo:previo.respaldo,rutaServidor:previo.rutaServidor}:null,resumen}]);
+  bitacora('BORRADO de datos de prueba TERMINADO por '+quienFirma()+' el '+ts.slice(0,16).replace('T',' ')+': '+resumen+' · respaldo '+nombre+' (local) y '+up.ruta+' (servidor)'+(previo?' · respaldo del intento anterior: '+previo.rutaServidor:''));
+  await saveBorrado();render();veloBorrado('');BORRANDO=false;
+  /* 8 · pantalla final */
+  const ext=await conteosExternosBorrado();
+  abrir('<h3>Base vacía · configuración conservada</h3><p style="font-size:var(--fs-s)">Se borraron <b>'+esc(r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)).join(', '))+'</b> (las diez tablas verificadas en cero). Respaldo previo: <b>'+esc(nombre)+'</b> (descarga local pedida) y <b>'+esc(up.ruta)+'</b> (servidor, verificado con el criterio de Restaurar)'+(previo?'; el del intento anterior, completo: '+esc(previo.rutaServidor||'')+'':'')+'.</p><p style="font-size:var(--fs-s)"><b>Lo que queda</b> (revísalo antes de «Actualizar datos»):</p>'+conteoConservadoHTML(ext)+'<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">'+esc(resumen)+'</p><div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" onclick="cerrar();mActualizarDatos(1)">Actualizar datos →</button></div>',true);
+  return true}
+  catch(e){bitacora('BORRADO: error inesperado ('+String((e&&e.message)||e)+') ('+quienFirma()+')');try{await saveBorrado()}catch(x){}alert('El borrado se detuvo por un error inesperado: '+String((e&&e.message)||e)+'. Revisa el panel de Borrado: si quedó una marca de borrado en curso o incompleto, dice qué hacer.');return fin(false)}
+  finally{if(BORRANDO)fin(false)}}
 
 /* ---------- Tejeduría ---------- */
 function vTej(el){
@@ -10805,7 +10946,7 @@ async function subirRespaldo(nombre,obj){try{const blob=new Blob([JSON.stringify
   if(r&&r.error)return {ok:false,error:r.error.message||String(r.error)};return {ok:true,ruta:respaldosBucket()+'/respaldos/'+nombre}}
   catch(e){return {ok:false,error:String((e&&e.message)||e)}}}
 async function restaurarDesde(nuevo,nombre){if(!puede('config')){alert('Solo el administrador puede restaurar.');return false}
-  if(!nuevo||!nuevo.params){alert('El archivo no parece un respaldo del sistema.');return false}
+  if(!esRespaldoValido(nuevo)){alert('El archivo no parece un respaldo del sistema.');return false}
   const antes={ordenes:S.ordenes.length,bitacora:(S.bitacora||[]).length,avance:Object.keys(S.avance||{}).length};
   const t=prompt('Vas a REEMPLAZAR los datos actuales ('+antes.ordenes+' órdenes, '+antes.avance+' órdenes con avance, '+antes.bitacora+' entradas de bitácora y toda la configuración) por los del respaldo «'+(nombre||'')+'» ('+((nuevo.ordenes||[]).length)+' órdenes). Antes se descarga un respaldo automático de lo que hay ahora. Lo que no esté en el archivo se pierde; la bitácora se conserva y se une. Para continuar escribe exactamente: RESTAURAR');
   if(String(t||'').trim()!=='RESTAURAR')return false;

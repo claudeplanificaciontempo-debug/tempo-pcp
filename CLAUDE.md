@@ -781,6 +781,23 @@ tres líneas (conteos `.cola-conteos`, orden en una línea, `Marcas:` con % por 
 parámetros): `cortePorFecha(out)` en los dos caminos de `cercaniaCentro` baja de Por llegar a Todo lo que viene lo que llega a
 más de N días hábiles, marcado `lejosPorFecha` («llega en X días · más de N»); 0 = solo hoy. Ver `COLA_POR_FASE_CORRECCIONES.md`.
 
+**Borrar datos de prueba (17-sep-2026, Configuración → Borrado).** UN solo botón (`mBorrar()` → `ejecutarBorrado()`), solo
+`config`, palabra escrita `BORRAR`. Orden fijo: espera el guardado en curso y guarda (si `SAVE_ERR`, cancela) → **relee todo del
+servidor** (`cargarTodo`, ahora devuelve true/false y deja `CARGA_INCOMPLETA` si falla: `save()` no escribe nada hasta recargar la
+página) → respaldo local (`descargarJSON`) + Storage `respaldos/respaldos/` (`subirRespaldo`) → **baja el archivo del servidor y lo
+valida con el criterio de Restaurar** (`esRespaldoValido`, compartido con `restaurarDesde`; `verificarRespaldoServidor`) — si algo
+falla, NO borra → copia la auditoría del piso (`avance[oid].auditoria`) a `params.auditoriaCambios` + marca `S.params.borradoEnCurso`
++ bitácora INICIADO guardadas ANTES del primer delete → `borrarOperativo()` (órdenes al final; lee por páginas de 1.000 hasta vaciar
+cada tabla, relee tras cada lote para detectar el delete silencioso de RLS, verifica las diez en cero; primer fallo →
+`S.params.borradoIncompleto`, bitácora «INCOMPLETO», modal con «Restaurar el respaldo (deshacer)» = `restaurarRespaldoServidor`) →
+`limpiarHuerfanosTrasBorrado(conservarFotosIdx)` (bandejas pospuestas enteras, borrador y congelado del plan, congelados semanales,
+alertas de compras, advertencias de fecha, «no calzan», resúmenes de carga, pedidos de reprogramación, `fotosIdx` salvo casilla;
+conserva auditoría, `cierresMes`, `restauraciones`, metas, `progTej`, `stockTela` y toda la configuración) → `S.params.borrados[]` +
+bitácora TERMINADO con usuario, fecha, conteos y rutas → pantalla «Base vacía · configuración conservada» (`conteoConservadoHTML`).
+Mientras corre: velo y `BORRANDO` (un `save()` ajeno no escribe; los del borrado usan `saveBorrado`). Si la pestaña se cierra a
+mitad, la marca «en curso» hace que el panel diga INTERRUMPIDO. «Quitar todas las órdenes» ya no existe. El bucket `respaldos`
+necesita políticas de subir y leer: `SUPABASE_BUCKET_RESPALDOS.sql` (sin ejecutar). Ver `BORRADO_DATOS_PRUEBA.md`.
+
 **Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
 para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
 hábiles. **Recurso fijo o secuencia SIN programa ya no dan visibilidad.** Si `programar()` falla, el operario ve

@@ -204,6 +204,16 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.59 Borrar datos de prueba (17-sep)
+- Un solo botón en Configuración → Borrado, solo `config`, palabra `BORRAR`. Guarda antes y relee el servidor; respaldo
+  local + Storage `respaldos/` y verificación de que el del servidor se carga con Restaurar (si falla, no borra); marca «en
+  curso» + bitácora INICIADO antes del primer delete; borrado de las diez tablas (órdenes al final) leyendo por páginas hasta
+  vaciar y comprobando que el servidor borró (RLS silencioso), parándose en el primer fallo (INCOMPLETO, con «Restaurar el
+  respaldo (deshacer)»); limpieza de lo que en params apunta a órdenes (auditoría —la del piso se copia—, bitácora, cierres
+  de mes, metas y tejeduría se conservan; `fotosIdx` solo con la casilla); bitácora con quién, cuándo, conteos y rutas;
+  pantalla «Base vacía · configuración conservada». Bucket `respaldos`: `SUPABASE_BUCKET_RESPALDOS.sql` (sin ejecutar).
+  Ver `BORRADO_DATOS_PRUEBA.md`.
+
 ### 2.58 Cola por fase: la lista de fases del centro decide (17-sep)
 - `S.params.fasesCentro[centro]={fases,sugerido,confirmado,origen,ts}`: lista de fases visibles por centro, editable en
   Configuración → Calendario y parámetros (subir/bajar/quitar/agregar/volver a la sugerida/confirmar; permiso `programa`).
