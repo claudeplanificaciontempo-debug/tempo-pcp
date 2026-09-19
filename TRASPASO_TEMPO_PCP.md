@@ -204,6 +204,19 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.60 Resumen del centro: la pantalla simple (18-sep)
+- Pestaña **Resumen** de todo centro de producción y sub-área, abre por defecto (`CEN.tab='resumen'`, `irCentro` sin
+  pestaña). Cabecera con semana ISO, rango laborable y hoy; aviso de congelado (`congeladoDe`) con «Congelar el programa»
+  (planificación) o «Pedir congelamiento» (supervisor: línea en bitácora `k:'pedirCongelar'`, bandeja `pedirCongelar` en
+  Hoy → Pendientes, se cierra sola al congelar); botoncitos por recurso cuando el centro tiene 2+ (Confección: módulos +
+  Maquila al final; `CEN.rec`); tres tarjetas (¿Cómo voy? = hechas de programadas con ▲ «debías llevar» = carga de los
+  días pasados; Órdenes atrasadas = listas con fin programado ya pasado; Días sin registrar = días pasados con carga y sin
+  registro); día por día planeado vs. hecho (tocar filtra, `togDiaCEN`); lista **Listas para <centro>** (puesto manual
+  o grupo Disponible; orden puesto → atrasada → hoy → futuro → sin programar) y **En espera** (resto, en el orden de la
+  cola, sin visto) con foto+WH+fase (`whCell`), producto, color, hechas de pedidas, debía salir, estado
+  (`estadoListaCentro`) y el **visto verde** = `marcarHechoCentro`. `prm('filasResumenCentro',8)` filas y «Ver las N
+  restantes». `datosDiaCentro` ganó `rec` opcional. Nada nuevo en el motor. Ver `RESUMEN_CENTRO_REPORTE.md`.
+
 ### 2.59 Borrar datos de prueba (17-sep)
 - Un solo botón en Configuración → Borrado, solo `config`, palabra `BORRAR`. Guarda antes y relee el servidor; respaldo
   local + Storage `respaldos/` y verificación de que el del servidor se carga con Restaurar (si falla, no borra); marca «en

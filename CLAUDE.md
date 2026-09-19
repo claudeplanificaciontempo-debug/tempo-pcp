@@ -802,6 +802,18 @@ Mientras corre: velo y `BORRANDO` (un `save()` ajeno no escribe; los del borrado
 mitad, la marca «en curso» hace que el panel diga INTERRUMPIDO. «Quitar todas las órdenes» ya no existe. El bucket `respaldos`
 necesita políticas de subir y leer: `SUPABASE_BUCKET_RESPALDOS.sql` (sin ejecutar). Ver `BORRADO_DATOS_PRUEBA.md`.
 
+**Resumen del centro (18-sep-2026, pestaña por defecto de todo centro de producción):** la pantalla simple del
+bosquejo de la usuaria. `resumenCentroHTML` (prefijo `res-` en CSS): semana + congelado (`congeladoDe`; «Congelar el
+programa» con `programa`, si no «Pedir congelamiento» = `pedirCongelamiento` → bitácora `k:'pedirCongelar'` → bandeja
+`pedirCongelar` de Hoy, `pedidosCongelarAbiertos` se vacía sola al congelar), botoncitos por recurso si el centro tiene
+2+ (`recsChipsCentro`, maquila al final con `ordenRecChip`; `CEN.rec`), tarjetas `tarjetasResumenCentroHTML`, barras
+`diaPorDiaHTML` (todo sobre `datosDiaCentro`, que ganó el 5.º parámetro `rec`), lista `listaResumenCentroHTML` con
+`listasYEspera` (= `colaCentro` partido: **Listas** = puesto manual o grupo Disponible, orden puesto → `ordenUrgencia`
+(`estadoListaCentro`: atrasada = fin programado del paso ya pasado, hábiles con `habilesDesde` · para hoy · futuro ·
+sin programar) → entrega; **En espera** = el resto en el orden de la cola, sin visto). Visto verde `.visto` =
+`marcarHechoCentro`. `prm('filasResumenCentro',8)`. Las pestañas Planificación / Programación / Ejecución no cambian.
+**No crear un segundo cálculo de cola, avance ni atraso en esta pantalla.** Ver `RESUMEN_CENTRO_REPORTE.md`.
+
 **Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
 para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
 hábiles. **Recurso fijo o secuencia SIN programa ya no dan visibilidad.** Si `programar()` falla, el operario ve
