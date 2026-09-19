@@ -121,7 +121,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
   /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo.
      ?captura=fases: diagnóstico (JSON en <pre id="diag">) de la cola completa de cada centro de producción por fase de Odoo y grupo de cercanía. */
-  if(/captura=(niv|fases|cola|borrado|res|audit)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
+  if(/captura=(niv|fases|cola|borrado|res|audit|ux)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
     NIVUI={meses:['2026-09','2026-10','2026-11'],cliente:'',familia:'',area:'corte',celda:null,filaPor:'familia',esc:{},verCalc:false,noEntra:false};
     if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
       const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={por:'familia',fila:famDeOrden(r.saldo.ordenes[0]),mes:'2026-10'}}
@@ -151,6 +151,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       TABLAS.forEach(t=>{BASE[t]={}});BASE.params=null;while(guardando)await __p(20);await save();while(guardando)await __p(20);
       page="config";CONF.tab="borrado";render();mBorrar();
       if(/borrado2/.test(location.search)){document.getElementById("borrar-frase").value="BORRAR";await ejecutarBorrado();while(guardando)await __p(20);await __p(100)}
+      document.body.classList.add("captura");__R.done=true;return}
+    /* captura=ux<pantalla>[f]: una pantalla con la cabecera común (ledes al «?», filtros plegados) y el semáforo; con «f» al final los filtros abiertos;
+       «q» abre el «?» de la cabecera. Ej.: ?captura=uxordenes · uxordenesf · uxordenesq · uxentregas · uxliberacion · uxcontrol */
+    if(/captura=ux/.test(location.search)){const m=location.search.match(/captura=ux([a-z]+?)(f?)(q?)$/)||[];const p=m[1]||'ordenes';PERFIL=adminP0();FILT={};
+      if(p==='ordenes'){grpSt('ord').niveles=[];ORDF.q='';ORDF.fases=null;ORDF.estado='plan';ORDF.tab='ord'}if(p==='entregas'){EG.q='';EG.meses=new Set()}if(p==='control'){CTL.area='pro'}if(p==='liberacion'){LIB.et='tela'}
+      if(m[2])FILT[p]=true;page=p;render();if(m[3]){const a=document.querySelector('#p-'+p+' .pagehead .ayuda-cab');if(a)a.classList.add('abierto')}
+      document.querySelectorAll("main,#app").forEach(x=>{x.style.height="auto";x.style.maxHeight="none";x.style.overflow="visible"});document.querySelectorAll('#p-'+p+' .scroll').forEach(x=>{x.style.maxHeight='none'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());
       document.body.classList.add("captura");__R.done=true;return}
     /* captura=audit: deja el simulador con TODO el volcado real (tareas + OT + catálogo real reenlazado + mapeo LMO) y perfil admin,
        sin correr pruebas, para auditar a mano desde la consola (auditoría del 19-sep) */
@@ -711,7 +718,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __R.colaDOM={ths,filas:filas.length,grupos:grp.length};
     CEN.cercAbre=null;render();}
    __check("cola: la tabla es arrastrable y tiene puesto numérico y zona 'al final'",/draggable="true"/.test(html())&&/onchange="moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
-   __check("cola: sin numerar la pantalla dice que se ordena por cercanía",html().includes("cola sin numerar: se ordena por cercanía a llegar a este centro"));
+   __check("cola: sin numerar la pantalla dice que se ordena por cercanía",html().includes("cola sin numerar: se ordena por orden de llegada a este centro"));
    if(cola.length>=3){const oA=cola[cola.length-1].o,oB=cola[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
      DRAGC={oid:oA.id,c:'corte'};const ev={preventDefault(){},currentTarget:{classList:{remove(){},add(){}}},dataTransfer:{}};soltarCola(ev,'corte',oB.id);
      const cola2=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
@@ -722,10 +729,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("cola: las advertencias nuevas (si las hay) llevan la acción de la cola",(S.params.advertencias||[]).slice(nAdv).every(x=>/^Cola de Corte/.test(x.accion)));
      moverEnCola(oA.id,'corte',{pos:cola.length});const cola3=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
      __check("cola: escribir el puesto n la manda al final (bajarla obliga a numerar lo que queda por encima)",cola3[cola3.length-1].o.id===oA.id&&cola3.every((f,i)=>puestoDe(f.o,'corte')===i+1));
-     __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · la ordena la cercanía/.test(html()));
+     __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · por orden de llegada/.test(html()));
      // sin puesto va al final (decisión 14-sep): quitar el puesto de la primera la manda al final de la cola y el motor la toma como última
      {const oF=cola3[0].o;delete oF.progCentro.corte.pri;PLAN=null;PLAN_ALL=null;render();const c4=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
-      __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · la ordena la cercanía'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
+      __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · por orden de llegada'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
      // agrupar: reordena y suma, no esconde
      CEN.cercAbre={disponible:true,porLlegar:true,revisar:true,lejana:true};   /* los grupos de cercanía nacen colapsados: aquí se miran TODAS las filas */
      GRP={};grpSt('cen').niveles=['cliente','cat'];render();const hc=html();const pend3=cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0);
@@ -746,7 +753,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    CEN.id='corte';CEN.todo=false;CEN.niveles=[];render();__check("cola sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* buscadores sin perder el foco; borrado fuera de Órdenes */
   {const antes=__R.errors.length;const adminP=PERFIL;
-   page='ordenes';render();const inp=()=>document.querySelector('input[data-q="ORDF.q"]');__check("buscador Órdenes: usa buscarQ con data-q",!!inp()&&/buscarQ\(/.test(inp().getAttribute('oninput')));
+   page='ordenes';FILT.ordenes=true;render();const inp=()=>document.querySelector('input[data-q="ORDF.q"]');__check("buscador Órdenes: usa buscarQ con data-q",!!inp()&&/buscarQ\(/.test(inp().getAttribute('oninput')));
    inp().focus();inp().value='23';buscarQ(inp(),v=>ORDF.q=v);await new Promise(r=>setTimeout(r,250));
    __check("buscador Órdenes: tras redibujar el foco sigue en el campo y el texto se conserva",document.activeElement===inp()&&inp().value==='23'&&ORDF.q==='23');
    ORDF.q='';render();
@@ -1873,7 +1880,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("asig: la pantalla separa por estado con conteo y prendas, y 'Llegan bien' va plegado",hp().includes('Asignación por orden')&&/<details class="panel"[^>]*>\s*<summary[^>]*>Llegan bien/.test(hp())&&!/<details class="panel"[^>]*open/.test(hp())&&!hp().includes('Ruta asignada (centro'));
    __check("asig: una sola ficha de próximo paso por fila (no las fichas repetidas)",(hp().match(/Próximo paso · recurso · termina/g)||[]).length>=1&&!hp().includes('Ruta asignada'));
    __check("asig: colchón como parámetro visible (sembrado 3, marcado est.) y editable",colchonDias()===3&&S.params.colchonEstimado===true&&/onchange="setColchon\(/.test(hp()));
-   const nb=S.bitacora.length;setColchon(5);__check("asig: cambiar el colchón queda en bitácora y quita la marca de estimado",colchonDias()===5&&S.params.colchonEstimado===false&&S.bitacora.slice(-3).some(b=>/Colchón de entrega: 3 → 5/.test(b.t)));setColchon(3);
+   const nb=S.bitacora.length;setColchon(5);__check("asig: cambiar el colchón queda en bitácora y quita la marca de estimado",colchonDias()===5&&S.params.colchonEstimado===false&&S.bitacora.slice(-3).some(b=>/Días de holgura para la entrega: 3 → 5/.test(b.t)));setColchon(3);
    // clasificación: una que no llega trae días y atasco; una que llega justo trae holgura ≤ colchón
    const oNo=todas.find(o=>clasificarAsig(o,P).estado==='noLlega');if(oNo){const c=clasificarAsig(oNo,P);__check("asig: 'no llega' trae días tarde y en qué paso se atasca",c.dias>=0&&typeof c.atasco==='string'&&c.atasco.length>0);}
    const oJ=todas.find(o=>clasificarAsig(o,P).estado==='justo');if(oJ){const c=clasificarAsig(oJ,P);__check("asig: 'llega justo' = holgura dentro del colchón",c.holg!=null&&c.holg<=colchonDias()&&c.holg>=0);}
@@ -3655,7 +3662,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("OT1: y el aviso de que no es definitivo va pegado a la fila del lavado en planta",/pendiente datos de lavadoras/.test(avisoLavadoPlanta())&&/pendiente datos de lavadoras/.test(celdaCapPasoHTML(esperasPaso().findIndex(x=>x.modo==='planta'),esperasPaso().find(x=>x.modo==='planta'))));
    {const or=origenTiempoCentro('botones');
     __check("OT2: ojales y botones dice de dónde sale su tiempo (LMO y, si hay, la tabla de ojal/botón que la reemplaza)",/operaciones de la LMO/.test(or.txt)&&/operaciones mapeadas/.test(or.det));}
-   __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('Min/prenda'));
+   __check("OT2: plancha dice que su tiempo sale de la columna del centro",origenTiempoCentro('plancha').txt.includes('«SAM»'));
    __check("OT2: y el consolidado del lavado dice que se mide en días y no consume capacidad",/días de proceso/.test(origenTiempoCentro('lavado').txt)&&/no consume capacidad/.test(origenTiempoCentro('lavado').det||''));
    __check("OT sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* PISO · la secuencia de la ruta manda sobre el número de fase */
@@ -5279,7 +5286,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CC5b: la cola vuelve a ordenarse sola por cercanía",ok,cola2.length+" órdenes");
      /* llamarlo dos veces avisa y no rompe */
      let av="";const a1=window.alert;window.alert=m=>{av=String(m)};volverACercania(c);window.alert=a1;
-     __check("CC5b: si no hay puestos manuales, avisa y no hace nada",/ya se ordena por cercan\u00eda/.test(av),av);}}
+     __check("CC5b: si no hay puestos manuales, avisa y no hace nada",/ya se ordena por orden de llegada/.test(av),av);}}
    /* ===== CF · cola por fase con corte de profundidad (17-sep) ===== */
    {const c="corte";PLAN=null;PLAN_ALL=null;const Pf=programar();const lun=lunesDe(hoy());
     const filas=filasDeCentros([c],Pf,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);const m=partirPorCercania(cola);
@@ -5414,7 +5421,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const v=colaCentro(c,filasDeCentros([c],P2,lun,dsum(lun,6),"")).map(f=>f.o.id).join();
       return t===v})());
     __check("CC7: ordenarColaPorColor avisa de que el puesto manual apaga la cercanía",
-      /el puesto manual manda sobre la cercan\u00eda/.test(String(ordenarColaPorColor)));
+      /el puesto manual manda sobre el orden de llegada/.test(String(ordenarColaPorColor)));
     __check("CC7: y lo deja escrito en la bitácora",/deja de aplicarles/.test(String(ordenarColaPorColor)));}
    /* --- 8 · la ODC va en columna propia; whCell NO se tocó --- */
    {__check("CC8: whCell sigue siendo foto + WH + fase + cierre, sin ODC",
@@ -5529,7 +5536,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const inp=id=>document.querySelector('input[data-q="'+id+'"]');
     for(const [id,pant,pag,prep] of PANT){
       try{prep()}catch(e){}
-      page=pag;render();
+      page=pag;FILT[pag]=true;/* para Dummies: el buscador vive plegado bajo «Filtrar»; el usuario lo abre antes de escribir */render();
       let el=inp(id);
       const reg={id,pantalla:pant,pagina:pag,existe:!!el,foco:null,texto:null,cursor:null,perdidas:0,detalle:""};
       if(!el){reg.detalle="el buscador no se dibuja en esta pantalla con este estado";__R.bus.foco.push(reg);
@@ -6363,7 +6370,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("N3: Tela sin fases marcadas en la tabla 1 es «dato faltante», no «0 u · llega»",fasesDeProcNivel("tela").length>0||(rT.sinFasesTela===true&&rT.estado==="faltante"&&/sin fases marcadas/.test(h)&&rT.falta.some(f=>/fases de Tela/.test(f))),JSON.stringify({fases:fasesDeProcNivel("tela").length,e:rT.estado}));
      __check("N3: un área cuyas órdenes no tienen SAM lo dice en el recuadro (+N u sin SAM)",!(rE.saldo&&rE.saldo.sinSAM.length)||new RegExp("\\+"+num(rE.saldo.unidSinSAM,0).replace(/\./g,"\\.")+" u sin SAM").test(h),JSON.stringify(rE.saldo&&{n:rE.saldo.sinSAM.length,u:rE.saldo.unidSinSAM}));}
     NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;
-    __check("N3: clic en un recuadro muestra SOLO esa área abajo",/Nivelación de Confección/.test(h2)&&!/Nivelación de Corte/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1);
+    __check("N3: clic en un recuadro muestra SOLO esa área abajo",/¿Alcanza la capacidad en Confección\?/.test(h2)&&!/¿Alcanza la capacidad en Corte\?/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1);
     NIVUI.area="corte";render();}
    /* N8 · decisiones 17-sep: Tela y Maquila por fase (al marcar fases el recuadro calcula); Lavado/Plancha por días; todas conectadas */
    {const tabla=faseMapeo();const bak=tabla.map(r=>r.nivel);
@@ -6377,7 +6384,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     tabla.forEach((r,i)=>{r.nivel=bak[i]});NIVC=null;
     const pd=nivUIAreas().filter(a=>a.porDias);
     __check("N8: Lavado y Plancha (por días) siguen en los recuadros marcados «por días, sin capacidad», sin cuadrito, y dicen qué haría falta",pd.length>=1&&pd.some(a=>a.id==="lavado")&&pd.every(a=>centroPorDias(a.id))&&(()=>{NIVUI.area="lavado";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /por días, sin capacidad/.test(h2)&&!/se escribe/.test(h2)&&/harían falta/.test(h2)&&/Saldo por familia/.test(h2)})(),pd.map(a=>a.id).join(","));
-    __check("N8: las demás áreas quedaron conectadas (Confección con cuadrito)",(()=>{NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /Nivelación de Confección/.test(h2)&&/se escribe/.test(h2)&&!/pendiente de conectar/.test(document.getElementById("p-nivelacion").innerHTML)})());}
+    __check("N8: las demás áreas quedaron conectadas (Confección con cuadrito)",(()=>{NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /¿Alcanza la capacidad en Confección\?/.test(h2)&&/se escribe/.test(h2)&&!/pendiente de conectar/.test(document.getElementById("p-nivelacion").innerHTML)})());}
    /* N4 · detalle de Corte: tabla cliente × mes y cuadrito */
    {const r=nivUICalcular("corte");const h=()=>document.getElementById("p-nivelacion").innerHTML;
     __check("N4: la tabla tiene una columna por mes marcado y fila de totales",nivUIMeses().every(m=>new RegExp("<th class=\"num\">"+m+"</th>").test(h()))&&/<td>Total<\/td>/.test(h()));
@@ -6385,7 +6392,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cel=h().match(/onclick="NIVUI.celda=\{por:'familia',fila:'([^']+)',mes:'([^']+)'\}/);
     __check("N4: hay celdas con saldo",!!cel,"sin celdas");
     if(cel){NIVUI.celda={por:"familia",fila:cel[1].replace(/&#39;/g,"'"),mes:cel[2]};render();
-     __check("N4: clic en una celda abre el detalle SOLO hasta tipo de producto: unidades, número de órdenes y «ver órdenes»",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th><th class="num">Órdenes<\/th>/.test(h())&&(h().match(/irSaldoCentro\(/g)||[]).length>=2&&!/<details/.test(h().slice(h().indexOf("tipos de producto"),h().indexOf("Nivelación de Corte"))));
+     __check("N4: clic en una celda abre el detalle SOLO hasta tipo de producto: unidades, número de órdenes y «ver órdenes»",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th><th class="num">Órdenes<\/th>/.test(h())&&(h().match(/irSaldoCentro\(/g)||[]).length>=2&&!/<details/.test(h().slice(h().indexOf("tipos de producto"),h().indexOf("¿Alcanza la capacidad en Corte?"))));
      /* la nivelación NO lista WH en ningún punto */
      const sinWH=html=>!/WH\/MO\/|SIN WH #|whCell|foto-mini|fase-mini/.test(html);
      __check("N4: con la celda abierta no aparece ninguna WH en la pantalla de nivelación",sinWH(h()),(h().match(/WH\/MO\/[0-9]+/g)||[]).slice(0,3).join(","));
@@ -6398,7 +6405,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const cab=hc.match(/Saldo por procesar en ([^<]+) <span class="note">([^<]*)<b>(\d+)<\/b> órdenes · <b>([^<]+)<\/b> u/);
        __check("N4→CG: abre Carga general en «Saldo por procesar en Corte» con la selección en el encabezado",page==="produccion"&&!!cab&&/Corte/.test(cab[1])&&new RegExp(sel.meses[0]).test(cab[2])&&new RegExp(esc(sel.hija)).test(cab[2]),cab?cab[0].slice(0,160):hc.slice(0,120));
        __check("N4→CG: el número de órdenes y unidades del detalle coincide EXACTO con la fila de la nivelación",!!cab&&+cab[3]===nFila&&+cab[4].replace(/\./g,"")===uFila,JSON.stringify({cg:cab&&[cab[3],cab[4]],fila:[nFila,uFila]}));
-       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a la nivelación/.test(hc)&&/whCell|WH\//.test(hc));
+       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a «¿Alcanza la capacidad\?»/.test(hc)&&/whCell|WH\//.test(hc));
        __check("N4→CG: al llegar desde la nivelación SOLO se ve el bloque de saldo; el resto queda colapsado con «ver el resto de Carga general»",!/Carga contra capacidad por semana/.test(hc)&&!/Familia por centro/.test(hc)&&!/Carga que viene · /.test(hc)&&/ver el resto de Carga general/.test(hc));
        CG.det.verResto=true;render();const hc2=document.getElementById("p-produccion").innerHTML;
        __check("N4→CG: «ver el resto» despliega la pantalla completa sin perder el bloque de saldo",/Carga contra capacidad por semana/.test(hc2)&&/Saldo por procesar en/.test(hc2));
@@ -6592,7 +6599,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* AU8 · pasos que el motor no programa sin decirlo */
    {const P=programar();const psp=pasosSinProgramar(P);
     __check("AU8: pasosSinProgramar solo lista pasos de producción pendientes sin fecha, de órdenes liberadas sin bloqueo ni error",psp.every(x=>{const o=S.ordenes.find(y=>y.id===x.oid);const ro=P.ordenes[o.id]||{};return liberada(o,'corte')&&!ro.bloqueo&&!ro.error&&!pasoHecho(o,x.c)&&!((ro.pasos||[]).find(p=>p.centro===x.c)||{}).ini}));
-    __check("AU8: cada uno dice el motivo (sin minutos por prenda / sin recurso / sin fecha del motor)",psp.every(x=>/sin minutos por prenda|sin recurso activo|sin fecha del motor/.test(x.motivo)));
+    __check("AU8: cada uno dice el motivo (sin minutos por prenda / sin recurso / sin fecha del motor)",psp.every(x=>/sin SAM \(minutos por prenda\)|sin recurso activo|sin fecha del motor/.test(x.motivo)));
     const b=pendientesHoy().find(x=>x.k==='pasoSinProgramar');__check("AU8: Hoy → Pendientes tiene la bandeja con el mismo conteo",!!b&&b.n===psp.length,JSON.stringify([b&&b.n,psp.length]));
     __R.auditPsp={n:psp.length,porCentro:psp.reduce((m,x)=>{m[x.c+' '+x.motivo]=(m[x.c+' '+x.motivo]||0)+1;return m},{})};}
    /* AU9 · la auditoría en pantalla corre y las reglas del motor dan cero sobre el volcado */
@@ -6610,6 +6617,51 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("AU10: el visto verde del Resumen llama a mCerrarCentro (no a un registro que reviente con un alert)",/mCerrarCentro\(/.test(String(listaResumenCentroHTML))&&!/marcarHechoCentro\(/.test(String(listaResumenCentroHTML)));
    window.alert=al;PERFIL=adminP0();PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("AUDITORÍA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== PARA DUMMIES · F (cabecera común: ledes al «?», filtros plegados) · H (semáforo) · G (palabras de planta) — 19-sep-2026 ===== */
+  try{localStorage.__fase="dummies"}catch(e){}
+  {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
+   const pg=p=>document.getElementById('p-'+p);
+   /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','reporteria','macro','compras','stock','capacidad','cumplimiento','avance','wip','vistaordenes','asignacion','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
+    const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
+    __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
+    page='avance';render();__check("F1: Avance del mes conserva a la vista el aviso «sin plan congelado» (es estado, no explicación)",!!pg('avance').querySelector('.lede.no-plegar'));
+    __check("F1: el «?» cuelga del título (h2/h3) en las pantallas principales",!sinAyuda.length,sinAyuda.join(', '));
+    page='ordenes';render();const ay=pg('ordenes').querySelector('.pagehead .ayuda-cab');const txtAntes=ay?ay.querySelector('.ayuda-txt').textContent.trim():'';
+    __check("F1: el texto del «?» es el del párrafo que estaba antes (no se pierde nada) y se abre al tocar",!!ay&&txtAntes.length>40&&(ay.querySelector('.ayuda').click(),ay.classList.contains('abierto')));}
+   /* F2 · un solo botón «Filtrar» por página; los controles se ocultan hasta tocarlo; se abren solos si hay un filtro activo; los botones de acción nunca se ocultan */
+   {ORDF.q='';ORDF.fases=null;setNivelGRP('ord',0,'');FILT={};page='ordenes';render();const el=pg('ordenes');const btns=el.querySelectorAll('.filt-btn:not(.filt-lejos)');
+    __check("F2: Órdenes tiene UN botón «Filtrar» en la cabecera (más uno chico junto a la fila si queda lejos) y el buscador/agrupador quedan ocultos",btns.length===1&&btns[0].closest('.pagehead')!==null&&el.querySelectorAll('[data-filt]').length>=2&&el.querySelectorAll('[data-filt-oculto]').length===el.querySelectorAll('[data-filt]').length,btns.length+' / '+el.querySelectorAll('[data-filt]').length+' / '+el.querySelectorAll('[data-filt-oculto]').length);
+    __check("F2: ningún botón de acción quedó oculto",[...el.querySelectorAll('[data-filt-oculto] button')].every(b=>b.closest('.busq,.ffases,[data-filt-tipo]')));
+    togFiltros('ordenes');__check("F2: tocar «Filtrar» muestra los controles y el botón cambia a ▴",!pg('ordenes').querySelectorAll('[data-filt-oculto]').length&&/▴/.test(pg('ordenes').querySelector('.filt-btn').textContent));
+    togFiltros('ordenes');__check("F2: tocarlo otra vez los oculta (y se recuerda por usuario)",pg('ordenes').querySelectorAll('[data-filt-oculto]').length>0&&FILT.ordenes===false);
+    FILT={};ORDF.q='camiseta';render();__check("F2: con un filtro activo se abre solo y el botón muestra cuántos hay activos",!pg('ordenes').querySelectorAll('[data-filt-oculto]').length&&/Filtrar ▴/.test(pg('ordenes').querySelector('.filt-btn').textContent)&&pg('ordenes').querySelector('.filt-btn .filt-n').textContent==='1');
+    ORDF.q='';FILT={};render();
+    page='tablet';render();__check("F2: Mi centro (tablet) no se pliega: el operario siempre ve su buscador",!pg('tablet').querySelector('.filt-btn'));
+    page='control';CTL.area='pro';FILT={};render();{const sa=[...pg('control').querySelectorAll('select')].find(x=>/tej|tin|pro/.test(x.innerHTML));__check("F2: los selectores de BASE (Área de Control de piso) nunca se pliegan; buscador y agrupador sí",!!sa&&!sa.closest('[data-filt-oculto]')&&pg('control').querySelectorAll('[data-filt-oculto]').length>=1)}
+    page='plan';FILT={};try{delete localStorage[filtClave()]}catch(e){}render();__check("F2: agrupar no es filtrar: la agrupación por defecto del Plan no abre el panel ni suma en el contador",!pg('plan').querySelector('.filt-btn .filt-n')||!/grp/.test([...pg('plan').querySelectorAll('[data-filt-tipo]')].filter(filtroActivoCtl).map(x=>x.getAttribute('data-filt-tipo')).join()));
+    {page='ordenes';FILT={};try{delete localStorage[filtClave()]}catch(e){}ORDF.q='';render();togFiltros('ordenes');const inp=pg('ordenes').querySelector('input[data-q="ORDF.q"]');inp.value='x';inp.dispatchEvent(new Event('input',{bubbles:true}));
+     __check("F2: tocar un control del panel lo deja abierto (no se pliega solo al vaciar el filtro)",FILT.ordenes===true);ORDF.q='';FILT={};}
+    /* el plegado es una transformación del DOM: la plantilla de la lista no cambió (el redibujo parcial sigue vivo) */
+    page='ordenes';render();__check("F2: la lista de Órdenes sigue con su contenedor de redibujo parcial y su cabecera de columnas",/data-lista="ORDF.q"/.test(pg('ordenes').innerHTML)&&/<th>Telas \(kg crudo\)<\/th><th>Estado<\/th>/.test(pg('ordenes').innerHTML));}
+   /* H · un solo estado con semáforo y verbo; sale de las funciones de siempre */
+   {PLAN=null;PLAN_ALL=null;const P=programar();const ab=S.ordenes.filter(abiertaDe);
+    const e=ab.map(o=>estadoSemaforo(o,P));
+    __check("H: toda orden abierta tiene un estado con color (verde/ámbar/rojo/gris) y un texto con verbo",e.every(x=>['verde','ambar','rojo','gris'].includes(x.color)&&x.txt&&/^(Atrasada|Lista|Llega|Llegaron|Falta|Sin|Baño|En |Terminada|Cerrada|Revisar|Paso anterior|Por llegar|Color|Faltan|Error)/.test(x.txt)),JSON.stringify([...new Set(e.filter(x=>!/^(Atrasada|Lista|Llega|Llegaron|Falta|Sin|Baño|En |Terminada|Cerrada|Revisar|Paso anterior|Por llegar|Color|Faltan|Error)/.test(x.txt)).map(x=>x.txt))].slice(0,5)));
+    __check("H: rojo SOLO con meta vencida según la definición única (esMetaVencida); el paso atrasado es ámbar",ab.every(o=>{const x=estadoSemaforo(o,P);if(x.color==='rojo')return esMetaVencida(o,P)&&x.k==='vencida';if(x.k==='atrasadoPaso')return x.color==='ambar';return true}));
+    __check("H: una orden sin liberar a producción sale gris con lo que le falta (ruta / tela / liberar / baño), no verde; rojo solo si la meta está vencida por la definición única",ab.filter(o=>!liberada(o,'corte')).every(o=>{const x=estadoSemaforo(o,P);return x.color==='gris'||(x.color==='rojo'&&/Atrasada/.test(x.txt)&&esMetaVencida(o,P))}));
+    __check("H: una orden liberada cuyo paso anterior ya terminó sale «Lista en <centro>» (verde, o ámbar si va tarde), salvo que ya esté empezada («En») o la cola la marque anomalía («Revisar»)",ab.filter(o=>liberada(o,'corte')&&!(P.ordenes[o.id]||{}).error&&!((P.ordenes[o.id]||{}).pasos||[]).some(p=>p.error)).every(o=>{const p=pasoProximoDe(o,P);if(!p)return true;const c=cercaniaCentro(o,p.centro,P);const x=estadoSemaforo(o,P);if(c.grupo!=='disponible')return true;if(esMetaVencida(o,P))return x.color==='rojo';if((c.anomalia&&c.anomalia.tipo==='yaSalio')||c.rutaIncompleta)return /^Revisar/.test(x.txt);if(c.anomalia&&c.anomalia.tipo==='enProceso')return /^En /.test(x.txt);if(/^En /.test(x.txt)||/^Llegaron/.test(x.txt))return true;return /^Lista en /.test(x.txt)&&(x.color==='verde'||x.color==='ambar')}));
+    __check("H: el tooltip conserva el motivo técnico (fecha meta, bloqueo, qué falta)",e.filter(x=>x.color!=='verde'&&x.k!=='cerrada').every(x=>x.tip&&x.tip.length>3),JSON.stringify(e.filter(x=>x.color!=='verde'&&x.k!=='cerrada'&&!(x.tip&&x.tip.length>3)).slice(0,3)));
+    __check("H: «Filtrar» con un filtro activo se cierra al PRIMER clic y la preferencia se guarda con la clave del usuario logueado",(()=>{ORDF.q='camiseta';FILT={};FILT_USR=null;try{delete localStorage[filtClave()]}catch(e){}page='ordenes';render();const ab0=!pg('ordenes').querySelector('[data-filt-oculto]');togFiltros('ordenes');const cerrado=pg('ordenes').querySelectorAll('[data-filt-oculto]').length>0;let guardado=false;try{guardado=JSON.parse(localStorage[filtClave()]||'{}').ordenes===false&&filtClave()!=='__filt_anon'&&filtClave()!=='__filt_'}catch(e){}ORDF.q='';FILT={};return ab0&&cerrado&&guardado})());
+    grpSt('ord').niveles=[];ORDF.q='';ORDF.fases=null;ORDF.estado='plan';ORDF.tab='ord';page='ordenes';render();const sems=pg('ordenes').querySelectorAll('table .sem');
+    __check("H: Órdenes muestra el semáforo en la columna Estado de cada fila",sems.length>50&&[...sems].every(s=>/^(🟢|🟡|🔴|⚪) /.test(s.textContent.trim())&&s.title));
+    page='entregas';EG.q='';EG.meses=new Set();EG.cli='';EG.fam='';EG.hija='';EG.tela='';render();__check("H: Entregas tiene la columna Estado con el semáforo",/<th>Estado<\/th>/.test(pg('entregas').innerHTML)&&pg('entregas').querySelectorAll('.sem').length>10);
+    page='control';CTL.area='pro';render();__check("H: Control de piso (producción) tiene la columna Estado",/<th class="num">Prendas<\/th><th>Estado<\/th>/.test(pg('control').innerHTML));
+    const oL=ab.find(o=>puedeLiberarA(o,'tela'));const oN=ab.find(o=>!puedeLiberarA(o,'tela')&&faltaLiberarA(o,'tela').includes('falta confirmar ruta'));
+    __check("H: en Liberación la fila lista dice «🟢 Lista para liberar» y la que no, el semáforo más «falta confirmar ruta →» clicable",(!oL||/🟢 Lista para liberar/.test(filaLibB1(oL,'tela')))&&(!oN||(/class="sem/.test(filaLibB1(oN,'tela'))&&/falta confirmar ruta →/.test(filaLibB1(oN,'tela')))));
+    __R.semaforo=(()=>{const d={};e.forEach(x=>{const k=x.color+' '+x.txt.replace(/\d+ días?/,'N días').replace(/ (a|en|para) .*/,' …').replace(/el \w+, \d+ \w+/,'<día>').replace(/hoy|mañana/,'<día>');d[k]=(d[k]||0)+1});return Object.entries(d).sort((a,b)=>b[1]-a[1])})();}
+   window.alert=al;PERFIL=adminP0();FILT={};ORDF.q='';page='ordenes';render();
+   __check("DUMMIES sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== BORRADO DE DATOS DE PRUEBA · construido el 17-sep (las 7 correcciones del Paso 0) + revisión adversarial ===== */
   try{localStorage.__fase="borrado"}catch(e){}
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();

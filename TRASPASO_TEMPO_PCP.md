@@ -204,6 +204,13 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.62 Para Dummies · entrega 1 (19-sep)
+- Misma cabecera en todas las pantallas: los párrafos explicativos viven en el «?» del título; buscador, filtro de fases y
+  agrupador plegados bajo un botón «Filtrar» (se abre solo con un filtro activo; se recuerda por usuario; la tablet no se
+  pliega). Palabras de planta: orden de llegada, cuello de botella, días de holgura, SAM, «¿Alcanza la capacidad?».
+  Semáforo (`estadoSemaforo`): un color y un verbo por orden en Órdenes, Liberación, Entregas y Control de piso.
+  Propuesta completa (A–J) en `UX_PARA_DUMMIES_PROPUESTA.md`; ver `DUMMIES_1_CABECERA_PALABRAS_SEMAFORO.md`.
+
 ### 2.61 Auditoría del sistema (19-sep)
 - Reportería por área → «Auditoría del sistema» (`auditoriaSistema`): 24 reglas sobre los datos vivos con cuántos, ejemplos y
   qué hacer; correrla en producción es la forma de revisar la parametrización (la clave pública no lee nada bajo RLS).

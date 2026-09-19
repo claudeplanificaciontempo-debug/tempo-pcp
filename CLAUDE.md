@@ -813,6 +813,24 @@ sin programar) → entrega; **En espera** = el resto en el orden de la cola, sin
 `marcarHechoCentro`. `prm('filasResumenCentro',8)`. Las pestañas Planificación / Programación / Ejecución no cambian.
 **No crear un segundo cálculo de cola, avance ni atraso en esta pantalla.** Ver `RESUMEN_CENTRO_REPORTE.md`.
 
+**Para Dummies · entrega 1 (19-sep-2026, F+G+H aprobados; propuesta completa en `UX_PARA_DUMMIES_PROPUESTA.md`):**
+`simplificarPagina(page)` corre al final de `render()` sobre la página visible: `ledesAAyuda` mueve cada `p.lede` al «?» del
+título más cercano (h2 de la cabecera → hermano `.ayuda-cab`; h3/h4 → adentro, antes de `.note`) y `plegarFiltros` oculta
+con **atributos** `data-filt`/`data-filt-oculto` (nunca clases: `class="busq"` y sus pruebas no cambian) el buscador, el
+filtro de fases, el agrupador (`data-filt-tipo=grp`) y los selectores múltiples (`multi`), con UN botón «Filtrar» por
+página junto al h2; abierto si `FILT[page]` (localStorage por usuario, `togFiltros`) o si hay un filtro activo
+(`filtroActivoCtl`). `PAGS_SIN_PLEGAR=['tablet']`. **No escribir ledes nuevos ni cabeceras propias: el «?» y «Filtrar» son
+el patrón.** Diccionario aprobado (textos visibles, no identificadores): cercanía → **orden de llegada**, atasco →
+**cuello de botella**, colchón → **días de holgura**, min/prenda → **SAM**, «Nivelación de carga» → **«¿Alcanza la
+capacidad?»**; se quedan «Todo lo que viene», congelar, WH, ODC. **Semáforo**: `estadoSemaforo(o,P)` /
+`estadoSemaforoHTML` = un color (verde/ámbar/rojo/gris) y un verbo por orden, derivado de diagAtraso, liberada/
+faltaLiberarA, bloqueo, pasoProximoDe + cercaniaCentro — **no crear otro estado**; se usa en Órdenes (columna Estado),
+Liberación B1, Entregas y Control de piso. Modo del driver `?captura=ux<pantalla>[f][q]`. Ver
+`DUMMIES_1_CABECERA_PALABRAS_SEMAFORO.md`. Roles dictados por la usuaria para A/B (portada por rol y menú de tareas):
+Santiago (corte+estampado+bordado), Mariela y Paola (módulos+maquila), Terminados (botones/lavado/plancha/empaque),
+Maquila (una persona, solo maquila), Jordan y Fernanda (liberar a producción + rutas), la usuaria (carga, liberación
+textil, tintorería, congelar).
+
 **Auditoría del sistema (19-sep-2026):** `auditoriaSistema()` / `auditoriaSistemaHTML()` (Reportería por área) corre 24
 reglas sobre los datos vivos (rutas, motor, liberación, unidades, OT, configuración) con cuántos/ejemplos/qué hacer; no corrige
 nada. `pasosSinProgramar(P)` = pasos de producción pendientes de órdenes liberadas que el motor dejó sin fecha sin bloqueo ni
