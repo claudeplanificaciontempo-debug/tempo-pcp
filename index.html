@@ -759,7 +759,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 00:06';
+const APP_BUILD='2026-09-19 00:46';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1194,6 +1194,8 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   add('provSinDias','Proveedores con días de entrega estimados sin confirmar',diasProveedor().filter(r=>r.estimado).length+(com?com.sinDias.length:0),'15 laborables sembrados; confírmalos uno por uno','Configuración → Órdenes y materiales',"CONF.tab='ordenes2';ir('config')");
   const sinT={};ab.forEach(o=>(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!(p.t>0)){const k=nombreCat(K(o.cat))||'(sin categoría)';sinT[k]=(sinT[k]||0)+1}}));
   add('catSinTiempo','Categorías con pasos sin tiempo de operaciones',Object.keys(sinT).length,'la categoría no tiene operaciones de ese centro en la hoja LMO','Categorías y operaciones',"ir('categorias')");
+  {let psp=[];try{psp=pasosSinProgramar()}catch(e){}add('pasoSinProgramar','Pasos de la ruta que el motor no programa (sin aviso en la orden)',psp.length,
+    psp.slice(0,5).map(x=>x.op+' · '+nCen(x.c)+' ('+x.motivo+')').join(' · ')+(psp.length?' · la orden sale con fecha de fin sin ese paso: cárgale minutos (tiempo por prenda, técnica o hoja LMO) o quítalo de la ruta':''),'Reportería por área',"ir('reporteria')")}
   const fSin=ab.filter(o=>faseEstado(o.fase,o).sinFila).length;const cNo=Object.keys(((S.params.otCarga||{}).centrosNoMapeados)||{}).length;
   add('faseNoCalza','Fases o centros de Odoo que no calzan con las tablas',fSin+cNo,(fSin?fSin+' órdenes con fase sin fila (tabla 1)':'')+(fSin&&cNo?' · ':'')+(cNo?cNo+' centros de trabajo sin fila (tabla 6)':''),'Configuración → Órdenes y materiales',"CONF.tab='ordenes2';ir('config')");
   add('noCalzan','Decisiones que ya no calzan con el archivo',(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length,'fases, fechas, ODC o programaciones conservadas que el archivo trae distinto','Órdenes (bandeja)',"ir('ordenes')");
@@ -3254,12 +3256,13 @@ function agregarAlPlanHTML(ym,c){
   const centrosPro=S.centros.filter(x=>x.area==='pro').map(x=>x.id);
   const minPro=o=>minPendiente(o);
   const cargaAhora=cargaPlanCentros(ym);const cargaMk=cargaPlanCentros(ym,[...PMADD.sel]);
-  const proy=centrosPro.map(id=>({id,cap:capCen[id]||0,ah:cargaAhora[id]||0,mk:cargaMk[id]||0})).filter(x=>x.cap||x.mk||x.ah);
+  const proy=centrosPro.map(id=>{const pt=(CE(id)||{}).medida==='puntadas';const cap=pt?capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===id),ym,true):(capCen[id]||0);
+    return {id,pt,cap,ah:cargaAhora[id]||0,mk:cargaMk[id]||0}}).filter(x=>x.cap||x.mk||x.ah);
   const enPlanO=[...enPlan].map(id=>S.ordenes.find(o=>o.id===id)).filter(Boolean).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1);
   const todasPlan=base.concat(enPlanO);const totPz=todasPlan.reduce((a,o)=>a+ +o.cant,0),totUsd=todasPlan.reduce((a,o)=>a+(o.precio||0)*o.cant,0),totMin=todasPlan.reduce((a,o)=>a+minPro(o),0);const basePz=base.reduce((a,o)=>a+ +o.cant,0);
   const rowP=o=>`<tr><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op||'(sin WH)')}</td><td>${esc(faseNombre(o.fase||'—'))}</td><td>${esc(o.cliente||'')}</td><td>${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td>${liberada(o,'corte')?'<span class="tag t-ok">liberada</span>':'<span class="tag t-aviso">por liberar</span>'}</td><td>${cong?'<span class="mut" style="font-size:var(--fs-xs)">congelado</span>':(puedeP?`<button class="btn ghost sm" onclick="planMesQuitar('${ym}','${o.id}')">quitar</button>`:'')}</td></tr>`;
   const panelA=`<div class="panel" style="border:2px solid var(--ink)"><h3>En el plan de ${esc(fmtMesEG(ym))} <span class="note">${base.length} en proceso + ${enPlanO.length} agregadas · ${num(totPz)} prendas · ${num(totMin/60)} h confección · $ ${num(totUsd)} ${cong?'· <span class="tag t-ok">CONGELADO v'+cong.ver+'</span>':'<span class="tag t-aviso">borrador (sin congelar)</span>'}</span></h3><div class="body">
-    ${proy.length?`<h4 style="margin:0 0 6px">Capacidad del plan por centro <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· lo que ya agregaste contra la capacidad del mes</span></h4><table><thead><tr><th>Centro</th><th class="num">Capacidad (h)</th><th class="num">En el plan (h)</th><th style="width:160px">Uso</th></tr></thead><tbody>${proy.map(x=>`<tr><td>${esc(nCen(x.id))}</td><td class="num">${num(x.cap/60)}</td><td class="num">${num(x.ah/60)}</td><td>${barra(x.ah,x.cap)}</td></tr>`).join('')}</tbody></table>`:''}
+    ${proy.length?`<h4 style="margin:0 0 6px">Capacidad del plan por centro <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· lo que ya agregaste contra la capacidad del mes</span></h4><table><thead><tr><th>Centro</th><th class="num">Capacidad</th><th class="num">En el plan</th><th style="width:160px">Uso</th></tr></thead><tbody>${proy.map(x=>`<tr><td>${esc(nCen(x.id))}${x.pt?' <span class="mut" style="font-size:var(--fs-xs)">(puntadas)</span>':''}</td><td class="num">${x.pt?fmtCarga(x.cap,'pt'):num(x.cap/60)+' h'}</td><td class="num">${x.pt?fmtCarga(x.ah,'pt'):num(x.ah/60)+' h'}</td><td>${barra(x.ah,x.cap)}</td></tr>`).join('')}</tbody></table>`:''}
     ${base.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600">${base.length} órdenes ya en proceso (grupos marcados «en proceso» en la tabla 5, de cualquier Proyecto) · ${num(basePz)} prendas <span class="mut" style="font-weight:400">· ya ocupan los centros con sus minutos pendientes; el plan arranca con ellas, no se agregan ni se quitan · la columna Proyecto dice de qué mes es cada una</span></summary><div class="scroll" style="max-height:320px;margin-top:6px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th>Proyecto</th></tr></thead><tbody>${base.map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td>${esc(o.proyecto||'')}</td></tr>`).join('')}</tbody></table></div></details>`:''}${enPlanO.length?`<h4 style="margin:12px 0 6px">Agregadas por ti</h4><div class="scroll" style="max-height:360px;margin-top:0"><table><thead><tr><th>OP</th><th>Fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th>Liberación</th><th></th></tr></thead><tbody>${enPlanO.map(rowP).join('')}</tbody></table></div>`:'<div class="empty">Todavía no agregaste órdenes nuevas al plan (lo que ya está en proceso ya cuenta arriba). Márcalas abajo y presiona «Agregar al plan».</div>'}</div></div>`;
   if(!puedeP)return panelA;
   const q=normTxt(PMADD.q);
@@ -5345,22 +5348,27 @@ function firmaRutaDe(o){const k=K(o.cat);
   if(!k)return 'sin-cat|'+propios;
   const cs=[...centrosDeCategoria(k)].sort().join(',');
   return k.id+'|'+(k.familiaLMO||'')+'|'+cs+'|'+propios}
-function rutaDesactualizada(o){if(!o.rutaFirma)return false;return o.rutaFirma!==firmaRutaDe(o)}
+function rutaDesactualizada(o){if(!o.rutaFirma)return false;   /* sin firma: no se rehace nada a ciegas; recalcularRutas la sella con el catálogo de hoy y desde ahí se le siguen los cambios */
+  return o.rutaFirma!==firmaRutaDe(o)}
 function sellarRuta(o){o.rutaFirma=firmaRutaDe(o)}
 function rutasPorRecalcular(){const auto=[],manual=[];
   S.ordenes.filter(abierta).forEach(o=>{if(!rutaDesactualizada(o))return;
     (rutaEditadaAMano(o)?manual:auto).push(o)});
   return {auto,manual,total:auto.length+manual.length}}
 /* rehace las que puede y marca las de mano; devuelve el detalle para el reporte */
-function recalcularRutas(motivo){const r=rutasPorRecalcular();
+function recalcularRutas(motivo){
+  /* auditoría 19-sep: toda orden sin firma se sella con el catálogo de hoy (su ruta actual es la línea base); antes quedaba fuera del recálculo para siempre */
+  S.ordenes.forEach(o=>{if(!o.rutaFirma&&abierta(o))sellarRuta(o)});
+  const r=rutasPorRecalcular();
   if(!r.total)return {n:0,marcadas:0};
   let n=0;
   r.auto.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
     if(!a.length||a.join()===de.join()){sellarRuta(o);return}
     const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
     const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
-    o.ruta=(o.ruta||[]).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'))
+    const completa=((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'))
       .concat(a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)})));
+    o.rutaCompleta=completa;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(completa,fila);   /* la fase manda: solo los pasos pendientes cargan */
     registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → '),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
     sellarRuta(o);n++});
   let marcadas=0;
@@ -5579,6 +5587,77 @@ function chequeoSiembras(){const out=[];
      ok:!!h&&(falta===0||falta===null),
      nota:(!h)?'todavía no corrió':(falta?falta+' órdenes siguen sin ruta hasta Empaque':'')})}
   return out}
+/* ==================== AUDITORÍA DEL SISTEMA (19-sep-2026) ====================
+   Invariantes que se comprueban sobre los datos VIVOS (no sobre el demo): rutas, motor, liberación, unidades,
+   OT y configuración. Cada hallazgo dice cuántos, ejemplos y qué hacer. Se ve en Reportería por área.
+   No corrige nada: reporta. Las pruebas del simulador fijan que cada regla detecta lo que promete. */
+/* pasos de producción pendientes que el motor NO programó y la orden no tiene bloqueo ni error: salen sin aviso (el fin
+   programado no incluye ese paso). Motivo: sin minutos por prenda (pasoSinTiempo) o sin recurso activo. */
+function pasosSinProgramar(P){P=P||(S.ordenes.length?programar():{ordenes:{},pro:[]});const out=[];
+  S.ordenes.filter(abierta).forEach(o=>{const ro=P.ordenes[o.id]||{};if(ro.bloqueo||ro.error)return;if(!liberada(o,'corte'))return;
+    (o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(!ce||ce.area!=='pro')return;if(pasoHecho(o,p.centro))return;if(centroPorDias(p.centro))return;
+      const paso=(ro.pasos||[]).find(x=>x.centro===p.centro);if(paso&&paso.ini)return;
+      const recs=S.recursos.filter(r=>r.activa&&r.centro===p.centro);
+      out.push({op:o.op,oid:o.id,c:p.centro,fase:o.fase,motivo:pasoSinTiempo(o,p.centro)?'sin minutos por prenda':(!recs.length?'sin recurso activo':'sin fecha del motor')})})});
+  return out}
+function auditoriaSistema(){const h=hoy();const P=S.ordenes.length?programar():{ordenes:{},pro:[]};const ab=S.ordenes.filter(abierta);const L=[];
+  const add=(k,nivel,titulo,ej,que)=>L.push({k,nivel,titulo,n:ej.length,ej:ej.slice(0,6),que});
+  const byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);
+  /* 1 · rutas */
+  add('rutaVacia','error','Órdenes lanzadas (con WH) y abiertas sin ningún paso de producción en la ruta completa',ab.filter(o=>lanzada(o)&&!((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).some(p=>CE(p.centro)&&CE(p.centro).area==='pro')).map(o=>o.op+' · '+(o.fase||'')+' · '+nombreCat(K(o.cat))),
+    'su carga es 0 en todos los centros: revisa que la categoría tenga hoja de operaciones (Categorías y operaciones) o edita la ruta en Órdenes → Rutas');
+  add('sinFirma','aviso','Órdenes abiertas sin firma de catálogo en la ruta',ab.filter(o=>!o.rutaFirma).map(o=>o.op),'se sellan solas en el próximo dibujo (recalcularRutas); si persiste, avisa');
+  add('pasoSinProgramar','error','Pasos de la ruta que el motor no programa y la orden no lo dice',pasosSinProgramar(P).map(x=>x.op+' · '+nCen(x.c)+' ('+x.motivo+')'),
+    'cárgale minutos por prenda (tiempo del centro, técnica u hoja LMO) o quita el paso de la ruta; mientras tanto el fin programado de la orden no incluye ese paso');
+  add('libSinRutaConf','error','Órdenes liberadas a producción con la ruta sin confirmar',ab.filter(o=>liberada(o,'corte')&&(o.lib&&o.lib.corte&&o.lib.corte.ok)&&!rutaConfirmada(o)).map(o=>o.op),
+    'confírmala en Órdenes → Rutas (una carga anterior pudo borrar la confirmación; desde el 19-sep se conserva)');
+  /* 2 · motor: pasos en orden, sin solapes, fin = último paso, recurso del centro, día laborable, capacidad */
+  const sol=[],des=[],finNo=[],recOtro=[],antesTela=[];
+  Object.entries(P.ordenes).forEach(([id,ro])=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const ps=ro.pasos||[];const r=(o.ruta||[]).map(p=>p.centro);const idx=ps.map(p=>r.indexOf(p.centro));
+    for(let i=1;i<ps.length;i++){if(idx[i]>=0&&idx[i-1]>=0&&idx[i]<idx[i-1])des.push(o.op+' '+ps.map(p=>p.centro).join('>'));if(ps[i].ini&&ps[i-1].fin&&ps[i].ini<ps[i-1].fin)sol.push(o.op+' '+ps[i-1].centro+'→'+ps[i].centro)}
+    ps.forEach(p=>{if(p.rec){const rr=R(p.rec);if(rr&&rr.centro!==p.centro)recOtro.push(o.op+' '+p.centro+' → '+rr.n)}
+      if(p.ini&&ro.telaLista&&p.ini<ro.telaLista&&CE(p.centro)&&CE(p.centro).area==='pro')antesTela.push(o.op+' '+p.centro+' '+p.ini+' < '+ro.telaLista)});
+    if(ps.length&&ro.finPro!==ps[ps.length-1].fin)finNo.push(o.op+' finPro '+ro.finPro+' ≠ '+ps[ps.length-1].fin)});
+  add('motorSolape','error','Motor: pasos que empiezan antes de que termine el anterior',sol,'no debería pasar: reportar con la WH');
+  add('motorOrden','error','Motor: pasos en un orden distinto al de la ruta',des,'no debería pasar: reportar con la WH');
+  add('motorFin','error','Motor: fin programado distinto al fin del último paso',finNo,'no debería pasar: reportar con la WH');
+  add('motorRec','error','Motor: paso programado en un recurso de otro centro',recOtro,'no debería pasar: reportar con la WH');
+  add('motorTela','error','Motor: paso de producción programado antes de la tela lista',antesTela,'no debería pasar: reportar con la WH');
+  const cap={},diaNo=[];(P.pro||[]).forEach(x=>{const k=x.rec+'|'+x.dia;cap[k]=(cap[k]||0)+(x.min||0);const rr=R(x.rec);if(rr&&!labR(x.dia,rr))diaNo.push(x.op+' '+rr.n+' '+x.dia)});
+  const sobre=[];Object.entries(cap).forEach(([k,m])=>{const [rec,d]=k.split('|');const rr=R(rec);if(!rr)return;const c=capDia(rr,d);const tol=1+prm('tolPuesto',2)/100;if(c>0&&m>c*Math.max(tol,1.05)+1)sobre.push(rr.n+' '+d+' '+num(Math.round(m))+' / '+num(Math.round(c))+' min')});
+  add('motorDiaNoLab','error','Motor: carga en un día no laborable del recurso',diaNo,'revisa el calendario del recurso (Configuración → Centros y recursos)');
+  add('motorSobreCap','aviso','Motor: recurso-día por encima de su capacidad (más del 5 %)',sobre,'lo permite un puesto manual o un ajuste de semana; si no, reportar');
+  const pzMas=[];const proPor={};(P.pro||[]).forEach(x=>{const k=x.op+'|'+x.centro;proPor[k]=(proPor[k]||0)+(x.pz||0)});
+  Object.entries(proPor).forEach(([k,pz])=>{const [op,c]=k.split('|');const o=byOp[op];if(!o)return;const pend=Math.max(0,(+o.cant||0)-(((S.avance[o.id]||{}).centros||{})[c]||0));if(pz>pend+0.5)pzMas.push(op+' '+c+' '+num(pz)+' > '+num(pend))});
+  add('motorPz','error','Motor: prendas programadas por encima de las pendientes del centro',pzMas,'no debería pasar: reportar con la WH');
+  /* 3 · liberación: liberado + pendiente = total */
+  ['tela','corte'].forEach(et=>{let base=[],pend=[],lib=[];try{base=baseLiberacion(et,null);pend=pendLiberacion(et,null);lib=libLiberacion(et,null)}catch(e){}
+    add('libCuadra_'+et,'error','Liberación '+(et==='tela'?'textil':'a producción')+': liberadas + pendientes ≠ total',base.length===pend.length+lib.length?[]:['total '+base.length+' · pendientes '+pend.length+' · liberadas '+lib.length],'no debería pasar: reportar')});
+  /* 4 · unidades y OT */
+  add('ptSinVel','error','Centros medidos en puntadas sin velocidad (ppm) en sus recursos ni velocidad general',S.centros.filter(c=>c.medida==='puntadas'&&c.area==='pro'&&!S.recursos.filter(r=>r.activa&&r.centro===c.id).some(r=>+r.ppm>0)&&!(velBordado()>0)).map(c=>c.n||c.id),'carga ppm en la bordadora o la velocidad general de bordado');
+  const otMal=[];S.ordenes.forEach(o=>Object.entries(o.ot||{}).forEach(([c,r])=>{if(r.ini&&r.fin&&r.fin<r.ini)otMal.push(o.op+' '+c+' ini '+r.ini+' > fin '+r.fin);if(r.fin&&r.finTs&&String(r.finTs).slice(0,10)!==r.fin&&Math.abs(new Date(r.fin)-new Date(String(r.finTs).slice(0,10)))>864e5)otMal.push(o.op+' '+c+' fin '+r.fin+' vs hora '+String(r.finTs).slice(0,16))}));
+  add('otFechas','aviso','Órdenes de trabajo con fechas incoherentes (fin antes del inicio, o fecha y hora de distinto día)',otMal,'vuelve a cargar las OT (desde el 19-sep la fecha y la hora viajan juntas)');
+  const avMas=[];S.ordenes.forEach(o=>Object.entries(((S.avance[o.id]||{}).centros)||{}).forEach(([c,v])=>{if(+v>(+o.cant||0)*1.02+1)avMas.push(o.op+' '+c+' '+num(v)+' > '+num(o.cant))}));
+  add('avanceMas','aviso','Avance registrado por encima de la cantidad pedida (más del 2 %)',avMas,'revisar el registro en Control de piso (puede ser real: segundas o sobrantes)');
+  /* 5 · datos y configuración que dejan carga en cero */
+  add('sinCat','error','Órdenes abiertas sin categoría resuelta',ab.filter(o=>!K(o.cat)).map(o=>o.op+' · '+(o.catTxt||'')),'la categoría no existe en el catálogo: créala o corrige el nombre en Odoo');
+  const catAb={};ab.forEach(o=>{const k=K(o.cat);if(k&&k.padre&&!k.familiaLMO&&!(+k.minEstConf>0))catAb[nombreCat(k)]=(catAb[nombreCat(k)]||0)+1});
+  add('catSinHoja','error','Categorías con órdenes abiertas sin hoja LMO ni minuto estimado de confección',Object.entries(catAb).map(([k,n])=>k+' ('+n+')'),'vincula la familia LMO o carga el minuto estimado (Categorías y operaciones): su confección carga 0');
+  add('faseSinFila','error','Órdenes abiertas cuya fase no está en la tabla de fases',ab.filter(o=>faseEstado(o.fase,o).sinFila).map(o=>o.op+' · '+(o.fase||'(vacía)')),'agrega la fase a la tabla 1 (Configuración → Órdenes y materiales)');
+  add('cenSinRec','error','Centros de producción activos sin ningún recurso activo',S.centros.filter(c=>c.area==='pro'&&c.activo!==false&&!S.recursos.some(r=>r.activa&&r.centro===c.id)).map(c=>c.n||c.id),'crea el recurso en Configuración → Centros y recursos: sin recurso no hay capacidad ni programa');
+  const lunP=lunesDe(dsum(h,7));add('recCap0','aviso','Recursos activos con capacidad 0 en un día laborable de la semana que viene',S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='pro'&&!centroPorDias(r.centro)&&labR(lunP,r)&&!(capDia(r,lunP)>0)).map(r=>r.n+' ('+nCen(r.centro)+')'),'personas, minutos o eficiencia en 0 (o parada abierta)');
+  add('telaSinEnc','aviso','Telas propias sin merma de tintura (enc)',S.telas.filter(t=>!(+t.enc>0)&&ab.some(o=>(o.telas||[]).some(x=>x.tela===t.id&&!x.ext))).map(t=>t.n),'los kg acabados salen iguales a los crudos');
+  const colSin={};ab.forEach(o=>{const c=C(o.color);if(c&&!c.cod&&(o.telas||[]).some(t=>!t.ext))colSin[c.n]=(colSin[c.n]||0)+1});
+  add('colorSinPantone','aviso','Colores sin código Pantone con órdenes abiertas de tela propia',Object.entries(colSin).map(([k,n])=>k+' ('+n+')'),'sin Pantone la liberación textil no pasa y la máquina no se elige por profundidad');
+  add('motivosVacios','aviso','Usos de la tabla de motivos sin ningún motivo',USOS_MOTIVO.filter(u=>!motivosDe(u[0]).length).map(u=>u[1]),'cárgalos en Configuración → Órdenes y materiales → tabla 15');
+  const dup={};ab.forEach(o=>{if(o.op)dup[o.op]=(dup[o.op]||0)+1});add('opRepetida','error','WH repetida entre órdenes abiertas',Object.entries(dup).filter(([k,n])=>n>1).map(([k,n])=>k+' ×'+n),'dos órdenes con la misma WH: revisa la clave única (Configuración → Órdenes → Clave única)');
+  return {ts:new Date().toISOString(),hallazgos:L,errores:L.filter(x=>x.nivel==='error'&&x.n).length,avisos:L.filter(x=>x.nivel==='aviso'&&x.n).length}}
+function auditoriaSistemaHTML(){let a;try{a=auditoriaSistema()}catch(e){return `<div class="panel"><h3>Auditoría del sistema</h3><div class="body"><span class="tag t-alerta">no se pudo correr</span> ${esc(e.message||String(e))}</div></div>`}
+  const con=a.hallazgos.filter(x=>x.n),sin=a.hallazgos.filter(x=>!x.n);
+  return `<div class="panel"><h3>Auditoría del sistema <span class="note">${a.errores?'<span class="tag t-alerta">'+a.errores+' con error</span> ':''}${a.avisos?'<span class="tag t-aviso">'+a.avisos+' avisos</span> ':''}${!a.errores&&!a.avisos?'<span class="tag t-ok">sin hallazgos</span>':''} · ${a.hallazgos.length} reglas sobre los datos vivos · rutas, motor, liberación, unidades, OT y configuración</span></h3><div class="body">
+   ${con.length?`<table style="font-size:var(--fs-s)"><thead><tr><th></th><th>Hallazgo</th><th class="num">Cuántos</th><th>Ejemplos</th><th>Qué hacer</th></tr></thead><tbody>${con.map(x=>`<tr><td><span class="tag ${x.nivel==='error'?'t-alerta':'t-aviso'}">${x.nivel}</span></td><td>${esc(x.titulo)}</td><td class="num"><b>${num(x.n)}</b></td><td class="mut" style="font-size:var(--fs-xs)">${esc(x.ej.join(' · '))}${x.n>x.ej.length?' …':''}</td><td style="font-size:var(--fs-xs)">${esc(x.que)}</td></tr>`).join('')}</tbody></table>`:''}
+   <details style="margin-top:8px"><summary class="mut" style="cursor:pointer;font-size:var(--fs-xs)">${sin.length} reglas sin hallazgos</summary><div class="mut" style="font-size:var(--fs-xs)">${sin.map(x=>esc(x.titulo)).join(' · ')}</div></details>
+   <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Corre al dibujar esta pantalla sobre los datos cargados. No corrige nada: cada fila dice dónde se corrige.</p></div></div>`}
 function chequeoSiembrasHTML(){const l=chequeoSiembras();
   const pend=l.filter(x=>!x.aplicada),mal=l.filter(x=>x.aplicada&&!x.ok);
   return `<div class="panel"${(pend.length||mal.length)?' style="border:2px solid var(--aviso)"':''}><h3>Siembras pendientes de la puesta al día <span class="note">${l.filter(x=>x.aplicada&&x.ok).length} de ${l.length} aplicadas y verificadas</span></h3><div class="body">
@@ -7248,7 +7327,7 @@ function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=pr
      <td style="min-width:130px"><b>${num(f.hechas||0)}</b> <span class="mut">de ${num(f.o.cant)}</span><div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:var(--ok)"></i></div></td>
      <td style="white-space:nowrap">${f.paso.fin?fmtDia(f.paso.fin):'<span class="mut">—</span>'}</td>
      <td style="white-space:nowrap">${e?'<span class="tag '+e.cls+'" title="'+esc(e.tip)+'">'+esc(e.txt)+'</span>':(llegadaHTML(f.cerc)||'')+(gTxt?' <span class="tag t-mut" title="grupo de la cola">'+esc(gTxt)+'</span>':'')}${e&&g&&g!=='disponible'&&puestoDe(f.o,f.c)?' '+llegadaHTML(f.cerc):''}</td>
-     <td class="num">${(e&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();marcarHechoCentro('${f.o.id}','${f.c}')" title="registrar hecha en ${esc(nCen(f.c))}: queda libre para el siguiente centro">✓</button>`:'<span class="mut" title="'+(e?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
+     <td class="num">${(e&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="terminar la orden en ${esc(nCen(f.c))}: queda libre para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(e?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
   const verbo=nombre;
   return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas para ${esc(verbo)} <b>${num(listas.length)}</b></span><span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
     <span class="mut" style="font-size:var(--fs-xs)">${tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí'}${ayudaTipHTML(tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro) o alguien le puso puesto a mano. Están liberadas para trabajarlas ya.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa.')}</span></div>
@@ -8563,7 +8642,7 @@ function vReporteria(el){
   el.innerHTML=`<div class="pagehead"><h2>${REP.vista==='textil'?'Reportería textil':'Reportería de producción por área'}</h2><span class="spacer"></span><div class="chips"><span class="chip on" style="cursor:pointer" onclick="REP.sem=REP.sem===4?8:4;render()">${REP.sem} semanas ⇄</span></div></div>
    <p class="lede">${REP.vista==='textil'?'Cómo está la carga de tejeduría y tintorería semana a semana contra su capacidad, y cómo van avanzando. Al final, el resumen de todos los procesos.':'La carga y el avance de cada área de producción, con lo planificado contra lo real. Al final, el resumen de todos los procesos.'}${!centrosPerfil().includes('*')?' <span class="mut">Ves solo lo de tus centros.</span>':''}</p>
    ${REP.vista==='textil'?(veArea('tej')?secTej():'')+(veArea('tin')?secTin():''):Object.values(SUBAREAS).map(secPro).join('')}
-   ${resumen()}${chequeoSiembrasHTML()}${brechaRegistroHTML()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
+   ${resumen()}${auditoriaSistemaHTML()}${chequeoSiembrasHTML()}${brechaRegistroHTML()}${conteoOrdenesHTML()}${categoriasSinHojaHTML()}${sinFechaBrechaHTML()}${rutasEstimadasResumenHTML()}${rutasSinSecuenciaHTML()}`;
 }
 /* ---------- Código interno de baño, reparto de una WH entre tinas, etiquetas de armado, resumen por tela ---------- */
 const MES_ABR=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -8745,7 +8824,7 @@ function retirarLib(id,et,motivo){const o=S.ordenes.find(x=>x.id===id);if(!o||!o
 function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}
 function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(!(o.telas||[]).length)f.push('sin telas en la receta');
   if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');return f}
-function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberar(o)){alert('No se puede liberar: '+faltaLiberar(o).join(', '));return}
+function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,'corte')){alert('No se puede liberar: '+faltaLiberarA(o,'corte').join(', '));return}
   if(!confirm('¿Liberar '+o.op+' a producción? Confirmas que la tela está en bodega con calidad aprobada y que revisaste los insumos (BOM).'))return;
   o.lib=o.lib||{};o.lib.corte={ok:true,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString()};if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;bitacora('Liberada a corte '+o.op);save();render()}
 function mParada(area,centros){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&(centros?centros.includes(r.centro):CE(r.centro).area===area));
@@ -9919,7 +9998,8 @@ function planOT(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));
     const fin=finTxt;
     const reg={estado:sig,ini:I.ini>=0?excelFecha(r[I.ini]):null,fin,odoo:cOdoo,recurso,recursoConfiable,oper:operTxt,cant:I.cant>=0?(+r[I.cant]||0):null,iniTs:(I.ini>=0&&traeHora(r[I.ini]))?excelFechaHora(r[I.ini]):null,finTs:(I.fin>=0&&traeHora(r[I.fin]))?excelFechaHora(r[I.fin]):null};
     // varias OT del mismo centro en una orden (p. ej. varias operaciones de confección): el centro está terminado solo si TODAS lo están
-    if(!prev)po.centros[c]=Object.assign({},reg);else{const rango={'terminado':5,'en proceso':4,'para hacer':3,'esperando':2,'bloqueado por material':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin))prev.fin=reg.fin;if(reg.recursoConfiable&&!prev.recursoConfiable){prev.recurso=reg.recurso;prev.recursoConfiable=true}}})});
+    if(!prev)po.centros[c]=Object.assign({},reg);else{const rango={'terminado':5,'en proceso':4,'para hacer':3,'esperando':2,'bloqueado por material':1};if(rango[reg.estado]<rango[prev.estado])po.centros[c]=Object.assign({},reg,{fin:null});else if(reg.estado===prev.estado&&reg.fin&&(!prev.fin||reg.fin>prev.fin)){prev.fin=reg.fin;prev.finTs=reg.finTs||null}
+      if(reg.ini&&(!prev.ini||reg.ini<prev.ini)){prev.ini=reg.ini;prev.iniTs=reg.iniTs||null}if(reg.recursoConfiable&&!prev.recursoConfiable){prev.recurso=reg.recurso;prev.recursoConfiable=true}}})});
   plan.cruce={enArchivo:S.ordenes.filter(o=>plan.ordenesArchivo.has(claveDeOrden(o).clave)).length,total:S.ordenes.length};
   plan.esperandoMaterial=[];Object.values(plan.porOrden).forEach(({o,centros})=>{const cs=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);if(cs.length)plan.esperandoMaterial.push({op:o.op,fase:o.fase,cant:o.cant,centros:cs})});
   // contradicciones con la fase: lo que la fase da por hecho y la OT dice que no (o al revés)
@@ -10872,8 +10952,12 @@ function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (qu
   {campo:'recursoFijo',n:'Módulo fijado',conservar:true},{campo:'fechaCompromiso',n:'Fecha de compromiso (Entregas)',conservar:true},{campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true},{campo:'foto',n:'Foto de la orden',conservar:true},
   {campo:'fases',n:'Historial de fases',conservar:true},{campo:'opsSam',n:'Tiempos ajustados por referencia (balanceo)',conservar:true},{campo:'faltaConf',n:'Qué le falta a cada tela (decidido en liberación)',conservar:true},
   {campo:'rutaEditada',n:'Pasos agregados/quitados por el centro',conservar:true},{campo:'ot',n:'Cierres de órdenes de trabajo (hasta la siguiente carga de OT)',conservar:true},{campo:'terminadaF',n:'Fecha en que terminó (cumplimiento del programa)',conservar:true},
+  {campo:'histLib',n:'Historial de liberaciones y reversiones',conservar:true},{campo:'lavadoModo',n:'Lavado agregado a mano (planta / Quito)',conservar:true},{campo:'compraTela',n:'Tela pasada a compras (la ruta carga proveedor en vez de tejeduría)',conservar:true},
+  {campo:'rutaRevGeneral',n:'Marca de ruta revisada en la liberación general',conservar:true},{campo:'rutaPrecargada',n:'De qué orden hermana se precargó la ruta',conservar:true},
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
-function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;if(!t.some(r=>r.campo==='odc'))t.push({campo:'odc',n:'ODC asignado a mano (el archivo no lo pisa; si trae otro distinto, va a la bandeja)',conservar:true});return t}
+function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;
+  /* siembra idempotente: las filas que la tabla por defecto ganó después (odc, y desde el 19-sep histLib, lavadoModo, compraTela, rutaRevGeneral, rutaPrecargada) entran si faltan; lo editado no se pisa */
+  defCamposConservados().forEach(d=>{if(!t.some(r=>r.campo===d.campo))t.push(Object.assign({},d))});return t}
 /* filas de la tabla 14 que NO se pueden desmarcar: su desmarcado borraría trabajo de personas que
    ningún archivo puede devolver: el avance de piso, las firmas de liberación, el historial de fases (con
    sus motivos) y la programación que armó cada centro. La fase ACTUAL («fase») sigue siendo decisión de
@@ -10923,7 +11007,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   const eliminadas=S.ordenes.filter(o=>!idsNuevos.has(o.id));const elimConDec=eliminadas.filter(o=>o.lib||o.prio===1||o.progCentro||o.recursoFijo||o.fechaCompromiso||o.opsSam||(S.avance[o.id]&&Object.keys(S.avance[o.id]).length));
   let actualizadas=0,nuevas=0;
   ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
-    if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];return}
+    if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];if(typeof sellarRuta==='function')sellarRuta(o);return}
     actualizadas++;if(p.sinComponentes){['telas','materiales','origenTela','origenesTela','kgTej','kgTin','sinTelaKg','telaSinClasificar','ruta','rutaCompleta','insumos','sinTiempo'].forEach(k=>{if(v[k]!==undefined)o[k]=v[k]})} /* sin componentes: lo de telas y ruta se queda */
     if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;if(o.claveAnterior)bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior);
     if(conserva('fase')&&v.fase!=null){if(normFase(v.fase)!==normFase(o.fase||''))noCalzan.push({op:o.op,decision:'fase en el sistema: '+v.fase,motivo:'el archivo trae '+(o.fase||'(vacía)')+'; se conserva la del sistema',tipo:'fase',sistema:v.fase,archivo:o.fase||''});aplicarFaseSistema(o,v.fase);cons.fase++}
@@ -10942,8 +11026,19 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('rutaEditada')&&v.rutaEditada&&v.rutaEditada.length){o.rutaEditada=v.rutaEditada.slice();cons.rutaEditada++;const k2=K(o.cat);const sam=k2?(samPorCentro(k2)||{}):{};
       v.rutaEditada.forEach(e=>{(e.menos||[]).forEach(c=>{o.ruta=(o.ruta||[]).filter(pp=>pp.centro!==c);o.rutaCompleta=(o.rutaCompleta||[]).filter(pp=>pp.centro!==c)});
         (e.mas||[]).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c)){const idx=ordenPaso(c);['ruta','rutaCompleta'].forEach(kk=>{const r=o[kk]||[];let pos=r.length;for(let i=0;i<r.length;i++){if(ordenPaso(r[i].centro)>idx){pos=i;break}}r.splice(pos,0,{centro:c,t:sam[c]||0});o[kk]=r})}})})}
-    if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;cons.ot++}
-    if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}});
+    if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;if(v.esperandoMaterial)o.esperandoMaterial=v.esperandoMaterial;cons.ot++}
+    if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}
+    /* auditoría 19-sep: estos campos estaban en la tabla 14 (o son decisiones de la app) y la carga los perdía */
+    if(conserva('rutaConf')&&v.rutaConf){o.rutaConf=v.rutaConf;cons.rutaConf=(cons.rutaConf||0)+1}
+    if(conserva('tallasPedido')&&v.tallasPedido){o.tallasPedido=v.tallasPedido;if(v.tallasPedidoMeta)o.tallasPedidoMeta=v.tallasPedidoMeta;cons.tallasPedido=(cons.tallasPedido||0)+1}
+    if(conserva('histLib')&&v.histLib&&v.histLib.length)o.histLib=v.histLib.slice();
+    if(conserva('lavadoModo')&&v.lavadoModo)o.lavadoModo=v.lavadoModo;   /* el paso de lavado vuelve por rutaEditada */
+    if(conserva('compraTela')&&v.compraTela){o.compraTela=v.compraTela;(o.telas||[]).forEach(t=>{if(!t.ext)t.ext='ext'});
+      const ru=(o.ruta||[]).slice();const iT=ru.findIndex(p=>p.centro==='tej');const paso={centro:'proveedor',t:+v.compraTela.dias||0};if(iT>=0)ru.splice(iT,1,paso);else if(!ru.some(p=>p.centro==='proveedor'))ru.unshift(paso);o.ruta=ru.filter(p=>p.centro!=='tin')}
+    if(conserva('rutaRevGeneral')&&v.rutaRevGeneral)o.rutaRevGeneral=v.rutaRevGeneral;
+    if(conserva('rutaPrecargada')&&v.rutaPrecargada)o.rutaPrecargada=v.rutaPrecargada;
+    /* la firma de catálogo y la marca «revisar» viajan siempre: sin firma, el recálculo automático de rutas nunca volvía a correr */
+    if(v.rutaFirma)o.rutaFirma=v.rutaFirma;if(v.rutaRevisar)o.rutaRevisar=v.rutaRevisar;});
   // avance de piso: se conserva; se quitan solo las entradas de órdenes eliminadas; lo que ya no calza se reporta
   /* El avance de piso (unidades, tramos, cierres, tallas) NO se borra desde una carga, pase lo que
      pase con la tabla 14: es trabajo hecho por personas y no lo trae ningún archivo. Antes, desmarcar

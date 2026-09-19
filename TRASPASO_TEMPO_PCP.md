@@ -204,6 +204,14 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.61 Auditoría del sistema (19-sep)
+- Reportería por área → «Auditoría del sistema» (`auditoriaSistema`): 24 reglas sobre los datos vivos con cuántos, ejemplos y
+  qué hacer; correrla en producción es la forma de revisar la parametrización (la clave pública no lee nada bajo RLS).
+  Corregido en esa auditoría: la carga de tareas ya conserva rutaConf/tallasPedido/histLib/lavadoModo/compraTela/rutaFirma
+  (antes cada «Actualizar datos» borraba las confirmaciones de ruta y mataba el recálculo automático de rutas);
+  `recalcularRutas` respeta la fase; `liberarCorte` con ruta confirmada; bordado en puntadas en el plan; OT con fecha y hora
+  coherentes; bandeja «Pasos de la ruta que el motor no programa». Ver `AUDITORIA_SISTEMA_19SEP.md`.
+
 ### 2.60 Resumen del centro: la pantalla simple (18-sep)
 - Pestaña **Resumen** de todo centro de producción y sub-área, abre por defecto (`CEN.tab='resumen'`, `irCentro` sin
   pestaña). Cabecera con semana ISO, rango laborable y hoy; aviso de congelado (`congeladoDe`) con «Congelar el programa»

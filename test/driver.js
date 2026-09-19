@@ -121,7 +121,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   const planT=planTarea(tareaRows,'Tarea__project_task__95_.xlsx');window.__planT=planT;window.__tareaRows=tareaRows;
   /* CAPTURA (para las capturas del reporte, sin correr las pruebas): ?captura=niv1 | niv2 carga el volcado y deja la pantalla de nivelación en un estado fijo.
      ?captura=fases: diagnóstico (JSON en <pre id="diag">) de la cola completa de cada centro de producción por fase de Odoo y grupo de cercanía. */
-  if(/captura=(niv|fases|cola|borrado|res)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
+  if(/captura=(niv|fases|cola|borrado|res|audit)/.test(location.search)){TAREA=planT;const pr=window.prompt;window.prompt=()=>'APLICAR';aplicarTarea();window.prompt=pr;await __p(50);PERFIL={id:'cap',rol:'planificacion',nombre:'Planificación'};
     NIVUI={meses:['2026-09','2026-10','2026-11'],cliente:'',familia:'',area:'corte',celda:null,filaPor:'familia',esc:{},verCalc:false,noEntra:false};
     if(/niv2/.test(location.search)){nivUISet('corte','inicio',hoy());nivUISet('corte','compromiso',dsum(hoy(),20));nivUISet('corte','diasAdic',1);NIVUI.verCalc=true;NIVUI.noEntra=true;
       const r=nivUICalcular('corte');const cl=Object.keys((()=>{const m={};(r.saldo.ordenes||[]).forEach(o=>{m[String(o.cliente||'')]=1});return m})())[0];if(cl)NIVUI.celda={por:'familia',fila:famDeOrden(r.saldo.ordenes[0]),mes:'2026-10'}}
@@ -152,6 +152,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       page="config";CONF.tab="borrado";render();mBorrar();
       if(/borrado2/.test(location.search)){document.getElementById("borrar-frase").value="BORRAR";await ejecutarBorrado();while(guardando)await __p(20);await __p(100)}
       document.body.classList.add("captura");__R.done=true;return}
+    /* captura=audit: deja el simulador con TODO el volcado real (tareas + OT + catálogo real reenlazado + mapeo LMO) y perfil admin,
+       sin correr pruebas, para auditar a mano desde la consola (auditoría del 19-sep) */
+    if(/captura=audit/.test(location.search)){PERFIL=adminP0();
+      {const otRows=await (await fetch('fixtures/ot_rows.json')).json();window.__otRows=otRows;const al=window.alert;window.alert=()=>{};OT=planOT(otRows,'Orden_de_trabajo.xlsx');aplicarOT();window.alert=al;await __p(50)}
+      {const pares={};(window.__tareaRows||[]).slice(1).forEach(r=>{const pa=String(r[7]||'').trim(),h=String(r[8]||'').trim();if(!pa||!h)return;(pares[pa]=pares[pa]||new Set()).add(h)});
+       S.categorias=[];Object.entries(pares).forEach(([pa,hs])=>{const pid=uid();S.categorias.push({id:pid,n:pa});[...hs].forEach(h=>S.categorias.push({id:uid(),padre:pid,n:h}))});
+       const porOp={};((window.__planT||{}).ordenes||[]).forEach(x=>{if(x.op&&x.catTxt)porOp[x.op]=String(x.catTxt).trim()});
+       const porNombre={};S.categorias.filter(k=>k.padre).forEach(k=>{porNombre[(K(k.padre)||{}).n+' / '+k.n]=k.id});
+       S.ordenes.forEach(o=>{const key=porOp[o.op];if(key&&porNombre[key])o.cat=porNombre[key]});
+       aplicarMapeoCategorias()}
+      page='panorama';render();await __p(50);__R.done=true;return}
     /* captura=res<flags>: la pestaña Resumen del centro (18-sep). flags: 1 Corte | 2 Confección · m = un módulo elegido · e = pestaña En espera · n = la semana siguiente (la primera con carga en el volcado) */
     if(/captura=res/.test(location.search)){const cual=(location.search.match(/captura=res([0-9a-z]+)/)||[])[1]||"1";const c=/2/.test(cual)?"modulos":"corte";
       NAVH.length=0;irCentro(c,null,"resumen");CEN.rec="";CEN.lista=/e/.test(cual)?"espera":"listas";CEN.verTodo=false;CEN.dia=null;CEN.sem=/n/.test(cual)?1:0;
@@ -6480,9 +6491,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RC3: fin programado ya pasado → «Atrasada N días» (hábiles del recurso, habilesDesde); hoy dentro del tramo → «Para hoy»; futuro → mañana/en N días; sin fecha → «Sin programar»",a.k==='atrasada'&&a.dias===habilesDesde(ayer,'corte')&&/^Atrasada \d+ d/.test(a.txt)&&b.k==='hoy'&&b.txt==='Para hoy'&&c.k==='futuro'&&/^(Mañana|En \d+ días hábiles)$/.test(c.txt)&&d.k==='sinProg',JSON.stringify([a.txt,b.txt,c.txt,d.txt]));
     __check("RC3: el orden de urgencia es atrasada < hoy < futuro < sin programar",ordenUrgencia(mk(dsum(ayer,-3),ayer))<ordenUrgencia(mk(h,h))&&ordenUrgencia(mk(h,h))<ordenUrgencia(mk(dsum(h,10),dsum(h,12)))&&ordenUrgencia(mk(dsum(h,10),dsum(h,12)))<ordenUrgencia(mk(null,null)));}
    /* RC4 · el visto verde registra hecho con la MISMA función de siempre */
-   {abrir('corte',1);const b=pc().querySelector('.res-tabla tbody tr.res-fila .visto');const oid=b?String(b.getAttribute('onclick').match(/marcarHechoCentro\('([^']+)'/)[1]):null;
-    if(b){b.click()}const m=document.getElementById('modal');
-    __check("RC4: el visto abre «Registrar hecho en Corte» (marcarHechoCentro) para esa orden",!!b&&!!oid&&/Registrar hecho en Corte/.test(m.innerHTML)&&m.innerHTML.includes(esc((S.ordenes.find(o=>o.id===oid)||{}).op||'')));cerrar();
+   {abrir('corte',1);const b=pc().querySelector('.res-tabla tbody tr.res-fila .visto');const oid=b?String((b.getAttribute('onclick').match(/mCerrarCentro\('([^']+)'/)||[])[1]||''):null;
+    alerts.length=0;document.getElementById('modal').innerHTML='';if(b){b.click()}const m=document.getElementById('modal');
+    __check("RC4: el visto es el cierre del paso (mCerrarCentro): sin tiempo corrido, planificación ve el camino con motivo (modal) y nunca un alert seco",!!b&&!!oid&&(/Terminé esta orden|motivo|sin tiempo/i.test(m.innerHTML)||alerts.length===0),(m.innerHTML.replace(/<[^>]+>/g,' ').slice(0,120)+' | '+alerts.join('|')).slice(0,200));cerrar();
     PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};abrir('corte',1);
     __check("RC4: un perfil que no registra en el centro no ve el visto",!pc().querySelector('.res-tabla .visto'));PERFIL=adminP0();}
    /* RC5 · las tarjetas y el día por día salen de datosDiaCentro: mismos números que la pestaña Planificación */
@@ -6536,9 +6547,69 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {abrir('plancha',1);__check("RC8: una sub-área sola (CEN.solo) no muestra el detalle por sub-área",CEN.id==='terminados'&&CEN.solo==='plancha'&&!/Detalle por sub-área/.test(pc().innerHTML));
     CEN.solo='';render();__check("RC8: el ítem con varias sub-áreas juntas muestra el detalle por sub-área plegado (resumenSubCentros) y el nombre del centro en cada fila",/Detalle por sub-área/.test(pc().innerHTML)&&(()=>{const f=pc().querySelector('.res-tabla tbody tr.res-fila');return !f||subAreasDe('terminados').some(c=>f.children[1].textContent.includes(nCen(c)))})());
     abrir('corte',0);const lun=lunesDe(h);__check("RC8: la cabecera dice la semana ISO, el rango laborable y hoy",new RegExp('Semana '+semanaISO(lun).split('-S')[1]+' · ').test(txt(pc().querySelector('.res-sem')))&&txt(pc().querySelector('.res-sem')).includes('hoy '+fmtDia(h)));}
-   __check("RC: GUARDIA — la pantalla no calcula la cola ni el avance por su cuenta: usa colaCentro, cercanía (grupo), datosDiaCentro, habilesDesde/Hasta y marcarHechoCentro",/colaCentro\(/.test(String(listasYEspera))&&/==='disponible'/.test(String(listasYEspera))&&/datosDiaCentro\(/.test(String(tarjetasResumenCentroHTML))&&/datosDiaCentro\(/.test(String(diaPorDiaHTML))&&/habilesDesde\(/.test(String(estadoListaCentro))&&/habilesHasta\(/.test(String(estadoListaCentro))&&/marcarHechoCentro\(/.test(String(listaResumenCentroHTML))&&/congeladoDe\(/.test(String(resumenCentroHTML)));
+   __check("RC: GUARDIA — la pantalla no calcula la cola ni el avance por su cuenta: usa colaCentro, cercanía (grupo), datosDiaCentro, habilesDesde/Hasta y marcarHechoCentro",/colaCentro\(/.test(String(listasYEspera))&&/==='disponible'/.test(String(listasYEspera))&&/datosDiaCentro\(/.test(String(tarjetasResumenCentroHTML))&&/datosDiaCentro\(/.test(String(diaPorDiaHTML))&&/habilesDesde\(/.test(String(estadoListaCentro))&&/habilesHasta\(/.test(String(estadoListaCentro))&&/mCerrarCentro\(/.test(String(listaResumenCentroHTML))&&/congeladoDe\(/.test(String(resumenCentroHTML)));
    window.alert=al;PERFIL=adminP0();CEN.sem=0;CEN.rec='';CEN.lista='listas';CEN.verTodo=false;CEN.dia=null;CEN.tab='plan';PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("RESUMEN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* ===== AUDITORÍA DEL SISTEMA (19-sep-2026): lo que se encontró y se corrigió, fijado en pruebas ===== */
+  try{localStorage.__fase="auditoria sistema"}catch(e){}
+  {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();
+   const recarga=()=>{const pr=window.prompt;window.prompt=()=>'APLICAR';TAREA=planTarea(window.__tareaRows,'Tarea__project_task__95_.xlsx');aplicarTarea();window.prompt=pr;PLAN=null;PLAN_ALL=null};
+   /* AU1 · una carga NO pisa lo decidido en la app (rutaConf y tallasPedido estaban en la tabla 14 y se perdían igual) */
+   {const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x)&&(x.telas||[]).some(t=>!t.ext)&&(x.ruta||[]).some(p=>p.centro==='tej'));
+    confirmarRuta(o,'persona','auditoría');o.tallasPedido={S:5,M:7};o.tallasPedidoMeta={u:'t'};o.histLib=[{ts:'x',accion:'liberada',et:'tela'}];o.lavadoModo='planta';o.rutaRevGeneral={u:'t'};o.rutaFirma='FIRMA-VIEJA';o.rutaRevisar={ts:'x',motivo:'m'};
+    const op=o.op;recarga();const o1=S.ordenes.find(x=>x.op===op);
+    __check("AU1: tras «Actualizar datos» la confirmación de ruta sigue (antes se borraba en cada carga)",!!o1&&rutaConfirmada(o1)&&o1.rutaConf.origen==='persona');
+    __check("AU1: y también la curva de tallas, el historial de liberaciones, el lavado a mano, la marca de ruta revisada, la firma de catálogo y la marca «revisar»",!!o1&&o1.tallasPedido&&o1.tallasPedido.M===7&&!!o1.tallasPedidoMeta&&(o1.histLib||[]).length===1&&o1.lavadoModo==='planta'&&!!o1.rutaRevGeneral&&!!o1.rutaFirma&&!!o1.rutaRevisar);   /* la firma viaja y el render la vuelve a sellar contra el catálogo de hoy */
+    __check("AU1: la tabla 14 muestra los campos nuevos y siguen editables (histLib, lavadoModo, compraTela, rutaRevGeneral, rutaPrecargada)",['histLib','lavadoModo','compraTela','rutaRevGeneral','rutaPrecargada'].every(c=>defCamposConservados().some(r=>r.campo===c&&r.conservar)));
+    /* tela a compras: la ruta vuelve a cargar proveedor después de la carga */
+    o1.fase='1Tejeduria';const nb=S.bitacora.length;pasarACompras(o1,'prueba');const op2=o1.op;recarga();const o2=S.ordenes.find(x=>x.op===op2);
+    __check("AU1: una orden pasada a compras conserva la marca y su ruta sigue cargando proveedor (no tejeduría) tras la carga",!!o2&&!!o2.compraTela&&(o2.ruta||[]).some(p=>p.centro==='proveedor')&&!(o2.ruta||[]).some(p=>p.centro==='tej')&&(o2.telas||[]).every(t=>t.ext));
+    delete o2.compraTela;delete o2.rutaRevisar;delete o2.rutaFirma;delete o2.lavadoModo;delete o2.histLib;delete o2.tallasPedido;delete o2.tallasPedidoMeta;delete o2.rutaRevGeneral;recarga();}
+   /* AU2 · toda orden sale con firma de catálogo; sin firma también se evalúa */
+   recalcularRutas('prueba');__check("AU2: después de una carga (y su dibujo) TODAS las órdenes abiertas tienen firma de catálogo (las nuevas se sellan al crearse, las que no tenían se sellan al recalcular)",S.ordenes.filter(abierta).every(o=>!!o.rutaFirma),S.ordenes.filter(o=>abierta(o)&&!o.rutaFirma).map(o=>o.op+' '+o.fase+' '+o.estado).slice(0,3).join(' | '));
+   {const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro')&&!rutaEditadaAMano(x));const rutaAntes=(o.ruta||[]).map(p=>p.centro).join('>');delete o.rutaFirma;
+    __check("AU2: una orden sin firma no se rehace a ciegas",rutaDesactualizada(o)===false);
+    const nAud=auditoriaCambios().length;recalcularRutas('prueba');__check("AU2: el recálculo la sella con el catálogo de hoy sin tocar su ruta ni escribir auditoría; desde ahí se le siguen los cambios de catálogo",o.rutaFirma===firmaRutaDe(o)&&(o.ruta||[]).map(p=>p.centro).join('>')===rutaAntes&&auditoriaCambios().length===nAud);
+    o.rutaFirma='OTRA';__check("AU2: con la firma distinta sí entra al recálculo",rutaDesactualizada(o)===true);recalcularRutas('prueba');}
+   /* AU4 · el recálculo respeta la fase: ruta = pasos pendientes */
+   {const o=S.ordenes.find(x=>abiertaDe(x)&&/^8/.test(x.fase||'')&&K(x.cat)&&(K(x.cat).ops||[]).length&&!rutaEditadaAMano(x)&&!(x.ruta||[]).length);
+    if(o){o.rutaFirma='CAMBIO';const nAud=auditoriaCambios().length;recalcularRutas('prueba');
+     __check("AU4: una orden en fase 8 cuya categoría cambió de hoja rehace la ruta COMPLETA pero deja la pendiente vacía (la fase manda: no aparece carga fantasma)",(o.rutaCompleta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro')&&!(o.ruta||[]).length&&o.rutaFirma===firmaRutaDe(o),JSON.stringify([(o.rutaCompleta||[]).map(p=>p.centro),(o.ruta||[]).map(p=>p.centro)]));}
+    else __check("AU4: (sin orden en fase 8 con hoja para probar)",true);}
+   /* AU5 · OT: fecha y hora de fin viajan juntas; inicio = el más temprano */
+   {const rows=window.__otRows||[];const hdr=rows[0];const o=S.ordenes.find(x=>x.op&&abiertaDe(x));
+    const mk=(ini,fin)=>{const r=hdr.map(()=>null);r[0]=o.op;r[1]='MODULO 11';r[2]=1;r[3]=ini;r[4]=fin;r[8]='Terminado';return r};
+    const p=planOT([hdr,mk(46241.6,46246.44),mk(46240.3,46247.9)],'ot_prueba.xlsx');const reg=((p.porOrden[o.id]||{}).centros||{}).modulos;
+    __check("AU5: con dos OT del mismo centro el fin es el más tarde Y su hora es de esa misma fila; el inicio es el más temprano con su hora",!!reg&&reg.fin===excelFecha(46247.9)&&String(reg.finTs).slice(0,10)===reg.fin&&reg.ini===excelFecha(46240.3)&&String(reg.iniTs).slice(0,10)===reg.ini,JSON.stringify(reg));}
+   /* AU6 · liberarCorte pasa por la misma puerta que el resto (ruta confirmada) */
+   {const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x)&&!rutaConfirmada(x)&&!liberada(x,'corte'));alerts.length=0;liberarCorte(o.id);
+    __check("AU6: liberarCorte ya no libera una orden sin ruta confirmada (usaba puedeLiberar, sin esa regla)",!liberada(o,'corte')&&alerts.some(a=>/falta confirmar ruta/.test(a)),alerts.join(' | ').slice(0,120));}
+   /* AU7 · Plan mensual: bordado en puntadas contra capacidad en puntadas */
+   {PMADD.sel=new Set();PMADD.ym='2026-10';const html=agregarAlPlanHTML('2026-10',calcularPlan('2026-10'));
+    const fila=(html.match(/<tr><td>Bordado[^]*?<\/tr>/)||[''])[0];
+    __check("AU7: la tabla «Capacidad del plan por centro» muestra bordado en puntadas (carga y capacidad en la misma unidad; antes puntadas contra minutos)",!fila||(/\(puntadas\)/.test(fila)&&/M puntadas/.test(fila)),fila.replace(/<[^>]+>/g,' ').slice(0,160));
+    __check("AU7: los demás centros siguen en horas",/Corte<\/td><td class="num">[\d.,]+ h<\/td>/.test(html));}
+   /* AU8 · pasos que el motor no programa sin decirlo */
+   {const P=programar();const psp=pasosSinProgramar(P);
+    __check("AU8: pasosSinProgramar solo lista pasos de producción pendientes sin fecha, de órdenes liberadas sin bloqueo ni error",psp.every(x=>{const o=S.ordenes.find(y=>y.id===x.oid);const ro=P.ordenes[o.id]||{};return liberada(o,'corte')&&!ro.bloqueo&&!ro.error&&!pasoHecho(o,x.c)&&!((ro.pasos||[]).find(p=>p.centro===x.c)||{}).ini}));
+    __check("AU8: cada uno dice el motivo (sin minutos por prenda / sin recurso / sin fecha del motor)",psp.every(x=>/sin minutos por prenda|sin recurso activo|sin fecha del motor/.test(x.motivo)));
+    const b=pendientesHoy().find(x=>x.k==='pasoSinProgramar');__check("AU8: Hoy → Pendientes tiene la bandeja con el mismo conteo",!!b&&b.n===psp.length,JSON.stringify([b&&b.n,psp.length]));
+    __R.auditPsp={n:psp.length,porCentro:psp.reduce((m,x)=>{m[x.c+' '+x.motivo]=(m[x.c+' '+x.motivo]||0)+1;return m},{})};}
+   /* AU9 · la auditoría en pantalla corre y las reglas del motor dan cero sobre el volcado */
+   {const a=auditoriaSistema();const motor=a.hallazgos.filter(x=>/^motor/.test(x.k));
+    __check("AU9: auditoriaSistema corre y trae reglas de rutas, motor, liberación, unidades, OT y configuración",a.hallazgos.length>=20&&['rutaVacia','pasoSinProgramar','motorSolape','motorFin','libCuadra_corte','otFechas','catSinHoja','faseSinFila','cenSinRec','opRepetida'].every(k=>a.hallazgos.some(x=>x.k===k)));
+    __check("AU9: sobre el volcado, las reglas del motor (orden, solapes, fin, recurso, tela lista, día no laborable, prendas) no tienen hallazgos",motor.every(x=>!x.n),JSON.stringify(motor.filter(x=>x.n).map(x=>x.k+'='+x.n+' '+x.ej[0])));
+    __check("AU9: liberado + pendiente = total en las dos liberaciones",a.hallazgos.filter(x=>/^libCuadra/.test(x.k)).every(x=>!x.n));
+    __check("AU9: cada hallazgo dice cuántos, ejemplos y qué hacer",a.hallazgos.every(x=>typeof x.n==='number'&&Array.isArray(x.ej)&&x.que));
+    __R.auditoria={errores:a.errores,avisos:a.avisos,con:a.hallazgos.filter(x=>x.n).map(x=>x.k+'='+x.n)};
+    page='reporteria';REP.vista='produccion';render();__check("AU9: se ve en Reportería por área",/Auditoría del sistema/.test(document.getElementById('p-reporteria').innerHTML));
+    /* una regla detecta lo que promete: se siembra un recurso de otro centro en un paso y una WH repetida */
+    const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x));const dupl=JSON.parse(JSON.stringify(o));dupl.id='dup_'+o.id;S.ordenes.push(dupl);const a2=auditoriaSistema();S.ordenes.pop();
+    __check("AU9: la regla de WH repetida detecta una orden duplicada",(a2.hallazgos.find(x=>x.k==='opRepetida')||{}).n===1);}
+   /* AU10 · el visto del Resumen es el cierre del paso (explica o pide motivo si no hay tiempo corrido) */
+   __check("AU10: el visto verde del Resumen llama a mCerrarCentro (no a un registro que reviente con un alert)",/mCerrarCentro\(/.test(String(listaResumenCentroHTML))&&!/marcarHechoCentro\(/.test(String(listaResumenCentroHTML)));
+   window.alert=al;PERFIL=adminP0();PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("AUDITORÍA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== BORRADO DE DATOS DE PRUEBA · construido el 17-sep (las 7 correcciones del Paso 0) + revisión adversarial ===== */
   try{localStorage.__fase="borrado"}catch(e){}
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();

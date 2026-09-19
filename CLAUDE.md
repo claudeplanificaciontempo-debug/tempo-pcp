@@ -743,8 +743,7 @@ NUNCA es «disponible»**. `colaCentro` ordena: **puesto manual → cercanía �
 **ya no renumera la cola entera** (solo la movida, las que ya tenían puesto y, si se la baja, las de encima).
 `ordenarColaPorColor` **apaga la cercanía** porque numera todas: avisa en el diálogo y en bitácora. La ODC va en
 **columna propia**: **no meterla en `whCell`**. Al cargar OT se guardan `iniTs`/`finTs` con la hora sin tocar
-`excelFecha`. **Hallazgo sin corregir:** `excelFecha` usa `Math.round`, así que **toda hora ≥ 12:00 se guarda un día
-tarde** (24.727 de 45.421 fechas de OT del volcado, 54,4 %). Ver `COLA_CERCANIA_REPORTE.md`.
+`excelFecha`. (`excelFecha` ya usa la parte entera del serial; el `Math.round` viejo solo queda en `excelFechaRedondeada` para medir.) Ver `COLA_CERCANIA_REPORTE.md`.
 
 **Búsquedas y filtros (16-sep-2026).** `buscarQ` tiene **un temporizador por buscador** y la espera es
 `prm('msBuscar',150)` (0 = cada tecla). `estadosPantalla()` es el único mapa de estados de pantalla y debe
@@ -813,6 +812,18 @@ programa» con `programa`, si no «Pedir congelamiento» = `pedirCongelamiento` 
 sin programar) → entrega; **En espera** = el resto en el orden de la cola, sin visto). Visto verde `.visto` =
 `marcarHechoCentro`. `prm('filasResumenCentro',8)`. Las pestañas Planificación / Programación / Ejecución no cambian.
 **No crear un segundo cálculo de cola, avance ni atraso en esta pantalla.** Ver `RESUMEN_CENTRO_REPORTE.md`.
+
+**Auditoría del sistema (19-sep-2026):** `auditoriaSistema()` / `auditoriaSistemaHTML()` (Reportería por área) corre 24
+reglas sobre los datos vivos (rutas, motor, liberación, unidades, OT, configuración) con cuántos/ejemplos/qué hacer; no corrige
+nada. `pasosSinProgramar(P)` = pasos de producción pendientes de órdenes liberadas que el motor dejó sin fecha sin bloqueo ni
+error (bandeja `pasoSinProgramar` en Hoy); marcarlo dentro de `programar()` está pendiente de autorización. Correcciones de la
+auditoría: **`aplicarTarea` copia de verdad lo que la tabla 14 conserva** (rutaConf y tallasPedido no se copiaban: cada carga
+borraba las confirmaciones de ruta) más histLib, lavadoModo, compraTela (rehace el paso proveedor), rutaRevGeneral, rutaPrecargada,
+esperandoMaterial, y siempre `rutaFirma`/`rutaRevisar`; una orden nueva se sella al crearse y `recalcularRutas` sella toda
+orden abierta sin firma con el catálogo de hoy (línea base, no rehace a ciegas) y respeta la fase al rehacer (`rutaCompleta`
+entera, `ruta` = pendientes); `liberarCorte` pasa por `puedeLiberarA`; el plan mensual compara bordado en puntadas
+(`capMesRecs(…,true)`); la carga de OT lleva fecha y hora de fin de la misma fila e inicio mínimo; el visto del Resumen es
+`mCerrarCentro`. Modo del driver `?captura=audit` (volcado + OT + catálogo real, sin pruebas). Ver `AUDITORIA_SISTEMA_19SEP.md`.
 
 **Tablet del operario (17-sep-2026).** `programadoPara(o,c,rec,P)` es la única definición de «programado
 para mí»: carga del motor en `P.pro` para ese centro y recurso, dentro de `prm('diasVentanaTablet',5)` días
