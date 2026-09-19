@@ -825,8 +825,8 @@ el patrón.** Diccionario aprobado (textos visibles, no identificadores): cercan
 capacidad?»**; se quedan «Todo lo que viene», congelar, WH, ODC. **Semáforo**: `estadoSemaforo(o,P)` /
 `estadoSemaforoHTML` = un color (verde/ámbar/rojo/gris) y un verbo por orden, derivado de diagAtraso, liberada/
 faltaLiberarA, bloqueo, pasoProximoDe + cercaniaCentro — **no crear otro estado**; se usa en Órdenes (columna Estado),
-Liberación B1 y Control de piso (**Entregas NO: quedó como el cliente la necesita**). **Resumen del centro**: Listas = solo
-grupo Disponible (el puesto manual ordena, no promueve) y solo órdenes de planta (`enPlantaParaCentro` = con WH y tela
+Liberación B1 y Control de piso (**Entregas NO: quedó como el cliente la necesita**). **Resumen del centro**: tres grupos — **En proceso** (`enProcesoEnCentro`: fase de Odoo del propio centro,
+unidades o tramo abierto; «la fase de corte es lo que se está cortando») · **Listas** = grupo Disponible sin empezar (el puesto manual ordena, no promueve) · **En espera** y solo órdenes de planta (`enPlantaParaCentro` = con WH y tela
 liberada); lo de diseño / sin WH no entra (decisión de la usuaria, 19-sep). Modo del driver `?captura=ux<pantalla>[f][q]`. Ver
 `DUMMIES_1_CABECERA_PALABRAS_SEMAFORO.md`. Roles dictados por la usuaria para A/B (portada por rol y menú de tareas):
 Santiago (corte+estampado+bordado), Mariela y Paola (módulos+maquila), Terminados (botones/lavado/plancha/empaque),

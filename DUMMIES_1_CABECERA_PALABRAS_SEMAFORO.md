@@ -98,6 +98,12 @@ promueve. Y al Resumen de un centro **solo entran órdenes de planta**: con WH y
 (`enPlantaParaCentro`); lo de diseño, recetas o macro no entra y una nota al pie dice cuántas quedaron fuera. Probado
 con toda la cola numerada: 56 listas (todas disponibles), 467 fuera por no ser de planta.
 
+**Y en la misma tarde:** la fase de Corte (4Corte Planta) es lo que **se está cortando**, no lo que espera. El Resumen
+de todo centro tiene ahora tres grupos: **En proceso** (la fase de Odoo ya es la de este centro —4Corte Planta en Corte,
+7Confección en Confección, 8Empaque en Empaque— o el piso ya registró aquí) · **Listas** (ya puede empezarse) · **En
+espera** (viene). `enProcesoEnCentro(o,c,cerc)`; las atrasadas de la tarjeta cuentan en proceso + listas. Reales: Corte
+4 en proceso / 52 listas; Confección 23 / 16 / 94; Empaque 49 / 27 / 178.
+
 ## Pruebas
 
 Bloque `dummies` en `test/driver.js`: F1 (ningún lede suelto en 28 pantallas; el «?» cuelga del título; el texto es el

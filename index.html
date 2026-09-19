@@ -768,7 +768,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 16:00';
+const APP_BUILD='2026-09-19 16:54';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -7408,10 +7408,15 @@ function ordenUrgencia(f){const k=estadoListaCentro(f).k;return k==='atrasada'?0
 function enPlantaParaCentro(o){return lanzada(o)&&liberada(o,'tela')}
 function listasYEspera(c,filas){const cola=colaCentro(c,filas).filter(f=>enPlantaParaCentro(f.o));const listas=[],espera=[];
   /* Listas = el paso anterior terminó (grupo Disponible). El puesto manual solo ORDENA dentro de su lista: no vuelve «lista» a una orden que no llegó */
-  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g==='disponible')listas.push(f);else espera.push(f)});
+  const proceso=[];
+  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g!=='disponible'){espera.push(f);return}
+    if(enProcesoEnCentro(f.o,c,f.cerc))proceso.push(f);else listas.push(f)});
   const fecha=f=>(f.paso.fin||f.paso.ini||'9');
-  listas.sort((a,b)=>(puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)||ordenUrgencia(a)-ordenUrgencia(b)||(fecha(a)<fecha(b)?-1:fecha(a)>fecha(b)?1:0)||((a.o.fecha||'')<(b.o.fecha||'')?-1:1));
-  return{cola,listas,espera}}
+  const porUrgencia=(a,b)=>(puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)||ordenUrgencia(a)-ordenUrgencia(b)||(fecha(a)<fecha(b)?-1:fecha(a)>fecha(b)?1:0)||((a.o.fecha||'')<(b.o.fecha||'')?-1:1);
+  listas.sort(porUrgencia);proceso.sort(porUrgencia);
+  return{cola,proceso,listas,espera}}
+/* «se está cortando / cosiendo»: la fase de Odoo ya es la de este centro (posicionFaseCentro), o el piso registró unidades / tiene un tramo abierto aquí */
+function enProcesoEnCentro(o,c,cerc){try{if(cerc&&cerc.anomalia&&cerc.anomalia.tipo==='enProceso')return true;if(typeof posicionFaseCentro==='function'&&posicionFaseCentro(o,c)==='enProceso')return true;return estadoOrdenCentro(o,c,null)==='proceso'}catch(e){return false}}
 /* pedir a planificación que congele la semana: queda en la bitácora (la única tabla que el piso escribe) y en Hoy → Pendientes;
    se da por atendido solo cuando existe un congelado de esa semana en ese centro (no hay «marcar atendido») */
 function pedirCongelamiento(cid,lun){const cens=censDeGrupo(cid);const ab=pedidosCongelarAbiertos();
@@ -7437,7 +7442,7 @@ function tarjetasResumenCentroHTML(cens,P,dias,recs,listas,nombre){const h=hoy()
     <div class="res-big"><b>${(ningunReg&&!hechas)?'<span class="tag t-alerta" title="ningún día pasado con carga tiene registro: no se puede leer el avance">sin registros</span>':num(hechas)}</b> <span class="mut">de ${num(pz)} prendas programadas</span>${pct!==null&&!(ningunReg&&!hechas)?'<span class="res-pct '+(pct<50?'mal':'')+'">'+pct+'%</span>':(!pz?'<span class="res-pct mut" style="font-weight:400">nada programado esta semana</span>':'')}</div>
     <div class="res-bar"><i style="width:${pct===null?0:Math.min(100,pct)}%"></i>${mark?'<u style="left:'+mark+'%" title="al cierre de ayer debías llevar '+num(debia)+'"></u>':''}</div>
     <div class="res-leg"><span>Hecho</span><span style="margin-left:auto">${debia?'▲ Al cierre de ayer debías llevar <b>'+num(debia)+'</b>':'<span class="mut">nada programado antes de hoy</span>'}</span></div></div></div>
-   <div class="panel res-card"><div class="body"><div class="res-t">Órdenes atrasadas${ayudaTipHTML('Órdenes listas en '+nombre+' cuyo fin programado en este centro ya pasó y siguen abiertas. Van primero en la lista. No es la fecha meta de la orden: eso es la marca «meta vencida / va tarde» de la cola.')}</div>
+   <div class="panel res-card"><div class="body"><div class="res-t">Órdenes atrasadas${ayudaTipHTML('Órdenes en proceso o listas en '+nombre+' cuyo fin programado en este centro ya pasó y siguen abiertas. Van primero en la lista. No es la fecha meta de la orden: eso es la marca «meta vencida / va tarde» de la cola.')}</div>
     <div class="res-n ${atr.length?'mal':''}">${num(atr.length)}</div><div class="mut res-sub">Debían terminar antes de hoy y siguen abiertas. Están primero en tu lista.</div></div></div>
    <div class="panel res-card"><div class="body"><div class="res-t">Días sin registrar avance${ayudaTipHTML('Días laborables ya pasados de esta semana que tenían carga programada en '+nombre+' y no registraron nada: ni avance por talla, ni tramo cerrado, ni producción del turno, ni paro. Si se trabajó y no se registró, el avance real es mayor que el que se ve. Los días sin carga no cuentan.')}</div>
     <div class="res-n ${sinReg.length?'mal':''}">${num(sinReg.length)}</div><div class="mut res-sub">${sinReg.length?esc(sinReg.map(d=>fmtDia(d).split(',')[0]).join(', '))+'. Si se hizo y no se registró, el avance real es mayor.':(conCarga.length?'Todos los días pasados con carga tienen registro.':(pasados.length?'Ningún día pasado tenía carga programada.':'La semana recién empieza.'))}</div></div></div>
@@ -7461,12 +7466,12 @@ function diaPorDiaHTML(cens,P,dias,recs,nombre){const h=hoy();const rec=CEN.rec|
 /* la lista: Listas para <centro> N | En espera N · foto, WH y fase (whCell), producto, color, prendas hechas, debía salir, estado y el visto verde */
 function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=prm('filasResumenCentro',8);
   const porC=cens.map(c=>({c,...listasYEspera(c,filas)}));const fuera=[].concat(...cens.map(c=>colaCentro(c,filas))).filter(f=>!enPlantaParaCentro(f.o)).length;
-  let listas=[].concat(...porC.map(x=>x.listas.map(f=>f))),espera=[].concat(...porC.map(x=>x.espera));
-  if(CEN.rec){listas=listas.filter(f=>recDeFila(f)===CEN.rec);espera=espera.filter(f=>recDeFila(f)===CEN.rec)}
-  if(CEN.dia){listas=listas.filter(f=>filaEnDiaCEN(f,P,CEN.dia));espera=espera.filter(f=>filaEnDiaCEN(f,P,CEN.dia))}
-  const tab=CEN.lista==='espera'?'espera':'listas';const L=tab==='espera'?espera:listas;
+  let proceso=[].concat(...porC.map(x=>x.proceso)),listas=[].concat(...porC.map(x=>x.listas)),espera=[].concat(...porC.map(x=>x.espera));
+  if(CEN.rec){proceso=proceso.filter(f=>recDeFila(f)===CEN.rec);listas=listas.filter(f=>recDeFila(f)===CEN.rec);espera=espera.filter(f=>recDeFila(f)===CEN.rec)}
+  if(CEN.dia){proceso=proceso.filter(f=>filaEnDiaCEN(f,P,CEN.dia));listas=listas.filter(f=>filaEnDiaCEN(f,P,CEN.dia));espera=espera.filter(f=>filaEnDiaCEN(f,P,CEN.dia))}
+  const tab=CEN.lista==='espera'?'espera':CEN.lista==='proceso'?'proceso':'listas';const L=tab==='espera'?espera:tab==='proceso'?proceso:listas;
   const vis=CEN.verTodo?L:L.slice(0,nVer);const multi=cens.length>1;
-  const fila=(f,i)=>{const e=tab==='listas'?estadoListaCentro(f):null;const pend=Math.max(0,(+f.o.cant||0)-(f.hechas||0));const pct=f.o.cant?Math.min(100,Math.round((f.hechas||0)/f.o.cant*100)):0;
+  const fila=(f,i)=>{let e=(tab==='listas'||tab==='proceso')?estadoListaCentro(f):null;if(tab==='proceso'&&e&&e.k!=='atrasada')e=null;   /* en proceso: solo interesa si ya debía haber salido */const pend=Math.max(0,(+f.o.cant||0)-(f.hechas||0));const pct=f.o.cant?Math.min(100,Math.round((f.hechas||0)/f.o.cant*100)):0;
     const g=(f.cerc&&f.cerc.grupo)||'';const gTxt=(CERCANIA_GRUPOS.find(x=>x[0]===g)||[])[1]||'';
     return `<tr class="res-fila" onclick="if(!event.target.closest('button,img,.fase-mini'))abrirFichaOrden('${f.o.id}')" style="cursor:pointer">
      <td class="num mut">${i+1}</td>
@@ -7475,13 +7480,13 @@ function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=pr
      <td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td>
      <td style="min-width:130px"><b>${num(f.hechas||0)}</b> <span class="mut">de ${num(f.o.cant)}</span><div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:var(--ok)"></i></div></td>
      <td style="white-space:nowrap">${f.paso.fin?fmtDia(f.paso.fin):'<span class="mut">—</span>'}</td>
-     <td style="white-space:nowrap">${e?'<span class="tag '+e.cls+'" title="'+esc(e.tip)+'">'+esc(e.txt)+'</span>':(llegadaHTML(f.cerc)||'')+(gTxt?' <span class="tag t-mut" title="grupo de la cola">'+esc(gTxt)+'</span>':'')}${e&&g&&g!=='disponible'&&puestoDe(f.o,f.c)?' '+llegadaHTML(f.cerc):''}</td>
-     <td class="num">${(e&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="terminar la orden en ${esc(nCen(f.c))}: queda libre para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(e?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
+     <td style="white-space:nowrap">${tab==='proceso'?'<span class="tag t-hoy" title="la fase de Odoo ya es la de '+esc(nCen(f.c))+' o el piso ya registró aquí">En '+esc(nCen(f.c))+'</span> ':''}${e?'<span class="tag '+e.cls+'" title="'+esc(e.tip)+'">'+esc(e.txt)+'</span>':(llegadaHTML(f.cerc)||'')+(gTxt?' <span class="tag t-mut" title="grupo de la cola">'+esc(gTxt)+'</span>':'')}${e&&g&&g!=='disponible'&&puestoDe(f.o,f.c)?' '+llegadaHTML(f.cerc):''}</td>
+     <td class="num">${(tab!=='espera'&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="terminar la orden en ${esc(nCen(f.c))}: queda libre para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(tab!=='espera'?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
   const verbo=nombre;
-  return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas para ${esc(verbo)} <b>${num(listas.length)}</b></span><span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
-    <span class="mut" style="font-size:var(--fs-xs)">${tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí'}${ayudaTipHTML(tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro): se pueden trabajar ya. El puesto manual solo cambia el orden; no vuelve «lista» a una orden que todavía no llegó. Solo entran órdenes de planta: con WH y con la tela liberada por planificación.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa. Solo órdenes de planta (con WH y tela liberada); lo de diseño no entra.')}</span></div>
+  return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='proceso'?'on':''}" onclick="CEN.lista='proceso';CEN.verTodo=false;render()" title="la fase de Odoo ya es la de este centro, o el piso ya registró aquí">En proceso <b>${num(proceso.length)}</b></span><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas para ${esc(verbo)} <b>${num(listas.length)}</b></span><span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
+    <span class="mut" style="font-size:var(--fs-xs)">${tab==='proceso'?'Lo que ya se está haciendo aquí (fase de Odoo en este centro o avance registrado), por urgencia':tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí'}${ayudaTipHTML(tab==='proceso'?'En proceso = la fase de Odoo ya es la de este centro (p. ej. 4Corte Planta en Corte, 7Confección en Confección) o el piso ya registró unidades o tiene un tramo abierto aquí. No están esperando: ya se están haciendo.':tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro): se pueden trabajar ya. El puesto manual solo cambia el orden; no vuelve «lista» a una orden que todavía no llegó. Solo entran órdenes de planta: con WH y con la tela liberada por planificación.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa. Solo órdenes de planta (con WH y tela liberada); lo de diseño no entra.')}</span></div>
    <div class="scroll"><table class="res-tabla"><thead><tr><th>#</th><th>Orden</th><th>Producto</th><th>Color</th><th>Prendas hechas</th><th title="fin programado del paso en este centro">Debía salir</th><th>Estado</th><th title="marcar hecha: queda libre para el siguiente centro">Liberar</th></tr></thead><tbody>
-   ${vis.map(fila).join('')||'<tr><td colspan="8" class="mut" style="padding:14px">'+(tab==='listas'?'Ninguna orden lista'+(CEN.rec?' en '+esc(nRec(CEN.rec)):'')+(CEN.dia?' el '+fmtDia(CEN.dia):'')+'.':'Nada en espera.')+'</td></tr>'}
+   ${vis.map(fila).join('')||'<tr><td colspan="8" class="mut" style="padding:14px">'+(tab==='proceso'?'Nada en proceso ahora':tab==='listas'?'Ninguna orden lista'+(CEN.rec?' en '+esc(nRec(CEN.rec)):'')+(CEN.dia?' el '+fmtDia(CEN.dia):'')+'.':'Nada en espera.')+'</td></tr>'}
    </tbody></table></div>
    ${L.length>vis.length?`<div class="res-mas" onclick="CEN.verTodo=true;render()">Ver las ${num(L.length-vis.length)} restantes</div>`:(CEN.verTodo&&L.length>nVer?`<div class="res-mas" onclick="CEN.verTodo=false;render()">Ver menos</div>`:'')}
    ${fuera?`<p class="mut" style="font-size:var(--fs-xs);margin:6px 16px 10px">${num(fuera)} ${fuera===1?'orden de este centro no se muestra':'órdenes de este centro no se muestran'} aquí porque todavía no ${fuera===1?'es':'son'} de planta (sin WH o sin liberar la tela: diseño, recetas, macro). Están en Órdenes.</p>`:''}
@@ -7491,7 +7496,7 @@ function resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas){const h=hoy();cons
   const recsSel=recsResumen(recs);
   const cong=cens.map(c=>congeladoDe(c,lun));const congelado=cong.length&&cong.every(Boolean);
   const pedido=pedidosCongelarAbiertos().find(b=>b.cid===cid&&b.lun===lun);
-  const {listas}=(()=>{let l=[].concat(...cens.map(c=>listasYEspera(c,filas).listas));if(CEN.rec)l=l.filter(f=>recDeFila(f)===CEN.rec);return{listas:l}})();
+  const {listas}=(()=>{let l=[].concat(...cens.map(c=>{const r=listasYEspera(c,filas);return r.proceso.concat(r.listas)}));if(CEN.rec)l=l.filter(f=>recDeFila(f)===CEN.rec);return{listas:l}})();
 
   const labDias=dias.filter(d=>recs.some(r=>labR(d,r)));
   const semTxt=`Semana ${semanaISO(lun).split('-S')[1]} · ${fmtDia(lun)} al ${fmtDia(labDias[labDias.length-1]||dom)} · <b>hoy ${fmtDia(h)}</b>`;
