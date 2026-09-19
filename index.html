@@ -768,7 +768,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 15:16';
+const APP_BUILD='2026-09-19 16:00';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3510,7 +3510,7 @@ function vEntregas(el){
   if(!EG.cli&&clis.length){EG.cli=clis[0];vEntregas(el);return}
   const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);const selCount=EG.sel.size;const nCols=colsEntregas().filter(colPdfOn).length;
   const sinLib=lista.filter(o=>!liberada(o,'tela')),sinLibPz=sinLib.reduce((a,o)=>a+ +o.cant,0);
-  const fila=o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${estadoSemaforoHTML(o,P)}</td><td>${o.fecha||'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
+  const fila=o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha||'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td>${r.finPro?fmtDia(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
      <td><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
      <td><input type="date" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} onchange="setCompromiso('${o.id}',this.value)"></td></tr>`};
   el.innerHTML=`<div class="pagehead"><h2>Entregas</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
@@ -3530,8 +3530,8 @@ function vEntregas(el){
    <button class="btn ghost sm" onclick="marcarTodoEG(false)">Ninguna</button></div></div>
   <section class="imp"><div class="imp-cab"><div><b>${esc(EG.cli||'Todos los clientes')}</b> <span class="mut">· vista interna</span></div><div class="mut">TEMPOCODECA · al ${new Date().toLocaleDateString('es-EC')}</div></div>
   <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes abiertas (liberadas o no)</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div><div class="kpi ${sinLib.length?'warn':''}"><div class="v">${sinLib.length}</div><div class="k">Sin liberar · ${num(sinLibPz)} prendas · por resolver antes de comprometer</div></div><div class="kpi"><div class="v">${lista.filter(o=>o.fechaCompromiso).length}</div><div class="k">Con fecha de compromiso</div></div></div>
-  ${lista.length?`<table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Estado</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
-   ${filasArbolEG(arbol,fila,13)}</tbody></table>`:'<p class="mut">Nada pendiente con estos filtros.</p>'}
+  ${lista.length?`<table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
+   ${filasArbolEG(arbol,fila,12)}</tbody></table>`:'<p class="mut">Nada pendiente con estos filtros.</p>'}
   ${avisoFueraDeBaseHTML('EG.q',lista,'los meses, la familia, el tipo de producto y la tela del filtro')}
   </section>`;
   __listaEG=lista;
@@ -7403,8 +7403,12 @@ function estadoListaCentro(f){const h=hoy();const p=f.paso||{};const rec=recDeFi
   return{k:'sinProg',dias:null,cls:'t-aviso',txt:'Sin programar',tip:'el programa no le dio fecha en este centro (sin recurso, sin tiempo estándar o bloqueada): el motivo está en la cola, pestaña Programación del centro'}}
 function ordenUrgencia(f){const k=estadoListaCentro(f).k;return k==='atrasada'?0:k==='hoy'?1:k==='futuro'?2:3}
 /* la cola partida en dos: LISTAS (con puesto manual o el paso anterior terminado) y EN ESPERA (todo lo demás, en el orden de la cola) */
-function listasYEspera(c,filas){const cola=colaCentro(c,filas);const listas=[],espera=[];
-  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(puestoDe(f.o,c)>0||g==='disponible')listas.push(f);else espera.push(f)});
+/* qué entra al Resumen de un centro: órdenes de PLANTA — con WH y con la tela liberada por planificación. Lo de diseño,
+   recetas o macro (sin WH o sin liberar) no tiene sentido en la pantalla de un centro todavía (decisión de la usuaria, 19-sep). */
+function enPlantaParaCentro(o){return lanzada(o)&&liberada(o,'tela')}
+function listasYEspera(c,filas){const cola=colaCentro(c,filas).filter(f=>enPlantaParaCentro(f.o));const listas=[],espera=[];
+  /* Listas = el paso anterior terminó (grupo Disponible). El puesto manual solo ORDENA dentro de su lista: no vuelve «lista» a una orden que no llegó */
+  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g==='disponible')listas.push(f);else espera.push(f)});
   const fecha=f=>(f.paso.fin||f.paso.ini||'9');
   listas.sort((a,b)=>(puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)||ordenUrgencia(a)-ordenUrgencia(b)||(fecha(a)<fecha(b)?-1:fecha(a)>fecha(b)?1:0)||((a.o.fecha||'')<(b.o.fecha||'')?-1:1));
   return{cola,listas,espera}}
@@ -7456,7 +7460,7 @@ function diaPorDiaHTML(cens,P,dias,recs,nombre){const h=hoy();const rec=CEN.rec|
   </div></div>`}
 /* la lista: Listas para <centro> N | En espera N · foto, WH y fase (whCell), producto, color, prendas hechas, debía salir, estado y el visto verde */
 function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=prm('filasResumenCentro',8);
-  const porC=cens.map(c=>({c,...listasYEspera(c,filas)}));
+  const porC=cens.map(c=>({c,...listasYEspera(c,filas)}));const fuera=[].concat(...cens.map(c=>colaCentro(c,filas))).filter(f=>!enPlantaParaCentro(f.o)).length;
   let listas=[].concat(...porC.map(x=>x.listas.map(f=>f))),espera=[].concat(...porC.map(x=>x.espera));
   if(CEN.rec){listas=listas.filter(f=>recDeFila(f)===CEN.rec);espera=espera.filter(f=>recDeFila(f)===CEN.rec)}
   if(CEN.dia){listas=listas.filter(f=>filaEnDiaCEN(f,P,CEN.dia));espera=espera.filter(f=>filaEnDiaCEN(f,P,CEN.dia))}
@@ -7475,11 +7479,12 @@ function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=pr
      <td class="num">${(e&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="terminar la orden en ${esc(nCen(f.c))}: queda libre para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(e?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
   const verbo=nombre;
   return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas para ${esc(verbo)} <b>${num(listas.length)}</b></span><span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
-    <span class="mut" style="font-size:var(--fs-xs)">${tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí'}${ayudaTipHTML(tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro) o alguien le puso puesto a mano. Están liberadas para trabajarlas ya.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa.')}</span></div>
+    <span class="mut" style="font-size:var(--fs-xs)">${tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí'}${ayudaTipHTML(tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro): se pueden trabajar ya. El puesto manual solo cambia el orden; no vuelve «lista» a una orden que todavía no llegó. Solo entran órdenes de planta: con WH y con la tela liberada por planificación.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa. Solo órdenes de planta (con WH y tela liberada); lo de diseño no entra.')}</span></div>
    <div class="scroll"><table class="res-tabla"><thead><tr><th>#</th><th>Orden</th><th>Producto</th><th>Color</th><th>Prendas hechas</th><th title="fin programado del paso en este centro">Debía salir</th><th>Estado</th><th title="marcar hecha: queda libre para el siguiente centro">Liberar</th></tr></thead><tbody>
    ${vis.map(fila).join('')||'<tr><td colspan="8" class="mut" style="padding:14px">'+(tab==='listas'?'Ninguna orden lista'+(CEN.rec?' en '+esc(nRec(CEN.rec)):'')+(CEN.dia?' el '+fmtDia(CEN.dia):'')+'.':'Nada en espera.')+'</td></tr>'}
    </tbody></table></div>
    ${L.length>vis.length?`<div class="res-mas" onclick="CEN.verTodo=true;render()">Ver las ${num(L.length-vis.length)} restantes</div>`:(CEN.verTodo&&L.length>nVer?`<div class="res-mas" onclick="CEN.verTodo=false;render()">Ver menos</div>`:'')}
+   ${fuera?`<p class="mut" style="font-size:var(--fs-xs);margin:6px 16px 10px">${num(fuera)} ${fuera===1?'orden de este centro no se muestra':'órdenes de este centro no se muestran'} aquí porque todavía no ${fuera===1?'es':'son'} de planta (sin WH o sin liberar la tela: diseño, recetas, macro). Están en Órdenes.</p>`:''}
   </div>`}
 function resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas){const h=hoy();const lun=dias[0],dom=dias[dias.length-1];
   const chips=recsChipsCentro(recs);if(CEN.rec&&!chips.some(r=>r.id===CEN.rec))CEN.rec='';
@@ -7487,6 +7492,7 @@ function resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas){const h=hoy();cons
   const cong=cens.map(c=>congeladoDe(c,lun));const congelado=cong.length&&cong.every(Boolean);
   const pedido=pedidosCongelarAbiertos().find(b=>b.cid===cid&&b.lun===lun);
   const {listas}=(()=>{let l=[].concat(...cens.map(c=>listasYEspera(c,filas).listas));if(CEN.rec)l=l.filter(f=>recDeFila(f)===CEN.rec);return{listas:l}})();
+
   const labDias=dias.filter(d=>recs.some(r=>labR(d,r)));
   const semTxt=`Semana ${semanaISO(lun).split('-S')[1]} · ${fmtDia(lun)} al ${fmtDia(labDias[labDias.length-1]||dom)} · <b>hoy ${fmtDia(h)}</b>`;
   return `<div class="res-head"><div class="res-sem">${semTxt}</div></div>

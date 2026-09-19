@@ -57,8 +57,9 @@ configuración y los comentarios no se tocaron. Las pruebas del simulador que bu
 | ⚪ | **Sin ruta de producción** · **Cerrada en Odoo** | brecha visible / Estado OP cerrado |
 
 Dónde se ve: **Órdenes** (columna Estado, reemplaza a «sin liberar / bloqueo / atraso / a tiempo»), **Liberación**
-(«Qué la frena» empieza con el semáforo; «falta confirmar ruta →» sigue siendo clicable), **Entregas** (columna nueva),
-**Control de piso → producción** (columna nueva). El Resumen del centro ya lo tenía a su manera.
+(«Qué la frena» empieza con el semáforo; «falta confirmar ruta →» sigue siendo clicable) y **Control de piso →
+producción** (columna nueva). **Entregas no se toca**: quedó como el cliente la necesita (decisión de la usuaria, 19-sep).
+El Resumen del centro ya lo tenía a su manera.
 
 Sobre el volcado real en el simulador (1.079 abiertas, rutas sin confirmar): ⚪ Falta ruta 742 (+52 con meta vencida) ·
 🔴 Atrasada 183 (+6 con lo que les falta) · 🟡 Lista, va tarde 54 · 🟡 En <centro>, va tarde / su pedido va tarde 25 ·
@@ -87,6 +88,15 @@ Sobre el volcado real en el simulador (1.079 abiertas, rutas sin confirmar): ⚪
 - **Tablas**: colspan de las filas de grupo en Entregas y Control de piso; y un `</td` sin cerrar (preexistente) que
   desalineaba la tabla de producción de Control de piso.
 - Los errores de la simplificación ya no se tragan en silencio (consola y `__R.errors` en el simulador).
+
+## Corrección sobre la marcha (19-sep, con la pantalla de Corte en producción)
+
+En producción toda la cola de Corte tenía puesto manual («Juntar colores» numera todas), y el Resumen tomaba «con puesto
+manual» como «lista»: salían 588 «Listas para Corte» con órdenes en diseño y sin WH. Corregido: **Listas = solo el grupo
+Disponible** (el paso anterior terminó o la tela está lista); el puesto manual **ordena** dentro de la lista, no la
+promueve. Y al Resumen de un centro **solo entran órdenes de planta**: con WH y con la tela liberada por planificación
+(`enPlantaParaCentro`); lo de diseño, recetas o macro no entra y una nota al pie dice cuántas quedaron fuera. Probado
+con toda la cola numerada: 56 listas (todas disponibles), 467 fuera por no ser de planta.
 
 ## Pruebas
 
