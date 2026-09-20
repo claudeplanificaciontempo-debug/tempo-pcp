@@ -910,7 +910,11 @@ cruza por ID, luego por WH o clave sin WH y **enlaza** (bitácora); sin WH → W
 aunque falten componentes (etiqueta «SIN WH · ID N»); una fila con la WH de una orden que ya tiene OTRO ID es **conflicto**: no se
 aplica, marca `tareaIdConflicto` (bandeja `tareaIdConflicto` en Hoy) y no cuenta como «no vino»; un archivo sin columna no borra
 los ID ni quita la marca. `sinWHde(o)` decide «sin WH» (nunca por el tipo de clave). id nuevo `tarea_<id>`; el id existente nunca
-cambia. Ver `CARGAS_ID_TAREA.md`.
+cambia. **Revisión del 19-sep:** `normTareaId` (un solo formato: el número de la tarea); `cruzarFilaTarea` es EL cruce (por ID → WH → clave
+sin WH; conflicto solo por WH: `idDistinto` / `whDeOtra`; otra tarea con los mismos cinco datos entra como nueva; la tarea que vuelve sin WH
+conserva la WH y marca `whSinOdoo`; cambio de WH → `whAnteriores`); `whRepetida` (misma WH, dos ID) y clave repetida existente se saltan en
+planTarea (`repSaltadas/repExistentesIds`); `existeId` en fuera de alcance; freno por conflicto masivo (`minConflictosIdFreno`,
+`pctConflictosIdFreno`, APLICAR); `aceptarIdTarea` / `quitarMarcaConflictoId` / `quitarMarcaWHSinOdoo` (con confirmación, en la GUARDIA). Ver `CARGAS_ID_TAREA.md`.
 
 **Fase: sin WH manda Odoo (19-sep-2026, decisión de la usuaria).** En `aplicarTarea`, `consFase = conserva('fase') && !odooMandaFase(v)`: mientras la orden NO
 tiene WH en el sistema (`sinWHde(v)`), la fase se toma del archivo en cada carga y también en la carga en que recibe la WH; desde que tiene

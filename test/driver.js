@@ -2040,7 +2040,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarMarcaConflictoId","quitarMarcaWHSinOdoo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -6348,7 +6348,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* B · el mismo volcado con la columna ID: X y Y reciben ID; una sin WH nueva SOLO con ID (sin ODC); una WH nueva con ID */
     const B=conId(tareaRows,x=>esFilaDe(x,X)?"7001":esFilaDe(x,Y)?"7002":"");B.splice(1,0,nueva("","7003",""),nueva("WH/MO/99101","7004","7104"));
     const pB=planTarea(B,"TAREA_K7b.xlsx");const bX=pB.ordenes.find(o=>o.id===X.id),bY=pB.ordenes.find(o=>o.id===Y.id),b3=pB.ordenes.find(o=>o.tareaId==="7003"),b4=pB.ordenes.find(o=>o.tareaId==="7004");
-    __check("K7: con la columna ID la vista previa cuenta las cabeceras con ID y las que quedan enlazadas",pB.conColumnaId===true&&pB.conTareaId===4&&pB.tareaIdEnlazadas.length===2&&/cabeceras con <b>ID de tarea<\/b>/.test(vistaPreviaTareaHTML(pB))&&/enlazadas a su ID de tarea/.test(vistaPreviaTareaHTML(pB)),JSON.stringify({c:pB.conTareaId,e:pB.tareaIdEnlazadas}));
+    __check("K7: con la columna ID la vista previa cuenta las cabeceras con ID y las que quedan enlazadas",pB.conColumnaId===true&&pB.conTareaId===4&&pB.tareaIdEnlazadas.length===2&&/<b>4<\/b><\/td><td>cabeceras con <b>ID de tarea<\/b>/.test(vistaPreviaTareaHTML(pB))&&/<b>2<\/b><\/td><td>órdenes que ya existían \(cargadas sin ID\) y quedan <b>enlazadas a su ID de tarea<\/b>/.test(vistaPreviaTareaHTML(pB)),JSON.stringify({c:pB.conTareaId,e:pB.tareaIdEnlazadas}));
     __check("K7: una WH que ya existía se reconoce por la WH y queda enlazada a su ID (mismo id, mismo op)",!!bX&&bX.tareaId==="7001"&&bX.op===X.op&&bX.clave==="tarea:7001",JSON.stringify(bX&&{id:bX.id,t:bX.tareaId}));
     __check("K7: una sin WH que ya existía se reconoce por su clave sin WH y queda enlazada a su ID; su etiqueta pasa a «SIN WH · ID»",!!bY&&bY.tareaId==="7002"&&bY.op==="SIN WH · ID 7002"&&bY.sinLanzar===true&&bY.clave==="tarea:7002",JSON.stringify(bY&&{id:bY.id,op:bY.op}));
     __check("K7: una sin WH nueva con ID pero SIN ODC ya no es «clave incompleta»: entra con id tarea_<id>",!!b3&&b3.id==="tarea_7003"&&b3.op==="SIN WH · ID 7003"&&b3.sinLanzar===true&&!pB.claveIncompleta.some(x=>x.cliente==="CLIENTE K7"),JSON.stringify(b3&&{id:b3.id,op:b3.op}));
@@ -6370,10 +6370,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("K7: y tras aplicar conservan su ID de tarea (el archivo sin ID no lo borra); 7003 y 7004 quedan «no está en el archivo», no se borran",X2.tareaId==="7001"&&Y2.tareaId==="7002"&&(S.ordenes.find(o=>o.id==="tarea_7003")||{}).estado==="noArchivo"&&S.ordenes.some(o=>o.id==="tarea_7004"));
     /* C · Y recibe WH con el mismo ID; y una fila trae la WH de X con OTRO ID (conflicto) */
     const C=conId(tareaRows,x=>esFilaDe(x,X)?"7001":esFilaDe(x,Y)?"7002":"");C.forEach((x,i)=>{if(i&&esFilaDe(x,Y))x[col("Orden de producción")]="WH/MO/99102"});
-    {const f=C.find((x,i)=>i&&esFilaDe(x,X)).slice();f[H.length]="7999";f[col("Pedido")]=555;C.splice(1,0,f)}
+    {const f=C.find((x,i)=>i&&esFilaDe(x,X));f[H.length]="7999";f[col("Pedido")]=555}
     const pC=planTarea(C,"TAREA_K7c.xlsx");const cY=pC.ordenes.find(o=>o.id===Y.id);
     __check("K7: sin WH → WH por el ID de tarea: mismo id, WH nueva, etiqueta anterior guardada, prevAWh lo dice",!!cY&&cY.op==="WH/MO/99102"&&cY.claveAnterior==="SIN WH · ID 7002"&&cY.tareaId==="7002"&&pC.prevAWh.some(x=>x.id===Y.id&&/ID de tarea 7002/.test(x.por)),JSON.stringify(cY&&{op:cY.op,ant:cY.claveAnterior}));
-    __check("K7: la fila con la WH de X y otro ID es un CONFLICTO: no entra al plan, X no cuenta como «no vino» y la vista previa avisa",pC.tareaIdConflicto.length===1&&pC.tareaIdConflicto[0].id===X.id&&pC.tareaIdConflicto[0].tareaId==="7999"&&pC.tareaIdConflicto[0].tareaIdSistema==="7001"&&!pC.ordenes.some(o=>o.tareaId==="7999")&&!pC.prev.noVinieron.some(x=>x.id===X.id)&&/ID de tarea no coincide/.test(vistaPreviaTareaHTML(pC)),JSON.stringify(pC.tareaIdConflicto));
+    __check("K7: la fila de X con otro ID es un CONFLICTO: no entra al plan, X no cuenta como «no vino» y la vista previa avisa",pC.tareaIdConflicto.length===1&&pC.tareaIdConflicto[0].id===X.id&&pC.tareaIdConflicto[0].tareaId==="7999"&&pC.tareaIdConflicto[0].tareaIdSistema==="7001"&&!pC.ordenes.some(o=>o.tareaId==="7999")&&!pC.prev.noVinieron.some(x=>x.id===X.id)&&/<b>1<\/b><\/td><td>filas en <b>conflicto de ID<\/b>/.test(vistaPreviaTareaHTML(pC))&&/trae ID 7999, el sistema tiene 7001/.test(vistaPreviaTareaHTML(pC)),JSON.stringify(pC.tareaIdConflicto));
     const cantX=X2.cant;TAREA=pC;aplicarTarea();await __p(50);const X3=S.ordenes.find(o=>o.id===X.id),Y3=S.ordenes.find(o=>o.id===Y.id);
     __check("K7: tras aplicar, X sigue con su ID y su cantidad (la fila de conflicto no se aplicó), marcada «revisar» y sin quedar noArchivo",!!X3&&X3.tareaId==="7001"&&X3.cant===cantX&&X3.cant!==555&&!!X3.tareaIdConflicto&&X3.tareaIdConflicto.tareaIdArchivo==="7999"&&X3.estado!=="noArchivo",JSON.stringify(X3&&{c:X3.cant,t:X3.tareaId,e:X3.estado}));
     __check("K7: Y ya tiene su WH y conserva el avance",!!Y3&&Y3.op==="WH/MO/99102"&&(((S.avance[Y3.id]||{}).centros)||{}).corte===2);
@@ -6387,6 +6387,101 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     delete S.avance[Y.id];S.ordenes=S.ordenes.filter(o=>!/^tarea_/.test(o.id));S.ordenes.forEach(o=>{delete o.tareaId;delete o.tareaIdEnlace;delete o.tareaIdConflicto;if(o.id===Y.id){o.op=Y.op;o.clave=Y.clave;o.claveAnterior=Y.claveAnterior}});
     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);
     __check("K7: limpieza: la cartera vuelve a su tamaño",S.ordenes.length===nAntes,S.ordenes.length+" vs "+nAntes);}
+   /* K7b · revisión adversarial del 19-sep: formato del ID, tarea sin WH, otra tarea con los mismos datos, WH repetida, WH de otra, cambio de WH, alcance, repetidas, freno */
+   {const H=tareaRows[0];const col=n=>H.indexOf(n);const pr0=window.prompt;
+    __check("K7b: el ID se normaliza: 6113, «6113», «6113.0», « 06113» y __export__.project_task_6113_9f3a son la misma tarea; otro texto queda tal cual",[6113,"6113","6113.0"," 06113","__export__.project_task_6113_9f3a"].every(v=>claveOrden({tareaId:v}).clave==="tarea:6113")&&claveOrden({tareaId:"ABC 1"}).clave==="tarea:abc1"&&normTareaId(null)===""&&normTareaId("")==="");
+    const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);const nAntes=S.ordenes.length;
+    const abiertasWH=S.ordenes.filter(o=>abierta(o)&&lanzada(o)&&!o.claveRepetida&&(o.ruta||[]).length);const X=abiertasWH[0],B=abiertasWH[1];const Y=S.ordenes.find(o=>o.sinLanzar&&o.clave&&!o.claveRepetida);
+    const esFilaDe=(x,o)=>{if(o.sinLanzar)return !String(x[col("Orden de producción")]||"").trim()&&String(x[col("Cliente")]||"")===o.cliente&&String(x[col("Stilo")]||"")===o.ref&&String(x[col("ODC")]||"")===o.odc&&String(x[col("Color")]||"").toUpperCase()===o.colorOdoo&&String(x[col("Proyecto")]||"")===o.proyecto;return String(x[col("Orden de producción")]||"").trim()===o.op};
+    const conId=(rows,f)=>rows.map((r,i)=>{const x=r.slice();x.push(i?f(x):"ID");return x});
+    const filaDe=(rows,o)=>rows.find((x,i)=>i&&esFilaDe(x,o));
+    const sinOrden=(rows,o)=>{const out=[];let skip=false;rows.forEach((x,i)=>{if(!i){out.push(x);return}const op=String(x[col("Orden de producción")]||"").trim();const cab=op||String(x[col("Cliente")]||"")||String(x[col("Fase")]||"")||String(x[col("ODC")]||"");if(cab)skip=(op===o.op);if(!skip)out.push(x)});return out};
+    /* base con ID: X=7001 (número), Y=7002 */
+    const B1=conId(tareaRows,x=>esFilaDe(x,X)?7001:esFilaDe(x,Y)?"7002":"");TAREA=planTarea(B1,"TAREA_K7b1.xlsx");aplicarTarea();await __p(50);
+    const X1=S.ordenes.find(o=>o.id===X.id),Y1=S.ordenes.find(o=>o.id===Y.id);
+    __check("K7b: un ID numérico de Excel queda guardado como texto normalizado",X1.tareaId==="7001"&&Y1.tareaId==="7002"&&X1.clave==="tarea:7001");
+    /* 1 · el mismo archivo con External ID: cero conflictos */
+    const B2=conId(tareaRows,x=>esFilaDe(x,X)?"__export__.project_task_7001_9f3a":esFilaDe(x,Y)?"__export__.project_task_7002_ab":"");const p2=planTarea(B2,"TAREA_K7b2.xlsx");
+    __check("K7b: cambiar de ID numérico a External ID entre cargas NO es conflicto (misma tarea)",p2.tareaIdConflicto.length===0&&(p2.ordenes.find(o=>o.id===X.id)||{}).tareaId==="7001"&&(p2.ordenes.find(o=>o.id===Y.id)||{}).tareaId==="7002",JSON.stringify(p2.tareaIdConflicto.slice(0,2)));
+    /* 2 · la tarea vuelve SIN WH: la WH se conserva y se avisa */
+    const B3=conId(tareaRows,x=>esFilaDe(x,X)?"7001":"");{const f=filaDe(B3,X);f[col("Orden de producción")]="";f[col("Estado OP")]=""}
+    const p3=planTarea(B3,"TAREA_K7b3.xlsx");const o3=p3.ordenes.find(o=>o.id===X.id);
+    __check("K7b: una fila con ID y sin WH sobre una orden que ya tenía WH NO le quita la WH: la conserva, sigue lanzada y la vista previa avisa",!!o3&&o3.op===X.op&&o3.sinLanzar===false&&o3.whConservada===true&&p3.perdioWH.length===1&&p3.perdioWH[0].id===X.id&&/<b>1<\/b><\/td><td>tareas que <b>vienen sin WH pero la orden ya tenía WH<\/b>/.test(vistaPreviaTareaHTML(p3)),JSON.stringify(o3&&{op:o3.op,s:o3.sinLanzar}));
+    const nb3=S.bitacora.length;TAREA=p3;aplicarTarea();await __p(50);const X3=S.ordenes.find(o=>o.id===X.id);
+    __check("K7b: tras aplicar, la orden conserva WH y estado, queda marcada «vino sin WH», sale en Hoy y en bitácora",!!X3&&X3.op===X.op&&lanzada(X3)&&!!X3.whSinOdoo&&(()=>{const it=pendientesHoy().find(x=>x.k==="whSinOdoo");return !!it&&it.n>=1})()&&S.bitacora.slice(nb3).some(b=>/vino SIN WH/.test(b.t)),JSON.stringify(X3&&{op:X3.op,l:lanzada(X3),m:!!X3.whSinOdoo}));
+    abrirFichaOrden(X3.id);__check("K7b: la ficha explica la marca y ofrece «Ya lo revisé»",/La tarea vino sin WH/.test(document.getElementById("modal").innerHTML)&&/quitarMarcaWHSinOdoo/.test(document.getElementById("modal").innerHTML));cerrar();
+    TAREA=planTarea(B1,"TAREA_K7b1b.xlsx");aplicarTarea();await __p(50);
+    __check("K7b: cuando la tarea vuelve con su WH, la marca se quita sola",!(S.ordenes.find(o=>o.id===X.id)||{}).whSinOdoo);
+    /* 3 · otra tarea con los MISMOS cinco datos que una sin WH ya enlazada: es otra orden, no un conflicto */
+    const B4=conId(tareaRows,x=>esFilaDe(x,X)?"7001":esFilaDe(x,Y)?"7002":"");{const f=filaDe(B4,Y).slice();f[H.length]="7005";B4.splice(1,0,f);const g=filaDe(B4,Y).slice();g[col("Orden de producción")]="WH/MO/99103";g[col("Estado OP")]="confirmed";g[H.length]="7006";B4.splice(1,0,g)}
+    const p4=planTarea(B4,"TAREA_K7b4.xlsx");
+    __check("K7b: una fila sin WH con ID nuevo y los mismos cinco datos entra como orden nueva (tarea_7005), no como conflicto; y una WH nueva con ID nuevo y esos datos tampoco se cuelga de la sin WH",p4.tareaIdConflicto.length===0&&p4.ordenes.some(o=>o.id==="tarea_7005"&&o.sinLanzar)&&p4.ordenes.some(o=>o.id==="tarea_7006"&&o.op==="WH/MO/99103")&&(p4.ordenes.find(o=>o.id===Y.id)||{}).tareaId==="7002"&&!p4.prevAWh.some(x=>x.id===Y.id),JSON.stringify({c:p4.tareaIdConflicto.length,ids:p4.ordenes.filter(o=>/^tarea_700[56]/.test(o.id)).map(o=>o.id)}));
+    /* 4 · la misma WH en dos filas con ID distinto: no entra ninguna; la existente no se toca ni cuenta como «no vino» */
+    const B5=conId(tareaRows,x=>esFilaDe(x,X)?"7001":"");{const f=filaDe(B5,X).slice();f[H.length]="7008";f[col("Pedido")]=777;B5.splice(1,0,f)}
+    const p5=planTarea(B5,"TAREA_K7b5.xlsx");
+    __check("K7b: WH repetida con dos ID: las dos filas se reportan y ninguna entra; la orden existente no es «no vino»",p5.whRepetida.length===2&&!p5.ordenes.some(o=>o.id===X.id||o.tareaId==="7008")&&!p5.prev.noVinieron.some(x=>x.id===X.id)&&/<b>2<\/b><\/td><td>la <b>misma WH en dos filas con ID de tarea distinto<\/b>/.test(vistaPreviaTareaHTML(p5)),JSON.stringify(p5.whRepetida));
+    const cantX=(S.ordenes.find(o=>o.id===X.id)||{}).cant;TAREA=p5;aplicarTarea();await __p(50);const X5=S.ordenes.find(o=>o.id===X.id);
+    __check("K7b: tras aplicar, la orden sigue igual (cantidad, ID), no es noArchivo y queda marcada «clave repetida — revisar»",!!X5&&X5.cant===cantX&&X5.tareaId==="7001"&&X5.estado!=="noArchivo"&&!!X5.claveRepetida&&!S.ordenes.some(o=>o.tareaId==="7008"),JSON.stringify(X5&&{c:X5.cant,e:X5.estado}));
+    S.ordenes.forEach(o=>{if(o.id===X.id)delete o.claveRepetida});
+    /* 5 · la tarea quiere una WH que ya es de OTRA orden */
+    const B6=sinOrden(conId(tareaRows,x=>esFilaDe(x,X)?"7001":""),B);{const f=filaDe(B6,X);f[col("Orden de producción")]=B.op}
+    const p6=planTarea(B6,"TAREA_K7b6.xlsx");
+    __check("K7b: si la tarea trae la WH de otra orden, es conflicto whDeOtra sobre la tarea: la fila no entra, la otra orden no se toca y la tarea no es «no vino»",p6.tareaIdConflicto.length===1&&p6.tareaIdConflicto[0].tipo==="whDeOtra"&&p6.tareaIdConflicto[0].id===X.id&&p6.tareaIdConflicto[0].otraId===B.id&&!p6.ordenes.some(o=>o.id===X.id)&&!p6.ordenes.some(o=>o.id===B.id)&&!p6.prev.noVinieron.some(x=>x.id===X.id),JSON.stringify(p6.tareaIdConflicto));
+    TAREA=p6;aplicarTarea();await __p(50);const X6=S.ordenes.find(o=>o.id===X.id),B6o=S.ordenes.find(o=>o.id===B.id);
+    __check("K7b: tras aplicar, la tarea conserva su WH y queda marcada; la otra orden sigue con la suya",!!X6&&X6.op===X.op&&X6.tareaIdConflicto&&X6.tareaIdConflicto.tipo==="whDeOtra"&&X6.estado!=="noArchivo"&&!!B6o&&B6o.op===B.op&&!B6o.tareaIdConflicto&&B6o.tareaId==null);
+    abrirFichaOrden(X6.id);__check("K7b: la ficha explica el conflicto de WH y no ofrece «aceptar el ID»",/ya es de otra orden/.test(document.getElementById("modal").innerHTML)&&!/aceptarIdTarea/.test(document.getElementById("modal").innerHTML)&&/quitarMarcaConflictoId/.test(document.getElementById("modal").innerHTML));cerrar();
+    {const cf=window.confirm;window.confirm=()=>true;quitarMarcaConflictoId(X6.id);window.confirm=cf}cerrar();__check("K7b: «Ya lo revisé» quita la marca (con confirmación)",!(S.ordenes.find(o=>o.id===X.id)||{}).tareaIdConflicto);
+    /* 6 · cambio de WH de la misma tarea */
+    const B7=conId(tareaRows,x=>esFilaDe(x,X)?"7001":"");{const f=filaDe(B7,X);f[col("Orden de producción")]="WH/MO/99104"}
+    const p7=planTarea(B7,"TAREA_K7b7.xlsx");
+    __check("K7b: la misma tarea con otra WH es «cambió de WH» (no «sin WH → WH») y se cuenta aparte",p7.prevAWh.some(x=>x.id===X.id&&x.tipo==="cambioWH")&&/<td><b>1<\/b><\/td><td>órdenes que <b>cambiaron de WH<\/b>/.test(resumenTareaHTML(p7))&&!/pasaron de sin WH a WH/.test(resumenTareaHTML(p7)));
+    const nb7=S.bitacora.length;TAREA=p7;aplicarTarea();await __p(50);const X7=S.ordenes.find(o=>o.id===X.id);
+    __check("K7b: tras aplicar: WH nueva, la anterior guardada en whAnteriores y una línea de bitácora «cambió de WH»",!!X7&&X7.op==="WH/MO/99104"&&(X7.whAnteriores||[]).length===1&&X7.whAnteriores[0].op===X.op&&S.bitacora.slice(nb7).filter(b=>/cambió de WH/.test(b.t)).length===1);
+    const nb7b=S.bitacora.length;TAREA=planTarea(B7,"TAREA_K7b7b.xlsx");aplicarTarea();await __p(50);
+    __check("K7b: la carga siguiente no repite la línea de bitácora del cambio ni la de la clave anterior",!S.bitacora.slice(nb7b).some(b=>/cambió de WH|clave anterior/.test(b.t)&&new RegExp(X.op.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(b.t)));
+    abrirFichaOrden(X.id);__check("K7b: la ficha muestra la WH anterior",new RegExp("antes "+X.op.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(document.getElementById("modal").innerHTML));cerrar();
+    /* 7 · fuera de alcance con ID sobre una orden todavía sin enlazar */
+    S.ordenes.forEach(o=>{if(o.id===B.id){delete o.tareaId;o.estado=B.estado;delete o.noArchivo;delete o.fueraAlcance;o.clave=claveDeOrden(o).clave}});
+    const B8=conId(tareaRows,x=>esFilaDe(x,X)?"7001":esFilaDe(x,B)?"7010":"");{const f=filaDe(B8,B);f[col("Fase")]="Facturado";f[col("Fecha Entrega")]="2025-01-10"}
+    const p8=planTarea(B8,"TAREA_K7b8.xlsx");
+    __check("K7b: una fila fuera de alcance con ID sobre una orden sin enlazar se reconoce (existeId) y la orden es «fuera de alcance», no «no viene en el archivo»",p8.excluidas.alcance.some(x=>x.existeId===B.id)&&(p8.prev.noVinieron.find(x=>x.id===B.id)||{}).motivo==="fuera de alcance",JSON.stringify(p8.prev.noVinieron.find(x=>x.id===B.id)));
+    TAREA=p8;aplicarTarea();await __p(50);const B8o=S.ordenes.find(o=>o.id===B.id);
+    __check("K7b: tras aplicar queda noArchivo CON la marca fueraAlcance",!!B8o&&B8o.estado==="noArchivo"&&!!B8o.fueraAlcance&&B8o.fueraAlcance.motivo==="entregaPasadaCerrada",JSON.stringify(B8o&&{e:B8o.estado,fa:B8o.fueraAlcance&&B8o.fueraAlcance.motivo}));
+    /* 8 · dos filas con el mismo ID sobre una orden que existe por WH: ninguna se aplica, la vista previa y la carga cuadran */
+    S.ordenes.forEach(o=>{if(o.id===X.id){delete o.tareaId;o.op=X.op;o.clave=claveDeOrden(o).clave;delete o.whAnteriores}});
+    const B9=conId(tareaRows,x=>esFilaDe(x,X)?"7001":"");{const f=filaDe(B9,X).slice();f[col("Pedido")]=888;B9.splice(1,0,f)}
+    const p9=planTarea(B9,"TAREA_K7b9.xlsx");const cantX9=(S.ordenes.find(o=>o.id===X.id)||{}).cant;
+    __check("K7b: ID repetido en el archivo sobre una orden existente por WH: la vista previa dice 2 no aplicadas y ninguna entra al plan",p9.repSaltadas===2&&p9.prev.repetidasNoAplicadas===2&&!p9.ordenes.some(o=>o.id===X.id)&&p9.repExistentesIds.includes(X.id)&&!p9.prev.noVinieron.some(x=>x.id===X.id),JSON.stringify({s:p9.repSaltadas,r:p9.prev.repetidasNoAplicadas}));
+    TAREA=p9;aplicarTarea();await __p(50);const X9=S.ordenes.find(o=>o.id===X.id);
+    __check("K7b: tras aplicar la orden sigue igual, sin ID, marcada «clave repetida», no noArchivo, y la carga registra 2 no aplicadas",!!X9&&X9.cant===cantX9&&!X9.tareaId&&!!X9.claveRepetida&&X9.estado!=="noArchivo"&&S.ordenes.filter(o=>o.op===X.op).length===1&&(S.params.tareaCarga||{}).claveRepetidaNoAplicadas===2,JSON.stringify(X9&&{c:X9.cant,t:X9.tareaId,n:S.ordenes.filter(o=>o.op===X.op).length}));
+    S.ordenes.forEach(o=>{if(o.id===X.id)delete o.claveRepetida});
+    /* 9 · freno por conflicto masivo: todas las cabeceras con ID chocan */
+    S.ordenes.forEach(o=>{if(o.id===B.id){o.estado=B.estado;delete o.noArchivo;delete o.fueraAlcance}});
+    const B1c=conId(tareaRows,x=>esFilaDe(x,X)?"7001":esFilaDe(x,B)?"7003":"");TAREA=planTarea(B1c,"TAREA_K7b1c.xlsx");aplicarTarea();await __p(50);   /* X=7001, B=7003 */
+    const B10=conId(tareaRows,x=>esFilaDe(x,X)?"9001":esFilaDe(x,B)?"9003":"");const p10=planTarea(B10,"TAREA_K7b10.xlsx");
+    __check("K7b: si la mayoría de las cabeceras con ID chocan con el ID que ya tienen sus órdenes, la vista previa frena (otro identificador)",p10.prev.conflictoMasivo.frena===false&&p10.tareaIdConflicto.length===2&&p10.prev.conflictoMasivo.n===2,"con solo 2 no frena (mínimo "+prm('minConflictosIdFreno',5)+")");
+    S.params.minConflictosIdFreno=2;const p10b=planTarea(B10,"TAREA_K7b10b.xlsx");
+    __check("K7b: con el mínimo en 2 (parámetro) frena y lo dice en rojo",p10b.prev.conflictoMasivo.frena===true&&/no coincide con el que ya tienen <b>2<\/b> de las <b>2<\/b>/.test(vistaPreviaTareaHTML(p10b).replace(/<b>(\d+)<\/b>/g,"<b>$1</b>"))||p10b.prev.conflictoMasivo.frena===true&&/OTRO identificador/.test(vistaPreviaTareaHTML(p10b)));
+    {window.prompt=()=>"";const nO=S.ordenes.length;TAREA=p10b;aplicarTarea();await __p(50);window.prompt=pr0;
+     __check("K7b: aplicar con el freno exige la palabra: sin ella no se aplica nada",S.ordenes.length===nO&&(S.ordenes.find(o=>o.id===X.id)||{}).tareaId==="7001"&&!(S.ordenes.find(o=>o.id===X.id)||{}).tareaIdConflicto);}
+    delete S.params.minConflictosIdFreno;
+    page="config";CONF.tab="ordenes2";render();__check("K7b: los parámetros del freno están en Alcance de las cargas",/minConflictosIdFreno/.test(document.getElementById("p-config").innerHTML)&&/pctConflictosIdFreno/.test(document.getElementById("p-config").innerHTML));
+    /* 10 · aceptar el ID nuevo desde la ficha */
+    const B11=conId(tareaRows,x=>esFilaDe(x,X)?"9001":"");TAREA=planTarea(B11,"TAREA_K7b11.xlsx");aplicarTarea();await __p(50);
+    {const Xc=S.ordenes.find(o=>o.id===X.id);__check("K7b: un conflicto de ID deja la marca con el ID del archivo",!!Xc.tareaIdConflicto&&Xc.tareaIdConflicto.tareaIdArchivo==="9001"&&Xc.tareaId==="7001");
+     abrirFichaOrden(X.id);__check("K7b: la ficha ofrece «Aceptar el ID 9001»",/aceptarIdTarea/.test(document.getElementById("modal").innerHTML)&&/Aceptar el ID 9001/.test(document.getElementById("modal").innerHTML));cerrar();
+     const cf=window.confirm;window.confirm=()=>true;const nb=S.bitacora.length;aceptarIdTarea(X.id);window.confirm=cf;const Xd=S.ordenes.find(o=>o.id===X.id);
+     __check("K7b: aceptar cambia el ID, quita la marca, y queda en auditoría y bitácora",Xd.tareaId==="9001"&&!Xd.tareaIdConflicto&&Xd.clave==="tarea:9001"&&S.bitacora.slice(nb).some(b=>/ID de tarea 7001 → 9001 aceptado/.test(b.t))&&auditoriaTodo().some(a=>a.tipo==="tareaId"&&a.oid===X.id));
+     const p12=planTarea(B11,"TAREA_K7b12.xlsx");__check("K7b: desde entonces el archivo la reconoce por el ID nuevo sin conflicto",p12.tareaIdConflicto.length===0&&(p12.ordenes.find(o=>o.id===X.id)||{}).tareaId==="9001");}
+    /* 11 · clave guardada coherente y cruce de OT por cualquiera de las claves */
+    TAREA=planTarea(tareaRows,"TAREA_K7b13.xlsx");aplicarTarea();await __p(50);
+    {const Xe=S.ordenes.find(o=>o.id===X.id);__check("K7b: tras un archivo sin columna ID, la clave guardada sigue siendo la de tarea (diagClaves no la cuenta «sin guardar»)",Xe.tareaId==="9001"&&Xe.clave==="tarea:9001"&&diagClaves().incompletas.every(x=>x.id!==X.id));
+     const po=planOT(window.__otRows,"OT_K7b.xlsx");__check("K7b: las OT cruzan por cualquiera de las claves: las órdenes con ID de tarea cuentan",po.cruce.enArchivo>0&&po.cruce.enArchivo>=S.ordenes.filter(o=>o.tareaId&&po.ordenesArchivo.has(claveOrden({op:o.op}).clave)).length);}
+    __check("K7b: registro de cargas: la línea dice si trajo ID, enlazadas, conflictos, WH repetidas y «vinieron sin WH»",/con ID de tarea \(\d+\)/.test(resumenCargaTxt({tipo:'tareas',resumen:{actualizadas:1,nuevas:0,noVinieron:0,fueraAlcance:0,noCalzan:0,conColumnaId:true,conTareaId:3,tareaIdEnlazadas:1,tareaIdConflicto:2,whRepetida:2,perdioWH:1}}))&&/2 CONFLICTOS de ID/.test(resumenCargaTxt({tipo:'tareas',resumen:{actualizadas:1,nuevas:0,noVinieron:0,fueraAlcance:0,noCalzan:0,conColumnaId:true,conTareaId:3,tareaIdConflicto:2}}))&&/sin columna ID/.test(resumenCargaTxt({tipo:'tareas',resumen:{actualizadas:1,nuevas:0,noVinieron:0,fueraAlcance:0,noCalzan:0,conColumnaId:false}})));
+    /* limpieza */
+    S.ordenes=S.ordenes.filter(o=>!/^tarea_/.test(o.id));S.ordenes.forEach(o=>{delete o.tareaId;delete o.tareaIdEnlace;delete o.tareaIdConflicto;delete o.whSinOdoo;delete o.whAnteriores;delete o.claveRepetida;if(o.id===X.id){o.op=X.op;o.estado=X.estado;delete o.fueraAlcance}if(o.id===B.id){o.estado=B.estado;delete o.fueraAlcance;delete o.noArchivo}if(o.id===Y.id){o.op=Y.op;o.sinLanzar=true}o.clave=claveDeOrden(o).clave});
+    const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);
+    __check("K7b: limpieza: la cartera vuelve a su tamaño",S.ordenes.length===nAntes,S.ordenes.length+" vs "+nAntes);}
    /* K8 · fase: sin WH manda Odoo (también al recibir la WH); con WH manda la planta (tabla 14) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);delete S.params.faseOdooSinWH;
     const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);

@@ -49,3 +49,29 @@ Mientras la orden no tenga WH en el sistema, la fase se toma del archivo en cada
 la carga en que recibe la WH. Desde que tiene WH, la fase la mueve la planta aquí y el archivo no la pisa (bandeja «no calzan»,
 como antes). Interruptor «Sin WH manda Odoo» en la fila fase de la tabla 14 (`faseOdooSinWH`, 1 por defecto; 0 = se conserva
 siempre). La vista previa de «Actualizar datos» cuenta las órdenes sin WH cuya fase cambia. Pruebas K8 (8 comprobaciones).
+
+## Revisión adversarial (19-sep, 4 lentes, 36 hallazgos confirmados) — lo que cambió
+
+- **Un solo formato de ID**: `normTareaId` guarda y compara siempre el número de la tarea (6113, «6113», «6113.0», « 06113» y
+  «__export__.project_task_6113_9f3a» son la misma tarea). Cambiar la forma de exportar entre dos cargas ya no convierte todo en conflicto.
+- **Freno por conflicto masivo**: si al menos N filas (`minConflictosIdFreno`, 5) y más del % (`pctConflictosIdFreno`, 50) de las cabeceras con
+  ID chocan con el ID que ya tienen sus órdenes, la vista previa avisa en rojo «el archivo trae OTRO identificador» y aplicar exige APLICAR.
+  Parámetros visibles en Alcance de las cargas.
+- **La tarea vuelve sin WH**: la WH NO se quita (la orden seguiría en planta); se conserva, queda marcada `whSinOdoo` (ficha, bandeja
+  «Tareas que vinieron sin WH» en Hoy, bitácora) y la marca se quita sola cuando vuelve con su WH, o con «Ya lo revisé».
+- **Otra tarea con los mismos cinco datos** que una sin WH ya enlazada (con o sin WH nueva) **entra como orden nueva**: el conflicto solo
+  existe cuando chocan por la WH.
+- **La misma WH en dos filas con ID distinto** (`whRepetida`): no entra ninguna, se reporta; la orden existente queda «clave repetida — revisar»
+  y no cuenta como «no vino».
+- **La tarea quiere una WH que ya es de otra orden** (`whDeOtra`): la fila no entra, la tarea queda marcada (ficha explica de quién es la WH),
+  la otra orden no se toca.
+- **Cambio de WH de la misma tarea**: se cuenta aparte («cambiaron de WH»), la anterior queda en `o.whAnteriores` (se ve en la ficha) y la
+  bitácora lo dice UNA vez (la línea de «clave anterior» tampoco se repite en cada carga).
+- **Fuera de alcance con ID sobre una orden sin enlazar**: se reconoce (`existeId`) y queda «fuera de alcance», no «no viene en el archivo».
+- **Clave repetida en el archivo** sobre una orden existente: se decide en `planTarea` (`repSaltadas`, `repExistentesIds`): ninguna fila entra y
+  TODAS las órdenes que comparten esa clave quedan como están; vista previa y carga cuadran.
+- **Conflicto de ID «pegajoso»**: desde la ficha, con permiso `programa` o `config`, «Aceptar el ID N» (`aceptarIdTarea`: auditoría + bitácora;
+  no deja dos órdenes con la misma tarea) o «Ya lo revisé».
+- `o.clave` sigue a la identidad tras un archivo sin columna; las OT cruzan por cualquiera de las claves; el registro de cargas muestra
+  ID/enlazadas/conflictos/WH repetidas/vinieron sin WH; aviso cuando hay órdenes con ID y el archivo no trae la columna.
+- Pruebas **K7b** (30 comprobaciones) más las K7 corregidas para mirar los números de la vista previa. Harness: 2.594 comprobaciones, 0 errores.
