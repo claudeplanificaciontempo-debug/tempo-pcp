@@ -161,4 +161,4 @@
 
 ## Nota del 20-sep
 
-El bloque 8 (Excel para ingeniería) ya se entregó esta misma noche como ; el botón «Exportar a Excel» dentro de la app queda para el paso 1. Los principios visuales 1–3 ya se aplicaron a Órdenes, la ficha y los paneles de todo el sistema (commit a5e5944).
+El bloque 8 (Excel para ingeniería) ya se entregó esta misma noche como `entregas/TIEMPOS_PARA_LLENAR3.xlsx`; el botón «Exportar a Excel» dentro de la app queda para el paso 1. Los principios visuales 1–3 ya se aplicaron a Órdenes, la ficha y los paneles de todo el sistema (commit a5e5944).

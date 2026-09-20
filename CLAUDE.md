@@ -956,6 +956,12 @@ orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de
 corte y empaque quedan en 0 con aviso (`sinTiempo`), confección con el minuto estimado. Sin categoría resuelta no se inventa ruta. Prueba RD. El servidor
 del harness acepta `POST /guardar?nombre=` (guarda en test/.out/exports: para sacar Excel armados en el navegador con SheetJS; entregas en `entregas/`).
 
+**Reportería: propuesta de esquema (20-sep-2026, SIN construir):** `REPORTERIA_ESQUEMA_PROPUESTA.md` — inventario de todo lo que reporta el sistema,
+solapes (tres listas de órdenes con cuatro estados; «hechas» de cuatro formas; minutos pendientes sumados aparte del `cargaUnica`; Resumen gerencial con
+`programarTodo` y pesos 15/30/50/65/85 fijos), 10 bloques por pregunta (Mis reportes por rol · ¿Cómo va el mes? · ¿Dónde está cada orden? · ¿Alcanza la
+capacidad? · Planta esta semana · reportes por tramo con cuatro bandas CARGA/AVANCE/CUMPLIMIENTO/CALIDAD · Liberaciones · Paros y tiempos reales · Tiempos
+para ingeniería · Rutas por confirmar · Salud del sistema), qué se funde/retira y plan en tres pasos. Esperar aprobación de la usuaria antes de construir.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan
