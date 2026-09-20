@@ -951,6 +951,12 @@ cambió; sin permiso de rutas se guarda el resto. `mOrden` va en cuatro bloques 
 tabla 8 o «sin tela en tabla 8»— · Ruta y operaciones · Insumos), modal `.modal.orden`. `fotoMini` 44 px (`fotoMiniPx`) con `data-zoom`; `fotoZoomInit`
 (capa fija al pasar el mouse, `fotoZoomPx` 320). Ver `FASES_ORDENES_FICHA_19SEP.md`.
 
+**Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
+después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de
+Servicios y Terminados / Lavandería / Botones 8; Facturado y Stand by 9. Seis fases que no venían se ubicaron junto a su pareja (a confirmar). **`cmpFases(a,b)`**
+(secuencia → número de Odoo → nombre) es el ÚNICO comparador para ordenar fases en pantalla: no volver a `faseNum(a)-faseNum(b)||localeCompare`.
+Ver `FASES_ORDENES_FICHA_19SEP.md`.
+
 **Ruta lista sin editar (20-sep-2026, decisión de la usuaria):** una orden cuya prenda ya está terminada (fase con **«sin carga»** en la tabla 1:
 prenda terminada / cerrada — solo falta facturar) o que ya no está abierta (`abiertaDe`) **no necesita revisión de ruta**. `rutaNoAplica(o)`
 da el motivo (`terminada` | `cerrada`) y `rutaLista(o)` = `rutaConfirmada(o) || rutaNoAplica(o)`. Es **derivado** de la fase: no escribe

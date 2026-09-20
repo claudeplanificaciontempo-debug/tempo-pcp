@@ -204,6 +204,11 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.69 Orden real de las fases con decimales y listas ordenadas por esa secuencia (20-sep)
+- Archivo de la usuaria con 40 fases numeradas 0 … 8.6 (mismo número = paralelas). Reemplaza la numeración del 19-sep; Confección
+  después de servicios, Empaque después de Servicios y Terminados. Seis fases sin número en el archivo se ubicaron junto a su
+  pareja (a confirmar). Toda lista de fases se ordena por esa secuencia (`cmpFases`). Ver `FASES_ORDENES_FICHA_19SEP.md`.
+
 ### 2.68 Pestaña Rutas en un solo recuadro y ruta en lote (20-sep)
 - Órdenes → Rutas es UNA lista (por confirmar / confirmadas / todas, buscador) con el agrupador común y casilla por grupo y por
   orden; sobre lo marcado: «Definir ruta para las marcadas» (rutas actuales con «usar», casillas de centros, plan por orden — entra /

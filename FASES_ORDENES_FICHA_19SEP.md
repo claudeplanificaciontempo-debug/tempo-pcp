@@ -34,6 +34,20 @@ Efecto: `esDevolucionFase` ya no pide motivo entre bordado ↔ confección ↔ m
 sí lo pide al volver a CD Ensamble, a corte, o de Empaque a Botones. La bandeja «fases sin secuencia» queda vacía para las
 fases de Odoo (4 Calidad Produccion, sin órdenes, queda sin número a propósito).
 
+### Corrección del 20-sep: el orden real, con decimales (archivo de la usuaria)
+«Capaz que no te lo expliqué bien»: la usuaria mandó `Tabla_din_mica_Tareas_project.task6.xlsx` con 40 fases y un número decimal por
+fase (0 … 8.6). `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, bandera `fasesSecuencia20`, corre en `sembrarDecisiones16`
+después de la del 19-sep) **reemplazan** la numeración del 19-sep. Mismo número = puede entrar a una o a otra (paralelas, sin
+motivo): Macro / Ord Compras 0.4 · Incompletos / Preparación Insumos 4.1 · Serigrafía / Bordado 6 · Etiquetado / Pulido Bordado 6.1 ·
+Lavandería / Botones / Servicios y Terminados 8 · Embodegado / Exportación / Cotizaciones 8.6. Confección (7) va DESPUÉS de servicios
+(6) — ya no es un tramo no secuencial — y Empaque (8.1) después de Servicios y Terminados (8). Las seis fases que no venían en el archivo
+se ubicaron junto a su pareja y quedan **a confirmar**: 6 CD SERIGRAFIA y 6Sublimado = 6, 5Corte Maquila Ibarra = 5, 8Lavanderia Quito
+= 8, 4 Calidad Produccion = 4.2, Facturado y Stand by = 9. Dudas para la usuaria: 6 CD BORDADO quedó en 6.3 (después de Bordado 6 y
+Pulido 6.1) tal como venía en el archivo.
+**Todas las listas ordenan las fases con `cmpFases`** (secuencia de la tabla 1 → número de Odoo → nombre): agrupador común,
+filtro de fases, Rutas, Órdenes, Carga general, centros. Antes se ordenaba por número y nombre, por eso «8Empaque» salía antes
+que «8Servicios y Terminados». Pruebas FS20.
+
 ## 2 · Órdenes: «Por editar» por defecto
 
 Chips **Edición**: *Por editar (ruta sin confirmar)* · *Editadas (ruta confirmada)* · *Todas*, con conteos
