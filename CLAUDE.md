@@ -951,6 +951,11 @@ cambió; sin permiso de rutas se guarda el resto. `mOrden` va en cuatro bloques 
 tabla 8 o «sin tela en tabla 8»— · Ruta y operaciones · Insumos), modal `.modal.orden`. `fotoMini` 44 px (`fotoMiniPx`) con `data-zoom`; `fotoZoomInit`
 (capa fija al pasar el mouse, `fotoZoomPx` 320). Ver `FASES_ORDENES_FICHA_19SEP.md`.
 
+**Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
+orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;
+corte y empaque quedan en 0 con aviso (`sinTiempo`), confección con el minuto estimado. Sin categoría resuelta no se inventa ruta. Prueba RD. El servidor
+del harness acepta `POST /guardar?nombre=` (guarda en test/.out/exports: para sacar Excel armados en el navegador con SheetJS; entregas en `entregas/`).
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan

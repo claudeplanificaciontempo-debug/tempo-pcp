@@ -778,7 +778,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 00:49';
+const APP_BUILD='2026-09-20 01:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -11393,7 +11393,10 @@ function planTarea(rows,nombre){
     // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
     const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
     const spc=k?samPorCentro(k):{};
-    const pro=armarRuta('propia',0,opts,[],k?k.id:null).filter(p=>!['tej','tin','proveedor'].includes(p.centro)).map(p=>tiempoPaso(p,k,spc,d.puntadas));
+    const sinHoja=!!k&&![...centrosDeCategoria(k)].some(c=>CE(c)&&CE(c).area==='pro');   /* la familia existe pero no aporta ningún centro de producción (sin hoja LMO); sin categoría resuelta no se inventa ruta */
+    const optsRuta=sinHoja?[...new Set([...opts,...RUTA_DEFECTO_PRO.filter(c=>CE(c))])]:opts;
+    const pro=armarRuta('propia',0,optsRuta,[],k?k.id:null).filter(p=>!['tej','tin','proveedor'].includes(p.centro)).map(p=>tiempoPaso(p,k,spc,d.puntadas));
+    const rutaDefecto=sinHoja&&pro.some(p=>RUTA_DEFECTO_PRO.includes(p.centro));
     const textil=rutaTextilDe({telas:telasKg}); // por las líneas (aunque alguna no tenga tela del catálogo): la ruta textil no se pierde por falta de catálogo
     const rutaCompleta=[...textil,...pro];
     const historia=!!(fila&&fila.sistema==='cerrada'); // Facturado / Stand by; el Estado OP no decide
@@ -11416,7 +11419,7 @@ function planTarea(rows,nombre){
       cant:d.cant,total:d.total,precio:d.cant>0?+(d.total/d.cant).toFixed(4):null,fecha:d.fecha,prio:3,fase:d.fase,faseSistema:sistema,esCola:!!(fila&&fila.esCola),sinCarga:!!(fila&&fila.sinCarga),estadoOP:d.estadoOP,estado,
       tecnica:tec?tec.id:null,tecnicaTxt:d.tecnicaTxt,puntadas:d.puntadas,telas,materiales,ruta,rutaCompleta,origenTela:origen,origenesTela:origs,kgTej:+kgTej.toFixed(3),kgTin:+kgTin.toFixed(3),
       vencida,historia,bloqueada,devolucion,contradiccion,faseNoCalza:!fila,catSinOps,telaSinClasificar:[...new Set(sinClas.map(m=>m.n3))],sinTelaKg:!telasKg.length,tecnicaNoEncontrada:!!(d.tecnicaTxt&&!tec),
-      clave:d.clave,claveAnterior,tareaId:d.tareaId||null,whConservada:!!d.whConservada,claveRepetida:!!d.claveRepetida,sinLanzar:!!d.sinLanzar,sinFechaEntrega:!!d.sinFechaEntrega,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
+      clave:d.clave,claveAnterior,tareaId:d.tareaId||null,whConservada:!!d.whConservada,rutaDefecto:!!rutaDefecto,rutaConf:rutaDefecto?{estado:'estimada',origen:'sistema',revisada:false,nota:'ruta por defecto: su familia no tiene hoja de operaciones'}:undefined,claveRepetida:!!d.claveRepetida,sinLanzar:!!d.sinLanzar,sinFechaEntrega:!!d.sinFechaEntrega,pendBordadoVel:rutaCompleta.some(p=>p.centro==='bordado')&&!velBordado(),sinTiempo:rutaCompleta.filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!(p.t>0)).map(p=>p.centro),duplicado:dup,origenParte2:true,cargaTs:new Date().toISOString()};
     if(vencida)plan.vencidas++;if(historia)plan.historia++;if(bloqueada)plan.bloqueadas++;if(devolucion)plan.devoluciones++;if(contradiccion)plan.contradicciones.push({op:d.op,detalle:contradiccion});
     plan.ordenes.push(o)});
   plan.fasesTablaSinUso=faseMapeo().filter(x=>!fasesVistas.has(normFase(x.fase))).map(x=>x.fase);
