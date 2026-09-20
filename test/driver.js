@@ -6751,6 +6751,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      PERFIL={id:'u-corte',rol:'corte',nombre:'Sup',modo:'editar'};render();const al=window.alert;window.alert=()=>{};rutaOkFila(o.id);window.alert=al;
      __check('UX4: un perfil sin permiso de rutas no ve «Ruta ok» y la función no confirma',!(fila()&&/Ruta ok/.test(fila().innerHTML))&&!rutaConfirmada(o));PERFIL=adminP0();}
     render();}
+   /* UX5 · la ruta por orden calcula el tiempo del paso como la ficha (tiempoPaso): plancha y lavado salen del centro, no de la hoja LMO */
+   {PERFIL=adminP0();const o=S.ordenes.find(x=>abierta(x)&&lanzada(x)&&!rutaNoAplica(x)&&(x.rutaCompleta||[]).length&&!pasosProCompleta(x).includes('plancha')&&CE('plancha')&&+CE('plancha').minEstandar>0);
+    if(o){mRutaCentro(o.id);const cb=document.getElementById('rc-plancha');const fila=cb&&cb.closest('tr');
+     __check('UX5: en la ruta por orden Plancha muestra el minuto del centro ('+CE('plancha').minEstandar+') y no «sin tiempo» (antes solo miraba la hoja LMO)',!!fila&&!/sin tiempo/.test(fila.innerHTML)&&fila.textContent.includes(num(+CE('plancha').minEstandar,2)),fila&&fila.textContent.replace(/\s+/g,' '));
+     __check('UX5: nada se siembra sobre las rutas ya cargadas (la usuaria pidió dejarlas como están y revisarlas ella)',typeof sembrarRutasOT==='undefined'&&!/sembrarRutasOT/.test(String(render)));cerrar();}else __check('UX5: hay una orden sin plancha en la ruta para probar',false);}
    /* RD · ruta por defecto al CARGAR una orden cuya familia no tiene hoja de operaciones (regla del 16-sep aplicada de entrada) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);const padre={id:'k_rd_p',n:'FAMILIA SIN HOJA RD'};const hija={id:'k_rd_h',padre:'k_rd_p',n:'Prenda RD',minEstConf:7.5};S.categorias.push(padre,hija);
     const f=new Array(H.length).fill(null);f[col('Orden de producción')]='WH/MO/99301';f[col('Proyecto')]='NOVIEMBRE 2026';f[col('Cliente')]='CLIENTE RD';f[col('ODC')]='8801';f[col('Stilo')]='RD1';f[col('Categoría Padre')]='FAMILIA SIN HOJA RD';f[col('Categoría Hija')]='Prenda RD';f[col('Color')]='BIRCH';f[col('Fase')]='2Planificacion';f[col('Estado OP')]='confirmed';f[col('Pedido')]=100;f[col('Fecha Entrega')]='2026-12-01';

@@ -779,7 +779,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 15:10';
+const APP_BUILD='2026-09-20 15:22';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -7690,7 +7690,7 @@ function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)retur
 /* ruta editable por el centro: solo los pasos de sus centros (y los opcionales que le tocan), con motivo obligatorio; sin tiempo = se reporta */
 const RUTA_EDITABLE_POR={corte:['estampado','bordado'],estampado:['estampado','bordado'],bordado:['estampado','bordado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones'],botones:['etiquetas','lavado','plancha','botones'],lavado:['etiquetas','lavado','plancha','botones'],plancha:['etiquetas','lavado','plancha','botones'],empaque:['empaque']};
 function centrosEditablesRuta(){if(puede('programa'))return S.centros.filter(c=>c.area==='pro').map(c=>c.id);if(!puede('ruta'))return [];const set=new Set();centrosPerfil().forEach(c=>{(RUTA_EDITABLE_POR[c]||[c]).forEach(x=>set.add(x));if(c==='*')S.centros.filter(x=>x.area==='pro').forEach(x=>set.add(x.id))});return [...set]}
-function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});   /* como la ficha: hoja LMO, puntadas para bordado, el centro para lavado/plancha */
   const ruta=o.ruta||[];const todos=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   abrir(`<h3>Ruta de ${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Marca o desmarca los pasos de tus centros. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría; si la categoría no tiene tiempo para ese centro, el paso entra <b>sin tiempo</b> y queda en la bandeja "sin tiempo por prenda" hasta que se cargue. El motivo es obligatorio y todo queda en la bitácora.</p>
@@ -8037,7 +8037,7 @@ function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();co
 function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
   const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}
-  const edit=centrosEditablesRuta();const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
+  const edit=centrosEditablesRuta();const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
   S.centros.filter(c=>c.area==='pro'&&edit.includes(c.id)).forEach(c=>{const el=document.getElementById('rc-'+c.id);if(!el||el.disabled)return;const en=antes.includes(c.id);
     if(el.checked&&!en){mas.push(c.id)}if(!el.checked&&en){menos.push(c.id)}});
   if(!mas.length&&!menos.length){confirmarRuta(o,'persona',motivo);PLAN=null;PLAN_ALL=null;save();cerrar();render();return} // guardar sin cambios también confirma
