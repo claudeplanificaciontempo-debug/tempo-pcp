@@ -780,7 +780,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 16:31';
+const APP_BUILD='2026-09-20 16:48';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2793,14 +2793,14 @@ function ajustesCapPanelHTML(ym){const ex=extrasDe(ym);if(!ex.length)return '';c
    Configuración no se toca y la pantalla dice cuál de las tres manda: configurado · vigente (ajuste guardado) · escenario (borrador). ---------- */
 function nivPersSet(ym,rid,v){if(!puede('programa')){alert('Tu perfil no ajusta capacidad.');return}if(!(SIM.on&&SIM.ym===ym))SIM={on:true,ym,rec:SIM.rec,cambios:{},motivo:''};
   semanasMes(ym).forEach(w=>simSet(w.ini,rid,'pers',v));PLAN=null;PLAN_ALL=null;CAPM=null;render()}
-function personasNivHTML(ym){const okP=puede('programa');const sem=semanasMes(ym);const on=SIM.on&&SIM.ym===ym;const aj=((S.params.ajustesCap||{})[ym]||{}).semanas||{};
-  const recs=S.recursos.filter(r=>r.activa&&r.id!=='maquila'&&CE(r.centro)&&CE(r.centro).area==='pro'&&!centroPorDias(r.centro)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro)||String(a.n).localeCompare(String(b.n)));
+function personasNivHTML(ym,areaId){const okP=puede('programa');const sem=semanasMes(ym);const on=SIM.on&&SIM.ym===ym;const aj=((S.params.ajustesCap||{})[ym]||{}).semanas||{};
+  const recs=S.recursos.filter(r=>r.activa&&r.id!=='maquila'&&CE(r.centro)&&CE(r.centro).area==='pro'&&!centroPorDias(r.centro)&&(!areaId||r.centro===areaId)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro)||String(a.n).localeCompare(String(b.n)));
   if(!recs.length)return '';
   const fila=r=>{const vig=sem.map(w=>{const x=aj[w.ini]&&aj[w.ini][r.id];return x&&x.pers!=null?+x.pers:null});const simV=sem.map(w=>{const x=SIM.cambios[w.ini]&&SIM.cambios[w.ini][r.id];return on&&x&&x.pers!=null?+x.pers:null});
     const vigTxt=vig.every(v=>v==null)?'—':(new Set(vig.map(v=>v==null?(r.pers||0):v)).size===1?num(vig.find(v=>v!=null)):vig.map((v,i)=>'sem. '+(i+1)+': '+num(v==null?(r.pers||0):v)).join(' · '));
     const escVal=simV.every(v=>v!=null)&&new Set(simV).size===1?simV[0]:'';const manda=escVal!==''?'escenario':(vig.some(v=>v!=null)?'vigente':'configurado');
     return `<tr><td>${esc(nCen(r.centro))}</td><td>${esc(r.n)}</td><td class="num" title="Configuración → Centros y recursos">${num(r.pers||0)}</td><td class="num" title="ajuste de la semana guardado (Plan / Nivelación)">${vigTxt}</td><td class="num">${okP?`<input type="number" min="0" step="1" style="width:80px" value="${escVal===''?'':num(escVal)}" placeholder="${num(vig.some(v=>v!=null)?(vig.find(v=>v!=null)):(r.pers||0))}" onchange="nivPersSet('${ym}','${r.id}',this.value)">`:'—'}</td><td><span class="tag ${manda==='escenario'?'t-aviso':manda==='vigente'?'t-medio':'t-ok'}">${manda}</span></td></tr>`};
-  return `<div class="panel"><h3>Personas por centro <span class="note">${esc(fmtMesEG(ym))} · escribe cuántas personas habrá este mes; al confirmar, todo el sistema calcula con eso</span></h3><div class="body">
+  return `<div class="panel"><h3>Personas en ${esc(areaId?nCen(areaId):'los centros')} <span class="note">${esc(fmtMesEG(ym))} · escribe cuántas personas habrá este mes; al confirmar, todo el sistema calcula con eso</span></h3><div class="body">
    <table><thead><tr><th>Centro</th><th>Recurso</th><th class="num">Configurado</th><th class="num">Vigente (ajuste guardado)</th><th class="num">Escenario</th><th>Manda</th></tr></thead><tbody>${recs.map(fila).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0"><b>Configurado</b> = lo normal del centro (Configuración → Centros y recursos). <b>Vigente</b> = lo que ya dijiste para las semanas de este mes. <b>Escenario</b> = lo que estás probando ahora: la nivelación y el programa lo usan al instante en esta sesión; nada queda guardado hasta confirmar. Los días se marcan en el calendario de arriba.</p>
    ${on?`<div class="row" style="margin-top:10px;align-items:flex-end"><div style="flex:1"><label>Motivo (obligatorio para confirmar)</label><input type="text" id="sim-motivo" value="${esc(SIM.motivo||'')}" oninput="SIM.motivo=this.value" placeholder="p. ej. entran 3 personas a corte desde el 6 de octubre"></div><div><button class="btn" onclick="guardarAjustesCap('${ym}')">Confirmar escenario</button> <button class="btn ghost" onclick="toggleSim('${ym}')">Descartar</button></div></div><div class="warn" style="margin-top:8px;font-size:var(--fs-s)">Escenario abierto: lo que ves abajo (capacidad, ¿alcanza?, programa) ya lo incluye. <b>Confirmar</b> lo graba como el ajuste de cada semana de ${esc(fmtMesEG(ym))} con tu motivo; <b>Descartar</b> vuelve a lo vigente.</div>`:''}
@@ -3441,8 +3441,7 @@ function vPlan(el){
   if(!(NIVUI.meses&&NIVUI.meses.length===1&&NIVUI.meses[0]===ym))NIVUI.meses=[ym];   /* la nivelación del paso 1 mira el mes del plan */
   const bloque1=planBloqueDiv('1','Días y capacidad','define cuánto cabe en el mes')
    +`<div class="panel"><h3>Días del mes por área <span class="note">este calendario manda: los días marcados son los que trabaja cada área</span></h3><div class="body"><div id="plan-cal">${(()=>{const g=MESPLAN;MESPLAN=ym;const html=planMesHTML();MESPLAN=g;return html})()}</div></div></div>
-   ${personasNivHTML(ym)}
-   <div class="panel"><h3>¿Alcanza la capacidad? <span class="note">saldo por procesar contra los días y las personas de arriba · por área</span></h3><div class="body">${nivelacionCuerpoHTML(false)}</div></div>
+   <div class="panel"><h3>¿Alcanza la capacidad? <span class="note">toca un centro: sus personas y su saldo contra los días del calendario</span></h3><div class="body">${nivelacionCuerpoHTML(false)}</div></div>
    <details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Más detalle <span class="note">capacidad por área y por módulo, simulador semana por semana, ajustes guardados, guía</span></summary><div class="body" style="padding:0 16px 12px">
    <div class="panel"><h3>Capacidad del mes por área <span class="note">personas, minutos, eficiencia y capacidad total resultante</span></h3><div class="body"><table><thead><tr><th>Área</th><th class="num">Días</th><th>Con qué se calcula</th><th class="num">Capacidad</th><th class="num">Programado</th><th style="width:140px">Uso</th><th></th></tr></thead><tbody>
     ${c.areas.map(a=>`<tr><td>${AREAS[a.a]}</td><td class="num">${fmtDiasMes(a.a,ym)}</td><td class="mut" style="font-size:var(--fs-xs)">${baseCapArea(a.a)}</td><td class="num">${num(a.cap)} ${a.u}</td><td class="num">${num(a.carga)} ${a.u}</td><td>${barra(a.carga,a.cap)}</td><td>${a.faltan?`<span class="tag t-alerta">faltan ${a.faltan} días</span> <a style="cursor:pointer;font-size:var(--fs-xs)" onclick="document.getElementById('plan-cal')&&document.getElementById('plan-cal').scrollIntoView({behavior:'smooth'})">planificar días ↑</a>`:'<span class="tag t-ok">alcanza</span>'}</td></tr>`).join('')}</tbody></table>
@@ -6540,8 +6539,14 @@ function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null
   const cap=recs.length?detalle.reduce((x,y)=>x+y.cap,0):null;const escOn=SIM.on&&meses.includes(SIM.ym);
   return {cap,unidad:'min/día',detalle,nota:recs.length?(recs.length+' recursos activos · personas × minutos × eficiencia · promedio por día hábil de '+(meses.length?meses.map(fmtMesEG).join(', '):'hoy')+(escOn?' · INCLUYE el escenario sin confirmar':'')+' (ajustes de semana incluidos)'):'sin recursos activos en el centro: dato faltante'}}
 /* --- lo que se escribe: inicio y compromiso (los del Paso 1), días adicionales y maquila (nuevos) --- */
-function nivUIEsc(areaId){const g=((S.params.nivelacion||{}).escenarios||{})[areaId]||{};const s=NIVUI.esc[areaId]||{};
-  return {inicio:s.inicio!==undefined?s.inicio:(nivFecha(areaId,'inicio')||''),compromiso:s.compromiso!==undefined?s.compromiso:(nivFecha(areaId,'compromiso')||''),
+/* fechas del horizonte cuando el área no tiene fechas propias: el mes (o meses) elegido, con los días hábiles del área */
+function nivUIFechasDelMes(areaId){const meses=nivUIMeses();if(!meses.length)return null;const a=nivUIArea(areaId);const recs=a&&a.tipo==='centro'?S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila'):[];const r0=recs[0]||null;
+  const lab=d=>r0?labR(d,r0):!!labR(d,{centro:'corte'});const dias=[];meses.slice().sort().forEach(ym=>{const [y,m]=ym.split('-').map(Number);if(!(y>0&&m>0))return;const nd=new Date(y,m,0).getDate();for(let k=1;k<=nd;k++)dias.push(ym+'-'+String(k).padStart(2,'0'))});
+  const habiles=dias.filter(lab);if(!habiles.length)return null;const h=hoy();const ini=habiles.find(d=>d>=h)||null;const fin=habiles[habiles.length-1];if(!ini||fin<ini)return null;return {inicio:ini,compromiso:fin,txt:'del mes ('+meses.map(fmtMesEG).join(', ')+')'}}
+function nivUIEsc(areaId){const g=((S.params.nivelacion||{}).escenarios||{})[areaId]||{};const s=NIVUI.esc[areaId]||{};const fm=nivUIFechasDelMes(areaId);
+  const iniG=nivFecha(areaId,'inicio')||'',comG=nivFecha(areaId,'compromiso')||'';
+  return {inicio:s.inicio!==undefined?s.inicio:(iniG||(fm?fm.inicio:'')),compromiso:s.compromiso!==undefined?s.compromiso:(comG||(fm?fm.compromiso:'')),
+    fechasDelMes:!!(fm&&s.inicio===undefined&&s.compromiso===undefined&&!iniG&&!comG),fechasTxt:fm?fm.txt:'',
     diasAdic:s.diasAdic!==undefined?s.diasAdic:(g.diasAdic!=null?g.diasAdic:0),maquilaU:s.maquilaU!==undefined?s.maquilaU:(g.maquilaU!=null?g.maquilaU:''),
     sinGuardar:Object.keys(s).length>0,guardado:g.ts?g:null}}
 function nivUISet(areaId,k,v){if(!puede('programa')){alert('Solo planificación puede escribir en «Nivelación».');return}
@@ -6589,7 +6594,12 @@ function nivUIGuardar(areaId){if(!puede('programa')){alert('Solo planificación 
   delete NIVUI.esc[areaId];NIVC=null;save();render()}
 /* ---------- presentación ---------- */
 const NIVUI_ESTADO={ok:{ico:'✓',txt:'llega',color:'var(--ok)'},riesgo:{ico:'⚠',txt:'riesgo',color:'var(--aviso)'},deficit:{ico:'✕',txt:'déficit',color:'var(--alerta)'},faltante:{ico:'?',txt:'dato faltante',color:'var(--ink2)'}};
-function nivUIEstadoHTML(est,chico){const e=NIVUI_ESTADO[est]||NIVUI_ESTADO.faltante;return `<span style="color:${e.color};font-weight:600;font-size:${chico?'12px':'14px'}">${e.ico} ${e.txt}</span>`}
+function nivUIEstadoHTML(est,chico,r){const e=NIVUI_ESTADO[est]||NIVUI_ESTADO.faltante;const txt=(est==='faltante'&&r)?nivUIQueFalta(r):e.txt;return `<span style="color:${e.color};font-weight:600;font-size:${chico?'12px':'14px'}" title="${esc(est==='faltante'&&r?'falta: '+nivUIQueFalta(r):e.txt)}">${e.ico} ${esc(txt)}</span>`}
+/* qué dato falta para decir si llega (en palabras de planta) */
+function nivUIQueFalta(r){if(!r)return 'dato faltante';const f=[];if(r.sinFasesTela||(r.area.porFase&&!fasesDeProcNivel(r.area.id).length))f.push('marcar en la tabla 1 qué fases cuentan');
+  if(r.saldo==null||(r.enMin?r.saldo.min==null:r.saldo.unid==null))f.push('saldo');if(r.cap&&r.cap.cap==null&&!r.area.porFase)f.push('recursos con personas, minutos y eficiencia en este centro');
+  if(!r.esc.inicio)f.push('fecha de inicio');if(!r.esc.compromiso)f.push('fecha compromiso');if(r.enMin&&r.sam==null&&r.saldo&&r.saldo.min==null)f.push('SAM');
+  return f.length?'falta '+f.join(' · '):'dato faltante'}
 function nivUIFechaTxt(f){return f?fmtDia(f):'<span class="tag t-alerta" style="font-size:10px;padding:0 4px">dato faltante</span>'}
 function nivUIValor(min,r,dec){if(min==null)return faltaTxt();if(!r.enMin)return '<b>'+num(min,0)+'</b> <span class="mut" style="font-size:var(--fs-xs)">u</span>';return minUni(min,r.sam,dec)}
 function nivUIMesesHTML(){const disp=nivUIMesesDisp();const sel=nivUIMeses();
@@ -6604,7 +6614,7 @@ function nivUIRecuadrosHTML(){const meses=nivUIMeses();
       <div style="font-weight:600;font-size:13px">${esc(a.n)}</div>
       <div style="font-size:12px">saldo <b>${saldo}</b></div>
       <div style="font-size:11px" class="mut">fin ${esc(fin)}</div>
-      <div>${a.porDias?'<span class="mut" style="font-size:11px" title="no consume capacidad: no se nivela por capacidad">por días, sin capacidad</span>':nivUIEstadoHTML(r?r.estado:'faltante',true)}</div></div>`}).join('')}</div>`}
+      <div>${a.porDias?'<span class="mut" style="font-size:11px" title="no consume capacidad: no se nivela por capacidad">por días, sin capacidad</span>':nivUIEstadoHTML(r?r.estado:'faltante',true,r)}</div></div>`}).join('')}</div>`}
 /* tabla FAMILIA × mes (unidades del saldo): para nivelar se mira el tipo de producto, no las órdenes una por una.
    Las filas se pueden agrupar por familia (por defecto), tipo de producto o cliente; el cálculo no cambia.
    Clic en una celda → debajo, ESA fila y ese mes: primero por tipo de producto con sus unidades, y ahí sí las
@@ -6648,7 +6658,7 @@ function nivUICuadritoHTML(r){if(!r)return '';const c=r.calc,e=r.esc,ok=puede('p
     ${ro('Saldo actual',nivUIValor(r.saldo?(r.enMin?r.saldo.min:r.saldo.unid):null,r),(r.saldo?num(r.saldo.ordenes.length,0)+' órdenes':'')+(r.saldo&&r.saldo.sinSAM.length?' · <span style="color:var(--alerta)">'+r.saldo.sinSAM.length+' sin SAM ('+num(r.saldo.unidSinSAM,0)+' u) no suman</span>':''))}
     ${ro('Capacidad día planta',capTxt,esc(r.cap.nota))}
     ${ro('Días lab. necesarios',c.diasNec==null?faltaTxt():'<b>'+num(c.diasNec,0)+'</b>','saldo ÷ capacidad, redondeado hacia arriba')}
-    ${wr('Fecha inicio',inp('inicio','date',e.inicio,'min="'+hoy()+'"'),'no antes de hoy · el inicio cuenta como día 1')}
+    ${wr('Fecha inicio',inp('inicio','date',e.inicio,'min="'+hoy()+'"'),(e.fechasDelMes?'<b>'+esc(e.fechasTxt)+'</b>: primer día hábil, no antes de hoy · cámbiala si el compromiso es otro · ':'')+'no antes de hoy · el inicio cuenta como día 1')}
     ${ro('Fecha finalización',nivUIFechaTxt(c.fin),c.fin?'inicio + días necesarios, en días hábiles':'')}
     ${wr('Fecha compromiso',inp('compromiso','date',e.compromiso),'último día disponible, incluido')}
     ${ro('Días disponibles',c.diasDisp==null?faltaTxt():'<b>'+num(c.diasDisp,0)+'</b>',c.txtDias?esc(c.txtDias):'días hábiles entre inicio y compromiso, con festivos cargados')}
@@ -6677,9 +6687,11 @@ function nivUICalculoHTML(r){const c=r.calc;const nh=c.noHabiles||[];
    <div><b>Producción planta:</b> ${c.capDia!=null&&r.diasTot!=null?num(c.capDia,0)+' × '+num(r.diasTot,1)+' = '+num(r.plantaMin,0)+(r.enMin?' min':' u'):'—'} · <b>Maquila:</b> ${r.maqMin!=null?num(r.maqU,0)+' u'+(r.enMin&&r.sam?' × '+num(r.sam,3)+' = '+num(r.maqMin,0)+' min':''):'—'} · <b>Déficit:</b> ${r.deficitMin!=null?num(r.saldo?(r.enMin?r.saldo.min:r.saldo.unid):0,0)+' − '+num(r.totalMin,0)+' = '+num(r.deficitMin,0):'—'}</div>
   </div>`}
 /* el cuerpo de la nivelación (recuadros por área, tabla, cuadrito); lo usan la página Nivelación y el paso 1 de Planificar el mes */
-function nivelacionCuerpoHTML(conMeses){const r=nivUICalcular(NIVUI.area)||nivUICalcular((nivUIAreas()[1]||{}).id);
+function nivelacionCuerpoHTML(conMeses){const r=nivUICalcular(NIVUI.area)||nivUICalcular((nivUIAreas()[1]||{}).id);const areaSel=r?r.area:null;
+  const personas=(areaSel&&areaSel.tipo==='centro'&&!areaSel.porDias)?nivUIMeses().slice().sort().map(ym=>personasNivHTML(ym,areaSel.id)).join(''):'';   /* solo el centro elegido en los recuadros */
   return `<div class="row" style="align-items:flex-end;gap:14px">${conMeses?nivUIMesesHTML():''}${nivUIFiltrosHTML()}</div>
    ${nivUIRecuadrosHTML()}
+   ${personas}
    ${r?nivUITablaHTML(r)+(nivUIConectada(r.area)?nivUICuadritoHTML(r):`<div class="panel"><div class="body warn" style="font-size:var(--fs-s)"><b>${esc(r.area.n)}: por días, sin capacidad.</b> Muestra saldo y órdenes, sin cuadrito ni fecha calculada. ${esc(r.cap.nota)}</div></div>`):'<div class="panel"><div class="empty">Sin áreas configuradas.</div></div>'}`}
 function vNivelacion(el){const ym=(nivUIMeses()[0]||hoy().slice(0,7));
   el.innerHTML=`<div class="pagehead"><h2>Nivelación</h2><span class="spacer"></span>
