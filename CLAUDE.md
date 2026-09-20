@@ -912,6 +912,11 @@ aplica, marca `tareaIdConflicto` (bandeja `tareaIdConflicto` en Hoy) y no cuenta
 los ID ni quita la marca. `sinWHde(o)` decide «sin WH» (nunca por el tipo de clave). id nuevo `tarea_<id>`; el id existente nunca
 cambia. Ver `CARGAS_ID_TAREA.md`.
 
+**Fase: sin WH manda Odoo (19-sep-2026, decisión de la usuaria).** En `aplicarTarea`, `consFase = conserva('fase') && !odooMandaFase(v)`: mientras la orden NO
+tiene WH en el sistema (`sinWHde(v)`), la fase se toma del archivo en cada carga y también en la carga en que recibe la WH; desde que tiene
+WH, la planta la mueve aquí y el archivo va a «no calzan». Interruptor `prm('faseOdooSinWH',1)` (`faseOdooSinWH/setFaseOdooSinWH`, checkbox en la
+fila fase de la tabla 14); la vista previa cuenta `prev.faseOdoo`. Pruebas K8.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan

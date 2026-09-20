@@ -42,3 +42,10 @@ columna sobre el volcado real (WH existente enlazada, sin WH existente enlazada,
 ID, nada cuenta como «no vino», bitácora, índice por WH y por ID, ficha, buscador, repetidas); archivo sin columna
 después (nadie pierde su ID); sin WH → WH por el ID; conflicto (no se aplica, marcada, bandeja, no noArchivo, se
 conserva con archivo sin ID, se quita al volver el ID). Harness completo: 2.552 comprobaciones, 0 errores.
+
+## Fase: sin WH manda Odoo (misma tarde)
+
+Mientras la orden no tenga WH en el sistema, la fase se toma del archivo en cada carga (diseño, recetas, compras…), también en
+la carga en que recibe la WH. Desde que tiene WH, la fase la mueve la planta aquí y el archivo no la pisa (bandeja «no calzan»,
+como antes). Interruptor «Sin WH manda Odoo» en la fila fase de la tabla 14 (`faseOdooSinWH`, 1 por defecto; 0 = se conserva
+siempre). La vista previa de «Actualizar datos» cuenta las órdenes sin WH cuya fase cambia. Pruebas K8 (8 comprobaciones).

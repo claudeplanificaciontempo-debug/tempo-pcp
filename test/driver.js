@@ -6387,6 +6387,36 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     delete S.avance[Y.id];S.ordenes=S.ordenes.filter(o=>!/^tarea_/.test(o.id));S.ordenes.forEach(o=>{delete o.tareaId;delete o.tareaIdEnlace;delete o.tareaIdConflicto;if(o.id===Y.id){o.op=Y.op;o.clave=Y.clave;o.claveAnterior=Y.claveAnterior}});
     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);
     __check("K7: limpieza: la cartera vuelve a su tamaño",S.ordenes.length===nAntes,S.ordenes.length+" vs "+nAntes);}
+   /* K8 · fase: sin WH manda Odoo (también al recibir la WH); con WH manda la planta (tabla 14) */
+   {const H=tareaRows[0];const col=n=>H.indexOf(n);delete S.params.faseOdooSinWH;
+    const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
+    const Y=S.ordenes.find(o=>o.sinLanzar&&o.clave&&!o.claveRepetida&&/^0/.test(o.fase||""));const X=S.ordenes.find(o=>abierta(o)&&lanzada(o)&&!o.claveRepetida&&/^[2-4]/.test(o.fase||""));
+    const esFilaDe=(x,o)=>{if(o.sinLanzar)return !String(x[col("Orden de producción")]||"").trim()&&String(x[col("Cliente")]||"")===o.cliente&&String(x[col("Stilo")]||"")===o.ref&&String(x[col("ODC")]||"")===o.odc&&String(x[col("Color")]||"").toUpperCase()===o.colorOdoo&&String(x[col("Proyecto")]||"")===o.proyecto;return String(x[col("Orden de producción")]||"").trim()===o.op};
+    const faseY0=Y.fase,faseX0=X.fase;const otraY=faseY0==="0Recetas Insumos"?"0Diseño":"0Recetas Insumos",otraX=faseX0==="2Planificacion"?"3Trazos":"2Planificacion";
+    const rowsA=tareaRows.map((r,i)=>{if(!i)return r;const x=r.slice();if(esFilaDe(x,Y))x[col("Fase")]=otraY;if(esFilaDe(x,X))x[col("Fase")]=otraX;return x});
+    const pA=planTarea(rowsA,"TAREA_K8a.xlsx");
+    __check("K8: la vista previa cuenta la sin WH cuya fase cambia con el archivo y NO la pone como «no calza»; la con WH sí va a «no calzan»",(pA.prev.faseOdoo||0)>=1&&!pA.prev.noCalzan.some(x=>x.op===Y.op&&x.tipo==="fase")&&pA.prev.noCalzan.some(x=>x.op===X.op&&x.tipo==="fase")&&/sin WH<\/b> cuya fase cambia con el archivo/.test(vistaPreviaTareaHTML(pA)),JSON.stringify({fo:pA.prev.faseOdoo,nc:pA.prev.noCalzan.filter(x=>x.tipo==="fase").length}));
+    TAREA=pA;aplicarTarea();await __p(50);const Y1=S.ordenes.find(o=>o.id===Y.id),X1=S.ordenes.find(o=>o.id===X.id);
+    __check("K8: sin WH: la fase del archivo se aplica y queda en el historial con origen archivo",!!Y1&&normFase(Y1.fase)===normFase(otraY)&&(Y1.fases||[]).some(f=>normFase(f.f||"")===normFase(otraY)&&f.origen==="archivo"),JSON.stringify(Y1&&{f:Y1.fase,h:(Y1.fases||[]).slice(-2)}));
+    __check("K8: con WH: la fase del sistema se conserva y el archivo va a la bandeja «no calzan»",!!X1&&normFase(X1.fase)===normFase(faseX0)&&((S.params.tareaCarga||{}).recarga||{}).noCalzan.some(x=>x.op===X.op&&x.tipo==="fase"),JSON.stringify(X1&&{f:X1.fase}));
+    /* recibe la WH en la misma carga con otra fase: la fase viene con la WH */
+    const rowsB=tareaRows.map((r,i)=>{if(!i)return r;const x=r.slice();if(esFilaDe(x,Y)){x[col("Orden de producción")]="WH/MO/99201";x[col("Fase")]="2Planificacion";x[col("Estado OP")]="confirmed"}return x});
+    const pB=planTarea(rowsB,"TAREA_K8b.xlsx");TAREA=pB;aplicarTarea();await __p(50);const Y2=S.ordenes.find(o=>o.id===Y.id);
+    __check("K8: al recibir la WH, la fase que trae el archivo se aplica (misma orden)",!!Y2&&Y2.op==="WH/MO/99201"&&normFase(Y2.fase)==="2planificacion"&&!Y2.sinLanzar,JSON.stringify(Y2&&{op:Y2.op,f:Y2.fase}));
+    /* ya con WH: la planta manda */
+    const rowsC=rowsB.map((r,i)=>{if(!i)return r;const x=r.slice();if(String(x[col("Orden de producción")]||"")==="WH/MO/99201")x[col("Fase")]="3Trazos";return x});
+    const pC=planTarea(rowsC,"TAREA_K8c.xlsx");TAREA=pC;aplicarTarea();await __p(50);const Y3=S.ordenes.find(o=>o.id===Y.id);
+    __check("K8: desde que tiene WH, el archivo ya no le cambia la fase",!!Y3&&normFase(Y3.fase)==="2planificacion"&&((S.params.tareaCarga||{}).recarga||{}).noCalzan.some(x=>x.op==="WH/MO/99201"&&x.tipo==="fase"));
+    /* interruptor apagado: sin WH también se conserva */
+    S.params.faseOdooSinWH=0;const Z=S.ordenes.find(o=>o.sinLanzar&&o.clave&&!o.claveRepetida&&o.id!==Y.id&&/^0/.test(o.fase||""));const faseZ0=Z.fase;const otraZ=faseZ0==="0Recetas Insumos"?"0Diseño":"0Recetas Insumos";
+    const rowsD=rowsB.map((r,i)=>{if(!i)return r;const x=r.slice();if(esFilaDe(x,Z))x[col("Fase")]=otraZ;return x});const pD=planTarea(rowsD,"TAREA_K8d.xlsx");TAREA=pD;aplicarTarea();await __p(50);const Z1=S.ordenes.find(o=>o.id===Z.id);
+    __check("K8: con el interruptor apagado (0 es 0), la sin WH también conserva su fase y va a «no calzan»",!!Z1&&normFase(Z1.fase)===normFase(faseZ0)&&((S.params.tareaCarga||{}).recarga||{}).noCalzan.some(x=>x.op===Z.op&&x.tipo==="fase")&&(pD.prev.faseOdoo||0)===0,JSON.stringify(Z1&&{f:Z1.fase,f0:faseZ0}));
+    delete S.params.faseOdooSinWH;
+    page="config";CONF.tab="ordenes2";render();__check("K8: la tabla 14 muestra la regla con su interruptor en la fila fase",/Sin WH manda Odoo/.test(document.getElementById("p-config").innerHTML)&&/setFaseOdooSinWH/.test(document.getElementById("p-config").innerHTML));
+    __check("K8: el texto de la vista previa dice cuál manda",/las que no tienen WH toman la fase del archivo/.test(vistaPreviaTareaHTML(pD)+document.getElementById("modal").innerHTML)||/las que no tienen WH toman la fase del archivo/.test(String(resumenTareaHTML(pD))));
+    /* limpieza */
+    S.ordenes.forEach(o=>{if(o.id===Y.id){o.op=Y.op;o.sinLanzar=true;o.fase=faseY0;o.clave=Y.clave;o.estadoOP=Y.estadoOP}if(o.id===Z.id)o.fase=faseZ0;if(o.id===X.id)o.fase=faseX0});
+    const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}
    window.alert=al;__check("CLAVE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* ===== NIVELACIÓN · pantalla nueva (diseño 17-sep), solo Corte conectado ===== */
   try{localStorage.__fase="nivelacion pantalla"}catch(e){}
