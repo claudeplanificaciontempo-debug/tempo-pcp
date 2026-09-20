@@ -6807,6 +6807,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      S.params.ajustesCap=bakAj?JSON.parse(bakAj):undefined;if(S.params.ajustesCap===undefined)delete S.params.ajustesCap;SEMC={};PLAN=null;PLAN_ALL=null;CAPM=null;}else __check('PN: hay un recurso de corte con personas, minutos y eficiencia para probar',false);
     /* la página Nivelación sigue siendo la misma nivelación y lleva a Planificar el mes */
     page='nivelacion';render();const hn=document.getElementById('p-nivelacion').innerHTML;__check('PN: la página Nivelación (Producción) sigue mostrando la misma nivelación y ofrece «Planificar el mes →»',/Saldo por/.test(hn)&&/Planificar el mes →/.test(hn)&&/nivUITogMes|meses/.test(hn));
+    /* un día marcado en el calendario SOLO para Producción cuenta en la nivelación (antes solo contaban los marcados para «todas») */
+    {const bakEx=JSON.stringify(S.params.excepciones||null);const ymN=hoy().slice(0,7);const [yy,mm]=ymN.split('-').map(Number);let sab=null;for(let k=1;k<=new Date(yy,mm,0).getDate();k++){const d=ymN+'-'+String(k).padStart(2,'0');if(new Date(d+'T12:00:00').getDay()===6&&d>=hoy()&&!labDiaGeneral(d)){sab=d;break}}
+     if(sab){const antes=diasHabilesInc(sab,sab);S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===sab));S.params.excepciones.push({fecha:sab,area:'pro',tipo:'trabaja',motivo:'prueba PN'});
+      __check('PN: un sábado marcado en el calendario solo para Producción cuenta como día hábil en la nivelación (diasHabilesInc / finLabInc) y noHabilesEntre ya no lo descuenta',antes===0&&diasHabilesInc(sab,sab)===1&&finLabInc(sab,1)===sab&&!noHabilesEntre(sab,sab).length,JSON.stringify({sab,antes,ahora:diasHabilesInc(sab,sab)}));
+      S.params.excepciones=bakEx==='null'?undefined:JSON.parse(bakEx);if(S.params.excepciones===undefined)delete S.params.excepciones;}else __check('PN: hay un sábado del mes para probar el calendario por área',false);}
     PM.paso=1;SIM={on:false,ym:null,rec:null,cambios:{},motivo:''};page='plan';render();}
    /* RD · ruta por defecto al CARGAR una orden cuya familia no tiene hoja de operaciones (regla del 16-sep aplicada de entrada) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);const padre={id:'k_rd_p',n:'FAMILIA SIN HOJA RD'};const hija={id:'k_rd_h',padre:'k_rd_p',n:'Prenda RD',minEstConf:7.5};S.categorias.push(padre,hija);

@@ -248,7 +248,7 @@ main{padding:24px 28px 70px}
 .sub-blk>.sub-t{font-weight:700;font-size:var(--fs-s);color:var(--ink);margin-bottom:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .sub-blk>.sub-t .mut{font-weight:400}
 .filtros-blk{border:1.5px solid #C9D1D9;border-radius:10px;padding:10px 12px;background:var(--field);margin-bottom:12px}
-#plan-cal .cal-mes{display:none}   /* dentro de Planificar el mes, el mes lo manda la cabecera */
+#plan-cal .cal-mes,.cal-embed .cal-mes{display:none}   /* dentro de Planificar el mes y de Nivelación, el mes lo manda la cabecera / los chips */
 .grp-inline{display:flex;gap:6px;flex-wrap:wrap}.grp-inline select{width:auto;min-width:150px}   /* agrupador en una sola fila (Rutas) */
 .kpis{border-radius:var(--r);border:1px solid var(--rule);background:var(--rule2);gap:1px;box-shadow:0 1px 2px rgba(20,40,80,.04)}
 .kpi{padding:14px 18px}
@@ -780,7 +780,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 16:48';
+const APP_BUILD='2026-09-20 16:56';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -902,7 +902,7 @@ function fmtDiasMes(a,ym){const x=diasMesArea(a,ym);const det=x.sem+' d/sem = '+
 function labR(d,r){const a=areaDe(r);const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&(e.area==='todas'||e.area===a));
   if(ex)return ex.tipo==='trabaja';return laborable(d,diasDe(r))}
 function sigLabR(d,r){let x=d,g=0;while(!labR(x,r)&&g++<400)x=dsum(x,1);return x}
-function labDiaGeneral(d){const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&e.area==='todas');if(ex)return ex.tipo==='trabaja';return laborable(d,prmCal('pro',6))} // día laborable por el calendario del sistema (área producción + excepciones a todas)
+function labDiaGeneral(d){const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&(e.area==='todas'||e.area==='pro'));if(ex)return ex.tipo==='trabaja';return laborable(d,prmCal('pro',6))} // día laborable de PRODUCCIÓN por el calendario del sistema: la regla base del área + las excepciones marcadas para todas o para producción (el calendario de Planificar el mes escribe por área: hasta el 20-sep la nivelación no veía un sábado marcado solo para Producción)
 function dsumLab(d,n){n=+n||0;if(n<=0)return d;let x=d,c=0,g=0;while(c<n&&g++<2000){x=dsum(x,1);if(labDiaGeneral(x))c++}return x} // avanza n días LABORABLES desde d
 function semana(d){const x=new Date(d+'T12:00:00');const t=new Date(x);t.setDate(x.getDate()+3-((x.getDay()+6)%7));
   const y=t.getFullYear(),e=new Date(y,0,4);return y+'-S'+String(1+Math.round(((t-e)/86400000-3+((e.getDay()+6)%7))/7)).padStart(2,'0')}
@@ -6232,7 +6232,7 @@ function finLabInc(ini,n){n=+n||0;if(!ini||n<=0)return null;let d=ini,c=0,g=0;
 /* los días NO hábiles que quedaron dentro del tramo, con el motivo: para el tooltip del cuadrito */
 function noHabilesEntre(a,b){const out=[];if(!a||!b||b<a)return out;let d=a,g=0;
   while(d<=b&&g++<3000){if(!labDiaGeneral(d)){
-    const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&e.area==='todas');
+    const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&(e.area==='todas'||e.area==='pro'));
     out.push({fecha:d,motivo:ex?('excepción cargada'+(ex.nota?': '+ex.nota:'')):'fin de semana',excepcion:!!ex})}
     d=dsum(d,1)}return out}
 /* meses del tramo SIN ninguna excepción cargada: no se inventa un festivo, se avisa (decisión 7) */
@@ -6537,7 +6537,7 @@ function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null
     let pers=(t&&t.pers!=null)?t.pers:(r.pers||0),min=r.min||0,efic=r.efic||0;if(aj){if(aj.pers!=null&&!(t&&t.pers!=null))pers=+aj.pers;if(aj.min!=null)min=+aj.min;if(aj.efic!=null)efic=+aj.efic}
     return {rec:r.id,n:r.n,pers,min,efic,parada:!!paradaDe(r,d),cap:capProm(r),capHoy:capDia(r,d),fuente:(t&&t.pers!=null)?'asistencia de hoy':(aj?'ajuste de la semana':'configuración')}});
   const cap=recs.length?detalle.reduce((x,y)=>x+y.cap,0):null;const escOn=SIM.on&&meses.includes(SIM.ym);
-  return {cap,unidad:'min/día',detalle,nota:recs.length?(recs.length+' recursos activos · personas × minutos × eficiencia · promedio por día hábil de '+(meses.length?meses.map(fmtMesEG).join(', '):'hoy')+(escOn?' · INCLUYE el escenario sin confirmar':'')+' (ajustes de semana incluidos)'):'sin recursos activos en el centro: dato faltante'}}
+  return {cap,unidad:'min/día',detalle,nota:recs.length?(recs.length+' recursos activos · personas × minutos × eficiencia · promedio por día hábil de '+(meses.length?meses.map(fmtMesEG).join(', '):'hoy')+(escOn?' · INCLUYE el escenario sin confirmar':'')+' · personas según: '+[...new Set(detalle.map(x=>x.fuente))].join(', ')):'sin recursos activos en el centro: dato faltante'}}
 /* --- lo que se escribe: inicio y compromiso (los del Paso 1), días adicionales y maquila (nuevos) --- */
 /* fechas del horizonte cuando el área no tiene fechas propias: el mes (o meses) elegido, con los días hábiles del área */
 function nivUIFechasDelMes(areaId){const meses=nivUIMeses();if(!meses.length)return null;const a=nivUIArea(areaId);const recs=a&&a.tipo==='centro'?S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila'):[];const r0=recs[0]||null;
@@ -6697,8 +6697,9 @@ function vNivelacion(el){const ym=(nivUIMeses()[0]||hoy().slice(0,7));
   el.innerHTML=`<div class="pagehead"><h2>Nivelación</h2><span class="spacer"></span>
     <button class="btn ghost sm" onclick="PM.mes='${ym}';PM.paso=1;ir('plan')" title="la misma nivelación dentro de «Planificar el mes» (Dirección): calendario, personas por centro y luego el plan">Planificar el mes →</button>
     <a class="mut" style="font-size:var(--fs-xs);cursor:pointer;text-decoration:underline;margin-left:10px" onclick="page='config';CONF.tab='nivel';render()">Configurar</a></div>
-   <p class="lede">Es el paso 1 de «Planificar el mes» (Dirección): ahí mismo están el calendario de días y las personas por centro. Aquí ves lo mismo por meses.</p>
-   ${nivelacionCuerpoHTML(true)}`}
+   <p class="lede">Es el paso 1 de «Planificar el mes» (Dirección): el calendario de días que manda, las personas por centro y si alcanza. Aquí ves lo mismo por meses.</p>
+   ${nivelacionCuerpoHTML(true)}
+   ${nivUIMeses().slice().sort().map(m=>`<div class="panel"><h3>Días de ${esc(fmtMesEG(m))} <span class="note">este calendario manda: clic en un día para cambiarlo</span></h3><div class="body cal-embed">${(()=>{const g=MESPLAN;MESPLAN=m;const h=planMesHTML();MESPLAN=g;return h})()}</div></div>`).join('')}`}
 
 /* consolidado del ítem de planificación: una fila por sub-área, con la brecha de datos a la vista */
 /* ---------- 2 · ojales y botones: cero confirmado es cero; lo NO confirmado es brecha, no silencio ---------- */
