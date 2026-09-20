@@ -362,7 +362,6 @@ tbody tr:hover td{background:var(--field)}
     </div>
     <div class="grp" data-g="prod">Planificación de producción <span class="car">▾</span></div>
     <div class="gbody" data-g="prod">
-      <a data-p="nivelacion">Nivelación</a>
       <a data-p="liberacion" data-lib="corte">Liberación a producción</a>
       <a data-p="produccion">Carga general <span class="n" id="n-atr" style="color:#E0917F"></span></a>
       <a data-p="centro" data-cen="corte">Corte</a>
@@ -780,7 +779,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 16:56';
+const APP_BUILD='2026-09-20 17:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -975,7 +974,7 @@ function kgDiaTela(r,telaId){return kgHora(r,telaId)*(r.horas||0)}
 /* catálogo de rutas: combinaciones de opcionales sobre los pasos fijos */
 const RUTA_FIJOS_PROPIA=['tej','tin','corte','modulos','empaque'];
 const RUTA_OPCIONALES=['estampado','bordado','lavado','botones','plancha'];
-const RUTA_ORDEN=['tej','tin','proveedor','corte','estampado','bordado','modulos','botones','etiquetas','lavado','plancha','empaque']; // orden real: corte -> estampado/bordado -> confección -> botones/etiquetas -> lavado -> plancha -> empaque
+const RUTA_ORDEN=['tej','tin','proveedor','calandrado','corte','estampado','sublimado','apliques','bordado','modulos','botones','etiquetas','lavado','cordones','plancha','empaque']; // orden real: corte -> estampado/bordado -> confección -> botones/etiquetas -> lavado -> plancha -> empaque
 function letra(i){let n='';i++;while(i>0){const r=(i-1)%26;n=String.fromCharCode(65+r)+n;i=Math.floor((i-1)/26)}return n}
 function generarRutas(){const out=[];let i=0;
   ['propia','externa'].forEach(orig=>{for(let m=0;m<32;m++){
@@ -990,7 +989,7 @@ function ordenPaso(c){const i=RUTA_ORDEN.indexOf(c);return i<0?RUTA_ORDEN.indexO
 /* centros que dependen de la ORDEN, no de la categoría (editable, no fijo en código). Aunque la categoría tenga
    operación con SAM para uno de estos centros (ej. bordado en la familia CAMISETA), eso solo da el tiempo estándar
    a usar SI el centro aplica; que aplique o no lo decide la orden (técnica, puntadas, marca de categoría, o manual). */
-function defCentrosPorOrden(){return ['estampado','bordado','lavado','plancha']}
+function defCentrosPorOrden(){return ['estampado','bordado','lavado','plancha','sublimado','apliques','calandrado','cordones']}
 function centrosPorOrden(){if(!Array.isArray(S.params.centrosPorOrden))S.params.centrosPorOrden=defCentrosPorOrden();return S.params.centrosPorOrden}
 /* construye los pasos de una orden a partir del origen de tela y los centros opcionales marcados, conservando tiempos ya escritos */
 /* centros de producción de una categoría = los de sus propias operaciones (opsDe, con herencia padre→hija ya resuelta),
@@ -999,7 +998,10 @@ function centrosDeCategoria(k){const cs=new Set();if(k)opsDe(k).forEach(x=>{if(x
 /* de los centros que dependen de la orden, cuáles aplican hoy según los campos propios de la orden (técnica, puntadas).
    lavado/plancha no entran aquí: su default sigue viniendo de la marca de categoría (lavaPlanchaDefault). */
 function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=centrosPorOrden();
-  if(cpo.includes('estampado')&&(o.tecnica||o.tecnicaTxt))out.add('estampado');
+  const tec=normTxt(String((o.tecnicaTxt||'')+' '+((TEC(o.tecnica)||{}).n||'')));
+  if(cpo.includes('sublimado')&&/sublim/.test(tec)&&CE('sublimado'))out.add('sublimado');   /* la técnica dice sublimado: va a Sublimado, no a Estampado */
+  else if(cpo.includes('estampado')&&(o.tecnica||o.tecnicaTxt))out.add('estampado');
+  if(cpo.includes('apliques')&&/aplique/.test(tec)&&CE('apliques'))out.add('apliques');
   if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
   return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
@@ -3300,7 +3302,7 @@ function vGerencia(el){
 
 /* ---------- Plan mensual: estructura, capacidad, facturación, metas semanales y congelado ---------- */
 /* ---------- Plan mensual: órdenes que la planificadora agrega al mes; congelar las fija para todas las áreas ---------- */
-let PMADD={grp:'fase',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
+let PMADD={grp:'fase',exp:new Set(),sel:new Set(),incluirSig:false,incluirAnt:true,q:''};   /* incluirAnt: lo atrasado de meses anteriores entra como candidato (usuaria, 20-sep) */
 const PMADD_CAMPOS=[['fase','Fase'],['odc','ODC'],['cliente','Cliente'],['entrega','Fecha de entrega'],['fam','Familia'],['hija','Categoría hija']];
 function planMesReg(ym){const pm=S.params.planMes||{};return pm[ym]||null}
 function planMesOids(ym){const r=planMesReg(ym);return new Set((r&&r.oids)||[])}
@@ -3407,7 +3409,8 @@ function agregarAlPlanHTML(ym,c){
     ${base.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600">${base.length} órdenes ya en proceso (grupos marcados «en proceso» en la tabla 5, de cualquier Proyecto) · ${num(basePz)} prendas <span class="mut" style="font-weight:400">· ya ocupan los centros con sus minutos pendientes; el plan arranca con ellas, no se agregan ni se quitan · la columna Proyecto dice de qué mes es cada una</span></summary><div class="scroll" style="max-height:320px;margin-top:6px"><table><thead><tr><th>OP</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th>Proyecto</th></tr></thead><tbody>${base.map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td>${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td><td>${esc(o.proyecto||'')}</td></tr>`).join('')}</tbody></table></div></details>`:''}${enPlanO.length?`<h4 style="margin:12px 0 6px">Agregadas por ti</h4><div class="scroll" style="max-height:360px;margin-top:0"><table><thead><tr><th>OP</th><th>Fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th>Liberación</th><th></th></tr></thead><tbody>${enPlanO.map(rowP).join('')}</tbody></table></div>`:'<div class="empty">Todavía no agregaste órdenes nuevas al plan (lo que ya está en proceso ya cuenta arriba). Márcalas abajo y presiona «Agregar al plan».</div>'}</div></div>`;
   if(!puedeP)return panelA;
   const q=normTxt(PMADD.q);
-  const cand=S.ordenes.filter(o=>abierta(o)&&!enPlanTot.has(o.id)&&!enProcesoPlan(o)&&(mesPlan(o)===ym||(PMADD.incluirSig&&mesPlan(o)===sig))&&(matchBusq(o,q,'PMADD.q')));
+  const cand=S.ordenes.filter(o=>abierta(o)&&!enPlanTot.has(o.id)&&!enProcesoPlan(o)&&(mesPlan(o)===ym||(PMADD.incluirSig&&mesPlan(o)===sig)||(PMADD.incluirAnt!==false&&mesPlan(o)&&mesPlan(o)<ym))&&(matchBusq(o,q,'PMADD.q')));
+  const nAnt=cand.filter(o=>mesPlan(o)<ym).length;
   {const g=grpSt('pmadd');if(!g.niveles.length)g.niveles=['cliente'];g.selFn='selGrupoPMADD';g.selChk=ids=>!!(ids&&ids.length&&ids.every(id=>PMADD.sel.has(id)))}
   const marc=[...PMADD.sel].filter(id=>cand.some(o=>o.id===id));
   const conMk=proy.map(x=>({id:x.id,cap:x.cap,mk:x.mk,libre:x.cap-x.mk}));
@@ -3416,9 +3419,9 @@ function agregarAlPlanHTML(ym,c){
   const grpSel=grpSelHTML('pmadd',true);
   const rowC=o=>`<tr><td><input type="checkbox" ${PMADD.sel.has(o.id)?'checked':''} onchange="togPMADD('${o.id}')"></td><td style="white-space:nowrap">${fotoMini(o)}${esc(o.op||'(sin WH)')}${mesPlan(o)===sig?' <span class="tag t-lavado" style="font-size:10px" title="es del mes siguiente, la estás jalando">'+esc(fmtMesEG(sig))+'</span>':''}</td><td>${esc(faseNombre(o.fase||'—'))}</td><td>${esc(o.cliente||'')}</td><td>${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${esc(o.fecha||'')}</td></tr>`;
   const cuerpo=filasGRP('pmadd',cand.slice().sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1),rowC,8)||'<tr><td colspan="8" class="mut">No hay órdenes disponibles con estos filtros.</td></tr>';
-  const panelB=`<div class="panel" id="pm-agregar"><h3>Agregar órdenes al plan <span class="note">${cand.length} disponibles (solo grupos no marcados como «en proceso» en la tabla 5)${PMADD.incluirSig?' (incluye '+esc(fmtMesEG(sig))+')':''} · agrupa como en Odoo, marca y agrega</span></h3><div class="body">
+  const panelB=`<div class="panel" id="pm-agregar"><h3>Agregar órdenes al plan <span class="note">${cand.length} disponibles (solo grupos no marcados como «en proceso» en la tabla 5)${PMADD.incluirSig?' (incluye '+esc(fmtMesEG(sig))+')':''}${nAnt?' · <b>'+nAnt+' pendientes de meses anteriores</b>':''} · agrupa como en Odoo, marca y agrega</span></h3><div class="body">
     <div class="no-print" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px"><div><label>Agrupar por (anidado, hasta 3)</label><div style="display:flex;gap:6px;flex-wrap:wrap">${grpSel}</div></div>
-      <div><label>&nbsp;</label><label style="font-weight:400;font-size:var(--fs-s)"><input type="checkbox" ${PMADD.incluirSig?'checked':''} onchange="PMADD.incluirSig=this.checked;render()"> Jalar del mes siguiente (${esc(fmtMesEG(sig))})</label></div>
+      <div><label>&nbsp;</label><label style="font-weight:400;font-size:var(--fs-s)"><input type="checkbox" ${PMADD.incluirSig?'checked':''} onchange="PMADD.incluirSig=this.checked;render()"> Jalar del mes siguiente (${esc(fmtMesEG(sig))})</label> <label style="font-weight:400;font-size:var(--fs-s);margin-left:10px"><input type="checkbox" ${PMADD.incluirAnt!==false?'checked':''} onchange="PMADD.incluirAnt=this.checked;render()"> Lo pendiente de meses anteriores</label></div>
       <div style="flex:1;min-width:180px"><label>Buscar</label>${busqHTML('PMADD.q',PMADD.q,'PMADD.q=v','')}</div>
       <div><label>&nbsp;</label><button class="btn" ${marc.length?'':'disabled'} onclick="planMesAgregar('${ym}',${JSON.stringify(marc).replace(/"/g,'&quot;')})">Agregar al plan (${marc.length})</button></div>
       ${marc.length?`<div><label>&nbsp;</label><button class="btn ghost sm" onclick="PMADD.sel=new Set();render()">Desmarcar</button></div>`:''}</div>
@@ -3438,10 +3441,10 @@ function vPlan(el){
   if(c.dem.vencidas)guia.push(`${c.dem.vencidas} órdenes del mes ya están vencidas (fecha meta pasada y abiertas): avisar al cliente con la fecha posible.`);if(c.dem.riesgo)guia.push(`${c.dem.riesgo} órdenes con entrega en ${fm} no llegan según el programa.`);
   if(c.dem.sinPrecio)guia.push(`${num(c.dem.sinPrecio)} prendas del mes no tienen precio: la facturación está subestimada.`);
   /* paso 1 · Nivelación: los días (calendario que manda), las personas por centro (escenario → ajuste de la semana al confirmar) y ¿alcanza? */
-  if(!(NIVUI.meses&&NIVUI.meses.length===1&&NIVUI.meses[0]===ym))NIVUI.meses=[ym];   /* la nivelación del paso 1 mira el mes del plan */
+  {const mesesP1=nivUIMesesDisp().filter(m=>m<=ym);if(!mesesP1.includes(ym))mesesP1.push(ym);mesesP1.sort();if(JSON.stringify(NIVUI.meses||[])!==JSON.stringify(mesesP1))NIVUI.meses=mesesP1}   /* la nivelación del paso 1 mira el mes del plan MÁS lo pendiente de meses anteriores (usuaria: «lo que falta de entregar de septiembre con lo de octubre») */
   const bloque1=planBloqueDiv('1','Días y capacidad','define cuánto cabe en el mes')
    +`<div class="panel"><h3>Días del mes por área <span class="note">este calendario manda: los días marcados son los que trabaja cada área</span></h3><div class="body"><div id="plan-cal">${(()=>{const g=MESPLAN;MESPLAN=ym;const html=planMesHTML();MESPLAN=g;return html})()}</div></div></div>
-   <div class="panel"><h3>¿Alcanza la capacidad? <span class="note">toca un centro: sus personas y su saldo contra los días del calendario</span></h3><div class="body">${nivelacionCuerpoHTML(false)}</div></div>
+   <div class="panel"><h3>¿Alcanza la capacidad? <span class="note">toca un centro: sus personas y su saldo contra los días del calendario · saldo = ${esc(fmtMesEG(ym))}${(NIVUI.meses||[]).filter(m=>m<ym).length?' + lo pendiente de '+(NIVUI.meses||[]).filter(m=>m<ym).map(fmtMesEG).join(', '):''}</span></h3><div class="body">${nivelacionCuerpoHTML(false,ym)}</div></div>
    <details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Más detalle <span class="note">capacidad por área y por módulo, simulador semana por semana, ajustes guardados, guía</span></summary><div class="body" style="padding:0 16px 12px">
    <div class="panel"><h3>Capacidad del mes por área <span class="note">personas, minutos, eficiencia y capacidad total resultante</span></h3><div class="body"><table><thead><tr><th>Área</th><th class="num">Días</th><th>Con qué se calcula</th><th class="num">Capacidad</th><th class="num">Programado</th><th style="width:140px">Uso</th><th></th></tr></thead><tbody>
     ${c.areas.map(a=>`<tr><td>${AREAS[a.a]}</td><td class="num">${fmtDiasMes(a.a,ym)}</td><td class="mut" style="font-size:var(--fs-xs)">${baseCapArea(a.a)}</td><td class="num">${num(a.cap)} ${a.u}</td><td class="num">${num(a.carga)} ${a.u}</td><td>${barra(a.carga,a.cap)}</td><td>${a.faltan?`<span class="tag t-alerta">faltan ${a.faltan} días</span> <a style="cursor:pointer;font-size:var(--fs-xs)" onclick="document.getElementById('plan-cal')&&document.getElementById('plan-cal').scrollIntoView({behavior:'smooth'})">planificar días ↑</a>`:'<span class="tag t-ok">alcanza</span>'}</td></tr>`).join('')}</tbody></table>
@@ -4305,7 +4308,7 @@ function listaDecisiones(P,max){const pend=(P.banosPend||[]);if(!pend.length)ret
 /* ---------- Módulo por centro de producción: planificación · programación · ejecución ---------- */
 const CENTROS_PROD_N={corte:'Corte',modulos:'Confección',estampado:'Estampado',bordado:'Bordado',terminados:'Terminados',empaque:'Empaque'};
 /* ============ TERMINADOS POR SUB-ÁREA: a qué ítem de planificación pertenece cada centro, y su consolidado ============ */
-const GRUPO_PLAN_DEF={corte:'corte',modulos:'modulos',estampado:'estampado',bordado:'bordado',etiquetas:'estampado',botones:'terminados',lavado:'terminados',plancha:'terminados',empaque:'terminados'};
+const GRUPO_PLAN_DEF={corte:'corte',modulos:'modulos',estampado:'estampado',bordado:'bordado',etiquetas:'estampado',sublimado:'estampado',apliques:'estampado',calandrado:'estampado',botones:'terminados',lavado:'terminados',cordones:'terminados',plancha:'terminados',empaque:'terminados'};
 /* el respaldo (cuando todavía no hay centros cargados) sale de la MISMA siembra, para que no queden dos listas que se contradigan */
 const CENTROS_PROD=(()=>{const m={};Object.keys(GRUPO_PLAN_DEF).forEach(c=>{const g=GRUPO_PLAN_DEF[c];(m[g]=m[g]||[]).push(c)});Object.keys(CENTROS_PROD_N).forEach(g=>{if(!m[g])m[g]=[g]});return m})();
 function grupoPlanDe(cid){const c=CE(cid)||{};return c.grupoPlan||GRUPO_PLAN_DEF[cid]||cid}
@@ -4316,7 +4319,21 @@ function centroPorDias(c){const cp=capacidadPaso(c);if(cp)return cp==='no';retur
 function capacidadPendiente(c){return capacidadPaso(c)==='pend'}
 function diasEsperaCentro(cid){const f=esperasPaso().filter(x=>x.paso===cid&&!x.sinRegla);return f.length?Math.max(...f.map(x=>+x.dias||0)):0}
 /* siembra idempotente de lo que la usuaria dictó (16-sep): plancha 2 min/prenda y lavado como proceso por días */
-function sembrarTerminados(){if(S.params.terminadosSembrado)return;
+const PASOS_NUEVOS_20=[
+ {id:'calandrado',n:'Calandrado',area:'pro',medida:'dias',grupoPlan:'estampado',sinCapacidad:true,etapa:'preparación de corte',que:'la tela cruda sale a estamparse afuera antes de corte; cuenta por días (plazo por confirmar)'},
+ {id:'sublimado',n:'Sublimado',area:'pro',medida:'min',grupoPlan:'estampado',etapa:'servicios',que:'sublimación de la prenda: entra a la ruta cuando la técnica de la orden dice sublimado; el minuto por prenda sale de la hoja LMO o de la tabla de técnicas'},
+ {id:'apliques',n:'Apliques',area:'pro',medida:'min',grupoPlan:'estampado',etapa:'servicios',que:'apliques en estampado: entra a la ruta cuando la técnica dice aplique o a mano; minuto por prenda por cargar'},
+ {id:'cordones',n:'Cordones',area:'pro',medida:'min',grupoPlan:'terminados',etapa:'terminados',que:'pasar cordón (Servicios y Terminados): se pone a mano en la ruta; minuto por prenda por cargar'}];
+function sembrarPasosNuevos20(){if(S.params.pasosNuevos20)return false;const nuevos=[];
+  PASOS_NUEVOS_20.forEach(p=>{if(CE(p.id))return;S.centros.push({id:p.id,n:p.n,area:p.area,medida:p.medida,grupoPlan:p.grupoPlan,activo:true,sinCapacidad:!!p.sinCapacidad,sinConfirmar:true,que:p.que,creado:'siembra 20-sep'});nuevos.push(p.n)});
+  if(Array.isArray(S.params.centroEtapa))PASOS_NUEVOS_20.forEach(p=>{if(!S.params.centroEtapa.some(x=>x.centro===p.id))S.params.centroEtapa.push({centro:p.id,etapa:p.etapa,pendiente:true})});
+  if(Array.isArray(S.params.centrosPorOrden))PASOS_NUEVOS_20.forEach(p=>{if(!S.params.centrosPorOrden.includes(p.id))S.params.centrosPorOrden.push(p.id)});
+  if(!esperasPaso().some(f=>f.paso==='calandrado'))esperasPaso().push({paso:'calandrado',match:'',dias:0,cap:'no',estimado:true,nota:'Calandrado: tela cruda que va a estamparse afuera, antes de corte · plazo POR CONFIRMAR (0 días = sin espera hasta que se cargue)'});
+  {const cat=perfilesDef();const cor=cat.find(x=>x.id==='corte'),ter=cat.find(x=>x.id==='terminado');if(cor&&Array.isArray(cor.centros))['sublimado','apliques','calandrado'].forEach(c=>{if(!cor.centros.includes(c))cor.centros.push(c)});if(ter&&Array.isArray(ter.centros)&&!ter.centros.includes('cordones'))ter.centros.push('cordones')}
+  S.params.pasosNuevos20=new Date().toISOString();
+  if(nuevos.length&&typeof bitacora==='function')bitacora('Pasos de ruta nuevos (usuaria, 20-sep): '+nuevos.join(', ')+' · sin tiempo por prenda hasta que ingeniería lo cargue (Configuración → Centros y recursos / Operaciones)');
+  if(nuevos.length&&typeof save==='function'){try{save()}catch(e){}}   /* lo sembrado se guarda en el momento (centros, params) */return true}
+function sembrarTerminados(){sembrarPasosNuevos20();if(S.params.terminadosSembrado)return;
   {const e=CE('etiquetas');if(e&&e.grupoPlan===undefined){e.grupoPlan='estampado';if(typeof bitacora==='function')bitacora('Etiquetas pasa al ítem de planificación Estampado (serigrafía): sus dos operaciones «Etiquetar» son de SER-01, tampográfica y manual. Editable en Configuración → Centros.')}}
   const p=CE('plancha');if(p&&!(+p.minEstandar>0)){p.minEstandar=2;if(typeof bitacora==='function')bitacora('Terminados: plancha con SAM de 2 minutos por prenda (CONFIRMADO 16-sep; editable en Configuración → Centros)')}
   sembrarPerfilesEtiquetas();
@@ -4452,7 +4469,7 @@ function aplicarLavado(ids,que,motivo){const L=(ids||[]).map(id=>S.ordenes.find(
 
 /* ---------- 5 · RUTAS ESTIMADAS: se aprueban, pero se revisan una por una ---------- */
 /* Estampado y bordado dependen del diseño: no entran a la ruta estimada y la pantalla avisa que esa carga puede faltar. */
-const CENTROS_DISENO=['estampado','bordado','etiquetas'];
+const CENTROS_DISENO=['estampado','bordado','etiquetas','sublimado','apliques','calandrado'];
 const RUTA_ESTADOS=[['sinRevisar','estimada – sin revisar'],['revisada','estimada – revisada'],['real','real']];
 function estadoRuta(o){const r=rutaConf(o);
   if(!r)return (o&&(o.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))?'':'';
@@ -6517,12 +6534,12 @@ function filtroSelNiv(sel){sel=sel||{};const cli=sel.cli||'',fam=sel.fam||'',hij
   return o=>(!cli||String(o.cliente||'(sin cliente)')===cli)&&(!fam||famDeOrden(o)===fam)&&(!hija||nivUIClaveFila(o,'hija')===hija)}
 /* «ver órdenes»: la nivelación no lista WH; manda la selección a Carga general y deja el camino de vuelta */
 function irSaldoCentro(sel){sel=sel||{};const a=nivUIArea(sel.area);if(!a)return;
-  const volver={meses:nivUIMeses().slice(),cliente:NIVUI.cliente,familia:NIVUI.familia,area:NIVUI.area,filaPor:NIVUI.filaPor,celda:NIVUI.celda?Object.assign({},NIVUI.celda):null,noEntra:!!NIVUI.noEntra};
+  const volver={meses:nivUIMeses().slice(),cliente:NIVUI.cliente,familia:NIVUI.familia,area:NIVUI.area,filaPor:NIVUI.filaPor,celda:NIVUI.celda?Object.assign({},NIVUI.celda):null,noEntra:!!NIVUI.noEntra,page:page,paso:PM.paso,mes:PM.mes};   /* de dónde se vino: Planificar el mes (paso 1) o la página Nivelación */
   CG.area='pro';CG.centro=(a.tipo==='centro')?a.id:'';CG.sem=null;
   CG.det={saldo:true,area:a.id,meses:(sel.meses||[]).slice(),fam:sel.fam||'',hija:sel.hija||'',cli:sel.cli||'',ids:sel.ids||null,txt:sel.txt||'',volver};
   ir('produccion');setTimeout(()=>{const e=document.getElementById('cg-saldo');if(e&&e.scrollIntoView)e.scrollIntoView({block:'start'})},0)}
 function nivUIVolver(){const v=CG.det&&CG.det.volver;if(v){NIVUI.meses=v.meses;NIVUI.cliente=v.cliente;NIVUI.familia=v.familia;NIVUI.area=v.area;NIVUI.filaPor=v.filaPor;NIVUI.celda=v.celda;NIVUI.noEntra=v.noEntra}
-  CG.det=null;ir('nivelacion')}
+  CG.det=null;if(v&&v.page==='nivelacion'){page='nivelacion';render()}else{PM.paso=1;if(v&&v.mes)PM.mes=v.mes;ir('plan')}}   /* vuelve a donde se vino: Planificar el mes (paso 1) o la página Nivelación */
 /* --- capacidad diaria del área, con el detalle que la produce (personas, minutos, eficiencia) --- */
 function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null,detalle:[],nota:'área desconocida'};
   if(a.tipo==='tela'){const t=capTelaReal();const plan=nivParam('telaPlan','');const cap=(plan===''||plan==null)?(t.suficiente?t.prom:null):+plan;
@@ -6532,7 +6549,7 @@ function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null
   const d=hoy();const recs=S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila');
   /* días hábiles del horizonte (meses elegidos): la capacidad por día es el promedio ahí, así cuentan los ajustes de semana y el escenario (SIM) */
   const meses=(typeof nivUIMeses==='function')?nivUIMeses():[];const diasH=[];meses.forEach(ym=>{const [y,m]=ym.split('-').map(Number);if(!(y>0&&m>0))return;const nd=new Date(y,m,0).getDate();for(let k=1;k<=nd;k++)diasH.push(ym+'-'+String(k).padStart(2,'0'))});
-  const capProm=r=>{const ds=diasH.filter(x=>labR(x,r));if(!ds.length)return capDia(r,d);return ds.reduce((x,y)=>x+capDia(r,y),0)/ds.length};
+  const capProm=r=>{const ds=diasH.filter(x=>x>=d&&labR(x,r));if(!ds.length)return capDia(r,d);return ds.reduce((x,y)=>x+capDia(r,y),0)/ds.length};   /* solo días hábiles de hoy en adelante: lo pasado no se planifica */
   const detalle=recs.map(r=>{const t=(S.turnos||[]).find(x=>x.rec===r.id&&x.d===d);const aj=ajusteRecDia(r,d);
     let pers=(t&&t.pers!=null)?t.pers:(r.pers||0),min=r.min||0,efic=r.efic||0;if(aj){if(aj.pers!=null&&!(t&&t.pers!=null))pers=+aj.pers;if(aj.min!=null)min=+aj.min;if(aj.efic!=null)efic=+aj.efic}
     return {rec:r.id,n:r.n,pers,min,efic,parada:!!paradaDe(r,d),cap:capProm(r),capHoy:capDia(r,d),fuente:(t&&t.pers!=null)?'asistencia de hoy':(aj?'ajuste de la semana':'configuración')}});
@@ -6687,8 +6704,8 @@ function nivUICalculoHTML(r){const c=r.calc;const nh=c.noHabiles||[];
    <div><b>Producción planta:</b> ${c.capDia!=null&&r.diasTot!=null?num(c.capDia,0)+' × '+num(r.diasTot,1)+' = '+num(r.plantaMin,0)+(r.enMin?' min':' u'):'—'} · <b>Maquila:</b> ${r.maqMin!=null?num(r.maqU,0)+' u'+(r.enMin&&r.sam?' × '+num(r.sam,3)+' = '+num(r.maqMin,0)+' min':''):'—'} · <b>Déficit:</b> ${r.deficitMin!=null?num(r.saldo?(r.enMin?r.saldo.min:r.saldo.unid):0,0)+' − '+num(r.totalMin,0)+' = '+num(r.deficitMin,0):'—'}</div>
   </div>`}
 /* el cuerpo de la nivelación (recuadros por área, tabla, cuadrito); lo usan la página Nivelación y el paso 1 de Planificar el mes */
-function nivelacionCuerpoHTML(conMeses){const r=nivUICalcular(NIVUI.area)||nivUICalcular((nivUIAreas()[1]||{}).id);const areaSel=r?r.area:null;
-  const personas=(areaSel&&areaSel.tipo==='centro'&&!areaSel.porDias)?nivUIMeses().slice().sort().map(ym=>personasNivHTML(ym,areaSel.id)).join(''):'';   /* solo el centro elegido en los recuadros */
+function nivelacionCuerpoHTML(conMeses,ymPersonas){const r=nivUICalcular(NIVUI.area)||nivUICalcular((nivUIAreas()[1]||{}).id);const areaSel=r?r.area:null;
+  const personas=(areaSel&&areaSel.tipo==='centro'&&!areaSel.porDias)?(ymPersonas?[ymPersonas]:nivUIMeses().slice().sort()).map(ym=>personasNivHTML(ym,areaSel.id)).join(''):'';   /* solo el centro elegido en los recuadros; en el plan, solo el mes que se planifica */
   return `<div class="row" style="align-items:flex-end;gap:14px">${conMeses?nivUIMesesHTML():''}${nivUIFiltrosHTML()}</div>
    ${nivUIRecuadrosHTML()}
    ${personas}
@@ -7763,7 +7780,7 @@ function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)retur
   conAvisoFecha(o,'Reprogramación en '+nCen(c)+(k===null?' quitada':': '+k+' '+(k==='rec'?nRec(v):v)),()=>{o.progCentro=o.progCentro||{};if(k===null){delete o.progCentro[c]}else{o.progCentro[c]=o.progCentro[c]||{};if(v===''||v==null)delete o.progCentro[c][k];else o.progCentro[c][k]=v;if(!Object.keys(o.progCentro[c]).length)delete o.progCentro[c]}});
   bitacora('Programación '+nCen(c)+' '+o.op+': '+pcAntes+' → '+JSON.stringify((o.progCentro||{})[c]||{}));save();render()}
 /* ruta editable por el centro: solo los pasos de sus centros (y los opcionales que le tocan), con motivo obligatorio; sin tiempo = se reporta */
-const RUTA_EDITABLE_POR={corte:['estampado','bordado'],estampado:['estampado','bordado'],bordado:['estampado','bordado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones'],botones:['etiquetas','lavado','plancha','botones'],lavado:['etiquetas','lavado','plancha','botones'],plancha:['etiquetas','lavado','plancha','botones'],empaque:['empaque']};
+const RUTA_EDITABLE_POR={corte:['estampado','bordado','sublimado','apliques','calandrado'],estampado:['estampado','bordado','sublimado','apliques','calandrado'],sublimado:['estampado','bordado','sublimado','apliques','calandrado'],apliques:['estampado','bordado','sublimado','apliques','calandrado'],calandrado:['estampado','bordado','sublimado','apliques','calandrado'],bordado:['estampado','bordado','sublimado','apliques','calandrado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones','cordones'],botones:['etiquetas','lavado','plancha','botones','cordones'],lavado:['etiquetas','lavado','plancha','botones','cordones'],cordones:['etiquetas','lavado','plancha','botones','cordones'],plancha:['etiquetas','lavado','plancha','botones','cordones'],empaque:['empaque']};
 function centrosEditablesRuta(){if(puede('programa'))return S.centros.filter(c=>c.area==='pro').map(c=>c.id);if(!puede('ruta'))return [];const set=new Set();centrosPerfil().forEach(c=>{(RUTA_EDITABLE_POR[c]||[c]).forEach(x=>set.add(x));if(c==='*')S.centros.filter(x=>x.area==='pro').forEach(x=>set.add(x.id))});return [...set]}
 function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});   /* como la ficha: hoja LMO, puntadas para bordado, el centro para lavado/plancha */
   const ruta=o.ruta||[];const todos=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
@@ -8081,19 +8098,20 @@ function togSelRut(id,on){if(on)RUT.sel.add(id);else RUT.sel.delete(id);rutasBar
 function selGrupoRut(key,on){const ids=((grpSt('rut').mapa)||{})[key]||[];ids.forEach(id=>on?RUT.sel.add(id):RUT.sel.delete(id));conScrollGRP('rut',render)}
 function togFaseRUT(f){togSet(RUT,'fases',f)}
 function selTodoRut(on){rutasLista().forEach(o=>on?RUT.sel.add(o.id):RUT.sel.delete(o.id));if(!on)RUT.sel=new Set();render()}
-function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();const pend=base.filter(o=>!rutaConfirmada(o)),conf=base.filter(o=>rutaConfirmada(o));const na=rutasNoAplican();const lista=rutasLista();
+function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();const qF=normTxt(RUT.q);const fil=o=>faseOkFiltro(RUT.fases,o.fase)&&matchBusq(o,qF,'RUT.q');const baseF=base.filter(fil);   /* los conteos siguen al filtro de fases y al buscador (usuaria, 20-sep) */
+  const pend=baseF.filter(o=>!rutaConfirmada(o)),conf=baseF.filter(o=>rutaConfirmada(o));const filtrado=baseF.length!==base.length;const na=rutasNoAplican();const lista=rutasLista();
   const g=grpSt('rut');if(!g.sembrado){g.sembrado=true;let guardado=null;try{guardado=localStorage['__grp_'+claveUsr()+'_rut']}catch(e){}if(guardado==null&&!g.niveles.length)g.niveles=['fam','hija']}   /* arranca agrupada por familia → tipo de producto solo la primera vez; «sin agrupar» se respeta */
   g.selFn='selGrupoRut';g.selChk=ids=>!!(ids&&ids.length&&ids.every(id=>RUT.sel.has(id)));g.todoAbierto=false;
   const nSel=RUT.sel.size;const an=analizarRutasOdoo();const fasesAllRut=[...new Set(base.map(o=>o.fase||'Sin fase'))].sort((a,b)=>cmpFases(a,b));
   const fila=o=>{const d=diagRutaOdoo(o,contras);const rc=rutaConf(o);const ruta=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));
     return `<tr><td><input type="checkbox" ${RUT.sel.has(o.id)?'checked':''} onchange="togSelRut('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}${tagExcedente(o)}</td><td>${esc(refDe(o))}</td><td>${esc(o.cliente||'')}</td><td style="white-space:nowrap">${esc(String(o.odc||'').trim()||'—')}</td><td class="num">${num(o.cant)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="font-size:var(--fs-xs)">${ruta.map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta de producción</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(d.txt)}</td><td style="white-space:nowrap">${rc&&rc.estado==='confirmada'?(rc.origen==='odoo'?'<span class="tag t-medio">Odoo OT</span>':'<span class="tag t-ok">persona</span>')+' <span class="mut" style="font-size:var(--fs-xs)">'+esc(rc.u||'')+' · '+new Date(rc.ts).toLocaleDateString('es-EC')+'</span>':(typeof estadoRuta==='function'&&estadoRuta(o)==='sinRevisar'?'<span class="tag t-aviso">estimada · sin revisar</span>':'<span class="tag t-aviso">por confirmar</span>')}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:`<button class="btn ghost sm" onclick="abrirFichaOrden('${o.id}')">ver</button>`}</td></tr>`};
   const cap=g.niveles.length?lista:lista.slice(0,600);
-  return `<div class="panel"><h3>Rutas <span class="note">${pend.length} por confirmar · ${conf.length} confirmadas${na.length?' · '+na.length+' con la prenda terminada: su ruta no se revisa':''}</span></h3><div class="body">
+  return `<div class="panel"><h3>Rutas <span class="note">${pend.length} por confirmar · ${conf.length} confirmadas${filtrado?' <b>con el filtro puesto</b> (de '+base.filter(o=>!rutaConfirmada(o)).length+' y '+base.filter(o=>rutaConfirmada(o)).length+' en total)':''}${na.length?' · '+na.length+' con la prenda terminada: su ruta no se revisa':''}</span></h3><div class="body">
    <div class="row filtros-blk" style="align-items:flex-end;margin-bottom:8px;gap:14px">
     <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
     <div><label>Agrupar por</label><div class="grp-inline" data-filt-tipo="grp">${grpSelHTML('rut',true)}</div></div>
     <div><label>Fases</label>${filtroFasesHTML(fasesAllRut,RUT.fases,'RUT.fases','togFaseRUT')}</div>
-    <div class="chips" style="margin:0">${[['pend','Por confirmar',pend.length],['conf','Confirmadas',conf.length],['todas','Todas',base.length]].map(([k,n,c])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n} <span class="mut">${c}</span></span>`).join('')}</div>
+    <div class="chips" style="margin:0">${[['pend','Por confirmar',pend.length],['conf','Confirmadas',conf.length],['todas','Todas',baseF.length]].map(([k,n,c])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n} <span class="mut">${c}</span></span>`).join('')}</div>
    </div>
    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>
    <div class="sub-blk" id="rut-acciones" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b><span id="rut-sel-n">${nSel}</span> marcadas</b>
@@ -11341,7 +11359,8 @@ function defCentroEtapa(){return [
   {centro:'corte',etapa:'corte',pendiente:true},
   {centro:'estampado',etapa:'servicios',pendiente:true},{centro:'bordado',etapa:'servicios',pendiente:true},{centro:'etiquetas',etapa:'servicios',pendiente:true},
   {centro:'modulos',etapa:'confección',pendiente:true},
-  {centro:'botones',etapa:'terminados',pendiente:true},{centro:'lavado',etapa:'terminados',pendiente:true},{centro:'plancha',etapa:'terminados',pendiente:true},{centro:'empaque',etapa:'terminados',pendiente:true}]}
+  {centro:'botones',etapa:'terminados',pendiente:true},{centro:'lavado',etapa:'terminados',pendiente:true},{centro:'plancha',etapa:'terminados',pendiente:true},{centro:'empaque',etapa:'terminados',pendiente:true},
+  {centro:'calandrado',etapa:'preparación de corte',pendiente:true},{centro:'sublimado',etapa:'servicios',pendiente:true},{centro:'apliques',etapa:'servicios',pendiente:true},{centro:'cordones',etapa:'terminados',pendiente:true}]}
 function centroEtapa(){if(!Array.isArray(S.params.centroEtapa))S.params.centroEtapa=defCentroEtapa();return S.params.centroEtapa}
 function centroEtapaDe(centro){const r=centroEtapa().find(x=>x.centro===centro);return r?r.etapa:null}
 function addCentroEtapaRow(){centroEtapa().push({centro:'',etapa:gruposOrdenados()[0],pendiente:true});save();render()}

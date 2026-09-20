@@ -142,6 +142,14 @@ quiero ponerle check y no tengo que hacer nada más». Dos cosas:
   de la ruta (`confNoTocadas`, en el aviso, el registro de cargas y el **Reporte OT** con la lista) — se reportan, no se aplican.
   Pruebas EX.
 
+## Conteos que siguen al filtro (20-sep, noche)
+La usuaria: «está filtrado y salen 841; le quito fases y sigue la misma cantidad». Los chips Por confirmar / Confirmadas / Todas y
+el título del recuadro cuentan ahora sobre la base **filtrada** por fases y buscador (`baseF`); si hay filtro, el título dice «con el
+filtro puesto (de N y M en total)». Confirmar (✓ Ruta ok, Confirmar como están, Definir ruta) redibuja y los conteos bajan en el
+momento — se probó en el simulador (1.012 → 1.000 al confirmar 12); si en producción no baja, es la copia vieja en caché.
+**Liberación a producción**: `puedeLiberarA` ya exige la ruta confirmada (o prenda terminada) desde el 15-sep: «falta confirmar ruta»
+es lo primero que dice «Qué la frena». Pasos nuevos de ruta (Sublimado, Calandrado, Apliques, Cordones): ver `PASOS_NUEVOS_20SEP.md`.
+
 ## Pruebas
 Bloque **RLT** del simulador (23 comprobaciones): la lista y sus grupos con casilla, marcar un grupo desde la cabecera, marcar
 / desmarcar una fila sin redibujar, el modal sobre la selección, base más común, plan (entra/sale/conserva/excluido por la fase),

@@ -957,7 +957,14 @@ se muestra uno). **Paso 1 · Nivelación** = calendario de días (`planMesHTML`,
 todo el sistema; la base de Configuración no se toca) + la nivelación (`nivelacionCuerpoHTML`, mes = `PM.mes`; `nivUICapacidad` = promedio por día hábil del
 horizonte, incluye ajustes y escenario) + «Más detalle» plegado (capacidad por área/módulo, simulador semanal, ajustes, guía). **Paso 2 · Plan mensual** =
 bloques 2–5. Producción → Nivelación es la misma nivelación por meses con «Planificar el mes →». `nivelar()`/`programar()` sin tocar. Pruebas PN; captura
-`?captura=uxplan`. Ver `PLANIFICAR_EL_MES_DOS_PASOS.md`.
+`?captura=uxplan`. Ver `PLANIFICAR_EL_MES_DOS_PASOS.md`. **Noche del 20-sep:** el paso 1 mira el mes del plan **más los meses anteriores con saldo**
+(nunca posteriores); `PMADD.incluirAnt` (defecto true) mete lo pendiente de meses anteriores como candidato del bloque 4; `nivUICapacidad` promedia
+solo días hábiles de hoy en adelante; `labDiaGeneral` toma las excepciones de producción (un sábado marcado solo para Producción cuenta en la
+nivelación); **Nivelación salió del menú de Producción** (la página `nivelacion` sigue para «volver» y pruebas; `nivUIVolver` vuelve a donde se vino).
+**Rutas**: los conteos siguen al filtro de fases y al buscador (`baseF`). **Pasos de ruta nuevos** (`PASOS_NUEVOS_20`, `sembrarPasosNuevos20` una
+vez desde `sembrarTerminados`): Calandrado (antes de corte, por días, plazo por confirmar), Sublimado y Apliques (después de estampado; por técnica
+«sublim» / «aplique» en `ordenCentrosAuto`), Cordones (terminados); están en `RUTA_ORDEN`, `GRUPO_PLAN_DEF`, `CENTROS_DISENO`, `RUTA_EDITABLE_POR`,
+tabla 4 y perfiles; sin tiempo hasta que se cargue. Pruebas PS. Ver `PASOS_NUEVOS_20SEP.md`.
 
 **Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
 después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de

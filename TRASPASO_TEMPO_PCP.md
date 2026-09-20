@@ -204,6 +204,13 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.71 Mes = pendiente anterior + mes; pasos nuevos de ruta; conteos de Rutas con filtro (20-sep, noche)
+- Planificar el mes: el paso 1 mira el mes más lo pendiente de meses anteriores; el bloque 4 lo ofrece como candidato. Nivelación
+  salió del menú de Producción. Un día marcado solo para Producción cuenta en la nivelación.
+- Pasos de ruta nuevos, sin tiempo hasta que ingeniería lo cargue: Calandrado (antes de corte, por días), Sublimado y Apliques (por
+  técnica), Cordones (terminados). Ver `PASOS_NUEVOS_20SEP.md`.
+- Rutas: los conteos siguen al filtro de fases y al buscador. Excedentes y «la OT no toca lo confirmado» (2.68).
+
 ### 2.70 Planificar el mes en dos pasos: nivelación con días y personas, luego el plan (20-sep)
 - Dirección → «Planificar el mes»: paso 1 Nivelación (calendario de días, personas por centro como escenario que al confirmar se
   vuelve el ajuste de cada semana y manda en todo el sistema, ¿alcanza?), paso 2 Plan mensual. Producción → Nivelación es la misma

@@ -47,6 +47,17 @@ motor pero no a «¿alcanza?». Ahora el día hábil de la nivelación (`labDiaG
 de «Capacidad día planta» dice de dónde salen las personas (configuración / ajuste de la semana / asistencia de hoy), y la página
 Nivelación de Producción muestra también el calendario de cada mes elegido (misma función `planMesHTML`). Prueba PN.
 
+## El mes que se planifica = lo pendiente de meses anteriores + el mes (20-sep, noche)
+La usuaria: «nos sentamos a programar el mes: lo que falta de entregar de septiembre con lo de octubre». Por eso:
+- **Paso 1**: la nivelación mira el mes del plan **más todos los meses anteriores con saldo** (`NIVUI.meses` = meses ≤ `PM.mes` con
+  saldo), nunca meses posteriores; el título lo dice («saldo = octubre + lo pendiente de septiembre»). Las personas se escriben solo
+  para el mes que se planifica. La capacidad por día promedia los días hábiles **de hoy en adelante** (lo pasado no se planifica).
+- **Paso 2 · Agregar órdenes al plan**: la base ya traía toda orden abierta «en proceso» de cualquier Proyecto; ahora los
+  candidatos incluyen también **lo pendiente de meses anteriores** (casilla «Lo pendiente de meses anteriores», marcada por
+  defecto, `PMADD.incluirAnt`), además de «Jalar del mes siguiente».
+- **Nivelación salió del menú de Producción** (vive en Dirección → Planificar el mes). La página `nivelacion` sigue existiendo
+  para «← volver» desde Carga general y para las pruebas; `nivUIVolver` vuelve a donde se vino (paso 1 o esa página).
+
 ## Las tres capas de la capacidad (en orden de mando)
 1. **Escenario** (borrador en la sesión, `SIM`) — mientras se está probando.
 2. **Vigente** (ajuste de la semana guardado, `ajustesCap`) — lo que se confirmó para esas semanas.
