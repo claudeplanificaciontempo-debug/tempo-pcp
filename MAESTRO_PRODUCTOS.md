@@ -53,3 +53,12 @@ provConservado}`, bitácora, registro de cargas (`tipo:'maestro'`), y ofrece **r
 
 Pruebas: bloque **MA** de `test/driver.js` (17 comprobaciones) sobre el maestro real (fixture local, no publicada:
 `test/fixtures/maestro_rows.json` en `.gitignore`). Harness: 2.611 comprobaciones, 0 errores.
+
+## Qué le falta a la tela: por origen (misma noche)
+
+Regla dictada: **lo que tiene Pantone es lo que tintura TEMPO**; los otros proveedores no tienen Pantones (materia prima); las planas no
+se tinturan; y no se quiere decidir orden por orden en Liberación. Tabla 13 → «Sin palabra, según el origen de la tela»: PROPIA → tintura ·
+EXTERNA → nada · EXTERNA TEÑIDA → nada · SIN CLASIFICAR → según el Pantone del color de la orden (editable, con bitácora). La palabra del
+producto (TINTURADO, TEÑID, CRUDO, PFD) sigue mandando. Con el maestro real y el volcado: 40 órdenes cuyas telas son todas de proveedor
+quedan sin tintorería (ruta proveedor → corte); 616 de 651 telas TEMPO van a tintorería (las 35 restantes dicen TINTURADO en el producto).
+Pruebas MB (7). Harness: 2.618 comprobaciones, 0 errores.

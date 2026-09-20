@@ -6523,6 +6523,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* limpieza: el maestro se retira y las telas vuelven a las de la carga sin maestro */
     delete S.params.maestroProductos;delete S.params.maestroCarga;S.params.diasProveedor=(S.params.diasProveedor||[]).filter(r=>r.origen!=="maestro de productos");S.cargas=(S.cargas||[]).filter(c=>c.tipo!=="maestro");
     {const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);__check("MA: limpieza: sin maestro, la carga vuelve a dejar los mismos tipos sin clasificar",Object.keys(pz.telaSinClasificar).length===sinClasAntes.length);}}
+   /* MB · qué le falta a la tela por ORIGEN (19-sep): TEMPO se tintura, otros proveedores no, planas no, sin clasificar según el Pantone */
+   {delete S.params.faltaPorOrigen;const t=faltaPorOrigen();
+    __check("MB: la regla se siembra: PROPIA → tintura · EXTERNA → nada · EXTERNA TEÑIDA → nada · SIN CLASIFICAR → según el Pantone",t.PROPIA==="tintura"&&t.EXTERNA==="nada"&&t["EXTERNA TEÑIDA"]==="nada"&&t["SIN CLASIFICAR"]==="pantone"&&faltaDeOrigen("EXTERNA")==="nada");
+    const mk=(origen,prod,cod)=>({clasif:"tela",origen,prod,cod:cod||"",udm:"kg",dem:5,ruta:"INV / MP / X",n2:"MP",n3:"X",n4:""});
+    __check("MB: una tela externa sin palabra no va a tintorería; una propia sí; la palabra CRUDO manda sobre el origen",dimensionesTela(mk("EXTERNA","TELA LISA AZUL")).falta==="nada"&&dimensionesTela(mk("PROPIA","JERSEY 24/1")).falta==="tintura"&&dimensionesTela(mk("EXTERNA","TELA CRUDO")).falta==="tintura"&&dimensionesTela(mk("EXTERNA TEÑIDA","TELA X")).falta==="nada");
+    __check("MB: sin clasificar: con Pantone en el color de la orden → tintura; sin Pantone → nada; sin contexto → tintura (como siempre)",lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:true})[0].falta==="tintura"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:false})[0].falta==="nada"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")])[0].falta==="tintura"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:false})[0].faltaPorPantone===true);
+    {const nb=S.bitacora.length;setFaltaPorOrigen("EXTERNA","tintura");__check("MB: cambiar la regla queda en bitácora y se respeta",faltaDeOrigen("EXTERNA")==="tintura"&&dimensionesTela(mk("EXTERNA","TELA LISA")).falta==="tintura"&&S.bitacora.slice(nb).some(b=>/Tabla 13 · qué le falta a la tela EXTERNA: nada → tintura/.test(b.t)));setFaltaPorOrigen("EXTERNA","nada");}
+    page="config";CONF.tab="ordenes2";render();__check("MB: la tabla 13 muestra la regla por origen con sus selectores",/Sin palabra, según el origen de la tela/.test(document.getElementById("p-config").innerHTML)&&(document.getElementById("p-config").innerHTML.match(/setFaltaPorOrigen\(/g)||[]).length>=4);
+    /* con el maestro real: las telas de proveedor salen de tintorería y su ruta no lleva «tin» */
+    {const maestroRows=await (await fetch('fixtures/maestro_rows.json')).json();const pm=planMaestro(maestroRows,"Maestro_MB.xlsx");const cf=window.confirm;window.confirm=()=>false;MAESTRO=pm;aplicarMaestro();window.confirm=cf;await __p(30);
+     recalcularTelasOrdenes(true);await __p(50);
+     const ext=S.ordenes.filter(o=>abiertaDe(o)&&(o.telas||[]).length&&(o.telas||[]).every(t=>t.produce==="externa"&&!t.faltaConf&&faltaTela(t)==="nada"));
+     const prop=S.ordenes.filter(o=>abiertaDe(o)&&(o.telas||[]).some(t=>t.produce==="propia"&&!t.faltaConf));
+     __check("MB: con el maestro, hay órdenes cuyas telas son todas de proveedor y ninguna va a tintorería: su ruta lleva proveedor y no tintorería",ext.length>0&&ext.every(o=>!(o.ruta||[]).some(p=>p.centro==="tin")&&((o.rutaCompleta||o.ruta||[]).some(p=>p.centro==="proveedor")||(o.telas||[]).every(t=>t.disp==="bodega"))&&+o.kgTin===0),JSON.stringify({ext:ext.length,malas:ext.filter(o=>(o.ruta||[]).some(p=>p.centro==="tin")).slice(0,3).map(o=>o.op)}));
+     __check("MB: y las telas TEMPO siguen yendo a tintorería (más del 90 %; el resto dice TINTURADO en el producto) y kgTin > 0",(()=>{let tot=0,tin=0;prop.forEach(o=>(o.telas||[]).forEach(t=>{if(t.produce==="propia"&&!t.faltaConf){tot++;if(faltaTela(t)==="tintura")tin++}}));return prop.length>0&&tot>0&&tin/tot>0.9&&prop.some(o=>+o.kgTin>0)})(),prop.length+" órdenes (las propias que no van son las que dicen TINTURADO en el producto: la palabra manda)");
+     /* limpieza */
+     delete S.params.maestroProductos;delete S.params.maestroCarga;S.params.diasProveedor=(S.params.diasProveedor||[]).filter(r=>r.origen!=="maestro de productos");S.cargas=(S.cargas||[]).filter(c=>c.tipo!=="maestro");
+     const pz=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=pz;aplicarTarea();await __p(50);}}
    /* K8 · fase: sin WH manda Odoo (también al recibir la WH); con WH manda la planta (tabla 14) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);delete S.params.faseOdooSinWH;
     const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);

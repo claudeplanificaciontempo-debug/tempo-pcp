@@ -768,7 +768,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 23:01';
+const APP_BUILD='2026-09-19 23:17';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9902,9 +9902,10 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
   ${ayudasPanelHTML()}
   ${horariosPanelHTML()}
 
-  <div class="panel"><h3>13 · Qué le falta a la tela: propuesta por palabras del producto <span class="note">tintura · lavado de tela · nada; sin palabra: EXTERNA TEÑIDA → nada, lo demás → tintura. La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
+  <div class="panel"><h3>13 · Qué le falta a la tela: por palabras del producto y, si no, por origen <span class="note">tintura · lavado de tela · nada. La palabra del producto manda; sin palabra decide el origen (abajo). La persona confirma o cambia en Liberación</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPropFaltaRow()">+ Palabra</button></h3>
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Tres cosas distintas por tela: <b>quién la produce</b> (tabla 3: propia = carga tejeduría · externa = comprada o importada), <b>disponibilidad</b> (usuaria TEMPO = en bodega · proveedor de facturas = hay que pedir) y <b>qué le falta</b> (esta tabla + confirmación en Liberación = carga tintorería; el lavado de tela es un baño más, con horas de color oscuro).</p></div></div>
+   <div style="margin-top:10px"><b style="font-size:var(--fs-s)">Sin palabra, según el origen de la tela</b> <span class="mut" style="font-size:var(--fs-xs)">(regla de la usuaria, 19-sep: lo de TEMPO se tintura —tiene Pantone—; lo de otros proveedores llega terminado; las planas no se tinturan)</span><div class="row" style="margin-top:4px">${ORIGENES_TELA.map(k=>`<span><b style="font-size:var(--fs-xs)">${esc(k)}</b> → <select style="width:auto" onchange="setFaltaPorOrigen('${esc(k)}',this.value)">${Object.entries(FALTA_OPCIONES).map(([v,t])=>`<option value="${v}" ${faltaDeOrigen(k)===v?'selected':''}>${esc(t)}</option>`).join('')}</select></span>`).join('')}</div></div>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Tres cosas distintas por tela: <b>quién la produce</b> (maestro de productos por código; si no, tabla 3 por categoría: propia = carga tejeduría · externa = comprada o importada), <b>disponibilidad</b> (usuaria TEMPO = en bodega · proveedor de facturas = hay que pedir) y <b>qué le falta</b> (esta tabla + confirmación en Liberación = carga tintorería; el lavado de tela es un baño más, con horas de color oscuro).</p></div></div>
 
   <div class="panel"><h3>12 · Catálogo de productos <span class="note">maestro de productos (código, unidad, proveedor, categoría, elaboración propia) + proveedor desde facturas; origen por producto (maestro) y, si no, por la tabla 3; tipo detectado y corregible</span><span class="spacer"></span>${(puede('ordenes')||puede('config'))?`<button class="btn sm" onclick="mCargarMaestro()">Cargar maestro de productos</button> <button class="btn ghost sm" onclick="mRecalcularTelas()" title="rehace las telas y la ruta textil de las órdenes abiertas con el maestro y las tablas 3/8/13, sin volver a cargar Odoo">Recalcular telas de las órdenes</button> <button class="btn ghost sm" onclick="mFacturas()">Cargar facturas</button>`:''}</h3>
    <div class="body"><div class="row" style="margin-bottom:8px"><input type="text" style="width:320px" placeholder="buscar código, nombre o proveedor" value="${esc(CONF.qProd||'')}" data-q="CONF.qProd" oninput="buscarQ(this,v=>CONF.qProd=v)"><label style="display:inline-flex;gap:6px;align-items:center;font-size:var(--fs-xs)"><input type="checkbox" ${CONF.prodSoloOrdenes?'checked':''} onchange="CONF.prodSoloOrdenes=this.checked;render()"> solo productos de las órdenes cargadas</label><span class="mut" style="font-size:var(--fs-xs)">${num(Object.keys(maestroProductos()).length)} productos en el maestro${S.params.maestroCarga?' (última carga '+new Date(S.params.maestroCarga.fecha).toLocaleString('es-EC')+', '+esc(S.params.maestroCarga.archivo)+')':' (sin maestro cargado)'} · ${num(Object.keys(catalogoProd()).length)} con factura${S.params.facturasCarga?' ('+esc(S.params.facturasCarga.archivo)+')':''}</span></div>
@@ -10235,14 +10236,27 @@ function catTela(){if(!Array.isArray(S.params.catTela))S.params.catTela=defCatTe
       confirma o cambia en Liberación (queda quién y cuándo). Decide si carga TINTORERÍA. El lavado de tela es un baño más, con horas de color oscuro. */
 function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:'TEÑID',falta:'nada'},{palabra:'TENID',falta:'nada'},{palabra:'PFD',falta:'tintura'},{palabra:'CRUD',falta:'tintura'}]} // el lavado de tela no se propone por palabra: se decide en liberación
 function propuestaFalta(){if(!Array.isArray(S.params.propuestaFalta))S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
+/* Qué le falta a la tela cuando ninguna palabra del producto lo dice: POR ORIGEN (decisión de la usuaria, 19-sep-2026):
+   PROPIA (TEMPO la teje; tiene Pantone) → tintura · EXTERNA (otro proveedor; no tiene Pantone, llega terminada) → nada ·
+   EXTERNA TEÑIDA → nada · SIN CLASIFICAR → «pantone» = tintura si el color de la orden tiene código Pantone, si no nada.
+   Siembra idempotente; editable en la tabla 13; cada cambio va a bitácora. */
+const FALTA_OPCIONES={tintura:'tintura',nada:'nada',pantone:'según el Pantone del color de la orden'};
+function defFaltaPorOrigen(){return {'PROPIA':'tintura','EXTERNA':'nada','EXTERNA TEÑIDA':'nada','SIN CLASIFICAR':'pantone'}}
+function faltaPorOrigen(){if(!S.params.faltaPorOrigen||typeof S.params.faltaPorOrigen!=='object')S.params.faltaPorOrigen=defFaltaPorOrigen();const t=S.params.faltaPorOrigen;const d=defFaltaPorOrigen();ORIGENES_TELA.forEach(k=>{if(!(k in t))t[k]=d[k]});return t}
+function faltaDeOrigen(org){const t=faltaPorOrigen();const v=t[org];return FALTA_OPCIONES[v]?v:'tintura'}
+function setFaltaPorOrigen(org,v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia esta regla.');return}if(!FALTA_OPCIONES[v])return;const t=faltaPorOrigen();const antes=t[org];if(antes===v)return;t[org]=v;
+  bitacora('Tabla 13 · qué le falta a la tela '+org+': '+antes+' → '+v+' ('+quienFirma()+')');save();render()}
 function dimensionesTela(m){const org=origenPorMaestro(m.cod)||m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
   const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;const mp=m.cod?provPorMaestro(m.cod):'';
   const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato';/* externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega */
   const n=normTxt(m.prod||'');const pal=propuestaFalta().find(r=>r.palabra&&n.includes(normTxt(r.palabra)));
-  const falta=pal?pal.falta:(org==='EXTERNA TEÑIDA'?'nada':'tintura');return{produce,disp,falta,prov:cp?cp.prov:(mp||(us?us.prov:''))}}
+  const falta=pal?pal.falta:faltaDeOrigen(org||'SIN CLASIFICAR');   /* la palabra del producto manda; si no, la regla por origen (tabla 13); «pantone» se resuelve con el color de la orden en lineasTelaDe */
+  return{produce,disp,falta,prov:cp?cp.prov:(mp||(us?us.prov:''))}}
 /* líneas de tela de una orden con sus tres dimensiones. Las planas vienen en METROS y se quedan en metros (ud 'm', m); los kilos de la plana
    vienen del rollo en bodega y se registran en la tanda de tintorería: metros y kilos nunca se calculan uno del otro */
-function lineasTelaDe(materiales){return (materiales||[]).filter(m=>m.clasif==='tela'&&(normTxt(m.udm)==='kg'||normTxt(m.udm)==='m')&&m.dem>0).map(m=>{const dm=dimensionesTela(m);const org=origenPorMaestro(m.cod)||m.origen;
+/* ctx.pantone: el color de la orden tiene código Pantone (resuelve la opción «según el Pantone» de la tabla 13). Sin ctx, «pantone» = tintura (como siempre) */
+function lineasTelaDe(materiales,ctx){return (materiales||[]).filter(m=>m.clasif==='tela'&&(normTxt(m.udm)==='kg'||normTxt(m.udm)==='m')&&m.dem>0).map(m=>{const dm=dimensionesTela(m);const org=origenPorMaestro(m.cod)||m.origen;
+  if(dm.falta==='pantone'){dm.faltaPorPantone=true;dm.falta=(ctx&&ctx.pantone===false)?'nada':'tintura'}
   if(normTxt(m.udm)==='kg')return Object.assign({},m,{origen:org},dm,{kg:+m.dem||0,ud:'kg'});return Object.assign({},m,{origen:org},dm,{kg:0,m:+m.dem||0,ud:'m'})})}
 function faltaTela(tl){return (tl.faltaConf&&tl.faltaConf.v)||tl.falta||(tl.ext?'nada':'tintura')}
 function necesitaTin(tl){return faltaTela(tl)!=='nada'}
@@ -10361,8 +10375,8 @@ function aplicarMaestro(){if(!MAESTRO)return;if(!(puede('ordenes')||puede('confi
   if(prev.cambiadas&&confirm('Maestro aplicado. Con él cambian las telas de '+prev.cambiadas+' de las '+prev.n+' órdenes abiertas ('+prev.ganaron+' pasan a tener receta de tela, '+prev.perdieron+' la pierden). ¿Recalcular ahora las telas y la ruta textil de esas órdenes? (queda en bitácora; si no, se aplica en la próxima carga de tareas)'))recalcularTelasOrdenes(true);
   render()}
 /* ---------- telas de una orden a partir de sus materiales: UNA sola función para la carga y para el recálculo ---------- */
-function armarTelasDe(materiales,rep){rep=rep||{telaEnMetros:{},telaSinClasificar:{},telaSinCatalogo:{}};
-  const telasKg=lineasTelaDe(materiales);
+function armarTelasDe(materiales,rep,ctx){rep=rep||{telaEnMetros:{},telaSinClasificar:{},telaSinCatalogo:{}};
+  const telasKg=lineasTelaDe(materiales,ctx);
   telasKg.filter(m=>m.ud==='m').forEach(m=>{const k=m.n3+(m.n4?' / '+m.n4:'');rep.telaEnMetros[k]=(rep.telaEnMetros[k]||0)+1});
   const origs=[...new Set(telasKg.map(m=>m.origen))];
   const sinClas=telasKg.filter(m=>m.origen==='SIN CLASIFICAR');if(sinClas.length){[...new Set(sinClas.map(m=>m.n3))].forEach(n3=>{rep.telaSinClasificar[n3]=rep.telaSinClasificar[n3]||{ordenes:0};rep.telaSinClasificar[n3].ordenes++})}
@@ -10378,7 +10392,7 @@ function recalcularTelasOrdenes(aplicar){if(aplicar&&!(puede('ordenes')||puede('
   const firma=ts=>JSON.stringify((ts||[]).map(t=>[t.tela,t.kg,t.m||0,t.origen,t.produce,t.disp,faltaTela(t),t.prov||'']));
   S.ordenes.forEach(o=>{if(!abiertaDe(o)||!(o.materiales||[]).length)return;n++;
     const mats=(o.materiales||[]).map(m=>m.clasif==='tela'?Object.assign({},m,{origen:origenPorMaestro(m.cod)||origenDeTela(m.n3,m.n4)||'SIN CLASIFICAR'}):m);
-    const R=armarTelasDe(mats,rep);
+    const R=armarTelasDe(mats,rep,{pantone:!!((C(o.color)||{}).cod)});
     R.telas.forEach(t=>{const pv=(o.telas||[]).find(x=>x.tela===t.tela);if(pv){if(pv.faltaConf)t.faltaConf=pv.faltaConf;if(pv.color)t.color=pv.color}});
     const antes=firma(o.telas),despues=firma(R.telas);if(antes===despues)return;cambiadas++;
     if(!(o.telas||[]).length&&R.telas.length)ganaron++;if((o.telas||[]).length&&!R.telas.length)perdieron++;det.push(o.op);
@@ -11198,7 +11212,7 @@ function planTarea(rows,nombre){
       const m=c.prod.match(/^\[([^\]]*)\]\s*(.*)$/);const cod=m?m[1]:'';
       let origen=null;if(clasif==='tela'){origen=origenPorMaestro(cod)||origenDeTela(n3,n4)||'SIN CLASIFICAR'}   /* el maestro de productos manda sobre la categoría */
       return{cod,prod:m?m[2]:c.prod,costo:c.costo,dem:c.dem,udm:c.udm,ruta:c.ruta,n2,clasif,n3,n4,origen}});
-    const RT=armarTelasDe(materiales,plan);const telasKg=RT.telasKg,origs=RT.origs,origen=RT.origen,telas=RT.telas,sinClas=RT.sinClas;
+    const RT=armarTelasDe(materiales,plan,{pantone:!!(colorDe(d.colorN).cod)});const telasKg=RT.telasKg,origs=RT.origs,origen=RT.origen,telas=RT.telas,sinClas=RT.sinClas;
     const kgTej=telasKg.filter(m=>m.produce==='propia').reduce((a,m)=>a+m.kg,0),kgTin=telasKg.filter(m=>m.falta!=='nada').reduce((a,m)=>a+m.kg,0);
     // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
     const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
