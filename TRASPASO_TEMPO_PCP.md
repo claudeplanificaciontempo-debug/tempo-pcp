@@ -204,6 +204,14 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.67 Ruta lista sin editar y bloques de la ficha que no se cierran solos (20-sep)
+- Decisión de la usuaria: una orden con la prenda terminada (fase con «sin carga» en la tabla 1: empaque terminado, cross, centro
+  de distribución, novedades, embodegado, exportación, cotizaciones, facturado, stand by) o cerrada en Odoo **no necesita revisar
+  la ruta**: `rutaNoAplica(o)` / `rutaLista(o)` (derivado de la fase, nada se escribe). Órdenes → «Por editar» ya no las lista;
+  el chip se llama «Ruta lista (confirmada o prenda terminada)»; Rutas, liberación, auditoría y la ficha lo dicen.
+- Un manejador global cerraba todo `<details>` al hacer clic fuera (desde el primer commit): la ficha se cerraba sola al tocar un
+  campo. Ahora solo se cierran los desplegables (menú «⋯», filtro de fases, selectores múltiples). Ver `FASES_ORDENES_FICHA_19SEP.md`.
+
 ### 2.66 Fases con secuencia y significado, Órdenes «por editar», ficha por bloques, fotos con zoom (19/20-sep)
 - Tabla 1: secuencia y «qué significa» de las 46 fases según la usuaria y el orden de Odoo (agrega 6Sublimado, 6Pulido Bordado,
   8Cotizaciones); el tramo estampado/bordado/confección/maquila no es secuencial (mismo número); las cuatro «esperando factura»

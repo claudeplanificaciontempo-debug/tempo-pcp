@@ -951,6 +951,15 @@ cambió; sin permiso de rutas se guarda el resto. `mOrden` va en cuatro bloques 
 tabla 8 o «sin tela en tabla 8»— · Ruta y operaciones · Insumos), modal `.modal.orden`. `fotoMini` 44 px (`fotoMiniPx`) con `data-zoom`; `fotoZoomInit`
 (capa fija al pasar el mouse, `fotoZoomPx` 320). Ver `FASES_ORDENES_FICHA_19SEP.md`.
 
+**Ruta lista sin editar (20-sep-2026, decisión de la usuaria):** una orden cuya prenda ya está terminada (fase con **«sin carga»** en la tabla 1:
+prenda terminada / cerrada — solo falta facturar) o que ya no está abierta (`abiertaDe`) **no necesita revisión de ruta**. `rutaNoAplica(o)`
+da el motivo (`terminada` | `cerrada`) y `rutaLista(o)` = `rutaConfirmada(o) || rutaNoAplica(o)`. Es **derivado** de la fase: no escribe
+`rutaConf`; si la fase vuelve atrás o se desmarca «sin carga», la ruta vuelve a pedirse. Lo usan `matchEdicionOrd` (chip «Ruta lista (confirmada
+o prenda terminada)»), `rutasPorDefinir`, `rutasNoAplican` (nota en la tarjeta de Rutas), `liberadasSinRuta`, `puedeLiberarA`/`faltaLiberarA`,
+la regla `libSinRutaConf` y `diagRutaOdoo` (`noAplica`). **No volver a filtrar «por editar» con `rutaConfirmada` a secas.** **Los `<details>` de
+contenido no se cierran al hacer clic fuera**: el manejador global del final del script solo cierra los desplegables (`esDesplegable`: `details.acc`,
+`details.ffases`, `summary.chip`); hasta el 20-sep cerraba todo y la ficha se plegaba sola al tocar un campo. Pruebas RL / RL2.
+
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;
 corte y empaque quedan en 0 con aviso (`sinTiempo`), confección con el minuto estimado. Sin categoría resuelta no se inventa ruta. Prueba RD. El servidor

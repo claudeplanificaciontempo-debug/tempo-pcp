@@ -40,7 +40,18 @@ Chips **Edición**: *Por editar (ruta sin confirmar)* · *Editadas (ruta confirm
 (`ORDF.edicion`, `matchEdicionOrd`, `EDICION_ORD`). Por defecto abre en «por editar»: lo que la usuaria todavía tiene que revisar.
 **Guardar la ficha = editar**: `guardarOrden` confirma la ruta (persona, nota «ficha de la orden»), la sella (`sellarRuta`) y,
 si la ruta cambió, la deja como editada a mano con auditoría; un perfil sin permiso de rutas guarda el resto de la ficha pero no
-toca ni confirma la ruta. Al guardar (o al confirmar desde Rutas) la orden pasa a «editadas».
+toca ni confirma la ruta. Al guardar (o al confirmar desde Rutas) la orden pasa a «ruta lista».
+
+**Ruta lista sin editar (20-sep, decisión de la usuaria):** «lo que está en facturado, stand-by, cotizaciones y exportación ya está
+listo; no necesito revisar la ruta porque ya está finalizada, solo falta facturar». `rutaNoAplica(o)` devuelve el motivo cuando la
+orden **no tiene producción pendiente**: la fase tiene **«sin carga»** en la tabla 1 (prenda terminada / cerrada: 8Empaque
+Terminado, 8Cross, 8Centro Distribucion, 8Novedades, 8Embodegado, 8Exportacion, 8Cotizaciones, Facturado, Stand by) o la orden ya no
+está abierta (`abiertaDe`: Estado OP de Odoo cerrado, archivada, fuera de alcance). `rutaLista(o)` = confirmada por persona u Odoo
+**o** no aplica. Es un estado **derivado** de la fase: no escribe `rutaConf`; si la fase vuelve atrás, la ruta vuelve a pedirse; si se
+desmarca «sin carga» en la tabla 1, también (lo configurado manda). Lo usan: los chips de Órdenes (*Ruta lista (confirmada o prenda
+terminada)*), `rutasPorDefinir` / la tarjeta de Rutas (que dice cuántas quedan fuera de la cuenta y por qué), `liberadasSinRuta`,
+`puedeLiberarA` / `faltaLiberarA` (ya no dicen «falta confirmar ruta»), la regla de auditoría `libSinRutaConf`, `diagRutaOdoo`
+(estado `noAplica`) y el bloque Ruta de la ficha («la ruta no se revisa»). Pruebas RL.
 
 ## 3 · Ficha de la orden por bloques (una pantalla)
 
@@ -50,6 +61,12 @@ ID de tarea en el título, campos en grilla compacta, historial de fases plegado
 tabla 8 o «sin tela en tabla 8»**; debajo las telas del motor) · **Ruta y operaciones** (técnica, puntadas, proveeduría, centros,
 tiempos; dice si la ruta está confirmada) · **Insumos** (cerrado; los componentes de Odoo y los insumos de la ficha).
 Modal `.modal.orden` (1440 px, 96 vh, menos relleno).
+
+**Los bloques se cerraban solos (corregido el 20-sep):** desde el primer commit había un manejador global que cerraba **todo**
+`<details>` abierto al hacer clic fuera de él, pensado para los desplegables; por eso al tocar cualquier campo de Datos se
+cerraban Materia prima, Ruta e Insumos. Ahora solo se cierran los desplegables (`esDesplegable`: menú «⋯» `details.acc`, filtro
+de fases `details.ffases` y selectores múltiples con `summary.chip`); los bloques de contenido —la ficha, las tarjetas de Hoy, los
+paneles plegables— se quedan como los dejó la persona. Prueba RL2.
 
 ## 4 · Fotos
 

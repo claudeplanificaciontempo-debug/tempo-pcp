@@ -6581,14 +6581,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      faseMapeo().forEach(r=>{const b=bak.find(x=>x.fase===r.fase);if(b){r.secuencia=b.secuencia;r.que=b.que}});}
     /* Órdenes: por editar */
     {ORDF.edicion="porEditar";ORDF.estado="plan";ORDF.q="";ORDF.fases=null;ORDF.tab="ord";GRP={};grpSt("ord").niveles=[];delete BUSQ["ORDF.q"];page="ordenes";render();const enLista=op=>{const c=document.querySelector("#p-ordenes [data-lista]");return !!c&&c.innerHTML.includes(esc(op))};
-     const ab=S.ordenes.filter(o=>matchEstadoOrd(o,"plan"));const sinConf=ab.filter(o=>!rutaConfirmada(o)),conConf=ab.filter(o=>rutaConfirmada(o));
+     const ab=S.ordenes.filter(o=>matchEstadoOrd(o,"plan"));const sinConf=ab.filter(o=>!rutaLista(o)),conConf=ab.filter(o=>rutaLista(o));
      const h=document.getElementById("p-ordenes").innerHTML;
      __check("UI19: Órdenes abre en «Por editar (ruta sin confirmar)» con los conteos por editar / editadas / todas",ORDF.edicion==="porEditar"&&/Por editar \(ruta sin confirmar\) <span class="mut">/.test(h)&&new RegExp("Por editar \\(ruta sin confirmar\\) <span class=\"mut\">"+sinConf.length+"<").test(h)&&new RegExp("Todas <span class=\"mut\">"+ab.length+"<").test(h),JSON.stringify({s:sinConf.length,c:conConf.length,t:ab.length}));
      const o=sinConf.find(o=>lanzada(o)&&(o.ruta||[]).length&&fotoDe(o))||sinConf[0];const cf=window.confirm;window.confirm=()=>true;confirmarRuta(o,"persona","prueba");window.confirm=cf;render();
      __check("UI19: al confirmar la ruta, la orden sale de «por editar» y entra a «editadas»",!matchEdicionOrd(o,"porEditar")&&!enLista(o.op)&&(ORDF.edicion="editadas",render(),enLista(o.op)),o.op);
      ORDF.edicion="porEditar";render();
      /* guardar la ficha confirma la ruta */
-     const o2=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaConfirmada(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&(x.materiales||[]).some(m=>m.clasif==="tela"));
+     const o2=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaLista(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&(x.materiales||[]).some(m=>m.clasif==="tela"));
      __check("UI19: hay una orden por editar con ruta y materiales para probar la ficha",!!o2);
      if(o2){mOrden(o2.id);const m=document.getElementById("modal");const hm=m.innerHTML;
       __check("UI19: la ficha va por bloques (datos · materia prima · ruta y operaciones · insumos), con la foto grande y el resumen en el título",m.classList.contains("orden")&&m.querySelectorAll("details.ed-blk").length===4&&/Materia prima/.test(hm)&&/Ruta y operaciones/.test(hm)&&/<summary>Insumos/.test(hm)&&/Datos de la orden/.test(hm)&&(!fotoDe(o2)||/data-zoom=/.test(hm))&&hm.includes(esc(o2.cliente||"")),m.querySelectorAll("details.ed-blk").length);
@@ -6598,7 +6598,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("UI19: guardar la ficha sin cambiar nada confirma la ruta (persona) y la sella; la ruta no cambia",rutaConfirmada(o2)&&o2.rutaConf.origen==="persona"&&/ficha/.test(o2.rutaConf.nota||"")&&(o2.ruta||[]).map(p=>p.centro).join(">")===rutaAntes&&!!o2.rutaFirma&&!(o2.rutaEditada||[]).some(x=>x.etapa==="ficha"),JSON.stringify(o2.rutaConf));
       render();__check("UI19: y ya no está en «por editar»",!matchEdicionOrd(o2,"porEditar")&&!enLista(o2.op));
       /* sin permiso de rutas: la ficha se guarda pero la ruta no se toca ni se confirma */
-      const o3=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaConfirmada(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&x.id!==o2.id);
+      const o3=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaLista(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&x.id!==o2.id);
       if(o3){PERFIL={id:"u-corte",rol:"corte",nombre:"Sup",modo:"editar"};mOrden(o3.id);document.getElementById("f-cant").value=String(+o3.cant+1);window.alert=()=>{};guardarOrden(o3.id);window.alert=al;PERFIL=bakP;await __p(30);
        __check("UI19: un perfil sin permiso de rutas guarda la ficha (cantidad) pero no confirma la ruta",!rutaConfirmada(o3)&&o3.cant===(+document.getElementById("f-cant").value),JSON.stringify({c:o3.cant,rc:o3.rutaConf}));}
       cerrar();}
@@ -6609,6 +6609,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      if(im){im.dispatchEvent(new MouseEvent("mouseover",{bubbles:true,clientX:100,clientY:100}));const on=z.style.display==="block"&&z.querySelector("img").src===im.getAttribute("data-zoom");im.dispatchEvent(new MouseEvent("mouseout",{bubbles:true}));
       __check("UI19: al pasar el mouse por una foto se abre el zoom con esa imagen y al salir se cierra",on&&z.style.display==="none");cerrar();}else __check("UI19: hay una foto para probar el zoom",false);
      ORDF.edicion="porEditar";}}
+   /* RL · ruta lista (20-sep): la prenda terminada (fase con «sin carga» en la tabla 1) o la orden cerrada en Odoo no necesitan revisión de ruta */
+   {const oT=S.ordenes.find(o=>abierta(o)&&lanzada(o)&&!rutaConfirmada(o)&&!rutaNoAplica(o)&&(o.ruta||[]).length&&(o.rutaCompleta||[]).length);
+    const filaT=faseMapeo().find(r=>r.sinCarga&&/exportacion/.test(normFase(r.fase)))||faseMapeo().find(r=>r.sinCarga);
+    __check('RL: hay una fase con «sin carga» en la tabla 1 (8Exportacion) y una orden por editar para probar',!!filaT&&!!oT,JSON.stringify({fase:filaT&&filaT.fase,op:oT&&oT.op}));
+    const bak=JSON.stringify(oT);const fase0=oT.fase;aplicarFaseSistema(oT,filaT.fase);PLAN=null;PLAN_ALL=null;
+    const na=rutaNoAplica(oT);
+    __check('RL: una orden abierta en fase de prenda terminada tiene la ruta lista sin que nadie la confirme: no está por editar ni en «Rutas por confirmar», la liberación no dice «falta confirmar ruta» y nada se escribió en la orden',!!na&&na.k==='terminada'&&rutaLista(oT)&&!rutaConfirmada(oT)&&!matchEdicionOrd(oT,'porEditar')&&matchEdicionOrd(oT,'editadas')&&!rutasPorDefinir().includes(oT)&&rutasNoAplican().includes(oT)&&!faltaLiberarA(oT,'corte').includes('falta confirmar ruta')&&!oT.rutaConf,JSON.stringify({na,fase:oT.fase}));
+    __check('RL: el diagnóstico contra Odoo la deja aparte («no se revisa») y el análisis la cuenta en noAplica',diagRutaOdoo(oT).estado==='noAplica'&&analizarRutasOdoo().noAplica.some(x=>x.o===oT));
+    page='ordenes';ORDF.edicion='porEditar';ORDF.estado='plan';ORDF.q=oT.op;ORDF.fases=null;ORDF.tab='ord';GRP={};grpSt('ord').niveles=[];delete BUSQ['ORDF.q'];render();   /* buscada por WH: la lista muestra 600 como máximo */
+    const enLista=op=>{const c=document.querySelector('#p-ordenes [data-lista]');return !!c&&[...c.querySelectorAll('tbody tr')].some(tr=>tr.textContent.includes(op))};   /* filas de la tabla: el aviso «coincide fuera de la base» también nombra la WH */
+    const rlA=!enLista(oT.op),rlB=[...document.querySelectorAll('#p-ordenes .chip')].some(c=>c.textContent.trim().startsWith('Ruta lista (confirmada o prenda terminada)'));ORDF.edicion='editadas';render();const rlC=enLista(oT.op);
+    __check('RL: en Órdenes → Por editar no aparece; en «Ruta lista (confirmada o prenda terminada)» sí',rlA&&rlB&&rlC,JSON.stringify({op:oT.op,noEnPorEditar:rlA,chip:rlB,enRutaLista:rlC,chips:[...document.querySelectorAll('#p-ordenes .chip')].map(c=>c.textContent.trim()).join('|')}).slice(0,600));ORDF.q='';
+    mOrden(oT.id);const m=document.getElementById('modal');
+    __check('RL: la ficha dice que la ruta no se revisa por la prenda terminada',/la ruta no se revisa/.test(m.innerHTML)&&/prenda terminada/.test(m.innerHTML));cerrar();
+    ORDF.tab='rutas';render();__check('RL: la pestaña Rutas dice cuántas quedan fuera de la cuenta por prenda terminada y por qué',new RegExp('Fuera de esta cuenta: <b>'+rutasNoAplican().length+'</b>').test(document.getElementById('p-ordenes').innerHTML)&&/sin carga/.test(document.getElementById('p-ordenes').innerHTML));ORDF.tab='ord';
+    filaT.sinCarga=false;FASE_CACHE.ver++;
+    __check('RL: lo configurado manda: al desmarcar «sin carga» en la tabla 1 la misma orden vuelve a «por editar»',!rutaNoAplica(oT)&&matchEdicionOrd(oT,'porEditar'));
+    filaT.sinCarga=true;FASE_CACHE.ver++;
+    aplicarFaseSistema(oT,fase0);
+    __check('RL: si la fase vuelve atrás, la ruta vuelve a pedirse (estado derivado, no escrito)',!rutaNoAplica(oT)&&matchEdicionOrd(oT,'porEditar')&&!oT.rutaConf);
+    Object.assign(oT,JSON.parse(bak));PLAN=null;PLAN_ALL=null;
+    const oC=S.ordenes.find(o=>!abiertaDe(o)&&!rutaConfirmada(o)&&(o.estado||'plan')==='plan'&&!(filaFaseDe(o.fase)||{}).sinCarga)||null;
+    __check('RL: una orden cerrada en Odoo (Estado OP) tampoco está por editar',!oC||(!!rutaNoAplica(oC)&&rutaNoAplica(oC).k==='cerrada'&&!matchEdicionOrd(oC,'porEditar')),oC?oC.op:'sin caso en el volcado');
+    ORDF.edicion='porEditar';}
+   /* RL2 · los bloques de contenido no se cierran al hacer clic fuera; los desplegables sí (hasta el 20-sep la ficha se cerraba sola) */
+   {const o2=S.ordenes.find(o=>abierta(o)&&lanzada(o)&&(o.ruta||[]).length);mOrden(o2.id);const m=document.getElementById('modal');
+    const inp=document.getElementById('f-cant')||m.querySelector('input');inp.dispatchEvent(new MouseEvent('click',{bubbles:true}));document.body.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+    __check('RL2: los cuatro bloques de la ficha siguen abiertos después de hacer clic en un campo y fuera del modal',m.querySelectorAll('details.ed-blk').length===4&&[...m.querySelectorAll('details.ed-blk')].every(d=>d.open));cerrar();
+    const d=document.createElement('details');d.className='acc';d.open=true;d.innerHTML='<summary>⋯</summary><div>x</div>';document.body.appendChild(d);
+    const d2=document.createElement('details');d2.innerHTML='<summary class="chip">sel</summary><div>y</div>';d2.open=true;document.body.appendChild(d2);
+    const d3=document.createElement('details');d3.className='tarj';d3.open=true;d3.innerHTML='<summary>tarjeta</summary><div>z</div>';document.body.appendChild(d3);
+    document.body.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+    __check('RL2: el menú «⋯» y los selectores múltiples sí se cierran al hacer clic fuera; una tarjeta de Hoy no',!d.open&&!d2.open&&d3.open);d.remove();d2.remove();d3.remove();}
    /* RD · ruta por defecto al CARGAR una orden cuya familia no tiene hoja de operaciones (regla del 16-sep aplicada de entrada) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);const padre={id:'k_rd_p',n:'FAMILIA SIN HOJA RD'};const hija={id:'k_rd_h',padre:'k_rd_p',n:'Prenda RD',minEstConf:7.5};S.categorias.push(padre,hija);
     const f=new Array(H.length).fill(null);f[col('Orden de producción')]='WH/MO/99301';f[col('Proyecto')]='NOVIEMBRE 2026';f[col('Cliente')]='CLIENTE RD';f[col('ODC')]='8801';f[col('Stilo')]='RD1';f[col('Categoría Padre')]='FAMILIA SIN HOJA RD';f[col('Categoría Hija')]='Prenda RD';f[col('Color')]='BIRCH';f[col('Fase')]='2Planificacion';f[col('Estado OP')]='confirmed';f[col('Pedido')]=100;f[col('Fecha Entrega')]='2026-12-01';
