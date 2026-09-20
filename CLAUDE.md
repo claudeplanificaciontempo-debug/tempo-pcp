@@ -951,6 +951,14 @@ cambió; sin permiso de rutas se guarda el resto. `mOrden` va en cuatro bloques 
 tabla 8 o «sin tela en tabla 8»— · Ruta y operaciones · Insumos), modal `.modal.orden`. `fotoMini` 44 px (`fotoMiniPx`) con `data-zoom`; `fotoZoomInit`
 (capa fija al pasar el mouse, `fotoZoomPx` 320). Ver `FASES_ORDENES_FICHA_19SEP.md`.
 
+**Planificar el mes en dos pasos (20-sep-2026, decisión de la usuaria):** Dirección → «Planificar el mes» (`vPlan`, `PM.paso` 1|2; los dos pasos en el DOM,
+se muestra uno). **Paso 1 · Nivelación** = calendario de días (`planMesHTML`, manda) + **Personas por centro** (`personasNivHTML`: configurado · vigente · escenario;
+`nivPersSet` escribe en `SIM` todas las semanas del mes; «Confirmar escenario» = `guardarAjustesCap` → ajuste de cada semana, y desde ahí `capDia` lo usa en
+todo el sistema; la base de Configuración no se toca) + la nivelación (`nivelacionCuerpoHTML`, mes = `PM.mes`; `nivUICapacidad` = promedio por día hábil del
+horizonte, incluye ajustes y escenario) + «Más detalle» plegado (capacidad por área/módulo, simulador semanal, ajustes, guía). **Paso 2 · Plan mensual** =
+bloques 2–5. Producción → Nivelación es la misma nivelación por meses con «Planificar el mes →». `nivelar()`/`programar()` sin tocar. Pruebas PN; captura
+`?captura=uxplan`. Ver `PLANIFICAR_EL_MES_DOS_PASOS.md`.
+
 **Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
 después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de
 Servicios y Terminados / Lavandería / Botones 8; Facturado y Stand by 9. Seis fases que no venían se ubicaron junto a su pareja (a confirmar). **`cmpFases(a,b)`**

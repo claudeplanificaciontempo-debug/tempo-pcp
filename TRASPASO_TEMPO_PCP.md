@@ -204,6 +204,11 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.70 Planificar el mes en dos pasos: nivelación con días y personas, luego el plan (20-sep)
+- Dirección → «Planificar el mes»: paso 1 Nivelación (calendario de días, personas por centro como escenario que al confirmar se
+  vuelve el ajuste de cada semana y manda en todo el sistema, ¿alcanza?), paso 2 Plan mensual. Producción → Nivelación es la misma
+  nivelación por meses. Capacidad: escenario > vigente > configurado, y la fila dice cuál manda. Ver `PLANIFICAR_EL_MES_DOS_PASOS.md`.
+
 ### 2.69 Orden real de las fases con decimales y listas ordenadas por esa secuencia (20-sep)
 - Archivo de la usuaria con 40 fases numeradas 0 … 8.6 (mismo número = paralelas). Reemplaza la numeración del 19-sep; Confección
   después de servicios, Empaque después de Servicios y Terminados. Seis fases sin número en el archivo se ubicaron junto a su
