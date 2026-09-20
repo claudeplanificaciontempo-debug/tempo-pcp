@@ -961,7 +961,9 @@ bloques 2–5. Producción → Nivelación es la misma nivelación por meses con
 (nunca posteriores); `PMADD.incluirAnt` (defecto true) mete lo pendiente de meses anteriores como candidato del bloque 4; `nivUICapacidad` promedia
 solo días hábiles de hoy en adelante; `labDiaGeneral` toma las excepciones de producción (un sábado marcado solo para Producción cuenta en la
 nivelación); **Nivelación salió del menú de Producción** (la página `nivelacion` sigue para «volver» y pruebas; `nivUIVolver` vuelve a donde se vino).
-**Rutas**: los conteos siguen al filtro de fases y al buscador (`baseF`). **Pasos de ruta nuevos** (`PASOS_NUEVOS_20`, `sembrarPasosNuevos20` una
+**Rutas**: los conteos siguen al filtro de fases y al buscador (`baseF`); el filtro de fases dice por fase «(N órdenes · M prendas)» del chip puesto
+(`cuentasFaseRut`/`enChipRut`; `filtroFasesHTML` acepta número o `{n,pz}` vía `cuentaFaseTxt`); el paso 3 del lote va a todo lo ancho en orden del
+proceso con la línea «Ruta que quedará» (`.rl-cens`/`.rl-ruta`). **Pasos de ruta nuevos** (`PASOS_NUEVOS_20`, `sembrarPasosNuevos20` una
 vez desde `sembrarTerminados`): Calandrado (antes de corte, por días, plazo por confirmar), Sublimado y Apliques (después de estampado; por técnica
 «sublim» / «aplique» en `ordenCentrosAuto`), Cordones (terminados); están en `RUTA_ORDEN`, `GRUPO_PLAN_DEF`, `CENTROS_DISENO`, `RUTA_EDITABLE_POR`,
 tabla 4 y perfiles; sin tiempo hasta que se cargue. Pruebas PS. Ver `PASOS_NUEVOS_20SEP.md`.

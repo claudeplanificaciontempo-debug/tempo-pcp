@@ -142,6 +142,19 @@ quiero ponerle check y no tengo que hacer nada más». Dos cosas:
   de la ruta (`confNoTocadas`, en el aviso, el registro de cargas y el **Reporte OT** con la lista) — se reportan, no se aplican.
   Pruebas EX.
 
+## Paso 3 a todo lo ancho y conteo por fase (20-sep, noche · 2)
+La usuaria: «usemos bien el espacio donde seleccionamos las rutas; y en el filtro de fases, en paréntesis, cuántas unidades».
+- **Paso 3 · Ruta nueva**: los centros van en una sola franja a todo lo ancho (`.rl-cens`: sin el tope de 420 px que `.chips` tiene
+  para los chips de filtro), en el **orden del proceso** (`centrosLote` ya venía por `ordenPaso`), con chips más grandes, y debajo la
+  línea **«Ruta que quedará: Corte → Estampado → Confección → Empaque»** (`.rl-ruta`, los centros marcados ordenados por `ordenPaso`,
+  que es como los inserta `aplicarRutaLote`). Con nada marcado dice «— ninguna (marca al menos un centro)».
+- **Filtro de fases de Rutas**: cada fase dice **(N órdenes · M prendas)**. Se cuenta sobre la base con el **chip** puesto (Por confirmar /
+  Confirmadas / Todas) y el buscador, **sin** el filtro de fases —así no se vacía al desmarcar— (`cuentasFaseRut(base,qF)`, `enChipRut(o)`
+  reemplaza la condición del chip que estaba dentro de `rutasLista`). `filtroFasesHTML` acepta ahora un número (prendas, como en
+  Liberación) o `{n,pz}` (`cuentaFaseTxt`); una fase sin órdenes en el chip dice «(0)». Cada fase va en una sola línea (`white-space:nowrap`).
+- Captura `?captura=uxrutasfq` (la «q» abre el desplegable de fases) → `capturas/ui_rutas_fases.png`; `?captura=uxlote` →
+  `capturas/ui_ruta_lote.png`. Pruebas UX3 (2) y RLT (1).
+
 ## Conteos que siguen al filtro (20-sep, noche)
 La usuaria: «está filtrado y salen 841; le quito fases y sigue la misma cantidad». Los chips Por confirmar / Confirmadas / Todas y
 el título del recuadro cuentan ahora sobre la base **filtrada** por fases y buscador (`baseF`); si hay filtro, el título dice «con el
