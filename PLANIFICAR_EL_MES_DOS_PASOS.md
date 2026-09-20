@@ -42,10 +42,10 @@ meses, con el botón «Planificar el mes →» que abre el paso 1. No hay dos c�
 ## Corrección encontrada por la revisión de Configuración (20-sep, tarde)
 La nivelación contaba los días hábiles con el calendario general (solo la regla base de producción y las excepciones marcadas para
 «todas»), mientras el calendario de Planificar el mes escribe cada día con su área: un sábado marcado solo para Producción entraba al
-motor pero no a «¿alcanza?». Ahora el día hábil de la nivelación (, usado por  /  /
-) toma también las excepciones marcadas para producción.  no se tocó (recibe el conteo). Además la nota
+motor pero no a «¿alcanza?». Ahora el día hábil de la nivelación (`labDiaGeneral`, usado por `diasHabilesInc` / `finLabInc` /
+`noHabilesEntre`) toma también las excepciones marcadas para producción. `nivelar()` no se tocó (recibe el conteo). Además la nota
 de «Capacidad día planta» dice de dónde salen las personas (configuración / ajuste de la semana / asistencia de hoy), y la página
-Nivelación de Producción muestra también el calendario de cada mes elegido (misma función ). Prueba PN.
+Nivelación de Producción muestra también el calendario de cada mes elegido (misma función `planMesHTML`). Prueba PN.
 
 ## Las tres capas de la capacidad (en orden de mando)
 1. **Escenario** (borrador en la sesión, `SIM`) — mientras se está probando.
