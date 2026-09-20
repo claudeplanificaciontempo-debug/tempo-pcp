@@ -210,18 +210,18 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   son paralelas. Órdenes abre en «Por editar (ruta sin confirmar)»; guardar la ficha confirma la ruta. Ficha en cuatro bloques
   (datos, materia prima de Odoo con tela de la tabla 8, ruta y operaciones con sub-bloques, insumos), modal a 96 % de la pantalla.
   Fotos 44 px con zoom al pasar el mouse. Paneles con borde marcado y títulos en banda en todo el sistema. Ver
-  .
+  `FASES_ORDENES_FICHA_19SEP.md`.
 
 ### 2.65 Maestro de productos y qué le falta a la tela por origen (19-sep)
 - Tabla 12 → «Cargar maestro de productos»: origen POR PRODUCTO (TEMPO = se teje aquí; proveedor = externa; sin proveedor = tabla 3),
   proveedor facturas → maestro → usuaria, «Recalcular telas de las órdenes» sin recargar Odoo, tabla 12 por proveedor con «sin
   proveedor» primero. Tabla 13: sin palabra, decide el origen (PROPIA → tintura; EXTERNA → nada; sin clasificar → según Pantone).
-  Ver .
+  Ver `MAESTRO_PRODUCTOS.md`.
 
 ### 2.64 Orden de las operaciones (hoja de producción) y ruta por defecto al cargar (19/20-sep)
 - Operaciones → «Cargar orden de las operaciones»: el paso de cada operación dentro de la prenda (595 de 595 calzan); el balanceo
   usa el orden real. Una orden nueva de familia sin hoja de operaciones nace con corte → confección → empaque (estimada; corte y
-  empaque en 0 con aviso). Entrega  para ingeniería. Ver .
+  empaque en 0 con aviso). Entrega `entregas/TIEMPOS_PARA_LLENAR3.xlsx` para ingeniería. Ver `TIEMPOS_SANTIAGO_REPORTE.md`.
 
 ### 2.63 ID de tarea de Odoo como identidad de la orden (19-sep)
 - El archivo de tareas puede traer la columna «ID» (ID de la tarea en Odoo): con ella la orden se reconoce por el ID aunque
