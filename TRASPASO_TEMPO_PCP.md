@@ -204,6 +204,12 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.68 Ruta en lote (20-sep)
+- Órdenes → Rutas → «Editar ruta en lote»: alcance por familia / tipo de producto / referencia / cliente / buscador, rutas actuales del
+  grupo con «usar», casillas de centros (por defecto marcados), plan por orden (entra / sale / conserva lo hecho / no se agrega /
+  sin tiempo) y aplicación con permiso, motivo, confirmación, ruta con Empaque obligatoria, tiempos por `tiempoPaso`, confirmación
+  por orden, auditoría por orden, una bitácora y advertencias de fecha. Ver `RUTA_EN_LOTE.md`.
+
 ### 2.67 Ruta lista sin editar y bloques de la ficha que no se cierran solos (20-sep)
 - Decisión de la usuaria: una orden con la prenda terminada (fase con «sin carga» en la tabla 1: empaque terminado, cross, centro
   de distribución, novedades, embodegado, exportación, cotizaciones, facturado, stand by) o cerrada en Odoo **no necesita revisar

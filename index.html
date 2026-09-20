@@ -266,7 +266,7 @@ main{padding:24px 28px 70px}
 input[type=text],input[type=number],input[type=date],input[type=month],select,textarea{border-radius:8px;padding:7px 9px;border-color:var(--rule)}
 .tag{border-radius:999px;padding:2px 9px;font-weight:500}
 .chip{border-radius:999px;padding:5px 12px}
-.chip.on{background:var(--cobre);border-color:var(--cobre);color:#fff}
+.chip.on{background:var(--cobre);border-color:var(--cobre);color:#fff}.chip.on>.mut{color:inherit;opacity:.8}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 table th{background:var(--paper);color:var(--ink3);font-weight:600;font-size:12px}
 tbody tr:hover td{background:var(--field)}
@@ -778,7 +778,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 12:49';
+const APP_BUILD='2026-09-20 13:31';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -7773,6 +7773,126 @@ function rutasTarjetaHTML(){const pd=rutasPorDefinir();const refs=Object.keys(re
   const na=rutasNoAplican();
   return tarjetasResumenHTML([{id:'rut-pend',v:pd.length,k:'Faltan rutas por confirmar · '+refs+' referencias · '+num(pz)+' unidades',items:pd,porFam:true,cls:pd.length?'warn':''}])
    +(na.length?`<p class="mut" style="font-size:var(--fs-s);margin:-4px 0 10px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>`:'')}
+/* ================== RUTA EN LOTE (20-sep-2026) ==================
+   La usuaria: «hay varios productos que comparten ruta; con eso podría editar la ruta masiva». Se elige el alcance (familia, tipo
+   de producto, referencia, cliente, buscador) sobre las órdenes abiertas cuya ruta se revisa (rutaNoAplica = fuera; las ya
+   confirmadas solo si se pide), se define la ruta UNA vez (centros de producción) y baja a cada orden con el SAM de SU categoría
+   (samPorCentro): los pasos que ya tenía conservan su tiempo, los pasos ya hechos (fase de Odoo) y los centros que el perfil no
+   edita no se tocan, la parte textil (tejeduría / tintorería / proveedor) tampoco, y el lavado sigue siendo por orden (mLavado).
+   Cada orden queda confirmada (persona), sellada, con rutaEditada + auditoría; una sola línea de bitácora para el lote. Nunca corre sola. */
+const RLOTE0=()=>({fam:'',cat:'',ref:'',cli:'',q:'',incConf:false,cens:null,tocado:false,motivo:''});let RLOTE=RLOTE0();
+function abrirRutaLote(){RLOTE=RLOTE0();mRutaLote()}
+function cancelarRutaLote(){RLOTE=RLOTE0();cerrar()}
+function rutaLoteCandidatas(){return S.ordenes.filter(o=>abierta(o)&&!rutaNoAplica(o)&&(RLOTE.incConf||!rutaConfirmada(o)))}
+function ordenesLote(){const q=normTxt(RLOTE.q);
+  return rutaLoteCandidatas().filter(o=>{const k=K(o.cat);const p=k?K(k.padre):null;
+    if(RLOTE.fam&&!((p&&p.id===RLOTE.fam)||(k&&!p&&k.id===RLOTE.fam)))return false;
+    if(RLOTE.cat&&!(k&&k.id===RLOTE.cat))return false;
+    if(RLOTE.ref&&normTxt(refDe(o))!==normTxt(RLOTE.ref))return false;
+    if(RLOTE.cli&&String(o.cliente||'')!==RLOTE.cli)return false;
+    if(q&&!matchBusq(o,q,'RLOTE.q'))return false;return true})}
+/* pasos de producción de la ruta EFECTIVA: los pendientes de o.ruta (lo que programar() lee) más los de rutaCompleta (que trae los ya hechos).
+   Las dos listas divergen en producción porque la ficha, el lavado, la ruta por referencia y la corrección de Empaque escriben solo o.ruta;
+   por eso el lote decide sobre la unión y, al aplicar, deja las dos coherentes. */
+function pasosProCompleta(o){const rc=(o.rutaCompleta||[]).concat(o.ruta||[]);return [...new Set(rc.map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro'))]}
+function rutasDivergen(o,fe){if(!o.rutaCompleta||!o.rutaCompleta.length)return false;fe=fe||faseEstado(o.fase,o);const pend=new Set((o.ruta||[]).map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro'));
+  const comp=pasosPendientes(o.rutaCompleta,filaFaseDe(o.fase)).map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro'&&!pasoHecho(o,c,fe));   /* lo que la fase deja pendiente (sin lo excluido ni lo hecho) */
+  return comp.some(c=>!pend.has(c))||[...pend].some(c=>!o.rutaCompleta.some(p=>p.centro===c))}
+/* la fase de Odoo excluye o da por hecho el paso (pasosPendientes de la tabla 1): en el lote es fijo, como lo hecho */
+function pasoFijoPorFase(o,c){const fila=filaFaseDe(o.fase);return !!(fila&&!pasosPendientes([{centro:c,t:0}],fila).length)}
+function rutasDistintas(ords){const m={};ords.forEach(o=>{const k=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).join('→')||'(sin ruta)';(m[k]=m[k]||{k,cens:pasosProCompleta(o),n:0,pz:0}).n++;m[k].pz+=+o.cant||0});
+  return Object.values(m).sort((a,b)=>b.n-a.n)}
+/* centros que la ruta en lote puede tocar: los de producción, habilitados según centrosEditablesRuta (los demás se dejan como están en cada orden) */
+function centrosLote(){const edit=centrosEditablesRuta();return S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id)).map(c=>({id:c.id,n:c.n,editable:edit.includes(c.id)}))}
+/* plan por orden: qué entra, qué sale, qué se conserva y qué queda sin tiempo. No escribe nada. */
+function planRutaLote(ords,cens){const sel=new Set(cens||[]);const cl=centrosLote();const out={filas:[],cambian:0,igual:0,mas:{},menos:{},sinT:{},hechosConservados:0,omitidas:0,conAvance:0,divergen:0,liberadas:0,editadasMano:0,confirmadas:0,revisar:0,prendas:0};
+  ords.forEach(o=>{const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};cl.forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const fe=faseEstado(o.fase,o);const tiene=pasosProCompleta(o);const enPend=new Set((o.ruta||[]).map(p=>p.centro));const ac=(S.avance[o.id]||{}).centros||{};const mas=[],menos=[],conserv=[],sinT=[],omit=[],conAvance=[];
+    cl.forEach(c=>{const en=tiene.includes(c.id);const want=sel.has(c.id);if(!c.editable||pasoHecho(o,c.id,fe)||pasoFijoPorFase(o,c.id)){   /* hecho = fase de Odoo, cierre en piso o unidades completas (la misma puerta del motor); o excluido por la fase (maquila) */if(en&&!want)conserv.push(c.id);if(!en&&want)omit.push(c.id);return}
+      if(want&&!enPend.has(c.id)){mas.push(c.id);if(!(sam[c.id]>0))sinT.push(c.id)}   /* entra si no está en la ruta PENDIENTE (lo que el motor lee), aunque rutaCompleta lo traiga */
+      if(!want&&en){menos.push(c.id);if((ac[c.id]||0)>0||(typeof tramoAbiertoOrden==='function'&&tramoAbiertoOrden(o.id,c.id)))conAvance.push(c.id)}});
+    const despues=[...new Set([...tiene.filter(c=>!menos.includes(c)),...mas])].sort((a,b)=>ordenPaso(a)-ordenPaso(b));
+    const f={o,antes:tiene.slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)),despues,mas,menos,conserv,omit,sinT,conAvance,diverge:rutasDivergen(o,fe),sam,liberada:liberada(o,'corte'),editada:!!(o.rutaEditada&&o.rutaEditada.length),confirmada:rutaConfirmada(o),confOrigen:rutaConfirmada(o)?rutaConf(o).origen:''};
+    out.filas.push(f);out.prendas+=+o.cant||0;if(mas.length||menos.length)out.cambian++;else out.igual++;
+    mas.forEach(c=>out.mas[c]=(out.mas[c]||0)+1);menos.forEach(c=>out.menos[c]=(out.menos[c]||0)+1);sinT.forEach(c=>out.sinT[c]=(out.sinT[c]||0)+1);
+    if(conserv.length)out.hechosConservados++;if(omit.length)out.omitidas++;if(conAvance.length)out.conAvance++;if(f.diverge)out.divergen++;if(o.rutaRevisar)out.revisar++;if(f.liberada)out.liberadas++;if(f.editada)out.editadasMano++;if(f.confirmada)out.confirmadas++});
+  return out}
+/* reglas fijas que se avisan a la vista (no se impiden): toda ruta de producción termina en Empaque; los centros marcados «por defecto» en Configuración → Centros van en toda ruta */
+function avisosRutaLote(cens){const c=cens||[];const out=[];if(!c.includes('empaque')&&CE('empaque'))out.push('la ruta no termina en Empaque (regla: toda ruta de producción termina en Empaque)');
+  const falt=centrosRutaDefecto().filter(x=>!c.includes(x));if(falt.length)out.push('faltan centros marcados «por defecto» en Configuración → Centros: '+falt.map(nCen).join(', '));return out}
+function avisosFechaLote(ords,finAntes,accion){if(!ords.length)return 0;const P1=(S.ordenes.length?programar():{ordenes:{}});let n=0;const u=quienFirma();
+  ords.forEach(o=>{const fAntes=finAntes[o.id]||null;const fDesp=((P1.ordenes||{})[o.id]||{}).finPro||null;const meta=fechaMetaDe(o);
+    if(meta&&fDesp&&fDesp>meta&&(!fAntes||fAntes<=meta||fDesp>fAntes)){S.params.advertencias=S.params.advertencias||[];S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:o.id,op:o.op,accion,meta,metaTipo:o.fechaCompromiso?'compromiso':'pedida',antes:fAntes,despues:fDesp,atendida:false});n++}});
+  return n}
+function rutaLoteBase(ords){const d=rutasDistintas(ords);return d.length&&d[0].k!=='(sin ruta)'?d[0].cens.slice():[]}
+function rutaLoteSet(k,v){RLOTE[k]=v;if(k!=='cens'&&k!=='motivo'&&!RLOTE.tocado)RLOTE.cens=null;   /* la base se rehace con el alcance nuevo solo mientras nadie haya marcado centros a mano */
+  if(k==='fam')RLOTE.cat='';mRutaLote()}
+function rutaLoteTog(c){if(!RLOTE.cens)RLOTE.cens=rutaLoteBase(ordenesLote());const s=new Set(RLOTE.cens);if(s.has(c))s.delete(c);else s.add(c);RLOTE.cens=[...s];RLOTE.tocado=true;mRutaLote()}
+function rutaLoteTexto(){const r=document.getElementById('rlote-ref'),q=document.getElementById('rlote-q');RLOTE.ref=r?r.value.trim():RLOTE.ref;RLOTE.q=q?q.value.trim():RLOTE.q;if(!RLOTE.tocado)RLOTE.cens=null;mRutaLote()}
+function rutaLoteUsar(cens){RLOTE.cens=cens.slice();RLOTE.tocado=true;mRutaLote()}
+function mRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
+  const cand=rutaLoteCandidatas();const ords=ordenesLote();if(RLOTE.cens===null)RLOTE.cens=rutaLoteBase(ords);
+  const fams=[...new Map(cand.map(o=>{const k=K(o.cat);const p=k?(K(k.padre)||k):null;return p?[p.id,p]:null}).filter(Boolean)).values()].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  const hijas=[...new Map(cand.map(o=>{const k=K(o.cat);if(!k||!k.padre)return null;if(RLOTE.fam&&k.padre!==RLOTE.fam)return null;return [k.id,k]}).filter(Boolean)).values()].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  const clis=[...new Set(cand.map(o=>String(o.cliente||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const refs=[...new Set(ords.map(refDe))];const distintas=rutasDistintas(ords);const plan=planRutaLote(ords,RLOTE.cens);const cl=centrosLote();
+  const opt=(v,t,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(t)}</option>`;const avisosRuta=avisosRutaLote(RLOTE.cens);const porDef=centrosRutaDefecto();
+  abrir(`<h3>Editar ruta en lote <span class="note">la misma ruta para varias órdenes que la comparten · cada una toma el SAM de su categoría</span></h3><div class="body">
+   <div class="sub-blk"><div class="sub-t">1 · Qué órdenes <span class="mut">— abiertas cuya ruta se revisa; las de prenda terminada quedan fuera</span></div>
+    <div class="row" style="margin:0;align-items:flex-end">
+     <div style="min-width:180px"><label>Familia</label><select onchange="rutaLoteSet('fam',this.value)"><option value="">Todas</option>${fams.map(p=>opt(p.id,p.n,RLOTE.fam===p.id)).join('')}</select></div>
+     <div style="min-width:200px"><label>Tipo de producto</label><select onchange="rutaLoteSet('cat',this.value)"><option value="">Todos</option>${hijas.map(k=>opt(k.id,(RLOTE.fam?'':((K(k.padre)||{}).n||'sin familia')+' / ')+k.n,RLOTE.cat===k.id)).join('')}</select></div>
+     <div style="min-width:160px"><label>Referencia</label><input type="text" id="rlote-ref" list="rlote-refs" value="${esc(RLOTE.ref)}" placeholder="todas" onkeydown="if(event.key==='Enter')rutaLoteTexto()"><datalist id="rlote-refs">${[...new Set(cand.map(refDe))].filter(r=>r!=='(sin referencia)').sort().slice(0,400).map(r=>`<option value="${esc(r)}">`).join('')}</datalist></div>
+     <div style="min-width:180px"><label>Cliente</label><select onchange="rutaLoteSet('cli',this.value)"><option value="">Todos</option>${clis.map(c=>opt(c,c,RLOTE.cli===c)).join('')}</select></div>
+     <div style="min-width:180px"><label>Buscar</label><input type="text" id="rlote-q" value="${esc(RLOTE.q)}" placeholder="WH, color, ODC…" onkeydown="if(event.key==='Enter')rutaLoteTexto()"></div>
+     <div><button class="btn ghost sm" type="button" onclick="rutaLoteTexto()" title="aplica Referencia y Buscar (o Enter en el campo)">Filtrar</button></div>
+     <div><label style="font-weight:400"><input type="checkbox" ${RLOTE.incConf?'checked':''} onchange="rutaLoteSet('incConf',this.checked)"> incluir las que ya tienen ruta confirmada <span class="mut">(se pisan; queda en auditoría)</span></label></div>
+    </div>
+    <p style="margin:8px 0 0"><b id="rlote-n">${ords.length}</b> órdenes · ${refs.length} referencias · ${num(plan.prendas)} prendas${plan.liberadas?' · <span class="tag t-aviso">'+plan.liberadas+' ya liberadas a producción</span>':''}${plan.editadasMano?' · '+plan.editadasMano+' con la ruta editada a mano':''}${plan.confirmadas?' · '+plan.confirmadas+' con ruta confirmada (se pisan)':''}</p>
+   </div>
+   <div class="sub-blk"><div class="sub-t">2 · Rutas que tienen hoy <span class="mut">— pasos de producción; «usar» la toma como base para el paso 3</span></div>
+    ${distintas.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Ruta actual</th><th class="num">Órdenes</th><th class="num">Prendas</th><th></th></tr></thead><tbody>${distintas.slice(0,12).map(d=>`<tr><td>${d.k==='(sin ruta)'?'<span class="tag t-alerta">sin ruta de producción</span>':d.cens.slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(c=>esc(nCen(c))).join(' → ')}</td><td class="num">${d.n}</td><td class="num">${num(d.pz)}</td><td>${d.k==='(sin ruta)'?'':`<button class="btn ghost sm" onclick="rutaLoteUsar(${JSON.stringify(d.cens).replace(/"/g,'&quot;')})">usar</button>`}</td></tr>`).join('')}${distintas.length>12?`<tr><td colspan="4" class="mut">y ${distintas.length-12} rutas más</td></tr>`:''}</tbody></table>`:'<span class="mut">Ninguna orden con esos filtros.</span>'}
+   </div>
+   <div class="sub-blk"><div class="sub-t">3 · Ruta nueva <span class="mut">— marca los centros de producción; la parte textil de cada orden no cambia; la modalidad del lavado (planta / Quito) sigue siendo por orden (Liberación → lavado)</span></div>
+    <div class="chips" style="margin:0">${cl.map(c=>{const on=(RLOTE.cens||[]).includes(c.id);return `<label class="chip ${on?'on':''}" style="cursor:${c.editable?'pointer':'not-allowed'}" title="${c.editable?(porDef.includes(c.id)?'marcado en Configuración → Centros: va por defecto en toda ruta':''):'no es de tus centros: se deja como está en cada orden'}"><input type="checkbox" id="rl-${c.id}" ${on?'checked':''} ${c.editable?'':'disabled'} onchange="rutaLoteTog('${c.id}')" style="margin:0 4px 0 0">${esc(c.n)}${porDef.includes(c.id)?' <span class="mut" style="font-size:var(--fs-xs)">por defecto</span>':''}</label>`}).join('')}</div>
+    ${avisosRuta.map(a=>`<p style="margin:6px 0 0"><span class="tag t-alerta">${esc(a)}</span></p>`).join('')}
+    <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Los pasos ya hechos según la fase de Odoo se conservan aunque se desmarquen. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría de cada orden; si no lo tiene, entra sin tiempo y queda en la bandeja «sin tiempo por prenda».</p>
+   </div>
+   <div class="sub-blk"><div class="sub-t">4 · Qué cambia <span class="mut">— antes de aplicar</span></div>
+    <p style="margin:0 0 6px"><b>${plan.cambian}</b> órdenes cambian de ruta · ${plan.igual} quedan igual (solo se confirman)${plan.hechosConservados?' · '+plan.hechosConservados+' conservan pasos ya hechos':''}${plan.omitidas?' · '+plan.omitidas+' no reciben un paso marcado porque su fase ya pasó por ahí (o no es de tus centros)':''}${plan.conAvance?' · <span class="tag t-aviso">'+plan.conAvance+' pierden un paso con avance registrado</span>':''}${plan.divergen?' · '+plan.divergen+' con ruta pendiente ≠ completa (se dejan coherentes)':''}${plan.revisar?' · '+plan.revisar+' marcadas «revisar» por cambio de catálogo (se cierra solo si la ruta cambia)':''}
+     ${Object.keys(plan.mas).length?' · entra: '+Object.entries(plan.mas).map(([c,n])=>esc(nCen(c))+' ('+n+')').join(', '):''}${Object.keys(plan.menos).length?' · sale: '+Object.entries(plan.menos).map(([c,n])=>esc(nCen(c))+' ('+n+')').join(', '):''}
+     ${Object.keys(plan.sinT).length?' · <span class="tag t-aviso">sin tiempo: '+Object.entries(plan.sinT).map(([c,n])=>esc(nCen(c))+' ('+n+')').join(', ')+'</span>':''}</p>
+    <div class="scroll" style="max-height:340px"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Tipo de producto</th><th>Antes</th><th>Después</th><th>Nota</th></tr></thead><tbody>
+    ${plan.filas.slice(0,200).map(f=>`<tr class="${f.mas.length||f.menos.length?'':'mut'}"><td style="white-space:nowrap">${fotoMini(f.o,28)}${esc(f.o.op)}${f.o.fase?' <span class="tag fase-mini">'+esc(faseNombre(f.o.fase))+'</span>':''}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td>${f.antes.map(c=>esc(nCen(c))).join(' → ')||'—'}</td><td>${f.despues.map(c=>(f.mas.includes(c)?'<b>+'+esc(nCen(c))+'</b>':esc(nCen(c)))).join(' → ')}${f.menos.length?' <span class="mut">−'+f.menos.map(nCen).map(esc).join(', −')+'</span>':''}</td><td class="mut">${[f.sinT.length?'sin tiempo: '+f.sinT.map(nCen).map(esc).join(', '):'',f.conserv.length?'conserva '+f.conserv.map(nCen).map(esc).join(', ')+' (hecho / no editable)':'',f.omit.length?'no se agrega '+f.omit.map(nCen).map(esc).join(', ')+' (la fase ya pasó por ahí / no editable)':'',f.liberada?'liberada':'',f.confirmada?'confirmada ('+esc(f.confOrigen)+'): se pisa':'',f.conAvance.length?'<span class="tag t-aviso">se quita '+f.conAvance.map(nCen).map(esc).join(', ')+' con avance registrado</span>':'',f.diverge?'ruta pendiente ≠ ruta completa: se deja coherente':'',f.o.rutaRevisar?((f.mas.length||f.menos.length)?'marcada «revisar»: se cierra al cambiar':'marcada «revisar»: sigue pendiente (la ruta no cambia)'):''].filter(Boolean).join(' · ')}</td></tr>`).join('')}
+    ${plan.filas.length>200?`<tr><td colspan="5" class="mut">y ${plan.filas.length-200} órdenes más</td></tr>`:''}</tbody></table></div>
+   </div>
+   <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rlote-motivo" value="${esc(RLOTE.motivo)}" placeholder="p. ej. todas las Level 1 llevan serigrafía antes de confección" oninput="RLOTE.motivo=this.value"></div></div>
+  </div>
+  <div class="foot"><button class="btn ghost" onclick="cancelarRutaLote()">Cancelar</button><button class="btn" ${ords.length&&(RLOTE.cens||[]).length?'':'disabled'} onclick="aplicarRutaLote()">Aplicar a ${ords.length} ${ords.length===1?'orden':'órdenes'}</button></div>`,true)}
+function aplicarRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas. Tu perfil las ve, pero no las cambia.');return 0}
+  const motivo=String((document.getElementById('rlote-motivo')||{value:RLOTE.motivo}).value||'').trim();if(!motivo){alert('Escribe el motivo.');return 0}
+  if(typeof perfilSoloPiso==='function'&&perfilSoloPiso()){alert('Con tu perfil no se guardan los cambios de órdenes: la ruta en lote la aplica planificación.');return 0}
+  const ords=ordenesLote();if(!ords.length){alert('Ninguna orden con esos filtros.');return 0}
+  if(!(RLOTE.cens||[]).length){alert('Marca al menos un centro de producción: una ruta vacía no se aplica en lote.');return 0}
+  const plan=planRutaLote(ords,RLOTE.cens||[]);
+  if(CE('empaque')){const sinEmp=plan.filas.filter(f=>!f.despues.includes('empaque')).length;if(sinEmp){alert(sinEmp+' '+(sinEmp===1?'orden quedaría':'órdenes quedarían')+' sin Empaque. Regla fija: toda ruta de producción termina en Empaque. Marca Empaque o acota el lote.');return 0}}const cens=(RLOTE.cens||[]).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));const cl=centrosLote();const noEdit=cl.filter(c=>!c.editable).map(c=>c.id);
+  const sinT=Object.entries(plan.sinT);const avisos=avisosRutaLote(cens);
+  if(!confirm('Se va a dejar la ruta '+cens.filter(c=>!noEdit.includes(c)).map(nCen).join(' → ')+(noEdit.length?' (solo tus centros; '+noEdit.map(nCen).join(', ')+' se dejan como están en cada orden)':'')+' en '+ords.length+' órdenes ('+plan.cambian+' cambian, '+plan.igual+' solo se confirman'+(plan.liberadas?', '+plan.liberadas+' ya liberadas':'')+(plan.confirmadas?', '+plan.confirmadas+' ya confirmadas que se pisan':'')+').'+(plan.conAvance?'\nOJO: '+plan.conAvance+' pierden un paso que ya tiene avance registrado en piso.':'')+(Object.keys(plan.menos).length?'\nSale: '+Object.entries(plan.menos).map(([c,n])=>nCen(c)+' ('+n+')').join(', ')+'.':'')+(avisos.length?'\nOJO: '+avisos.join(' · '):'')+(sinT.length?'\nPasos que entran SIN tiempo: '+sinT.map(([c,n])=>nCen(c)+' ('+n+')').join(', ')+'.':'')+'\nTodo queda en auditoría y bitácora. ¿Aplicar?'))return 0;
+  const u=quienFirma(),ts=new Date().toISOString();let n=0;
+  const P0=(S.ordenes.length?programar():{ordenes:{}});const finAntes={};plan.filas.forEach(f=>{finAntes[f.o.id]=((P0.ordenes||{})[f.o.id]||{}).finPro||null});
+  plan.filas.forEach(f=>{const o=f.o;const antesTxt=f.antes.map(nCen).join(' → ')||'—';
+    if(f.mas.length||f.menos.length){
+      let ruta=(o.ruta||[]).filter(p=>!f.menos.includes(p.centro));
+      f.mas.forEach(c=>{if(ruta.some(p=>p.centro===c))return;const t=f.sam[c]||0;const idx=ordenPaso(c);let pos=ruta.length;for(let i=0;i<ruta.length;i++){if(ordenPaso(ruta[i].centro)>idx){pos=i;break}}ruta.splice(pos,0,{centro:c,t})});
+      o.ruta=ruta;o.rutaEditada=(o.rutaEditada||[]).concat([{ts,u,mas:f.mas,menos:f.menos,motivo,etapa:'lote'}]);if(o.rutaRevisar)delete o.rutaRevisar}
+    if(o.rutaCompleta&&o.rutaCompleta.length){let rc=o.rutaCompleta.filter(p=>!f.menos.includes(p.centro));(o.ruta||[]).forEach(p=>{if(rc.some(x=>x.centro===p.centro))return;const idx=ordenPaso(p.centro);let pos=rc.length;for(let i=0;i<rc.length;i++){if(ordenPaso(rc[i].centro)>idx){pos=i;break}}rc.splice(pos,0,{centro:p.centro,t:p.t})});o.rutaCompleta=rc}   /* la completa queda coherente con la pendiente: sin lo que salió, con lo que la pendiente traiga */
+    if(typeof sellarRuta==='function')sellarRuta(o);
+    const antesConf=rutaConf(o);o.rutaConf={estado:'confirmada',origen:'persona',u,ts,nota:'ruta en lote: '+motivo};
+    registrarAuditoria('ruta',o,antesTxt+(antesConf?' · '+antesConf.estado+' ('+antesConf.origen+')':' · por definir'),(f.despues.map(nCen).join(' → ')||'—')+' · confirmada (lote)',motivo,false);n++});
+  bitacora('Ruta en lote · '+n+' órdenes → '+cens.filter(c=>!noEdit.includes(c)).map(nCen).join(' → ')+(noEdit.length?' (solo centros del perfil; '+noEdit.map(nCen).join(', ')+' quedan como estaban)':'')+' · '+plan.cambian+' cambiaron, '+plan.igual+' solo confirmadas'+(sinT.length?' · SIN TIEMPO: '+sinT.map(([c,k])=>nCen(c)+' ('+k+')').join(', '):'')+(avisos.length?' · OJO: '+avisos.join(' · '):'')+' · '+motivo+' ('+u+')');
+  PLAN=null;PLAN_ALL=null;const nAv=avisosFechaLote(plan.filas.filter(f=>f.mas.length||f.menos.length).map(f=>f.o),finAntes,'Ruta en lote: '+motivo);
+  RLOTE=RLOTE0();save();cerrar();render();
+  if(nAv)alert(nAv+' '+(nAv===1?'orden pasa':'órdenes pasan')+' a terminar después de su fecha meta con la ruta nueva: quedaron en Hoy → Advertencias de fecha.');
+  if(sinT.length)alert('Pasos agregados sin tiempo por prenda: '+sinT.map(([c,k])=>nCen(c)+' ('+k+' órdenes)').join(', ')+'. Quedan en la bandeja «sin tiempo» y no cargan hasta que se cargue el tiempo.');return n}
 /* ============ D · REGLAS DE RUTA: agregar sub-áreas de terminados a las rutas, desde una tabla editable ============ */
 /* Cada fila: familia (padre) + categoría (hija) + atributo → sub-área a insertar y dónde. Nada fijo en el código.
    El atributo es un texto que se busca en la orden (producto, referencia, color o categoría): sirve para «denim»,
@@ -7871,7 +7991,7 @@ function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
    <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
    ${grpSelHTML('rut')}
    <div class="chips" style="margin:0">${[['pend','Por definir'],['conf','Con ruta confirmada']].map(([k,n])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n}</span>`).join('')}</div>
-   ${puedeEditarRuta()?`<button class="btn ghost sm" onclick="confirmarRutasOdoo()" title="solo las que coinciden EXACTO con las órdenes de trabajo; nunca pisa una confirmación de una persona">Confirmar las que coinciden con Odoo (${an.coincide.length})</button>`:''}
+   ${puedeEditarRuta()?`<button class="btn sm" onclick="abrirRutaLote()" title="la misma ruta para varias órdenes que la comparten (por familia, tipo de producto, referencia o cliente)">Editar ruta en lote</button> <button class="btn ghost sm" onclick="confirmarRutasOdoo()" title="solo las que coinciden EXACTO con las órdenes de trabajo; nunca pisa una confirmación de una persona">Confirmar las que coinciden con Odoo (${an.coincide.length})</button>`:''}
   </div></div>
   <div class="panel"><div class="body" style="font-size:var(--fs-s)">
    <b>Qué dice Odoo hoy:</b> ${an.coincide.length} coinciden exacto · ${an.difiere.length} difieren de la ruta · ${an.sinMapear.length} con un centro sin mapear · ${an.contradiccion.length} con contradicción fase vs OT · ${an.sinOT.length} sin órdenes de trabajo cargadas. <span class="mut">Solo las que coinciden se pueden confirmar solas; el resto se revisa a mano y su ruta no se toca.</span>
