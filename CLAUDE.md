@@ -903,6 +903,15 @@ NO se aplican y las existentes quedan `o.claveRepetida={ts,archivo,txt}` (bandej
 Excel no es criterio de emparejamiento. `aplicarMigracionClaves` solo con `config` y con aviso de revisar duplicados en
 producción. Ver `CARGAS_CAMINO_UNICO.md`.
 
+**ID de tarea de Odoo (19-sep-2026, decisión de la usuaria antes de salir en vivo).** El archivo de tareas puede traer la columna
+«ID» (`COLUMNAS_ID_TAREA`): es la **identidad de la orden**. `claveOrden` da `tarea:<id>` antes que `op:`/`sin:`; `clavesDeOrden(o)` devuelve TODAS
+las claves de una orden (tarea + WH o sin WH) y `indiceClaves` las indexa todas, así que **OT y fotos siguen entrando por WH**. `planTarea`
+cruza por ID, luego por WH o clave sin WH y **enlaza** (bitácora); sin WH → WH por el ID guarda `claveAnterior`; sin WH con ID entra
+aunque falten componentes (etiqueta «SIN WH · ID N»); una fila con la WH de una orden que ya tiene OTRO ID es **conflicto**: no se
+aplica, marca `tareaIdConflicto` (bandeja `tareaIdConflicto` en Hoy) y no cuenta como «no vino»; un archivo sin columna no borra
+los ID ni quita la marca. `sinWHde(o)` decide «sin WH» (nunca por el tipo de clave). id nuevo `tarea_<id>`; el id existente nunca
+cambia. Ver `CARGAS_ID_TAREA.md`.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan

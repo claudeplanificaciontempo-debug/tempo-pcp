@@ -204,6 +204,12 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.63 ID de tarea de Odoo como identidad de la orden (19-sep)
+- El archivo de tareas puede traer la columna «ID» (ID de la tarea en Odoo): con ella la orden se reconoce por el ID aunque
+  no tenga WH todavía, y cuando la WH llegue o cambie sigue siendo la misma orden. Sin la columna, todo sigue como antes y
+  nadie pierde su ID. Las OT y las fotos siguen entrando por WH. Una fila que traiga la WH de una orden que ya tiene otro ID
+  no se aplica y la orden queda marcada «ID de tarea distinto — revisar» (bandeja en Hoy). Ver `CARGAS_ID_TAREA.md`.
+
 ### 2.62 Para Dummies · entrega 1 (19-sep)
 - Misma cabecera en todas las pantallas: los párrafos explicativos viven en el «?» del título; buscador, filtro de fases y
   agrupador plegados bajo un botón «Filtrar» (se abre solo con un filtro activo; se recuerda por usuario; la tablet no se
