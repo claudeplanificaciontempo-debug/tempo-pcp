@@ -6731,6 +6731,26 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       Object.assign(o,JSON.parse(bak));if(!JSON.parse(bak).ot)delete o.ot;if(!JSON.parse(bak).rutaOT)delete o.rutaOT;PLAN=null;PLAN_ALL=null;}else __check('UX3: hay una orden sin bordado ni botones en la ruta para probar la OT',false);
      __check('UX3: la OT manda en los tres caminos: al aplicar OT, al recargar tareas (conserva «ot») y al rehacer rutas por catálogo',/empatarRutaConOT\(o\)/.test(String(aplicarOT))&&/empatarRutaConOT\(o\)/.test(String(aplicarTarea))&&/empatarRutaConOT\(o\)/.test(String(recalcularRutas)));}
     RUT.sel=new Set();RUT.fases=null;ORDF.tab='ord';}
+   /* UX4 · «Ruta ok» una a una desde la lista de Órdenes y redibujar sin perder el sitio (usuaria, 20-sep) */
+   {PERFIL=adminP0();page='ordenes';ORDF.tab='ord';ORDF.edicion='porEditar';ORDF.estado='plan';ORDF.q='';ORDF.fases=null;GRP={};grpSt('ord').niveles=[];delete BUSQ['ORDF.q'];render();
+    const pg=()=>document.getElementById('p-ordenes');
+    const o=S.ordenes.find(x=>matchEstadoOrd(x,'plan')&&!rutaLista(x)&&pasosProCompleta(x).length&&lanzada(x));
+    const fila=()=>[...pg().querySelectorAll('[data-lista="ORDF.q"] tbody tr')].find(tr=>tr.textContent.includes(o.op));
+    __check('UX4: la lista de Órdenes trae la columna Ruta (pasos de producción) y el botón «✓ Ruta ok» en las que están por editar',!!o&&/<th>Ruta<\/th>/.test(pg().innerHTML)&&!!fila()&&/Ruta ok/.test(fila().innerHTML)&&fila().textContent.includes(nCen(pasosProCompleta(o)[0])),o&&o.op);
+    /* redibujar sin perder el sitio: la ventana y el recuadro con data-grp-scroll vuelven donde estaban si la página no cambia */
+    {const bak=JSON.stringify(o);const snap=tomarScroll();const host=document.createElement('div');host.innerHTML='<div data-grp-scroll="zz2" style="height:100px;overflow:auto"><div style="height:900px">x</div></div>';document.body.appendChild(host);host.firstChild.scrollTop=120;
+     const sn2=tomarScroll();const okSnap=sn2.page===page&&sn2.cajas.some(([id,t])=>id==='zz2'&&t===120);host.firstChild.scrollTop=0;devolverScroll(sn2);const okBack=host.firstChild.scrollTop===120;
+     const otra=Object.assign({},sn2,{page:'otra'});host.firstChild.scrollTop=0;devolverScroll(otra);const okNo=host.firstChild.scrollTop===0;host.remove();
+     __check('UX4: render() guarda y devuelve el scroll (tomarScroll/devolverScroll) solo si sigue la misma página; la lista de Órdenes lleva data-grp-scroll',okSnap&&okBack&&okNo&&/tomarScroll\(\)/.test(String(render))&&/devolverScroll\(_scroll\)/.test(String(render))&&!!pg().querySelector('[data-grp-scroll="ord"]')&&/tomarScroll\(\)/.test(String(redibujarLista)));
+     /* ✓ Ruta ok: confirma tal cual, sin abrir ficha; la fila sale de «por editar»; nada más cambia en la orden */
+     const rutaAntes=JSON.stringify([o.ruta,o.rutaCompleta]);const nb=S.bitacora.length;rutaOkFila(o.id);
+     __check('UX4: «✓ Ruta ok» confirma la ruta tal como está (persona, sellada, auditada) sin abrir la ficha y la fila sale de «por editar»',rutaConfirmada(o)&&o.rutaConf.origen==='persona'&&/ruta ok/.test(o.rutaConf.nota)&&!!o.rutaFirma&&JSON.stringify([o.ruta,o.rutaCompleta])===rutaAntes&&!fila()&&!matchEdicionOrd(o,'porEditar')&&S.bitacora.length>nb,JSON.stringify(o.rutaConf));
+     ORDF.edicion='editadas';render();__check('UX4: en «Ruta lista» aparece con el ✓ y sin el botón',!!fila()&&/✓/.test(fila().innerHTML)&&!/Ruta ok/.test(fila().innerHTML));
+     Object.assign(o,JSON.parse(bak));if(!JSON.parse(bak).rutaConf)delete o.rutaConf;ORDF.edicion='porEditar';
+     /* sin permiso de rutas no hay botón ni confirmación */
+     PERFIL={id:'u-corte',rol:'corte',nombre:'Sup',modo:'editar'};render();const al=window.alert;window.alert=()=>{};rutaOkFila(o.id);window.alert=al;
+     __check('UX4: un perfil sin permiso de rutas no ve «Ruta ok» y la función no confirma',!(fila()&&/Ruta ok/.test(fila().innerHTML))&&!rutaConfirmada(o));PERFIL=adminP0();}
+    render();}
    /* RD · ruta por defecto al CARGAR una orden cuya familia no tiene hoja de operaciones (regla del 16-sep aplicada de entrada) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);const padre={id:'k_rd_p',n:'FAMILIA SIN HOJA RD'};const hija={id:'k_rd_h',padre:'k_rd_p',n:'Prenda RD',minEstConf:7.5};S.categorias.push(padre,hija);
     const f=new Array(H.length).fill(null);f[col('Orden de producción')]='WH/MO/99301';f[col('Proyecto')]='NOVIEMBRE 2026';f[col('Cliente')]='CLIENTE RD';f[col('ODC')]='8801';f[col('Stilo')]='RD1';f[col('Categoría Padre')]='FAMILIA SIN HOJA RD';f[col('Categoría Hija')]='Prenda RD';f[col('Color')]='BIRCH';f[col('Fase')]='2Planificacion';f[col('Estado OP')]='confirmed';f[col('Pedido')]=100;f[col('Fecha Entrega')]='2026-12-01';

@@ -212,7 +212,8 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   reglas de sub-áreas y Odoo plegados en «Más herramientas». Desplegar un grupo ya no manda la lista al inicio; filtros en una fila con
   filtro de fases. La ruta por orden y «qué dice Odoo» miran la ruta completa (los pasos hechos salían desmarcados). **La OT manda
   sobre la ruta**: al cargar órdenes de trabajo (y al recargar tareas o rehacer rutas) el centro con OT entra a la ruta; nunca se quita
-  un paso por falta de OT. Ver `RUTA_EN_LOTE.md`.
+  un paso por falta de OT. Redibujar (guardar, desplegar, marcar) ya no manda la pantalla al inicio. En la lista de Órdenes hay
+  columna Ruta y botón «✓ Ruta ok» para confirmar una a una sin abrir la ficha. Ver `RUTA_EN_LOTE.md`.
 
 ### 2.67 Ruta lista sin editar y bloques de la ficha que no se cierran solos (20-sep)
 - Decisión de la usuaria: una orden con la prenda terminada (fase con «sin carga» en la tabla 1: empaque terminado, cross, centro

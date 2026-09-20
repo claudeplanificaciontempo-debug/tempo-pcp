@@ -117,6 +117,17 @@ avance registrado en piso (unidades o tramo abierto) se avisa en la fila, en el 
    conserva «ot» y vuelve a empatar) y al rehacer rutas por catálogo (`recalcularRutas`, con la nota «+ OT: …» en la auditoría).
    Pruebas UX3.
 
+## «Ruta ok» una a una y redibujar sin perder el sitio (20-sep, tarde)
+La usuaria: «cuando quiero poner la ruta una a una no me deja en la parte principal… veo que la ruta por defecto está bien,
+quiero ponerle check y no tengo que hacer nada más». Dos cosas:
+- **`render()` ya no manda la pantalla al inicio.** `tomarScroll()` guarda la posición de la ventana y de cada recuadro con
+  `data-grp-scroll="<id>"` y `devolverScroll()` la devuelve al final del redibujo si sigue la misma página (otra página empieza
+  arriba). `redibujarLista` hace lo mismo. La lista de Órdenes lleva `data-grp-scroll="ord"`; cualquier lista larga puede llevarlo.
+- **Columna Ruta y botón «✓ Ruta ok» en la lista de Órdenes** (`rutaCeldaHTML`, `rutaOkFila`): la fila muestra los pasos de
+  producción de la ruta completa (los hechos en gris; «por defecto» si nació de la ruta por defecto; ✓ si ya está confirmada) y,
+  si está por editar y el perfil edita rutas, un botón que la confirma tal como está (persona, sellada, auditoría y bitácora) sin
+  abrir la ficha. La fila sale de «Por editar» y la lista no se mueve. Pruebas UX4.
+
 ## Pruebas
 Bloque **RLT** del simulador (23 comprobaciones): la lista y sus grupos con casilla, marcar un grupo desde la cabecera, marcar
 / desmarcar una fila sin redibujar, el modal sobre la selección, base más común, plan (entra/sale/conserva/excluido por la fase),

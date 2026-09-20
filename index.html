@@ -779,7 +779,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 14:43';
+const APP_BUILD='2026-09-20 15:10';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1786,8 +1786,8 @@ const LISTAS={};
 function listaRegistrar(id,fn){LISTAS[id]=fn}
 function listaHost(id){return document.querySelector('[data-lista="'+CSS.escape(id)+'"]')}
 function redibujarLista(id){const fn=LISTAS[id];if(!fn)return false;
-  const host=listaHost(id);if(!host)return false;
-  try{host.innerHTML=fn()}catch(e){return false}
+  const host=listaHost(id);if(!host)return false;const _scroll=tomarScroll();
+  try{host.innerHTML=fn()}catch(e){return false}devolverScroll(_scroll);
   return true}
 /* ================= BÚSQUEDA GENERAL: una barra arriba, en todas las pantallas y en teléfono ================= */
 /* textos que se pueden cambiar sin tocar código (tabla de ayudas, Configuración → Órdenes y materiales) */
@@ -2958,6 +2958,7 @@ let ERR_PROG=null;   // si programar() falla para un operario, se avisa en vez d
 let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
 function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
+  const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
   if(typeof recalcularRutas==='function'&&typeof rutasPorRecalcular==='function'){const _r=rutasPorRecalcular();if(_r.total)recalcularRutas()}
@@ -2979,7 +2980,11 @@ function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='fu
   avisoGuardado();verBotonesAdmin();
   try{simplificarPagina(page)}catch(e){try{console.error('simplificarPagina',e)}catch(x){}}   /* para Dummies (F): párrafos explicativos al «?» del título, filtros bajo «Filtrar» */
   if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
+  devolverScroll(_scroll);
 }
+/* posición de la ventana y de cada recuadro con data-grp-scroll="<id>"; se devuelve solo si sigue la misma página (otra página empieza arriba) */
+function tomarScroll(){let y=0;try{y=window.scrollY||0}catch(e){}return {page:(typeof page!=='undefined')?page:null,y,cajas:[...document.querySelectorAll('[data-grp-scroll]')].map(e=>[e.getAttribute('data-grp-scroll'),e.scrollTop]).filter(x=>x[1]>0)}}
+function devolverScroll(sn){if(!sn||sn.page!==((typeof page!=='undefined')?page:null))return;sn.cajas.forEach(([id,top])=>{const e=document.querySelector('[data-grp-scroll="'+id+'"]');if(e)e.scrollTop=top});if(sn.y>0){try{window.scrollTo(0,sn.y)}catch(e){}}}
 const semaforo=p=>p>100?'t-alerta':p>85?'t-aviso':'t-ok';
 /* pastel de uso de capacidad: anillo con el porcentaje; rojo si pasa del 100 */
 function donut(p,sz=34){const r=13,c=2*Math.PI*r,f=Math.min(p,100)/100,col=p>100?'var(--alerta)':p>85?'var(--aviso)':'var(--medio)';
@@ -7785,6 +7790,15 @@ function precargarRutasNuevas(){let n=0;S.ordenes.filter(abierta).forEach(o=>{if
 /* --- bloqueo en las dos liberaciones --- */
 function faltaRutaConfirmada(o){return !rutaLista(o)}
 function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'tela')||liberada(o,'corte'))&&!rutaLista(o))}
+/* celda Ruta de la lista de Órdenes: los pasos de producción de la ruta completa (los hechos en gris), y el estado de la confirmación */
+function rutaCeldaHTML(o){const cens=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));if(!cens.length)return '<span class="tag t-alerta">sin ruta de producción</span>';
+  const fe=faseEstado(o.fase,o);const txt=cens.map(c=>pasoHecho(o,c,fe)?'<span class="mut" title="hecho">'+esc(nCen(c))+'</span>':esc(nCen(c))).join(' → ');
+  const rc=rutaConf(o);const est=rutaConfirmada(o)?' <span class="tag t-ok" title="confirmada por '+esc(rc.origen)+'">✓</span>':(rutaNoAplica(o)?'':(o.rutaDefecto?' <span class="tag t-aviso" title="ruta por defecto: su familia no tiene hoja de operaciones">por defecto</span>':''));
+  return txt+est}
+/* ✓ Ruta ok desde la lista: confirma la ruta tal como está (persona), sella, audita; la lista se redibuja sin moverse */
+function rutaOkFila(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
+  if(rutaConfirmada(o))return;if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);confirmarRuta(o,'persona','ruta ok desde la lista: est\u00e1 bien tal cual');
+  PLAN=null;PLAN_ALL=null;save();render()}   /* render() conserva el scroll: la fila sale de «por editar» y la lista no se mueve */
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
 let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set(),fases:null};
 /* ================== RUTA EN LOTE (20-sep-2026) ==================
@@ -8539,18 +8553,19 @@ function vOrdenes(el){
       <td>${(o.telas||[]).map(t=>`${esc(nTela(t.tela))} ${t.ud==='m'?num(t.m,0)+' m <span class="mut">(plana)</span>':num(t.kg,1)+' kg'}${t.ext?' <span class="mut">('+(t.ext==='stock'?'stock':'ext')+')</span>':''}${t.color&&t.color!==o.color?' <span class="mut">· '+esc((C(t.color)||{}).n||'')+'</span>':''}`).join('<br>')||'<span class="tag t-alerta">sin tela</span>'}</td>
       <td style="white-space:nowrap">${estadoSemaforoHTML(o,P)}${o.samProv?' <span class="tag t-aviso" title="tiempos provisionales">prov.</span>':''}</td>
       <td><span class="tag ${faseNum(o.fase)>=8?'t-ok':faseNum(o.fase)>=4?'t-medio':faseNum(o.fase)>=1?'t-aviso':'t-lavado'}" title="${esc(o.fase||'')}">${o.fase?esc(faseNombre(o.fase)):'—'}</span></td>
+      <td style="font-size:var(--fs-xs);min-width:190px">${rutaCeldaHTML(o)}</td>
       <td style="white-space:nowrap">${o.fecha}</td>
-      <td style="white-space:nowrap">${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
-  const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead>`;
+      <td style="white-space:nowrap">${puedeEditarRuta()&&!rutaLista(o)&&pasosProCompleta(o).length?`<button class="btn sm" onclick="rutaOkFila('${o.id}')" title="la ruta está bien tal cual: se confirma sin abrir la ficha (${esc(pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(nCen).join(' → '))})">✓ Ruta ok</button> `:''}${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
+  const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Ruta</th><th>Entrega</th><th></th></tr></thead>`;
   /* la lista de Órdenes se puede repintar sola, sin tocar el buscador (redibujo parcial) */
   const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
     const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
     return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]}${ORDF.edicion&&ORDF.edicion!=='todas'?' · '+EDICION_ORD[ORDF.edicion]:''} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
-     +`<div class="scroll"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,10)||'<tr><td colspan="10" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
+     +`<div class="scroll" data-grp-scroll="ord"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,11)||'<tr><td colspan="11" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
      +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+'), la edición ('+(EDICION_ORD[ORDF.edicion]||'todas')+') y el filtro de fases')};
   listaRegistrar('ORDF.q',listaOrdHTML);
   let rows;
-  rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
+  rows=filasGRP('ord',lista.slice(0,600),filaOrden,11);
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips" style="margin-right:10px">${[['ord','Órdenes'],['rutas','Rutas'+(rutasPorDefinir().length?' · '+rutasPorDefinir().length:'')]].map(([k,n])=>`<span class="chip ${(ORDF.tab||'ord')===k?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mActualizarDatos(1)">${ICO.sync} Actualizar datos</button><button class="btn ghost" onclick="mReporteTarea()">Reporte de la última carga</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
@@ -8574,8 +8589,7 @@ function vOrdenes(el){
   ${filtros}
   <div data-lista="ORDF.q"><div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
     <span class="spacer"></span></h3>
-  ${S.ordenes.length?`<div class="scroll"><table><thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>
-    <th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
+  ${S.ordenes.length?`<div class="scroll" data-grp-scroll="ord"><table>${cabT}<tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div></div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas <span class="note">registro completo en Configuración → Órdenes y materiales</span></h3><div class="body">
     ${S.cargas.slice().sort((x,y)=>x.ts<y.ts?1:-1).slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> · ${esc(TIPOS_CARGA[c.tipo]||'Actualizar desde Odoo (retirado)')} <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${esc(resumenCargaTxt(c))}</div>

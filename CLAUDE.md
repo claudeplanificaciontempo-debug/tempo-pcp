@@ -978,7 +978,9 @@ ahí: toda lista larga con agrupador debería llevar el atributo; la fila de fil
 **La ruta por orden (`mRutaCentro`) y «qué dice Odoo» (`diagRutaOdoo`) miran la ruta COMPLETA**, no solo la pendiente: los pasos hechos ya no están en
 `o.ruta` y salían desmarcados / «Odoo tiene X, la ruta no». **La OT manda sobre la ruta**: `empatarRutaConOT(o)` agrega (nunca quita) a la ruta los centros
 con orden de trabajo no cancelada (terminada → solo completa; pendiente → completa y pendiente), `{ot:true}` + `o.rutaOT`; corre en `aplicarOT`, en
-`aplicarTarea` (tras conservar «ot») y en `recalcularRutas`. Pruebas UX3.
+`aplicarTarea` (tras conservar «ot») y en `recalcularRutas`. Pruebas UX3. **`render()` conserva el scroll** (`tomarScroll`/`devolverScroll`: ventana +
+recuadros `data-grp-scroll`, solo si sigue la misma página; `redibujarLista` igual): no volver a «mandar al inicio» al redibujar. **Lista de Órdenes**: columna
+**Ruta** (`rutaCeldaHTML`) y botón **«✓ Ruta ok»** (`rutaOkFila`: confirma tal cual, persona, sin abrir la ficha; solo con `puedeEditarRuta` y ruta por editar). Pruebas UX4.
 
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;
