@@ -159,6 +159,10 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .veil.on{display:flex}
 .modal{background:var(--paper);border-radius:4px;max-width:760px;width:100%;max-height:88vh;overflow:auto}
 .modal.wide{max-width:1180px}
+.modal.orden{max-width:1440px;max-height:96vh}.modal.orden .body{padding:10px 16px}.modal.orden label{margin-top:2px}
+.ed-blk{border:1px solid var(--rule);border-radius:10px;padding:8px 12px;margin:8px 0;background:var(--paper)}.ed-blk>summary{cursor:pointer;font-weight:600;font-size:var(--fs-s);list-style:none}.ed-blk>summary::-webkit-details-marker{display:none}.ed-blk>summary::before{content:'▸ ';color:var(--medio)}.ed-blk[open]>summary::before{content:'▾ '}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px;align-items:end}.ed-grid label{margin-top:0;font-size:var(--fs-xs)}
+.foto-mini{border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:6px;cursor:zoom-in}
 .modal h3{padding:14px 18px;border-bottom:1px solid var(--rule2);font-size:var(--fs-m)}
 .modal .body{padding:18px}
 .modal .foot{padding:12px 18px;border-top:1px solid var(--rule2);display:flex;gap:9px;justify-content:flex-end}
@@ -768,7 +772,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 23:41';
+const APP_BUILD='2026-09-20 00:01';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2307,7 +2311,7 @@ function tickCrono(){const el=document.getElementById('crono-vivo');
   const hasta=pausa?new Date(pausa):new Date();
   const min=Math.max(0,(hasta-new Date(ini))/6e4-paros);
   el.textContent=fmtHMS(min)}
-function arrancarCrono(){if(CRONO_INT)clearInterval(CRONO_INT);tickCrono();CRONO_INT=setInterval(tickCrono,1000)}
+function arrancarCrono(){if(typeof fotoZoomInit==='function')try{fotoZoomInit()}catch(e){}if(CRONO_INT)clearInterval(CRONO_INT);tickCrono();CRONO_INT=setInterval(tickCrono,1000)}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
   const ab=tramoAbiertoDe(c,rec||null);
@@ -2572,6 +2576,64 @@ function pasarACompras(o,motivo){const ruta=(o.ruta||[]).slice();const iT=ruta.f
 /* Devolución de fase = la fase nueva cae en un grupo ANTERIOR de la tabla 5 (solo entonces se exige motivo) */
 function ordenDeFase(f){const r=grupoDe(f);const o=r?ordenGrupo(r.grupo):-1;return o>0?o:null}
 // secuencia real de la fase (tabla 1, columna editable): iguales = fases paralelas; vacío = no configurada
+/* Secuencia y significado de cada fase, dictados por la usuaria el 19-sep-2026 sobre el orden de las etapas en Odoo (tabla dinámica de tareas).
+   Mismo número = fases paralelas o tramo no secuencial (no se pide motivo al moverse entre ellas); menor = devolución.
+   Se siembra UNA vez y solo llena lo vacío (la secuencia y el «qué es» editados no se pisan); las fases que faltaban en la tabla 1 se agregan. */
+const FASES_SEC_19=[
+ ['0Diseño',1,'previo a producción','todavía no tiene fichas'],
+ ['0Reproceso diseño',2,'previo a producción','ya sacaron fichas, pero por AOV se devolvió'],
+ ['0Recetas Insumos',3,'previo a producción','ya tiene fichas, todavía no tiene la receta'],
+ ['0Adquisición',4,'previo a producción','ya están todas las recetas; está para liberarse'],
+ ['0Macro',5,'previo a producción','ya se liberó a tintorería'],
+ ['0Ord Compras',6,'previo a producción','lo que se compra por fuera (tela que no se teje aquí)'],
+ ['1Tejeduria',6,'textil','se está tejiendo'],
+ ['1CD Tintoreria',7,'textil','tejido, en cola para tinturarse'],
+ ['1Tintoreria',8,'textil','se está tinturando'],
+ ['1Calidad Tintoreria',9,'textil','ya salió del baño; calidad lo revisa para pasar a producción'],
+ ['1INCOMPLETOS TIN',9,'textil','salió incompleto de tintorería; hay que completar'],
+ ['2Planificacion',10,'planificación','ya tiene tela; en cola para entrar a corte'],
+ ['3AEROPUERTO',10,'preparación de corte','ya tiene tela; en cola para entrar a corte'],
+ ['3Trazos',10,'preparación de corte','ya tiene tela; en cola para entrar a corte'],
+ ['3CD CORTE',10,'preparación de corte','ya tiene tela; en cola para entrar a corte'],
+ ['4Incompletos',11,'corte','incompletos de producción'],
+ ['4Corte Planta',11,'corte','se está cortando en este momento'],
+ ['5Corte Maquila Ibarra',11,'maquila externa','se corta afuera (maquila)'],
+ ['4Preparacion Insumos',12,'corte','ya está cortado; preparando los insumos'],
+ ['4CD Ensamble',13,'corte','corte + insumos juntos; esperando liberarse a confección, bordado, estampado o sublimado'],
+ ['6 Etiquetado',14,'servicios','en serigrafía: etiquetas transfer'],
+ ['6 CD SERIGRAFIA',14,'servicios','esperando para estamparse'],
+ ['6Serigrafia',14,'servicios','se está estampando'],
+ ['6Sublimado',14,'servicios','se está sublimando'],
+ ['6 CD BORDADO',14,'servicios','esperando para bordarse'],
+ ['6Bordado',14,'servicios','se está bordando'],
+ ['6Pulido Bordado',14,'servicios','ya se bordó; terminando de pulir la prenda'],
+ ['7Confección',14,'confección','se está confeccionando en este momento'],
+ ['7Pulido',14,'confección','ya salió de confección'],
+ ['5CD Maquila',14,'maquila externa','lo que la maquila se va a llevar a confección'],
+ ['5Maquila Conf',14,'maquila externa','se está confeccionando afuera, en maquila'],
+ ['5Maquila Recepción',14,'maquila externa','ya llegó de la maquila'],
+ ['8Lavanderia',16,'terminados','lavándose, afuera o dentro de la fábrica'],
+ ['8Lavanderia Quito',16,'terminados','lavándose en Quito'],
+ ['8Botones',16,'terminados','se están haciendo los botones'],
+ ['8Servicios y Terminados',16,'terminados','plancha, pasar cordón y similares'],
+ ['8Empaque',17,'terminados','doblando y etiquetando las prendas'],
+ ['8Empaque Terminado',18,'prenda terminada','todo listo; esperando que pidan cross'],
+ ['8Cross',19,'prenda terminada','ya lo pidieron'],
+ ['8Centro Distribucion',20,'prenda terminada','trabajando en cajas'],
+ ['8Novedades',21,'prenda terminada','ya está en cajas, cerrado; solo falta llegar a la colección'],
+ ['8Embodegado',21,'prenda terminada','todo listo; esperando fecha de factura'],
+ ['8Exportacion',21,'prenda terminada','todo listo; esperando fecha de factura (es lo último)'],
+ ['8Cotizaciones',21,'prenda terminada','todo listo; esperando fecha de factura'],
+ ['Facturado',22,'cerrada','ya se facturó: no entra'],
+ ['Stand by',22,'cerrada','en espera: no entra']];
+function sembrarFasesSecuencia19(){if(S.params.fasesSecuencia19)return;const t=faseMapeo();let sec=0,que=0,nuevas=[];
+  FASES_SEC_19.forEach(([fase,n,sistema,txt])=>{let r=t.find(x=>normFase(x.fase)===normFase(fase));
+    if(!r){r={fase,sistema,esCola:false,sinCarga:sistema==='prenda terminada'||sistema==='cerrada',bloqueo:false,excluye:'',desde:'',tela:'',montado:false,secuencia:'',que:'',pendiente:true};t.push(r);nuevas.push(fase)}
+    if(r.secuencia===''||r.secuencia==null){r.secuencia=n;sec++}
+    if(!r.que){r.que=txt;que++}});
+  if(nuevas.length&&typeof FASE_CACHE!=='undefined')FASE_CACHE.ver++;   /* la tabla es el mismo arreglo: la caché de filas se rehace */
+  S.params.fasesSecuencia19=new Date().toISOString();
+  if(typeof bitacora==='function')bitacora('Tabla 1 · secuencia y significado de las fases según la usuaria (19-sep, orden de Odoo): '+sec+' secuencias llenadas, '+que+' significados, '+nuevas.length+' fases agregadas'+(nuevas.length?' ('+nuevas.join(', ')+')':''))}
 function secuenciaDe(f){const r=filaFaseDe(f);const v=r?r.secuencia:null;return (v===''||v==null||isNaN(+v))?null:+v}
 function fasesSinSecuencia(){return faseMapeo().filter(r=>String(r.fase||'').trim()&&secuenciaDe(r.fase)===null).map(r=>r.fase)}
 function esDevolucionFase(actual,nueva){if(!actual||!nueva||actual===nueva)return false;
@@ -4471,7 +4533,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
+function sembrarDecisiones16(){sembrarFasesSecuencia19();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -8306,7 +8368,10 @@ function vImprimir(el){
 }
 
 /* ---------- Órdenes ---------- */
-let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord'};
+let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord',edicion:'porEditar'};
+/* «editada» = ruta confirmada por una persona o por Odoo (rutaConfirmada). Por editar = todo lo demás: al confirmar, sale de la lista */
+const EDICION_ORD={porEditar:'Por editar (ruta sin confirmar)',editadas:'Editadas (ruta confirmada)',todas:'Todas'};
+function matchEdicionOrd(o,k){if(k==='todas'||!k)return true;const c=(typeof rutaConfirmada==='function')?rutaConfirmada(o):false;return k==='editadas'?c:!c}
 function togFaseOrdF(f){ORDF.fases=ORDF.fases||new Set();if(ORDF.fases.has(f))ORDF.fases.delete(f);else ORDF.fases.add(f);render()}
 /* selector compacto de fases con casillas, agrupadas por etapa; sel=null o vacío = todas */
 function selFases(fasesAll,sel,varName,togFn,cuentas){return filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)}
@@ -8315,11 +8380,13 @@ function vOrdenes(el){
   if(ORDF.tab==='rutas'){el.innerHTML=`<div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips">${[['ord','Órdenes'],['rutas','Rutas']].map(([k,n])=>`<span class="chip ${ORDF.tab===k||(k==='ord'&&!ORDF.tab)?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div></div>`+rutasHTML();return}
   const P=S.ordenes.length?programar():null;
   const cnt={};S.ordenes.forEach(o=>{const e=(o.estado||'plan')==='standby'?'cerrada':(o.estado||'plan');cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
-  const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&faseOkFiltro(ORDF.fases,o.fase)&&(matchBusq(o,q,'ORDF.q')));
+  const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&(matchBusq(o,q,'ORDF.q')));
+  const cntEd={porEditar:0,editadas:0,todas:0};S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).forEach(o=>{cntEd.todas++;if(matchEdicionOrd(o,'editadas'))cntEd.editadas++;else cntEd.porEditar++});
   const fasesAll=[...new Set(S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
   ORDF.fases=podarFases(ORDF.fases,fasesAll);   // conserva el centinela: «ninguna» no se convierte en «todas»
   const filtros=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
+    <div class="no-plegar" style="flex:2;min-width:340px"><label>Edición <span class="mut">— al guardar la ficha o confirmar la ruta, la orden pasa a «editadas»</span></label><div class="chips" style="margin:0">${Object.entries(EDICION_ORD).map(([k,v])=>`<span class="chip ${ORDF.edicion===k?'on':''}" onclick="ORDF.edicion='${k}';render()">${v} <span class="mut">${cntEd[k]}</span></span>`).join('')}</div></div>
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     ${grpSelHTML('ord')}</div></div>`;
@@ -8334,10 +8401,10 @@ function vOrdenes(el){
   const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Entrega</th><th></th></tr></thead>`;
   /* la lista de Órdenes se puede repintar sola, sin tocar el buscador (redibujo parcial) */
   const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
-    const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
-    return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
+    const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
+    return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]}${ORDF.edicion&&ORDF.edicion!=='todas'?' · '+EDICION_ORD[ORDF.edicion]:''} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
      +`<div class="scroll"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,10)||'<tr><td colspan="10" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
-     +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')};
+     +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+'), la edición ('+(EDICION_ORD[ORDF.edicion]||'todas')+') y el filtro de fases')};
   listaRegistrar('ORDF.q',listaOrdHTML);
   let rows;
   rows=filasGRP('ord',lista.slice(0,600),filaOrden,10);
@@ -9912,7 +9979,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
   <div class="panel"><h3>Restricciones de faltante <span class="note">${rf.length} materiales que exigen baño grande (complementos, algodón)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRestrFaltRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Si el nombre de la tela/material del faltante CONTIENE la coincidencia, ese faltante no puede ir a máquina pequeña: espera baño grande. Sembrada con cuellos, puños y algodón. Lo no marcado se reporta en la cola de faltantes (revísalo).</p><table style="font-size:var(--fs-s)"><thead><tr><th>Coincidencia (tela o material)</th><th style="width:180px">Tipo</th><th></th></tr></thead><tbody>${rf.map((r,i)=>`<tr><td><input type="text" style="width:280px" value="${esc(r.match)}" onchange="setRestrFaltRow(${i},'match',this.value)"></td><td><input type="text" style="width:150px" value="${esc(r.tipo)}" onchange="setRestrFaltRow(${i},'tipo',this.value)"></td><td><button class="btn ghost sm" onclick="delRestrFaltRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
    <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «¿Alcanza la capacidad?» cuenta esta fase (tela / maquila)">¿Alcanza la capacidad?</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
-    ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"></td>
+    ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"><input type="text" style="width:190px;display:block;margin-top:2px;font-size:var(--fs-xs)" value="${esc(r.que||'')}" placeholder="qué significa esta fase" title="qué significa la fase (lo dictó la usuaria el 19-sep; editable)" onchange="setFaseMapeoRow(${i},'que',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${gruposOrdenados().map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td><input type="number" step="1" style="width:60px" value="${r.secuencia===''||r.secuencia==null?'':r.secuencia}" placeholder="—" title="iguales = paralelas; vacío = se usa el grupo de la tabla 5" onchange="setFaseMapeoRow(${i},'secuencia',this.value)"></td><td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.sinCarga?'checked':''} onchange="setFaseMapeoRow(${i},'sinCarga',this.checked)"></td>
@@ -10539,7 +10606,15 @@ function fotoPath(op){return String(op||'').trim().replace(/[^A-Za-z0-9._-]+/g,'
 function fotoURLde(op,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoPath(op)+(ts?'?v='+ts:'')}
 function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S.params.fotosIdx)||{};const e=ix[normTxt(o.op)];return e?fotoURLde(o.op,e.ts):''}
 /* miniatura: carga solo cuando entra en pantalla (loading=lazy); clic abre la foto grande */
-function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||34;return `<img class="foto-mini" src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
+function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||prm('fotoMiniPx',44);return `<img class="foto-mini" src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" data-zoom="${esc(u)}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
+/* zoom al pasar el mouse por cualquier foto (data-zoom): una sola capa fija que sigue al cursor; se oculta al salir. Tablet (touch) no la usa: el clic abre la foto */
+let ZOOM_EL=null;
+function fotoZoomInit(){if(ZOOM_EL||typeof document==='undefined')return;ZOOM_EL=document.createElement('div');ZOOM_EL.id='foto-zoom';ZOOM_EL.style.cssText='position:fixed;display:none;z-index:120;pointer-events:none;background:#fff;border:1px solid var(--rule);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.28);padding:4px';ZOOM_EL.innerHTML='<img alt="" style="display:block;max-width:'+prm('fotoZoomPx',320)+'px;max-height:'+prm('fotoZoomPx',320)+'px;border-radius:6px">';document.body.appendChild(ZOOM_EL);
+  const mover=e=>{const w=prm('fotoZoomPx',320)+10,h=w;let x=e.clientX+18,y=e.clientY+18;if(x+w>innerWidth)x=e.clientX-w-18;if(y+h>innerHeight)y=Math.max(4,innerHeight-h-4);ZOOM_EL.style.left=x+'px';ZOOM_EL.style.top=y+'px'};
+  document.addEventListener('mouseover',e=>{const im=e.target&&e.target.closest&&e.target.closest('img[data-zoom]');if(!im)return;ZOOM_EL.querySelector('img').src=im.getAttribute('data-zoom');ZOOM_EL.style.display='block';mover(e)});
+  document.addEventListener('mousemove',e=>{if(ZOOM_EL.style.display==='block')mover(e)});
+  document.addEventListener('mouseout',e=>{const im=e.target&&e.target.closest&&e.target.closest('img[data-zoom]');if(im)ZOOM_EL.style.display='none'});
+  document.addEventListener('click',()=>{ZOOM_EL.style.display='none'})}
 function mFoto(id){const o=S.ordenes.find(x=>x.id===id);const u=fotoDe(o);if(!u)return;
   abrir(`<h3>${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${esc((C(o.color)||{}).n||'')} · ${num(o.cant)} pz</span></h3><div class="body" style="text-align:center"><img src="${esc(u)}" alt="" style="max-width:100%;max-height:70vh;border-radius:8px"></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`)}
@@ -10892,26 +10967,33 @@ function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
   ED.cantBase=o?+o.cant||0:0;
   const faseVal=o?o.fase:null;const faseEnLista=faseVal&&FASES.some(f=>normTxt(f)===normTxt(faseVal));
   const PRIOS=[[1,'Urgente','#C4402F'],[3,'Normal','#2C8A5C'],[2,'Alta','#B8862B']];
-  abrir(`<h3>${o?'Editar':'Nueva'} orden</h3><div class="body">${o&&fotoDe(o)?`<div style="float:right;margin:0 0 8px 14px">${fotoMini(o,110)}</div>`:''}${o&&(o.fases||[]).length?`<details style="margin-bottom:8px"><summary class="mut" style="cursor:pointer;font-size:var(--fs-s)">Historial de fases (${o.fases.length})</summary><div style="font-size:var(--fs-xs);line-height:1.7">${o.fases.slice().reverse().map(x=>new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.antes||'—')+' → '+esc(x.f||'—')+' · '+(x.origen==='app'?'movida por '+esc(x.u||''):'venía así en la carga')).join('<br>')}</div></details>`:''}<div class="row">
+  const mp=o?(o.materiales||[]).filter(m=>m.clasif==='tela'):[];const ins=o?(o.materiales||[]).filter(m=>m.clasif&&m.clasif!=='tela'):[];
+  const fotoG=o&&fotoDe(o)?`<div style="flex:none"><img class="foto-mini" src="${esc(fotoDe(o))}" data-zoom="${esc(fotoDe(o))}" alt="" style="width:${prm('fotoFichaPx',170)}px;height:${prm('fotoFichaPx',170)}px;object-fit:cover;border-radius:10px;cursor:zoom-in" onclick="mFoto('${esc(o.id)}')"></div>`:'';
+  abrir(`<h3>${o?'Editar':'Nueva'} orden ${o?'<span class="note">'+esc(o.op)+' · '+esc(o.cliente||'')+(o.odc?' · ODC '+esc(String(o.odc)):'')+(o.proyecto?' · '+esc(o.proyecto):'')+(o.tareaId?' · ID tarea '+esc(String(o.tareaId)):'')+'</span>':''}</h3><div class="body">
+   <details class="ed-blk" open><summary>Datos de la orden</summary><div style="display:flex;gap:14px;align-items:flex-start;margin-top:6px">${fotoG}<div style="flex:1;min-width:0"><div class="ed-grid">
     <div><label>OP</label><input type="text" id="f-op" value="${esc(o?o.op:'')}"></div>
     <div><label>Referencia</label><input type="text" id="f-ref" value="${esc(o?o.ref:'')}"></div>
     <div><label>Categoría</label><select id="f-cat" onchange="desdeHoja()"><option value="">—</option>${selectCats(o?o.cat:'')}</select></div>
-
-    <div><label>Color</label><input type="text" id="f-col" list="dl-colores" style="min-width:200px" value="${esc(etqColor(o?o.color:null))}" placeholder="escribe nombre o código" onchange="validarColor(this)"></div>
+    <div><label>Color</label><input type="text" id="f-col" list="dl-colores" value="${esc(etqColor(o?o.color:null))}" placeholder="escribe nombre o código" onchange="validarColor(this)"></div>
     <datalist id="dl-colores">${S.colores.map(c=>`<option value="${esc(etqColor(c.id))}">`).join('')}</datalist>
     <div><label>Prendas</label><input type="number" id="f-cant" value="${o?o.cant:''}" onchange="recalcKg(+this.value||0)"></div>
     <div><label>Entrega</label><input type="date" id="f-fec" value="${o?o.fecha:dsum(hoy(),21)}"></div>
     <div><label>Fase</label><select id="f-fase">${!faseVal?'<option value="">—</option>':''}${faseVal&&!faseEnLista?`<option value="${esc(faseVal)}" selected>${esc(faseVal)}</option>`:''}${FASES.map(f=>`<option value="${esc(f)}" ${faseVal&&normTxt(faseVal)===normTxt(f)?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
     <div><label>Prioridad</label><div class="chips" style="margin:0">${PRIOS.map(([p,n,c])=>`<label class="chip ${(o?o.prio:3)==p?'on':''}" style="${(o?o.prio:3)==p?`background:${c};border-color:${c};color:#fff`:`color:${c};border-color:${c}`}"><input type="radio" name="f-prio" value="${p}" style="display:none" ${(o?o.prio:3)==p?'checked':''} onchange="reabrirPrio(${p})">${n}</label>`).join('')}<input type="hidden" id="f-prio" value="${o?o.prio:3}"></div></div>
+   </div>${o&&(o.fases||[]).length?`<details style="margin-top:6px"><summary class="mut" style="cursor:pointer;font-size:var(--fs-xs)">Historial de fases (${o.fases.length})</summary><div style="font-size:var(--fs-xs);line-height:1.7">${o.fases.slice().reverse().map(x=>new Date(x.ts).toLocaleString('es-EC')+' · '+esc(x.antes||'—')+' → '+esc(x.f||'—')+' · '+(x.origen==='app'?'movida por '+esc(x.u||''):'venía así en la carga')).join('<br>')}</div></details>`:''}</div></div>
    ${o?(()=>{const ro=(programar().ordenes[o.id])||{};const lt=ro.finPro?Math.round((new Date(ro.finPro)-new Date(hoy()))/864e5):null;
      const pasosCentros=(ro.pasos||[]).map(p=>`<span>${esc(nCen(p.centro))}: <b>${p.error?'—':p.hecho?'hecho':p.fin?fmtDia(p.fin):'—'}</b></span>`).join('');
      return `<div style="background:var(--field);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;margin:4px 0 12px;font-size:var(--fs-s);display:flex;gap:18px;flex-wrap:wrap">
      <span><b>Fechas del programa</b></span><span>Tejida: <b>${ro.tejidaHecha?'hecha':ro.finTej?fmtDia(ro.finTej):'—'}</b></span><span>Tinturada: <b>${ro.tinturadaHecha?'hecha':ro.finTin?fmtDia(ro.finTin):'—'}</b></span>${pasosCentros}<span>Terminada: <b>${ro.finPro?fmtDia(ro.finPro):(ro.bloqueo||'—')}</b></span>
      <span>Lead time restante: <b>${lt!=null?lt+' días':'—'}</b></span><span>Entrega: <b>${o.fecha}</b> ${ro.atraso?'<span class="tag t-alerta">atraso</span>':ro.finPro?'<span class="tag t-ok">a tiempo</span>':''}</span>
-     <span class="mut">${!liberada(o,'tela')?'sin liberar':liberada(o,'corte')?'liberada a producción':'liberada; falta producción'}</span></div>`})():''}
-   <label>Telas de la orden (kg crudos, sin merma) <span class="mut">— al elegir categoría se llenan con el consumo por prenda × prendas; el color por defecto es el de la orden. La merma se descuenta después para saber cuánto sale del baño.</span></label>
-   <div id="ed-telas" data-u="kg crudo">${edTelasHTML('kg crudo')}</div>
-   <div class="row" style="margin-top:16px">
+     <span class="mut">${!liberada(o,'tela')?'sin liberar':liberada(o,'corte')?'liberada a producción':'liberada; falta producción'}</span></div>`})():''}</details>
+   <details class="ed-blk" open><summary>Materia prima <span class="mut" style="font-weight:400">${mp.length?mp.length+' líneas de tela de Odoo · ':''}${(ED.telas||[]).length} telas del catálogo para el motor</span></summary>
+   ${mp.length?`<div class="scroll" style="max-height:170px;margin-top:6px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Tipo de tela (Odoo)</th><th>Producto</th><th class="num">Cantidad</th><th>Origen</th><th>Proveedor</th><th>Tela del catálogo (tabla 8)</th></tr></thead><tbody>${mp.map(m=>{const org=(typeof origenPorMaestro==='function'?origenPorMaestro(m.cod):null)||m.origen||'';const t=(typeof telaDeRuta==='function')?telaDeRuta(m.ruta):null;const pv=(typeof provPorMaestro==='function'?provPorMaestro(m.cod):'')||m.prov||'';
+      return `<tr><td>${esc([m.n3,m.n4].filter(Boolean).join(' / ')||m.ruta||'')}</td><td>${m.cod?'<span class="mut">['+esc(m.cod)+']</span> ':''}${esc(m.prod||'')}</td><td class="num">${num(m.dem,2)} ${esc(m.udm||'')}</td><td>${esc(org)}</td><td class="mut">${esc(pv)}</td><td>${t?esc((T(t)||{}).n||t):'<span class="tag t-aviso" title="sin fila con tela en la tabla 8: esta línea no entra al motor de tejeduría/tintorería">sin tela en tabla 8</span>'}</td></tr>`}).join('')}</tbody></table></div>`:(o?'<div class="mut" style="font-size:var(--fs-xs);margin-top:4px">Sin líneas de tela de Odoo en esta orden.</div>':'')}
+   <label style="margin-top:8px">Telas de la orden (kg crudos, sin merma) <span class="mut">— al elegir categoría se llenan con el consumo por prenda × prendas; el color por defecto es el de la orden. La merma se descuenta después para saber cuánto sale del baño.</span></label>
+   <div id="ed-telas" data-u="kg crudo">${edTelasHTML('kg crudo')}</div></details>
+   <details class="ed-blk" open><summary>Ruta y operaciones <span class="mut" style="font-weight:400">${(ED.ruta||[]).length} pasos${o&&rutaConfirmada(o)?' · ruta confirmada':' · ruta sin confirmar (guardar la confirma)'}</span></summary>
+   <div class="row" style="margin-top:6px">
     <div><label>Técnica <span class="mut">— si tiene, pasa por estampado</span></label><select id="f-tec" onchange="ED.tecnica=this.value||null;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!ED.tecnica)ED.opts.delete('estampado');confirmarImpactoOrden('${id||''}',()=>rearmar())"><option value="">— ninguna —</option>${S.tecnicas.map(t=>`<option value="${t.id}" ${ED.tecnica===t.id?'selected':''}>${esc(t.n)}</option>`).join('')}</select></div>
     <div><label>Puntadas <span class="mut">— si es &gt; 0, pasa por bordado</span></label><input type="number" min="0" id="f-punt" value="${ED.puntadas||''}" onchange="ED.puntadas=+this.value||0;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!(ED.puntadas>0))ED.opts.delete('bordado');confirmarImpactoOrden('${id||''}',()=>rearmar())"></div>
    </div>
@@ -10919,10 +11001,11 @@ function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
     <div style="flex:1;min-width:260px"><label>Proveeduría <span class="mut">— de dónde viene la tela</span></label><div id="ed-prov">${provRutaHTML()}</div></div>
     <div style="flex:2;min-width:340px"><label>Centros de producción <span class="mut">— los fijos ya están; marca los demás</span></label><div id="ed-centros">${centrosRutaHTML()}</div></div>
    </div>
-   <label style="margin-top:14px">Tiempos estándar por prenda</label><div id="ed-ruta">${edRutaHTML()}</div>
-   <label style="margin-top:14px">Insumos <span class="mut">— cierres, etiquetas, botones, hilos especiales; la liberación a producción exige que todos estén confirmados</span></label>
-   <div id="ed-insumos">${edInsumosHTML()}</div></div>
-   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarOrden('${id||''}')">Guardar orden</button></div>`,true)}
+   <label style="margin-top:8px">Tiempos estándar por prenda</label><div id="ed-ruta">${edRutaHTML()}</div></details>
+   <details class="ed-blk"><summary>Insumos <span class="mut" style="font-weight:400">${(ED.insumos||[]).length} en la ficha${ins.length?' · '+ins.length+' componentes de Odoo':''} — cierres, etiquetas, botones, hilos; la liberación a producción exige confirmarlos</span></summary>
+   ${ins.length?`<div class="scroll" style="max-height:150px;margin-top:6px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Categoría (Odoo)</th><th>Componente</th><th class="num">Cantidad</th></tr></thead><tbody>${ins.map(m=>`<tr><td>${esc([m.n2,m.n3].filter(Boolean).join(' / '))}</td><td>${m.cod?'<span class="mut">['+esc(m.cod)+']</span> ':''}${esc(m.prod||'')}</td><td class="num">${num(m.dem,2)} ${esc(m.udm||'')}</td></tr>`).join('')}</tbody></table></div>`:''}
+   <div id="ed-insumos" style="margin-top:6px">${edInsumosHTML()}</div></details></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarOrden('${id||''}')">Guardar orden</button></div>`,true);document.getElementById('modal').classList.add('orden')}
 function reabrirPrio(p){document.getElementById('f-prio').value=p;edRefresh2Prio(p)}
 function edRefresh2Prio(p){/* recolorea los chips de prioridad sin perder el resto del formulario */
   document.querySelectorAll('input[name="f-prio"]').forEach(r=>{const lab=r.closest('label');const on=+r.value===p;lab.classList.toggle('on',on)})}
@@ -11000,8 +11083,14 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
   o.pendBordadoVel=!!(bordadoAplica&&!velBordado());
   if(id){const ex=S.ordenes.find(x=>x.id===id);if(ex&&o.fecha&&o.fecha!==ex.fecha){o.fechaManual={u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString(),antes:ex.fecha||null};bitacora('Fecha de entrega '+ex.op+': '+(ex.fecha||'—')+' → '+o.fecha+' (cambiada aquí)')}else if(ex&&ex.fechaManual)o.fechaManual=ex.fechaManual;
     if(ex&&(o.fase||null)!==(ex.fase||null)){const nf=o.fase;o.fase=ex.fase;registrarFase(o,nf,'app');bitacora('Fase '+ex.op+': '+(ex.fase||'—')+' → '+(nf||'—')+' (ficha)')}if(ex&&ex.fases&&!o.fases)o.fases=ex.fases;
-    Object.assign(ex,o)}else S.ordenes.push(Object.assign({id:uid()},o));
-  save();cerrar();render()}
+    /* editar y guardar = ruta revisada por una persona: se confirma (sale de «por editar»); si cambió, queda como editada a mano y sellada */
+    {const antes=(ex.ruta||[]).map(p=>p.centro).join('>'),despues=(o.ruta||[]).map(p=>p.centro).join('>');const puedeRuta=(typeof puedeEditarRuta==='function')?puedeEditarRuta():true;
+     if(!puedeRuta&&antes!==despues){o.ruta=ex.ruta;o.rutaCompleta=ex.rutaCompleta;alert('Tu perfil no edita rutas: la ruta se guardó como estaba; el resto de la ficha sí.')}
+     Object.assign(ex,o);
+     if(puedeRuta){if(antes!==despues){ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
+       if(typeof sellarRuta==='function')sellarRuta(ex);if(typeof confirmarRuta==='function'&&!(ex.rutaConf&&ex.rutaConf.estado==='confirmada'&&ex.rutaConf.origen==='persona'))confirmarRuta(ex,'persona','ficha de la orden')}}
+   }else S.ordenes.push(Object.assign({id:uid()},o));
+  PLAN=null;PLAN_ALL=null;save();cerrar();render()}
 
 /* ==================== RECARGA PARTE 2: carga de órdenes y materiales desde la exportación de tareas (Tarea__project_task) ==================== */
 /* Principio: ninguna regla de negocio aquí; todo sale de las tablas editables de Configuración → Órdenes y materiales.
@@ -11672,7 +11761,7 @@ function demo(){if(!puede('ordenes'))return;if(S.ordenes.length){alert('El ejemp
   save();render()}
 
 /* ---------- modales y datos ---------- */
-function abrir(h,wide){const m=document.getElementById('modal');m.innerHTML=h;m.classList.toggle('wide',!!wide);document.getElementById('veil').classList.add('on')}
+function abrir(h,wide){const m=document.getElementById('modal');m.innerHTML=h;m.classList.toggle('wide',!!wide);m.classList.remove('orden');document.getElementById('veil').classList.add('on')}
 function cerrar(){document.getElementById('veil').classList.remove('on')}
 function descargarJSON(nombre,obj){const b=new Blob([JSON.stringify(obj,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;a.click()}
 function exportJSON(){descargarJSON('planificacion_tempo_'+hoy()+'.json',S)}

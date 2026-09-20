@@ -104,7 +104,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('ninguna orden nueva viene de esta corrección (S.ordenes sin cambios; solo se tocaron tablas de configuración)',true,S.ordenes.length+' orden(es) en S en este punto (aún antes de demo())');
   /* ===== RECARGA PARTE 2: carga real de órdenes y materiales (fixture local, no publicado) ===== */
   try{localStorage.__fase="parte2"}catch(e){}
-  __check('tabla de fases: 44 filas (43 del BLOQUE A + 1Calidad Tintoreria interna), todas pendientes, con esCola/sinCarga/bloqueo',faseMapeo().length===44&&faseMapeo().every(r=>r.pendiente)&&faseMapeo().filter(r=>r.esCola).length===6&&faseMapeo().filter(r=>r.sinCarga).length===8&&faseMapeo().filter(r=>r.bloqueo).length===2,faseMapeo().length);
+  __check('tabla de fases: 47 filas (43 del BLOQUE A + 1Calidad Tintoreria interna + 6Sublimado, 6Pulido Bordado y 8Cotizaciones de la tabla dinámica de Odoo del 19-sep), todas pendientes, con esCola/sinCarga/bloqueo',faseMapeo().length===47&&faseMapeo().every(r=>r.pendiente)&&faseMapeo().filter(r=>r.esCola).length===6&&faseMapeo().filter(r=>r.sinCarga).length===9&&faseMapeo().filter(r=>r.bloqueo).length===2,faseMapeo().length);
   {faseMapeo()[0].pendiente=false;const antes=JSON.stringify(faseMapeo());faseMapeo();__check('siembra idempotente: reabrir no pisa ediciones',JSON.stringify(faseMapeo())===antes);faseMapeo()[0].pendiente=true}
   __check('BLOQUE B2: variantes con tildes/espacios calzan la fila 6 CD SERIGRAFIA',(()=>{const a=filaFaseDe('6 cd serigrafia'),b=filaFaseDe('6 CD Serigrafía'),c=filaFaseDe('  6 CD  SERIGRAFIA ');return a&&b&&c&&a.fase==='6 CD SERIGRAFIA'&&b===a&&c===a})());
   __check('BLOQUE B2: "6CD Serigrafía" (sin espacio tras el 6) también calza la misma fila',(filaFaseDe('6CD Serigrafía')||{}).fase==='6 CD SERIGRAFIA');
@@ -191,7 +191,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planTarea: 4.235 cabeceras (3.733 con WH + 502 sin WH) y 60.766 líneas de componentes',planT.cabeceras===4235&&planT.sinLanzar===502&&planT.lineasComp===60766,planT.cabeceras+' / '+planT.sinLanzar+' / '+planT.lineasComp);
   __check('planTarea: la fase decide: los 2 Estado OP cancel son Facturado con fecha pasada → fuera de rango por la fase; 5 sin fecha en bandeja (4 con WH + 1 sin WH); las que tienen Proyecto entran al plan sin fecha y no se liberan ni programan',planT.excluidas.cancel.length===0&&planT.excluidas.fueraRango.filter(x=>x.estadoOP==='cancel').length===2&&planT.sinFecha.length===5&&planT.ordenes.filter(o=>o.sinFechaEntrega).length===planT.sinFecha.filter(x=>x.entra).length&&planT.ordenes.filter(o=>o.sinFechaEntrega).every(o=>!o.fecha&&mesPlan(o)&&!liberada(o,'tela')&&!puedeLiberarA(o,'tela')),planT.excluidas.cancel.length+' / '+planT.sinFecha.length);
   __check('planTarea: ninguna fase del archivo queda sin calzar (40 valores, todos en la tabla)',Object.keys(planT.fasesNoCalzan).length===0,JSON.stringify(planT.fasesNoCalzan));
-  __check('planTarea: 2 filas de la tabla sin órdenes en el archivo (1Calidad Tintoreria, 6 CD SERIGRAFIA); 0Diseño y 0Recetas Insumos ya se usan (órdenes sin WH)',planT.fasesTablaSinUso.length===2,planT.fasesTablaSinUso.join(', '));
+  __check('planTarea: 5 filas de la tabla sin órdenes en el archivo del 13-sep (1Calidad Tintoreria, 6 CD SERIGRAFIA, 6Sublimado, 6Pulido Bordado, 8Cotizaciones); 0Diseño y 0Recetas Insumos ya se usan (órdenes sin WH)',planT.fasesTablaSinUso.length===5,planT.fasesTablaSinUso.join(', '));
   __check('planTarea: duplicados = 3 números / 7 filas, no fusionados',planT.duplicados.length===7&&new Set(planT.duplicados.map(d=>d.op)).size===3,planT.duplicados.length);
   __check('planTarea: segundos niveles no reconocidos = MERCADERIAS, GASTOS MAQUILA ESTAMPADO y vacío (nivel1 All)',Object.keys(planT.nivel2NoRec).length===3,JSON.stringify(planT.nivel2NoRec));
   __check('planTarea: ningún tercer nivel de MP fuera de la tabla',Object.keys(planT.nivel3NoRec).length===0,JSON.stringify(planT.nivel3NoRec));
@@ -2028,7 +2028,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const key=(hl.match(/togGRP\('lib','([^']+)'\)/)||[])[1];if(key){togGRP('lib',key.replace(/\\'/g,"'"));hl=document.getElementById('p-liberacion').innerHTML;__check("VC: al abrir un grupo aparece el segundo nivel (anidado)",(hl.match(/grp-row/g)||[]).length>1)}
    S.ordenes=S.ordenes.filter(x=>x!==oPendVC);PLAN=null;PLAN_ALL=null;
    GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
-   GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.tab='ord';ORDF.q='';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
+   GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.tab='ord';ORDF.q='';ORDF.edicion='todas';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
    GRP={};WIPL={niveles:['color'],q:''};page='wip';WIP.tab='pro';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(o=>abierta(o)&&liberada(o,'tela')));WIPL={niveles:null,q:''};GRP={};
    // 4 · Gantt
    const rT=S.recursos.find(r=>CE(r.centro)&&CE(r.centro).area==='tin'&&r.horas>0);if(rT){const ds=diasBano({dia:hoy(),horas:rT.horas*2.5},rT);__check("VC: un baño de 2,5 días ocupa 3 días laborables en el cuadro",ds.length===3,ds.join(','))}
@@ -2625,7 +2625,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     PERFIL=bak}
    cerrarBusqG();
    // 2 · el buscador de lista busca en todos los campos sin elegir
-   page='ordenes';ORDF.tab='ord';GRP={};grpSt('ord').niveles=[];ORDF.q='';delete BUSQ['ORDF.q'];ORDF.grupo=null;ORDF.q='CLIENTE BUSG';render();
+   page='ordenes';ORDF.tab='ord';ORDF.edicion='todas';GRP={};grpSt('ord').niveles=[];ORDF.q='';delete BUSQ['ORDF.q'];ORDF.grupo=null;ORDF.q='CLIENTE BUSG';render();
    {const h=document.getElementById('p-ordenes').innerHTML;
     __check("BL: escribir en el buscador de lista ya filtra por todos los campos, sin elegir campo",matchBusq(oG,normTxt('CLIENTE BUSG'),'ORDF.q')&&!BUSQ['ORDF.q']&&h.includes('WH/BUSG-1'));
     __check("BL: el selector de campo es opcional y se llama «buscar solo en…»",h.includes(ayuda('busq.solo'))||h.includes('buscar solo en'));}
@@ -6566,6 +6566,48 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("OO: la segunda entrega de tiempos (mismos 14 valores) confirma Camiseta Tejida 4,57 una sola vez",!!k&&k.minEstConfMeta&&k.minEstConfMeta.pendiente===false&&/segunda entrega/.test(k.minEstConfMeta.confirmado||"")&&!!S.params.tiemposSG2Sembrado,JSON.stringify(k&&k.minEstConfMeta));if(tmp)S.categorias=S.categorias.filter(x=>x.id!=="k_tj_tmp");}
     /* limpieza */
     S.operaciones.forEach(o=>{delete o.orden;delete o.ordenMeta;delete o.ordenObs;if(o.maqCorr){o.maq=o.maqCorr.de;delete o.maqCorr;delete o.maqAntes}});delete S.params.ordenOpsCarga;}
+   /* UI19 · fases (secuencia y significado dictados), Órdenes «por editar», guardar la ficha confirma, foto con zoom, ficha por bloques */
+   {const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);
+    /* fases */
+    {const t=faseMapeo();const bak=t.map(r=>({fase:r.fase,secuencia:r.secuencia,que:r.que}));const nAntes=t.length;t.forEach(r=>{r.secuencia='';r.que=''});delete S.params.fasesSecuencia19;
+     const nb=S.bitacora.length;sembrarFasesSecuencia19();
+     __check("UI19: la siembra agrega las fases que faltaban (8Cotizaciones, 6Pulido Bordado, 6Sublimado) con su grupo y llena la secuencia y el «qué es» de todas",!!filaFaseDe("8Cotizaciones")&&filaFaseDe("8Cotizaciones").sistema==="prenda terminada"&&filaFaseDe("8Cotizaciones").sinCarga===true&&!!filaFaseDe("6Pulido Bordado")&&filaFaseDe("6Pulido Bordado").sistema==="servicios"&&FASES_SEC_19.every(([f,n])=>secuenciaDe(f)===n)&&FASES_SEC_19.every(([f])=>!!(filaFaseDe(f)||{}).que)&&S.bitacora.slice(nb).some(b=>/secuencia y significado de las fases/.test(b.t)),JSON.stringify(FASES_SEC_19.filter(([f,n])=>secuenciaDe(f)!==n).slice(0,4)));
+     __check("UI19: con la secuencia dictada, bordado ↔ confección ↔ maquila no es devolución; volver a CD Ensamble o a Corte sí; las cuatro «esperando factura» son paralelas",!esDevolucionFase("7Confección","6Bordado")&&!esDevolucionFase("6Bordado","7Confección")&&!esDevolucionFase("7Confección","5Maquila Conf")&&esDevolucionFase("7Confección","4CD Ensamble")&&esDevolucionFase("6Bordado","4Corte Planta")&&!esDevolucionFase("8Exportacion","8Cotizaciones")&&!esDevolucionFase("8Embodegado","8Novedades")&&esDevolucionFase("8Empaque","8Botones")&&!esDevolucionFase("3Trazos","2Planificacion"));
+     const seq=JSON.stringify(faseMapeo().map(r=>[r.fase,r.secuencia,r.que]));sembrarFasesSecuencia19();__check("UI19: la siembra es de una sola vez (idempotente)",JSON.stringify(faseMapeo().map(r=>[r.fase,r.secuencia,r.que]))===seq);
+     {const r=filaFaseDe("7Confección");const q0=r.que;r.que="la edité";r.secuencia=99;delete S.params.fasesSecuencia19;sembrarFasesSecuencia19();__check("UI19: lo editado a mano (secuencia y qué es) no se pisa",r.que==="la edité"&&r.secuencia===99);r.que=q0;r.secuencia=14}
+     page="config";CONF.tab="ordenes2";render();__check("UI19: la tabla 1 muestra el «qué significa» de cada fase, editable",(document.getElementById("p-config").innerHTML.match(/placeholder="qué significa esta fase"/g)||[]).length>=40&&/todavía no tiene fichas/.test(document.getElementById("p-config").innerHTML));
+     /* se restaura lo que había (las fases nuevas se quedan: son reales) */
+     faseMapeo().forEach(r=>{const b=bak.find(x=>x.fase===r.fase);if(b){r.secuencia=b.secuencia;r.que=b.que}});}
+    /* Órdenes: por editar */
+    {ORDF.edicion="porEditar";ORDF.estado="plan";ORDF.q="";ORDF.fases=null;ORDF.tab="ord";GRP={};grpSt("ord").niveles=[];delete BUSQ["ORDF.q"];page="ordenes";render();const enLista=op=>{const c=document.querySelector("#p-ordenes [data-lista]");return !!c&&c.innerHTML.includes(esc(op))};
+     const ab=S.ordenes.filter(o=>matchEstadoOrd(o,"plan"));const sinConf=ab.filter(o=>!rutaConfirmada(o)),conConf=ab.filter(o=>rutaConfirmada(o));
+     const h=document.getElementById("p-ordenes").innerHTML;
+     __check("UI19: Órdenes abre en «Por editar (ruta sin confirmar)» con los conteos por editar / editadas / todas",ORDF.edicion==="porEditar"&&/Por editar \(ruta sin confirmar\) <span class="mut">/.test(h)&&new RegExp("Por editar \\(ruta sin confirmar\\) <span class=\"mut\">"+sinConf.length+"<").test(h)&&new RegExp("Todas <span class=\"mut\">"+ab.length+"<").test(h),JSON.stringify({s:sinConf.length,c:conConf.length,t:ab.length}));
+     const o=sinConf.find(o=>lanzada(o)&&(o.ruta||[]).length&&fotoDe(o))||sinConf[0];const cf=window.confirm;window.confirm=()=>true;confirmarRuta(o,"persona","prueba");window.confirm=cf;render();
+     __check("UI19: al confirmar la ruta, la orden sale de «por editar» y entra a «editadas»",!matchEdicionOrd(o,"porEditar")&&!enLista(o.op)&&(ORDF.edicion="editadas",render(),enLista(o.op)),o.op);
+     ORDF.edicion="porEditar";render();
+     /* guardar la ficha confirma la ruta */
+     const o2=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaConfirmada(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&(x.materiales||[]).some(m=>m.clasif==="tela"));
+     __check("UI19: hay una orden por editar con ruta y materiales para probar la ficha",!!o2);
+     if(o2){mOrden(o2.id);const m=document.getElementById("modal");const hm=m.innerHTML;
+      __check("UI19: la ficha va por bloques (datos · materia prima · ruta y operaciones · insumos), con la foto grande y el resumen en el título",m.classList.contains("orden")&&m.querySelectorAll("details.ed-blk").length===4&&/Materia prima/.test(hm)&&/Ruta y operaciones/.test(hm)&&/<summary>Insumos/.test(hm)&&/Datos de la orden/.test(hm)&&(!fotoDe(o2)||/data-zoom=/.test(hm))&&hm.includes(esc(o2.cliente||"")),m.querySelectorAll("details.ed-blk").length);
+      const nMP=(o2.materiales||[]).filter(x=>x.clasif==="tela").length;__check("UI19: el bloque Materia prima lista las líneas de tela de Odoo con tipo, producto, cantidad, origen, proveedor y tela de la tabla 8",new RegExp(nMP+" líneas de tela de Odoo").test(hm)&&/Tipo de tela \(Odoo\)/.test(hm)&&(m.querySelectorAll("details.ed-blk")[1].querySelectorAll("tbody tr").length>=nMP)&&/sin tela en tabla 8|Tela del catálogo/.test(hm),nMP);
+      __check("UI19: el bloque Insumos va cerrado y dice cuántos componentes trae Odoo",!m.querySelectorAll("details.ed-blk")[3].open&&/componentes de Odoo|en la ficha/.test(m.querySelectorAll("details.ed-blk")[3].querySelector("summary").textContent));
+      const rutaAntes=(o2.ruta||[]).map(p=>p.centro).join(">");const bakP=PERFIL;const al=window.alert;window.alert=()=>{};guardarOrden(o2.id);window.alert=al;await __p(30);
+      __check("UI19: guardar la ficha sin cambiar nada confirma la ruta (persona) y la sella; la ruta no cambia",rutaConfirmada(o2)&&o2.rutaConf.origen==="persona"&&/ficha/.test(o2.rutaConf.nota||"")&&(o2.ruta||[]).map(p=>p.centro).join(">")===rutaAntes&&!!o2.rutaFirma&&!(o2.rutaEditada||[]).some(x=>x.etapa==="ficha"),JSON.stringify(o2.rutaConf));
+      render();__check("UI19: y ya no está en «por editar»",!matchEdicionOrd(o2,"porEditar")&&!enLista(o2.op));
+      /* sin permiso de rutas: la ficha se guarda pero la ruta no se toca ni se confirma */
+      const o3=S.ordenes.find(x=>matchEstadoOrd(x,"plan")&&!rutaConfirmada(x)&&lanzada(x)&&(x.ruta||[]).length&&x.color&&C(x.color)&&x.id!==o2.id);
+      if(o3){PERFIL={id:"u-corte",rol:"corte",nombre:"Sup",modo:"editar"};mOrden(o3.id);document.getElementById("f-cant").value=String(+o3.cant+1);window.alert=()=>{};guardarOrden(o3.id);window.alert=al;PERFIL=bakP;await __p(30);
+       __check("UI19: un perfil sin permiso de rutas guarda la ficha (cantidad) pero no confirma la ruta",!rutaConfirmada(o3)&&o3.cant===(+document.getElementById("f-cant").value),JSON.stringify({c:o3.cant,rc:o3.rutaConf}));}
+      cerrar();}
+     ORDF.edicion="porEditar";}
+    /* foto: tamaño y zoom */
+    {const oF=S.ordenes.find(o=>fotoDe(o));__check("UI19: la foto chica es un poco más grande (44 px, parámetro) y lleva data-zoom",!!oF&&/width="44" height="44"/.test(fotoMini(oF))&&/data-zoom="/.test(fotoMini(oF))&&/width="60"/.test(fotoMini(oF,60)));
+     fotoZoomInit();const z=document.getElementById("foto-zoom");page="ordenes";ORDF.edicion="todas";ORDF.estado="plan";GRP={};grpSt("ord").niveles=[];render();let im=document.getElementById("p-ordenes").querySelector("img[data-zoom]");if(!im&&oF){mOrden(oF.id);im=document.getElementById("modal").querySelector("img[data-zoom]")}
+     if(im){im.dispatchEvent(new MouseEvent("mouseover",{bubbles:true,clientX:100,clientY:100}));const on=z.style.display==="block"&&z.querySelector("img").src===im.getAttribute("data-zoom");im.dispatchEvent(new MouseEvent("mouseout",{bubbles:true}));
+      __check("UI19: al pasar el mouse por una foto se abre el zoom con esa imagen y al salir se cierra",on&&z.style.display==="none");cerrar();}else __check("UI19: hay una foto para probar el zoom",false);
+     ORDF.edicion="porEditar";}}
    /* K8 · fase: sin WH manda Odoo (también al recibir la WH); con WH manda la planta (tabla 14) */
    {const H=tareaRows[0];const col=n=>H.indexOf(n);delete S.params.faseOdooSinWH;
     const p0=planTarea(tareaRows,"TAREA_PARTE2.xlsx");TAREA=p0;aplicarTarea();await __p(50);

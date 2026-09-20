@@ -943,6 +943,14 @@ de máquina en `maq` con `maqCorr/maqAntes` (bitácora). **`opsConfeccion` orden
 sin orden → al final, `provisional:true`); el aviso del balanceo dice cuántas faltan. `sembrarTiemposSG2` da por confirmada Camiseta Tejida
 4,57 (segunda entrega igual). Fixture local `test/fixtures/ordenops_rows.json` (ignorada). Pruebas OO.
 
+**Fases, Órdenes «por editar», ficha por bloques y foto con zoom (19/20-sep-2026):** `FASES_SEC_19`/`sembrarFasesSecuencia19` siembran UNA vez la
+**secuencia** (tabla 1) y el **«qué es»** (`r.que`, editable, a la vista) de las 46 fases según la usuaria y el orden de Odoo (agrega 6Sublimado, 6Pulido
+Bordado, 8Cotizaciones); mismo número = tramo no secuencial (estampado/bordado/confección/maquila = 14; las cuatro «esperando factura» = 21). **Órdenes** abre
+en «Por editar (ruta sin confirmar)» (`ORDF.edicion`, `matchEdicionOrd`); **guardar la ficha confirma la ruta** (persona) y la sella, con auditoría si
+cambió; sin permiso de rutas se guarda el resto. `mOrden` va en cuatro bloques `.ed-blk` (Datos · Materia prima —líneas de tela de Odoo con tela de la
+tabla 8 o «sin tela en tabla 8»— · Ruta y operaciones · Insumos), modal `.modal.orden`. `fotoMini` 44 px (`fotoMiniPx`) con `data-zoom`; `fotoZoomInit`
+(capa fija al pasar el mouse, `fotoZoomPx` 320). Ver `FASES_ORDENES_FICHA_19SEP.md`.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan
