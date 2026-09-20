@@ -30,6 +30,27 @@ días, personas y capacidad vienen del paso 1.
 **Planificación de producción → Nivelación** sigue existiendo (página `nivelacion`, `vNivelacion`): es la misma nivelación por
 meses, con el botón «Planificar el mes →» que abre el paso 1. No hay dos cálculos: `nivelacionCuerpoHTML` es una sola función.
 
+## Recuadros de la nivelación: ordenados y con color (20-sep, noche · 2)
+La usuaria: «está como que todo mezclado, todo muy pálido; que se vea llamativo, tampoco rosados focosos». Ahora:
+- **Agrupados por ítem de planificación** (`nivUIGruposAreas`: lo que dice la columna «Ítem de planificación», `grupoPlanDe`, nunca una
+  lista en código): Tela · Corte · Estampado (Calandrado, Estampado, Sublimado, Apliques, Etiquetas) · Bordado · Confección · Terminados
+  (Botones, Lavado, Cordones, Plancha, Empaque) · Maquila, en el orden del proceso, cada ítem como bandeja gris con su título en navy.
+- **Cada recuadro** (`.niv-card`): borde superior de color por estado (verde llega · ámbar riesgo · rojo déficit · navy falta un dato ·
+  punteado por días), nombre, «saldo» con el número grande, «termina <fecha>» y una **pastilla** al pie con el estado (`nivUIPillHTML`).
+  El elegido lleva anillo verde-azulado y fondo suave. **El rojo es solo para déficit**: las etiquetas «sin fases marcadas» y «+N u sin
+  SAM» van en navy (`.t-falta`), no en rojo. Leyenda arriba con los cuatro estados.
+- **Sin saldo en esos meses** → recuadro plano y angosto, número chico, pastilla «sin saldo» (lo que le faltaría queda en el tooltip).
+  Un centro **por días** cuenta todas sus unidades como saldo y no pide SAM.
+- **Un saldo que solo tiene órdenes sin SAM no «llega»**: `nivUICalcular` lo deja `faltante` (`sinSAMtodo`) y la tarjeta dice «falta SAM de
+  N órdenes (X u sin minutos)». Antes Estampado salía «0 u ✓ llega» con 5.146 u sin SAM.
+- El panel del paso 1 se llama **Nivelación** (diccionario del 20-sep), ya no «¿Alcanza la capacidad?».
+- Se pasó por tres críticos visuales (jerarquía, color, orden) y un juez; se aplicaron sus seis cambios (rojo solo para déficit, faltante en
+  navy, vacías planas sin opacidad, bandeja por ítem, letras al piso del tema 11,5 px, pastilla al pie sin flecha) y se descartó la banda de
+  color al pie (demasiado llamativa) y esconder «sin fases marcadas» (es brecha). Pruebas PN, N3, N8.
+
+**Menú Dirección** en el orden de la usuaria: Hoy · Órdenes · Demanda agregada · Planificar el mes · Liberación · Entregas · Auditoría de
+replanificación · Capacidad y decisiones.
+
 ## Ajustes tras verla (20-sep, tarde)
 - Primero los **recuadros por área** (Tela, Corte, Estampado…); al tocar uno, debajo aparecen **solo sus personas** (`personasNivHTML(ym,areaId)`)
   y luego su tabla y su cuadrito — «clic en Corte, solo Corte; clic en Confección, solo Confección».

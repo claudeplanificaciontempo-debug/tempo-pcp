@@ -961,6 +961,14 @@ bloques 2–5. Producción → Nivelación es la misma nivelación por meses con
 (nunca posteriores); `PMADD.incluirAnt` (defecto true) mete lo pendiente de meses anteriores como candidato del bloque 4; `nivUICapacidad` promedia
 solo días hábiles de hoy en adelante; `labDiaGeneral` toma las excepciones de producción (un sábado marcado solo para Producción cuenta en la
 nivelación); **Nivelación salió del menú de Producción** (la página `nivelacion` sigue para «volver» y pruebas; `nivUIVolver` vuelve a donde se vino).
+**Recuadros de la nivelación (20-sep, noche · 2)**: `nivUIGruposAreas` agrupa por `grupoPlanDe` (bandeja por ítem, orden del proceso), `nivUIRecuadrosHTML`
++ `nivUIPillHTML` (`.niv-card` con `est-<estado>`, `.vacia` = sin saldo, `.on` = elegido, pastilla `.niv-pill` al pie, `.t-falta` navy para «sin fases
+marcadas» / «sin SAM»: **el rojo es solo para déficit**); `nivUICalcular` marca `faltante` + `sinSAMtodo` cuando el saldo solo tiene órdenes sin SAM (antes
+«0 u ✓ llega»); el panel del paso 1 se llama **Nivelación**. **Menú Dirección**: Hoy · Órdenes · Demanda agregada · Planificar el mes · Liberación ·
+Entregas · Auditoría · Capacidad (orden de la usuaria). **Excel para la usuaria con estilo**: `test/xlsx_build.js` (ExcelJS por CDN en el harness; copiar los dos a `test/.out/` y cargarlos con fetch+eval en `?captura=audit`:
+cabecera navy, columnas para llenar naranja/amarillo con lista desplegable, bandas por grupo, hoja «Cómo llenarlo» con leyenda; se guarda por
+`POST /guardar`) y `test/xlsx_entregas.js` (arma `TIEMPOS_SOLO_LO_QUE_FALTA.xlsx` y `PROPUESTA_CONFIGURACION_PARA_TACHAR.xlsx`); no volver a
+entregar Excel sin formato (SheetJS pelado). Verificación visual: Excel COM → `PublishObjects` a HTML → captura con Chrome headless.
 **Rutas**: los conteos siguen al filtro de fases y al buscador (`baseF`); el filtro de fases dice por fase «(N órdenes · M prendas)» del chip puesto
 (`cuentasFaseRut`/`enChipRut`; `filtroFasesHTML` acepta número o `{n,pz}` vía `cuentaFaseTxt`); el paso 3 del lote va a todo lo ancho en orden del
 proceso con la línea «Ruta que quedará» (`.rl-cens`/`.rl-ruta`). **Pasos de ruta nuevos** (`PASOS_NUEVOS_20`, `sembrarPasosNuevos20` una

@@ -97,7 +97,7 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .t-medio{background:#E7EEF7;border-color:#B9CBE2;color:#2C4C77}
 .t-oscuro{background:#E2E7EC;border-color:#B4C0CB;color:#22364B}
 .t-lavado{background:#E9EFF0;border-color:#BFCFD2;color:#42585C}
-.t-alerta{background:#FBECE9;border-color:#E8C3BB;color:var(--alerta)}
+.t-alerta{background:#FBECE9;border-color:#E8C3BB;color:var(--alerta)}.t-falta{background:#E4EAF1;border-color:#B7C3D0;color:var(--t-primary)}
 .t-ok{background:#E8F3ED;border-color:#BCDCCB;color:var(--ok)}
 .t-aviso{background:#FBF3E2;border-color:#E7D2A6;color:#8A6417}
 .acc{display:inline-block}.acc summary{list-style:none;cursor:pointer;display:inline-block;padding:0 9px;border:1px solid var(--rule);border-radius:999px;font-weight:700;line-height:18px;user-select:none}.acc summary::-webkit-details-marker{display:none}.acc[open] summary{background:var(--field)}.acc .acc-m{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}
@@ -245,6 +245,25 @@ main{padding:24px 28px 70px}
 .panel .body>label,.modal .body>label,.ed-blk>label{font-weight:700;color:var(--ink);margin-top:10px}
 /* sub-bloque enmarcado dentro de un panel o de una ficha: se ve qué es un bloque y qué es otro */
 .sub-blk{border:1.5px solid #C9D1D9;border-radius:10px;padding:10px 12px;background:var(--paper);margin:6px 0}
+.niv-grupos{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 0 16px;align-items:stretch}
+.niv-grupo{display:flex;flex-direction:column;gap:6px;background:var(--t-thead);border-radius:12px;padding:6px 8px 8px}
+.niv-grupo-t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-primary);padding:0 2px 2px}
+.niv-grupo-c{display:flex;gap:8px;flex-wrap:wrap;flex:1;align-items:stretch}
+.niv-card{position:relative;cursor:pointer;display:flex;flex-direction:column;min-width:136px;max-width:200px;border:1.5px solid var(--rule);border-top:5px solid var(--ink3);border-radius:10px;padding:8px 12px 9px;background:var(--t-card);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:box-shadow .12s,transform .12s}
+.niv-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
+.niv-card.on{border-color:var(--t-accent);box-shadow:0 0 0 2px var(--t-accent),0 4px 12px rgba(46,139,158,.22);background:var(--t-accent-soft)}
+.niv-card.est-ok{border-top-color:var(--ok)}.niv-card.est-riesgo{border-top-color:var(--aviso)}.niv-card.est-deficit{border-top-color:var(--alerta)}.niv-card.est-faltante{border-top-color:var(--t-primary)}.niv-card.est-dias{border-top-color:var(--rule);border-top-style:dashed}
+.niv-card.vacia{background:var(--t-card);border-color:var(--rule2);border-top-color:var(--rule);border-top-style:solid;box-shadow:none;min-width:108px;max-width:130px;padding:6px 10px 7px}.niv-card.vacia .nc{color:var(--ink2);font-weight:600;font-size:var(--fs-s)}.niv-card.vacia .saldo{font-size:14px;font-weight:600;color:var(--ink3)}.niv-card.vacia:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}.niv-card.vacia.on{background:var(--t-accent-soft)}
+.niv-card .nc{font-weight:700;font-size:var(--fs-m);color:var(--t-primary);white-space:nowrap}
+.niv-card .lbl{font-size:var(--fs-xs);color:var(--ink3);margin-top:3px}
+.niv-card .saldo{font-size:21px;font-weight:700;color:var(--ink);line-height:1.15;margin-top:2px;white-space:nowrap}
+.niv-card .saldo small{font-size:var(--fs-xs);font-weight:500;color:var(--ink3);margin-left:2px}
+.niv-card .fin{font-size:var(--fs-xs);color:var(--ink2);margin-top:1px;white-space:nowrap}
+.niv-card .falta{font-size:var(--fs-xs);color:var(--ink2);line-height:1.3;margin-top:3px}
+.niv-pill{display:inline-block;margin-top:auto;align-self:flex-start;padding-top:0;border-radius:999px;padding:3px 10px;font-size:var(--fs-s);font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.niv-card .falta+.niv-pill,.niv-card .fin+.niv-pill,.niv-card div+.niv-pill{margin-top:8px}
+.niv-pill.ok{background:#DDEFE4;color:#1F6B45}.niv-pill.riesgo{background:#FAEBCB;color:#8A6412}.niv-pill.deficit{background:#F8DCD6;color:#A3301F}.niv-pill.faltante{background:#E4EAF1;color:var(--t-primary);border:1px dashed #8A9AAE}.niv-pill.dias{background:var(--field);color:var(--ink3)}
+.niv-leyenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:var(--fs-xs);color:var(--ink3);margin:0 0 4px;align-items:center}
 .rl-cens{max-width:none;gap:6px 8px}.rl-cens .chip{padding:6px 12px;font-size:var(--fs-s)}.rl-ruta{margin:8px 0 0;font-size:var(--fs-s);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}.rl-ruta b{border:1px solid var(--rule);border-radius:6px;padding:2px 8px;background:var(--t-accent-soft,#f3f6f9)}
 .sub-blk>.sub-t{font-weight:700;font-size:var(--fs-s);color:var(--ink);margin-bottom:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .sub-blk>.sub-t .mut{font-weight:400}
@@ -343,12 +362,10 @@ tbody tr:hover td{background:var(--field)}
     <div class="gbody" data-g="dir">
       <a data-p="panorama">Hoy</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
+      <a data-p="familias">Demanda agregada</a>
+      <a data-p="plan">Planificar el mes</a>
       <a data-p="liberacion" data-lib="tela">Liberación</a>
       <a data-p="entregas">Entregas</a>
-      <a data-p="plan">Planificar el mes</a>
-      <a data-p="familias">Demanda agregada</a>
-      
-      
       <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
       <a data-p="capacidad" data-perm="programa">Capacidad y decisiones</a>
     </div>
@@ -780,7 +797,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 17:43';
+const APP_BUILD='2026-09-20 18:13';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3446,7 +3463,7 @@ function vPlan(el){
   {const mesesP1=nivUIMesesDisp().filter(m=>m<=ym);if(!mesesP1.includes(ym))mesesP1.push(ym);mesesP1.sort();if(JSON.stringify(NIVUI.meses||[])!==JSON.stringify(mesesP1))NIVUI.meses=mesesP1}   /* la nivelación del paso 1 mira el mes del plan MÁS lo pendiente de meses anteriores (usuaria: «lo que falta de entregar de septiembre con lo de octubre») */
   const bloque1=planBloqueDiv('1','Días y capacidad','define cuánto cabe en el mes')
    +`<div class="panel"><h3>Días del mes por área <span class="note">este calendario manda: los días marcados son los que trabaja cada área</span></h3><div class="body"><div id="plan-cal">${(()=>{const g=MESPLAN;MESPLAN=ym;const html=planMesHTML();MESPLAN=g;return html})()}</div></div></div>
-   <div class="panel"><h3>¿Alcanza la capacidad? <span class="note">toca un centro: sus personas y su saldo contra los días del calendario · saldo = ${esc(fmtMesEG(ym))}${(NIVUI.meses||[]).filter(m=>m<ym).length?' + lo pendiente de '+(NIVUI.meses||[]).filter(m=>m<ym).map(fmtMesEG).join(', '):''}</span></h3><div class="body">${nivelacionCuerpoHTML(false,ym)}</div></div>
+   <div class="panel"><h3>Nivelación <span class="note">toca un centro: sus personas y su saldo contra los días del calendario · saldo = ${esc(fmtMesEG(ym))}${(NIVUI.meses||[]).filter(m=>m<ym).length?' + lo pendiente de '+(NIVUI.meses||[]).filter(m=>m<ym).map(fmtMesEG).join(', '):''}</span></h3><div class="body">${nivelacionCuerpoHTML(false,ym)}</div></div>
    <details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Más detalle <span class="note">capacidad por área y por módulo, simulador semana por semana, ajustes guardados, guía</span></summary><div class="body" style="padding:0 16px 12px">
    <div class="panel"><h3>Capacidad del mes por área <span class="note">personas, minutos, eficiencia y capacidad total resultante</span></h3><div class="body"><table><thead><tr><th>Área</th><th class="num">Días</th><th>Con qué se calcula</th><th class="num">Capacidad</th><th class="num">Programado</th><th style="width:140px">Uso</th><th></th></tr></thead><tbody>
     ${c.areas.map(a=>`<tr><td>${AREAS[a.a]}</td><td class="num">${fmtDiasMes(a.a,ym)}</td><td class="mut" style="font-size:var(--fs-xs)">${baseCapArea(a.a)}</td><td class="num">${num(a.cap)} ${a.u}</td><td class="num">${num(a.carga)} ${a.u}</td><td>${barra(a.carga,a.cap)}</td><td>${a.faltan?`<span class="tag t-alerta">faltan ${a.faltan} días</span> <a style="cursor:pointer;font-size:var(--fs-xs)" onclick="document.getElementById('plan-cal')&&document.getElementById('plan-cal').scrollIntoView({behavior:'smooth'})">planificar días ↑</a>`:'<span class="tag t-ok">alcanza</span>'}</td></tr>`).join('')}</tbody></table>
@@ -6590,8 +6607,9 @@ function nivUICalcular(areaId){const a=nivUIArea(areaId);if(!a)return null;const
   const deficit=(saldo==null||total==null)?null:Math.max(0,saldo-total);
   const sobra=(saldo==null||total==null)?null:Math.max(0,total-saldo);
   const sinFases=!!(a.porFase&&!fasesDeProcNivel(a.id).length);
-  const estado=(deficit==null||sinFases)?'faltante':(deficit>0?'deficit':((c.holgura!=null&&c.holgura<=prm('colchonDias',3))?'riesgo':'ok'));
-  return {area:a,meses,saldo:s,sam,enMin,cap,esc:e,calc:c,adic,diasTot,plantaMin:planta,maqU,maqMin,totalMin:total,deficitMin:deficit,sobraMin:sobra,estado,
+  const sinSAMtodo=!!(enMin&&s&&!(s.min>0)&&s.unidSinSAM>0);   /* hay saldo en unidades pero ninguna con SAM: 0 minutos no es «llega», es un dato que falta */
+  const estado=(deficit==null||sinFases||sinSAMtodo)?'faltante':(deficit>0?'deficit':((c.holgura!=null&&c.holgura<=prm('colchonDias',3))?'riesgo':'ok'));
+  return {area:a,meses,saldo:s,sam,enMin,cap,esc:e,calc:c,adic,diasTot,plantaMin:planta,maqU,maqMin,totalMin:total,deficitMin:deficit,sobraMin:sobra,estado,sinSAMtodo,
     falta:c.falta.slice().concat(sam==null&&enMin&&s&&s.unid>0?['SAM ponderado (saldo sin minutos)']:[]).concat(a.porFase&&!fasesDeProcNivel(a.id).length?['fases de '+a.n+' en la tabla 1 (columna «nivelación» vacía: el saldo no se puede contar)']:[]),
     sinFasesTela:!!(a.porFase&&!fasesDeProcNivel(a.id).length),porDias:!!a.porDias}}
 /* --- lo que NO entra: las órdenes que quedan fuera del total del período, de la más lejana a la más cercana --- */
@@ -6612,12 +6630,12 @@ function nivUIGuardar(areaId){if(!puede('programa')){alert('Solo planificación 
   bitacora('Nivelación · escenario de '+(nivUIArea(areaId)||{}).n+' guardado: inicio '+(cur.inicio||'—')+', compromiso '+(cur.compromiso||'—')+', días adicionales '+g.diasAdic+', maquila '+(g.maquilaU===''?'(órdenes marcadas)':g.maquilaU+' u')+' · '+motivo+' ('+quienFirma()+')');
   delete NIVUI.esc[areaId];NIVC=null;save();render()}
 /* ---------- presentación ---------- */
-const NIVUI_ESTADO={ok:{ico:'✓',txt:'llega',color:'var(--ok)'},riesgo:{ico:'⚠',txt:'riesgo',color:'var(--aviso)'},deficit:{ico:'✕',txt:'déficit',color:'var(--alerta)'},faltante:{ico:'?',txt:'dato faltante',color:'var(--ink2)'}};
+const NIVUI_ESTADO={ok:{ico:'✓',txt:'llega',color:'var(--ok)'},riesgo:{ico:'⚠',txt:'riesgo',color:'var(--aviso)'},deficit:{ico:'✕',txt:'déficit',color:'var(--alerta)'},faltante:{ico:'?',txt:'dato faltante',color:'var(--t-primary)'}};
 function nivUIEstadoHTML(est,chico,r){const e=NIVUI_ESTADO[est]||NIVUI_ESTADO.faltante;const txt=(est==='faltante'&&r)?nivUIQueFalta(r):e.txt;return `<span style="color:${e.color};font-weight:600;font-size:${chico?'12px':'14px'}" title="${esc(est==='faltante'&&r?'falta: '+nivUIQueFalta(r):e.txt)}">${e.ico} ${esc(txt)}</span>`}
 /* qué dato falta para decir si llega (en palabras de planta) */
 function nivUIQueFalta(r){if(!r)return 'dato faltante';const f=[];if(r.sinFasesTela||(r.area.porFase&&!fasesDeProcNivel(r.area.id).length))f.push('marcar en la tabla 1 qué fases cuentan');
   if(r.saldo==null||(r.enMin?r.saldo.min==null:r.saldo.unid==null))f.push('saldo');if(r.cap&&r.cap.cap==null&&!r.area.porFase)f.push('recursos con personas, minutos y eficiencia en este centro');
-  if(!r.esc.inicio)f.push('fecha de inicio');if(!r.esc.compromiso)f.push('fecha compromiso');if(r.enMin&&r.sam==null&&r.saldo&&r.saldo.min==null)f.push('SAM');
+  if(!r.esc.inicio)f.push('fecha de inicio');if(!r.esc.compromiso)f.push('fecha compromiso');if(r.sinSAMtodo)f.push('SAM de '+num((r.saldo.sinSAM||[]).length,0)+' órdenes ('+num(r.saldo.unidSinSAM,0)+' u sin minutos)');else if(r.enMin&&r.sam==null&&r.saldo&&r.saldo.min==null)f.push('SAM');
   return f.length?'falta '+f.join(' · '):'dato faltante'}
 function nivUIFechaTxt(f){return f?fmtDia(f):'<span class="tag t-alerta" style="font-size:10px;padding:0 4px">dato faltante</span>'}
 function nivUIValor(min,r,dec){if(min==null)return faltaTxt();if(!r.enMin)return '<b>'+num(min,0)+'</b> <span class="mut" style="font-size:var(--fs-xs)">u</span>';return minUni(min,r.sam,dec)}
@@ -6625,15 +6643,25 @@ function nivUIMesesHTML(){const disp=nivUIMesesDisp();const sel=nivUIMeses();
   return `<div><label>Meses de entrega <span class="mut">(clic para marcar varios; al menos uno)</span></label><div class="chips" style="max-width:none">${disp.map(m=>`<span class="chip ${sel.includes(m)?'on':''}" onclick="nivUITogMes('${m}')">${esc(m)}</span>`).join('')||'<span class="mut">sin órdenes abiertas con mes</span>'}</div></div>`}
 function nivUIFiltrosHTML(){const sel=(k,lab)=>`<div><label>${lab}</label><select onchange="NIVUI.${k}=this.value;NIVUI.celda=null;render()"><option value="">${k==='cliente'?'Todos los clientes':'Todas las familias'}</option>${nivUIOpciones(k).map(v=>`<option value="${esc(v)}" ${NIVUI[k]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></div>`;
   return sel('cliente','Cliente')+sel('familia','Familia')}
+/* los recuadros van agrupados por el ítem de planificación de cada centro (columna «Ítem de planificación», grupoPlanDe): Tela · Corte · Estampado · Bordado · Confección · Terminados · Maquila, en el orden del proceso */
+function nivUIGruposAreas(){const areas=nivUIAreas();const gs=[];const de=g=>gs.find(x=>x.id===g);
+  areas.forEach(a=>{const g=a.tipo==='centro'?grupoPlanDe(a.id):a.id;let x=de(g);if(!x){x={id:g,n:a.tipo==='centro'?(CENTROS_PROD_N[g]||nCen(g)||g):a.n,areas:[],orden:a.tipo==='tela'?-1e9:a.tipo==='maquila'?1e9:(CE(g)?ordenPaso(g):ordenPaso(a.id))};gs.push(x)}x.areas.push(a)});
+  return gs.sort((a,b)=>a.orden-b.orden)}
+function nivUIPillHTML(est,r,a,vacia){const e=NIVUI_ESTADO[est]||NIVUI_ESTADO.faltante;const k=est==='faltante'?'faltante':est;
+  if(vacia)return '<span class="niv-pill dias" title="'+esc('sin saldo en estos meses'+(a&&a.porDias?' · por días, sin capacidad':(est==='faltante'&&r?' · cuando lo tenga: '+nivUIQueFalta(r):'')))+'">sin saldo</span>';
+  if(a&&a.porDias)return '<span class="niv-pill dias" title="no consume capacidad: no se nivela por capacidad">por días</span>';
+  return (est==='faltante'&&r?'<div class="falta">'+esc(nivUIQueFalta(r))+'</div>':'')+'<span class="niv-pill '+k+'" title="'+esc(est==='faltante'&&r?nivUIQueFalta(r):e.txt)+'">'+e.ico+' '+esc(est==='faltante'?'falta un dato':e.txt)+'</span>'}
 function nivUIRecuadrosHTML(){const meses=nivUIMeses();
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px">${nivUIAreas().map(a=>{const r=nivUICalcular(a.id);const on=NIVUI.area===a.id;
-    const saldo=r&&r.saldo?((r.sinFasesTela)?'<span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="marca en Configuración → Órdenes y materiales → tabla 1, columna nivelación, qué fases cuentan">sin fases marcadas · dato faltante</span>':(r.enMin?num(aUnid(r.saldo.min,r.sam)||0,0)+' u':num(r.saldo.unid,0)+' u')+(r.saldo.sinSAM&&r.saldo.sinSAM.length?' <span class="tag t-alerta" style="font-size:9px;padding:0 4px" title="'+r.saldo.sinSAM.length+' órdenes sin SAM no suman">+'+num(r.saldo.unidSinSAM,0)+' u sin SAM</span>':'')):'—';
-    const fin=(nivUIConectada(a)&&r&&r.calc.fin)?fmtDia(r.calc.fin):'—';
-    return `<div onclick="NIVUI.area='${a.id}';NIVUI.celda=null;NIVUI.noEntra=false;render()" style="cursor:pointer;border:2px solid ${on?'var(--t-primary,var(--ink))':'var(--rule)'};border-radius:6px;padding:6px 10px;min-width:118px;background:${on?'var(--t-accent-soft,var(--field))':'var(--card)'}">
-      <div style="font-weight:600;font-size:13px">${esc(a.n)}</div>
-      <div style="font-size:12px">saldo <b>${saldo}</b></div>
-      <div style="font-size:11px" class="mut">fin ${esc(fin)}</div>
-      <div>${a.porDias?'<span class="mut" style="font-size:11px" title="no consume capacidad: no se nivela por capacidad">por días, sin capacidad</span>':nivUIEstadoHTML(r?r.estado:'faltante',true,r)}</div></div>`}).join('')}</div>`}
+  const card=a=>{const r=nivUICalcular(a.id);const on=NIVUI.area===a.id;const est=a.porDias?'dias':(r?r.estado:'faltante');const uSaldo=r&&r.saldo?((a.porDias||!r.enMin)?r.saldo.unid:(aUnid(r.saldo.min,r.sam)||0)):null;const sinSAM=!!(r&&r.saldo&&!a.porDias&&r.saldo.sinSAM&&r.saldo.sinSAM.length);const vacia=!!(r&&r.saldo&&!r.sinFasesTela&&!(uSaldo>0)&&!sinSAM);   /* un centro por días no mide minutos: cuenta todas las unidades y no pide SAM */
+    const saldo=r&&r.saldo?((r.sinFasesTela)?'<span class="tag t-falta" style="font-size:10.5px;padding:0 6px" title="marca en Configuración → Órdenes y materiales → tabla 1, columna nivelación, qué fases cuentan">sin fases marcadas</span>':'<span class="saldo">'+num(uSaldo,0)+'<small>u</small></span>'+(sinSAM?' <span class="tag t-falta" style="font-size:10.5px;padding:0 6px" title="'+r.saldo.sinSAM.length+' órdenes sin SAM no suman">+'+num(r.saldo.unidSinSAM,0)+' u sin SAM</span>':'')):'<span class="saldo">—</span>';
+    const fin=(nivUIConectada(a)&&r&&r.calc.fin)?fmtDia(r.calc.fin):null;
+    return `<div class="niv-card est-${est} ${on?'on':''} ${vacia?'vacia':''}" data-area="${a.id}" onclick="NIVUI.area='${a.id}';NIVUI.celda=null;NIVUI.noEntra=false;render()" title="${on?'seleccionado':'clic: ver solo '+esc(a.n)}">
+      <div class="nc">${esc(a.n)}</div>
+      <div class="lbl">saldo</div><div>${saldo}</div>
+      ${vacia?'':`<div class="fin">${fin?'termina <b>'+esc(fin)+'</b>':(a.porDias?'<span class="mut">por días, sin capacidad</span>':'<span class="mut">fin —</span>')}</div>`}
+      ${nivUIPillHTML(est,r,a,vacia)}</div>`};
+  return `<div class="niv-leyenda"><span><b style="color:#1F6B45">✓ llega</b></span><span><b style="color:#8A6412">⚠ riesgo</b> (holgura ≤ ${num(colchonDias(),0)} días)</span><span><b style="color:#A3301F">✕ déficit</b></span><span><b style="color:var(--t-primary)">? falta un dato</b> (dice cuál)</span><span class="mut">· en gris: sin saldo en estos meses</span></div>
+   <div class="niv-grupos">${nivUIGruposAreas().map(g=>`<div class="niv-grupo"><div class="niv-grupo-t">${esc(g.n)}</div><div class="niv-grupo-c">${g.areas.map(card).join('')}</div></div>`).join('')}</div>`}
 /* tabla FAMILIA × mes (unidades del saldo): para nivelar se mira el tipo de producto, no las órdenes una por una.
    Las filas se pueden agrupar por familia (por defecto), tipo de producto o cliente; el cálculo no cambia.
    Clic en una celda → debajo, ESA fila y ese mes: primero por tipo de producto con sus unidades, y ahí sí las
