@@ -31,11 +31,11 @@ días, personas y capacidad vienen del paso 1.
 meses, con el botón «Planificar el mes →» que abre el paso 1. No hay dos cálculos: `nivelacionCuerpoHTML` es una sola función.
 
 ## Ajustes tras verla (20-sep, tarde)
-- Primero los **recuadros por área** (Tela, Corte, Estampado…); al tocar uno, debajo aparecen **solo sus personas** ()
+- Primero los **recuadros por área** (Tela, Corte, Estampado…); al tocar uno, debajo aparecen **solo sus personas** (`personasNivHTML(ym,areaId)`)
   y luego su tabla y su cuadrito — «clic en Corte, solo Corte; clic en Confección, solo Confección».
-- **«? dato faltante» ahora dice qué falta** (): «falta marcar en la tabla 1 qué fases cuentan», «falta fecha compromiso»,
+- **«? dato faltante» ahora dice qué falta** (`nivUIQueFalta`): «falta marcar en la tabla 1 qué fases cuentan», «falta fecha compromiso»,
   «falta recursos con personas…». Y el horizonte natural es **el mes elegido**: sin fechas propias, inicio = primer día hábil del mes
-  (no antes de hoy) y compromiso = último día hábil (, marcado «del mes» en el cuadrito; se cambia y se guarda como
+  (no antes de hoy) y compromiso = último día hábil (`nivUIFechasDelMes`, marcado «del mes» en el cuadrito; se cambia y se guarda como
   siempre). Por eso Corte, Estampado… ya dicen «✓ llega» / «✕ déficit» en vez de «dato faltante»; Tela y Maquila siguen pidiendo que se
   marquen sus fases en la tabla 1.
 
