@@ -935,6 +935,14 @@ EXTERNA → nada · EXTERNA TEÑIDA → nada · SIN CLASIFICAR → `pantone` (ti
 `lineasTelaDe(materiales,ctx)` con `ctx.pantone`, que pasan `planTarea` y `recalcularTelasOrdenes` vía `armarTelasDe(materiales,rep,ctx)`). La
 palabra del producto (tabla 13) sigue mandando sobre el origen. Ya no existe el «EXTERNA TEÑIDA → nada, lo demás → tintura» fijo en código.
 
+**Orden de las operaciones dentro de la prenda (19-sep-2026, hoja de producción):** `mCargarOrdenOps/planOrdenOps/aplicarOrdenOps` (Operaciones →
+«Cargar orden de las operaciones») leen la hoja «OPERACIONES_PARA_LLENAR» devuelta: cruce por código (único en el catálogo) y familia con clave
+singular (`famKey`: CAMISETAS↔CAMISETA, PANTALÓN (fleece)↔PANTALON) con tolerancia a errores de tipeo (HODDIE); códigos repetidos en una
+familia se desempatan por nombre; familia mal escrita («0») se toma del bloque. Guarda `S.operaciones[].orden/ordenMeta/ordenObs` y la corrección
+de máquina en `maq` con `maqCorr/maqAntes` (bitácora). **`opsConfeccion` ordena por `orden` real** (empates = en paralelo, orden del archivo;
+sin orden → al final, `provisional:true`); el aviso del balanceo dice cuántas faltan. `sembrarTiemposSG2` da por confirmada Camiseta Tejida
+4,57 (segunda entrega igual). Fixture local `test/fixtures/ordenops_rows.json` (ignorada). Pruebas OO.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan

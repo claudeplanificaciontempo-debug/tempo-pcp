@@ -115,3 +115,12 @@ que es una categoría real. No se borra; queda pendiente de nombre definitivo.»
 4. **Las dos incoherencias de tiempos siguen sin corregir**, a la espera de que producción decida.
 5. Siguen pendientes: el **centro de las dos operaciones de BVD y FITS**, los **datos de las lavadoras** y
    **cuándo encender la regla de tejeduría**.
+
+## Segunda entrega (19-sep-2026): orden de las operaciones y tiempos v2
+
+- **OPERACIONES_PARA_LLENAR1.xlsx**: las 595 operaciones vienen con su número de paso (ORDEN); ninguna corrección de máquina ni observación.
+  Una fila trae la familia como «0» (ASEPÑ, dentro del bloque POLOS): se toma del bloque y se reporta. La app la carga en Operaciones →
+  «Cargar orden de las operaciones» (vista previa: calzan / no calzan / sin número / familia corregida / correcciones de máquina / repetidas)
+  y el **balanceo** pasa a usar el orden real (empates = operaciones en paralelo). Probado: 595 de 595 calzan.
+- **TIEMPOS_CATEGORIAS_PARA_LLENAR2.xlsx**: los 14 valores volvieron iguales a los ya cargados el 16-sep; la hoja «Tiempos actuales» sin
+  correcciones. Camiseta Tejida 4,57 (marcada «pendiente de confirmar») vino sin cambio → se da por confirmada (`sembrarTiemposSG2`, una vez).

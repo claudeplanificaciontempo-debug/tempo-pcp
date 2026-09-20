@@ -768,7 +768,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 23:17';
+const APP_BUILD='2026-09-19 23:41';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4471,7 +4471,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
   </div></div>`}
 
 /* una sola siembra que corre con las demás */
-function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
+function sembrarDecisiones16(){sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -5843,6 +5843,12 @@ const TIEMPOS_SG=[
   {fam:"CHALECOS",cat:"Chalecos",min:17.29,ref:"Sin referencia directa",obs:"Se hizo un promedio ya que estas referencias viene con forro interno y cortes "},
   {fam:"ACCESORIOS",cat:"Accesorios",min:3,ref:"Sin referencia directa",obs:""}
 ];
+/* segunda entrega de producción (19-sep-2026, TIEMPOS_CATEGORIAS_PARA_LLENAR2): los 14 valores volvieron IGUALES; Camiseta Tejida 4,57 estaba «pendiente de confirmar»
+   y vino sin cambio → se da por confirmada (solo si sigue con ese valor y esa fuente). Una vez. */
+function sembrarTiemposSG2(){if(S.params.tiemposSG2Sembrado)return;if(!S.params.tiemposSGSembrado)return;
+  const k=S.categorias.find(x=>x.padre&&normFase(x.n||'')===normFase('Camiseta Tejida'));let txt='sin cambio';
+  if(k&&k.minEstConfMeta&&k.minEstConfMeta.pendiente&&+k.minEstConf===4.57&&/Santiago/.test(k.minEstConfMeta.fuente||'')){k.minEstConfMeta.pendiente=false;k.minEstConfMeta.confirmado='segunda entrega de producción, 19-sep-2026 (mismo valor)';txt='Camiseta Tejida 4,57 min confirmada'}
+  S.params.tiemposSG2Sembrado=new Date().toISOString();if(typeof bitacora==='function')bitacora('Tiempos de confección: segunda entrega de producción (19-sep) con los 14 valores iguales; '+txt)}
 function sembrarTiemposSG(){if(S.params.tiemposSGSembrado)return;
   const hechas=[],noCalzan=[];
   TIEMPOS_SG.forEach(t=>{
@@ -8112,7 +8118,12 @@ function setObjetivoHora(rid,v){const r=R(rid);if(!r)return;if(!(puede('programa
   r.objetivoHist=(r.objetivoHist||[]).concat([{ts,u,antes:antes?antes.v:null,v:n,motivo}]).slice(-100);r.objetivoHora=n==null?null:{v:n,u,ts,antes:antes?antes.v:null};
   bitacora('Objetivo prendas/hora '+r.n+': '+(antes?antes.v:'—')+' → '+(n==null?'—':n)+' ('+motivo+')');save();render()}
 /* hoja de operaciones de confección de una categoría, con sección y orden provisional */
-function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);return opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};return{op:x.op,n:x.n,sam:+x.sam||0,maq:normMaquina(x.maq||''),secc:src.seccOp||'General',orden:i+1,provisional:true}})}
+function opsConfeccion(k){const byId={};S.operaciones.forEach(x=>byId[x.id]=x);
+  const l=opsDe(k).filter(x=>x.centro==='modulos').map((x,i)=>{const src=byId[x.op]||{};const real=src.orden!=null&&!isNaN(+src.orden);
+    return{op:x.op,n:x.n,sam:+x.sam||0,maq:normMaquina(x.maq||''),secc:src.seccOp||'General',orden:real?+src.orden:i+1,provisional:!real,idx:i}});
+  /* con orden real: por número de paso (empates = en paralelo, se respeta el orden del archivo); las que no tienen orden van al final, marcadas */
+  if(l.some(x=>!x.provisional))l.sort((a,b)=>(a.provisional?1:0)-(b.provisional?1:0)||(a.provisional?0:a.orden-b.orden)||a.idx-b.idx);
+  return l}
 /* reparto por puestos: operaciones consecutivas de la misma máquina hasta llenar el ritmo; una operación mayor que el ritmo se parte */
 function repartirPuestos(ops,takt){const puestos=[];let cur=null;ops.forEach(x=>{const req=takt?x.sam/takt:0;
     if(req>1){for(let i=0;i<Math.ceil(req);i++)puestos.push({ops:[x],maq:x.maq||'Manual',min:x.sam/Math.ceil(req),partida:true});cur=null;return}
@@ -8232,7 +8243,7 @@ function vBalanceo(el){
    <div class="kpi ${dif!=null&&dif<-0.15?'warn':''}"><div class="v">${num(teorico,1)}</div><div class="k">Ritmo teórico prendas/hora · ${rec.pers} personas × ${num(minH,1)} min ÷ ${num(samTot,2)}${dif!=null?' · objetivo '+(dif>=0?'+':'')+Math.round(dif*100)+'% frente al teórico':''}</div></div>
    <div class="kpi ${persNec>rec.pers?'warn':''}"><div class="v">${persNec}</div><div class="k">Operarias que hacen falta para ${objetivo!=null?'el objetivo':'el ritmo teórico'} (${num(base,1)} pz/h) ${persNec>rec.pers?'<span class="tag t-alerta">faltan '+(persNec-rec.pers)+'</span>':persNec<rec.pers?'<span class="tag t-aviso">sobran '+(rec.pers-persNec)+'</span>':''}</div></div>
    <div class="kpi"><div class="v">${puestos.length}</div><div class="k">Puestos con el reparto · ritmo ${num(takt,2)} min por puesto · salida real ${num(salidaReal,1)} pz/h · cuello: ${cuello?esc(cuello.ops.map(x=>x.n).join(' + ')):'—'}</div></div></div>
-  <div class="warn" style="margin:8px 0">Orden de las operaciones <b>provisional</b>: dentro de cada sección va en el orden del archivo LMO, no en la secuencia real de la prenda. Producción la está llenando en la hoja ORDEN; hasta entonces el reparto por puestos es una aproximación.</div>
+  ${(()=>{const prov=opsC.filter(x=>x.provisional).length;return prov?`<div class="warn" style="margin:8px 0">${prov===opsC.length?'Orden de las operaciones <b>provisional</b>: va en el orden del archivo LMO, no en la secuencia real de la prenda.':'<b>'+prov+' de '+ops.length+'</b> operaciones sin orden real: van al final, marcadas.'} Se carga en Operaciones → «Cargar orden de las operaciones» (hoja de producción); hasta entonces el reparto por puestos es una aproximación.</div>`:'<div class="mut" style="margin:8px 0;font-size:var(--fs-xs)">Orden real de las operaciones (hoja de producción'+(S.params.ordenOpsCarga?', '+esc(S.params.ordenOpsCarga.archivo)+' '+fmtDia(String(S.params.ordenOpsCarga.fecha).slice(0,10)):'')+').</div>'})()}
   <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
    <div><h4 style="margin:0 0 6px">Operaciones por sección de la prenda</h4><table><thead><tr><th>#</th><th>Sección</th><th>Operación</th><th>Máquina</th><th class="num" title="SAM: minutos por prenda">SAM</th></tr></thead><tbody>
     ${secciones.map(sc=>`<tr style="background:var(--field);font-weight:600"><td colspan="4">${esc(sc.n)}</td><td class="num">${num(sc.ops.reduce((a,x)=>a+x.sam,0),2)}</td></tr>`+sc.ops.map(x=>`<tr><td class="mut">${x.orden}<span title="orden provisional (archivo)" style="color:var(--aviso)">*</span></td><td class="mut" style="font-size:var(--fs-xs)">${esc(sc.n)}</td><td>${esc(x.n)}${x.ajustada?' <span class="tag t-aviso" title="ajustado solo para esta referencia · hoja '+num(x.samHoja,3)+'">ajustada</span>':''}</td><td>${esc(x.maq||'—')}</td><td class="num">${oRef&&puedeAj?`<a style="cursor:pointer;text-decoration:underline" title="ajustar solo para ${esc(oRef.op)}" onclick="mAjusteOp('${oRef.id}','${x.op}')">${num(x.sam,2)}</a>`:num(x.sam,2)}</td></tr>`).join('')).join('')}
@@ -9332,10 +9343,10 @@ function vOperaciones(el){
     return `<tr><td colspan="8" style="background:var(--ink);color:#fff;font-weight:600;cursor:pointer" onclick="OPV.abierta=OPV.abierta==='${esc(c).replace(/'/g,'')}'?'':'${esc(c).replace(/'/g,'')}';render()">${abierta?'▾':'▸'} ${esc(c)} <span style="font-weight:400;opacity:.8">${ops.length} operaciones · ${fams.length} familias de operación · SAM ${num(tot,2)}</span></td></tr>
     ${!abierta?'':fams.map(f=>{const fo=ops.filter(o=>fam(o)===f).sort((a,b)=>(a.seccOp||'').localeCompare(b.seccOp||'')||(+a.sec||0)-(+b.sec||0)||a.n.localeCompare(b.n));const tf=fo.reduce((a,o)=>a+(+o.sam||0),0);
       return `<tr><td colspan="8" style="background:var(--field);font-weight:600">${esc(f)} <span class="mut" style="font-weight:400">${fo.length} op. · ${num(tf,2)} min · centro PCP: ${esc(nCen(fo[0].centro))}</span></td></tr>`+
-      fo.map(o=>`<tr><td class="mut" style="padding-left:24px;font-size:var(--fs-xs)">${esc(f)}</td><td>${esc(o.seccOp||o.sub||'')}</td><td>${esc(o.n)}${o.codGen?` <span class="mut" style="font-size:var(--fs-xs)">${esc(o.codGen)}</span>`:''}</td><td>${esc(o.maq||'')}</td><td class="num mut">${esc(o.sec||'')}</td>
+      fo.map(o=>`<tr><td class="mut" style="padding-left:24px;font-size:var(--fs-xs)">${esc(f)}</td><td>${esc(o.seccOp||o.sub||'')}</td><td>${esc(o.n)}${o.codGen?` <span class="mut" style="font-size:var(--fs-xs)">${esc(o.codGen)}</span>`:''}</td><td>${esc(o.maq||'')}${o.maqCorr?' <span class="tag t-aviso" title="antes: '+esc(o.maqCorr.de||'(sin)')+'">corregida</span>':''}</td><td class="num mut">${esc(o.sec||'')}${o.orden!=null?' <b title="orden real dentro de la prenda (hoja de producción)">'+esc(String(o.orden))+'</b>':''}</td>
         <td class="num"><input type="number" step="0.001" style="width:84px" value="${o.sam}" onchange="setRow('operaciones','${o.id}','sam',this.value)"></td><td class="num">${usos(o.id)}</td><td><button class="btn ghost sm" onclick="delOp('${o.id}')">×</button></td></tr>`).join('')}).join('')}`}).join('');
   el.innerHTML=`<div class="pagehead"><h2>Operaciones</h2><span class="spacer"></span>
-    <button class="btn tint tb" onclick="mCargarLMO()">${ICO.sync} Cargar operaciones (hoja LMO)</button><button class="btn ghost" onclick="mMapeoOps()">Mapeo (familia→centro, categoría→LMO)</button><button class="btn ghost" onclick="mPegarOps()">Pegar catálogo</button><button class="btn ghost" onclick="mPegarFamOps()">Pegar familias</button><button class="btn" onclick="addOp()">Nueva operación</button></div>
+    <button class="btn tint tb" onclick="mCargarLMO()">${ICO.sync} Cargar operaciones (hoja LMO)</button><button class="btn ghost" onclick="mCargarOrdenOps()" title="hoja «Operaciones — llenar ORDEN» devuelta por producción: paso de cada operación dentro de la prenda">Cargar orden de las operaciones</button><button class="btn ghost" onclick="mMapeoOps()">Mapeo (familia→centro, categoría→LMO)</button><button class="btn ghost" onclick="mPegarOps()">Pegar catálogo</button><button class="btn ghost" onclick="mPegarFamOps()">Pegar familias</button><button class="btn" onclick="addOp()">Nueva operación</button></div>
   <p class="lede">El catálogo se ve por categoría (tipo de familia de prenda): cada una muestra las familias de operación que contiene (corte, subensamble, ensamble, ojales, serigrafía, bordado, pulido, empaque…) y sus operaciones con sección, máquina, secuencia y tiempo referencial. Las familias del sistema arman su hoja de operaciones desde aquí y la orden suma los tiempos por centro.</p>
   <div class="row" style="margin:0 0 12px"><input type="text" style="width:320px" placeholder="buscar operación, categoría, familia o máquina" value="${esc(OPV.q||'')}" data-q="OPV.q" oninput="buscarQ(this,v=>OPV.q=v)"></div>
   <div class="panel"><h3>Catálogo <span class="note">${S.operaciones.length} operaciones</span></h3>
@@ -9556,6 +9567,76 @@ function addMapaHija(){const pa=document.getElementById('me-padre').value,hi=doc
 function setMapaHija(k,v){mapaCatLMO().porHija[k]=v.trim().toUpperCase();save()}
 function delMapaHija(k){if(!confirm('¿Quitar este vínculo de categoría hija → LMO?'))return;delete mapaCatLMO().porHija[k];save();mMapeoOps()}
 function revincularCategorias(){const {vinc,sinMapeo}=aplicarMapeoCategorias();save();cerrar();render();alert(vinc+' categorías vinculadas. '+sinMapeo.length+' sin mapeo o sin operaciones para su categoría LMO.')}
+/* ---------- ORDEN DE LAS OPERACIONES dentro de la prenda (hoja «OPERACIONES_PARA_LLENAR» devuelta por producción, 19-sep-2026) ----------
+   Por operación (familia LMO + código): el número de paso (empates = operaciones en paralelo), una corrección de máquina opcional y
+   observaciones. Se guarda en S.operaciones[].orden / ordenMeta y lo usa el balanceo (opsConfeccion) en vez del orden del archivo LMO. */
+let ORDOPS=null;
+function mCargarOrdenOps(){if(!puede('config')&&!puede('programa')){alert('Tu perfil no carga el orden de las operaciones.');return}
+  abrir(`<h3>Orden de las operaciones <span class="note">hoja «Operaciones — llenar ORDEN y revisar MÁQUINA» devuelta por producción</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Sube la hoja llenada (columnas Familia, Código, Operación, ORDEN (llenar), Corrección de máquina, Observaciones). Cada operación se cruza por familia + código; el número es el paso dentro de la prenda (el mismo número en varias = en paralelo). Una corrección de máquina reemplaza la máquina de la operación y queda en bitácora. Nada se guarda hasta aplicar.</p>
+   <input type="file" id="f-ordops" accept=".xlsx,.xls,.csv"><div id="ordops-res" style="margin-top:14px"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="ordops-ok" disabled onclick="aplicarOrdenOps()">Aplicar</button></div>`,true);
+  document.getElementById('f-ordops').addEventListener('change',leerOrdenOps)}
+async function leerOrdenOps(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('ordops-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames.find(n=>normTxt(n)==='operaciones')||wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  const plan=planOrdenOps(rows,f.name);if(!plan){res.innerHTML='No encuentro la fila de títulos (Familia · Código · ORDEN).';return}
+  ORDOPS=plan;res.innerHTML=resumenOrdenOpsHTML(plan);document.getElementById('ordops-ok').disabled=!plan.calzan.length}
+function planOrdenOps(rows,nombre){const str=v=>v==null?'':String(v).trim();
+  const hi=rows.findIndex(r=>Array.isArray(r)&&r.some(x=>/^c[oó]digo$/i.test(str(x)))&&r.some(x=>/^orden/i.test(str(x))));if(hi<0)return null;
+  const h=rows[hi].map(x=>normTxt(x));const col=re=>h.findIndex(x=>re.test(x));
+  const I={fam:col(/^familia$/),cod:col(/^codigo$/),nombre:col(/^operacion$/),centro:col(/^centro$/),orden:col(/^orden/),maq:col(/^maquina \(viene/),corr:col(/^correccion de maquina/),obs:col(/^observaciones/)};
+  if(I.fam<0||I.cod<0||I.orden<0)return null;
+  /* la hoja nombra las familias en plural o con notas («CAMISETAS», «PANTALÓN (fleece)») y el catálogo LMO en singular («CAMISETA», «PANTALON»): se comparan por clave singular; y el código manda cuando es único en el catálogo */
+  const famKey=x=>normTxt(x).replace(/\(.*?\)/g,'').split(/\s+/).filter(Boolean).map(w=>w.length>4&&/es$/.test(w)&&!/ees$/.test(w)?w.slice(0,-2):(w.length>3&&/s$/.test(w)?w.slice(0,-1):w)).join('');
+  const fams=new Set(S.operaciones.map(o=>famKey(o.catP||'')).filter(Boolean));const porCod={};S.operaciones.forEach(o=>{const k=normFase(o.cod||'');if(k)(porCod[k]=porCod[k]||[]).push(o)});
+  const plan={archivo:nombre,filas:0,conOrden:0,sinOrden:[],calzan:[],noCalzan:[],famCorregidas:[],corrMaq:[],obs:[],cambios:0,nuevos:0,porFam:{},repetidas:[]};const usados=new Set();
+  let famCtx='';
+  rows.slice(hi+1).forEach((r,k)=>{const cod=str(r[I.cod]);let fam=str(r[I.fam]);const fila=hi+k+2;
+    if(!cod){if(fam&&/—/.test(fam))famCtx=fam.split('—')[0].trim();return}   /* cabecera de familia: «CAMISETAS — 44 operaciones · …» */
+    plan.filas++;
+    const famOk=f=>fams.has(famKey(f))||[...fams].some(k=>{const x=famKey(f);if(!x||Math.abs(x.length-k.length)>2)return false;let d=0;for(let i=0;i<Math.max(x.length,k.length);i++)if(x[i]!==k[i])d++;return d<=2});
+    if(!famOk(fam)){if(famCtx&&famOk(famCtx)){plan.famCorregidas.push({fila,cod,valor:fam,familia:famCtx});fam=famCtx}}else famCtx=fam;
+    const ordenTxt=str(r[I.orden]);const orden=ordenTxt===''?null:+String(ordenTxt).replace(',','.');
+    const cands=porCod[normFase(cod)]||[];const cerca=(a,b)=>{/* distancia de edición ≤ 2 para nombres de familia con errores de tipeo (HODDIE / HOODIE) */if(a===b)return true;if(Math.abs(a.length-b.length)>2)return false;const d=[];for(let i=0;i<=a.length;i++){d[i]=[i];for(let j=1;j<=b.length;j++)d[i][j]=i?Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)):j}return d[a.length][b.length]<=2};
+    /* el mismo código puede repetirse dentro de una familia (DOBBBL «boca bolsillo parche» y «boca bolsillo cargo»): se desempata por el nombre y, si no, por la primera que aún no tomó otra fila */
+    const nom=normFase(str(r[I.nombre]));const enFam=cands.filter(x=>famKey(x.catP||'')===famKey(fam));const enFamCerca=enFam.length?enFam:cands.filter(x=>cerca(famKey(x.catP||''),famKey(fam)));
+    const elegir=l=>l.length<=1?l[0]:(l.find(x=>normFase(x.n||'')===nom&&!usados.has(x.id))||l.find(x=>!usados.has(x.id))||l[0]);
+    const op=(cands.length===1?cands[0]:null)||elegir(enFamCerca)||S.operaciones.find(x=>famKey(x.catP||'')===famKey(fam)&&normFase(x.n||'')===nom);
+    if(op&&usados.has(op.id))plan.repetidas.push({fila,fam,cod,nombre:str(r[I.nombre])});if(op)usados.add(op.id);
+    if(!op){plan.noCalzan.push({fila,fam,cod,nombre:str(r[I.nombre])});return}
+    if(orden==null||isNaN(orden)){plan.sinOrden.push({fila,fam,cod});return}
+    plan.conOrden++;const corr=I.corr>=0?str(r[I.corr]):'';const obs=I.obs>=0?str(r[I.obs]):'';
+    if(op.orden!=null&&+op.orden!==orden)plan.cambios++;if(op.orden==null)plan.nuevos++;
+    if(corr&&normFase(corr)!==normFase(op.maq||''))plan.corrMaq.push({id:op.id,fam,cod,de:op.maq||'',a:corr});
+    if(obs)plan.obs.push({id:op.id,fam,cod,obs});
+    plan.calzan.push({id:op.id,fam,cod,orden,corr:corr||null,obs:obs||null});
+    const pf=plan.porFam[fam]=plan.porFam[fam]||{n:0,conOrden:0};pf.n++;pf.conOrden++});
+  plan.noCalzan.forEach(x=>{const pf=plan.porFam[x.fam]=plan.porFam[x.fam]||{n:0,conOrden:0};pf.n++});
+  plan.sinOrden.forEach(x=>{const pf=plan.porFam[x.fam]=plan.porFam[x.fam]||{n:0,conOrden:0};pf.n++});
+  /* operaciones de confección que seguirán sin orden después de aplicar */
+  const conId=new Set(plan.calzan.map(x=>x.id));plan.quedanSinOrden=S.operaciones.filter(o=>o.centro==='modulos'&&o.orden==null&&!conId.has(o.id)).length;
+  return plan}
+function resumenOrdenOpsHTML(p){const li=(n,t,cls)=>`<tr${cls?' class="'+cls+'"':''}><td class="num"><b>${num(n||0)}</b></td><td>${t}</td></tr>`;
+  return `<div class="panel" style="margin:0 0 10px"><h3>Qué pasará al aplicar <span class="note">nada se guarda hasta confirmar</span></h3><div class="body"><table style="font-size:var(--fs-s)"><tbody>
+   ${li(p.filas,'operaciones en la hoja')}${li(p.calzan.length,'calzan con el catálogo (familia + código) y traen orden: <b>'+num(p.nuevos)+'</b> reciben orden por primera vez · <b>'+num(p.cambios)+'</b> cambian de número')}
+   ${li(p.noCalzan.length,'no calzan con ninguna operación del catálogo (no se aplican): '+esc(p.noCalzan.slice(0,10).map(x=>x.fam+' · '+x.cod).join(', ')),p.noCalzan.length?'warn':'')}
+   ${li(p.sinOrden.length,'vienen sin número de orden (quedan como están): '+esc(p.sinOrden.slice(0,10).map(x=>x.fam+' · '+x.cod).join(', ')),p.sinOrden.length?'warn':'')}
+   ${li(p.famCorregidas.length,'filas con la familia mal escrita, tomada del bloque en que están: '+esc(p.famCorregidas.slice(0,10).map(x=>'fila '+x.fila+' «'+x.valor+'» → '+x.familia).join(', ')),p.famCorregidas.length?'warn':'')}
+   ${li(p.corrMaq.length,'correcciones de máquina (reemplazan la máquina de la operación, con bitácora): '+esc(p.corrMaq.slice(0,10).map(x=>x.fam+' · '+x.cod+': '+x.de+' → '+x.a).join(', ')))}
+   ${li(p.obs.length,'observaciones (se guardan en la operación)')}
+   ${li((p.repetidas||[]).length,'filas que caen en una operación que otra fila ya tomó (mismo código y nombre en la familia): se aplica la última',(p.repetidas||[]).length?'warn':'')}
+   ${li(p.quedanSinOrden,'operaciones de confección que seguirán SIN orden después de aplicar (el balanceo las deja al final, marcadas)',p.quedanSinOrden?'warn':'')}
+  </tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Por familia: ${esc(Object.entries(p.porFam).map(([f,v])=>f+' '+v.conOrden+'/'+v.n).join(' · '))}</p></div></div>`}
+function aplicarOrdenOps(){if(!ORDOPS)return;if(!puede('config')&&!puede('programa')){alert('Tu perfil no carga el orden de las operaciones.');return}const p=ORDOPS;const ts=new Date().toISOString();
+  if(!confirm('Se guarda el orden de '+p.calzan.length+' operaciones ('+p.nuevos+' nuevas, '+p.cambios+' cambian)'+(p.corrMaq.length?' y '+p.corrMaq.length+' correcciones de máquina':'')+'. Queda en bitácora. ¿Aplicar?'))return;
+  const byId={};S.operaciones.forEach(o=>byId[o.id]=o);let n=0;
+  p.calzan.forEach(x=>{const o=byId[x.id];if(!o)return;o.orden=x.orden;o.ordenMeta={u:quienFirma(),ts,archivo:p.archivo||'',fuente:'hoja de producción'};if(x.obs)o.ordenObs=x.obs;
+    if(x.corr&&normFase(x.corr)!==normFase(o.maq||'')){o.maqAntes=o.maq||'';o.maq=x.corr;o.maqCorr={de:o.maqAntes,a:x.corr,u:quienFirma(),ts};bitacora('Operación '+(o.catP||'')+' · '+(o.cod||o.n)+': máquina '+(o.maqAntes||'(sin)')+' → '+x.corr+' (hoja de producción, '+quienFirma()+')')}n++});
+  S.params.ordenOpsCarga={archivo:p.archivo,fecha:ts,n,nuevos:p.nuevos,cambios:p.cambios,noCalzan:p.noCalzan.length,sinOrden:p.sinOrden.length,corrMaq:p.corrMaq.length,quedanSinOrden:p.quedanSinOrden};
+  bitacora('Orden de las operaciones (hoja de producción '+p.archivo+'): '+n+' operaciones con orden ('+p.nuevos+' nuevas, '+p.cambios+' cambian), '+p.noCalzan.length+' no calzan, '+p.sinOrden.length+' sin número, '+p.corrMaq.length+' correcciones de máquina; quedan '+p.quedanSinOrden+' de confección sin orden ('+quienFirma()+')');
+  ORDOPS=null;save();cerrar();render();alert('Orden guardado en '+n+' operaciones.')}
 function mCargarLMO(){abrir(`<h3>Cargar operaciones (hoja LMO de Odoo)</h3><div class="body">
    <p class="lede" style="margin-top:0">Sube la hoja <b>LMO</b> del archivo de operaciones (no "Hoja3": tiene celdas combinadas y pierde la categoría). El centro TEMPO de cada fila se calcula por <b>familia de operación</b>, con las reglas de Configuración → Operaciones → Mapeo; edítalas ahí si hace falta antes de cargar. Esto <b>reemplaza todas las operaciones</b> del sistema.</p>
    <input type="file" id="f-lmo" accept=".xlsx,.xls"><div id="lmo-res" style="margin-top:14px"></div></div>

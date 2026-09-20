@@ -13,3 +13,4 @@ test/fixtures/fotos_*.csv
 .claude/
 
 test/fixtures/maestro_rows.json
+test/fixtures/ordenops_rows.json
