@@ -248,6 +248,7 @@ main{padding:24px 28px 70px}
 .sub-blk>.sub-t{font-weight:700;font-size:var(--fs-s);color:var(--ink);margin-bottom:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .sub-blk>.sub-t .mut{font-weight:400}
 .filtros-blk{border:1.5px solid #C9D1D9;border-radius:10px;padding:10px 12px;background:var(--field);margin-bottom:12px}
+.grp-inline{display:flex;gap:6px;flex-wrap:wrap}.grp-inline select{width:auto;min-width:150px}   /* agrupador en una sola fila (Rutas) */
 .kpis{border-radius:var(--r);border:1px solid var(--rule);background:var(--rule2);gap:1px;box-shadow:0 1px 2px rgba(20,40,80,.04)}
 .kpi{padding:14px 18px}
 .kpi .v{font-size:22px;font-weight:700;color:var(--navy)}
@@ -778,7 +779,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 14:23';
+const APP_BUILD='2026-09-20 14:43';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2682,7 +2683,10 @@ let GRP={};
 function claveUsr(){return (PERFIL&&(PERFIL.id||PERFIL.email))||'anon'}
 function grpSt(id){if(!GRP[id]){let n=null;try{n=JSON.parse(localStorage['__grp_'+claveUsr()+'_'+id]||localStorage['__grp_'+id]||'null')}catch(e){}GRP[id]={niveles:Array.isArray(n)?n:[],exp:new Set()}}return GRP[id]}
 function setNivelGRP(id,i,v){const g=grpSt(id);const n=g.niveles.slice();n[i]=v;g.niveles=n.filter(Boolean).filter((x,j,a)=>a.indexOf(x)===j).slice(0,3);g.exp=new Set();try{localStorage['__grp_'+claveUsr()+'_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
-function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);render()}
+function togGRP(id,k){const g=grpSt(id);if(g.exp.has(k))g.exp.delete(k);else g.exp.add(k);conScrollGRP(id,render)}
+/* redibujar sin perder la posición: el contenedor de la lista lleva data-grp-scroll="<id>" (la pestaña Rutas lo usa; cualquier lista puede) */
+function conScrollGRP(id,fn){const sc=document.querySelector('[data-grp-scroll="'+id+'"]');const top=sc?sc.scrollTop:null;const y=window.scrollY;fn();
+  if(top!=null){const s2=document.querySelector('[data-grp-scroll="'+id+'"]');if(s2)s2.scrollTop=top}try{window.scrollTo(0,y)}catch(e){}}
 function telaPrincipalDe(o){const t=(o.telas||[]).filter(x=>!x.ext&&(+x.kg||0)>0);
   if(t.length)return nTela(t.slice().sort((a,b)=>(+b.kg||0)-(+a.kg||0))[0].tela);
   const ts=telasDe(K(o.cat))||[];   // tabla categoría → tela
@@ -5454,7 +5458,8 @@ function recalcularRutas(motivo){
     const completa=((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'))
       .concat(a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)})));
     o.rutaCompleta=completa;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(completa,fila);   /* la fase manda: solo los pasos pendientes cargan */
-    registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → '),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
+    const addOT=empatarRutaConOT(o);   /* lo que Odoo sí ejecutó vuelve a la ruta aunque el catálogo no lo traiga */
+    registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → ')+(addOT.length?' + OT: '+addOT.map(nCen).join(', '):''),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
     sellarRuta(o);n++});
   let marcadas=0;
   r.manual.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
@@ -7685,7 +7690,7 @@ function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;con
   abrir(`<h3>Ruta de ${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Marca o desmarca los pasos de tus centros. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría; si la categoría no tiene tiempo para ese centro, el paso entra <b>sin tiempo</b> y queda en la bandeja "sin tiempo por prenda" hasta que se cargue. El motivo es obligatorio y todo queda en la bitácora.</p>
    <table><thead><tr><th>Paso</th><th>En la ruta</th><th class="num">SAM</th><th>Estado</th></tr></thead><tbody>
-   ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id);const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);const porDefecto=!p&&!o.rutaEditada&&centrosRutaDefecto().includes(c.id)&&!hecho;
+   ${todos.map(c=>{const p=ruta.find(x=>x.centro===c.id)||((o.rutaCompleta||[]).find(x=>x.centro===c.id));   /* la pendiente ya no trae los hechos: se mira también la completa */const puedeC=edit.includes(c.id);const hecho=faseEstado(o.fase,o).hechos.includes(c.id);const t=p?p.t:(sam[c.id]||0);const porDefecto=!p&&!o.rutaEditada&&centrosRutaDefecto().includes(c.id)&&!hecho;
      return `<tr><td>${esc(c.n)}${porDefecto?' <span class="tag t-ok" title="marcado en Configuración → Centros: va por defecto en toda ruta">por defecto</span>':''}</td><td><input type="checkbox" id="rc-${c.id}" ${(p||porDefecto)?'checked':''} ${puedeC&&!hecho?'':'disabled'}></td><td class="num">${p?num(p.t,2):(sam[c.id]?'<span class="mut">'+num(sam[c.id],2)+'</span>':'<span class="tag t-aviso">sin tiempo</span>')}</td><td class="mut" style="font-size:var(--fs-xs)">${hecho?'hecho':p?'pendiente':''}${!puedeC?' · no es de tus centros':''}</td></tr>`}).join('')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-s);margin:10px 0 0">Lavado: ${lavadoDe(o)?'esta orden va a <b>'+esc(lavadoModoTxt(lavadoDe(o)))+'</b>':'sin modalidad asignada'} · no se pone por regla automática. <button class="btn ghost sm" onclick="cerrar();mLavado(['${o.id}'])">agregar o quitar lavado</button></p>
    <div class="row" style="margin-top:10px"><div style="flex:1"><label>Por qué (obligatorio)</label><input type="text" id="rc-motivo" placeholder="faltaba la operación, cambio de bordado a estampado, el cliente pidió lavado…"></div></div></div>
@@ -7714,6 +7719,20 @@ function desconfirmarRuta(o,motivo){if(!puedeEditarRuta()){alert('Solo el jefe d
   registrarAuditoria('ruta',o,'confirmada ('+antes.origen+')','por definir',motivo||'',true);
   bitacora('Ruta vuelta a «por definir» · '+o.op+' ('+quienFirma()+')')}
 /* --- lo que dice Odoo para esa WH: centros de sus OT, sin canceladas ni bodegas --- */
+/* La OT de Odoo manda sobre la ruta (decisión de la usuaria, 20-sep): un centro con orden de trabajo (no cancelada) es parte de la ruta de esa
+   orden aunque su categoría no lo traiga; si la OT está terminada, el paso está hecho (faseEstado0 ya lo sabe). Solo AGREGA — nunca quita un
+   paso porque le falte OT (Empaque y terminados suelen no tener). Idempotente. Corre al aplicar OT, al recargar tareas (conserva «ot») y al
+   rehacer rutas por catálogo. Devuelve los centros agregados; los marca {ot:true} en la ruta y en o.rutaOT. */
+function empatarRutaConOT(o){const cen=centrosOdooDe(o);if(!cen||!cen.length)return [];
+  const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const fe=faseEstado(o.fase,o);const add=[];
+  const tiene=new Set(((o.rutaCompleta||[]).concat(o.ruta||[])).map(p=>p.centro));
+  const ins=(r,c,t)=>{if(r.some(p=>p.centro===c))return;let pos=r.length;const idx=ordenPaso(c);for(let i=0;i<r.length;i++){if(ordenPaso(r[i].centro)>idx){pos=i;break}}r.splice(pos,0,{centro:c,t,ot:true})};
+  cen.forEach(c=>{if(tiene.has(c))return;const t=+((tiempoPaso({centro:c,t:0},k,spc,+o.puntadas||0)||{}).t)||0;
+    if(o.rutaCompleta&&o.rutaCompleta.length)ins(o.rutaCompleta,c,t);
+    if(!pasoHecho(o,c,fe)){o.ruta=o.ruta||[];ins(o.ruta,c,t)}   /* un paso ya hecho no vuelve a la pendiente; queda en la completa */
+    add.push(c)});
+  if(add.length){o.rutaOT=[...new Set((o.rutaOT||[]).concat(add))];if(o.rutaFirma&&typeof sellarRuta==='function')sellarRuta(o)}
+  return add}
 function centrosOdooDe(o){const ot=o&&o.ot;if(!ot||!Object.keys(ot).length)return null;
   const cen=Object.entries(ot).filter(([c,r])=>{const ce=CE(c);return ce&&ce.area==='pro'&&r&&r.estado!=='cancelado'}).map(([c])=>c);
   return cen.length?[...new Set(cen)]:[]}
@@ -7729,7 +7748,7 @@ function diagRutaOdoo(o,contras){const cod=centrosOdooDe(o);
   const sinMapear=centrosOdooSinMapear(o);
   if(sinMapear.length)return {estado:'sinMapear',txt:'centro de Odoo sin centro TEMPO: '+sinMapear.join(', ')};
   if((contras||contradiccionesOT()).has(normFase(o.op)))return {estado:'contradiccion',txt:'tiene contradicción entre la fase y las órdenes de trabajo'};
-  const ruta=pasosRutaDe(o);
+  const ruta=pasosProCompleta(o);   /* la ruta COMPLETA: los pasos ya hechos no están en la pendiente y salían como «Odoo tiene X, la ruta no» */
   const faltanEnRuta=cod.filter(c=>!ruta.includes(c));const sobranEnRuta=ruta.filter(c=>!cod.includes(c));
   if(faltanEnRuta.length||sobranEnRuta.length){
     const dif=[...faltanEnRuta.map(c=>'Odoo tiene '+nCen(c)+', la ruta no'),...sobranEnRuta.map(c=>'la ruta tiene '+nCen(c)+', Odoo no')];
@@ -7767,7 +7786,7 @@ function precargarRutasNuevas(){let n=0;S.ordenes.filter(abierta).forEach(o=>{if
 function faltaRutaConfirmada(o){return !rutaLista(o)}
 function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'tela')||liberada(o,'corte'))&&!rutaLista(o))}
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
-let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set()};
+let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set(),fases:null};
 /* ================== RUTA EN LOTE (20-sep-2026) ==================
    La usuaria: «hay varios productos que comparten ruta; con eso podría editar la ruta masiva… un solo recuadro donde estén todas las
    órdenes, agrupar por las agrupaciones que tenemos en todo el sistema, marcar todo el grupo y definir ruta para todos».
@@ -7966,22 +7985,24 @@ function reglasRutaHTML(){const rs=reglasRuta();const p=previaReglasRuta();
    casilla por orden, y dos acciones sobre lo marcado: definir ruta (mRutaLote) o confirmar como están. Rutas estimadas, reglas de
    sub-áreas y lo que dice Odoo quedan plegados abajo en «Más herramientas». ---------- */
 function rutasBase(){return S.ordenes.filter(o=>abierta(o)&&!rutaNoAplica(o))}
-function rutasLista(){const q=normTxt(RUT.q);const v=RUT.ver;return rutasBase().filter(o=>(v==='pend'?!rutaConfirmada(o):v==='conf'?rutaConfirmada(o):true)&&matchBusq(o,q,'RUT.q'))}
+function rutasLista(){const q=normTxt(RUT.q);const v=RUT.ver;return rutasBase().filter(o=>(v==='pend'?!rutaConfirmada(o):v==='conf'?rutaConfirmada(o):true)&&faseOkFiltro(RUT.fases,o.fase)&&matchBusq(o,q,'RUT.q'))}
 function rutasBarraSel(){const n=RUT.sel.size;const el=document.getElementById('rut-sel-n');if(el)el.textContent=n;['rut-btn-def','rut-btn-conf'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!n})}
 function togSelRut(id,on){if(on)RUT.sel.add(id);else RUT.sel.delete(id);rutasBarraSel()}   /* sin redibujar: la lista no se mueve al marcar una fila */
-function selGrupoRut(key,on){const ids=((grpSt('rut').mapa)||{})[key]||[];ids.forEach(id=>on?RUT.sel.add(id):RUT.sel.delete(id));render()}
+function selGrupoRut(key,on){const ids=((grpSt('rut').mapa)||{})[key]||[];ids.forEach(id=>on?RUT.sel.add(id):RUT.sel.delete(id));conScrollGRP('rut',render)}
+function togFaseRUT(f){togSet(RUT,'fases',f)}
 function selTodoRut(on){rutasLista().forEach(o=>on?RUT.sel.add(o.id):RUT.sel.delete(o.id));if(!on)RUT.sel=new Set();render()}
 function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();const pend=base.filter(o=>!rutaConfirmada(o)),conf=base.filter(o=>rutaConfirmada(o));const na=rutasNoAplican();const lista=rutasLista();
   const g=grpSt('rut');if(!g.sembrado){g.sembrado=true;let guardado=null;try{guardado=localStorage['__grp_'+claveUsr()+'_rut']}catch(e){}if(guardado==null&&!g.niveles.length)g.niveles=['fam','hija']}   /* arranca agrupada por familia → tipo de producto solo la primera vez; «sin agrupar» se respeta */
   g.selFn='selGrupoRut';g.selChk=ids=>!!(ids&&ids.length&&ids.every(id=>RUT.sel.has(id)));g.todoAbierto=false;
-  const nSel=RUT.sel.size;const an=analizarRutasOdoo();
+  const nSel=RUT.sel.size;const an=analizarRutasOdoo();const fasesAllRut=[...new Set(base.map(o=>o.fase||'Sin fase'))].sort((a,b)=>faseNum(a)-faseNum(b)||a.localeCompare(b));
   const fila=o=>{const d=diagRutaOdoo(o,contras);const rc=rutaConf(o);const ruta=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));
     return `<tr><td><input type="checkbox" ${RUT.sel.has(o.id)?'checked':''} onchange="togSelRut('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(refDe(o))}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="font-size:var(--fs-xs)">${ruta.map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta de producción</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(d.txt)}</td><td style="white-space:nowrap">${rc&&rc.estado==='confirmada'?(rc.origen==='odoo'?'<span class="tag t-medio">Odoo OT</span>':'<span class="tag t-ok">persona</span>')+' <span class="mut" style="font-size:var(--fs-xs)">'+esc(rc.u||'')+' · '+new Date(rc.ts).toLocaleDateString('es-EC')+'</span>':(typeof estadoRuta==='function'&&estadoRuta(o)==='sinRevisar'?'<span class="tag t-aviso">estimada · sin revisar</span>':'<span class="tag t-aviso">por confirmar</span>')}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:`<button class="btn ghost sm" onclick="abrirFichaOrden('${o.id}')">ver</button>`}</td></tr>`};
   const cap=g.niveles.length?lista:lista.slice(0,600);
   return `<div class="panel"><h3>Rutas <span class="note">${pend.length} por confirmar · ${conf.length} confirmadas${na.length?' · '+na.length+' con la prenda terminada: su ruta no se revisa':''}</span></h3><div class="body">
-   <div class="row filtros-blk" style="align-items:flex-end;margin-bottom:8px">
+   <div class="row filtros-blk" style="align-items:flex-end;margin-bottom:8px;gap:14px">
     <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
-    ${grpSelHTML('rut')}
+    <div><label>Agrupar por</label><div class="grp-inline" data-filt-tipo="grp">${grpSelHTML('rut',true)}</div></div>
+    <div><label>Fases</label>${filtroFasesHTML(fasesAllRut,RUT.fases,'RUT.fases','togFaseRUT')}</div>
     <div class="chips" style="margin:0">${[['pend','Por confirmar',pend.length],['conf','Confirmadas',conf.length],['todas','Todas',base.length]].map(([k,n,c])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n} <span class="mut">${c}</span></span>`).join('')}</div>
    </div>
    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>
@@ -7989,7 +8010,7 @@ function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();co
     ${puedeEditarRuta()?`<button class="btn sm" id="rut-btn-def" ${nSel?'':'disabled'} onclick="abrirRutaLote()">Definir ruta para las marcadas</button><button class="btn ghost sm" id="rut-btn-conf" ${nSel?'':'disabled'} onclick="confirmarRutasSel()" title="deja confirmada la ruta que ya tiene cada una, sin cambiar ningún paso">Confirmar como están</button>`:''}
     <button class="btn ghost sm" onclick="selTodoRut(true)">Marcar todas las de la lista (${lista.length})</button><button class="btn ghost sm" onclick="selTodoRut(false)">Desmarcar</button>
     <span class="mut" style="font-size:var(--fs-xs)">Marca órdenes sueltas o un grupo entero (casilla en la cabecera del grupo) y define la ruta para todas de una vez.</span></div>
-   <div class="scroll" style="max-height:70vh"><table style="font-size:var(--fs-s)"><thead><tr><th></th><th>OP · fase</th><th>Referencia</th><th>Cliente</th><th>Tipo de producto</th><th>Ruta actual</th><th>Odoo</th><th>Estado</th><th></th></tr></thead><tbody>
+   <div class="scroll" data-grp-scroll="rut" style="max-height:70vh"><table style="font-size:var(--fs-s)"><thead><tr><th></th><th>OP · fase</th><th>Referencia</th><th>Cliente</th><th>Tipo de producto</th><th>Ruta actual</th><th>Odoo</th><th>Estado</th><th></th></tr></thead><tbody>
    ${filasGRP('rut',cap,fila,9)}
    </tbody></table>${!g.niveles.length&&lista.length>600?`<p class="mut">Se muestran 600 de ${lista.length}: agrupa o usa el buscador.</p>`:''}${!lista.length?'<div class="empty">Ninguna orden con esta búsqueda.</div>':''}</div>
   </div></div>
@@ -10467,12 +10488,12 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
       if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
       if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
     o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
-    o.otTs=ts});
+    o.otTs=ts;const add=empatarRutaConOT(o);if(add.length){p.rutaEmpatada=(p.rutaEmpatada||0)+1;p.pasosOT=(p.pasosOT||0)+add.length}});
   S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
-  registrarCarga('ot',p.archivo,{ordenes:Object.keys(p.porOrden).length,cierres,noEncontradas:Object.keys(p.ordenesNoEncontradas).length,contradicciones:p.contradicciones.length,filas:p.filas,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
+  registrarCarga('ot',p.archivo,{ordenes:Object.keys(p.porOrden).length,cierres,rutaEmpatada:p.rutaEmpatada||0,pasosOT:p.pasosOT||0,noEncontradas:Object.keys(p.ordenesNoEncontradas).length,contradicciones:p.contradicciones.length,filas:p.filas,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
   /* el registro de cargas NO se recorta (decisión 17-sep-2026): antes se quedaba con las últimas 60 */
   OT=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
-  alert('Órdenes de trabajo aplicadas: '+Object.keys(p.porOrden).length+' órdenes, '+cierres+' centros cerrados. '+p.contradicciones.length+' contradicciones fase vs OT (ver Órdenes → Reporte OT).')}
+  alert('Órdenes de trabajo aplicadas: '+Object.keys(p.porOrden).length+' órdenes, '+cierres+' centros cerrados. '+(p.rutaEmpatada?p.rutaEmpatada+' órdenes recibieron en su ruta '+p.pasosOT+' pasos que Odoo sí tenía (la OT manda). ':'')+p.contradicciones.length+' contradicciones fase vs OT (ver Órdenes → Reporte OT).')}
 function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha cargado ningún archivo de órdenes de trabajo.');return}
   const porCentro={};C.contradicciones.forEach(x=>{const k=nCen(x.centro)+': fase '+x.faseDice+' / OT '+x.otDice;porCentro[k]=(porCentro[k]||0)+1});
   abrir(`<h3>Reporte de órdenes de trabajo · ${esc(C.archivo)}</h3><div class="body" style="max-height:70vh;overflow:auto">
@@ -11252,7 +11273,7 @@ function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date()
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='tareas')return [r.actualizadas+' actualizadas',r.nuevas+' nuevas',r.noVinieron+' no vinieron',r.fueraAlcance+' fuera de alcance',r.noCalzan+' no calzan',r.claveIncompleta?r.claveIncompleta+' clave incompleta':'',r.claveRepetida?r.claveRepetida+' clave repetida':'',r.fechasIlegibles?r.fechasIlegibles+' fechas ilegibles':'',r.sinComponentes?'SIN componentes':'',r.conColumnaId?('con ID de tarea ('+(r.conTareaId||0)+')'+(r.tareaIdEnlazadas?' · '+r.tareaIdEnlazadas+' enlazadas':'')+(r.tareaIdConflicto?' · '+r.tareaIdConflicto+' CONFLICTOS de ID no aplicados':'')+(r.whRepetida?' · '+r.whRepetida+' WH repetidas no aplicadas':'')+(r.perdioWH?' · '+r.perdioWH+' vinieron sin WH (conservada)':'')):(r.conColumnaId===false?'sin columna ID':'')].filter(Boolean).join(' · ');
-  if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
+  if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.rutaEmpatada?r.rutaEmpatada+' órdenes con pasos agregados a la ruta por la OT ('+r.pasosOT+')':'',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
   if(c.tipo==='maestro')return [r.filas+' productos',r.nuevos+' nuevos',r.actualizados+' actualizados',r.tempo+' TEMPO',r.conProv+' con proveedor',r.sinProv+' sin proveedor',r.conservaProv?r.conservaProv+' conservan proveedor':'',r.cambiaProv?r.cambiaProv+' cambian de proveedor':'',r.nuevosProv?r.nuevosProv+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [r.subidas+' subidas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' sin orden':'',r.errores?r.errores+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?c.nuevas+' nuevas':'',c.act!=null?c.act+' actualizadas':'',c.cerradas?c.cerradas+' cerradas':''].filter(Boolean).join(' · ')}
@@ -11716,7 +11737,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('rutaEditada')&&v.rutaEditada&&v.rutaEditada.length){o.rutaEditada=v.rutaEditada.slice();cons.rutaEditada++;const k2=K(o.cat);const sam=k2?(samPorCentro(k2)||{}):{};
       v.rutaEditada.forEach(e=>{(e.menos||[]).forEach(c=>{o.ruta=(o.ruta||[]).filter(pp=>pp.centro!==c);o.rutaCompleta=(o.rutaCompleta||[]).filter(pp=>pp.centro!==c)});
         (e.mas||[]).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c)){const idx=ordenPaso(c);['ruta','rutaCompleta'].forEach(kk=>{const r=o[kk]||[];let pos=r.length;for(let i=0;i<r.length;i++){if(ordenPaso(r[i].centro)>idx){pos=i;break}}r.splice(pos,0,{centro:c,t:sam[c]||0});o[kk]=r})}})})}
-    if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;if(v.esperandoMaterial)o.esperandoMaterial=v.esperandoMaterial;cons.ot++}
+    if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;if(v.esperandoMaterial)o.esperandoMaterial=v.esperandoMaterial;cons.ot++;empatarRutaConOT(o)}   /* la OT manda sobre la ruta también después de la recarga */
     if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}
     /* auditoría 19-sep: estos campos estaban en la tabla 14 (o son decisiones de la app) y la carga los perdía */
     if(conserva('rutaConf')&&v.rutaConf){o.rutaConf=v.rutaConf;cons.rutaConf=(cons.rutaConf||0)+1}

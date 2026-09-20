@@ -973,6 +973,12 @@ Empaque**, confirm; inserta por `ordenPaso` en `o.ruta` y deja `o.rutaCompleta` 
 etapa `lote`, `rutaConf` persona «ruta en lote», auditoría por orden, UNA bitácora, `avisosFechaLote` = `conAvisoFecha` en lote, limpia `RUT.sel`).
 `avisosRutaLote` avisa Empaque y centros por defecto. **No crear otro camino de edición masiva ni volver a partir la pestaña en bloques.**
 Pruebas RLT; capturas `?captura=uxrutas` / `uxlote`. Ver `RUTA_EN_LOTE.md`.
+**Tarde del 20-sep:** `conScrollGRP(id,fn)` (contenedor `data-grp-scroll="<id>"`) conserva el scroll al desplegar o marcar un grupo — `togGRP` ya pasa por
+ahí: toda lista larga con agrupador debería llevar el atributo; la fila de filtros de Rutas va en una línea con **filtro de fases** (`RUT.fases`, `togFaseRUT`).
+**La ruta por orden (`mRutaCentro`) y «qué dice Odoo» (`diagRutaOdoo`) miran la ruta COMPLETA**, no solo la pendiente: los pasos hechos ya no están en
+`o.ruta` y salían desmarcados / «Odoo tiene X, la ruta no». **La OT manda sobre la ruta**: `empatarRutaConOT(o)` agrega (nunca quita) a la ruta los centros
+con orden de trabajo no cancelada (terminada → solo completa; pendiente → completa y pendiente), `{ot:true}` + `o.rutaOT`; corre en `aplicarOT`, en
+`aplicarTarea` (tras conservar «ot») y en `recalcularRutas`. Pruebas UX3.
 
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;

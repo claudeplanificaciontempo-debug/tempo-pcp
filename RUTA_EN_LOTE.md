@@ -77,6 +77,46 @@ avance registrado en piso (unidades o tramo abierto) se avisa en la fila, en el 
   persona y la ruta queda editada a mano: el recálculo automático no la pisa (la marca «revisar» si cambia el catálogo).
 - Nada corre solo; nada se borra; cancelar o aplicar deja el estado del lote limpio (`RLOTE0`).
 
+## Tres cosas más de la usuaria (20-sep, tarde)
+1. **Desplegar un grupo mandaba la lista al inicio.** `togGRP` redibuja toda la página y el recuadro con scroll volvía arriba.
+   Ahora `conScrollGRP(id,fn)` guarda el `scrollTop` del contenedor marcado `data-grp-scroll="<id>"` (y el de la ventana), redibuja y
+   lo restaura; lo usan `togGRP` (cualquier lista que lleve el atributo) y `selGrupoRut`. La lista de Rutas lo lleva.
+2. **Aprovechar el ancho.** La fila de filtros de Rutas va en UNA línea: buscador · agrupar por (los tres selectores en línea) ·
+   **filtro de fases** (`filtroFasesHTML`, `RUT.fases`, `togFaseRUT`, como en las demás pantallas) · chips.
+3. **Los pasos ya hechos salían desmarcados en la ruta por orden** (una orden en 8Servicios y Terminados mostraba Corte, Estampado,
+   Bordado, Confección «hecho» pero sin marcar). Causa: `mRutaCentro` miraba solo `o.ruta` (la pendiente), y los pasos hechos ya
+   no están ahí. Ahora mira también `o.rutaCompleta`: lo hecho sale marcado y deshabilitado, y solo queda por decidir lo de
+   terminados. Lo mismo le pasaba a **«qué dice Odoo»** (`diagRutaOdoo` comparaba contra la pendiente: «Odoo tiene Corte, la ruta
+   no» en órdenes que sí lo tenían y ya lo habían cortado); ahora compara contra la completa (`pasosProCompleta`), así que muchas más
+   «coinciden exacto» y se pueden confirmar solas.
+   **La OT manda sobre la ruta** (decisión de la usuaria: «cuando cargue la orden de trabajo debería empatarse a la ruta»):
+   `empatarRutaConOT(o)` agrega a la ruta todo centro de producción con orden de trabajo no cancelada (terminada → solo a la
+   completa, como hecho; pendiente → a la completa y a la pendiente), en su orden de paso, con el tiempo de `tiempoPaso`, marcado
+   `{ot:true}` y anotado en `o.rutaOT`; **nunca quita** un paso por falta de OT (Empaque y terminados suelen no tener). Corre al
+   aplicar OT (`aplicarOT`; el aviso y el registro de cargas dicen cuántas órdenes recibieron pasos), al recargar tareas (`aplicarTarea`
+   conserva «ot» y vuelve a empatar) y al rehacer rutas por catálogo (`recalcularRutas`, con la nota «+ OT: …» en la auditoría).
+   Pruebas UX3.
+
+## Tres cosas más de la usuaria (20-sep, tarde)
+1. **Desplegar un grupo mandaba la lista al inicio.** `togGRP` redibuja toda la página y el recuadro con scroll volvía arriba.
+   Ahora `conScrollGRP(id,fn)` guarda el `scrollTop` del contenedor marcado `data-grp-scroll="<id>"` (y el de la ventana), redibuja y
+   lo restaura; lo usan `togGRP` (cualquier lista que lleve el atributo) y `selGrupoRut`. La lista de Rutas lo lleva.
+2. **Aprovechar el ancho.** La fila de filtros de Rutas va en UNA línea: buscador · agrupar por (los tres selectores en línea) ·
+   **filtro de fases** (`filtroFasesHTML`, `RUT.fases`, `togFaseRUT`, como en las demás pantallas) · chips.
+3. **Los pasos ya hechos salían desmarcados en la ruta por orden** (una orden en 8Servicios y Terminados mostraba Corte, Estampado,
+   Bordado, Confección «hecho» pero sin marcar). Causa: `mRutaCentro` miraba solo `o.ruta` (la pendiente), y los pasos hechos ya
+   no están ahí. Ahora mira también `o.rutaCompleta`: lo hecho sale marcado y deshabilitado, y solo queda por decidir lo de
+   terminados. Lo mismo le pasaba a **«qué dice Odoo»** (`diagRutaOdoo` comparaba contra la pendiente: «Odoo tiene Corte, la ruta
+   no» en órdenes que sí lo tenían y ya lo habían cortado); ahora compara contra la completa (`pasosProCompleta`), así que muchas más
+   «coinciden exacto» y se pueden confirmar solas.
+   **La OT manda sobre la ruta** (decisión de la usuaria: «cuando cargue la orden de trabajo debería empatarse a la ruta»):
+   `empatarRutaConOT(o)` agrega a la ruta todo centro de producción con orden de trabajo no cancelada (terminada → solo a la
+   completa, como hecho; pendiente → a la completa y a la pendiente), en su orden de paso, con el tiempo de `tiempoPaso`, marcado
+   `{ot:true}` y anotado en `o.rutaOT`; **nunca quita** un paso por falta de OT (Empaque y terminados suelen no tener). Corre al
+   aplicar OT (`aplicarOT`; el aviso y el registro de cargas dicen cuántas órdenes recibieron pasos), al recargar tareas (`aplicarTarea`
+   conserva «ot» y vuelve a empatar) y al rehacer rutas por catálogo (`recalcularRutas`, con la nota «+ OT: …» en la auditoría).
+   Pruebas UX3.
+
 ## Pruebas
 Bloque **RLT** del simulador (23 comprobaciones): la lista y sus grupos con casilla, marcar un grupo desde la cabecera, marcar
 / desmarcar una fila sin redibujar, el modal sobre la selección, base más común, plan (entra/sale/conserva/excluido por la fase),
