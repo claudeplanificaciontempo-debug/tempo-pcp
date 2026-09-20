@@ -6777,7 +6777,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("N3: Tela sin fases marcadas en la tabla 1 es «dato faltante», no «0 u · llega»",fasesDeProcNivel("tela").length>0||(rT.sinFasesTela===true&&rT.estado==="faltante"&&/sin fases marcadas/.test(h)&&rT.falta.some(f=>/fases de Tela/.test(f))),JSON.stringify({fases:fasesDeProcNivel("tela").length,e:rT.estado}));
      __check("N3: un área cuyas órdenes no tienen SAM lo dice en el recuadro (+N u sin SAM)",!(rE.saldo&&rE.saldo.sinSAM.length)||new RegExp("\\+"+num(rE.saldo.unidSinSAM,0).replace(/\./g,"\\.")+" u sin SAM").test(h),JSON.stringify(rE.saldo&&{n:rE.saldo.sinSAM.length,u:rE.saldo.unidSinSAM}));}
     NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;
-    __check("N3: clic en un recuadro muestra SOLO esa área abajo",/¿Alcanza la capacidad en Confección\?/.test(h2)&&!/¿Alcanza la capacidad en Corte\?/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1);
+    __check("N3: clic en un recuadro muestra SOLO esa área abajo",/Nivelación · Confección/.test(h2)&&!/Nivelación · Corte/.test(h2)&&(h2.match(/Saldo por familia y mes/g)||[]).length===1);
     NIVUI.area="corte";render();}
    /* N8 · decisiones 17-sep: Tela y Maquila por fase (al marcar fases el recuadro calcula); Lavado/Plancha por días; todas conectadas */
    {const tabla=faseMapeo();const bak=tabla.map(r=>r.nivel);
@@ -6791,7 +6791,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     tabla.forEach((r,i)=>{r.nivel=bak[i]});NIVC=null;
     const pd=nivUIAreas().filter(a=>a.porDias);
     __check("N8: Lavado y Plancha (por días) siguen en los recuadros marcados «por días, sin capacidad», sin cuadrito, y dicen qué haría falta",pd.length>=1&&pd.some(a=>a.id==="lavado")&&pd.every(a=>centroPorDias(a.id))&&(()=>{NIVUI.area="lavado";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /por días, sin capacidad/.test(h2)&&!/se escribe/.test(h2)&&/harían falta/.test(h2)&&/Saldo por familia/.test(h2)})(),pd.map(a=>a.id).join(","));
-    __check("N8: las demás áreas quedaron conectadas (Confección con cuadrito)",(()=>{NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /¿Alcanza la capacidad en Confección\?/.test(h2)&&/se escribe/.test(h2)&&!/pendiente de conectar/.test(document.getElementById("p-nivelacion").innerHTML)})());}
+    __check("N8: las demás áreas quedaron conectadas (Confección con cuadrito)",(()=>{NIVUI.area="modulos";render();const h2=document.getElementById("p-nivelacion").innerHTML;NIVUI.area="corte";render();return /Nivelación · Confección/.test(h2)&&/se escribe/.test(h2)&&!/pendiente de conectar/.test(document.getElementById("p-nivelacion").innerHTML)})());}
    /* N4 · detalle de Corte: tabla cliente × mes y cuadrito */
    {const r=nivUICalcular("corte");const h=()=>document.getElementById("p-nivelacion").innerHTML;
     __check("N4: la tabla tiene una columna por mes marcado y fila de totales",nivUIMeses().every(m=>new RegExp("<th class=\"num\">"+m+"</th>").test(h()))&&/<td>Total<\/td>/.test(h()));
@@ -6799,7 +6799,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cel=h().match(/onclick="NIVUI.celda=\{por:'familia',fila:'([^']+)',mes:'([^']+)'\}/);
     __check("N4: hay celdas con saldo",!!cel,"sin celdas");
     if(cel){NIVUI.celda={por:"familia",fila:cel[1].replace(/&#39;/g,"'"),mes:cel[2]};render();
-     __check("N4: clic en una celda abre el detalle SOLO hasta tipo de producto: unidades, número de órdenes y «ver órdenes»",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th><th class="num">Órdenes<\/th>/.test(h())&&(h().match(/irSaldoCentro\(/g)||[]).length>=2&&!/<details/.test(h().slice(h().indexOf("tipos de producto"),h().indexOf("¿Alcanza la capacidad en Corte?"))));
+     __check("N4: clic en una celda abre el detalle SOLO hasta tipo de producto: unidades, número de órdenes y «ver órdenes»",/tipos de producto<\/span>/.test(h())&&/<th>Tipo de producto<\/th><th class="num">Unidades<\/th><th class="num">Órdenes<\/th>/.test(h())&&(h().match(/irSaldoCentro\(/g)||[]).length>=2&&!/<details/.test(h().slice(h().indexOf("tipos de producto"),h().indexOf("Nivelación · Corte"))));
      /* la nivelación NO lista WH en ningún punto */
      const sinWH=html=>!/WH\/MO\/|SIN WH #|whCell|foto-mini|fase-mini/.test(html);
      __check("N4: con la celda abierta no aparece ninguna WH en la pantalla de nivelación",sinWH(h()),(h().match(/WH\/MO\/[0-9]+/g)||[]).slice(0,3).join(","));
@@ -6812,7 +6812,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const cab=hc.match(/Saldo por procesar en ([^<]+) <span class="note">([^<]*)<b>(\d+)<\/b> órdenes · <b>([^<]+)<\/b> u/);
        __check("N4→CG: abre Carga general en «Saldo por procesar en Corte» con la selección en el encabezado",page==="produccion"&&!!cab&&/Corte/.test(cab[1])&&new RegExp(sel.meses[0]).test(cab[2])&&new RegExp(esc(sel.hija)).test(cab[2]),cab?cab[0].slice(0,160):hc.slice(0,120));
        __check("N4→CG: el número de órdenes y unidades del detalle coincide EXACTO con la fila de la nivelación",!!cab&&+cab[3]===nFila&&+cab[4].replace(/\./g,"")===uFila,JSON.stringify({cg:cab&&[cab[3],cab[4]],fila:[nFila,uFila]}));
-       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a «¿Alcanza la capacidad\?»/.test(hc)&&/whCell|WH\//.test(hc));
+       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a «Nivelación»/.test(hc)&&/whCell|WH\//.test(hc));
        __check("N4→CG: al llegar desde la nivelación SOLO se ve el bloque de saldo; el resto queda colapsado con «ver el resto de Carga general»",!/Carga contra capacidad por semana/.test(hc)&&!/Familia por centro/.test(hc)&&!/Carga que viene · /.test(hc)&&/ver el resto de Carga general/.test(hc));
        CG.det.verResto=true;render();const hc2=document.getElementById("p-produccion").innerHTML;
        __check("N4→CG: «ver el resto» despliega la pantalla completa sin perder el bloque de saldo",/Carga contra capacidad por semana/.test(hc2)&&/Saldo por procesar en/.test(hc2));

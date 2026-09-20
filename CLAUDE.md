@@ -821,8 +821,8 @@ filtro de fases, el agrupador (`data-filt-tipo=grp`) y los selectores múltiples
 página junto al h2; abierto si `FILT[page]` (localStorage por usuario, `togFiltros`) o si hay un filtro activo
 (`filtroActivoCtl`). `PAGS_SIN_PLEGAR=['tablet']`. **No escribir ledes nuevos ni cabeceras propias: el «?» y «Filtrar» son
 el patrón.** Diccionario aprobado (textos visibles, no identificadores): cercanía → **orden de llegada**, atasco →
-**cuello de botella**, colchón → **días de holgura**, min/prenda → **SAM**, «Nivelación de carga» → **«¿Alcanza la
-capacidad?»**; se quedan «Todo lo que viene», congelar, WH, ODC. **Semáforo**: `estadoSemaforo(o,P)` /
+**cuello de botella**, colchón → **días de holgura**, min/prenda → **SAM**, «Nivelación de carga» → **«Nivelación»** (el 19-sep se probó
+«¿Alcanza la capacidad?» y el 20-sep la usuaria pidió volver a «Nivelación»: «se ve mejor»); se quedan «Todo lo que viene», congelar, WH, ODC. **Semáforo**: `estadoSemaforo(o,P)` /
 `estadoSemaforoHTML` = un color (verde/ámbar/rojo/gris) y un verbo por orden, derivado de diagAtraso, liberada/
 faltaLiberarA, bloqueo, pasoProximoDe + cercaniaCentro — **no crear otro estado**; se usa en Órdenes (columna Estado),
 Liberación B1 y Control de piso (**Entregas NO: quedó como el cliente la necesita**). **Resumen del centro**: tres grupos — **En proceso** (`enProcesoEnCentro`: fase de Odoo del propio centro,

@@ -247,7 +247,7 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 ### 2.62 Para Dummies · entrega 1 (19-sep)
 - Misma cabecera en todas las pantallas: los párrafos explicativos viven en el «?» del título; buscador, filtro de fases y
   agrupador plegados bajo un botón «Filtrar» (se abre solo con un filtro activo; se recuerda por usuario; la tablet no se
-  pliega). Palabras de planta: orden de llegada, cuello de botella, días de holgura, SAM, «¿Alcanza la capacidad?».
+  pliega). Palabras de planta: orden de llegada, cuello de botella, días de holgura, SAM, «Nivelación» (el 20-sep se descartó «¿Alcanza la capacidad?»).
   Semáforo (`estadoSemaforo`): un color y un verbo por orden en Órdenes, Liberación, Entregas y Control de piso.
   Propuesta completa (A–J) en `UX_PARA_DUMMIES_PROPUESTA.md`; ver `DUMMIES_1_CABECERA_PALABRAS_SEMAFORO.md`.
 
