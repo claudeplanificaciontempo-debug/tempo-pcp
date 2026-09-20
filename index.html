@@ -768,7 +768,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-19 22:25';
+const APP_BUILD='2026-09-19 23:01';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9906,15 +9906,21 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
    <div class="body"><div class="row">${propuestaFalta().map((p,i)=>`<span><input type="text" style="width:140px" value="${esc(p.palabra)}" onchange="setPropFaltaRow(${i},'palabra',this.value)"> <select style="width:auto" onchange="setPropFaltaRow(${i},'falta',this.value)">${['tintura','lavado','nada'].map(v=>`<option value="${v}" ${p.falta===v?'selected':''}>${v==='lavado'?'lavado de tela':v}</option>`).join('')}</select> <button class="btn ghost sm" onclick="delPropFaltaRow(${i})">×</button></span>`).join('')}</div>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Tres cosas distintas por tela: <b>quién la produce</b> (tabla 3: propia = carga tejeduría · externa = comprada o importada), <b>disponibilidad</b> (usuaria TEMPO = en bodega · proveedor de facturas = hay que pedir) y <b>qué le falta</b> (esta tabla + confirmación en Liberación = carga tintorería; el lavado de tela es un baño más, con horas de color oscuro).</p></div></div>
 
-  <div class="panel"><h3>12 · Catálogo de productos <span class="note">proveedor desde facturas de compra; origen por facturas + tabla 3; tipo detectado y corregible</span><span class="spacer"></span>${puede('ordenes')?`<button class="btn ghost sm" onclick="mFacturas()">Cargar facturas</button>`:''}</h3>
-   <div class="body"><div class="row" style="margin-bottom:8px"><input type="text" style="width:320px" placeholder="buscar código o nombre" value="${esc(CONF.qProd||'')}" data-q="CONF.qProd" oninput="buscarQ(this,v=>CONF.qProd=v)"><span class="mut" style="font-size:var(--fs-xs)">${Object.keys(catalogoProd()).length} productos con factura · ${S.params.facturasCarga?'última carga '+new Date(S.params.facturasCarga.fecha).toLocaleString('es-EC')+' ('+esc(S.params.facturasCarga.archivo)+')':'sin facturas cargadas'}</span></div>
-   ${(()=>{const q=normFase(CONF.qProd||'');const C=catalogoProd();const U=catalogoUsuaria();const codes=new Set([...Object.keys(C),...Object.keys(U)]);const prods={};S.ordenes.forEach(o=>(o.materiales||[]).forEach(m=>{if(m.cod&&!prods[m.cod])prods[m.cod]={nombre:m.prod,ruta:m.ruta}}));Object.keys(prods).forEach(c=>codes.add(c));
-     const filas=[...codes].filter(c=>!q||normFase(c).includes(q)||normFase((C[c]||{}).nombre||(prods[c]||{}).nombre||'').includes(q)).slice(0,300);
-     return `<div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Código</th><th>Producto</th><th>Proveedor (facturas)</th><th>Otros proveedores</th><th>Según usuaria</th><th>Origen</th><th>Tipo</th><th>Corregir tipo</th></tr></thead><tbody>
-      ${filas.map(cod=>{const c=C[cod]||{};const u=U[cod]||{};const p=prods[cod]||{};const org=origenProducto(cod,p.ruta||'');const nombre=c.nombre||p.nombre||'';const tipo=tipoProducto(cod,'['+cod+'] '+nombre);
-        return `<tr><td>${esc(cod)}</td><td>${esc(String(nombre).slice(0,50))}</td><td>${esc(c.prov||'')}${c.revisar?' <span class="tag t-aviso">revisar</span>':''}</td><td class="mut">${Object.keys(c.provs||{}).filter(x=>x!==c.prov).map(x=>esc(x)+' ('+c.provs[x]+')').join(', ')}</td><td class="mut">${esc(u.prov||'')}</td>
-          <td>${org.origen}${org.contradiccion?' <span class="tag t-alerta">contradicción</span>':''}${org.candidato?' <span class="mut">(candidato)</span>':''}</td><td>${tipo}</td><td><select onchange="setTipoManual('${esc(cod)}',this.value)"><option value="" ${!(C[cod]||{}).tipoManual?'selected':''}>auto</option><option ${(C[cod]||{}).tipoManual==='LLANO'?'selected':''}>LLANO</option><option ${(C[cod]||{}).tipoManual==='JASPE'?'selected':''}>JASPE</option></select></td></tr>`}).join('')}
-      </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Se muestran hasta 300; usa el buscador. "Según usuaria" viene del catálogo MP-IN de la macro (sembrado).</p>`})()}</div></div>
+  <div class="panel"><h3>12 · Catálogo de productos <span class="note">maestro de productos (código, unidad, proveedor, categoría, elaboración propia) + proveedor desde facturas; origen por producto (maestro) y, si no, por la tabla 3; tipo detectado y corregible</span><span class="spacer"></span>${(puede('ordenes')||puede('config'))?`<button class="btn sm" onclick="mCargarMaestro()">Cargar maestro de productos</button> <button class="btn ghost sm" onclick="mRecalcularTelas()" title="rehace las telas y la ruta textil de las órdenes abiertas con el maestro y las tablas 3/8/13, sin volver a cargar Odoo">Recalcular telas de las órdenes</button> <button class="btn ghost sm" onclick="mFacturas()">Cargar facturas</button>`:''}</h3>
+   <div class="body"><div class="row" style="margin-bottom:8px"><input type="text" style="width:320px" placeholder="buscar código, nombre o proveedor" value="${esc(CONF.qProd||'')}" data-q="CONF.qProd" oninput="buscarQ(this,v=>CONF.qProd=v)"><label style="display:inline-flex;gap:6px;align-items:center;font-size:var(--fs-xs)"><input type="checkbox" ${CONF.prodSoloOrdenes?'checked':''} onchange="CONF.prodSoloOrdenes=this.checked;render()"> solo productos de las órdenes cargadas</label><span class="mut" style="font-size:var(--fs-xs)">${num(Object.keys(maestroProductos()).length)} productos en el maestro${S.params.maestroCarga?' (última carga '+new Date(S.params.maestroCarga.fecha).toLocaleString('es-EC')+', '+esc(S.params.maestroCarga.archivo)+')':' (sin maestro cargado)'} · ${num(Object.keys(catalogoProd()).length)} con factura${S.params.facturasCarga?' ('+esc(S.params.facturasCarga.archivo)+')':''}</span></div>
+   ${(()=>{const q=normFase(CONF.qProd||'');const C=catalogoProd();const U=catalogoUsuaria();const MA=maestroProductos();const prods={};S.ordenes.forEach(o=>(o.materiales||[]).forEach(m=>{if(!m.cod)return;const p=prods[m.cod]=prods[m.cod]||{nombre:m.prod,ruta:m.ruta,n:0,tela:m.clasif==='tela'};p.n++}));
+     const codes=new Set(CONF.prodSoloOrdenes?Object.keys(prods):[...Object.keys(MA),...Object.keys(C),...Object.keys(U),...Object.keys(prods)]);
+     const provDe=cod=>{const c=C[cod]||{},m=MA[cod]||{},u=U[cod]||{};if(m.propia||esTempoProv(m.prov))return 'TEMPO';return c.prov||m.prov||u.prov||''};
+     const filas=[...codes].filter(c=>!q||normFase(c).includes(q)||normFase((MA[c]||{}).nombre||(C[c]||{}).nombre||(prods[c]||{}).nombre||'').includes(q)||normFase(provDe(c)).includes(q));
+     /* agrupado por proveedor: «sin proveedor» siempre primero (es lo que falta completar), luego de mayor a menor */
+     const grupos={};filas.forEach(c=>{const k=provDe(c)||'(sin proveedor)';(grupos[k]=grupos[k]||[]).push(c)});
+     const orden=Object.keys(grupos).sort((a,b)=>(a==='(sin proveedor)'?-1:b==='(sin proveedor)'?1:0)||grupos[b].length-grupos[a].length);
+     const fila=cod=>{const c=C[cod]||{};const u=U[cod]||{};const m=MA[cod]||{};const p=prods[cod]||{};const org=origenProducto(cod,m.ruta||p.ruta||'');const nombre=m.nombre||c.nombre||p.nombre||'';const tipo=tipoProducto(cod,'['+cod+'] '+nombre);const n3=String(m.ruta||p.ruta||'').split('/').map(x=>x.trim()).slice(2).join(' / ');
+        return `<tr><td>${esc(cod)}</td><td>${esc(String(nombre).slice(0,50))}</td><td class="mut">${esc(m.udm||'')}</td><td class="mut">${esc(n3)}</td><td>${esc(m.prov||'')}${m.provConservado?' <span class="tag t-aviso" title="el último maestro vino sin proveedor: se conservó el de aquí">conservado</span>':''}</td><td>${esc(c.prov||'')}${c.revisar?' <span class="tag t-aviso">revisar</span>':''}${Object.keys(c.provs||{}).filter(x=>x!==c.prov).length?' <span class="mut">+'+Object.keys(c.provs||{}).filter(x=>x!==c.prov).length+'</span>':''}</td><td class="mut">${esc(u.prov||'')}</td>
+          <td>${org.origen}${org.fuente==='maestro'?' <span class="mut">(maestro)</span>':''}${org.contradiccion?' <span class="tag t-alerta">contradicción</span>':''}${org.candidato?' <span class="mut">(candidato)</span>':''}</td><td class="num">${p.n?num(p.n):''}</td><td>${tipo}</td><td><select onchange="setTipoManual('${esc(cod)}',this.value)"><option value="" ${!(C[cod]||{}).tipoManual?'selected':''}>auto</option><option ${(C[cod]||{}).tipoManual==='LLANO'?'selected':''}>LLANO</option><option ${(C[cod]||{}).tipoManual==='JASPE'?'selected':''}>JASPE</option></select></td></tr>`};
+     const cab='<thead><tr><th>Código</th><th>Producto</th><th>Unidad</th><th>Tipo de Odoo</th><th>Proveedor (maestro)</th><th>Proveedor (facturas)</th><th>Según usuaria</th><th>Origen</th><th class="num">Líneas en órdenes</th><th>Tipo</th><th>Corregir tipo</th></tr></thead>';
+     let tot=0;return `<div class="mut" style="font-size:var(--fs-xs);margin-bottom:6px">${num(filas.length)} productos · ${orden.length} proveedores · <b>${num((grupos['(sin proveedor)']||[]).length)}</b> sin proveedor</div><div class="scroll" style="max-height:520px">${orden.map(k=>{const l=grupos[k];const vis=l.slice(0,Math.max(0,400-tot));tot+=vis.length;const abierto=k==='(sin proveedor)'||!!q||orden.length<=2;
+       return `<details ${abierto?'open':''} style="margin-bottom:6px"><summary style="cursor:pointer;font-size:var(--fs-s)"><b>${esc(k)}</b> <span class="mut">${num(l.length)} productos${k==='(sin proveedor)'?' · completar en el maestro y volver a cargar':''}</span></summary>${vis.length?`<table style="font-size:var(--fs-xs)">${cab}<tbody>${vis.map(fila).join('')}</tbody></table>${l.length>vis.length?'<div class="mut" style="font-size:var(--fs-xs)">… '+num(l.length-vis.length)+' más (busca para acotar)</div>':''}`:'<div class="mut" style="font-size:var(--fs-xs)">… (busca para acotar)</div>'}</details>`}).join('')}</div><p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Hasta 400 filas; usa el buscador. «Según usuaria» viene del catálogo MP-IN de la macro (sembrado). Origen: maestro (TEMPO / proveedor) → facturas → tabla 3 por categoría.</p>`})()}</div></div>
 
   <div class="panel"><h3>6 · Centro de trabajo de Odoo → centro TEMPO <span class="note">órdenes de trabajo (mrp.workorder)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentroOTRow()">+ Centro</button></h3>
    <div class="body"><table><thead><tr><th>Centro de trabajo (texto de Odoo)</th><th title="si la columna Operaciones contiene este texto, manda esta fila">operación contiene</th><th>Centro TEMPO</th><th>Recurso (módulo real, opcional)</th><th title="otros centros TEMPO que esta OT también cierra (ids separados por coma, p. ej. botones)">cierra también</th><th title="solo una OT terminada cuenta; en proceso / para hacer no reabren el centro (pulido, servicios y terminados)">solo cierra</th><th title="baja de materiales, no producción: se cuenta y se ignora">ignorar</th><th title="el recurso de esta fila no es confiable para atribuir trabajo por módulo">histórico</th><th title="si Operaciones trae el nombre de un módulo existente, ese es el real">módulo desde operación</th><th></th><th></th></tr></thead><tbody>
@@ -10229,15 +10235,15 @@ function catTela(){if(!Array.isArray(S.params.catTela))S.params.catTela=defCatTe
       confirma o cambia en Liberación (queda quién y cuándo). Decide si carga TINTORERÍA. El lavado de tela es un baño más, con horas de color oscuro. */
 function defPropuestaFalta(){return [{palabra:'TINTURAD',falta:'nada'},{palabra:'TEÑID',falta:'nada'},{palabra:'TENID',falta:'nada'},{palabra:'PFD',falta:'tintura'},{palabra:'CRUD',falta:'tintura'}]} // el lavado de tela no se propone por palabra: se decide en liberación
 function propuestaFalta(){if(!Array.isArray(S.params.propuestaFalta))S.params.propuestaFalta=defPropuestaFalta();return S.params.propuestaFalta}
-function dimensionesTela(m){const org=m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
-  const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;
+function dimensionesTela(m){const org=origenPorMaestro(m.cod)||m.origen;const produce=org==='PROPIA'?'propia':(org==='EXTERNA'||org==='EXTERNA TEÑIDA')?'externa':'sin clasificar';
+  const us=m.cod?catalogoUsuaria()[m.cod]:null;const cp=m.cod?catalogoProd()[m.cod]:null;const mp=m.cod?provPorMaestro(m.cod):'';
   const disp=produce==='propia'?'teje':(us&&normFase(us.prov)===normFase('TEMPO'))?'bodega':produce==='externa'?'pedir':'sin dato';/* externa sin marca TEMPO: hay que pedirla (como antes); solo TEMPO = ya está en bodega */
   const n=normTxt(m.prod||'');const pal=propuestaFalta().find(r=>r.palabra&&n.includes(normTxt(r.palabra)));
-  const falta=pal?pal.falta:(org==='EXTERNA TEÑIDA'?'nada':'tintura');return{produce,disp,falta,prov:cp?cp.prov:(us?us.prov:'')}}
+  const falta=pal?pal.falta:(org==='EXTERNA TEÑIDA'?'nada':'tintura');return{produce,disp,falta,prov:cp?cp.prov:(mp||(us?us.prov:''))}}
 /* líneas de tela de una orden con sus tres dimensiones. Las planas vienen en METROS y se quedan en metros (ud 'm', m); los kilos de la plana
    vienen del rollo en bodega y se registran en la tanda de tintorería: metros y kilos nunca se calculan uno del otro */
-function lineasTelaDe(materiales){return (materiales||[]).filter(m=>m.clasif==='tela'&&(normTxt(m.udm)==='kg'||normTxt(m.udm)==='m')&&m.dem>0).map(m=>{const dm=dimensionesTela(m);
-  if(normTxt(m.udm)==='kg')return Object.assign({},m,dm,{kg:+m.dem||0,ud:'kg'});return Object.assign({},m,dm,{kg:0,m:+m.dem||0,ud:'m'})})}
+function lineasTelaDe(materiales){return (materiales||[]).filter(m=>m.clasif==='tela'&&(normTxt(m.udm)==='kg'||normTxt(m.udm)==='m')&&m.dem>0).map(m=>{const dm=dimensionesTela(m);const org=origenPorMaestro(m.cod)||m.origen;
+  if(normTxt(m.udm)==='kg')return Object.assign({},m,{origen:org},dm,{kg:+m.dem||0,ud:'kg'});return Object.assign({},m,{origen:org},dm,{kg:0,m:+m.dem||0,ud:'m'})})}
 function faltaTela(tl){return (tl.faltaConf&&tl.faltaConf.v)||tl.falta||(tl.ext?'nada':'tintura')}
 function necesitaTin(tl){return faltaTela(tl)!=='nada'}
 const COL_LAVADO='col_lavado_tela';
@@ -10284,6 +10290,107 @@ function palabrasJaspe(){if(!Array.isArray(S.params.palabrasJaspe))S.params.pala
 function tipoDetectado(nombre){const n=normFase(nombre);return palabrasJaspe().some(p=>p.palabra&&n.includes(normFase(p.palabra)))?'JASPE':'LLANO'}
 function addPropFaltaRow(){propuestaFalta().push({palabra:'',falta:'tintura'});save();render()}function setPropFaltaRow(i,k,v){propuestaFalta()[i][k]=v;save()}function delPropFaltaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;propuestaFalta().splice(i,1);save();render()}
 function addPalabraJaspeRow(){palabrasJaspe().push({palabra:'',pendiente:true});save();render()}function setPalabraJaspeRow(i,v){palabrasJaspe()[i].palabra=v;save()}function delPalabraJaspeRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;palabrasJaspe().splice(i,1);save();render()}
+/* ---------- MAESTRO DE PRODUCTOS (19-sep-2026): el archivo de la usuaria con TODOS los productos de Odoo ----------
+   Por código: nombre, unidad, proveedor, categoría de Odoo, «elaboración propia (TEMPO)». Es la fuente del ORIGEN de cada
+   línea de tela POR PRODUCTO (TEMPO / propia → se teje aquí; otro proveedor → externa; sin proveedor → decide la tabla 3 por
+   categoría) y del proveedor (después de las facturas). Se carga con vista previa; un producto que venga sin proveedor NO borra
+   el que ya tenía (la usuaria dijo: los sin proveedor son nuevos o no comprados todavía; se completan en la próxima carga). */
+function maestroProductos(){if(!S.params.maestroProductos||typeof S.params.maestroProductos!=='object')S.params.maestroProductos={};return S.params.maestroProductos}
+function esTempoProv(p){return normFase(p||'')==='tempo'}
+function origenPorMaestro(cod){const m=cod?maestroProductos()[cod]:null;if(!m)return null;if(m.propia||esTempoProv(m.prov))return 'PROPIA';if(m.prov)return 'EXTERNA';return null}
+function provPorMaestro(cod){const m=cod?maestroProductos()[cod]:null;return m&&m.prov?m.prov:''}
+const COLS_MAESTRO={cod:['Referencia Interna','Referencia interna','Código','Codigo','Referencia','Código interno'],nombre:['Nombre','Producto'],udm:['Unidad de Medida','Unidad de medida','UdM','Unidad'],prov:['Proveedor'],
+  ruta:['Categoría de Producto','Categoria de Producto','Categoría','Categoria'],propia:['Elaboración propia (Tempo)','Elaboracion propia (Tempo)','Elaboración propia','Propia'],pend:['Pendiente por completar','Pendiente']};
+let MAESTRO=null;
+function mCargarMaestro(){if(!(puede('ordenes')||puede('config'))){alert('Tu perfil no carga el maestro de productos.');return}
+  abrir(`<h3>Maestro de productos <span class="note">código · nombre · unidad · proveedor · categoría de Odoo · elaboración propia</span></h3><div class="body">
+   <p class="lede" style="margin-top:0">Sube el maestro de productos (columnas: Referencia Interna, Nombre, Unidad de Medida, Proveedor, Categoría de Producto, Elaboración propia (Tempo)). TEMPO o «elaboración propia» = lo hacemos nosotros (se teje aquí); otro proveedor = tela externa; sin proveedor = todavía no comprado (decide la tabla 3 por categoría y queda en el grupo «sin proveedor» hasta la próxima carga). Un producto que venga sin proveedor NO borra el que ya tenía. Nada se guarda hasta aplicar.</p>
+   <input type="file" id="f-maestro" accept=".xlsx,.xls,.csv"><div id="maestro-res" style="margin-top:14px"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="maestro-ok" disabled onclick="aplicarMaestro()">Aplicar al catálogo</button></div>`,true);
+  document.getElementById('f-maestro').addEventListener('change',leerMaestro)}
+async function leerMaestro(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('maestro-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
+  const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
+  const plan=planMaestro(rows,f.name);if(!plan){res.innerHTML='No encuentro la columna del código («Referencia Interna»).';return}
+  MAESTRO=plan;res.innerHTML=resumenMaestroHTML(plan);document.getElementById('maestro-ok').disabled=!plan.filas}
+function planMaestro(rows,nombre){const h=(rows[0]||[]).map(x=>normTxt(x));const col=ns=>{for(const n of ns){const i=h.findIndex(x=>x===normTxt(n));if(i>=0)return i}return -1};
+  const I={cod:col(COLS_MAESTRO.cod),nombre:col(COLS_MAESTRO.nombre),udm:col(COLS_MAESTRO.udm),prov:col(COLS_MAESTRO.prov),ruta:col(COLS_MAESTRO.ruta),propia:col(COLS_MAESTRO.propia),pend:col(COLS_MAESTRO.pend)};
+  if(I.cod<0)return null;const str=v=>v==null?'':String(v).trim();const M=maestroProductos();
+  const plan={archivo:nombre,filas:0,columnas:{prov:I.prov>=0,udm:I.udm>=0,ruta:I.ruta>=0,propia:I.propia>=0},productos:{},repetidos:[],nuevos:0,actualizados:0,cambiaProv:[],conservaProv:0,sinProv:0,tempo:0,conProv:0,porNivel2:{},mp:{},porProv:{},udm:{},cruce:null};
+  rows.slice(1).forEach((r,i)=>{const cod=str(r[I.cod]);if(!cod)return;plan.filas++;
+    const p={cod,nombre:str(I.nombre>=0?r[I.nombre]:''),udm:str(I.udm>=0?r[I.udm]:''),prov:str(I.prov>=0?r[I.prov]:''),ruta:str(I.ruta>=0?r[I.ruta]:''),propia:I.propia>=0?/^(s[ií]|x|1|true|verdadero)$/i.test(str(r[I.propia])):false,pend:str(I.pend>=0?r[I.pend]:''),fila:i+2};
+    if(plan.productos[cod]){plan.repetidos.push(cod);return}plan.productos[cod]=p;
+    const niv=p.ruta.split('/').map(x=>x.trim());const n2=niv[1]||'(sin)',n3=niv[2]||'';plan.porNivel2[n2]=(plan.porNivel2[n2]||0)+1;
+    const tempo=p.propia||esTempoProv(p.prov);
+    if(normFase(n2)==='mp'){const k=n3||'(sin nivel 3)';const g=plan.mp[k]=plan.mp[k]||{n:0,tempo:0,sinProv:0,udm:{},provs:{}};g.n++;if(tempo)g.tempo++;else if(!p.prov)g.sinProv++;else g.provs[p.prov]=(g.provs[p.prov]||0)+1;g.udm[p.udm||'(sin)']=(g.udm[p.udm||'(sin)']||0)+1}
+    if(tempo)plan.tempo++;else if(p.prov)plan.conProv++;else plan.sinProv++;
+    plan.porProv[tempo?'TEMPO':(p.prov||'(sin proveedor)')]=(plan.porProv[tempo?'TEMPO':(p.prov||'(sin proveedor)')]||0)+1;plan.udm[p.udm||'(sin)']=(plan.udm[p.udm||'(sin)']||0)+1;
+    const v=M[cod];if(!v)plan.nuevos++;else{plan.actualizados++;if(v.prov&&!p.prov&&!p.propia)plan.conservaProv++;else if(v.prov&&p.prov&&normFase(v.prov)!==normFase(p.prov))plan.cambiaProv.push({cod,antes:v.prov,ahora:p.prov})}});
+  /* cruce con los materiales de las órdenes ya cargadas: cuántos códigos están en el maestro y cuántas telas quedan con origen definido */
+  {const cods={};S.ordenes.forEach(o=>(o.materiales||[]).forEach(m=>{if(!m.cod)return;const k=m.cod;cods[k]=cods[k]||{n:0,tela:m.clasif==='tela',ruta:m.ruta,nombre:m.prod};cods[k].n++}));
+   const ks=Object.keys(cods);const en=ks.filter(k=>plan.productos[k]);const telas=ks.filter(k=>cods[k].tela);const telasEn=telas.filter(k=>plan.productos[k]);
+   const conOrigen=telasEn.filter(k=>{const p=plan.productos[k];return p.propia||p.prov});
+   plan.cruce={codigos:ks.length,enMaestro:en.length,sinMaestro:ks.filter(k=>!plan.productos[k]).sort((a,b)=>cods[b].n-cods[a].n).slice(0,40).map(k=>({cod:k,n:cods[k].n,nombre:cods[k].nombre,ruta:cods[k].ruta})),
+     telas:telas.length,telasEnMaestro:telasEn.length,telasConOrigen:conOrigen.length,telasSinProv:telasEn.filter(k=>{const p=plan.productos[k];return !p.propia&&!p.prov}).sort((a,b)=>cods[b].n-cods[a].n).map(k=>({cod:k,n:cods[k].n,nombre:cods[k].nombre,ruta:cods[k].ruta}))}}
+  return plan}
+function resumenMaestroHTML(p){const li=(n,t,cls)=>`<tr${cls?' class="'+cls+'"':''}><td class="num"><b>${num(n||0)}</b></td><td>${t}</td></tr>`;const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,n])=>esc(k)+' <b>'+num(n)+'</b>').join(' · ');
+  const c=p.cruce||{};const mp=Object.entries(p.mp).sort((a,b)=>b[1].n-a[1].n);
+  return `<div class="panel" style="margin:0 0 10px"><h3>Qué pasará al aplicar <span class="note">nada se guarda hasta confirmar</span></h3><div class="body"><table style="font-size:var(--fs-s)"><tbody>
+   ${li(p.filas,'productos en el archivo'+(p.repetidos.length?' · <b>'+p.repetidos.length+'</b> códigos repetidos (se toma la primera fila): '+esc(p.repetidos.slice(0,6).join(', ')):''))}
+   ${li(p.nuevos,'productos <b>nuevos</b> en el catálogo')}${li(p.actualizados,'productos que <b>ya estaban</b> (se actualizan nombre, unidad, categoría y proveedor)')}
+   ${li(p.tempo,'<b>TEMPO / elaboración propia</b>: los hacemos nosotros (las telas se tejen aquí)')}${li(p.conProv,'con <b>proveedor externo</b>')}${li(p.sinProv,'<b>sin proveedor</b> (nuevos o no comprados todavía: quedan en el grupo «sin proveedor» de la tabla 12; decide la tabla 3 por categoría mientras tanto)',p.sinProv?'warn':'')}
+   ${li(p.conservaProv,'vienen sin proveedor pero aquí ya tenían uno: <b>se conserva</b> el de aquí')}${li(p.cambiaProv.length,'cambian de proveedor: '+esc(p.cambiaProv.slice(0,8).map(x=>x.cod+' '+x.antes+' → '+x.ahora).join(', ')),p.cambiaProv.length?'warn':'')}
+   ${!p.columnas.prov?'<tr class="warn"><td class="num">—</td><td>el archivo <b>no trae la columna Proveedor</b>: no se cambia ningún proveedor</td></tr>':''}${!p.columnas.ruta?'<tr class="warn"><td class="num">—</td><td>el archivo <b>no trae la categoría de Odoo</b></td></tr>':''}
+  </tbody></table>
+  <p style="font-size:var(--fs-xs);margin:8px 0 2px"><b>Por nivel 2:</b> ${top(p.porNivel2)}</p><p style="font-size:var(--fs-xs);margin:2px 0"><b>Unidades:</b> ${top(p.udm)}</p><p style="font-size:var(--fs-xs);margin:2px 0"><b>Proveedores:</b> ${top(p.porProv)}</p>
+  ${mp.length?`<h4 style="margin:10px 0 4px">Telas (MP) por tipo de Odoo</h4><div class="scroll" style="max-height:220px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Tipo (nivel 3)</th><th class="num">Productos</th><th class="num">TEMPO</th><th class="num">Sin proveedor</th><th>Unidad</th><th>Proveedores</th></tr></thead><tbody>${mp.map(([k,g])=>`<tr><td>${esc(k)}</td><td class="num">${num(g.n)}</td><td class="num">${num(g.tempo)}</td><td class="num">${g.sinProv?'<b>'+num(g.sinProv)+'</b>':'0'}</td><td class="mut">${esc(Object.entries(g.udm).map(([u,n])=>u+' '+n).join(' · '))}</td><td class="mut">${esc(Object.entries(g.provs).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([u,n])=>u.slice(0,28)+' '+n).join(' · '))}</td></tr>`).join('')}</tbody></table></div>`:''}
+  ${c.codigos!=null?`<h4 style="margin:10px 0 4px">Cruce con las órdenes cargadas</h4><table style="font-size:var(--fs-s)"><tbody>${li(c.codigos,'códigos de producto en los materiales de las órdenes · <b>'+num(c.enMaestro)+'</b> están en el maestro · <b>'+num(c.codigos-c.enMaestro)+'</b> no'+((c.sinMaestro||[]).length?': '+esc(c.sinMaestro.slice(0,10).map(x=>x.cod+' ('+x.n+')').join(', ')):''))}
+   ${li(c.telas,'de ellos son <b>telas</b> · <b>'+num(c.telasConOrigen)+'</b> quedan con origen definido por el maestro (propia / externa) · <b>'+num((c.telasSinProv||[]).length)+'</b> siguen sin proveedor'+((c.telasSinProv||[]).length?': '+esc(c.telasSinProv.slice(0,10).map(x=>x.cod+' '+String(x.nombre||'').slice(0,30)+' ('+x.n+')').join(', ')):''),(c.telasSinProv||[]).length?'warn':'')}
+  </tbody></table><p class="mut" style="font-size:var(--fs-xs);margin-top:6px">Al aplicar se ofrece <b>recalcular las telas de las órdenes ya cargadas</b> con el maestro (origen, proveedor, ruta textil); si no, se aplica en la próxima carga de tareas.</p>`:''}
+  </div></div>`}
+function aplicarMaestro(){if(!MAESTRO)return;if(!(puede('ordenes')||puede('config'))){alert('Tu perfil no carga el maestro de productos.');return}const p=MAESTRO;const M=maestroProductos();const ts=new Date().toISOString();
+  let nuevosProv=0;Object.values(p.productos).forEach(x=>{const v=M[x.cod]||{};const prov=x.prov||(x.propia?'TEMPO':'')||v.prov||'';
+    M[x.cod]={nombre:x.nombre||v.nombre||'',udm:x.udm||v.udm||'',prov,propia:!!(x.propia||esTempoProv(prov)),ruta:x.ruta||v.ruta||'',pend:x.pend||'',ts,archivo:p.archivo||'',provConservado:!!(v.prov&&!x.prov&&!x.propia)}});
+  /* cada proveedor nuevo entra a la tabla de días de entrega como los demás: con el estimado general (DIAS_PROV_EST) marcado «estimado», editable y a la vista */
+  {const D=diasProveedor();const vistos=new Set(D.map(r=>normFase(r.prov)));Object.values(M).forEach(x=>{if(!x.prov||esTempoProv(x.prov)||vistos.has(normFase(x.prov)))return;vistos.add(normFase(x.prov));D.push({prov:x.prov,dias:DIAS_PROV_EST,estimado:true,origen:'maestro de productos'});nuevosProv++})}
+  S.params.maestroCarga={archivo:p.archivo,fecha:ts,filas:p.filas,nuevos:p.nuevos,actualizados:p.actualizados,tempo:p.tempo,conProv:p.conProv,sinProv:p.sinProv,conservaProv:p.conservaProv,cambiaProv:p.cambiaProv.length,cruce:p.cruce?{codigos:p.cruce.codigos,enMaestro:p.cruce.enMaestro,telas:p.cruce.telas,telasConOrigen:p.cruce.telasConOrigen,telasSinProv:(p.cruce.telasSinProv||[]).length}:null};
+  registrarCarga('maestro',p.archivo,{filas:p.filas,nuevos:p.nuevos,actualizados:p.actualizados,tempo:p.tempo,conProv:p.conProv,sinProv:p.sinProv,conservaProv:p.conservaProv,cambiaProv:p.cambiaProv.length,nuevosProv});
+  bitacora('Maestro de productos '+p.archivo+': '+p.filas+' productos ('+p.nuevos+' nuevos, '+p.actualizados+' actualizados; '+p.tempo+' TEMPO, '+p.conProv+' con proveedor, '+p.sinProv+' sin proveedor, '+p.conservaProv+' conservan el proveedor de aquí, '+p.cambiaProv.length+' cambian de proveedor); '+nuevosProv+' proveedores nuevos en la tabla de días de entrega (con el estimado general, marcado estimado) ('+quienFirma()+')');
+  MAESTRO=null;save();cerrar();
+  const prev=recalcularTelasOrdenes(false);
+  if(prev.cambiadas&&confirm('Maestro aplicado. Con él cambian las telas de '+prev.cambiadas+' de las '+prev.n+' órdenes abiertas ('+prev.ganaron+' pasan a tener receta de tela, '+prev.perdieron+' la pierden). ¿Recalcular ahora las telas y la ruta textil de esas órdenes? (queda en bitácora; si no, se aplica en la próxima carga de tareas)'))recalcularTelasOrdenes(true);
+  render()}
+/* ---------- telas de una orden a partir de sus materiales: UNA sola función para la carga y para el recálculo ---------- */
+function armarTelasDe(materiales,rep){rep=rep||{telaEnMetros:{},telaSinClasificar:{},telaSinCatalogo:{}};
+  const telasKg=lineasTelaDe(materiales);
+  telasKg.filter(m=>m.ud==='m').forEach(m=>{const k=m.n3+(m.n4?' / '+m.n4:'');rep.telaEnMetros[k]=(rep.telaEnMetros[k]||0)+1});
+  const origs=[...new Set(telasKg.map(m=>m.origen))];
+  const sinClas=telasKg.filter(m=>m.origen==='SIN CLASIFICAR');if(sinClas.length){[...new Set(sinClas.map(m=>m.n3))].forEach(n3=>{rep.telaSinClasificar[n3]=rep.telaSinClasificar[n3]||{ordenes:0};rep.telaSinClasificar[n3].ordenes++})}
+  const origen=origs.includes('PROPIA')?'PROPIA':origs.includes('EXTERNA')?'EXTERNA':origs.includes('EXTERNA TEÑIDA')?'EXTERNA TEÑIDA':origs.length?'SIN CLASIFICAR':null;
+  // telas para el motor: tela del catálogo por la tabla 8 (categoría Odoo → tela corta → tela). Sin enlace: la línea no entra al motor y se reporta
+  const acc={};telasKg.forEach(m=>{const t=telaDeRuta(m.ruta);if(!t){rep.telaSinCatalogo[m.n3||m.ruta]=(rep.telaSinCatalogo[m.n3||m.ruta]||0)+1;return}const key=[t,m.origen,m.produce,m.disp,m.falta,m.prov||'',m.ud].join('|');const a=acc[key]=acc[key]||{kg:0,m:0};a.kg+=m.kg;a.m+=m.m||0});
+  const telas=Object.entries(acc).sort((a,b)=>(b[1].kg+b[1].m)-(a[1].kg+a[1].m)).map(([key,v],i)=>{const [t,org,produce,disp,falta,prov,ud]=key.split('|');const tl={tela:t,kg:+v.kg.toFixed(3),rol:i?'complemento':'base',ext:produce==='propia'?null:'ext',origen:org,produce,disp,falta,color:null};if(prov)tl.prov=prov;if(ud==='m'){tl.ud='m';tl.m=+v.m.toFixed(1)}return tl});
+  return {telasKg,origs,origen,telas,sinClas}}
+/* recalcular las telas de las órdenes abiertas con las tablas de hoy (maestro, tabla 3, tabla 8, tabla 13) sin volver a cargar Odoo.
+   aplicar=false: solo cuenta (vista previa). Conserva «qué le falta» confirmado y el color por tela; rehace la ruta textil (aplicarRutaTextil). */
+function recalcularTelasOrdenes(aplicar){if(aplicar&&!(puede('ordenes')||puede('config'))){alert('Tu perfil no recalcula telas.');return {n:0,cambiadas:0,ganaron:0,perdieron:0,det:[]}}
+  const rep={telaEnMetros:{},telaSinClasificar:{},telaSinCatalogo:{}};let n=0,cambiadas=0,ganaron=0,perdieron=0;const det=[];
+  const firma=ts=>JSON.stringify((ts||[]).map(t=>[t.tela,t.kg,t.m||0,t.origen,t.produce,t.disp,faltaTela(t),t.prov||'']));
+  S.ordenes.forEach(o=>{if(!abiertaDe(o)||!(o.materiales||[]).length)return;n++;
+    const mats=(o.materiales||[]).map(m=>m.clasif==='tela'?Object.assign({},m,{origen:origenPorMaestro(m.cod)||origenDeTela(m.n3,m.n4)||'SIN CLASIFICAR'}):m);
+    const R=armarTelasDe(mats,rep);
+    R.telas.forEach(t=>{const pv=(o.telas||[]).find(x=>x.tela===t.tela);if(pv){if(pv.faltaConf)t.faltaConf=pv.faltaConf;if(pv.color)t.color=pv.color}});
+    const antes=firma(o.telas),despues=firma(R.telas);if(antes===despues)return;cambiadas++;
+    if(!(o.telas||[]).length&&R.telas.length)ganaron++;if((o.telas||[]).length&&!R.telas.length)perdieron++;det.push(o.op);
+    if(!aplicar)return;
+    o.materiales=mats;o.telas=R.telas;o.origenTela=R.origen;o.origenesTela=R.origs;o.sinTelaKg=!R.telasKg.length;o.telaSinClasificar=[...new Set(R.sinClas.map(m=>m.n3))];
+    aplicarRutaTextil(o)});
+  if(aplicar&&cambiadas){bitacora('Telas recalculadas con el maestro de productos y las tablas 3/8/13: '+cambiadas+' de '+n+' órdenes abiertas cambian ('+ganaron+' ganan receta de tela, '+perdieron+' la pierden) ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save()}
+  return {n,cambiadas,ganaron,perdieron,det,rep}}
+function mRecalcularTelas(){if(!(puede('ordenes')||puede('config'))){alert('Tu perfil no recalcula telas.');return}const p=recalcularTelasOrdenes(false);
+  if(!p.cambiadas){alert('Con las tablas de hoy ninguna de las '+p.n+' órdenes abiertas cambia de telas.');return}
+  if(!confirm('Cambian las telas de '+p.cambiadas+' de '+p.n+' órdenes abiertas: '+p.ganaron+' pasan a tener receta de tela, '+p.perdieron+' la pierden (revisar tabla 8). Se conserva lo confirmado a mano («qué le falta», color) y se rehace la ruta textil. Queda en bitácora. ¿Aplicar?'))return;
+  recalcularTelasOrdenes(true);render();alert('Telas recalculadas en '+p.cambiadas+' órdenes.')}
 // ---------- tabla 12: catálogo de productos (código → proveedor, origen, tipo)
 function catalogoProd(){if(!S.params.catalogoProd||typeof S.params.catalogoProd!=='object')S.params.catalogoProd={};return S.params.catalogoProd}
 function catalogoUsuaria(){if(!S.params.catalogoUsuaria)S.params.catalogoUsuaria=defCatalogoUsuaria();return S.params.catalogoUsuaria}
@@ -10293,8 +10400,10 @@ function setTipoManual(cod,v){const c=catalogoProd()[cod]||(catalogoProd()[cod]=
 /* origen de un producto: 1) facturas → COMPRADO; 2) sin factura y categoría de NUEVOS TEMPO (tabla 3: origen PROPIA por 3er/4to nivel) → PROPIO (candidato);
    3) si no → SIN CLASIFICAR. Contradicción: en facturas y a la vez TEMPO según la usuaria o categoría propia. */
 function origenProducto(cod,ruta){const c=cod?catalogoProd()[cod]:null;const niv=String(ruta||'').split('/').map(s=>s.trim());const n2=niv[1]||'',n3=niv[2]||'',n4=niv[3]||'';
-  const porCat=(normFase(n2)===normFase('MP'))?origenDeTela(n3,n4):null;const usuaria=cod?catalogoUsuaria()[cod]:null;
-  if(c&&c.prov){const contra=(usuaria&&normFase(usuaria.prov)===normFase('TEMPO'))||porCat==='PROPIA';return{origen:'COMPRADO',prov:c.prov,contradiccion:contra,revisar:!!c.revisar}}
+  const porCat=(normFase(n2)===normFase('MP'))?origenDeTela(n3,n4):null;const usuaria=cod?catalogoUsuaria()[cod]:null;const ma=cod?maestroProductos()[cod]:null;
+  if(c&&c.prov){const contra=(usuaria&&normFase(usuaria.prov)===normFase('TEMPO'))||porCat==='PROPIA'||!!(ma&&(ma.propia||esTempoProv(ma.prov)));return{origen:'COMPRADO',prov:c.prov,contradiccion:contra,revisar:!!c.revisar}}
+  if(ma&&(ma.propia||esTempoProv(ma.prov)))return{origen:'PROPIO',prov:'TEMPO',candidato:false,contradiccion:false,fuente:'maestro'};
+  if(ma&&ma.prov)return{origen:'COMPRADO',prov:ma.prov,sinFactura:true,contradiccion:false,fuente:'maestro'};
   if(porCat==='PROPIA'||(usuaria&&normFase(usuaria.prov)===normFase('TEMPO')))return{origen:'PROPIO',prov:'TEMPO',candidato:true,contradiccion:false};
   if(porCat==='EXTERNA'||porCat==='EXTERNA TEÑIDA')return{origen:'COMPRADO',prov:usuaria?usuaria.prov:'',sinFactura:true,contradiccion:false};
   return{origen:'SIN CLASIFICAR',prov:'',contradiccion:false}}
@@ -10832,12 +10941,13 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración → Órdenes y materiales → Registro de cargas. */
-const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos'};
+const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',maestro:'Maestro de productos'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='tareas')return [r.actualizadas+' actualizadas',r.nuevas+' nuevas',r.noVinieron+' no vinieron',r.fueraAlcance+' fuera de alcance',r.noCalzan+' no calzan',r.claveIncompleta?r.claveIncompleta+' clave incompleta':'',r.claveRepetida?r.claveRepetida+' clave repetida':'',r.fechasIlegibles?r.fechasIlegibles+' fechas ilegibles':'',r.sinComponentes?'SIN componentes':'',r.conColumnaId?('con ID de tarea ('+(r.conTareaId||0)+')'+(r.tareaIdEnlazadas?' · '+r.tareaIdEnlazadas+' enlazadas':'')+(r.tareaIdConflicto?' · '+r.tareaIdConflicto+' CONFLICTOS de ID no aplicados':'')+(r.whRepetida?' · '+r.whRepetida+' WH repetidas no aplicadas':'')+(r.perdioWH?' · '+r.perdioWH+' vinieron sin WH (conservada)':'')):(r.conColumnaId===false?'sin columna ID':'')].filter(Boolean).join(' · ');
   if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
+  if(c.tipo==='maestro')return [r.filas+' productos',r.nuevos+' nuevos',r.actualizados+' actualizados',r.tempo+' TEMPO',r.conProv+' con proveedor',r.sinProv+' sin proveedor',r.conservaProv?r.conservaProv+' conservan proveedor':'',r.cambiaProv?r.cambiaProv+' cambian de proveedor':'',r.nuevosProv?r.nuevosProv+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [r.subidas+' subidas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' sin orden':'',r.errores?r.errores+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?c.nuevas+' nuevas':'',c.act!=null?c.act+' actualizadas':'',c.cerradas?c.cerradas+' cerradas':''].filter(Boolean).join(' · ')}
 function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});
@@ -11085,18 +11195,11 @@ function planTarea(rows,nombre){
     const tec=d.tecnicaTxt?S.tecnicas.find(t=>normTxt(t.n)===normTxt(d.tecnicaTxt))||null:null;if(d.tecnicaTxt&&!tec)plan.tecnicasNoEncontradas[d.tecnicaTxt]=(plan.tecnicasNoEncontradas[d.tecnicaTxt]||0)+1;
     // BLOQUE F/G/H: materiales
     const materiales=d.comp.map(c=>{const niv=c.ruta.split('/').map(s=>s.trim());const n2=niv[1]||'',n3=niv[2]||'',n4=niv[3]||'';const clasif=clasifDe(n2);
-      let origen=null;if(clasif==='tela'){origen=origenDeTela(n3,n4)||'SIN CLASIFICAR'}
-      const m=c.prod.match(/^\[([^\]]*)\]\s*(.*)$/);
-      return{cod:m?m[1]:'',prod:m?m[2]:c.prod,costo:c.costo,dem:c.dem,udm:c.udm,ruta:c.ruta,n2,clasif,n3,n4,origen}});
-    const telasKg=lineasTelaDe(materiales);
-    telasKg.filter(m=>m.ud==='m').forEach(m=>{const k=m.n3+(m.n4?' / '+m.n4:'');plan.telaEnMetros[k]=(plan.telaEnMetros[k]||0)+1});
-    const origs=[...new Set(telasKg.map(m=>m.origen))];
-    const sinClas=telasKg.filter(m=>m.origen==='SIN CLASIFICAR');if(sinClas.length){[...new Set(sinClas.map(m=>m.n3))].forEach(n3=>{plan.telaSinClasificar[n3]=plan.telaSinClasificar[n3]||{ordenes:0};plan.telaSinClasificar[n3].ordenes++})}
-    const origen=origs.includes('PROPIA')?'PROPIA':origs.includes('EXTERNA')?'EXTERNA':origs.includes('EXTERNA TEÑIDA')?'EXTERNA TEÑIDA':origs.length?'SIN CLASIFICAR':null;
+      const m=c.prod.match(/^\[([^\]]*)\]\s*(.*)$/);const cod=m?m[1]:'';
+      let origen=null;if(clasif==='tela'){origen=origenPorMaestro(cod)||origenDeTela(n3,n4)||'SIN CLASIFICAR'}   /* el maestro de productos manda sobre la categoría */
+      return{cod,prod:m?m[2]:c.prod,costo:c.costo,dem:c.dem,udm:c.udm,ruta:c.ruta,n2,clasif,n3,n4,origen}});
+    const RT=armarTelasDe(materiales,plan);const telasKg=RT.telasKg,origs=RT.origs,origen=RT.origen,telas=RT.telas,sinClas=RT.sinClas;
     const kgTej=telasKg.filter(m=>m.produce==='propia').reduce((a,m)=>a+m.kg,0),kgTin=telasKg.filter(m=>m.falta!=='nada').reduce((a,m)=>a+m.kg,0);
-    // telas para el motor: tela del catálogo por la tabla 8 (categoría Odoo → tela corta → tela). Sin enlace: la línea no entra al motor y se reporta
-    const acc={};telasKg.forEach(m=>{const t=telaDeRuta(m.ruta);if(!t){plan.telaSinCatalogo[m.n3||m.ruta]=(plan.telaSinCatalogo[m.n3||m.ruta]||0)+1;return}const key=[t,m.origen,m.produce,m.disp,m.falta,m.prov||'',m.ud].join('|');const a=acc[key]=acc[key]||{kg:0,m:0};a.kg+=m.kg;a.m+=m.m||0});
-    const telas=Object.entries(acc).sort((a,b)=>(b[1].kg+b[1].m)-(a[1].kg+a[1].m)).map(([key,v],i)=>{const [t,org,produce,disp,falta,prov,ud]=key.split('|');const tl={tela:t,kg:+v.kg.toFixed(3),rol:i?'complemento':'base',ext:produce==='propia'?null:'ext',origen:org,produce,disp,falta,color:null};if(prov)tl.prov=prov;if(ud==='m'){tl.ud='m';tl.m=+v.m.toFixed(1)}return tl});
     // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
     const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
     const spc=k?samPorCentro(k):{};

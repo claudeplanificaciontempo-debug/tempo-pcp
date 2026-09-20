@@ -11,3 +11,5 @@ test/fixtures/fotos_*.csv
 
 # configuración local de la herramienta (no del proyecto)
 .claude/
+
+test/fixtures/maestro_rows.json

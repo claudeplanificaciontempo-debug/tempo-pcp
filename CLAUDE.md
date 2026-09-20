@@ -921,6 +921,14 @@ tiene WH en el sistema (`sinWHde(v)`), la fase se toma del archivo en cada carga
 WH, la planta la mueve aquí y el archivo va a «no calzan». Interruptor `prm('faseOdooSinWH',1)` (`faseOdooSinWH/setFaseOdooSinWH`, checkbox en la
 fila fase de la tabla 14); la vista previa cuenta `prev.faseOdoo`. Pruebas K8.
 
+**Maestro de productos (19-sep-2026):** `S.params.maestroProductos[cod]` (nombre, udm, prov, propia, ruta) cargado desde el archivo de la
+usuaria (tabla 12 → «Cargar maestro de productos», `planMaestro/aplicarMaestro/resumenMaestroHTML`). **El origen de una tela es POR PRODUCTO**:
+`origenPorMaestro(cod)` = TEMPO/propia → PROPIA, otro proveedor → EXTERNA, sin proveedor → null (decide la tabla 3 por categoría); manda en
+`planTarea`, `dimensionesTela` y `lineasTelaDe`; proveedor: facturas → maestro → usuaria. Un producto que vuelve sin proveedor conserva el
+que tenía. `armarTelasDe(materiales,rep)` es la ÚNICA función que arma las telas de una orden; `recalcularTelasOrdenes(aplicar)` (botón
+«Recalcular telas de las órdenes») las rehace sin recargar Odoo (conserva faltaConf y color, `aplicarRutaTextil`, bitácora). Tabla 12
+agrupada por proveedor con «(sin proveedor)» primero. El maestro NO resuelve la tabla 8 (tela del catálogo). Ver `MAESTRO_PRODUCTOS.md`.
+
 **Freno por archivo incompleto (17-sep-2026):** en «Actualizar datos» paso 1, si las que no vinieron (sin contar fuera de
 alcance) superan `prm('umbralArchivoIncompleto',10)` % de la cartera abierta, `plan.prev.incompleto.frena` → aviso rojo con
 desglose por cliente y mes (`vistaPreviaTareaHTML`) y `aplicarTarea` exige escribir APLICAR (bitácora). Pasos 2 y 3 avisan
