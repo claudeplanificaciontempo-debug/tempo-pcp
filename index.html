@@ -159,8 +159,8 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .veil.on{display:flex}
 .modal{background:var(--paper);border-radius:4px;max-width:760px;width:100%;max-height:88vh;overflow:auto}
 .modal.wide{max-width:1180px}
-.modal.orden{max-width:1440px;max-height:96vh}.modal.orden .body{padding:10px 16px}.modal.orden label{margin-top:2px}
-.ed-blk{border:1px solid var(--rule);border-radius:10px;padding:8px 12px;margin:8px 0;background:var(--paper)}.ed-blk>summary{cursor:pointer;font-weight:600;font-size:var(--fs-s);list-style:none}.ed-blk>summary::-webkit-details-marker{display:none}.ed-blk>summary::before{content:'▸ ';color:var(--medio)}.ed-blk[open]>summary::before{content:'▾ '}
+.modal.orden{max-width:96vw;width:96vw;max-height:96vh}.modal.orden .body{padding:10px 16px}.modal.orden label{margin-top:2px}
+.ed-blk{border:1.5px solid #B4BEC8;border-radius:10px;padding:8px 12px;margin:8px 0;background:var(--paper)}.ed-blk>summary{cursor:pointer;font-weight:700;font-size:var(--fs-m);list-style:none;padding:2px 0 4px;border-bottom:1px solid var(--rule2);margin-bottom:6px}.ed-blk>summary::-webkit-details-marker{display:none}.ed-blk>summary::before{content:'▸ ';color:var(--medio)}.ed-blk[open]>summary::before{content:'▾ '}
 .ed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px;align-items:end}.ed-grid label{margin-top:0;font-size:var(--fs-xs)}
 .foto-mini{border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:6px;cursor:zoom-in}
 .modal h3{padding:14px 18px;border-bottom:1px solid var(--rule2);font-size:var(--fs-m)}
@@ -239,9 +239,15 @@ nav a .n{margin-left:auto;background:rgba(255,255,255,.12);color:#fff;border-rad
 main{padding:24px 28px 70px}
 .pagehead h2{font-size:26px;font-weight:700;letter-spacing:-.02em}
 .lede{color:var(--ink2)}
-.panel{border:1px solid var(--rule);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,40,80,.04)}
-.panel>h3{padding:13px 16px;border-bottom:1px solid var(--rule2);font-size:15px}
+.panel{border:1.5px solid #B4BEC8;border-radius:var(--r);box-shadow:0 1px 3px rgba(20,40,80,.07)}
+.panel>h3{padding:12px 16px;border-bottom:1.5px solid #C9D1D9;font-size:15px;font-weight:700;background:var(--field);border-radius:var(--r) var(--r) 0 0}
 .panel .body{padding:16px}
+.panel .body>label,.modal .body>label,.ed-blk>label{font-weight:700;color:var(--ink);margin-top:10px}
+/* sub-bloque enmarcado dentro de un panel o de una ficha: se ve qué es un bloque y qué es otro */
+.sub-blk{border:1.5px solid #C9D1D9;border-radius:10px;padding:10px 12px;background:var(--paper);margin:6px 0}
+.sub-blk>.sub-t{font-weight:700;font-size:var(--fs-s);color:var(--ink);margin-bottom:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.sub-blk>.sub-t .mut{font-weight:400}
+.filtros-blk{border:1.5px solid #C9D1D9;border-radius:10px;padding:10px 12px;background:var(--field);margin-bottom:12px}
 .kpis{border-radius:var(--r);border:1px solid var(--rule);background:var(--rule2);gap:1px;box-shadow:0 1px 2px rgba(20,40,80,.04)}
 .kpi{padding:14px 18px}
 .kpi .v{font-size:22px;font-weight:700;color:var(--navy)}
@@ -772,7 +778,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 00:01';
+const APP_BUILD='2026-09-20 00:49';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -8386,7 +8392,7 @@ function vOrdenes(el){
   ORDF.fases=podarFases(ORDF.fases,fasesAll);   // conserva el centinela: «ninguna» no se convierte en «todas»
   const filtros=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
-    <div class="no-plegar" style="flex:2;min-width:340px"><label>Edición <span class="mut">— al guardar la ficha o confirmar la ruta, la orden pasa a «editadas»</span></label><div class="chips" style="margin:0">${Object.entries(EDICION_ORD).map(([k,v])=>`<span class="chip ${ORDF.edicion===k?'on':''}" onclick="ORDF.edicion='${k}';render()">${v} <span class="mut">${cntEd[k]}</span></span>`).join('')}</div></div>
+    <div class="no-plegar sub-blk" style="flex-basis:100%;order:9;margin:2px 0 0"><div class="sub-t">Edición <span class="mut">— al guardar la ficha o confirmar la ruta, la orden pasa a «editadas»</span></div><div class="chips" style="margin:0;max-width:none">${Object.entries(EDICION_ORD).map(([k,v])=>`<span class="chip ${ORDF.edicion===k?'on':''}" onclick="ORDF.edicion='${k}';render()">${v} <span class="mut">${cntEd[k]}</span></span>`).join('')}</div></div>
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     ${grpSelHTML('ord')}</div></div>`;
@@ -10993,16 +10999,16 @@ function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
    <label style="margin-top:8px">Telas de la orden (kg crudos, sin merma) <span class="mut">— al elegir categoría se llenan con el consumo por prenda × prendas; el color por defecto es el de la orden. La merma se descuenta después para saber cuánto sale del baño.</span></label>
    <div id="ed-telas" data-u="kg crudo">${edTelasHTML('kg crudo')}</div></details>
    <details class="ed-blk" open><summary>Ruta y operaciones <span class="mut" style="font-weight:400">${(ED.ruta||[]).length} pasos${o&&rutaConfirmada(o)?' · ruta confirmada':' · ruta sin confirmar (guardar la confirma)'}</span></summary>
-   <div class="row" style="margin-top:6px">
+   <div class="row" style="margin-top:6px;align-items:stretch">
+   <div class="sub-blk" style="flex:1;min-width:280px"><div class="sub-t">Estampado y bordado <span class="mut">— la técnica agrega estampado; las puntadas, bordado</span></div><div class="row" style="margin:0">
     <div><label>Técnica <span class="mut">— si tiene, pasa por estampado</span></label><select id="f-tec" onchange="ED.tecnica=this.value||null;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!ED.tecnica)ED.opts.delete('estampado');confirmarImpactoOrden('${id||''}',()=>rearmar())"><option value="">— ninguna —</option>${S.tecnicas.map(t=>`<option value="${t.id}" ${ED.tecnica===t.id?'selected':''}>${esc(t.n)}</option>`).join('')}</select></div>
     <div><label>Puntadas <span class="mut">— si es &gt; 0, pasa por bordado</span></label><input type="number" min="0" id="f-punt" value="${ED.puntadas||''}" onchange="ED.puntadas=+this.value||0;ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c));if(!(ED.puntadas>0))ED.opts.delete('bordado');confirmarImpactoOrden('${id||''}',()=>rearmar())"></div>
+   </div></div>
+   <div class="sub-blk" style="flex:1;min-width:280px"><div class="sub-t">Proveeduría <span class="mut">— de dónde viene la tela</span></div><div id="ed-prov">${provRutaHTML()}</div></div>
+   <div class="sub-blk" style="flex:2;min-width:340px"><div class="sub-t">Centros de producción <span class="mut">— los fijos ya están; marca los demás</span></div><div id="ed-centros">${centrosRutaHTML()}</div></div>
    </div>
-   <div class="row" style="align-items:flex-start;margin-top:16px">
-    <div style="flex:1;min-width:260px"><label>Proveeduría <span class="mut">— de dónde viene la tela</span></label><div id="ed-prov">${provRutaHTML()}</div></div>
-    <div style="flex:2;min-width:340px"><label>Centros de producción <span class="mut">— los fijos ya están; marca los demás</span></label><div id="ed-centros">${centrosRutaHTML()}</div></div>
-   </div>
-   <label style="margin-top:8px">Tiempos estándar por prenda</label><div id="ed-ruta">${edRutaHTML()}</div></details>
-   <details class="ed-blk"><summary>Insumos <span class="mut" style="font-weight:400">${(ED.insumos||[]).length} en la ficha${ins.length?' · '+ins.length+' componentes de Odoo':''} — cierres, etiquetas, botones, hilos; la liberación a producción exige confirmarlos</span></summary>
+   <div class="sub-blk"><div class="sub-t">Tiempos estándar por prenda <span class="mut">— SAM por paso; lo que falte queda en 0 con aviso</span></div><div id="ed-ruta">${edRutaHTML()}</div></div></details>
+   <details class="ed-blk" open><summary>Insumos <span class="mut" style="font-weight:400">${(ED.insumos||[]).length} en la ficha${ins.length?' · '+ins.length+' componentes de Odoo':''} — cierres, etiquetas, botones, hilos; la liberación a producción exige confirmarlos</span></summary>
    ${ins.length?`<div class="scroll" style="max-height:150px;margin-top:6px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Categoría (Odoo)</th><th>Componente</th><th class="num">Cantidad</th></tr></thead><tbody>${ins.map(m=>`<tr><td>${esc([m.n2,m.n3].filter(Boolean).join(' / '))}</td><td>${m.cod?'<span class="mut">['+esc(m.cod)+']</span> ':''}${esc(m.prod||'')}</td><td class="num">${num(m.dem,2)} ${esc(m.udm||'')}</td></tr>`).join('')}</tbody></table></div>`:''}
    <div id="ed-insumos" style="margin-top:6px">${edInsumosHTML()}</div></details></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarOrden('${id||''}')">Guardar orden</button></div>`,true);document.getElementById('modal').classList.add('orden')}
