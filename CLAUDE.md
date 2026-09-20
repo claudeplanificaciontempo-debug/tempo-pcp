@@ -960,13 +960,19 @@ la regla `libSinRutaConf` y `diagRutaOdoo` (`noAplica`). **No volver a filtrar �
 contenido no se cierran al hacer clic fuera**: el manejador global del final del script solo cierra los desplegables (`esDesplegable`: `details.acc`,
 `details.ffases`, `summary.chip`); hasta el 20-sep cerraba todo y la ficha se plegaba sola al tocar un campo. Pruebas RL / RL2.
 
-**Ruta en lote (20-sep-2026, Órdenes → Rutas → «Editar ruta en lote»):** `abrirRutaLote`/`mRutaLote` (estado `RLOTE`, `RLOTE0()`), alcance por familia /
-tipo de producto / referencia / cliente / buscador sobre `rutaLoteCandidatas` (abiertas, `!rutaNoAplica`, sin confirmar salvo `incConf`), `rutasDistintas`,
-`centrosLote` (los mismos del editor por orden, habilitados por `centrosEditablesRuta`), `planRutaLote(ords,cens)` (entra / sale / conserva / omit /
-sinT por orden; **hecho = `pasoHecho`**, no solo la fase) y `aplicarRutaLote` (permiso, motivo, no piso, ≥1 centro, **ninguna orden sin Empaque**,
-confirm; inserta por `ordenPaso` en `o.ruta` y `o.rutaCompleta`, tiempo del paso nuevo por **`tiempoPaso`**, `sellarRuta`, `rutaEditada` etapa `lote`,
-`rutaConf` persona «ruta en lote», auditoría por orden, UNA bitácora, `avisosFechaLote` = `conAvisoFecha` en lote). `avisosRutaLote` avisa Empaque y
-centros por defecto. No crear otro camino de edición masiva. Pruebas RLT; captura `?captura=uxlote`. Ver `RUTA_EN_LOTE.md`.
+**Pestaña Rutas = UN recuadro y ruta en lote (20-sep-2026, decisión de la usuaria: «un solo recuadro, agrupar como en todo el sistema, marcar el
+grupo y definir ruta para todos»):** `rutasHTML` es una sola lista (`rutasBase` = abiertas con `!rutaNoAplica`; `rutasLista` por chip Por confirmar /
+Confirmadas / Todas + `RUT.q`) con el **agrupador común** (`grpSt('rut')`, familia → tipo de producto por defecto) y **casilla por grupo**
+(`selGrupoRut` vía `g.selFn/g.selChk`) y por orden (`togSelRut`, sin redibujar); selección en `RUT.sel`; acciones «Definir ruta para las marcadas»
+(`abrirRutaLote` → `mRutaLote`, que trabaja SOLO sobre `RLOTE.ids`, sin filtros propios), «Confirmar como están» (`confirmarRutasSel`), marcar / desmarcar
+todas. Rutas estimadas, reglas de sub-áreas y «qué dice Odoo» + `confirmarRutasOdoo` van plegados en «Más herramientas»; la lista por referencia y
+la tarjeta se quitaron (`aplicarRutaARef` queda sin botón). Motor del lote: `pasosProCompleta` (unión pendiente + completa: divergen en producción),
+`rutasDivergen`, `pasoFijoPorFase` (excluido o hecho por la fase, `pasosPendientes`), `planRutaLote(ords,cens)` (entra si falta en la PENDIENTE /
+sale / conserva / omit / sinT / conAvance; **hecho = `pasoHecho`**), `aplicarRutaLote` (permiso, motivo, no piso, ≥1 centro, **ninguna orden sin
+Empaque**, confirm; inserta por `ordenPaso` en `o.ruta` y deja `o.rutaCompleta` coherente, tiempo por **`tiempoPaso`**, `sellarRuta`, `rutaEditada`
+etapa `lote`, `rutaConf` persona «ruta en lote», auditoría por orden, UNA bitácora, `avisosFechaLote` = `conAvisoFecha` en lote, limpia `RUT.sel`).
+`avisosRutaLote` avisa Empaque y centros por defecto. **No crear otro camino de edición masiva ni volver a partir la pestaña en bloques.**
+Pruebas RLT; capturas `?captura=uxrutas` / `uxlote`. Ver `RUTA_EN_LOTE.md`.
 
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;

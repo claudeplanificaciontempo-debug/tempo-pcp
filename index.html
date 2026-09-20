@@ -778,7 +778,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-20 13:31';
+const APP_BUILD='2026-09-20 14:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -7767,30 +7767,20 @@ function precargarRutasNuevas(){let n=0;S.ordenes.filter(abierta).forEach(o=>{if
 function faltaRutaConfirmada(o){return !rutaLista(o)}
 function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'tela')||liberada(o,'corte'))&&!rutaLista(o))}
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
-let RUT={q:'',ref:null,ver:'pend',verRev:false};
-function rutasTarjetaHTML(){const pd=rutasPorDefinir();const refs=Object.keys(refsPorDefinir()).length;
-  const pz=pd.reduce((a,o)=>a+ +o.cant,0);
-  const na=rutasNoAplican();
-  return tarjetasResumenHTML([{id:'rut-pend',v:pd.length,k:'Faltan rutas por confirmar · '+refs+' referencias · '+num(pz)+' unidades',items:pd,porFam:true,cls:pd.length?'warn':''}])
-   +(na.length?`<p class="mut" style="font-size:var(--fs-s);margin:-4px 0 10px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>`:'')}
+let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set()};
 /* ================== RUTA EN LOTE (20-sep-2026) ==================
-   La usuaria: «hay varios productos que comparten ruta; con eso podría editar la ruta masiva». Se elige el alcance (familia, tipo
-   de producto, referencia, cliente, buscador) sobre las órdenes abiertas cuya ruta se revisa (rutaNoAplica = fuera; las ya
-   confirmadas solo si se pide), se define la ruta UNA vez (centros de producción) y baja a cada orden con el SAM de SU categoría
-   (samPorCentro): los pasos que ya tenía conservan su tiempo, los pasos ya hechos (fase de Odoo) y los centros que el perfil no
-   edita no se tocan, la parte textil (tejeduría / tintorería / proveedor) tampoco, y el lavado sigue siendo por orden (mLavado).
+   La usuaria: «hay varios productos que comparten ruta; con eso podría editar la ruta masiva… un solo recuadro donde estén todas las
+   órdenes, agrupar por las agrupaciones que tenemos en todo el sistema, marcar todo el grupo y definir ruta para todos».
+   El alcance es la SELECCIÓN de la pestaña Rutas (RUT.sel: casillas por orden y por grupo del agrupador común); el modal no filtra.
+   La ruta se define UNA vez (centros de producción) y baja a cada orden con el tiempo de SU categoría (tiempoPaso): los pasos que ya
+   tenía conservan su tiempo, los ya hechos (pasoHecho) o excluidos por la fase y los centros que el perfil no edita no se tocan, la
+   parte textil (tejeduría / tintorería / proveedor) tampoco, y la modalidad del lavado sigue siendo por orden (mLavado).
    Cada orden queda confirmada (persona), sellada, con rutaEditada + auditoría; una sola línea de bitácora para el lote. Nunca corre sola. */
-const RLOTE0=()=>({fam:'',cat:'',ref:'',cli:'',q:'',incConf:false,cens:null,tocado:false,motivo:''});let RLOTE=RLOTE0();
-function abrirRutaLote(){RLOTE=RLOTE0();mRutaLote()}
+const RLOTE0=()=>({ids:[],cens:null,tocado:false,motivo:''});let RLOTE=RLOTE0();
+function abrirRutaLote(ids){RLOTE=RLOTE0();RLOTE.ids=(ids||[...RUT.sel]).slice();mRutaLote()}
 function cancelarRutaLote(){RLOTE=RLOTE0();cerrar()}
-function rutaLoteCandidatas(){return S.ordenes.filter(o=>abierta(o)&&!rutaNoAplica(o)&&(RLOTE.incConf||!rutaConfirmada(o)))}
-function ordenesLote(){const q=normTxt(RLOTE.q);
-  return rutaLoteCandidatas().filter(o=>{const k=K(o.cat);const p=k?K(k.padre):null;
-    if(RLOTE.fam&&!((p&&p.id===RLOTE.fam)||(k&&!p&&k.id===RLOTE.fam)))return false;
-    if(RLOTE.cat&&!(k&&k.id===RLOTE.cat))return false;
-    if(RLOTE.ref&&normTxt(refDe(o))!==normTxt(RLOTE.ref))return false;
-    if(RLOTE.cli&&String(o.cliente||'')!==RLOTE.cli)return false;
-    if(q&&!matchBusq(o,q,'RLOTE.q'))return false;return true})}
+/* las órdenes del lote: las marcadas que siguen abiertas y cuya ruta se revisa (prenda terminada / cerrada en Odoo quedan fuera) */
+function ordenesLote(){const s=new Set(RLOTE.ids||[]);return S.ordenes.filter(o=>s.has(o.id)&&abierta(o)&&!rutaNoAplica(o))}
 /* pasos de producción de la ruta EFECTIVA: los pendientes de o.ruta (lo que programar() lee) más los de rutaCompleta (que trae los ya hechos).
    Las dos listas divergen en producción porque la ficha, el lavado, la ruta por referencia y la corrección de Empaque escriben solo o.ruta;
    por eso el lote decide sobre la unión y, al aplicar, deja las dos coherentes. */
@@ -7824,38 +7814,23 @@ function avisosFechaLote(ords,finAntes,accion){if(!ords.length)return 0;const P1
     if(meta&&fDesp&&fDesp>meta&&(!fAntes||fAntes<=meta||fDesp>fAntes)){S.params.advertencias=S.params.advertencias||[];S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:o.id,op:o.op,accion,meta,metaTipo:o.fechaCompromiso?'compromiso':'pedida',antes:fAntes,despues:fDesp,atendida:false});n++}});
   return n}
 function rutaLoteBase(ords){const d=rutasDistintas(ords);return d.length&&d[0].k!=='(sin ruta)'?d[0].cens.slice():[]}
-function rutaLoteSet(k,v){RLOTE[k]=v;if(k!=='cens'&&k!=='motivo'&&!RLOTE.tocado)RLOTE.cens=null;   /* la base se rehace con el alcance nuevo solo mientras nadie haya marcado centros a mano */
-  if(k==='fam')RLOTE.cat='';mRutaLote()}
 function rutaLoteTog(c){if(!RLOTE.cens)RLOTE.cens=rutaLoteBase(ordenesLote());const s=new Set(RLOTE.cens);if(s.has(c))s.delete(c);else s.add(c);RLOTE.cens=[...s];RLOTE.tocado=true;mRutaLote()}
-function rutaLoteTexto(){const r=document.getElementById('rlote-ref'),q=document.getElementById('rlote-q');RLOTE.ref=r?r.value.trim():RLOTE.ref;RLOTE.q=q?q.value.trim():RLOTE.q;if(!RLOTE.tocado)RLOTE.cens=null;mRutaLote()}
 function rutaLoteUsar(cens){RLOTE.cens=cens.slice();RLOTE.tocado=true;mRutaLote()}
 function mRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
-  const cand=rutaLoteCandidatas();const ords=ordenesLote();if(RLOTE.cens===null)RLOTE.cens=rutaLoteBase(ords);
-  const fams=[...new Map(cand.map(o=>{const k=K(o.cat);const p=k?(K(k.padre)||k):null;return p?[p.id,p]:null}).filter(Boolean)).values()].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  const hijas=[...new Map(cand.map(o=>{const k=K(o.cat);if(!k||!k.padre)return null;if(RLOTE.fam&&k.padre!==RLOTE.fam)return null;return [k.id,k]}).filter(Boolean)).values()].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  const clis=[...new Set(cand.map(o=>String(o.cliente||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const ords=ordenesLote();if(RLOTE.cens===null)RLOTE.cens=rutaLoteBase(ords);const fuera=(RLOTE.ids||[]).length-ords.length;
   const refs=[...new Set(ords.map(refDe))];const distintas=rutasDistintas(ords);const plan=planRutaLote(ords,RLOTE.cens);const cl=centrosLote();
-  const opt=(v,t,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(t)}</option>`;const avisosRuta=avisosRutaLote(RLOTE.cens);const porDef=centrosRutaDefecto();
-  abrir(`<h3>Editar ruta en lote <span class="note">la misma ruta para varias órdenes que la comparten · cada una toma el SAM de su categoría</span></h3><div class="body">
-   <div class="sub-blk"><div class="sub-t">1 · Qué órdenes <span class="mut">— abiertas cuya ruta se revisa; las de prenda terminada quedan fuera</span></div>
-    <div class="row" style="margin:0;align-items:flex-end">
-     <div style="min-width:180px"><label>Familia</label><select onchange="rutaLoteSet('fam',this.value)"><option value="">Todas</option>${fams.map(p=>opt(p.id,p.n,RLOTE.fam===p.id)).join('')}</select></div>
-     <div style="min-width:200px"><label>Tipo de producto</label><select onchange="rutaLoteSet('cat',this.value)"><option value="">Todos</option>${hijas.map(k=>opt(k.id,(RLOTE.fam?'':((K(k.padre)||{}).n||'sin familia')+' / ')+k.n,RLOTE.cat===k.id)).join('')}</select></div>
-     <div style="min-width:160px"><label>Referencia</label><input type="text" id="rlote-ref" list="rlote-refs" value="${esc(RLOTE.ref)}" placeholder="todas" onkeydown="if(event.key==='Enter')rutaLoteTexto()"><datalist id="rlote-refs">${[...new Set(cand.map(refDe))].filter(r=>r!=='(sin referencia)').sort().slice(0,400).map(r=>`<option value="${esc(r)}">`).join('')}</datalist></div>
-     <div style="min-width:180px"><label>Cliente</label><select onchange="rutaLoteSet('cli',this.value)"><option value="">Todos</option>${clis.map(c=>opt(c,c,RLOTE.cli===c)).join('')}</select></div>
-     <div style="min-width:180px"><label>Buscar</label><input type="text" id="rlote-q" value="${esc(RLOTE.q)}" placeholder="WH, color, ODC…" onkeydown="if(event.key==='Enter')rutaLoteTexto()"></div>
-     <div><button class="btn ghost sm" type="button" onclick="rutaLoteTexto()" title="aplica Referencia y Buscar (o Enter en el campo)">Filtrar</button></div>
-     <div><label style="font-weight:400"><input type="checkbox" ${RLOTE.incConf?'checked':''} onchange="rutaLoteSet('incConf',this.checked)"> incluir las que ya tienen ruta confirmada <span class="mut">(se pisan; queda en auditoría)</span></label></div>
-    </div>
-    <p style="margin:8px 0 0"><b id="rlote-n">${ords.length}</b> órdenes · ${refs.length} referencias · ${num(plan.prendas)} prendas${plan.liberadas?' · <span class="tag t-aviso">'+plan.liberadas+' ya liberadas a producción</span>':''}${plan.editadasMano?' · '+plan.editadasMano+' con la ruta editada a mano':''}${plan.confirmadas?' · '+plan.confirmadas+' con ruta confirmada (se pisan)':''}</p>
+  const avisosRuta=avisosRutaLote(RLOTE.cens);const porDef=centrosRutaDefecto();
+  abrir(`<h3>Definir ruta para las marcadas <span class="note">la misma ruta para todas · cada una toma el tiempo de su categoría</span></h3><div class="body">
+   <div class="sub-blk"><div class="sub-t">1 · Órdenes marcadas</div>
+    <p style="margin:0"><b id="rlote-n">${ords.length}</b> órdenes · ${refs.length} referencias · ${num(plan.prendas)} prendas${plan.liberadas?' · <span class="tag t-aviso">'+plan.liberadas+' ya liberadas a producción</span>':''}${plan.editadasMano?' · '+plan.editadasMano+' con la ruta editada a mano':''}${plan.confirmadas?' · '+plan.confirmadas+' con ruta confirmada (se pisan; queda en auditoría)':''}${fuera>0?' · <span class="mut">'+fuera+' marcadas no entran (cerradas o con la prenda terminada)</span>':''}</p>
    </div>
    <div class="sub-blk"><div class="sub-t">2 · Rutas que tienen hoy <span class="mut">— pasos de producción; «usar» la toma como base para el paso 3</span></div>
-    ${distintas.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Ruta actual</th><th class="num">Órdenes</th><th class="num">Prendas</th><th></th></tr></thead><tbody>${distintas.slice(0,12).map(d=>`<tr><td>${d.k==='(sin ruta)'?'<span class="tag t-alerta">sin ruta de producción</span>':d.cens.slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(c=>esc(nCen(c))).join(' → ')}</td><td class="num">${d.n}</td><td class="num">${num(d.pz)}</td><td>${d.k==='(sin ruta)'?'':`<button class="btn ghost sm" onclick="rutaLoteUsar(${JSON.stringify(d.cens).replace(/"/g,'&quot;')})">usar</button>`}</td></tr>`).join('')}${distintas.length>12?`<tr><td colspan="4" class="mut">y ${distintas.length-12} rutas más</td></tr>`:''}</tbody></table>`:'<span class="mut">Ninguna orden con esos filtros.</span>'}
+    ${distintas.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Ruta actual</th><th class="num">Órdenes</th><th class="num">Prendas</th><th></th></tr></thead><tbody>${distintas.slice(0,12).map(d=>`<tr><td>${d.k==='(sin ruta)'?'<span class="tag t-alerta">sin ruta de producción</span>':d.cens.slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(c=>esc(nCen(c))).join(' → ')}</td><td class="num">${d.n}</td><td class="num">${num(d.pz)}</td><td>${d.k==='(sin ruta)'?'':`<button class="btn ghost sm" onclick="rutaLoteUsar(${JSON.stringify(d.cens).replace(/"/g,'&quot;')})">usar</button>`}</td></tr>`).join('')}${distintas.length>12?`<tr><td colspan="4" class="mut">y ${distintas.length-12} rutas más</td></tr>`:''}</tbody></table>`:'<span class="mut">No hay órdenes marcadas que se puedan editar.</span>'}
    </div>
    <div class="sub-blk"><div class="sub-t">3 · Ruta nueva <span class="mut">— marca los centros de producción; la parte textil de cada orden no cambia; la modalidad del lavado (planta / Quito) sigue siendo por orden (Liberación → lavado)</span></div>
     <div class="chips" style="margin:0">${cl.map(c=>{const on=(RLOTE.cens||[]).includes(c.id);return `<label class="chip ${on?'on':''}" style="cursor:${c.editable?'pointer':'not-allowed'}" title="${c.editable?(porDef.includes(c.id)?'marcado en Configuración → Centros: va por defecto en toda ruta':''):'no es de tus centros: se deja como está en cada orden'}"><input type="checkbox" id="rl-${c.id}" ${on?'checked':''} ${c.editable?'':'disabled'} onchange="rutaLoteTog('${c.id}')" style="margin:0 4px 0 0">${esc(c.n)}${porDef.includes(c.id)?' <span class="mut" style="font-size:var(--fs-xs)">por defecto</span>':''}</label>`}).join('')}</div>
     ${avisosRuta.map(a=>`<p style="margin:6px 0 0"><span class="tag t-alerta">${esc(a)}</span></p>`).join('')}
-    <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Los pasos ya hechos según la fase de Odoo se conservan aunque se desmarquen. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría de cada orden; si no lo tiene, entra sin tiempo y queda en la bandeja «sin tiempo por prenda».</p>
+    <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Los pasos ya hechos se conservan aunque se desmarquen. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría de cada orden; si no lo tiene, entra sin tiempo y queda en la bandeja «sin tiempo por prenda».</p>
    </div>
    <div class="sub-blk"><div class="sub-t">4 · Qué cambia <span class="mut">— antes de aplicar</span></div>
     <p style="margin:0 0 6px"><b>${plan.cambian}</b> órdenes cambian de ruta · ${plan.igual} quedan igual (solo se confirman)${plan.hechosConservados?' · '+plan.hechosConservados+' conservan pasos ya hechos':''}${plan.omitidas?' · '+plan.omitidas+' no reciben un paso marcado porque su fase ya pasó por ahí (o no es de tus centros)':''}${plan.conAvance?' · <span class="tag t-aviso">'+plan.conAvance+' pierden un paso con avance registrado</span>':''}${plan.divergen?' · '+plan.divergen+' con ruta pendiente ≠ completa (se dejan coherentes)':''}${plan.revisar?' · '+plan.revisar+' marcadas «revisar» por cambio de catálogo (se cierra solo si la ruta cambia)':''}
@@ -7871,7 +7846,7 @@ function mRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planificació
 function aplicarRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas. Tu perfil las ve, pero no las cambia.');return 0}
   const motivo=String((document.getElementById('rlote-motivo')||{value:RLOTE.motivo}).value||'').trim();if(!motivo){alert('Escribe el motivo.');return 0}
   if(typeof perfilSoloPiso==='function'&&perfilSoloPiso()){alert('Con tu perfil no se guardan los cambios de órdenes: la ruta en lote la aplica planificación.');return 0}
-  const ords=ordenesLote();if(!ords.length){alert('Ninguna orden con esos filtros.');return 0}
+  const ords=ordenesLote();if(!ords.length){alert('No hay órdenes marcadas que se puedan editar.');return 0}
   if(!(RLOTE.cens||[]).length){alert('Marca al menos un centro de producción: una ruta vacía no se aplica en lote.');return 0}
   const plan=planRutaLote(ords,RLOTE.cens||[]);
   if(CE('empaque')){const sinEmp=plan.filas.filter(f=>!f.despues.includes('empaque')).length;if(sinEmp){alert(sinEmp+' '+(sinEmp===1?'orden quedaría':'órdenes quedarían')+' sin Empaque. Regla fija: toda ruta de producción termina en Empaque. Marca Empaque o acota el lote.');return 0}}const cens=(RLOTE.cens||[]).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));const cl=centrosLote();const noEdit=cl.filter(c=>!c.editable).map(c=>c.id);
@@ -7890,9 +7865,17 @@ function aplicarRutaLote(){if(!puedeEditarRuta()){alert('Solo el jefe de planifi
     registrarAuditoria('ruta',o,antesTxt+(antesConf?' · '+antesConf.estado+' ('+antesConf.origen+')':' · por definir'),(f.despues.map(nCen).join(' → ')||'—')+' · confirmada (lote)',motivo,false);n++});
   bitacora('Ruta en lote · '+n+' órdenes → '+cens.filter(c=>!noEdit.includes(c)).map(nCen).join(' → ')+(noEdit.length?' (solo centros del perfil; '+noEdit.map(nCen).join(', ')+' quedan como estaban)':'')+' · '+plan.cambian+' cambiaron, '+plan.igual+' solo confirmadas'+(sinT.length?' · SIN TIEMPO: '+sinT.map(([c,k])=>nCen(c)+' ('+k+')').join(', '):'')+(avisos.length?' · OJO: '+avisos.join(' · '):'')+' · '+motivo+' ('+u+')');
   PLAN=null;PLAN_ALL=null;const nAv=avisosFechaLote(plan.filas.filter(f=>f.mas.length||f.menos.length).map(f=>f.o),finAntes,'Ruta en lote: '+motivo);
-  RLOTE=RLOTE0();save();cerrar();render();
+  RLOTE=RLOTE0();RUT.sel=new Set();save();cerrar();render();
   if(nAv)alert(nAv+' '+(nAv===1?'orden pasa':'órdenes pasan')+' a terminar después de su fecha meta con la ruta nueva: quedaron en Hoy → Advertencias de fecha.');
   if(sinT.length)alert('Pasos agregados sin tiempo por prenda: '+sinT.map(([c,k])=>nCen(c)+' ('+k+' órdenes)').join(', ')+'. Quedan en la bandeja «sin tiempo» y no cargan hasta que se cargue el tiempo.');return n}
+/* «Confirmar como están»: las marcadas quedan confirmadas con la ruta que ya tienen (persona), sin cambiar ningún paso; auditoría por orden, una bitácora */
+function confirmarRutasSel(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas. Tu perfil las ve, pero no las cambia.');return 0}
+  const ords=S.ordenes.filter(o=>RUT.sel.has(o.id)&&abierta(o)&&!rutaNoAplica(o)&&!rutaConfirmada(o));if(!ords.length){alert('Ninguna de las marcadas está por confirmar.');return 0}
+  const sinRuta=ords.filter(o=>!pasosProCompleta(o).length).length;
+  if(!confirm('Se confirma la ruta ACTUAL de '+ords.length+' órdenes, tal como está (no se cambia ningún paso).'+(sinRuta?'\nOJO: '+sinRuta+' no tienen ningún paso de producción y quedarían confirmadas así.':'')+'\nQueda en auditoría y bitácora. ¿Confirmar?'))return 0;
+  const u=quienFirma(),ts=new Date().toISOString();
+  ords.forEach(o=>{o.rutaConf={estado:'confirmada',origen:'persona',u,ts,nota:'confirmada como está (lote)'};if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);registrarAuditoria('ruta',o,(pasosProCompleta(o).map(nCen).join(' → ')||'—')+' · por definir',(pasosProCompleta(o).map(nCen).join(' → ')||'—')+' · confirmada (como está, lote)','',false)});
+  bitacora('Rutas confirmadas como están · '+ords.length+' órdenes marcadas en Rutas ('+u+')');RUT.sel=new Set();save();render();return ords.length}
 /* ============ D · REGLAS DE RUTA: agregar sub-áreas de terminados a las rutas, desde una tabla editable ============ */
 /* Cada fila: familia (padre) + categoría (hija) + atributo → sub-área a insertar y dónde. Nada fijo en el código.
    El atributo es un texto que se busca en la orden (producto, referencia, color o categoría): sirve para «denim»,
@@ -7978,43 +7961,44 @@ function reglasRutaHTML(){const rs=reglasRuta();const p=previaReglasRuta();
      ${p.manual.slice(0,200).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(famDeOrden(o))}</td><td>${pasosRutaDe(o).map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta</span>'}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:''}</td></tr>`).join('')}
      </tbody></table></div></details>`:''}
   </div></div>`}
-function rutasHTML(){const q=normTxt(RUT.q);const contras=contradiccionesOT();
-  const pend=rutasPorDefinir().filter(o=>matchBusq(o,q,'RUT.q'));
-  const porRef={};pend.forEach(o=>{const r=refDe(o);(porRef[r]=porRef[r]||[]).push(o)});
-  const refs=Object.keys(porRef).sort((a,b)=>porRef[b].length-porRef[a].length||a.localeCompare(b,'es'));
-  const conf=S.ordenes.filter(o=>abierta(o)&&rutaConfirmada(o)&&matchBusq(o,q,'RUT.q'));
-  const an=analizarRutasOdoo();
-  return `${rutasTarjetaHTML()}
-  ${rutasEstimadasHTML()}
-  ${reglasRutaHTML()}
-  <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-   <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
-   ${grpSelHTML('rut')}
-   <div class="chips" style="margin:0">${[['pend','Por definir'],['conf','Con ruta confirmada']].map(([k,n])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n}</span>`).join('')}</div>
-   ${puedeEditarRuta()?`<button class="btn sm" onclick="abrirRutaLote()" title="la misma ruta para varias órdenes que la comparten (por familia, tipo de producto, referencia o cliente)">Editar ruta en lote</button> <button class="btn ghost sm" onclick="confirmarRutasOdoo()" title="solo las que coinciden EXACTO con las órdenes de trabajo; nunca pisa una confirmación de una persona">Confirmar las que coinciden con Odoo (${an.coincide.length})</button>`:''}
+/* ---------- Pestaña Rutas (20-sep-2026, pedido de la usuaria: «un solo recuadro con todas las órdenes, agrupar como en todo el sistema,
+   marcar el grupo y definir ruta para todos»): UNA lista de las órdenes cuya ruta se revisa, el agrupador común con casilla por grupo,
+   casilla por orden, y dos acciones sobre lo marcado: definir ruta (mRutaLote) o confirmar como están. Rutas estimadas, reglas de
+   sub-áreas y lo que dice Odoo quedan plegados abajo en «Más herramientas». ---------- */
+function rutasBase(){return S.ordenes.filter(o=>abierta(o)&&!rutaNoAplica(o))}
+function rutasLista(){const q=normTxt(RUT.q);const v=RUT.ver;return rutasBase().filter(o=>(v==='pend'?!rutaConfirmada(o):v==='conf'?rutaConfirmada(o):true)&&matchBusq(o,q,'RUT.q'))}
+function rutasBarraSel(){const n=RUT.sel.size;const el=document.getElementById('rut-sel-n');if(el)el.textContent=n;['rut-btn-def','rut-btn-conf'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!n})}
+function togSelRut(id,on){if(on)RUT.sel.add(id);else RUT.sel.delete(id);rutasBarraSel()}   /* sin redibujar: la lista no se mueve al marcar una fila */
+function selGrupoRut(key,on){const ids=((grpSt('rut').mapa)||{})[key]||[];ids.forEach(id=>on?RUT.sel.add(id):RUT.sel.delete(id));render()}
+function selTodoRut(on){rutasLista().forEach(o=>on?RUT.sel.add(o.id):RUT.sel.delete(o.id));if(!on)RUT.sel=new Set();render()}
+function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();const pend=base.filter(o=>!rutaConfirmada(o)),conf=base.filter(o=>rutaConfirmada(o));const na=rutasNoAplican();const lista=rutasLista();
+  const g=grpSt('rut');if(!g.sembrado){g.sembrado=true;let guardado=null;try{guardado=localStorage['__grp_'+claveUsr()+'_rut']}catch(e){}if(guardado==null&&!g.niveles.length)g.niveles=['fam','hija']}   /* arranca agrupada por familia → tipo de producto solo la primera vez; «sin agrupar» se respeta */
+  g.selFn='selGrupoRut';g.selChk=ids=>!!(ids&&ids.length&&ids.every(id=>RUT.sel.has(id)));g.todoAbierto=false;
+  const nSel=RUT.sel.size;const an=analizarRutasOdoo();
+  const fila=o=>{const d=diagRutaOdoo(o,contras);const rc=rutaConf(o);const ruta=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));
+    return `<tr><td><input type="checkbox" ${RUT.sel.has(o.id)?'checked':''} onchange="togSelRut('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(refDe(o))}</td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td style="font-size:var(--fs-xs)">${ruta.map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta de producción</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(d.txt)}</td><td style="white-space:nowrap">${rc&&rc.estado==='confirmada'?(rc.origen==='odoo'?'<span class="tag t-medio">Odoo OT</span>':'<span class="tag t-ok">persona</span>')+' <span class="mut" style="font-size:var(--fs-xs)">'+esc(rc.u||'')+' · '+new Date(rc.ts).toLocaleDateString('es-EC')+'</span>':(typeof estadoRuta==='function'&&estadoRuta(o)==='sinRevisar'?'<span class="tag t-aviso">estimada · sin revisar</span>':'<span class="tag t-aviso">por confirmar</span>')}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')">editar</button>`:`<button class="btn ghost sm" onclick="abrirFichaOrden('${o.id}')">ver</button>`}</td></tr>`};
+  const cap=g.niveles.length?lista:lista.slice(0,600);
+  return `<div class="panel"><h3>Rutas <span class="note">${pend.length} por confirmar · ${conf.length} confirmadas${na.length?' · '+na.length+' con la prenda terminada: su ruta no se revisa':''}</span></h3><div class="body">
+   <div class="row filtros-blk" style="align-items:flex-end;margin-bottom:8px">
+    <div style="width:220px"><label>Buscar</label>${busqHTML('RUT.q',RUT.q,'RUT.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
+    ${grpSelHTML('rut')}
+    <div class="chips" style="margin:0">${[['pend','Por confirmar',pend.length],['conf','Confirmadas',conf.length],['todas','Todas',base.length]].map(([k,n,c])=>`<span class="chip ${RUT.ver===k?'on':''}" onclick="RUT.ver='${k}';render()">${n} <span class="mut">${c}</span></span>`).join('')}</div>
+   </div>
+   <p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>
+   <div class="sub-blk" id="rut-acciones" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b><span id="rut-sel-n">${nSel}</span> marcadas</b>
+    ${puedeEditarRuta()?`<button class="btn sm" id="rut-btn-def" ${nSel?'':'disabled'} onclick="abrirRutaLote()">Definir ruta para las marcadas</button><button class="btn ghost sm" id="rut-btn-conf" ${nSel?'':'disabled'} onclick="confirmarRutasSel()" title="deja confirmada la ruta que ya tiene cada una, sin cambiar ningún paso">Confirmar como están</button>`:''}
+    <button class="btn ghost sm" onclick="selTodoRut(true)">Marcar todas las de la lista (${lista.length})</button><button class="btn ghost sm" onclick="selTodoRut(false)">Desmarcar</button>
+    <span class="mut" style="font-size:var(--fs-xs)">Marca órdenes sueltas o un grupo entero (casilla en la cabecera del grupo) y define la ruta para todas de una vez.</span></div>
+   <div class="scroll" style="max-height:70vh"><table style="font-size:var(--fs-s)"><thead><tr><th></th><th>OP · fase</th><th>Referencia</th><th>Cliente</th><th>Tipo de producto</th><th>Ruta actual</th><th>Odoo</th><th>Estado</th><th></th></tr></thead><tbody>
+   ${filasGRP('rut',cap,fila,9)}
+   </tbody></table>${!g.niveles.length&&lista.length>600?`<p class="mut">Se muestran 600 de ${lista.length}: agrupa o usa el buscador.</p>`:''}${!lista.length?'<div class="empty">Ninguna orden con esta búsqueda.</div>':''}</div>
   </div></div>
-  <div class="panel"><div class="body" style="font-size:var(--fs-s)">
-   <b>Qué dice Odoo hoy:</b> ${an.coincide.length} coinciden exacto · ${an.difiere.length} difieren de la ruta · ${an.sinMapear.length} con un centro sin mapear · ${an.contradiccion.length} con contradicción fase vs OT · ${an.sinOT.length} sin órdenes de trabajo cargadas. <span class="mut">Solo las que coinciden se pueden confirmar solas; el resto se revisa a mano y su ruta no se toca.</span>
-  </div></div>
-  ${RUT.ver==='pend'?`<div class="panel"><h3>Por definir <span class="note">${refs.length} referencias · ${pend.length} órdenes · la ruta se confirma por referencia y baja a sus WH</span></h3><div class="body">
-   ${refs.length?refs.map(r=>{const os=porRef[r];const o0=os[0];const d=diagRutaOdoo(o0,contras);const pz=os.reduce((a,o)=>a+ +o.cant,0);
-     return `<div style="border-bottom:1px solid var(--rule2);padding:10px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
-      <div style="flex:none">${fotoDe(o0)?fotoMini(o0,70):''}</div>
-      <div style="flex:1;min-width:240px">
-       <div><b style="font-size:17px">${esc(r)}</b> <span class="mut">· ${esc(famDeOrden(o0))} · ${esc(o0.cliente||'')}</span></div>
-       <div class="mut">${os.length} ${os.length===1?'WH':'WH'} · ${num(pz)} prendas</div>
-       <div style="font-size:var(--fs-s);margin-top:4px">Ruta actual: ${pasosRutaDe(o0).map(c=>esc(nCen(c))).join(' → ')||'<span class="tag t-alerta">sin ruta</span>'}</div>
-       <div class="mut" style="font-size:var(--fs-xs)">Odoo: ${esc(d.txt)}</div>
-       <div class="mut" style="font-size:var(--fs-xs)">${os.slice(0,6).map(o=>esc(o.op)).join(' · ')}${os.length>6?' y '+(os.length-6)+' más':''}</div>
-      </div>
-      <div style="flex:none;display:flex;flex-direction:column;gap:6px">
-       ${puedeEditarRuta()?`<button class="btn sm" onclick="mRutaCentro('${o0.id}')">Editar y confirmar</button>
-        <button class="btn ghost sm" onclick="if(confirm('¿Confirmar la ruta actual para las ${os.length} WH abiertas y no liberadas de ${esc(r).replace(/'/g,'')}?'))aplicarRutaARef('${o0.id}')">Confirmar como está</button>
-        <button class="btn ghost sm" onclick="aplicarRutaARef('${o0.id}',true)" title="solo esta WH, sin tocar las demás de la referencia">Solo esta WH</button>`:''}
-      </div></div>`}).join(''):'<span class="mut">No queda ninguna ruta por confirmar con esta búsqueda.</span>'}
-  </div></div>`:`<div class="panel"><h3>Con ruta confirmada <span class="note">${conf.length} órdenes · quién, cuándo y de dónde salió</span></h3><div class="body"><div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Referencia</th><th>Cliente</th><th>Ruta</th><th>Origen</th><th>Quién y cuándo</th><th></th></tr></thead><tbody>
-   ${(grpSt('rut').todoAbierto=true,filasGRP('rut',conf.slice(0,400),o=>{const r=rutaConf(o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(refDe(o))}</td><td>${esc(o.cliente||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${pasosRutaDe(o).map(c=>esc(nCen(c))).join(' → ')}</td><td>${r.origen==='odoo'?'<span class="tag t-medio">Odoo OT</span>':'<span class="tag t-ok">persona</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(r.u||'')} · ${new Date(r.ts).toLocaleString('es-EC')}</td><td>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')" title="${liberada(o,'corte')?'esta orden ya está liberada: cambiar la ruta cambia su programa':'editar la ruta'}">editar${liberada(o,'corte')?' ⚠':''}</button>`:''}</td></tr>`},7))||'<tr><td colspan="7" class="mut">Ninguna ruta confirmada todavía.</td></tr>'}
-  </tbody></table></div></div></div>`}`}
+  <details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Más herramientas <span class="note">rutas estimadas para las que no tienen ruta · reglas para agregar sub-áreas · lo que dicen las órdenes de trabajo de Odoo</span></summary><div class="body" style="padding:0 16px 12px">
+   <div class="sub-blk" style="font-size:var(--fs-s)"><b>Qué dice Odoo hoy:</b> ${an.coincide.length} coinciden exacto · ${an.difiere.length} difieren de la ruta · ${an.sinMapear.length} con un centro sin mapear · ${an.contradiccion.length} con contradicción fase vs OT · ${an.sinOT.length} sin órdenes de trabajo cargadas. <span class="mut">Solo las que coinciden se pueden confirmar solas; el resto se revisa a mano y su ruta no se toca.</span>
+    ${puedeEditarRuta()?` <button class="btn ghost sm" onclick="confirmarRutasOdoo()" title="solo las que coinciden EXACTO con las órdenes de trabajo; nunca pisa una confirmación de una persona">Confirmar las que coinciden con Odoo (${an.coincide.length})</button>`:''}</div>
+   ${rutasEstimadasHTML()}
+   ${reglasRutaHTML()}
+  </div></details>`}
 function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
   const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}

@@ -12,13 +12,32 @@ editar la ruta masiva».
 
 Nada permitía decir «todas las Short Basico llevan corte → estampado → confección → empaque» de una vez.
 
-## Qué hay ahora: Órdenes → Rutas → **Editar ruta en lote** (`abrirRutaLote` / `mRutaLote`)
-Cuatro pasos en un modal ancho:
-1. **Qué órdenes** — familia, tipo de producto, referencia, cliente y buscador (Referencia y Buscar se aplican con Enter o con
-   «Filtrar», no al salir del campo). Base: **órdenes abiertas cuya ruta se revisa** (`rutaLoteCandidatas`: `abierta` y no
-   `rutaNoAplica` — las de prenda terminada quedan fuera) y **sin ruta confirmada**, salvo que se marque «incluir las que ya
-   tienen ruta confirmada» (se pisan; queda en auditoría con el origen que tenía). Muestra órdenes, referencias, prendas, cuántas
-   ya están liberadas a producción, cuántas tienen la ruta editada a mano y cuántas confirmadas.
+## Segunda versión (misma tarde): la usuaria vio la primera y pidió «un solo recuadro»
+«Primero me sale un bloque, luego otro, le agrupo y no funciona… hazlo muy simple: un solo recuadro donde estén todas las órdenes,
+que pueda agrupar por las agrupaciones que tenemos en todo el sistema y de ahí marcar todo el grupo y definir ruta para todos.»
+La primera versión tenía la tarjeta, las rutas estimadas, las reglas, la barra, «qué dice Odoo», la lista por referencia **y** un modal
+con sus propios filtros (por eso «le agrupo y no funciona»: el agrupador de la pestaña solo movía la lista de confirmadas). Se
+reemplazó todo por lo de abajo.
+
+## Qué hay ahora: Órdenes → Rutas = UN recuadro (`rutasHTML`)
+- **Una lista** (`rutasBase` = abiertas cuya ruta se revisa; `rutasLista` = según el chip **Por confirmar / Confirmadas / Todas** y
+  el buscador `RUT.q`) con el **agrupador común** (`grpSt('rut')`, por defecto familia → tipo de producto; hasta 3 niveles como en
+  todo el sistema), **casilla por grupo** en la cabecera («marcar el grupo», `selGrupoRut`, vía `g.selFn/g.selChk` del agrupador) y
+  **casilla por orden** (`togSelRut`, sin redibujar). Columnas: OP · fase, referencia, cliente, tipo de producto, ruta actual, lo que
+  dice Odoo, estado (por confirmar / estimada sin revisar / confirmada por Odoo OT o persona con quién y cuándo) y «editar» (ruta por
+  orden). Sin agrupar se muestran 600 y lo dice.
+- **Barra de acciones sobre lo marcado** (`RUT.sel`): «Definir ruta para las marcadas» (`abrirRutaLote` → el modal de abajo),
+  «Confirmar como están» (`confirmarRutasSel`: deja confirmada la ruta que ya tiene cada una, sin cambiar pasos; auditoría por orden,
+  una bitácora), «Marcar todas las de la lista», «Desmarcar».
+- **«Más herramientas»** plegado abajo: qué dice Odoo (+ «Confirmar las que coinciden con Odoo»), rutas estimadas (`rutasEstimadasHTML`)
+  y reglas para agregar sub-áreas (`reglasRutaHTML`). La lista por referencia y la tarjeta desaparecieron; `aplicarRutaARef` sigue
+  existiendo (la usan las pruebas RU3) pero ya no tiene botón.
+
+## El modal «Definir ruta para las marcadas» (`mRutaLote`)
+Trabaja sobre **la selección** (`RLOTE.ids`, sin filtros propios):
+1. **Órdenes marcadas** — cuántas entran (abiertas cuya ruta se revisa), referencias, prendas, cuántas ya están liberadas a
+   producción, cuántas tienen la ruta editada a mano, cuántas confirmadas (se pisan; queda en auditoría con el origen) y cuántas
+   marcadas no entran (cerradas o con la prenda terminada).
 2. **Rutas que tienen hoy** — las rutas de producción distintas del grupo con cuántas órdenes y prendas; «usar» toma una como base.
 3. **Ruta nueva** — casillas de los centros de producción (`centrosLote`: los mismos del editor por orden, habilitados según
    `centrosEditablesRuta`; los que el perfil no edita se dejan como están en cada orden), con la etiqueta «por defecto» de
@@ -30,7 +49,7 @@ Cuatro pasos en un modal ancho:
    **sin tiempo** (el paso entra en 0); cuenta cambian / quedan igual (solo se confirman) / conservan pasos hechos / no reciben un
    paso / marcadas «revisar» por cambio de catálogo (se dan por revisadas). Tabla con antes → después y nota por orden.
 
-**Aplicar** (`aplicarRutaLote`): exige `puedeEditarRuta()`, motivo escrito, un perfil que guarde órdenes (no de piso), al menos un
+**Aplicar** (`aplicarRutaLote`, limpia la selección al terminar): exige `puedeEditarRuta()`, motivo escrito, un perfil que guarde órdenes (no de piso), al menos un
 centro marcado y que **ninguna orden quede sin Empaque** (regla fija: toda ruta de producción termina en Empaque; si no, avisa y no
 aplica). Pide confirmación con el resumen (ruta en tus centros, cuántas cambian, liberadas, confirmadas que se pisan, avisos, pasos
 sin tiempo). Por orden: quita `menos`, inserta `mas` en su posición de `ordenPaso` en `o.ruta` y en `o.rutaCompleta` (sin
@@ -59,11 +78,12 @@ avance registrado en piso (unidades o tramo abierto) se avisa en la fila, en el 
 - Nada corre solo; nada se borra; cancelar o aplicar deja el estado del lote limpio (`RLOTE0`).
 
 ## Pruebas
-Bloque **RLT** del simulador (22 comprobaciones): alcance y conteos, base más común, plan (entra/sale/conserva/omitidas por
-fase), permisos, motivo, ruta vacía y sin Empaque bloqueadas, aplicación (rutas completa y pendiente coherentes, tiempos por
-`tiempoPaso`, confirmación, sello, auditoría, bitácora única), órdenes fuera del alcance intactas, «incluir confirmadas», paso hecho
-por fase y por cierre en piso, filtros con Enter, marcado a mano que sobrevive a los filtros, cancelar limpio. Captura
-`?captura=uxlote` → `capturas/ui_ruta_lote.png`.
+Bloque **RLT** del simulador (23 comprobaciones): la lista y sus grupos con casilla, marcar un grupo desde la cabecera, marcar
+/ desmarcar una fila sin redibujar, el modal sobre la selección, base más común, plan (entra/sale/conserva/excluido por la fase),
+permisos, motivo, ruta vacía y sin Empaque bloqueadas, aplicación (rutas completa y pendiente coherentes, tiempos por `tiempoPaso`,
+confirmación, sello, auditoría, bitácora única, selección limpia), órdenes no marcadas intactas, «Confirmadas» y el aviso «se pisan»,
+«Confirmar como están», paso hecho por fase y por cierre en piso, cancelar limpio. Capturas `?captura=uxrutas` →
+`capturas/ui_rutas.png` y `?captura=uxlote` → `capturas/ui_ruta_lote.png`.
 
 ## Revisión adversarial (workflow de 4 lentes + verificación)
 Hallazgos aplicados: paso hecho por `pasoHecho` (no solo fase); advertencias de fecha para las liberadas; `rutaCompleta` se

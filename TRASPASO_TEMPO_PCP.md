@@ -204,11 +204,12 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
-### 2.68 Ruta en lote (20-sep)
-- Órdenes → Rutas → «Editar ruta en lote»: alcance por familia / tipo de producto / referencia / cliente / buscador, rutas actuales del
-  grupo con «usar», casillas de centros (por defecto marcados), plan por orden (entra / sale / conserva lo hecho / no se agrega /
-  sin tiempo) y aplicación con permiso, motivo, confirmación, ruta con Empaque obligatoria, tiempos por `tiempoPaso`, confirmación
-  por orden, auditoría por orden, una bitácora y advertencias de fecha. Ver `RUTA_EN_LOTE.md`.
+### 2.68 Pestaña Rutas en un solo recuadro y ruta en lote (20-sep)
+- Órdenes → Rutas es UNA lista (por confirmar / confirmadas / todas, buscador) con el agrupador común y casilla por grupo y por
+  orden; sobre lo marcado: «Definir ruta para las marcadas» (rutas actuales con «usar», casillas de centros, plan por orden — entra /
+  sale / conserva lo hecho o excluido por la fase / sin tiempo / con avance —, motivo, confirmación, Empaque obligatorio, tiempos por
+  `tiempoPaso`, confirmación y auditoría por orden, una bitácora, advertencias de fecha) y «Confirmar como están». Rutas estimadas,
+  reglas de sub-áreas y Odoo plegados en «Más herramientas». Ver `RUTA_EN_LOTE.md`.
 
 ### 2.67 Ruta lista sin editar y bloques de la ficha que no se cierran solos (20-sep)
 - Decisión de la usuaria: una orden con la prenda terminada (fase con «sin carga» en la tabla 1: empaque terminado, cross, centro
