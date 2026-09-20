@@ -218,7 +218,9 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   filtro de fases. La ruta por orden y «qué dice Odoo» miran la ruta completa (los pasos hechos salían desmarcados). **La OT manda
   sobre la ruta**: al cargar órdenes de trabajo (y al recargar tareas o rehacer rutas) el centro con OT entra a la ruta; nunca se quita
   un paso por falta de OT. Redibujar (guardar, desplegar, marcar) ya no manda la pantalla al inicio. En la lista de Órdenes hay
-  columna Ruta y botón «✓ Ruta ok» para confirmar una a una sin abrir la ficha. Ver `RUTA_EN_LOTE.md`.
+  columna Ruta y botón «✓ Ruta ok» para confirmar una a una sin abrir la ficha. **Excedentes** (palabra en la ODC, parámetro):
+  prenda ya hecha, ruta = solo el paso final (Empaque por defecto, parámetro). Rutas trae ODC y prendas. **La OT no toca una
+  ruta confirmada**: lo que difiera se reporta en el Reporte OT. Ver `RUTA_EN_LOTE.md`.
 
 ### 2.67 Ruta lista sin editar y bloques de la ficha que no se cierran solos (20-sep)
 - Decisión de la usuaria: una orden con la prenda terminada (fase con «sin carga» en la tabla 1: empaque terminado, cross, centro

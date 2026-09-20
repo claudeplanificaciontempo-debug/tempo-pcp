@@ -128,6 +128,20 @@ quiero ponerle check y no tengo que hacer nada más». Dos cosas:
   si está por editar y el perfil edita rutas, un botón que la confirma tal como está (persona, sellada, auditoría y bitácora) sin
   abrir la ficha. La fila sale de «Por editar» y la lista no se mueve. Pruebas UX4.
 
+## Excedentes, ODC y prendas en Rutas, y la OT no toca lo confirmado (20-sep, tarde)
+- **Excedentes** (usuaria: «prendas que teníamos en bodega y quieren que les vendamos; lo que falta es etiquetar con la pistola o poner
+  RFID, un proceso final, no es estampado»): `esExcedente(o)` = la ODC (o el proyecto) contiene alguna de las **palabras** del parámetro
+  `palabrasExcedente` («EXCEDENTE» por defecto, coma-separadas) o la marca a mano `o.excedente`. Su ruta de producción es **solo el
+  centro final** (`centroExcedente`, Empaque por defecto; tiempo = el de empaque de la categoría). Los dos parámetros están en Calendario
+  y parámetros. Al cargar tareas, una orden nueva excedente nace con esa ruta (sin textil, sin corte), «estimada» con nota, para
+  confirmarla con «✓ Ruta ok». Las ya cargadas se ven con la etiqueta **excedente** en Órdenes y Rutas; agrupando por ODC se les
+  define la ruta de un golpe (marcar el grupo → Definir ruta → solo Empaque).
+- La lista de **Rutas** trae **ODC** y **prendas** por orden (antes solo el total en la cabecera del grupo).
+- **La OT no toca una ruta confirmada** (usuaria: «no quiero que las rutas que ya trabajé se vean editadas por las órdenes de
+  trabajo»): `empatarRutaConOT` devuelve `[]` si `rutaConfirmada(o)`; `aplicarOT` cuenta las confirmadas cuya OT trae un centro fuera
+  de la ruta (`confNoTocadas`, en el aviso, el registro de cargas y el **Reporte OT** con la lista) — se reportan, no se aplican.
+  Pruebas EX.
+
 ## Pruebas
 Bloque **RLT** del simulador (23 comprobaciones): la lista y sus grupos con casilla, marcar un grupo desde la cabecera, marcar
 / desmarcar una fila sin redibujar, el modal sobre la selección, base más común, plan (entra/sale/conserva/excluido por la fase),

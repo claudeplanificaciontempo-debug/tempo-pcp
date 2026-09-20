@@ -986,7 +986,11 @@ ahí: toda lista larga con agrupador debería llevar el atributo; la fila de fil
 con orden de trabajo no cancelada (terminada → solo completa; pendiente → completa y pendiente), `{ot:true}` + `o.rutaOT`; corre en `aplicarOT`, en
 `aplicarTarea` (tras conservar «ot») y en `recalcularRutas`. Pruebas UX3. **`render()` conserva el scroll** (`tomarScroll`/`devolverScroll`: ventana +
 recuadros `data-grp-scroll`, solo si sigue la misma página; `redibujarLista` igual): no volver a «mandar al inicio» al redibujar. **Lista de Órdenes**: columna
-**Ruta** (`rutaCeldaHTML`) y botón **«✓ Ruta ok»** (`rutaOkFila`: confirma tal cual, persona, sin abrir la ficha; solo con `puedeEditarRuta` y ruta por editar). Pruebas UX4.
+**Ruta** (`rutaCeldaHTML`) y botón **«✓ Ruta ok»** (`rutaOkFila`: confirma tal cual, persona, sin abrir la ficha; solo con `puedeEditarRuta` y ruta por editar). Pruebas UX4. `mRutaCentro`/`guardarRutaCentro` calculan el tiempo del paso con **`tiempoPaso`** (plancha y lavado
+salen del centro; antes decían «sin tiempo»); **no hay siembra** que empate rutas ya cargadas con la OT (la usuaria pidió dejarlas y revisarlas ella). Pruebas UX5.
+**Excedentes**: `esExcedente(o)` (palabras `prm('palabrasExcedente','EXCEDENTE')` en ODC / proyecto, o `o.excedente`), `centroExcedente()`
+(`prm('centroExcedente','empaque')`), `tagExcedente`; al cargar nacen con ruta = solo ese centro, sin textil, estimada con nota. **La OT no toca una ruta
+confirmada** (`empatarRutaConOT` → `[]`; `aplicarOT` reporta `confNoTocadas` en Reporte OT). Rutas trae columnas ODC y Prendas. Pruebas EX.
 
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;
