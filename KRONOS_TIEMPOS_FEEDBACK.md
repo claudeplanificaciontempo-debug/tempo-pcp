@@ -118,7 +118,7 @@ casi coincide; donde falla es la longitud de la ruta».
    `total_min` (corte + confección + estampado + pulido + empaque) y se proponen para reemplazar `k.minEstConf`, que es **solo
    confección** y está **confirmado por producción** (Santiago, 16 y 19-sep). Confección contra confección: Jogger 12,06 vs 13,65 ·
    Crew 9,89 vs 11,08 · Faldas 11,87 vs 14,10 · Enterizo 21,2 vs 22,3 (4 refs) · Chalecos 17,29 vs 17,55 · Hoodie tejido 14,84 vs 14,42 ·
-   Polo tejida 15,9 vs 14,77 · **Camiseta tejida 4,57 vs 4,68**. Kronos **confirma** a Santiago; solo **Crew Zip** queda lejos (15,3 vs
+   Polo tejida 15,9 vs 14,77 (líneas POLOS/HOODIES: Kronos no tiene tejidos, es solo orientativo). Kronos **confirma** a Santiago; solo **Crew Zip** queda lejos (15,3 vs
    21,6), y ese 21,6 es la línea CAPUCHA CIERRE (chompa con capucha y cierre), que no es necesariamente un crew con medio cierre.
    Accesorios 3 vs 0,97 sale de una línea con 13 referencias, 9 incompletas. Polo tejida 16,8 no es reproducible con ningún corte.
 2. **Tejidos «con la línea más parecida, confianza baja»**: Kronos no tiene línea de prenda tejida. Un valor prestado de otra prenda
@@ -135,9 +135,10 @@ casi coincide; donde falla es la longitud de la ruta».
    (157). Y en Kronos el cordón está **dentro** de la confección; si el paso Cordones se hace en módulos, no debería tener minuto aparte.
 5. **«14 de 18 coinciden»**: enumera 12; JEANS 22,0 vs 31,7 (+44 %) va como «coincide»; VESTIDOS (−21 %) y SHORT PLANO (−19 %)
    desaparecen; CHOMPA y HODDIE se comparan contra la **misma** unión de líneas (21,6), que por separado da 26,2 y 18,4.
-6. **La regla «no promediar entre líneas» se incumple en el propio resumen**: CAMISETAS+CREW (la mediana 8,32 es la de camisetas; CREW
+6. **«SHORT CARGO no coincide (32,1 vs 17,6)»**: el 17,6 es la línea SHORTS (317 referencias); SHORTS CARGO sola tiene **2** referencias (19,3 y 32,2) y la LMO cae dentro: no está demostrado.
+7. **La regla «no promediar entre líneas» se incumple en el propio resumen**: CAMISETAS+CREW (la mediana 8,32 es la de camisetas; CREW
    sola 15,25), SHORTS CARGO+SHORTS (2 + 317 referencias), CAPUCHA CIERRE+HOODIES. Tres de las cuatro «no coinciden» salen de ahí.
-7. **«Kronos aporta donde el PCP no tiene hoja»**: al revés. Donde no hay hoja, Kronos confirma lo que ya hay. Donde **sí** hay hoja
+8. **«Kronos aporta donde el PCP no tiene hoja»**: al revés. Donde no hay hoja, Kronos confirma lo que ya hay. Donde **sí** hay hoja
    (camisetas) es donde Kronos muestra el problema.
 
 ---
@@ -166,12 +167,13 @@ casi coincide; donde falla es la longitud de la ruta».
 - **Apliques 0,38 / Cordones / Sublimado** como **referencia para que producción ponga el minuto** («Kronos: pasar cordón 0,36–0,90
   según línea, 180 usos»), no como valor sembrado; antes hay que decidir si el cordón se hace dentro o fuera de módulos.
 - **Jeans 0,40 y Vestidos 1,41 en ojales y botones**: solo si producción reconfirma (¿el 0 es «lo hace la maquila» o fue provisional?).
-- **Lista depurada de ~63 operaciones de la LMO para ingeniería** (misma línea, ≥ 10 usos): como lista de trabajo, no como cambio.
+- **Lista depurada de operaciones de la LMO para ingeniería** (misma línea, con volumen: ~63 con ≥ 10 usos, ~25 con ≥ 50 y sin sinónimos ni Henley/bordar/estampar): las más claras son ETIQUETAR PRENDA en 9 categorías (TEMPO 0,10–0,25 vs Kronos 0,28–0,44, hasta 1.509 usos), PAQUETEO camiseta 0,05 vs 0,16 (695 usos), HACER OJALES polo 0,78 vs 0,29. Como lista de trabajo, no como cambio; los cambios los hace ingeniería uno por uno con bitácora, nunca por recarga de la LMO.
 
 ### Subir (sin riesgo, útil ya)
 - **Columna de contraste** al lado de cada tiempo de la LMO y de cada minuto estimado: «Kronos: X min · línea · N usos / N referencias ·
   extracción dd-mm», visible y **sin efecto en el motor**. Cumple el principio 2 (se ve de dónde sale) y deja que ingeniería decida.
-- **Nota en los 14 estimados de Santiago**: «contrastado con Kronos dd-mm: mediana de confección de la línea X = Y» — sin cambiar el valor.
+- **Nota en los estimados de Santiago con línea clara** (Jogger, Crew, Faldas, Enterizo, Chalecos, Hoodie tejido, Polo tejida): «contrastado con Kronos dd-mm: mediana de confección de la línea X = Y (n referencias)» — sin cambiar el valor. Sin nota en Camiseta/Henley tejida (no hay línea), Crew Zip y Accesorios (van como pregunta).
+- **Nota en la regla de etiqueta tampográfica** (0,5 min para Level 1/2, CR, CV): Kronos la respalda con «Etiquetar» tampográfica **0,48 min en 1.582 de 1.923 camisetas**. El valor no se toca.
 - **Corrección del resumen** (este documento) para que no circule con «14 de 18 coinciden», «Camiseta CR/CV 2,35» ni «SHORTS 227 usos».
 
 ---
@@ -191,7 +193,9 @@ casi coincide; donde falla es la longitud de la ruta».
 6. **Cordones**: en Kronos el «pasar cordón» está dentro del ensamble. ¿El paso nuevo se hace fuera de módulos? Si es adentro, no lleva
    minuto propio. Sublimado/Apliques: ¿el minuto va por tipo de producto o por técnica?
 7. **¿Los tiempos de Kronos ya llevan suplementos y eficiencia, o son tiempo básico?** Ninguna fuente lo dice y la app usa el minuto tal cual.
-8. **¿Hay alguien de ingeniería que pueda confirmar referencias una por una?** La capa está pensada para que lo de Kronos entre «prestado» y
+8. **Las 105 órdenes de Camiseta CR con el paso Botones en la ruta**: ¿llevan botón de verdad o el paso entró por la orden de trabajo de Odoo y hay que quitarlo? Kronos solo tiene 7 camisetas con botón en 1.923.
+9. **Pulido y revisión de producto terminado**: ¿se hacen en módulos o en terminados? Kronos los trae aparte (camisetas: pulido 0,71 min por referencia) y cambia contra qué se compara el minuto de confección.
+10. **¿Hay alguien de ingeniería que pueda confirmar referencias una por una?** La capa está pensada para que lo de Kronos entre «prestado» y
    una persona lo marque confirmado o descartado; sin dueño quedaría prestado para siempre.
 
 ---
