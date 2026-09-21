@@ -992,6 +992,14 @@ parámetros de texto —`prm()` es solo numérico y `palabrasExcedente`/`centroE
 `planFotoCongelada`/`nuevasTrasCongelar`, `candidatasPlan` único criterio de excepciones). **Lección:** nunca `git checkout -- index.html` con trabajo sin commit (se perdió y se re-aplicó); el checkout deja CRLF y las
 anclas LF dejan de calzar (normalizar antes de parchear). Ver `MAQUILA_DESCARTE_PLAN_UNIFICADO.md`.
 
+**Tiempos del 21-sep (decisión de la usuaria: Kronos NO es fuente oficial; se carga UNA vez lo que faltaba y se sigue aquí):** `k.samManda[centro]={min,fuente,ts,u,pendiente}`
+= SAM por tipo de producto y centro que **manda sobre la hoja** (`samPorCentro` lo aplica al final; `samConfeccionOrden` devuelve null si existe → los ajustes por orden
+no lo pisan); panel **Operaciones → «Tiempos que mandan sobre la hoja»** (`samMandaHTML`, `setSamManda`, `confirmarSamManda`). `prm('botonesEstandar')` (0,40) en
+`tiempoPaso` para Botones sin dato; `c.minEstandar` de cualquier centro pro cuando la hoja no trae operaciones (cordones 0,90 · apliques 0,38 · sublimado
+1,40). `sembrarTiempos21` (una vez, `TIEMPOS21`): camisetas por tipo 4,47–6,51 (no 13,46), corte/empaque de las familias sin hoja; **Denim, Fits, Camisas,
+Polos, tejidos: sin cambio**. Las órdenes cargadas NO cambian solas: `tiemposRutasDif` → `mAplicarTiempos` (antes/después por familia y centro) →
+`aplicarTiemposRutas(motivo)` (permiso programa, confirmación, `p.tAntes`, bitácora, `S.params.tiemposAplicados`). Pruebas T21. Ver `TIEMPOS_21SEP_CARGA.md`.
+
 **Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
 después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de
 Servicios y Terminados / Lavandería / Botones 8; Facturado y Stand by 9. Seis fases que no venían se ubicaron junto a su pareja (a confirmar). **`cmpFases(a,b)`**
