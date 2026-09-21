@@ -985,7 +985,8 @@ maquila no es candidata salvo orden marcada, detrás de `prm('maquilaPorDescarte
 fecha meta ≤ mes (`enBasePlan`), menos `planMes[ym].quitadas`; «Agregar» solo excepciones (mes siguiente, sin fecha `PMADD.incluirSinFecha`, quitadas);
 `planMesQuitar` anota quitadas (nada se borra); `enProcesoFueraDelMes` solo informa; la columna «en proceso» de la tabla 5 ya no decide el plan. (3)
 **Personas Y horas por día** en el escenario: `nivCapSet(ym,rec,'pers'|'min',v)` (horas → minutos del ajuste de semana; `guardarAjustesCap` ya guardaba
-`min`). (4) **Tambor** `tamborModulosHTML` (módulo × familia desde `P.pro`, fondo = polivalencia). Capturas `?captura=uxmaqplan` / `uxtamborplan`
+`min`). (4) **Tambor** `tamborModulosHTML(rec)` (módulo × familia desde `P.pro`, fondo = polivalencia). La tarjeta **Maquila va dentro de la bandeja Confección** y
+Confección tiene botoncitos por módulo (`nivModChipsHTML`, `NIVUI.rec`) que acotan personas/horas y el tambor (21-sep). Capturas `?captura=uxmaqplan` / `uxtamborplan`
 (clientes anonimizados). Revisión adversarial antes de publicar: 15 hallazgos corregidos (doble descuento de lo marcado a maquila en
 `nivUICalcular`, `recFijadoDe`/`vaAMaquila` como única lectura, «no cabe y no se manda», criterio `maquilaCriterio` como parámetro, `prmTxt` para
 parámetros de texto —`prm()` es solo numérico y `palabrasExcedente`/`centroExcedente` nunca leían lo configurado—, foto congelada manda
@@ -997,8 +998,15 @@ anclas LF dejan de calzar (normalizar antes de parchear). Ver `MAQUILA_DESCARTE_
 no lo pisan); panel **Operaciones → «Tiempos que mandan sobre la hoja»** (`samMandaHTML`, `setSamManda`, `confirmarSamManda`). `prm('botonesEstandar')` (0,40) en
 `tiempoPaso` para Botones sin dato; `c.minEstandar` de cualquier centro pro cuando la hoja no trae operaciones (cordones 0,90 · apliques 0,38 · sublimado
 1,40). `sembrarTiempos21` (una vez, `TIEMPOS21`): camisetas por tipo 4,47–6,51 (no 13,46), corte/empaque de las familias sin hoja; **Denim, Fits, Camisas,
-Polos, tejidos: sin cambio**. Las órdenes cargadas NO cambian solas: `tiemposRutasDif` → `mAplicarTiempos` (antes/después por familia y centro) →
-`aplicarTiemposRutas(motivo)` (permiso programa, confirmación, `p.tAntes`, bitácora, `S.params.tiemposAplicados`). Pruebas T21. Ver `TIEMPOS_21SEP_CARGA.md`.
+Polos, tejidos: sin cambio**. **Todo cambio de tiempo se aplica al momento a las órdenes abiertas** (decisión 21-sep): `propagarTiempos(quien)` es el único camino (lo llaman todos los
+setters de tiempos, `aplicarLMO`, `revincularCategorias`, `aplicarTarea`); `tiempoEsperadoPaso` = la única definición del tiempo de un paso (con `opsSam` y sin SAM
+que mande, la suma ajustada); `p.tManual` (tiempo escrito a mano en la ficha) no se pisa; `p.tOrig`/`p.tAntes`; horas = prendas pendientes × minuto, pasos no
+hechos; el piso no propaga; bandera propia `tiempos21Propagado` (`sembrarPropagacionTiempos` al final de `sembrarDecisiones16`). `mAplicarTiempos` /
+`aplicarTiemposRutas` quedan solo como comprobación. `fusionarFila`: mismo valor en el mismo campo no es choque. Pruebas T21. Ver `TIEMPOS_21SEP_CARGA.md`. **Todo lo que es tiempo vive en la página Operaciones** (usuaria, 21-sep: «operaciones y centros al final es lo mismo»): `tiemposHubHTML` (orden de
+mando) → `samMandaHTML` → hoja → `minutosCentrosHTML` (min/prenda de los centros sin operaciones: mismo dato que Centros) → `botonesEstandarHTML` (salió de Calendario y
+parámetros) → `tiemposOjalBotonHTML` (salió de Configuración → Órdenes y materiales, queda un enlace) → etiquetas → minuto estimado. Al recargar la hoja, los `opsSam`
+se recuelgan por código de operación (`opsSamSinCalzar` para los que no calzan). **Nivelación**: la pastilla ⚠ riesgo y el «sin SAM» son clicables (`nivUIEnRiesgo`/`nivUIEnRiesgoHTML`:
+las de entrega más lejana cuyo trabajo cae en los últimos días de holgura; `nivUISinSAMHTML`: por tipo, con dónde se arregla).
 
 **Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
 después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de
@@ -1094,6 +1102,50 @@ Plancha (`centroPorDias`) quedan «por días, sin capacidad»: saldo y tabla, si
 Carga general desde la nivelación solo se ve el bloque de saldo (`CG.det.verResto` despliega el resto). Bordado en
 producción: `SUPABASE_BORDADO_UNICO_PASO.sql` (solo lectura). Ver `NIVELACION_PANTALLA_CORTE.md`,
 `NIVELACION_SALDO_TRES_CORRECCIONES.md` y `NIVELACION_DECISIONES_17SEP.md`.
+
+**Reportería (21-sep-2026, decisión de la usuaria):** el grupo Reportería es **Resumen gerencial · Producto en proceso · Avance por área ·
+Cumplimiento · Avance del mes** (= `REPORTES`, misma lista). **Se retiraron** Vista general de órdenes (`vVistaOrdenes`/`VO`), Asignación por orden
+(`vAsignacion`/`asignacionPorOrdenHTML`/`APO`), Reportería textil y Reportería por área (`vReporteria`/`REP`); quedan `clasificarAsig`, `pasoProximoDe`,
+`mDetalleAsig` y `mDetalleOrden`. `PAGINAS_REDIRIGIDAS` (`redirigirPagina` en `render()`) manda `vistaordenes`/`asignacion` → `wip` y `reporteria` →
+`avancearea`; migración `migReporteria2` agrega `avancearea` y `wip` a los perfiles que tenían las viejas. **Producto en proceso (`vWIP`) = UNA pivot
+como la de Odoo**: base por `carteraDe` (`WIP.base`: abiertas por defecto · lanzadas · liberadas, dicha en pantalla), agrupación por chips `WIP_PRESETS`
+(Fase por defecto · Cliente → Fase · Fase → Cliente · Familia · Familia → Tipo · Cliente · Sin agrupar) o el agrupador común (`grpSt('wip')`, recordado
+por usuario; `WIPL.niveles` solo es puente), filtro de fases `WIP.fases` y buscador `WIPL.q`; columnas OP·fase, Cliente, ODC, Estilo, Familia, Tipo,
+Color, Entrega, Dónde está, Estado (semáforo), **Órdenes, Pedido, Total $** (`usdOrden` = precio de Odoo × prendas, la misma fórmula del gerencial); el
+agrupador común ganó `g.cabFn` (si devuelve arreglo, `filasGRP` pinta los totales del grupo en celdas; las demás pantallas no cambian); clic en la orden →
+`mDetalleOrden`; plegado «Programado en máquinas y pendiente por ítem» (`wipMaquinasHTML`, por `itemsPlanProd()`, derivado de la columna «Ítem de planificación»,
+producción con `cargaUnica('abiertas')`). Un perfil que ve solo sus centros ve solo esas órdenes (`wipVeTodo`/`ordenesQueVe`, dicho en pantalla); `WIP.fases` se poda
+con `podarFases` al cambiar de base; Entrega = `fechaMetaDe`; con búsqueda los grupos vienen abiertos; la pivot está registrada como lista de redibujo parcial (`listaWIPHTML`).
+**Avance por área** (`vAvanceArea`, página `avancearea`, estado `AVA`): una fila por ítem de planificación que el perfil ve (`areasAvance()` por
+`veCentro`: cada ingeniero ve solo su área, los demás todas), Programadas · Hechas · Pendientes · Cumplimiento · Ocupación · Atrasadas · Contra lo
+congelado, **con los mismos números del «Avance de la semana» del centro** (`avanceSemanaCentro`/`datosDiaCentro`/`avanceCongelado`, no crear otro); un ítem
+suma solo las sub-áreas que el perfil ve (marca «solo lo tuyo»); clic → detalle (sub-áreas, día por día, órdenes programadas con hechas y marca, «abrir el centro» =
+`irItemPlan`, el ítem completo); textil de la semana para quien ve tej/tin (`avanceTextilHTML`). **«Sin registros» solo se reclama a los días laborables que YA
+pasaron** (`registroSemana`: `lab` = días pasados, `labTodos`, `aun` = la semana no empieza → «todavía no empieza», nunca 0 %; `datosDiaCentro.sinRegistro` solo con
+`d<hoy()`; `brechaRegistro` solo centros con días pasados) — regla de la revisión del 21-sep, vale para el centro y para Avance por área.
+**Salud del sistema** (Configuración, `vSalud`, página `salud`, permiso `programa`): auditoría del sistema, siembras, registro por centro y día, conteo
+de órdenes, categorías sin hoja, sin fecha, **rutas sin Empaque (antes no se mostraba en ninguna pantalla)**, rutas estimadas, fases sin secuencia. Los
+**días de holgura** (`colchonDias`/`setColchon`) se editan en Calendario y parámetros (antes solo en Asignación). **`ir(p)` aplica `redirigirPagina`** antes de buscar el
+enlace (un `ir()` a una página retirada era un no-op silencioso); «rebalancear» en Ejecución abre `CEN.tab='costura'` (la entrada de menú costura se quitó el 15-sep). Ver `REPORTERIA_21SEP.md`.
+
+**Tallas desde la Lista de pedido de Odoo (21-sep-2026):** `planTallas` reconoce el formato `odoo` («Orden de producción» + «Lista Pedido» + «Lista
+Pedido/Líneas de LdM» + «…/Cantidad»; WH y pack solo en la primera fila del pack, se arrastran). `tallaDeLinea(linea,pack)` = **lo que la línea agrega al
+nombre del pack** (palabras enteras, luego por trozos porque Odoo pega palabras: «PEARLXSMALL»; «0 R» → «0R»); si queda ambiguo, la última talla escrita
+en el texto. Alias en la **tabla 16** (`S.params.tallasAlias`, `TALLAS_ALIAS_DEF` sembrado, `setTallasAlias` con bitácora; `tallaAlias`); lo que no calza
+se guarda tal cual (2R, 28X32). `cantDe` lee «1,092.00». Línea con otro código que el pack y su REF (`refDePack`) = insumo si lleva sufijo o no tiene
+talla (`componentes`, no entra); con talla y otro código → `codigoDistinto`, se lista y NO entra. **Una fila sin WH pero con pack es OTRA tarea sin orden de
+producción** (`sinWH`: se cuenta y no se carga; comprobado con el archivo real: 56), no un segundo color de la WH anterior; si una WH trajera varios packs entra el
+que suma la cantidad de la orden o nombra su color, si no se reporta (`variosPacks`). Los alias mandan también en qué es talla (`esTallaToken` consulta la tabla:
+«UNICA=U»); «2XL» → XXL; «10/12», «6-8», «28 X 32» = una talla; `parseCSV` (comillas) en `leerTabla`; sin columna «Lista Pedido» `cPack=null`; cruce por
+`indiceClaves`/`claveOrden`; al recargar, `o.tallasPedidoAnt` conserva la curva anterior y la previa avisa (`yaTenian`/`cambian`/`conAvanceFuera`); lo excluido
+queda en `S.params.tallasCarga.excluidas` (tabla 16, «Qué no entró en la última carga»); sin juegos configurados no hay aviso de «tallas nuevas». Entrada: **Actualizar datos → 4 · Tallas del pedido** (`mActualizarDatos(4)`, mismo
+`planTallasArchivo`/`aplicarTallas`, registro de cargas tipo `tallas`). La vista previa enseña «cómo se leyó la talla» y las curvas (talla → cantidad).
+Con `tallasPedido` el piso registra por talla (`baseTallas` ya lo usaba). Pruebas TL. Ver `TALLAS_LISTA_PEDIDO_ODOO.md`.
+
+**Tintorería, Macro → Tintorería (21-sep-2026):** los baños se arman en otro sistema pero la fase se mueve aquí: `estadoTinHTML` abre con el bloque
+**«Antes de tintorería»** (`antesDeTintoreria()`: tela propia por tinturar cuya fase va antes de Tintorería por `cmpFases`, sin tinturar ni lista) con el
+botón «→ Tintorería» (`pasarATintoreria` → `moverFases` a `faseTintoreria()`, que sale de la tabla de fases, no de una constante; avanzar no pide motivo); solo
+órdenes lanzadas (con WH); si la tabla 1 no tiene la fase Tintorería, el panel lo dice en vez de callarse. Después sigue el «Hecho → calidad» de siempre. Pruebas TM.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

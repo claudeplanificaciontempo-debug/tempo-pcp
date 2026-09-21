@@ -109,3 +109,9 @@ lo que se manda a maquila. Solo lee el programa (`P.pro`); no calcula nada nuevo
   congelar; `candidatasPlan(ym)` es el único criterio de «Agregar» para los bloques 3 y 4.
 - Refutados por los verificadores (no se tocó nada): pantallas de carga que «cuentan la maquila como capacidad» (ya la excluían), el `errPaso` de
   módulos, `nivCapSet` con coma decimal, congelar con quitadas.
+
+## Ajuste (21-sep): Maquila dentro de Confección y botoncitos por módulo
+La usuaria: «módulos y maquila van en una sola: el encabezado Confección; y que podamos escoger los módulos». La tarjeta Maquila vive ahora
+en la bandeja **Confección** (`nivUIGruposAreas` la cuelga del ítem de `modulos`), y al elegir Confección aparecen los botoncitos **Módulo: Todos ·
+Módulo 1 · …** (`nivModChipsHTML`, `NIVUI.rec`) que acotan **personas/horas** (`personasNivHTML(ym,area,rec)`) y **el tambor** (`tamborModulosHTML(rec)`);
+el saldo sigue siendo de todo Confección (lo dice). Prueba TB.

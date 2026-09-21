@@ -41,7 +41,7 @@ Cordones **0,90** (Pasar cordón · SHORTS, 180 estilos; JOGGER 0,36 · HOODIES 
 estilos) · Sublimado **1,40** (CAMISETAS, 8 estilos: confianza baja). `tiempoPaso` usa el minuto del centro en cualquier centro de
 producción cuando la hoja no trae operaciones para ese centro (antes solo lavado/plancha); la columna se edita ahora en todos los centros.
 
-### 4 · Nada cambia en las órdenes ya cargadas hasta «Aplicar»
+### 4 · Las órdenes ya cargadas (versión de la mañana; reemplazada por la «Actualización automática» de abajo)
 Las órdenes **nuevas** nacen con los valores de hoy (`planTarea` → `tiempoPaso` → `samPorCentro`). Las **cargadas** tienen el tiempo
 congelado en su ruta (`p.t`): `tiemposRutasDif()` cuenta qué cambiaría (pasos, órdenes, horas por familia y por centro) y el panel de
 Operaciones lo avisa; **«Ver el antes/después y aplicar →»** (`mAplicarTiempos`) muestra la tabla y, con motivo, permiso `programa` y
@@ -58,3 +58,18 @@ larga como camisetas: **pendiente con Santiago**); los 86 «revisar» de la LMO;
 (confirmado) / vaciar (vuelve la hoja) / ✓; antes/después cuenta sin tocar; panel en Operaciones y modal; sin motivo no aplica; aplicar
 reescribe con `tAntes`, bitácora, params y recalcula; sin permiso no aplica; con SAM que manda la suma por orden no lo pisa. Actualizadas
 ME (elige una categoría sin SAM que mande) y PS (los pasos nuevos ya tienen minuto del centro).
+
+## Actualización automática (21-sep, decisión de la usuaria: «si cambiamos algún tiempo se debe cambiar en todo lo abierto en el momento; lo cerrado no»)
+Ya no hay botón de «aplicar»: **`propagarTiempos(quien)`** es el único camino y lo llama **todo cambio de configuración que define un
+tiempo**: SAM que manda (`setSamManda`), botones estándar (`setBotonesEstandar`), minuto o medida del centro (`setCentro`), SAM de una
+operación (celda `setRow` y modal `guardarOp`), operación quitada o con otro centro (`delOp`, `setCentroOp`), operaciones que aplican a un
+tipo (`guardarFamOps`), tabla de ojales y botones (`setTiempoOBRow`, `delTiempoOBRow`), reglas de etiqueta (`setReglaEtiqueta`), minuto
+estimado (`setMinEstConf`), hoja recargada o categorías revinculadas (`aplicarLMO`, `revincularCategorias`) y «Actualizar datos»
+(`aplicarTarea`). Reglas: solo órdenes **abiertas** (`abiertaDe`); **`tiempoEsperadoPaso(o,p,k,spc)`** es la única definición del tiempo que
+le toca a un paso (hoja / lo que manda / estándar / minuto del centro; con ajustes por orden `opsSam` y sin SAM que mande, la suma ajustada);
+un tiempo **escrito a mano en la ficha** distinto de la regla queda marcado `p.tManual` y **no se pisa** (se cuenta aparte); cada paso guarda
+`tOrig` (una vez) y `tAntes` (el último); las horas de bitácora y del modal son **prendas pendientes × minuto, pasos no hechos** (la misma base
+que las pantallas); un perfil de piso no propaga. La puesta al día tras las siembras tiene **su propia bandera** (`tiempos21Propagado`,
+`sembrarPropagacionTiempos` al final de `sembrarDecisiones16`), porque en producción la siembra de valores ya había corrido. `fusionarFila`:
+el mismo valor puesto por dos sesiones en el mismo campo ya no es choque. Revisión adversarial: 11 hallazgos reales, todos corregidos;
+queda pendiente avisar en el plan congelado / avance del mes cuando los tiempos cambiaron después de la foto.

@@ -157,8 +157,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(/captura=ux/.test(location.search)){const m=location.search.match(/captura=ux([a-z]+?)(f?)(q?)$/)||[];const p=m[1]||'ordenes';PERFIL=adminP0();FILT={};
       if(p==='plan'){PM.mes=hoy().slice(0,7);PM.paso=1}if(p==='ordenes'){grpSt('ord').niveles=[];ORDF.q='';ORDF.fases=null;ORDF.estado='plan';ORDF.tab='ord'}if(p==='entregas'){EG.q='';EG.meses=new Set()}if(p==='control'){CTL.area='pro'}if(p==='liberacion'){LIB.et='tela'}
       if(m[2])FILT[p]=true;
-      if(p==='maqplan'||p==='tamborplan'){{const cl={};let k=0;S.ordenes.forEach(o=>{if(!o.cliente)return;cl[o.cliente]=cl[o.cliente]||('Cliente '+(++k));o.cliente=cl[o.cliente]})}   /* captura pública: sin nombres de clientes */
-      PM.mes=hoy().slice(0,7);PM.paso=1;NIVUI.area=p==='maqplan'?'maquila':'modulos';page='plan';if(p==='maqplan'){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');mods.forEach(m=>nivCapSet(PM.mes,m.id,'pers','2'))}render();const el=document.querySelector('#p-plan .niv-grupos');if(el)el.scrollIntoView();document.querySelectorAll('main,#app').forEach(x=>{x.style.height='auto';x.style.maxHeight='none';x.style.overflow='visible'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());document.body.classList.add('captura');__R.done=true;return}
+      if(['maqplan','tamborplan','wip','avancearea'].includes(p)){const cl={};let k=0;S.ordenes.forEach(o=>{if(!o.cliente)return;cl[o.cliente]=cl[o.cliente]||('Cliente '+(++k));o.cliente=cl[o.cliente]})}   /* captura pública: sin nombres de clientes */
+      if(p==='wip'){WIP={base:'abiertas',fases:null,mas:false};WIPL={niveles:null,q:''};GRP={};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();const g=grpSt('wip');const cnt={};wipBase().forEach(o=>{const f=o.fase||'Sin fase';cnt[f]=(cnt[f]||0)+1});const fs2=Object.keys(cnt).filter(f=>cnt[f]>=3&&cnt[f]<=12).sort((a,b)=>cmpFases(a,b));fs2.slice(0,2).forEach(f=>g.exp.add('|'+f))}
+      if(p==='avancearea'){AVA={sem:0,abierto:(areasAvance()[0]||{}).g||null}}
+      if(p==='maqplan'||p==='tamborplan'){PM.mes=hoy().slice(0,7);PM.paso=1;NIVUI.area=p==='maqplan'?'maquila':'modulos';page='plan';if(p==='maqplan'){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');mods.forEach(m=>nivCapSet(PM.mes,m.id,'pers','2'))}render();const el=document.querySelector('#p-plan .niv-grupos');if(el)el.scrollIntoView();document.querySelectorAll('main,#app').forEach(x=>{x.style.height='auto';x.style.maxHeight='none';x.style.overflow='visible'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());document.body.classList.add('captura');__R.done=true;return}
       if(p==='lote'||p==='rutas'){page='ordenes';ORDF.tab='rutas';if(m[2]){FILT_USR=filtClave();FILT={ordenes:true}}RUT.sel=new Set();RUT.ver='pend';RUT.q='';GRP={};grpSt('rut').niveles=['fam','hija'];render();const porCat={};rutasLista().forEach(o=>{const k=K(o.cat);if(!k||!k.padre)return;(porCat[k.id]=porCat[k.id]||[]).push(o)});const catId=Object.keys(porCat).sort((a,b)=>porCat[b].length-porCat[a].length)[0];porCat[catId].forEach(o=>RUT.sel.add(o.id));render();if(p==='rutas'){const k=K(catId);const key='|'+(K(k.padre)||k).n;grpSt('rut').exp.add(key);render();if(m[3]){const d=document.querySelector('#p-ordenes .filtros-blk details.ffases');if(d)d.open=true}document.querySelectorAll('#p-ordenes .scroll').forEach(x=>{x.style.maxHeight='none'});document.querySelectorAll('main,#app').forEach(x=>{x.style.height='auto';x.style.maxHeight='none';x.style.overflow='visible'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());document.body.classList.add('captura');__R.done=true;return}abrirRutaLote();const cl=centrosLote();const ag=cl.find(c=>c.editable&&!(RLOTE.cens||[]).includes(c.id)&&['estampado','bordado'].includes(c.id));if(ag)rutaLoteTog(ag.id);
        document.getElementById('app').style.display='none';document.getElementById('veil').style.position='static';document.getElementById('veil').style.background='#ECEEEF';document.getElementById('veil').style.padding='10px';document.getElementById('modal').style.maxHeight='none';document.getElementById('modal').style.overflow='visible';document.querySelectorAll('#modal .scroll').forEach(x=>{x.style.maxHeight='180px'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());document.body.classList.add('captura');__R.done=true;return}
       if(p==='ficha'){page='ordenes';ORDF.edicion='porEditar';render();const o=S.ordenes.find(o=>abiertaDe(o)&&lanzada(o)&&fotoDe(o)&&(o.materiales||[]).some(x=>x.clasif==='tela')&&(o.ruta||[]).length>=4)||S.ordenes.find(o=>abiertaDe(o)&&lanzada(o)&&(o.materiales||[]).some(x=>x.clasif==='tela'));mOrden(o.id);document.getElementById('app').style.display='none';document.getElementById('veil').style.position='static';document.getElementById('veil').style.background='#ECEEEF';document.getElementById('veil').style.padding='10px';document.getElementById('modal').style.maxHeight='none';document.getElementById('modal').style.overflow='visible';document.body.classList.add('captura');__R.done=true;return}
@@ -1637,7 +1639,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','reporteria'];
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','avancearea','salud'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -1751,16 +1753,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   window.confirm=()=>true;
   try{localStorage.__fase="reporteria admin"}catch(e){}
   /* 7) reportería en sus dos vistas y perfiles por sub-área / solo ver */
-  for(const v of ['textil','produccion']){const antes=__R.errors.length;page='reporteria';REP.vista=v;try{render()}catch(e){__R.errors.push({page:'reporteria/'+v,msg:e.message})}
-    const html=document.getElementById('p-'+page).innerHTML;__check('reportería '+v+' sin errores',__R.errors.length===antes);
-    __check('reportería '+v+' con resumen de procesos',html.includes('Resumen de todos los procesos')&&html.includes(v==='textil'?'Tejeduría':'Confección'));}
+  {const antes=__R.errors.length;AVA={sem:0,abierto:null};page='avancearea';try{render()}catch(e){__R.errors.push({page:'avancearea',msg:e.message})}
+    const html=document.getElementById('p-avancearea').innerHTML;__check('Avance por área sin errores',__R.errors.length===antes);
+    __check('Avance por área (admin): una fila por ítem de planificación con Corte y Confección, columnas programadas/hechas/cumplimiento/atrasadas/congelado, y tejeduría y tintorería de la semana',html.includes('Resumen de la semana')&&/<b>Corte<\/b>/.test(html)&&/<b>Confección<\/b>/.test(html)&&html.includes('Contra lo congelado')&&/Tejeduría <span/.test(html)&&/Tintorería <span/.test(html));
+    const it=areasAvance()[0];AVA.abierto=it.g;render();const h2=document.getElementById('p-avancearea').innerHTML;
+    __check('Avance por área: el clic en la fila abre el detalle del área (día por día, órdenes programadas esta semana, abrir el centro)',/Día por día/.test(h2)&&/Órdenes programadas esta semana/.test(h2)&&/abrir el centro/.test(h2)&&/ava-fila on/.test(h2));
+    AVA.abierto=null;page='salud';render();const hs=document.getElementById('p-salud').innerHTML;
+    __check('Salud del sistema (Configuración) reúne los paneles técnicos que estaban al final de la reportería por área',/Auditoría del sistema/.test(hs)&&/Siembras pendientes|siembras/i.test(hs)&&/Registro de producción por centro y día/.test(hs)&&/Cuántas órdenes hay/.test(hs));
+    __check('los enlaces viejos «reporteria», «vistaordenes» y «asignacion» caen en Avance por área y Producto en proceso (no quedan páginas huérfanas)',redirigirPagina('reporteria')==='avancearea'&&redirigirPagina('vistaordenes')==='wip'&&redirigirPagina('asignacion')==='wip'&&(()=>{page='reporteria';render();return page==='avancearea'})()&&(()=>{page='asignacion';render();return page==='wip'})());}
   try{localStorage.__fase="perfil piso corte"}catch(e){}
   const adminP=PERFIL;PERFIL={rol:'piso',area:'pro',subarea:'corte',modo:'editar',nombre:'Piso corte'};
   __check('piso corte ve corte y no confección',veCentro('corte')&&veCentro('estampado')&&!veCentro('modulos')&&!veCentro('empaque'));
   __check('piso corte puede registrar en corte',puedeCentro('corte')&&!puedeCentro('modulos'));
   __check('piso corte no ve tejeduría ni tintorería',!veArea('tej')&&!veArea('tin')&&veArea('pro'));
   {const antes=__R.errors.length;page='control';CTL.area=null;render();const html=document.getElementById('p-'+page).innerHTML;__check('control de piso de piso corte solo muestra sus centros',__R.errors.length===antes&&CTL.area==='pro'&&html.includes('Corte')&&!html.includes('Confección</h3>'));
-   page='reporteria';REP.vista='textil';render();const h2=document.getElementById('p-'+page).innerHTML;__check('reportería de piso corte cae a producción y solo su área',REP.vista==='produccion'&&h2.includes('Corte, estampado, bordado y etiquetas')&&!h2.includes('Confección</h3>')&&!h2.includes('Tejeduría <span'));
+   AVA={sem:0,abierto:null};page='avancearea';render();const h2=document.getElementById('p-'+page).innerHTML;__check('Avance por área de piso corte: solo sus áreas (Corte, Estampado, Bordado), sin Confección ni Tejeduría, y avisa «Ves solo tu área»',/<b>Corte<\/b>/.test(h2)&&/<b>Estampado<\/b>/.test(h2)&&!/<b>Confección<\/b>/.test(h2)&&!/Tejeduría <span/.test(h2)&&/Ves solo tu área/.test(h2));
    __check('reportería piso sin errores',__R.errors.length===antes);}
   try{localStorage.__fase="perfil solo ver"}catch(e){}
   PERFIL={rol:'piso',area:'pro',subarea:'confeccion',modo:'ver',nombre:'Solo ve'};
@@ -1799,7 +1806,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("D5: motivoEsTejeduria distingue el origen",motivoEsTejeduria(mr.find(x=>x.tejeduria).motivo)===true&&motivoEsTejeduria('No dio el tono / matización')===false);
    // D3 permiso armarBanos
    __check("D3: existe el permiso armarBanos y planificación lo tiene; tintorería no",PERMISOS_DEF.some(p=>p[0]==='armarBanos')&&defPerfiles().find(p=>p.id==='planificacion').permisos.includes('armarBanos')&&!defPerfiles().find(p=>p.id==='tintoreria').permisos.includes('armarBanos'));
-   page='tintoreria';PERFIL={rol:'tintoreria',modo:'editar',nombre:'Tin',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','reporteria']};render();
+   page='tintoreria';PERFIL={rol:'tintoreria',modo:'editar',nombre:'Tin',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','avancearea']};render();
    const htin=document.getElementById('p-tintoreria').innerHTML;__check("D3: el perfil de tintorería ve el programa pero NO el panel Armar baños",!/id="[^"]*"[^>]*>Armar baños|<h3>Armar baños/.test(htin)&&htin.includes('no arma ni confirma baños'));
    PERFIL=adminP;
    // D4 restricciones sembradas + faltante
@@ -1880,12 +1887,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      o.odc=bak[0];o2.odc=bak[1];if(bak[2])o.odcManual=bak[2];else delete o.odcManual;if(bak[3])o2.odcManual=bak[3];else delete o2.odcManual;PLAN=null;PLAN_ALL=null;}}
    page='panorama';render();__check("pantalla sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* ASIGNACIÓN POR ORDEN: por estado, próximo paso, agrupar/filtrar, foto, vencidas con un solo paso */
-  {const antes=__R.errors.length;const adminP=PERFIL;APO={niveles:null,cli:'',cen:'',mes:'',q:''};page='asignacion';render();const hp=()=>document.getElementById('p-asignacion').innerHTML;
+  {const antes=__R.errors.length;const adminP=PERFIL;page='asignacion';render();const hp=()=>document.getElementById('p-wip').innerHTML;
    const P=programar();const todas=S.ordenes.filter(abierta);const cnt={};todas.forEach(o=>{const c=clasificarAsig(o,P).estado;cnt[c]=(cnt[c]||0)+1});
    __check("asig: cada orden cae en exactamente un bloque (vencidaUnPaso / sinProgramar / noLlega / justo / bien)",Object.values(cnt).reduce((a,b)=>a+b,0)===todas.length&&Object.keys(cnt).every(k=>['vencidaUnPaso','sinProgramar','noLlega','justo','bien'].includes(k)),JSON.stringify(cnt));
-   __check("asig: la pantalla separa por estado con conteo y prendas, y 'Llegan bien' va plegado",hp().includes('Asignación por orden')&&/<details class="panel"[^>]*>\s*<summary[^>]*>Llegan bien/.test(hp())&&!/<details class="panel"[^>]*open/.test(hp())&&!hp().includes('Ruta asignada (centro'));
-   __check("asig: una sola ficha de próximo paso por fila (no las fichas repetidas)",(hp().match(/Próximo paso · recurso · termina/g)||[]).length>=1&&!hp().includes('Ruta asignada'));
-   __check("asig: colchón como parámetro visible (sembrado 3, marcado est.) y editable",colchonDias()===3&&S.params.colchonEstimado===true&&/onchange="setColchon\(/.test(hp()));
+   __check("asig: la pantalla «Asignación por orden» se retiró (21-sep): su enlace cae en Producto en proceso y el estado de cada orden sigue en el detalle (mDetalleAsig)",page==='wip'&&hp().includes('Producto en proceso')&&(()=>{const o=todas[0];if(!o)return true;mDetalleAsig(o.id);const h=document.getElementById('modal').innerHTML;cerrar();return /Entrega meta/.test(h)})());
+   __check("asig: colchón como parámetro visible (sembrado 3, marcado est.) y editable en Calendario y parámetros",colchonDias()===3&&S.params.colchonEstimado===true&&(()=>{page='config';CONF.tab='cal';render();return /onchange="setColchon\(/.test(document.getElementById('p-config').innerHTML)})());
    const nb=S.bitacora.length;setColchon(5);__check("asig: cambiar el colchón queda en bitácora y quita la marca de estimado",colchonDias()===5&&S.params.colchonEstimado===false&&S.bitacora.slice(-3).some(b=>/Días de holgura para la entrega: 3 → 5/.test(b.t)));setColchon(3);
    // clasificación: una que no llega trae días y atasco; una que llega justo trae holgura ≤ colchón
    const oNo=todas.find(o=>clasificarAsig(o,P).estado==='noLlega');if(oNo){const c=clasificarAsig(oNo,P);__check("asig: 'no llega' trae días tarde y en qué paso se atasca",c.dias>=0&&typeof c.atasco==='string'&&c.atasco.length>0);}
@@ -1894,17 +1900,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const o=todas.find(x=>pasosPendPro(x).length>=2&&P.ordenes[x.id]&&!P.ordenes[x.id].bloqueo);if(o){const bak={fc:o.fechaCompromiso,f:o.fecha,av:JSON.stringify(S.avance[o.id]||null)};const pend=pasosPendPro(o);
      const a=S.avance[o.id]=S.avance[o.id]||{};a.centros=a.centros||{};pend.slice(0,-1).forEach(p=>{a.centros[p.centro]=o.cant});o.fechaCompromiso=dsum(hoy(),-45);PLAN=null;const P2=programar();const c=clasificarAsig(o,P2);
      __check("asig: vencida hace más de 30 días con UN solo paso pendiente se marca aparte, con el paso y los días",c.estado==='vencidaUnPaso'&&c.paso===pend[pend.length-1].centro&&c.diasVenc>30);
-     render();__check("asig: el bloque 'Vencidas hace más de 30 días con un solo paso pendiente' aparece arriba con la nota de Odoo",hp().indexOf('Vencidas hace más de 30 días')>=0&&hp().includes('mal cerradas en Odoo')&&(hp().indexOf('Sin programar')<0||hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('Sin programar'))&&(hp().indexOf('No llegan')<0||hp().indexOf('Vencidas hace más de 30 días')<hp().indexOf('No llegan')),[hp().indexOf('Vencidas hace más de 30 días'),hp().indexOf('Sin programar'),hp().indexOf('No llegan'),hp().includes('mal cerradas en Odoo'),hp().length].join(',')+' :: '+hp().replace(/<[^>]+>/g,' ').replace(/s+/g,' ').slice(0,300));
+     mDetalleAsig(o.id);const mh=document.getElementById('modal').innerHTML;cerrar();__check("asig: el detalle de esa orden dice que está vencida hace más de 30 días con un solo paso (la nota de Odoo vive ahora en el detalle, no en una pantalla propia)",/vencida hace \d+ días con un solo paso pendiente/.test(mh)&&/mal cerrada en Odoo/.test(mh)&&mh.includes(o.op),mh.replace(/<[^>]+>/g,' ').slice(0,200));
      o.fechaCompromiso=bak.fc;o.fecha=bak.f;if(bak.av==='null')delete S.avance[o.id];else S.avance[o.id]=JSON.parse(bak.av);PLAN=null;PLAN_ALL=null;}}
-   // agrupar y filtrar
-   APO.niveles=['cliente','centro'];render();__check("asig: agrupa anidado (cliente → próximo paso) con conteo y prendas por grupo",hp().includes('Cliente:')&&/órdenes · [\d.]+ prendas/.test(hp()));
-   const cli=(todas[0]||{}).cliente||'';APO.niveles=[];APO.cli=cli;render();const filasCli=(hp().match(/mDetalleAsig\('/g)||[]).length;APO.cli='';render();const filasTodo=(hp().match(/mDetalleAsig\('/g)||[]).length;
-   __check("asig: filtrar por cliente reduce las filas; sin filtro vuelven todas",filasCli<=filasTodo&&filasTodo>=todas.length-(todas.filter(o=>clasificarAsig(o,P).estado==='bien').length===0?0:0));
-   __check("asig: filtros de cliente, próximo paso, mes y buscador presentes",hp().includes('APO.cli=this.value')&&hp().includes('APO.cen=this.value')&&hp().includes('APO.mes=this.value')&&hp().includes('data-q="APO.q"'));
+   // agrupar y filtrar: ahora en Producto en proceso, con el agrupador común (cliente → próximo paso) y el buscador común
+   GRP={};WIPL={niveles:['cliente','paso'],q:''};page='wip';render();__check("asig: Producto en proceso agrupa anidado (cliente → próximo paso) con conteo, prendas y $ por grupo",hp().includes('Cliente:')&&(()=>{const key='|'+((todas[0]||{}).cliente||'Sin cliente');togGRP('wip',key);return /Próximo paso:<\/span>/.test(hp())})());
+   const cli=(todas[0]||{}).cliente||'';WIPL={niveles:[],q:cli};BUSQ['WIPL.q']='cliente';render();const filasCli=(hp().match(/mDetalleOrden\('/g)||[]).length;WIPL={niveles:[],q:''};delete BUSQ['WIPL.q'];render();const filasTodo=(hp().match(/mDetalleOrden\('/g)||[]).length;
+   __check("asig: buscar por cliente reduce las filas; sin filtro vuelven todas",filasCli<=filasTodo&&filasTodo>=todas.length,JSON.stringify({filasCli,filasTodo,n:todas.length}));
+   __check("asig: buscador común, filtro de fases y agrupador presentes",hp().includes('data-q="WIPL.q"')&&/WIP\.fases/.test(hp())&&hp().includes("setNivelGRP('wip'"));
    __check("asig: la foto va en miniatura en la fila (si la orden tiene foto)",S.ordenes.some(o=>abierta(o)&&fotoDe(o))?hp().includes('foto-mini'):true);
    // detalle al hacer clic: la ruta completa
    {const o=todas.find(x=>P.ordenes[x.id]&&(P.ordenes[x.id].pasos||[]).length);if(o){mDetalleAsig(o.id);const m=document.getElementById('modal').innerHTML;__check("asig: clic en la orden abre el detalle con toda la ruta (paso, recurso, inicio, fin, límite)",m.includes(o.op)&&m.includes('Límite (para llegar)')&&(m.match(/<tr>/g)||[]).length>=2);cerrar();}}
-   APO={niveles:null,cli:'',cen:'',mes:'',q:''};page='ordenes';render();__check("asig sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+   WIPL={niveles:null,q:''};GRP={};page='ordenes';render();__check("asig sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* B–G: advertencias por movimiento · profundidad de color · fotos y salida en tintorería · WIP por orden y color · Hoy en tarjetas */
   {const antes=__R.errors.length;const adminP=PERFIL;
    // B
@@ -1920,7 +1926,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    page='tintoreria';render();const ht=document.getElementById('p-tintoreria').innerHTML;__check("E: baños confirmados muestran máquina y fecha estimada de salida",!(S.banos_conf||[]).length||ht.includes('Máquina · sale (est.)'));
    page='control';CTL.area='tin';render();const hc=document.getElementById('p-control').innerHTML;__check("D/E: control de piso tintorería con 'Sale (est.)' y órdenes con foto en miniatura",hc.includes('Sale (est.)')&&(S.ordenes.some(o=>fotoDe(o))?hc.includes('foto-mini')||!/mBanoHecho/.test(hc):true));
    // F/D2
-   page='wip';WIP.tab='pro';WIPL={niveles:['color'],q:''};render();const hw=document.getElementById('p-wip').innerHTML;__check("F: Producto en proceso lista órdenes con foto y agrupa por COLOR",hw.includes('Órdenes en proceso')&&hw.includes('Color:')&&hw.includes('setNivelWIP('));
+   page='wip';WIPL={niveles:['color'],q:''};render();const hw=document.getElementById('p-wip').innerHTML;__check("F: Producto en proceso lista órdenes con foto y agrupa por COLOR (agrupador común)",hw.includes('Producto en proceso')&&hw.includes('Color:')&&hw.includes("setNivelGRP('wip'")&&hw.includes('grp-row'));
    WIPL={niveles:null,q:''};
    // G
    page='panorama';render();__check("G: Hoy en tarjetas desplegables (Pendientes, Advertencias, Otros) con conteo en el título",(hp().match(/<details class="tarj/g)||[]).length>=2&&/Pendientes<\/b><span class="mut">\d+ tipos · [\d.]+ casos/.test(hp())&&hp().includes('Advertencias de fecha</b>'));
@@ -1978,10 +1984,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("FF: Liberación muestra la fase junto a la WH",veFase('liberacion',()=>{LIB.et='corte';LIB.q='WH/TEST-FF';LIB.verLista=true}));
    __check("FF: Control de piso usa foto+WH+fase en las filas de las tres áreas (y se ve cuando hay filas)",(()=>{const src=vControl.toString();const usa=src.split('whCell(o)').length>=3;page='control';CTL.area='pro';CTL.q='';CTL.centro=null;render();const h=document.getElementById('p-control').innerHTML;const filas=(h.match(/<tr><td style="white-space:nowrap">/g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
    __check("FF: Programación por centro usa foto+WH+fase en la cola y desviaciones (y se ve cuando hay filas)",(()=>{const src=vCentro.toString()+colaCentroHTML.toString();const usa=src.includes('whCell(f.o)')&&src.includes('whCell(o)');page='centro';CEN.tab='prog';CEN.q='';render();const h=document.getElementById('p-centro').innerHTML;const filas=(h.match(/<td style="white-space:nowrap"><img class="foto-mini"|<td style="white-space:nowrap">WH\//g)||[]).length;return usa&&(!filas||h.includes('fase-mini'))})());
-   __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIP.tab='pro';WIPL={niveles:[],q:'WH/TEST-FF'}}));
-   __check("FF: Asignación por orden muestra la fase junto a la WH",veFase('asignacion',()=>{APO.q='WH/TEST-FF';APO.niveles=[]}));
+   __check("FF: Producto en proceso muestra la fase junto a la WH",veFase('wip',()=>{WIPL={niveles:[],q:'WH/TEST-FF'}}));
    __check("FF: Costura · secuencia por módulo usa foto+WH+fase",(()=>{const src=vCostura.toString();return src.includes('whCell(o)')})());
-   S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};APO.q='';PLAN=null;PLAN_ALL=null;
+   S.ordenes=S.ordenes.filter(x=>x.id!==oT.id);CTL.q='';CEN.q='';WIPL={niveles:null,q:''};PLAN=null;PLAN_ALL=null;
    // buscador
    page='liberacion';LIB.et='tela';LIB.q='';render();let hl=document.getElementById('p-liberacion').innerHTML;__check("FF: el buscador es un solo campo (busq) sin menú cuando está vacío",hl.includes('class="busq"')&&!hl.includes('busq-menu'));
    LIB.q=o.op.slice(-4);render();hl=document.getElementById('p-liberacion').innerHTML;__check("FF: al escribir ya busca en todos los campos y ofrece acotar a uno solo",hl.includes('busq-menu')&&/Ya está buscando en todos los campos/.test(hl)&&['Orden de producción','ODC','Referencia (estilo)','Color','Fase','Cliente'].every(n=>hl.includes('solo <b>'+n+'</b>')));
@@ -2036,7 +2041,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(x=>x!==oPendVC);PLAN=null;PLAN_ALL=null;
    GRP={};grpSt('ctl').niveles=['color'];page='control';CTL.area='pro';CTL.q='';render();__check("VC: Control de piso tiene selector de agrupación y agrupa por color",document.getElementById('p-control').innerHTML.includes("setNivelGRP('ctl'"));
    GRP={};grpSt('ord').niveles=['fase'];page='ordenes';ORDF.tab='ord';ORDF.q='';ORDF.edicion='todas';render();__check("VC: Órdenes agrupa colapsable por fase con conteo",document.getElementById('p-ordenes').innerHTML.includes('grp-row'));
-   GRP={};WIPL={niveles:['color'],q:''};page='wip';WIP.tab='pro';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(o=>abierta(o)&&liberada(o,'tela')));WIPL={niveles:null,q:''};GRP={};
+   GRP={};WIPL={niveles:['color'],q:''};page='wip';render();__check("VC: Producto en proceso agrupa por COLOR (colapsable)",document.getElementById('p-wip').innerHTML.includes('grp-row')||!S.ordenes.some(abierta));WIPL={niveles:null,q:''};GRP={};
    // 4 · Gantt
    const rT=S.recursos.find(r=>CE(r.centro)&&CE(r.centro).area==='tin'&&r.horas>0);if(rT){const ds=diasBano({dia:hoy(),horas:rT.horas*2.5},rT);__check("VC: un baño de 2,5 días ocupa 3 días laborables en el cuadro",ds.length===3,ds.join(','))}
    // 7 · nada se borra
@@ -2060,16 +2065,20 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* REPORTERÍA: pestaña propia, vista general de órdenes, detalle completo, quién la ve */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
-   __check("REP: el menú tiene la pestaña Reportería con Vista general, Producto en proceso, Cumplimiento, Avance y las dos reporterías",!!g&&['vistaordenes','wip','cumplimiento','avance','reporteria:textil','reporteria:produccion'].every(x=>links.includes(x)));
+   __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,wip,avancearea,cumplimiento,avance');
    __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,familias,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) */
-   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer)",Array.isArray(REPORTES)&&REPORTES.length>=6&&REPORTES.every(r=>r.p&&r.n));
-   GRP={};grpSt('vo').niveles=[];VO={q:''};page='vistaordenes';render();let h=document.getElementById('p-vistaordenes').innerHTML;
-   __check("REP: Vista general lista todas las abiertas con foto/WH/fase, cliente, ODC, estilo, categoría padre e hija, color, prendas, entrega, proyecto y estado",['Cliente','ODC','Estilo','Categoría padre','Categoría hija','Color','Prendas','Entrega','Proyecto','Estado'].every(x=>h.includes('<th'+(x==='Prendas'?' class="num"':'')+'>'+x+'</th>'))&&h.includes('mDetalleOrden(')&&new RegExp(S.ordenes.filter(abierta).length+' órdenes abiertas').test(h));
-   __check("REP: buscador inteligente y agrupación colapsable (fase, cliente, ODC, padre, hija, color, proyecto)",h.includes('data-q="VO.q"')&&h.includes("setNivelGRP('vo'")&&['Fase','Cliente','ODC','Familia','Tipo de producto','Color','Proyecto'].every(x=>h.includes('>'+x+'</option>')));
-   grpSt('vo').niveles=['cliente','fase','color'];render();h=document.getElementById('p-vistaordenes').innerHTML;__check("REP: agrupa colapsado con conteo y prendas; hasta tres niveles",h.includes('grp-row')&&/\d+ órdenes · [\d.]+ prendas/.test(h)&&(h.match(/setNivelGRP\('vo',/g)||[]).length>=3);GRP={};
-   __check("REP: la barra de reportes aparece en las pantallas de Reportería",h.includes('Reportería:')&&(()=>{page='wip';WIP.tab='pro';render();return document.getElementById('p-wip').innerHTML.includes('Reportería:')})());
+   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===5&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
+   GRP={};WIPL={niveles:null,q:''};WIP={base:'abiertas',fases:null,mas:false};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();let h=document.getElementById('p-wip').innerHTML;
+   const ab=S.ordenes.filter(abiertaDe);const usdT=ab.reduce((a,o)=>a+(+o.precio||0)*(+o.cant||0),0);const pzT=ab.reduce((a,o)=>a+(+o.cant||0),0);
+   __check("REP: Producto en proceso es UNA pivot como la de Odoo: por fase por defecto, con Órdenes, Pedido (prendas) y Total $ por grupo y el total arriba; base = abiertas (dicha en pantalla)",grpSt('wip').niveles.join()==='fase'&&['Cliente','ODC','Estilo','Color','Entrega','Dónde está','Estado'].every(x=>h.includes('<th>'+x+'</th>'))&&/<th title="[^"]*">Producto<\/th>/.test(h)&&/<th class="num">Órdenes<\/th><th class="num"[^>]*>Prendas pedidas<\/th><th class="num"[^>]*>Total \$<\/th>/.test(h)&&h.includes('grp-row')&&/Fase:<\/span>/.test(h)&&h.includes('class="wip-total"')&&h.includes('$ '+num(usdT))&&h.includes('>'+num(pzT)+'</td>')&&/abiertas<\/span>/.test(h),JSON.stringify({niv:grpSt('wip').niveles,usdT,pzT}));
+   __check("REP: cada grupo de fase suma sus órdenes, prendas y $ en celdas (pivot), y los grupos suman el total",(()=>{const m={};ab.forEach(o=>{const f=o.fase||'Sin fase';m[f]=m[f]||{n:0,pz:0,usd:0};m[f].n++;m[f].pz+=+o.cant||0;m[f].usd+=(+o.precio||0)*(+o.cant||0)});const fs=Object.keys(m);const ok=fs.every(f=>{const i=h.indexOf('Fase:</span> '+esc(f));if(i<0)return false;const seg=h.slice(i,i+2000);const fila=seg.slice(0,seg.indexOf('</tr>'));return fila.includes('>'+num(m[f].n)+'</td>')&&fila.includes('>'+num(m[f].pz)+'</td>')&&fila.includes('$ '+num(m[f].usd))});return ok&&Math.abs(fs.reduce((a,f)=>a+m[f].usd,0)-usdT)<1e-6})());
+   __check("REP: las agrupaciones rápidas cambian la pivot (Cliente → Fase, Fase → Cliente, Familia, Familia → Tipo, Cliente, Sin agrupar) y el agrupador común permite la propia",['Cliente → Fase','Fase → Cliente','Familia','Familia → Tipo de producto','Cliente','Sin agrupar'].every(x=>h.includes('>'+x+'</span>'))&&h.includes("setNivelGRP('wip'")&&(()=>{wipAgrupar('cli_fase');const h2=document.getElementById('p-wip').innerHTML;return grpSt('wip').niveles.join()==='cliente,fase'&&/Cliente:<\/span>/.test(h2)})());
+   wipAgrupar('fase');const key='|'+(ab[0]&&(ab[0].fase||'Sin fase'));togGRP('wip',key);h=document.getElementById('p-wip').innerHTML;
+   __check("REP: al desplegar una fase aparecen sus órdenes con foto/WH/fase, cliente, ODC, estilo, familia, tipo, color, entrega, dónde está, estado y el $ de la orden; clic abre el detalle",h.includes('mDetalleOrden(')&&h.includes(esc(ab[0].op)),h.slice(0,120));
+   __check("REP: la base se puede cambiar a lanzadas o liberadas y el número siempre dice su base",(()=>{WIP.base='lanzadas';render();const h3=document.getElementById('p-wip').innerHTML;const ok=/lanzadas<\/span>/.test(h3)&&h3.includes('$ ');WIP.base='abiertas';return ok})());
+   __check("REP: la barra de reportes aparece en las pantallas de Reportería",(()=>{render();return document.getElementById('p-wip').innerHTML.includes('Reportería:')})()&&(()=>{page='avancearea';render();return document.getElementById('p-avancearea').innerHTML.includes('Reportería:')})());GRP={};
    const o=S.ordenes.find(abierta);if(o){mDetalleOrden(o.id);const m=document.body.innerHTML;__check("REP: el detalle de la orden trae ruta/pasos, dónde está, qué le falta, historial de fases y foto",m.includes('Historial de fases')&&m.includes('Qué le falta')&&m.includes('<th>Paso</th>')&&m.includes(esc(o.op)));try{cerrar()}catch(e){}}
-   const dC=perfilesDef().find(x=>x.id==='corte'),dT=perfilesDef().find(x=>x.id==='tablet');__check("REP: los supervisores de centro ven Reportería (consulta) y la tablet no",!!dC&&['vistaordenes','wip','cumplimiento','avance'].every(p=>dC.paginas.includes(p))&&!!dT&&dT.paginas.length===1&&dT.paginas[0]==='tablet'&&!!S.params.migReporteria);
+   const dC=perfilesDef().find(x=>x.id==='corte'),dT=perfilesDef().find(x=>x.id==='tablet');__check("REP: los supervisores de centro ven Reportería (consulta) y la tablet no",!!dC&&['wip','cumplimiento','avance','avancearea'].every(p=>dC.paginas.includes(p))&&!dC.paginas.includes('vistaordenes')&&!!dT&&dT.paginas.length===1&&dT.paginas[0]==='tablet'&&!!S.params.migReporteria&&!!S.params.migReporteria2);
    __check("REP: supervisor de centro no tiene permiso de editar en esos reportes (solo consulta)",!(dC.permisos.includes('programa')||dC.permisos.includes('ordenes')||dC.permisos.includes('*')));
    page='ordenes';render();__check("REP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* SIMULADOR DE CAPACIDAD por semana en el plan mensual: provisional, guardar con motivo, base + extra, gerencia lo ve */
@@ -2218,7 +2227,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // b) agrupador con horas y campos comunes
    GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
    __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Familia','Tipo de producto','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
-   GRP={};page='asignacion';APO={niveles:['cliente'],cli:'',cen:'',mes:'',q:''};render();h=document.getElementById('p-asignacion').innerHTML;__check("CC-b: Asignación por orden usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));APO.niveles=null;GRP={};
+   GRP={};page='wip';WIPL={niveles:['cliente'],q:''};render();h=document.getElementById('p-wip').innerHTML;__check("CC-b: Producto en proceso (que reemplazó a Asignación por orden) usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));WIPL={niveles:null,q:''};GRP={};
    // c) tarjetas resumen
    const ym=hoy().slice(0,7);PM.mes=ym;TARJ={exp:{}};page='plan';render();h=document.getElementById('p-plan').innerHTML;__check("CC-c: el Bloque 2 y el Bloque 3 usan la tarjeta resumen del tema (número grande, clic despliega lista)",h.includes('kpi tarj')&&h.includes('data-t="b2-ords"')&&h.includes('data-t="b3-libs"'));
    {const oz=S.ordenes.filter(abierta).slice(0,2);TARJ.exp={'cc-x':true};const hx=tarjetasResumenHTML([{id:'cc-x',v:oz.length,k:'Prueba',items:oz}]);__check("CC-c: al hacer clic se despliega la lista con foto, WH y fase",hx.includes('tarj-lista')&&hx.includes('OP · fase')&&(!oz.length||hx.includes('fase-mini'))&&hx.includes("togTarj('cc-x')"));TARJ={exp:{}};}
@@ -2592,9 +2601,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("CG: Carga general dice su base y separa firme, en proceso y reserva",/base: <b>programadas<\/b>/.test(h)&&/firme, en proceso y reserva/.test(h)&&/todas las abiertas/.test(h));
    __check("CG: muestra 8 semanas por defecto (parámetro semCarga)",semanasCarga().length===8&&prm('semCarga',8)===8);
    page='capacidad';render();__check("CG: Capacidad y decisiones dice que su base es «todas las abiertas» y cuál es el número oficial",/base: <b>todas las abiertas<\/b>/.test(document.getElementById('p-capacidad').innerHTML)&&/plan congelado/.test(document.getElementById('p-capacidad').innerHTML));
-   // 3 · Asignación por orden se mudó a Reportería, no se borró
-   __check("CG: Asignación por orden vive en Reportería y sigue existiendo",!!document.querySelector('nav .gbody[data-g=\"rep\"] a[data-p=\"asignacion\"]')&&REPORTES.some(r=>r.p==='asignacion')&&typeof vAsignacion==='function');
-   page='asignacion';render();__check("CG: la pantalla de Asignación por orden muestra las órdenes contra el programa",/Asignación por orden/.test(document.getElementById('p-asignacion').innerHTML));
+   // 3 · Asignación por orden se retiró el 21-sep (usuaria): su enlace cae en Producto en proceso; clasificarAsig sigue vivo para el detalle
+   __check("CG: Asignación por orden ya no está en Reportería ni en el menú; el enlace viejo lleva a Producto en proceso y clasificarAsig sigue existiendo",!document.querySelector('nav a[data-p=\"asignacion\"]')&&!REPORTES.some(r=>r.p==='asignacion')&&typeof vAsignacion==='undefined'&&typeof clasificarAsig==='function'&&(()=>{page='asignacion';render();return page==='wip'})());
    page='produccion';render();h=document.getElementById('p-produccion').innerHTML;
    __check("CG: Carga general ya no repite la clasificación por orden",!/vencida de un paso|Sin programar<\/h4>/.test(h));
    // 4 · reserva de lavado y plancha
@@ -3797,8 +3805,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RS1: la brecha cuenta por motivo: sin ruta, centro repetido y avance fuera de la ruta",r.sinRuta.some(x=>x.o===oSin)&&r.repetido.some(x=>x.o===oRep)&&r.fueraDeRuta.some(x=>x.o===oFue));
     const h=rutasSinSecuenciaHTML();
     __check("RS2: el panel lista las órdenes con su motivo y deja editar la ruta",/Rutas sin secuencia/.test(h)&&h.includes(esc(oSin.op))&&h.includes(esc(oRep.op))&&h.includes(esc(oFue.op))&&/editar ruta/.test(h));
-    page='reporteria';render();
-    __check("RS3: y está en Reportería, no en Mi centro",/Rutas sin secuencia/.test(document.getElementById('p-reporteria').innerHTML)&&!/Rutas sin secuencia/.test(flujoTramoHTML('modulos',null,[])));
+    page='salud';render();
+    __check("RS3: y está en Salud del sistema, no en Mi centro",/Rutas sin secuencia/.test(document.getElementById('p-salud').innerHTML)&&!/Rutas sin secuencia/.test(flujoTramoHTML('modulos',null,[])));
     S.ordenes=S.ordenes.filter(o=>![oSin,oRep,oFue].includes(o));[oSin,oRep,oFue].forEach(o=>delete S.avance[o.id]);}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("AF sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
@@ -3906,8 +3914,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("D5: se revisa una por una, con la ruta a la vista y el botón de editar",/marcarRutaRevisada\(/.test(rutasEstimadasHTML())&&/mRutaCentro\(/.test(rutasEstimadasHTML()));
     const nR=rutasEstimadas().sinRevisar.length;marcarRutaRevisada(o.id);
     __check("D5: marcarla como revisada la mueve de lado y deja quién y cuándo",estadoRuta(o)==='revisada'&&rutasEstimadas().sinRevisar.length===nR-1&&!!rutaConf(o).revisadaTs);
-    page='reporteria';REP.vista='produccion';render();
-    __check("D5: Reportería cuenta cuántas quedan sin revisar",/Rutas estimadas/.test(document.getElementById('p-reporteria').innerHTML));
+    page='salud';render();
+    __check("D5: Salud del sistema cuenta cuántas quedan sin revisar",/Rutas estimadas/.test(document.getElementById('p-salud').innerHTML));
     __check("D5: confirmar la ruta a mano la vuelve REAL",(confirmarRuta(o,'persona','prueba'),estadoRuta(o)==='real'&&estadoRutaTxt(o)==='real'));
     S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id];}
    /* 6 · DENIM y JEANS */
@@ -3945,7 +3953,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const plan=[...document.querySelectorAll('nav .gbody[data-g="prod"] a')].map(a=>a.dataset.p+'/'+(a.dataset.rep||''));
     const rep=[...document.querySelectorAll('nav .gbody[data-g="rep"] a')].map(a=>a.dataset.p+'/'+(a.dataset.rep||''));
     __check("A2: «Reportería por área» sale de Planificación de producción",!plan.includes('reporteria/produccion'));
-    __check("A2: y sigue en la pestaña Reportería",rep.includes('reporteria/produccion'));}
+    __check("A2: lo que era «Reportería por área» es ahora «Avance por área», en la pestaña Reportería",rep.includes('avancearea/')&&!rep.includes('reporteria/produccion'));}
    /* 3 · fecha, hora y usuario de la liberación */
    {const o=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
     if(o.lib)delete o.lib.corte;PERFIL={rol:'admin',modo:'editar',nombre:'Jefa Prod'};
@@ -4044,8 +4052,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     PERFIL={rol:'planificacion',modo:'editar',nombre:'Jefa'};
     __check("A8: planificación sí lo ve",veSinFecha());
     __check("A8: y siguen contadas como brecha en Reportería, no desaparecen",/Órdenes sin fecha/.test(sinFechaBrechaHTML()));
-    PERFIL=adminP;page='reporteria';REP.vista='produccion';render();
-    __check("A8: el panel está en Reportería",/Órdenes sin fecha/.test(document.getElementById('p-reporteria').innerHTML));}
+    PERFIL=adminP;page='salud';render();
+    __check("A8: el panel está en Salud del sistema",/Órdenes sin fecha/.test(document.getElementById('p-salud').innerHTML));}
    /* 9 · «Lo que viene» se quitó (decisión 16-sep): la lista ya dice dónde está cada orden */
    {__check("A9: el bloque «Lo que viene» ya no existe en el código",typeof loQueVieneHTML==='undefined'&&typeof loQueVieneDe==='undefined');
     page='centro';CEN.id='terminados';CEN.solo='empaque';CEN.tab='plan';render();
@@ -4308,8 +4316,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("OA: «en planta» son las abiertas ya liberadas a producción",ordenesEnPlanta().every(x=>abiertaDe(x)&&liberadaCorte(x)));
     const h=conteoOrdenesHTML();
     __check("OA: la pantalla explica de dónde sale cada cifra",/Cargadas/.test(h)&&/Abiertas/.test(h)&&/En planta/.test(h)&&/tabla de fases/.test(h));
-    page='reporteria';REP.vista='produccion';render();
-    __check("OA: y está en Reportería",/Cuántas órdenes hay/.test(document.getElementById('p-reporteria').innerHTML));}
+    page='salud';render();
+    __check("OA: y está en Salud del sistema",/Cuántas órdenes hay/.test(document.getElementById('p-salud').innerHTML));}
    /* 1 · unificación JEANS → DENIM, autorizada */
    {const nCat=S.categorias.length,nOrd=S.ordenes.length,nOps=(S.operaciones||[]).length;
     delete S.params.jeansUnificado;
@@ -4630,9 +4638,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* 6 · sin registros */
    {S.turnos=[];S.paros=[];
     S.ordenes.forEach(o=>{const a=S.avance[o.id];if(a){delete a.tallasLog;delete a.tramos}});
-    const lab=diasConTurno('corte',dias);
-    __check("SR: sin ningún registro, el centro queda marcado «ninguno»",lab.length?registroSemana('corte',dias).ninguno===true:true);
-    __check("SR: y ningún día laborable cuenta como registrado",lab.every(d=>!hayRegistroEn('corte',d)));
+    const labTodos=diasConTurno('corte',dias);const lab=labTodos.filter(d=>d<hoy());   /* solo los días laborables que ya pasaron: a hoy y a los que vienen no se les reclama registro (revisión 21-sep) */
+    __check("SR: sin ningún registro, el centro queda marcado «ninguno» (solo cuentan los días laborables ya pasados; hoy y los que vienen no)",lab.length?registroSemana('corte',dias).ninguno===true&&registroSemana('corte',dias).lab.join()===lab.join():(registroSemana('corte',dias).aun===true||!labTodos.length),JSON.stringify({lab,r:registroSemana('corte',dias)}));
+    __check("SR: una semana que todavía no empieza no es «sin registros» ni 0 %: es «todavía no empieza»",(()=>{const d2=dias.map(d=>dsum(d,7));const r=registroSemana('corte',d2);const P0=S.ordenes.length?programar():{pro:[]};const a=avanceSemanaCentro(['corte'],P0,d2,S.recursos.filter(r=>r.activa&&r.centro==='corte'));return (!diasConTurno('corte',d2).length)||(r.aun===true&&r.ninguno===false&&a.sinReg===false&&a.aun===true&&a.pct===null)})());
+    __check("SR: y ningún día laborable cuenta como registrado",labTodos.every(d=>!hayRegistroEn('corte',d)));
     const P=S.ordenes.length?programar():{pro:[]};
     const a=avanceSemanaCentro(['corte'],P,dias,S.recursos.filter(r=>r.activa&&r.centro==='corte'));
     __check("SR: el avance de la semana NO muestra 0 % sino «sin registros»",lab.length?(a.sinReg===true&&a.pct===null):true);
@@ -4660,8 +4669,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const hb=brechaRegistroHTML();
     __check("SR: el panel muestra centro × día y explica la diferencia",/Registro de producción por centro y día/.test(hb)&&/puede no haber producido, o puede no haber registrado/.test(hb));
     __check("SR: y dice qué cuenta como registro",/Cuenta como registro/.test(hb));
-    page='reporteria';REP.vista='produccion';render();
-    __check("SR: está en Reportería",/Registro de producción por centro y día/.test(document.getElementById('p-reporteria').innerHTML));}
+    page='salud';render();
+    __check("SR: está en Salud del sistema",/Registro de producción por centro y día/.test(document.getElementById('p-salud').innerHTML));}
    S.turnos=bakT;S.paros=bakP;
    /* 7 · «Vienen después» no repite la lista de arriba */
    {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='plan';CEN.dia=null;render();
@@ -4830,8 +4839,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const bakJ=S.params.jeansUnificado;delete S.params.jeansUnificado;
     __check("CS3: si una siembra no corrió, sale como pendiente",chequeoSiembras().find(x=>x.k==='jeans').aplicada===false&&/pendiente/.test(chequeoSiembrasHTML()));
     S.params.jeansUnificado=bakJ;
-    page='reporteria';REP.vista='produccion';render();
-    __check("CS4: el chequeo está en Reportería",/Siembras pendientes/.test(document.getElementById('p-reporteria').innerHTML));}
+    page='salud';render();
+    __check("CS4: el chequeo está en Salud del sistema",/Siembras pendientes/.test(document.getElementById('p-salud').innerHTML));}
    window.confirm=c0;window.alert=a0;window.prompt=p0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("KR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* TIEMPOS ESTIMADOS DE CONFECCIÓN (Santiago Garzón) */
@@ -5550,8 +5559,6 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ["CTLF.q","Control → Cambio de fases","control",()=>{CTL.area="fases";CTLF.q=""}],
      ["CG.q","Carga general","produccion",()=>{CG.q="";CG.centro="corte"}],
      ["WIPL.q","Producto en proceso","wip",()=>{WIPL.q=""}],
-     ["VO.q","Vista general de órdenes","vistaordenes",()=>{VO.q=""}],
-     ["APO.q","Asignación por orden","asignacion",()=>{APO.q=""}],
      ["GER.q","Resumen gerencial","gerencia",()=>{GER.q=""}],
      ["EG.q","Entregas","entregas",()=>{EG.q=""}],
      ["COS.q","Costura","costura",()=>{COS.q=""}],
@@ -6879,15 +6886,29 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      /* la regla del motor está detrás del parámetro y se ve en Configuración */
      __check('MQ: la regla del motor (la maquila no es candidata salvo lo marcado) está detrás del parámetro maquilaPorDescarte, editable en Configuración → Nivelación',/maquilaPorDescarte\(\)/.test(String(programar))&&/fijo==='maquila'/.test(String(programar)));
      SIM={on:false,ym:null,rec:null,cambios:{},motivo:''};const mo=JSON.parse(bakMO);if(mo)S.params.maquilaOrden=mo;else delete S.params.maquilaOrden;const mm=JSON.parse(bakMM);if(mm)S.params.maquilaOrdenMeta=mm;else delete S.params.maquilaOrdenMeta;if(bakPD===undefined)delete S.params.maquilaPorDescarte;else S.params.maquilaPorDescarte=bakPD;NIVC=null;PLAN=null;PLAN_ALL=null;CAPM=null;NIVUI.area='corte';render();}
+    /* RS · ¿cuáles están en riesgo? ¿cuáles sin SAM? (usuaria, 21-sep) */
+    {NIVUI.area='corte';NIVUI.verRiesgo=false;NIVUI.verSinSAM=false;NIVUI.meses=nivUIMesesDisp().filter(m=>m<=ym);NIVC=null;let r=nivUICalcular('corte');
+     /* la regla se prueba con un cálculo sintético a partir del saldo real: capacidad justa para el saldo en 10 días */
+     const rr=Object.assign({},r,{estado:'riesgo',diasTot:10,calc:Object.assign({},r.calc,{capDia:(r.saldo&&r.saldo.min>0)?r.saldo.min/10:1,holgura:1})});const l=nivUIEnRiesgo(rr);
+     const capSin=rr.calc.capDia*Math.max(0,rr.diasTot-prm('colchonDias',3));const ords=r.saldo.ordenes.slice().sort((a,b)=>String(fechaMetaDe(a)||'9')<String(fechaMetaDe(b)||'9')?-1:1);let acum=0;const esperado=[];ords.forEach(o=>{const u=pendCentroUnid(o,'corte');const m=u*(samOrdenCentro(o,'corte')||0);acum+=m;if(acum>capSin)esperado.push(o.id)});
+     __check('RS: «en riesgo» = las órdenes de entrega más lejana cuyo trabajo cae en los últimos días de holgura del período (misma regla que pone ⚠ al área); vacío si el área no está en riesgo',l.length===esperado.length&&l.every((x,i)=>x.o.id===esperado[i])&&l.length>0&&nivUIEnRiesgo(Object.assign({},rr,{estado:'ok'})).length===0,JSON.stringify({n:l.length,esp:esperado.length}));
+     NIVUI.verRiesgo=true;const hR=nivUIEnRiesgoHTML(rr);__check('RS: la lista «Cuáles están en riesgo» sale por familia y tipo con «ver órdenes» y dice cómo quitarlas del riesgo',/Cuáles están en riesgo/.test(hR)&&/ver órdenes/.test(hR)&&/más personas u horas/.test(hR));NIVUI.verRiesgo=false;
+     /* sin SAM: una orden de una categoría sin tiempo para corte */
+     const k0=S.categorias.find(k=>k.padre&&!(samPorCentro(k)||{}).corte);const base0=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='corte'))||S.ordenes[0];
+     const oS=k0?Object.assign(JSON.parse(JSON.stringify(base0)),{id:uid(),op:'WH/TEST-RS',cat:k0.id,fecha:ym+'-20',cant:77,ruta:[{centro:'corte',t:0},{centro:'modulos',t:1},{centro:'empaque',t:0.4}]}):null;
+     if(oS){oS.rutaCompleta=JSON.parse(JSON.stringify(oS.ruta));delete oS.programa;delete oS.recursoFijo;S.ordenes.push(oS);NIVC=null;r=nivUICalcular('corte');
+      NIVUI.verSinSAM=true;render();const hh=pg().innerHTML;const nomK=esc(nombreCat(k0));
+      __check('RS: «sin SAM» es clicable (en el recuadro y en el cuadrito) y lista por tipo de producto las órdenes que no suman, con dónde se arregla (Operaciones → Tiempos que mandan)',r.saldo.sinSAM.some(o=>o.id===oS.id)&&/Cuáles están sin SAM/.test(hh)&&hh.includes(nomK)&&/Tiempos que mandan/.test(hh)&&/NIVUI\.verSinSAM=true/.test(hh)&&/¿cuáles\?/.test(hh),JSON.stringify({sinSAM:r.saldo.sinSAM.length,k0:nombreCat(k0)}));
+      NIVUI.verSinSAM=false;S.ordenes=S.ordenes.filter(x=>x.id!==oS.id);NIVC=null}else __check('RS: hay una categoría sin SAM de corte para probar',false);}
     /* TB · el tambor: qué lleva cada módulo */
-    {NIVUI.area='modulos';render();const hh=pg().innerHTML;__check('TB: al elegir Confección se ve «Qué lleva cada módulo» (horas por módulo y familia, sale del programa) con capacidad y uso por módulo',/Qué lleva cada módulo/.test(hh)&&(/<th>Módulo<\/th>/.test(hh))&&/Programado/.test(hh),hh.slice(hh.indexOf('Qué lleva cada módulo'),hh.indexOf('Qué lleva cada módulo')+200).replace(/<[^>]+>/g,' ').slice(0,160));NIVUI.area='corte';render();}
+    {NIVUI.area='modulos';NIVUI.rec=null;render();const hh=pg().innerHTML;const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');if(mods.length>=2){NIVUI.rec=mods[0].id;render();const h2=pg().innerHTML;const filas=[...pg().querySelectorAll('.panel')].find(p=>p.querySelector(':scope > h3')&&/^Personas y horas en Confección/.test(p.querySelector(':scope > h3').textContent.trim()));const nFilas=filas?filas.querySelectorAll('tbody tr').length:-1;__check('TB: dentro de Confección se puede escoger un módulo (Todos · Módulo 1 · …): personas/horas y el tambor se acotan a ese módulo y lo dice; el saldo sigue siendo de todo Confección',/Módulo:/.test(h2)&&nFilas===1&&/viendo solo/.test(h2)&&nivUICalcular('modulos').saldo.unid===nivUICalcular('modulos').saldo.unid,JSON.stringify({nFilas,rec:NIVUI.rec,modulo:/Módulo:/.test(h2),viendo:/viendo solo/.test(h2)}));NIVUI.rec=null;render()}__check('TB: al elegir Confección se ve «Qué lleva cada módulo» (horas por módulo y familia, sale del programa) con capacidad y uso por módulo',/Qué lleva cada módulo/.test(hh)&&(/<th>Módulo<\/th>/.test(hh))&&/Programado/.test(hh),hh.slice(hh.indexOf('Qué lleva cada módulo'),hh.indexOf('Qué lleva cada módulo')+200).replace(/<[^>]+>/g,' ').slice(0,160));NIVUI.area='corte';render();}
     /* recuadros (usuaria, 20-sep noche: «que se vea ordenado y llamativo, sin colores focosos»): agrupados por el ítem de planificación configurado, estado con color, saldo grande, el elegido resaltado */
     {const cards=[...pg().querySelectorAll('.niv-card')];const grupos=[...pg().querySelectorAll('.niv-grupo')];const tit=grupos.map(g=>g.querySelector('.niv-grupo-t').textContent.trim());
      const enGrupo=id=>{const c=pg().querySelector('.niv-card[data-area="'+id+'"]');return c?c.closest('.niv-grupo').querySelector('.niv-grupo-t').textContent.trim():null};
-     const okGrupos=tit[0]==='Tela'&&tit[tit.length-1]==='Maquila'&&nivUIAreas().filter(a=>a.tipo==='centro').every(a=>enGrupo(a.id)===(CENTROS_PROD_N[grupoPlanDe(a.id)]||nCen(grupoPlanDe(a.id))))&&tit.indexOf('Corte')<tit.indexOf('Confección')&&tit.indexOf('Confección')<tit.indexOf('Terminados');
+     const enConf=(()=>{const c=pg().querySelector('.niv-card[data-area=maquila]');return !!c&&c.closest('.niv-grupo').querySelector('.niv-grupo-t').textContent.trim()==='Confección'&&!tit.includes('Maquila')})();const okGrupos=tit[0]==='Tela'&&enConf&&nivUIAreas().filter(a=>a.tipo==='centro').every(a=>enGrupo(a.id)===(CENTROS_PROD_N[grupoPlanDe(a.id)]||nCen(grupoPlanDe(a.id))))&&tit.indexOf('Corte')<tit.indexOf('Confección')&&tit.indexOf('Confección')<tit.indexOf('Terminados');
      const okEstado=cards.every(c=>{const a=nivUIArea(c.dataset.area);if(a.tipo==='maquila'){const d=maquilaDescarte();const est=!d||d.estado==='faltante'?'faltante':(d.totalU>0?'riesgo':'ok');return c.classList.contains('est-'+est)&&!!c.querySelector('.niv-pill')}const r=nivUICalcular(a.id);const est=a.porDias?'dias':r.estado;return c.classList.contains('est-'+est)&&!!c.querySelector('.niv-pill')});
      const sel=pg().querySelector('.niv-card.on');const vac=cards.filter(c=>c.classList.contains('vacia'));
-     __check('PN: los recuadros van agrupados por ítem de planificación (Tela · Corte · … · Terminados · Maquila, de grupoPlanDe), cada uno con su estado en color (est-ok/riesgo/deficit/faltante/dias) y una pastilla, el elegido resaltado (.on) y con leyenda arriba',cards.length===nivUIAreas().length&&okGrupos&&okEstado&&!!sel&&sel.dataset.area===NIVUI.area&&!!pg().querySelector('.niv-leyenda')&&vac.every(c=>/sin saldo/.test(c.querySelector('.niv-pill').textContent)),JSON.stringify({tit,n:cards.length,sel:sel&&sel.dataset.area,vac:vac.map(c=>c.dataset.area)}));
+     __check('PN: los recuadros van agrupados por ítem de planificación (Tela · Corte · … · Terminados, de grupoPlanDe; la Maquila dentro de Confección porque confeccionan los dos), cada uno con su estado en color (est-ok/riesgo/deficit/faltante/dias) y una pastilla, el elegido resaltado (.on) y con leyenda arriba',cards.length===nivUIAreas().length&&okGrupos&&okEstado&&!!sel&&sel.dataset.area===NIVUI.area&&!!pg().querySelector('.niv-leyenda')&&vac.every(c=>/sin saldo/.test(c.querySelector('.niv-pill').textContent)),JSON.stringify({tit,n:cards.length,sel:sel&&sel.dataset.area,vac:vac.map(c=>c.dataset.area)}));
      /* un saldo que solo tiene órdenes sin SAM no «llega»: falta el SAM y lo dice */
      const sinSam=nivUIAreas().filter(a=>a.tipo==='centro'&&!a.porDias).map(a=>nivUICalcular(a.id)).find(r=>r&&r.saldo&&!(r.saldo.min>0)&&r.saldo.unidSinSAM>0);
      if(sinSam)__check('PN: un centro cuyo saldo existe en unidades pero ninguna tiene SAM queda «falta un dato · falta SAM de N órdenes», no «✓ llega»',sinSam.estado==='faltante'&&sinSam.sinSAMtodo&&/falta SAM de \d+ órdenes/.test(nivUIQueFalta(sinSam))&&/falta SAM de/.test(pg().querySelector('.niv-card[data-area="'+sinSam.area.id+'"]').textContent),JSON.stringify({area:sinSam.area.id,txt:nivUIQueFalta(sinSam)}));
@@ -6939,16 +6960,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     setSamManda(hC.id,'modulos','4,9','prueba');__check('T21: escribir un valor a mano lo deja confirmado (fuente, quién, cuándo) con bitácora; vaciarlo devuelve la hoja',hC.samManda.modulos.min===4.9&&hC.samManda.modulos.pendiente===false&&/SAM que manda sobre la hoja/.test(S.bitacora[S.bitacora.length-1].t)&&(setSamManda(hC.id,'modulos',''),(samPorCentro(hC)||{}).modulos===hoja));
     hC.samManda=hC.samManda||{};hC.samManda.modulos={min:4.47,fuente:TIEMPOS21_FUENTE,ts:new Date().toISOString(),u:'siembra',pendiente:true};confirmarSamManda(hC.id,'modulos');
     __check('T21: «✓» confirma el valor (deja de estar por confirmar) con bitácora',hC.samManda.modulos.pendiente===false&&!!hC.samManda.modulos.confU&&/SAM que manda confirmado/.test(S.bitacora[S.bitacora.length-1].t));
-    /* antes/después y aplicar sobre una orden cargada con la ruta vieja (13,46) */
+    /* la siembra propagó sola a las órdenes abiertas (usuaria, 21-sep: «deberían cambiarse»); una orden con la ruta vieja se pone al día con cualquier cambio de tiempos */
+    {const bakP=S.params.tiempos21Propagado;delete S.params.tiempos21Propagado;const nb2=S.bitacora.length;sembrarPropagacionTiempos();const okProp=!!S.params.tiempos21Propagado&&tiemposRutasDif().n===0&&(S.params.tiempos21Propagado.pasos===0||S.bitacora.slice(nb2).some(b=>/Tiempos actualizados en las órdenes abiertas/.test(b.t)&&/tiempos del 21-sep/.test(b.t)));sembrarPropagacionTiempos();
+     __check('T21: después de todas las siembras, las órdenes abiertas se ponen al día una sola vez por base (bandera propia tiempos21Propagado, distinta de la siembra de valores: en producción la siembra ya había corrido) con bitácora',okProp&&S.bitacora.length===nb2+(S.params.tiempos21Propagado.pasos?1:0),JSON.stringify({p:S.params.tiempos21Propagado,dif:tiemposRutasDif().n}));if(bakP)S.params.tiempos21Propagado=bakP;}
     const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro==='modulos'))||S.ordenes.find(abierta);const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-T21';o.cat=hC.id;o.cant=100;o.fecha=hoy();o.ruta=[{centro:'corte',t:0.5},{centro:'modulos',t:13.46},{centro:'botones',t:0},{centro:'empaque',t:0.44}];o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));delete o.opsSam;delete o.programa;S.ordenes.push(o);PLAN=null;PLAN_ALL=null;
     const d=tiemposRutasDif();const fam=famDeOrden(o);
     __check('T21: el antes/después cuenta la orden (confección 13,46 → 4,47 y botones 0 → 0,40 = 2 pasos) con horas por familia y por centro, sin tocar nada',d.n>=2&&d.ordenes>=1&&d.porFam[fam]&&d.porFam[fam].n>=2&&Math.abs((d.porFam[fam].antes-d.porFam[fam].despues)-(13.46-4.47-0.4)*100)<1e-6&&o.ruta[1].t===13.46,JSON.stringify({n:d.n,fam:d.porFam[fam]}));
+    /* cambiar el estándar de botones propaga al momento a TODO lo abierto (también pone al día lo demás de la orden) */
+    {const nb3=S.bitacora.length;setBotonesEstandar('0,45');const okP=o.ruta[2].t===0.45&&o.ruta[1].t===4.47&&o.ruta[1].tAntes===13.46&&tiemposRutasDif().n===0&&S.bitacora.slice(nb3).some(b=>/Tiempos actualizados en las órdenes abiertas/.test(b.t)&&/botones estándar/.test(b.t));setBotonesEstandar('0,40');
+     const oCerr=S.ordenes.find(x=>!abiertaDe(x)&&(x.ruta||[]).some(p=>p.centro==='modulos'));const okCerr=(()=>{if(!oCerr)return true;const p=oCerr.ruta.find(x=>x.centro==='modulos');const t0=p.t;p.t=0.123;propagarTiempos('prueba cerrada');const ok=p.t===0.123;p.t=t0;return ok})();
+     __check('T21: cambiar un tiempo en Configuración (aquí el estándar de botones) se aplica al momento a todas las órdenes abiertas, con antes/después en bitácora; lo cerrado no se toca',okP&&o.ruta[2].t===0.4&&okCerr,JSON.stringify({ruta:o.ruta,okP,okCerr,cerrada:!!oCerr}));
+     o.ruta[1].t=13.46;o.ruta[2].t=0;delete o.ruta[1].tAntes;o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));}   /* se deja la ruta vieja para probar el botón manual */
+    {const cm=CE('cordones');const b0=cm.minEstandar;const oC=JSON.parse(JSON.stringify(o));oC.id=uid();oC.op='WH/TEST-T21C';oC.ruta=[{centro:'cordones',t:0}];oC.rutaCompleta=JSON.parse(JSON.stringify(oC.ruta));S.ordenes.push(oC);setCentro('cordones','minEstandar','1.1');
+     __check('T21: cambiar el minuto de un centro (Cordones) también se aplica al momento y lo deja confirmado',oC.ruta[0].t===1.1&&oC.ruta[0].estandar===true&&cm.minEstandarMeta&&cm.minEstandarMeta.pendiente===false,JSON.stringify({r:oC.ruta,meta:cm.minEstandarMeta}));setCentro('cordones','minEstandar',String(b0||0));S.ordenes=S.ordenes.filter(x=>x.id!==oC.id);}
+    /* un tiempo escrito a mano en la ficha (tManual) se respeta; una orden con ajustes por operación (opsSam) no queda «distinta» para siempre; un perfil de piso no propaga */
+    {o.ruta[1].t=9.2;o.ruta[1].tManual={u:'prueba',ts:new Date().toISOString(),regla:4.47};o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));const dM=tiemposRutasDif();propagarTiempos('prueba manual');
+     __check('T21: un paso con tiempo puesto a mano (tManual) no se cuenta como pendiente ni se pisa al propagar; se informa aparte',o.ruta[1].t===9.2&&dM.manual>=1,JSON.stringify({t:o.ruta[1].t,manual:dM.manual}));
+     delete o.ruta[1].tManual;o.ruta[1].t=4.47;o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
+     const P0=PERFIL;PERFIL={id:'u-tab',rol:'tablet',nombre:'Op',modo:'editar'};o.ruta[1].t=13.46;const nPiso=propagarTiempos('piso');PERFIL=P0;
+     __check('T21: con un perfil de piso la propagación no toca nada (no puede guardar órdenes)',nPiso===0&&o.ruta[1].t===13.46);o.ruta[1].t=4.47;
+     /* opsSam: sin SAM que mande, la referencia es la suma ajustada de la orden; con SAM que mande, la de la categoría */
+     const kOps=S.categorias.find(k=>k.padre&&tieneHojaLMO(k)&&!(k.samManda&&k.samManda.modulos)&&(opsDe(k)||[]).some(x=>x.centro==='modulos'));
+     if(kOps){const oA=JSON.parse(JSON.stringify(o));oA.id=uid();oA.op='WH/TEST-T21-OPS';oA.cat=kOps.id;const op0=(opsDe(kOps)||[]).find(x=>x.centro==='modulos');oA.opsSam={[op0.op]:+((+op0.sam||0)+0.5).toFixed(3)};oA.ruta=[{centro:'modulos',t:0}];oA.rutaCompleta=JSON.parse(JSON.stringify(oA.ruta));S.ordenes.push(oA);
+      const esp=samConfeccionOrden(oA);propagarTiempos('prueba opsSam');const d2=tiemposRutasDif();
+      if(esp==null||isNaN(esp))__check('T21: (el harness no tiene una categoría con operaciones de confección resolubles para probar opsSam: samConfeccionOrden devuelve null; la regla vive en tiempoEsperadoPaso)',/samConfeccionOrden\(o\)/.test(String(tiempoEsperadoPaso)),nombreCat(kOps));
+      else __check('T21: una orden con ajuste por operación (opsSam) toma la suma ajustada como tiempo esperado: al propagar queda en ese valor y deja de contar como distinta (converge)',Math.abs(oA.ruta[0].t-esp)<1e-6&&!tiemposRutasDif().porFam[famDeOrden(oA)],JSON.stringify({esp,t:oA.ruta[0].t,n:d2.n}));
+      S.ordenes=S.ordenes.filter(x=>x.id!==oA.id)}
+     /* dos pestañas que ponen el mismo valor en el mismo campo no chocan */
+     __check('T21: fusionarFila: el mismo valor puesto por dos sesiones en el mismo campo no es conflicto',(()=>{const f=fusionarFila(JSON.stringify({ruta:[{t:13.46}]}),{ruta:[{t:4.47}]},{ruta:[{t:4.47}]});return f.choques.length===0&&JSON.stringify(f.data.ruta)===JSON.stringify([{t:4.47}])})());}
+    o.ruta[1].t=13.46;o.ruta[2].t=0;delete o.ruta[1].tAntes;delete o.ruta[2].estandar;o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
     page='operaciones';render();const hh=document.getElementById('p-operaciones').innerHTML;
-    __check('T21: la página Operaciones muestra «Tiempos que mandan sobre la hoja» con el aviso de órdenes cargadas con otro tiempo y el enlace al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/tienen otro tiempo guardado/.test(hh)&&/mAplicarTiempos/.test(hh));
+    __check('T21: la página Operaciones muestra «Tiempos que mandan sobre la hoja» y, si alguna orden abierta quedó con otro tiempo, el aviso con el enlace al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/tienen otro tiempo guardado/.test(hh)&&/mAplicarTiempos/.test(hh));
+    __check('T21: todo lo que define un tiempo vive junto en Operaciones (usuaria, 21-sep): cabecera «Tiempos» con el orden de mando, lo que manda, minuto por centro (cordones/apliques/sublimado/lavado/plancha, mismo dato que Centros), ojales y botones (estándar y tabla), etiquetas y minuto estimado; el estándar ya no está en Calendario y parámetros',/<h3>Tiempos <span/.test(hh)&&/Minuto por prenda de los centros sin operaciones/.test(hh)&&/setCentro\('cordones','minEstandar'/.test(hh)&&/Ojales y botones: estándar/.test(hh)&&/setBotonesEstandar/.test(hh)&&/Tiempos de ojales y botones/.test(hh)&&/delTiempoOBRow|addTiempoOBRow/.test(hh)&&/reglasEtiqueta|Regla de etiqueta|etiqueta/i.test(hh)&&/Categorías sin hoja de operaciones/.test(hh)&&!/setBotonesEstandar/.test(String(typeof vParams==='function'?vParams:'')),'');
     mAplicarTiempos();const m=document.getElementById('modal');__check('T21: el antes/después se ve por familia y por centro con motivo obligatorio',/Antes \/ después de aplicar/.test(m.innerHTML)&&/Por familia/.test(m.innerHTML)&&/Por centro/.test(m.innerHTML)&&!!document.getElementById('tiempos-motivo'));
     const n0=aplicarTiemposRutas('');__check('T21: sin motivo no aplica',n0===0&&o.ruta[1].t===13.46);
     const na=(S.params.tiemposAplicados||[]).length;const nb2=S.bitacora.length;const n1=aplicarTiemposRutas('prueba T21');
-    __check('T21: aplicar reescribe los pasos (guardando tAntes), marca la orden, registra por familia en bitácora y en params, y recalcula el programa; sin permiso «programa» no aplica',n1>=2&&o.ruta[1].t===4.47&&o.ruta[1].tAntes===13.46&&o.ruta[2].t===0.4&&o.ruta[2].estandar===true&&o.rutaCompleta[1].t===4.47&&!!o.tiemposAplicados&&(S.params.tiemposAplicados||[]).length===na+1&&/Tiempos aplicados a las órdenes cargadas/.test(S.bitacora[nb2].t)&&tiemposRutasDif().n===0&&(()=>{const P0=PERFIL;PERFIL={id:'u-corte',rol:'corte',nombre:'Sup',modo:'editar'};o.ruta[1].t=13.46;const r=aplicarTiemposRutas('x');PERFIL=P0;const ok=r===0&&o.ruta[1].t===13.46;o.ruta[1].t=4.47;return ok})(),JSON.stringify({n1,ruta:o.ruta,ap:(S.params.tiemposAplicados||[]).slice(-1)}));
+    __check('T21: aplicar reescribe los pasos (guardando tAntes), marca la orden, registra por familia en bitácora y en params, y recalcula el programa; sin permiso «programa» no aplica',n1>=2&&o.ruta[1].t===4.47&&o.ruta[1].tAntes===13.46&&o.ruta[2].t===0.4&&o.ruta[2].estandar===true&&o.rutaCompleta[1].t===4.47&&!!o.tiemposAplicados&&(S.params.tiemposAplicados||[]).length===na+1&&/Tiempos actualizados en las órdenes abiertas/.test(S.bitacora[nb2].t)&&tiemposRutasDif().n===0&&(()=>{const P0=PERFIL;PERFIL={id:'u-corte',rol:'corte',nombre:'Sup',modo:'editar'};o.ruta[1].t=13.46;const r=aplicarTiemposRutas('x');PERFIL=P0;const ok=r===0&&o.ruta[1].t===13.46;o.ruta[1].t=4.47;return ok})(),JSON.stringify({n1,ruta:o.ruta,ap:(S.params.tiemposAplicados||[]).slice(-1)}));
     /* lo que una persona ajustó por orden no se pisa con la suma de la hoja cuando hay un SAM que manda */
     __check('T21: con un SAM que manda, la suma de operaciones por orden (ajustes del balanceo) no la reemplaza',samConfeccionOrden(o)===null);
     /* limpieza */
@@ -6956,6 +7003,90 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* TM · Estado de tintorería: «Antes de tintorería» con el botón → Tintorería (usuaria, 21-sep: los baños se arman en otro sistema, pero la fase se mueve aquí) */
+   {PERFIL=adminP0();const ft=faseTintoreria();const base=S.ordenes.find(o=>abierta(o)&&etapas(o).tin)||S.ordenes.find(abierta);const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TM';o.fase='0Macro';delete o.programa;delete o.avance;S.ordenes.push(o);delete S.avance[o.id];
+    const okFase=!!ft&&/tintoreria/.test(normFase(ft))&&!/cd|calidad/.test(normFase(ft));const antes=antesDeTintoreria();
+    __check('TM: la fase Tintorería sale de la tabla de fases (no de una constante) y una orden en Macro con tela propia por tinturar aparece en «Antes de tintorería»',okFase&&antes.some(x=>x.id===o.id)&&cmpFases('0Macro',ft)<0,JSON.stringify({ft,n:antes.length,tin:etapas(o).tin}));
+    page='tintoreria';render();const h=document.getElementById('p-tintoreria').innerHTML;
+    __check('TM: el bloque «Antes de tintorería» lista la orden con el botón «→ Tintorería» y explica el flujo (después «Hecho → calidad»)',/Antes de tintorería/.test(h)&&h.includes(esc(o.op))&&new RegExp("pasarATintoreria\\('"+o.id+"'\\)").test(h)&&/Hecho → calidad/.test(h));
+    const nb=S.bitacora.length;const cf=window.confirm;window.confirm=()=>true;pasarATintoreria(o.id);window.confirm=cf;
+    __check('TM: «→ Tintorería» mueve la fase a Tintorería (avanzar no pide motivo), queda en bitácora, la orden sale de «Antes» y entra a «En tintorería según Odoo» con «Hecho → calidad»',normFase(o.fase)===normFase(ft)&&S.bitacora.length>nb&&!antesDeTintoreria().some(x=>x.id===o.id)&&estadoTin(o)==='maquina',JSON.stringify({fase:o.fase,est:estadoTin(o)}));
+    S.ordenes=S.ordenes.filter(x=>x.id!==o.id);delete S.avance[o.id];}
+   /* TL · Tallas desde la Lista de pedido de Odoo (usuaria, 21-sep): la talla va DENTRO del texto de la línea, la WH solo en la primera fila del pack; sirve para que el piso registre por talla */
+   {PERFIL=adminP0();const base=S.ordenes.find(abierta);const mk=(op,cant)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.cant=cant;delete o.tallasPedido;delete o.tallasPedidoMeta;S.ordenes.push(o);delete S.avance[o.id];return o};
+    const o1=mk('WH/TEST-TL1',261),o2=mk('WH/TEST-TL2',224),o3=mk('WH/TEST-TL3',6),o4=mk('WH/TEST-TL4',1500),o5=mk('WH/TEST-TL5',548),o6=mk('WH/TEST-TL6',100);
+    const C=['Orden de producción','Lista Pedido','Lista Pedido/Líneas de LdM','Lista Pedido/Líneas de LdM/Ean','Lista Pedido/Líneas de LdM/Cantidad'];
+    const fila=(a,b,c,d,e)=>({[C[0]]:a,[C[1]]:b,[C[2]]:c,[C[3]]:d,[C[4]]:e});
+    const rows=[
+      fila('WH/TEST-TL1','PEDIDO ODC:1 REF:2403: [2403] PACK 2403 CAMISETA SISA UNICOLOR SCR ESCO- CAFE -','[2403] CAMISETA SISA UNICOLOR SCR ESCO- S- CAFE -','1','102.00'),
+      fila('','','[2403] CAMISETA SISA UNICOLOR SCR ESCO- M- CAFE -','2','79.00'),
+      fila('','','[2403] CAMISETA SISA UNICOLOR SCR ESCO- L- CAFE -','3','51.00'),
+      fila('','','[2403] CAMISETA SISA UNICOLOR SCR ESC- XL- CAFE -','4','29.00'),
+      /* línea con otro código que el pack y su REF, pero con talla: no entra, se muestra */
+      fila('','','[ETIQ-M] ETIQUETA TALLA M','22','5.00'),
+      fila('WH/TEST-TL2','PEDIDO ODC:2 REF:4151: [4151] PACK 4151 AERO GIRLS FASHION SS SMOKED PEARL','[4151] AERO GIRLS FASHION SSSMOKED PEARLXSMALL','5','56.00'),
+      fila('','','[4151] AERO GIRLS FASHION SSSMOKED PEARLSMALL','6','84.00'),
+      fila('','','[4151] AERO GIRLS FASHION SSSMOKED PEARLMEDIUM','7','56.00'),
+      fila('','','[4151] AERO GIRLS FASHION SSSMOKED PEARLLARGE','8','28.00'),
+      fila('','','[4151-AP] APLIQUE PEDRERIA CABALLO DE MAR - 4151','4151-AP','1.00'),
+      fila('WH/TEST-TL3','PEDIDO ODC:3 REF:4442: [4442] PACK 4442 AERO GIRLS FASHION BASIC MEDIUM WASH R STRAIGHT','[4442] AERO GIRLS FASHION BASIC MEDIUM WASH 0R STRAIGHT','9','1.00'),
+      fila('','','[4442] AERO GIRLS FASHION BASIC MEDIUM WASH 2 R STRAIGHT','10','2.00'),
+      fila('','','[4442] AERO GIRLS FASHION BASIC MEDIUM WASH 4R STRAIGHT','11','3.00'),
+      fila('WH/TEST-TL4','PEDIDO ODC:4 REF:4240: [4240] PACK 4240 AERO GUYS SS TEES DARK BLACK REGULAR','[4240] AERO GUYS SS TEES DARK BLACK SMALL REGULAR','12','400.00'),
+      fila('','','[4240] AERO GUYS SS TEES DARK BLACK MEDIUM REGULAR','13','1,092.00'),
+      fila('','','[4240] AERO GUYS SS TEES DARK BLACK XLARGE REGULAR','14',8),
+      fila('WH/TEST-TL-NOEXISTE','PEDIDO ODC:5 REF:1: [1] PACK 1 COSA','[1] COSA SMALL','15','3.00'),
+      /* una fila SIN WH pero CON pack es OTRA tarea (sin orden de producción todavía): no se pega a la WH de arriba (revisión 21-sep, comprobado con el archivo real) */
+      fila('WH/TEST-TL5','PEDIDO ODC:3099 REF:4238-NOV: [4238] PACK 4238 BC SHORTS PALE KHAKI ','[4238] BC SHORTS PALE KHAKI SMALL','16','200.00'),
+      fila('','','[4238] BC SHORTS PALE KHAKI MEDIUM','17','348.00'),
+      fila('','PEDIDO ODC:3037-DIC REF:4238: [4238] PACK 4238 AERO BC SHORTS OLIVINE','[4238] AERO BC SHORTSOLIVINESMALL','18','76.00'),
+      fila('','','[4238] AERO BC SHORTSOLIVINEMEDIUM','19','152.00'),
+      fila('WH/TEST-TL6','PEDIDO ODC:1 REF:9: [9] PACK 9 COSA ROJA','[9] COSA ROJA SMALL','20','10.00'),
+      fila('','PEDIDO ODC:1 REF:9: [9] PACK 9 COSA AZUL','[9] COSA AZUL SMALL','21','20.00')];
+    const p=planTallas(rows,'lista_pedido.xlsx');const cur=o=>(p.aplicables.find(x=>x.o===o)||{}).curva;
+    __check('TL: reconoce la Lista de pedido de Odoo (formato «odoo»: WH arrastrada, talla dentro del texto de la línea, cantidad) y lee S/M/L/XL entre guiones',p.formato==='odoo'&&p.cPack==='Lista Pedido'&&JSON.stringify(cur(o1))===JSON.stringify({S:102,M:79,L:51,XL:29}),JSON.stringify({f:p.formato,c:cur(o1)}));
+    __check('TL: palabras pegadas (PEARLXSMALL) → XS por alias; el aplique con código con sufijo no es prenda y no entra',JSON.stringify(cur(o2))===JSON.stringify({XS:56,S:84,M:56,L:28})&&p.componentes.length===1&&/APLIQUE/.test(p.componentes[0].linea),JSON.stringify({c:cur(o2),comp:p.componentes}));
+    __check('TL: «MEDIUM WASH» es color, no talla: las tallas son 0R, 2R (también escrito «2 R») y 4R',JSON.stringify(cur(o3))===JSON.stringify({'0R':1,'2R':2,'4R':3}),JSON.stringify(cur(o3)));
+    __check('TL: la cantidad «1,092.00» (Excel a CSV) se lee como 1092 y un número de Excel también; la suma se compara con la orden',(()=>{const a=p.aplicables.find(x=>x.o===o4);return !!a&&a.curva.M===1092&&a.curva.XL===8&&a.suma===1500&&a.dif===0})(),JSON.stringify(cur(o4)));
+    __check('TL: una fila sin WH pero con pack es OTRA tarea sin orden de producción: no se pega a la WH de arriba, se cuenta aparte y no se carga',JSON.stringify(cur(o5))===JSON.stringify({S:200,M:348})&&JSON.stringify(cur(o6))===JSON.stringify({S:10})&&p.sinWH.length===2&&p.sinWH[0].lineas===2&&p.sinWH[0].q===228&&p.sinWH[1].q===20&&p.variosPacks.length===0,JSON.stringify({c5:cur(o5),c6:cur(o6),sinWH:p.sinWH}));
+    __check('TL: una línea con OTRO código que el pack y su REF pero con talla NO entra a la curva y se lista aparte; la REF «4238-NOV» sí identifica a [4238]',p.codigoDistinto.length===1&&/ETIQ/.test(p.codigoDistinto[0].linea)&&mismoCodigo('4238','4238-nov')===true&&mismoCodigo('4757-ap','4757')===false);
+    __check('TL: «2XL» → XXL (alias), «10/12» y «6-8» son una sola talla, «28 X 32» → 28X32, y un alias nuevo de la tabla 16 («UNICA=U») convierte en talla lo que antes no lo era',(()=>{const t=(l,pk)=>{const r=tallaDeLinea(l,pk);return r&&r.t};const a0=S.params.tallasAlias;const ok1=t('[1] CAMISETA NEGRO 2XL','[1] PACK 1 CAMISETA NEGRO')==='XXL'&&t('[1] PANTALON NIÑO NEGRO 10/12','[1] PACK 1 PANTALON NIÑO NEGRO')==='10/12'&&t('[1] PANTALON NIÑO 6-8','[1] PACK 1 PANTALON NIÑO')==='6-8'&&t('[1] FLEECE PANTS NAVY 28 X 32','[1] PACK 1 FLEECE PANTS NAVY')==='28X32';const antes=t('[1] GORRA NEGRA UNICA','[1] PACK 1 GORRA NEGRA');S.params.tallasAlias=TALLAS_ALIAS_DEF+', UNICA=U';const despues=t('[1] GORRA NEGRA UNICA','[1] PACK 1 GORRA NEGRA');S.params.tallasAlias=a0;return ok1&&antes==null&&despues==='U'})());
+    __check('TL: el CSV con comillas se lee bien («"1,092.00"» es 1092) y sin la columna «Lista Pedido» la talla se toma del final del texto (cPack queda vacío, no cae en la columna de líneas)',(()=>{const rows=parseCSV('a,b\n"1,092.00",x\n');const r2=[{'Orden de producción':'WH/TEST-TL1','Lista Pedido/Líneas de LdM':'[1] COSA MEDIUM','Lista Pedido/Líneas de LdM/Cantidad':'3'}];const p2=planTallas(r2,'x.csv');return rows[1][0]==='1,092.00'&&cantDe(rows[1][0])===1092&&p2.formato==='odoo'&&p2.cPack===null&&(p2.aplicables[0]||{}).curva&&p2.aplicables[0].curva.M===3})());
+    __check('TL: la WH que no existe se reporta y no se carga; ninguna línea quedó sin talla',p.sinOrden.length===1&&p.sinOrden[0].wh==='WH/TEST-TL-NOEXISTE'&&p.sinTalla.length===0,JSON.stringify({sin:p.sinOrden.map(x=>x.wh),st:p.sinTalla}));
+    __check('TL: los alias salen de la tabla 16 (S.params.tallasAlias, editable), no de una constante: con XLARGE=XG la lectura cambia',(()=>{const a0=S.params.tallasAlias;S.params.tallasAlias='XLARGE=XG, SMALL=S';const t=tallaDeLinea('[1] COSA XLARGE','[1] PACK 1 COSA');S.params.tallasAlias=a0;return !!t&&t.t==='XG'&&/tallasAlias/.test(String(tallaAlias))})());
+    const html=previaTallasHTML(p);
+    __check('TL: la vista previa muestra cómo se leyó cada talla (línea de Odoo → talla, cantidad), las curvas por orden, la WH inexistente y la línea que no es prenda',/Lista de pedido de Odoo/.test(html)&&/Cómo se leyó la talla/.test(html)&&/Curvas leídas/.test(html)&&/WH\/TEST-TL-NOEXISTE/.test(html)&&/no son prenda/.test(html)&&/<b>XL<\/b> 29/.test(html)&&/SIN orden de producción/.test(html)&&/OTRO código que el pack/.test(html)&&/juegos de tallas configurados|no están en ningún juego/.test(html));
+    TALLAS_CARGA=p;const cf=window.confirm,al=window.alert;window.confirm=()=>true;window.alert=()=>{};const nC=(S.cargas||[]).length;aplicarTallas();window.confirm=cf;window.alert=al;
+    __check('TL: al aplicar, cada orden queda con su curva (tallasPedido) y el registro de cargas suma una fila «Tallas del pedido»',JSON.stringify(o1.tallasPedido)===JSON.stringify({S:102,M:79,L:51,XL:29})&&!!o2.tallasPedido&&o2.tallasPedido.XS===56&&(S.cargas||[]).length===nC+1&&S.cargas[S.cargas.length-1].tipo==='tallas'&&/órdenes con curva/.test(resumenCargaTxt(S.cargas[S.cargas.length-1])),JSON.stringify({t:o1.tallasPedido,c:(S.cargas||[]).slice(-1)}));
+    {const p2=planTallas(rows.map(r=>Object.assign({},r,{[C[4]]:r[C[0]]==='WH/TEST-TL1'&&/- S-/.test(r[C[2]])?'100.00':r[C[4]]})),'lista_pedido_v2.xlsx');
+     __check('TL: al volver a cargar, la previa dice cuántas órdenes ya tenían curva y cuántas cambian; al aplicar la curva anterior se conserva en la orden',p2.yaTenian>=1&&p2.cambian>=1&&/ya tenían curva/.test(previaTallasHTML(p2))&&(()=>{TALLAS_CARGA=p2;window.confirm=()=>true;window.alert=()=>{};aplicarTallas();window.confirm=cf;window.alert=al;return o1.tallasPedido.S===100&&!!o1.tallasPedidoAnt&&o1.tallasPedidoAnt.curva.S===102})(),JSON.stringify({ya:p2.yaTenian,cambian:p2.cambian,ant:o1.tallasPedidoAnt}));
+     TALLAS_CARGA=p;window.confirm=()=>true;window.alert=()=>{};aplicarTallas();window.confirm=cf;window.alert=al;}
+    __check('TL: con la curva cargada, el piso registra por talla: baseTallas da S/M/L/XL (base «pedido») y el registro por talla lista cada talla con su cantidad',(()=>{const b=baseTallas(o1,'modulos');let h='';try{mRegistroTallas(o1.id,'modulos');h=document.getElementById('modal').innerHTML;cerrar()}catch(e){h='ERR '+e.message}return b.base==='pedido'&&Object.keys(b.tallas).join()==='S,M,L,XL'&&/102/.test(h)&&/XL/.test(h)})());
+    const hAct=(()=>{try{mActualizarDatos(4);const x=document.getElementById('modal').innerHTML;cerrar();return x}catch(e){return 'ERR '+e.message}})();
+    __check('TL: «Actualizar datos» tiene el paso 4 · Tallas del pedido con su archivo y explica que sirve para registrar por talla',/4 · Tallas del pedido/.test(hAct)&&/id="f-tallas"/.test(hAct)&&/por talla/.test(hAct),hAct.slice(0,200));
+    S.ordenes=S.ordenes.filter(x=>![o1,o2,o3,o4,o5,o6].some(y=>y.id===x.id));[o1,o2,o3,o4,o5,o6].forEach(x=>delete S.avance[x.id]);}
+   /* T21e · de punta a punta (usuaria, 21-sep: «verifiquemos que los tiempos que yo cambie cambian todo el plan»): cambiar el SAM que manda de un tipo
+      de producto mueve los minutos en la ruta de la orden, en el programa (programar), en la nivelación (saldo de Confección) y en Carga general */
+   {PERFIL=adminP0();PLAN=null;PLAN_ALL=null;NIVC=null;const P0=programar();
+    const o=S.ordenes.find(x=>abiertaDe(x)&&liberadaCorte(x)&&(x.ruta||[]).some(p=>p.centro==='modulos'&&!p.tManual&&p.t>0)&&!pasoHecho(x,'modulos')&&P0.ordenes[x.id]&&(P0.ordenes[x.id].pasos||[]).some(p=>p.centro==='modulos'&&p.min>0)&&K(x.cat)&&K(x.cat).padre);
+    if(!o)__check('T21e: (el harness no tiene una orden liberada con paso de confección programado para la prueba de punta a punta)',false,'sin orden');
+    else{const k=K(o.cat);const paso=o.ruta.find(p=>p.centro==='modulos');const t0=paso.t;const min0=P0.ordenes[o.id].pasos.find(p=>p.centro==='modulos').min;
+     const sm0=k.samManda&&k.samManda.modulos?JSON.parse(JSON.stringify(k.samManda.modulos)):null;
+     const ym=(fechaMetaDe(o)||hoy()).slice(0,7);const mes0=NIVUI.meses;NIVUI.meses=[ym];
+     const nivDe=()=>{try{NIVC=null;const r=nivUICalcular('modulos');return r&&r.saldo?r.saldo.min:null}catch(e){return null}};
+     const cgDe=()=>{const c=cargaUnica('liberadas',{ym}).centros.modulos;return c?c.total:null};
+     const saldo0=nivDe(),cg0=cgDe();
+     const nuevo=+(t0*2+1).toFixed(2);const cf=window.confirm,al=window.alert;window.confirm=()=>true;window.alert=()=>{};
+     setSamManda(k.id,'modulos',nuevo,'prueba T21e');window.confirm=cf;window.alert=al;
+     const P1=programar();const min1=(P1.ordenes[o.id]&&(P1.ordenes[o.id].pasos||[]).find(p=>p.centro==='modulos')||{}).min;
+     const saldo1=nivDe(),cg1=cgDe();
+     __check('T21e: al cambiar el SAM que manda en Configuración, la ruta de la orden abierta toma el nuevo tiempo al momento (con el anterior guardado)',Math.abs(paso.t-nuevo)<1e-6&&paso.tAntes===t0,JSON.stringify({t0,nuevo,t:paso.t,tAntes:paso.tAntes}));
+     __check('T21e: … y el programa (programar) recalcula los minutos de ese paso con el nuevo tiempo, en la misma proporción',min1!=null&&min1>min0&&Math.abs(min1/min0-nuevo/t0)<0.05,JSON.stringify({min0,min1,t0,nuevo}));
+     __check('T21e: … y la nivelación (saldo en minutos de Confección del mes de la orden) y Carga general (base liberadas) suben',saldo0!=null&&saldo1!=null&&saldo1>saldo0&&cg0!=null&&cg1!=null&&cg1>cg0,JSON.stringify({saldo0,saldo1,cg0,cg1,ym}));
+     if(sm0){k.samManda.modulos=sm0}else{delete k.samManda.modulos;if(!Object.keys(k.samManda).length)delete k.samManda}
+     propagarTiempos('prueba T21e volver');PLAN=null;PLAN_ALL=null;NIVC=null;const P2=programar();const min2=(P2.ordenes[o.id]&&(P2.ordenes[o.id].pasos||[]).find(p=>p.centro==='modulos')||{}).min;
+     __check('T21e: al volver el SAM a como estaba, la ruta y el programa vuelven',Math.abs(paso.t-t0)<1e-6&&Math.abs((min2||0)-min0)<1e-6,JSON.stringify({t:paso.t,t0,min0,min2}));
+     NIVUI.meses=mes0;NIVC=null;}}
    /* PS · pasos de ruta nuevos (usuaria, 20-sep): Sublimado, Calandrado, Apliques, Cordones — sembrados una vez, sin tiempo hasta que ingeniería lo cargue */
    {sembrarPasosNuevos20();const ids=['calandrado','sublimado','apliques','cordones'];
     __check('PS: los cuatro centros existen como centros de producción (sub-áreas de Estampado y Terminados), marcados sin confirmar, y la siembra es de una vez',ids.every(c=>CE(c)&&CE(c).area==='pro'&&CE(c).sinConfirmar)&&grupoPlanDe('sublimado')==='estampado'&&grupoPlanDe('apliques')==='estampado'&&grupoPlanDe('calandrado')==='estampado'&&grupoPlanDe('cordones')==='terminados'&&!!S.params.pasosNuevos20&&(sembrarPasosNuevos20()===false)&&S.centros.filter(c=>ids.includes(c.id)).length===4,JSON.stringify(ids.map(c=>CE(c)&&CE(c).n)));
@@ -7286,7 +7417,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("AU9: liberado + pendiente = total en las dos liberaciones",a.hallazgos.filter(x=>/^libCuadra/.test(x.k)).every(x=>!x.n));
     __check("AU9: cada hallazgo dice cuántos, ejemplos y qué hacer",a.hallazgos.every(x=>typeof x.n==='number'&&Array.isArray(x.ej)&&x.que));
     __R.auditoria={errores:a.errores,avisos:a.avisos,con:a.hallazgos.filter(x=>x.n).map(x=>x.k+'='+x.n)};
-    page='reporteria';REP.vista='produccion';render();__check("AU9: se ve en Reportería por área",/Auditoría del sistema/.test(document.getElementById('p-reporteria').innerHTML));
+    page='salud';render();__check("AU9: se ve en Configuración → Salud del sistema",/Auditoría del sistema/.test(document.getElementById('p-salud').innerHTML));
     /* una regla detecta lo que promete: se siembra un recurso de otro centro en un paso y una WH repetida */
     const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x));const dupl=JSON.parse(JSON.stringify(o));dupl.id='dup_'+o.id;S.ordenes.push(dupl);const a2=auditoriaSistema();S.ordenes.pop();
     __check("AU9: la regla de WH repetida detecta una orden duplicada",(a2.hallazgos.find(x=>x.k==='opRepetida')||{}).n===1);}
@@ -7299,7 +7430,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
    const pg=p=>document.getElementById('p-'+p);
    /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
-   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','reporteria','macro','compras','stock','capacidad','cumplimiento','avance','wip','vistaordenes','asignacion','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','compras','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
     const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
     __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
     page='avance';render();__check("F1: Avance del mes conserva a la vista el aviso «sin plan congelado» (es estado, no explicación)",!!pg('avance').querySelector('.lede.no-plegar'));

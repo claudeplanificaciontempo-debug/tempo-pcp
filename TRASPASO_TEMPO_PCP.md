@@ -197,12 +197,34 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   Tintorería, Producto en proceso, Programación por centro, Asignación por orden, Costura, Modo línea, Balanceo, Plan
   mensual, Carga que viene). Toda lista nueva debe usarlo.
 - **Buscador como Odoo** (`busqHTML`/`matchBusq`/`BUSQ`): un campo que ofrece "Buscar <WH · ODC · Estilo · Color · Fase ·
-  Cliente · Categoría> por: texto"; Enter = todos. En Órdenes, Liberación, Producto en proceso, Asignación por orden,
+  Cliente · Categoría> por: texto"; Enter = todos. En Órdenes, Liberación, Producto en proceso (Asignación por orden se retiró el 21-sep),
   Centro, Control de piso, Plan mensual → agregar, Cambio de fases.
 - **Agrupación colapsable como Odoo** (`grpSelHTML`/`filasGRP`/`grpMap`, estado `GRP` con preferencia del navegador):
   hasta 3 niveles anidados por fase, cliente, ODC, categoría padre, hija, color, proyecto (y etapa actual); grupos
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
+
+### 2.74 Reportería simplificada, tallas desde la Lista de pedido y Macro → Tintorería (21-sep, noche)
+- Reportería = Resumen gerencial · Producto en proceso · Avance por área · Cumplimiento · Avance del mes. Se retiraron Vista general, Asignación
+  por orden, Reportería textil y Reportería por área (los enlaces viejos caen en las nuevas). Producto en proceso es una pivot como la de Odoo:
+  por fase (o cliente → fase, fase → cliente, familia, tipo, o la agrupación que se arme) con órdenes, prendas pedidas y valor $, desplegable hasta
+  la orden; base abiertas / lanzadas / liberadas. Avance por área: el programa de cada área esta semana (programadas, hechas, cumplimiento,
+  ocupación, atrasadas, contra lo congelado) con el mismo cálculo del Resumen del centro; cada ingeniero ve solo su área. Lo técnico va a
+  Configuración → Salud del sistema. Ver `REPORTERIA_21SEP.md`.
+- Tallas del pedido desde la Lista de pedido de Odoo (Actualizar datos → 4): la talla se lee dentro del texto de cada línea (S/M/L/XL/XXL, XS, 0R…,
+  28X32…), con alias editables en la tabla 16; varios packs por WH se resuelven por la cantidad de la orden; con la curva cargada el piso registra
+  por talla. Sobre el archivo real: 3.395 líneas con WH, 0 sin talla, 595 órdenes con curva; 56 tareas sin WH se cuentan
+  aparte. Revisión adversarial: 28 hallazgos corregidos (tareas sin WH, CSV con comillas, alias que mandan, «sin registros»
+  solo días pasados, perfiles en la pivot, enlaces muertos). Ver `TALLAS_LISTA_PEDIDO_ODOO.md`.
+- Tintorería → Estado de tintorería abre con «Antes de tintorería» y el botón «→ Tintorería» (la fase se mueve aquí aunque los baños se armen en
+  otro sistema); luego «Hecho → calidad».
+
+### 2.73 Tiempos: lo que faltaba desde Kronos, actualización automática y todo en Operaciones (21-sep)
+- Camisetas por tipo (4,47–6,51 en vez de 13,46), corte/empaque de las familias sin hoja, botones estándar 0,40, minuto de cordones/apliques/
+  sublimado: cargados una vez, marcados «por confirmar» (Santiago). Kronos NO es fuente oficial; no hay conexión.
+- Cualquier cambio de tiempo se aplica al momento a todas las órdenes abiertas (lo cerrado no), con bitácora; lo escrito a mano en la ficha no se pisa.
+- Todo lo que define un tiempo vive en la página Operaciones. Maquila dentro de Confección en la nivelación, con botoncitos por módulo;
+  «¿cuáles están en riesgo?» y «¿cuáles sin SAM?» con lista. Ver `TIEMPOS_21SEP_CARGA.md` y `KRONOS_TIEMPOS_FEEDBACK.md`.
 
 ### 2.72 Maquila por descarte, plan del mes unificado, horas en el escenario, tambor (21-sep)
 - La maquila ya no es un módulo más: la planta llena primero sus módulos y la nivelación dice cuántas unidades mandar a maquila y de qué
