@@ -204,6 +204,14 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
   cerrados con conteo y prendas a la derecha. En Órdenes, Liberación, Control de piso, Producto en proceso; Entregas,
   Avance del mes, Plan mensual → agregar y Carga general tienen la suya.
 
+### 2.72 Maquila por descarte, plan del mes unificado, horas en el escenario, tambor (21-sep)
+- La maquila ya no es un módulo más: la planta llena primero sus módulos y la nivelación dice cuántas unidades mandar a maquila y de qué
+  familia (orden configurable en Configuración → Nivelación); un botón marca las órdenes (recurso fijo) y el motor las respeta. Parámetro
+  `maquilaPorDescarte`.
+- El plan del mes parte de la misma base que la nivelación (fecha meta ≤ mes); «Agregar» solo excepciones; «Quitar» anota.
+- El escenario guarda personas y horas por día; tabla módulo × familia («el tambor»). Ver `MAQUILA_DESCARTE_PLAN_UNIFICADO.md`.
+- Tiempos de Kronos: analizados, no subidos; ver `KRONOS_TIEMPOS_FEEDBACK.md`.
+
 ### 2.71 Mes = pendiente anterior + mes; pasos nuevos de ruta; conteos de Rutas con filtro (20-sep, noche)
 - Planificar el mes: el paso 1 mira el mes más lo pendiente de meses anteriores; el bloque 4 lo ofrece como candidato. Nivelación
   salió del menú de Producción. Un día marcado solo para Producción cuenta en la nivelación.

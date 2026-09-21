@@ -976,6 +976,22 @@ vez desde `sembrarTerminados`): Calandrado (antes de corte, por días, plazo por
 «sublim» / «aplique» en `ordenCentrosAuto`), Cordones (terminados); están en `RUTA_ORDEN`, `GRUPO_PLAN_DEF`, `CENTROS_DISENO`, `RUTA_EDITABLE_POR`,
 tabla 4 y perfiles; sin tiempo hasta que se cargue. Pruebas PS. Ver `PASOS_NUEVOS_20SEP.md`.
 
+**Maquila por descarte · plan unificado · horas · tambor (21-sep-2026, decisiones de la usuaria):** (1) **Maquila = lo que no cabe en la planta**:
+`maquilaDescarte()` (déficit de `nivUICalcular('modulos')` → órdenes ENTERAS por familia en el orden de `maquilaOrden()`, las de entrega más lejana
+primero), recuadro Maquila «hay que mandar N u», `maquilaDetalleHTML` + `marcarMaquila(ids,motivo)` (recurso fijo `modulos:'maquila'`, auditoría tipo
+`maquila`) / `quitarMaquila` (confirmación, GUARDIA); orden configurable en Configuración → Nivelación (`S.params.maquilaOrden`, sembrado una vez desde
+la polivalencia, `sugerido` hasta confirmar, `noMandar`); **regla del motor** (una línea en los candidatos de `programar()`, autorizada el 20-sep): la
+maquila no es candidata salvo orden marcada, detrás de `prm('maquilaPorDescarte',1)`. (2) **`planBase(ym)` = la base de la nivelación**: abiertas con
+fecha meta ≤ mes (`enBasePlan`), menos `planMes[ym].quitadas`; «Agregar» solo excepciones (mes siguiente, sin fecha `PMADD.incluirSinFecha`, quitadas);
+`planMesQuitar` anota quitadas (nada se borra); `enProcesoFueraDelMes` solo informa; la columna «en proceso» de la tabla 5 ya no decide el plan. (3)
+**Personas Y horas por día** en el escenario: `nivCapSet(ym,rec,'pers'|'min',v)` (horas → minutos del ajuste de semana; `guardarAjustesCap` ya guardaba
+`min`). (4) **Tambor** `tamborModulosHTML` (módulo × familia desde `P.pro`, fondo = polivalencia). Capturas `?captura=uxmaqplan` / `uxtamborplan`
+(clientes anonimizados). Revisión adversarial antes de publicar: 15 hallazgos corregidos (doble descuento de lo marcado a maquila en
+`nivUICalcular`, `recFijadoDe`/`vaAMaquila` como única lectura, «no cabe y no se manda», criterio `maquilaCriterio` como parámetro, `prmTxt` para
+parámetros de texto —`prm()` es solo numérico y `palabrasExcedente`/`centroExcedente` nunca leían lo configurado—, foto congelada manda
+`planFotoCongelada`/`nuevasTrasCongelar`, `candidatasPlan` único criterio de excepciones). **Lección:** nunca `git checkout -- index.html` con trabajo sin commit (se perdió y se re-aplicó); el checkout deja CRLF y las
+anclas LF dejan de calzar (normalizar antes de parchear). Ver `MAQUILA_DESCARTE_PLAN_UNIFICADO.md`.
+
 **Orden de las fases, versión del 20-sep (archivo de la usuaria, decimales):** `FASES_SEC_20` + `sembrarFasesSecuencia20()` (una vez, en `sembrarDecisiones16`
 después de la del 19-sep) **reemplazan** la secuencia del 19-sep: mismo número = paralelas; Confección 7 va después de servicios 6; Empaque 8.1 después de
 Servicios y Terminados / Lavandería / Botones 8; Facturado y Stand by 9. Seis fases que no venían se ubicaron junto a su pareja (a confirmar). **`cmpFases(a,b)`**
