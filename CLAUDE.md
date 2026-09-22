@@ -1172,6 +1172,15 @@ de categoría deja la orden marcada `rutaRevisar` — nunca pisada. Una ruta con
 queda blindada: `rutaEditadaAMano` solo cuenta `rutaEditada` o la confirmación de una persona. Para subir la fase desde Odoo hay
 que **destildar la fila «Fase» de la tabla 14 solo para esa carga**. Pruebas RC. Ver `RECARGA_SIN_PERDER_RUTAS.md`.
 
+**Fotos por REFERENCIA (22-sep-2026):** el nombre del archivo es el código del estilo (4861.jpg). Se cargan en
+**Actualizar datos → 3 · Fotos**, debajo del CSV de siempre (input múltiple de imágenes, id f-fotosref):
+planFotosRef / previaFotosRefHTML / leerFotosRef / aplicarFotosRef; índice en S.params.fotosRefIdx[normTxt(ref)]
+={ts,b,ref}, resumen en S.params.fotosRefCarga, tipo de carga propio fotosRef, Storage con prefijo ref_<cod>.jpg en el
+mismo bucket. **fotoDe gana el último escalón**: foto propia de la orden → fotosIdx por WH → foto de la referencia
+(fotoRefDe por refDeOrden = o.ref); **no se escribe nada en la orden**, así una WH que llegue después hereda la foto
+sola. fotoFuenteDe dice cuál se ve y fotoMini lo pone en el tooltip. No crear una segunda ordenesDeRef: la de 8179 es
+otra cosa (solo abiertas, refDe exacto). Pruebas FR. Ver FOTOS_POR_REFERENCIA.md.
+
 **La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando
 en confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa: `programar()` asigna un
 solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[centro]`), y el siguiente centro no la ve «lista

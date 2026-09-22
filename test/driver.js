@@ -7006,6 +7006,31 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* FR · Fotos por referencia (usuaria, 22-sep: mandó 9 fotos de estilos nuevos, 4861–4869, que todavía no tienen órdenes) */
+   {PERFIL=adminP0();
+    const base=S.ordenes.find(abierta);
+    const mk=(op,ref)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.ref=ref;delete o.foto;S.ordenes.push(o);delete S.avance[o.id];return o};
+    const oA=mk('WH/TEST-FR1','4861'),oB=mk('WH/TEST-FR2','4861'),oC=mk('WH/TEST-FR3','9999');
+    /* un archivo de imagen de mentira, con el nombre del estilo */
+    const img=f=>({name:f,type:'image/jpeg',size:1234});
+    const p=planFotosRef([img('4861.jpg'),img('4862.JPG'),img('4861.png'),{name:'lista.csv',type:'text/csv',size:10}]);
+    __check('FR: el plan toma el nombre del archivo como referencia, descarta lo que no es imagen y no repite la misma referencia dos veces',p.fotos.length===2&&p.fotos[0].ref==='4861'&&p.fotos[1].ref==='4862'&&p.noImagen.length===1&&p.repetidas.length===1,JSON.stringify({fotos:p.fotos.map(f=>f.ref),noImagen:p.noImagen,rep:p.repetidas}));
+    __check('FR: la previa separa las referencias que ya tienen órdenes de las que no, y dice que las segundas se cuelgan solas cuando lleguen',p.conOrden===1&&p.sinOrden.length===1&&p.sinOrden[0]==='4862'&&/se cuelga sola cuando lleguen|se cuelgan solas cuando lleguen/.test(previaFotosRefHTML(p)),JSON.stringify({conOrden:p.conOrden,sinOrden:p.sinOrden}));
+    /* se sube: la foto queda en el almacenamiento con el nombre de la referencia y NO se escribe en las órdenes */
+    const ix=S.params.fotosRefIdx=S.params.fotosRefIdx||{};delete ix[normTxt('4861')];
+    ix[normTxt('4861')]={ts:1,b:1234,ref:'4861'};
+    __check('FR: con la foto de la referencia cargada, TODAS las WH de ese estilo la muestran sin haber tocado la orden',fotoDe(oA)===fotoRefURLde('4861',1)&&fotoDe(oB)===fotoDe(oA)&&!oA.foto&&!oB.foto&&fotoDe(oC)==='',JSON.stringify({a:fotoDe(oA).slice(-24),c:fotoDe(oC)}));
+    __check('FR: la ruta en el almacenamiento lleva el prefijo de referencia, así que no choca con las fotos por WH',fotoRefPath('4861')==='ref_4861.jpg'&&fotoPath('WH/MO/1')!==fotoRefPath('WH/MO/1'),fotoRefPath('4861'));
+    /* la foto propia de la orden manda sobre la de la referencia */
+    const ixOp=S.params.fotosIdx=S.params.fotosIdx||{};ixOp[normTxt(oA.op)]={ts:2,b:10};
+    __check('FR: la foto propia de la orden manda sobre la de la referencia, y la pantalla dice cuál se está viendo',fotoDe(oA)===fotoURLde(oA.op,2)&&fotoFuenteDe(oA)==='orden'&&fotoFuenteDe(oB)==='referencia'&&/referencia 4861/.test(fotoMini(oB,44)),JSON.stringify({a:fotoFuenteDe(oA),b:fotoFuenteDe(oB)}));
+    delete ixOp[normTxt(oA.op)];
+    /* una orden que llega DESPUÉS con esa referencia hereda la foto sola */
+    const oD=mk('WH/TEST-FR4','4861');
+    __check('FR: una orden nueva de una referencia que ya tenía foto la hereda sola, sin volver a cargar nada',fotoDe(oD)===fotoRefURLde('4861',1)&&fotoFuenteDe(oD)==='referencia',fotoDe(oD).slice(-24));
+    __check('FR: la carga por referencia se registra con su propio tipo en el registro de cargas',!!TIPOS_CARGA.fotosRef&&typeof aplicarFotosRef==='function'&&typeof leerFotosRef==='function',JSON.stringify({tipo:TIPOS_CARGA.fotosRef}));
+    delete ix[normTxt('4861')];
+    S.ordenes=S.ordenes.filter(o=>!/^WH\/TEST-FR/.test(o.op||''));}
    /* RC · Recarga de tareas sin perder la ruta (usuaria, 22-sep: «no quiero perder las rutas, lo que ya trabajé»; sí quiero que el archivo traiga la fase nueva) */
    {PERFIL=adminP0();const rows0=window.__tareaRows;
     if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción'),iFase=H.indexOf('Fase');

@@ -795,7 +795,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-22 17:00';
+const APP_BUILD='2026-09-22 17:35';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -11178,9 +11178,18 @@ const FOTOS_BUCKET='fotos-ordenes',FOTO_MAX_PX=600,FOTO_CALIDAD=0.82;
 function fotoBucket(){return (S.params&&S.params.fotosBucket)||FOTOS_BUCKET}
 function fotoPath(op){return String(op||'').trim().replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'}
 function fotoURLde(op,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoPath(op)+(ts?'?v='+ts:'')}
-function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S.params.fotosIdx)||{};const e=ix[normTxt(o.op)];return e?fotoURLde(o.op,e.ts):''}
+function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S.params.fotosIdx)||{};const e=ix[normTxt(o.op)];return e?fotoURLde(o.op,e.ts):fotoRefDe(o)}
+/* ---------- Foto por REFERENCIA (estilo) · 22-sep-2026 ----------
+   El nombre del archivo es el código del estilo (4861.jpg). Una foto sirve para TODAS las WH de esa referencia,
+   incluidas las que todavía no llegaron de Odoo: no se escribe nada en la orden, se resuelve al dibujar.
+   Manda la foto de la propia orden; solo si no hay, la de la referencia, y la pantalla lo dice. */
+function refDeOrden(o){return normTxt((o&&(o.ref||o.stilo||o.estilo))||'')}
+function fotoRefPath(ref){return 'ref_'+String(ref||'').trim().replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'}
+function fotoRefURLde(ref,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoRefPath(ref)+(ts?'?v='+ts:'')}
+function fotoRefDe(o){const ix=(S.params&&S.params.fotosRefIdx)||{};const k=refDeOrden(o);const e=k?ix[k]:null;return e?fotoRefURLde(k,e.ts):''}
+function fotoFuenteDe(o){if(!o)return '';if(o.foto)return 'orden';const ix=(S.params&&S.params.fotosIdx)||{};if(ix[normTxt(o.op)])return 'orden';return fotoRefDe(o)?'referencia':''}
 /* miniatura: carga solo cuando entra en pantalla (loading=lazy); clic abre la foto grande */
-function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||prm('fotoMiniPx',44);return `<img class="foto-mini" src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" data-zoom="${esc(u)}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
+function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||prm('fotoMiniPx',44);return `<img class="foto-mini"${fotoFuenteDe(o)==='referencia'?' title="Foto de la referencia '+esc(String((o&&o.ref)||'').trim())+' — esta orden no tiene la suya"':''} src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" data-zoom="${esc(u)}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
 /* zoom al pasar el mouse por cualquier foto (data-zoom): una sola capa fija que sigue al cursor; se oculta al salir. Tablet (touch) no la usa: el clic abre la foto */
 let ZOOM_EL=null;
 function fotoZoomInit(){if(ZOOM_EL||typeof document==='undefined')return;ZOOM_EL=document.createElement('div');ZOOM_EL.id='foto-zoom';ZOOM_EL.style.cssText='position:fixed;display:none;z-index:120;pointer-events:none;background:#fff;border:1px solid var(--rule);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.28);padding:4px';ZOOM_EL.innerHTML='<img alt="" style="display:block;max-width:'+prm('fotoZoomPx',320)+'px;max-height:'+prm('fotoZoomPx',320)+'px;border-radius:6px">';document.body.appendChild(ZOOM_EL);
@@ -11217,6 +11226,53 @@ async function normalizarFoto(blob){let bmp;try{bmp=await createImageBitmap(blob
   const w=bmp.width,h=bmp.height;if(blob.type==='image/jpeg'&&Math.max(w,h)<=FOTO_MAX_PX){if(bmp.close)bmp.close();return{blob,w,h,convertida:false}}
   const k=Math.min(1,FOTO_MAX_PX/Math.max(w,h));const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(bmp,0,0,cv.width,cv.height);if(bmp.close)bmp.close();
   const out=await new Promise(ok=>cv.toBlob(ok,'image/jpeg',FOTO_CALIDAD));return{blob:out,w:cv.width,h:cv.height,convertida:true}}
+/* ---------- Carga de fotos por referencia (archivos sueltos; el nombre es el estilo) ---------- */
+let FOTOS_REF=null;
+function planFotosRef(files,nombre){const ix=(S.params&&S.params.fotosRefIdx)||{};
+  const out={archivo:nombre||((files||[]).length+' imágenes'),fotos:[],noImagen:[],sinRef:[],repetidas:[],bytes:0};
+  const vistos={};
+  (files||[]).forEach(f=>{const ref=String(f.name||'').replace(/\.[^.]+$/,'').trim();
+    if(!/^image\//.test(f.type||'')){out.noImagen.push(f.name||'(sin nombre)');return}
+    if(!ref){out.sinRef.push(f.name||'(sin nombre)');return}
+    const k=normTxt(ref);if(vistos[k]){out.repetidas.push(ref);return}vistos[k]=1;
+    const ords=S.ordenes.filter(o=>refDeOrden(o)===k);   /* todas las WH de ese estilo, abiertas o no; `ordenesDeRef` (8179) es otra cosa: solo abiertas y por refDe exacto */
+    out.fotos.push({ref,k,file:f,n:ords.length,abiertas:ords.filter(abierta).length,reemplaza:!!ix[k],bytes:f.size||0});
+    out.bytes+=f.size||0});
+  out.conOrden=out.fotos.filter(f=>f.n>0).length;out.sinOrden=out.fotos.filter(f=>!f.n).map(f=>f.ref);
+  out.reemplazan=out.fotos.filter(f=>f.reemplaza).length;
+  return out}
+function previaFotosRefHTML(p){if(!p)return '';
+  const fila=(n,t)=>'<tr><td class="num"><b>'+num(n||0)+'</b></td><td>'+t+'</td></tr>';
+  return '<table style="font-size:var(--fs-s)"><tbody>'+
+   fila(p.fotos.length,'imágenes a subir, una por referencia'+(p.bytes?' · '+num(Math.round(p.bytes/1024))+' KB':''))+
+   fila(p.conOrden,'referencias que <b>ya tienen órdenes</b> en el sistema: la foto sale enseguida en todas sus WH')+
+   fila(p.sinOrden.length,'referencias <b>sin órdenes todavía</b>: la foto se guarda igual y se cuelga sola cuando lleguen'+(p.sinOrden.length?': '+esc(p.sinOrden.slice(0,10).join(', '))+(p.sinOrden.length>10?' …':''):''))+
+   (p.reemplazan?fila(p.reemplazan,'referencias que <b>ya tenían foto</b>: se reemplaza'):'')+
+   (p.repetidas.length?fila(p.repetidas.length,'nombres repetidos en la selección: entra el primero ('+esc(p.repetidas.slice(0,6).join(', '))+')'):'')+
+   (p.noImagen.length?fila(p.noImagen.length,'archivos que no son imagen: se descartan ('+esc(p.noImagen.slice(0,6).join(', '))+')'):'')+
+   (p.sinRef.length?fila(p.sinRef.length,'archivos sin nombre utilizable: se descartan'):'')+
+   '</tbody></table><p class="mut" style="font-size:var(--fs-xs)">La foto de la referencia <b>no pisa</b> la foto propia de una orden: solo se usa cuando esa orden no tiene la suya. No se escribe nada en las órdenes.</p>'}
+function leerFotosRef(ev){const files=[...((ev.target&&ev.target.files)||[])];const res=document.getElementById('fotosref-res');
+  if(!files.length){if(res)res.innerHTML='';return}
+  const p=planFotosRef(files);FOTOS_REF=p;
+  if(res)res.innerHTML=previaFotosRefHTML(p);
+  const b=document.getElementById('fotosref-ok');if(b)b.disabled=!p.fotos.length}
+async function aplicarFotosRef(){if(!FOTOS_REF)return;const p=FOTOS_REF;const res=document.getElementById('fotosref-res');const btn=document.getElementById('fotosref-ok');if(btn)btn.disabled=true;
+  const ix=S.params.fotosRefIdx=S.params.fotosRefIdx||{};const ts=Date.now();const errores=[];let subidas=0,bytes=0,convertidas=0,reemplazadas=0,hechas=0;
+  const una=async f=>{try{const nf=await normalizarFoto(f.file);if(!nf.blob){errores.push(f.ref+': '+nf.error);return}
+      const r=await sb.storage.from(fotoBucket()).upload(fotoRefPath(f.ref),nf.blob,{upsert:true,contentType:'image/jpeg',cacheControl:'86400'});
+      if(r.error){errores.push(f.ref+': '+r.error.message);return}
+      if(ix[f.k])reemplazadas++;ix[f.k]={ts,b:nf.blob.size,ref:f.ref};subidas++;bytes+=nf.blob.size;if(nf.convertida)convertidas++}
+    catch(e){errores.push(f.ref+': '+e.message)}
+    finally{hechas++;if(res&&(hechas%5===0||hechas===p.fotos.length))res.innerHTML='<span class="mut">Subiendo '+hechas+' de '+p.fotos.length+'… '+(errores.length?errores.length+' errores':'')+'</span>'}};
+  let i=0;const worker=async()=>{while(i<p.fotos.length){const f=p.fotos[i++];await una(f)}};await Promise.all([1,2,3].map(worker));
+  S.params.fotosRefCarga={archivo:p.archivo,fecha:new Date().toISOString(),fotos:p.fotos.length,subidas,reemplazadas,convertidas,sinOrden:p.sinOrden.length,sinOrdenLista:p.sinOrden.slice(0,200),errores:errores.slice(0,50),nErrores:errores.length,bytes};
+  registrarCarga('fotosRef',p.archivo,{subidas,reemplazadas,convertidas,sinOrden:p.sinOrden.length,errores:errores.length,fotos:p.fotos.length,bytes});
+  bitacora('Fotos por referencia: '+subidas+' subidas'+(reemplazadas?' ('+reemplazadas+' reemplazadas)':'')+(p.sinOrden.length?' · '+p.sinOrden.length+' referencias sin órdenes todavía':'')+(errores.length?' · '+errores.length+' errores':''));
+  FOTOS_REF=null;await save();
+  const conFoto=S.ordenes.filter(o=>fotoDe(o)).length;
+  if(res)res.innerHTML='<div class="ok" style="font-size:var(--fs-s)"><b>'+num(subidas)+'</b> fotos por referencia subidas'+(reemplazadas?' ('+reemplazadas+' reemplazadas)':'')+' · ahora <b>'+num(conFoto)+'</b> órdenes muestran foto'+(errores.length?'<div style="margin-top:4px">Errores: '+esc(errores.slice(0,6).join(' · '))+'</div>':'')+'</div>';
+  render()}
 async function aplicarFotos(){if(!FOTOS)return;const p=FOTOS;const res=document.getElementById('fotos-res');const btn=document.getElementById('fotos-ok');btn.disabled=true;
   const ix=S.params.fotosIdx=S.params.fotosIdx||{};const ts=Date.now();const errores=[];let subidas=0,bytes=0,convertidas=0,reemplazadas=0,hechas=0;
   const ult={};p.fotos.forEach(f=>ult[normTxt(f.op)]=f);const lista=Object.values(ult);
@@ -11788,7 +11844,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración → Órdenes y materiales → Registro de cargas. */
-const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',maestro:'Maestro de productos',tallas:'Tallas del pedido'};
+const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
@@ -11820,14 +11876,20 @@ function mActualizarDatos(paso){if(!puede('ordenes')){alert('Tu perfil no carga 
      <input type="file" id="f-tallas" accept=".xlsx,.xls,.csv"><div id="tallas-res" style="margin-top:14px"></div>`
    :`<p class="lede" style="margin-top:0">Sube un CSV con columnas <b>Orden de produccion</b> y <b>Avatar</b> (imagen en base64). Cada foto va al almacenamiento (bucket <code>${esc(fotoBucket())}</code>) y en la orden queda el enlace; por tandas, la que ya existe se reemplaza. Las fotos de órdenes que no estén en el sistema se avisan: se suben igual y se cuelgan cuando llegue la orden.</p>
      <p style="font-size:var(--fs-s)"><b>${Object.keys(ix).length}</b> fotos en el almacenamiento · <b>${conFoto}</b> órdenes con foto de ${S.ordenes.length}${CF?` · última carga ${new Date(CF.fecha).toLocaleString('es-EC')}: ${CF.subidas} subidas, ${fmtBytes(CF.bytes)}`:''}</p>
-     <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>`;
+     <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>
+      <hr style="margin:18px 0;border:0;border-top:1px solid var(--rule)">
+      <p class="lede" style="margin-top:0"><b>O sube las fotos por referencia</b> (estilo): elige las imágenes y <b>el nombre de cada archivo es el código del estilo</b> (4861.jpg → referencia 4861). Una foto sirve para todas las WH de esa referencia, incluidas las que todavía no llegaron de Odoo. La foto propia de una orden siempre manda sobre la de la referencia.</p>
+      <p style="font-size:var(--fs-s)"><b>${Object.keys((S.params&&S.params.fotosRefIdx)||{}).length}</b> referencias con foto${S.params.fotosRefCarga?` · última carga ${new Date(S.params.fotosRefCarga.fecha).toLocaleString('es-EC')}: ${num(S.params.fotosRefCarga.subidas)} subidas`:''}</p>
+      <input type="file" id="f-fotosref" accept="image/*" multiple><div id="fotosref-res" style="margin-top:14px"></div>
+      <div style="margin-top:10px"><button class="btn" id="fotosref-ok" disabled onclick="aplicarFotosRef()">Subir las fotos por referencia</button></div>`;
   const avisoTareas=(()=>{if(ACT.paso===1)return '';const hace=CT&&CT.fecha?(Date.now()-new Date(CT.fecha))/864e5:null;
     if(ACT.tareasEnSesion&&hace!=null&&hace<=1)return '';
     return `<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px"><b>Conviene cargar primero las tareas</b> (paso 1): ${!ACT.tareasEnSesion?'en esta sesión no se han cargado':''}${!ACT.tareasEnSesion&&hace!=null&&hace>1?' y ':''}${hace==null?'nunca se han cargado':(hace>1?'la última carga fue hace '+num(hace,1)+' días':'')}. ${ACT.paso===2?'Las órdenes de trabajo':ACT.paso===4?'Las tallas':'Las fotos'} de órdenes que no estén en el sistema no se cuelgan de nada.</div>`})();
   const pie=ACT.paso===1?`<button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar</button>`:ACT.paso===2?`<button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button>`:ACT.paso===4?`<button class="btn" id="tallas-ok" disabled onclick="aplicarTallas()">Aplicar</button>`:`<button class="btn" id="fotos-ok" disabled onclick="aplicarFotos()">Subir fotos</button>`;
   abrir(`<h3>Actualizar datos</h3><div class="body"><div class="chips" style="margin-bottom:12px">${chip(1,'Tareas de Odoo')}${chip(2,'Órdenes de trabajo')}${chip(3,'Fotos')}${chip(4,'Tallas del pedido')}</div>${avisoTareas}${cuerpo}</div>
    <div class="foot"><span class="mut" style="font-size:var(--fs-xs);margin-right:auto">Nada se guarda antes de confirmar.</span><button class="btn ghost" onclick="cerrar()">Cancelar</button>${pie}</div>`,true);
-  const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':ACT.paso===4?'f-tallas':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:ACT.paso===4?(e=>planTallasArchivo(e.target.files[0])):leerFotos)}
+  const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':ACT.paso===4?'f-tallas':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:ACT.paso===4?(e=>planTallasArchivo(e.target.files[0])):leerFotos);
+  const inpR=document.getElementById('f-fotosref');if(inpR)inpR.addEventListener('change',leerFotosRef)}
 async function leerTarea(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('tarea-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
   const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
