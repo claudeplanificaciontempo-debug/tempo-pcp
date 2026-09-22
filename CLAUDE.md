@@ -1151,22 +1151,22 @@ botón «→ Tintorería» (`pasarATintoreria` → `moverFases` a `faseTintoreri
 
 **Requerimiento = todo lo anterior a Planificación (22-sep-2026, decisión de la usuaria):** la base de **Macro del mes** y
 **Compras del mes** ya no son tres fases marcadas a mano sino **todas las fases anteriores a Planificación** por la **secuencia**
-de la tabla 1 ( la busca en la tabla, no en una constante;  corre una vez
-desde , guarda  en  y deja bitácora; la columna —antes
-«montado», ahora **«requerimiento»**— sigue editable y no se vuelve a pisar). Reales: 122 → **786 órdenes** (337.129 prendas),
-336 productos a comprar, 27.861 kg a tejer.  dice la base y enlaza a la tabla 1 en las dos pantallas;
-/ cuentan y listan las **496 órdenes de la base sin una sola línea de material**
-(368 en 0Diseño, 128 en 0Recetas Insumos): no se estima nada. Compras agrupa también por **mes de entrega** () y exporta
-con **** (ExcelJS por CDN, /: hojas A comprar con bandas por proveedor, Tela a
-tejer, Tela a tinturar, Tela plana, Ya lo tenemos, Sin materiales y portada con la base, el autor y las brechas); el CSV queda.
-Lo que ya está en proceso (Planificación en adelante) NO entra: la conciliación de lo que le falta a lo que está en planta es
-trabajo aparte. Pruebas RQ. Ver .
+de la tabla 1 (`fasePlanificacion()` la busca en la tabla, no en una constante; `sembrarRequerimientoAntesPlan()` corre una
+vez desde `sembrarDecisiones16`, guarda `previo/entran/salen` en `S.params.reqAntesPlan` y deja bitácora; la columna
+—antes «montado», ahora **«requerimiento»**— sigue editable y no se vuelve a pisar). Reales: 122 → **786 órdenes** (337.129
+prendas), 336 productos a comprar, 27.861 kg a tejer. `requerimientoBaseHTML()` dice la base y enlaza a la tabla 1 en las dos
+pantallas; `ordenesReqSinMateriales`/`reqSinMaterialesHTML` cuentan y listan las **496 órdenes de la base sin una sola línea de
+material** (368 en 0Diseño, 128 en 0Recetas Insumos): no se estima nada. Compras agrupa también por **mes de entrega**
+(`mesEnt`) y exporta con **`exportarRequerimientoXLSX()`** (ExcelJS por CDN, `xlsHoja`/`xlsPortada`: hojas A comprar con bandas por
+proveedor, Tela a tejer, Tela a tinturar, Tela plana, Ya lo tenemos, Sin materiales y portada con la base, el autor y las
+brechas); el CSV queda. Lo que ya está en proceso (Planificación en adelante) NO entra: la conciliación de lo que le falta a
+lo que está en planta es trabajo aparte. Pruebas RQ. Ver `REQUERIMIENTO_ANTES_DE_PLANIFICACION.md`.
 
-**La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando en
-confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa:  asigna un solo
-recurso por paso, el cierre es por centro y entero (/), y el siguiente centro no la ve «lista para
-empezar» hasta que el anterior cierre. Pendiente de construir (entrega parcial entre pasos); no inventar una segunda definición
-de cierre mientras tanto. Ver  (D10).
+**La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando
+en confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa: `programar()` asigna un
+solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[centro]`), y el siguiente centro no la ve «lista
+para empezar» hasta que el anterior cierre. Pendiente de construir (entrega parcial entre pasos); no inventar una segunda
+definición de cierre mientras tanto. Ver `PISO_TIEMPOS_PROPUESTA_V2.md` (D10).
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
