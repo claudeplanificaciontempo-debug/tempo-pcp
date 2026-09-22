@@ -795,7 +795,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-21 00:21';
+const APP_BUILD='2026-09-22 16:17';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4741,7 +4741,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -10547,7 +10547,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
   ${(()=>{const mr=motivosReproceso();const rf=restriccionFaltante();return `<div class="panel"><h3>Motivos de reproceso de tintorería <span class="note">${mr.length} motivos · marca cuáles vienen de tejeduría (falla de tela) · son las filas de uso «reproceso» de la tabla 15</span><span class="spacer"></span><button class="btn ghost sm" onclick="addMotivoReprocRow()">Agregar</button></h3><div class="body"><table style="font-size:var(--fs-s)"><thead><tr><th>Motivo</th><th style="width:200px">¿Viene de tejeduría?</th><th></th></tr></thead><tbody>${mr.map((r,i)=>`<tr><td><input type="text" style="width:340px" value="${esc(r.motivo)}" onchange="setMotivoReprocRow(${i},'motivo',this.value)"></td><td><label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoReprocRow(${i},'tejeduria',this.checked)"> falla de tela (tejeduría)</label></td><td><button class="btn ghost sm" onclick="delMotivoReprocRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>
   <div class="panel"><h3>Restricciones de faltante <span class="note">${rf.length} materiales que exigen baño grande (complementos, algodón)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRestrFaltRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Si el nombre de la tela/material del faltante CONTIENE la coincidencia, ese faltante no puede ir a máquina pequeña: espera baño grande. Sembrada con cuellos, puños y algodón. Lo no marcado se reporta en la cola de faltantes (revísalo).</p><table style="font-size:var(--fs-s)"><thead><tr><th>Coincidencia (tela o material)</th><th style="width:180px">Tipo</th><th></th></tr></thead><tbody>${rf.map((r,i)=>`<tr><td><input type="text" style="width:280px" value="${esc(r.match)}" onchange="setRestrFaltRow(${i},'match',this.value)"></td><td><input type="text" style="width:150px" value="${esc(r.tipo)}" onchange="setRestrFaltRow(${i},'tipo',this.value)"></td><td><button class="btn ghost sm" onclick="delRestrFaltRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
-   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en la macro del mes (tela requerida sobre todo lo montado, antes de liberar)">montado</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en el requerimiento: Macro del mes (tela propia) y Compras del mes (lo externo). Sembrado con todas las fases anteriores a Planificación (decisión 22-sep); editable">requerimiento</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
     ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"><input type="text" style="width:190px;display:block;margin-top:2px;font-size:var(--fs-xs)" value="${esc(r.que||'')}" placeholder="qué significa esta fase" title="qué significa la fase (lo dictó la usuaria el 19-sep; editable)" onchange="setFaseMapeoRow(${i},'que',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${gruposOrdenados().map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td><input type="number" step="1" style="width:60px" value="${r.secuencia===''||r.secuencia==null?'':r.secuencia}" placeholder="—" title="iguales = paralelas; vacío = se usa el grupo de la tabla 5" onchange="setFaseMapeoRow(${i},'secuencia',this.value)"></td><td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
@@ -11233,6 +11233,31 @@ async function aplicarFotos(){if(!FOTOS)return;const p=FOTOS;const res=document.
 
 /* ---------- cálculo de la macro ---------- */
 function ordenMontada(o){const f=filaFaseDe(o.fase);return !!(f&&f.montado)&&abierta(o)}
+/* ---------- Base del requerimiento (decisión de la usuaria, 22-sep-2026) ----------
+   «Todo lo que diga Planificación ya tiene tela: no me debería aparecer. Lo que está de Planificación para arriba es
+   todo mi requerimiento.» La base sigue saliendo de la columna «requerimiento» de la tabla 1 (editable); la siembra la
+   deriva UNA vez de la secuencia de fases y deja escrito en la bitácora qué entró y qué salió. Sin fase Planificación
+   en la tabla no se siembra nada (se reporta). */
+function fasePlanificacion(){const t=faseMapeo();const r=t.find(x=>/^\d*planificacion$/.test(normFase(x.fase)))||t.find(x=>normFase(x.fase).includes('planificacion'));return r?r.fase:null}
+function fasesRequerimiento(){return faseMapeo().filter(r=>r.montado&&String(r.fase||'').trim()).map(r=>r.fase).sort(cmpFases)}
+function sembrarRequerimientoAntesPlan(){if(S.params.reqAntesPlan)return false;const fp=fasePlanificacion();if(!fp)return false;
+  const t=faseMapeo();const previo=t.filter(r=>r.montado).map(r=>r.fase);const entran=[],salen=[];
+  t.forEach(r=>{const f=String(r.fase||'').trim();if(!f)return;const v=cmpFases(f,fp)<0;if(v&&!r.montado)entran.push(f);if(!v&&r.montado)salen.push(f);r.montado=v});
+  S.params.reqAntesPlan={ts:new Date().toISOString(),fase:fp,previo,entran,salen};FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;
+  if(typeof bitacora==='function')bitacora('Base del requerimiento (Macro del mes y Compras del mes) = todas las fases anteriores a «'+fp+'» (decisión 22-sep). Entran '+entran.length+(entran.length?': '+entran.join(', '):'')+'. Salen '+salen.length+(salen.length?': '+salen.join(', '):'')+'. Antes estaban marcadas: '+(previo.join(', ')||'ninguna')+'. La columna «requerimiento» de la tabla 1 sigue siendo editable.');
+  return true}
+/* qué fases entran hoy, dicho en pantalla y con el enlace a donde se cambia */
+function requerimientoBaseHTML(){const fs2=fasesRequerimiento();const fp=fasePlanificacion();
+  return '<p class="lede" style="margin-top:0">Base: <b>todo lo anterior a '+(fp?'«'+esc(fp)+'»':'Planificación')+'</b> — lo que ya está en planificación o después ya tiene la tela (decisión del 22-sep). '+
+   (fs2.length?'Hoy son '+fs2.length+' fases: '+fs2.map(esc).join(' · ')+'.':'<b>Ninguna fase está marcada</b>: la macro sale vacía.')+
+   ' Se cambia marcando la columna «requerimiento» en <a href="#" onclick="CONF.tab=\'ordenes2\';ir(\'config\');return false">Configuración → Órdenes y materiales → tabla 1</a>.</p>'+
+   (fp?'':'<div class="warn">No encuentro la fase <b>Planificación</b> en la tabla 1, así que la base no se pudo derivar sola: revisa las marcas a mano.</div>')}
+/* órdenes de la base sin una sola línea de material: su requerimiento NO se puede calcular y no se estima */
+function ordenesReqSinMateriales(mes){return S.ordenes.filter(o=>ordenMontada(o)&&(!mes||normFase(o.proyecto||'')===normFase(mes))&&!((o.materiales||[]).length))}
+function reqSinMaterialesHTML(mes){const l=ordenesReqSinMateriales(mes);if(!l.length)return '';
+  const porFase={};l.forEach(o=>{const k=o.fase||'(sin fase)';const g=porFase[k]=porFase[k]||{n:0,pz:0};g.n++;g.pz+=(+o.cant||0)});
+  return '<div class="warn"><b>No puedo calcular el requerimiento de '+l.length+' órdenes</b> ('+num(l.reduce((a,o)=>a+(+o.cant||0),0))+' prendas): el archivo de Odoo no trajo ninguna línea de material para ellas. No se estima nada; entran solas en cuanto el archivo traiga sus componentes.'+
+   '<div style="margin-top:4px;font-size:var(--fs-xs)">'+Object.entries(porFase).sort((a,b)=>b[1].n-a[1].n).map(([f,g])=>esc(f)+': '+g.n+' órdenes · '+num(g.pz)+' prendas').join(' · ')+'</div></div>'}
 /* una línea de material → tela corta, tela del catálogo, kg crudos, tipo, merma, origen, pantone */
 function lineaMacro(o,m){const fila=filaCatTela(m.ruta);if(!fila)return{sinCat:true,ruta:m.ruta};
   const corta=fila.corta,tela=fila.tela||null;const udm=normTxt(m.udm);let kg=0,conv='kg';
@@ -11347,12 +11372,12 @@ function comprasMes(mes){const ords=S.ordenes.filter(o=>ordenMontada(o)&&(!mes||
     t.cant+=cant;t.cantMerma+=cant*(1+merma);t.ords.add(o.op);if(merma)t.merma=true;if(o.fecha&&(!t.minFecha||o.fecha<t.minFecha))t.minFecha=o.fecha;
     if(dp.disp==='sin dato')rep.sinDisp[cod||nombre]=(nombre||cod);
     else{if(!dp.prov)rep.sinProv[cod||nombre]=(nombre||cod);if(dp.multi)rep.multiProv[cod||nombre]=(nombre||cod)}}));
-  const items=Object.values(comprar).map(t=>{const dias=diasProvDe(t.prov);const limite=(t.minFecha&&dias!=null)?dsum(t.minFecha,-dias):null;return Object.assign(t,{nOrds:t.ords.size,dias,limite})});
+  const items=Object.values(comprar).map(t=>{const dias=diasProvDe(t.prov);const limite=(t.minFecha&&dias!=null)?dsum(t.minFecha,-dias):null;return Object.assign(t,{nOrds:t.ords.size,dias,limite,mesEnt:t.minFecha?String(t.minFecha).slice(0,7):''})});
   const provsUsados=[...new Set(items.filter(t=>t.disp==='pedir'&&t.prov).map(t=>t.prov))];
   const sinDias=provsUsados.filter(p=>diasProvDe(p)==null);
   return{ords:ords.length,items,bodega:Object.values(bodega),rep,sinDias,provsUsados}}
-const COMP_CAMPOS=[['prov','Proveedor'],['tipo','Tipo de material'],['mes','Mes (Proyecto)']];
-function claveCOMP(k,t){return k==='prov'?(t.prov||'Sin proveedor'):k==='tipo'?t.tipo:(t.mesReq||'—')}
+const COMP_CAMPOS=[['prov','Proveedor'],['tipo','Tipo de material'],['mes','Mes (Proyecto)'],['mesEnt','Mes de entrega (la más temprana)']];
+function claveCOMP(k,t){return k==='prov'?(t.prov||'Sin proveedor'):k==='tipo'?t.tipo:k==='mesEnt'?(t.mesEnt||'sin fecha de entrega'):(t.mesReq||'—')}
 function arbolCOMP(items,niveles){if(!niveles.length)return{hojas:items.slice().sort((a,b)=>(b.cantMerma-a.cantMerma))};
   const k=niveles[0],m={};items.forEach(t=>{const c=claveCOMP(k,t);(m[c]=m[c]||[]).push(t)});
   return{nivel:k,grupos:Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([c,its])=>({clave:c,n:its.length,cant:its.reduce((x,t)=>x+t.cantMerma,0),sub:arbolCOMP(its,niveles.slice(1))}))}}
@@ -11363,6 +11388,60 @@ function filasArbolCOMP(a,prof){prof=prof||0;if(a.hojas)return a.hojas.map(t=>`<
   return a.grupos.map(g=>`<tr class="eg-g eg-g${prof}"><td colspan="6" style="padding-left:${8+prof*18}px;background:${prof===0?'var(--field)':'transparent'};font-weight:${prof===0?700:600};border-top:${prof===0?'2px solid var(--rule)':'1px solid var(--rule2)'}"><span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${esc(nom)}:</span> ${esc(g.clave)} <span class="mut" style="font-weight:400">· ${g.n} ${g.n===1?'producto':'productos'} · ${num(g.cant,1)} (con merma)</span></td></tr>`+filasArbolCOMP(g.sub,prof+1)).join('')}
 function selNivelesCOMP(){const n=nivelesCOMP();const sel=i=>`<select onchange="setNivelCOMP(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${COMP_CAMPOS.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
   return `<div><label>Agrupar por <span class="mut" title="Agrupado por proveedor sale una lista lista para pedir.">(anidado)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
+/* Excel del requerimiento: una hoja por cosa (comprar · tela a tejer · tela a tinturar · plana) y una portada que dice
+   de dónde sale cada número. Mismo estilo que las entregas de la usuaria: cabecera navy, bandas por grupo, zebra. */
+function cargarExcelJS(){if(window.ExcelJS)return Promise.resolve();return new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';sc.onload=ok;sc.onerror=()=>err(new Error('No pude cargar ExcelJS (sin internet). Usa el CSV.'));document.head.appendChild(sc)})}
+const XLS_NAVY='FF243447',XLS_ACC='FFE8F3F6',XLS_RULE='FFDCE1E6',XLS_ZEBRA='FFF7F9FA';
+function xlsHoja(wb,nombre,cols,rows,opts){opts=opts||{};const ws=wb.addWorksheet(nombre.slice(0,31),{views:[{state:'frozen',ySplit:4}]});
+  const n=cols.length;const fuente=o=>Object.assign({name:'Arial',size:10},o||{});
+  const thin={style:'thin',color:{argb:XLS_RULE}};const borde={top:thin,left:thin,bottom:thin,right:thin};
+  const last=ws.getColumn(n).letter;
+  ws.mergeCells('A1:'+last+'1');const t=ws.getCell('A1');t.value=opts.titulo||nombre;t.font=fuente({size:14,bold:true,color:{argb:XLS_NAVY}});ws.getRow(1).height=24;
+  ws.mergeCells('A2:'+last+'2');const nt=ws.getCell('A2');nt.value=opts.nota||'';nt.font=fuente({size:9,color:{argb:'FF455260'}});nt.alignment={wrapText:true,vertical:'top'};ws.getRow(2).height=28;
+  const hr=ws.getRow(4);cols.forEach((c,i)=>{const cell=hr.getCell(i+1);cell.value=c.k;cell.font=fuente({bold:true,color:{argb:'FFFFFFFF'}});cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:XLS_NAVY}};cell.alignment={wrapText:true,vertical:'middle'};cell.border=borde});
+  ws.getRow(4).height=28;cols.forEach((c,i)=>{ws.getColumn(i+1).width=c.w||14});
+  let r=5,zebra=false,bandaAnt=null;const bandaDe=opts.banda?(o=>o[opts.banda]):null;
+  rows.forEach(o=>{if(bandaDe){const b=bandaDe(o)||'—';if(b!==bandaAnt){bandaAnt=b;ws.mergeCells(r,1,r,n);const bc=ws.getCell(r,1);bc.value=b;bc.font=fuente({bold:true,color:{argb:XLS_NAVY}});bc.fill={type:'pattern',pattern:'solid',fgColor:{argb:XLS_ACC}};bc.border=borde;r++;zebra=false}}
+    const row=ws.getRow(r);cols.forEach((c,i)=>{const cell=row.getCell(i+1);let v=o[c.k];if(v==null)v='';cell.value=v;cell.font=fuente();cell.border=borde;cell.alignment={vertical:'top',wrapText:!!c.wrap};
+      if(c.num)cell.numFmt='#,##0.00';if(zebra)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:XLS_ZEBRA}}});
+    zebra=!zebra;r++});
+  ws.autoFilter={from:{row:4,column:1},to:{row:Math.max(4,r-1),column:n}};return ws}
+function xlsPortada(wb,titulo,lineas){const ws=wb.addWorksheet('Qué es esto');ws.getColumn(1).width=30;ws.getColumn(2).width=110;
+  const fuente=o=>Object.assign({name:'Arial',size:10},o||{});
+  ws.mergeCells('A1:B1');ws.getCell('A1').value=titulo;ws.getCell('A1').font=fuente({size:16,bold:true,color:{argb:XLS_NAVY}});ws.getRow(1).height=28;
+  let r=3;lineas.forEach(([a,b])=>{const c1=ws.getCell(r,1),c2=ws.getCell(r,2);c1.value=a;c1.font=fuente({bold:true,color:{argb:XLS_NAVY}});c1.alignment={vertical:'top',wrapText:true};c2.value=b;c2.font=fuente();c2.alignment={vertical:'top',wrapText:true};r++});
+  return ws}
+async function exportarRequerimientoXLSX(){
+  try{await cargarExcelJS()}catch(e){alert(e.message||'No pude cargar el generador de Excel.');return}
+  const mes=COMP.mes;const M=comprasMes(mes);const mac=macroMes(mes);const sinMat=ordenesReqSinMateriales(mes);
+  const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';
+  const fp=fasePlanificacion();const base='Base: órdenes abiertas cuya fase va antes de «'+(fp||'Planificación')+'» ('+fasesRequerimiento().join(' · ')+')'+(mes?' · mes del Proyecto: '+mes:' · todos los meses');
+  xlsPortada(wb,'Requerimiento'+(mes?' · '+mes:''),[
+    ['Qué es',base+'. Lo que ya está en planificación o después no entra: ya tiene la tela.'],
+    ['Sacado el',new Date().toLocaleString('es-EC')+' por '+(typeof quienFirma==='function'?quienFirma():'')],
+    ['Órdenes en la base',String(M.ords)+' órdenes abiertas'],
+    ['A comprar',String(M.items.length)+' productos de proveedores externos (telas externas, insumos y servicios). Cantidad con la merma de tintura donde aplica.'],
+    ['Tela propia',num(mac.tej.reduce((a,t)=>a+t.kgMerma,0),1)+' kg a tejer y '+mac.tin.length+' líneas de tintorería (pantone × tela). Los kilos son crudos, con merma sumada.'],
+    ['Fecha límite para pedir','Entrega más temprana de las órdenes del producto menos los días del proveedor. No descuenta el tiempo de producción.'],
+    ['Sin datos',(sinMat.length?sinMat.length+' órdenes de la base no tienen ninguna línea de material en Odoo: su requerimiento no está aquí. ':'')+(Object.keys(M.rep.sinProv).length?Object.keys(M.rep.sinProv).length+' productos sin proveedor. ':'')+(Object.keys(M.rep.sinDisp).length?Object.keys(M.rep.sinDisp).length+' productos sin disponibilidad definida (no se asume comprar ni que ya está). ':'')||'Sin brechas.'],
+    ['Ojo','Nada de esto es un pedido: es el requerimiento. Lo que ya está en bodega va en su propia hoja y no se pide.']]);
+  const comp=M.items.slice().sort((a,b)=>(a.prov||'~').localeCompare(b.prov||'~','es')||b.cantMerma-a.cantMerma)
+    .map(t=>({Proveedor:t.prov||'SIN PROVEEDOR',Producto:t.nombre||'',Código:t.cod||'',Tipo:t.tipo,'Cantidad (con merma)':+t.cantMerma.toFixed(2),Unidad:t.udm,'Cantidad base':+t.cant.toFixed(2),'Órdenes':t.nOrds,'Días proveedor':t.dias==null?'SIN DEFINIR':t.dias,'Fecha límite para pedir':t.limite||'','Disponibilidad':t.disp,'Mes (Proyecto)':t.mesReq||'','Mes de entrega':t.mesEnt||''}));
+  xlsHoja(wb,'A comprar',[{k:'Proveedor',w:30},{k:'Producto',w:38,wrap:true},{k:'Código',w:14},{k:'Tipo',w:16},{k:'Cantidad (con merma)',w:16,num:true},{k:'Unidad',w:9},{k:'Cantidad base',w:14,num:true},{k:'Órdenes',w:9},{k:'Días proveedor',w:12},{k:'Fecha límite para pedir',w:14},{k:'Disponibilidad',w:13},{k:'Mes (Proyecto)',w:16},{k:'Mes de entrega',w:13}],comp,{titulo:'A comprar a proveedores externos',nota:base,banda:'Proveedor'});
+  xlsHoja(wb,'Tela a tejer',[{k:'Tela',w:30},{k:'Tipo',w:10},{k:'kg crudos',w:12,num:true},{k:'kg + merma',w:12,num:true},{k:'Órdenes',w:9}],
+    mac.tej.map(t=>({Tela:t.corta,Tipo:t.tipo,'kg crudos':+t.kg.toFixed(1),'kg + merma':+t.kgMerma.toFixed(1),'Órdenes':t.ords.size})),{titulo:'Tela propia a tejer',nota:base+' · solo tela propia; la externa está en «A comprar».'});
+  xlsHoja(wb,'Tela a tinturar',[{k:'Pantone',w:22},{k:'Tela',w:28},{k:'Tipo',w:10},{k:'kg crudos',w:12,num:true},{k:'kg + merma',w:12,num:true},{k:'Órdenes',w:9},{k:'Origen',w:14}],
+    mac.tin.map(t=>({Pantone:t.pantone,Tela:t.corta,Tipo:t.tipo,'kg crudos':+t.kg.toFixed(1),'kg + merma':+t.kgMerma.toFixed(1),'Órdenes':t.ords.size,Origen:t.origen||''})),{titulo:'Tela a tinturar (pantone × tela)',nota:base,banda:'Pantone'});
+  if(mac.planas&&mac.planas.length)xlsHoja(wb,'Tela plana (m)',[{k:'Tela',w:30},{k:'Pantone / color',w:24},{k:'Metros',w:12,num:true},{k:'Órdenes',w:9},{k:'Origen',w:14}],
+    mac.planas.map(t=>({Tela:t.corta,'Pantone / color':t.pantone,Metros:+t.m.toFixed(1),'Órdenes':t.ords.size,Origen:t.origen||''})),{titulo:'Tela plana · metros',nota:base+' · los metros no se suman con los kilos.'});
+  if(M.bodega.length)xlsHoja(wb,'Ya lo tenemos',[{k:'Producto',w:38,wrap:true},{k:'Tipo',w:16},{k:'Cantidad',w:14,num:true},{k:'Unidad',w:9},{k:'Órdenes',w:9}],
+    M.bodega.slice().sort((a,b)=>b.cantMerma-a.cantMerma).map(t=>({Producto:t.nombre||t.cod,Tipo:t.tipo,Cantidad:+t.cantMerma.toFixed(2),Unidad:t.udm,'Órdenes':t.ords.size})),{titulo:'Marcado como TEMPO / bodega: no se pide',nota:base});
+  if(sinMat.length)xlsHoja(wb,'Sin materiales',[{k:'WH / OP',w:18},{k:'Fase',w:22},{k:'Cliente',w:26},{k:'Estilo',w:26},{k:'Prendas',w:10,num:true},{k:'Entrega',w:12},{k:'Mes (Proyecto)',w:16}],
+    sinMat.slice().sort((a,b)=>String(a.fase||'').localeCompare(String(b.fase||''),'es')).map(o=>({'WH / OP':o.op||'',Fase:o.fase||'',Cliente:o.cliente||'',Estilo:o.stilo||o.estilo||'',Prendas:+o.cant||0,Entrega:o.fecha||'',"Mes (Proyecto)":o.proyecto||''})),
+    {titulo:'Órdenes de la base sin líneas de material en Odoo',nota:'Su requerimiento NO está calculado en las otras hojas. No se estima nada: entran solas cuando el archivo traiga sus componentes.',banda:'Fase'});
+  const buf=await wb.xlsx.writeBuffer();const b=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='requerimiento_'+(mes||'todo').replace(/\s+/g,'_')+'_'+hoy()+'.xlsx';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0);
+  if(typeof bitacora==='function'){bitacora('Exportado el requerimiento a Excel'+(mes?' ('+mes+')':'')+': '+M.items.length+' productos a comprar, '+mac.tej.length+' telas a tejer, '+mac.tin.length+' líneas de tintorería'+(sinMat.length?', '+sinMat.length+' órdenes sin materiales':''));save()}}
 function exportarComprasCSV(){const M=comprasMes(COMP.mes);const rows=[['Proveedor','Producto','Codigo','Tipo','Cantidad (con merma)','Unidad','Cantidad base','Ordenes','Dias proveedor','Fecha limite para pedir','Disponibilidad','Mes']];
   M.items.slice().sort((a,b)=>(a.prov||'~').localeCompare(b.prov||'~','es')||b.cantMerma-a.cantMerma).forEach(t=>rows.push([t.prov||'SIN PROVEEDOR',t.nombre||'',t.cod||'',t.tipo,+t.cantMerma.toFixed(2),t.udm,+t.cant.toFixed(2),t.nOrds,t.dias==null?'SIN DEFINIR':t.dias,t.limite||'',t.disp,t.mesReq||'']));
   const csv=rows.map(r=>r.map(v=>{const x=String(v==null?'':v);return /[;"\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(';')).join('\n');
@@ -11371,13 +11450,16 @@ function vCompras(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map
   const nuevos=sembrarDiasProveedor();if(nuevos)save();
   const M=comprasMes(COMP.mes);const niv=nivelesCOMP();const arbol=arbolCOMP(M.items,niv);
   const totProv={};M.items.forEach(t=>{const p=t.prov||'Sin proveedor';totProv[p]=(totProv[p]||0)+1});
+  const totTipo={};M.items.forEach(t=>{totTipo[t.tipo]=(totTipo[t.tipo]||0)+1});
   const bnj=(o,t)=>Object.keys(o).length?`<p style="font-size:var(--fs-s);margin:4px 0"><b>${t}</b> (${Object.keys(o).length}): ${Object.values(o).slice(0,40).map(esc).join(', ')}${Object.keys(o).length>40?' …':''}</p>`:'';
   el.innerHTML=`<div class="pagehead"><h2>Compras del mes · qué pedir a proveedores</h2><span class="spacer"></span>
-    <div class="row" style="align-items:flex-end;gap:12px"><div><label>Mes (Proyecto)</label><select onchange="COMP.mes=this.value;render()"><option value="">todo lo montado</option>${meses.map(m=>`<option value="${esc(m)}" ${COMP.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>${selNivelesCOMP()}<div><label>&nbsp;</label><button class="btn ghost" onclick="exportarComprasCSV()">Exportar CSV</button></div></div></div>
+    <div class="row" style="align-items:flex-end;gap:12px"><div><label>Mes (Proyecto)</label><select onchange="COMP.mes=this.value;render()"><option value="">todo lo montado</option>${meses.map(m=>`<option value="${esc(m)}" ${COMP.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>${selNivelesCOMP()}<div><label>&nbsp;</label><button class="btn" onclick="exportarRequerimientoXLSX()">Exportar Excel</button> <button class="btn ghost" onclick="exportarComprasCSV()">CSV</button></div></div></div>
   ${alertasComprasHTML()}
-  <p class="lede">Todo lo que viene de proveedores externos de las órdenes montadas (${M.ords} órdenes): telas externas o importadas, insumos y servicios externos. La tela propia va en Macro del mes. Cantidad con la merma de tintura donde corresponde. Lo que ya está en bodega se muestra aparte y no se pide; lo que no tiene disponibilidad o proveedor definido va a las bandejas de abajo.</p>
+  ${requerimientoBaseHTML()}
+  ${reqSinMaterialesHTML(COMP.mes)}
+  <p class="lede">Todo lo que viene de proveedores externos de las órdenes de esa base (${M.ords} órdenes): telas externas o importadas, insumos y servicios externos. La tela propia va en Macro del mes. Cantidad con la merma de tintura donde corresponde. Lo que ya está en bodega se muestra aparte y no se pide; lo que no tiene disponibilidad o proveedor definido va a las bandejas de abajo.</p>
   ${M.sinDias.length?`<div class="warn"><b>${M.sinDias.length} proveedores sin días de entrega</b>: ${M.sinDias.slice(0,20).map(esc).join(', ')}. Sin ese dato no puedo dar la fecha límite para pedir. Llénalos en Configuración → Órdenes y materiales → Días de entrega por proveedor.</div>`:''}
-  <div class="panel"><h3>A comprar <span class="note">${M.items.length} productos · ${Object.keys(totProv).length} proveedores · con merma donde aplica</span></h3><div class="scroll" style="max-height:600px"><table><thead><tr><th>Producto</th><th>Proveedor</th><th class="num">Cantidad</th><th>Unidad</th><th class="num">Órdenes</th><th>Fecha límite para pedir</th></tr></thead><tbody>
+  <div class="panel"><h3>A comprar <span class="note">${M.items.length} productos · ${Object.keys(totProv).length} proveedores · ${Object.entries(totTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>v+' '+esc(k.toLowerCase())).join(' · ')} · con merma donde aplica</span></h3><div class="scroll" style="max-height:600px"><table><thead><tr><th>Producto</th><th>Proveedor</th><th class="num">Cantidad</th><th>Unidad</th><th class="num">Órdenes</th><th>Fecha límite para pedir</th></tr></thead><tbody>
    ${filasArbolCOMP(arbol)||'<tr><td colspan="6" class="mut">Nada que comprar en este mes.</td></tr>'}</tbody></table></div>
    <p class="mut" style="font-size:var(--fs-xs);padding:6px 16px 0">Fecha límite para pedir = fecha de entrega más temprana de las órdenes del producto − días del proveedor. Es el tope para que llegue antes del despacho (no descuenta el tiempo de producción).</p></div>
   <div class="panel"><h3>Ya lo tenemos <span class="note">${M.bodega.length} productos en bodega (usuaria = TEMPO): no se piden, se muestran para verificar</span></h3><div class="scroll" style="max-height:340px"><table><thead><tr><th>Producto</th><th>Tipo</th><th class="num">Cantidad</th><th>Unidad</th><th class="num">Órdenes</th></tr></thead><tbody>
@@ -11398,7 +11480,9 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
   el.innerHTML=`<div class="pagehead"><h2>Macro del mes · tela requerida sobre todo lo montado</h2><span class="spacer"></span>
     <div class="row" style="align-items:center"><label style="margin:0">Mes (Proyecto)</label><select onchange="MAC.mes=this.value;render()"><option value="">todo lo montado</option>${meses.map(m=>`<option value="${esc(m)}" ${MAC.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
     ${puede('ordenes')?`<button class="btn ghost" onclick="mFacturas()">Cargar facturas (catálogo)</button>`:''}</div>
-  <p class="lede">Órdenes <b>montadas</b> (fases marcadas "montado" en la tabla 1: hoy 0Macro, 1Tejeduria, 1CD Tintoreria), liberadas o no: ${mac.rep.ordenes} órdenes, ${num(mac.rep.prendas)} prendas, ${mac.rep.lineas} líneas de MP. Kilos crudos por tela corta (tabla 8), metros × kg/m y unidades × kg/unidad (tabla 9), tipo LLANO/JASPE (tabla 11, corregible en el catálogo), merma de tintura sumada (enc de la tela o tabla 10), origen por catálogo de productos (facturas) y categoría (tabla 3).</p>
+  ${requerimientoBaseHTML()}
+  ${reqSinMaterialesHTML(MAC.mes)}
+  <p class="lede">Órdenes de esa base, liberadas o no: ${mac.rep.ordenes} órdenes, ${num(mac.rep.prendas)} prendas, ${mac.rep.lineas} líneas de MP. Kilos crudos por tela corta (tabla 8), metros × kg/m y unidades × kg/unidad (tabla 9), tipo LLANO/JASPE (tabla 11, corregible en el catálogo), merma de tintura sumada (enc de la tela o tabla 10), origen por catálogo de productos (facturas) y categoría (tabla 3).</p>
   ${mac.planas&&mac.planas.length?`<div class="panel"><h3>Tela plana · METROS <span class="note">${mac.rep.lineasPlana} líneas · ${num(mac.rep.mPlana)} m · aparte de los kilos: no se suman con las telas de punto. Merma de plana 12–15 % (referencia de la usuaria; no se calcula aquí)</span></h3><div class="body"><table><thead><tr><th>Tela corta</th><th>Pantone / color</th><th class="num">Metros</th><th class="num">Órdenes</th><th>Origen</th></tr></thead><tbody>${mac.planas.map(t=>`<tr><td>${esc(t.corta)}</td><td>${esc(t.pantone)}</td><td class="num">${num(t.m)}</td><td class="num">${t.ords.size}</td><td class="mut">${esc(t.origen||'')}</td></tr>`).join('')}</tbody></table></div></div>`:''}
   <div class="panel"><h3>Tejeduría · tela × tipo, kg con merma, solo tela PROPIA <span class="note">total ${num(totTej)} kg</span></h3><div class="body">
    <table><thead><tr><th>Tela</th><th>Tipo</th><th class="num">kg crudos</th><th class="num">kg + merma</th><th class="num">Órdenes</th><th>Tela del catálogo</th></tr></thead><tbody>

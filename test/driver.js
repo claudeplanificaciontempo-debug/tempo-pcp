@@ -376,7 +376,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check('macro: hay órdenes montadas (0Macro/1Tejeduria/1CD Tintoreria) y kilos de tejeduría',mac.rep.ordenes>0&&totTej>0,mac.rep.ordenes+' órdenes, '+Math.round(totTej)+' kg');
    __check('macro: cuellos/puños (unidades) entran convertidos a kg',mac.tej.some(t=>/CUELLOS|PU/.test(t.corta)&&t.kg>0));
    __check('macro: hay filas JASPE separadas del LLANO',mac.tej.some(t=>t.tipo==='JASPE'));
-   __check('macro: ninguna categoría de MP sin fila en la tabla 8',Object.keys(mac.rep.sinCat).filter(k=>/\/ MP/.test(k)).length===0,JSON.stringify(mac.rep.sinCat));
+   /* con la base ancha (todo lo anterior a Planificación, 22-sep) aparecen categorías de Odoo que no están en la tabla 8:
+      no se inventa su tela ni se descartan en silencio — se cuentan y se listan en la pantalla de la macro */
+   {const faltan=Object.keys(mac.rep.sinCat);page='macro';render();const hm=document.getElementById('p-macro').innerHTML;
+    __check('macro: las categorías de Odoo sin fila en la tabla 8 se reportan en pantalla, una por una (no se estiman ni se esconden)',faltan.every(k=>hm.includes(esc(k)))&&(!faltan.length||/Categorías de Odoo sin fila en la tabla 8/.test(hm)),JSON.stringify(mac.rep.sinCat));}
    __check('macro: tintorería agrupa por pantone × tela × tipo',mac.tin.length>0&&mac.tin.every(t=>t.pantone&&t.corta));
    const bj=banosJaspe(mac);__check('macro: baños separando jaspe ≥ baños juntos',bj.separados>=bj.juntos,JSON.stringify(bj));
    window.__MAC={ordenes:mac.rep.ordenes,totTej:Math.round(totTej),tej:mac.tej.map(t=>t.corta+'|'+t.tipo+'='+t.kgMerma.toFixed(1)),rep:{sinCat:mac.rep.sinCat,sinConv:mac.rep.sinConv,sinMerma:mac.rep.sinMerma,sinClas:mac.rep.sinClasificar,orig:mac.rep.origenes},bj};
@@ -804,7 +807,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;COMP={mes:'',niveles:['prov']};page='compras';render();const html=()=>document.getElementById('p-compras').innerHTML;
    const M=comprasMes('');__check("compras: monta productos a comprar, bodega y bandejas",typeof M.ords==='number'&&Array.isArray(M.items)&&Array.isArray(M.bodega)&&M.rep&&Array.isArray(M.sinDias),M.items.length+' items');
    __check("compras: ningún item a comprar es tela propia (esa va en Macro)",M.items.every(t=>t.tipo!=='Tela externa'||t.disp!=='teje'));
-   __check("compras: la pantalla tiene A comprar, Ya lo tenemos, Bandejas, agrupar y exportar",html().includes('A comprar')&&html().includes('Ya lo tenemos')&&html().includes('Bandejas')&&html().includes('Agrupar por')&&html().includes('Exportar CSV'));
+   __check("compras: la pantalla tiene A comprar, Ya lo tenemos, Bandejas, agrupar y las dos exportaciones (Excel con formato y CSV)",html().includes('A comprar')&&html().includes('Ya lo tenemos')&&html().includes('Bandejas')&&html().includes('Agrupar por')&&html().includes('exportarRequerimientoXLSX()')&&html().includes('exportarComprasCSV()'));
    // días de proveedor: tabla sembrada en blanco, sin 15 por defecto; con un valor, sale la fecha límite
    sembrarDiasProveedor();const dp=diasProveedor();__check("compras: tabla de días por proveedor sembrada y en blanco (sin definir)",dp.length>=0&&dp.every(r=>r.dias===''||r.dias==null||!isNaN(+r.dias)));
    __check("compras: diasProvDe de un proveedor sin definir es null (nunca 15)",diasProvDe('__inexistente__')===null);
@@ -7003,6 +7006,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* RQ · Requerimiento (Macro del mes y Compras del mes): la base es TODO lo anterior a Planificación (usuaria, 22-sep: «lo que diga planificación ya tiene tela; de planificación para arriba es todo mi requerimiento») */
+   {PERFIL=adminP0();const fp=fasePlanificacion();
+    __check('RQ: la fase Planificación sale de la tabla de fases (no de una constante) y la secuencia la ubica después de Macro y antes de Corte',!!fp&&/planificacion/.test(normFase(fp))&&cmpFases('0Macro',fp)<0&&cmpFases('4Corte Planta',fp)>0,JSON.stringify({fp}));
+    /* estado de la tabla y de la marca, para devolverlo todo al final */
+    const t=faseMapeo();const prevMont=t.map(r=>r.montado);const prevFlag=S.params.reqAntesPlan;const nb0=S.bitacora.length;
+    t.forEach(r=>{r.montado=normFase(r.fase)===normFase('8Empaque')});delete S.params.reqAntesPlan;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;
+    const corrio=sembrarRequerimientoAntesPlan();const marcadas=fasesRequerimiento();
+    const antesOK=t.filter(r=>String(r.fase||'').trim()&&cmpFases(r.fase,fp)<0).every(r=>r.montado);
+    const despuesOK=t.filter(r=>String(r.fase||'').trim()&&cmpFases(r.fase,fp)>=0).every(r=>!r.montado);
+    __check('RQ: la siembra marca TODAS las fases anteriores a Planificación y desmarca las demás, deja lo que estaba antes y una línea en bitácora',corrio&&antesOK&&despuesOK&&marcadas.length>3&&(S.params.reqAntesPlan.previo||[]).some(f=>normFase(f)===normFase('8Empaque'))&&(S.params.reqAntesPlan.salen||[]).some(f=>normFase(f)===normFase('8Empaque'))&&S.bitacora.length>nb0,JSON.stringify({corrio,n:marcadas.length,antesOK,despuesOK,previo:(S.params.reqAntesPlan||{}).previo}));
+    /* lo editado no se pisa: la usuaria desmarca una fase y la siembra ya no vuelve a correr */
+    const fi=t.findIndex(r=>normFase(r.fase)===normFase('0Diseño'));t[fi].montado=false;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;
+    const corrio2=sembrarRequerimientoAntesPlan();
+    __check('RQ: la siembra corre UNA vez; si la usuaria desmarca una fase, no se la vuelve a pisar',corrio2===false&&t[fi].montado===false,JSON.stringify({corrio2,montadoDiseno:t[fi].montado}));
+    t[fi].montado=true;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;
+    /* qué órdenes entran: una en una fase anterior sí, una en una posterior no */
+    const base=S.ordenes.find(abierta);
+    const mk=(op,fase,mat)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.fase=fase;o.proyecto='MES RQ';o.cant=120;o.fecha='2026-11-20';o.materiales=mat;S.ordenes.push(o);delete S.avance[o.id];return o};
+    const oAntes=mk('WH/TEST-RQ1','0Diseño',[]),oDespues=mk('WH/TEST-RQ2','4Corte Planta',[]);
+    __check('RQ: entra al requerimiento lo que está en una fase anterior a Planificación y NO lo que ya está en planificación o después',ordenMontada(oAntes)&&!ordenMontada(oDespues),JSON.stringify({antes:ordenMontada(oAntes),despues:ordenMontada(oDespues)}));
+    /* órdenes de la base sin una sola línea de material: se reportan, no se estiman */
+    const sinMat=ordenesReqSinMateriales('MES RQ');
+    __check('RQ: una orden de la base sin líneas de material se cuenta aparte (no se inventa su requerimiento) y no entra a las cuentas de la macro',sinMat.some(o=>o.id===oAntes.id)&&!sinMat.some(o=>o.id===oDespues.id)&&/No puedo calcular el requerimiento/.test(reqSinMaterialesHTML('MES RQ')),JSON.stringify({n:sinMat.length}));
+    /* mes de entrega como agrupador de compras */
+    const M=comprasMes('');const conMes=M.items.filter(x=>x.mesEnt);
+    __check('RQ: cada producto a comprar trae el mes de la entrega más temprana y se puede agrupar por ese mes',M.items.length>0&&conMes.length>0&&/^\d{4}-\d{2}$/.test(conMes[0].mesEnt)&&claveCOMP('mesEnt',conMes[0])===conMes[0].mesEnt&&claveCOMP('mesEnt',{mesEnt:''})==='sin fecha de entrega'&&COMP_CAMPOS.some(c=>c[0]==='mesEnt'),JSON.stringify({items:M.items.length,conMes:conMes.length,ej:conMes[0]&&conMes[0].mesEnt}));
+    /* las dos pantallas dicen la base y ofrecen el Excel */
+    page='compras';render();const hc=document.getElementById('p-compras').innerHTML;
+    page='macro';render();const hm=document.getElementById('p-macro').innerHTML;
+    __check('RQ: Compras y Macro dicen de dónde sale la base (fases anteriores a Planificación, con el enlace a la tabla 1) y ya no la lista fija de tres fases',/Base: <b>todo lo anterior a/.test(hc)&&/Base: <b>todo lo anterior a/.test(hm)&&hc.includes('ordenes2')&&!/0Macro, 1Tejeduria, 1CD Tintoreria/.test(hm),JSON.stringify({c:/Base: <b>todo lo anterior a/.test(hc),m:/Base: <b>todo lo anterior a/.test(hm)}));
+    __check('RQ: Compras exporta el requerimiento en Excel con formato (y conserva el CSV)',/exportarRequerimientoXLSX\(\)/.test(hc)&&/exportarComprasCSV\(\)/.test(hc)&&typeof exportarRequerimientoXLSX==='function'&&typeof cargarExcelJS==='function',JSON.stringify({xlsx:/exportarRequerimientoXLSX/.test(hc)}));
+    S.ordenes=S.ordenes.filter(x=>x.id!==oAntes.id&&x.id!==oDespues.id);delete S.avance[oAntes.id];delete S.avance[oDespues.id];
+    t.forEach((r,i)=>r.montado=prevMont[i]);S.params.reqAntesPlan=prevFlag;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;}
    /* TM · Estado de tintorería: «Antes de tintorería» con el botón → Tintorería (usuaria, 21-sep: los baños se arman en otro sistema, pero la fase se mueve aquí) */
    {PERFIL=adminP0();const ft=faseTintoreria();const base=S.ordenes.find(o=>abierta(o)&&etapas(o).tin)||S.ordenes.find(abierta);const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TM';o.fase='0Macro';delete o.programa;delete o.avance;S.ordenes.push(o);delete S.avance[o.id];
     const okFase=!!ft&&/tintoreria/.test(normFase(ft))&&!/cd|calidad/.test(normFase(ft));const antes=antesDeTintoreria();
