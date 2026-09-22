@@ -795,7 +795,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-22 17:35';
+const APP_BUILD='2026-09-22 18:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -8990,7 +8990,13 @@ function vOrdenes(el){
          return fs.length?`<div style="margin:6px 0"><b>Fases distintas (${fs.length})</b>: ${acept.length} avanzaron en Odoo y aquí nadie las movió; ${fs.length-acept.length} las moviste aquí (también puedes aceptar la del archivo, caso por caso). ${puede('ordenes')?`<button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(acept.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar las ${acept.length} de avance normal</button> <button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(fs.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar todas (${fs.length})</button> <button class="btn ghost sm" onclick="BND.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${BND.sel.size?'':'disabled'} onclick="aceptarFasesArchivo()">Usar la fase del archivo en las ${BND.sel.size} marcadas</button>`:''}
           <div style="margin:6px 0;font-size:var(--fs-xs)">Archivo exportado de Odoo: <input type="datetime-local" value="${isoLocalInput(expTsDe(rc))}" ${puede('ordenes')?'':'disabled'} onchange="fijarExportTs(this.value)"> <span class="mut">— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.</span></div>
           <table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th></th><th>OP</th><th>Fase en el sistema</th><th>Fase del archivo</th><th></th></tr></thead><tbody>${fs.map(x=>{const mv=movidas(x.op);return `<tr><td><input type="checkbox" ${BND.sel.has(x.op)?'checked':''} onchange="if(this.checked)BND.sel.add('${x.op}');else BND.sel.delete('${x.op}');render()"></td><td>${esc(x.op)}</td><td>${esc(x.sistema)}</td><td>${esc(x.archivo)}</td><td class="mut">${mv?(archivoAnterior(x.op,rc)?'<span class="tag t-alerta">el archivo es anterior a tu cambio</span> lo moviste aquí el '+fMovTs(mv.ts)+', el archivo se exportó el '+fMovTs(expTsDe(rc))+': la del archivo es la vieja, revísala antes de aceptar':'<span class="tag t-aviso">movida aquí</span> por '+esc(mv.u||'')+' el '+fMovTs(mv.ts)+': si la marcas, la del archivo la pisa'):''}</td></tr>`}).join('')}</tbody></table></div>`:''})()}
-       <div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${nc.filter(x=>x.tipo!=='fase').slice(0,80).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')}</div></details></div>`:'')+
+       ${(()=>{const otras=nc.filter(x=>x.tipo!=='fase');if(!otras.length)return '';
+          const NOM={ruta:'Rutas confirmadas que se conservaron',rutaTextil:'Tramo de tela rehecho con el archivo',tiempo:'Tiempos que el archivo trae distintos',lib:'Liberaciones',odc:'ODC'};
+          const g={};otras.forEach(x=>{const k=x.tipo||'otras';(g[k]=g[k]||[]).push(x)});
+          const TOPE=30;
+          return Object.entries(g).sort((a,b)=>a[1].length-b[1].length).map(([k,l])=>'<div style="margin-top:6px"><b>'+esc(NOM[k]||('Otras ('+k+')'))+' — '+l.length+'</b><div style="font-size:var(--fs-xs);line-height:1.6">'+
+            l.slice(0,TOPE).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')+
+            (l.length>TOPE?'<br><span class="mut">… y '+(l.length-TOPE)+' más</span>':'')+'</div></div>').join('')})()}</details></div>`:'')+
       ((rc.eliminadasConDecision||[]).length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${rc.eliminadasConDecision.length} órdenes eliminadas en la recarga tenían decisiones de persona</b>: ${rc.eliminadasConDecision.slice(0,40).map(esc).join(', ')}${rc.eliminadasConDecision.length>40?' …':''}</div>`:'')})()}
   ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
     const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
@@ -11805,7 +11811,13 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
     {const antes=(ex.ruta||[]).map(p=>p.centro).join('>'),despues=(o.ruta||[]).map(p=>p.centro).join('>');const puedeRuta=(typeof puedeEditarRuta==='function')?puedeEditarRuta():true;
      if(!puedeRuta&&antes!==despues){o.ruta=ex.ruta;o.rutaCompleta=ex.rutaCompleta;alert('Tu perfil no edita rutas: la ruta se guardó como estaba; el resto de la ficha sí.')}
      Object.assign(ex,o);
-     if(puedeRuta){if(antes!==despues){ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
+     if(puedeRuta){if(antes!==despues){
+        if(ex.rutaCompleta&&ex.rutaCompleta.length){   /* la completa sigue a la pendiente: se quitan los pasos que salieron y se insertan por ordenPaso los que entraron */
+          const menos=antes.split('>').filter(c=>c&&!despues.split('>').includes(c));
+          let rc=ex.rutaCompleta.filter(p=>!menos.includes(p.centro));
+          (ex.ruta||[]).forEach(p=>{if(rc.some(x=>x.centro===p.centro))return;const idx=ordenPaso(p.centro);let pos=rc.length;for(let i=0;i<rc.length;i++){if(ordenPaso(rc[i].centro)>idx){pos=i;break}}rc.splice(pos,0,{centro:p.centro,t:p.t})});
+          ex.rutaCompleta=rc}
+        ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
        if(typeof sellarRuta==='function')sellarRuta(ex);if(typeof confirmarRuta==='function'&&!(ex.rutaConf&&ex.rutaConf.estado==='confirmada'&&ex.rutaConf.origen==='persona'))confirmarRuta(ex,'persona','ficha de la orden')}}
    }else S.ordenes.push(Object.assign({id:uid()},o));
   PLAN=null;PLAN_ALL=null;save();cerrar();render()}
@@ -12155,9 +12167,11 @@ function planTarea(rows,nombre){
      if(o.faseSistema==='cerrada')plan.prev.cerradas++;if(!v){plan.prev.nuevas++;return}plan.prev.actualizadas++;
      if(conserva('fase')&&v.fase!=null&&normFase(v.fase)!==normFase(o.fase||'')){if(odooMandaFase(v))plan.prev.faseOdoo=(plan.prev.faseOdoo||0)+1;else plan.prev.noCalzan.push({op:o.op,tipo:'fase',sistema:v.fase,archivo:o.fase})}
      if(conserva('fecha')&&v.fechaManual&&v.fecha&&v.fecha!==o.fecha)plan.prev.noCalzan.push({op:o.op,tipo:'fecha',sistema:v.fecha,archivo:o.fecha});
-     if(conserva('rutaConf')&&v.rutaConf&&v.rutaConf.origen==='persona'){   /* la ruta que confirmó una persona se conserva tal cual (22-sep) */
-       const cenV=cenRutaTxt(v),cenO=cenRutaTxt(o);plan.prev.rutasConf=(plan.prev.rutasConf||0)+1;
+     if(conserva('rutaConf')&&v.rutaConf&&v.rutaConf.origen==='persona'){   /* la ruta que confirmó una persona se conserva tal cual (22-sep); el tramo de tela no cuenta: lo rehace el archivo */
+       const soloPro=t=>String(t||'').split(' → ').filter(c=>c&&!['tej','tin','proveedor'].includes(c)).join(' → ');
+       const cenV=soloPro(cenRutaTxt(v)),cenO=soloPro(cenRutaTxt(o));plan.prev.rutasConf=(plan.prev.rutasConf||0)+1;
        if(cenV&&cenV!==cenO)plan.prev.rutasDistintas=(plan.prev.rutasDistintas||[]).concat([{op:o.op,tuya:cenV,catalogo:cenO||'(vacía)'}])}
+     else if(v.rutaConf&&v.rutaConf.origen==='persona')plan.prev.rutasConfApagado=(plan.prev.rutasConfApagado||0)+1;   /* la fila «Ruta confirmada» de la tabla 14 está desmarcada: esas rutas se rearman */
      const a=S.avance[o.id];if(a&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)plan.prev.noCalzan.push({op:o.op,tipo:'avance',sistema:nCen(c)+' '+n,archivo:o.cant})})});
    const alc=new Set(plan.excluidas.alcance.map(x=>x.clave));const alcIds=new Set(plan.excluidas.alcance.map(x=>x.existeId).filter(Boolean));
    const conf=new Set(plan.tareaIdConflicto.map(x=>x.id).concat(plan.repExistentesIds||[]));
@@ -12192,7 +12206,8 @@ function vistaPreviaTareaHTML(p){const v=p.prev||{};const li=(n,t,cls)=>`<tr${cl
    ${li(((p.excluidas||{}).alcance||[]).length,'<b>fuera de alcance</b> en el archivo (no se crean; '+nvA+' que ya estaban quedan marcadas «fuera de alcance», no se borran)')}
    ${li(nvN,'órdenes del sistema que <b>no vinieron</b> en el archivo (quedan «no está en el archivo», no se borran)'+(nvN?': '+esc(nv.filter(x=>x.motivo!=='fuera de alcance').slice(0,8).map(x=>x.op).join(', '))+(nvN>8?'…':''):''))}
    ${li(v.faseOdoo||0,'órdenes <b>sin WH</b> cuya fase cambia con el archivo (sin WH manda Odoo; con WH la fase la mueve la planta aquí)')}
-   ${li(v.rutasConf||0,'órdenes con la <b>ruta confirmada por una persona</b>: se conserva tal cual, no se vuelve a armar con el catálogo'+((v.rutasDistintas||[]).length?'. En <b>'+num((v.rutasDistintas||[]).length)+'</b> el catálogo de hoy armaría otra ruta y <b>manda la tuya</b>: '+esc((v.rutasDistintas||[]).slice(0,4).map(x=>x.op+' (tuya: '+x.tuya+' · catálogo: '+x.catalogo+')').join(' · ')):''))}
+   ${v.rutasConfApagado?li(v.rutasConfApagado,'órdenes con <b>ruta confirmada por una persona</b> que <b>NO se conservará</b>: la fila «Ruta confirmada» de la tabla 14 está desmarcada, así que esas rutas se rearman con el catálogo'):''}
+   ${li(v.rutasConf||0,'órdenes con la <b>ruta confirmada por una persona</b>: se conservan sus pasos de producción, no se vuelven a armar con el catálogo (el tramo de tela sí lo rehace el archivo)'+((v.rutasDistintas||[]).length?'. En <b>'+num((v.rutasDistintas||[]).length)+'</b> el catálogo de hoy armaría otra ruta y <b>manda la tuya</b>: '+esc((v.rutasDistintas||[]).slice(0,4).map(x=>x.op+' (tuya: '+x.tuya+' · catálogo: '+x.catalogo+')').join(' · ')):''))}
    ${li((v.noCalzan||[]).length,'decisiones del sistema que el archivo contradice (<b>no calzan</b>: se conserva la del sistema y van a la bandeja)'+((v.noCalzan||[]).length?': '+esc(v.noCalzan.slice(0,6).map(x=>x.op+' '+x.tipo).join(', ')):''))}
    ${li((p.claveIncompleta||[]).length,'cabeceras con <b>clave incompleta</b> (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).slice(0,8).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')),(p.claveIncompleta||[]).length?'warn':'')}
    ${li((p.duplicados||[]).length,'filas con <b>clave repetida</b> en el archivo'+(v.repetidasNoAplicadas?' · '+v.repetidasNoAplicadas+' NO se aplican porque la clave ya existe (revisar)':'')+': '+esc((p.duplicados||[]).slice(0,8).map(x=>x.op+' (fila '+x.fila+')').join(', ')))}
@@ -12209,7 +12224,7 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
    Lo conservado que ya no calza con el archivo nuevo no se retira solo: sale en la bandeja "decisiones que ya no calzan". */
-function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (quién, cuándo y de dónde salió)',conservar:true},{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
+function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada por una persona: se conserva tal cual (quién, cuándo y los pasos de producción que revisó)',conservar:true},{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
   {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
   {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},
@@ -12221,7 +12236,9 @@ function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (qu
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
 function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;
   /* siembra idempotente: las filas que la tabla por defecto ganó después (odc, y desde el 19-sep histLib, lavadoModo, compraTela, rutaRevGeneral, rutaPrecargada) entran si faltan; lo editado no se pisa */
-  defCamposConservados().forEach(d=>{if(!t.some(r=>r.campo===d.campo))t.push(Object.assign({},d))});return t}
+  defCamposConservados().forEach(d=>{if(!t.some(r=>r.campo===d.campo))t.push(Object.assign({},d))});
+  {const rc=t.find(r=>r.campo==='rutaConf');if(rc&&rc.n==='Ruta confirmada (quién, cuándo y de dónde salió)')rc.n=(defCamposConservados().find(d=>d.campo==='rutaConf')||{}).n||rc.n}   /* el nombre viejo no decía que de esa casilla depende conservar la ruta entera; solo se corrige el texto por defecto, nunca uno editado */
+  return t}
 /* filas de la tabla 14 que NO se pueden desmarcar: su desmarcado borraría trabajo de personas que
    ningún archivo puede devolver: el avance de piso, las firmas de liberación, el historial de fases (con
    sus motivos) y la programación que armó cada centro. La fase ACTUAL («fase») sigue siendo decisión de
@@ -12300,6 +12317,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];if(typeof sellarRuta==='function')sellarRuta(o);return}
     actualizadas++;if(p.sinComponentes){['telas','materiales','origenTela','origenesTela','kgTej','kgTin','sinTelaKg','telaSinClasificar','ruta','rutaCompleta','insumos','sinTiempo'].forEach(k=>{if(v[k]!==undefined)o[k]=v[k]})} /* sin componentes: lo de telas y ruta se queda */
+    const rutaCatalogo=cenRutaTxt(o);   /* lo que armó el catálogo en planTarea, antes de que ningún bloque toque la ruta */
+    if(conserva('rutaConf')&&v.rutaConf)o.rutaConf=v.rutaConf;   /* la confirmación viaja primero: empatarRutaConOT respeta una ruta confirmada (regla del 20-sep) */
     const cambioAhora=!!o.claveAnterior&&o.claveAnterior!==v.claveAnterior;if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;
     if(cambioAhora){const eraWH=!sinWHde({op:o.claveAnterior});if(eraWH){o.whAnteriores=(v.whAnteriores||[]).concat([{op:o.claveAnterior,ts,archivo:p.archivo||''}]);bitacora('Orden '+o.op+' cambió de WH (misma tarea '+(o.tareaId||'')+'): antes '+o.claveAnterior)}else bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior)}else if(v.whAnteriores)o.whAnteriores=v.whAnteriores;
     if(o.whConservada){o.whSinOdoo={ts,archivo:p.archivo||'',tareaId:o.tareaId};bitacora('Orden '+o.op+': la tarea '+o.tareaId+' vino SIN WH en '+(p.archivo||'')+'; se conserva la WH y queda marcada para revisar')}else if(v.whSinOdoo){if(p.conColumnaId&&!o.sinLanzar&&normFase(o.op||'')===normFase(v.op||''))bitacora('Orden '+o.op+': la tarea volvió a traer su WH; se quita la marca «vino sin WH»');else o.whSinOdoo=v.whSinOdoo}
@@ -12331,14 +12350,27 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;if(v.esperandoMaterial)o.esperandoMaterial=v.esperandoMaterial;cons.ot++;empatarRutaConOT(o)}   /* la OT manda sobre la ruta también después de la recarga */
     if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}
     /* auditoría 19-sep: estos campos estaban en la tabla 14 (o son decisiones de la app) y la carga los perdía */
-    if(conserva('rutaConf')&&v.rutaConf){o.rutaConf=v.rutaConf;cons.rutaConf=(cons.rutaConf||0)+1;
-      if(v.rutaConf.origen==='persona'){   /* 22-sep (usuaria): la ruta que confirmó una persona NO se vuelve a armar desde el catálogo */
+    if(conserva('rutaConf')&&v.rutaConf){cons.rutaConf=(cons.rutaConf||0)+1;   /* o.rutaConf ya se restauró arriba, antes de los bloques que tocan la ruta */
+      if(v.rutaConf.origen==='persona'){   /* 22-sep (usuaria): los pasos de PRODUCCIÓN que confirmó una persona no se vuelven a armar desde el catálogo */
         const compV=(v.rutaCompleta&&v.rutaCompleta.length)?v.rutaCompleta:(v.ruta||[]);
-        if(compV.length){const antes=cenRutaTxt(o);
-          o.rutaCompleta=compV.map(x=>Object.assign({},x));
+        if(compV.length){const esTx=p=>['tej','tin','proveedor'].includes(p.centro);
+          const txAntes=compV.filter(esTx).map(p=>p.centro).join(',');
+          o.rutaCompleta=compV.filter(p=>!esTx(p)).map(x=>Object.assign({},x));
           const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);   /* la fase del archivo decide qué queda pendiente, no qué pasos tiene la ruta */
-          const ahora=cenRutaTxt(o);   /* la firma de catálogo viaja más abajo (v.rutaFirma): si el catálogo cambió, la ruta queda marcada «revisar», nunca pisada */if(antes!==ahora){cons.rutaConservada=(cons.rutaConservada||0)+1;
-            noCalzan.push({op:o.op,decision:'ruta confirmada por '+((v.rutaConf.u)||'la planificación')+': se conserva tal cual',motivo:'con el catálogo de hoy se armaría '+(antes||'(vacía)')+'; la confirmada es '+ahora,tipo:'ruta'})}}}}
+          if((o.telas||[]).length)aplicarRutaTextil(o);   /* de dónde viene la tela lo dice el ARCHIVO (origen del producto), no la confirmación de la persona */
+          else if(compV.some(esTx)){   /* el archivo no trajo líneas de tela: no se rehace a ciegas, se conserva el tramo y se reporta */
+            o.rutaCompleta=compV.map(x=>Object.assign({},x));const filaT=filaFaseDe(o.fase);o.ruta=(filaT&&filaT.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,filaT);
+            noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'se conserva el tramo de tela ('+txAntes+')',motivo:'el archivo no trajo líneas de tela para esta orden: no se rehace sin el dato'})}
+          const txAhora=(o.rutaCompleta||[]).filter(esTx).map(p=>p.centro).join(',');
+          if(txAntes!==txAhora){cons.rutaTextil=(cons.rutaTextil||0)+1;
+            noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'el tramo de tela se rehace con el archivo: '+(txAntes||'(ninguno)')+' → '+(txAhora||'(ninguno)'),motivo:'el origen de la tela lo trae el archivo; la confirmación de la ruta es de los pasos de producción'})}
+          const pB=(o.rutaCompleta||[]).find(p=>p.centro==='bordado');   /* el minuto de bordado son las puntadas de la orden, no el catálogo: si el archivo las corrige, se avisa y la ruta confirmada no se toca */
+          if(pB){const tB=+((tiempoPaso({centro:'bordado',t:0},K(o.cat),{},+o.puntadas||0)||{}).t)||0;
+            if(tB&&Math.abs((+pB.t||0)-tB)>1e-6)noCalzan.push({op:o.op,tipo:'tiempo',decision:'bordado con '+num(+pB.t||0)+' puntadas en la ruta confirmada',motivo:'el archivo trae '+num(tB)+': revisa si la ruta necesita el tiempo nuevo'})}
+          const soloPro=t=>String(t||'').split(' → ').filter(c=>c&&!['tej','tin','proveedor'].includes(c)).join(' → ');
+          const cat=soloPro(rutaCatalogo),ahora=soloPro(cenRutaTxt(o));   /* se compara contra lo que armó el CATÁLOGO, no contra lo que dejaron la OT o la edición a mano */
+          if(cat!==ahora){cons.rutaConservada=(cons.rutaConservada||0)+1;
+            noCalzan.push({op:o.op,tipo:'ruta',decision:'ruta confirmada por '+((v.rutaConf.u)||'la planificación')+': se conserva tal cual',motivo:'con el catálogo de hoy se armaría '+(cat||'(vacía)')+'; la confirmada es '+(ahora||'(vacía)')})}}}}
     if(conserva('tallasPedido')&&v.tallasPedido){o.tallasPedido=v.tallasPedido;if(v.tallasPedidoMeta)o.tallasPedidoMeta=v.tallasPedidoMeta;cons.tallasPedido=(cons.tallasPedido||0)+1}
     if(conserva('histLib')&&v.histLib&&v.histLib.length)o.histLib=v.histLib.slice();
     if(conserva('lavadoModo')&&v.lavadoModo)o.lavadoModo=v.lavadoModo;   /* el paso de lavado vuelve por rutaEditada */

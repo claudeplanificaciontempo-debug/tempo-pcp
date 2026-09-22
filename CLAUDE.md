@@ -1181,6 +1181,16 @@ mismo bucket. **fotoDe gana el último escalón**: foto propia de la orden → f
 sola. fotoFuenteDe dice cuál se ve y fotoMini lo pone en el tooltip. No crear una segunda ordenesDeRef: la de 8179 es
 otra cosa (solo abiertas, refDe exacto). Pruebas FR. Ver FOTOS_POR_REFERENCIA.md.
 
+**Revisión del cambio anterior (22-sep, misma noche):** conservar la ruta confirmada es SOLO de los **pasos de
+producción**. El tramo textil (`tej`/`tin`/`proveedor`) lo rehace `aplicarRutaTextil(o)` con las telas del archivo —salvo que el
+archivo no traiga líneas de tela para esa orden: entonces se conserva y se reporta (`tipo:'rutaTextil'`)—; el minuto de
+**bordado** son las puntadas de la orden, así que si el archivo las cambia la ruta no se toca y sale un aviso
+(`tipo:'tiempo'`). La confirmación se restaura **al principio** del bucle de `aplicarTarea` (antes del bloque `ot`), para que
+`empatarRutaConOT` respete la ruta confirmada, y la comparación va contra `rutaCatalogo` (lo que armó `planTarea`), no contra
+lo que dejaron la OT o `rutaEditada`. **`guardarOrden` ahora deja `rutaCompleta` coherente con la pendiente** (misma lógica que
+`aplicarRutaLote`): sin eso, editar la ruta en la ficha y recargar revertía la edición. La bandeja «no calzan» se agrupa
+por tipo. Pruebas RC2.
+
 **La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando
 en confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa: `programar()` asigna un
 solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[centro]`), y el siguiente centro no la ve «lista

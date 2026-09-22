@@ -7006,6 +7006,63 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* RC2 · Lo que encontró la revisión adversarial de la protección de rutas (22-sep): la edición por la ficha, el tramo de tela y el bordado */
+   {PERFIL=adminP0();const rows0=window.__tareaRows;
+    if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción');const enArchivo=new Set(rows0.slice(1).map(r=>r[iOp]));
+     /* (a) la ruta editada EN LA FICHA no se revierte en la siguiente carga */
+     const o=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&!x.duplicado&&enArchivo.has(x.op)&&(x.ruta||[]).some(p=>p.centro==='modulos')&&(x.ruta||[]).some(p=>p.centro==='empaque'));
+     if(o){const idO=o.id;const al=window.alert;window.alert=()=>{};
+      mOrden(o.id);
+      ED.ruta=(ED.ruta||[]).filter(p=>p.centro!=='modulos');                       /* la planificación QUITA confección en la ficha */
+      if(!ED.ruta.some(p=>p.centro==='plancha'))ED.ruta.push({centro:'plancha',t:2});  /* y AGREGA plancha */
+      guardarOrden(o.id);window.alert=al;await __p(30);
+      const oF=S.ordenes.find(x=>x.id===idO);
+      const completaOk=!(oF.rutaCompleta||[]).some(p=>p.centro==='modulos')&&(oF.rutaCompleta||[]).some(p=>p.centro==='plancha');
+      __check('RC2: guardar la ruta en la ficha deja la ruta COMPLETA coherente con la pendiente (antes quedaba vieja y la siguiente carga revertía la edición)',completaOk,JSON.stringify({completa:(oF.rutaCompleta||[]).map(p=>p.centro),pendiente:(oF.ruta||[]).map(p=>p.centro)}));
+      const p=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2.xlsx');TAREA=p;aplicarTarea();await __p(80);
+      const oG=S.ordenes.find(x=>x.id===idO);
+      __check('RC2: después de recargar, la ruta quedó como la dejó la persona en la ficha: el paso que quitó no vuelve y el que agregó no se pierde',!!oG&&!(oG.rutaCompleta||[]).some(pp=>pp.centro==='modulos')&&(oG.rutaCompleta||[]).some(pp=>pp.centro==='plancha'),JSON.stringify({completa:(oG.rutaCompleta||[]).map(pp=>pp.centro)}));}
+     /* (b) el tramo de tela lo rehace el ARCHIVO aunque la ruta esté confirmada; los pasos de producción se conservan */
+     const o2=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op)&&(x.telas||[]).length&&(x.rutaCompleta||x.ruta||[]).some(pp=>pp.centro==='corte'));   /* con líneas de tela: el tramo textil SÍ se rehace con el archivo (sin ellas manda el guardia, que tiene su propia prueba) */
+     if(o2){const id2=o2.id;const ts=new Date().toISOString();
+      o2.rutaCompleta=[{centro:'tej',t:0},{centro:'tin',t:0},{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+      o2.ruta=o2.rutaCompleta.map(x=>Object.assign({},x));delete o2.rutaEditada;
+      o2.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts,nota:'prueba RC2'};
+      const p2=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2b.xlsx');TAREA=p2;aplicarTarea();await __p(80);
+      const oH=S.ordenes.find(x=>x.id===id2);const cen=(oH.rutaCompleta||[]).map(pp=>pp.centro);
+      const tx=cen.filter(c=>['tej','tin','proveedor'].includes(c)).join(',');
+      const txArchivo=rutaTextilDe(oH).map(pp=>pp.centro).join(',');   /* lo que el tramo textil DEBE ser según las telas que trajo el archivo */
+      __check('RC2: la confirmación conserva los pasos de PRODUCCIÓN, pero el tramo de tela (tejeduría / tintorería / proveedor) se rehace con lo que trae el archivo',['corte','modulos','empaque'].every(c=>cen.includes(c))&&tx===txArchivo,JSON.stringify({cen,tx,txArchivo}));}
+     /* (b2) si el archivo no trae líneas de tela, el tramo textil NO se rehace a ciegas */
+     {const oT=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op));
+      if(oT){const idT=oT.id;const ts2=new Date().toISOString();
+       oT.rutaCompleta=[{centro:'tej',t:0},{centro:'corte',t:1},{centro:'empaque',t:1}];oT.ruta=oT.rutaCompleta.map(x=>Object.assign({},x));delete oT.rutaEditada;
+       oT.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts:ts2,nota:'prueba RC2b2'};
+       const pB2=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2b2.xlsx');
+       (pB2.ordenes||[]).forEach(x=>{if(x.id===idT)x.telas=[]});
+       TAREA=pB2;aplicarTarea();await __p(80);
+       const oU=S.ordenes.find(x=>x.id===idT);const rcT=S.params.tareaCarga.recarga||{};
+       __check('RC2: si el archivo no trae líneas de tela para la orden, el tramo textil de la ruta confirmada se conserva y se reporta (no se rehace sin el dato)',(oU.rutaCompleta||[]).some(pp=>pp.centro==='tej')&&(rcT.noCalzan||[]).some(x=>x.op===oU.op&&x.tipo==='rutaTextil'),JSON.stringify({cen:(oU.rutaCompleta||[]).map(pp=>pp.centro)}));
+       }}
+     /* (c) bordado: si el archivo trae otras puntadas, se avisa y la ruta confirmada no se toca */
+     const o3=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op)&&+x.puntadas>0);
+     if(o3){const id3=o3.id;const ts=new Date().toISOString();
+      o3.rutaCompleta=[{centro:'corte',t:1},{centro:'bordado',t:(+o3.puntadas||0)+5000},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+      o3.ruta=o3.rutaCompleta.map(x=>Object.assign({},x));delete o3.rutaEditada;
+      o3.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts,nota:'prueba RC2c'};
+      const p3=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2c.xlsx');TAREA=p3;aplicarTarea();await __p(80);
+      const oI=S.ordenes.find(x=>x.id===id3);const pB=(oI.rutaCompleta||[]).find(pp=>pp.centro==='bordado');
+      const rc=S.params.tareaCarga.recarga||{};
+      __check('RC2: si el archivo trae otras puntadas, el bordado de la ruta confirmada no se pisa y la diferencia sale en «no calzan»',!!pB&&Math.abs((+pB.t||0)-((+oI.puntadas||0)+5000))<1e-6&&(rc.noCalzan||[]).some(x=>x.op===oI.op&&x.tipo==='tiempo'),JSON.stringify({t:pB&&pB.t,punt:oI.puntadas,aviso:(rc.noCalzan||[]).filter(x=>x.tipo==='tiempo').length}));}
+     /* (d) con la fila «Ruta confirmada» desmarcada, la previa avisa que esas rutas se van a rearmar */
+     {const t14=camposConservados();const fila=t14.find(r=>r.campo==='rutaConf');const antes=fila.conservar;fila.conservar=false;
+      const p4=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2d.xlsx');
+      const html=vistaPreviaTareaHTML(p4);
+      __check('RC2: si la fila «Ruta confirmada» de la tabla 14 está desmarcada, la vista previa avisa cuántas rutas confirmadas se van a rearmar (antes no decía nada)',(p4.prev.rutasConfApagado||0)>0&&/NO se conservará/.test(html),JSON.stringify({apagado:p4.prev.rutasConfApagado}));
+      fila.conservar=antes;
+      __check('RC2: la fila de la tabla 14 dice que de ella depende conservar la ruta, no solo el sello de quién la confirmó',/se conserva tal cual/.test(fila.n||''),String(fila.n||'').slice(0,80));}
+     /* dejar el simulador como estaba */
+     const pz=planTarea(rows0,'TAREA_PARTE2.xlsx');TAREA=pz;aplicarTarea();await __p(50);}}
    /* FR · Fotos por referencia (usuaria, 22-sep: mandó 9 fotos de estilos nuevos, 4861–4869, que todavía no tienen órdenes) */
    {PERFIL=adminP0();
     const base=S.ordenes.find(abierta);
@@ -7046,7 +7103,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const p=planTarea(rows2,'recarga_rc.xlsx');
       __check('RC: la vista previa cuenta las órdenes con ruta confirmada por una persona antes de aplicar nada',(p.prev.rutasConf||0)>=1,JSON.stringify({rutasConf:p.prev.rutasConf,distintas:(p.prev.rutasDistintas||[]).length}));
       const html=vistaPreviaTareaHTML(p);
-      __check('RC: la previa lo dice con palabras: la ruta confirmada se conserva tal cual y no se vuelve a armar con el catálogo',/ruta confirmada por una persona/.test(html)&&/se conserva tal cual/.test(html),String(p.prev.rutasConf||0));
+      __check('RC: la previa lo dice con palabras: los pasos de producción confirmados se conservan y no se vuelven a armar con el catálogo',/ruta confirmada por una persona/.test(html)&&/pasos de producción/.test(html)&&/no se vuelven a armar con el catálogo/.test(html),String(p.prev.rutasConf||0));
       TAREA=p;aplicarTarea();await __p(100);
       const o2=S.ordenes.find(x=>x.id===idO);const rc=S.params.tareaCarga.recarga||{};
       __check('RC: después de la recarga la ruta confirmada sigue igual (mismos centros y mismo orden) y la confirmación no se pierde',!!o2&&cenRutaTxt(o2)===antes&&!!(o2.rutaConf&&o2.rutaConf.origen==='persona')&&o2.rutaConf.u==='Jordan',JSON.stringify({antes,ahora:o2?cenRutaTxt(o2):null,conf:o2&&o2.rutaConf&&o2.rutaConf.origen}));
