@@ -403,8 +403,10 @@ abierta por recurso (`tramoAbiertoDe`). **Modo línea** salió del menú y de lo
 lo registrado en pantalla con botón Reintentar (`#aviso-guardado` arriba de Mi centro) y distinguen el fallo de RLS.
 `verBotonesAdmin()` oculta Respaldo y Restaurar salvo `puede('config')`. El buscador de WH (`tabletBuscadorHTML`) va
 arriba de todo en Mi centro. Políticas de Supabase: la clave anon no puede leer `pg_policies`; quedan
-`SUPABASE_POLITICAS_ACTUALES.sql` (consultas para volcarlas) y `SUPABASE_POLITICAS_TABLET.sql` (propuesta SIN
-ejecutar: lectura amplia y escritura solo en avance, bitacora, turnos y paros para los perfiles de piso). El tramo, las
+`SUPABASE_POLITICAS_ACTUALES.sql` (consultas para volcarlas) y `SUPABASE_POLITICAS_TABLET.sql` (**EJECUTADO en producción
+el 15-sep-2026**: escritura insert/update, sin delete, en avance, bitacora, turnos y paros para tablet, corte, modulos y terminado;
+la lista de roles está fija en las políticas: un perfil nuevo del catálogo no escribe hasta ampliarla — pendiente P02 del
+estado del sistema. Las políticas no acotan por fila). El tramo, las
 tallas y las segundas viven dentro de `avance`; la asistencia en `turnos`. Ver `TABLET_PERMISOS_REPORTE.md`.
 
 **Centros, limpieza (15-sep-2026 noche):** la pestaña **Carga que viene salió de los centros**: `cargaQueVieneHTML`

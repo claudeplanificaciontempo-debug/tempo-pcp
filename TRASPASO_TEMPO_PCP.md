@@ -1016,7 +1016,7 @@ editor confirma (persona). El historial `rutaEditada` **no** es confirmación.
 - El operario recibía «new row violates row-level security policy» en avance y bitacora: las políticas de Supabase no
   incluyen al perfil tablet. Las políticas **no estaban en el repo**; ahora hay dos archivos:
   `SUPABASE_POLITICAS_ACTUALES.sql` (consultas para volcar las que existen hoy) y `SUPABASE_POLITICAS_TABLET.sql`
-  (propuesta, **sin ejecutar**): lectura de lo que Mi centro necesita y escritura solo en **avance, bitacora, turnos y
+  (**ejecutado el 15-sep-2026**, ver su cabecera): lectura de lo que Mi centro necesita y escritura solo en **avance, bitacora, turnos y
   paros** para los perfiles de piso. Nada de escritura en órdenes, params, centros, recursos ni configuración.
 - **Si el guardado falla, la app ya no recarga**: el registro se queda en pantalla, aparece el aviso «no se guardó,
   avisa a planificación» con botón Reintentar, y al guardar bien desaparece.
