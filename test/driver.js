@@ -7006,6 +7006,33 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* RC · Recarga de tareas sin perder la ruta (usuaria, 22-sep: «no quiero perder las rutas, lo que ya trabajé»; sí quiero que el archivo traiga la fase nueva) */
+   {PERFIL=adminP0();const rows0=window.__tareaRows;
+    if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción'),iFase=H.indexOf('Fase');
+     const enArchivo=new Set(rows0.slice(1).map(r=>r[iOp]));
+     const o=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&!x.duplicado&&enArchivo.has(x.op)&&(x.rutaCompleta||x.ruta||[]).length);
+     if(o){const idO=o.id;const ts=new Date().toISOString();
+      /* la planificación revisó y confirmó ESTA ruta a mano (sin pasar por el editor: no hay rutaEditada) */
+      o.rutaCompleta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];o.ruta=o.rutaCompleta.map(x=>Object.assign({},x));
+      delete o.rutaEditada;o.rutaConf={estado:'ok',origen:'persona',u:'Jordan',ts,nota:'revisada con producción'};
+      const antes=cenRutaTxt(o);
+      /* el archivo vuelve con la fase movida en Odoo (es lo que la usuaria quiere subir) */
+      const rows2=JSON.parse(JSON.stringify(rows0));rows2.slice(1).forEach(r=>{if(r[iOp]===o.op)r[iFase]='6Bordado'});
+      const p=planTarea(rows2,'recarga_rc.xlsx');
+      __check('RC: la vista previa cuenta las órdenes con ruta confirmada por una persona antes de aplicar nada',(p.prev.rutasConf||0)>=1,JSON.stringify({rutasConf:p.prev.rutasConf,distintas:(p.prev.rutasDistintas||[]).length}));
+      const html=vistaPreviaTareaHTML(p);
+      __check('RC: la previa lo dice con palabras: la ruta confirmada se conserva tal cual y no se vuelve a armar con el catálogo',/ruta confirmada por una persona/.test(html)&&/se conserva tal cual/.test(html),String(p.prev.rutasConf||0));
+      TAREA=p;aplicarTarea();await __p(100);
+      const o2=S.ordenes.find(x=>x.id===idO);const rc=S.params.tareaCarga.recarga||{};
+      __check('RC: después de la recarga la ruta confirmada sigue igual (mismos centros y mismo orden) y la confirmación no se pierde',!!o2&&cenRutaTxt(o2)===antes&&!!(o2.rutaConf&&o2.rutaConf.origen==='persona')&&o2.rutaConf.u==='Jordan',JSON.stringify({antes,ahora:o2?cenRutaTxt(o2):null,conf:o2&&o2.rutaConf&&o2.rutaConf.origen}));
+      __check('RC: la fase del archivo sí entra y lo que cambia es qué pasos quedan PENDIENTES, no los pasos de la ruta',!!o2&&(o2.rutaCompleta||[]).length===3&&(o2.ruta||[]).length<=3,JSON.stringify({fase:o2&&o2.fase,completa:(o2.rutaCompleta||[]).map(x=>x.centro),pendiente:(o2.ruta||[]).map(x=>x.centro)}));
+      __check('RC: si el catálogo armaría otra ruta, la diferencia se reporta en «no calzan» (no se aplica en silencio)',(rc.conservado&&rc.conservado.rutaConservada>=0)&&(rc.conservado.rutaConservada===0||(rc.noCalzan||[]).some(x=>x.tipo==='ruta')),JSON.stringify({conservadas:rc.conservado&&rc.conservado.rutaConservada,ruta:(rc.noCalzan||[]).filter(x=>x.tipo==='ruta').length}));
+      /* una ruta confirmada sola desde Odoo NO queda blindada: se sigue recalculando con el catálogo */
+      const o3=JSON.parse(JSON.stringify(o2));o3.id=uid();o3.op='WH/TEST-RC2';o3.rutaConf={estado:'ok',origen:'odoo',ts};delete o3.rutaEditada;S.ordenes.push(o3);delete S.avance[o3.id];
+      __check('RC: solo la confirmación de una PERSONA blinda la ruta; la confirmada sola desde Odoo se sigue recalculando',rutaEditadaAMano(o2)===true&&rutaEditadaAMano(o3)===false,JSON.stringify({persona:rutaEditadaAMano(o2),odoo:rutaEditadaAMano(o3)}));
+      S.ordenes=S.ordenes.filter(x=>x.op!=='WH/TEST-RC2');
+      /* dejar el simulador como estaba: se vuelve a cargar el archivo original */
+      const pz=planTarea(rows0,'TAREA_PARTE2.xlsx');TAREA=pz;aplicarTarea();await __p(50);}}}
    /* RQ · Requerimiento (Macro del mes y Compras del mes): la base es TODO lo anterior a Planificación (usuaria, 22-sep: «lo que diga planificación ya tiene tela; de planificación para arriba es todo mi requerimiento») */
    {PERFIL=adminP0();const fp=fasePlanificacion();
     __check('RQ: la fase Planificación sale de la tabla de fases (no de una constante) y la secuencia la ubica después de Macro y antes de Corte',!!fp&&/planificacion/.test(normFase(fp))&&cmpFases('0Macro',fp)<0&&cmpFases('4Corte Planta',fp)>0,JSON.stringify({fp}));

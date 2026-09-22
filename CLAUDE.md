@@ -1162,6 +1162,16 @@ proveedor, Tela a tejer, Tela a tinturar, Tela plana, Ya lo tenemos, Sin materia
 brechas); el CSV queda. Lo que ya está en proceso (Planificación en adelante) NO entra: la conciliación de lo que le falta a
 lo que está en planta es trabajo aparte. Pruebas RQ. Ver `REQUERIMIENTO_ANTES_DE_PLANIFICACION.md`.
 
+**Recargar sin perder la ruta (22-sep-2026, decisión de la usuaria: «no quiero perder las rutas, lo que ya trabajé»):**
+en `aplicarTarea`, una orden con `rutaConf.origen==='persona'` **conserva su `rutaCompleta` entera**: no se vuelve a armar
+desde el catálogo. Lo único que se recalcula es qué pasos quedan **pendientes**, con la fase que traiga el archivo
+(`pasosPendientes`). Si el catálogo de hoy armaría otra ruta, la diferencia va a «no calzan» (`tipo:'ruta'`, con las dos
+versiones escritas) y se cuenta en `cons.rutaConservada`; la vista previa lo dice ANTES de aplicar (`prev.rutasConf` /
+`prev.rutasDistintas`, `cenRutaTxt(o)` compara las dos). La firma de catálogo sigue viajando (`v.rutaFirma`), así que un cambio
+de categoría deja la orden marcada `rutaRevisar` — nunca pisada. Una ruta confirmada sola desde Odoo (`origen:'odoo'`) **no**
+queda blindada: `rutaEditadaAMano` solo cuenta `rutaEditada` o la confirmación de una persona. Para subir la fase desde Odoo hay
+que **destildar la fila «Fase» de la tabla 14 solo para esa carga**. Pruebas RC. Ver `RECARGA_SIN_PERDER_RUTAS.md`.
+
 **La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando
 en confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa: `programar()` asigna un
 solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[centro]`), y el siguiente centro no la ve «lista
