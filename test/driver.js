@@ -2055,7 +2055,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -7006,6 +7006,40 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* TP · La ruta dice por dónde pasa, no en qué orden fijo (usuaria, 22-sep: «cerré corte y no puedo entrar a módulos porque la ruta tiene bordado, pero está lista para módulos») */
+   {PERFIL=adminP0();
+    const t=tramosParalelos()[0];
+    __check('TP: la tabla de tramos paralelos se siembra una vez con estampado, sublimado, apliques, bordado y confección, marcada «sugerido» para que la usuaria la confirme',!!t&&['estampado','sublimado','apliques','bordado','modulos'].every(c=>(t.cens||[]).includes(c))&&t.sugerido===true,JSON.stringify({cens:t&&t.cens,sugerido:t&&t.sugerido}));
+    /* una orden con corte → bordado → módulos */
+    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).length);
+    const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TP1';o.fase='2Planificacion';delete o.ot;delete o.otTs;delete o.terminadaF;   /* antes de corte y sin las OT del original: así corte NO cuenta como hecho */o.cliente='CLIENTE TP';o.ref='TP-999';o.cant=100;
+    o.rutaCompleta=[{centro:'corte',t:1},{centro:'bordado',t:2000},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+    o.ruta=o.rutaCompleta.map(x=>Object.assign({},x));S.ordenes.push(o);delete S.avance[o.id];
+    __check('TP: con corte todavía pendiente, confección sigue bloqueada (el tramo no rompe la dependencia real)',!pasoHecho(o,'corte')&&secuenciaCentro(o,'modulos').estado==='proxima'&&/corte/i.test(secuenciaCentro(o,'modulos').motivo||''),JSON.stringify(secuenciaCentro(o,'modulos')));
+    /* se cierra corte: módulos queda disponible aunque bordado siga pendiente */
+    S.avance[o.id]={cierres:{corte:{pz:o.cant,cant:o.cant,faltan:0,u:'prueba',ts:new Date().toISOString()}}};
+    const sm=secuenciaCentro(o,'modulos'),sb=secuenciaCentro(o,'bordado');
+    __check('TP: al cerrar corte, confección queda DISPONIBLE aunque bordado no esté hecho, y bordado también: los del tramo no se esperan entre sí',sm.estado==='disponible'&&sb.estado==='disponible'&&/tramo paralelo/.test(sm.motivo||'')&&!pasoHecho(o,'bordado'),JSON.stringify({modulos:sm,bordado:sb.estado}));
+    const le=listaParaEmpezar(o,'modulos');
+    __check('TP: «lista para empezar» en confección apunta al paso anterior de FUERA del tramo (corte), no al compañero de tramo',!!le&&le.centro==='corte',JSON.stringify({centro:le&&le.centro}));
+    /* manda la configuración: si se saca confección del tramo, vuelve a esperar a bordado */
+    const cens0=(tramosParalelos()[0].cens||[]).slice();const nb=S.bitacora.length;
+    setTramoParaleloCen(0,'modulos',false);
+    const sm2=secuenciaCentro(o,'modulos');
+    __check('TP: manda la tabla: al sacar confección del tramo vuelve a esperar a bordado, y el cambio queda en bitácora',sm2.estado==='proxima'&&/bordado/i.test(sm2.motivo||'')&&S.bitacora.length>nb&&!tramosParalelos()[0].sugerido,JSON.stringify(sm2));
+    tramosParalelos()[0].cens=cens0;tramosParalelos()[0].sugerido=true;
+    __check('TP: la tabla se edita en Configuración → Centros y recursos, con su explicación y sin tocar el motor de fechas',/Tramos paralelos/.test(tramosParalelosHTML())&&/no se esperan entre sí/.test(tramosParalelosHTML())&&/sigue calculándose en orden/.test(tramosParalelosHTML()));
+    /* buscador del centro: por WH, por cliente y por estilo, diciendo dónde está y cuándo entra */
+    CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.q='WH/TEST-TP1';page='centro';render();
+    const t1=document.getElementById('p-centro').innerText;
+    CEN.q='CLIENTE TP';render();const t2=document.getElementById('p-centro').innerText;
+    CEN.q='TP-999';render();const t3=document.getElementById('p-centro').innerText;
+    __check('TP: el buscador del centro encuentra la orden por WH, por cliente y por estilo, y dice dónde está y qué pasa en este centro',[t1,t2,t3].every(x=>/Resultado de la búsqueda/.test(x)&&/WH\/TEST-TP1/.test(x))&&/Confección/.test(t1)&&/(lista para entrar|todavía no|ya pasó|en proceso)/.test(t1),JSON.stringify({wh:/WH\/TEST-TP1/.test(t1),cliente:/WH\/TEST-TP1/.test(t2),estilo:/WH\/TEST-TP1/.test(t3)}));
+    CEN.q='NO-EXISTE-XYZ';render();const t4=document.getElementById('p-centro').innerText;
+    __check('TP: si no encuentra nada lo dice, en vez de dejar la pantalla como si no hubiera pasado nada',/No encuentro ninguna orden/.test(t4),'');
+    CEN.q='';render();const t5=document.getElementById('p-centro').innerText;
+    __check('TP: sin búsqueda, el panel no aparece (la pantalla queda como siempre)',!/Resultado de la búsqueda/.test(t5),'');
+    S.ordenes=S.ordenes.filter(x=>x.op!=='WH/TEST-TP1');delete S.avance[o.id];CEN.q='';}
    /* PV · «Que pueda hacer todo menos configuraciones; que pueda ver los recursos, las personas y las capacidades, pero no editarlas» (usuaria, 22-sep, para Fernando) */
    {const bak=PERFIL;const cat=perfilesDef();const jf=cat.find(x=>x.id==='jefatura');
     __check('PV: el catálogo trae el perfil «Jefatura»: todo lo operativo, ve la configuración (configVer) y NO la edita ni crea usuarios',!!jf&&jf.permisos.includes('configVer')&&!jf.permisos.includes('config')&&!jf.permisos.includes('usuarios')&&jf.permisos.includes('programa')&&jf.permisos.includes('liberar')&&(jf.paginas||[]).includes('*'),JSON.stringify({permisos:jf&&jf.permisos}));

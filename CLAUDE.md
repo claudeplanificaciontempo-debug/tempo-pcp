@@ -1206,6 +1206,19 @@ una vez **«Jefatura (todo menos configurar)»** (lo operativo + `configVer`, to
 `usuarios`; bandera `perfilesJefatura`, editable en Configuración → Usuarios). Es blindaje de **pantalla**: la RLS solo acota hoy a
 los perfiles de piso. Pruebas PV. Ver `PERFIL_VER_CONFIGURACION.md`.
 
+**La ruta dice por dónde pasa, no en qué orden fijo (22-sep-2026, decisión de la usuaria):** tabla editable
+`S.params.tramosParalelos` (Configuración → Centros y recursos → «Tramos paralelos»; `TRAMOS_PARALELOS_DEF` siembra una vez
+**estampado · sublimado · apliques · bordado · modulos** marcado `sugerido`; `tramoParaleloDe`, `mismoTramoParalelo`,
+`set/add/quitarTramoParalelo` con bitácora, `quitarTramoParalelo` en la GUARDIA). En `secuenciaCentro` los pendientes del
+**mismo tramo** ya no bloquean: cerrado corte, la orden queda **disponible en confección aunque bordado no esté hecho**
+(y al revés), con el motivo escrito; lo anterior al tramo **sí** manda. `listaParaEmpezar` usa `centroAnteriorFueraTramo`
+(el paso de fuera del tramo, que es el que entrega prendas). **El motor de fechas NO cambió**: `programar()` sigue en orden;
+programar el tramo en paralelo necesitaría autorización. **Buscador del centro**: `buscarEnCentroHTML(cens,P,lun,dom)` se
+cuelga del `cab` de `vCentro` (sale en las cuatro pestañas) y responde «¿dónde está y cuándo entra aquí?» sobre TODA la
+cartera que el perfil ve (`ordenesQueVe` + `matchBusq`, hasta 6): estado (semáforo), `dondeEsta().n` y `llegadaACentroTxt`
+(ya pasó · en proceso · lista para entrar · todavía no: falta X · no está en su ruta, con la fecha del programa). Pruebas TP.
+Ver `TRAMOS_PARALELOS_Y_BUSCADOR_CENTRO.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

@@ -798,7 +798,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 08:44';
+const APP_BUILD='2026-09-23 09:21';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2459,14 +2459,87 @@ function tramoAbiertoOrden(oid,c,rec){return (tramosDe(oid)||[]).find(t=>t.centr
    el orden es empírico y lo resuelven las OT de Odoo. Por eso la pertenencia al centro se decide con la
    SECUENCIA DE LA RUTA de cada orden, y cuando la ruta no la define se muestra como brecha, no se adivina. */
 function pasosProDe(o){return (o&&o.ruta||[]).map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro')}
+/* ---------- Tramos paralelos (22-sep-2026, decisión de la usuaria) ----------
+   «La ruta dice por dónde va a pasar, pero no en qué orden fijo»: entre corte y confección, el estampado, el bordado,
+   el sublimado y los apliques se reparten y la prenda puede entrar a módulos sin que bordado haya terminado. Los
+   centros de un mismo tramo NO se bloquean entre sí; lo anterior al tramo (corte) sí manda. Es una tabla editable:
+   Configuración → Centros y recursos → «Tramos paralelos». El motor de fechas NO cambia: sigue programando en orden. */
+const TRAMOS_PARALELOS_DEF=[{n:'Estampado, bordado y confección',cens:['estampado','sublimado','apliques','bordado','modulos'],nota:'El orden real lo deciden las órdenes de trabajo de Odoo y el piso; ninguno espera a los otros.'}];
+function tramosParalelos(){if(!Array.isArray(S.params.tramosParalelos))S.params.tramosParalelos=JSON.parse(JSON.stringify(TRAMOS_PARALELOS_DEF)).map(t=>Object.assign(t,{sugerido:true}));
+  return S.params.tramosParalelos}
+function tramoParaleloDe(c){return tramosParalelos().find(t=>(t.cens||[]).includes(c))||null}
+function mismoTramoParalelo(a,b){if(!a||!b||a===b)return false;const t=tramoParaleloDe(a);return !!(t&&(t.cens||[]).includes(b))}
+/* el último paso anterior que SÍ manda: el de fuera del tramo (corte), no el compañero de tramo */
+function centroAnteriorFueraTramo(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>p.centro);
+  const i=ru.indexOf(c);if(i<=0)return null;
+  for(let k=i-1;k>=0;k--){if(!mismoTramoParalelo(ru[k],c))return ru[k]}
+  return null}
+function setTramoParaleloCen(i,cen,on){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;t.cens=t.cens||[];
+  const antes=t.cens.slice();
+  if(on){if(!t.cens.includes(cen))t.cens.push(cen)}else t.cens=t.cens.filter(x=>x!==cen);
+  delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();
+  bitacora('Tramo paralelo «'+(t.n||'')+'»: '+(on?'entra ':'sale ')+nCen(cen)+' (antes: '+(antes.map(nCen).join(', ')||'ninguno')+')');
+  save();render()}
+function setTramoParaleloN(i,v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;t.n=String(v||'').trim();delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();save()}
+function addTramoParalelo(){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  tramosParalelos().push({n:'Tramo nuevo',cens:[],u:quienFirma(),ts:new Date().toISOString()});bitacora('Tramo paralelo nuevo (vacío)');save();render()}
+function quitarTramoParalelo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;
+  if(!confirm('¿Quitar el tramo paralelo «'+(t.n||'')+'»?\nLos centros ('+((t.cens||[]).map(nCen).join(', ')||'ninguno')+') volverán a esperarse entre sí en la cola.'))return;
+  tramosParalelos().splice(i,1);bitacora('Tramo paralelo quitado: '+(t.n||'')+' ('+((t.cens||[]).map(nCen).join(', ')||'sin centros')+')');save();render()}
+function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  return '<div class="panel"><h3>Tramos paralelos <span class="note">centros que no se esperan entre sí en la cola</span><span class="spacer"></span>'+
+   (puede('config')?'<button class="btn ghost sm" onclick="addTramoParalelo()">+ Tramo</button>':'')+'</h3><div class="body">'+
+   '<p class="lede" style="margin-top:0">La ruta dice <b>por dónde pasa</b> la prenda, no en qué orden exacto. Dentro de un tramo paralelo, terminar uno no es requisito para empezar otro: basta con que esté hecho el paso <b>anterior al tramo</b> (corte). Esto es para la <b>cola de los centros</b>; el programa de fechas sigue calculándose en orden.</p>'+
+   ts.map((t,i)=>'<div style="margin-bottom:10px;padding:8px;border:1px solid var(--rule);border-radius:6px">'+
+     '<div class="row" style="align-items:center"><input type="text" style="min-width:260px" value="'+esc(t.n||'')+'" onchange="setTramoParaleloN('+i+',this.value)">'+
+     (t.sugerido?' <span class="tag t-aviso">sugerido: confírmalo o cámbialo</span>':'')+'<span class="spacer"></span>'+
+     (puede('config')?'<button class="btn ghost sm" onclick="quitarTramoParalelo('+i+')">Quitar tramo</button>':'')+'</div>'+
+     '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">'+cens.map(c=>'<label style="font-size:var(--fs-xs);white-space:nowrap"><input type="checkbox" '+((t.cens||[]).includes(c.id)?'checked':'')+' onchange="setTramoParaleloCen('+i+',\''+c.id+'\',this.checked)"> '+esc(c.n)+'</label>').join('')+'</div>'+
+     (t.nota?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">'+esc(t.nota)+'</p>':'')+
+     ((t.cens||[]).length===1?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Con un solo centro el tramo no hace nada: marca al menos dos.</p>':'')+'</div>').join('')+
+   (ts.length?'':'<p class="mut">Sin tramos: cada paso de la ruta espera al anterior.</p>')+'</div></div>'}
+/* ---------- Buscar una orden desde el centro (22-sep-2026, decisión de la usuaria) ----------
+   «Una búsqueda en cada programación del centro para ver en qué estado está o cuándo va a ingresar: por WH, por
+   cliente o por estilo.» Busca en TODA la cartera que el perfil ve, no solo en la lista de la semana, y por cada
+   orden dice dónde está, si este centro está en su ruta y cuándo entra (o qué la frena). */
+function llegadaACentroTxt(o,c,P){
+  if(pasoHecho(o,c)){const ci=cierreCentro(o,c);return {cls:'t-ok',txt:'ya pasó por aquí'+(ci?' · cerrada el '+new Date(ci.ts).toLocaleDateString('es-EC')+' con '+num(ci.pz)+' de '+num(ci.cant):'')}}
+  const ac=((S.avance[o.id]||{}).centros)||{};
+  if(tramoAbiertoOrden(o.id,c,null)||ac[c]>0)return {cls:'t-aviso',txt:'en proceso aquí'+(ac[c]?' · '+num(ac[c])+' de '+num(cantCentro(o,c)):'')};
+  if(!pasosProDe(o).includes(c))return {cls:'',txt:'este centro NO está en su ruta'};
+  const sec=secuenciaCentro(o,c);
+  const paso=((P&&P.pro)||[]).find(x=>x.oid===o.id&&x.centro===c);
+  const fecha=paso&&paso.ini?' · programada para el '+fmtDia(paso.ini):(paso&&paso.dia?' · programada para el '+fmtDia(paso.dia):' · sin fecha en el programa');
+  if(sec.estado==='disponible')return {cls:'t-ok',txt:'lista para entrar'+(sec.motivo?' ('+sec.motivo+')':'')+fecha};
+  if(sec.estado==='proxima')return {cls:'t-aviso',txt:'todavía no: '+(sec.motivo||'falta un paso anterior')+fecha};
+  return {cls:'',txt:(sec.motivo||'sin secuencia')+fecha}}
+function buscarEnCentroHTML(cens,P,lun,dom){const q=String(CEN.q||'').trim();if(!q)return '';
+  const c0=(CEN.solo||cens[0]);
+  const enCentro=o=>cens.find(c=>pasosProDe(o).includes(c))||c0;   /* con sub-áreas, la de la ruta de esa orden; si no está en ninguna, la que se está mirando */
+  const l=ordenesQueVe().filter(o=>matchBusq(o,q,'CEN.q')).slice(0,6);
+  if(!l.length)return '<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px">No encuentro ninguna orden con <b>'+esc(q)+'</b> (busca por WH, cliente, estilo, color, ODC o fase). Si la orden existe pero no la ves, puede que tu perfil no la alcance.</div>';
+  const fila=o=>{const c=enCentro(o);const ll=llegadaACentroTxt(o,c,P);
+    return '<tr><td style="white-space:nowrap">'+whCell(o)+'</td><td>'+esc(o.cliente||'')+'</td><td>'+esc(o.ref||'')+'</td><td>'+esc((C(o.color)||{}).n||'')+'</td>'+
+      '<td class="num">'+num(o.cant||0)+'</td><td>'+(typeof estadoSemaforoHTML==='function'?estadoSemaforoHTML(o,P):'')+'</td>'+
+      '<td>'+esc(((()=>{try{const d=dondeEsta(o,P);return (d&&d.n)||'—'}catch(e){return '—'}})()))+'</td>'+   /* dondeEsta devuelve {k,n}: en pantalla va el nombre */
+      '<td><span class="tag '+ll.cls+'">'+esc(nCen(c))+'</span> '+esc(ll.txt)+'</td></tr>'};
+  return '<div class="panel" style="margin-bottom:10px"><h3>Resultado de la búsqueda <span class="note">'+num(l.length)+' orden'+(l.length===1?'':'es')+' con «'+esc(q)+'» · dónde está y cuándo entra aquí</span></h3>'+
+   '<div class="body"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Estilo</th><th>Color</th><th class="num">Prendas</th><th>Estado</th><th>Dónde está</th><th>En este centro</th></tr></thead><tbody>'+
+   l.map(fila).join('')+'</tbody></table>'+
+   '<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Busca en toda la cartera que ves, no solo en la semana ('+fmtDia(lun)+' – '+fmtDia(dom)+'): por eso aparece aunque todavía no esté programada aquí.</p></div></div>'}
 function secuenciaCentro(o,c){const ru=pasosProDe(o);
   if(!ru.length)return{estado:'sinSecuencia',motivo:'la orden no tiene ruta de producción'};
   const veces=ru.filter(x=>x===c).length;
   if(!veces)return{estado:'sinSecuencia',motivo:'este centro no está en la ruta de la orden'};
   if(veces>1)return{estado:'sinSecuencia',motivo:'el centro aparece '+veces+' veces en la ruta: no se sabe cuál de las dos es'};
   const i=ru.indexOf(c);const antes=ru.slice(0,i);
-  const pend=antes.filter(x=>!pasoHecho(o,x));
-  if(!pend.length)return{estado:'disponible',motivo:''};
+  const pendAll=antes.filter(x=>!pasoHecho(o,x));
+  const compa=pendAll.filter(x=>mismoTramoParalelo(x,c));   /* del mismo tramo: no se esperan entre sí (decisión 22-sep) */
+  const pend=pendAll.filter(x=>!mismoTramoParalelo(x,c));
+  if(!pend.length)return{estado:'disponible',motivo:compa.length?'tramo paralelo: '+compa.map(x=>nCen(x)).join(', ')+' no lo detiene (el orden real lo deciden las OT y el piso)':''};
   const et=centroEtapaDe(c);const gr=et?faseGrupos().find(g=>g.grupo===et):null;
   if(gr&&gr.secuencial===false&&pend.every(x=>centroEtapaDe(x)===et))
     return{estado:'disponible',motivo:'tramo no secuencial ('+esc(et)+'): el orden real lo dan las órdenes de trabajo de Odoo'};
@@ -7641,7 +7714,7 @@ function cierresOrdenHTML(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};c
   return `<h4 style="margin:12px 0 6px">Cerrada en estos centros</h4><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Quién · cuándo</th><th>Tallas que faltaron</th></tr></thead><tbody>
    ${ks.map(c=>{const x=cs[c];return `<tr><td>${esc(nCen(c))}</td><td class="num">${num(x.pz)} de ${num(x.cant)}</td><td class="num">${x.faltan?'<span class="tag t-alerta">'+num(x.faltan)+'</span>':'—'}</td><td>${esc(x.motivo||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(x.u||'')} · ${new Date(x.ts).toLocaleString('es-EC')}</td><td class="mut" style="font-size:var(--fs-xs)">${x.tallas?Object.entries(x.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(' · '):'—'}</td></tr>`}).join('')}
    </tbody></table>`}
-function listaParaEmpezar(o,c){const ant=centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;
+function listaParaEmpezar(o,c){const ant=centroAnteriorFueraTramo(o,c)||centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;   /* en un tramo paralelo manda el paso anterior al tramo (corte), no el compañero */
   const ac=((S.avance[o.id]||{}).centros)||{};if((ac[c]||0)>0)return null; // ya se empezó aquí
   return {centro:ant,ci}}
 function tagListaEmpezar(o,c){const l=listaParaEmpezar(o,c);if(!l)return '';
@@ -8023,7 +8096,7 @@ function vCentro(el){
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2>${subTxt}<span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
-   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}${filtroFasesHTML(fasesCEN,CEN.fases,'CEN.fases','togFaseCEN')}${busqHTML('CEN.q',CEN.q,'CEN.q=v','width:200px')}</div>`;
+   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}${filtroFasesHTML(fasesCEN,CEN.fases,'CEN.fases','togFaseCEN')}${busqHTML('CEN.q',CEN.q,'CEN.q=v','width:200px')}</div>`+buscarEnCentroHTML(cens,P,lun,dom);   /* el resultado de la búsqueda va arriba, en cualquier pestaña del centro */
   // órdenes con paso en este centro (con el filtro de fases común)
   const filas=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
   if(CEN.tab==='resumen'){el.innerHTML=cab+resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas);return}
@@ -10557,6 +10630,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
   ${(()=>{sembrarDiasProveedor();const t=diasProveedor();const est=t.filter(r=>r.estimado).length;const sinDef=t.filter(r=>r.dias===''||r.dias==null).length;return `<div class="panel"><h3>Días de entrega por proveedor <span class="note">${t.length} proveedores · ${est} con estimado de ${DIAS_PROV_EST} laborables (pendientes de confirmar)${sinDef?` · ${sinDef} sin definir`:``} · usados en Compras del mes para la fecha límite y por el motor como espera de tela externa</span><span class="spacer"></span><button class="btn ghost sm" onclick="addDiasProvRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Se siembran con ${DIAS_PROV_EST} días LABORABLES como estimado inicial (marcado "estimado"). Cuando confirmas un proveedor, se quita la marca. Los días son laborables (calendario del sistema), no corridos. La pantalla de Compras usa estos días para la fecha límite y el motor para la espera de tela externa (en la próxima recarga).</p><div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th>Proveedor</th><th class="num" style="width:120px">Días de entrega</th><th></th></tr></thead><tbody>${t.slice().map((r,i)=>({r,i})).sort((a,b)=>(a.r.prov||'').localeCompare(b.r.prov||'','es')).map(({r,i})=>`<tr><td><input type="text" style="width:280px" value="${esc(r.prov)}" onchange="setDiasProvRow(${i},'prov',this.value)"></td><td class="num"><input type="number" min="0" style="width:90px" value="${r.dias===''||r.dias==null?'':r.dias}" placeholder="—" onchange="setDiasProvRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="estimado inicial; confírmalo">estimado</span>':(r.dias===''||r.dias==null)?' <span class="tag t-alerta">sin definir</span>':' <span class="tag t-ok">confirmado</span>'}</td><td><button class="btn ghost sm" onclick="delDiasProvRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div></div>`})()}
   <div class="panel"><h3>Tiempos de ojales y botones <span class="note">se mudaron a la página <a style="cursor:pointer;text-decoration:underline" onclick="page='operaciones';render()">Operaciones</a> (todo lo que es tiempo vive ahí)</span></h3></div>
   ${(()=>{const mr=motivosReproceso();const rf=restriccionFaltante();return `<div class="panel"><h3>Motivos de reproceso de tintorería <span class="note">${mr.length} motivos · marca cuáles vienen de tejeduría (falla de tela) · son las filas de uso «reproceso» de la tabla 15</span><span class="spacer"></span><button class="btn ghost sm" onclick="addMotivoReprocRow()">Agregar</button></h3><div class="body"><table style="font-size:var(--fs-s)"><thead><tr><th>Motivo</th><th style="width:200px">¿Viene de tejeduría?</th><th></th></tr></thead><tbody>${mr.map((r,i)=>`<tr><td><input type="text" style="width:340px" value="${esc(r.motivo)}" onchange="setMotivoReprocRow(${i},'motivo',this.value)"></td><td><label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoReprocRow(${i},'tejeduria',this.checked)"> falla de tela (tejeduría)</label></td><td><button class="btn ghost sm" onclick="delMotivoReprocRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>
+  ${tramosParalelosHTML()}
   <div class="panel"><h3>Restricciones de faltante <span class="note">${rf.length} materiales que exigen baño grande (complementos, algodón)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRestrFaltRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Si el nombre de la tela/material del faltante CONTIENE la coincidencia, ese faltante no puede ir a máquina pequeña: espera baño grande. Sembrada con cuellos, puños y algodón. Lo no marcado se reporta en la cola de faltantes (revísalo).</p><table style="font-size:var(--fs-s)"><thead><tr><th>Coincidencia (tela o material)</th><th style="width:180px">Tipo</th><th></th></tr></thead><tbody>${rf.map((r,i)=>`<tr><td><input type="text" style="width:280px" value="${esc(r.match)}" onchange="setRestrFaltRow(${i},'match',this.value)"></td><td><input type="text" style="width:150px" value="${esc(r.tipo)}" onchange="setRestrFaltRow(${i},'tipo',this.value)"></td><td><button class="btn ghost sm" onclick="delRestrFaltRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
    <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en el requerimiento: Macro del mes (tela propia) y Compras del mes (lo externo). Sembrado con todas las fases anteriores a Planificación (decisión 22-sep); editable">requerimiento</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
