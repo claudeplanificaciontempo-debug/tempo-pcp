@@ -47,11 +47,11 @@ enlace; y el botón «Hecho» no aparece hasta que la **tabla 15** tenga motivos
 
 Precisión de la usuaria: **el usuario de Fernando sí congela el plan del mes y sí congela la programación de la
 semana**; lo único que no puede es cambiar la configuración. Con el perfil Jefatura eso ya se cumple (ambas cosas
-piden el permiso , que tiene), y de paso se cerraron dos huecos:
+piden el permiso `programa`, que tiene), y de paso se cerraron dos huecos:
 
-- ** no verificaba el permiso**: solo se escondía el botón. Un perfil de **Consulta** —que por
+- **`congelarPlan` no verificaba el permiso**: solo se escondía el botón. Un perfil de **Consulta** —que por
   definición «ve todo y no cambia nada»— podía congelar el plan del mes desde la pantalla. Ahora la puerta está
-  también en la función, como ya la tenía .
+  también en la función, como ya la tenía `congelarPrograma`.
 - **La siembra que dejó las rutas «solo para el jefe»** le habría quitado el permiso de rutas a Jefatura en una
   instalación limpia. Queda exceptuado junto a planificación.
 
@@ -61,8 +61,8 @@ de capacidad · cargar datos de Odoo · registrar en piso. Lo que no: cambiar la
 
 ## 5 · Pruebas
 
-
-Bloque **PV** (7): el catálogo trae el perfil con `configVer` y sin `config` ni `usuarios` · el permiso aparece en la
+Bloque **PV** (10): el catálogo trae el perfil con `configVer` y sin `config` ni `usuarios` · el permiso aparece en la
 lista con su explicación · con ese perfil puede lo operativo y no configurar · ve la pantalla entera con los 31
 controles apagados y el aviso · la entrada le aparece en el menú · Usuarios sigue cerrado · con permiso de editar la
-pantalla no cambia.
+pantalla no cambia · **congela el plan y el programa de la semana** · edita rutas, libera, arma baños y hace calidad ·
+y un perfil de **solo consulta no congela el plan** (el hueco que se cerró).
