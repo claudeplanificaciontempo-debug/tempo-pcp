@@ -7019,6 +7019,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check('PV: la entrada Configuración le aparece en el menú (antes solo se veía con permiso de editarla)',!!a&&a.style.display!=='none',a?('display='+(a.style.display||'(visible)')):'(sin entrada)');
     page='usuarios';render();
     __check('PV: Usuarios sigue cerrado para ese perfil',page!=='usuarios',page);
+    /* congelar NO es configurar (usuaria, 22-sep): el plan del mes y el programa de la semana los puede congelar */
+    {const ym=(typeof mesActual==='function'?mesActual():String(hoy()).slice(0,7));
+     const nPlanes=(S.planes||[]).length;const cf=window.confirm;window.confirm=()=>true;const al2=window.alert;let avisos=0;window.alert=()=>{avisos++};
+     congelarPlan(ym);
+     const congeloPlan=(S.planes||[]).length>nPlanes&&avisos===0;
+     const cens=['corte'];const lun=lunesDe(hoy()),dom=dsum(lun,6);const nCong=((S.params.progCongelado||[]).length);
+     congelarPrograma(cens,lun,dom);
+     const congeloProg=((S.params.progCongelado||[]).length)>nCong;
+     window.confirm=cf;window.alert=al2;
+     __check('PV: Fernando SÍ congela el plan del mes y el programa de la semana (congelar no es configurar)',congeloPlan&&congeloProg&&puede('programa')&&!puede('config'),JSON.stringify({plan:congeloPlan,programa:congeloProg}));
+     __check('PV: y puede editar rutas, liberar, marcar maquila y guardar escenarios de capacidad (todo lo operativo)',puedeEditarRuta()&&puede('liberar')&&puede('armarBanos')&&puede('calidadTin'),JSON.stringify({ruta:puedeEditarRuta(),liberar:puede('liberar'),banos:puede('armarBanos')}));
+     /* la puerta de congelar el plan va también en la función, no solo en el botón */
+     const bak2=PERFIL;PERFIL={id:'u-cons',rol:'consulta',nombre:'Consulta',modo:'editar'};
+     const nP2=(S.planes||[]).length;const cf2=window.confirm;window.confirm=()=>true;const al3=window.alert;let av2=0;window.alert=()=>{av2++};
+     congelarPlan(ym);window.confirm=cf2;window.alert=al3;PERFIL=bak2;
+     __check('PV: un perfil de solo consulta NO congela el plan (antes el botón se escondía pero la función no preguntaba)',(S.planes||[]).length===nP2&&av2>0,JSON.stringify({planes:(S.planes||[]).length,antes:nP2}));}
     PERFIL=adminP0();page='config';render();
     const el2=document.getElementById('p-config');const ctr2=[...el2.querySelectorAll('input,select,textarea,button')];
     __check('PV: con permiso de editar, la pantalla no cambia en nada (ni aviso ni campos apagados)',!/no la puedes cambiar/i.test(el2.innerHTML)&&ctr2.some(x=>!x.disabled),JSON.stringify({habilitados:ctr2.filter(x=>!x.disabled).length}));
