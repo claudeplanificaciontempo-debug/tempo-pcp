@@ -1603,7 +1603,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check('planOT: contradicciones detectadas (5Maquila Conf: bordado fase pendiente / OT terminado; 8Empaque: estampado fase hecho / OT para hacer)',p.contradicciones.some(x=>x.op==='WH/MO/90001'&&x.centro==='bordado'&&x.otDice==='terminado')&&p.contradicciones.some(x=>x.op==='WH/MO/90002'&&x.centro==='estampado'&&x.otDice==='para hacer'),JSON.stringify(p.contradicciones));
    OT=p;const bakAlert=window.alert;window.alert=()=>{};aplicarOT();await __p(50);
    __check('aplicarOT: bordado terminado manda sobre la fase (5Maquila Conf → bordado hecho)',faseEstado(oA.fase,oA).hechos.includes('bordado')&&S.avance.ota.centros.bordado===100);
-   __check('aplicarOT: estampado "para hacer" manda sobre la fase (8Empaque → estampado NO hecho)',!faseEstado(oB.fase,oB).hechos.includes('estampado'));
+   __check('aplicarOT: estampado "para hacer" NO borra lo que la fase ya prueba (8Empaque → estampado HECHO: la OT no la cerraron · usuaria, 23-sep) y la contradicción sigue en el reporte',faseEstado(oB.fase,oB).hechos.includes('estampado')&&((S.params.otCarga||{}).contradicciones||[]).some(x=>x.op==='WH/MO/90002'&&x.centro==='estampado'));
    __check('aplicarOT: módulo real fijado desde la tabla 6 (Módulo 3 → mod3)',(oA.recursoFijo||{}).modulos==='mod3');
    __check('aplicarOT: reporte guardado con 3 contradicciones (bordado, estampado y Módulo 3 en proceso donde la fase excluía módulos)',!!S.params.otCarga&&S.params.otCarga.contradicciones.length===3,S.params.otCarga&&S.params.otCarga.contradicciones.length);
    OT=planOT([rows[0],['WH/MO/90001','Bordado','progress',null,null]],'ot2.xlsx');aplicarOT();await __p(50);
@@ -2182,7 +2182,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
    const oV=JSON.parse(JSON.stringify(baseO));oV.id=uid();oV.op='WH/TEST-VENC';oV.proyecto=nomMes(ym);oV.estado='plan';oV.fase='4CD Ensamble';oV.fecha=dsum(hoy(),-10);oV.lib={tela:{ok:true},corte:{ok:true}};delete oV.programa;S.ordenes.push(oV);PLAN=null;PLAN_ALL=null;
    const c=calcularPlan(ym);const P=programar();
-   __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const v=enMes.filter(o=>o.fecha&&o.fecha<hoy()).length;const r=enMes.filter(o=>!(o.fecha&&o.fecha<hoy())&&P.ordenes[o.id]&&P.ordenes[o.id].atraso).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
+   __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const v=enMes.filter(o=>esMetaVencida(o,P)).length;const r=enMes.filter(o=>esOrdenVaTarde(o,P)).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso&&!faseTerminadaDe(o)).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
    page='plan';render();let h=document.getElementById('p-plan').innerHTML;
    __check("VR3: el Bloque 2 muestra dos contadores (Vencidas y En riesgo) con enlace a Hoy → Advertencias, sin la tabla larga",h.includes('Vencidas (fecha meta pasada)')&&h.includes('En riesgo según el programa')&&h.includes("irNoLlegan('"+ym+"','venc')")&&!h.includes('órdenes en riesgo según el programa <span')&&!h.includes('clic para ver por qué y en qué paso se atascan'));
    NLF={mes:ym,tipo:null};page='panorama';render();h=document.getElementById('p-panorama').innerHTML;
@@ -4232,20 +4232,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("GF: los cuatro filtros están en la misma cabecera",/Meses del Proyecto/.test(h)&&/>Cliente</.test(h)&&/>Estado</.test(h)&&/GER\.q/.test(h));}
    /* vencidas y va tarde: UNA sola definición */
    {const ords=ordenesGER(P);
-    __check("GV: «meta vencida» y «la orden va tarde» salen de diagAtraso, el mismo de las marcas",
-     ords.every(o=>{const d=diagAtraso(o,P);return esMetaVencida(o,P)===!!(d.orden&&d.vencida)&&esOrdenVaTarde(o,P)===!!(d.orden&&!d.vencida)}));
+    __check("GV: «meta vencida» = fecha meta pasada y orden no terminada (fase < faseTerminada), SIN el programa; «va tarde» = el programa no llega, sin vencer ni terminar",
+     ords.every(o=>{const m=fechaMetaDe(o),pas=!!(m&&m<hoy()),ter=faseNum(o.fase)>=faseTerminadaMin(),at=!!((P.ordenes[o.id]||{}).atraso);return esMetaVencida(o,P)===(pas&&!ter)&&esOrdenVaTarde(o,P)===(at&&!pas&&!ter)}));
+    __check("GV: en las órdenes NO terminadas que el programa fechó, la marca roja de la cola coincide con «meta vencida» (difieren a propósito solo en fase 8 y en las que el programa no fechó)",
+     ords.filter(o=>{const d=diagAtraso(o,P);return !d.terminada&&d.orden}).every(o=>esMetaVencida(o,P)===!!MARCAS_CEN[0].test(diagAtraso(o,P))));
     __check("GV: una orden no puede ser las dos cosas a la vez",ords.every(o=>!(esMetaVencida(o,P)&&esOrdenVaTarde(o,P))));
     __check("GV: los bloques cuentan lo mismo que la cabecera",(()=>{const t=totGER(agruparGER(GER_BLOQUES[0],ords,P));
       return t.venc===ords.filter(o=>esMetaVencida(o,P)).length&&t.tarde===ords.filter(o=>esOrdenVaTarde(o,P)).length})());
     page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
     __check("GV: y la pantalla usa los mismos nombres, no inventa otros",/Meta vencida/.test(h)&&/La orden va tarde/.test(h)&&!/>En riesgo</.test(h));}
-   /* «hechas» = último paso de la ruta, y la brecha de ruta sin Empaque */
-   {const o=S.ordenes.find(x=>abierta(x)&&pasosProDe(x).length>1);
-    if(o){const ru=pasosProDe(o);const ult=ru[ru.length-1];
+   /* «hechas» = último paso de la ruta COMPLETA en orden de proceso, y la brecha de ruta sin Empaque */
+   {const o=S.ordenes.find(x=>abierta(x)&&rutaHechasDe(x).length>1&&!pasoHecho(x,rutaHechasDe(x)[rutaHechasDe(x).length-1]));
+    if(o){const ru=rutaHechasDe(o);const ult=ru[ru.length-1];
      S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros={};
      __check("GH: sin avance en el último paso, hechas = 0 aunque haya avance en los anteriores",(S.avance[o.id].centros[ru[0]]=+o.cant,pzHechasOrden(o)===0));
      S.avance[o.id].centros[ult]=7;
-     __check("GH: hechas se mide en el ÚLTIMO paso de la ruta",pzHechasOrden(o)===7);
+     __check("GH: hechas se mide en el ÚLTIMO paso de la ruta COMPLETA, en orden de proceso",pzHechasOrden(o)===7);
      delete S.avance[o.id].centros;}
     // la brecha: toda ruta debe terminar en Empaque
     const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
@@ -7040,6 +7042,77 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check('MT: la pantalla abre con «Qué hay que tejer», dice de dónde sale el stock y adónde se fue lo externo',/Qué hay que tejer/.test(h)&&/Stock de tela cruda/.test(h)&&/Compras del mes/.test(h)&&/proveedores externos/.test(h));
     __check('MT: las telas sin stock cargado se toman como 0 en bodega y la pantalla lo dice, en vez de suponer',/se toman como <b>0 en bodega<\/b>|sin stock cargado/.test(h));
     Object.keys(st).forEach(k=>delete st[k]);Object.assign(st,bak);page='ordenes';render();}
+   /* OF · «la fase prueba lo que ya pasó; la orden de trabajo solo decide lo que la fase no prueba» (usuaria, 23-sep) */
+   {const fs0=fasesDisponibles();const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
+    const mk=(op,fase,ot)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.ot=ot;delete x.otTs;delete x.terminadaF;S.ordenes.push(x);delete S.avance[x.id];return x};
+    const hechosFase=f=>(faseEstadoTabla(f).hechos||[]).filter(c=>CE(c)&&CE(c).area==='pro');
+    const dentroTramo=f=>{const g=grupoDe(f);const cs=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];return cs.some(c=>!!tramoParaleloDe(c))};
+    /* FUERA del tramo (p. ej. Lavandería): la fase prueba bordado aunque su OT siga abierta */
+    const fFuera=fs0.find(f=>!dentroTramo(f)&&hechosFase(f).includes('bordado'));
+    const fDentro=fs0.find(f=>dentroTramo(f)&&hechosFase(f).includes('bordado'));
+    const creadas=[];
+    if(fFuera){const estados=['bloqueado por material','esperando','en proceso','para hacer'];
+      const ords=estados.map((e,i)=>mk('WH/OF-'+i,fFuera,{bordado:{estado:e,odoo:'WC-X'}}));creadas.push(...ords);
+      __check('OF: fuera del tramo paralelo, una OT abierta NO borra un paso que la fase ya da por hecho (la OT no la cerraron)',ords.every(o=>pasoHecho(o,'bordado')),fFuera);
+      __check('OF: el sub-estado de la OT no importa (bloqueado por material, esperando, en proceso, para hacer: igual)',ords.every(o=>faseEstado(o.fase,o).hechos.includes('bordado')));}
+    else __check('OF: hay una fase fuera del tramo que da bordado por hecho (para probar la regla)',false);
+    /* DENTRO del tramo (7Confección): confeccionar primero y bordar después → la OT abierta manda, el bordado NO está hecho */
+    if(fDentro){const o=mk('WH/OF-TRAMO',fDentro,{bordado:{estado:'para hacer',odoo:'WC-X'}});creadas.push(o);
+      __check('OF: DENTRO del tramo paralelo manda la OT: en '+fDentro+' con bordado «para hacer», el bordado sigue pendiente (confeccionar primero y bordar después)',!pasoHecho(o,'bordado')&&!faseEstado(o.fase,o).hechos.includes('bordado'));
+      {o.rutaConf=null;o.ruta=(o.ruta||[]).filter(p=>p.centro!=='bordado');if(typeof empatarRutaConOT==='function')empatarRutaConOT(o);
+       __check('OF: …y ese bordado vuelve a la ruta PENDIENTE al empatar con la OT, o sea a la cola de bordado («lo que no está hecho, a la cola»)',(o.ruta||[]).some(p=>p.centro==='bordado'),(o.ruta||[]).map(p=>p.centro).join('>'))}
+      const oT=mk('WH/OF-TRAMO-T',fDentro,{bordado:{estado:'terminado',odoo:'WC-X'}});creadas.push(oT);
+      __check('OF: dentro del tramo, con la OT terminada el paso sí está hecho',pasoHecho(oT,'bordado'));}
+    else __check('OF: hay una fase dentro del tramo que da bordado por hecho (para probar la excepción)',false);
+    /* lo que la fase NO prueba: pendiente mientras la OT no esté terminada; la OT terminada sí lo agrega */
+    const fTemprana=fs0.find(f=>!hechosFase(f).includes('bordado')&&faseNum(f)>=1);
+    if(fTemprana){const oA=mk('WH/OF-A',fTemprana,{bordado:{estado:'bloqueado por material',odoo:'WC-X'}});const oT=mk('WH/OF-T',fTemprana,{bordado:{estado:'terminado',odoo:'WC-X'}});creadas.push(oA,oT);
+      __check('OF: lo que la fase NO prueba sigue pendiente mientras la OT no esté terminada',!pasoHecho(oA,'bordado'),fTemprana);
+      __check('OF: una OT TERMINADA sí da el paso por hecho aunque la fase todavía no lo diga',pasoHecho(oT,'bordado'),fTemprana);}
+    S.ordenes=S.ordenes.filter(x=>!creadas.includes(x));}
+   /* VN · «vencida»: UNA definición, sin el motor, y «terminada» = fase 8 (usuaria, 23-sep) */
+   {PLAN=null;PLAN_ALL=null;let P=programar();const h=hoy();
+    const base=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
+    const f8=fasesDisponibles().find(f=>faseNum(f)===8),f4=fasesDisponibles().find(f=>faseNum(f)===4)||fasesDisponibles().find(f=>faseNum(f)>=1&&faseNum(f)<8);
+    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.fecha=dsum(h,-10);delete x.fechaCompromiso;delete x.programa;delete x.lib;Object.assign(x,extra||{});S.ordenes.push(x);delete S.avance[x.id];return x};
+    const f0=fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&!g.libTela&&!g.libCorte&&!/dise/i.test(f)})||fasesDisponibles().find(f=>faseNum(f)===0&&!/dise/i.test(f))||f4;
+    const oBloq=mk('WH/VN-BLOQ',f0,{fecha:dsum(h,-400)});                         /* fase previa a producción: sin liberar, el motor no le calcula atraso */
+    const oT8=mk('WH/VN-F8',f8);                             /* fase 8: terminada */
+    const oComp=mk('WH/VN-COMP',f4,{fechaCompromiso:dsum(h,20)});   /* fecha de Odoo pasada, compromiso a futuro */
+    PLAN=null;PLAN_ALL=null;P=programar();
+    __check('VN: una orden que el motor NO pudo colocar (sin liberar) y con la meta pasada SÍ es vencida (ya no depende del atraso del motor)',!(P.ordenes[oBloq.id]||{}).atraso&&esMetaVencida(oBloq,P),JSON.stringify({bloqueo:(P.ordenes[oBloq.id]||{}).bloqueo||null}));
+    __check('VN: una orden en fase 8 con la meta pasada NO es vencida: está terminada (decisión de la usuaria)',faseTerminadaDe(oT8)&&!esMetaVencida(oT8,P)&&!esOrdenVaTarde(oT8,P),oT8.fase);
+    __check('VN: manda la fecha META: con la fecha de Odoo pasada pero el compromiso a futuro, no es vencida',!esMetaVencida(oComp,P));
+    page='panorama';render();const hh=document.getElementById('p-panorama').innerHTML;
+    {const v=S.ordenes.filter(abierta).filter(o=>esMetaVencida(o,P));const etq='Vencidas sin terminar · '+num(v.reduce((a,o)=>a+ +o.cant,0))+' pz';
+     __check('VN: la PANTALLA de Hoy muestra «Vencidas sin terminar» con la definición única (la bloqueada entra; la de fase 8 y la de compromiso futuro no)',hh.includes(esc(etq))&&v.includes(oBloq)&&!v.includes(oT8)&&!v.includes(oComp),etq)}
+    {NLF={mes:null,tipo:null};const nl=noLleganHTML();__check('VN: la lista de Advertencias → Vencidas trae también las que el programa no pudo fechar, y dice por qué',!P.ordenes[oBloq.id]||!P.ordenes[oBloq.id].bloqueo||(nl.includes(esc(oBloq.op))&&/sin fecha posible/.test(nl)))}
+    const ym=mesPlan(oBloq);if(ym){const c=calcularPlan(ym);const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);
+      __check('VN: el Plan cuenta vencidas y terminadas con la misma regla',c.dem.vencidas===enMes.filter(o=>esMetaVencida(o,P)).length&&c.dem.terminadas===enMes.filter(faseTerminadaDe).reduce((a,o)=>a+ +o.cant,0))}
+    /* el número 8 es un parámetro: se respeta lo configurado, y queda en bitácora */
+    const bak=S.params.faseTerminada;S.params.faseTerminada=9;
+    __check('VN: «terminada desde la fase» es un parámetro: con 9, la de fase 8 pasa a contar como vencida',!faseTerminadaDe(oT8)&&esMetaVencida(oT8,P));
+    if(bak===undefined)delete S.params.faseTerminada;else S.params.faseTerminada=bak;
+    {const a0=window.alert;window.alert=()=>{};const antesP=S.params.faseTerminada;setFaseTerminada('');setFaseTerminada('0');window.alert=a0;
+     __check('VN: un campo vacío o 0 NO cambia el parámetro (con 0 todas las órdenes contarían como terminadas)',S.params.faseTerminada===antesP)}
+    setFaseTerminada(8);__check('VN: cambiar el parámetro deja la línea en la bitácora',(S.bitacora||[]).slice(-3).some(b=>/Orden terminada desde la fase/.test(JSON.stringify(b))));
+    page='config';CONF.tab='cal';render();
+    __check('VN: el parámetro se ve y se edita en Configuración → Calendario y parámetros',/Orden terminada desde la fase/.test(document.getElementById('p-config').innerHTML)&&/setFaseTerminada/.test(document.getElementById('p-config').innerHTML));
+    S.ordenes=S.ordenes.filter(x=>![oBloq,oT8,oComp].includes(x));PLAN=null;PLAN_ALL=null;page='ordenes';render();}
+   /* HC · «hechas» sobre la ruta completa: una orden terminada no da 0 (23-sep) */
+   {const base=S.ordenes.find(x=>abierta(x)&&(x.rutaCompleta||[]).length)||S.ordenes.find(abierta);
+    const mk=(op,completa,pend)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.estado='plan';x.cant=40;delete x.ot;delete x.programa;
+      x.rutaCompleta=completa.map(c=>({centro:c,t:1}));x.ruta=pend.map(c=>({centro:c,t:1}));S.ordenes.push(x);S.avance[x.id]={centros:{}};return x};
+    const oT=mk('WH/HC-TERM',['corte','modulos','empaque'],[]);S.avance[oT.id].centros={corte:40,modulos:40,empaque:40};
+    __check('HC: una orden con la ruta pendiente VACÍA (ya terminó) cuenta todas sus prendas hechas, no 0',pzHechasOrden(oT)===40,pzHechasOrden(oT));
+    const oD=mk('WH/HC-DESORDEN',['empaque','corte'],['modulos']);   /* completa y pendiente en otro orden: manda el orden de proceso */
+    __check('HC: la ruta de las hechas va en orden de proceso aunque la completa y la pendiente vengan desordenadas (Empaque al final)',rutaHechasDe(oD).slice(-1)[0]==='empaque',rutaHechasDe(oD).join('>'));
+    const oSin=mk('WH/HC-SINEMP',['corte','bordado','modulos'],[]);
+    const b=brechaHechas();
+    __check('HC: el aviso de «Hechas» cuenta la misma ruta: una orden terminada cuya ruta completa no llega a Empaque sale en la brecha',!!b&&S.ordenes.filter(o=>abierta(o)&&rutaHechasDe(o).length&&rutaHechasDe(o).slice(-1)[0]!=='empaque').length===b.n&&b.n>=1);
+    const ym=mesPlan(oT)||hoy().slice(0,7);const foto=fotoCarteraMes(ym,programar());
+    __check('HC: la foto del mes dice con qué reglas se midió (y las viejas se marcan «reglas anteriores»)',!!foto.reglas&&foto.reglas.hechas==='rutaCompleta'&&/reglas anteriores/.test(String(cierresMesHTML)));
+    S.ordenes=S.ordenes.filter(x=>![oT,oD,oSin].includes(x));[oT,oD,oSin].forEach(x=>delete S.avance[x.id]);}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);
@@ -7168,6 +7241,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       guardarOrden(o.id);window.alert=al;await __p(30);
       const oF=S.ordenes.find(x=>x.id===idO);
       const completaOk=!(oF.rutaCompleta||[]).some(p=>p.centro==='modulos')&&(oF.rutaCompleta||[]).some(p=>p.centro==='plancha');
+      {const o2=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&!(x.rutaCompleta||[]).length&&(x.ruta||[]).some(p=>p.centro==='modulos'));
+       if(o2){const bak=JSON.parse(JSON.stringify(o2));const al2=window.alert;window.alert=()=>{};mOrden(o2.id);
+        ED.ruta=(ED.ruta||[]).filter(p=>p.centro!=='modulos');if(!ED.ruta.some(p=>p.centro==='plancha'))ED.ruta.push({centro:'plancha',t:2});
+        guardarOrden(o2.id);window.alert=al2;const oF2=S.ordenes.find(x=>x.id===o2.id);
+        __check('RC2: si la orden no tenía ruta completa guardada, la edición de la ficha la crea (no se pierde en la próxima carga)',(oF2.rutaCompleta||[]).some(p=>p.centro==='plancha')&&!(oF2.rutaCompleta||[]).some(p=>p.centro==='modulos'),JSON.stringify((oF2.rutaCompleta||[]).map(p=>p.centro)));
+        Object.keys(oF2).forEach(k=>delete oF2[k]);Object.assign(oF2,bak)}}
       __check('RC2: guardar la ruta en la ficha deja la ruta COMPLETA coherente con la pendiente (antes quedaba vieja y la siguiente carga revertía la edición)',completaOk,JSON.stringify({completa:(oF.rutaCompleta||[]).map(p=>p.centro),pendiente:(oF.ruta||[]).map(p=>p.centro)}));
       const p=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2.xlsx');TAREA=p;aplicarTarea();await __p(80);
       const oG=S.ordenes.find(x=>x.id===idO);

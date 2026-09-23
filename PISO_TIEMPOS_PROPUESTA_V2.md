@@ -220,6 +220,8 @@ Las nueve tablas `mes_*` quedan documentadas en `SUPABASE_MES_SIN_USO.md` (a esc
 | D15 | Si la tablet tarda más de ~2 s por toque | Guardar sin recalcular el programa en la tablet (toca `save`/`vTablet`; autorización) | nueva |
 | D16 | Maquila: ¿guía con fecha y cantidades? ¿registra algo más que la recepción? | Recepción por total con fecha de guía; excluida de tramos y eficiencia | nueva |
 
+> **Nota del 23-sep-2026 (regla «la fase prueba lo que ya pasó»):** con la decisión de la usuaria, una orden que ya está en fase 8 da por hechos los pasos anteriores aunque su orden de trabajo de Odoo siga abierta. En el volcado del 13-sep hay **6 órdenes (1.518 prendas)** en fase 8 con la OT de módulos «en proceso» (WH/MO/28712, 28286, 28287, 28175, 28441 y 27933): si de verdad parte de esas prendas se sigue cosiendo mientras el resto va a empaque, hoy cuentan como cosidas completas. Es exactamente el caso D10 (la WH en dos centros a la vez); cuando se construya la entrega parcial entre pasos hay que revisarlas. No se inventa otro cierre.
+
 ---
 
 ## 5 · Qué se descarta de la propuesta original y por qué

@@ -603,8 +603,9 @@ cuadran — es la misma lista partida de cinco maneras, y hay una prueba con 12 
 Bloques **colapsables, uno abierto a la vez**, recordado por usuario. **«Hechas» = `pzHechasOrden` = último paso de la
 ruta**; las rutas que no terminan en Empaque son **brecha** (`rutasSinEmpaqueHTML`), sin trato especial: **349 de 470
 reales no terminan ahí** (301 bordado, 48 estampado). **Vencida y va tarde tienen UNA definición**:
-`esMetaVencida`/`esOrdenVaTarde` envuelven a `diagAtraso()`, el mismo de `marcaCentro`; no crear un segundo cálculo ni
-un tercer nombre (se eliminó el `o.fecha<h` que tenía `vGerencia`). **Cierre mensual** en `S.params.cierresMes`:
+`esMetaVencida`/`esOrdenVaTarde` envuelven a `diagAtraso()`; no crear un segundo cálculo ni un tercer nombre (se eliminó el
+`o.fecha<h` que tenía `vGerencia`). **Desde el 23-sep** la marca roja de la cola (`MARCAS_CEN`) es por el PASO y difiere a propósito
+en fase ≥ `faseTerminada` y en las que el programa no fechó (ver «Terminada = fase 8» más abajo). **Cierre mensual** en `S.params.cierresMes`:
 `guardarCierresMes(P)` actualiza el mes en curso una vez al día y **congela** los meses pasados (`cerrado:true`, no se
 vuelven a tocar). **Desde el 23-sep la toma `cierresMesEnRender` en `render()`** (antes solo al abrir el Resumen gerencial:
 si nadie lo abría, el mes no se guardaba) y **solo justo después de leer del servidor** (`FOTO_TRAS_CARGA`, que pone
@@ -1270,18 +1271,49 @@ agrupar por próximo paso NO corre el motor por fila. **PENDIENTES, con rediseñ
 fuera de módulos borra el faltante, pero guardar `q` a secas ROMPE el flujo normal: el cuadro de «Hecho» trae por defecto
 «lo que falta» (después de un tramo), así que el avance bajaría y la orden quedaría atascada; hoy mismo, en ese flujo, `delta=q-prev`
 ya resta turnos. Correcto: «Hecho» SUMA lo que salió ahora, guardado donde el tramo (`a.tallas[c][TALLA_TOTAL]`), con historial,
-y sin motivos de cierre la orden quedaría atrapada (por eso se sembraron). (2) «vencida» — medido en el volcado real: Hoy
-usa `faseNum<8` y **esconde 44 órdenes / 3.227 pz** en 8Empaque, 8Servicios y Terminados y 8Lavandería (no son «sin carga»);
-`esMetaVencida` exige `ro.atraso`, que el motor NO calcula en bloqueadas/sin WH (salidas tempranas 1607-1610 y filtro 1363) y
-que sí da en 13 «sin carga» terminadas (finPro=hoy). Definición acordada por el verificador: vencida = `fechaMetaDe` pasada y
-prenda no terminada según la columna «sin carga» (`prendaTerminada` dentro de `diagAtraso`), sin el motor; el KPI «Terminadas»
-del Plan (`faseNum>=8`) va aparte con OK de la usuaria. (3) «hechas» sobre ruta completa — medido: corrige 2 de 13, deja 11
-en 0 porque **la OT de Empaque de Odoo sigue abierta y manda sobre la fase** (`faseEstado0`), y pondría WH/MO/28228 (8Botones,
-ruta sin Empaque) como terminada al 100 % en silencio. Se REVIRTIÓ; se rehace con `rutaHechasDe`, aviso de la OT abierta y
-marca de regla en la foto del mes. Pregunta abierta a la usuaria: fase «terminada» vs OT de Empaque abierta, ¿cuál manda? **Brechas del objetivo:** la fase no se mueve sola al cerrar un paso (la regla, no la
+y sin motivos de cierre la orden quedaría atrapada (por eso se sembraron). (2) «vencida» y (3) «hechas»: **PUBLICADAS en la noche del 23-sep con las reglas de la usuaria** (párrafos «La fase prueba lo que ya pasó» y
+«Terminada = fase 8» más abajo); la primera propuesta del verificador (partir la fase 8 por «sin carga») quedó descartada por ella. **Brechas del objetivo:** la fase no se mueve sola al cerrar un paso (la regla, no la
 infraestructura: el rpc ya corre), no hay bandeja de órdenes estancadas en una fase (`diasEnFase` existe y se usa una sola
 vez), la tabla 15 casi vacía bloquea devoluciones/reversiones/rechazos, el calendario sin festivos y `portadaRol` = 0
 referencias (la portada por rol aprobada el 19-sep nunca se construyó). **Esperar el visto bueno antes de mover pantallas.**
+
+**La fase prueba lo que ya pasó (23-sep-2026, decisión de la usuaria).** «La orden de trabajo de Odoo es hecho o no hecho y nada
+más: bloqueado por material, esperando, en proceso… da igual, el inventario no es confiable» y, ante WH/MO/29094 (8Lavandería con la OT
+de Bordado «bloqueado por material»): **«hecho: la OT no la cerraron»**. `faseEstado0`: la OT **terminada AGREGA** el paso a «hechos»;
+una OT **no terminada ya no BORRA** lo que la fase da por hecho… **salvo dentro del tramo paralelo en que está la orden** (tabla «Tramos
+paralelos»; fase → centros por el grupo de la tabla 1 y la etapa de la tabla 4: hoy 7Confección/7Pulido → modulos), donde manda la OT
+(confeccionar primero y estampar después). Sin esa excepción el estampado se perdía en silencio: con la tabla 5 de fábrica (todo
+«secuencial») 7Confección da por hechos estampado, bordado, sublimado y apliques (26 órdenes / 6.811 pz en el volcado). Fuera del tramo
+(Lavandería, Empaque, Maquila externa, prenda terminada) la fase manda. La excepción configurada `pasoExtra` (tabla 1) no se tocó.
+El Reporte OT, la pantalla de Tramos paralelos y la ventana de reabrir un cierre lo dicen (reabrir no devuelve a la cola si la fase ya
+pasó el centro: hay que devolver la fase). Medido: WH/MO/29016 (8Empaque Terminado, OT «esperando») deja de tener bordado programado.
+Pendientes chicos para la usuaria: maquila (5Maquila Recepción da por hecho estampado; 27763 y 28174 tienen estampado «esperando») y
+«excluye» (5CD/5Maquila Conf excluyen módulos: ¿excluido = hecho?). D10 anotado en `PISO_TIEMPOS_PROPUESTA_V2.md` (6 órdenes / 1.518 pz en
+fase 8 con módulos «en proceso»). Pruebas OF (fuera/dentro del tramo, el paso vuelve a la ruta pendiente por `empatarRutaConOT`).
+
+**Terminada = fase 8, y «vencida» con UNA definición (23-sep-2026, decisión de la usuaria: «todo lo terminado está en fase 8; es la
+fase del final; no la dividas»).** Parámetro `faseTerminada` (8, Configuración → Calendario y parámetros, `setFaseTerminada` con bitácora;
+vacío o fuera de 1–9 se rechaza: con 0 todo quedaba «terminado»), `faseTerminadaMin()` / `faseTerminadaDe(o)`. `diagAtraso` devuelve
+`terminada` y `metaVencida` = meta pasada y no terminada, **sin el motor** (el motor no calcula `ro.atraso` en bloqueadas/sin liberar:
+salidas tempranas de `programar()`); `esMetaVencida` = `d.metaVencida`; `esOrdenVaTarde` = atraso sin vencer ni terminar. Lo usan Hoy
+(bandejas y tarjetas; antes con la fecha cruda de Odoo), Advertencias (la lista de vencidas trae también las no fechadas y dice por
+qué; antes Hoy decía 203 y la lista 142), el Plan (vencidas, riesgo, terminadas, entregas reales), el Resumen gerencial (`estadoGERDe`
+y `pesoFase`: fase 8 = «Terminadas»; antes quedaban «En curso»), la predicción de entregas y `terminadaF` (Cumplimiento; las fechas
+ya registradas no se recalculan). **`MARCAS_CEN` NO cambió**: en la cola la marca es por el paso de ese centro y sale también en fase 8
+con el paso pendiente (su texto lo dice). Medido: gerencial 199 → 203 «meta vencida» (entran 61 no fechadas, salen 57 de fase 8).
+Pruebas VN (leen la pantalla de Hoy y Advertencias) y GV (reconstruye la definición y prueba dónde coincide con la marca).
+
+**«Hechas» sobre la ruta COMPLETA (23-sep-2026):** `rutaHechasDe(o)` = `pasosProCompleta` en orden de proceso (`ordenPaso`; la
+unión NO viene ordenada) y `pzHechasOrden` la usa: la ruta pendiente se vacía al terminar y daba 0 hechas justo en las terminadas
+(WH/MO/29016: 0 de 18). `brechaHechas` cuenta sobre la MISMA ruta (incluye las de pendiente vacía, como WH/MO/28228);
+`diagRutasSinEmpaque` no se tocó. La foto del mes guarda `reglas` y las fotos viejas salen «reglas anteriores» (un mes cerrado no se
+toca). Pruebas HC. **`guardarOrden`**: si la orden no tenía ruta completa (35 de 426 en el volcado), la edición de la ficha ahora la
+crea en orden de proceso; antes no quedaba en ningún lado y la siguiente carga podía revertirla (prueba RC2b).
+
+**La fase la pone quien recibe (23-sep-2026, DISEÑO sin construir):** `FASE_LA_PONE_QUIEN_RECIBE.md`. Acordado con la usuaria: la
+fase la pone el centro que toca INICIO. Falta que ella confirme la columna nueva «fase de este centro» (hoy NO existe: bordado,
+serigrafía y sublimado comparten el grupo 6); candado: un INICIO nunca da por hecho un paso pendiente; SQL acotado nuevo (la tablet
+no manda la fase). **Aviso**: `mover_fase` (producción, 16-sep) no valida la fase ni el motivo en el servidor (línea 148 del SQL).
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 15:16';
+const APP_BUILD='2026-09-23 16:18';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1102,8 +1102,16 @@ function hechoPorFase(oe,desde){if(oe<0||oe>=desde)return false;const gs=faseGru
   const propio=gs.find(g=>g.orden===oe);if(sec(propio))return true;return gs.some(g=>sec(g)&&g.orden>oe&&g.orden<=desde)}
 function faseEstado(f,o){const fe0=faseEstado0(f,o);const fila0=filaFaseDe(f);if(fila0&&fila0.pasoExtra&&fe0.hechos&&fe0.hechos.includes(fila0.pasoExtra)){const ac=((S.avance[(o||{}).id]||{}).centros)||{};const ot=((o||{}).ot||{})[fila0.pasoExtra];if(!(ot&&ot.estado==='terminado')&&!(o&&(ac[fila0.pasoExtra]||0)>=o.cant))return Object.assign({},fe0,{hechos:fe0.hechos.filter(c=>c!==fila0.pasoExtra)})}return fe0}
 function faseEstado0(f,o){const base=faseEstadoTabla(f);if(!o||!o.ot)return base;
-  // la orden de trabajo manda: terminado → hecho aunque la fase no lo diga; en proceso / para hacer → pendiente aunque la fase lo diera por hecho
-  const hechos=new Set(base.hechos);Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else hechos.delete(c)});
+  /* decisión de la usuaria (23-sep): «la fase prueba lo que ya pasó; la OT solo decide lo que la fase no prueba».
+     · OT terminada → hecho aunque la fase no lo diga.
+     · OT no terminada (en proceso, para hacer, esperando, bloqueado por material: da igual cuál) NO borra lo que la fase
+       prueba («la OT no la cerraron»)… SALVO dentro del tramo paralelo en que está la orden: ahí el orden varía
+       (confeccionar primero y estampar después), la fase no prueba nada del tramo y manda la OT.
+     Fase → centros: grupo de la tabla 1 + etapa de la tabla 4. Tramo: tabla «Tramos paralelos». */
+  const hechos=new Set(base.hechos);const g=grupoDe(f);
+  const censFase=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];
+  const tramoAct=censFase.map(tramoParaleloDe).filter(Boolean);const enTramo=c=>tramoAct.some(t=>(t.cens||[]).includes(c));
+  Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else if(enTramo(c))hechos.delete(c)});
   return Object.assign({},base,{hechos:[...hechos]})}
 function faseEstadoTabla(f){const fila=filaFaseDe(f);const og=fila?ordenGrupo(fila.sistema):-1;
   if(!fila||og<0)return{tejida:false,tinturada:false,lista:false,hechos:[],sinFila:true};
@@ -1192,16 +1200,19 @@ let NLF={mes:null,tipo:null};
 function irNoLlegan(ym,tipo){NLF={mes:ym||null,tipo:tipo||null};try{localStorage['__hoy_adv']='1'}catch(e){}ir('panorama');setTimeout(()=>{const e=document.getElementById('nollegan');if(e)e.scrollIntoView({behavior:'smooth'})},50)}
 function atascoTxt(r){if(!r)return '<span class="mut">—</span>';if(r.atrasoPorColeccion)return '<span class="tag t-aviso">va tarde por su colección</span> <span class="mut">'+esc(((r.coleccion||{}).causantes||[]).join(', '))+'</span>';const a=r.atasco;if(!a)return '<span class="mut">—</span>';const n=typeof a==='string'?a:(a.nombre||a.centro||'');const d=typeof a==='object'&&a.dias!=null?' <span class="mut">(+'+num(a.dias)+' d)</span>':'';return esc(n||'—')+d}
 function noLleganHTML(){if(!S.ordenes.length)return '';const P=programar();if(P.motor!=='atras')return '';const h=hoy();
-  const filas=[];S.ordenes.filter(o=>abierta(o)).forEach(o=>{const r=P.ordenes[o.id];if(!r||r.bloqueo||!r.atraso)return;if(NLF.mes&&mesPlan(o)!==NLF.mes)return;filas.push({o,r,venc:!!(o.fecha&&o.fecha<h)})});
+  const filas=[];S.ordenes.filter(o=>abierta(o)).forEach(o=>{const r=P.ordenes[o.id];if(NLF.mes&&mesPlan(o)!==NLF.mes)return;
+    if(esMetaVencida(o,P)){filas.push({o,r:r||{},venc:true});return}          /* vencidas: TODAS (una definición), también las que el programa no pudo fechar */
+    if(r&&!r.bloqueo&&esOrdenVaTarde(o,P))filas.push({o,r,venc:false})});
   const filtro=NLF.mes?`<div class="chips" style="margin:8px 0"><span class="chip on">Solo ${esc(fmtMesEG(NLF.mes))}${NLF.tipo==='venc'?' · vencidas':NLF.tipo==='riesgo'?' · en riesgo':''} <a style="cursor:pointer;margin-left:6px" onclick="NLF={mes:null,tipo:null};render()">✕ ver todo</a></span></div>`:'';
   if(!filas.length)return `<div id="nollegan">${filtro}<p class="mut" style="margin-top:10px">Según el programa (hacia atrás), todas las órdenes programadas${NLF.mes?' de '+esc(fmtMesEG(NLF.mes)):''} llegan a su fecha y ninguna está vencida.</p></div>`;
-  filas.sort((a,b)=>(b.r.diasTarde||0)-(a.r.diasTarde||0));const venc=filas.filter(f=>f.venc),ries=filas.filter(f=>!f.venc);
+  /* vencidas: por cuántos días lleva vencida la fecha META (vale también para las que el programa no fechó, que no tienen diasTarde y quedaban al final, fuera de las 150 que se muestran); en riesgo: por los días tarde del programa */
+  const diasVenc=f=>{const m=fechaMetaDe(f.o);return m?diasEntre(m,h):0};filas.sort((a,b)=>a.venc&&b.venc?diasVenc(b)-diasVenc(a):(b.r.diasTarde||0)-(a.r.diasTarde||0));const venc=filas.filter(f=>f.venc),ries=filas.filter(f=>!f.venc);
   const porCausa={};filas.forEach(({r})=>{const k=r.atrasoPorColeccion?'por su colección':(r.atasco?r.atasco.nombre:'—');porCausa[k]=(porCausa[k]||0)+1});
   const cols=Object.values(P.colecciones||{}).filter(c=>c.tarde);
-  const fila=(o,r,v)=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td style="font-size:var(--fs-xs)">${r.coleccion?esc(r.coleccion.key)+' <span class="mut">('+r.coleccion.n+')</span>':'<span class="mut">—</span>'}</td><td>${fmtDia(fechaMetaDe(o))}</td>${v?`<td><b>${r.fechaPosible?fmtDia(r.fechaPosible):(r.finPro?fmtDia(r.finPro):'—')}</b></td>`:`<td class="num"><span class="tag t-alerta">${r.diasTarde||0}</span></td>`}<td>${atascoTxt(r)}</td>${v?'':`<td>${r.fechaPosible?fmtDia(r.fechaPosible):'—'}</td>`}</tr>`;
+  const fila=(o,r,v)=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td style="font-size:var(--fs-xs)">${r.coleccion?esc(r.coleccion.key)+' <span class="mut">('+r.coleccion.n+')</span>':'<span class="mut">—</span>'}</td><td>${fmtDia(fechaMetaDe(o))}</td>${v?`<td><b>${r.fechaPosible?fmtDia(r.fechaPosible):(r.finPro?fmtDia(r.finPro):'<span class="mut" style="font-weight:400">sin fecha posible: '+esc(r.bloqueo||'el programa no la fechó')+'</span>')}</b></td>`:`<td class="num"><span class="tag t-alerta">${r.diasTarde||0}</span></td>`}<td>${atascoTxt(r)}</td>${v?'':`<td>${r.fechaPosible?fmtDia(r.fechaPosible):'—'}</td>`}</tr>`;
   const tabla=(xs,v)=>`<div class="scroll" style="max-height:380px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Cliente</th><th>Colección</th><th>Fecha meta</th>${v?'<th>Fecha posible (para avisar al cliente)</th>':'<th class="num">Días tarde</th>'}<th>Cuello de botella</th>${v?'':'<th>Fecha posible</th>'}</tr></thead><tbody>${xs.slice(0,150).map(({o,r})=>fila(o,r,v)).join('')}${xs.length>150?`<tr><td colspan="7" class="mut">… y ${xs.length-150} más</td></tr>`:''}</tbody></table></div>`;
   const porCausaR={};ries.forEach(({r})=>{const k=r.atrasoPorColeccion?'por su colección':(r.atasco?(typeof r.atasco==='string'?r.atasco:(r.atasco.nombre||'—')):'—');porCausaR[k]=(porCausaR[k]||0)+1});
-  return `<div id="nollegan">${filtro}${(!NLF.tipo||NLF.tipo==='venc')?`<h4 style="margin:14px 0 6px">Vencidas <span class="mut" style="font-weight:400">· ${venc.length} órdenes con entrega ya pasada y aún abiertas · la fecha posible es la que el programa puede cumplir (para avisar al cliente)</span></h4>${venc.length?tabla(venc,true):'<p class="mut">Ninguna vencida.</p>'}`:''}
+  return `<div id="nollegan">${filtro}${(!NLF.tipo||NLF.tipo==='venc')?`<h4 style="margin:14px 0 6px">Vencidas <span class="mut" style="font-weight:400">· ${venc.length} órdenes con la fecha meta ya pasada y sin terminar (no cuentan las de fase ≥ ${faseTerminadaMin()}: Configuración → Calendario y parámetros) · la fecha posible es la que el programa puede cumplir (para avisar al cliente); las que no pudo fechar dicen por qué</span></h4>${venc.length?tabla(venc,true):'<p class="mut">Ninguna vencida.</p>'}`:''}
   ${(!NLF.tipo||NLF.tipo==='riesgo')?`<h4 style="margin:14px 0 6px">En riesgo <span class="mut" style="font-weight:400">· ${ries.length} órdenes con entrega de hoy en adelante que, según el programa (hacia atrás), no llegan${cols.length?' · '+cols.length+' colecciones completas van tarde':''} · calculado por el motor, no es una decisión de nadie</span></h4>${ries.length?`<p style="font-size:var(--fs-xs);margin:0 0 6px"><b>Dónde están los cuellos de botella:</b> ${Object.entries(porCausaR).sort((a,b)=>b[1]-a[1]).map(([k,n])=>esc(k)+' ('+n+')').join(' · ')}</p>`+tabla(ries,false):'<p class="mut">Ninguna en riesgo.</p>'}`:''}</div>`}
 /* antes y después: se calcula solo cuando se pide (corre los dos motores completos) */
 function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="body" style="display:flex;align-items:center;gap:12px"><b>Motor de programación: antes y después</b><span class="mut">carga por centro y mes, órdenes a fecha, cambios de mes y las 10 que más se mueven, con el motor de siempre (adelante) y el nuevo (hacia atrás)</span><span class="spacer"></span><button class="btn sm" onclick="CAPD.cmp=true;render()">Comparar</button></div></div>`;
@@ -1328,7 +1339,7 @@ function bandejaProfundidadHTML(P){const sin=coloresSinProfundidad(P);if(!sin.le
 function tarjetaHoy(key,titulo,resumen,cuerpo,cls){let ab=false;try{ab=localStorage['__hoy_'+key]==='1'}catch(e){}
   return `<details class="tarj ${cls||''}" ${ab?'open':''} ontoggle="try{localStorage['__hoy_${key}']=this.open?'1':'0'}catch(e){}"><summary><b>${esc(titulo)}</b><span class="mut">${resumen}</span><span class="car">▾</span></summary><div class="tarj-body">${cuerpo}</div></details>`}
 function tarjetasHoyHTML(){if(!S.ordenes.length)return '';const items=pendientesHoy();const act=items.filter(i=>i.n>0&&!i.pospuesto);const tot=act.reduce((a,i)=>a+i.n,0);
-  const av=(S.params.advertencias||[]).filter(a=>!a.atendida);const P=programar();let noLl=0;let vencN=0;if(P.motor==='atras')S.ordenes.forEach(o=>{const r=P.ordenes[o.id];if(abierta(o)&&r&&!r.bloqueo&&r.atraso){if(o.fecha&&o.fecha<hoy())vencN++;else noLl++}});
+  const av=(S.params.advertencias||[]).filter(a=>!a.atendida);const P=programar();let noLl=0;let vencN=0;if(P.motor==='atras')S.ordenes.forEach(o=>{const r=P.ordenes[o.id];if(abierta(o)){if(esMetaVencida(o,P))vencN++;else if(r&&!r.bloqueo&&esOrdenVaTarde(o,P))noLl++}});
   const ps=puede('programa')?revisarProblemasCap():[];const cap=ps.filter(p=>!p.cerrado);
   return `<div class="tarjetas">${tarjetaHoy('pend','Pendientes',act.length+' tipos · '+num(tot)+' casos',pendientesHoyHTML(),act.length?'warn':'')}
    ${puede('programa')?tarjetaHoy('adv','Advertencias de fecha',gruposAdvertencias(av).length+' movimientos · '+av.length+' órdenes'+(vencN?' · '+vencN+' vencidas':'')+(noLl?' · '+noLl+' en riesgo según el programa':''),panelAdvertencias(),av.length||noLl?'warn':''):''}
@@ -2236,6 +2247,11 @@ function setDiasVentanaTablet(v){if(!(puede('config')||puede('programa'))){alert
 /* Cola del centro: una orden cuya fase está en la lista pero cuya llegada programada supera N días hábiles
    baja a «Todo lo que viene» con la etiqueta «llega en X días» (decisión 17-sep). Parámetro editable; 0 = solo lo que llega hoy. */
 function diasPorLlegar(){return prm('diasPorLlegar',15)}
+function setFaseTerminada(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');render();return}
+  if(String(v==null?'':v).trim()===''){alert('Escribe el número de fase (1 a 9). Vacío no es 0: con 0 TODAS las órdenes contarían como terminadas.');render();return}
+  const n=Math.round(+String(v).replace(',','.'));if(!(n>=1&&n<=9)){alert('Tiene que ser un número de fase de Odoo, de 1 a 9.');render();return}
+  const antes=faseTerminadaMin();S.params.faseTerminada=n;
+  bitacora('Orden terminada desde la fase: '+antes+' → '+n+' (mueve «Vencidas», «Terminadas» del Plan y del Resumen gerencial; las fechas de terminación ya registradas —Cumplimiento— no se recalculan; '+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
 function setDiasPorLlegar(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
   const n=Math.round(+String(v).replace(',','.'));if(!(n>=0)){alert('El corte tiene que ser 0 o más días hábiles.');return}
   const antes=diasPorLlegar();S.params.diasPorLlegar=n;
@@ -2537,7 +2553,7 @@ function quitarTramoParalelo(i){if(!puede('config')){alert('Tu perfil no cambia 
 function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   return '<div class="panel"><h3>Tramos paralelos <span class="note">centros que no se esperan entre sí en la cola</span><span class="spacer"></span>'+
    (puede('config')?'<button class="btn ghost sm" onclick="addTramoParalelo()">+ Tramo</button>':'')+'</h3><div class="body">'+
-   '<p class="lede" style="margin-top:0">La ruta dice <b>por dónde pasa</b> la prenda, no en qué orden exacto. Dentro de un tramo paralelo, terminar uno no es requisito para empezar otro: basta con que esté hecho el paso <b>anterior al tramo</b> (corte). Esto es para la <b>cola de los centros</b>; el programa de fechas sigue calculándose en orden.</p>'+
+   '<p class="lede" style="margin-top:0">La ruta dice <b>por dónde pasa</b> la prenda, no en qué orden exacto. Dentro de un tramo paralelo, terminar uno no es requisito para empezar otro: basta con que esté hecho el paso <b>anterior al tramo</b> (corte). Esto es para la <b>cola de los centros</b>; el programa de fechas sigue calculándose en orden. Y <b>dentro de un tramo</b> una orden de trabajo de Odoo sin terminar deja ese paso pendiente aunque la fase ya lo haya pasado (se puede confeccionar primero y estampar después); fuera del tramo, la fase prueba lo que ya pasó.</p>'+
    ts.map((t,i)=>'<div style="margin-bottom:10px;padding:8px;border:1px solid var(--rule);border-radius:6px">'+
      '<div class="row" style="align-items:center"><input type="text" style="min-width:260px" value="'+esc(t.n||'')+'" onchange="setTramoParaleloN('+i+',this.value)">'+
      (t.sugerido?' <span class="tag t-aviso">sugerido: confírmalo o cámbialo</span>':'')+'<span class="spacer"></span>'+
@@ -3286,8 +3302,8 @@ function hoyBandejasHTML(P,ords,h){
   const sinFecha=ords.filter(o=>!o.fecha);
   const porLib=ords.filter(o=>!liberada(o,'tela')&&faseNum(o.fase)<2);
   const en7=ords.filter(o=>o.fecha&&o.fecha>=h&&o.fecha<=dsum(h,7));
-  const riesgo=ords.filter(o=>o.fecha&&o.fecha>=h&&(P.ordenes[o.id]||{}).atraso);
-  const venc=ords.filter(o=>o.fecha&&o.fecha<h&&faseNum(o.fase)<8);
+  const riesgo=ords.filter(o=>esOrdenVaTarde(o,P));   /* la misma definición en todo el sistema (diagAtraso) */
+  const venc=ords.filter(o=>esMetaVencida(o,P));
   const porTerminar=ords.filter(o=>{const r=P.ordenes[o.id]||{};return r.finPro&&r.finPro>=h&&r.finPro<=dsum(h,7)});
   const porLlegar=ords.filter(o=>(o.telas||[]).some(t=>t.ext==='ext')&&faseNum(o.fase)<=1);
   const aCorte=ords.filter(o=>!liberadaCorte(o)&&((P.ordenes[o.id]||{}).pasos||[]).some(p=>p.centro==='corte'&&!p.hecho&&p.ini&&p.ini<=dsum(h,3)));
@@ -3305,7 +3321,7 @@ function hoyBandejasHTML(P,ords,h){
 function hoyDecisionHTML(P,ords,h){
   const pend=(P.banosPend||[]);
   const caps=puede('programa')?revisarProblemasCap().filter(p=>!p.cerrado):[];
-  let noLl=[];if(P.motor==='atras')noLl=ords.filter(o=>{const r=P.ordenes[o.id];return r&&!r.bloqueo&&r.atraso&&o.fecha>=h});
+  let noLl=[];if(P.motor==='atras')noLl=ords.filter(o=>{const r=P.ordenes[o.id];return r&&!r.bloqueo&&esOrdenVaTarde(o,P)});
   let falt=[];try{falt=faltantesTin(P)||[]}catch(e){}
   const cards=[];
   if(pend.length)cards.push({id:'hd-ban',v:pend.length,k:'Baños por armar y confirmar <a style="cursor:pointer" onclick="event.stopPropagation();ir(\'tintoreria\')">ir a Tintorería →</a>',cls:'warn'});
@@ -3322,7 +3338,7 @@ function vPanorama(el){
   const proxTej=P.tej.filter(x=>x.dia>h).map(x=>x.dia).sort()[0],proxBan=P.banos.filter(b=>!b.error&&b.dia>h).map(b=>b.dia).sort()[0];
   const kgHoy=dTej.reduce((a,x)=>a+x.kg,0),pzHoy=dPro.reduce((a,x)=>a+(x.pz||0),0);
   const aprob=(P.banosPend||[]).filter(b=>b.est==='aprob'),bajos=(P.banosPend||[]).filter(b=>b.est==='bajo');
-  const en7=ords.filter(o=>o.fecha>=h&&o.fecha<=dsum(h,7)),en7r=en7.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso),venc=ords.filter(o=>o.fecha<h&&faseNum(o.fase)<8);
+  const en7=ords.filter(o=>o.fecha>=h&&o.fecha<=dsum(h,7)),en7r=en7.filter(o=>esOrdenVaTarde(o,P)),venc=ords.filter(o=>esMetaVencida(o,P));
   const extPend=ords.filter(o=>faseNum(o.fase)<=0&&o.fecha<=dsum(h,21)&&(o.telas||[]).some(t=>t.ext==='ext'));
   const sinTela=ords.filter(o=>!(o.telas||[]).length),sinRuta=ords.filter(o=>!(o.ruta||[]).length);
   const ultima=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1)[0];
@@ -3429,7 +3445,7 @@ function vGerencia(el){
   const top=ords.filter(riesgo).sort((a,b)=>b.cant-a.cant).slice(0,8);
   // pedido y avance: terminadas (fase 8 o empaque completo), en proceso, sin empezar; % ponderado por etapa
   const pesoFase=o=>{const n=faseNum(o.fase);const ac=(S.avance[o.id]||{}).centros||{};const last=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').slice(-1)[0];
-    if(n>=8||(last&&ac[last.centro]>=o.cant))return 1;if(n>=7)return .85;if(n>=5)return .65;if(n>=4)return .5;if(n>=2)return .3;if(n>=1)return .15;return 0};
+    if(faseTerminadaDe(o)||(last&&ac[last.centro]>=o.cant))return 1;if(n>=7)return .85;if(n>=5)return .65;if(n>=4)return .5;if(n>=2)return .3;if(n>=1)return .15;return 0};
   const estadoO=o=>{const w=pesoFase(o);return w>=1?'term':w>0?'proc':'sin'};
   const agAv=(key)=>{const r={};ords.forEach(o=>{const k=key(o);if(!r[k])r[k]={pz:0,term:0,proc:0,sin:0,av:0};const e=estadoO(o);r[k].pz+=+o.cant;r[k][e]+=+o.cant;r[k].av+=o.cant*pesoFase(o)});return r};
   const avMes=agAv(o=>mesPlan(o)||'Sin proyecto'),avCli=agAv(o=>o.cliente||'—');
@@ -3439,7 +3455,7 @@ function vGerencia(el){
   const avisos=[];
   avisos.push('Este resumen mira toda la cartera sin considerar liberaciones: el riesgo y las fechas se calculan como si todo estuviera liberado.');
   if(ords.some(o=>!esWH(o)))avisos.push('Sin WH: estilos en diseño o recetas que aún no tienen orden de producción; cuentan en la carga y en el avance como sin empezar; no tienen receta, así que no entran al riesgo.');
-  avisos.push('Vencida: la fecha de entrega ya pasó. La orden va tarde: la meta está por venir pero, con la capacidad cargada, el programa la termina después. Meta vencida: la meta ya pasó y la orden sigue sin llegar. Son los mismos dos nombres que usan las marcas de las pantallas de centro, con la misma definición. Avance: fase 8 o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
+  avisos.push('Vencida: la fecha de entrega ya pasó. La orden va tarde: la meta está por venir pero, con la capacidad cargada, el programa la termina después. Meta vencida: la meta ya pasó y la orden no está terminada (fase 8 = terminada; no depende del programa, así que cuenta también las que el programa no pudo fechar). En la cola de cada centro la marca «meta vencida» es por el PASO de ese centro: también sale en una orden de fase 8 que todavía tiene ese paso pendiente. Avance: fase 8 o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
   if(S.ordenes.some(o=>o.samProv))avisos.push('Los tiempos de corte, confección y empaque son provisionales por familia; la fecha estimada de planta mejora cuando se carguen las hojas de operaciones.');
   if(S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro').every(r=>r.pers===12||r.pers===10||r.pers===8||r.pers===6||r.pers===4||r.pers===3||r.pers===2||r.pers===20))avisos.push('Las capacidades de los recursos de producción son valores de arranque, no los reales de cada módulo.');
   const sinCod=S.colores.filter(c=>!c.cod).length;if(sinCod)avisos.push(sinCod+' colores sin código Pantone (profundidad de baño supuesta como media).');
@@ -3554,8 +3570,8 @@ function calcularPlan(ym){
   // demanda del mes
   const dem={ords:enMes.length,pz:enMes.reduce((a,o)=>a+ +o.cant,0),hconf:enMes.reduce((a,o)=>a+o.cant*minConf(o),0)/60,
     usd:enMes.reduce((a,o)=>a+(precioDe(o)||0)*o.cant,0),sinPrecio:enMes.filter(o=>!precioDe(o)).reduce((a,o)=>a+ +o.cant,0),
-    vencidas:enMes.filter(o=>{const f=fechaMetaDe(o);return f&&f<h}).length,riesgo:enMes.filter(o=>{const f=fechaMetaDe(o);return !(f&&f<h)&&P.ordenes[o.id]&&P.ordenes[o.id].atraso}).length, // contra la fecha meta (compromiso si existe, si no la de Odoo): la misma que usa el motor
-terminadas:enMes.filter(o=>faseNum(o.fase)>=8).reduce((a,o)=>a+ +o.cant,0)};
+    vencidas:enMes.filter(o=>esMetaVencida(o,P)).length,riesgo:enMes.filter(o=>esOrdenVaTarde(o,P)).length, // contra la fecha meta (compromiso si existe, si no la de Odoo): la misma que usa el motor
+terminadas:enMes.filter(faseTerminadaDe).reduce((a,o)=>a+ +o.cant,0)};
   // capacidad y carga programada en el mes por área y por módulo
   const [y,m]=ym.split('-').map(Number);const nd=new Date(y,m,0).getDate();const dias=[];for(let d=1;d<=nd;d++)dias.push(ym+'-'+String(d).padStart(2,'0'));
   const areas=['tej','tin','pro'].map(a=>{const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area===a);
@@ -3572,7 +3588,7 @@ terminadas:enMes.filter(o=>faseNum(o.fase)>=8).reduce((a,o)=>a+ +o.cant,0)};
     const ent=enMes.filter(o=>o.fecha>=w.ini&&o.fecha<=w.finEnt);const cli={};ent.forEach(o=>{const c=cli[o.cliente||'—']=cli[o.cliente||'—']||{pz:0,usd:0,ords:0};c.pz+=+o.cant;c.usd+=(precioDe(o)||0)*o.cant;c.ords++});
     // real: prendas registradas en turnos por módulo esa semana; entregas reales = órdenes con fase 8 (terminadas)
     const real={};(S.turnos||[]).filter(t=>w.dias.includes(t.d)).forEach(t=>{real[t.rec]=(real[t.rec]||0)+(t.pz||0)});
-    const entReal=ent.filter(o=>faseNum(o.fase)>=8);
+    const entReal=ent.filter(faseTerminadaDe);
     return{w,prod,cli,pz:ent.reduce((a,o)=>a+ +o.cant,0),usd:ent.reduce((a,o)=>a+(precioDe(o)||0)*o.cant,0),ords:ent.length,real,realPz:entReal.reduce((a,o)=>a+ +o.cant,0),realUsd:entReal.reduce((a,o)=>a+(precioDe(o)||0)*o.cant,0)}});
   const centros=S.centros.filter(c=>c.area==='pro').map(c=>{const recs=S.recursos.filter(r=>r.activa&&r.centro===c.id);
     const cap=recs.reduce((x,r)=>x+dias.filter(d=>labR(d,r)).reduce((y2,d)=>y2+capDia(r,d),0),0);
@@ -3651,7 +3667,7 @@ function vPlan(el){
    ${guia.length?`<div class="panel"><h3>Guía</h3><div class="body"><ul style="margin:0;padding-left:18px;line-height:1.7">${guia.map(g=>'<li>'+esc(g)+'</li>').join('')}</ul></div></div>`:''}
    </div></details>`;
   const bloque2=planBloqueDiv('2','Resumen del mes','órdenes, prendas, confección y facturación esperada')
-   +`${tarjetasResumenHTML([{id:'b2-ords',v:c.dem.ords,k:'Órdenes del proyecto del mes',items:S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym)},{id:'b2-pz',v:num(c.dem.pz),k:'Prendas · '+num(c.dem.terminadas)+' ya terminadas'},{id:'b2-h',v:num(c.dem.hconf)+' h',k:'Horas de confección'},{id:'b2-usd',v:usd(c.dem.usd),k:'Facturación esperada'+(c.dem.sinPrecio?' · <span class="tag t-aviso">'+num(c.dem.sinPrecio)+' pz sin precio</span>':'')},{id:'b2-venc',v:c.dem.vencidas,k:'Vencidas (fecha meta pasada) → ver fecha posible',cls:c.dem.vencidas?'bad':'',onclick:"irNoLlegan('"+ym+"','venc')",title:'fecha meta anterior a hoy y aún abiertas · la fecha meta es el compromiso si existe, si no la de Odoo (la misma que usa el motor) · abre Hoy → Advertencias de fecha filtrado por este mes'},{id:'b2-riesgo',v:c.dem.riesgo,k:'En riesgo según el programa → ver dónde está el cuello de botella',cls:c.dem.riesgo?'bad':'',onclick:"irNoLlegan('"+ym+"','riesgo')",title:'entrega de hoy en adelante que el motor dice que no llega · abre Hoy → Advertencias de fecha filtrado por este mes'}])}
+   +`${tarjetasResumenHTML([{id:'b2-ords',v:c.dem.ords,k:'Órdenes del proyecto del mes',items:S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym)},{id:'b2-pz',v:num(c.dem.pz),k:'Prendas · '+num(c.dem.terminadas)+' ya terminadas'},{id:'b2-h',v:num(c.dem.hconf)+' h',k:'Horas de confección'},{id:'b2-usd',v:usd(c.dem.usd),k:'Facturación esperada'+(c.dem.sinPrecio?' · <span class="tag t-aviso">'+num(c.dem.sinPrecio)+' pz sin precio</span>':'')},{id:'b2-venc',v:c.dem.vencidas,k:'Vencidas (fecha meta pasada) → ver fecha posible',cls:c.dem.vencidas?'bad':'',onclick:"irNoLlegan('"+ym+"','venc')",title:'fecha meta anterior a hoy y la orden no terminada (fase < '+faseTerminadaMin()+', Configuración → Calendario y parámetros; no depende del programa) · la fecha meta es el compromiso si existe, si no la de Odoo (la misma que usa el motor) · abre Hoy → Advertencias de fecha filtrado por este mes'},{id:'b2-riesgo',v:c.dem.riesgo,k:'En riesgo según el programa → ver dónde está el cuello de botella',cls:c.dem.riesgo?'bad':'',onclick:"irNoLlegan('"+ym+"','riesgo')",title:'entrega de hoy en adelante que el motor dice que no llega · abre Hoy → Advertencias de fecha filtrado por este mes'}])}
    ${extrasResumenHTML(ym)}
    <div class="panel"><h3>Horizonte rodante <span class="note">los próximos meses con la misma lógica</span></h3><div class="body"><table><thead><tr><th>Mes</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">H. confección</th><th class="num">Cap. confección</th><th style="width:120px">Uso</th><th class="num">Facturación</th><th class="num">En riesgo</th></tr></thead><tbody>
     ${[0,1,2,3].map(i=>{const d=new Date(ym+'-15T12:00:00');d.setMonth(d.getMonth()+i);const m=d.toISOString().slice(0,7);const x=i===0?c:calcularPlan(m);const capConf=S.recursos.filter(r=>r.centro==='modulos'&&r.activa).length?(()=>{const [yy,mm]=m.split('-').map(Number);const nd2=new Date(yy,mm,0).getDate();let t=0;for(let dd=1;dd<=nd2;dd++){const ds=m+'-'+String(dd).padStart(2,'0');S.recursos.filter(r=>r.centro==='modulos'&&r.activa).forEach(r=>{if(labR(ds,r))t+=capDia(r,ds)})}return t/60})():0;
@@ -3726,7 +3742,7 @@ function semanaISO(d){const x=new Date(d+'T12:00:00');const t=new Date(x);t.setD
 function lunesDe(d){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return x.toISOString().slice(0,10)}
 function congelarSemana(desde){const P=programar();const ini=lunesDe(desde||hoy()),fin=dsum(ini,6);const id='sem_'+semanaISO(ini);
   if(S.programas.some(p=>p.id===id)&&!confirm('La semana '+semanaISO(ini)+' ya está congelada. ¿Reemplazarla?'))return;
-  const pred={};S.ordenes.forEach(o=>{const r=P.ordenes[o.id];if(r&&r.finPro&&faseNum(o.fase)<8)pred[o.id]={op:o.op,fin:r.finPro,entrega:o.fecha}});
+  const pred={};S.ordenes.forEach(o=>{const r=P.ordenes[o.id];if(r&&r.finPro&&!faseTerminadaDe(o))pred[o.id]={op:o.op,fin:r.finPro,entrega:o.fecha}});
   const snap={id,tipo:'semana',semana:semanaISO(ini),desde:ini,hasta:fin,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',
     tej:P.tej.filter(x=>x.dia>=ini&&x.dia<=fin).map(x=>({rec:x.rec,dia:x.dia,tela:x.tela,kg:+x.kg.toFixed(1),h:+(x.h||0).toFixed(2),op:x.op})),
     banos:P.banos.filter(b=>!b.error&&b.dia>=ini&&b.dia<=fin).map(b=>({rec:b.rec,dia:b.dia,color:b.colorN,kg:+b.kg.toFixed(1),h:b.horas,est:b.est,oids:b.oids})),
@@ -5124,7 +5140,10 @@ function filtroMesesGERHTML(ords,P){
    ${avisoHechasHTML()}
   </div></div>`}
 /* prendas hechas de una orden: el último paso de producción de su ruta */
-function pzHechasOrden(o){const ru=pasosProDe(o);if(!ru.length)return 0;
+/* la ruta sobre la que se miden las hechas: la COMPLETA (completa ∪ pendiente) en orden de proceso. La pendiente se vacía
+   cuando la orden termina, y medir sobre ella daba 0 hechas justo en las terminadas. pasosProCompleta NO ordena. */
+function rutaHechasDe(o){return pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b))}
+function pzHechasOrden(o){const ru=rutaHechasDe(o);if(!ru.length)return 0;
   const ac=((S.avance[o.id]||{}).centros)||{};const ult=ru[ru.length-1];
   if(pasoHecho(o,ult))return +o.cant||0;
   return +ac[ult]||0}
@@ -5245,10 +5264,10 @@ function avanceCongeladoHTML(cens,P,lun,dom){const lista=(Array.isArray(cens)?ce
 /* ---------- Vencidas y en riesgo: UNA sola definición, la de las marcas que ya existen ----------
    «meta vencida» y «la orden va tarde» salen de diagAtraso(), el mismo que pinta marcaCentro().
    No hay un segundo cálculo: si cambia la regla del motor, cambian las dos a la vez. */
-function esMetaVencida(o,P){const d=diagAtraso(o,P);return !!(d.orden&&d.vencida)}
-function esOrdenVaTarde(o,P){const d=diagAtraso(o,P);return !!(d.orden&&!d.vencida)}
+function esMetaVencida(o,P){return !!diagAtraso(o,P).metaVencida}   /* meta pasada y la orden no terminada (fase < faseTerminada); sin el motor */
+function esOrdenVaTarde(o,P){const d=diagAtraso(o,P);return !!(d.orden&&!d.vencida&&!d.terminada)}   /* el programa dice que no llega */
 const GER_ESTADOS=[['curso','En curso'],['vencida','Meta vencida'],['tarde','La orden va tarde'],['term','Terminadas']];
-function estadoGERDe(o,P){if(pzHechasOrden(o)>=(+o.cant||0)&&(+o.cant||0)>0)return 'term';
+function estadoGERDe(o,P){if(faseTerminadaDe(o)||(pzHechasOrden(o)>=(+o.cant||0)&&(+o.cant||0)>0))return 'term';   /* fase ≥ faseTerminada = terminada (usuaria, 23-sep) */
   if(esMetaVencida(o,P))return 'vencida';
   if(esOrdenVaTarde(o,P))return 'tarde';
   return 'curso'}
@@ -5365,6 +5384,7 @@ function fotoCarteraMes(ym,P){const ords=S.ordenes.filter(o=>(abierta(o)||o.esta
   const t=porClave(()=>'t')['t']||{n:0,pz:0,hechas:0,usd:0,venc:0,tarde:0};
   const br=(typeof brechaHechas==='function')?brechaHechas():null;
   return {ym,ts:new Date().toISOString(),u:quienFirma(),
+    reglas:{hechas:'rutaCompleta',vencida:'meta y fase<'+faseTerminadaMin()+', sin el motor',desde:'2026-09-23'},   // con qué reglas se midió esta foto
     brechaRutas:br?{ordenes:br.n,de:br.de,pct:br.pct,pz:br.pz}:null,   // «hechas» medido con rutas que no terminan en Empaque
     ordenes:t.n,pz:t.pz,hechas:t.hechas,usd:t.usd,vencidas:t.venc,tarde:t.tarde,
     porCliente:porClave(o=>o.cliente||'Sin cliente'),
@@ -5408,7 +5428,7 @@ function cierresMesHTML(){const C=cierresMes();const yms=Object.keys(C).sort().r
    ${yms.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Mes</th><th class="num">Órdenes</th><th class="num">Pedidas</th><th class="num">Hechas</th><th class="num">Valor</th><th class="num">Vencidas</th><th class="num">Va tarde</th><th>Estado</th></tr></thead><tbody>
     ${yms.slice(0,24).map(ym=>{const f=C[ym];return `<tr><td><b>${esc(fmtMesGER(ym))}</b></td><td class="num">${num(f.ordenes)}</td><td class="num">${num(f.pz)}</td><td class="num">${num(f.hechas)}</td><td class="num">$ ${num(f.usd)}</td><td class="num">${f.vencidas}</td><td class="num">${f.tarde}</td>
      <td>${f.cerrado?'<span class="tag t-ok" title="el mes ya pasó: esta foto no cambia">cerrado</span>':'<span class="tag t-medio" title="se actualiza una vez al día">en curso</span>'} <span class="mut" style="font-size:var(--fs-xs)">${new Date(f.ts).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})}</span>
-      ${f.brechaRutas&&f.brechaRutas.ordenes?'<br><span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+f.brechaRutas.ordenes+' de '+f.brechaRutas.de+' órdenes con ruta no terminaban en Empaque cuando se tomó esta foto: las hechas están medidas en un paso que no es el final">tomada con la brecha de rutas</span>':''}
+      ${!f.reglas?'<br><span class="tag t-medio" style="font-size:10px;padding:0 4px" title="foto tomada antes del 23-sep-2026: «hechas» se medía sobre la ruta pendiente (las terminadas daban 0) y «vencida» dependía del motor. No se vuelve a tomar: un mes cerrado no se toca.">reglas anteriores</span>':''}${f.brechaRutas&&f.brechaRutas.ordenes?'<br><span class="tag t-alerta" style="font-size:10px;padding:0 4px" title="'+f.brechaRutas.ordenes+' de '+f.brechaRutas.de+' órdenes con ruta no terminaban en Empaque cuando se tomó esta foto: las hechas están medidas en un paso que no es el final">tomada con la brecha de rutas</span>':''}
       ${f.recalculada?'<br><span class="tag t-ok" style="font-size:10px;padding:0 4px" title="'+esc(f.recalculada.motivo||'')+'">vuelta a tomar</span>':''}</td></tr>`}).join('')}
    </tbody></table>`:'<div class="empty">Todavía no hay fotos guardadas. Se toma la primera al abrir esta pantalla con órdenes cargadas.</div>'}
   </div></div>`}
@@ -5622,8 +5642,10 @@ function completarRutasSinEmpaque(){
   PLAN=null;PLAN_ALL=null;save();render();
   alert(n+' rutas corregidas. La foto del mes en curso se volvió a tomar; las de meses cerrados no se tocan.')}
 /* ¿el número de «hechas» está afectado por esta brecha? */
-function brechaHechas(){const d=diagRutasSinEmpaque();
-  return d.mal?{n:d.mal,pz:d.pz,de:d.conRuta,pct:d.conRuta?Math.round(d.mal/d.conRuta*100):0}:null}
+function brechaHechas(){   /* la MISMA ruta con la que se cuentan las hechas (rutaHechasDe): incluye las de ruta pendiente vacía */
+  const conRuta=S.ordenes.filter(o=>abierta(o)&&rutaHechasDe(o).length);
+  const mal=conRuta.filter(o=>{const r=rutaHechasDe(o);return r[r.length-1]!=='empaque'});
+  return mal.length?{n:mal.length,pz:mal.reduce((a,o)=>a+(+o.cant||0),0),de:conRuta.length,pct:conRuta.length?Math.round(mal.length/conRuta.length*100):0}:null}
 function avisoHechasHTML(){const b=brechaHechas();if(!b)return '';
   return `<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--alerta);background:var(--field)">
    <span class="tag t-alerta">ojo</span> <b>«Hechas» está afectado por una brecha de rutas.</b>
@@ -5696,7 +5718,7 @@ function tarjetasDiaCENHTML(cens,P,dias,recs){
 /* El cálculo NO cambia: sigue saliendo de diagAtraso(). Solo cambia qué se pinta. */
 const MARCAS_CEN=[
   {k:'vencida',n:'meta vencida',cls:'t-alerta',color:'rojo',test:d=>d.orden&&d.vencida,
-   txt:(d,c)=>'La fecha meta de la orden ('+fmtDia(d.meta)+') YA PASÓ: la orden llega tarde desde antes de entrar a este centro.'},
+   txt:(d,c)=>'La fecha meta de la orden ('+fmtDia(d.meta)+') YA PASÓ: la orden llega tarde desde antes de entrar a este centro.'+(d.terminada?' Aunque la orden cuente como terminada (fase ≥ '+faseTerminadaMin()+'), este paso sigue pendiente aquí.':'')},
   {k:'tarde',n:'va tarde',cls:'t-aviso',color:'ambar',test:d=>d.orden&&!d.vencida,
    txt:(d,c)=>'La ORDEN no llega a su fecha meta: meta '+fmtDia(d.meta)+', el programa la termina el '+fmtDia(d.finPro)+(d.dias?' ('+d.dias+' días tarde)':'')+'.'},
   {k:'paso',n:'paso tarde',cls:'t-aviso',color:'ambar',test:d=>d.pasoTarde,
@@ -7756,7 +7778,7 @@ function terminarOrdenCentro(tid,oid,c){if(tid&&oid){const t=tramosDe(oid).find(
   mCerrarCentro(oid,c)}
 function reabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
   if(!(puede('programa')||puede('reprogramar'))){alert('Solo el supervisor reabre un cierre.');return}
-  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.</p>
+  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.${faseEstado(o.fase,o).hechos.includes(c)?' <b>Ojo:</b> la fase de la orden ('+esc(o.fase||'')+') ya pasó este centro y la fase prueba lo que ya pasó: para que vuelva a la cola hay que devolver también la fase (con motivo).':''}</p>
    <label>Motivo (tabla 15, uso «cierre con faltante»)</label>${selMotivoHTML('rc-m','cierre')}</div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarReabrirCierre('${oid}','${c}')">Reabrir el paso</button></div>`)}
 function confirmarReabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
@@ -7910,9 +7932,15 @@ function dondeEstaCentro(o,P,c){let d={k:null,n:'—'};try{d=dondeEsta(o,P)}catc
     if(iA>=0&&iC>=0&&iC-iA===1)cls='t-ok';else if(iA>=0&&iC>=0&&iC-iA===2)cls='t-medio'}
   return '<span class="tag '+cls+'" title="dónde está la orden ahora">'+esc(n)+'</span>'}
 /* por qué una orden aparece tarde en un centro: la meta ya pasó, la ORDEN no llega, o ESTE paso se pasa de su límite */
+/* «terminada» a nivel de ORDEN: su fase de Odoo llegó al número configurado (decisión de la usuaria, 23-sep: «todo lo
+   terminado está en fase 8; es la fase del final»). Parámetro faseTerminada en Configuración → Calendario y parámetros. */
+function faseTerminadaMin(){return prm('faseTerminada',8)}
+function faseTerminadaDe(o){return faseNum((o||{}).fase)>=faseTerminadaMin()}
 function diagAtraso(o,P,c){const ro=(P&&P.ordenes&&P.ordenes[o.id])||{};const meta=fechaMetaDe(o);const h=hoy();
   const paso=c?(((ro.pasos)||[]).find(x=>x.centro===c)||null):null;
-  return {ro,meta,vencida:!!(meta&&meta<h),orden:!!ro.atraso,finPro:ro.finPro||null,dias:ro.diasTarde||0,
+  const terminada=faseTerminadaDe(o);const vencida=!!(meta&&meta<h);
+  /* metaVencida NO depende del motor: una orden que el programa no pudo colocar (bloqueada, sin liberar) no tiene atraso calculado */
+  return {ro,meta,terminada,vencida,metaVencida:vencida&&!terminada,orden:!!ro.atraso,finPro:ro.finPro||null,dias:ro.diasTarde||0,
     paso,pasoTarde:!!(paso&&paso.fin&&paso.limite&&paso.fin>paso.limite),sinMeta:!meta}}
 function marcaCentro(o,P,c){const t=[];   /* todas las marcas que aplican (Costura); mismos nombres y colores que la cola: MARCAS_CEN */
   if((o.prio||3)<=2)t.push('<span class="tag t-aviso" title="prioridad puesta en la orden">prioridad</span>');
@@ -10057,7 +10085,7 @@ function banoReproceso(ids,quitar){if(!quitar){mReproceso(ids,false);return}
    Solo las entradas con origen "app" tienen fecha exacta; las de "archivo" dicen "vino así en la carga del …" (entre dos cargas no se sabe el día). */
 function registrarFase(o,f,origen){const nueva=f||null;if(normFase(nueva||'')===normFase(o.fase||''))return false;
   o.fases=o.fases||[];o.fases.push({f:nueva,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',origen:origen||'app',antes:o.fase||null});if(o.fases.length>60)o.fases=o.fases.slice(-60);
-  if(nueva&&faseNum(nueva)>=8&&faseNum(o.fase)<8&&!o.terminadaF)o.terminadaF=hoy();o.fase=nueva;return true}
+  if(nueva&&faseNum(nueva)>=faseTerminadaMin()&&faseNum(o.fase)<faseTerminadaMin()&&!o.terminadaF)o.terminadaF=hoy();o.fase=nueva;return true}
 function esFacturada(o){const fila=filaFaseDe(o.fase);if(fila)return fila.sistema==='cerrada';return (o.estado||'')==='cerrada'||(o.estado||'')==='standby'}
 /* fecha en que la orden llegó a Facturado/Stand by: exacta solo si el cambio se hizo en la app */
 function fechaFacturada(o){if(!esFacturada(o))return null;const h=(o.fases||[]).slice().reverse().find(x=>x.f&&(filaFaseDe(x.f)||{}).sistema==='cerrada');if(!h)return{exacta:false,ts:null};return{exacta:h.origen==='app',ts:h.ts.slice(0,10),origen:h.origen,u:h.u}}
@@ -10798,6 +10826,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 <div><label>Excedentes: palabra en la ODC</label><input type="text" value="${esc(String(prmTxt('palabrasExcedente','EXCEDENTE')))}" placeholder="EXCEDENTE, SOBRANTE" onchange="setPalabrasExcedente(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden cuya ODC (o proyecto) contiene alguna de estas palabras es un <b>excedente</b>: prenda ya hecha en bodega; al cargarla nace con la ruta de solo el paso final. Varias palabras separadas por coma; vacío = ninguna.</div></div>
 <div><label>Excedentes: centro del paso final</label><select onchange="setCentroExcedente(this.value)"><option value="">— ninguno —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${prmTxt('centroExcedente','empaque')===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)">etiquetar con la pistola (precios) o poner RFID es un proceso final, no estampado: hoy Empaque; el tiempo es el de empaque de la categoría.</div></div>
 <div><label>Días de holgura para la entrega</label><input type="number" min="0" step="1" value="${esc(String(colchonDias()))}" onchange="setColchon(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden que termina a esta distancia o menos de su fecha meta cuenta como «justa» (en riesgo) en la nivelación, el plan mensual y el detalle de cada orden${S.params.colchonEstimado?' · <span class="tag t-aviso">valor sembrado (3), sin confirmar</span>':''}</div></div>
+<div><label>Orden terminada desde la fase</label><input type="number" min="0" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
 <div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>
 <div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
@@ -11198,7 +11227,7 @@ function resumenOTHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}</t
    ${li(Object.keys(p.centrosNoMapeados).length,'centros de trabajo de Odoo que NO están en la tabla 6 (no se asignan por parecido): '+esc(Object.entries(p.centrosNoMapeados).map(([k,v])=>k+' ('+v+')').join(', ')))}
    ${li(Object.keys(p.centrosSinCentro).length,'centros de trabajo en la tabla 6 sin centro TEMPO asignado (p. ej. Pulido): '+esc(Object.entries(p.centrosSinCentro).map(([k,v])=>k+' ('+v+')').join(', ')))}
    ${li(Object.keys(p.estadosNoReconocidos).length,'valores de Estado que NO están en la tabla 7: '+esc(Object.entries(p.estadosNoReconocidos).map(([k,v])=>k+' ('+v+')').join(', ')))}
-   ${li(p.contradicciones.length,'contradicciones fase vs OT (gana la OT, se reportan)')}</tbody></table>
+   ${li(p.contradicciones.length,'contradicciones fase vs OT (se reportan: la OT terminada da el paso por hecho; si la fase ya pasó el centro gana la fase —la OT no la cerraron—, salvo dentro del tramo paralelo, donde manda la OT)')}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs)">Columnas encontradas: inicio ${p.columnas.inicio?'sí':'no'} · fin ${p.columnas.fin?'sí':'no'} · operación ${p.columnas.operacion?'sí':'no'} · cantidad ${p.columnas.cantidad?'sí':'no'}.</p>`}
 function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();let cierres=0;
   Object.values(p.porOrden).forEach(({o,centros})=>{
@@ -11224,7 +11253,7 @@ function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha c
    <p class="mut" style="margin-top:0">Cargado ${new Date(C.fecha).toLocaleString('es-EC')} · ${C.filas} filas · ${C.ordenes} órdenes · terminadas ${C.cont.terminado}, en proceso ${C.cont['en proceso']}, para hacer ${C.cont['para hacer']}, canceladas ${C.cancelados}.</p>
    ${(C.confNoTocadas||[]).length?`<h4>Ruta confirmada que la OT no tocó (${C.confNoTocadas.length})</h4><p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">Odoo tiene orden de trabajo en un centro que la ruta confirmada no trae. No se aplicó nada: revísalas una por una (Órdenes → Rutas → editar) si corresponde.</p><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Centros con OT fuera de la ruta</th></tr></thead><tbody>${C.confNoTocadas.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>`:''}
    <h4>Esperando componentes (${(C.esperandoMaterial||[]).length} órdenes bloqueadas por material)</h4><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th class="num">Prendas</th><th>Centros esperando</th></tr></thead><tbody>${(C.esperandoMaterial||[]).slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td class="num">${x.cant}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>
-   <h4>Contradicciones fase vs OT (${C.contradicciones.length}) — gana la OT</h4><p style="font-size:var(--fs-s)">${Object.entries(porCentro).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')||'ninguna'}</p>
+   <h4>Contradicciones fase vs OT (${C.contradicciones.length}) — la OT terminada da el paso por hecho; si la fase ya pasó el centro gana la fase (fuera del tramo paralelo)</h4><p style="font-size:var(--fs-s)">${Object.entries(porCentro).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')||'ninguna'}</p>
    <div class="scroll" style="max-height:220px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th>Centro</th><th>Fase dice</th><th>OT dice</th></tr></thead><tbody>${C.contradicciones.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td>${esc(nCen(x.centro))}</td><td>${x.faseDice}</td><td>${x.otDice}</td></tr>`).join('')}</tbody></table></div>
    <h4>No reconocido (no se asignó por parecido)</h4>
    <p style="font-size:var(--fs-s)"><b>Centros de trabajo sin fila en la tabla 6:</b> ${Object.entries(C.centrosNoMapeados).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Con fila pero sin centro TEMPO:</b> ${Object.entries(C.centrosSinCentro).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Estados sin fila en la tabla 7:</b> ${Object.entries(C.estadosNoReconocidos).map(([k,v])=>esc(k)+' ('+v+')').join(', ')||'ninguno'}<br><b>Órdenes del archivo que no están en el sistema:</b> ${C.ordenesNoEncontradas.length}</p>
@@ -12130,6 +12159,8 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
           let rc=ex.rutaCompleta.filter(p=>!menos.includes(p.centro));
           (ex.ruta||[]).forEach(p=>{if(rc.some(x=>x.centro===p.centro))return;const idx=ordenPaso(p.centro);let pos=rc.length;for(let i=0;i<rc.length;i++){if(ordenPaso(rc[i].centro)>idx){pos=i;break}}rc.splice(pos,0,{centro:p.centro,t:p.t})});
           ex.rutaCompleta=rc}
+        else{   /* no había ruta completa guardada: nace de la ruta editada, en orden de proceso (si no, la próxima carga podía revertir la edición) */
+          ex.rutaCompleta=(ex.ruta||[]).map(p=>({centro:p.centro,t:p.t})).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro))}
         ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
        if(typeof sellarRuta==='function')sellarRuta(ex);if(typeof confirmarRuta==='function'&&!(ex.rutaConf&&ex.rutaConf.estado==='confirmada'&&ex.rutaConf.origen==='persona'))confirmarRuta(ex,'persona','ficha de la orden')}}
    }else S.ordenes.push(Object.assign({id:uid()},o));
