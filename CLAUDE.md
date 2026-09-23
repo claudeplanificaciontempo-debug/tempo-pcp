@@ -1286,18 +1286,19 @@ paralelos»; fase → centros por el grupo de la tabla 1 y la etapa de la tabla 
 «secuencial») 7Confección da por hechos estampado, bordado, sublimado y apliques (26 órdenes / 6.811 pz en el volcado). Fuera del tramo
 (Lavandería, Empaque, Maquila externa, prenda terminada) la fase manda. La excepción configurada `pasoExtra` (tabla 1) no se tocó.
 El Reporte OT, la pantalla de Tramos paralelos y la ventana de reabrir un cierre lo dicen (reabrir no devuelve a la cola si la fase ya
-pasó el centro: hay que devolver la fase). Medido: WH/MO/29016 (8Empaque Terminado, OT «esperando») deja de tener bordado programado.
+pasó el centro: `causasHechoSinCierre(o,c)` dice la causa real —OT terminada, la fase o las unidades completas—). Medido: WH/MO/29016 (8Empaque Terminado, OT «esperando») deja de tener bordado programado.
 Pendientes chicos para la usuaria: maquila (5Maquila Recepción da por hecho estampado; 27763 y 28174 tienen estampado «esperando») y
 «excluye» (5CD/5Maquila Conf excluyen módulos: ¿excluido = hecho?). D10 anotado en `PISO_TIEMPOS_PROPUESTA_V2.md` (6 órdenes / 1.518 pz en
 fase 8 con módulos «en proceso»). Pruebas OF (fuera/dentro del tramo, el paso vuelve a la ruta pendiente por `empatarRutaConOT`).
 
 **Terminada = fase 8, y «vencida» con UNA definición (23-sep-2026, decisión de la usuaria: «todo lo terminado está en fase 8; es la
 fase del final; no la dividas»).** Parámetro `faseTerminada` (8, Configuración → Calendario y parámetros, `setFaseTerminada` con bitácora;
-vacío o fuera de 1–9 se rechaza: con 0 todo quedaba «terminado»), `faseTerminadaMin()` / `faseTerminadaDe(o)`. `diagAtraso` devuelve
+solo enteros de 1 a 9; vacío, decimales o 0 se rechazan: con 0 todo quedaba «terminado»), `faseTerminadaMin()` / `faseTerminadaDe(o)`. `diagAtraso` devuelve
 `terminada` y `metaVencida` = meta pasada y no terminada, **sin el motor** (el motor no calcula `ro.atraso` en bloqueadas/sin liberar:
 salidas tempranas de `programar()`); `esMetaVencida` = `d.metaVencida`; `esOrdenVaTarde` = atraso sin vencer ni terminar. Lo usan Hoy
 (bandejas y tarjetas; antes con la fecha cruda de Odoo), Advertencias (la lista de vencidas trae también las no fechadas y dice por
-qué; antes Hoy decía 203 y la lista 142), el Plan (vencidas, riesgo, terminadas, entregas reales), el Resumen gerencial (`estadoGERDe`
+qué —sin WH (diseño), sin fecha de entrega o el bloqueo—, ordenada por días desde la fecha meta, cada lista con su propio
+orden; antes Hoy decía 203 y la lista 142 y las no fechadas quedaban fuera de las 150 visibles), el Plan (vencidas, riesgo, terminadas, entregas reales), el Resumen gerencial (`estadoGERDe`
 y `pesoFase`: fase 8 = «Terminadas»; antes quedaban «En curso»), la predicción de entregas y `terminadaF` (Cumplimiento; las fechas
 ya registradas no se recalculan). **`MARCAS_CEN` NO cambió**: en la cola la marca es por el paso de ese centro y sale también en fase 8
 con el paso pendiente (su texto lo dice). Medido: gerencial 199 → 203 «meta vencida» (entran 61 no fechadas, salen 57 de fase 8).
@@ -1305,8 +1306,9 @@ Pruebas VN (leen la pantalla de Hoy y Advertencias) y GV (reconstruye la definic
 
 **«Hechas» sobre la ruta COMPLETA (23-sep-2026):** `rutaHechasDe(o)` = `pasosProCompleta` en orden de proceso (`ordenPaso`; la
 unión NO viene ordenada) y `pzHechasOrden` la usa: la ruta pendiente se vacía al terminar y daba 0 hechas justo en las terminadas
-(WH/MO/29016: 0 de 18). `brechaHechas` cuenta sobre la MISMA ruta (incluye las de pendiente vacía, como WH/MO/28228);
-`diagRutasSinEmpaque` no se tocó. La foto del mes guarda `reglas` y las fotos viejas salen «reglas anteriores» (un mes cerrado no se
+(WH/MO/29016: 0 de 18); y **antes que nada, una orden en fase ≥ `faseTerminada` cuenta TODAS sus prendas** (la misma regla de
+«Terminadas»: antes el gerencial decía Terminadas 5.803 y Hechas 659, 53 de 66 terminadas con 0). `brechaHechas` es la MISMA cuenta que
+Salud (`diagRutasSinEmpaque`): una sola «ruta sin Empaque», la que se puede corregir. La foto del mes guarda `reglas` y las fotos viejas salen «reglas anteriores» (un mes cerrado no se
 toca). Pruebas HC. **`guardarOrden`**: si la orden no tenía ruta completa (35 de 426 en el volcado), la edición de la ficha ahora la
 crea en orden de proceso; antes no quedaba en ningún lado y la siguiente carga podía revertirla (prueba RC2b).
 

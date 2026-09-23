@@ -4242,7 +4242,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
     __check("GV: y la pantalla usa los mismos nombres, no inventa otros",/Meta vencida/.test(h)&&/La orden va tarde/.test(h)&&!/>En riesgo</.test(h));}
    /* «hechas» = último paso de la ruta COMPLETA en orden de proceso, y la brecha de ruta sin Empaque */
-   {const o=S.ordenes.find(x=>abierta(x)&&rutaHechasDe(x).length>1&&!pasoHecho(x,rutaHechasDe(x)[rutaHechasDe(x).length-1]));
+   {const o=S.ordenes.find(x=>abierta(x)&&!faseTerminadaDe(x)&&rutaHechasDe(x).length>1&&!pasoHecho(x,rutaHechasDe(x)[rutaHechasDe(x).length-1]));
     if(o){const ru=rutaHechasDe(o);const ult=ru[ru.length-1];
      S.avance[o.id]=S.avance[o.id]||{};S.avance[o.id].centros={};
      __check("GH: sin avance en el último paso, hechas = 0 aunque haya avance en los anteriores",(S.avance[o.id].centros[ru[0]]=+o.cant,pzHechasOrden(o)===0));
@@ -7086,7 +7086,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     page='panorama';render();const hh=document.getElementById('p-panorama').innerHTML;
     {const v=S.ordenes.filter(abierta).filter(o=>esMetaVencida(o,P));const etq='Vencidas sin terminar · '+num(v.reduce((a,o)=>a+ +o.cant,0))+' pz';
      __check('VN: la PANTALLA de Hoy muestra «Vencidas sin terminar» con la definición única (la bloqueada entra; la de fase 8 y la de compromiso futuro no)',hh.includes(esc(etq))&&v.includes(oBloq)&&!v.includes(oT8)&&!v.includes(oComp),etq)}
-    {NLF={mes:null,tipo:null};const nl=noLleganHTML();__check('VN: la lista de Advertencias → Vencidas trae también las que el programa no pudo fechar, y dice por qué',!P.ordenes[oBloq.id]||!P.ordenes[oBloq.id].bloqueo||(nl.includes(esc(oBloq.op))&&/sin fecha posible/.test(nl)))}
+    {NLF={mes:null,tipo:null};const nl=noLleganHTML();__check('VN: la lista de Advertencias → Vencidas trae también las que el programa no pudo fechar, y dice por qué',!!(P.ordenes[oBloq.id]||{}).bloqueo&&nl.includes(esc(oBloq.op))&&/sin fecha posible/.test(nl),(P.ordenes[oBloq.id]||{}).bloqueo||'sin bloqueo');
+     /* el orden: primero las de más días de vencidas (un comparador mezclado las desordenaba y escondía las más viejas) */
+     const dv=o=>{const m=fechaMetaDe(o);return m?diasEntre(m,hoy()):0};const pos=S.ordenes.filter(o=>abierta(o)&&esMetaVencida(o,P)).map(o=>({o,i:nl.indexOf(esc(o.op))})).filter(x=>x.i>=0).sort((a,b)=>a.i-b.i);
+     __check('VN: la lista de vencidas va de la más vieja a la más nueva (las 150 que se ven son las de más días)',pos.length>1&&pos.every((x,k)=>k===0||dv(pos[k-1].o)>=dv(x.o)),pos.length+' filas')}
     const ym=mesPlan(oBloq);if(ym){const c=calcularPlan(ym);const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);
       __check('VN: el Plan cuenta vencidas y terminadas con la misma regla',c.dem.vencidas===enMes.filter(o=>esMetaVencida(o,P)).length&&c.dem.terminadas===enMes.filter(faseTerminadaDe).reduce((a,o)=>a+ +o.cant,0))}
     /* el número 8 es un parámetro: se respeta lo configurado, y queda en bitácora */
@@ -7108,10 +7111,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const oD=mk('WH/HC-DESORDEN',['empaque','corte'],['modulos']);   /* completa y pendiente en otro orden: manda el orden de proceso */
     __check('HC: la ruta de las hechas va en orden de proceso aunque la completa y la pendiente vengan desordenadas (Empaque al final)',rutaHechasDe(oD).slice(-1)[0]==='empaque',rutaHechasDe(oD).join('>'));
     const oSin=mk('WH/HC-SINEMP',['corte','bordado','modulos'],[]);
-    const b=brechaHechas();
-    __check('HC: el aviso de «Hechas» cuenta la misma ruta: una orden terminada cuya ruta completa no llega a Empaque sale en la brecha',!!b&&S.ordenes.filter(o=>abierta(o)&&rutaHechasDe(o).length&&rutaHechasDe(o).slice(-1)[0]!=='empaque').length===b.n&&b.n>=1);
+    {const b=brechaHechas(),d=diagRutasSinEmpaque();__check('HC: el aviso de «Hechas» cuenta lo mismo que Salud del sistema (una sola cuenta de «ruta sin Empaque»)',(b?b.n:0)===(d.mal||0),JSON.stringify({aviso:b?b.n:0,salud:d.mal||0}))}
+    {const f8=fasesDisponibles().find(f=>faseNum(f)>=faseTerminadaMin());if(f8){const oF8=mk('WH/HC-F8',['corte','modulos','empaque'],['empaque']);oF8.fase=f8;S.avance[oF8.id]={centros:{}};
+      __check('HC: una orden en fase ≥ faseTerminada cuenta TODAS sus prendas hechas (la misma regla de «Terminadas» del Resumen gerencial)',pzHechasOrden(oF8)===40&&estadoGERDe(oF8,programar())==='term',f8);
+      S.ordenes=S.ordenes.filter(x=>x!==oF8);delete S.avance[oF8.id]}}
     const ym=mesPlan(oT)||hoy().slice(0,7);const foto=fotoCarteraMes(ym,programar());
-    __check('HC: la foto del mes dice con qué reglas se midió (y las viejas se marcan «reglas anteriores»)',!!foto.reglas&&foto.reglas.hechas==='rutaCompleta'&&/reglas anteriores/.test(String(cierresMesHTML)));
+    {const C=cierresMes();C['2099-12']={ym:'2099-12',ts:new Date().toISOString(),u:'prueba',ordenes:1,pz:1,hechas:0,usd:0,vencidas:0,tarde:0,cerrado:true};const hh2=cierresMesHTML();delete C['2099-12'];
+     __check('HC: la foto del mes dice con qué reglas se midió, y en PANTALLA las fotos viejas salen «reglas anteriores»',!!foto.reglas&&foto.reglas.hechas==='rutaCompleta'&&/reglas anteriores/.test(hh2))}
     S.ordenes=S.ordenes.filter(x=>![oT,oD,oSin].includes(x));[oT,oD,oSin].forEach(x=>delete S.avance[x.id]);}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;

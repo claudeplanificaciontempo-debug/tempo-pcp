@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 16:18';
+const APP_BUILD='2026-09-23 16:41';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1206,13 +1206,13 @@ function noLleganHTML(){if(!S.ordenes.length)return '';const P=programar();if(P.
   const filtro=NLF.mes?`<div class="chips" style="margin:8px 0"><span class="chip on">Solo ${esc(fmtMesEG(NLF.mes))}${NLF.tipo==='venc'?' · vencidas':NLF.tipo==='riesgo'?' · en riesgo':''} <a style="cursor:pointer;margin-left:6px" onclick="NLF={mes:null,tipo:null};render()">✕ ver todo</a></span></div>`:'';
   if(!filas.length)return `<div id="nollegan">${filtro}<p class="mut" style="margin-top:10px">Según el programa (hacia atrás), todas las órdenes programadas${NLF.mes?' de '+esc(fmtMesEG(NLF.mes)):''} llegan a su fecha y ninguna está vencida.</p></div>`;
   /* vencidas: por cuántos días lleva vencida la fecha META (vale también para las que el programa no fechó, que no tienen diasTarde y quedaban al final, fuera de las 150 que se muestran); en riesgo: por los días tarde del programa */
-  const diasVenc=f=>{const m=fechaMetaDe(f.o);return m?diasEntre(m,h):0};filas.sort((a,b)=>a.venc&&b.venc?diasVenc(b)-diasVenc(a):(b.r.diasTarde||0)-(a.r.diasTarde||0));const venc=filas.filter(f=>f.venc),ries=filas.filter(f=>!f.venc);
+  const diasVenc=f=>{const m=fechaMetaDe(f.o);return m?diasEntre(m,h):0};const venc=filas.filter(f=>f.venc).sort((a,b)=>diasVenc(b)-diasVenc(a)),ries=filas.filter(f=>!f.venc).sort((a,b)=>(b.r.diasTarde||0)-(a.r.diasTarde||0));
   const porCausa={};filas.forEach(({r})=>{const k=r.atrasoPorColeccion?'por su colección':(r.atasco?r.atasco.nombre:'—');porCausa[k]=(porCausa[k]||0)+1});
   const cols=Object.values(P.colecciones||{}).filter(c=>c.tarde);
-  const fila=(o,r,v)=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td style="font-size:var(--fs-xs)">${r.coleccion?esc(r.coleccion.key)+' <span class="mut">('+r.coleccion.n+')</span>':'<span class="mut">—</span>'}</td><td>${fmtDia(fechaMetaDe(o))}</td>${v?`<td><b>${r.fechaPosible?fmtDia(r.fechaPosible):(r.finPro?fmtDia(r.finPro):'<span class="mut" style="font-weight:400">sin fecha posible: '+esc(r.bloqueo||'el programa no la fechó')+'</span>')}</b></td>`:`<td class="num"><span class="tag t-alerta">${r.diasTarde||0}</span></td>`}<td>${atascoTxt(r)}</td>${v?'':`<td>${r.fechaPosible?fmtDia(r.fechaPosible):'—'}</td>`}</tr>`;
+  const fila=(o,r,v)=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.cliente||'')}</td><td style="font-size:var(--fs-xs)">${r.coleccion?esc(r.coleccion.key)+' <span class="mut">('+r.coleccion.n+')</span>':'<span class="mut">—</span>'}</td><td>${fmtDia(fechaMetaDe(o))}</td>${v?`<td><b>${r.fechaPosible?fmtDia(r.fechaPosible):(r.finPro?fmtDia(r.finPro):'<span class="mut" style="font-weight:400">sin fecha posible: '+esc(o.sinLanzar?'sin WH (diseño): no se programa':o.sinFechaEntrega?'sin fecha de entrega en Odoo: no se programa':(r.bloqueo||'el programa no la fechó'))+'</span>')}</b></td>`:`<td class="num"><span class="tag t-alerta">${r.diasTarde||0}</span></td>`}<td>${atascoTxt(r)}</td>${v?'':`<td>${r.fechaPosible?fmtDia(r.fechaPosible):'—'}</td>`}</tr>`;
   const tabla=(xs,v)=>`<div class="scroll" style="max-height:380px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Cliente</th><th>Colección</th><th>Fecha meta</th>${v?'<th>Fecha posible (para avisar al cliente)</th>':'<th class="num">Días tarde</th>'}<th>Cuello de botella</th>${v?'':'<th>Fecha posible</th>'}</tr></thead><tbody>${xs.slice(0,150).map(({o,r})=>fila(o,r,v)).join('')}${xs.length>150?`<tr><td colspan="7" class="mut">… y ${xs.length-150} más</td></tr>`:''}</tbody></table></div>`;
   const porCausaR={};ries.forEach(({r})=>{const k=r.atrasoPorColeccion?'por su colección':(r.atasco?(typeof r.atasco==='string'?r.atasco:(r.atasco.nombre||'—')):'—');porCausaR[k]=(porCausaR[k]||0)+1});
-  return `<div id="nollegan">${filtro}${(!NLF.tipo||NLF.tipo==='venc')?`<h4 style="margin:14px 0 6px">Vencidas <span class="mut" style="font-weight:400">· ${venc.length} órdenes con la fecha meta ya pasada y sin terminar (no cuentan las de fase ≥ ${faseTerminadaMin()}: Configuración → Calendario y parámetros) · la fecha posible es la que el programa puede cumplir (para avisar al cliente); las que no pudo fechar dicen por qué</span></h4>${venc.length?tabla(venc,true):'<p class="mut">Ninguna vencida.</p>'}`:''}
+  return `<div id="nollegan">${filtro}${(!NLF.tipo||NLF.tipo==='venc')?`<h4 style="margin:14px 0 6px">Vencidas <span class="mut" style="font-weight:400">· ${venc.length} órdenes con la fecha meta ya pasada y sin terminar${(()=>{const n=venc.filter(f=>f.o.sinLanzar).length;return n?', '+n+' de ellas sin WH (diseño, no se programan)':''})()} (no cuentan las de fase ≥ ${faseTerminadaMin()}: Configuración → Calendario y parámetros) · la fecha posible es la que el programa puede cumplir (para avisar al cliente); las que no pudo fechar dicen por qué</span></h4>${venc.length?tabla(venc,true):'<p class="mut">Ninguna vencida.</p>'}`:''}
   ${(!NLF.tipo||NLF.tipo==='riesgo')?`<h4 style="margin:14px 0 6px">En riesgo <span class="mut" style="font-weight:400">· ${ries.length} órdenes con entrega de hoy en adelante que, según el programa (hacia atrás), no llegan${cols.length?' · '+cols.length+' colecciones completas van tarde':''} · calculado por el motor, no es una decisión de nadie</span></h4>${ries.length?`<p style="font-size:var(--fs-xs);margin:0 0 6px"><b>Dónde están los cuellos de botella:</b> ${Object.entries(porCausaR).sort((a,b)=>b[1]-a[1]).map(([k,n])=>esc(k)+' ('+n+')').join(' · ')}</p>`+tabla(ries,false):'<p class="mut">Ninguna en riesgo.</p>'}`:''}</div>`}
 /* antes y después: se calcula solo cuando se pide (corre los dos motores completos) */
 function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="body" style="display:flex;align-items:center;gap:12px"><b>Motor de programación: antes y después</b><span class="mut">carga por centro y mes, órdenes a fecha, cambios de mes y las 10 que más se mueven, con el motor de siempre (adelante) y el nuevo (hacia atrás)</span><span class="spacer"></span><button class="btn sm" onclick="CAPD.cmp=true;render()">Comparar</button></div></div>`;
@@ -2249,7 +2249,8 @@ function setDiasVentanaTablet(v){if(!(puede('config')||puede('programa'))){alert
 function diasPorLlegar(){return prm('diasPorLlegar',15)}
 function setFaseTerminada(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');render();return}
   if(String(v==null?'':v).trim()===''){alert('Escribe el número de fase (1 a 9). Vacío no es 0: con 0 TODAS las órdenes contarían como terminadas.');render();return}
-  const n=Math.round(+String(v).replace(',','.'));if(!(n>=1&&n<=9)){alert('Tiene que ser un número de fase de Odoo, de 1 a 9.');render();return}
+  if(!/^\s*\d+\s*$/.test(String(v))){alert('Tiene que ser un número entero de fase de Odoo, de 1 a 9 (sin decimales).');render();return}
+  const n=+String(v).trim();if(!(n>=1&&n<=9)){alert('Tiene que ser un número de fase de Odoo, de 1 a 9.');render();return}
   const antes=faseTerminadaMin();S.params.faseTerminada=n;
   bitacora('Orden terminada desde la fase: '+antes+' → '+n+' (mueve «Vencidas», «Terminadas» del Plan y del Resumen gerencial; las fechas de terminación ya registradas —Cumplimiento— no se recalculan; '+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
 function setDiasPorLlegar(v){if(!(puede('config')||puede('programa'))){alert('Tu perfil no cambia este parámetro.');return}
@@ -3455,7 +3456,7 @@ function vGerencia(el){
   const avisos=[];
   avisos.push('Este resumen mira toda la cartera sin considerar liberaciones: el riesgo y las fechas se calculan como si todo estuviera liberado.');
   if(ords.some(o=>!esWH(o)))avisos.push('Sin WH: estilos en diseño o recetas que aún no tienen orden de producción; cuentan en la carga y en el avance como sin empezar; no tienen receta, así que no entran al riesgo.');
-  avisos.push('Vencida: la fecha de entrega ya pasó. La orden va tarde: la meta está por venir pero, con la capacidad cargada, el programa la termina después. Meta vencida: la meta ya pasó y la orden no está terminada (fase 8 = terminada; no depende del programa, así que cuenta también las que el programa no pudo fechar). En la cola de cada centro la marca «meta vencida» es por el PASO de ese centro: también sale en una orden de fase 8 que todavía tiene ese paso pendiente. Avance: fase 8 o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
+  avisos.push('Vencida: la fecha de entrega ya pasó. La orden va tarde: la meta está por venir pero, con la capacidad cargada, el programa la termina después. Meta vencida: la meta ya pasó y la orden no está terminada (fase ≥ '+faseTerminadaMin()+' = terminada; no depende del programa, así que cuenta también las que el programa no pudo fechar). En la cola de cada centro la marca «meta vencida» es por el PASO de ese centro: también sale en una orden de fase 8 que todavía tiene ese paso pendiente. Avance: fase ≥ '+faseTerminadaMin()+' o empaque completo cuenta como terminada; las demás ponderan por etapa (tejeduría 15 %, tela lista 30 %, corte 50 %, maquila y servicios 65 %, confección 85 %).');
   if(S.ordenes.some(o=>o.samProv))avisos.push('Los tiempos de corte, confección y empaque son provisionales por familia; la fecha estimada de planta mejora cuando se carguen las hojas de operaciones.');
   if(S.recursos.filter(r=>CE(r.centro)&&CE(r.centro).area==='pro').every(r=>r.pers===12||r.pers===10||r.pers===8||r.pers===6||r.pers===4||r.pers===3||r.pers===2||r.pers===20))avisos.push('Las capacidades de los recursos de producción son valores de arranque, no los reales de cada módulo.');
   const sinCod=S.colores.filter(c=>!c.cod).length;if(sinCod)avisos.push(sinCod+' colores sin código Pantone (profundidad de baño supuesta como media).');
@@ -5143,7 +5144,8 @@ function filtroMesesGERHTML(ords,P){
 /* la ruta sobre la que se miden las hechas: la COMPLETA (completa ∪ pendiente) en orden de proceso. La pendiente se vacía
    cuando la orden termina, y medir sobre ella daba 0 hechas justo en las terminadas. pasosProCompleta NO ordena. */
 function rutaHechasDe(o){return pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b))}
-function pzHechasOrden(o){const ru=rutaHechasDe(o);if(!ru.length)return 0;
+function pzHechasOrden(o){if(faseTerminadaDe(o))return +o.cant||0;   /* fase ≥ faseTerminada = terminada: todas sus prendas (la misma regla de «Terminadas», usuaria 23-sep) */
+  const ru=rutaHechasDe(o);if(!ru.length)return 0;
   const ac=((S.avance[o.id]||{}).centros)||{};const ult=ru[ru.length-1];
   if(pasoHecho(o,ult))return +o.cant||0;
   return +ac[ult]||0}
@@ -5642,10 +5644,10 @@ function completarRutasSinEmpaque(){
   PLAN=null;PLAN_ALL=null;save();render();
   alert(n+' rutas corregidas. La foto del mes en curso se volvió a tomar; las de meses cerrados no se tocan.')}
 /* ¿el número de «hechas» está afectado por esta brecha? */
-function brechaHechas(){   /* la MISMA ruta con la que se cuentan las hechas (rutaHechasDe): incluye las de ruta pendiente vacía */
-  const conRuta=S.ordenes.filter(o=>abierta(o)&&rutaHechasDe(o).length);
-  const mal=conRuta.filter(o=>{const r=rutaHechasDe(o);return r[r.length-1]!=='empaque'});
-  return mal.length?{n:mal.length,pz:mal.reduce((a,o)=>a+(+o.cant||0),0),de:conRuta.length,pct:conRuta.length?Math.round(mal.length/conRuta.length*100):0}:null}
+function brechaHechas(){   /* la MISMA cuenta que Salud del sistema (diagRutasSinEmpaque): una sola «ruta sin Empaque», y la que completarRutasSinEmpaque puede corregir.
+     Las órdenes en fase ≥ faseTerminada cuentan todas sus prendas por la fase: su ruta ya no afecta las hechas. */
+  const d=diagRutasSinEmpaque();
+  return d.mal?{n:d.mal,pz:d.pz,de:d.conRuta,pct:d.conRuta?Math.round(d.mal/d.conRuta*100):0}:null}
 function avisoHechasHTML(){const b=brechaHechas();if(!b)return '';
   return `<p class="mut" style="font-size:var(--fs-s);margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--alerta);background:var(--field)">
    <span class="tag t-alerta">ojo</span> <b>«Hechas» está afectado por una brecha de rutas.</b>
@@ -7776,15 +7778,21 @@ function cerrarCentroDesdeModal(oid,c){const m=String((document.getElementById('
   if(cerrarCentro(oid,c,m)){try{cerrar()}catch(e){}render()}}
 function terminarOrdenCentro(tid,oid,c){if(tid&&oid){const t=tramosDe(oid).find(x=>x.id===tid);if(t&&t.pz===undefined&&!guardarTramo(tid,oid))return}
   mCerrarCentro(oid,c)}
+/* por qué un paso seguiría «hecho» aunque se reabra su cierre: lo mismo que mira pasoHecho, sin el cierre */
+function causasHechoSinCierre(o,c){const out=[];const ot=((o.ot||{})[c]||{});
+  if(ot.estado==='terminado')out.push('la orden de trabajo de Odoo, que está terminada');
+  else if(faseEstado(o.fase,o).hechos.includes(c))out.push('la fase de la orden ('+(o.fase||'')+'), que ya pasó este centro (para cambiarlo, devolver la fase con motivo)');
+  const ac=((S.avance[o.id]||{}).centros||{})[c]||0;if((+o.cant||0)>0&&ac>=(+o.cant||0))out.push('las unidades completas ya registradas');
+  return out}
 function reabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
   if(!(puede('programa')||puede('reprogramar'))){alert('Solo el supervisor reabre un cierre.');return}
-  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.${faseEstado(o.fase,o).hechos.includes(c)?' <b>Ojo:</b> la fase de la orden ('+esc(o.fase||'')+') ya pasó este centro y la fase prueba lo que ya pasó: para que vuelva a la cola hay que devolver también la fase (con motivo).':''}</p>
+  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.${(()=>{const cs=causasHechoSinCierre(o,c);return cs.length?' <b>Ojo:</b> aunque se reabra, el paso sigue hecho por '+esc(cs.join(' y '))+': no vuelve a la cola hasta que eso cambie.':''})()}</p>
    <label>Motivo (tabla 15, uso «cierre con faltante»)</label>${selMotivoHTML('rc-m','cierre')}</div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarReabrirCierre('${oid}','${c}')">Reabrir el paso</button></div>`)}
 function confirmarReabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
   const m=String((document.getElementById('rc-m')||{}).value||'').trim();
   if(!motivoValido('cierre',m)){alert('Elige el motivo de la tabla 15 (uso «cierre con faltante»).');return}
-  if(!confirm('¿Reabrir '+nCen(c)+' de '+o.op+'? Vuelve a la cola del centro.'))return;
+  if(!confirm('¿Reabrir '+nCen(c)+' de '+o.op+'? '+(causasHechoSinCierre(o,c).length?'OJO: el paso sigue hecho por '+causasHechoSinCierre(o,c).join(' y ')+', así que NO vuelve a la cola.':'Vuelve a la cola del centro.')))return;
   ci.reabierto={u:quienFirma(),ts:new Date().toISOString(),motivo:m};
   registrarAuditoria('cierre',o,'cerrada en '+nCen(c)+' ('+num(ci.pz)+' de '+num(ci.cant)+')','reabierta',m,true);
   bitacora('Cierre reabierto · '+o.op+' en '+nCen(c)+' · '+m+' ('+quienFirma()+')');
@@ -10826,7 +10834,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 <div><label>Excedentes: palabra en la ODC</label><input type="text" value="${esc(String(prmTxt('palabrasExcedente','EXCEDENTE')))}" placeholder="EXCEDENTE, SOBRANTE" onchange="setPalabrasExcedente(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden cuya ODC (o proyecto) contiene alguna de estas palabras es un <b>excedente</b>: prenda ya hecha en bodega; al cargarla nace con la ruta de solo el paso final. Varias palabras separadas por coma; vacío = ninguna.</div></div>
 <div><label>Excedentes: centro del paso final</label><select onchange="setCentroExcedente(this.value)"><option value="">— ninguno —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${prmTxt('centroExcedente','empaque')===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)">etiquetar con la pistola (precios) o poner RFID es un proceso final, no estampado: hoy Empaque; el tiempo es el de empaque de la categoría.</div></div>
 <div><label>Días de holgura para la entrega</label><input type="number" min="0" step="1" value="${esc(String(colchonDias()))}" onchange="setColchon(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden que termina a esta distancia o menos de su fecha meta cuenta como «justa» (en riesgo) en la nivelación, el plan mensual y el detalle de cada orden${S.params.colchonEstimado?' · <span class="tag t-aviso">valor sembrado (3), sin confirmar</span>':''}</div></div>
-<div><label>Orden terminada desde la fase</label><input type="number" min="0" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
+<div><label>Orden terminada desde la fase</label><input type="number" min="1" max="9" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
 <div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>
 <div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
     <p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Un baño corre solo cuando llega al ${(prm('pctBueno',90))}% de la capacidad de su máquina (240 kg → ${Math.round(240*(prm('pctBueno',90))/100)}, piqué 200 kg → ${Math.round(200*(prm('pctBueno',90))/100)}). Por debajo va a la línea de aprobación; no se corre a medias.</p>
@@ -12160,7 +12168,7 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
           (ex.ruta||[]).forEach(p=>{if(rc.some(x=>x.centro===p.centro))return;const idx=ordenPaso(p.centro);let pos=rc.length;for(let i=0;i<rc.length;i++){if(ordenPaso(rc[i].centro)>idx){pos=i;break}}rc.splice(pos,0,{centro:p.centro,t:p.t})});
           ex.rutaCompleta=rc}
         else{   /* no había ruta completa guardada: nace de la ruta editada, en orden de proceso (si no, la próxima carga podía revertir la edición) */
-          ex.rutaCompleta=(ex.ruta||[]).map(p=>({centro:p.centro,t:p.t})).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro))}
+          ex.rutaCompleta=(ex.ruta||[]).map(p=>Object.assign({},p)).sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro))}   /* el paso entero: conserva el tiempo escrito a mano (tManual) */
         ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
        if(typeof sellarRuta==='function')sellarRuta(ex);if(typeof confirmarRuta==='function'&&!(ex.rutaConf&&ex.rutaConf.estado==='confirmada'&&ex.rutaConf.origen==='persona'))confirmarRuta(ex,'persona','ficha de la orden')}}
    }else S.ordenes.push(Object.assign({id:uid()},o));
