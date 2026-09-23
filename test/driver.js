@@ -844,7 +844,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const pr=window.prompt;window.prompt=()=>'me equivoqué';deshacerHechoCentro(o.id,c);window.prompt=pr;
      __check("registrar: deshacer con motivo quita el hecho, revierte el avance y queda en bitácora",!((S.avance[o.id].hechoC||{})[c])&&!(S.avance[o.id].centros||{})[c]&&S.bitacora.some(b=>/Deshecho "hecho" en Corte/.test(b.t)&&/me equivoqué/.test(b.t)));
      // por defecto completo, no parcial
-     __check("registrar: por defecto es completo (módulos parcial preparado pero apagado)",permiteParcial('corte')===false&&permiteParcial('modulos')===false);
+     __check("registrar: el parcial de módulos sigue apagado (y desde el 23-sep todo registro de «Hecho» se SUMA)",permiteParcial('corte')===false&&permiteParcial('modulos')===false);
      // permiso: perfil sin el centro no puede
      PERFIL={rol:'modulos',modo:'editar',nombre:'M'};__check("registrar: un perfil de otro centro no puede registrar en Corte",regHechoOk('corte')===false);PERFIL=adminP;
      if(o2){const pr2=window.prompt;window.prompt=()=>'limpieza';deshacerHechoCentro(o2.id,c);window.prompt=pr2;}
@@ -2056,7 +2056,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -2729,7 +2729,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 3 · fin y cálculo
    terminarTramo(tr.id,oT.id);
    const cal=calcTramo(tr,oT);
-   __check("TR: el tiempo trabajado descuenta los paros",Math.abs(cal.brutoMin-60)<2&&cal.paros===15&&Math.abs(cal.trabajado-(cal.brutoMin-15-cal.descansos))<0.01);
+   __check("TR: el tiempo trabajado descuenta los paros",Math.abs(cal.brutoMin-60)<2&&Math.abs(cal.paros-15)<0.01&&Math.abs(cal.trabajado-(cal.brutoMin-cal.paros-cal.descansos))<0.01,JSON.stringify({b:cal.brutoMin,p:cal.paros,t:cal.trabajado,d:cal.descansos}));   /* los dos Date.now() del paro pueden caer en milisegundos distintos */
    __check("TR: minutos-persona = tiempo trabajado × personas del recurso (módulo con 8 personas)",cal.pers===8&&Math.abs(cal.minPersona-cal.trabajado*8)<0.01);
    __check("TR: si el horario no tiene descansos cargados, se reporta y no se inventan",cal.descansos===0&&cal.descansosFalta===true&&centrosSinDescansos().includes('modulos'));
    // unidades por talla, con tope
@@ -3357,11 +3357,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 3.4 · reabrir: solo supervisor, con motivo y auditoría
    {const admin=PERFIL;PERFIL={id:'u1',rol:'tablet'};const n=alerts.length;reabrirCierre(oC.id,'corte');
     __check("CC4: el operario no puede reabrir un cierre",alerts.length>n&&/supervisor/i.test(alerts[alerts.length-1])&&pasoCerrado(oC,'corte'));
-    PERFIL=admin;reabrirCierre(oC.id,'corte');const m=document.getElementById('rc-m');if(m)m.value='Merma de corte';
+    PERFIL=admin;if(!motivosDe('fase').length){delete S.params.motivosDevolucionSembrados;sembrarMotivosDevolucion()}reabrirCierre(oC.id,'corte');const m=document.getElementById('rc-m');if(m)m.value=motivosDe('fase')[0].motivo;   /* desde el 23-sep reabrir usa los motivos de «devolver a un área» */
     const nA=auditoriaTodo().length;confirmarReabrirCierre(oC.id,'corte');
     __check("CC4: el supervisor reabre con motivo, queda auditado y vuelve a la cola",!pasoCerrado(oC,'corte')&&auditoriaTodo().length===nA+1&&!pasoHecho(oC,'corte'));
     __check("CC4: nada se pierde: el cierre reabierto queda con quién y por qué",!!((S.avance[oC.id]||{}).cierres||{}).corte.reabierto);}
    // 3.1 · cierre completo: sin preguntar
+   /* desde el 23-sep, un paso reabierto pide tiempo NUEVO para volver a cerrarse: el de antes de reabrir no cuenta */
+   {S.avance[oC.id].centros.corte=200;const n=alerts.length;const sinT=cerrarCentro(oC.id,'corte','');
+    __check("CC4: un paso reabierto no se vuelve a cerrar con el tiempo de antes de reabrir",sinT===false&&!pasoCerrado(oC,'corte'),JSON.stringify({sinT,alert:alerts.slice(n)}));
+    tramosDe(oC.id).push({id:'t-cc-re-'+uid(),centro:'corte',rec:null,ini:new Date(Date.now()+1000).toISOString(),fin:new Date(Date.now()+31*6e4).toISOString(),u:'operario',paros:[],tallas:{}});}
    {S.avance[oC.id].centros.corte=200;const ok=cerrarCentro(oC.id,'corte','');const ci=cierreCentro(oC,'corte');
     __check("CC1: si lo registrado es igual a la cantidad, cierra sin pedir motivo",ok===true&&!!ci&&ci.faltan===0&&ci.pz===200);}
    // 3.1 · el botón vive en «Confirma lo que salió»
@@ -7046,7 +7050,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const fs0=fasesDisponibles();const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
     const mk=(op,fase,ot)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.ot=ot;delete x.otTs;delete x.terminadaF;S.ordenes.push(x);delete S.avance[x.id];return x};
     const hechosFase=f=>(faseEstadoTabla(f).hechos||[]).filter(c=>CE(c)&&CE(c).area==='pro');
-    const dentroTramo=f=>{const g=grupoDe(f);const cs=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];return cs.some(c=>!!tramoParaleloDe(c))};
+    const dentroTramo=f=>{const g=grupoDe(f);const cs=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];if(g)tramosParalelos().forEach(t=>(t.grupos||[]).forEach(x=>{if(x&&x.grupo===g.grupo)cs.push(x.centro)}));return cs.some(c=>!!tramoParaleloDe(c))};   /* incluye los grupos que el tramo hace contar como un centro (maquila externa, 23-sep) */
     /* FUERA del tramo (p. ej. Lavandería): la fase prueba bordado aunque su OT siga abierta */
     const fFuera=fs0.find(f=>!dentroTramo(f)&&hechosFase(f).includes('bordado'));
     const fDentro=fs0.find(f=>dentroTramo(f)&&hechosFase(f).includes('bordado'));
@@ -7119,6 +7123,106 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const C=cierresMes();C['2099-12']={ym:'2099-12',ts:new Date().toISOString(),u:'prueba',ordenes:1,pz:1,hechas:0,usd:0,vencidas:0,tarde:0,cerrado:true};const hh2=cierresMesHTML();delete C['2099-12'];
      __check('HC: la foto del mes dice con qué reglas se midió, y en PANTALLA las fotos viejas salen «reglas anteriores»',!!foto.reglas&&foto.reglas.hechas==='rutaCompleta'&&/reglas anteriores/.test(hh2))}
     S.ordenes=S.ordenes.filter(x=>![oT,oD,oSin].includes(x));[oT,oD,oSin].forEach(x=>delete S.avance[x.id]);}
+   /* MH · tres decisiones de la usuaria (23-sep, noche): maquila en el tramo · reabrir = reprogramación con motivo · «Hecho» suma */
+   {const bakCf=window.confirm,bakAl=window.alert;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
+    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.cant=224;delete x.otTs;delete x.terminadaF;Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};return x};
+    const creadas=[];
+    /* (1) maquila: vuelve de maquila con el estampado pendiente en Odoo → el estampado NO está hecho */
+    const fRec=fasesDisponibles().find(f=>/maquila/i.test(f)&&/recep/i.test(f))||fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&/maquila/i.test(g.grupo)});
+    const tMaq=tramosParalelos().find(x=>(x.grupos||[]).some(g=>/maquila/i.test(g.grupo)));
+    __check('MH: la tabla de Tramos paralelos dice que las fases de maquila externa cuentan como Confección hecha afuera',!!tMaq&&tMaq.grupos.some(g=>g.centro==='modulos'),JSON.stringify(tMaq&&tMaq.grupos));
+    if(fRec){const oM=mk('WH/MH-MAQ',fRec,{ot:{estampado:{estado:'esperando',odoo:'WC-E'},modulos:{estado:'en proceso',odoo:'WC-M'}}});creadas.push(oM);
+      __check('MH: se fue a maquila y vuelve para estampado: con la OT de estampado abierta, el estampado sigue PENDIENTE ('+fRec+')',!pasoHecho(oM,'estampado'));
+      __check('MH: …y la confección (la hizo la maquila) no se reabre por su OT: es el centro que la fase representa',faseEstadoTabla(fRec).hechos.includes('modulos')?pasoHecho(oM,'modulos'):true);}
+    /* (2) reabrir: pide el porqué de la lista de devolución y vuelve DE VERDAD a la cola aunque la fase ya lo haya pasado */
+    {const bakF=S.params.motivosDevolucionSembrados;delete S.params.motivosDevolucionSembrados;sembrarMotivosDevolucion();const n1=motivosDe('fase').length;delete S.params.motivosDevolucionSembrados;sembrarMotivosDevolucion();
+     __check('MH: la siembra deja los tres motivos para devolver a un área (falta de material, incompletos, reproceso) y no los duplica',MOTIVOS_DEVOLUCION_DEF.every(m=>motivosDe('fase').some(r=>normTxt(r.motivo)===normTxt(m)))&&motivosDe('fase').length===n1,JSON.stringify(motivosDe('fase').map(r=>r.motivo)));S.params.motivosDevolucionSembrados=true}
+    const f8=fasesDisponibles().find(f=>faseNum(f)>=8&&(faseEstadoTabla(f).hechos||[]).includes('corte'));
+    if(f8){const oR=mk('WH/MH-REAB',f8);creadas.push(oR);S.avance[oR.id]={centros:{corte:224},cierres:{corte:{pz:200,cant:224,faltan:24,motivo:'x',u:'prueba',ts:new Date().toISOString()}}};
+      __check('MH: antes de reabrir, corte está hecho (cerrado y la fase lo prueba)',pasoHecho(oR,'corte'));
+      reabrirCierre(oR.id,'corte');const sel=document.getElementById('rc-m');
+      __check('MH: la ventana de reabrir pide «¿por qué vuelve?» con la lista de devolución',!!sel&&[...sel.options].some(op=>normTxt(op.value)===normTxt('Reproceso')));
+      if(sel){sel.value=[...sel.options].find(op=>normTxt(op.value)===normTxt('Reproceso')).value;confirmarReabrirCierre(oR.id,'corte')}
+      __check('MH: reabierto con motivo, corte vuelve a la cola aunque la fase ('+f8+') ya lo haya pasado',pasoReabierto(oR,'corte')&&!pasoHecho(oR,'corte')&&!faseEstado(oR.fase,oR).hechos.includes('corte'));
+      __check('MH: el motivo queda en el cierre y en la bitácora',((S.avance[oR.id].cierres.corte.reabierto||{}).motivo||'')==='Reproceso'&&S.bitacora.slice(-5).some(b=>/Cierre reabierto/.test(b.t)&&/Reproceso/.test(b.t)));}
+    /* (3) «Hecho» suma */
+    const fP=fasesDisponibles().find(f=>faseNum(f)>=1&&faseNum(f)<4)||fasesDisponibles()[0];
+    const oH=mk('WH/MH-HECHO',fP,{ruta:[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}]});creadas.push(oH);delete oH.ot;delete oH.rutaCompleta;
+    tramosDe(oH.id).push({id:'t-mh',centro:'corte',rec:null,ini:new Date(Date.now()-60*6e4).toISOString(),fin:new Date().toISOString(),u:'op',paros:[],tallas:{}});
+    const reg=q=>{marcarHechoCentro(oH.id,'corte');const el=document.getElementById('hc-q');if(el){el.value=String(q);confirmarHechoCentro(oH.id,'corte')}};
+    reg(150);
+    __check('MH: «Hecho» 150 de 224: se guardan 150 (antes se guardaba el pedido completo) y el paso NO está hecho',(S.avance[oH.id].centros||{}).corte===150&&!pasoHecho(oH,'corte'),JSON.stringify(S.avance[oH.id].centros));
+    marcarHechoCentro(oH.id,'corte');const def=(document.getElementById('hc-q')||{}).value;
+    __check('MH: el cuadro trae por defecto lo que FALTA (74) y dice que se suma',def==='74'&&/se suma/.test(((document.getElementById('hc-q')||{}).parentElement||document.body).innerHTML),def);try{cerrar()}catch(e){}
+    reg(74);
+    __check('MH: 150 + 74 = 224: se suman y el paso queda hecho (fluye al siguiente centro)',(S.avance[oH.id].centros||{}).corte===224&&pasoHecho(oH,'corte'));
+    const lg=(S.avance[oH.id].tallasLog||[]).filter(x=>x.centro==='corte'&&x.hecho);
+    __check('MH: cada registro deja su propia línea (150 y 74) y el anterior queda en el historial',lg.length===2&&lg[0].pz===150&&lg[1].pz===74&&(S.avance[oH.id].hechoCHist||[]).some(x=>x.pz===150));
+    const pr=window.prompt;window.prompt=()=>'me equivoqué';deshacerHechoCentro(oH.id,'corte');window.prompt=pr;
+    __check('MH: deshacer resta SOLO el último registro (vuelve a 150), la línea queda marcada «deshecho» y el día no la cuenta',(S.avance[oH.id].centros||{}).corte===150&&lg[1].deshecho===true&&(S.avance[oH.id].hechoC.corte||{}).pz===150);
+    {const pr2=window.prompt;window.prompt=()=>'otra vez';deshacerHechoCentro(oH.id,'corte');window.prompt=pr2;
+     __check('MH: deshacer otra vez quita también el primero (0) sin volver a restaurarlo',!((S.avance[oH.id].centros||{}).corte)&&!((S.avance[oH.id].hechoC||{}).corte))}
+    S.ordenes=S.ordenes.filter(x=>!creadas.includes(x));creadas.forEach(x=>delete S.avance[x.id]);window.confirm=bakCf;window.alert=bakAl;window.tallasDeOrden=bakTD;PLAN=null;PLAN_ALL=null}
+   /* MH2 · lo que encontró el revisor de «Hecho suma» */
+   {const bakCf=window.confirm,bakAl=window.alert,bakPr=window.prompt;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
+    const fP=fasesDisponibles().find(f=>faseNum(f)>=1&&faseNum(f)<4)||fasesDisponibles()[0];
+    const mk=(op,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fP;x.estado='plan';x.cant=224;delete x.ot;delete x.otTs;delete x.rutaCompleta;delete x.tallasPedido;
+      x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};
+      tramosDe(x.id).push({id:'t-'+uid(),centro:'corte',rec:null,ini:new Date(Date.now()-60*6e4).toISOString(),fin:new Date().toISOString(),u:'op',paros:[],tallas:{}});return x};
+    const creadas=[];const reg=(o,q)=>{marcarHechoCentro(o.id,'corte');const el=document.getElementById('hc-q');if(el){el.value=String(q);confirmarHechoCentro(o.id,'corte')}};
+    /* una sola cuenta: corrección en Control de piso + «Hecho» */
+    const oA=mk('WH/MH2-A');creadas.push(oA);
+    if(!(baseTallas(oA,'corte').tallas||tallasDeOrden(oA).length)){setAvance(oA.id,'corte',60,224);reg(oA,40);
+      __check('MH2: Control de piso (60) y «Hecho» (+40) suman 100: una sola cuenta, no se pierde nada',(S.avance[oA.id].centros||{}).corte===100&&sumaCurva(S.avance[oA.id].tallas.corte)===100,JSON.stringify(S.avance[oA.id].centros));}
+    /* con curva de tallas, «✓ hecho» abre el registro por talla */
+    const oC=mk('WH/MH2-CURVA',{tallasPedido:{S:100,M:124}});creadas.push(oC);let abrio=false;const bakM=window.mRegistroTallas;window.mRegistroTallas=()=>{abrio=true};marcarHechoCentro(oC.id,'corte');window.mRegistroTallas=bakM;try{cerrar()}catch(e){}
+    __check('MH2: una orden con curva de tallas se registra POR TALLA desde la cola (como la tablet); el total dañaba la curva',abrio);
+    /* un cubo que solo tiene «(total)» no es una curva de corte */
+    const oT=mk('WH/MH2-TOT');creadas.push(oT);S.avance[oT.id]={tallas:{corte:{[TALLA_TOTAL]:224}},centros:{corte:224}};
+    __check('MH2: «(total)» no cuenta como curva de corte (los centros siguientes no ven una talla llamada «(total)»)',curvaCorte(oT)===null);
+    /* reabrir un paso completo y volver a cerrarlo sin sumar */
+    const oR=mk('WH/MH2-REAB');creadas.push(oR);reg(oR,224);
+    if(pasoHecho(oR,'corte')){const a=S.avance[oR.id];a.cierres=a.cierres||{};const tR=new Date().toISOString();a.cierres.corte={pz:224,cant:224,faltan:0,motivo:'',u:'x',ts:tR,reabierto:{u:'x',ts:tR,motivo:'Reproceso'}};
+      tramosDe(oR.id).push({id:'t-'+uid(),centro:'corte',rec:null,ini:tR,fin:new Date(Date.parse(tR)+30*6e4).toISOString(),u:'op',paros:[],tallas:{}});   /* tiempo nuevo, después de reabrir */
+      marcarHechoCentro(oR.id,'corte');const el=document.getElementById('hc-q');if(el){el.value='0';confirmarHechoCentro(oR.id,'corte')}
+      __check('MH2: después de reabrir un paso completo, «Hecho» con 0 lo vuelve a cerrar sin inventar prendas de más',pasoCerrado(oR,'corte')&&(S.avance[oR.id].centros||{}).corte===224);}
+    /* salió todo lo que llegó (el corte cerró con faltante): se cierra solo; y deshacer ese «Hecho» lo deja pendiente */
+    const oD=mk('WH/MH2-DESH');creadas.push(oD);S.avance[oD.id]={centros:{corte:200},tallas:{corte:{[TALLA_TOTAL]:200}},cierres:{corte:{pz:200,cant:224,faltan:24,motivo:'x',u:'x',ts:new Date().toISOString()}}};
+    tramosDe(oD.id).push({id:'t-'+uid(),centro:'modulos',rec:null,ini:new Date(Date.now()-60*6e4).toISOString(),fin:new Date().toISOString(),u:'op',paros:[],tallas:{}});
+    marcarHechoCentro(oD.id,'modulos');{const el2=document.getElementById('hc-q');if(el2){el2.value='200';confirmarHechoCentro(oD.id,'modulos')}}
+    {const ci=cierreCentro(oD,'modulos');__check('MH2: salió todo lo que llegó a confección (200: el corte cerró con 24 de faltante) y el paso se cerró solo',!!ci&&!!ci.autoHecho,JSON.stringify(ci||null).slice(0,120));
+     if(ci){window.prompt=()=>'me equivoqué';deshacerHechoCentro(oD.id,'modulos');window.prompt=bakPr;
+      __check('MH2: deshacer el «Hecho» que cerró solo el paso lo deja pendiente otra vez (sin exigir otro motivo)',!pasoHecho(oD,'modulos')&&!((S.avance[oD.id].centros||{}).modulos))}}
+    S.ordenes=S.ordenes.filter(x=>!creadas.includes(x));creadas.forEach(x=>delete S.avance[x.id]);window.confirm=bakCf;window.alert=bakAl;window.prompt=bakPr;window.tallasDeOrden=bakTD;PLAN=null;PLAN_ALL=null}
+   /* MH3 · reabrir: prendas que se vuelven a hacer, sigue en la ruta tras recargar, va a la cola como «reabierto», y pide tiempo nuevo */
+   {const bakCf=window.confirm,bakAl=window.alert;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];
+    const f8=fasesDisponibles().find(f=>faseNum(f)>=8&&(faseEstadoTabla(f).hechos||[]).includes('corte'));
+    if(f8){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MH3-R';o.fase=f8;o.estado='plan';o.cant=224;delete o.ot;delete o.otTs;
+      o.rutaCompleta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];o.ruta=[{centro:'empaque',t:1}];S.ordenes.push(o);
+      S.avance[o.id]={centros:{corte:224},tallas:{corte:{[TALLA_TOTAL]:224}},cierres:{corte:{pz:224,cant:224,faltan:0,motivo:'',u:'x',ts:new Date().toISOString()}}};
+      if(!motivosDe('fase').length){delete S.params.motivosDevolucionSembrados;sembrarMotivosDevolucion()}
+      reabrirCierre(o.id,'corte');const sel=document.getElementById('rc-m'),n=document.getElementById('rc-n');
+      __check('MH3: la ventana de reabrir pregunta cuántas prendas se vuelven a hacer',!!n);
+      if(sel&&n){sel.value=motivosDe('fase')[0].motivo;n.value='50';confirmarReabrirCierre(o.id,'corte')}
+      __check('MH3: las 50 que se vuelven a hacer se descuentan (224 → 174) y quedan escritas, sin contar como producción del día',(S.avance[o.id].centros||{}).corte===174&&(S.avance[o.id].tallasLog||[]).some(x=>x.ajusteReapertura&&x.pz===-50),JSON.stringify(S.avance[o.id].centros));
+      __check('MH3: el paso reabierto vuelve a la RUTA pendiente en el momento, en su lugar del proceso',(o.ruta||[]).map(p=>p.centro).join('>')==='corte>empaque',(o.ruta||[]).map(p=>p.centro).join('>'));
+      aplicarFaseSistema(o,o.fase);
+      __check('MH3: …y no se pierde al volver a aplicar la fase (como en la siguiente carga de Odoo)',(o.ruta||[]).some(p=>p.centro==='corte'),(o.ruta||[]).map(p=>p.centro).join('>'));
+      PLAN=null;PLAN_ALL=null;const P=programar();const cc=cercaniaCentro(o,'corte',P);
+      __check('MH3: en la cola de corte va en «Disponible» con la etiqueta «reabierto», no como anomalía «ya salió de aquí»',cc.grupo==='disponible'&&(cc.anomalia||{}).tipo==='reabierto',JSON.stringify({g:cc.grupo,t:(cc.anomalia||{}).tipo}));
+      __check('MH3: volver a cerrar pide tiempo trabajado DESPUÉS de reabrir (el de antes no cuenta)',!puedeCerrarPaso(o.id,'corte').ok);
+      S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null}
+    window.confirm=bakCf;window.alert=bakAl}
+   /* MH4 · la ruta pendiente trae lo que no está hecho: vuelve de maquila con el estampado pendiente → entra a la cola de estampado */
+   {const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const fRec=fasesDisponibles().find(f=>/maquila/i.test(f)&&/recep/i.test(f));
+    if(fRec){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MH4-MAQ';o.estado='plan';o.cant=100;o.ot={estampado:{estado:'esperando',odoo:'WC-E'}};
+      o.rutaCompleta=[{centro:'corte',t:1},{centro:'estampado',t:2},{centro:'modulos',t:5},{centro:'empaque',t:1}];S.ordenes.push(o);S.avance[o.id]={};
+      aplicarFaseSistema(o,fRec);
+      __check('MH4: vuelve de maquila ('+fRec+') con la OT de estampado abierta: el estampado queda en la ruta PENDIENTE (antes solo quedaba empaque)',(o.ruta||[]).some(p=>p.centro==='estampado')&&!pasoHecho(o,'estampado'),(o.ruta||[]).map(p=>p.centro).join('>'));
+      __check('MH4: …y lo que la fase sí prueba (corte, y la confección que hizo la maquila) no vuelve',!(o.ruta||[]).some(p=>p.centro==='corte')&&!(o.ruta||[]).some(p=>p.centro==='modulos'),(o.ruta||[]).map(p=>p.centro).join('>'));
+      o.ot.estampado.estado='terminado';aplicarFaseSistema(o,fRec);
+      __check('MH4: con la OT de estampado terminada, el estampado sale de la ruta pendiente',!(o.ruta||[]).some(p=>p.centro==='estampado'),(o.ruta||[]).map(p=>p.centro).join('>'));
+      S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id]}}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);

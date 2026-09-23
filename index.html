@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 16:41';
+const APP_BUILD='2026-09-23 18:12';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1101,17 +1101,26 @@ const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
 function hechoPorFase(oe,desde){if(oe<0||oe>=desde)return false;const gs=faseGrupos();const sec=g=>g&&g.secuencial!==false;
   const propio=gs.find(g=>g.orden===oe);if(sec(propio))return true;return gs.some(g=>sec(g)&&g.orden>oe&&g.orden<=desde)}
 function faseEstado(f,o){const fe0=faseEstado0(f,o);const fila0=filaFaseDe(f);if(fila0&&fila0.pasoExtra&&fe0.hechos&&fe0.hechos.includes(fila0.pasoExtra)){const ac=((S.avance[(o||{}).id]||{}).centros)||{};const ot=((o||{}).ot||{})[fila0.pasoExtra];if(!(ot&&ot.estado==='terminado')&&!(o&&(ac[fila0.pasoExtra]||0)>=o.cant))return Object.assign({},fe0,{hechos:fe0.hechos.filter(c=>c!==fila0.pasoExtra)})}return fe0}
-function faseEstado0(f,o){const base=faseEstadoTabla(f);if(!o||!o.ot)return base;
+function faseEstado0(f,o){const base=faseEstadoTabla(f);if(!o)return base;
+  /* un paso REABIERTO por una persona, con motivo, NO está hecho: manda sobre la fase y sobre la OT hasta que se vuelva a cerrar */
+  const cs=((S.avance[o.id]||{}).cierres)||{};const reab=Object.keys(cs).filter(c=>cs[c]&&cs[c].reabierto);
+  if(!o.ot&&!reab.length)return base;
   /* decisión de la usuaria (23-sep): «la fase prueba lo que ya pasó; la OT solo decide lo que la fase no prueba».
      · OT terminada → hecho aunque la fase no lo diga.
      · OT no terminada (en proceso, para hacer, esperando, bloqueado por material: da igual cuál) NO borra lo que la fase
        prueba («la OT no la cerraron»)… SALVO dentro del tramo paralelo en que está la orden: ahí el orden varía
-       (confeccionar primero y estampar después), la fase no prueba nada del tramo y manda la OT.
-     Fase → centros: grupo de la tabla 1 + etapa de la tabla 4. Tramo: tabla «Tramos paralelos». */
-  const hechos=new Set(base.hechos);const g=grupoDe(f);
-  const censFase=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];
-  const tramoAct=censFase.map(tramoParaleloDe).filter(Boolean);const enTramo=c=>tramoAct.some(t=>(t.cens||[]).includes(c));
-  Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else if(enTramo(c))hechos.delete(c)});
+       (confeccionar primero y estampar después; ir a maquila y volver para estampar), la fase no prueba nada de los OTROS
+       centros del tramo y manda la OT.
+     Fase → centros: grupo de la tabla 1 + etapa de la tabla 4, y los grupos que la tabla de Tramos paralelos hace contar
+     como un centro (maquila externa = Confección hecha afuera). */
+  const hechos=new Set(base.hechos);
+  if(o.ot){const g=grupoDe(f);
+    const censFase=g?centroEtapa().filter(x=>x.etapa===g.grupo).map(x=>x.centro):[];
+    if(g)tramosParalelos().forEach(t=>(t.grupos||[]).forEach(x=>{if(x&&x.grupo===g.grupo&&x.centro&&!censFase.includes(x.centro))censFase.push(x.centro)}));
+    const tramoAct=censFase.map(tramoParaleloDe).filter(Boolean);
+    const enTramo=c=>!censFase.includes(c)&&tramoAct.some(t=>(t.cens||[]).includes(c));
+    Object.entries(o.ot).forEach(([c,reg])=>{if(reg.estado==='terminado')hechos.add(c);else if(enTramo(c))hechos.delete(c)})}
+  reab.forEach(c=>hechos.delete(c));
   return Object.assign({},base,{hechos:[...hechos]})}
 function faseEstadoTabla(f){const fila=filaFaseDe(f);const og=fila?ordenGrupo(fila.sistema):-1;
   if(!fila||og<0)return{tejida:false,tinturada:false,lista:false,hechos:[],sinFila:true};
@@ -1887,7 +1896,8 @@ function juegoDeOrden(o){const id=tallasCat()[o.cat]||tallasCat()[(K(o.cat)||{})
 function tallasDeOrden(o){const j=juegoDeOrden(o);if(j&&j.tallas.length)return j.tallas.slice();
   const c=curvaPedida(o)||curvaCorte(o);return c?Object.keys(c):[]}
 function curvaPedida(o){const t=o&&o.tallasPedido;return t&&Object.keys(t).length?t:null}
-function curvaCorte(o){const t=((S.avance[o.id]||{}).tallas||{})['corte'];return t&&Object.keys(t).length?t:null}
+function curvaCorte(o){const t=((S.avance[o.id]||{}).tallas||{})['corte'];if(!t)return null;   /* «(total)» no es una talla: un cubo que solo tiene eso no es una curva */
+  const k=Object.keys(t).filter(x=>x!==TALLA_TOTAL);if(!k.length)return null;const out={};k.forEach(x=>out[x]=t[x]);return out}
 /* contra qué se registra en cada centro: corte manda; si no hay corte, lo pedido; si no hay nada, solo total */
 function baseTallas(o,c){if(c!=='corte'){const cc=curvaCorte(o);if(cc)return {base:'corte',tallas:cc};}
   const cp=curvaPedida(o);if(cp)return {base:'pedido',tallas:cp};return {base:null,tallas:null}}
@@ -2307,7 +2317,7 @@ const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c
    Los registros viejos de hechoC se suman solo si ese día no dejaron línea en tallasLog, para no contar doble. */
 function hechasDelDia(centro,rec,dia){const d=dia||hoy();let tot=0;const detalle=[];
   S.ordenes.forEach(o=>{const a=S.avance[o.id]||{};
-    const log=(a.tallasLog||[]).filter(x=>x.centro===centro&&String(x.ts||'').slice(0,10)===d&&(!rec||!x.rec||x.rec===rec));
+    const log=(a.tallasLog||[]).filter(x=>x.centro===centro&&!x.deshecho&&!x.ajusteReapertura&&String(x.ts||'').slice(0,10)===d&&(!rec||!x.rec||x.rec===rec));
     const suma=log.reduce((x,y)=>x+(+y.pz||0),0);
     if(suma){tot+=suma;detalle.push({o,pz:suma,ts:log[log.length-1].ts,fuente:'tramo'});return}
     const hc=(a.hechoC||{})[centro];
@@ -2400,11 +2410,16 @@ function sembrarMotivosParo(){const t=motivos();
 /* motivos de «cierre con faltante»: sin ellos el piso no puede cerrar un paso al que le faltaron prendas.
    Los dicta la usuaria (23-sep); esto es solo el punto de partida y se siembra UNA vez: lo editado no se pisa. */
 const MOTIVOS_CIERRE_DEF=['Faltó tela','Prendas con falla (segundas)','Corte incompleto','Entrega parcial, el resto sigue','Cambio de pedido del cliente'];
-function sembrarMotivosCierre(){const t=motivos();if(S.params.motivosCierreSembrados)return t;
+function sembrarMotivosCierre(){const t=motivos();if(S.params.motivosCierreSembrados||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return t;
   let n=0;MOTIVOS_CIERRE_DEF.forEach(m=>{if(t.some(r=>r.uso==='cierre'&&normTxt(r.motivo)===normTxt(m)))return;t.push({motivo:m,uso:'cierre'});n++});
   S.params.motivosCierreSembrados=true;
   if(n&&typeof bitacora==='function')bitacora('Motivos de cierre con faltante sembrados: '+n+' (editables en Configuración → Órdenes y materiales → 15 · Motivos)');
   return t}
+/* motivos para devolver una orden a un área (devolución de fase o reabrir un paso): los dictó la usuaria el 23-sep. Una sola vez. */
+const MOTIVOS_DEVOLUCION_DEF=['Falta de material','Incompletos (faltaron prendas)','Reproceso'];
+function sembrarMotivosDevolucion(){const t=motivos();if(S.params.motivosDevolucionSembrados||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return t;let n=0;
+  MOTIVOS_DEVOLUCION_DEF.forEach(m=>{if(t.some(r=>r.uso==='fase'&&normTxt(r.motivo)===normTxt(m)))return;t.push({motivo:m,uso:'fase'});n++});
+  S.params.motivosDevolucionSembrados=true;if(n&&typeof bitacora==='function')bitacora('Motivos para devolver a un área sembrados: '+n+' (editables en la tabla 15)');return t}
 function motivoActivo(r){return r.activo!==false}
 function motivosParo(){sembrarMotivosParo();return motivosDe('paro').filter(motivoActivo)} // el operario solo ve los activos
 function motivoParoEs(m,k){const r=motivos().find(x=>x.uso==='paro'&&x.motivo===m);return !!(r&&r[k])}
@@ -2476,6 +2491,7 @@ function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tra
   a.tallasLog=a.tallasLog||[];const ts=new Date().toISOString();
   Object.entries(t.tallas).forEach(([k,q])=>{prev[k]=(prev[k]||0)+q;a.tallasLog.push({ts,u:quienFirma(),centro:t.centro,rec:t.rec||null,talla:k,pz:q,base:b.base||'sin base',tramo:t.id,min:t.min,minPersona:t.minPersona,excede:excede.some(x=>x.startsWith(k+':'))})});
   a.tallas[t.centro]=prev;a.centros=a.centros||{};a.centros[t.centro]=Math.min(o.cant,sumaCurva(prev));
+  if(pasoReabierto(o,t.centro)&&a.centros[t.centro]>=cantCentro(o,t.centro)){try{cerrarCentro(o.id,t.centro,'')}catch(e){}}   /* reabierto: completo otra vez → se cierra (limpia la reapertura) */
   if(t.rec&&u>0){S.turnos=S.turnos||[];const tid=t.rec+'|'+hoy();let tu=S.turnos.find(x=>x.id===tid);if(!tu){tu={id:tid,rec:t.rec,d:hoy()};S.turnos.push(tu)}
     const paso=(o.ruta||[]).find(p=>p.centro===t.centro)||{};tu.pz=(tu.pz||0)+u;tu.std=(tu.std||0)+u*minPrenda(t.centro,paso.t||0);tu.ops=[...new Set([...(tu.ops||[]),o.op])]} // Reportería y Ejecución leen los turnos
   bitacora('Tramo guardado · '+o.op+' en '+nCen(t.centro)+(t.rec?' ('+nRec(t.rec)+')':'')+': '+num(u)+' prendas en '+fmtMinSeg(t.min)+' · '+num(t.minPersona)+' min-persona'+(t.minPrenda!=null?' · SAM '+num(t.minPrenda,3):'')+((t.paros||[]).length?' · '+(t.paros||[]).length+' paros':'')+(excede.length?' · PASA DE LO '+(b.base==='corte'?'CORTADO':'PEDIDO'):'')+' ('+quienFirma()+')');
@@ -2545,6 +2561,28 @@ function setTramoParaleloCen(i,cen,on){if(!puede('config')){alert('Tu perfil no 
   save();render()}
 function setTramoParaleloN(i,v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   const t=tramosParalelos()[i];if(!t)return;t.n=String(v||'').trim();delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();save()}
+/* grupos de fases que, dentro de un tramo, cuentan como un centro (usuaria, 23-sep: maquila externa = Confección hecha afuera) */
+function sembrarTramoMaquila(){if(S.params.tramoMaquilaSembrado||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;const ts=tramosParalelos();const t=ts.find(x=>(x.cens||[]).includes('modulos'));
+  const g=faseGrupos().find(x=>normTxt(x.grupo)===normTxt('maquila externa'));
+  if(t&&g){t.grupos=t.grupos||[];if(!t.grupos.some(x=>x&&x.grupo===g.grupo)){t.grupos.push({grupo:g.grupo,centro:'modulos',u:quienFirma(),ts:new Date().toISOString(),nota:'decisión de la usuaria, 23-sep'});
+    bitacora('Tramo paralelo «'+(t.n||'')+'»: las fases de «'+g.grupo+'» cuentan como Confección hecha afuera (decisión de la usuaria, 23-sep: se corta, va a maquila y vuelve para estampar)')}}
+  S.params.tramoMaquilaSembrado=true}
+function addTramoGrupo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;const g=String((document.getElementById('tg-g-'+i)||{}).value||'');const c=String((document.getElementById('tg-c-'+i)||{}).value||'');
+  if(!g||!c){alert('Elige el grupo de fases y el centro del tramo al que equivale.');return}
+  t.grupos=t.grupos||[];if(t.grupos.some(x=>x&&x.grupo===g)){alert('Ese grupo ya está en el tramo.');return}
+  t.grupos.push({grupo:g,centro:c,u:quienFirma(),ts:new Date().toISOString()});delete t.sugerido;
+  bitacora('Tramo paralelo «'+(t.n||'')+'»: las fases de «'+g+'» cuentan como '+nCen(c)+' ('+quienFirma()+')');save();render()}
+function quitarTramoGrupo(i,j){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t||!(t.grupos||[])[j])return;const x=t.grupos[j];
+  if(!confirm('¿Quitar «'+x.grupo+'» del tramo «'+(t.n||'')+'»?\nSus fases volverán a dar por hechos los pasos del tramo aunque la orden de trabajo siga abierta.'))return;
+  t.grupos.splice(j,1);bitacora('Tramo paralelo «'+(t.n||'')+'»: sale el grupo «'+x.grupo+'» ('+quienFirma()+')');save();render()}
+function sembrarRutaPendienteReal(){if(S.params.rutaPendienteRealSembrada||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;
+  if(!(S.ordenes||[]).length)return;   /* se espera a que haya órdenes cargadas */
+  let n=0;const ej=[];S.ordenes.filter(o=>abierta(o)&&!o.historia).forEach(o=>{const antes=(o.ruta||[]).map(p=>p.centro).join('>');const nueva=conPasosPendientes(o,o.ruta||[],o.rutaCompleta||[]);
+    if(nueva.length!==(o.ruta||[]).length){o.ruta=nueva;n++;if(ej.length<5)ej.push(o.op+': '+(antes||'—')+' → '+nueva.map(p=>p.centro).join('>'))}});
+  S.params.rutaPendienteRealSembrada={ts:new Date().toISOString(),ordenes:n,ejemplos:ej};
+  if(n)bitacora('Ruta pendiente: '+n+' órdenes recuperan pasos que no están hechos (orden de trabajo abierta dentro del tramo o paso reabierto) · '+ej.join(' · '))}
 function addTramoParalelo(){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   tramosParalelos().push({n:'Tramo nuevo',cens:[],u:quienFirma(),ts:new Date().toISOString()});bitacora('Tramo paralelo nuevo (vacío)');save();render()}
 function quitarTramoParalelo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
@@ -2560,6 +2598,9 @@ function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.f
      (t.sugerido?' <span class="tag t-aviso">sugerido: confírmalo o cámbialo</span>':'')+'<span class="spacer"></span>'+
      (puede('config')?'<button class="btn ghost sm" onclick="quitarTramoParalelo('+i+')">Quitar tramo</button>':'')+'</div>'+
      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">'+cens.map(c=>'<label style="font-size:var(--fs-xs);white-space:nowrap"><input type="checkbox" '+((t.cens||[]).includes(c.id)?'checked':'')+' onchange="setTramoParaleloCen('+i+',\''+c.id+'\',this.checked)"> '+esc(c.n)+'</label>').join('')+'</div>'+
+     '<div style="margin-top:6px;font-size:var(--fs-xs)"><b>Fases que cuentan dentro del tramo</b> <span class="mut">(una orden en esas fases está en el tramo: la orden de trabajo decide los otros centros)</span>: '+
+      (((t.grupos||[]).map((x,j)=>'<span class="tag t-medio">«'+esc(x.grupo)+'» = '+esc(nCen(x.centro))+(puede('config')?' <a href="#" onclick="quitarTramoGrupo('+i+','+j+');return false" title="quitar">✕</a>':'')+'</span>').join(' '))||'<span class="mut">ninguna</span>')+
+      (puede('config')?' <select id="tg-g-'+i+'"><option value="">grupo de fases…</option>'+faseGrupos().map(g=>'<option value="'+esc(g.grupo)+'">'+esc(g.grupo)+'</option>').join('')+'</select> = <select id="tg-c-'+i+'"><option value="">centro…</option>'+(t.cens||[]).map(c=>'<option value="'+c+'">'+esc(nCen(c))+'</option>').join('')+'</select> <button class="btn ghost sm" onclick="addTramoGrupo('+i+')">+ agregar</button>':'')+'</div>'+
      (t.nota?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">'+esc(t.nota)+'</p>':'')+
      ((t.cens||[]).length===1?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Con un solo centro el tramo no hace nada: marca al menos dos.</p>':'')+'</div>').join('')+
    (ts.length?'':'<p class="mut">Sin tramos: cada paso de la ruta espera al anterior.</p>')+'</div></div>'}
@@ -2752,7 +2793,7 @@ function vTablet(el){
    ${flujoTramoHTML(c,rec,cola)}
    ${tramosDelDiaHTML(c,rec)}
    ${cola.map(card).join('')||(ERR_PROG?'':(esOperario()?sinProgramaHTML(c,rec):'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))}
-   <p class="mut no-print" style="font-size:var(--fs-xs)">"Hecho" registra la orden completa en este centro y la pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
+   <p class="mut no-print" style="font-size:var(--fs-xs)">«Hecho» SUMA lo que salió ahora; cuando llega a lo que entró a este centro, el paso se cierra y la orden pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
 function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
@@ -2876,8 +2917,8 @@ function fasesParalelas(actual,nueva){const sa=secuenciaDe(actual),sb=secuenciaD
 function retrocesosMismoGrupo(){const out=[];faseGrupos().forEach(g=>{const fs=faseMapeo().filter(r=>r.sistema===g.grupo).map(r=>r.fase);const ord=fs.slice().sort((a,b)=>faseNum(a)-faseNum(b));if(ord.length>1)out.push({grupo:g.grupo,fases:ord})});return out}
 function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia fases.');return}motivo=String(motivo||'').trim();if(!f){alert('Elige la fase nueva.');return}
   const devs=ids.map(id=>S.ordenes.find(x=>x.id===id)).filter(o=>o&&esDevolucionFase(o.fase,f));
-  if(devs.length){if(!motivo){alert('Devolver la fase a un grupo anterior exige motivo'+(devs.length>1?' ('+devs.length+' de las órdenes marcadas son devolución)':'')+'. Elígelo de la tabla 15 (Motivos, uso «devolución de fase»).');return}
-    if(!motivoValido('fase',motivo)){alert('El motivo debe elegirse de la tabla 15 (Motivos, uso «devolución de fase»); no se acepta texto libre. Si la tabla está vacía, configúrala en Configuración → Órdenes y materiales → 15 · Motivos.');return}}
+  if(devs.length){if(!motivo){alert('Devolver la fase a un grupo anterior exige motivo'+(devs.length>1?' ('+devs.length+' de las órdenes marcadas son devolución)':'')+'. Elígelo de la tabla 15 (Motivos, uso «devolver a un área»).');return}
+    if(!motivoValido('fase',motivo)){alert('El motivo debe elegirse de la tabla 15 (Motivos, uso «devolver a un área»); no se acepta texto libre. Si la tabla está vacía, configúrala en Configuración → Órdenes y materiales → 15 · Motivos.');return}}
   else if(motivo&&!motivoValido('fase',motivo)){alert('Ese motivo no está en la tabla 15; elige uno de la lista o déjalo vacío (avanzar no exige motivo).');return}
   if(esOperarioTablet()){ // el operario no mueve fases: lo que toque queda como solicitud
     ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o||normFase(o.fase||'')===normFase(f))return;
@@ -3153,7 +3194,7 @@ function tarjetasResumenHTML(cards){const ab=cards.find(c=>c.items&&c.items.leng
       return `<tr class="grp-row" style="background:var(--field);font-weight:700"><td colspan="7" style="border-top:2px solid var(--rule)">${esc(f)}<span style="float:right">${xs.length} ${xs.length===1?'orden':'órdenes'} · ${num(xs.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+xs.map(filaOrd).join('')}).join('')};
   return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div></div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${ab.items.length} órdenes${ab.porFam?' · agrupadas por familia':''}</span></h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
 /* e) Devolver/revertir: el motivo sale de la tabla 15 (lista cerrada, sin texto libre) */
-const USOS_MOTIVO=[['fase','devolución de fase'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante'],['cierreSinTiempo','cierre sin tiempo']];
+const USOS_MOTIVO=[['fase','devolver a un área (fase o reabrir un paso)'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante'],['cierreSinTiempo','cierre sin tiempo']];
 function motivos(){if(!Array.isArray(S.params.motivos))S.params.motivos=[];migrarMotivosReproceso();return S.params.motivos}
 // los motivos de reproceso viven ahora en la tabla 15 (uso 'reproceso'); se migra una vez y NO se borra el arreglo viejo
 function migrarMotivosReproceso(){const t=S.params.motivos;if(S.params.motivosMigrados)return;const viejos=Array.isArray(S.params.motivosReproceso)&&S.params.motivosReproceso.length?S.params.motivosReproceso:defMotivosReproceso();let n=0;viejos.forEach(r=>{const m=String(r.motivo||'').trim();if(!m)return;if(t.some(x=>x.uso==='reproceso'&&x.motivo===m))return;t.push({motivo:m,uso:'reproceso',tejeduria:!!r.tejeduria});n++});S.params.motivosMigrados=true;if(n&&typeof bitacora==='function')bitacora('Motivos de reproceso unificados en la tabla 15: '+n+' motivos (el arreglo anterior se conserva)')}
@@ -3170,7 +3211,7 @@ function registrarAuditoria(tipo,o,antes,despues,motivo,dev){const e={id:uid(),t
   else auditoriaCambios().push(e)}
 function auditoriaTodo(){const l=auditoriaCambios().slice();Object.values(S.avance||{}).forEach(a=>(a.auditoria||[]).forEach(e=>l.push(e)));return l.sort((x,y)=>(x.ts||'')<(y.ts||'')?-1:1)}
 /* qué deja de funcionar cuando un uso de la tabla 15 no tiene motivos */
-const SIN_MOTIVO_EFECTO={fase:'no se puede devolver una fase a un grupo anterior',liberacion:'no se puede revertir una liberación',reproceso:'Calidad no puede rechazar un baño',
+const SIN_MOTIVO_EFECTO={fase:'no se puede devolver una fase a un grupo anterior ni reabrir un paso cerrado',liberacion:'no se puede revertir una liberación',reproceso:'Calidad no puede rechazar un baño',
   piso:'el piso no puede dejar observación al cambiar de fase',paro:'el operario no puede registrar paros en el tramo (el tiempo sale inflado)',cierre:'no se puede cerrar un paso con faltante',
   cierreSinTiempo:'el supervisor no puede cerrar un paso sin tiempo corrido'};
 function avisosMotivosVaciosHTML(){const v=USOS_MOTIVO.filter(([k])=>!motivosDe(k).length);if(!v.length)return '';
@@ -4887,7 +4928,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -5887,7 +5928,7 @@ function recalcularRutas(motivo){
     const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
     const completa=((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).filter(x=>!(CE(x.centro)&&CE(x.centro).area==='pro'))
       .concat(a.map(c=>({centro:c,t:prev[c]!=null?prev[c]:(+sam[c]||+((CE(c)||{}).minEstandar)||0)})));
-    o.rutaCompleta=completa;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(completa,fila);   /* la fase manda: solo los pasos pendientes cargan */
+    o.rutaCompleta=completa;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:conPasosPendientes(o,pasosPendientes(completa,fila),completa);   /* la fase manda: solo los pasos pendientes cargan */
     const addOT=empatarRutaConOT(o);   /* lo que Odoo sí ejecutó vuelve a la ruta aunque el catálogo no lo traiga */
     registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → ')+(addOT.length?' + OT: '+addOT.map(nCen).join(', '):''),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
     sellarRuta(o);n++});
@@ -7443,6 +7484,9 @@ function grupoTela(o,l,c,ctx){
   const av=S.avance[o.id]||{};
   /* la LIBERACIÓN a corte (que ya exige calidad) manda sobre una fase textil rezagada en Odoo */
   if(l&&l.tipo==='lista'&&av.lista&&!sinWH)return{grupo:'disponible',porQue:'liberada a corte: la liberación manda sobre la fase «'+esc(o.fase||'')+'»'};
+  /* REABIERTO por una persona, con motivo: vuelve a este centro aunque la fase ya lo haya pasado */
+  if(c&&pasoReabierto(o,c)){const r=((((S.avance[o.id]||{}).cierres)||{})[c]||{}).reabierto||{};
+    return{grupo:'disponible',porQue:'reabierto: '+esc(r.motivo||''),anomalia:{tipo:'reabierto',txt:'reabierto · '+(r.motivo||''),tip:'lo reabrió '+(r.u||'')+(r.ts?' el '+new Date(r.ts).toLocaleDateString('es-EC'):'')+(r.vuelven?' · '+r.vuelven+' prendas se vuelven a hacer':'')+': vuelve a '+nCen(c)+' aunque la fase de la orden ya lo haya pasado'}}}
   /* fase del propio grupo del centro o posterior con el paso sin cerrar: anomalía, nunca «lista para empezar» */
   if(c&&posicionFaseCentro(o,c)==='yaSalio')return{grupo:'anomalia',porQue:'la fase «'+esc(o.fase||'')+'» es del propio grupo o posterior a '+nCen(c)+' y el paso no está cerrado',anomalia:{tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya pasó de '+nCen(c)+', pero el paso no está cerrado aquí. Cerrar el paso o corregir la fase.'}};
   /* fase del propio grupo del centro (no CD): la orden está AQUÍ según Odoo → Disponible con etiqueta, esté o no en la lista (la lista solo trae fases anteriores) */
@@ -7673,7 +7717,17 @@ function cierresDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!a.cierres||t
 function cierreCentro(o,c){const x=(((S.avance[(o||{}).id]||{}).cierres)||{})[c];return (x&&!x.reabierto)?x:null}
 function pasoCerrado(o,c){return !!cierreCentro(o,c)}
 /* un paso está hecho por la fase de Odoo, porque salieron todas las prendas o porque el piso lo cerró */
-function pasoHecho(o,c,fe){if(!o)return false;if(pasoCerrado(o,c))return true;
+/* el paso fue reabierto por una persona, con motivo, y no se ha vuelto a cerrar */
+function pasoReabierto(o,c){const x=((((S.avance[(o||{}).id]||{}).cierres)||{})[c]);return !!(x&&x.reabierto)}
+/* la ruta PENDIENTE real: lo que deja la fase + todo paso de producción de la ruta completa que el sistema NO da por hecho —un paso
+   reabierto por una persona, o uno del tramo paralelo con su OT abierta («se fue a maquila y vuelve para estampar»)—. Si no, la
+   siguiente carga lo sacaba de la cola y del motor. Se inserta en su lugar del proceso; lo que ya está no se toca. */
+function conPasosPendientes(o,pend,completa){const out=(pend||[]).slice();
+  (completa||[]).forEach(p=>{const c=p&&p.centro;if(!c||out.some(x=>x.centro===c))return;const ce=CE(c);if(!ce||ce.area!=='pro')return;
+    if(pasoHecho(o,c))return;
+    let pos=out.length;for(let i=0;i<out.length;i++){if(ordenPaso(out[i].centro)>ordenPaso(c)){pos=i;break}}out.splice(pos,0,Object.assign({},p))});
+  return out}
+function pasoHecho(o,c,fe){if(!o)return false;if(pasoReabierto(o,c))return false;if(pasoCerrado(o,c))return true;
   fe=fe||faseEstado(o.fase,o);if((fe.hechos||[]).includes(c))return true;
   const ac=(S.avance[o.id]||{}).centros||{};return (ac[c]||0)>=(+o.cant||0)}
 function centroAnteriorPro(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>p.centro);const i=ru.indexOf(c);return i>0?ru[i-1]:null}
@@ -7702,7 +7756,8 @@ function setMinMinutosCierre(v){if(!(puede('config')||puede('programa'))){alert(
   const antes=minMinutosCierre();S.params.minMinutosCierre=n;
   bitacora('Minutos mínimos para cerrar un paso: '+antes+' → '+n+' ('+quienFirma()+')');save();render()}
 function tiempoEfectivoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid)||{};
-  const ts=(tramosDe(oid)||[]).filter(t=>t.centro===c&&t.ini);
+  const re=((((S.avance[oid]||{}).cierres)||{})[c]||{}).reabierto;const desde=re&&re.ts;   /* reabierto: solo cuenta el tiempo trabajado después de reabrir */
+  const ts=(tramosDe(oid)||[]).filter(t=>t.centro===c&&t.ini&&(!desde||t.ini>=desde));
   const min=ts.reduce((a,t)=>a+(calcTramo(t,o).trabajado||0),0);
   return {min,tramos:ts.length,abiertos:ts.filter(t=>!t.fin).length}}
 /* ¿se puede cerrar? Una sola respuesta para todas las puertas. */
@@ -7778,24 +7833,28 @@ function cerrarCentroDesdeModal(oid,c){const m=String((document.getElementById('
   if(cerrarCentro(oid,c,m)){try{cerrar()}catch(e){}render()}}
 function terminarOrdenCentro(tid,oid,c){if(tid&&oid){const t=tramosDe(oid).find(x=>x.id===tid);if(t&&t.pz===undefined&&!guardarTramo(tid,oid))return}
   mCerrarCentro(oid,c)}
-/* por qué un paso seguiría «hecho» aunque se reabra su cierre: lo mismo que mira pasoHecho, sin el cierre */
-function causasHechoSinCierre(o,c){const out=[];const ot=((o.ot||{})[c]||{});
-  if(ot.estado==='terminado')out.push('la orden de trabajo de Odoo, que está terminada');
-  else if(faseEstado(o.fase,o).hechos.includes(c))out.push('la fase de la orden ('+(o.fase||'')+'), que ya pasó este centro (para cambiarlo, devolver la fase con motivo)');
-  const ac=((S.avance[o.id]||{}).centros||{})[c]||0;if((+o.cant||0)>0&&ac>=(+o.cant||0))out.push('las unidades completas ya registradas');
-  return out}
 function reabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
   if(!(puede('programa')||puede('reprogramar'))){alert('Solo el supervisor reabre un cierre.');return}
-  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. Reabrir lo devuelve a la cola del centro.${(()=>{const cs=causasHechoSinCierre(o,c);return cs.length?' <b>Ojo:</b> aunque se reabra, el paso sigue hecho por '+esc(cs.join(' y '))+': no vuelve a la cola hasta que eso cambie.':''})()}</p>
-   <label>Motivo (tabla 15, uso «cierre con faltante»)</label>${selMotivoHTML('rc-m','cierre')}</div>
+  abrir(`<h3>Reabrir ${esc(nCen(c))} · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">Se cerró el ${new Date(ci.ts).toLocaleString('es-EC')} por ${esc(ci.u||'')} con ${num(ci.pz)} de ${num(ci.cant)}${ci.faltan?' ('+num(ci.faltan)+' de faltante)':''}. <b>Reabrir es una reprogramación</b>: el paso vuelve a la cola de ${esc(nCen(c))} aunque la fase de la orden ya lo haya pasado (esta decisión, con su motivo, manda sobre la fase para este paso hasta que se vuelva a cerrar).</p>
+   <label>¿Por qué vuelve? (tabla 15, uso «devolver a un área»)</label>${selMotivoHTML('rc-m','fase')}
+   ${motivosDe('fase').length?'':'<p class="warn" style="font-size:var(--fs-s)">La tabla 15 no tiene motivos para «devolver a un área»: cárgalos en Configuración → Órdenes y materiales → 15 · Motivos.</p>'}
+   <label style="margin-top:10px">Prendas que se vuelven a hacer <span class="mut" style="font-weight:400">(ya estaban registradas: reproceso)</span></label>
+   <input type="number" id="rc-n" min="0" max="${(((S.avance[o.id]||{}).centros||{})[c]||0)}" value="0" style="width:130px" inputmode="numeric">
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:4px">Registradas hoy en ${esc(nCen(c))}: <b>${num(((S.avance[o.id]||{}).centros||{})[c]||0)}</b>. Si faltaron prendas (incompletos, falta de material) déjalo en 0: lo que falta ya cuenta como pendiente.</p></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarReabrirCierre('${oid}','${c}')">Reabrir el paso</button></div>`)}
 function confirmarReabrirCierre(oid,c){const o=S.ordenes.find(x=>x.id===oid);const ci=cierreCentro(o,c);if(!o||!ci)return;
   const m=String((document.getElementById('rc-m')||{}).value||'').trim();
-  if(!motivoValido('cierre',m)){alert('Elige el motivo de la tabla 15 (uso «cierre con faltante»).');return}
-  if(!confirm('¿Reabrir '+nCen(c)+' de '+o.op+'? '+(causasHechoSinCierre(o,c).length?'OJO: el paso sigue hecho por '+causasHechoSinCierre(o,c).join(' y ')+', así que NO vuelve a la cola.':'Vuelve a la cola del centro.')))return;
-  ci.reabierto={u:quienFirma(),ts:new Date().toISOString(),motivo:m};
+  if(!motivoValido('fase',m)){alert('Elige por qué vuelve (tabla 15, uso «devolver a un área»: falta de material, incompletos, reproceso…).');return}
+  if(!confirm('¿Reabrir '+nCen(c)+' de '+o.op+'? Vuelve a la cola de '+nCen(c)+' · motivo: '+m))return;
+  const a=S.avance[oid];a.centros=a.centros||{};const antes=a.centros[c]||0;
+  let n=Math.round(+(((document.getElementById('rc-n')||{}).value)||0));if(!(n>=0))n=0;if(n>antes){alert('No pueden volverse a hacer más de las '+num(antes)+' prendas registradas.');return}
+  ci.reabierto={u:quienFirma(),ts:new Date().toISOString(),motivo:m,vuelven:n,antes};
+  if(n>0){a.tallas=a.tallas||{};const tc=a.tallas[c]=a.tallas[c]||{};{const sc=sumaCurva(tc);if(antes>sc)tc[TALLA_TOTAL]=(+tc[TALLA_TOTAL]||0)+(antes-sc)}
+    tc[TALLA_TOTAL]=(+tc[TALLA_TOTAL]||0)-n;a.centros[c]=Math.max(0,Math.min(+o.cant||0,sumaCurva(tc)));
+    a.tallasLog=a.tallasLog||[];a.tallasLog.push({ts:ci.reabierto.ts,u:quienFirma(),centro:c,rec:null,talla:TALLA_TOTAL,pz:-n,base:'reapertura',ajusteReapertura:true,motivo:m})}   /* queda escrito; no es producción del día */
+  o.ruta=conPasosPendientes(o,o.ruta||[],o.rutaCompleta||o.ruta||[]);   /* vuelve a la cola YA, sin esperar la próxima carga */
   registrarAuditoria('cierre',o,'cerrada en '+nCen(c)+' ('+num(ci.pz)+' de '+num(ci.cant)+')','reabierta',m,true);
-  bitacora('Cierre reabierto · '+o.op+' en '+nCen(c)+' · '+m+' ('+quienFirma()+')');
+  bitacora('Cierre reabierto · '+o.op+' en '+nCen(c)+' · '+m+(n>0?' · '+num(n)+' prendas se vuelven a hacer':'')+' ('+quienFirma()+')');
   PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render()}
 /* cerradas cuya fase todavía no se movió: el supervisor la mueve con la regla de secuencia de siempre */
 function cierresSinFase(){const out=[];S.ordenes.filter(abierta).forEach(o=>{const cs=((S.avance[o.id]||{}).cierres)||{};const fe=faseEstado(o.fase,o);
@@ -7878,30 +7937,49 @@ function listasNoProgramadasHTML(c,P,hasta){const l=listasNoProgramadas(c,P,hast
    </tbody></table></div></div>`}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
-  const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const pend=Math.max(0,o.cant-hechasPrev);const parc=permiteParcial(c);
-  abrir(`<h3>Registrar hecho en ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)"><b>${esc(o.op)}</b> · ${esc(nombreCat(K(o.cat)))} · pedido <b>${num(o.cant)}</b> prendas.${parc?' Puedes registrar parcial.':' Se registra <b>completo</b> (todo el paso terminado).'}</p>
-   <label>Prendas buenas que salieron</label><input type="number" id="hc-q" min="0" style="width:130px" value="${parc?'':pend}" autofocus>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Si es distinto al pedido se registra igual y queda marcado como <b>diferencia</b> (faltantes reales). Marcar hecho <b>no reprograma nada</b>: la orden ya estaba planificada; esto solo avisa que queda libre para el centro siguiente. Queda quién, cuándo y cuántas en el avance de piso y en la bitácora.</p>
+  if(baseTallas(o,c).tallas||tallasDeOrden(o).length){mRegistroTallas(oid,c);return}   /* con curva: por talla, igual que la tablet (el total dañaba la curva de los centros siguientes) */
+  const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const llega=cantCentro(o,c);const pend=Math.max(0,llega-hechasPrev);const parc=permiteParcial(c);
+  abrir(`<h3>Registrar hecho en ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)"><b>${esc(o.op)}</b> · ${esc(nombreCat(K(o.cat)))} · pedido <b>${num(o.cant)}</b> prendas${llega!==(+o.cant||0)?' (a este centro llegan '+num(llega)+')':''}. Ya registradas aquí: <b>${num(hechasPrev)}</b> · faltan <b>${num(pend)}</b>. Lo que escribas <b>se suma</b>.</p>
+   <label>Prendas buenas que salieron AHORA</label><input type="number" id="hc-q" min="0" style="width:130px" value="${parc?'':pend}" autofocus>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Si con esto te pasas de lo que llegó, te pregunta. Si queda menos, el paso sigue abierto: registra el resto después o ciérralo con faltante («Terminar orden»). Marcar hecho <b>no reprograma nada</b>: la orden ya estaba planificada; esto solo avisa que queda libre para el centro siguiente. Queda quién, cuándo y cuántas en el avance de piso y en la bitácora.</p>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarHechoCentro('${oid}','${c}')">Registrar hecho</button></div></div>`)}
 function confirmarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const el=document.getElementById('hc-q');const q=Math.max(0,Math.round(+((el&&el.value)||0)));
   {const t=puedeCerrarPaso(oid,c);if(!t.ok){alert(txtCierreBloqueado(t)+String.fromCharCode(10)+String.fromCharCode(10)+'Si hay que cerrarlo igual, usa «Terminar orden» y deja el motivo.');return}}
-  if(!(q>0)){alert('Escribe cuántas prendas salieron.');return}
-  const dif=q-o.cant;if(dif!==0&&!confirm('Registraste '+num(q)+' de '+num(o.cant)+' prendas ('+(dif<0?'faltan '+num(-dif):num(dif)+' de más')+'). Se marca como diferencia. ¿Registrar igual?'))return;
-  const a=S.avance[oid]=S.avance[oid]||{};a.centros=a.centros||{};const prev=a.centros[c]||0;
-  a.centros[c]=permiteParcial(c)?q:o.cant; // completo: el centro queda avanzado y la orden fluye al siguiente
-  a.hechoC=a.hechoC||{};const u=quienFirma();const h=hoy();
+  if(!(q>0)){const ya=((S.avance[oid]||{}).centros||{})[c]||0;
+    if(pasoReabierto(o,c)&&ya>=cantCentro(o,c)&&ya>0){if(confirm('No sumas prendas: se vuelve a CERRAR '+nCen(c)+' con las '+num(ya)+' ya registradas. ¿Cerrar?')&&cerrarCentro(oid,c,'')){try{cerrar()}catch(e){}render()}return}
+    alert('Escribe cuántas prendas salieron.');return}
+  /* «Hecho» SUMA lo que salió ahora (usuaria, 23-sep). Se guarda donde guardan el tramo y el registro por talla (a.tallas[c]),
+     así el siguiente tramo no lo pisa; avance.centros[c] = la suma, nunca el pedido completo. */
+  const a=S.avance[oid]=S.avance[oid]||{};a.centros=a.centros||{};const prev=a.centros[c]||0;const llega=cantCentro(o,c);const nuevo=prev+q;
+  const dif=nuevo-llega;if(dif>0&&!confirm('Con estas '+num(q)+' ya van '+num(nuevo)+' de '+num(llega)+' ('+num(dif)+' de más). ¿Registrar igual?'))return;
+  a.tallas=a.tallas||{};const tc=a.tallas[c]=a.tallas[c]||{};{const sc=sumaCurva(tc);if(prev>sc)tc[TALLA_TOTAL]=(+tc[TALLA_TOTAL]||0)+(prev-sc)}   /* lo registrado antes directo (sin tallas) no se pierde */
+  tc[TALLA_TOTAL]=(+tc[TALLA_TOTAL]||0)+q;a.centros[c]=Math.min(+o.cant||0,sumaCurva(tc));
+  a.hechoC=a.hechoC||{};const u=quienFirma();const h=hoy();if(a.hechoC[c]){a.hechoCHist=a.hechoCHist||[];a.hechoCHist.push(Object.assign({centro:c},a.hechoC[c]))}   /* nada se borra */
   const paso=(o.ruta||[]).find(p=>p.centro===c)||{};let rec=(o.recursoFijo||{})[c];if(!rec){try{rec=((programar().ordenes[o.id]||{}).pasos||[]).filter(p=>p.centro===c).map(p=>p.rec)[0]}catch(e){}}
-  const delta=q-prev;if(rec&&delta){S.turnos=S.turnos||[];const tid=rec+'|'+h;let t=S.turnos.find(x=>x.id===tid);if(!t){t={id:tid,rec,d:h};S.turnos.push(t)}t.pz=(t.pz||0)+delta;t.std=(t.std||0)+delta*minPrenda(c,paso.t||0);t.ops=[...new Set([...(t.ops||[]),o.op])]}
-  a.hechoC[c]={ts:new Date().toISOString(),u,d:h,pz:q,pedido:o.cant,dif,rec:rec||null,turnoDelta:delta};
-  a.tallasLog=a.tallasLog||[];a.tallasLog.push({ts:a.hechoC[c].ts,u,centro:c,rec:rec||null,talla:'(total)',pz:delta>0?delta:q,base:'sin curva',total:true}); // sin curva de tallas: queda igual en el mismo registro
-  const sig=centroSiguiente(o,c);
-  bitacora('Hecho en '+nCen(c)+' · '+o.op+': '+num(q)+' prendas por '+u+(dif?' · DIFERENCIA '+(dif<0?num(-dif)+' faltantes':'+'+num(dif)):'')+(sig?' · lista para '+nCen(sig):' · última etapa'));
-  PLAN=null;PLAN_ALL=null;cerrar();save();render()}
+  const delta=q;if(rec&&delta){S.turnos=S.turnos||[];const tid=rec+'|'+h;let t=S.turnos.find(x=>x.id===tid);if(!t){t={id:tid,rec,d:h};S.turnos.push(t)}t.pz=(t.pz||0)+delta;t.std=(t.std||0)+delta*minPrenda(c,paso.t||0);t.ops=[...new Set([...(t.ops||[]),o.op])]}
+  a.hechoC[c]={ts:new Date().toISOString(),u,d:h,pz:q,total:nuevo,llega,pedido:o.cant,dif,rec:rec||null,turnoDelta:delta,suma:true};
+  a.tallasLog=a.tallasLog||[];a.tallasLog.push({ts:a.hechoC[c].ts,u,centro:c,rec:rec||null,talla:TALLA_TOTAL,pz:q,base:'registro «Hecho»',total:true,hecho:true});
+  PLAN=null;PLAN_ALL=null;
+  /* salió todo lo que llegó a este centro pero el paso no cuenta como hecho (el anterior cerró con menos): se cierra solo, sin faltante */
+  let auto=false;if(!pasoHecho(o,c)&&nuevo>=llega&&llega>0){try{auto=cerrarCentro(oid,c,'')}catch(e){auto=false}
+    if(auto){const ci=cierreCentro(o,c);if(ci)ci.autoHecho=a.hechoC[c].ts}}   /* se sabe qué registro lo cerró: deshacerlo lo reabre */
+  const sig=centroSiguiente(o,c);const listo=pasoHecho(o,c);
+  bitacora('Hecho en '+nCen(c)+' · '+o.op+': +'+num(q)+' prendas (van '+num(nuevo)+' de '+num(llega)+') por '+u+(dif>0?' · '+num(dif)+' DE MÁS':'')+(listo?(sig?' · lista para '+nCen(sig):' · última etapa'):' · a medias: faltan '+num(Math.max(0,llega-nuevo))));
+  cerrar();if(!auto)save();render()}
 function deshacerHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const a=S.avance[oid]||{};const hc=(a.hechoC||{})[c];if(!hc)return;
+  {const ci=cierreCentro(o,c);if(ci&&ci.autoHecho!==hc.ts){alert('Este paso ya está CERRADO en '+nCen(c)+'. Para deshacerlo hay que reabrir el cierre (con motivo).');return}
+   if(ci&&ci.autoHecho===hc.ts)ci.reabierto={u:quienFirma(),ts:new Date().toISOString(),motivo:'se deshizo el registro «Hecho» que lo cerró solo',auto:true}}
   const motivo=prompt('¿Por qué se deshace el "hecho" de '+o.op+' en '+nCen(c)+'? (obligatorio)');if(!motivo||!motivo.trim())return;
   if(hc.rec&&hc.turnoDelta){const t=(S.turnos||[]).find(x=>x.id===hc.rec+'|'+hc.d);if(t){t.pz=(t.pz||0)-hc.turnoDelta;t.std=(t.std||0)-hc.turnoDelta*minPrenda(c,((o.ruta||[]).find(p=>p.centro===c)||{}).t||0)}}
-  a.centros=a.centros||{};a.centros[c]=Math.max(0,(a.centros[c]||0)-(permiteParcial(c)?hc.pz:o.cant));if(!a.centros[c])delete a.centros[c];
-  delete a.hechoC[c];
+  a.centros=a.centros||{};
+  if(hc.suma){const tc=((a.tallas||{})[c])||{};tc[TALLA_TOTAL]=Math.max(0,(+tc[TALLA_TOTAL]||0)-(+hc.pz||0));a.centros[c]=Math.min(+o.cant||0,sumaCurva(tc));
+    const ln=(a.tallasLog||[]).find(x=>x.ts===hc.ts&&x.centro===c&&x.hecho&&!x.deshecho);if(ln){ln.deshecho=true;ln.deshechoTs=new Date().toISOString();ln.deshechoU=quienFirma()}}   /* la línea queda, marcada */
+  else{const resta=(permiteParcial(c)?hc.pz:o.cant);a.centros[c]=Math.max(0,(a.centros[c]||0)-resta);   /* registros de antes del 23-sep */
+    const tc=((a.tallas||{})[c]);if(tc&&tc[TALLA_TOTAL]!=null)tc[TALLA_TOTAL]=Math.max(0,(+tc[TALLA_TOTAL]||0)-resta)}
+  if(!a.centros[c])delete a.centros[c];
+  a.hechoCHist=a.hechoCHist||[];const anterior=[...a.hechoCHist].reverse().find(x=>x.centro===c&&!x.deshecho&&!x.restaurado);
+  a.hechoCHist.push(Object.assign({centro:c},hc,{deshecho:true,deshechoTs:new Date().toISOString()}));
+  if(anterior){anterior.restaurado=true;const k={...anterior};delete k.centro;delete k.restaurado;a.hechoC[c]=k}else delete a.hechoC[c];   /* el anterior vuelve a ser el vigente una sola vez */
   bitacora('Deshecho "hecho" en '+nCen(c)+' · '+o.op+' ('+num(hc.pz)+' prendas): '+motivo.trim()+' · '+quienFirma());
   PLAN=null;PLAN_ALL=null;save();render()}
 let DRAGC=null;
@@ -8062,7 +8140,7 @@ function colaCentroHTML(c,ctx){
       return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))}${ayudaTipHTML(LEDE_COLA)} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${!numerada?' · <span class="tag t-aviso" title="Nadie ha puesto puestos a mano: la cola se ordena por orden de llegada a este centro y, dentro de cada grupo, por fecha de llegada. Arrastrar una orden le pone puesto manual solo a ella (y a las que queden por encima, si la bajas); el resto sigue por orden de llegada.">cola sin numerar: se ordena por orden de llegada a este centro</span>':sinPuesto?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3><div class="body" style="padding-bottom:0">${ordenColaNotaHTML(cola)}${porQueTardeHTML(cola,P,c)}</div><div class="scroll" style="max-height:620px"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Pendientes</th><th class="num">Min</th><th>Recurso</th><th>Arranca</th><th>Plan: inicio → fin</th><th>Marca</th><th></th></tr></thead><tbody>
        ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length&&g==='puesto'&&cola.length)return cabGrupoCercHTML(g,0,0,14)+'<tr class="grp-row fase-row"><td colspan="14" class="mut" style="padding:3px 10px 3px 24px;font-size:var(--fs-xs)">ninguna: nadie ha puesto puestos a mano en '+esc(nCen(c))+'. Arrastra una orden al puesto 1 o escribe el número en la columna Puesto; el resto sigue por orden de llegada.</td></tr>';if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),14)+(cercAbierto(g)?((g==='porLlegar'||g==='disponible')&&!grpSt('cen').niveles.length?porFaseHTML(l,fila,pzDe,14):filasGRP('cen',l,fila,14,f=>f.o,pzDe)):'')}).join('');return sec||'<tr><td colspan="14" class="mut">Nada por programar.</td></tr>'})())}
        ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="14">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hd=hechasDelDia(c,null,h);const hh=hd.detalle.map(x=>x.o);const pzDe=o=>(hd.detalle.find(x=>x.o===o)||{}).pz||0;const tot=hd.pz;
-       return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · ya libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const det=hd.detalle.find(x=>x.o===o)||{};const hc=Object.assign({pz:det.pz||0,u:(det.fuente==='tramo'?'registro por talla':''),ts:det.ts||new Date().toISOString(),dif:0},((S.avance[o.id]||{}).hechoC||{})[c]||{});const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${(regHechoOk(c)&&((S.avance[o.id]||{}).hechoC||{})[c])?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()
+       return hh.length?`<div class="panel"><h3>Hecho hoy en ${esc(nCen(c))} <span class="note">${hh.length} ${hh.length===1?'orden':'órdenes'} · ${num(tot)} prendas · las completas quedan libres para el siguiente centro</span></h3><div class="scroll" style="max-height:260px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Diferencia</th><th>Estado</th><th>Quién</th><th></th></tr></thead><tbody>${hh.map(o=>{const det=hd.detalle.find(x=>x.o===o)||{};const hc=Object.assign({pz:det.pz||0,u:(det.fuente==='tramo'?'registro por talla':''),ts:det.ts||new Date().toISOString(),dif:0},((S.avance[o.id]||{}).hechoC||{})[c]||{},{pz:det.pz||0},((((S.avance[o.id]||{}).hechoC||{})[c]||{}).suma&&!pasoHecho(o,c))?{dif:0}:{});const sig=centroSiguiente(o,c);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(hc.pz)}</td><td>${hc.dif?`<span class="tag t-alerta">${hc.dif<0?num(-hc.dif)+' faltan':'+'+num(hc.dif)}</span>`:'<span class="mut">ok</span>'}</td><td>${!pasoHecho(o,c)?`<span class="tag t-aviso" title="el paso sigue abierto: faltan prendas o falta cerrarlo">a medias · ${num((((S.avance[o.id]||{}).centros)||{})[c]||0)} de ${num(cantCentro(o,c))}</span>`:sig?`<span class="tag t-ok">lista para ${esc(nCen(sig))}</span>`:'<span class="tag t-ok">terminada</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(hc.u||'')} ${new Date(hc.ts).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</td><td>${(regHechoOk(c)&&((S.avance[o.id]||{}).hechoC||{})[c])?`<button class="btn ghost sm" onclick="deshacerHechoCentro('${o.id}','${c}')">deshacer</button>`:''}</td></tr>`}).join('')}</tbody></table></div></div>`:''})()
 }
 /* ==================== RESUMEN DEL CENTRO (18-sep-2026): la pantalla simple del bosquejo ====================
    Pestaña «Resumen» (abre por defecto) de todo centro de producción y sub-área. NO calcula nada nuevo: usa
@@ -8478,7 +8556,7 @@ function aplicarRutasArchivo(){const p=RUTAS_ARCH;if(!p)return;
   p.aplican.forEach(x=>{const o=x.o;const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
     const comp=x.cens.map((c,i)=>{const t=(x.ts[i]!=null&&!isNaN(x.ts[i])&&x.ts[i]>0)?x.ts[i]:(+((tiempoPaso({centro:c,t:0},k,sam,+o.puntadas||0)||{}).t)||0);return {centro:c,t}});
     const antes=x.antes.join(' → ');
-    o.rutaCompleta=comp;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);
+    o.rutaCompleta=comp;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:conPasosPendientes(o,pasosPendientes(o.rutaCompleta,fila),o.rutaCompleta);
     o.rutaConf={estado:'confirmada',origen:'persona',u:x.u||u,ts:ts,nota:'restaurada desde archivo'+(x.nota?' · '+x.nota:'')+(x.tsConf?' (confirmada el '+x.tsConf+')':'')};
     if(typeof sellarRuta==='function')sellarRuta(o);
     if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',o,antes,x.cens.map(nCen).join(' → '),'rutas restauradas desde el archivo '+(p.archivo||''),false);
@@ -10102,6 +10180,8 @@ function setEstado(id,k,v){if(!S.avance[id])S.avance[id]={};S.avance[id][k]=v;S.
 function setAvance(id,c,v,max){if(!S.avance[id])S.avance[id]={};if(!S.avance[id].centros)S.avance[id].centros={};
   let n=Math.max(0,Math.round(+v||0));if(max&&n>max){alert('No puede superar las '+num(max)+' prendas de la orden.');n=max}
   const antes=S.avance[id].centros[c]||0;S.avance[id].centros[c]=n;
+  {const a=S.avance[id];a.tallas=a.tallas||{};const tc=a.tallas[c]=a.tallas[c]||{};const sc=sumaCurva(tc);   /* una sola cuenta: el cubo de tallas suma lo mismo que el avance */
+   if(n!==sc)tc[TALLA_TOTAL]=Math.max(0,(+tc[TALLA_TOTAL]||0)+(n-sc))}
   // MES: el delta de hoy va al turno del recurso que hace ese paso (prendas y minutos estándar)
   const delta=n-antes;if(delta){const o=S.ordenes.find(x=>x.id===id);const paso=(o.ruta||[]).find(p=>p.centro===c)||{};
     let rec=(o.recursoFijo||{})[c];if(!rec){try{rec=((programar().ordenes[o.id]||{}).pasos||[]).filter(p=>p.centro===c).map(p=>p.rec)[0]}catch(e){}}
@@ -11247,7 +11327,7 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
       if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
       if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
     o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
-    o.otTs=ts;const add=empatarRutaConOT(o);if(add.length){p.rutaEmpatada=(p.rutaEmpatada||0)+1;p.pasosOT=(p.pasosOT||0)+add.length}
+    o.otTs=ts;const add=empatarRutaConOT(o);o.ruta=o.historia?[]:conPasosPendientes(o,o.ruta||[],o.rutaCompleta||[]);if(add.length){p.rutaEmpatada=(p.rutaEmpatada||0)+1;p.pasosOT=(p.pasosOT||0)+add.length}
     if(rutaConfirmada(o)){const tiene=new Set(((o.rutaCompleta||[]).concat(o.ruta||[])).map(x=>x.centro));const dif=(centrosOdooDe(o)||[]).filter(c=>!tiene.has(c));if(dif.length){p.confNoTocadas=(p.confNoTocadas||[]);p.confNoTocadas.push({op:o.op,centros:dif})}}});
   S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
   S.params.otCarga.confNoTocadas=(p.confNoTocadas||[]).slice(0,2000);
@@ -12638,7 +12718,7 @@ function aceptarFasesArchivo(){const rc=(S.params.tareaCarga||{}).recarga;if(!rc
     const antes=o.fase;registrarFase(o,x.archivo,'archivo');aplicarFaseSistema(o,x.archivo);bitacora('Fase '+o.op+': '+(antes||'—')+' → '+x.archivo+' (aceptada del archivo por '+u+(eraMovida?'; pisa una fase movida aquí':'')+')');n++;return false});
   BND.sel=new Set();PLAN=null;PLAN_ALL=null;save();render();alert(n+' órdenes tomaron la fase del archivo.')}
 function aplicarFaseSistema(o,f){o.fase=f||null;const fila=filaFaseDe(o.fase);o.faseSistema=fila?fila.sistema:null;o.esCola=!!(fila&&fila.esCola);o.sinCarga=!!(fila&&fila.sinCarga);o.faseNoCalza=!fila;o.bloqueada=!!(fila&&fila.bloqueo);
-  const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:pasosPendientes(o.rutaCompleta||[],fila);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
+  const historia=!!(fila&&fila.sistema==='cerrada');o.historia=historia;o.estado=historia?(normFase(o.fase).startsWith('stand')?'standby':'cerrada'):'plan';o.ruta=historia?[]:conPasosPendientes(o,pasosPendientes(o.rutaCompleta||[],fila),o.rutaCompleta||[]);o.vencida=!!(o.fecha&&o.fecha<hoy()&&!historia)}
 function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISOString();const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';
   {const cm=(p.prev||{}).conflictoMasivo;if(cm&&cm.frena){const t=prompt('El ID de tarea del archivo no coincide con el que ya tienen '+cm.n+' de las '+cm.base+' órdenes con ID ('+cm.pct+' %). Lo más probable es que este archivo traiga OTRO identificador. Esas filas NO se aplican y las órdenes quedan «revisar». Para aplicar igual escribe exactamente: APLICAR');
     if(String(t||'').trim().toUpperCase()!=='APLICAR'){alert('No se aplicó nada. Revisa la exportación: el campo debe ser el ID de la tarea, el mismo de la carga anterior.');return}bitacora('Actualizar datos · tareas: se aplicó con '+cm.n+' conflictos de ID de '+cm.base+' cabeceras con ID, con confirmación escrita ('+quienFirma()+')')}}
@@ -12709,10 +12789,10 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
         if(compV.length){const esTx=p=>['tej','tin','proveedor'].includes(p.centro);
           const txAntes=compV.filter(esTx).map(p=>p.centro).join(',');
           o.rutaCompleta=compV.filter(p=>!esTx(p)).map(x=>Object.assign({},x));
-          const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);   /* la fase del archivo decide qué queda pendiente, no qué pasos tiene la ruta */
+          const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:conPasosPendientes(o,pasosPendientes(o.rutaCompleta,fila),o.rutaCompleta);   /* la fase del archivo decide qué queda pendiente, no qué pasos tiene la ruta */
           if((o.telas||[]).length)aplicarRutaTextil(o);   /* de dónde viene la tela lo dice el ARCHIVO (origen del producto), no la confirmación de la persona */
           else if(compV.some(esTx)){   /* el archivo no trajo líneas de tela: no se rehace a ciegas, se conserva el tramo y se reporta */
-            o.rutaCompleta=compV.map(x=>Object.assign({},x));const filaT=filaFaseDe(o.fase);o.ruta=(filaT&&filaT.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,filaT);
+            o.rutaCompleta=compV.map(x=>Object.assign({},x));const filaT=filaFaseDe(o.fase);o.ruta=(filaT&&filaT.sistema==='cerrada')?[]:conPasosPendientes(o,pasosPendientes(o.rutaCompleta,filaT),o.rutaCompleta);
             noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'se conserva el tramo de tela ('+txAntes+')',motivo:'el archivo no trajo líneas de tela para esta orden: no se rehace sin el dato'})}
           const txAhora=(o.rutaCompleta||[]).filter(esTx).map(p=>p.centro).join(',');
           if(txAntes!==txAhora){cons.rutaTextil=(cons.rutaTextil||0)+1;

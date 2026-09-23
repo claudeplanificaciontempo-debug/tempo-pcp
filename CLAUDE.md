@@ -1317,6 +1317,30 @@ fase la pone el centro que toca INICIO. Falta que ella confirme la columna nueva
 serigrafía y sublimado comparten el grupo 6); candado: un INICIO nunca da por hecho un paso pendiente; SQL acotado nuevo (la tablet
 no manda la fase). **Aviso**: `mover_fase` (producción, 16-sep) no valida la fase ni el motivo en el servidor (línea 148 del SQL).
 
+**Maquila en el tramo, reabrir = reprogramación con motivo, «Hecho» que suma y ruta pendiente real (23-sep-2026 noche, decisiones de
+la usuaria; cada cambio pasó por un revisor adversarial).** (1) «Se cortó, se fue a maquila y vuelve para estampado»: la tabla de
+**Tramos paralelos** gana `t.grupos=[{grupo,centro}]` (grupos de fases que cuentan como un centro del tramo; `addTramoGrupo` /
+`quitarTramoGrupo`, éste con confirmación y en la GUARDIA) y `sembrarTramoMaquila()` siembra una vez `{grupo:'maquila externa',centro:'modulos'}`.
+En `faseEstado0` esas fases cuentan como modulos: la OT decide los OTROS centros del tramo, nunca el propio (5Maquila Recepción, con
+«desde» = terminados, daba por hecho el estampado). (2) **Reabrir un cierre = reprogramación**: pide el porqué de la lista del uso `fase`
+(renombrado «devolver a un área (fase o reabrir un paso)»; `MOTIVOS_DEVOLUCION_DEF` = Falta de material · Incompletos · Reproceso, sembrados
+una vez) y **cuántas prendas ya registradas se vuelven a hacer** (`rc-n`; se descuentan del cubo y de `centros[c]` con una línea
+`ajusteReapertura` que no cuenta como producción del día), así el motor, la cola y la tablet las ven pendientes. Un paso reabierto no está hecho
+(`pasoReabierto` al principio de `pasoHecho`; `faseEstado0` lo quita de «hechos»: manda sobre la fase y la OT), va en la cola como
+«reabierto · motivo» (no como anomalía), y para volver a cerrarlo cuenta solo el tiempo trabajado DESPUÉS de reabrir (`tiempoEfectivoCentro`);
+se vuelve a cerrar solo al completar lo que llegó (tramo de la tablet o «Hecho»), o con «Hecho» en 0 si ya estaba completo.
+(3) **«Hecho» SUMA** lo que salió ahora (corrección 1 de la auditoría): una sola cuenta en `a.tallas[c]['(total)']` → `centros[c]` (también
+`setAvance` de Control de piso escribe por ahí); una orden con curva de tallas va al registro por talla (`mRegistroTallas`, como la tablet);
+`curvaCorte` ignora «(total)»; si llega a lo que entró al centro y el paso no cuenta como hecho, se cierra solo (`autoHecho`; deshacer ese
+«Hecho» lo deja pendiente); deshacer resta solo el último registro, marca su línea `deshecho` y restaura el anterior una vez (`hechoCHist`).
+(4) **Ruta pendiente real**: `conPasosPendientes(o,pend,completa)` = lo que deja la fase + todo paso de PRODUCCIÓN de la ruta completa que
+`pasoHecho` no da por hecho (reabiertos y los del tramo con la OT abierta). Está en los cinco sitios que rearman `o.ruta` desde la fase,
+en `aplicarOT` y en una pasada única `sembrarRutaPendienteReal` para lo ya cargado (bitácora con ejemplos). Las siembras nuevas no corren
+desde un perfil de piso. Pendiente de la usuaria: la tabla «fase de cada centro» se le mandó en `FASE_DE_CADA_CENTRO.xlsx` (armada con
+`test/xlsx_build.js` sobre el catálogo real). Límites conocidos: un paso agregado por la OT con 0 minutos entra a la cola sin fecha del motor;
+una orden que sale de maquila a servicios vuelve a tener confección pendiente si la OT de módulos sigue abierta (se salva con
+`recursoFijo modulos:'maquila'`). Pruebas MH, MH2, MH3, MH4 (y CC4, OF, registrar actualizadas).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
