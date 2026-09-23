@@ -2711,12 +2711,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 2 · flujo: inicio
    iniciarTramo(oT.id,'modulos',rec);
    const tr=tramosDe(oT.id)[0];
-   __check("TR: INICIO abre el tramo con quién y cuándo, y una sola orden a la vez por puesto",!!tr&&!!tr.ini&&!tr.fin&&!!tr.u&&!!tramoAbiertoDe('modulos',rec));
-   // otra orden en el mismo puesto pregunta si cierra la anterior
+   __check("TR: INICIO abre el tramo con quién y cuándo",!!tr&&!!tr.ini&&!tr.fin&&!!tr.u&&!!tramoAbiertoDe('modulos',rec));
+   // otra orden en el mismo puesto SÍ se puede empezar (23-sep: el módulo corre varias referencias a la vez)
    {const o2=JSON.parse(JSON.stringify(base));o2.id=uid();o2.op='WH/TRAMO-2';o2.estado='plan';S.ordenes.push(o2);delete S.avance[o2.id];
-    let preguntó=false;const c0=window.confirm;window.confirm=m=>{preguntó=/Ya hay una orden empezada/.test(String(m));return false};
+    const nAntes=tramosAbiertosDe('modulos',rec).length;
+    let preguntó=false;const c0=window.confirm;window.confirm=m=>{preguntó=true;return false};
     iniciarTramo(o2.id,'modulos',rec);window.confirm=c0;
-    __check("TR: si intenta iniciar otra orden en el mismo puesto, pregunta si cierra la anterior",preguntó&&tramosDe(o2.id).length===0&&!!tramoAbiertoDe('modulos',rec));
+    __check("TR: otra orden en el mismo puesto se empieza sin cerrar la anterior y sin preguntar nada (varias referencias a la vez)",!preguntó&&tramosDe(o2.id).length===1&&tramosAbiertosDe('modulos',rec).length===nAntes+1,JSON.stringify({preguntó,abiertos:tramosAbiertosDe('modulos',rec).length}));
+    /* y el tiempo del puesto se reparte entre las dos, en vez de contarse dos veces */
+    const dos=tramosAbiertosDe('modulos',rec).map(x=>calcTramo(Object.assign({},x.t,{fin:new Date(Date.now()+3600000).toISOString()}),x.o));
+    __check("TR: con dos órdenes a la vez, las personas del puesto se reparten (la capacidad no se duplica)",Math.abs(dos.reduce((a,k)=>a+k.pers,0)-personasRec(rec,'modulos').pers)<0.01,JSON.stringify(dos.map(k=>+k.pers.toFixed(2))));
+    const tr2=tramosDe(o2.id);tr2.splice(0,tr2.length);
     S.ordenes=S.ordenes.filter(x=>x!==o2)}
    // paro con motivo de la tabla 15
    tr.ini=new Date(Date.now()-60*60*1000).toISOString(); // una hora
@@ -2864,15 +2869,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("PA: el tiempo trabajado descuenta ese paro calculado",Math.abs(cal.paros-pc.min)<0.5&&Math.abs(cal.trabajado-(cal.brutoMin-cal.paros))<0.6);
    // 1 · reloj vivo: solo cambia el texto
    TAB={centro:'modulos',rec,q:''};page='tablet';render();
-   {const el=document.getElementById('crono-vivo');
+   {const el=document.querySelector('.crono-vivo');   /* varios relojes posibles: uno por orden en curso */
     __check("CR: mientras el tramo corre hay un reloj con formato h:mm:ss",!!el&&/^\d+:\d{2}:\d{2}$/.test((tickCrono(),el.textContent)));
     const antesTxt=el.textContent;const padre=el.parentElement.innerHTML.length;
     const parosAntes=el.getAttribute('data-paros');el.setAttribute('data-paros','0');el.setAttribute('data-ini',new Date(Date.now()-3661*1000).toISOString());tickCrono();
-    __check("CR: el reloj avanza cambiando solo su texto, sin redibujar la pantalla",el.textContent!==antesTxt&&el.textContent==='1:01:01'&&el.parentElement.innerHTML.length!==0&&document.getElementById('crono-vivo')===el);
+    __check("CR: el reloj avanza cambiando solo su texto, sin redibujar la pantalla",el.textContent!==antesTxt&&el.textContent==='1:01:01'&&el.parentElement.innerHTML.length!==0&&document.querySelector('.crono-vivo')===el);
     el.setAttribute('data-ini',tr.ini);el.setAttribute('data-paros',parosAntes||'0');}
    // paro visual: el reloj se congela
    {mPararTramo(tr.id,oP.id);document.getElementById('pt-m').value='Almuerzo';pararTramo(tr.id,oP.id);
-    render();const el=document.getElementById('crono-vivo');const pausa=el&&el.getAttribute('data-pausa');
+    render();const el=document.querySelector('.crono-vivo');const pausa=el&&el.getAttribute('data-pausa');
     tickCrono();const t1=el.textContent;tickCrono();
     __check("CR: durante el paro el reloj se detiene y el botón dice Reanudar",!!pausa&&el.textContent===t1&&document.getElementById('p-tablet').innerHTML.includes('Reanudar'));}
    // 2 · almuerzo marcado manda sobre el horario (sin doble descuento)
@@ -2993,9 +2998,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const oR=JSON.parse(JSON.stringify(base));oR.id=uid();oR.op='WH/MO/28300';oR.estado='plan';oR.cant=50;oR.tallasPedido={S:50};delete oR.programa;S.ordenes.push(oR);delete S.avance[oR.id];PLAN=null;PLAN_ALL=null;
    // 1 · el reloj corre solo, sin llamar a tickCrono a mano
    TAB={centro:'modulos',rec,q:''};page='tablet';iniciarTramo(oR.id,'modulos',rec);render();
-   const el0=document.getElementById('crono-vivo');const txt0=el0?el0.textContent:null;
+   const el0=document.querySelector('.crono-vivo');const txt0=el0?el0.textContent:null;
    await __p(3200);
-   const el1=document.getElementById('crono-vivo');
+   const el1=document.querySelector('.crono-vivo');
    __check("RJ: el reloj de Mi centro avanza solo (3 segundos reales, sin tocar tickCrono)",!!el0&&!!el1&&el1.textContent!==txt0&&/^\d+:\d{2}:\d{2}$/.test(el1.textContent),JSON.stringify({txt0,txt1:el1&&el1.textContent}));
    __check("RJ: el arranque del reloj ya no está dentro de Liberación",!vLiberacion.toString().includes('arrancarCrono')&&render.toString().includes('arrancarCrono'));
    // 2 · el operario busca por número, sin menú de campos
@@ -3665,7 +3670,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {iniciarTramo(oDisp.id,'modulos',rec);const tr=tramosDe(oDisp.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-90*6e4).toISOString();
     __check("PE3: con un inicio sin fin la orden pasa a EN PROCESO",estadoOrdenCentro(oDisp,'modulos',rec)==='proceso'&&!!tramoAbiertoOrden(oDisp.id,'modulos',null));
     const h=flujoTramoHTML('modulos',rec,[{o:oDisp,hechas:0}]);
-    __check("PE3: en su propio puesto se ve el reloj en curso con la hora de inicio",h.includes('id="crono-vivo"')&&h.includes('data-ini="'+tr.ini));
+    __check("PE3: en su propio puesto se ve el reloj en curso con la hora de inicio",h.includes('class="crono-vivo"')&&h.includes('data-ini="'+tr.ini));
     const otroRec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!==rec)||{}).id;
     if(otroRec){tr.rec=otroRec;const h2=flujoTramoHTML('modulos',rec,[{o:oDisp,hechas:0}]);
      __check("PE3: y desde otro puesto la orden aparece en la lista como EN CURSO con el tiempo",/EN CURSO · 1:[23][0-9]:/.test(h2),(h2.match(/EN CURSO[^<]{0,16}/)||[])[0]||'');tr.rec=rec}
@@ -7011,6 +7016,35 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
+   {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+    const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);
+    cand.forEach(o=>{delete S.avance[o.id]});
+    const cf=window.confirm;window.confirm=()=>true;const al=window.alert;let avisos=[];window.alert=m=>avisos.push(String(m));
+    cand.slice(0,3).forEach(o=>iniciarTramo(o.id,c,rec));
+    const ab=tramosAbiertosDe(c,rec);
+    __check('TS: un puesto puede tener varias órdenes corriendo a la vez, sin cerrar la anterior',ab.length===3&&!avisos.length,JSON.stringify({abiertos:ab.length,avisos:avisos.length}));
+    /* el tiempo NO se cuenta entero en cada orden: se reparte entre las que corren juntas */
+    const pers=personasRec(rec,c).pers;
+    const cal=ab.map(x=>calcTramo(Object.assign({},x.t,{fin:new Date(Date.now()+3600000).toISOString()}),x.o));
+    const suma=cal.reduce((a,k)=>a+k.pers,0);
+    __check('TS: las personas del puesto se reparten entre las órdenes que corren juntas: no se cuenta la capacidad dos ni tres veces',Math.abs(suma-pers)<0.01&&cal.every(k=>k.persFuente==='repartida'),JSON.stringify({personasDelPuesto:pers,suma:+suma.toFixed(2),porOrden:cal.map(k=>+k.pers.toFixed(2))}));
+    __check('TS: y la pantalla dice que están repartidas, no lo esconde',/repartidas entre/.test(cal[0].persTxt||''),String(cal[0].persTxt||'').slice(0,70));
+    /* el líder puede decir cuántas personas van en una orden concreta */
+    const nb=S.bitacora.length;setPersonasTramo(ab[0].t.id,ab[0].o.id,6);
+    const k0=calcTramo(Object.assign({},tramosAbiertosDe(c,rec)[0].t,{fin:new Date(Date.now()+3600000).toISOString()}),ab[0].o);
+    __check('TS: si el líder escribe cuántas personas van en una orden, eso manda sobre el reparto y queda en bitácora',k0.pers===6&&k0.persFuente==='declarada'&&S.bitacora.length>nb,JSON.stringify({pers:k0.pers,fuente:k0.persFuente}));
+    /* hay un tope configurable */
+    avisos=[];const libres=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')&&!tramosAbiertosDe(c,rec).some(x=>x.o.id===o.id)).slice(0,2);
+    libres.forEach(o=>iniciarTramo(o.id,c,rec));
+    __check('TS: hay un máximo de órdenes a la vez (parámetro), y al llegar se avisa cuáles están corriendo en vez de dejar abrir más',tramosAbiertosDe(c,rec).length===maxTramosAbiertos()&&avisos.some(m=>/m[áa]ximo/i.test(m)),JSON.stringify({abiertos:tramosAbiertosDe(c,rec).length,tope:maxTramosAbiertos()}));
+    /* la tablet las muestra todas, cada una con su reloj */
+    PERFIL={id:'u-op',rol:'tablet',nombre:'Operario'};S.params.tablets=S.params.tablets||{};S.params.tablets['u-op']={centro:c,rec};
+    page='tablet';render();const h=document.getElementById('p-tablet').innerHTML;
+    __check('TS: Mi centro muestra una tarjeta con su propio reloj por cada orden en curso, y deja la cola debajo para empezar otra',(h.match(/class="crono-vivo"/g)||[]).length===tramosAbiertosDe(c,rec).length&&/m[áa]ximo/i.test(h),String((h.match(/class="crono-vivo"/g)||[]).length));
+    PERFIL=adminP0();window.confirm=cf;window.alert=al;
+    tramosAbiertosDe(c,rec).forEach(x=>{const tr=tramosDe(x.o.id);const i=tr.findIndex(t=>t.id===x.t.id);if(i>=0)tr.splice(i,1)});
+    cand.forEach(o=>{delete S.avance[o.id]});page='ordenes';render();}
    /* FB · Freno de borrado en masa: el 23-sep una pestaña con la memoria vacía borró órdenes, avance y bitácora al guardar. Nunca más. */
    {PERFIL=adminP0();const bakR=REEMPLAZO_OK;REEMPLAZO_OK=false;
     const db=sb.__DB;const nAntes=(db.ordenes||[]).length;

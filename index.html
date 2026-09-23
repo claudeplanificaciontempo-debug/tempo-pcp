@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 10:18';
+const APP_BUILD='2026-09-23 11:55';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2274,12 +2274,12 @@ const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c
     /* SOLO lo programado para este puesto dentro de la ventana; nada de recurso fijo sin programa */
     cola=cola.filter(f=>visibleOperario(f.o,c,rec,P));
     /* excepción única: una orden que ESTE puesto ya empezó sigue visible hasta cerrar el tramo */
-    const ab=tramoAbiertoDe(c,rec||null);
-    if(ab&&!cola.some(f=>f.o.id===ab.o.id)){
+    tramosAbiertosDe(c,rec||null).forEach(ab=>{   /* 23-sep: el puesto puede tener varias corriendo; todas siguen visibles */
+      if(!ab||cola.some(f=>f.o.id===ab.o.id))return;
       const fe=filas.find(f=>f.o.id===ab.o.id);
       if(fe)cola=[Object.assign({},fe,{fueraDelPlan:true})].concat(cola);
       else{const paso=((P.ordenes[ab.o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
-        cola=[{o:ab.o,c,paso,hecho:false,pzSem:0,hechas:(((S.avance[ab.o.id]||{}).centros)||{})[c]||0,bloq:null,cerc:null,fueraDelPlan:true}].concat(cola)}}
+        cola=[{o:ab.o,c,paso,hecho:false,pzSem:0,hechas:(((S.avance[ab.o.id]||{}).centros)||{})[c]||0,bloq:null,cerc:null,fueraDelPlan:true}].concat(cola)}});
     if(rec){const sec=((P.secMod||{})[rec]||[]).map(x=>x.oid);
       if(sec.length)cola.sort((a,b)=>{const ia=sec.indexOf(a.o.id),ib=sec.indexOf(b.o.id);return (ia<0?9e9:ia)-(ib<0?9e9:ib)})}
     return cola}
@@ -2299,6 +2299,14 @@ function hechasDelDia(centro,rec,dia){const d=dia||hoy();let tot=0;const detalle
   return {pz:tot,detalle}}
 function tramosDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!Array.isArray(a.tramos))a.tramos=[];return a.tramos}
 function todosTramos(){const out=[];S.ordenes.forEach(o=>{((S.avance[o.id]||{}).tramos||[]).forEach(t=>out.push({o,t}))});return out}
+/* todos los tramos abiertos de un puesto (23-sep: el módulo corre varias referencias a la vez) */
+function tramosAbiertosDe(c,rec){return todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
+function maxTramosAbiertos(){return Math.max(1,+prm('maxTramosAbiertos',4)||4)}
+/* cuántos tramos del mismo puesto solapan con este en el tiempo (para repartir las personas con honestidad) */
+function tramosSolapados(t){if(!t||!t.ini)return 1;const ini=+new Date(t.ini),fin=t.fin?+new Date(t.fin):Date.now();
+  const l=todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null)&&x.t.id!==t.id&&x.t.ini)
+    .filter(x=>{const a=+new Date(x.t.ini),b=x.t.fin?+new Date(x.t.fin):Date.now();return a<fin&&b>ini});
+  return 1+l.length}
 function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
 /* personas del tramo: primero la asistencia real del día, después las del recurso, y solo si no hay, 1 */
 function personasTramo(rec,c,dia){const d=dia||hoy();const r=rec?R(rec):null;
@@ -2346,7 +2354,10 @@ function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new
   const des={min:almMarcado?0:vent.min,falta:vent.falta};
   const avisoAlmuerzo=!almMarcado&&vent.min>0;
   const trabajado=Math.max(0,brutoMin-paros-(des.min||0));
-  const pr=personasRec(t.rec,t.centro,t.ini?String(t.ini).slice(0,10):null);
+  let pr=personasRec(t.rec,t.centro,t.ini?String(t.ini).slice(0,10):null);
+  const juntas=tramosSolapados(t);   /* varias referencias a la vez en el mismo puesto (23-sep) */
+  if(t.persManual>0)pr={pers:+t.persManual,fuente:'declarada',txt:'personas puestas a mano en esta orden',falta:false};
+  else if(juntas>1){const p=pr.pers/juntas;pr={pers:p,fuente:'repartida',txt:'repartidas entre '+juntas+' órdenes que corrían a la vez en este puesto (se puede escribir cuántas van en cada una)',falta:pr.falta};}
   const minPersona=trabajado*pr.pers;
   const u=sumaCurva(t.tallas||{});const seg=sumaCurva(t.segundas||{});const uTot=u+seg;
   const minPrendaReal=u>0?minPersona/u:null;const minPrendaTot=uTot>0?minPersona/uTot:null;
@@ -2394,20 +2405,27 @@ function reanudarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const 
 let CRONO_INT=null;
 function fmtHMS(min){const sg=Math.max(0,Math.round(min*60));const h=Math.floor(sg/3600),m=Math.floor((sg%3600)/60),s=sg%60;
   return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
-function tickCrono(){const el=document.getElementById('crono-vivo');
-  if(!el){if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}return}
-  const ini=el.getAttribute('data-ini');if(!ini)return;
-  const pausa=el.getAttribute('data-pausa');const paros=+el.getAttribute('data-paros')||0;
-  const hasta=pausa?new Date(pausa):new Date();
-  const min=Math.max(0,(hasta-new Date(ini))/6e4-paros);
-  el.textContent=fmtHMS(min)}
+function tickCrono(){const els=[...document.querySelectorAll('.crono-vivo')];   /* 23-sep: varias órdenes a la vez, un reloj por tarjeta */
+  if(!els.length){if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}return}
+  els.forEach(el=>{const ini=el.getAttribute('data-ini');if(!ini)return;
+    const pausa=el.getAttribute('data-pausa');const paros=+el.getAttribute('data-paros')||0;
+    const hasta=pausa?new Date(pausa):new Date();
+    const min=Math.max(0,(hasta-new Date(ini))/6e4-paros);
+    el.textContent=fmtHMS(min)})}
 function arrancarCrono(){if(typeof fotoZoomInit==='function')try{fotoZoomInit()}catch(e){}if(CRONO_INT)clearInterval(CRONO_INT);tickCrono();CRONO_INT=setInterval(tickCrono,1000)}
+/* cuántas personas van en ESTA orden (23-sep): si se declara, manda sobre el reparto automático */
+function setPersonasTramo(tid,oid,v){const t=(tramosDe(oid)||[]).find(x=>x.id===tid);if(!t)return;
+  const o=S.ordenes.find(x=>x.id===oid);const n=+v||0;
+  if(!regHechoOk(t.centro)){alert('Tu perfil no registra en '+nCen(t.centro)+'.');return}
+  if(n>0)t.persManual=n;else delete t.persManual;
+  bitacora('Personas en '+(o?o.op:'')+' ('+nCen(t.centro)+'): '+(n>0?n:'reparto automático entre las que corren a la vez')+' ('+quienFirma()+')');
+  save();render()}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
-  const ab=tramoAbiertoDe(c,rec||null);
-  if(ab){if(ab.o.id===oid){alert('Esta orden ya está empezada.');return}
-    if(!confirm('Ya hay una orden empezada en este puesto: '+ab.o.op+'. ¿La cierras ahora y empiezas '+o.op+'?'))return;
-    TRAMO={paso:'fin',id:ab.t.id,oid:ab.o.id};cerrarTramoUI();return}
+  const abiertos=tramosAbiertosDe(c,rec||null);
+  if(abiertos.some(x=>x.o.id===oid)){alert('Esta orden ya está empezada.');return}
+  if(abiertos.length>=maxTramosAbiertos()){
+    alert('Este puesto ya tiene '+abiertos.length+' órdenes corriendo a la vez ('+abiertos.map(x=>x.o.op).join(', ')+'), que es el máximo.\nTermina una antes de empezar otra, o sube el máximo en Configuración → Calendario y parámetros.');return}
   const t={id:uid(),centro:c,rec:rec||null,ini:new Date().toISOString(),u:quienFirma(),paros:[],tallas:{}};
   tramosDe(oid).push(t);
   bitacora('Inicio de trabajo · '+o.op+' en '+nCen(c)+(rec?' ('+nRec(rec)+')':'')+' por '+quienFirma());
@@ -2624,23 +2642,29 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
         <button class="btn" style="font-size:20px;padding:16px 22px;background:var(--ok);border-color:var(--ok)" title="cierra el PASO de esta orden en este centro, aunque falten prendas; el tramo se guarda primero" onclick="terminarOrdenCentro('${t.id}','${o.id}','${c}')">Terminé esta orden en mi centro</button>
         <button class="btn ghost" style="font-size:18px;padding:14px 20px" onclick="TRAMO={paso:null,id:null,oid:null};render()">Ahora no</button></div>
       </div></div>`}}
-  if(ab){const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
+  const abiertos=tramosAbiertosDe(c,rec||null);
+  const tarjetaAbierta=(ab)=>{const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
     const parosCerrados=(t.paros||[]).filter(p=>p.fin).reduce((a,p)=>a+(+p.min||0),0);
-    return avisoOlv+`<div class="panel" style="border:2px solid var(--t-accent)"><div class="body" style="font-size:18px">
+    return `<div class="panel" style="border:2px solid var(--t-accent)"><div class="body" style="font-size:18px">
      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<div><b style="font-size:22px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div></div></div>
      <div style="margin:14px 0;text-align:center">
-      <div id="crono-vivo" data-ini="${esc(t.ini)}" data-paros="${parosCerrados}" ${pa?`data-pausa="${esc(pa.ini)}"`:''} style="font-size:46px;font-weight:700;letter-spacing:.04em;color:${pa?'var(--aviso)':'var(--t-primary)'}">0:00:00</div>
+      <div class="crono-vivo" data-ini="${esc(t.ini)}" data-paros="${parosCerrados}" ${pa?`data-pausa="${esc(pa.ini)}"`:''} style="font-size:46px;font-weight:700;letter-spacing:.04em;color:${pa?'var(--aviso)':'var(--t-primary)'}">0:00:00</div>
       <div class="mut" style="font-size:15px">empezó ${new Date(t.ini).toLocaleTimeString('es-EC')}${parosCerrados?' · paros '+num(parosCerrados)+' min':''}${pa?' · <b>en paro: '+esc(pa.motivo)+'</b>':''}</div></div>
      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
       ${pa?`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="reanudarTramo('${t.id}','${o.id}')">Reanudar</button>`
          :`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="terminarTramo('${t.id}','${o.id}')">FIN</button>
            <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mPararTramo('${t.id}','${o.id}')">Paro</button>`}</div>
+     <div class="mut" style="font-size:15px;margin-top:10px;text-align:center">${cal.pers} ${cal.pers===1?'persona':'personas'} · <span title="${esc(cal.persTxt||'')}">${esc(cal.persFuente==='repartida'?'repartidas entre las órdenes que corren a la vez':cal.persFuente==='declarada'?'puestas a mano':'del puesto')}</span>
+      · ¿cuántas van en esta orden? <input type="number" min="0" step="1" inputmode="numeric" style="width:70px;font-size:16px" value="${t.persManual||''}" placeholder="auto" onchange="setPersonasTramo('${t.id}','${o.id}',this.value)"></div>
      ${pa?'':tablaTallasTramoHTML(o,t,c,true)}
-    </div></div>`}
+    </div></div>`};
+  const topeAb=maxTramosAbiertos();
+  const tarjetas=abiertos.map(tarjetaAbierta).join('');
+  const avisoTope=abiertos.length>=topeAb?`<div class="warn" style="font-size:16px">Este puesto ya tiene <b>${abiertos.length}</b> ${abiertos.length===1?'orden corriendo':'órdenes corriendo a la vez'} (el máximo). Termina una para empezar otra; el máximo se cambia en Configuración → Calendario y parámetros.</div>`:'';
   const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
   const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length;
-  return avisoOlv
+  return avisoOlv+tarjetas+avisoTope
    +seccionColaTabletHTML('En proceso','lo que ya empezaste y no has terminado · toca CONTINUAR para seguir, o «Terminar orden» cuando salga todo',est.proceso,c,rec,'proceso','var(--t-accent)')
    +seccionColaTabletHTML('Disponibles','ya están en la fase de este centro: se pueden iniciar',est.disponible,c,rec,'disponible',null)
    +seccionColaTabletHTML('Próximas','todavía les falta un paso anterior de SU ruta: se ven, no se inician',est.proxima,c,rec,'proxima',null)
@@ -3184,7 +3208,7 @@ function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='fu
   document.getElementById('n-atr').textContent=P?(Object.values(P.ordenes).filter(o=>o.atraso).length||''):'';
   avisoGuardado();verBotonesAdmin();
   try{simplificarPagina(page)}catch(e){try{console.error('simplificarPagina',e)}catch(x){}}   /* para Dummies (F): párrafos explicativos al «?» del título, filtros bajo «Filtrar» */
-  if(document.getElementById('crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}
+  if(document.querySelector('.crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}   /* 23-sep: puede haber varios relojes, uno por orden en curso */
   devolverScroll(_scroll);
 }
 /* posición de la ventana y de cada recuadro con data-grp-scroll="<id>"; se devuelve solo si sigue la misma página (otra página empieza arriba) */

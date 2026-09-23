@@ -1219,6 +1219,26 @@ cartera que el perfil ve (`ordenesQueVe` + `matchBusq`, hasta 6): estado (semáf
 (ya pasó · en proceso · lista para entrar · todavía no: falta X · no está en su ruta, con la fecha del programa). Pruebas TP.
 Ver `TRAMOS_PARALELOS_Y_BUSCADOR_CENTRO.md`.
 
+**Varias referencias a la vez en un puesto (23-sep-2026, decisión de la usuaria):** un módulo corre 3–4 referencias
+simultáneas («sale una, otra va por la mitad, otra entra»). `tramosAbiertosDe(c,rec)` (lista) y `maxTramosAbiertos()`
+(`prm('maxTramosAbiertos',4)`) reemplazan la regla de un solo tramo: `iniciarTramo` ya no pide cerrar la anterior y avisa
+cuáles corren al llegar al tope. **El tiempo no se duplica**: en `calcTramo`, si el tramo no trae `t.persManual` las personas
+del puesto se dividen entre los tramos que **solapan en el tiempo** (`tramosSolapados(t)`, no «los abiertos ahora») y queda
+`persFuente:'repartida'` con el texto a la vista; `setPersonasTramo(tid,oid,n)` deja declarar cuántas van en cada orden (manda
+sobre el reparto, va a bitácora). La tablet dibuja **una tarjeta con su reloj por orden en curso** (`tarjetaAbierta` dentro de
+`flujoTramoHTML`) y la cola queda debajo; el reloj pasó de `id="crono-vivo"` a **`class="crono-vivo"`** y `tickCrono` recorre todos.
+No cambian el SAM, el cierre del paso ni el motor. Pruebas TS. Ver `VARIAS_ORDENES_A_LA_VEZ.md`.
+
+**Freno de borrado en masa (23-sep-2026, tras perder los datos):** `frenoBorrado(t,ids,cur)` dentro del `del()` de `_save`:
+si la pestaña **no tiene ninguna fila** de esa tabla en memoria y el guardado iba a borrar `prm('minBorradoSospechoso',10)`
+o más, **no se borra nada**: aviso fijo con botón de recargar (`#aviso-freno`), línea en bitácora y `BORRADO_FRENADO`. Quitar
+filas sueltas y reemplazar un conjunto teniendo datos en memoria siguen funcionando; el borrado de datos de prueba pasa
+por `BORRANDO`. Pruebas FB. **La cabecera quedó solo con «Salir»**: Actualizar, Respaldo y Restaurar salieron (Respaldo y
+Restaurar viven en Configuración → Borrado, `respaldoPanelHTML`). **Rutas a archivo**: `exportarRutasXLSX`/`exportarRutasCSV`
+(una fila por WH con la ruta en orden, códigos, tiempos y confirmación) y `mCargarRutas`/`planRutasArchivo`/`aplicarRutasArchivo`
+(cruza por WH o ID de tarea, deja la ruta confirmada, previa, auditoría, bitácora y registro de cargas tipo `rutas`), en
+Órdenes → Rutas. Ver `INCIDENTE_23SEP_BORRADO.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
