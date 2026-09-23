@@ -1239,6 +1239,14 @@ Restaurar viven en Configuración → Borrado, `respaldoPanelHTML`). **Rutas a a
 (cruza por WH o ID de tarea, deja la ruta confirmada, previa, auditoría, bitácora y registro de cargas tipo `rutas`), en
 Órdenes → Rutas. Ver `INCIDENTE_23SEP_BORRADO.md`.
 
+**La Macro del mes es de TELA PROPIA (23-sep-2026, decisión de la usuaria):** «en la macro, lo de proveedores
+externos quitemoslo; dejamos tejeduria: cuanto stock tenemos y con eso se calcula todo». macroMes deja fuera las lineas
+cuyo origen no es PROPIO (las cuenta en rep.externas / rep.externasKg / rep.externasM) y gana porTela = [{tela, corta,
+kgMerma, stock, porTejer, sobra}] con el stock de stockTela() descontado POR TELA (no por color ni por tipo).
+La pantalla abre con el bloque «Que hay que tejer» (requerido - stock), dice de donde sale el stock (Planificacion
+textil -> Stock de tela cruda), marca las telas sin stock como 0 en bodega sin estimar nada, y dice que lo externo esta
+en Compras del mes. El detalle por tela y tipo y la tintoreria siguen, solo con tela propia. Pruebas MT.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

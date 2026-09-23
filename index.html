@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 11:55';
+const APP_BUILD='2026-09-23 12:13';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -11581,14 +11581,24 @@ function macroMes(mes){const ords=S.ordenes.filter(o=>ordenMontada(o)&&(!mes||no
   const tej={},tin={},planas={},rep={sinCat:{},sinConv:{},sinMerma:{},sinClasificar:{},contradicciones:{},revisar:{},origenes:{},lineas:0,lineasPlana:0,mPlana:0,ordenes:ords.length,prendas:ords.reduce((a,o)=>a+o.cant,0)};
   ords.forEach(o=>(o.materiales||[]).forEach(m=>{const L=lineaMacro(o,m);if(L.sinCat){rep.sinCat[L.ruta||'(vacío)']=(rep.sinCat[L.ruta||'(vacío)']||0)+1;return}
     if(!L.esMP)return;rep.lineas++;
-    if(L.plana){rep.lineasPlana++;rep.mPlana+=L.m;const k=L.corta+'|'+L.pantone;const t=planas[k]=planas[k]||{corta:L.corta,pantone:L.pantone,m:0,ords:new Set(),origen:L.origen};t.m+=L.m;t.ords.add(o.id);return}
+    if(L.plana){if(L.origen!=='PROPIO'){rep.externas=(rep.externas||0)+1;rep.externasM=(rep.externasM||0)+L.m;return}   /* 23-sep: la macro es de tela propia; lo comprado va en Compras del mes */
+      rep.lineasPlana++;rep.mPlana+=L.m;const k=L.corta+'|'+L.pantone;const t=planas[k]=planas[k]||{corta:L.corta,pantone:L.pantone,m:0,ords:new Set(),origen:L.origen};t.m+=L.m;t.ords.add(o.id);return}
     if(L.sinConv){rep.sinConv[L.corta+' ('+L.sinConv+')']=(rep.sinConv[L.corta+' ('+L.sinConv+')']||0)+1;return}
     if(L.merma==null)rep.sinMerma[L.corta+'|'+L.tipo]=(rep.sinMerma[L.corta+'|'+L.tipo]||0)+1;
     rep.origenes[L.origen]=(rep.origenes[L.origen]||0)+1;if(L.origen==='SIN CLASIFICAR')rep.sinClasificar[L.corta]=(rep.sinClasificar[L.corta]||0)+1;
     if(L.contradiccion)rep.contradicciones[L.cod]=L.corta;if(L.revisar)rep.revisar[L.cod]=L.prov;
     if(L.origen==='PROPIO'){const k=L.corta+'|'+L.tipo;const t=tej[k]=tej[k]||{corta:L.corta,tipo:L.tipo,tela:L.tela,kg:0,kgMerma:0,ords:new Set()};t.kg+=L.kg;t.kgMerma+=L.kgMerma;t.ords.add(o.id)}
-    if(L.origen==='PROPIO'||L.origen==='COMPRADO'){const k=L.pantone+'|'+L.corta+'|'+L.tipo;const t=tin[k]=tin[k]||{pantone:L.pantone,corta:L.corta,tipo:L.tipo,kg:0,kgMerma:0,ords:new Set(),origen:L.origen};t.kg+=L.kg;t.kgMerma+=L.kgMerma;t.ords.add(o.id)}}));
-  return{tej:Object.values(tej).sort((a,b)=>a.corta.localeCompare(b.corta)||a.tipo.localeCompare(b.tipo)),tin:Object.values(tin).sort((a,b)=>a.pantone.localeCompare(b.pantone)||a.corta.localeCompare(b.corta)),planas:Object.values(planas).sort((a,b)=>b.m-a.m),rep,ords}}
+    if(L.origen!=='PROPIO'&&L.origen!=='SIN CLASIFICAR'){rep.externas=(rep.externas||0)+1;rep.externasKg=(rep.externasKg||0)+L.kgMerma;return}   /* 23-sep: la macro es solo tela propia */
+    if(L.origen==='PROPIO'){const k=L.pantone+'|'+L.corta+'|'+L.tipo;const t=tin[k]=tin[k]||{pantone:L.pantone,corta:L.corta,tipo:L.tipo,kg:0,kgMerma:0,ords:new Set(),origen:L.origen};t.kg+=L.kg;t.kgMerma+=L.kgMerma;t.ords.add(o.id)}}));
+  /* 23-sep: la cuenta que importa en la macro es POR TELA: lo requerido menos lo que hay en stock de tela cruda */
+  const st=(typeof stockTela==='function')?stockTela():{};
+  const porTelaM={};Object.values(tej).forEach(t=>{const k=t.tela||t.corta;
+    const p=porTelaM[k]=porTelaM[k]||{tela:t.tela||null,corta:t.corta,kg:0,kgMerma:0,ords:new Set(),tipos:{}};
+    p.kg+=t.kg;p.kgMerma+=t.kgMerma;p.tipos[t.tipo]=(p.tipos[t.tipo]||0)+t.kgMerma;t.ords.forEach(x=>p.ords.add(x))});
+  const porTela=Object.values(porTelaM).map(p=>{const s0=+(((st[p.tela]||{}).kg)||0);
+    return Object.assign(p,{stock:s0,porTejer:Math.max(0,p.kgMerma-s0),sobra:Math.max(0,s0-p.kgMerma)})})
+    .sort((a,b)=>b.porTejer-a.porTejer||String(a.corta).localeCompare(String(b.corta),'es'));
+  return{porTela,tej:Object.values(tej).sort((a,b)=>a.corta.localeCompare(b.corta)||a.tipo.localeCompare(b.tipo)),tin:Object.values(tin).sort((a,b)=>a.pantone.localeCompare(b.pantone)||a.corta.localeCompare(b.corta)),planas:Object.values(planas).sort((a,b)=>b.m-a.m),rep,ords}}
 /* baños que exige tinturar jaspe y llano por separado (mismo pantone y tela): baños = ceil(kg / capacidad) por grupo, juntos vs separados */
 function banosJaspe(mac){const cap=capsTin().capN||240;const porPT={};mac.tin.forEach(t=>{const k=t.pantone+'|'+t.corta;const g=porPT[k]=porPT[k]||{llano:0,jaspe:0};if(t.tipo==='JASPE')g.jaspe+=t.kgMerma;else g.llano+=t.kgMerma});
   let juntos=0,separados=0,kgTot=0,conJaspe=0;Object.values(porPT).forEach(g=>{const tot=g.llano+g.jaspe;kgTot+=tot;juntos+=Math.ceil(tot/cap);separados+=Math.ceil(g.llano/cap)+Math.ceil(g.jaspe/cap);if(g.jaspe>0&&g.llano>0)conJaspe++});
@@ -11792,13 +11802,28 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
     ${puede('ordenes')?`<button class="btn ghost" onclick="mFacturas()">Cargar facturas (catálogo)</button>`:''}</div>
   ${requerimientoBaseHTML()}
   ${reqSinMaterialesHTML(MAC.mes)}
-  <p class="lede">Órdenes de esa base, liberadas o no: ${mac.rep.ordenes} órdenes, ${num(mac.rep.prendas)} prendas, ${mac.rep.lineas} líneas de MP. Kilos crudos por tela corta (tabla 8), metros × kg/m y unidades × kg/unidad (tabla 9), tipo LLANO/JASPE (tabla 11, corregible en el catálogo), merma de tintura sumada (enc de la tela o tabla 10), origen por catálogo de productos (facturas) y categoría (tabla 3).</p>
+  <p class="lede"><b>Esta macro es de tela propia: lo que hay que tejer.</b> Lo de proveedores externos (telas compradas, insumos y servicios) está en <a href="#" onclick="ir('compras');return false">Compras del mes</a>. Órdenes de la base, liberadas o no: ${mac.rep.ordenes} órdenes, ${num(mac.rep.prendas)} prendas, ${mac.rep.lineas} líneas de MP. Kilos crudos por tela corta (tabla 8), metros × kg/m y unidades × kg/unidad (tabla 9), tipo LLANO/JASPE (tabla 11, corregible en el catálogo), merma de tintura sumada (enc de la tela o tabla 10), origen por catálogo de productos (facturas) y categoría (tabla 3).</p>
   ${mac.planas&&mac.planas.length?`<div class="panel"><h3>Tela plana · METROS <span class="note">${mac.rep.lineasPlana} líneas · ${num(mac.rep.mPlana)} m · aparte de los kilos: no se suman con las telas de punto. Merma de plana 12–15 % (referencia de la usuaria; no se calcula aquí)</span></h3><div class="body"><table><thead><tr><th>Tela corta</th><th>Pantone / color</th><th class="num">Metros</th><th class="num">Órdenes</th><th>Origen</th></tr></thead><tbody>${mac.planas.map(t=>`<tr><td>${esc(t.corta)}</td><td>${esc(t.pantone)}</td><td class="num">${num(t.m)}</td><td class="num">${t.ords.size}</td><td class="mut">${esc(t.origen||'')}</td></tr>`).join('')}</tbody></table></div></div>`:''}
-  <div class="panel"><h3>Tejeduría · tela × tipo, kg con merma, solo tela PROPIA <span class="note">total ${num(totTej)} kg</span></h3><div class="body">
+  ${(()=>{const pt=mac.porTela||[];if(!pt.length)return '';
+    const reqT=pt.reduce((a,p)=>a+p.kgMerma,0),stT=pt.reduce((a,p)=>a+Math.min(p.stock,p.kgMerma),0),tejT=pt.reduce((a,p)=>a+p.porTejer,0);
+    const sinStock=pt.filter(p=>!p.stock).length;
+    return `<div class="panel" style="border:2px solid var(--t-accent)"><h3>Qué hay que tejer <span class="note">requerido menos el stock de tela cruda · ${num(tejT,1)} kg</span></h3><div class="body">
+     <p class="lede" style="margin-top:0">Esta es la cuenta de la macro: <b>lo que piden las órdenes de la base menos lo que ya hay en bodega</b>. El stock sale de <a href="#" onclick="ir('stock');return false">Planificación textil → Stock de tela cruda</a> y se descuenta por tela (no por color ni por tipo). Lo que viene de <b>proveedores externos no está aquí</b>: va en <a href="#" onclick="ir('compras');return false">Compras del mes</a>.</p>
+     <table><thead><tr><th>Tela</th><th class="num">Requerido (kg + merma)</th><th class="num">En stock</th><th class="num">Por tejer</th><th class="num">Órdenes</th></tr></thead><tbody>
+     ${pt.map(p=>`<tr><td>${esc(p.corta)}${Object.keys(p.tipos).length>1?' <span class="mut" style="font-size:var(--fs-xs)">(llano y jaspe)</span>':''}</td>
+       <td class="num">${num(p.kgMerma,1)}</td>
+       <td class="num">${p.stock?num(p.stock,1):'<span class="mut" title="sin stock cargado para esta tela">—</span>'}</td>
+       <td class="num"><b>${num(p.porTejer,1)}</b>${p.sobra?' <span class="tag t-ok" title="el stock alcanza y sobra">sobra '+num(p.sobra,1)+'</span>':''}</td>
+       <td class="num">${p.ords.size}</td></tr>`).join('')}
+     <tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${num(reqT,1)}</td><td class="num">${num(stT,1)}</td><td class="num">${num(tejT,1)}</td><td></td></tr></tbody></table>
+     ${sinStock?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinStock} ${sinStock===1?'tela no tiene':'telas no tienen'} stock cargado: se toman como <b>0 en bodega</b>, no se estima nada. Cárgalo en Stock de tela cruda.</p>`:''}
+     ${mac.rep.externas?`<p class="mut" style="font-size:var(--fs-xs)">${num(mac.rep.externas)} líneas de tela de proveedores externos quedaron fuera de esta macro a propósito${mac.rep.externasKg?' ('+num(mac.rep.externasKg,1)+' kg)':''}: están en Compras del mes.</p>`:''}
+     </div></div>`})()}
+  <div class="panel"><h3>Tejeduría · detalle por tela y tipo <span class="note">llano / jaspe · total ${num(totTej)} kg requeridos</span></h3><div class="body">
    <table><thead><tr><th>Tela</th><th>Tipo</th><th class="num">kg crudos</th><th class="num">kg + merma</th><th class="num">Órdenes</th><th>Tela del catálogo</th></tr></thead><tbody>
    ${mac.tej.map(t=>`<tr><td>${esc(t.corta)}</td><td>${t.tipo==='JASPE'?'<span class="tag t-aviso">JASPE</span>':'LLANO'}</td><td class="num">${num(t.kg,1)}</td><td class="num"><b>${num(t.kgMerma,1)}</b></td><td class="num">${t.ords.size}</td><td class="mut">${t.tela?esc(nTela(t.tela)):'<span class="tag t-alerta">sin enlazar</span>'}</td></tr>`).join('')}
    <tr style="font-weight:600;background:var(--field)"><td>Total</td><td></td><td class="num">${num(mac.tej.reduce((a,t)=>a+t.kg,0),1)}</td><td class="num">${num(totTej,1)}</td><td></td><td></td></tr></tbody></table></div></div>
-  <div class="panel"><h3>Tintorería · pantone × tela × tipo, kg con merma <span class="note">total ${num(totTin)} kg · jaspe y llano pueden ir en el mismo baño (confirmado 14-sep-2026)</span></h3><div class="body">
+  <div class="panel"><h3>Tintorería · pantone × tela × tipo, kg con merma <span class="note">solo tela propia · total ${num(totTin)} kg · jaspe y llano pueden ir en el mismo baño (confirmado 14-sep-2026)</span></h3><div class="body">
    <p style="font-size:var(--fs-s)">Baños a ${num(bj.cap)} kg por pantone × tela: <b>${bj.juntos}</b> (jaspe y llano juntos; no hay restricción de separarlos) · llenado promedio ${num(bj.llenadoJuntos*100,0)} %. El tipo se muestra solo como información.</p>
    <div class="scroll" style="max-height:480px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Pantone</th><th>Tela</th><th>Tipo</th><th class="num">kg crudos</th><th class="num">kg + merma</th><th class="num">Órdenes</th><th>Origen</th></tr></thead><tbody>
    ${mac.tin.map(t=>`<tr><td>${esc(t.pantone)}</td><td>${esc(t.corta)}</td><td>${t.tipo==='JASPE'?'<span class="tag t-aviso">JASPE</span>':'LLANO'}</td><td class="num">${num(t.kg,1)}</td><td class="num"><b>${num(t.kgMerma,1)}</b></td><td class="num">${t.ords.size}</td><td class="mut">${t.origen}</td></tr>`).join('')}</tbody></table></div></div></div>

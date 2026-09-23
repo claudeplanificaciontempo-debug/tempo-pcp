@@ -7016,6 +7016,26 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* MT · «En la macro, lo de proveedores externos quitémoslo; dejamos tejeduría: cuánto stock tenemos y con eso se calcula todo» (usuaria, 23-sep) */
+   {PERFIL=adminP0();const st=stockTela();const bak=JSON.parse(JSON.stringify(st));
+    Object.keys(st).forEach(k=>delete st[k]);
+    const m0=macroMes('');
+    __check('MT: la macro cuenta por TELA lo requerido y, sin stock cargado, todo eso hay que tejerlo (no se estima nada)',(m0.porTela||[]).length>0&&m0.porTela.every(p=>p.stock===0&&Math.abs(p.porTejer-p.kgMerma)<0.01),JSON.stringify({telas:(m0.porTela||[]).length,ej:m0.porTela[0]&&{tela:m0.porTela[0].corta,req:+m0.porTela[0].kgMerma.toFixed(1),porTejer:+m0.porTela[0].porTejer.toFixed(1)}}));
+    /* con stock, se descuenta; si sobra, se dice */
+    const p0=m0.porTela.find(p=>p.tela&&p.kgMerma>10);
+    if(p0){st[p0.tela]={kg:p0.kgMerma*0.4,ts:new Date().toISOString(),u:'prueba'};
+      const m1=macroMes('');const q=m1.porTela.find(p=>p.tela===p0.tela);
+      __check('MT: el stock de tela cruda se descuenta del requerimiento: por tejer = requerido − stock',!!q&&Math.abs(q.porTejer-(q.kgMerma-q.stock))<0.01&&q.stock>0,JSON.stringify({tela:q&&q.corta,req:q&&+q.kgMerma.toFixed(1),stock:q&&+q.stock.toFixed(1),porTejer:q&&+q.porTejer.toFixed(1)}));
+      st[p0.tela]={kg:p0.kgMerma+500,ts:new Date().toISOString(),u:'prueba'};
+      const m2=macroMes('');const q2=m2.porTela.find(p=>p.tela===p0.tela);
+      __check('MT: si el stock alcanza y sobra, no hay que tejer nada de esa tela y el sobrante se ve',!!q2&&q2.porTejer===0&&q2.sobra>=499,JSON.stringify({porTejer:q2&&q2.porTejer,sobra:q2&&+q2.sobra.toFixed(1)}));}
+    /* lo externo queda fuera de la macro, contado */
+    const m3=macroMes('');
+    __check('MT: la tintorería y la tela plana de la macro son SOLO tela propia; lo de proveedores externos queda fuera y se cuenta',(m3.tin||[]).every(t=>t.origen==='PROPIO')&&(m3.planas||[]).every(t=>t.origen==='PROPIO')&&(m3.rep.externas||0)>0,JSON.stringify({tin:(m3.tin||[]).length,externas:m3.rep.externas}));
+    page='macro';render();const h=document.getElementById('p-macro').innerHTML;
+    __check('MT: la pantalla abre con «Qué hay que tejer», dice de dónde sale el stock y adónde se fue lo externo',/Qué hay que tejer/.test(h)&&/Stock de tela cruda/.test(h)&&/Compras del mes/.test(h)&&/proveedores externos/.test(h));
+    __check('MT: las telas sin stock cargado se toman como 0 en bodega y la pantalla lo dice, en vez de suponer',/se toman como <b>0 en bodega<\/b>|sin stock cargado/.test(h));
+    Object.keys(st).forEach(k=>delete st[k]);Object.assign(st,bak);page='ordenes';render();}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);
