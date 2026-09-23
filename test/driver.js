@@ -210,6 +210,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planTarea: con puntadas>0 el paso bordado lleva las puntadas por prenda (unidad del motor)',planT.ordenes.filter(o=>o.puntadas>0&&o.cat).every(o=>{const b=o.rutaCompleta.find(p=>p.centro==='bordado');return b&&b.t===o.puntadas}));
   __check('planTarea: ruta textil por las tres dimensiones (propia → tej; pedir → proveedor; falta tintura/lavado → tin; sin clasificar → sin textil)',planT.ordenes.filter(o=>!esExcedente(o)).every(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))===JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})))&&planT.ordenes.filter(o=>!esExcedente(o)&&lineasTelaDe(o.materiales).some(m=>m.produce==='propia'&&m.kg>0)).every(o=>o.rutaCompleta[0]&&o.rutaCompleta[0].centro==='tej')&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))),(()=>{const m=planT.ordenes.find(o=>!esExcedente(o)&&JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))!==JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})));return m?m.op+' '+JSON.stringify(m.rutaCompleta.slice(0,3))+' vs '+JSON.stringify(rutaTextilDe({telas:lineasTelaDe(m.materiales)}))+' telas '+JSON.stringify(m.telas.map(t=>[t.tela,t.kg,t.produce,t.disp,t.falta,t.sinConv])):''})());
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
+  REEMPLAZO_OK=true;   /* el simulador reemplaza conjuntos de datos a propósito (demo ↔ volcado): el freno de borrado en masa tiene su propia prueba, FB */
   TAREA=planT;aplicarTarea();await __p(100);
   /* ===== CARGAS · qué dato trabajado sobrevive a la Recarga Parte 2 (diagnóstico) ===== */
   {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
@@ -434,7 +435,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("calendario/versión sin errores",__R.errors.length===antes);page='ordenes';render();}
   /* perfiles por catálogo, carga que viene, ruta por centro, advertencias, balanceo y objetivo */
   {const antes=__R.errors.length;const adminP=PERFIL;
-   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet",perfilesDef().length===9&&perfilesDef().some(x=>x.id==='tablet')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
+   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet + jefatura (ve la configuración sin editarla)",perfilesDef().length===10&&perfilesDef().some(x=>x.id==='tablet')&&perfilesDef().some(x=>x.id==='jefatura')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)),String(perfilesDef().length));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
    __check("perfil corte: ve corte, estampado, bordado y etiquetas; reprograma pero YA NO edita rutas",(sembrarPermisoRutas(),veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&!puede('ruta')&&puedeCentro('corte')));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
@@ -2055,7 +2056,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -2935,9 +2936,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("RLS: al guardar bien, el aviso desaparece",!/No se guardó en el servidor/.test(document.getElementById('p-tablet').innerHTML));
    // 2 · cabecera del operario
    verBotonesAdmin();
-   __check("CAB: el operario no ve Respaldo ni Restaurar, y sí Actualizar y Salir",document.getElementById('btn-respaldo').style.display==='none'&&document.getElementById('btn-restaurar').style.display==='none'&&!!document.querySelector('header button[onclick="refrescar()"]')&&!!document.querySelector('header button[onclick="logout()"]'));
+   __check("CAB: la cabecera no tiene Respaldo, Restaurar ni Actualizar: solo Salir (decisión de la usuaria, 23-sep)",!document.getElementById('btn-respaldo')&&!document.getElementById('btn-restaurar')&&!document.querySelector('header button[onclick="refrescar()"]')&&!!document.querySelector('header button[onclick="logout()"]'),document.querySelectorAll('header button').length+' botones en la cabecera');
    PERFIL=adminP;verBotonesAdmin();
-   __check("CAB: quien tiene permiso de configuración sí los ve",document.getElementById('btn-respaldo').style.display!=='none');
+   PERFIL=adminP;CONF.tab='borrado';page='config';render();
+   __check("CAB: Respaldo y Restaurar viven ahora en Configuración → Borrado, solo para quien configura",/Respaldo y restauración/.test(document.getElementById('p-config').innerHTML)&&/exportJSON\(\)/.test(document.getElementById('p-config').innerHTML)&&/importJSON\(\)/.test(document.getElementById('p-config').innerHTML));
+   {const bak=PERFIL;PERFIL={id:'u-op',rol:'tablet',nombre:'Operario',modo:'editar'};
+    __check("CAB: un perfil sin configuración no ve ese panel",!respaldoPanelHTML());PERFIL=bak;}
+   page='tablet';render();
    // 3 · buscador arriba de las tarjetas
    PERFIL={id:uidOp,nombre:'Modulo 1',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
    {const h=document.getElementById('p-tablet').innerHTML;const iB=Math.max(h.indexOf('data-q="TAB.q"'),h.indexOf('id="tab-wh"'));const iT=h.indexOf('tab-card');
@@ -7006,6 +7011,202 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* FB · Freno de borrado en masa: el 23-sep una pestaña con la memoria vacía borró órdenes, avance y bitácora al guardar. Nunca más. */
+   {PERFIL=adminP0();const bakR=REEMPLAZO_OK;REEMPLAZO_OK=false;
+    const db=sb.__DB;const nAntes=(db.ordenes||[]).length;
+    const memoria=S.ordenes;const nMem=memoria.length;
+    __check('FB: el simulador tiene órdenes en la base y en memoria antes de la prueba',nAntes>50&&nMem>50,JSON.stringify({base:nAntes,memoria:nMem}));
+    /* la pestaña se queda sin órdenes en memoria (lo que pasó de verdad) y guarda */
+    S.ordenes=[];const nb=S.bitacora.length;
+    await save();await __p(120);
+    __check('FB: una pestaña que se quedó sin datos NO borra las órdenes del servidor al guardar',(db.ordenes||[]).length===nAntes,JSON.stringify({base:(db.ordenes||[]).length,antes:nAntes}));
+    __check('FB: el freno deja aviso en pantalla con el botón de recargar y una línea en la bitácora',!!document.getElementById('aviso-freno')&&/Se frenó un borrado/.test((document.getElementById('aviso-freno')||{}).innerHTML||'')&&S.bitacora.length>nb&&/FRENO/.test((S.bitacora[S.bitacora.length-1]||{}).t||''),String((S.bitacora[S.bitacora.length-1]||{}).t||'').slice(0,90));
+    S.ordenes=memoria;await save();await __p(120);
+    const av=document.getElementById('aviso-freno');if(av)av.remove();
+    __check('FB: al volver los datos a la memoria, el guardado normal sigue funcionando',(db.ordenes||[]).length===nAntes,String((db.ordenes||[]).length));
+    /* quitar unas pocas sí se puede: un borrado legítimo no se frena */
+    const quitar=S.ordenes.slice(0,3).map(o=>o.id);const nA2=(db.ordenes||[]).length;
+    S.ordenes=S.ordenes.filter(o=>!quitar.includes(o.id));await save();await __p(120);
+    __check('FB: quitar unas pocas filas (borrado normal) sigue funcionando: el freno solo salta en masa',(db.ordenes||[]).length===nA2-3,JSON.stringify({ahora:(db.ordenes||[]).length,antes:nA2}));
+    S.ordenes=memoria;await save();await __p(120);REEMPLAZO_OK=bakR;
+    __check('FB: teniendo datos en memoria, reemplazar el conjunto (restaurar un respaldo, cargar el demo) sigue funcionando',(db.ordenes||[]).length===nAntes,String((db.ordenes||[]).length));
+    __check('FB: el umbral es un parámetro configurable, no un número escondido en el código',prm('minBorradoSospechoso',10)>0,String(prm('minBorradoSospechoso',10)));}
+   /* TP · La ruta dice por dónde pasa, no en qué orden fijo (usuaria, 22-sep: «cerré corte y no puedo entrar a módulos porque la ruta tiene bordado, pero está lista para módulos») */
+   {PERFIL=adminP0();
+    const t=tramosParalelos()[0];
+    __check('TP: la tabla de tramos paralelos se siembra una vez con estampado, sublimado, apliques, bordado y confección, marcada «sugerido» para que la usuaria la confirme',!!t&&['estampado','sublimado','apliques','bordado','modulos'].every(c=>(t.cens||[]).includes(c))&&t.sugerido===true,JSON.stringify({cens:t&&t.cens,sugerido:t&&t.sugerido}));
+    /* una orden con corte → bordado → módulos */
+    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).length);
+    const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TP1';o.fase='2Planificacion';delete o.ot;delete o.otTs;delete o.terminadaF;   /* antes de corte y sin las OT del original: así corte NO cuenta como hecho */o.cliente='CLIENTE TP';o.ref='TP-999';o.cant=100;
+    o.rutaCompleta=[{centro:'corte',t:1},{centro:'bordado',t:2000},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+    o.ruta=o.rutaCompleta.map(x=>Object.assign({},x));S.ordenes.push(o);delete S.avance[o.id];
+    __check('TP: con corte todavía pendiente, confección sigue bloqueada (el tramo no rompe la dependencia real)',!pasoHecho(o,'corte')&&secuenciaCentro(o,'modulos').estado==='proxima'&&/corte/i.test(secuenciaCentro(o,'modulos').motivo||''),JSON.stringify(secuenciaCentro(o,'modulos')));
+    /* se cierra corte: módulos queda disponible aunque bordado siga pendiente */
+    S.avance[o.id]={cierres:{corte:{pz:o.cant,cant:o.cant,faltan:0,u:'prueba',ts:new Date().toISOString()}}};
+    const sm=secuenciaCentro(o,'modulos'),sb=secuenciaCentro(o,'bordado');
+    __check('TP: al cerrar corte, confección queda DISPONIBLE aunque bordado no esté hecho, y bordado también: los del tramo no se esperan entre sí',sm.estado==='disponible'&&sb.estado==='disponible'&&/tramo paralelo/.test(sm.motivo||'')&&!pasoHecho(o,'bordado'),JSON.stringify({modulos:sm,bordado:sb.estado}));
+    const le=listaParaEmpezar(o,'modulos');
+    __check('TP: «lista para empezar» en confección apunta al paso anterior de FUERA del tramo (corte), no al compañero de tramo',!!le&&le.centro==='corte',JSON.stringify({centro:le&&le.centro}));
+    /* manda la configuración: si se saca confección del tramo, vuelve a esperar a bordado */
+    const cens0=(tramosParalelos()[0].cens||[]).slice();const nb=S.bitacora.length;
+    setTramoParaleloCen(0,'modulos',false);
+    const sm2=secuenciaCentro(o,'modulos');
+    __check('TP: manda la tabla: al sacar confección del tramo vuelve a esperar a bordado, y el cambio queda en bitácora',sm2.estado==='proxima'&&/bordado/i.test(sm2.motivo||'')&&S.bitacora.length>nb&&!tramosParalelos()[0].sugerido,JSON.stringify(sm2));
+    tramosParalelos()[0].cens=cens0;tramosParalelos()[0].sugerido=true;
+    __check('TP: la tabla se edita en Configuración → Centros y recursos, con su explicación y sin tocar el motor de fechas',/Tramos paralelos/.test(tramosParalelosHTML())&&/no se esperan entre sí/.test(tramosParalelosHTML())&&/sigue calculándose en orden/.test(tramosParalelosHTML()));
+    /* buscador del centro: por WH, por cliente y por estilo, diciendo dónde está y cuándo entra */
+    CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.q='WH/TEST-TP1';page='centro';render();
+    const t1=document.getElementById('p-centro').innerText;
+    CEN.q='CLIENTE TP';render();const t2=document.getElementById('p-centro').innerText;
+    CEN.q='TP-999';render();const t3=document.getElementById('p-centro').innerText;
+    __check('TP: el buscador del centro encuentra la orden por WH, por cliente y por estilo, y dice dónde está y qué pasa en este centro',[t1,t2,t3].every(x=>/Resultado de la búsqueda/.test(x)&&/WH\/TEST-TP1/.test(x))&&/Confección/.test(t1)&&/(lista para entrar|todavía no|ya pasó|en proceso)/.test(t1),JSON.stringify({wh:/WH\/TEST-TP1/.test(t1),cliente:/WH\/TEST-TP1/.test(t2),estilo:/WH\/TEST-TP1/.test(t3)}));
+    CEN.q='NO-EXISTE-XYZ';render();const t4=document.getElementById('p-centro').innerText;
+    __check('TP: si no encuentra nada lo dice, en vez de dejar la pantalla como si no hubiera pasado nada',/No encuentro ninguna orden/.test(t4),'');
+    CEN.q='';render();const t5=document.getElementById('p-centro').innerText;
+    __check('TP: sin búsqueda, el panel no aparece (la pantalla queda como siempre)',!/Resultado de la búsqueda/.test(t5),'');
+    S.ordenes=S.ordenes.filter(x=>x.op!=='WH/TEST-TP1');delete S.avance[o.id];CEN.q='';}
+   /* PV · «Que pueda hacer todo menos configuraciones; que pueda ver los recursos, las personas y las capacidades, pero no editarlas» (usuaria, 22-sep, para Fernando) */
+   {const bak=PERFIL;const cat=perfilesDef();const jf=cat.find(x=>x.id==='jefatura');
+    __check('PV: el catálogo trae el perfil «Jefatura»: todo lo operativo, ve la configuración (configVer) y NO la edita ni crea usuarios',!!jf&&jf.permisos.includes('configVer')&&!jf.permisos.includes('config')&&!jf.permisos.includes('usuarios')&&jf.permisos.includes('programa')&&jf.permisos.includes('liberar')&&(jf.paginas||[]).includes('*'),JSON.stringify({permisos:jf&&jf.permisos}));
+    __check('PV: el permiso nuevo está en la lista de permisos de Configuración → Usuarios, con su explicación',PERMISOS_DEF.some(p=>p[0]==='configVer'&&/sin poder cambiarla/i.test(p[1])),JSON.stringify(PERMISOS_DEF.find(p=>p[0]==='configVer')));
+    PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};
+    __check('PV: con ese perfil puede lo operativo pero NO configurar ni crear usuarios',puede('programa')&&puede('liberar')&&puede('ordenes')&&puede('configVer')&&!puede('config')&&!puede('usuarios'),JSON.stringify({programa:puede('programa'),config:puede('config'),usuarios:puede('usuarios')}));
+    page='config';render();
+    const el=document.getElementById('p-config');const ctr=[...el.querySelectorAll('input,select,textarea,button')];
+    __check('PV: ve la pantalla de Configuración entera (centros, recursos, personas, capacidades, tablas) con TODO apagado y un aviso que lo explica',page==='config'&&ctr.length>30&&ctr.every(x=>x.disabled)&&/no la puedes cambiar/i.test(el.innerHTML),JSON.stringify({page,controles:ctr.length,habilitados:ctr.filter(x=>!x.disabled).length}));
+    aplicarNavPerfil();const a=document.querySelector('nav a[data-p="config"]');
+    __check('PV: la entrada Configuración le aparece en el menú (antes solo se veía con permiso de editarla)',!!a&&a.style.display!=='none',a?('display='+(a.style.display||'(visible)')):'(sin entrada)');
+    page='usuarios';render();
+    __check('PV: Usuarios sigue cerrado para ese perfil',page!=='usuarios',page);
+    /* congelar NO es configurar (usuaria, 22-sep): el plan del mes y el programa de la semana los puede congelar */
+    {const ym=(typeof mesActual==='function'?mesActual():String(hoy()).slice(0,7));
+     const nPlanes=(S.planes||[]).length;const cf=window.confirm;window.confirm=()=>true;const al2=window.alert;let avisos=0;window.alert=()=>{avisos++};
+     congelarPlan(ym);
+     const congeloPlan=(S.planes||[]).length>nPlanes&&avisos===0;
+     const cens=['corte'];const lun=lunesDe(hoy()),dom=dsum(lun,6);const nCong=((S.params.progCongelado||[]).length);
+     congelarPrograma(cens,lun,dom);
+     const congeloProg=((S.params.progCongelado||[]).length)>nCong;
+     window.confirm=cf;window.alert=al2;
+     __check('PV: Fernando SÍ congela el plan del mes y el programa de la semana (congelar no es configurar)',congeloPlan&&congeloProg&&puede('programa')&&!puede('config'),JSON.stringify({plan:congeloPlan,programa:congeloProg}));
+     __check('PV: y puede editar rutas, liberar, marcar maquila y guardar escenarios de capacidad (todo lo operativo)',puedeEditarRuta()&&puede('liberar')&&puede('armarBanos')&&puede('calidadTin'),JSON.stringify({ruta:puedeEditarRuta(),liberar:puede('liberar'),banos:puede('armarBanos')}));
+     /* la puerta de congelar el plan va también en la función, no solo en el botón */
+     const bak2=PERFIL;PERFIL={id:'u-cons',rol:'consulta',nombre:'Consulta',modo:'editar'};
+     const nP2=(S.planes||[]).length;const cf2=window.confirm;window.confirm=()=>true;const al3=window.alert;let av2=0;window.alert=()=>{av2++};
+     congelarPlan(ym);window.confirm=cf2;window.alert=al3;PERFIL=bak2;
+     __check('PV: un perfil de solo consulta NO congela el plan (antes el botón se escondía pero la función no preguntaba)',(S.planes||[]).length===nP2&&av2>0,JSON.stringify({planes:(S.planes||[]).length,antes:nP2}));}
+    PERFIL=adminP0();page='config';render();
+    const el2=document.getElementById('p-config');const ctr2=[...el2.querySelectorAll('input,select,textarea,button')];
+    __check('PV: con permiso de editar, la pantalla no cambia en nada (ni aviso ni campos apagados)',!/no la puedes cambiar/i.test(el2.innerHTML)&&ctr2.some(x=>!x.disabled),JSON.stringify({habilitados:ctr2.filter(x=>!x.disabled).length}));
+    PERFIL=bak;page='ordenes';render();}
+   /* RC2 · Lo que encontró la revisión adversarial de la protección de rutas (22-sep): la edición por la ficha, el tramo de tela y el bordado */
+   {PERFIL=adminP0();const rows0=window.__tareaRows;
+    if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción');const enArchivo=new Set(rows0.slice(1).map(r=>r[iOp]));
+     /* (a) la ruta editada EN LA FICHA no se revierte en la siguiente carga */
+     const o=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&!x.duplicado&&enArchivo.has(x.op)&&(x.ruta||[]).some(p=>p.centro==='modulos')&&(x.ruta||[]).some(p=>p.centro==='empaque'));
+     if(o){const idO=o.id;const al=window.alert;window.alert=()=>{};
+      mOrden(o.id);
+      ED.ruta=(ED.ruta||[]).filter(p=>p.centro!=='modulos');                       /* la planificación QUITA confección en la ficha */
+      if(!ED.ruta.some(p=>p.centro==='plancha'))ED.ruta.push({centro:'plancha',t:2});  /* y AGREGA plancha */
+      guardarOrden(o.id);window.alert=al;await __p(30);
+      const oF=S.ordenes.find(x=>x.id===idO);
+      const completaOk=!(oF.rutaCompleta||[]).some(p=>p.centro==='modulos')&&(oF.rutaCompleta||[]).some(p=>p.centro==='plancha');
+      __check('RC2: guardar la ruta en la ficha deja la ruta COMPLETA coherente con la pendiente (antes quedaba vieja y la siguiente carga revertía la edición)',completaOk,JSON.stringify({completa:(oF.rutaCompleta||[]).map(p=>p.centro),pendiente:(oF.ruta||[]).map(p=>p.centro)}));
+      const p=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2.xlsx');TAREA=p;aplicarTarea();await __p(80);
+      const oG=S.ordenes.find(x=>x.id===idO);
+      __check('RC2: después de recargar, la ruta quedó como la dejó la persona en la ficha: el paso que quitó no vuelve y el que agregó no se pierde',!!oG&&!(oG.rutaCompleta||[]).some(pp=>pp.centro==='modulos')&&(oG.rutaCompleta||[]).some(pp=>pp.centro==='plancha'),JSON.stringify({completa:(oG.rutaCompleta||[]).map(pp=>pp.centro)}));}
+     /* (b) el tramo de tela lo rehace el ARCHIVO aunque la ruta esté confirmada; los pasos de producción se conservan */
+     const o2=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op)&&(x.telas||[]).length&&(x.rutaCompleta||x.ruta||[]).some(pp=>pp.centro==='corte'));   /* con líneas de tela: el tramo textil SÍ se rehace con el archivo (sin ellas manda el guardia, que tiene su propia prueba) */
+     if(o2){const id2=o2.id;const ts=new Date().toISOString();
+      o2.rutaCompleta=[{centro:'tej',t:0},{centro:'tin',t:0},{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+      o2.ruta=o2.rutaCompleta.map(x=>Object.assign({},x));delete o2.rutaEditada;
+      o2.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts,nota:'prueba RC2'};
+      const p2=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2b.xlsx');TAREA=p2;aplicarTarea();await __p(80);
+      const oH=S.ordenes.find(x=>x.id===id2);const cen=(oH.rutaCompleta||[]).map(pp=>pp.centro);
+      const tx=cen.filter(c=>['tej','tin','proveedor'].includes(c)).join(',');
+      const txArchivo=rutaTextilDe(oH).map(pp=>pp.centro).join(',');   /* lo que el tramo textil DEBE ser según las telas que trajo el archivo */
+      __check('RC2: la confirmación conserva los pasos de PRODUCCIÓN, pero el tramo de tela (tejeduría / tintorería / proveedor) se rehace con lo que trae el archivo',['corte','modulos','empaque'].every(c=>cen.includes(c))&&tx===txArchivo,JSON.stringify({cen,tx,txArchivo}));}
+     /* (b2) si el archivo no trae líneas de tela, el tramo textil NO se rehace a ciegas */
+     {const oT=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op));
+      if(oT){const idT=oT.id;const ts2=new Date().toISOString();
+       oT.rutaCompleta=[{centro:'tej',t:0},{centro:'corte',t:1},{centro:'empaque',t:1}];oT.ruta=oT.rutaCompleta.map(x=>Object.assign({},x));delete oT.rutaEditada;
+       oT.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts:ts2,nota:'prueba RC2b2'};
+       const pB2=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2b2.xlsx');
+       (pB2.ordenes||[]).forEach(x=>{if(x.id===idT)x.telas=[]});
+       TAREA=pB2;aplicarTarea();await __p(80);
+       const oU=S.ordenes.find(x=>x.id===idT);const rcT=S.params.tareaCarga.recarga||{};
+       __check('RC2: si el archivo no trae líneas de tela para la orden, el tramo textil de la ruta confirmada se conserva y se reporta (no se rehace sin el dato)',(oU.rutaCompleta||[]).some(pp=>pp.centro==='tej')&&(rcT.noCalzan||[]).some(x=>x.op===oU.op&&x.tipo==='rutaTextil'),JSON.stringify({cen:(oU.rutaCompleta||[]).map(pp=>pp.centro)}));
+       }}
+     /* (c) bordado: si el archivo trae otras puntadas, se avisa y la ruta confirmada no se toca */
+     const o3=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&enArchivo.has(x.op)&&+x.puntadas>0);
+     if(o3){const id3=o3.id;const ts=new Date().toISOString();
+      o3.rutaCompleta=[{centro:'corte',t:1},{centro:'bordado',t:(+o3.puntadas||0)+5000},{centro:'modulos',t:5},{centro:'empaque',t:1}];
+      o3.ruta=o3.rutaCompleta.map(x=>Object.assign({},x));delete o3.rutaEditada;
+      o3.rutaConf={estado:'confirmada',origen:'persona',u:'Jordan',ts,nota:'prueba RC2c'};
+      const p3=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2c.xlsx');TAREA=p3;aplicarTarea();await __p(80);
+      const oI=S.ordenes.find(x=>x.id===id3);const pB=(oI.rutaCompleta||[]).find(pp=>pp.centro==='bordado');
+      const rc=S.params.tareaCarga.recarga||{};
+      __check('RC2: si el archivo trae otras puntadas, el bordado de la ruta confirmada no se pisa y la diferencia sale en «no calzan»',!!pB&&Math.abs((+pB.t||0)-((+oI.puntadas||0)+5000))<1e-6&&(rc.noCalzan||[]).some(x=>x.op===oI.op&&x.tipo==='tiempo'),JSON.stringify({t:pB&&pB.t,punt:oI.puntadas,aviso:(rc.noCalzan||[]).filter(x=>x.tipo==='tiempo').length}));}
+     /* (d) con la fila «Ruta confirmada» desmarcada, la previa avisa que esas rutas se van a rearmar */
+     {const t14=camposConservados();const fila=t14.find(r=>r.campo==='rutaConf');const antes=fila.conservar;fila.conservar=false;
+      const p4=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2d.xlsx');
+      const html=vistaPreviaTareaHTML(p4);
+      __check('RC2: si la fila «Ruta confirmada» de la tabla 14 está desmarcada, la vista previa avisa cuántas rutas confirmadas se van a rearmar (antes no decía nada)',(p4.prev.rutasConfApagado||0)>0&&/NO se conservará/.test(html),JSON.stringify({apagado:p4.prev.rutasConfApagado}));
+      fila.conservar=antes;
+      __check('RC2: la fila de la tabla 14 dice que de ella depende conservar la ruta, no solo el sello de quién la confirmó',/se conserva tal cual/.test(fila.n||''),String(fila.n||'').slice(0,80));}
+     /* dejar el simulador como estaba */
+     const pz=planTarea(rows0,'TAREA_PARTE2.xlsx');TAREA=pz;aplicarTarea();await __p(50);}}
+   /* FR · Fotos por referencia (usuaria, 22-sep: mandó 9 fotos de estilos nuevos, 4861–4869, que todavía no tienen órdenes) */
+   {PERFIL=adminP0();
+    const base=S.ordenes.find(abierta);
+    const mk=(op,ref)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.ref=ref;delete o.foto;S.ordenes.push(o);delete S.avance[o.id];return o};
+    const oA=mk('WH/TEST-FR1','4861'),oB=mk('WH/TEST-FR2','4861'),oC=mk('WH/TEST-FR3','9999');
+    /* un archivo de imagen de mentira, con el nombre del estilo */
+    const img=f=>({name:f,type:'image/jpeg',size:1234});
+    const p=planFotosRef([img('4861.jpg'),img('4862.JPG'),img('4861.png'),{name:'lista.csv',type:'text/csv',size:10}]);
+    __check('FR: el plan toma el nombre del archivo como referencia, descarta lo que no es imagen y no repite la misma referencia dos veces',p.fotos.length===2&&p.fotos[0].ref==='4861'&&p.fotos[1].ref==='4862'&&p.noImagen.length===1&&p.repetidas.length===1,JSON.stringify({fotos:p.fotos.map(f=>f.ref),noImagen:p.noImagen,rep:p.repetidas}));
+    __check('FR: la previa separa las referencias que ya tienen órdenes de las que no, y dice que las segundas se cuelgan solas cuando lleguen',p.conOrden===1&&p.sinOrden.length===1&&p.sinOrden[0]==='4862'&&/se cuelga sola cuando lleguen|se cuelgan solas cuando lleguen/.test(previaFotosRefHTML(p)),JSON.stringify({conOrden:p.conOrden,sinOrden:p.sinOrden}));
+    /* se sube: la foto queda en el almacenamiento con el nombre de la referencia y NO se escribe en las órdenes */
+    const ix=S.params.fotosRefIdx=S.params.fotosRefIdx||{};delete ix[normTxt('4861')];
+    ix[normTxt('4861')]={ts:1,b:1234,ref:'4861'};
+    __check('FR: con la foto de la referencia cargada, TODAS las WH de ese estilo la muestran sin haber tocado la orden',fotoDe(oA)===fotoRefURLde('4861',1)&&fotoDe(oB)===fotoDe(oA)&&!oA.foto&&!oB.foto&&fotoDe(oC)==='',JSON.stringify({a:fotoDe(oA).slice(-24),c:fotoDe(oC)}));
+    __check('FR: la ruta en el almacenamiento lleva el prefijo de referencia, así que no choca con las fotos por WH',fotoRefPath('4861')==='ref_4861.jpg'&&fotoPath('WH/MO/1')!==fotoRefPath('WH/MO/1'),fotoRefPath('4861'));
+    /* la foto propia de la orden manda sobre la de la referencia */
+    const ixOp=S.params.fotosIdx=S.params.fotosIdx||{};ixOp[normTxt(oA.op)]={ts:2,b:10};
+    __check('FR: la foto propia de la orden manda sobre la de la referencia, y la pantalla dice cuál se está viendo',fotoDe(oA)===fotoURLde(oA.op,2)&&fotoFuenteDe(oA)==='orden'&&fotoFuenteDe(oB)==='referencia'&&/referencia 4861/.test(fotoMini(oB,44)),JSON.stringify({a:fotoFuenteDe(oA),b:fotoFuenteDe(oB)}));
+    delete ixOp[normTxt(oA.op)];
+    /* una orden que llega DESPUÉS con esa referencia hereda la foto sola */
+    const oD=mk('WH/TEST-FR4','4861');
+    __check('FR: una orden nueva de una referencia que ya tenía foto la hereda sola, sin volver a cargar nada',fotoDe(oD)===fotoRefURLde('4861',1)&&fotoFuenteDe(oD)==='referencia',fotoDe(oD).slice(-24));
+    __check('FR: la carga por referencia se registra con su propio tipo en el registro de cargas',!!TIPOS_CARGA.fotosRef&&typeof aplicarFotosRef==='function'&&typeof leerFotosRef==='function',JSON.stringify({tipo:TIPOS_CARGA.fotosRef}));
+    delete ix[normTxt('4861')];
+    S.ordenes=S.ordenes.filter(o=>!/^WH\/TEST-FR/.test(o.op||''));}
+   /* RC · Recarga de tareas sin perder la ruta (usuaria, 22-sep: «no quiero perder las rutas, lo que ya trabajé»; sí quiero que el archivo traiga la fase nueva) */
+   {PERFIL=adminP0();const rows0=window.__tareaRows;
+    if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción'),iFase=H.indexOf('Fase');
+     const enArchivo=new Set(rows0.slice(1).map(r=>r[iOp]));
+     const o=S.ordenes.find(x=>abierta(x)&&!x.sinLanzar&&!x.duplicado&&enArchivo.has(x.op)&&(x.rutaCompleta||x.ruta||[]).length);
+     if(o){const idO=o.id;const ts=new Date().toISOString();
+      /* la planificación revisó y confirmó ESTA ruta a mano (sin pasar por el editor: no hay rutaEditada) */
+      o.rutaCompleta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];o.ruta=o.rutaCompleta.map(x=>Object.assign({},x));
+      delete o.rutaEditada;o.rutaConf={estado:'ok',origen:'persona',u:'Jordan',ts,nota:'revisada con producción'};
+      const antes=cenRutaTxt(o);
+      /* el archivo vuelve con la fase movida en Odoo (es lo que la usuaria quiere subir) */
+      const rows2=JSON.parse(JSON.stringify(rows0));rows2.slice(1).forEach(r=>{if(r[iOp]===o.op)r[iFase]='6Bordado'});
+      const p=planTarea(rows2,'recarga_rc.xlsx');
+      __check('RC: la vista previa cuenta las órdenes con ruta confirmada por una persona antes de aplicar nada',(p.prev.rutasConf||0)>=1,JSON.stringify({rutasConf:p.prev.rutasConf,distintas:(p.prev.rutasDistintas||[]).length}));
+      const html=vistaPreviaTareaHTML(p);
+      __check('RC: la previa lo dice con palabras: los pasos de producción confirmados se conservan y no se vuelven a armar con el catálogo',/ruta confirmada por una persona/.test(html)&&/pasos de producción/.test(html)&&/no se vuelven a armar con el catálogo/.test(html),String(p.prev.rutasConf||0));
+      TAREA=p;aplicarTarea();await __p(100);
+      const o2=S.ordenes.find(x=>x.id===idO);const rc=S.params.tareaCarga.recarga||{};
+      __check('RC: después de la recarga la ruta confirmada sigue igual (mismos centros y mismo orden) y la confirmación no se pierde',!!o2&&cenRutaTxt(o2)===antes&&!!(o2.rutaConf&&o2.rutaConf.origen==='persona')&&o2.rutaConf.u==='Jordan',JSON.stringify({antes,ahora:o2?cenRutaTxt(o2):null,conf:o2&&o2.rutaConf&&o2.rutaConf.origen}));
+      __check('RC: la fase del archivo sí entra y lo que cambia es qué pasos quedan PENDIENTES, no los pasos de la ruta',!!o2&&(o2.rutaCompleta||[]).length===3&&(o2.ruta||[]).length<=3,JSON.stringify({fase:o2&&o2.fase,completa:(o2.rutaCompleta||[]).map(x=>x.centro),pendiente:(o2.ruta||[]).map(x=>x.centro)}));
+      __check('RC: si el catálogo armaría otra ruta, la diferencia se reporta en «no calzan» (no se aplica en silencio)',(rc.conservado&&rc.conservado.rutaConservada>=0)&&(rc.conservado.rutaConservada===0||(rc.noCalzan||[]).some(x=>x.tipo==='ruta')),JSON.stringify({conservadas:rc.conservado&&rc.conservado.rutaConservada,ruta:(rc.noCalzan||[]).filter(x=>x.tipo==='ruta').length}));
+      /* una ruta confirmada sola desde Odoo NO queda blindada: se sigue recalculando con el catálogo */
+      const o3=JSON.parse(JSON.stringify(o2));o3.id=uid();o3.op='WH/TEST-RC2';o3.rutaConf={estado:'ok',origen:'odoo',ts};delete o3.rutaEditada;S.ordenes.push(o3);delete S.avance[o3.id];
+      __check('RC: solo la confirmación de una PERSONA blinda la ruta; la confirmada sola desde Odoo se sigue recalculando',rutaEditadaAMano(o2)===true&&rutaEditadaAMano(o3)===false,JSON.stringify({persona:rutaEditadaAMano(o2),odoo:rutaEditadaAMano(o3)}));
+      S.ordenes=S.ordenes.filter(x=>x.op!=='WH/TEST-RC2');
+      /* dejar el simulador como estaba: se vuelve a cargar el archivo original */
+      const pz=planTarea(rows0,'TAREA_PARTE2.xlsx');TAREA=pz;aplicarTarea();await __p(50);}}}
    /* RQ · Requerimiento (Macro del mes y Compras del mes): la base es TODO lo anterior a Planificación (usuaria, 22-sep: «lo que diga planificación ya tiene tela; de planificación para arriba es todo mi requerimiento») */
    {PERFIL=adminP0();const fp=fasePlanificacion();
     __check('RQ: la fase Planificación sale de la tabla de fases (no de una constante) y la secuencia la ubica después de Macro y antes de Corte',!!fp&&/planificacion/.test(normFase(fp))&&cmpFases('0Macro',fp)<0&&cmpFases('4Corte Planta',fp)>0,JSON.stringify({fp}));

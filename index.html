@@ -353,8 +353,6 @@ tbody tr:hover td{background:var(--field)}
     <span class="saved" id="saved"></span>
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
-    <button onclick="refrescar()" title="Volver a leer los datos del servidor">Actualizar</button>
-    <button id="btn-respaldo" onclick="exportJSON()">Respaldo</button> <button id="btn-restaurar" onclick="importJSON()" title="Restaurar un respaldo JSON (solo administrador; pide confirmación y une la bitácora)">Restaurar</button>
     <button onclick="logout()">Salir</button>
   </header>
 
@@ -407,7 +405,7 @@ tbody tr:hover td{background:var(--field)}
     <div class="gbody" data-g="conf">
       <a data-p="categorias" data-perm="categorias">Categorías</a>
       <a data-p="operaciones" data-perm="categorias">Operaciones</a>
-      <a data-p="config" data-perm="config">Centros y recursos</a>
+      <a data-p="config" data-perm="config|configVer">Centros y recursos</a>
       <a data-p="usuarios" data-perm="usuarios">Usuarios</a>
       <a data-p="salud" data-perm="programa">Salud del sistema</a>
     </div>
@@ -583,7 +581,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
 /* ---------- perfiles: catálogo editable en Configuración → Usuarios (S.params.perfilesDef); el usuario guarda solo el id del perfil en perfiles.rol ----------
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
-const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
+const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)']];
 const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
@@ -596,6 +594,9 @@ function defPerfiles(){return [
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
 function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['wip','cumplimiento','avance','avancearea'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
   if(!S.params.migReporteria2){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['reporteria','vistaordenes','asignacion'].some(p=>d.paginas.includes(p)))return;['avancearea','wip'].forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria2=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (21-sep): '+n+' entradas «Avance por área» / «Producto en proceso» agregadas a los perfiles que tenían la reportería anterior (Reportería textil, Reportería por área, Vista general y Asignación por orden salieron del menú; sus enlaces viejos llevan a las nuevas)')}
+  if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
+    if(!S.params.perfilesDef.some(x=>x.id==='jefatura'))S.params.perfilesDef.push({id:'jefatura',n:'Jefatura (todo menos configurar)',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos','calidadTin','configVer'],centros:['*'],paginas:['*'],desc:'Hace todo lo operativo: órdenes, programa, liberaciones, rutas, baños y piso. Ve la Configuración completa (recursos, personas, capacidades, tablas) pero NO la edita, y no crea usuarios.'});
+    S.params.perfilesJefatura=new Date().toISOString();if(typeof bitacora==='function')bitacora('Perfil «Jefatura (todo menos configurar)» agregado al catálogo: todo lo operativo, ve la configuración sin editarla (decisión de la usuaria, 22-sep). Editable en Configuración → Usuarios.')}
   if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
 /* perfiles viejos (rol piso/carga con área y sub-área) se traducen al catálogo sin tocar la tabla */
 function perfilDe(p){if(!p)return null;const cat=perfilesDef();let d=cat.find(x=>x.id===p.rol);if(d){if(d.id==='tablet'){const t=(S.params.tablets||{})[p.id]||{};return Object.assign({},d,{centros:t.centro?[t.centro]:[]})}return d}
@@ -648,7 +649,7 @@ function armarNavSubCentros(){const nav=document.querySelector('nav');if(!nav||t
       ref.insertAdjacentElement('afterend',el);ref=el});
     cambio=true});
   if(cambio&&typeof aplicarNavPerfil==='function'){aplicarNavPerfil();if(typeof decorarNav==='function')decorarNav()}}
-function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||puede(need))&&vePagina(a.dataset.p);
+function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||String(need).split('|').some(x=>puede(x)))&&vePagina(a.dataset.p);
     if(ok&&a.dataset.cen){const cs=censDeGrupo(a.dataset.cen);ok=cs.some(veCentro)}
     if(ok&&a.dataset.p==='tejeduria')ok=veArea('tej');if(ok&&a.dataset.p==='tintoreria')ok=veArea('tin');
     a.style.display=ok?'':'none'});
@@ -764,10 +765,27 @@ async function save(){PLAN=null;PLAN_ALL=null;
   if(BORRANDO&&!SAVE_DESDE_BORRADO){return}   /* durante el borrado, ningún guardado ajeno */
   if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
+/* ---------- Freno de borrado en masa (23-sep-2026) ----------
+   Nadie borra la mitad de una tabla desde una pantalla. Un borrado legítimo (quitar una fila, una orden que se fue del
+   archivo) es de pocas filas; cientos significa que la memoria de esa pestaña se quedó vacía o a medias. En ese caso NO
+   se borra: se avisa, se guarda el detalle en BORRADO_FRENADO y la pestaña queda marcada para recargar. El borrado de
+   datos de prueba (ejecutarBorrado) pasa por su propio camino con BORRANDO=true y no se ve afectado. */
+let BORRADO_FRENADO=null;
+let REEMPLAZO_OK=false;   /* puerta explícita por si alguna vez hace falta vaciar a propósito desde el código */
+function frenoBorrado(t,ids,cur){const n=(ids||[]).length;if(!n)return false;
+  if(typeof BORRANDO!=='undefined'&&BORRANDO)return false;          /* el borrado de datos de prueba tiene su propio camino y su respaldo */
+  if(REEMPLAZO_OK)return false;
+  const tope=+prm('minBorradoSospechoso',10)||10;                   /* configurable: desde cuántas filas se considera masivo */
+  const vacia=(cur||[]).length===0&&n>=tope;                        /* la pestaña no tiene NADA de esa tabla y borraría todo: esto fue lo que pasó el 23-sep */
+  if(!vacia)return false;
+  BORRADO_FRENADO={ts:new Date().toISOString(),tabla:t,n,quedan:0,u:(typeof quienFirma==='function'?quienFirma():'')};
+  try{if(typeof bitacora==='function')bitacora('FRENO: esta pestaña iba a vaciar '+(typeof nTabla==='function'?nTabla(t):t)+' en el servidor ('+n+' filas) porque no tenía ninguna cargada. NADA se borró; hay que recargar la página.')}catch(e){}
+  return true}
 async function _save(){
   const errs=[];
   const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push({t,msg:error.message});return}}};
-  const del=async(t,ids)=>{for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push({t,msg:error.message});return}}};
+  const del=async(t,ids,cur)=>{if(frenoBorrado(t,ids,cur))return;   /* 23-sep: una sesión no borra en masa */
+    for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push({t,msg:error.message});return}}};
   const saltadas=[];
   for(const t of TABLAS){
     if(!puedeSubirTabla(t)){const cur0=S[t],b0=BASE[t]||{};if(cur0.some(r=>JSON.stringify(sinId(r))!==b0[r.id])||Object.keys(b0).some(id=>!cur0.some(r=>r.id===id)))saltadas.push(t);continue} // el piso no sube esta tabla: ni se intenta ni cuenta como error
@@ -775,17 +793,21 @@ async function _save(){
     let rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
     const ids=Object.keys(base).filter(id=>!cur.some(r=>r.id===id));
     const prep=await prepararSubida(t,rows);rows=prep.rows; // no se pisa lo que cambió otra persona
-    await up(t,rows);await del(t,ids);
+    await up(t,rows);await del(t,ids,cur);
     if(!errs.length){BASE[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(sinId(r))]));await refrescarTS(t,rows.map(r=>r.id))}
   }
   if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
   const ba=BASE.avance||{};
   {let av=Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v}));
    const prepA=await prepararSubida('avance',av);av=prepA.rows;
-   await up('avance',av);await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
+   await up('avance',av);await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)),Object.keys(S.avance).map(id=>({id})));
    if(!errs.length){BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));await refrescarTS('avance',av.map(r=>r.id))}}
   const st=document.getElementById('saved');
   ULT_SALTADAS=saltadas;
+  if(BORRADO_FRENADO){const f=BORRADO_FRENADO;BORRADO_FRENADO=null;
+    let b=document.getElementById('aviso-freno');
+    if(!b){b=document.createElement('div');b.id='aviso-freno';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:100;background:var(--alerta);color:#fff;padding:10px 16px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:90vw';document.body.appendChild(b)}
+    b.innerHTML='<b>Se frenó un borrado.</b> Esta pestaña iba a quitar '+num(f.n)+' filas de '+esc(typeof nTabla==='function'?nTabla(f.tabla):f.tabla)+' del servidor porque ya no las tenía cargadas. <b>No se borró nada.</b> Recarga la página antes de seguir. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>';}
   if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
     SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4).map(e=>nTabla(e.t)+': '+e.msg),tablas:[...new Set(errs.map(e=>nTabla(e.t)))],permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e.msg))};
     if(st)st.textContent='No se guardó';
@@ -795,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-22 16:17';
+const APP_BUILD='2026-09-23 10:18';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2456,14 +2478,87 @@ function tramoAbiertoOrden(oid,c,rec){return (tramosDe(oid)||[]).find(t=>t.centr
    el orden es empírico y lo resuelven las OT de Odoo. Por eso la pertenencia al centro se decide con la
    SECUENCIA DE LA RUTA de cada orden, y cuando la ruta no la define se muestra como brecha, no se adivina. */
 function pasosProDe(o){return (o&&o.ruta||[]).map(p=>p.centro).filter(c=>CE(c)&&CE(c).area==='pro')}
+/* ---------- Tramos paralelos (22-sep-2026, decisión de la usuaria) ----------
+   «La ruta dice por dónde va a pasar, pero no en qué orden fijo»: entre corte y confección, el estampado, el bordado,
+   el sublimado y los apliques se reparten y la prenda puede entrar a módulos sin que bordado haya terminado. Los
+   centros de un mismo tramo NO se bloquean entre sí; lo anterior al tramo (corte) sí manda. Es una tabla editable:
+   Configuración → Centros y recursos → «Tramos paralelos». El motor de fechas NO cambia: sigue programando en orden. */
+const TRAMOS_PARALELOS_DEF=[{n:'Estampado, bordado y confección',cens:['estampado','sublimado','apliques','bordado','modulos'],nota:'El orden real lo deciden las órdenes de trabajo de Odoo y el piso; ninguno espera a los otros.'}];
+function tramosParalelos(){if(!Array.isArray(S.params.tramosParalelos))S.params.tramosParalelos=JSON.parse(JSON.stringify(TRAMOS_PARALELOS_DEF)).map(t=>Object.assign(t,{sugerido:true}));
+  return S.params.tramosParalelos}
+function tramoParaleloDe(c){return tramosParalelos().find(t=>(t.cens||[]).includes(c))||null}
+function mismoTramoParalelo(a,b){if(!a||!b||a===b)return false;const t=tramoParaleloDe(a);return !!(t&&(t.cens||[]).includes(b))}
+/* el último paso anterior que SÍ manda: el de fuera del tramo (corte), no el compañero de tramo */
+function centroAnteriorFueraTramo(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro').map(p=>p.centro);
+  const i=ru.indexOf(c);if(i<=0)return null;
+  for(let k=i-1;k>=0;k--){if(!mismoTramoParalelo(ru[k],c))return ru[k]}
+  return null}
+function setTramoParaleloCen(i,cen,on){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;t.cens=t.cens||[];
+  const antes=t.cens.slice();
+  if(on){if(!t.cens.includes(cen))t.cens.push(cen)}else t.cens=t.cens.filter(x=>x!==cen);
+  delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();
+  bitacora('Tramo paralelo «'+(t.n||'')+'»: '+(on?'entra ':'sale ')+nCen(cen)+' (antes: '+(antes.map(nCen).join(', ')||'ninguno')+')');
+  save();render()}
+function setTramoParaleloN(i,v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;t.n=String(v||'').trim();delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();save()}
+function addTramoParalelo(){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  tramosParalelos().push({n:'Tramo nuevo',cens:[],u:quienFirma(),ts:new Date().toISOString()});bitacora('Tramo paralelo nuevo (vacío)');save();render()}
+function quitarTramoParalelo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];if(!t)return;
+  if(!confirm('¿Quitar el tramo paralelo «'+(t.n||'')+'»?\nLos centros ('+((t.cens||[]).map(nCen).join(', ')||'ninguno')+') volverán a esperarse entre sí en la cola.'))return;
+  tramosParalelos().splice(i,1);bitacora('Tramo paralelo quitado: '+(t.n||'')+' ('+((t.cens||[]).map(nCen).join(', ')||'sin centros')+')');save();render()}
+function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  return '<div class="panel"><h3>Tramos paralelos <span class="note">centros que no se esperan entre sí en la cola</span><span class="spacer"></span>'+
+   (puede('config')?'<button class="btn ghost sm" onclick="addTramoParalelo()">+ Tramo</button>':'')+'</h3><div class="body">'+
+   '<p class="lede" style="margin-top:0">La ruta dice <b>por dónde pasa</b> la prenda, no en qué orden exacto. Dentro de un tramo paralelo, terminar uno no es requisito para empezar otro: basta con que esté hecho el paso <b>anterior al tramo</b> (corte). Esto es para la <b>cola de los centros</b>; el programa de fechas sigue calculándose en orden.</p>'+
+   ts.map((t,i)=>'<div style="margin-bottom:10px;padding:8px;border:1px solid var(--rule);border-radius:6px">'+
+     '<div class="row" style="align-items:center"><input type="text" style="min-width:260px" value="'+esc(t.n||'')+'" onchange="setTramoParaleloN('+i+',this.value)">'+
+     (t.sugerido?' <span class="tag t-aviso">sugerido: confírmalo o cámbialo</span>':'')+'<span class="spacer"></span>'+
+     (puede('config')?'<button class="btn ghost sm" onclick="quitarTramoParalelo('+i+')">Quitar tramo</button>':'')+'</div>'+
+     '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">'+cens.map(c=>'<label style="font-size:var(--fs-xs);white-space:nowrap"><input type="checkbox" '+((t.cens||[]).includes(c.id)?'checked':'')+' onchange="setTramoParaleloCen('+i+',\''+c.id+'\',this.checked)"> '+esc(c.n)+'</label>').join('')+'</div>'+
+     (t.nota?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">'+esc(t.nota)+'</p>':'')+
+     ((t.cens||[]).length===1?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Con un solo centro el tramo no hace nada: marca al menos dos.</p>':'')+'</div>').join('')+
+   (ts.length?'':'<p class="mut">Sin tramos: cada paso de la ruta espera al anterior.</p>')+'</div></div>'}
+/* ---------- Buscar una orden desde el centro (22-sep-2026, decisión de la usuaria) ----------
+   «Una búsqueda en cada programación del centro para ver en qué estado está o cuándo va a ingresar: por WH, por
+   cliente o por estilo.» Busca en TODA la cartera que el perfil ve, no solo en la lista de la semana, y por cada
+   orden dice dónde está, si este centro está en su ruta y cuándo entra (o qué la frena). */
+function llegadaACentroTxt(o,c,P){
+  if(pasoHecho(o,c)){const ci=cierreCentro(o,c);return {cls:'t-ok',txt:'ya pasó por aquí'+(ci?' · cerrada el '+new Date(ci.ts).toLocaleDateString('es-EC')+' con '+num(ci.pz)+' de '+num(ci.cant):'')}}
+  const ac=((S.avance[o.id]||{}).centros)||{};
+  if(tramoAbiertoOrden(o.id,c,null)||ac[c]>0)return {cls:'t-aviso',txt:'en proceso aquí'+(ac[c]?' · '+num(ac[c])+' de '+num(cantCentro(o,c)):'')};
+  if(!pasosProDe(o).includes(c))return {cls:'',txt:'este centro NO está en su ruta'};
+  const sec=secuenciaCentro(o,c);
+  const paso=((P&&P.pro)||[]).find(x=>x.oid===o.id&&x.centro===c);
+  const fecha=paso&&paso.ini?' · programada para el '+fmtDia(paso.ini):(paso&&paso.dia?' · programada para el '+fmtDia(paso.dia):' · sin fecha en el programa');
+  if(sec.estado==='disponible')return {cls:'t-ok',txt:'lista para entrar'+(sec.motivo?' ('+sec.motivo+')':'')+fecha};
+  if(sec.estado==='proxima')return {cls:'t-aviso',txt:'todavía no: '+(sec.motivo||'falta un paso anterior')+fecha};
+  return {cls:'',txt:(sec.motivo||'sin secuencia')+fecha}}
+function buscarEnCentroHTML(cens,P,lun,dom){const q=String(CEN.q||'').trim();if(!q)return '';
+  const c0=(CEN.solo||cens[0]);
+  const enCentro=o=>cens.find(c=>pasosProDe(o).includes(c))||c0;   /* con sub-áreas, la de la ruta de esa orden; si no está en ninguna, la que se está mirando */
+  const l=ordenesQueVe().filter(o=>matchBusq(o,q,'CEN.q')).slice(0,6);
+  if(!l.length)return '<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px">No encuentro ninguna orden con <b>'+esc(q)+'</b> (busca por WH, cliente, estilo, color, ODC o fase). Si la orden existe pero no la ves, puede que tu perfil no la alcance.</div>';
+  const fila=o=>{const c=enCentro(o);const ll=llegadaACentroTxt(o,c,P);
+    return '<tr><td style="white-space:nowrap">'+whCell(o)+'</td><td>'+esc(o.cliente||'')+'</td><td>'+esc(o.ref||'')+'</td><td>'+esc((C(o.color)||{}).n||'')+'</td>'+
+      '<td class="num">'+num(o.cant||0)+'</td><td>'+(typeof estadoSemaforoHTML==='function'?estadoSemaforoHTML(o,P):'')+'</td>'+
+      '<td>'+esc(((()=>{try{const d=dondeEsta(o,P);return (d&&d.n)||'—'}catch(e){return '—'}})()))+'</td>'+   /* dondeEsta devuelve {k,n}: en pantalla va el nombre */
+      '<td><span class="tag '+ll.cls+'">'+esc(nCen(c))+'</span> '+esc(ll.txt)+'</td></tr>'};
+  return '<div class="panel" style="margin-bottom:10px"><h3>Resultado de la búsqueda <span class="note">'+num(l.length)+' orden'+(l.length===1?'':'es')+' con «'+esc(q)+'» · dónde está y cuándo entra aquí</span></h3>'+
+   '<div class="body"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Estilo</th><th>Color</th><th class="num">Prendas</th><th>Estado</th><th>Dónde está</th><th>En este centro</th></tr></thead><tbody>'+
+   l.map(fila).join('')+'</tbody></table>'+
+   '<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Busca en toda la cartera que ves, no solo en la semana ('+fmtDia(lun)+' – '+fmtDia(dom)+'): por eso aparece aunque todavía no esté programada aquí.</p></div></div>'}
 function secuenciaCentro(o,c){const ru=pasosProDe(o);
   if(!ru.length)return{estado:'sinSecuencia',motivo:'la orden no tiene ruta de producción'};
   const veces=ru.filter(x=>x===c).length;
   if(!veces)return{estado:'sinSecuencia',motivo:'este centro no está en la ruta de la orden'};
   if(veces>1)return{estado:'sinSecuencia',motivo:'el centro aparece '+veces+' veces en la ruta: no se sabe cuál de las dos es'};
   const i=ru.indexOf(c);const antes=ru.slice(0,i);
-  const pend=antes.filter(x=>!pasoHecho(o,x));
-  if(!pend.length)return{estado:'disponible',motivo:''};
+  const pendAll=antes.filter(x=>!pasoHecho(o,x));
+  const compa=pendAll.filter(x=>mismoTramoParalelo(x,c));   /* del mismo tramo: no se esperan entre sí (decisión 22-sep) */
+  const pend=pendAll.filter(x=>!mismoTramoParalelo(x,c));
+  if(!pend.length)return{estado:'disponible',motivo:compa.length?'tramo paralelo: '+compa.map(x=>nCen(x)).join(', ')+' no lo detiene (el orden real lo deciden las OT y el piso)':''};
   const et=centroEtapaDe(c);const gr=et?faseGrupos().find(g=>g.grupo===et):null;
   if(gr&&gr.secuencial===false&&pend.every(x=>centroEtapaDe(x)===et))
     return{estado:'disponible',motivo:'tramo no secuencial ('+esc(et)+'): el orden real lo dan las órdenes de trabajo de Odoo'};
@@ -3076,7 +3171,7 @@ function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='fu
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   page=redirigirPagina(page);
-  const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios',salud:'programa'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
+   const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
   ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,avancearea:vAvanceArea,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
@@ -3584,7 +3679,8 @@ function vPlan(el){
    <div id="plan-paso2" style="${paso===2?'':'display:none'}"><p class="mut" style="font-size:var(--fs-s);margin:0 0 10px">Días, personas y capacidad vienen del <a style="cursor:pointer;text-decoration:underline" onclick="PM.paso=1;render();window.scrollTo(0,0)">paso 1 · Nivelación</a>.</p>${bloque2}${bloque3}${bloque4}${bloque5}${detalle}</div>`;
 }
 function setMeta(ym,v){S.params.metas=S.params.metas||{};S.params.metas[ym]=+v||0;save();render()}
-function congelarPlan(ym){const c=calcularPlan(ym);const prev=(S.planes||[]).filter(p=>p.mes===ym);const ver=prev.length+1;
+function congelarPlan(ym){if(!puede('programa')){alert('Tu perfil no congela el plan del mes.');return}   /* el botón ya estaba escondido; la puerta va también en la función */
+  const c=calcularPlan(ym);const prev=(S.planes||[]).filter(p=>p.mes===ym);const ver=prev.length+1;
   if(!confirm('¿Congelar el plan de '+ym+' como versión v'+ver+'? '+planMesOids(ym).size+' órdenes en el plan; queda fijado para todas las áreas con la demanda, capacidades y metas de hoy.'))return;
   S.planes=S.planes||[];S.planes.push({id:'plan_'+ym+'_v'+ver,mes:ym,ver,oids:[...planMesOidsTot(ym)],ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',
     dem:c.dem,areas:c.areas.map(a=>({a:a.a,cap:a.cap,carga:a.carga,dias:a.dias})),mods:c.mods.map(m=>({rec:m.r.id,pers:m.r.pers,cap:m.cap,carga:m.carga,pz:m.pz,fams:m.fams})),
@@ -4888,7 +4984,7 @@ function puedeEditarRuta(){return puede('ruta')}
 function sembrarPermisoRutas(){if(S.params.rutasSoloJefe)return;
   const cat=perfilesDef();const quitados=[];
   cat.forEach(d=>{if(!Array.isArray(d.permisos)||d.permisos.includes('*'))return;
-    if(d.id==='planificacion')return;                         // el jefe de planificación de producción
+    if(d.id==='planificacion'||d.id==='jefatura')return;      // el jefe de planificación de producción y la jefatura (todo menos configurar)
     if(d.permisos.includes('ruta')){d.permisos=d.permisos.filter(p=>p!=='ruta');quitados.push(d.n||d.id)}});
   S.params.rutasSoloJefe=new Date().toISOString();
   if(quitados.length&&typeof bitacora==='function')bitacora('Rutas (decisión 16-sep): crear o editar rutas queda solo en Planificación de producción y Administración. Se quitó el permiso «ruta» a: '+quitados.join(', ')+'. Siguen viéndolas, sin botones de edición. Editable en Configuración → Usuarios.')}
@@ -7637,7 +7733,7 @@ function cierresOrdenHTML(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};c
   return `<h4 style="margin:12px 0 6px">Cerrada en estos centros</h4><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Quién · cuándo</th><th>Tallas que faltaron</th></tr></thead><tbody>
    ${ks.map(c=>{const x=cs[c];return `<tr><td>${esc(nCen(c))}</td><td class="num">${num(x.pz)} de ${num(x.cant)}</td><td class="num">${x.faltan?'<span class="tag t-alerta">'+num(x.faltan)+'</span>':'—'}</td><td>${esc(x.motivo||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(x.u||'')} · ${new Date(x.ts).toLocaleString('es-EC')}</td><td class="mut" style="font-size:var(--fs-xs)">${x.tallas?Object.entries(x.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(' · '):'—'}</td></tr>`}).join('')}
    </tbody></table>`}
-function listaParaEmpezar(o,c){const ant=centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;
+function listaParaEmpezar(o,c){const ant=centroAnteriorFueraTramo(o,c)||centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;   /* en un tramo paralelo manda el paso anterior al tramo (corte), no el compañero */
   const ac=((S.avance[o.id]||{}).centros)||{};if((ac[c]||0)>0)return null; // ya se empezó aquí
   return {centro:ant,ci}}
 function tagListaEmpezar(o,c){const l=listaParaEmpezar(o,c);if(!l)return '';
@@ -8019,7 +8115,7 @@ function vCentro(el){
   const cab=`<div class="pagehead"><h2>${esc(nombre)}</h2>${subTxt}<span class="spacer"></span><div class="chips">${tabs.map(([k,v])=>`<span class="chip ${CEN.tab===k?'on':''}" onclick="CEN.tab='${k}';render()">${v}</span>`).join('')}</div></div>
    <div class="row" style="margin:0 0 12px;align-items:center"><div class="chips" style="margin:0"><span class="chip" onclick="CEN.sem--;render()">‹</span><span class="chip on" style="cursor:default">Semana ${fmtDia(lun)} – ${fmtDia(dom)}</span><span class="chip" onclick="CEN.sem++;render()">›</span>${CEN.sem?`<span class="chip" onclick="CEN.sem=0;render()">hoy</span>`:''}</div>
    <span class="mut" style="font-size:var(--fs-s)">${recs.length} recursos · ${num(recs.reduce((a,r)=>a+dias.filter(d=>labR(d,r)).reduce((b,d)=>b+capDia(r,d),0),0))} min disponibles esta semana${(S.turnos||[]).some(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h))?' · <span class="tag t-alerta">'+(S.turnos||[]).filter(t=>t.tipo==='parada'&&recs.some(r=>r.id===t.rec)&&(!t.hasta||t.hasta>=h)).map(t=>nRec(t.rec)).join(', ')+' fuera</span>':''}</span><span class="spacer"></span>
-   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}${filtroFasesHTML(fasesCEN,CEN.fases,'CEN.fases','togFaseCEN')}${busqHTML('CEN.q',CEN.q,'CEN.q=v','width:200px')}</div>`;
+   ${okPiso?`<button class="btn tint to sm" onclick="mParada('pro',${JSON.stringify(cens).replace(/"/g,'&quot;')})">Reportar novedad</button>`:''}${filtroFasesHTML(fasesCEN,CEN.fases,'CEN.fases','togFaseCEN')}${busqHTML('CEN.q',CEN.q,'CEN.q=v','width:200px')}</div>`+buscarEnCentroHTML(cens,P,lun,dom);   /* el resultado de la búsqueda va arriba, en cualquier pestaña del centro */
   // órdenes con paso en este centro (con el filtro de fases común)
   const filas=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
   if(CEN.tab==='resumen'){el.innerHTML=cab+resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas);return}
@@ -8204,6 +8300,108 @@ function rutaCeldaHTML(o){const cens=pasosProCompleta(o).slice().sort((a,b)=>ord
 function rutaOkFila(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
   if(rutaConfirmada(o))return;if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);confirmarRuta(o,'persona','ruta ok desde la lista: est\u00e1 bien tal cual');
   PLAN=null;PLAN_ALL=null;save();render()}   /* render() conserva el scroll: la fila sale de «por editar» y la lista no se mueve */
+/* ---------- Las rutas trabajadas, fuera de la base (23-sep-2026) ----------
+   Una fila por WH con su ruta y quién la confirmó. Se saca a Excel (o CSV) y se vuelve a cargar después de recargar
+   las órdenes desde Odoo: ese trabajo deja de depender de que la base esté intacta. El archivo se lee por WH (o por
+   el ID de tarea) y trae los centros en orden; los tiempos, si no vienen, los pone la categoría. */
+function filasRutasExport(){
+  return S.ordenes.filter(o=>(o.rutaCompleta&&o.rutaCompleta.length)||(o.ruta&&o.ruta.length)).map(o=>{
+    const comp=(o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[]);
+    const conf=o.rutaConf||{};const ed=(o.rutaEditada||[]);
+    const mas=[...new Set(ed.flatMap(e=>e.mas||[]))],menos=[...new Set(ed.flatMap(e=>e.menos||[]))];
+    return {
+      'WH':o.op||'', 'ID tarea':o.tareaId||'', 'Cliente':o.cliente||'', 'Estilo':o.ref||'',
+      'Color':(C(o.color)||{}).n||'', 'ODC':o.odc||'', 'Categoría':o.catTxt||nombreCat(K(o.cat))||'',
+      'Fase':o.fase||'', 'Prendas':+o.cant||0,
+      'Ruta (en orden)':comp.map(p=>nCen(p.centro)).join(' → '),
+      'Ruta (códigos)':comp.map(p=>p.centro).join('>'),
+      'Tiempos (min/prenda)':comp.map(p=>(+p.t||0)).join('>'),
+      'Confirmada':conf.estado?'sí':'no', 'Confirmada por':conf.u||'', 'Origen':conf.origen||'',
+      'Fecha de confirmación':conf.ts?new Date(conf.ts).toLocaleString('es-EC'):'', 'Nota':conf.nota||'',
+      'Pasos agregados a mano':mas.map(nCen).join(', '), 'Pasos quitados a mano':menos.map(nCen).join(', ')}})}
+const RUTAS_COLS=[{k:'WH',w:18},{k:'ID tarea',w:10},{k:'Cliente',w:30,wrap:true},{k:'Estilo',w:14},{k:'Color',w:18},{k:'ODC',w:14},{k:'Categoría',w:28,wrap:true},{k:'Fase',w:18},{k:'Prendas',w:9,num:true},{k:'Ruta (en orden)',w:52,wrap:true},{k:'Ruta (códigos)',w:40},{k:'Tiempos (min/prenda)',w:22},{k:'Confirmada',w:11},{k:'Confirmada por',w:20},{k:'Origen',w:10},{k:'Fecha de confirmación',w:18},{k:'Nota',w:30,wrap:true},{k:'Pasos agregados a mano',w:22},{k:'Pasos quitados a mano',w:22}];
+async function exportarRutasXLSX(){const filas=filasRutasExport();
+  if(!filas.length){alert('No hay ninguna orden con ruta para exportar.');return}
+  try{await cargarExcelJS()}catch(e){alert(e.message||'No pude cargar el generador de Excel. Usa el CSV.');return}
+  const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';
+  const conf=filas.filter(f=>f['Confirmada']==='sí').length;
+  xlsPortada(wb,'Rutas trabajadas por WH',[
+    ['Qué es','Una fila por orden con su ruta completa, en orden, y quién la confirmó. Sirve para no perder el trabajo de rutas y para volver a ponerlo después de recargar las órdenes desde Odoo.'],
+    ['Sacado el',new Date().toLocaleString('es-EC')+' por '+(typeof quienFirma==='function'?quienFirma():'')],
+    ['Órdenes',num(filas.length)+' con ruta · '+num(conf)+' con la ruta confirmada'],
+    ['Cómo volver a cargarlo','Órdenes → Rutas → «Cargar rutas desde archivo». Cruza por WH (o por el ID de tarea) y deja la ruta tal cual, con su confirmación.'],
+    ['Ojo','Si editas el archivo, la columna que manda es «Ruta (códigos)»: son los códigos de los centros separados por >. La columna con nombres es para leer.']]);
+  xlsHoja(wb,'Rutas por WH',RUTAS_COLS,filas,{titulo:'Rutas trabajadas por WH',nota:'Una fila por orden. «Ruta (códigos)» es la que se vuelve a leer al cargar.'});
+  const buf=await wb.xlsx.writeBuffer();const b=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rutas_por_wh_'+hoy()+'.xlsx';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0);
+  if(typeof bitacora==='function'){bitacora('Exportadas las rutas de '+filas.length+' órdenes ('+conf+' confirmadas) a Excel');save()}}
+function exportarRutasCSV(){const filas=filasRutasExport();
+  if(!filas.length){alert('No hay ninguna orden con ruta para exportar.');return}
+  const cols=RUTAS_COLS.map(c=>c.k);const rows=[cols].concat(filas.map(f=>cols.map(c=>f[c])));
+  const csv=rows.map(r=>r.map(v=>{const x=String(v==null?'':v);return /[;"\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(';')).join('\n');
+  const b=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rutas_por_wh_'+hoy()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0)}
+/* ---- volver a cargarlas ---- */
+let RUTAS_ARCH=null;
+function planRutasArchivo(rows,nombre){const idx=indiceClaves();
+  const H=(rows[0]||[]).map(x=>normTxt(x));
+  const col=n=>H.findIndex(h=>h===normTxt(n));
+  const iWH=col('WH'),iId=col('ID tarea'),iCod=col('Ruta (códigos)'),iNom=col('Ruta (en orden)'),iT=col('Tiempos (min/prenda)'),iU=col('Confirmada por'),iTs=col('Fecha de confirmación'),iNota=col('Nota');
+  if(iWH<0&&iId<0)return null;
+  const cenPorNombre={};S.centros.forEach(c=>{cenPorNombre[normTxt(c.n)]=c.id});
+  const out={archivo:nombre,filas:0,aplican:[],sinOrden:[],sinRuta:[],centrosRaros:[]};
+  rows.slice(1).forEach(r=>{if(!r||!r.length)return;const wh=String((iWH>=0?r[iWH]:'')||'').trim();const tid=String((iId>=0?r[iId]:'')||'').trim();
+    if(!wh&&!tid)return;out.filas++;
+    let o=null;
+    if(tid)o=idx.get(claveOrden({tareaId:tid}).clave)||null;
+    if(!o&&wh)o=idx.get(claveOrden({op:wh}).clave)||null;
+    if(!o){out.sinOrden.push(wh||('ID '+tid));return}
+    let cens=[];
+    if(iCod>=0&&String(r[iCod]||'').trim())cens=String(r[iCod]).split('>').map(x=>x.trim()).filter(Boolean);
+    else if(iNom>=0&&String(r[iNom]||'').trim())cens=String(r[iNom]).split('→').map(x=>cenPorNombre[normTxt(x.trim())]||'').filter(Boolean);
+    cens=cens.filter(c=>{if(CE(c))return true;out.centrosRaros.push(c);return false});
+    if(!cens.length){out.sinRuta.push(wh||('ID '+tid));return}
+    const ts=(iT>=0?String(r[iT]||'').split('>'):[]).map(x=>+x||0);
+    out.aplican.push({o,wh:o.op,cens,ts,u:(iU>=0?String(r[iU]||'').trim():''),tsConf:(iTs>=0?String(r[iTs]||'').trim():''),nota:(iNota>=0?String(r[iNota]||'').trim():''),
+      antes:((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).map(p=>p.centro)})});
+  out.centrosRaros=[...new Set(out.centrosRaros)];
+  out.cambian=out.aplican.filter(x=>x.antes.join('>')!==x.cens.join('>')).length;
+  return out}
+function previaRutasArchivoHTML(p){if(!p)return '';const li=(n,t)=>'<tr><td class="num"><b>'+num(n||0)+'</b></td><td>'+t+'</td></tr>';
+  return '<table style="font-size:var(--fs-s)"><tbody>'+
+   li(p.filas,'filas leídas en el archivo')+
+   li(p.aplican.length,'órdenes que <b>existen</b> y reciben su ruta'+(p.cambian?' (de ellas, <b>'+num(p.cambian)+'</b> tienen hoy otra ruta y se reemplaza)':' (todas con la misma ruta que ya tienen)'))+
+   li(p.sinOrden.length,'WH del archivo que <b>no están en el sistema</b>: se saltan'+(p.sinOrden.length?' ('+esc(p.sinOrden.slice(0,8).join(', '))+(p.sinOrden.length>8?' …':'')+')':''))+
+   (p.sinRuta.length?li(p.sinRuta.length,'filas sin ruta legible: se saltan'):'')+
+   (p.centrosRaros.length?li(p.centrosRaros.length,'centros del archivo que no existen aquí: se ignoran ('+esc(p.centrosRaros.join(', '))+')'):'')+
+   '</tbody></table><p class="mut" style="font-size:var(--fs-xs)">La ruta queda <b>confirmada por persona</b>, con quién y cuándo la confirmó según el archivo, y se anota en la bitácora. Los pasos ya hechos según la fase salen de la ruta pendiente, como siempre.</p>'}
+async function leerRutasArchivo(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('rutarch-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  let rows=null;try{rows=await leerTabla(f)}catch(e){res.innerHTML='<div class="warn">No pude leer el archivo: '+esc(e.message||'')+'</div>';return}
+  const p=planRutasArchivo(rows,f.name);
+  if(!p){res.innerHTML='<div class="warn">No encuentro la columna <b>WH</b> (ni <b>ID tarea</b>) en el archivo.</div>';return}
+  RUTAS_ARCH=p;res.innerHTML=previaRutasArchivoHTML(p);
+  const b=document.getElementById('rutarch-ok');if(b)b.disabled=!p.aplican.length}
+function aplicarRutasArchivo(){const p=RUTAS_ARCH;if(!p)return;
+  if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  if(!confirm('¿Poner la ruta del archivo en '+p.aplican.length+' órdenes?'+(p.cambian?'\n'+p.cambian+' de ellas tienen hoy otra ruta y se reemplaza.':'')))return;
+  const ts=new Date().toISOString(),u=quienFirma();let n=0;
+  p.aplican.forEach(x=>{const o=x.o;const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+    const comp=x.cens.map((c,i)=>{const t=(x.ts[i]!=null&&!isNaN(x.ts[i])&&x.ts[i]>0)?x.ts[i]:(+((tiempoPaso({centro:c,t:0},k,sam,+o.puntadas||0)||{}).t)||0);return {centro:c,t}});
+    const antes=x.antes.join(' → ');
+    o.rutaCompleta=comp;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);
+    o.rutaConf={estado:'confirmada',origen:'persona',u:x.u||u,ts:ts,nota:'restaurada desde archivo'+(x.nota?' · '+x.nota:'')+(x.tsConf?' (confirmada el '+x.tsConf+')':'')};
+    if(typeof sellarRuta==='function')sellarRuta(o);
+    if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',o,antes,x.cens.map(nCen).join(' → '),'rutas restauradas desde el archivo '+(p.archivo||''),false);
+    n++});
+  bitacora('Rutas cargadas desde archivo «'+(p.archivo||'')+'»: '+n+' órdenes'+(p.cambian?' ('+p.cambian+' reemplazadas)':'')+(p.sinOrden.length?' · '+p.sinOrden.length+' WH del archivo no existen aquí':'')+' ('+u+')');
+  registrarCarga('rutas',p.archivo||'',{aplicadas:n,reemplazadas:p.cambian,sinOrden:p.sinOrden.length});
+  RUTAS_ARCH=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
+  alert(n+' órdenes recibieron su ruta desde el archivo.')}
+function mCargarRutas(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  abrir('<h3>Cargar rutas desde archivo</h3><div class="body">'+
+   '<p class="lede" style="margin-top:0">Sube el archivo de <b>rutas por WH</b> que sacaste de aquí (Excel o CSV). Cruza por <b>WH</b> (o por el <b>ID de tarea</b>) y deja la ruta tal cual, confirmada. Sirve para devolver el trabajo de rutas después de volver a cargar las órdenes desde Odoo. Nada se guarda hasta confirmar.</p>'+
+   '<input type="file" id="f-rutarch" accept=".xlsx,.xls,.csv"><div id="rutarch-res" style="margin-top:14px"></div></div>'+
+   '<div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="rutarch-ok" disabled onclick="aplicarRutasArchivo()">Aplicar</button></div>');
+  const inp=document.getElementById('f-rutarch');if(inp)inp.addEventListener('change',leerRutasArchivo)}
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
 let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set(),fases:null};
 /* ================== RUTA EN LOTE (20-sep-2026) ==================
@@ -8338,6 +8536,8 @@ function ordenCumpleRegla(o,r){
   if(r.atributo){const t=normTxt([o.producto,o.ref,(C(o.color)||{}).n,nombreCat(K(o.cat)),o.op].filter(Boolean).join(' '));
     if(!t.includes(normTxt(r.atributo)))return false}
   return true}
+/* los centros de la ruta completa de una orden, en texto, para comparar dos versiones de la misma ruta */
+function cenRutaTxt(o){const r=(o&&o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:((o&&o.ruta)||[]);return r.map(x=>x.centro).join(' → ')}
 function rutaEditadaAMano(o){return !!(o.rutaEditada&&o.rutaEditada.length)||!!(o.rutaConf&&o.rutaConf.origen==='persona')}
 /* qué haría cada regla, sin tocar nada */
 function previaReglasRuta(){const out=[];const manual=[];
@@ -8430,6 +8630,7 @@ function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();co
    </div>
    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>
    <div class="sub-blk" id="rut-acciones" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b><span id="rut-sel-n">${nSel}</span> marcadas</b>
+    <button class="btn ghost sm" onclick="exportarRutasXLSX()" title="Saca a Excel una fila por WH con su ruta y quién la confirmó: ese trabajo deja de depender de la base">Exportar rutas</button>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mCargarRutas()" title="Vuelve a poner las rutas desde el archivo, cruzando por WH">Cargar rutas</button>`:''}
     ${puedeEditarRuta()?`<button class="btn sm" id="rut-btn-def" ${nSel?'':'disabled'} onclick="abrirRutaLote()">Definir ruta para las marcadas</button><button class="btn ghost sm" id="rut-btn-conf" ${nSel?'':'disabled'} onclick="confirmarRutasSel()" title="deja confirmada la ruta que ya tiene cada una, sin cambiar ningún paso">Confirmar como están</button>`:''}
     <button class="btn ghost sm" onclick="selTodoRut(true)">Marcar todas las de la lista (${lista.length})</button><button class="btn ghost sm" onclick="selTodoRut(false)">Desmarcar</button>
     <span class="mut" style="font-size:var(--fs-xs)">Marca órdenes sueltas o un grupo entero (casilla en la cabecera del grupo) y define la ruta para todas de una vez.</span></div>
@@ -8988,7 +9189,13 @@ function vOrdenes(el){
          return fs.length?`<div style="margin:6px 0"><b>Fases distintas (${fs.length})</b>: ${acept.length} avanzaron en Odoo y aquí nadie las movió; ${fs.length-acept.length} las moviste aquí (también puedes aceptar la del archivo, caso por caso). ${puede('ordenes')?`<button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(acept.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar las ${acept.length} de avance normal</button> <button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(fs.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar todas (${fs.length})</button> <button class="btn ghost sm" onclick="BND.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${BND.sel.size?'':'disabled'} onclick="aceptarFasesArchivo()">Usar la fase del archivo en las ${BND.sel.size} marcadas</button>`:''}
           <div style="margin:6px 0;font-size:var(--fs-xs)">Archivo exportado de Odoo: <input type="datetime-local" value="${isoLocalInput(expTsDe(rc))}" ${puede('ordenes')?'':'disabled'} onchange="fijarExportTs(this.value)"> <span class="mut">— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.</span></div>
           <table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th></th><th>OP</th><th>Fase en el sistema</th><th>Fase del archivo</th><th></th></tr></thead><tbody>${fs.map(x=>{const mv=movidas(x.op);return `<tr><td><input type="checkbox" ${BND.sel.has(x.op)?'checked':''} onchange="if(this.checked)BND.sel.add('${x.op}');else BND.sel.delete('${x.op}');render()"></td><td>${esc(x.op)}</td><td>${esc(x.sistema)}</td><td>${esc(x.archivo)}</td><td class="mut">${mv?(archivoAnterior(x.op,rc)?'<span class="tag t-alerta">el archivo es anterior a tu cambio</span> lo moviste aquí el '+fMovTs(mv.ts)+', el archivo se exportó el '+fMovTs(expTsDe(rc))+': la del archivo es la vieja, revísala antes de aceptar':'<span class="tag t-aviso">movida aquí</span> por '+esc(mv.u||'')+' el '+fMovTs(mv.ts)+': si la marcas, la del archivo la pisa'):''}</td></tr>`}).join('')}</tbody></table></div>`:''})()}
-       <div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${nc.filter(x=>x.tipo!=='fase').slice(0,80).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')}</div></details></div>`:'')+
+       ${(()=>{const otras=nc.filter(x=>x.tipo!=='fase');if(!otras.length)return '';
+          const NOM={ruta:'Rutas confirmadas que se conservaron',rutaTextil:'Tramo de tela rehecho con el archivo',tiempo:'Tiempos que el archivo trae distintos',lib:'Liberaciones',odc:'ODC'};
+          const g={};otras.forEach(x=>{const k=x.tipo||'otras';(g[k]=g[k]||[]).push(x)});
+          const TOPE=30;
+          return Object.entries(g).sort((a,b)=>a[1].length-b[1].length).map(([k,l])=>'<div style="margin-top:6px"><b>'+esc(NOM[k]||('Otras ('+k+')'))+' — '+l.length+'</b><div style="font-size:var(--fs-xs);line-height:1.6">'+
+            l.slice(0,TOPE).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')+
+            (l.length>TOPE?'<br><span class="mut">… y '+(l.length-TOPE)+' más</span>':'')+'</div></div>').join('')})()}</details></div>`:'')+
       ((rc.eliminadasConDecision||[]).length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${rc.eliminadasConDecision.length} órdenes eliminadas en la recarga tenían decisiones de persona</b>: ${rc.eliminadasConDecision.slice(0,40).map(esc).join(', ')}${rc.eliminadasConDecision.length>40?' …':''}</div>`:'')})()}
   ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
     const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
@@ -9067,6 +9274,14 @@ async function conteosExternosBorrado(){const e={usuarios:null,fotosBucket:null}
   try{const r=await sb.from('perfiles').select('id');if(r&&!r.error&&Array.isArray(r.data))e.usuarios=r.data.length}catch(x){}
   try{const r=await sb.storage.from(fotoBucket()).list('',{limit:1000});if(r&&!r.error&&Array.isArray(r.data))e.fotosBucket=r.data.length>=1000?'≥ 1.000':r.data.length}catch(x){}
   return e}
+/* Respaldo y Restaurar salieron de la cabecera (23-sep): viven aquí, en la pestaña de administrador */
+function respaldoPanelHTML(){if(!puede('config'))return '';
+  const r=(S.params.restauraciones||[]).slice(-1)[0];
+  return '<div class="panel"><h3>Respaldo y restauración <span class="note">antes estaban en la cabecera</span></h3><div class="body">'+
+   '<p class="lede" style="margin-top:0"><b>Respaldo</b> baja un archivo con todo lo que hay ahora (órdenes, avance, configuración y bitácora): guárdalo fuera del sistema. <b>Restaurar</b> reemplaza los datos con los de un respaldo, pide escribir RESTAURAR y antes baja y sube un respaldo automático; si eso falla, no restaura.</p>'+
+   '<button class="btn" onclick="exportJSON()">Respaldo</button> <button class="btn ghost" onclick="importJSON()">Restaurar…</button>'+
+   (r?'<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Última restauración: '+esc(new Date(r.ts||r.fecha||Date.now()).toLocaleString('es-EC'))+(r.u?' · '+esc(r.u):'')+'</p>':'')+
+   '</div></div>'}
 function panelBorradoHTML(){if(!puede('config'))return '';const c=cuentaBorrado();const h=c.huerfanos;const ult=(S.params.borrados||[]).slice(-1)[0];const inc=S.params.borradoIncompleto;const enc=(!BORRANDO&&S.params.borradoEnCurso)||null;
   return `<div class="panel" style="border-color:var(--alerta)"><h3 style="color:var(--alerta)">Borrar datos de prueba <span class="note">solo administrador · conserva la configuración · antes se guarda, se relee el servidor y se respalda (local y servidor)</span></h3><div class="body">
    ${enc?`<div class="warn"><b>Hay un borrado INTERRUMPIDO</b> (empezó el ${esc(fmtDia((enc.ts||'').slice(0,10)))}, ${esc(enc.u||'')}, y no llegó a terminar: se cerró la pestaña o se cayó la red). La base puede estar a medias. Respaldo previo: ${esc(enc.respaldo||'')}${enc.rutaServidor?' · '+esc(enc.rutaServidor):''}. Vuelve a ejecutar el borrado para terminar, o <a href="#" onclick="restaurarRespaldoServidor('${esc(enc.rutaServidor||'')}');return false">restaura el respaldo</a>.</div>`:''}
@@ -10416,7 +10631,7 @@ function vConfig(el){
   <p class="lede">Áreas, centros y recursos son abiertos: agrega máquinas o centros aquí y el programa los toma en cuenta de inmediato. Solo el administrador ve esta página.</p>
 
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
-  ${CONF.tab==='borrado'?panelBorradoHTML():''}
+  ${CONF.tab==='borrado'?(respaldoPanelHTML()+panelBorradoHTML()):''}
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
    <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th title="al abrir una orden sin ruta editada, este paso viene marcado">va por defecto en toda ruta</th><th>Ítem de planificación</th><th title="procesos que se miden en días (lavado): no consumen capacidad de planta">Por días</th><th class="num">Recursos</th><th class="num" title="SAM: minutos estándar por prenda">SAM</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
    ${S.centros.map(c=>{const esLavPla=c.area==='pro';   /* minuto por prenda del centro: manda en lavado/plancha; en los demás se usa cuando la hoja no trae operaciones para ese centro (cordones, apliques, sublimado) */const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
@@ -10545,6 +10760,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
   ${(()=>{sembrarDiasProveedor();const t=diasProveedor();const est=t.filter(r=>r.estimado).length;const sinDef=t.filter(r=>r.dias===''||r.dias==null).length;return `<div class="panel"><h3>Días de entrega por proveedor <span class="note">${t.length} proveedores · ${est} con estimado de ${DIAS_PROV_EST} laborables (pendientes de confirmar)${sinDef?` · ${sinDef} sin definir`:``} · usados en Compras del mes para la fecha límite y por el motor como espera de tela externa</span><span class="spacer"></span><button class="btn ghost sm" onclick="addDiasProvRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Se siembran con ${DIAS_PROV_EST} días LABORABLES como estimado inicial (marcado "estimado"). Cuando confirmas un proveedor, se quita la marca. Los días son laborables (calendario del sistema), no corridos. La pantalla de Compras usa estos días para la fecha límite y el motor para la espera de tela externa (en la próxima recarga).</p><div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th>Proveedor</th><th class="num" style="width:120px">Días de entrega</th><th></th></tr></thead><tbody>${t.slice().map((r,i)=>({r,i})).sort((a,b)=>(a.r.prov||'').localeCompare(b.r.prov||'','es')).map(({r,i})=>`<tr><td><input type="text" style="width:280px" value="${esc(r.prov)}" onchange="setDiasProvRow(${i},'prov',this.value)"></td><td class="num"><input type="number" min="0" style="width:90px" value="${r.dias===''||r.dias==null?'':r.dias}" placeholder="—" onchange="setDiasProvRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="estimado inicial; confírmalo">estimado</span>':(r.dias===''||r.dias==null)?' <span class="tag t-alerta">sin definir</span>':' <span class="tag t-ok">confirmado</span>'}</td><td><button class="btn ghost sm" onclick="delDiasProvRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div></div>`})()}
   <div class="panel"><h3>Tiempos de ojales y botones <span class="note">se mudaron a la página <a style="cursor:pointer;text-decoration:underline" onclick="page='operaciones';render()">Operaciones</a> (todo lo que es tiempo vive ahí)</span></h3></div>
   ${(()=>{const mr=motivosReproceso();const rf=restriccionFaltante();return `<div class="panel"><h3>Motivos de reproceso de tintorería <span class="note">${mr.length} motivos · marca cuáles vienen de tejeduría (falla de tela) · son las filas de uso «reproceso» de la tabla 15</span><span class="spacer"></span><button class="btn ghost sm" onclick="addMotivoReprocRow()">Agregar</button></h3><div class="body"><table style="font-size:var(--fs-s)"><thead><tr><th>Motivo</th><th style="width:200px">¿Viene de tejeduría?</th><th></th></tr></thead><tbody>${mr.map((r,i)=>`<tr><td><input type="text" style="width:340px" value="${esc(r.motivo)}" onchange="setMotivoReprocRow(${i},'motivo',this.value)"></td><td><label><input type="checkbox" ${r.tejeduria?'checked':''} onchange="setMotivoReprocRow(${i},'tejeduria',this.checked)"> falla de tela (tejeduría)</label></td><td><button class="btn ghost sm" onclick="delMotivoReprocRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>
+  ${tramosParalelosHTML()}
   <div class="panel"><h3>Restricciones de faltante <span class="note">${rf.length} materiales que exigen baño grande (complementos, algodón)</span><span class="spacer"></span><button class="btn ghost sm" onclick="addRestrFaltRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Si el nombre de la tela/material del faltante CONTIENE la coincidencia, ese faltante no puede ir a máquina pequeña: espera baño grande. Sembrada con cuellos, puños y algodón. Lo no marcado se reporta en la cola de faltantes (revísalo).</p><table style="font-size:var(--fs-s)"><thead><tr><th>Coincidencia (tela o material)</th><th style="width:180px">Tipo</th><th></th></tr></thead><tbody>${rf.map((r,i)=>`<tr><td><input type="text" style="width:280px" value="${esc(r.match)}" onchange="setRestrFaltRow(${i},'match',this.value)"></td><td><input type="text" style="width:150px" value="${esc(r.tipo)}" onchange="setRestrFaltRow(${i},'tipo',this.value)"></td><td><button class="btn ghost sm" onclick="delRestrFaltRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
    <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en el requerimiento: Macro del mes (tela propia) y Compras del mes (lo externo). Sembrado con todas las fases anteriores a Planificación (decisión 22-sep); editable">requerimiento</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
@@ -10700,7 +10916,21 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los tipos marcados SIN CLASIFICAR no se asignan a tejeduría ni tintorería: la orden que los use va a la bandeja "origen de tela sin definir" (Parte 2, todavía sin construir). No se adivina.</p></div></div>
 `:''}
 `;
+  blindarConfigSoloVer(el);
 }
+/* ---------- Ver la configuración sin cambiarla (22-sep-2026, decisión de la usuaria) ----------
+   `configVer` abre la pantalla; `config` es el único que edita. Quien solo mira ve TODO (recursos, personas,
+   capacidades, tablas) con los campos y botones apagados y un aviso arriba que lo dice. Es un blindaje de pantalla:
+   las funciones que ya piden `puede('config')` siguen pidiéndolo, y lo que cambia el plan sigue yendo a la bitácora. */
+function puedeVerConfig(){return puede('config')||puede('configVer')}
+function blindarConfigSoloVer(el){if(!el||puede('config'))return;   /* con permiso de editar, la pantalla no cambia en nada */
+  if(!puede('configVer'))return;
+  el.querySelectorAll('input,select,textarea,button').forEach(x=>{
+    if(x.dataset&&x.dataset.ver==='1')return;   /* lo marcado como «solo mirar» (navegación) se deja vivo */
+    x.disabled=true;x.setAttribute('aria-disabled','true');if(x.tagName==='BUTTON')x.style.opacity='.5';x.style.cursor='not-allowed'});
+  const aviso=document.createElement('div');aviso.className='warn';aviso.style.margin='0 0 12px';
+  aviso.innerHTML='<b>Estás viendo la configuración, no la puedes cambiar.</b> Los campos y los botones están apagados a propósito: tu perfil ve cómo están los centros, los recursos, las personas, las capacidades y las tablas, pero quien las edita es planificación o administración. Si algo hay que corregir, pídelo y queda en la bitácora.';
+  el.insertBefore(aviso,el.firstChild)}
 function resumenMaq(){if(!S.maquinas.length)return'';const mods=S.recursos.filter(r=>r.centro==='modulos');const tipos=[...new Set(S.maquinas.map(m=>m.tipo))].sort();
   const cnt=(rec,t)=>S.maquinas.filter(m=>(m.rec||'')===rec&&m.tipo===t&&(m.estado||'operativa')==='operativa').length;
   return `<div class="scroll" style="margin-bottom:12px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Módulo</th>${tipos.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
@@ -11176,9 +11406,18 @@ const FOTOS_BUCKET='fotos-ordenes',FOTO_MAX_PX=600,FOTO_CALIDAD=0.82;
 function fotoBucket(){return (S.params&&S.params.fotosBucket)||FOTOS_BUCKET}
 function fotoPath(op){return String(op||'').trim().replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'}
 function fotoURLde(op,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoPath(op)+(ts?'?v='+ts:'')}
-function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S.params.fotosIdx)||{};const e=ix[normTxt(o.op)];return e?fotoURLde(o.op,e.ts):''}
+function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S.params.fotosIdx)||{};const e=ix[normTxt(o.op)];return e?fotoURLde(o.op,e.ts):fotoRefDe(o)}
+/* ---------- Foto por REFERENCIA (estilo) · 22-sep-2026 ----------
+   El nombre del archivo es el código del estilo (4861.jpg). Una foto sirve para TODAS las WH de esa referencia,
+   incluidas las que todavía no llegaron de Odoo: no se escribe nada en la orden, se resuelve al dibujar.
+   Manda la foto de la propia orden; solo si no hay, la de la referencia, y la pantalla lo dice. */
+function refDeOrden(o){return normTxt((o&&(o.ref||o.stilo||o.estilo))||'')}
+function fotoRefPath(ref){return 'ref_'+normTxt(ref).replace(/[^a-z0-9._-]+/g,'_')+'.jpg'}   /* normaliza DENTRO: subir y leer arman la misma ruta (si no, una referencia con mayúsculas daba 404 mudo) */
+function fotoRefURLde(ref,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoRefPath(ref)+(ts?'?v='+ts:'')}
+function fotoRefDe(o){const ix=(S.params&&S.params.fotosRefIdx)||{};const k=refDeOrden(o);const e=k?ix[k]:null;return e?fotoRefURLde(k,e.ts):''}
+function fotoFuenteDe(o){if(!o)return '';if(o.foto)return 'orden';const ix=(S.params&&S.params.fotosIdx)||{};if(ix[normTxt(o.op)])return 'orden';return fotoRefDe(o)?'referencia':''}
 /* miniatura: carga solo cuando entra en pantalla (loading=lazy); clic abre la foto grande */
-function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||prm('fotoMiniPx',44);return `<img class="foto-mini" src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" data-zoom="${esc(u)}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
+function fotoMini(o,px){const u=fotoDe(o);if(!u)return '';const s=px||prm('fotoMiniPx',44);return `<img class="foto-mini"${fotoFuenteDe(o)==='referencia'?' title="Foto de la referencia '+esc(String((o&&o.ref)||'').trim())+' — esta orden no tiene la suya"':''} src="${esc(u)}" loading="lazy" decoding="async" alt="" width="${s}" height="${s}" data-zoom="${esc(u)}" onclick="event.stopPropagation();mFoto('${esc(o.id)}')" onerror="this.style.display='none'">`}
 /* zoom al pasar el mouse por cualquier foto (data-zoom): una sola capa fija que sigue al cursor; se oculta al salir. Tablet (touch) no la usa: el clic abre la foto */
 let ZOOM_EL=null;
 function fotoZoomInit(){if(ZOOM_EL||typeof document==='undefined')return;ZOOM_EL=document.createElement('div');ZOOM_EL.id='foto-zoom';ZOOM_EL.style.cssText='position:fixed;display:none;z-index:120;pointer-events:none;background:#fff;border:1px solid var(--rule);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.28);padding:4px';ZOOM_EL.innerHTML='<img alt="" style="display:block;max-width:'+prm('fotoZoomPx',320)+'px;max-height:'+prm('fotoZoomPx',320)+'px;border-radius:6px">';document.body.appendChild(ZOOM_EL);
@@ -11215,6 +11454,53 @@ async function normalizarFoto(blob){let bmp;try{bmp=await createImageBitmap(blob
   const w=bmp.width,h=bmp.height;if(blob.type==='image/jpeg'&&Math.max(w,h)<=FOTO_MAX_PX){if(bmp.close)bmp.close();return{blob,w,h,convertida:false}}
   const k=Math.min(1,FOTO_MAX_PX/Math.max(w,h));const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(bmp,0,0,cv.width,cv.height);if(bmp.close)bmp.close();
   const out=await new Promise(ok=>cv.toBlob(ok,'image/jpeg',FOTO_CALIDAD));return{blob:out,w:cv.width,h:cv.height,convertida:true}}
+/* ---------- Carga de fotos por referencia (archivos sueltos; el nombre es el estilo) ---------- */
+let FOTOS_REF=null;
+function planFotosRef(files,nombre){const ix=(S.params&&S.params.fotosRefIdx)||{};
+  const out={archivo:nombre||((files||[]).length+' imágenes'),fotos:[],noImagen:[],sinRef:[],repetidas:[],bytes:0};
+  const vistos={};
+  (files||[]).forEach(f=>{const ref=String(f.name||'').replace(/\.[^.]+$/,'').trim();
+    if(!/^image\//.test(f.type||'')){out.noImagen.push(f.name||'(sin nombre)');return}
+    if(!ref){out.sinRef.push(f.name||'(sin nombre)');return}
+    const k=normTxt(ref);if(vistos[k]){out.repetidas.push(ref);return}vistos[k]=1;
+    const ords=S.ordenes.filter(o=>refDeOrden(o)===k);   /* todas las WH de ese estilo, abiertas o no; `ordenesDeRef` (8179) es otra cosa: solo abiertas y por refDe exacto */
+    out.fotos.push({ref,k,file:f,n:ords.length,abiertas:ords.filter(abierta).length,reemplaza:!!ix[k],bytes:f.size||0});
+    out.bytes+=f.size||0});
+  out.conOrden=out.fotos.filter(f=>f.n>0).length;out.sinOrden=out.fotos.filter(f=>!f.n).map(f=>f.ref);
+  out.reemplazan=out.fotos.filter(f=>f.reemplaza).length;
+  return out}
+function previaFotosRefHTML(p){if(!p)return '';
+  const fila=(n,t)=>'<tr><td class="num"><b>'+num(n||0)+'</b></td><td>'+t+'</td></tr>';
+  return '<table style="font-size:var(--fs-s)"><tbody>'+
+   fila(p.fotos.length,'imágenes a subir, una por referencia'+(p.bytes?' · '+num(Math.round(p.bytes/1024))+' KB':''))+
+   fila(p.conOrden,'referencias que <b>ya tienen órdenes</b> en el sistema: la foto sale enseguida en todas sus WH')+
+   fila(p.sinOrden.length,'referencias <b>sin órdenes todavía</b>: la foto se guarda igual y se cuelga sola cuando lleguen'+(p.sinOrden.length?': '+esc(p.sinOrden.slice(0,10).join(', '))+(p.sinOrden.length>10?' …':''):''))+
+   (p.reemplazan?fila(p.reemplazan,'referencias que <b>ya tenían foto</b>: se reemplaza'):'')+
+   (p.repetidas.length?fila(p.repetidas.length,'nombres repetidos en la selección: entra el primero ('+esc(p.repetidas.slice(0,6).join(', '))+')'):'')+
+   (p.noImagen.length?fila(p.noImagen.length,'archivos que no son imagen: se descartan ('+esc(p.noImagen.slice(0,6).join(', '))+')'):'')+
+   (p.sinRef.length?fila(p.sinRef.length,'archivos sin nombre utilizable: se descartan'):'')+
+   '</tbody></table><p class="mut" style="font-size:var(--fs-xs)">La foto de la referencia <b>no pisa</b> la foto propia de una orden: solo se usa cuando esa orden no tiene la suya. No se escribe nada en las órdenes.</p>'}
+function leerFotosRef(ev){const files=[...((ev.target&&ev.target.files)||[])];const res=document.getElementById('fotosref-res');
+  if(!files.length){if(res)res.innerHTML='';return}
+  const p=planFotosRef(files);FOTOS_REF=p;
+  if(res)res.innerHTML=previaFotosRefHTML(p);
+  const b=document.getElementById('fotosref-ok');if(b)b.disabled=!p.fotos.length}
+async function aplicarFotosRef(){if(!FOTOS_REF)return;const p=FOTOS_REF;const res=document.getElementById('fotosref-res');const btn=document.getElementById('fotosref-ok');if(btn)btn.disabled=true;
+  const ix=S.params.fotosRefIdx=S.params.fotosRefIdx||{};const ts=Date.now();const errores=[];let subidas=0,bytes=0,convertidas=0,reemplazadas=0,hechas=0;
+  const una=async f=>{try{const nf=await normalizarFoto(f.file);if(!nf.blob){errores.push(f.ref+': '+nf.error);return}
+      const r=await sb.storage.from(fotoBucket()).upload(fotoRefPath(f.ref),nf.blob,{upsert:true,contentType:'image/jpeg',cacheControl:'86400'});
+      if(r.error){errores.push(f.ref+': '+r.error.message);return}
+      if(ix[f.k])reemplazadas++;ix[f.k]={ts,b:nf.blob.size,ref:f.ref};subidas++;bytes+=nf.blob.size;if(nf.convertida)convertidas++}
+    catch(e){errores.push(f.ref+': '+e.message)}
+    finally{hechas++;if(res&&(hechas%5===0||hechas===p.fotos.length))res.innerHTML='<span class="mut">Subiendo '+hechas+' de '+p.fotos.length+'… '+(errores.length?errores.length+' errores':'')+'</span>'}};
+  let i=0;const worker=async()=>{while(i<p.fotos.length){const f=p.fotos[i++];await una(f)}};await Promise.all([1,2,3].map(worker));
+  S.params.fotosRefCarga={archivo:p.archivo,fecha:new Date().toISOString(),fotos:p.fotos.length,subidas,reemplazadas,convertidas,sinOrden:p.sinOrden.length,sinOrdenLista:p.sinOrden.slice(0,200),errores:errores.slice(0,50),nErrores:errores.length,bytes};
+  registrarCarga('fotosRef',p.archivo,{subidas,reemplazadas,convertidas,sinOrden:p.sinOrden.length,errores:errores.length,fotos:p.fotos.length,bytes});
+  bitacora('Fotos por referencia: '+subidas+' subidas'+(reemplazadas?' ('+reemplazadas+' reemplazadas)':'')+(p.sinOrden.length?' · '+p.sinOrden.length+' referencias sin órdenes todavía':'')+(errores.length?' · '+errores.length+' errores':''));
+  FOTOS_REF=null;await save();
+  const conFoto=S.ordenes.filter(o=>fotoDe(o)).length;
+  if(res)res.innerHTML='<div class="ok" style="font-size:var(--fs-s)"><b>'+num(subidas)+'</b> fotos por referencia subidas'+(reemplazadas?' ('+reemplazadas+' reemplazadas)':'')+' · ahora <b>'+num(conFoto)+'</b> órdenes muestran foto'+(errores.length?'<div style="margin-top:4px">Errores: '+esc(errores.slice(0,6).join(' · '))+'</div>':'')+'</div>';
+  render()}
 async function aplicarFotos(){if(!FOTOS)return;const p=FOTOS;const res=document.getElementById('fotos-res');const btn=document.getElementById('fotos-ok');btn.disabled=true;
   const ix=S.params.fotosIdx=S.params.fotosIdx||{};const ts=Date.now();const errores=[];let subidas=0,bytes=0,convertidas=0,reemplazadas=0,hechas=0;
   const ult={};p.fotos.forEach(f=>ult[normTxt(f.op)]=f);const lista=Object.values(ult);
@@ -11747,7 +12033,13 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
     {const antes=(ex.ruta||[]).map(p=>p.centro).join('>'),despues=(o.ruta||[]).map(p=>p.centro).join('>');const puedeRuta=(typeof puedeEditarRuta==='function')?puedeEditarRuta():true;
      if(!puedeRuta&&antes!==despues){o.ruta=ex.ruta;o.rutaCompleta=ex.rutaCompleta;alert('Tu perfil no edita rutas: la ruta se guardó como estaba; el resto de la ficha sí.')}
      Object.assign(ex,o);
-     if(puedeRuta){if(antes!==despues){ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
+     if(puedeRuta){if(antes!==despues){
+        if(ex.rutaCompleta&&ex.rutaCompleta.length){   /* la completa sigue a la pendiente: se quitan los pasos que salieron y se insertan por ordenPaso los que entraron */
+          const menos=antes.split('>').filter(c=>c&&!despues.split('>').includes(c));
+          let rc=ex.rutaCompleta.filter(p=>!menos.includes(p.centro));
+          (ex.ruta||[]).forEach(p=>{if(rc.some(x=>x.centro===p.centro))return;const idx=ordenPaso(p.centro);let pos=rc.length;for(let i=0;i<rc.length;i++){if(ordenPaso(rc[i].centro)>idx){pos=i;break}}rc.splice(pos,0,{centro:p.centro,t:p.t})});
+          ex.rutaCompleta=rc}
+        ex.rutaEditada=(ex.rutaEditada||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),mas:despues.split('>').filter(c=>c&&!antes.split('>').includes(c)),menos:antes.split('>').filter(c=>c&&!despues.split('>').includes(c)),motivo:'ficha de la orden',etapa:'ficha'}]);if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',ex,antes.split('>').join(' → ')||'(sin ruta)',despues.split('>').join(' → '),'ficha de la orden',false)}
        if(typeof sellarRuta==='function')sellarRuta(ex);if(typeof confirmarRuta==='function'&&!(ex.rutaConf&&ex.rutaConf.estado==='confirmada'&&ex.rutaConf.origen==='persona'))confirmarRuta(ex,'persona','ficha de la orden')}}
    }else S.ordenes.push(Object.assign({id:uid()},o));
   PLAN=null;PLAN_ALL=null;save();cerrar();render()}
@@ -11786,7 +12078,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración → Órdenes y materiales → Registro de cargas. */
-const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',maestro:'Maestro de productos',tallas:'Tallas del pedido'};
+const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
@@ -11794,6 +12086,7 @@ function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.rutaEmpatada?r.rutaEmpatada+' órdenes con pasos agregados a la ruta por la OT ('+r.pasosOT+')':'',r.confNoTocadas?r.confNoTocadas+' con ruta confirmada que la OT no tocó':'',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
   if(c.tipo==='tallas')return [r.n+' órdenes con curva',r.formato?'formato '+r.formato:'',r.sinOrden?r.sinOrden+' WH sin orden':'',r.difSuma?r.difSuma+' con suma distinta':'',r.sinTalla?r.sinTalla+' líneas sin talla':'',r.componentes?r.componentes+' líneas que no son prenda':'',r.sinWH?r.sinWH+' tareas sin WH (no entran)':'',r.variosPacks?r.variosPacks+' WH con varios packs sin resolver':'',r.codigoDistinto?r.codigoDistinto+' líneas con otro código':'',r.cambian?r.cambian+' curvas cambiadas':'',r.tallasNuevas?r.tallasNuevas+' tallas fuera de los juegos':''].filter(Boolean).join(' · ');
   if(c.tipo==='maestro')return [r.filas+' productos',r.nuevos+' nuevos',r.actualizados+' actualizados',r.tempo+' TEMPO',r.conProv+' con proveedor',r.sinProv+' sin proveedor',r.conservaProv?r.conservaProv+' conservan proveedor':'',r.cambiaProv?r.cambiaProv+' cambian de proveedor':'',r.nuevosProv?r.nuevosProv+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
+  if(c.tipo==='rutas')return [r.aplicadas+' rutas puestas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' WH que no existen aquí':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [r.subidas+' subidas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' sin orden':'',r.errores?r.errores+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?c.nuevas+' nuevas':'',c.act!=null?c.act+' actualizadas':'',c.cerradas?c.cerradas+' cerradas':''].filter(Boolean).join(' · ')}
 function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});
@@ -11818,14 +12111,20 @@ function mActualizarDatos(paso){if(!puede('ordenes')){alert('Tu perfil no carga 
      <input type="file" id="f-tallas" accept=".xlsx,.xls,.csv"><div id="tallas-res" style="margin-top:14px"></div>`
    :`<p class="lede" style="margin-top:0">Sube un CSV con columnas <b>Orden de produccion</b> y <b>Avatar</b> (imagen en base64). Cada foto va al almacenamiento (bucket <code>${esc(fotoBucket())}</code>) y en la orden queda el enlace; por tandas, la que ya existe se reemplaza. Las fotos de órdenes que no estén en el sistema se avisan: se suben igual y se cuelgan cuando llegue la orden.</p>
      <p style="font-size:var(--fs-s)"><b>${Object.keys(ix).length}</b> fotos en el almacenamiento · <b>${conFoto}</b> órdenes con foto de ${S.ordenes.length}${CF?` · última carga ${new Date(CF.fecha).toLocaleString('es-EC')}: ${CF.subidas} subidas, ${fmtBytes(CF.bytes)}`:''}</p>
-     <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>`;
+     <input type="file" id="f-fotos" accept=".csv,text/csv"><div id="fotos-res" style="margin-top:14px"></div>
+      <hr style="margin:18px 0;border:0;border-top:1px solid var(--rule)">
+      <p class="lede" style="margin-top:0"><b>O sube las fotos por referencia</b> (estilo): elige las imágenes y <b>el nombre de cada archivo es el código del estilo</b> (4861.jpg → referencia 4861). Una foto sirve para todas las WH de esa referencia, incluidas las que todavía no llegaron de Odoo. La foto propia de una orden siempre manda sobre la de la referencia.</p>
+      <p style="font-size:var(--fs-s)"><b>${Object.keys((S.params&&S.params.fotosRefIdx)||{}).length}</b> referencias con foto${S.params.fotosRefCarga?` · última carga ${new Date(S.params.fotosRefCarga.fecha).toLocaleString('es-EC')}: ${num(S.params.fotosRefCarga.subidas)} subidas`:''}</p>
+      <input type="file" id="f-fotosref" accept="image/*" multiple><div id="fotosref-res" style="margin-top:14px"></div>
+      <div style="margin-top:10px"><button class="btn" id="fotosref-ok" disabled onclick="aplicarFotosRef()">Subir las fotos por referencia</button></div>`;
   const avisoTareas=(()=>{if(ACT.paso===1)return '';const hace=CT&&CT.fecha?(Date.now()-new Date(CT.fecha))/864e5:null;
     if(ACT.tareasEnSesion&&hace!=null&&hace<=1)return '';
     return `<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px"><b>Conviene cargar primero las tareas</b> (paso 1): ${!ACT.tareasEnSesion?'en esta sesión no se han cargado':''}${!ACT.tareasEnSesion&&hace!=null&&hace>1?' y ':''}${hace==null?'nunca se han cargado':(hace>1?'la última carga fue hace '+num(hace,1)+' días':'')}. ${ACT.paso===2?'Las órdenes de trabajo':ACT.paso===4?'Las tallas':'Las fotos'} de órdenes que no estén en el sistema no se cuelgan de nada.</div>`})();
   const pie=ACT.paso===1?`<button class="btn" id="tarea-ok" disabled onclick="aplicarTarea()">Aplicar</button>`:ACT.paso===2?`<button class="btn" id="ot-ok" disabled onclick="aplicarOT()">Aplicar</button>`:ACT.paso===4?`<button class="btn" id="tallas-ok" disabled onclick="aplicarTallas()">Aplicar</button>`:`<button class="btn" id="fotos-ok" disabled onclick="aplicarFotos()">Subir fotos</button>`;
   abrir(`<h3>Actualizar datos</h3><div class="body"><div class="chips" style="margin-bottom:12px">${chip(1,'Tareas de Odoo')}${chip(2,'Órdenes de trabajo')}${chip(3,'Fotos')}${chip(4,'Tallas del pedido')}</div>${avisoTareas}${cuerpo}</div>
    <div class="foot"><span class="mut" style="font-size:var(--fs-xs);margin-right:auto">Nada se guarda antes de confirmar.</span><button class="btn ghost" onclick="cerrar()">Cancelar</button>${pie}</div>`,true);
-  const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':ACT.paso===4?'f-tallas':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:ACT.paso===4?(e=>planTallasArchivo(e.target.files[0])):leerFotos)}
+  const inp=document.getElementById(ACT.paso===1?'f-tarea':ACT.paso===2?'f-ot':ACT.paso===4?'f-tallas':'f-fotos');if(inp)inp.addEventListener('change',ACT.paso===1?leerTarea:ACT.paso===2?leerOT:ACT.paso===4?(e=>planTallasArchivo(e.target.files[0])):leerFotos);
+  const inpR=document.getElementById('f-fotosref');if(inpR)inpR.addEventListener('change',leerFotosRef)}
 async function leerTarea(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('tarea-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)}).catch(()=>{res.innerHTML='No se pudo cargar el lector de Excel.';return})}
   const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
@@ -12091,6 +12390,11 @@ function planTarea(rows,nombre){
      if(o.faseSistema==='cerrada')plan.prev.cerradas++;if(!v){plan.prev.nuevas++;return}plan.prev.actualizadas++;
      if(conserva('fase')&&v.fase!=null&&normFase(v.fase)!==normFase(o.fase||'')){if(odooMandaFase(v))plan.prev.faseOdoo=(plan.prev.faseOdoo||0)+1;else plan.prev.noCalzan.push({op:o.op,tipo:'fase',sistema:v.fase,archivo:o.fase})}
      if(conserva('fecha')&&v.fechaManual&&v.fecha&&v.fecha!==o.fecha)plan.prev.noCalzan.push({op:o.op,tipo:'fecha',sistema:v.fecha,archivo:o.fecha});
+     if(conserva('rutaConf')&&v.rutaConf&&v.rutaConf.origen==='persona'){   /* la ruta que confirmó una persona se conserva tal cual (22-sep); el tramo de tela no cuenta: lo rehace el archivo */
+       const soloPro=t=>String(t||'').split(' → ').filter(c=>c&&!['tej','tin','proveedor'].includes(c)).join(' → ');
+       const cenV=soloPro(cenRutaTxt(v)),cenO=soloPro(cenRutaTxt(o));plan.prev.rutasConf=(plan.prev.rutasConf||0)+1;
+       if(cenV&&cenV!==cenO)plan.prev.rutasDistintas=(plan.prev.rutasDistintas||[]).concat([{op:o.op,tuya:cenV,catalogo:cenO||'(vacía)'}])}
+     else if(v.rutaConf&&v.rutaConf.origen==='persona')plan.prev.rutasConfApagado=(plan.prev.rutasConfApagado||0)+1;   /* la fila «Ruta confirmada» de la tabla 14 está desmarcada: esas rutas se rearman */
      const a=S.avance[o.id];if(a&&a.centros)Object.entries(a.centros).forEach(([c,n])=>{if(n>o.cant)plan.prev.noCalzan.push({op:o.op,tipo:'avance',sistema:nCen(c)+' '+n,archivo:o.cant})})});
    const alc=new Set(plan.excluidas.alcance.map(x=>x.clave));const alcIds=new Set(plan.excluidas.alcance.map(x=>x.existeId).filter(Boolean));
    const conf=new Set(plan.tareaIdConflicto.map(x=>x.id).concat(plan.repExistentesIds||[]));
@@ -12125,6 +12429,8 @@ function vistaPreviaTareaHTML(p){const v=p.prev||{};const li=(n,t,cls)=>`<tr${cl
    ${li(((p.excluidas||{}).alcance||[]).length,'<b>fuera de alcance</b> en el archivo (no se crean; '+nvA+' que ya estaban quedan marcadas «fuera de alcance», no se borran)')}
    ${li(nvN,'órdenes del sistema que <b>no vinieron</b> en el archivo (quedan «no está en el archivo», no se borran)'+(nvN?': '+esc(nv.filter(x=>x.motivo!=='fuera de alcance').slice(0,8).map(x=>x.op).join(', '))+(nvN>8?'…':''):''))}
    ${li(v.faseOdoo||0,'órdenes <b>sin WH</b> cuya fase cambia con el archivo (sin WH manda Odoo; con WH la fase la mueve la planta aquí)')}
+   ${v.rutasConfApagado?li(v.rutasConfApagado,'órdenes con <b>ruta confirmada por una persona</b> que <b>NO se conservará</b>: la fila «Ruta confirmada» de la tabla 14 está desmarcada, así que esas rutas se rearman con el catálogo'):''}
+   ${li(v.rutasConf||0,'órdenes con la <b>ruta confirmada por una persona</b>: se conservan sus pasos de producción, no se vuelven a armar con el catálogo (el tramo de tela sí lo rehace el archivo)'+((v.rutasDistintas||[]).length?'. En <b>'+num((v.rutasDistintas||[]).length)+'</b> el catálogo de hoy armaría otra ruta y <b>manda la tuya</b>: '+esc((v.rutasDistintas||[]).slice(0,4).map(x=>x.op+' (tuya: '+x.tuya+' · catálogo: '+x.catalogo+')').join(' · ')):''))}
    ${li((v.noCalzan||[]).length,'decisiones del sistema que el archivo contradice (<b>no calzan</b>: se conserva la del sistema y van a la bandeja)'+((v.noCalzan||[]).length?': '+esc(v.noCalzan.slice(0,6).map(x=>x.op+' '+x.tipo).join(', ')):''))}
    ${li((p.claveIncompleta||[]).length,'cabeceras con <b>clave incompleta</b> (no se reconocen ni se crean): '+esc((p.claveIncompleta||[]).slice(0,8).map(x=>'fila '+x.fila+' falta '+x.faltan.join('+')).join(', ')),(p.claveIncompleta||[]).length?'warn':'')}
    ${li((p.duplicados||[]).length,'filas con <b>clave repetida</b> en el archivo'+(v.repetidasNoAplicadas?' · '+v.repetidasNoAplicadas+' NO se aplican porque la clave ya existe (revisar)':'')+': '+esc((p.duplicados||[]).slice(0,8).map(x=>x.op+' (fila '+x.fila+')').join(', ')))}
@@ -12141,7 +12447,7 @@ function resumenTareaHTML(p){const li=(n,t)=>n?`<tr><td><b>${n}</b></td><td>${t}
 /* ---------- Recarga Parte 2: lo que viene del archivo se actualiza; lo que decidió una persona se conserva ----------
    Tabla 14 (Configuración → Órdenes y materiales): qué campos se conservan al recargar. La orden se cruza por número de OP.
    Lo conservado que ya no calza con el archivo nuevo no se retira solo: sale en la bandeja "decisiones que ya no calzan". */
-function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (quién, cuándo y de dónde salió)',conservar:true},{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
+function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada por una persona: se conserva tal cual (quién, cuándo y los pasos de producción que revisó)',conservar:true},{campo:'tallasPedido',n:'Curva de tallas pedida (carga por tallas)',conservar:true},
   {campo:'fase',n:'Fase (se mueve aquí, por los supervisores; el archivo no la pisa: si trae otra, va a la bandeja)',conservar:true},
   {campo:'fecha',n:'Fecha de entrega cambiada aquí (si se editó en la ficha, el archivo no la pisa)',conservar:true},
   {campo:'lib',n:'Firmas de liberación (planta / producción)',conservar:true},{campo:'prio',n:'Prioridad',conservar:true},{campo:'progCentro',n:'Programación por centro (recurso, arranque, prioridad)',conservar:true},
@@ -12153,7 +12459,9 @@ function defCamposConservados(){return [{campo:'rutaConf',n:'Ruta confirmada (qu
   {campo:'avance',n:'Registros de piso (prendas por centro, tinturada, calidad, reprocesos, kg faltantes)',conservar:true}]}
 function camposConservados(){if(!Array.isArray(S.params.camposConservados))S.params.camposConservados=defCamposConservados();const t=S.params.camposConservados;
   /* siembra idempotente: las filas que la tabla por defecto ganó después (odc, y desde el 19-sep histLib, lavadoModo, compraTela, rutaRevGeneral, rutaPrecargada) entran si faltan; lo editado no se pisa */
-  defCamposConservados().forEach(d=>{if(!t.some(r=>r.campo===d.campo))t.push(Object.assign({},d))});return t}
+  defCamposConservados().forEach(d=>{if(!t.some(r=>r.campo===d.campo))t.push(Object.assign({},d))});
+  {const rc=t.find(r=>r.campo==='rutaConf');if(rc&&rc.n==='Ruta confirmada (quién, cuándo y de dónde salió)')rc.n=(defCamposConservados().find(d=>d.campo==='rutaConf')||{}).n||rc.n}   /* el nombre viejo no decía que de esa casilla depende conservar la ruta entera; solo se corrige el texto por defecto, nunca uno editado */
+  return t}
 /* filas de la tabla 14 que NO se pueden desmarcar: su desmarcado borraría trabajo de personas que
    ningún archivo puede devolver: el avance de piso, las firmas de liberación, el historial de fases (con
    sus motivos) y la programación que armó cada centro. La fase ACTUAL («fase») sigue siendo decisión de
@@ -12232,6 +12540,8 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];if(typeof sellarRuta==='function')sellarRuta(o);return}
     actualizadas++;if(p.sinComponentes){['telas','materiales','origenTela','origenesTela','kgTej','kgTin','sinTelaKg','telaSinClasificar','ruta','rutaCompleta','insumos','sinTiempo'].forEach(k=>{if(v[k]!==undefined)o[k]=v[k]})} /* sin componentes: lo de telas y ruta se queda */
+    const rutaCatalogo=cenRutaTxt(o);   /* lo que armó el catálogo en planTarea, antes de que ningún bloque toque la ruta */
+    if(conserva('rutaConf')&&v.rutaConf)o.rutaConf=v.rutaConf;   /* la confirmación viaja primero: empatarRutaConOT respeta una ruta confirmada (regla del 20-sep) */
     const cambioAhora=!!o.claveAnterior&&o.claveAnterior!==v.claveAnterior;if(v.claveAnterior&&!o.claveAnterior)o.claveAnterior=v.claveAnterior;
     if(cambioAhora){const eraWH=!sinWHde({op:o.claveAnterior});if(eraWH){o.whAnteriores=(v.whAnteriores||[]).concat([{op:o.claveAnterior,ts,archivo:p.archivo||''}]);bitacora('Orden '+o.op+' cambió de WH (misma tarea '+(o.tareaId||'')+'): antes '+o.claveAnterior)}else bitacora('Orden '+o.op+' reconocida por su clave anterior (sin WH → WH): '+o.claveAnterior)}else if(v.whAnteriores)o.whAnteriores=v.whAnteriores;
     if(o.whConservada){o.whSinOdoo={ts,archivo:p.archivo||'',tareaId:o.tareaId};bitacora('Orden '+o.op+': la tarea '+o.tareaId+' vino SIN WH en '+(p.archivo||'')+'; se conserva la WH y queda marcada para revisar')}else if(v.whSinOdoo){if(p.conColumnaId&&!o.sinLanzar&&normFase(o.op||'')===normFase(v.op||''))bitacora('Orden '+o.op+': la tarea volvió a traer su WH; se quita la marca «vino sin WH»');else o.whSinOdoo=v.whSinOdoo}
@@ -12263,7 +12573,27 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
     if(conserva('ot')&&v.ot){o.ot=v.ot;o.otTs=v.otTs;if(v.esperandoMaterial)o.esperandoMaterial=v.esperandoMaterial;cons.ot++;empatarRutaConOT(o)}   /* la OT manda sobre la ruta también después de la recarga */
     if(conserva('terminadaF')&&v.terminadaF){o.terminadaF=v.terminadaF;cons.terminadaF++}
     /* auditoría 19-sep: estos campos estaban en la tabla 14 (o son decisiones de la app) y la carga los perdía */
-    if(conserva('rutaConf')&&v.rutaConf){o.rutaConf=v.rutaConf;cons.rutaConf=(cons.rutaConf||0)+1}
+    if(conserva('rutaConf')&&v.rutaConf){cons.rutaConf=(cons.rutaConf||0)+1;   /* o.rutaConf ya se restauró arriba, antes de los bloques que tocan la ruta */
+      if(v.rutaConf.origen==='persona'){   /* 22-sep (usuaria): los pasos de PRODUCCIÓN que confirmó una persona no se vuelven a armar desde el catálogo */
+        const compV=(v.rutaCompleta&&v.rutaCompleta.length)?v.rutaCompleta:(v.ruta||[]);
+        if(compV.length){const esTx=p=>['tej','tin','proveedor'].includes(p.centro);
+          const txAntes=compV.filter(esTx).map(p=>p.centro).join(',');
+          o.rutaCompleta=compV.filter(p=>!esTx(p)).map(x=>Object.assign({},x));
+          const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);   /* la fase del archivo decide qué queda pendiente, no qué pasos tiene la ruta */
+          if((o.telas||[]).length)aplicarRutaTextil(o);   /* de dónde viene la tela lo dice el ARCHIVO (origen del producto), no la confirmación de la persona */
+          else if(compV.some(esTx)){   /* el archivo no trajo líneas de tela: no se rehace a ciegas, se conserva el tramo y se reporta */
+            o.rutaCompleta=compV.map(x=>Object.assign({},x));const filaT=filaFaseDe(o.fase);o.ruta=(filaT&&filaT.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,filaT);
+            noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'se conserva el tramo de tela ('+txAntes+')',motivo:'el archivo no trajo líneas de tela para esta orden: no se rehace sin el dato'})}
+          const txAhora=(o.rutaCompleta||[]).filter(esTx).map(p=>p.centro).join(',');
+          if(txAntes!==txAhora){cons.rutaTextil=(cons.rutaTextil||0)+1;
+            noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'el tramo de tela se rehace con el archivo: '+(txAntes||'(ninguno)')+' → '+(txAhora||'(ninguno)'),motivo:'el origen de la tela lo trae el archivo; la confirmación de la ruta es de los pasos de producción'})}
+          const pB=(o.rutaCompleta||[]).find(p=>p.centro==='bordado');   /* el minuto de bordado son las puntadas de la orden, no el catálogo: si el archivo las corrige, se avisa y la ruta confirmada no se toca */
+          if(pB){const tB=+((tiempoPaso({centro:'bordado',t:0},K(o.cat),{},+o.puntadas||0)||{}).t)||0;
+            if(tB&&Math.abs((+pB.t||0)-tB)>1e-6)noCalzan.push({op:o.op,tipo:'tiempo',decision:'bordado con '+num(+pB.t||0)+' puntadas en la ruta confirmada',motivo:'el archivo trae '+num(tB)+': revisa si la ruta necesita el tiempo nuevo'})}
+          const soloPro=t=>String(t||'').split(' → ').filter(c=>c&&!['tej','tin','proveedor'].includes(c)).join(' → ');
+          const cat=soloPro(rutaCatalogo),ahora=soloPro(cenRutaTxt(o));   /* se compara contra lo que armó el CATÁLOGO, no contra lo que dejaron la OT o la edición a mano */
+          if(cat!==ahora){cons.rutaConservada=(cons.rutaConservada||0)+1;
+            noCalzan.push({op:o.op,tipo:'ruta',decision:'ruta confirmada por '+((v.rutaConf.u)||'la planificación')+': se conserva tal cual',motivo:'con el catálogo de hoy se armaría '+(cat||'(vacía)')+'; la confirmada es '+(ahora||'(vacía)')})}}}}
     if(conserva('tallasPedido')&&v.tallasPedido){o.tallasPedido=v.tallasPedido;if(v.tallasPedidoMeta)o.tallasPedidoMeta=v.tallasPedidoMeta;cons.tallasPedido=(cons.tallasPedido||0)+1}
     if(conserva('histLib')&&v.histLib&&v.histLib.length)o.histLib=v.histLib.slice();
     if(conserva('lavadoModo')&&v.lavadoModo)o.lavadoModo=v.lavadoModo;   /* el paso de lavado vuelve por rutaEditada */

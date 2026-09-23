@@ -1162,11 +1162,62 @@ proveedor, Tela a tejer, Tela a tinturar, Tela plana, Ya lo tenemos, Sin materia
 brechas); el CSV queda. Lo que ya está en proceso (Planificación en adelante) NO entra: la conciliación de lo que le falta a
 lo que está en planta es trabajo aparte. Pruebas RQ. Ver `REQUERIMIENTO_ANTES_DE_PLANIFICACION.md`.
 
+**Recargar sin perder la ruta (22-sep-2026, decisión de la usuaria: «no quiero perder las rutas, lo que ya trabajé»):**
+en `aplicarTarea`, una orden con `rutaConf.origen==='persona'` **conserva su `rutaCompleta` entera**: no se vuelve a armar
+desde el catálogo. Lo único que se recalcula es qué pasos quedan **pendientes**, con la fase que traiga el archivo
+(`pasosPendientes`). Si el catálogo de hoy armaría otra ruta, la diferencia va a «no calzan» (`tipo:'ruta'`, con las dos
+versiones escritas) y se cuenta en `cons.rutaConservada`; la vista previa lo dice ANTES de aplicar (`prev.rutasConf` /
+`prev.rutasDistintas`, `cenRutaTxt(o)` compara las dos). La firma de catálogo sigue viajando (`v.rutaFirma`), así que un cambio
+de categoría deja la orden marcada `rutaRevisar` — nunca pisada. Una ruta confirmada sola desde Odoo (`origen:'odoo'`) **no**
+queda blindada: `rutaEditadaAMano` solo cuenta `rutaEditada` o la confirmación de una persona. Para subir la fase desde Odoo hay
+que **destildar la fila «Fase» de la tabla 14 solo para esa carga**. Pruebas RC. Ver `RECARGA_SIN_PERDER_RUTAS.md`.
+
+**Fotos por REFERENCIA (22-sep-2026):** el nombre del archivo es el código del estilo (4861.jpg). Se cargan en
+**Actualizar datos → 3 · Fotos**, debajo del CSV de siempre (input múltiple de imágenes, id f-fotosref):
+planFotosRef / previaFotosRefHTML / leerFotosRef / aplicarFotosRef; índice en S.params.fotosRefIdx[normTxt(ref)]
+={ts,b,ref}, resumen en S.params.fotosRefCarga, tipo de carga propio fotosRef, Storage con prefijo ref_<cod>.jpg en el
+mismo bucket. **fotoDe gana el último escalón**: foto propia de la orden → fotosIdx por WH → foto de la referencia
+(fotoRefDe por refDeOrden = o.ref); **no se escribe nada en la orden**, así una WH que llegue después hereda la foto
+sola. fotoFuenteDe dice cuál se ve y fotoMini lo pone en el tooltip. No crear una segunda ordenesDeRef: la de 8179 es
+otra cosa (solo abiertas, refDe exacto). Pruebas FR. Ver FOTOS_POR_REFERENCIA.md.
+
+**Revisión del cambio anterior (22-sep, misma noche):** conservar la ruta confirmada es SOLO de los **pasos de
+producción**. El tramo textil (`tej`/`tin`/`proveedor`) lo rehace `aplicarRutaTextil(o)` con las telas del archivo —salvo que el
+archivo no traiga líneas de tela para esa orden: entonces se conserva y se reporta (`tipo:'rutaTextil'`)—; el minuto de
+**bordado** son las puntadas de la orden, así que si el archivo las cambia la ruta no se toca y sale un aviso
+(`tipo:'tiempo'`). La confirmación se restaura **al principio** del bucle de `aplicarTarea` (antes del bloque `ot`), para que
+`empatarRutaConOT` respete la ruta confirmada, y la comparación va contra `rutaCatalogo` (lo que armó `planTarea`), no contra
+lo que dejaron la OT o `rutaEditada`. **`guardarOrden` ahora deja `rutaCompleta` coherente con la pendiente** (misma lógica que
+`aplicarRutaLote`): sin eso, editar la ruta en la ficha y recargar revertía la edición. La bandeja «no calzan» se agrupa
+por tipo. Pruebas RC2.
+
 **La WH puede estar en dos centros a la vez (22-sep-2026, decisión de la usuaria):** «sale de estampado y ya está empezando
 en confección», hasta tres centros, con entrega parcial entre pasos. Hoy el sistema NO lo representa: `programar()` asigna un
 solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[centro]`), y el siguiente centro no la ve «lista
 para empezar» hasta que el anterior cierre. Pendiente de construir (entrega parcial entre pasos); no inventar una segunda
 definición de cierre mientras tanto. Ver `PISO_TIEMPOS_PROPUESTA_V2.md` (D10).
+
+**Ver la configuración sin cambiarla (22-sep-2026, decisión de la usuaria para Fernando):** permiso nuevo
+`configVer` en `PERMISOS_DEF`; los porteros del menú (`aplicarNavPerfil`) y de `render()` aceptan **varios permisos separados
+por `|`** (la entrada es `data-perm="config|configVer"`) y `config` sigue siendo **el único que edita**. `blindarConfigSoloVer(el)`
+corre al final de `vConfig`: con `configVer` y sin `config` apaga todos los `input/select/textarea/button` de la página (salvo
+`data-ver="1"`) y pone arriba el aviso de solo lectura; con permiso de editar la pantalla no cambia en nada. Perfil sembrado
+una vez **«Jefatura (todo menos configurar)»** (lo operativo + `configVer`, todas las páginas y centros, sin `config` ni
+`usuarios`; bandera `perfilesJefatura`, editable en Configuración → Usuarios). Es blindaje de **pantalla**: la RLS solo acota hoy a
+los perfiles de piso. Pruebas PV. Ver `PERFIL_VER_CONFIGURACION.md`.
+
+**La ruta dice por dónde pasa, no en qué orden fijo (22-sep-2026, decisión de la usuaria):** tabla editable
+`S.params.tramosParalelos` (Configuración → Centros y recursos → «Tramos paralelos»; `TRAMOS_PARALELOS_DEF` siembra una vez
+**estampado · sublimado · apliques · bordado · modulos** marcado `sugerido`; `tramoParaleloDe`, `mismoTramoParalelo`,
+`set/add/quitarTramoParalelo` con bitácora, `quitarTramoParalelo` en la GUARDIA). En `secuenciaCentro` los pendientes del
+**mismo tramo** ya no bloquean: cerrado corte, la orden queda **disponible en confección aunque bordado no esté hecho**
+(y al revés), con el motivo escrito; lo anterior al tramo **sí** manda. `listaParaEmpezar` usa `centroAnteriorFueraTramo`
+(el paso de fuera del tramo, que es el que entrega prendas). **El motor de fechas NO cambió**: `programar()` sigue en orden;
+programar el tramo en paralelo necesitaría autorización. **Buscador del centro**: `buscarEnCentroHTML(cens,P,lun,dom)` se
+cuelga del `cab` de `vCentro` (sale en las cuatro pestañas) y responde «¿dónde está y cuándo entra aquí?» sobre TODA la
+cartera que el perfil ve (`ordenesQueVe` + `matchBusq`, hasta 6): estado (semáforo), `dondeEsta().n` y `llegadaACentroTxt`
+(ya pasó · en proceso · lista para entrar · todavía no: falta X · no está en su ruta, con la fecha del programa). Pruebas TP.
+Ver `TRAMOS_PARALELOS_Y_BUSCADOR_CENTRO.md`.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
