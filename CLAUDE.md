@@ -131,9 +131,11 @@ una grande ni se fragmenta más). `lineaReparto()` escribe en la tarjeta, por
 cada WH partida, "% aquí · resto: código 30% (COLOR), …" en una sola línea,
 incluso si el resto está en baños de otros colores.
 
-**Mover baño de máquina:** cada tarjeta confirmada tiene un `<select>`
-(`selMaquinaBano`) → `moverBano(id,rec)` guarda `banos_conf[].rec` +
-`recFijo:true` y `programar()` restringe el pool a esa máquina; "auto" lo quita.
+**Mover baño de máquina — NO ESTÁ CONECTADO** (comprobado el 23-sep-2026: `selMaquinaBano` aparece
+UNA sola vez en `index.html`, su definición; ese `<select>` no se dibuja en ninguna tarjeta, así que
+hoy un baño **no se puede mover de máquina desde la tarjeta**). Lo que haría al conectarse:
+`moverBano(id,rec)` guarda `banos_conf[].rec` + `recFijo:true` y `programar()` restringe el pool a esa
+máquina; "auto" lo quita. Hasta entonces, no darlo por disponible.
 **Albarán:** `imprimirAlbaranBanoId(bId)` usa `b.opsKg` (kg exactos por orden,
 repartidos por tela) y muestra el código del baño (`ALB.cod`). **Resumen por
 WH** (`resumenWHHTML`, al final de Tintorería): por cada WH, los baños/colores
@@ -466,7 +468,8 @@ avance y `cierresOrdenHTML` en la ficha. Ver `TABLET_PERMISOS_REPORTE.md` y `MI_
 los dos y sigue mandando en `_save()`). El supervisor mueve fases por **rpc**: `moverFases` deriva a `moverFasesRPC` →
 `moverFaseServidor` → `sb.rpc('mover_fase',{p_orden,p_fase,p_motivo})`; si la función no existe devuelve `{falta:true}` y la app
 avisa «Falta ejecutar SUPABASE_MOVER_FASE.sql» sin tocar nada (ni memoria ni servidor). Propuesta SQL en
-`SUPABASE_MOVER_FASE.sql` (**sin ejecutar**): `puede_mover_fase(uid)` lee `perfiles.rol` + `params.data->perfilesDef` y
+`SUPABASE_MOVER_FASE.sql` (**EJECUTADO en producción el 16-sep-2026**; la cabecera del archivo lo
+registra y las cuatro funciones existen en `pg_proc`): `puede_mover_fase(uid)` lee `perfiles.rol` + `params.data->perfilesDef` y
 `mover_fase()` hace `jsonb_set` solo sobre `{fase}` y `{fases}` de `ordenes.data` + una línea en `bitacora`. `guardarFasePiso` solo
 crea solicitud para `esOperarioTablet()`; `aplicarSolicitudFase` es async. `avisoGuardado()` avisa cuando `ULT_SALTADAS` (sin
 params) trae algo: «con tu perfil no se guardan los cambios de órdenes». **Centro → Programación**:
@@ -482,7 +485,7 @@ tocó se queda del servidor) y, si hay choque en el mismo campo, no sube nada y 
 reemplaza) para no dejar pantallas apuntando a una copia vieja; `refrescarTS` actualiza los sellos tras subir.
 **Prioridad de la cola por rpc:** `setPrioridadServidor`/`guardarPrioridadesRPC` (`set_prioridad_centro`); `moverEnCola` calcula
 `priCambios` y, si `esSupervisorPiso()`, los manda por rpc y deshace la cola si falta la función. Un perfil `operario` que
-llame a `moverFases` genera **solicitud** en vez de cambiar la fase. Ver `SUPABASE_MOVER_FASE.sql` (v2, sin ejecutar:
+llame a `moverFases` genera **solicitud** en vez de cambiar la fase. Ver `SUPABASE_MOVER_FASE.sql` (v2, **también ejecutada el 16-sep-2026**:
 `fase_num`, `puede_mover_fase()` sin parámetro donde el catálogo manda sobre la lista fija, `mover_fase` con `terminadaF` y
 sin validar la fase, y `set_prioridad_centro`).
 
@@ -1246,6 +1249,21 @@ kgMerma, stock, porTejer, sobra}] con el stock de stockTela() descontado POR TEL
 La pantalla abre con el bloque «Que hay que tejer» (requerido - stock), dice de donde sale el stock (Planificacion
 textil -> Stock de tela cruda), marca las telas sin stock como 0 en bodega sin estimar nada, y dice que lo externo esta
 en Compras del mes. El detalle por tela y tipo y la tintoreria siguen, solo con tela propia. Pruebas MT.
+
+**Auditoría de simplificación (23-sep-2026, PROPUESTA — nada movido todavía):** `AUDITORIA_SIMPLIFICACION_23SEP.md`.
+Lo medido: el motor (`programar`) es el **1,7 %** del sistema y la interfaz **278 piezas** (191 `…HTML` + 34 pantallas +
+53 modales); **44 clicables** en el menú sobre 29 páginas, **19 de 32 solo las ve la usuaria**; 4 pantallas contestan
+«¿alcanza la capacidad?» con 4 motores (`cargaSemanal`/`cargaUnica`/`matrizCapacidad`/`nivelar`), 5 de avance, 3 cosas
+llamadas «congelar», 4 fichas de orden, 5 motores de agrupación. **Seis errores comprobados, pendientes de arreglo:**
+(1) `confirmarHechoCentro` escribe `a.centros[c]=o.cant` fuera de módulos, así que registrar 800 de 1000 deja el paso en
+1000 y `faltanteCierre` cierra con **0 faltantes** sin pedir motivo; (2) Hoy calcula «vencida» con `o.fecha` en vez de
+`esMetaVencida`; (3) `pzHechasOrden` mide sobre `pasosProDe` (ruta pendiente) y devuelve 0 en órdenes terminadas —debe ser
+`pasosProCompleta`—; (4) `guardarCierresMes(P)` se llama SOLO desde `vGerencia`, así que la foto del mes no se guarda si
+nadie abre esa pantalla; (5) `claveGRP` corre `programar()` una vez por fila al agrupar por próximo paso; (6) el
+«mover baño de máquina» de arriba. **Brechas del objetivo:** la fase no se mueve sola al cerrar un paso (la regla, no la
+infraestructura: el rpc ya corre), no hay bandeja de órdenes estancadas en una fase (`diasEnFase` existe y se usa una sola
+vez), la tabla 15 casi vacía bloquea devoluciones/reversiones/rechazos, el calendario sin festivos y `portadaRol` = 0
+referencias (la portada por rol aprobada el 19-sep nunca se construyó). **Esperar el visto bueno antes de mover pantallas.**
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
