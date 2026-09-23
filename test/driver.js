@@ -434,7 +434,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("calendario/versión sin errores",__R.errors.length===antes);page='ordenes';render();}
   /* perfiles por catálogo, carga que viene, ruta por centro, advertencias, balanceo y objetivo */
   {const antes=__R.errors.length;const adminP=PERFIL;
-   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet",perfilesDef().length===9&&perfilesDef().some(x=>x.id==='tablet')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)));
+   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet + jefatura (ve la configuración sin editarla)",perfilesDef().length===10&&perfilesDef().some(x=>x.id==='tablet')&&perfilesDef().some(x=>x.id==='jefatura')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)),String(perfilesDef().length));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
    __check("perfil corte: ve corte, estampado, bordado y etiquetas; reprograma pero YA NO edita rutas",(sembrarPermisoRutas(),veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&!puede('ruta')&&puedeCentro('corte')));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
@@ -7006,6 +7006,23 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* PV · «Que pueda hacer todo menos configuraciones; que pueda ver los recursos, las personas y las capacidades, pero no editarlas» (usuaria, 22-sep, para Fernando) */
+   {const bak=PERFIL;const cat=perfilesDef();const jf=cat.find(x=>x.id==='jefatura');
+    __check('PV: el catálogo trae el perfil «Jefatura»: todo lo operativo, ve la configuración (configVer) y NO la edita ni crea usuarios',!!jf&&jf.permisos.includes('configVer')&&!jf.permisos.includes('config')&&!jf.permisos.includes('usuarios')&&jf.permisos.includes('programa')&&jf.permisos.includes('liberar')&&(jf.paginas||[]).includes('*'),JSON.stringify({permisos:jf&&jf.permisos}));
+    __check('PV: el permiso nuevo está en la lista de permisos de Configuración → Usuarios, con su explicación',PERMISOS_DEF.some(p=>p[0]==='configVer'&&/sin poder cambiarla/i.test(p[1])),JSON.stringify(PERMISOS_DEF.find(p=>p[0]==='configVer')));
+    PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};
+    __check('PV: con ese perfil puede lo operativo pero NO configurar ni crear usuarios',puede('programa')&&puede('liberar')&&puede('ordenes')&&puede('configVer')&&!puede('config')&&!puede('usuarios'),JSON.stringify({programa:puede('programa'),config:puede('config'),usuarios:puede('usuarios')}));
+    page='config';render();
+    const el=document.getElementById('p-config');const ctr=[...el.querySelectorAll('input,select,textarea,button')];
+    __check('PV: ve la pantalla de Configuración entera (centros, recursos, personas, capacidades, tablas) con TODO apagado y un aviso que lo explica',page==='config'&&ctr.length>30&&ctr.every(x=>x.disabled)&&/no la puedes cambiar/i.test(el.innerHTML),JSON.stringify({page,controles:ctr.length,habilitados:ctr.filter(x=>!x.disabled).length}));
+    aplicarNavPerfil();const a=document.querySelector('nav a[data-p="config"]');
+    __check('PV: la entrada Configuración le aparece en el menú (antes solo se veía con permiso de editarla)',!!a&&a.style.display!=='none',a?('display='+(a.style.display||'(visible)')):'(sin entrada)');
+    page='usuarios';render();
+    __check('PV: Usuarios sigue cerrado para ese perfil',page!=='usuarios',page);
+    PERFIL=adminP0();page='config';render();
+    const el2=document.getElementById('p-config');const ctr2=[...el2.querySelectorAll('input,select,textarea,button')];
+    __check('PV: con permiso de editar, la pantalla no cambia en nada (ni aviso ni campos apagados)',!/no la puedes cambiar/i.test(el2.innerHTML)&&ctr2.some(x=>!x.disabled),JSON.stringify({habilitados:ctr2.filter(x=>!x.disabled).length}));
+    PERFIL=bak;page='ordenes';render();}
    /* RC2 · Lo que encontró la revisión adversarial de la protección de rutas (22-sep): la edición por la ficha, el tramo de tela y el bordado */
    {PERFIL=adminP0();const rows0=window.__tareaRows;
     if(rows0){const H=rows0[0];const iOp=H.indexOf('Orden de producción');const enArchivo=new Set(rows0.slice(1).map(r=>r[iOp]));

@@ -1197,6 +1197,15 @@ solo recurso por paso, el cierre es por centro y entero (`pasoHecho` / `cierres[
 para empezar» hasta que el anterior cierre. Pendiente de construir (entrega parcial entre pasos); no inventar una segunda
 definición de cierre mientras tanto. Ver `PISO_TIEMPOS_PROPUESTA_V2.md` (D10).
 
+**Ver la configuración sin cambiarla (22-sep-2026, decisión de la usuaria para Fernando):** permiso nuevo
+`configVer` en `PERMISOS_DEF`; los porteros del menú (`aplicarNavPerfil`) y de `render()` aceptan **varios permisos separados
+por `|`** (la entrada es `data-perm="config|configVer"`) y `config` sigue siendo **el único que edita**. `blindarConfigSoloVer(el)`
+corre al final de `vConfig`: con `configVer` y sin `config` apaga todos los `input/select/textarea/button` de la página (salvo
+`data-ver="1"`) y pone arriba el aviso de solo lectura; con permiso de editar la pantalla no cambia en nada. Perfil sembrado
+una vez **«Jefatura (todo menos configurar)»** (lo operativo + `configVer`, todas las páginas y centros, sin `config` ni
+`usuarios`; bandera `perfilesJefatura`, editable en Configuración → Usuarios). Es blindaje de **pantalla**: la RLS solo acota hoy a
+los perfiles de piso. Pruebas PV. Ver `PERFIL_VER_CONFIGURACION.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

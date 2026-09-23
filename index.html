@@ -407,7 +407,7 @@ tbody tr:hover td{background:var(--field)}
     <div class="gbody" data-g="conf">
       <a data-p="categorias" data-perm="categorias">Categorías</a>
       <a data-p="operaciones" data-perm="categorias">Operaciones</a>
-      <a data-p="config" data-perm="config">Centros y recursos</a>
+      <a data-p="config" data-perm="config|configVer">Centros y recursos</a>
       <a data-p="usuarios" data-perm="usuarios">Usuarios</a>
       <a data-p="salud" data-perm="programa">Salud del sistema</a>
     </div>
@@ -583,7 +583,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
 /* ---------- perfiles: catálogo editable en Configuración → Usuarios (S.params.perfilesDef); el usuario guarda solo el id del perfil en perfiles.rol ----------
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
-const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)']];
+const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)']];
 const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['compras','Compras del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
@@ -596,6 +596,9 @@ function defPerfiles(){return [
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
 function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['wip','cumplimiento','avance','avancearea'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
   if(!S.params.migReporteria2){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['reporteria','vistaordenes','asignacion'].some(p=>d.paginas.includes(p)))return;['avancearea','wip'].forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria2=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (21-sep): '+n+' entradas «Avance por área» / «Producto en proceso» agregadas a los perfiles que tenían la reportería anterior (Reportería textil, Reportería por área, Vista general y Asignación por orden salieron del menú; sus enlaces viejos llevan a las nuevas)')}
+  if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
+    if(!S.params.perfilesDef.some(x=>x.id==='jefatura'))S.params.perfilesDef.push({id:'jefatura',n:'Jefatura (todo menos configurar)',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos','calidadTin','configVer'],centros:['*'],paginas:['*'],desc:'Hace todo lo operativo: órdenes, programa, liberaciones, rutas, baños y piso. Ve la Configuración completa (recursos, personas, capacidades, tablas) pero NO la edita, y no crea usuarios.'});
+    S.params.perfilesJefatura=new Date().toISOString();if(typeof bitacora==='function')bitacora('Perfil «Jefatura (todo menos configurar)» agregado al catálogo: todo lo operativo, ve la configuración sin editarla (decisión de la usuaria, 22-sep). Editable en Configuración → Usuarios.')}
   if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
 /* perfiles viejos (rol piso/carga con área y sub-área) se traducen al catálogo sin tocar la tabla */
 function perfilDe(p){if(!p)return null;const cat=perfilesDef();let d=cat.find(x=>x.id===p.rol);if(d){if(d.id==='tablet'){const t=(S.params.tablets||{})[p.id]||{};return Object.assign({},d,{centros:t.centro?[t.centro]:[]})}return d}
@@ -648,7 +651,7 @@ function armarNavSubCentros(){const nav=document.querySelector('nav');if(!nav||t
       ref.insertAdjacentElement('afterend',el);ref=el});
     cambio=true});
   if(cambio&&typeof aplicarNavPerfil==='function'){aplicarNavPerfil();if(typeof decorarNav==='function')decorarNav()}}
-function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||puede(need))&&vePagina(a.dataset.p);
+function aplicarNavPerfil(){document.querySelectorAll('nav a[data-p]').forEach(a=>{const need=a.dataset.perm;let ok=(!need||String(need).split('|').some(x=>puede(x)))&&vePagina(a.dataset.p);
     if(ok&&a.dataset.cen){const cs=censDeGrupo(a.dataset.cen);ok=cs.some(veCentro)}
     if(ok&&a.dataset.p==='tejeduria')ok=veArea('tej');if(ok&&a.dataset.p==='tintoreria')ok=veArea('tin');
     a.style.display=ok?'':'none'});
@@ -795,7 +798,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-22 18:15';
+const APP_BUILD='2026-09-23 08:31';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3076,7 +3079,7 @@ function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='fu
   document.querySelectorAll('nav .grp').forEach(g=>{const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');g.classList.toggle('act',!!(b&&b.querySelector('a.on')))});
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   page=redirigirPagina(page);
-  const need={categorias:'categorias',operaciones:'categorias',config:'config',usuarios:'usuarios',salud:'programa'}[page];if((need&&!puede(need))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
+   const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   const el=document.getElementById('p-'+page);el.classList.add('on');
   ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,avancearea:vAvanceArea,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
@@ -10708,7 +10711,21 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Los tipos marcados SIN CLASIFICAR no se asignan a tejeduría ni tintorería: la orden que los use va a la bandeja "origen de tela sin definir" (Parte 2, todavía sin construir). No se adivina.</p></div></div>
 `:''}
 `;
+  blindarConfigSoloVer(el);
 }
+/* ---------- Ver la configuración sin cambiarla (22-sep-2026, decisión de la usuaria) ----------
+   `configVer` abre la pantalla; `config` es el único que edita. Quien solo mira ve TODO (recursos, personas,
+   capacidades, tablas) con los campos y botones apagados y un aviso arriba que lo dice. Es un blindaje de pantalla:
+   las funciones que ya piden `puede('config')` siguen pidiéndolo, y lo que cambia el plan sigue yendo a la bitácora. */
+function puedeVerConfig(){return puede('config')||puede('configVer')}
+function blindarConfigSoloVer(el){if(!el||puede('config'))return;   /* con permiso de editar, la pantalla no cambia en nada */
+  if(!puede('configVer'))return;
+  el.querySelectorAll('input,select,textarea,button').forEach(x=>{
+    if(x.dataset&&x.dataset.ver==='1')return;   /* lo marcado como «solo mirar» (navegación) se deja vivo */
+    x.disabled=true;x.setAttribute('aria-disabled','true');if(x.tagName==='BUTTON')x.style.opacity='.5';x.style.cursor='not-allowed'});
+  const aviso=document.createElement('div');aviso.className='warn';aviso.style.margin='0 0 12px';
+  aviso.innerHTML='<b>Estás viendo la configuración, no la puedes cambiar.</b> Los campos y los botones están apagados a propósito: tu perfil ve cómo están los centros, los recursos, las personas, las capacidades y las tablas, pero quien las edita es planificación o administración. Si algo hay que corregir, pídelo y queda en la bitácora.';
+  el.insertBefore(aviso,el.firstChild)}
 function resumenMaq(){if(!S.maquinas.length)return'';const mods=S.recursos.filter(r=>r.centro==='modulos');const tipos=[...new Set(S.maquinas.map(m=>m.tipo))].sort();
   const cnt=(rec,t)=>S.maquinas.filter(m=>(m.rec||'')===rec&&m.tipo===t&&(m.estado||'operativa')==='operativa').length;
   return `<div class="scroll" style="margin-bottom:12px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Módulo</th>${tipos.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
