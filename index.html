@@ -353,8 +353,6 @@ tbody tr:hover td{background:var(--field)}
     <span class="saved" id="saved"></span>
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
-    <button onclick="refrescar()" title="Volver a leer los datos del servidor">Actualizar</button>
-    <button id="btn-respaldo" onclick="exportJSON()">Respaldo</button> <button id="btn-restaurar" onclick="importJSON()" title="Restaurar un respaldo JSON (solo administrador; pide confirmación y une la bitácora)">Restaurar</button>
     <button onclick="logout()">Salir</button>
   </header>
 
@@ -767,10 +765,27 @@ async function save(){PLAN=null;PLAN_ALL=null;
   if(BORRANDO&&!SAVE_DESDE_BORRADO){return}   /* durante el borrado, ningún guardado ajeno */
   if(guardando){pendiente=true;return}guardando=true;
   try{await _save()}finally{guardando=false;if(pendiente){pendiente=false;save()}}}
+/* ---------- Freno de borrado en masa (23-sep-2026) ----------
+   Nadie borra la mitad de una tabla desde una pantalla. Un borrado legítimo (quitar una fila, una orden que se fue del
+   archivo) es de pocas filas; cientos significa que la memoria de esa pestaña se quedó vacía o a medias. En ese caso NO
+   se borra: se avisa, se guarda el detalle en BORRADO_FRENADO y la pestaña queda marcada para recargar. El borrado de
+   datos de prueba (ejecutarBorrado) pasa por su propio camino con BORRANDO=true y no se ve afectado. */
+let BORRADO_FRENADO=null;
+let REEMPLAZO_OK=false;   /* puerta explícita por si alguna vez hace falta vaciar a propósito desde el código */
+function frenoBorrado(t,ids,cur){const n=(ids||[]).length;if(!n)return false;
+  if(typeof BORRANDO!=='undefined'&&BORRANDO)return false;          /* el borrado de datos de prueba tiene su propio camino y su respaldo */
+  if(REEMPLAZO_OK)return false;
+  const tope=+prm('minBorradoSospechoso',10)||10;                   /* configurable: desde cuántas filas se considera masivo */
+  const vacia=(cur||[]).length===0&&n>=tope;                        /* la pestaña no tiene NADA de esa tabla y borraría todo: esto fue lo que pasó el 23-sep */
+  if(!vacia)return false;
+  BORRADO_FRENADO={ts:new Date().toISOString(),tabla:t,n,quedan:0,u:(typeof quienFirma==='function'?quienFirma():'')};
+  try{if(typeof bitacora==='function')bitacora('FRENO: esta pestaña iba a vaciar '+(typeof nTabla==='function'?nTabla(t):t)+' en el servidor ('+n+' filas) porque no tenía ninguna cargada. NADA se borró; hay que recargar la página.')}catch(e){}
+  return true}
 async function _save(){
   const errs=[];
   const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push({t,msg:error.message});return}}};
-  const del=async(t,ids)=>{for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push({t,msg:error.message});return}}};
+  const del=async(t,ids,cur)=>{if(frenoBorrado(t,ids,cur))return;   /* 23-sep: una sesión no borra en masa */
+    for(let i=0;i<ids.length;i+=200){const {error}=await sb.from(t).delete().in('id',ids.slice(i,i+200));if(error){errs.push({t,msg:error.message});return}}};
   const saltadas=[];
   for(const t of TABLAS){
     if(!puedeSubirTabla(t)){const cur0=S[t],b0=BASE[t]||{};if(cur0.some(r=>JSON.stringify(sinId(r))!==b0[r.id])||Object.keys(b0).some(id=>!cur0.some(r=>r.id===id)))saltadas.push(t);continue} // el piso no sube esta tabla: ni se intenta ni cuenta como error
@@ -778,17 +793,21 @@ async function _save(){
     let rows=cur.filter(r=>JSON.stringify(sinId(r))!==base[r.id]).map(r=>({id:r.id,data:sinId(r)}));
     const ids=Object.keys(base).filter(id=>!cur.some(r=>r.id===id));
     const prep=await prepararSubida(t,rows);rows=prep.rows; // no se pisa lo que cambió otra persona
-    await up(t,rows);await del(t,ids);
+    await up(t,rows);await del(t,ids,cur);
     if(!errs.length){BASE[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(sinId(r))]));await refrescarTS(t,rows.map(r=>r.id))}
   }
   if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
   const ba=BASE.avance||{};
   {let av=Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v}));
    const prepA=await prepararSubida('avance',av);av=prepA.rows;
-   await up('avance',av);await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)));
+   await up('avance',av);await del('avance',Object.keys(ba).filter(id=>!(id in S.avance)),Object.keys(S.avance).map(id=>({id})));
    if(!errs.length){BASE.avance=Object.fromEntries(Object.entries(S.avance).map(([id,v])=>[id,JSON.stringify(v)]));await refrescarTS('avance',av.map(r=>r.id))}}
   const st=document.getElementById('saved');
   ULT_SALTADAS=saltadas;
+  if(BORRADO_FRENADO){const f=BORRADO_FRENADO;BORRADO_FRENADO=null;
+    let b=document.getElementById('aviso-freno');
+    if(!b){b=document.createElement('div');b.id='aviso-freno';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:100;background:var(--alerta);color:#fff;padding:10px 16px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:90vw';document.body.appendChild(b)}
+    b.innerHTML='<b>Se frenó un borrado.</b> Esta pestaña iba a quitar '+num(f.n)+' filas de '+esc(typeof nTabla==='function'?nTabla(f.tabla):f.tabla)+' del servidor porque ya no las tenía cargadas. <b>No se borró nada.</b> Recarga la página antes de seguir. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>';}
   if(errs.length){ // nada se recarga: lo escrito se queda en pantalla y se reintenta al volver a guardar
     SAVE_ERR={ts:new Date().toISOString(),errs:errs.slice(0,4).map(e=>nTabla(e.t)+': '+e.msg),tablas:[...new Set(errs.map(e=>nTabla(e.t)))],permiso:errs.some(e=>/row-level security|permission denied|violates/i.test(e.msg))};
     if(st)st.textContent='No se guardó';
@@ -798,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 09:21';
+const APP_BUILD='2026-09-23 10:18';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -8281,6 +8300,108 @@ function rutaCeldaHTML(o){const cens=pasosProCompleta(o).slice().sort((a,b)=>ord
 function rutaOkFila(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
   if(rutaConfirmada(o))return;if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);confirmarRuta(o,'persona','ruta ok desde la lista: est\u00e1 bien tal cual');
   PLAN=null;PLAN_ALL=null;save();render()}   /* render() conserva el scroll: la fila sale de «por editar» y la lista no se mueve */
+/* ---------- Las rutas trabajadas, fuera de la base (23-sep-2026) ----------
+   Una fila por WH con su ruta y quién la confirmó. Se saca a Excel (o CSV) y se vuelve a cargar después de recargar
+   las órdenes desde Odoo: ese trabajo deja de depender de que la base esté intacta. El archivo se lee por WH (o por
+   el ID de tarea) y trae los centros en orden; los tiempos, si no vienen, los pone la categoría. */
+function filasRutasExport(){
+  return S.ordenes.filter(o=>(o.rutaCompleta&&o.rutaCompleta.length)||(o.ruta&&o.ruta.length)).map(o=>{
+    const comp=(o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[]);
+    const conf=o.rutaConf||{};const ed=(o.rutaEditada||[]);
+    const mas=[...new Set(ed.flatMap(e=>e.mas||[]))],menos=[...new Set(ed.flatMap(e=>e.menos||[]))];
+    return {
+      'WH':o.op||'', 'ID tarea':o.tareaId||'', 'Cliente':o.cliente||'', 'Estilo':o.ref||'',
+      'Color':(C(o.color)||{}).n||'', 'ODC':o.odc||'', 'Categoría':o.catTxt||nombreCat(K(o.cat))||'',
+      'Fase':o.fase||'', 'Prendas':+o.cant||0,
+      'Ruta (en orden)':comp.map(p=>nCen(p.centro)).join(' → '),
+      'Ruta (códigos)':comp.map(p=>p.centro).join('>'),
+      'Tiempos (min/prenda)':comp.map(p=>(+p.t||0)).join('>'),
+      'Confirmada':conf.estado?'sí':'no', 'Confirmada por':conf.u||'', 'Origen':conf.origen||'',
+      'Fecha de confirmación':conf.ts?new Date(conf.ts).toLocaleString('es-EC'):'', 'Nota':conf.nota||'',
+      'Pasos agregados a mano':mas.map(nCen).join(', '), 'Pasos quitados a mano':menos.map(nCen).join(', ')}})}
+const RUTAS_COLS=[{k:'WH',w:18},{k:'ID tarea',w:10},{k:'Cliente',w:30,wrap:true},{k:'Estilo',w:14},{k:'Color',w:18},{k:'ODC',w:14},{k:'Categoría',w:28,wrap:true},{k:'Fase',w:18},{k:'Prendas',w:9,num:true},{k:'Ruta (en orden)',w:52,wrap:true},{k:'Ruta (códigos)',w:40},{k:'Tiempos (min/prenda)',w:22},{k:'Confirmada',w:11},{k:'Confirmada por',w:20},{k:'Origen',w:10},{k:'Fecha de confirmación',w:18},{k:'Nota',w:30,wrap:true},{k:'Pasos agregados a mano',w:22},{k:'Pasos quitados a mano',w:22}];
+async function exportarRutasXLSX(){const filas=filasRutasExport();
+  if(!filas.length){alert('No hay ninguna orden con ruta para exportar.');return}
+  try{await cargarExcelJS()}catch(e){alert(e.message||'No pude cargar el generador de Excel. Usa el CSV.');return}
+  const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';
+  const conf=filas.filter(f=>f['Confirmada']==='sí').length;
+  xlsPortada(wb,'Rutas trabajadas por WH',[
+    ['Qué es','Una fila por orden con su ruta completa, en orden, y quién la confirmó. Sirve para no perder el trabajo de rutas y para volver a ponerlo después de recargar las órdenes desde Odoo.'],
+    ['Sacado el',new Date().toLocaleString('es-EC')+' por '+(typeof quienFirma==='function'?quienFirma():'')],
+    ['Órdenes',num(filas.length)+' con ruta · '+num(conf)+' con la ruta confirmada'],
+    ['Cómo volver a cargarlo','Órdenes → Rutas → «Cargar rutas desde archivo». Cruza por WH (o por el ID de tarea) y deja la ruta tal cual, con su confirmación.'],
+    ['Ojo','Si editas el archivo, la columna que manda es «Ruta (códigos)»: son los códigos de los centros separados por >. La columna con nombres es para leer.']]);
+  xlsHoja(wb,'Rutas por WH',RUTAS_COLS,filas,{titulo:'Rutas trabajadas por WH',nota:'Una fila por orden. «Ruta (códigos)» es la que se vuelve a leer al cargar.'});
+  const buf=await wb.xlsx.writeBuffer();const b=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rutas_por_wh_'+hoy()+'.xlsx';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0);
+  if(typeof bitacora==='function'){bitacora('Exportadas las rutas de '+filas.length+' órdenes ('+conf+' confirmadas) a Excel');save()}}
+function exportarRutasCSV(){const filas=filasRutasExport();
+  if(!filas.length){alert('No hay ninguna orden con ruta para exportar.');return}
+  const cols=RUTAS_COLS.map(c=>c.k);const rows=[cols].concat(filas.map(f=>cols.map(c=>f[c])));
+  const csv=rows.map(r=>r.map(v=>{const x=String(v==null?'':v);return /[;"\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(';')).join('\n');
+  const b=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rutas_por_wh_'+hoy()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},0)}
+/* ---- volver a cargarlas ---- */
+let RUTAS_ARCH=null;
+function planRutasArchivo(rows,nombre){const idx=indiceClaves();
+  const H=(rows[0]||[]).map(x=>normTxt(x));
+  const col=n=>H.findIndex(h=>h===normTxt(n));
+  const iWH=col('WH'),iId=col('ID tarea'),iCod=col('Ruta (códigos)'),iNom=col('Ruta (en orden)'),iT=col('Tiempos (min/prenda)'),iU=col('Confirmada por'),iTs=col('Fecha de confirmación'),iNota=col('Nota');
+  if(iWH<0&&iId<0)return null;
+  const cenPorNombre={};S.centros.forEach(c=>{cenPorNombre[normTxt(c.n)]=c.id});
+  const out={archivo:nombre,filas:0,aplican:[],sinOrden:[],sinRuta:[],centrosRaros:[]};
+  rows.slice(1).forEach(r=>{if(!r||!r.length)return;const wh=String((iWH>=0?r[iWH]:'')||'').trim();const tid=String((iId>=0?r[iId]:'')||'').trim();
+    if(!wh&&!tid)return;out.filas++;
+    let o=null;
+    if(tid)o=idx.get(claveOrden({tareaId:tid}).clave)||null;
+    if(!o&&wh)o=idx.get(claveOrden({op:wh}).clave)||null;
+    if(!o){out.sinOrden.push(wh||('ID '+tid));return}
+    let cens=[];
+    if(iCod>=0&&String(r[iCod]||'').trim())cens=String(r[iCod]).split('>').map(x=>x.trim()).filter(Boolean);
+    else if(iNom>=0&&String(r[iNom]||'').trim())cens=String(r[iNom]).split('→').map(x=>cenPorNombre[normTxt(x.trim())]||'').filter(Boolean);
+    cens=cens.filter(c=>{if(CE(c))return true;out.centrosRaros.push(c);return false});
+    if(!cens.length){out.sinRuta.push(wh||('ID '+tid));return}
+    const ts=(iT>=0?String(r[iT]||'').split('>'):[]).map(x=>+x||0);
+    out.aplican.push({o,wh:o.op,cens,ts,u:(iU>=0?String(r[iU]||'').trim():''),tsConf:(iTs>=0?String(r[iTs]||'').trim():''),nota:(iNota>=0?String(r[iNota]||'').trim():''),
+      antes:((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[])).map(p=>p.centro)})});
+  out.centrosRaros=[...new Set(out.centrosRaros)];
+  out.cambian=out.aplican.filter(x=>x.antes.join('>')!==x.cens.join('>')).length;
+  return out}
+function previaRutasArchivoHTML(p){if(!p)return '';const li=(n,t)=>'<tr><td class="num"><b>'+num(n||0)+'</b></td><td>'+t+'</td></tr>';
+  return '<table style="font-size:var(--fs-s)"><tbody>'+
+   li(p.filas,'filas leídas en el archivo')+
+   li(p.aplican.length,'órdenes que <b>existen</b> y reciben su ruta'+(p.cambian?' (de ellas, <b>'+num(p.cambian)+'</b> tienen hoy otra ruta y se reemplaza)':' (todas con la misma ruta que ya tienen)'))+
+   li(p.sinOrden.length,'WH del archivo que <b>no están en el sistema</b>: se saltan'+(p.sinOrden.length?' ('+esc(p.sinOrden.slice(0,8).join(', '))+(p.sinOrden.length>8?' …':'')+')':''))+
+   (p.sinRuta.length?li(p.sinRuta.length,'filas sin ruta legible: se saltan'):'')+
+   (p.centrosRaros.length?li(p.centrosRaros.length,'centros del archivo que no existen aquí: se ignoran ('+esc(p.centrosRaros.join(', '))+')'):'')+
+   '</tbody></table><p class="mut" style="font-size:var(--fs-xs)">La ruta queda <b>confirmada por persona</b>, con quién y cuándo la confirmó según el archivo, y se anota en la bitácora. Los pasos ya hechos según la fase salen de la ruta pendiente, como siempre.</p>'}
+async function leerRutasArchivo(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('rutarch-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  let rows=null;try{rows=await leerTabla(f)}catch(e){res.innerHTML='<div class="warn">No pude leer el archivo: '+esc(e.message||'')+'</div>';return}
+  const p=planRutasArchivo(rows,f.name);
+  if(!p){res.innerHTML='<div class="warn">No encuentro la columna <b>WH</b> (ni <b>ID tarea</b>) en el archivo.</div>';return}
+  RUTAS_ARCH=p;res.innerHTML=previaRutasArchivoHTML(p);
+  const b=document.getElementById('rutarch-ok');if(b)b.disabled=!p.aplican.length}
+function aplicarRutasArchivo(){const p=RUTAS_ARCH;if(!p)return;
+  if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  if(!confirm('¿Poner la ruta del archivo en '+p.aplican.length+' órdenes?'+(p.cambian?'\n'+p.cambian+' de ellas tienen hoy otra ruta y se reemplaza.':'')))return;
+  const ts=new Date().toISOString(),u=quienFirma();let n=0;
+  p.aplican.forEach(x=>{const o=x.o;const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+    const comp=x.cens.map((c,i)=>{const t=(x.ts[i]!=null&&!isNaN(x.ts[i])&&x.ts[i]>0)?x.ts[i]:(+((tiempoPaso({centro:c,t:0},k,sam,+o.puntadas||0)||{}).t)||0);return {centro:c,t}});
+    const antes=x.antes.join(' → ');
+    o.rutaCompleta=comp;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:pasosPendientes(o.rutaCompleta,fila);
+    o.rutaConf={estado:'confirmada',origen:'persona',u:x.u||u,ts:ts,nota:'restaurada desde archivo'+(x.nota?' · '+x.nota:'')+(x.tsConf?' (confirmada el '+x.tsConf+')':'')};
+    if(typeof sellarRuta==='function')sellarRuta(o);
+    if(typeof registrarAuditoria==='function')registrarAuditoria('ruta',o,antes,x.cens.map(nCen).join(' → '),'rutas restauradas desde el archivo '+(p.archivo||''),false);
+    n++});
+  bitacora('Rutas cargadas desde archivo «'+(p.archivo||'')+'»: '+n+' órdenes'+(p.cambian?' ('+p.cambian+' reemplazadas)':'')+(p.sinOrden.length?' · '+p.sinOrden.length+' WH del archivo no existen aquí':'')+' ('+u+')');
+  registrarCarga('rutas',p.archivo||'',{aplicadas:n,reemplazadas:p.cambian,sinOrden:p.sinOrden.length});
+  RUTAS_ARCH=null;PLAN=null;PLAN_ALL=null;save();cerrar();render();
+  alert(n+' órdenes recibieron su ruta desde el archivo.')}
+function mCargarRutas(){if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
+  abrir('<h3>Cargar rutas desde archivo</h3><div class="body">'+
+   '<p class="lede" style="margin-top:0">Sube el archivo de <b>rutas por WH</b> que sacaste de aquí (Excel o CSV). Cruza por <b>WH</b> (o por el <b>ID de tarea</b>) y deja la ruta tal cual, confirmada. Sirve para devolver el trabajo de rutas después de volver a cargar las órdenes desde Odoo. Nada se guarda hasta confirmar.</p>'+
+   '<input type="file" id="f-rutarch" accept=".xlsx,.xls,.csv"><div id="rutarch-res" style="margin-top:14px"></div></div>'+
+   '<div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" id="rutarch-ok" disabled onclick="aplicarRutasArchivo()">Aplicar</button></div>');
+  const inp=document.getElementById('f-rutarch');if(inp)inp.addEventListener('change',leerRutasArchivo)}
 /* ---------- Pestaña Rutas (Órdenes de producción) ---------- */
 let RUT={q:'',ref:null,ver:'pend',verRev:false,sel:new Set(),fases:null};
 /* ================== RUTA EN LOTE (20-sep-2026) ==================
@@ -8509,6 +8630,7 @@ function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase();co
    </div>
    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Fuera de esta cuenta: <b>${na.length}</b> órdenes abiertas con la prenda terminada (fase con «sin carga» en la tabla 1: solo falta facturar) — su ruta no se revisa; si la fase vuelve atrás, vuelven a pedirse.</p>
    <div class="sub-blk" id="rut-acciones" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b><span id="rut-sel-n">${nSel}</span> marcadas</b>
+    <button class="btn ghost sm" onclick="exportarRutasXLSX()" title="Saca a Excel una fila por WH con su ruta y quién la confirmó: ese trabajo deja de depender de la base">Exportar rutas</button>${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mCargarRutas()" title="Vuelve a poner las rutas desde el archivo, cruzando por WH">Cargar rutas</button>`:''}
     ${puedeEditarRuta()?`<button class="btn sm" id="rut-btn-def" ${nSel?'':'disabled'} onclick="abrirRutaLote()">Definir ruta para las marcadas</button><button class="btn ghost sm" id="rut-btn-conf" ${nSel?'':'disabled'} onclick="confirmarRutasSel()" title="deja confirmada la ruta que ya tiene cada una, sin cambiar ningún paso">Confirmar como están</button>`:''}
     <button class="btn ghost sm" onclick="selTodoRut(true)">Marcar todas las de la lista (${lista.length})</button><button class="btn ghost sm" onclick="selTodoRut(false)">Desmarcar</button>
     <span class="mut" style="font-size:var(--fs-xs)">Marca órdenes sueltas o un grupo entero (casilla en la cabecera del grupo) y define la ruta para todas de una vez.</span></div>
@@ -9152,6 +9274,14 @@ async function conteosExternosBorrado(){const e={usuarios:null,fotosBucket:null}
   try{const r=await sb.from('perfiles').select('id');if(r&&!r.error&&Array.isArray(r.data))e.usuarios=r.data.length}catch(x){}
   try{const r=await sb.storage.from(fotoBucket()).list('',{limit:1000});if(r&&!r.error&&Array.isArray(r.data))e.fotosBucket=r.data.length>=1000?'≥ 1.000':r.data.length}catch(x){}
   return e}
+/* Respaldo y Restaurar salieron de la cabecera (23-sep): viven aquí, en la pestaña de administrador */
+function respaldoPanelHTML(){if(!puede('config'))return '';
+  const r=(S.params.restauraciones||[]).slice(-1)[0];
+  return '<div class="panel"><h3>Respaldo y restauración <span class="note">antes estaban en la cabecera</span></h3><div class="body">'+
+   '<p class="lede" style="margin-top:0"><b>Respaldo</b> baja un archivo con todo lo que hay ahora (órdenes, avance, configuración y bitácora): guárdalo fuera del sistema. <b>Restaurar</b> reemplaza los datos con los de un respaldo, pide escribir RESTAURAR y antes baja y sube un respaldo automático; si eso falla, no restaura.</p>'+
+   '<button class="btn" onclick="exportJSON()">Respaldo</button> <button class="btn ghost" onclick="importJSON()">Restaurar…</button>'+
+   (r?'<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Última restauración: '+esc(new Date(r.ts||r.fecha||Date.now()).toLocaleString('es-EC'))+(r.u?' · '+esc(r.u):'')+'</p>':'')+
+   '</div></div>'}
 function panelBorradoHTML(){if(!puede('config'))return '';const c=cuentaBorrado();const h=c.huerfanos;const ult=(S.params.borrados||[]).slice(-1)[0];const inc=S.params.borradoIncompleto;const enc=(!BORRANDO&&S.params.borradoEnCurso)||null;
   return `<div class="panel" style="border-color:var(--alerta)"><h3 style="color:var(--alerta)">Borrar datos de prueba <span class="note">solo administrador · conserva la configuración · antes se guarda, se relee el servidor y se respalda (local y servidor)</span></h3><div class="body">
    ${enc?`<div class="warn"><b>Hay un borrado INTERRUMPIDO</b> (empezó el ${esc(fmtDia((enc.ts||'').slice(0,10)))}, ${esc(enc.u||'')}, y no llegó a terminar: se cerró la pestaña o se cayó la red). La base puede estar a medias. Respaldo previo: ${esc(enc.respaldo||'')}${enc.rutaServidor?' · '+esc(enc.rutaServidor):''}. Vuelve a ejecutar el borrado para terminar, o <a href="#" onclick="restaurarRespaldoServidor('${esc(enc.rutaServidor||'')}');return false">restaura el respaldo</a>.</div>`:''}
@@ -10501,7 +10631,7 @@ function vConfig(el){
   <p class="lede">Áreas, centros y recursos son abiertos: agrega máquinas o centros aquí y el programa los toma en cuenta de inmediato. Solo el administrador ve esta página.</p>
 
   <div class="chips" style="margin-bottom:14px">${CONF_TABS.map(([k,v])=>'<span class="chip '+(CONF.tab===k?'on':'')+'" onclick="CONF.tab=\''+k+'\';render()">'+v+'</span>').join('')}</div>
-  ${CONF.tab==='borrado'?panelBorradoHTML():''}
+  ${CONF.tab==='borrado'?(respaldoPanelHTML()+panelBorradoHTML()):''}
   ${CONF.tab==='recursos'?`  <div class="panel"><h3>Centros <span class="note">agrupan recursos dentro de cada área</span><span class="spacer"></span><button class="btn ghost sm" onclick="addCentro()">Agregar centro</button></h3>
    <div class="body"><table><thead><tr><th>Centro</th><th>Área</th><th>Cómo se mide el tiempo en la ruta</th><th title="al abrir una orden sin ruta editada, este paso viene marcado">va por defecto en toda ruta</th><th>Ítem de planificación</th><th title="procesos que se miden en días (lavado): no consumen capacidad de planta">Por días</th><th class="num">Recursos</th><th class="num" title="SAM: minutos estándar por prenda">SAM</th><th class="num">% estimado que pasa</th><th class="num">Puntadas/min</th><th></th></tr></thead><tbody>
    ${S.centros.map(c=>{const esLavPla=c.area==='pro';   /* minuto por prenda del centro: manda en lavado/plancha; en los demás se usa cuando la hoja no trae operaciones para ese centro (cordones, apliques, sublimado) */const esBordado=c.id==='bordado';return `<tr><td><input type="text" value="${esc(c.n)}" onchange="setCentro('${c.id}','n',this.value)"></td>
@@ -11282,7 +11412,7 @@ function fotoDe(o){if(!o)return '';if(o.foto)return o.foto;const ix=(S.params&&S
    incluidas las que todavía no llegaron de Odoo: no se escribe nada en la orden, se resuelve al dibujar.
    Manda la foto de la propia orden; solo si no hay, la de la referencia, y la pantalla lo dice. */
 function refDeOrden(o){return normTxt((o&&(o.ref||o.stilo||o.estilo))||'')}
-function fotoRefPath(ref){return 'ref_'+String(ref||'').trim().replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'}
+function fotoRefPath(ref){return 'ref_'+normTxt(ref).replace(/[^a-z0-9._-]+/g,'_')+'.jpg'}   /* normaliza DENTRO: subir y leer arman la misma ruta (si no, una referencia con mayúsculas daba 404 mudo) */
 function fotoRefURLde(ref,ts){return SUPABASE_URL+'/storage/v1/object/public/'+fotoBucket()+'/'+fotoRefPath(ref)+(ts?'?v='+ts:'')}
 function fotoRefDe(o){const ix=(S.params&&S.params.fotosRefIdx)||{};const k=refDeOrden(o);const e=k?ix[k]:null;return e?fotoRefURLde(k,e.ts):''}
 function fotoFuenteDe(o){if(!o)return '';if(o.foto)return 'orden';const ix=(S.params&&S.params.fotosIdx)||{};if(ix[normTxt(o.op)])return 'orden';return fotoRefDe(o)?'referencia':''}
@@ -11948,7 +12078,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración → Órdenes y materiales → Registro de cargas. */
-const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido'};
+const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
@@ -11956,6 +12086,7 @@ function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='ot')return [r.ordenes+' órdenes con centros',r.cierres+' centros cerrados',r.rutaEmpatada?r.rutaEmpatada+' órdenes con pasos agregados a la ruta por la OT ('+r.pasosOT+')':'',r.confNoTocadas?r.confNoTocadas+' con ruta confirmada que la OT no tocó':'',r.noEncontradas?r.noEncontradas+' no encontradas':'',r.contradicciones?r.contradicciones+' contradicciones fase vs OT':''].filter(Boolean).join(' · ');
   if(c.tipo==='tallas')return [r.n+' órdenes con curva',r.formato?'formato '+r.formato:'',r.sinOrden?r.sinOrden+' WH sin orden':'',r.difSuma?r.difSuma+' con suma distinta':'',r.sinTalla?r.sinTalla+' líneas sin talla':'',r.componentes?r.componentes+' líneas que no son prenda':'',r.sinWH?r.sinWH+' tareas sin WH (no entran)':'',r.variosPacks?r.variosPacks+' WH con varios packs sin resolver':'',r.codigoDistinto?r.codigoDistinto+' líneas con otro código':'',r.cambian?r.cambian+' curvas cambiadas':'',r.tallasNuevas?r.tallasNuevas+' tallas fuera de los juegos':''].filter(Boolean).join(' · ');
   if(c.tipo==='maestro')return [r.filas+' productos',r.nuevos+' nuevos',r.actualizados+' actualizados',r.tempo+' TEMPO',r.conProv+' con proveedor',r.sinProv+' sin proveedor',r.conservaProv?r.conservaProv+' conservan proveedor':'',r.cambiaProv?r.cambiaProv+' cambian de proveedor':'',r.nuevosProv?r.nuevosProv+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
+  if(c.tipo==='rutas')return [r.aplicadas+' rutas puestas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' WH que no existen aquí':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [r.subidas+' subidas',r.reemplazadas?r.reemplazadas+' reemplazadas':'',r.sinOrden?r.sinOrden+' sin orden':'',r.errores?r.errores+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?c.nuevas+' nuevas':'',c.act!=null?c.act+' actualizadas':'',c.cerradas?c.cerradas+' cerradas':''].filter(Boolean).join(' · ')}
 function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});

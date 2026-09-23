@@ -210,6 +210,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planTarea: con puntadas>0 el paso bordado lleva las puntadas por prenda (unidad del motor)',planT.ordenes.filter(o=>o.puntadas>0&&o.cat).every(o=>{const b=o.rutaCompleta.find(p=>p.centro==='bordado');return b&&b.t===o.puntadas}));
   __check('planTarea: ruta textil por las tres dimensiones (propia → tej; pedir → proveedor; falta tintura/lavado → tin; sin clasificar → sin textil)',planT.ordenes.filter(o=>!esExcedente(o)).every(o=>JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))===JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})))&&planT.ordenes.filter(o=>!esExcedente(o)&&lineasTelaDe(o.materiales).some(m=>m.produce==='propia'&&m.kg>0)).every(o=>o.rutaCompleta[0]&&o.rutaCompleta[0].centro==='tej')&&planT.ordenes.filter(o=>o.origenTela==='SIN CLASIFICAR').every(o=>!o.rutaCompleta.some(p=>['tej','tin','proveedor'].includes(p.centro))),(()=>{const m=planT.ordenes.find(o=>!esExcedente(o)&&JSON.stringify((o.rutaCompleta||[]).filter(p=>['tej','tin','proveedor'].includes(p.centro)))!==JSON.stringify(rutaTextilDe({telas:lineasTelaDe(o.materiales)})));return m?m.op+' '+JSON.stringify(m.rutaCompleta.slice(0,3))+' vs '+JSON.stringify(rutaTextilDe({telas:lineasTelaDe(m.materiales)}))+' telas '+JSON.stringify(m.telas.map(t=>[t.tela,t.kg,t.produce,t.disp,t.falta,t.sinConv])):''})());
   __check('planTarea: los materiales guardan la ruta completa de categoría y su clasificación',planT.ordenes.every(o=>o.materiales.every(m=>typeof m.ruta==='string'&&'clasif' in m)));
+  REEMPLAZO_OK=true;   /* el simulador reemplaza conjuntos de datos a propósito (demo ↔ volcado): el freno de borrado en masa tiene su propia prueba, FB */
   TAREA=planT;aplicarTarea();await __p(100);
   /* ===== CARGAS · qué dato trabajado sobrevive a la Recarga Parte 2 (diagnóstico) ===== */
   {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
@@ -2935,9 +2936,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("RLS: al guardar bien, el aviso desaparece",!/No se guardó en el servidor/.test(document.getElementById('p-tablet').innerHTML));
    // 2 · cabecera del operario
    verBotonesAdmin();
-   __check("CAB: el operario no ve Respaldo ni Restaurar, y sí Actualizar y Salir",document.getElementById('btn-respaldo').style.display==='none'&&document.getElementById('btn-restaurar').style.display==='none'&&!!document.querySelector('header button[onclick="refrescar()"]')&&!!document.querySelector('header button[onclick="logout()"]'));
+   __check("CAB: la cabecera no tiene Respaldo, Restaurar ni Actualizar: solo Salir (decisión de la usuaria, 23-sep)",!document.getElementById('btn-respaldo')&&!document.getElementById('btn-restaurar')&&!document.querySelector('header button[onclick="refrescar()"]')&&!!document.querySelector('header button[onclick="logout()"]'),document.querySelectorAll('header button').length+' botones en la cabecera');
    PERFIL=adminP;verBotonesAdmin();
-   __check("CAB: quien tiene permiso de configuración sí los ve",document.getElementById('btn-respaldo').style.display!=='none');
+   PERFIL=adminP;CONF.tab='borrado';page='config';render();
+   __check("CAB: Respaldo y Restaurar viven ahora en Configuración → Borrado, solo para quien configura",/Respaldo y restauración/.test(document.getElementById('p-config').innerHTML)&&/exportJSON\(\)/.test(document.getElementById('p-config').innerHTML)&&/importJSON\(\)/.test(document.getElementById('p-config').innerHTML));
+   {const bak=PERFIL;PERFIL={id:'u-op',rol:'tablet',nombre:'Operario',modo:'editar'};
+    __check("CAB: un perfil sin configuración no ve ese panel",!respaldoPanelHTML());PERFIL=bak;}
+   page='tablet';render();
    // 3 · buscador arriba de las tarjetas
    PERFIL={id:uidOp,nombre:'Modulo 1',rol:'tablet',modo:'editar'};TAB={centro:'modulos',rec,q:''};render();
    {const h=document.getElementById('p-tablet').innerHTML;const iB=Math.max(h.indexOf('data-q="TAB.q"'),h.indexOf('id="tab-wh"'));const iT=h.indexOf('tab-card');
@@ -7006,6 +7011,26 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(bak.sem)S.params.tiempos21Sembrado=bak.sem;else delete S.params.tiempos21Sembrado;if(bak.res)S.params.tiempos21Resumen=bak.res;else delete S.params.tiempos21Resumen;if(bak.bot==null)delete S.params.botonesEstandar;else S.params.botonesEstandar=bak.bot;
     [['cordones',bak.cord],['apliques',bak.apl],['sublimado',bak.sub]].forEach(([c,j])=>{const x=CE(c);const b=JSON.parse(j);if(x&&b){if(b.minEstandar!=null)x.minEstandar=b.minEstandar;else delete x.minEstandar;if(b.minEstandarMeta)x.minEstandarMeta=b.minEstandarMeta;else delete x.minEstandarMeta}});
     const apB=JSON.parse(bak.ap);if(apB)S.params.tiemposAplicados=apB;else delete S.params.tiemposAplicados;PLAN=null;PLAN_ALL=null;window.confirm=cf;window.alert=al;}
+   /* FB · Freno de borrado en masa: el 23-sep una pestaña con la memoria vacía borró órdenes, avance y bitácora al guardar. Nunca más. */
+   {PERFIL=adminP0();const bakR=REEMPLAZO_OK;REEMPLAZO_OK=false;
+    const db=sb.__DB;const nAntes=(db.ordenes||[]).length;
+    const memoria=S.ordenes;const nMem=memoria.length;
+    __check('FB: el simulador tiene órdenes en la base y en memoria antes de la prueba',nAntes>50&&nMem>50,JSON.stringify({base:nAntes,memoria:nMem}));
+    /* la pestaña se queda sin órdenes en memoria (lo que pasó de verdad) y guarda */
+    S.ordenes=[];const nb=S.bitacora.length;
+    await save();await __p(120);
+    __check('FB: una pestaña que se quedó sin datos NO borra las órdenes del servidor al guardar',(db.ordenes||[]).length===nAntes,JSON.stringify({base:(db.ordenes||[]).length,antes:nAntes}));
+    __check('FB: el freno deja aviso en pantalla con el botón de recargar y una línea en la bitácora',!!document.getElementById('aviso-freno')&&/Se frenó un borrado/.test((document.getElementById('aviso-freno')||{}).innerHTML||'')&&S.bitacora.length>nb&&/FRENO/.test((S.bitacora[S.bitacora.length-1]||{}).t||''),String((S.bitacora[S.bitacora.length-1]||{}).t||'').slice(0,90));
+    S.ordenes=memoria;await save();await __p(120);
+    const av=document.getElementById('aviso-freno');if(av)av.remove();
+    __check('FB: al volver los datos a la memoria, el guardado normal sigue funcionando',(db.ordenes||[]).length===nAntes,String((db.ordenes||[]).length));
+    /* quitar unas pocas sí se puede: un borrado legítimo no se frena */
+    const quitar=S.ordenes.slice(0,3).map(o=>o.id);const nA2=(db.ordenes||[]).length;
+    S.ordenes=S.ordenes.filter(o=>!quitar.includes(o.id));await save();await __p(120);
+    __check('FB: quitar unas pocas filas (borrado normal) sigue funcionando: el freno solo salta en masa',(db.ordenes||[]).length===nA2-3,JSON.stringify({ahora:(db.ordenes||[]).length,antes:nA2}));
+    S.ordenes=memoria;await save();await __p(120);REEMPLAZO_OK=bakR;
+    __check('FB: teniendo datos en memoria, reemplazar el conjunto (restaurar un respaldo, cargar el demo) sigue funcionando',(db.ordenes||[]).length===nAntes,String((db.ordenes||[]).length));
+    __check('FB: el umbral es un parámetro configurable, no un número escondido en el código',prm('minBorradoSospechoso',10)>0,String(prm('minBorradoSospechoso',10)));}
    /* TP · La ruta dice por dónde pasa, no en qué orden fijo (usuaria, 22-sep: «cerré corte y no puedo entrar a módulos porque la ruta tiene bordado, pero está lista para módulos») */
    {PERFIL=adminP0();
     const t=tramosParalelos()[0];
