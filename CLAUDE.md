@@ -131,11 +131,16 @@ una grande ni se fragmenta más). `lineaReparto()` escribe en la tarjeta, por
 cada WH partida, "% aquí · resto: código 30% (COLOR), …" en una sola línea,
 incluso si el resto está en baños de otros colores.
 
-**Mover baño de máquina — NO ESTÁ CONECTADO** (comprobado el 23-sep-2026: `selMaquinaBano` aparece
-UNA sola vez en `index.html`, su definición; ese `<select>` no se dibuja en ninguna tarjeta, así que
-hoy un baño **no se puede mover de máquina desde la tarjeta**). Lo que haría al conectarse:
-`moverBano(id,rec)` guarda `banos_conf[].rec` + `recFijo:true` y `programar()` restringe el pool a esa
-máquina; "auto" lo quita. Hasta entonces, no darlo por disponible.
+**Mover baño de máquina (conectado el 23-sep-2026; antes `selMaquinaBano` existía y no se dibujaba):** cada tarjeta
+confirmada del cuadro Máquina × día lleva el `<select>` → `moverBano(id,rec,dia,kgMotor)`, que guarda `banos_conf[].rec` +
+`recFijo:true` (y `programar()` restringe el pool a esa máquina; "auto" lo quita). Ofrece **las mismas candidatas que el
+motor** (compatibles + `capPique>0` con piqué); cada opción dice su capacidad («piqué» si aplica) y avisa «⚠ no cabe» /
+«máquina de claros/oscuros» sin prohibir; capacidad sin configurar se dice **«sin capacidad configurada»**, no 0. El aviso y la
+confirmación usan el MISMO kg (el del motor, `kgMotor`); si se cancela, se redibuja. **Quién mueve no cambió**: el desplegable
+sigue la misma regla que arrastrar la tarjeta (cualquiera que ve Tintorería), salvo un perfil «ver»; cerrarlo a `programa`
+es decisión de la usuaria y va para las dos formas a la vez. **La expresión de fecha de `moverBano` está rota a propósito y NO
+se arregla sola**: arreglarla activa `diaFijo`, que en `programar()` PISA el «no antes de que la tela esté tejida»
+(asignación plana en vez de `maxD`) y deja baños —y toda la producción detrás— programados antes de tener tela.
 **Albarán:** `imprimirAlbaranBanoId(bId)` usa `b.opsKg` (kg exactos por orden,
 repartidos por tela) y muestra el código del baño (`ALB.cod`). **Resumen por
 WH** (`resumenWHHTML`, al final de Tintorería): por cada WH, los baños/colores
@@ -600,8 +605,12 @@ ruta**; las rutas que no terminan en Empaque son **brecha** (`rutasSinEmpaqueHTM
 reales no terminan ahí** (301 bordado, 48 estampado). **Vencida y va tarde tienen UNA definición**:
 `esMetaVencida`/`esOrdenVaTarde` envuelven a `diagAtraso()`, el mismo de `marcaCentro`; no crear un segundo cálculo ni
 un tercer nombre (se eliminó el `o.fecha<h` que tenía `vGerencia`). **Cierre mensual** en `S.params.cierresMes`:
-`guardarCierresMes(P)` corre al dibujar el resumen, actualiza el mes en curso una vez al día y **congela** los meses
-pasados (`cerrado:true`, no se vuelven a tocar). Márgenes: solo una nota, pendiente de **Costos TEMPO** (otro repo).
+`guardarCierresMes(P)` actualiza el mes en curso una vez al día y **congela** los meses pasados (`cerrado:true`, no se
+vuelven a tocar). **Desde el 23-sep la toma `cierresMesEnRender` en `render()`** (antes solo al abrir el Resumen gerencial:
+si nadie lo abría, el mes no se guardaba) y **solo justo después de leer del servidor** (`FOTO_TRAS_CARGA`, que pone
+`cargarTodo`), con permiso `programa`, sin `CARGA_INCOMPLETA` ni `BORRANDO` y nunca en un perfil de piso: `params`
+se sube entera y sin comprobar si otro la cambió, así que una pestaña abierta desde ayer **no debe escribirla sola**.
+`cierresMesPendientes()` dice qué meses faltan sin correr el motor. `vGerencia` ya no la toma (un solo sitio). Márgenes: solo una nota, pendiente de **Costos TEMPO** (otro repo).
 Ver `CONSULTAS_GERENCIALES_REPORTE.md`.
 
 **Orden abierta: UNA sola definición (16-sep-2026).** `abiertaDe(o)` = no archivada (`ESTADOS_CERRADOS`) + **Estado OP
@@ -1254,13 +1263,22 @@ en Compras del mes. El detalle por tela y tipo y la tintoreria siguen, solo con 
 Lo medido: el motor (`programar`) es el **1,7 %** del sistema y la interfaz **278 piezas** (191 `…HTML` + 34 pantallas +
 53 modales); **44 clicables** en el menú sobre 29 páginas, **19 de 32 solo las ve la usuaria**; 4 pantallas contestan
 «¿alcanza la capacidad?» con 4 motores (`cargaSemanal`/`cargaUnica`/`matrizCapacidad`/`nivelar`), 5 de avance, 3 cosas
-llamadas «congelar», 4 fichas de orden, 5 motores de agrupación. **Seis errores comprobados, pendientes de arreglo:**
-(1) `confirmarHechoCentro` escribe `a.centros[c]=o.cant` fuera de módulos, así que registrar 800 de 1000 deja el paso en
-1000 y `faltanteCierre` cierra con **0 faltantes** sin pedir motivo; (2) Hoy calcula «vencida» con `o.fecha` en vez de
-`esMetaVencida`; (3) `pzHechasOrden` mide sobre `pasosProDe` (ruta pendiente) y devuelve 0 en órdenes terminadas —debe ser
-`pasosProCompleta`—; (4) `guardarCierresMes(P)` se llama SOLO desde `vGerencia`, así que la foto del mes no se guarda si
-nadie abre esa pantalla; (5) `claveGRP` corre `programar()` una vez por fila al agrupar por próximo paso; (6) el
-«mover baño de máquina» de arriba. **Brechas del objetivo:** la fase no se mueve sola al cerrar un paso (la regla, no la
+llamadas «congelar», 4 fichas de orden, 5 motores de agrupación. **Estado de las correcciones (23-sep, tarde; cada una pasó por analista + verificador adversarial):** PUBLICADAS la (4)
+foto del mes y la (6) mover baño (ver sus párrafos), más los motivos de cierre (`MOTIVOS_CIERRE_DEF`/`sembrarMotivosCierre`,
+bandera `motivosCierreSembrados`, una sola vez). La **(5) no existía**: `programar()` está cacheado (`if(PLAN&&!LIB_ALL)return PLAN`),
+agrupar por próximo paso NO corre el motor por fila. **PENDIENTES, con rediseño:** (1) 180 de 224 — `a.centros[c]=o.cant`
+fuera de módulos borra el faltante, pero guardar `q` a secas ROMPE el flujo normal: el cuadro de «Hecho» trae por defecto
+«lo que falta» (después de un tramo), así que el avance bajaría y la orden quedaría atascada; hoy mismo, en ese flujo, `delta=q-prev`
+ya resta turnos. Correcto: «Hecho» SUMA lo que salió ahora, guardado donde el tramo (`a.tallas[c][TALLA_TOTAL]`), con historial,
+y sin motivos de cierre la orden quedaría atrapada (por eso se sembraron). (2) «vencida» — medido en el volcado real: Hoy
+usa `faseNum<8` y **esconde 44 órdenes / 3.227 pz** en 8Empaque, 8Servicios y Terminados y 8Lavandería (no son «sin carga»);
+`esMetaVencida` exige `ro.atraso`, que el motor NO calcula en bloqueadas/sin WH (salidas tempranas 1607-1610 y filtro 1363) y
+que sí da en 13 «sin carga» terminadas (finPro=hoy). Definición acordada por el verificador: vencida = `fechaMetaDe` pasada y
+prenda no terminada según la columna «sin carga» (`prendaTerminada` dentro de `diagAtraso`), sin el motor; el KPI «Terminadas»
+del Plan (`faseNum>=8`) va aparte con OK de la usuaria. (3) «hechas» sobre ruta completa — medido: corrige 2 de 13, deja 11
+en 0 porque **la OT de Empaque de Odoo sigue abierta y manda sobre la fase** (`faseEstado0`), y pondría WH/MO/28228 (8Botones,
+ruta sin Empaque) como terminada al 100 % en silencio. Se REVIRTIÓ; se rehace con `rutaHechasDe`, aviso de la OT abierta y
+marca de regla en la foto del mes. Pregunta abierta a la usuaria: fase «terminada» vs OT de Empaque abierta, ¿cuál manda? **Brechas del objetivo:** la fase no se mueve sola al cerrar un paso (la regla, no la
 infraestructura: el rpc ya corre), no hay bandeja de órdenes estancadas en una fase (`diasEnFase` existe y se usa una sola
 vez), la tabla 15 casi vacía bloquea devoluciones/reversiones/rechazos, el calendario sin festivos y `portadaRol` = 0
 referencias (la portada por rol aprobada el 19-sep nunca se construyó). **Esperar el visto bueno antes de mover pantallas.**

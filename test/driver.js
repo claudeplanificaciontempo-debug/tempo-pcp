@@ -3304,7 +3304,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
    const bakMot=JSON.stringify(S.params.motivos||null);
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];
-   __check("CC0: la tabla 15 tiene el uso «cierre con faltante» y NO viene sembrado",USOS_MOTIVO.some(u=>u[0]==='cierre')&&motivosDe('cierre').length===0);
+   __check("CC0: la tabla 15 tiene el uso «cierre con faltante» y trae los cinco motivos de partida (usuaria, 23-sep)",USOS_MOTIVO.some(u=>u[0]==='cierre')&&MOTIVOS_CIERRE_DEF.every(m=>motivosDe('cierre').some(r=>normTxt(r.motivo)===normTxt(m))),JSON.stringify(motivosDe('cierre').map(m=>m.motivo)));
+   /* la siembra es de UNA vez: lo que la usuaria borre no vuelve a aparecer */
+   {const ms=motivos();const i=ms.findIndex(m=>m.uso==='cierre');const borrado=ms[i];ms.splice(i,1);sembrarMotivosCierre();
+    __check("CC0: si la usuaria borra un motivo de cierre, la siembra NO lo repone",!motivosDe('cierre').some(m=>m.motivo===borrado.motivo),borrado.motivo);
+    ms.push(borrado);}
    const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='corte')&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
    const mk=op=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.cant=200;o.fase='4CD Ensamble';delete o.tallasPedido;delete o.programa;

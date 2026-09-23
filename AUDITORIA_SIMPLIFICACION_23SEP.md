@@ -49,7 +49,7 @@ deberes pendientes, no tu trabajo del día.
 
 ---
 
-## 2 · PRIMERO: seis cosas que están mal
+## 2 · PRIMERO: cinco cosas que están mal (eran seis; la 2.5 no era cierta)
 
 Esto no es simplificar, es corregir. Va antes que cualquier mudanza de pantallas. Las seis las comprobé
 una por una en el código.
@@ -103,17 +103,29 @@ está vacía → devuelve **0 hechas** para una orden que el resto del sistema d
 nadie abre esa pantalla, el cierre de ese mes no se guarda nunca. Tiene que correr en `render()`.
 *(Hay que arreglarlo **antes** de tocar el Resumen gerencial, o se pierde la historia.)*
 
-### 2.5 · Agrupar por «próximo paso» corre el motor una vez por fila
+### 2.5 · ~~Agrupar por «próximo paso» corre el motor una vez por fila~~ — **CORREGIDO: no era cierto**
 
-Línea 2893: `case 'paso': … pasoProximoDe(o, programar())` — `programar()` dentro del `map` de cada fila. En
-una lista de 600 órdenes, el motor 600 veces. Por eso esa agrupación se siente colgada. Se calcula una vez
-fuera del bucle.
+`programar()` está cacheado: su primera línea es `if(PLAN&&!LIB_ALL)return PLAN`. Llamarlo dentro del `map` de
+`claveGRP` devuelve el mismo resultado guardado; no corre el motor por fila. Quedan cinco correcciones, no seis.
 
 ### 2.6 · «Mover baño de máquina» está documentado pero no existe
 
 `selMaquinaBano` aparece **una sola vez en todo el archivo**: la definición. Ese `<select>` no se dibuja en
 ninguna tarjeta. `CLAUDE.md` lo da por funcionando desde hace días. O se conecta, o se quita de la
 documentación — pero hoy, en tintorería, un baño no se puede mover de máquina desde la tarjeta.
+
+### 2.7 · Lo que cambió al verificar (23-sep, tarde)
+
+Cada corrección pasó por un analista y por un verificador que intentó romperla, y dos de ellos **corrieron el
+simulador con los datos reales de Odoo**. Tres de los arreglos «cortos» de arriba resultaron ser más grandes:
+
+| | Qué se creía | Qué se encontró | Estado |
+|---|---|---|---|
+| **2.1** 180 de 224 | guardar lo registrado, 30 min | El cuadro de «Hecho» trae por defecto **lo que falta** (después de un tramo). Guardar ese número a secas haría **bajar** el avance y dejaría la orden atascada. Y hoy mismo, en ese flujo, los turnos ya restan. Además, sin motivos de cierre la orden quedaría atrapada. | Se sembraron los 5 motivos (aprobados). El arreglo se rehace: «Hecho» **suma** lo que salió ahora, con historial. |
+| **2.2** «vencida» | un renglón | Hoy usa `faseNum<8` y **esconde 44 órdenes / 3.227 prendas** que siguen en 8Empaque, 8Servicios y Terminados y 8Lavandería. `esMetaVencida` no ve las bloqueadas (el motor no las calcula) y sí cuenta 13 ya terminadas que esperan factura. | Definición acordada: meta pasada y prenda no terminada según la columna «sin carga» de la tabla 1, **sin depender del motor**. Pendiente de aplicar; «Vencidas» en Hoy pasa de 203 a 247. |
+| **2.3** «hechas» | ruta completa | Corrige **2 de 13**: en las otras 11 la **orden de trabajo de Empaque de Odoo sigue abierta** y manda sobre la fase. Y pondría WH/MO/28228 (8Botones, sin Empaque en la ruta) como terminada al 100 % sin aviso. | **Revertido.** Se rehace con aviso de la OT abierta. Pregunta a la usuaria: fase «terminada» vs OT abierta, ¿cuál manda? |
+| **2.4** foto del mes | llamarla en `render()` | Así, **cualquier pestaña abierta desde ayer** subía `params` entera sola cada día y podía pisar cambios de otras personas. | **Publicado** con la corrección: solo justo después de leer del servidor, con permiso de programa. |
+| **2.6** mover baño | conectar el selector | Arreglar además el arrastre activaba `diaFijo`, que deja programar un baño **antes de que exista la tela**. | **Publicado** solo el selector, con las mismas máquinas que el motor y «⚠ no cabe». El arrastre no se tocó. |
 
 ---
 

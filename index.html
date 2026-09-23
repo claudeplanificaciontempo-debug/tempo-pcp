@@ -686,7 +686,7 @@ async function cargarTodo(){
     S[t]=data.map(r=>Object.assign({id:r.id},r.data));
     BASE[t]=Object.fromEntries(data.map(r=>[r.id,JSON.stringify(r.data)]));
   }
-  PLAN=null;ULT_DATOS=await maxActualizado();const av=document.getElementById('aviso-datos');if(av)av.remove();CARGA_INCOMPLETA=null;return true
+  PLAN=null;ULT_DATOS=await maxActualizado();const av=document.getElementById('aviso-datos');if(av)av.remove();CARGA_INCOMPLETA=null;FOTO_TRAS_CARGA=true;return true
 }
 /* ---------- datos nuevos guardados por otra sesión: una pestaña abierta no se entera sola; se revisa cada 3 min y se avisa ---------- */
 let ULT_DATOS=null;
@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 12:13';
+const APP_BUILD='2026-09-23 15:16';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2380,6 +2380,14 @@ function sembrarMotivosParo(){const t=motivos();
     if(r.activo===undefined)r.activo=true;
     if(marca&&!r[marca]){r[marca]=true;if(typeof bitacora==='function')bitacora('Motivo de paro «'+r.motivo+'» marcado como '+(marca==='esAlmuerzo'?'almuerzo':'cierre del día'))}});
   return t}
+/* motivos de «cierre con faltante»: sin ellos el piso no puede cerrar un paso al que le faltaron prendas.
+   Los dicta la usuaria (23-sep); esto es solo el punto de partida y se siembra UNA vez: lo editado no se pisa. */
+const MOTIVOS_CIERRE_DEF=['Faltó tela','Prendas con falla (segundas)','Corte incompleto','Entrega parcial, el resto sigue','Cambio de pedido del cliente'];
+function sembrarMotivosCierre(){const t=motivos();if(S.params.motivosCierreSembrados)return t;
+  let n=0;MOTIVOS_CIERRE_DEF.forEach(m=>{if(t.some(r=>r.uso==='cierre'&&normTxt(r.motivo)===normTxt(m)))return;t.push({motivo:m,uso:'cierre'});n++});
+  S.params.motivosCierreSembrados=true;
+  if(n&&typeof bitacora==='function')bitacora('Motivos de cierre con faltante sembrados: '+n+' (editables en Configuración → Órdenes y materiales → 15 · Motivos)');
+  return t}
 function motivoActivo(r){return r.activo!==false}
 function motivosParo(){sembrarMotivosParo();return motivosDe('paro').filter(motivoActivo)} // el operario solo ve los activos
 function motivoParoEs(m,k){const r=motivos().find(x=>x.uso==='paro'&&x.motivo===m);return !!(r&&r[k])}
@@ -3196,6 +3204,7 @@ function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='fu
   document.querySelectorAll('.page').forEach(s=>s.classList.remove('on'));
   page=redirigirPagina(page);
    const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
+  try{cierresMesEnRender()}catch(e){try{console.error('cierresMesEnRender',e)}catch(x){}}   /* la historia de la cartera se toma sola */
   const el=document.getElementById('p-'+page);el.classList.add('on');
   ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,compras:vCompras,tintoreria:vTin,avancearea:vAvanceArea,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
@@ -3389,7 +3398,7 @@ function vGerencia(el){
   if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Resumen gerencial</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
   const P=programarTodo();const todasOrds=S.ordenes.filter(o=>abierta(o)||o.estado==='prevision');
   const ords=todasOrds.filter(o=>pasaFiltrosGER(o,P));   // meses, cliente, estado y buscador: los cuatro mandan sobre todos los bloques
-  guardarCierresMes(P);                                  // se va guardando la historia de la cartera
+  /* la historia de la cartera la toma cierresMesEnRender justo después de leer del servidor (23-sep): no aquí */
   const esWH=o=>o.estado!=='prevision';
   const kgO=kgPendiente,minO=minPendiente;
   const pz=ords.reduce((a,o)=>a+ +o.cant,0),kg=ords.reduce((a,o)=>a+kgO(o),0),hrs=ords.reduce((a,o)=>a+minO(o),0)/60;
@@ -4861,7 +4870,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -5370,6 +5379,28 @@ function guardarCierresMes(P){if(!S.ordenes.length)return 0;
     foto.cerrado=ym<hoyYm;                          // el mes ya pasó: esta es la foto definitiva
     if(ya&&!foto.cerrado&&String(ya.ts).slice(0,10)===hoy())return;   // una por día mientras está en curso
     C[ym]=foto;n++});
+  return n}
+/* ---- la foto de la cartera se toma sola: ya no depende de que alguien abra el Resumen gerencial ----
+   Tres filtros BARATOS antes de tocar el motor: 1) un interruptor de sesión por día, 2) el perfil, 3) un
+   barrido que solo mira los MESES. Un perfil de piso no puede escribir params (_save salta la tabla), así
+   que no toma una foto que se perdería: la toma la primera sesión de planificación que abra ese día. */
+let FOTO_TRAS_CARGA=false;                              /* true justo después de leer TODO del servidor (cargarTodo): solo entonces params está fresco */
+function cierresMesPendientes(){                        /* a qué meses les falta foto HOY; no corre el motor ni escribe nada */
+  if(!S.ordenes.length)return [];
+  const h=hoy(),hoyYm=h.slice(0,7),C=cierresMes();
+  return [...new Set(S.ordenes.filter(o=>abierta(o)||o.estado==='prevision').map(o=>mesPlan(o)).filter(Boolean))].sort()
+    .filter(ym=>{const ya=C[ym];
+      if(ya&&ya.cerrado)return false;                   /* congelado: no se toca nunca más */
+      if(ym<hoyYm)return true;                          /* el mes ya pasó y su foto sigue abierta: falta congelarla */
+      return !(ya&&String(ya.ts).slice(0,10)===h)})}    /* mes en curso: una sola foto por día */
+function cierresMesEnRender(){
+  /* solo justo después de leer del servidor: una pestaña abierta desde ayer NUNCA escribe params sola */
+  if(!FOTO_TRAS_CARGA||!PERFIL||!S.ordenes.length)return 0;   /* esperar a que la carga y el perfil estén */
+  FOTO_TRAS_CARGA=false;
+  if(CARGA_INCOMPLETA||BORRANDO||perfilSoloPiso()||!puede('programa'))return 0;   /* la toma planificación */
+  if(!cierresMesPendientes().length)return 0;
+  const n=guardarCierresMes(programarTodo());           /* la MISMA P del Resumen gerencial (toda la cartera) */
+  if(n){bitacora('Historia de la cartera: '+n+' foto(s) de mes guardadas al abrir la app ('+quienFirma()+')');save()}
   return n}
 function cierresMesHTML(){const C=cierresMes();const yms=Object.keys(C).sort().reverse();
   return `<div class="panel"><h3>Historia de la cartera <span class="note">${yms.length} ${yms.length===1?'mes guardado':'meses guardados'} · se guarda solo, para poder comparar más adelante</span></h3><div class="body">
@@ -9441,9 +9472,9 @@ function vTin(el){
     ${recs.map(r=>`<tr><td class="mname">${esc(r.n)}<br><span class="mut">${num(r.cap)} kg</span></td>${dias.map(d=>{
       const bs=banos.filter(b=>b.rec===r.id&&b.dia===d).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);const cont=banos.filter(b=>b.rec===r.id&&b.dia&&b.dia<d&&diasBano(b,r).includes(d));
       return `<td data-rec="${r.id}" data-dia="${d}" ondragover="ddOver(event)" ondragleave="ddOut(event)" ondrop="soltarBano(event,'${r.id}','${d}')" style="min-width:150px">${bs.map(b=>{const bg=hexColor(b.color);return `<div class="bath b-${b.fam} ${b.est==='bajo'?'low':b.est==='aprob'?'aprob':''}" ${b.confirmado?`draggable="true" ondragstart="arrastrarBano(event,'${b.id}')" ondragend="this.style.opacity=1"`:''} style="background:${bg};color:${textoSobre(bg)};${b.confirmado?'cursor:grab':''}" title="${esc(b.ops.join(', '))}${b.confirmado?' · arrastra para mover de máquina o día':''}">
-        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h${diasBano(b,r).length>1?' · día 1 de '+diasBano(b,r).length:''} <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}${cont.map(b=>{const bg=hexColor(b.color);const ds=diasBano(b,r);return `<div class="bath cont" style="background:${bg};color:${textoSobre(bg)};opacity:.8;border-left:4px solid rgba(0,0,0,.35)" title="continúa ${esc(b.colorN)} · día ${ds.indexOf(d)+1} de ${ds.length}"><span class="c">↳ ${esc(b.colorN)}</span>sigue · día ${ds.indexOf(d)+1} de ${ds.length} · ${b.horas} h</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
+        <span class="c">${esc(b.colorN)}${b.cod?' <span style="font-weight:400;opacity:.85;font-size:10px">'+esc(b.cod)+'</span>':''}${b.reproc?' <span style="font-weight:400;opacity:.9">· REPROCESO</span>':''}${b.completado?' <span style="font-weight:400;opacity:.8">· completado</span>':''}</span>${num(b.kg,0)} kg crudo · ${Math.round(b.fill*100)}% · sale ${num(banoAcabado(b),0)} kg · ${b.horas} h${diasBano(b,r).length>1?' · día 1 de '+diasBano(b,r).length:''} <a class="no-print" style="color:inherit;opacity:.85;text-decoration:underline;cursor:pointer;font-size:10px;font-weight:600" onclick="event.stopPropagation();imprimirAlbaranBanoId('${b.id}')">IMPRIMIR</a>${b.confirmado?` <a class="no-print bath-x" title="Quitar este baño del programa" onclick="event.stopPropagation();deshacerBanoConf('${b.id}')">✕</a>`:''}${selMaquinaBano(b)}<br><span style="opacity:.85">${b.telas.map(nTela).map(esc).join(' + ')}</span>${lineaReparto(b,P)}</div>`}).join('')}${cont.map(b=>{const bg=hexColor(b.color);const ds=diasBano(b,r);return `<div class="bath cont" style="background:${bg};color:${textoSobre(bg)};opacity:.8;border-left:4px solid rgba(0,0,0,.35)" title="continúa ${esc(b.colorN)} · día ${ds.indexOf(d)+1} de ${ds.length}"><span class="c">↳ ${esc(b.colorN)}</span>sigue · día ${ds.indexOf(d)+1} de ${ds.length} · ${b.horas} h</div>`}).join('')}</td>`}).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · arrastra una tarjeta a otra máquina o día para moverla. La máquina se elige al confirmar el baño en Armar baños.</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
+    <div class="legend"><span>Cada baño se pinta con el color de su Pantone (de claro a oscuro en el día). ✕ quita el baño del programa · arrastra una tarjeta a otra máquina o día para moverla. La máquina se elige al confirmar el baño en Armar baños y se puede cambiar en la tarjeta (desplegable, permiso «programa»).</span></div>`:'<div class="empty">Carga órdenes para armar el programa de baños.</div>';
   el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn" onclick="congelar()">Guardar programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día.</p>
   ${errs.length?`<div class="warn">${errs.map(b=>`<b>${esc(b.colorN)}</b> en ${b.telas.map(nTela).map(esc).join(' + ')}: no hay máquina activa apta para esa tela.`).join('<br>')}</div>`:''}
@@ -9742,16 +9773,27 @@ function arrastrarBano(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTr
 function soltarBano(ev,rec,dia){ev.preventDefault();const id=ev.dataTransfer.getData('text/plain');if(!id)return;document.querySelectorAll('.mgrid td.dd-over').forEach(x=>x.classList.remove('dd-over'));moverBano(id,rec,dia)}
 function ddOver(ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';ev.currentTarget.classList.add('dd-over')}
 function ddOut(ev){ev.currentTarget.classList.remove('dd-over')}
-function moverBano(id,rec,dia){const bc=(S.banos_conf||[]).find(b=>b.id===id);if(!bc)return;
+function moverBano(id,rec,dia,kgMotor){const bc=(S.banos_conf||[]).find(b=>b.id===id);if(!bc)return;
   if(dia&&/^d{4}-d{2}-d{2}$/.test(dia))bc.diaFijo=dia;
   if(!rec){delete bc.recFijo;delete bc.rec;delete bc.diaFijo;bitacora('Baño '+(bc.cod||bc.colorN)+' vuelve a máquina y día automáticos')}
-  else{const r=R(rec);const tRef=T((bc.telas||[]).find(t=>T(t)&&T(t).pique))||{};const cap=tRef.pique?(r.capPique||0):(r.cap||0);const kg=Object.values(bc.opsKg||{}).reduce((a,k)=>a+k,0);
-    if(cap&&kg>cap*(1+(prm('tolGrande',5))/100)+1e-6&&!confirm('El baño tiene '+num(kg)+' kg y '+r.n+' admite '+num(cap)+' kg. ¿Moverlo igual?'))return;
+  else{const r=R(rec);const tRef=T((bc.telas||[]).find(t=>T(t)&&T(t).pique))||{};const cap=tRef.pique?(r.capPique||0):(r.cap||0);const kg=(+kgMotor>0)?+kgMotor:Object.values(bc.opsKg||{}).reduce((a,k)=>a+k,0);   /* el MISMO kg que muestra el desplegable */
+    if(cap&&kg>cap*(1+(prm('tolGrande',5))/100)+1e-6&&!confirm('El baño tiene '+num(kg)+' kg y '+r.n+' admite '+num(cap)+' kg. ¿Moverlo igual?')){render();return}   /* cancelado: redibujar para que el desplegable no quede en la máquina que no se eligió */
     bc.rec=rec;bc.recFijo=true;bitacora('Baño '+(bc.cod||bc.colorN)+' movido a '+r.n+(dia?' el '+fmtDia(dia):''))}
   PLAN=null;PLAN_ALL=null;save();render()}
-function selMaquinaBano(b){if(!b.confirmado)return'';const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&(b.telas||[]).every(t=>compatible(r,t)));
-  const bc=(S.banos_conf||[]).find(x=>x.id===b.id)||{};
-  return ` <select class="no-print" title="Mover este baño a otra máquina" style="font-size:10px;padding:1px 3px;border-radius:4px;color:inherit;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)" onclick="event.stopPropagation()" onchange="moverBano('${b.id}',this.value)"><option value="" ${bc.recFijo?'':'selected'} style="color:#000">auto</option>${recs.map(r=>`<option value="${r.id}" ${bc.recFijo&&bc.rec===r.id?'selected':''} style="color:#000">→ ${esc(r.n)}</option>`).join('')}</select>`}
+function selMaquinaBano(b){if(!b.confirmado||b.plana||(PERFIL&&PERFIL.modo==='ver'))return''; /* la plana lleva máquina fija; quién mueve = quien hoy puede arrastrar la tarjeta (no cambia), salvo un perfil «ver» */
+  const bc=(S.banos_conf||[]).find(x=>x.id===b.id)||{};const telas=b.telas||[];
+  /* las MISMAS candidatas que programar(): si ofrecemos una que el motor descarta, elegirla no hace nada */
+  const tRef=T(telas.find(t=>T(t)&&T(t).pique)||telas.find(t=>T(t)&&T(t).fam==='IND')||telas[0])||{};
+  const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin'&&telas.every(t=>compatible(r,t))&&(!tRef.pique||(r.capPique||0)>0));
+  /* capacidad sin configurar NO es 0: se dice, y no se evalúa «no cabe» porque no se sabe */
+  const capOf=r=>{const v=tRef.pique?r.capPique:r.cap;return (v===undefined||v===null||v==='')?null:+v};
+  const capTxt=r=>{const c=capOf(r);return c===null?'sin capacidad configurada':num(c)+' kg'+(tRef.pique?' piqué':'')};
+  const tolG=1+(prm('tolGrande',5))/100;const prof=profundidadDe(C(b.color));const kgB=+b.kg||0;
+  const marca=r=>{const av=[];const c=capOf(r);if(c!==null&&!(c*tolG>=kgB-1e-6))av.push('no cabe');
+    const rol=r.rolColor;if(rol&&rol!=='ambos'&&prof&&prof!=='medio'&&rol!==prof)av.push('máquina de '+rol+'s');
+    return av.length?' ⚠ '+av.join(' · '):''};
+  if(!recs.length)return ' <span class="no-print" style="font-size:10px;opacity:.85">sin máquina apta para estas telas</span>';
+  return ` <select class="no-print" draggable="false" ondragstart="event.stopPropagation();event.preventDefault()" title="Mover este baño de máquina · ${num(kgB)} kg · color ${prof?esc(prof):'sin profundidad clasificada'}. Capacidad y rol de color salen de Configuración → Centros y recursos; tolerancia ${num(prm('tolGrande',5))}% (tolGrande). ⚠ = no cabe o no es la máquina de ese color: se permite igual y queda en la bitácora." style="font-size:10px;padding:1px 3px;border-radius:4px;color:inherit;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)" onclick="event.stopPropagation()" onchange="moverBano('${b.id}',this.value,null,${kgB})"><option value="" ${bc.recFijo?'':'selected'} style="color:#000">auto</option>${recs.map(r=>`<option value="${r.id}" ${bc.recFijo&&bc.rec===r.id?'selected':''} style="color:#000">→ ${esc(r.n)} (${capTxt(r)})${esc(marca(r))}</option>`).join('')}</select>`}
 function imprimirAlbaranBanoId(bId){const b=banoDe(bId);if(!b){alert('Este baño ya no está en el programa.');return}
   const detalle=[];Object.entries(b.opsKg||{}).forEach(([oid,kgOrd])=>{const o=S.ordenes.find(x=>x.id===oid);if(!o||kgOrd<=0)return;
     const porTela=[];let tot=0;(o.telas||[]).forEach(tl=>{if(!necesitaTin(tl)||tl.kg<=0)return;if(!(b.telas||[]).includes(tl.tela))return;if(colorBano(o,tl)!==b.color)return;const k=kgTelaTin(o,tl);if(k<=0)return;porTela.push({tela:tl.tela,k});tot+=k});
