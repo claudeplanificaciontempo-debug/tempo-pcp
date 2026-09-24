@@ -8279,6 +8279,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check('OTF5: si el archivo trae la OT en otro estado (reabierta en Odoo), manda el archivo',!!o.ot.corte&&o.ot.corte.estado==='en proceso',o.op+' '+(o.ot.corte&&o.ot.corte.estado))}
     else __check('OTF5: hay una orden con corte terminado por OT para probar la reapertura',false);
     OT=planOT(otRows,'OT_completo.xlsx');aplicarOT();await __p(30);window.alert=al;OT=null}}
+  /* 24-sep: ruta en lote desde la lista de Órdenes (misma ventana y misma selección que Rutas), recuadro alto y estado en varias líneas */
+  {const bakP=page,bakT=ORDF.tab;ORDF.tab='ord';RUT.sel=new Set();page='ordenes';render();
+   const sc=document.querySelector('#p-ordenes .scroll.alto');const sem=document.querySelector('#p-ordenes td.td-envuelve .sem');
+   __check('OL1: la lista de Órdenes baja hasta el final de la pantalla (recuadro alto, más de 520 px)',!!sc&&parseFloat(getComputedStyle(sc).maxHeight)>520,sc&&getComputedStyle(sc).maxHeight);
+   __check('OL2: el Estado se parte en líneas en esta lista',!!sem&&getComputedStyle(sem).whiteSpace==='normal');
+   if(puedeEditarRuta()){const l=listaOrdActual().filter(entraRutaLote);
+     __check('OL3: con permiso de rutas hay casilla por orden y la barra «Definir ruta para las marcadas»',!!document.getElementById('ord-acciones')&&document.querySelectorAll('#p-ordenes tbody input[type=checkbox]').length>0);
+     selTodoOrdRut(true);__check('OL4: «marcar todas» marca solo las que admite la ruta en lote (sin las de prenda terminada)',RUT.sel.size===l.length&&l.length>0&&[...RUT.sel].every(id=>entraRutaLote(S.ordenes.find(o=>o.id===id))),RUT.sel.size+' / '+l.length);
+     abrirRutaLote();const tm=(document.getElementById('modal')||{}).innerText||'';__check('OL5: abre la MISMA ventana de ruta en lote con las marcadas',RLOTE.ids.length===RUT.sel.size&&/Definir ruta para las marcadas/.test(tm));cerrar();
+     ORDF.tab='rutas';render();__check('OL6: lo marcado en Órdenes también queda marcado en Rutas',(document.getElementById('rut-sel-n')||{}).textContent===String(RUT.sel.size));
+     ORDF.tab='ord';render();selTodoOrdRut(false);__check('OL7: desmarcar vacía la selección',RUT.sel.size===0)}
+   else __check('OL3: el perfil de las pruebas puede editar rutas',false);
+   ORDF.tab=bakT;page=bakP;render()}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

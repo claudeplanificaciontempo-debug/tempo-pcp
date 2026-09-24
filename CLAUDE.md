@@ -1489,6 +1489,15 @@ archivo la trae en otro estado (reabierta), manda el archivo. `otTerminadasQueNo
 y en el registro de cargas. Con los archivos reales del 24-sep: 0 pérdidas, 336 pasos conservados en 175 órdenes. Recomendación a la usuaria:
 exportar las OT sin filtrar por estado (lo filtrado no trae lo que se terminó desde la última carga). Pruebas OTF1–OTF5.
 
+**Órdenes: ruta en lote desde la lista, recuadro alto y estado en líneas (24-sep-2026, usuaria: «déjame editar la ruta masivamente, uno a uno
+nos vamos a demorar», «el recuadro es muy chiquito», «que el estado baje como las telas, todo en una pantalla»).** La lista de Órdenes lleva
+casilla por orden y por grupo (`grpSt('ord').selFn='selGrupoOrdRut'`) y la barra `barraSelOrdHTML` con «Definir ruta para las marcadas»
+(`abrirRutaLote`) y «Confirmar como están» (`confirmarRutasSel`): **la misma ventana y la misma selección (`RUT.sel`) que Órdenes → Rutas**, no
+un segundo camino; solo con `puedeEditarRuta()` y solo en `entraRutaLote(o)` (= `rutasBase`: abiertas sin «prenda terminada»). `listaOrdActual()`
+es la única definición de la lista visible (pantalla, redibujo y «marcar todas»). `.scroll.alto` (alto hasta el final de la pantalla) y
+`.td-envuelve .sem{white-space:normal}` (el estado se parte en líneas; también el color y las etiquetas de la OP): a 1.510 px la tabla cabe
+sin moverse a los lados. Pruebas OL1–OL7.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

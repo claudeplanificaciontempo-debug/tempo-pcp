@@ -88,6 +88,8 @@ tbody tr:hover td{background:#F8FAFA}
 td.num,th.num{text-align:right}
 td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .scroll{max-height:520px;overflow:auto}
+.scroll.alto{max-height:calc(100vh - 150px);min-height:360px}   /* listas de trabajo largas: bajan hasta el final de la pantalla (24-sep) */
+.td-envuelve .sem{white-space:normal}   /* el estado se parte en líneas en las listas anchas (24-sep) */
 .empty{padding:36px 14px;text-align:center;color:var(--ink3)}
 .empty p{margin:0 0 14px}
 
@@ -944,7 +946,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 13:03';
+const APP_BUILD='2026-09-24 13:38';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -9125,7 +9127,7 @@ function rutasBase(){return S.ordenes.filter(o=>abierta(o)&&!rutaNoAplica(o))}
 function enChipRut(o){const v=RUT.ver;return v==='pend'?!rutaConfirmada(o):v==='conf'?rutaConfirmada(o):true}   /* el chip Por confirmar / Confirmadas / Todas */
 function rutasLista(){const q=normTxt(RUT.q);return rutasBase().filter(o=>enChipRut(o)&&faseOkFiltro(RUT.fases,o.fase)&&matchBusq(o,q,'RUT.q'))}
 function cuentasFaseRut(base,qF){const c={};base.forEach(o=>{const f=o.fase||'Sin fase';if(!c[f])c[f]={n:0,pz:0}});base.filter(o=>enChipRut(o)&&matchBusq(o,qF,'RUT.q')).forEach(o=>{const x=c[o.fase||'Sin fase'];x.n++;x.pz+=+o.cant||0});return c}   /* por fase: órdenes y prendas del chip puesto (sin el filtro de fases, para que no se vacíe al desmarcar) */
-function rutasBarraSel(){const n=RUT.sel.size;const el=document.getElementById('rut-sel-n');if(el)el.textContent=n;['rut-btn-def','rut-btn-conf'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!n})}
+function rutasBarraSel(){const n=RUT.sel.size;['rut-sel-n','ord-sel-n'].forEach(i=>{const el=document.getElementById(i);if(el)el.textContent=n});['rut-btn-def','rut-btn-conf','ord-btn-def','ord-btn-conf'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!n})}
 function togSelRut(id,on){if(on)RUT.sel.add(id);else RUT.sel.delete(id);rutasBarraSel()}   /* sin redibujar: la lista no se mueve al marcar una fila */
 function selGrupoRut(key,on){const ids=((grpSt('rut').mapa)||{})[key]||[];ids.forEach(id=>on?RUT.sel.add(id):RUT.sel.delete(id));conScrollGRP('rut',render)}
 function togFaseRUT(f){togSet(RUT,'fases',f)}
@@ -9661,11 +9663,22 @@ function togFaseOrdF(f){ORDF.fases=ORDF.fases||new Set();if(ORDF.fases.has(f))OR
 /* selector compacto de fases con casillas, agrupadas por etapa; sel=null o vacío = todas */
 function selFases(fasesAll,sel,varName,togFn,cuentas){return filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)}
 function togFaseOrd(f){ORDF.abiertas=ORDF.abiertas||new Set();if(ORDF.abiertas.has(f))ORDF.abiertas.delete(f);else ORDF.abiertas.add(f);render()}
+/* la lista que se ve en Órdenes (estado, edición, fases y buscador): una sola definición para la pantalla, el redibujo y «marcar todas» */
+function listaOrdActual(){const q=normTxt(ORDF.q);return S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q,'ORDF.q'))}
+/* ruta en lote desde la lista de Órdenes (24-sep): la misma selección y la misma ventana que Órdenes → Rutas */
+function entraRutaLote(o){return !!o&&abierta(o)&&!rutaNoAplica(o)}   /* = rutasBase: las de prenda terminada no se revisan */
+function selGrupoOrdRut(key,on){const ids=((grpSt('ord').mapa)||{})[key]||[];ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(on){if(entraRutaLote(o))RUT.sel.add(id)}else RUT.sel.delete(id)});conScrollGRP('ord',render)}
+function selTodoOrdRut(on){if(on)listaOrdActual().filter(entraRutaLote).forEach(o=>RUT.sel.add(o.id));else RUT.sel=new Set();conScrollGRP('ord',render)}
+function barraSelOrdHTML(lista){const n=RUT.sel.size;const nPuede=lista.filter(entraRutaLote).length;
+  return `<div class="sub-blk" id="ord-acciones" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 12px 8px"><b><span id="ord-sel-n">${n}</span> marcadas</b>
+   <button class="btn sm" id="ord-btn-def" ${n?'':'disabled'} onclick="abrirRutaLote()">Definir ruta para las marcadas</button><button class="btn ghost sm" id="ord-btn-conf" ${n?'':'disabled'} onclick="confirmarRutasSel()" title="deja confirmada la ruta que ya tiene cada una, sin cambiar ningún paso">Confirmar como están</button>
+   <button class="btn ghost sm" onclick="selTodoOrdRut(true)">Marcar todas las de la lista (${nPuede})</button><button class="btn ghost sm" onclick="selTodoOrdRut(false)">Desmarcar</button>
+   <span class="mut" style="font-size:var(--fs-xs)">Marca órdenes sueltas o un grupo entero (casilla en la cabecera del grupo) y define la ruta de todas de una vez. Es la misma ruta en lote de Órdenes → Rutas: lo marcado aquí también queda marcado allá.${lista.length>nPuede?' Las de prenda terminada (fase «sin carga») no se marcan: su ruta no se revisa.':''}</span></div>`}
 function vOrdenes(el){
   if(ORDF.tab==='rutas'){el.innerHTML=`<div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips">${[['ord','Órdenes'],['rutas','Rutas']].map(([k,n])=>`<span class="chip ${ORDF.tab===k||(k==='ord'&&!ORDF.tab)?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div></div>`+rutasHTML();return}
   const P=S.ordenes.length?programar():null;
   const cnt={};S.ordenes.forEach(o=>{const e=(o.estado||'plan')==='standby'?'cerrada':(o.estado||'plan');cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
-  const lista=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&(matchBusq(o,q,'ORDF.q')));
+  const lista=listaOrdActual();
   const cntEd={porEditar:0,editadas:0,todas:0};S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).forEach(o=>{cntEd.todas++;if(matchEdicionOrd(o,'editadas'))cntEd.editadas++;else cntEd.porEditar++});
   const fasesAll=[...new Set(S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).map(o=>o.fase||'Sin fase'))].sort((a,b)=>cmpFases(a,b));
   ORDF.fases=podarFases(ORDF.fases,fasesAll);   // conserva el centinela: «ninguna» no se convierte en «todas»
@@ -9675,25 +9688,28 @@ function vOrdenes(el){
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     ${grpSelHTML('ord')}</div></div>`;
+  const conSel=puedeEditarRuta();const NC=conSel?12:11;const gO=grpSt('ord');
+  if(conSel){gO.selFn='selGrupoOrdRut';gO.selChk=ids=>{const ok=(ids||[]).filter(id=>entraRutaLote(S.ordenes.find(x=>x.id===id)));return !!(ok.length&&ok.every(id=>RUT.sel.has(id)))}}else{gO.selFn=null;gO.selChk=null}
   const filaOrden=o=>{const ro=(P&&P.ordenes[o.id])||{};
-    return `<tr><td style="white-space:nowrap">${fotoMini(o)}${o.op?esc(o.op):'<span class="tag t-aviso">previsión</span>'}${o.sinLanzar?' <span class="tag t-aviso" title="orden sin número de WH en Odoo: cuenta en el plan, no se libera ni se programa">sin lanzar</span>':''}${tagExcedente(o)}</td><td>${esc(o.ref||'')}</td><td title="${esc(nombreCat(K(o.cat)))}">${esc((K(o.cat)||{}).n||'—')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'?')}</td>
+    return `<tr>${conSel?(entraRutaLote(o)?`<td><input type="checkbox" ${RUT.sel.has(o.id)?'checked':''} onchange="togSelRut('${o.id}',this.checked)" title="marcar para definir su ruta en lote"></td>`:'<td class="mut" title="prenda terminada o cerrada: su ruta no se revisa">—</td>'):''}<td><span style="white-space:nowrap">${fotoMini(o)}${o.op?esc(o.op):'<span class="tag t-aviso">previsión</span>'}</span>${o.sinLanzar?' <span class="tag t-aviso" title="orden sin número de WH en Odoo: cuenta en el plan, no se libera ni se programa">sin lanzar</span>':''}${tagExcedente(o)}</td><td>${esc(o.ref||'')}</td><td title="${esc(nombreCat(K(o.cat)))}">${esc((K(o.cat)||{}).n||'—')}</td><td style="min-width:80px;max-width:130px">${dotColor(o.color)}${esc((C(o.color)||{}).n||'?')}</td>
       <td class="num">${num(o.cant)}</td>
       <td>${(o.telas||[]).map(t=>`${esc(nTela(t.tela))} ${t.ud==='m'?num(t.m,0)+' m <span class="mut">(plana)</span>':num(t.kg,1)+' kg'}${t.ext?' <span class="mut">('+(t.ext==='stock'?'stock':'ext')+')</span>':''}${t.color&&t.color!==o.color?' <span class="mut">· '+esc((C(t.color)||{}).n||'')+'</span>':''}`).join('<br>')||'<span class="tag t-alerta">sin tela</span>'}</td>
-      <td style="white-space:nowrap">${estadoSemaforoHTML(o,P)}${o.samProv?' <span class="tag t-aviso" title="tiempos provisionales">prov.</span>':''}</td>
+      <td class="td-envuelve" style="min-width:110px;max-width:170px">${estadoSemaforoHTML(o,P)}${o.samProv?' <span class="tag t-aviso" title="tiempos provisionales">prov.</span>':''}</td>
       <td><span class="tag ${faseNum(o.fase)>=8?'t-ok':faseNum(o.fase)>=4?'t-medio':faseNum(o.fase)>=1?'t-aviso':'t-lavado'}" title="${esc(o.fase||'')}">${o.fase?esc(faseNombre(o.fase)):'—'}</span></td>
       <td style="font-size:var(--fs-xs);min-width:190px">${rutaCeldaHTML(o)}</td>
       <td style="white-space:nowrap">${o.fecha}</td>
       <td style="white-space:nowrap">${puedeEditarRuta()&&!rutaLista(o)&&pasosProCompleta(o).length?`<button class="btn sm" onclick="rutaOkFila('${o.id}')" title="la ruta está bien tal cual: se confirma sin abrir la ficha (${esc(pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(nCen).join(' → '))})">✓ Ruta ok</button> `:''}${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
-  const cabT=`<thead><tr><th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Ruta</th><th>Entrega</th><th></th></tr></thead>`;
+  const cabT=`<thead><tr>${conSel?'<th title="marca órdenes para definir su ruta en lote">✓</th>':''}<th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Ruta</th><th>Entrega</th><th></th></tr></thead>`;
   /* la lista de Órdenes se puede repintar sola, sin tocar el buscador (redibujo parcial) */
   const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
-    const l2=S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&matchEdicionOrd(o,ORDF.edicion)&&faseOkFiltro(ORDF.fases,o.fase)&&matchBusq(o,q2,'ORDF.q'));
+    const l2=listaOrdActual();
     return `<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]}${ORDF.edicion&&ORDF.edicion!=='todas'?' · '+EDICION_ORD[ORDF.edicion]:''} <span class="note">${l2.length} órdenes · ${num(l2.reduce((a,o)=>a+ +o.cant,0))} prendas${l2.length>600?' · se muestran 600':''}</span></h3>`
-     +`<div class="scroll" data-grp-scroll="ord"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,11)||'<tr><td colspan="11" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
+     +(conSel?barraSelOrdHTML(l2):'')
+     +`<div class="scroll alto" data-grp-scroll="ord"><table>${cabT}<tbody>${filasGRP('ord',l2.slice(0,600),filaOrden,NC)||'<tr><td colspan="'+NC+'" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
      +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+'), la edición ('+(EDICION_ORD[ORDF.edicion]||'todas')+') y el filtro de fases')};
   listaRegistrar('ORDF.q',listaOrdHTML);
   let rows;
-  rows=filasGRP('ord',lista.slice(0,600),filaOrden,11);
+  rows=filasGRP('ord',lista.slice(0,600),filaOrden,NC);
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips" style="margin-right:10px">${[['ord','Órdenes'],['rutas','Rutas'+(rutasPorDefinir().length?' · '+rutasPorDefinir().length:'')]].map(([k,n])=>`<span class="chip ${(ORDF.tab||'ord')===k?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div>
     ${puede('ordenes')?`<button class="btn tint tb" onclick="mActualizarDatos(1)">${ICO.sync} Actualizar datos</button><button class="btn ghost" onclick="mReporteTarea()">Reporte de la última carga</button><button class="btn" onclick="mOrden()">${ICO.plus} Nueva orden</button>`:''}</div>
@@ -9723,7 +9739,7 @@ function vOrdenes(el){
   ${filtros}
   <div data-lista="ORDF.q"><div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]} <span class="note">${lista.length} órdenes · ${num(lista.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(lista.reduce((a,o)=>a+kgPendiente(o),0))} kg crudo por tejer${lista.length>600?' · se muestran 600, usa el buscador':''}</span>
     <span class="spacer"></span></h3>
-  ${S.ordenes.length?`<div class="scroll" data-grp-scroll="ord"><table>${cabT}<tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
+  ${conSel&&S.ordenes.length?barraSelOrdHTML(lista):''}${S.ordenes.length?`<div class="scroll alto" data-grp-scroll="ord"><table>${cabT}<tbody>${rows}</tbody></table></div>${avisoFueraDeBaseHTML('ORDF.q',lista,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+') y el filtro de fases')}`
   :`<div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div>`}</div></div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas <span class="note">registro completo en Configuración → Órdenes y materiales</span></h3><div class="body">
     ${S.cargas.slice().sort((x,y)=>x.ts<y.ts?1:-1).slice(0,10).map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--rule2)"><div><b>${new Date(c.ts).toLocaleString('es-EC')}</b> · ${esc(TIPOS_CARGA[c.tipo]||'Actualizar desde Odoo (retirado)')} <span class="mut">· ${esc(c.usuario||'')} · ${esc(c.archivo||'')}</span> — ${esc(resumenCargaTxt(c))}</div>
