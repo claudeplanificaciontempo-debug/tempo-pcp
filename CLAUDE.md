@@ -1431,14 +1431,44 @@ que fija `CEN.solo`; el título dice «Ítem / Sub-área». Un centro sin subpro
 Planificación, Programación, Ejecución) siguen a la derecha del título. Esto reemplaza lo del menú del 16-sep («un sub-ítem por sub-área»).
 Pruebas MN2/MN3 reescritas.
 
-**Servidor interno (24-sep-2026, la usuaria: «hay un equipo Ubuntu en la red con dos aplicaciones; ¿cómo se alberga ahí?»).** Opción 1: solo
-la pantalla adentro; los datos siguen en Supabase. `despliegue-interno/instalar.sh` (se baja con curl desde raw.githubusercontent y se corre con
-`sudo bash instalar.sh 8080`): revisa que el puerto esté libre, usa el nginx o Apache que ya haya (si no hay, instala nginx sin su sitio de
-ejemplo del 80), sitio en `/var/www/tempo-pcp` abierto solo a redes privadas, actualizador `/opt/tempo-pcp/actualizar.sh` cada 15 minutos
-(comprueba `APP_BUILD` y el cierre del HTML antes de reemplazar; guarda las últimas 30 en `/var/lib/tempo-pcp/anteriores`), `--quitar`
-para deshacer. Guía para sistemas: `despliegue-interno/GUIA_SERVIDOR_UBUNTU.md`. `.gitattributes` deja los `.sh` con saltos de línea de Linux.
-Depende de que el repositorio siga público (si se hace privado, el actualizador necesita un token). La dirección pública sigue hasta que la
-usuaria decida apagarla. Falta en Supabase: agregar la dirección interna en Redirect URLs.
+**Servidor interno (24-sep-2026, la usuaria: «hay un equipo Ubuntu en la red con dos aplicaciones; ¿cómo se alberga ahí?» y «el 80 y el
+8080 ya están usados»).** Opción 1: solo la pantalla adentro; los datos siguen en Supabase. `despliegue-interno/instalar.sh` (se baja con curl de
+raw.githubusercontent y se corre con `sudo bash instalar.sh`, **sin número**). **Elige solo el puerto** (`PUERTO_DESDE` 8790, rango poco usado): ocupado =
+lo que escucha `ss`, los `listen`/`Listen`/`<VirtualHost>` activos de nginx/Apache, los destinos «algo:NNNN» / `PORT=` / `--port` en nginx, Apache,
+Caddy y `/etc/systemd/system`, y los `PortBindings` de Docker aunque el contenedor esté apagado; **pregunta antes de tocar nada** (`/dev/tty`,
+`TEMPO_TTY` en pruebas; `--si` la salta); al volver a correrlo reusa su puerto (`puerto_actual`) salvo que ahora lo tenga otro proceso. Usa el
+nginx o Apache que esté FUNCIONANDO y solo le agrega un sitio: nginx en `/etc/nginx/conf.d/tempo-pcp.conf` (lo incluyen el de Ubuntu y el de
+nginx.org; la versión de la mañana usaba sites-available y se muda sola), comprobado con `nginx -T`; Apache con la marca `# tempo-pcp` en la
+línea de ARRIBA del `Listen` (Apache no admite comentarios al final) y **sin `a2enmod`**; el `Listen` se escribe DESPUÉS del sitio y `quitar_apache_listen` solo borra la marca + `Listen <nuestro puerto>` (con
+`--follow-symlinks`, y solo si hay marca) (Cache-Control dentro de `<IfModule mod_headers.c>`: habilitar
+el módulo cambiaría a las otras apps). Si no hay servidor web funcionando: nginx apagado con otros sitios → se detiene; si no, lo enciende (o lo
+instala con `policy-rc.d`, `NEEDRESTART_MODE=l` y `DPkg::Lock::Timeout`) y **aparta** (no borra) el sitio de ejemplo solo si es el enlace del
+paquete Y su md5 es el de `dpkg-query … nginx-common` (un default editado = otro sitio → se detiene); un nginx/Apache funcionando FUERA de systemd
+(visto en `ss`) también lo detiene; y no enciende nginx si abriría otros puertos. **Baja el sistema ANTES de tocar el servidor web** y, desde que escribe algo, toda falla
+pasa por `deshacer`: quita su sitio (y su `Listen`), devuelve el default, deja nginx apagado si lo estaba y, si ya recargó (`RECARGADO`),
+recarga o vuelve a arrancar el servidor y dice si quedó funcionando; **una reinstalación que falla devuelve la anterior** (copia en `$LIB/antes`, `restaurar_antes`) en vez de borrarla,
+y Ctrl-C/SIGHUP/SIGTERM en los pasos 5-6 también pasan por `deshacer` (`trap … INT TERM HUP`, bandera `DESHACIENDO`); candado del instalador
+(`$LIB/.instalando`). Antes de recargar Apache revisa que ningún `Listen` suyo (aunque sea de otra app, pendiente) lo tenga otro proceso
+(el graceful lo apagaría) y con `apache2ctl -S` que cargó el vhost; si nginx/Apache estaba funcionando al empezar y alguien lo apagó durante
+la instalación, no lo enciende; si nada cambió (misma huella, mismo puerto) no recarga. Después de recargar **exige que el servidor esté activo y dueño del puerto**
+(`dueno_puerto` con `ss -ltnp`): el graceful de Apache devuelve 0 aunque luego se apague por no poder abrir el puerto, y eso tumbaría a las otras
+apps. Un código HTTP distinto de 200 queda solo como aviso (`curl --noproxy`). `$LIB/estado` guarda cómo estaba el equipo en la PRIMERA
+instalación (nginx instalado/encendido por él, habilitado antes) y `--quitar` lo devuelve así, **pero nunca apaga un nginx que ahora sirve a otros sitios** (`otros_sitios_nginx` + `nginx_listens`) ni devuelve
+el ejemplo del 80 a un nginx habilitado; recarga solo el servidor que tenía algo nuestro (`recargar_y_comprobar`). ufw: se anotan en `$LIB/ufw`
+solo las reglas que el instalador agregó de verdad («Rule added») y solo esas se borran, nunca si el puerto ahora es de otra app; el puerto
+de la última instalación buena queda en `$LIB/puerto`. Docker: se le pregunta solo si está funcionando (con `timeout`); si está apagado se
+leen sus `hostconfig.json` (preguntarle lo despertaría por el socket). Sin terminal y sin `--si` no instala (la pregunta es la última
+salvaguarda: solo Enter/s/sí siguen). apt con `--no-remove`. `umask 022`. Actualizador `/opt/tempo-pcp/actualizar.sh`
+cada 15 min: `flock`, exige `APP_BUILD` y que el archivo TERMINE en `</html>` (index.html tiene otro `</html>` dentro de una plantilla), guarda
+las últimas 30 (la primera vez no hay copias y no es error: la versión publicada de la mañana abortaba ahí y dejaba la instalación a medias)
+y deja el **latido** `revisado.txt` (segundos) en cada revisión buena: `revisarLatidoServidor()` (desde `revisarVersion`, nunca en github.io/netlify.app)
+avisa si pasan más de `prm(horasLatidoServidor,2)` horas — sin él, `revisarVersion` compara la copia interna consigo misma y nunca vería que
+quedó vieja. `iniciar()` avisa si no cargó la librería de Supabase (cdn.jsdelivr.net) en vez de dejar «Entrar» mudo. **Supabase: NO registrar la
+dirección interna http en Redirect URLs** (el enlace de recuperación viajaría sin cifrar): la recuperación cae en la Site URL pública; por eso la
+dirección pública NO se apaga mientras la interna no tenga HTTPS. Guía para sistemas: `despliegue-interno/GUIA_SERVIDOR_UBUNTU.md`.
+`.gitattributes` deja los `.sh` con saltos de Linux. **Simulador de servidor**: `bash test/instalador_simulado.sh` (nginx/Apache/Docker/ufw/apt/curl
+falsos en una raíz temporal, enlaces como archivos `SIMLINK:`; 38 escenarios + actualizador, 262 comprobaciones); correrlo antes de publicar
+cualquier cambio del instalador. Dos rondas de revisión adversarial el 24-sep: 18 + 17 hallazgos reales corregidos.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

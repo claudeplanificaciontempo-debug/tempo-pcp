@@ -944,12 +944,24 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 09:54';
+const APP_BUILD='2026-09-24 11:59';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
     if(m[1]!==APP_BUILD){let b=document.getElementById('aviso-version');if(!b){b=document.createElement('div');b.id='aviso-version';b.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:8px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.25)';document.body.appendChild(b)}
-      b.innerHTML='Estás viendo una <b>versión vieja</b> (v '+esc(APP_BUILD)+'). Publicada: v '+esc(m[1])+'. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>'}}catch(e){}}
+      b.innerHTML='Estás viendo una <b>versión vieja</b> (v '+esc(APP_BUILD)+'). Publicada: v '+esc(m[1])+'. <button class="btn sm" style="margin-left:8px" onclick="location.reload(true)">Recargar ahora</button>'}}catch(e){}
+  revisarLatidoServidor()}
+/* servidor interno (despliegue-interno/instalar.sh): su actualizador deja revisado.txt con la hora de la última revisión buena.
+   Si es más vieja que prm('horasLatidoServidor',2) horas, la copia interna dejó de actualizarse: se avisa. En el sitio público no hay latido. */
+function esSitioPublico(){return /(^|\.)github\.io$|(^|\.)netlify\.app$/.test(location.hostname)}
+async function revisarLatidoServidor(){if(esSitioPublico())return;
+  try{const r=await fetch('revisado.txt?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=(await r.text()).trim();
+    if(!/^\d{9,11}$/.test(t))return; // sin latido (p. ej. el servidor devuelve la página): no es el servidor interno
+    const ts=+t*1000,horas=prm('horasLatidoServidor',2),viejo=Date.now()-ts>horas*3600*1000;
+    let b=document.getElementById('aviso-latido');
+    if(!viejo){if(b)b.remove();return}
+    if(!b){b=document.createElement('div');b.id='aviso-latido';b.style.cssText='position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:99;background:var(--alerta);color:#fff;padding:8px 14px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.25)';document.body.appendChild(b)}
+    b.textContent='El servidor interno no trae versiones nuevas desde el '+new Date(ts).toLocaleString()+' (más de '+horas+' h). Avise a sistemas: revisar /var/lib/tempo-pcp/actualizar.log.'}catch(e){}}
 /* ---------- sesión ---------- */
 /* ---------- recuperar la contraseña: pedir el enlace y poner una nueva al volver ---------- */
 const MSG_RESET='Si el correo está registrado, te llegará un enlace. Revisa también spam.';
@@ -985,6 +997,7 @@ async function guardarPassNueva(){if(!sb)return;
 function esVueltaDeRecuperacion(){const h=String(location.hash||'')+'&'+String(location.search||'');return /type=recovery/.test(h)}
 async function iniciar(){
   if(SUPABASE_URL.startsWith('PEGA')){mostrarLogin('Falta configurar la conexión: abre el archivo y pega la URL y la clave del proyecto al inicio del script.');return}
+  if(typeof supabase==='undefined'){mostrarLogin('No se pudo cargar la conexión (cdn.jsdelivr.net). Revise internet o avise a sistemas.');return}
   sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   RECUPERANDO=esVueltaDeRecuperacion();
   sb.auth.onAuthStateChange((ev)=>{ // se escucha ANTES de mirar la sesión: el enlace del correo avisa por aquí
