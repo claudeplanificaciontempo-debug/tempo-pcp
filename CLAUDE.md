@@ -1470,6 +1470,16 @@ dirección pública NO se apaga mientras la interna no tenga HTTPS. Guía para s
 falsos en una raíz temporal, enlaces como archivos `SIMLINK:`; 38 escenarios + actualizador, 262 comprobaciones); correrlo antes de publicar
 cualquier cambio del instalador. Dos rondas de revisión adversarial el 24-sep: 18 + 17 hallazgos reales corregidos.
 
+**Archivo de tareas con los nombres internos de Odoo (24-sep-2026).** La exportación «compatible con importación» (la que trae la columna
+`id`, p. ej. `__export__.project_task_64104_…` → `normTareaId` da 64104) cambia TODAS las cabeceras a los nombres internos (`x_studio_many2one_field_RLFKj`,
+`stage_id`, `project_id`, `x_studio_ocd_1`…) y pone Técnica y Puntadas en otro orden; los valores son idénticos. `planTarea` busca cada columna con
+`columnaTareaEn(h,n)`: su nombre de siempre o cualquiera de la tabla **«Nombres de columna del archivo de tareas»** (Configuración → Órdenes y
+materiales, `columnasTareaHTML`/`setAliasColumnaTarea` con bitácora; `S.params.columnasTarea`, sin configurar = `COLUMNAS_TAREA_DEF`, los nombres
+internos de esa exportación). `plan.columnasPorAlias` lo cuenta y la vista previa lo dice; si falta una obligatoria (`COLUMNAS_TAREA_OBLIG`: OP, Fase,
+Fecha Entrega) `leerTarea` dice cuál (`columnasFaltantesTarea`). Medido con la exportación de tareas del 24-sep
+contra el volcado del 13-sep: 4.509 tareas todas con ID, 1.422 órdenes en alcance, freno de incompleto no salta (2,3 %), 3 WH con varias tareas en
+Odoo (25112, 25347, 24121: no se aplican). Estado OP nuevo `to_close` (2 órdenes, fase 8). Pruebas CT1–CT6.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
