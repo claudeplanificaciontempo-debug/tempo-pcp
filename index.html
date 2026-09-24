@@ -88,7 +88,12 @@ tbody tr:hover td{background:#F8FAFA}
 td.num,th.num{text-align:right}
 td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .scroll{max-height:520px;overflow:auto}
-.scroll.alto{max-height:calc(100vh - 150px);min-height:360px}   /* listas de trabajo largas: bajan hasta el final de la pantalla (24-sep) */
+.scroll.alto{max-height:calc(100vh - 150px);min-height:360px}
+.tab-pest{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px}   /* pestañas pequeñas de Mi centro (24-sep) */
+.tab-pest button{border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:18px;padding:7px 16px;font-size:16px;cursor:pointer;font-family:inherit}
+.tab-pest button.on{background:var(--t-primary);color:#fff;border-color:var(--t-primary)}
+.tab-pest button.on .mut{color:rgba(255,255,255,.85)}
+.tab-pest-info{margin-left:auto;font-size:14px}   /* listas de trabajo largas: bajan hasta el final de la pantalla (24-sep) */
 .td-envuelve .sem{white-space:normal}   /* el estado se parte en líneas en las listas anchas (24-sep) */
 .empty{padding:36px 14px;text-align:center;color:var(--ink3)}
 .empty p{margin:0 0 14px}
@@ -946,7 +951,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 14:00';
+const APP_BUILD='2026-09-24 15:18';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2187,14 +2192,14 @@ function solicitudesPisoHTML(){const l=solicitudesPiso();if(!l.length)return '';
     <td style="white-space:nowrap">${s.tipo==='fase'&&puedeFases()?`<button class="btn sm" onclick="aplicarSolicitudFase('${s.oid}','${s.id}')">aplicar</button> `:''}<button class="btn ghost sm" onclick="descartarSolicitudPiso('${s.oid}','${s.id}')">descartar</button></td></tr>`}).join('')}
    </tbody></table></div></div>`}
 /* --- cambio de fase desde el piso: observación de la tabla 15, sin texto libre --- */
-function mFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+function mFasePiso(oid,c){if(esVistaOperario()){alert(MSG_OPERARIO_FASE);return}const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   abrir(`<h3>Cambiar fase desde piso · ${esc(o.op)}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · fase actual <b>${esc(o.fase||'—')}</b> · ${esc(nCen(c))}</p>
    <label>Fase nueva</label><select id="fp-f">${fasesDisponibles().map(f=>`<option value="${esc(f)}" ${f===o.fase?'selected':''}>${esc(f)}</option>`).join('')}</select>
    <label style="margin-top:8px">Observación de piso (de la tabla 15)</label>${selMotivoHTML('fp-obs','piso')}
    <label style="margin-top:8px">Motivo <span class="mut">(solo si devuelves a una secuencia menor)</span></label>${selMotivoHTML('fp-m','fase')}
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Avanzar no pide motivo. La observación y el motivo salen de la tabla 15: no hay texto libre.</p></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="guardarFasePiso('${oid}','${c}')">Cambiar fase</button></div>`)}
-function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+function guardarFasePiso(oid,c){if(esVistaOperario()){alert(MSG_OPERARIO_FASE);return}const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   const f=(document.getElementById('fp-f')||{}).value;const obs=String((document.getElementById('fp-obs')||{}).value||'').trim();const m=String((document.getElementById('fp-m')||{}).value||'').trim();
   if(obs&&!motivoValido('piso',obs)){alert('La observación debe salir de la tabla 15 (uso «observación de piso»).');return}
   if(esOperarioTablet()){ // el operario no escribe en órdenes: queda como solicitud en avance y planificación (o el supervisor) la aplica
@@ -2690,7 +2695,7 @@ function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)ret
     const sal=salidaAfueraDe(o,c);if(sal&&sal<t.ini){t.ini=sal;t.iniFuente='fase'}else t.iniFuente='inicio'}   /* si Odoo ya la tenía en maquila, salió ese día */
   tramosDe(oid).push(t);
   bitacora('Inicio de trabajo · '+o.op+' en '+nCen(c)+(rec?' ('+nRec(rec)+')':'')+' por '+quienFirma());
-  save();render()}
+  TAB.vista='proceso';save();render()}
 function terminarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);if(!t||t.fin)return;
   t.fin=new Date().toISOString();t.uFin=quienFirma();
   const o=S.ordenes.find(x=>x.id===oid)||{};
@@ -2930,7 +2935,7 @@ function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c
           :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`));
   return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
    ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${esc(o.op)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
-    <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}</div>
+    <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${sinT?' · <span class="tag t-aviso">sin tallas cargadas para esta WH</span>':''}${(!fuera&&pasoSinTiempo(o,c))?' · <span class="tag t-aviso" title="el supervisor te la asignó a mano: la ruta pasa por aquí pero no tiene SAM (minutos por prenda) cargado. El tiempo real se registra igual.">sin tiempo estándar</span>':''}</div>
     ${(modo==='sinSecuencia'||(modo==='disponible'&&mot))?'<div class="tag t-alerta" style="font-size:14px;margin-top:4px">'+esc(mot)+'</div>':''}
     ${modo==='proceso'?barraAvanceHTML(hechas,total):''}</div>
    <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
@@ -2940,16 +2945,17 @@ function seccionColaTabletHTML(titulo,nota,filas,c,rec,modo,borde){if(!filas.len
    <h3 style="margin:0 0 4px">${esc(titulo)} <span class="note">${esc(nota)}</span></h3>
    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">${filas.slice(0,40).map(f=>filaColaTabletHTML(f,c,rec,modo)).join('')}</div>
   </div></div>`}
-function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
+function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
   const olv=tramosOlvidados().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null));
   const avisoOlv=olv.length?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px">
     ${olv.every(x=>x.afuera)?`<b>${olv.length} ${olv.length===1?'orden':'órdenes'} afuera que ya debían volver</b> (según el programa cuando salieron). El sistema no las cierra solo: toca FIN cuando vuelvan.`:`<b>${olv.length} ${olv.length===1?'inicio':'inicios'} sin fin</b> de hace más de ${num(prm('topeHorasTramo',10))} horas de trabajo. El sistema no los cierra solo.`}
     ${olv.map(x=>`<div style="margin-top:8px">${esc(x.o.op)} · ${x.afuera?'salió el '+fmtDia(diaLocalDe(x.t.ini))+' · debía volver el '+fmtDia(x.debeVolver):'empezó '+new Date(x.t.ini).toLocaleString('es-EC')} <button class="btn ghost" onclick="mCorregirTramo('${x.t.id}','${x.o.id}')">corregir</button></div>`).join('')}
    </div></div>`:'';
+  let confirma='';   /* 24-sep: la confirmación de unidades de UNA orden ya no reemplaza la pantalla: las demás en proceso siguen a la vista */
   if(TRAMO.paso==='tallas'&&TRAMO.oid){const o=S.ordenes.find(x=>x.id===TRAMO.oid);const t=o?tramosDe(o.id).find(x=>x.id===TRAMO.id):null;
     if(o&&t){const cal=calcTramo(t,o);const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
-      return avisoOlv+`<div class="panel"><div class="body" style="font-size:18px">
-       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
+      confirma=`<div class="panel" style="border:2px solid var(--ok)"><div class="body" style="font-size:18px">
+       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}<span class="tag t-ok" style="font-size:14px">terminaste · confirma las unidades</span></div>
        <div class="mut" style="margin:8px 0">${cal.afuera?'Afuera '+num(cal.dias,1)+' días (salió el '+fmtDia(diaLocalDe(t.ini))+(t.debeVolver?' · el programa decía que volvía el '+fmtDia(t.debeVolver):'')+') · no se cuentan minutos-persona ni SAM real</div><div style="display:none">':''}Trabajado ${fmtHMS(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
        ${cal.avisoAlmuerzo?'<div class="warn" style="font-size:16px">El horario tiene un descanso dentro de este tramo y no marcaste el paro de almuerzo. ¿Olvidaste marcarlo? Se descontó del horario.</div>':''}
        <h3 style="margin:10px 0">Confirma lo que salió</h3>
@@ -2986,13 +2992,32 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
   const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
   const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length;
-  return avisoOlv+tarjetas+avisoTope
+  if(vista==='proceso'){const sueltas=est.proceso.filter(f=>!abiertos.some(x=>x.o.id===f.o.id));   /* empezadas aquí, sin reloj corriendo (se retoman con CONTINUAR) */
+    const nada=!confirma&&!abiertos.length&&!sueltas.length;
+    return avisoOlv+confirma+(confirma&&abiertos.length?`<p class="mut" style="font-size:15px;margin:0 0 8px">Las otras ${abiertos.length} ${abiertos.length===1?'orden sigue':'órdenes siguen'} en proceso: terminar una no cierra las demás.</p>`:'')+tarjetas+avisoTope
+     +seccionColaTabletHTML('Empezadas aquí, sin reloj','ya empezaste y no has terminado · toca CONTINUAR para seguir, o «Terminar orden» cuando salga todo',sueltas,c,rec,'proceso','var(--t-accent)')
+     +(nada?'<div class="panel"><div class="empty">No hay órdenes en proceso. Toca «En cola» para empezar una.</div></div>':'')}
+  if(vista==='cola')return avisoOlv
+   +seccionColaTabletHTML('Disponibles','ya están en la fase de este centro: se pueden iniciar',est.disponible,c,rec,'disponible',null)
+   +seccionColaTabletHTML('Próximas','todavía les falta un paso anterior de SU ruta: se ven, no se inician',est.proxima,c,rec,'proxima',null)
+   +seccionColaTabletHTML('Ruta sin secuencia','no se puede saber por la ruta si ya les toca aquí: se pueden iniciar, pero avisa a planificación para que corrijan la ruta',est.sinSecuencia,c,rec,'sinSecuencia','var(--alerta)')
+   +(!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length?'<div class="panel"><div class="empty">No hay órdenes en cola en este centro.</div></div>':'');
+  return avisoOlv+confirma+tarjetas+avisoTope
    +seccionColaTabletHTML('En proceso','lo que ya empezaste y no has terminado · toca CONTINUAR para seguir, o «Terminar orden» cuando salga todo',est.proceso,c,rec,'proceso','var(--t-accent)')
    +seccionColaTabletHTML('Disponibles','ya están en la fase de este centro: se pueden iniciar',est.disponible,c,rec,'disponible',null)
    +seccionColaTabletHTML('Próximas','todavía les falta un paso anterior de SU ruta: se ven, no se inician',est.proxima,c,rec,'proxima',null)
    +seccionColaTabletHTML('Ruta sin secuencia','no se puede saber por la ruta si ya les toca aquí: se pueden iniciar, pero avisa a planificación para que corrijan la ruta',est.sinSecuencia,c,rec,'sinSecuencia','var(--alerta)')
    +(vacio?'<div class="panel"><div class="empty">No hay órdenes programadas en este centro.</div></div>':'')}
-/* --- una fila de registro (talla o total) con − + rápidos, número editable y segundas --- */
+/* las pestañas pequeñas de arriba de Mi centro (24-sep): cuántas en proceso, en cola y hechas hoy; al tocarlas se despliegan */
+function cuentasTablet(c,rec,cola){const abiertos=tramosAbiertosDe(c,rec||null);const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
+  cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
+  const enProc=new Set(abiertos.map(x=>x.o.id).concat(est.proceso.map(f=>f.o.id)));
+  const hoyL=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy());
+  return {proceso:enProc.size,cola:est.disponible.length+est.proxima.length+est.sinSecuencia.length,hechasOrd:new Set(hoyL.map(x=>x.o.id)).size,confirmar:TRAMO.paso==='tallas'&&!!TRAMO.oid}}
+function pestanasTabletHTML(v,k,hechasHoy,planHoy){const b=(id,txt,n,extra)=>`<button class="${v===id?'on':''}" onclick="TAB.vista='${id}';render()">${txt} <b>${n}</b>${extra||''}</button>`;
+  return `<div class="tab-pest no-print">${b('proceso','En proceso',k.proceso,k.confirmar?' <span class="tag t-ok" style="font-size:12px">confirmar</span>':'')}${b('cola','En cola',k.cola)}${b('hechas','Hechas hoy',k.hechasOrd,' <span class="mut">· '+num(hechasHoy)+' prendas</span>')}
+   <span class="tab-pest-info mut">Prendas del día ${num(planHoy)} · faltan ${num(Math.max(0,planHoy-hechasHoy))}</span></div>`}
+/* --- una fila de registro (talla o total) con − + rápidos y número editable (24-sep: sin segundas en la tablet) --- */
 const TALLA_TOTAL='(total)';
 function setTallaTramoVal(tid,oid,talla,valor){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
   t.tallas=t.tallas||{};const v=Math.max(0,Math.round(+valor||0));if(v)t.tallas[talla]=v;else delete t.tallas[talla];save();render()}
@@ -3003,7 +3028,6 @@ function filaTallaTramoHTML(o,t,c,tt,ya,lim,etiqueta){const v=(t.tallas||{})[tt]
    <input type="number" inputmode="numeric" min="0" value="${v}" style="font-size:24px;font-weight:700;width:96px;text-align:center;padding:8px" onfocus="this.select()" onchange="setTallaTramoVal('${t.id}','${o.id}','${k}',this.value)">
    <button class="btn" style="font-size:24px;padding:10px 20px" onclick="setTallaTramo('${t.id}','${o.id}','${k}',1)">+</button>
    ${rap.map(n=>`<button class="btn ghost" style="font-size:17px;padding:10px 14px" onclick="setTallaTramo('${t.id}','${o.id}','${k}',${n})">+${n}</button>`).join('')}
-   <label class="mut" style="font-size:14px;display:flex;align-items:center;gap:6px">segundas <input type="number" min="0" style="width:70px;font-size:16px;padding:6px" value="${(t.segundas||{})[tt]||''}" onchange="setSegTramo('${t.id}','${o.id}','${k}',this.value)"></label>
    <span class="mut" style="font-size:15px">${lim!=null?num(total)+' de '+num(lim)+(total>lim?' <span class="tag t-alerta">se pasa</span>':''):'sin tope cargado'}</span></div>`}
 function tallasSegHTML(o,t,c,tallas){const b=baseTallas(o,c);const ya=((S.avance[o.id]||{}).tallas||{})[c]||{};
   if(!tallas.length){const hechoC=(((S.avance[o.id]||{}).centros)||{})[c]||0; // sin curva: una sola fila de TOTAL, con el mismo formato que una talla
@@ -3038,17 +3062,21 @@ function vTablet(el){
       ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${cronoTxt(cr)} · estándar ${num(std)} min${cr.tallas?' · '+Object.entries(cr.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(', '):''}</div>`:''}</div>
      <div style="flex:none;display:flex;flex-direction:column;gap:10px;min-width:170px">
       ${puedeCerrarPaso(o.id,c).ok?`<button class="btn" style="font-size:20px;padding:14px 18px" ${ok?'':'disabled'} onclick="${(baseTallas(o,c).tallas||tallasDeOrden(o).length)?'mRegistroTallas':'marcarHechoCentro'}('${o.id}','${c}')">Hecho</button>`:hintCierreHTML(o.id,c)}
-      <button class="btn ghost" style="font-size:15px" onclick="mFasePiso('${o.id}','${c}')">Cambiar fase</button>
+      ${esVistaOperario()?'':`<button class="btn ghost" style="font-size:15px" onclick="mFasePiso('${o.id}','${c}')">Cambiar fase</button>`}
       ${corriendo?`<button class="btn ghost" style="font-size:15px" onclick="cronoTablet('${o.id}','${c}','fin')">⏱ Terminar · ${cronoCorriendoTxt(cr.ini)}</button>`:`<button class="btn ghost sm" style="opacity:.75" title="Opcional: mide cuánto tarda esta orden y se guarda para comparar con el estándar (${num(std)} min)" ${ok?'':'disabled'} onclick="cronoTablet('${o.id}','${c}','ini')">⏱ ${cr.fin?'medir de nuevo':'cronómetro'}</button>`}
      </div></div></div>`};
+  const kt=cuentasTablet(c,rec,cola);
+  if(!['proceso','cola','hechas'].includes(TAB.vista))TAB.vista=(kt.confirmar||kt.proceso)?'proceso':'cola';
+  if(kt.confirmar)TAB.vista='proceso';   /* recién tocado FIN: se confirma ahí, con las demás a la vista */
+  const cuerpo=TAB.vista==='hechas'?(tramosDelDiaHTML(c,rec)||'<div class="panel"><div class="empty">Todavía no hay nada registrado hoy en este puesto.</div></div>')
+    :TAB.vista==='cola'?flujoTramoHTML(c,rec,cola,'cola')+(esVistaOperario()?(cola.length||ERR_PROG?'':sinProgramaHTML(c,rec)):(cola.length?`<details class="panel no-print" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Registro rápido del supervisor <span class="note">las mismas órdenes con «Hecho», cambio de fase y cronómetro; el operario no ve esto</span></summary><div style="padding:0 8px 8px">${cola.map(card).join('')}</div></details>`:'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))
+    :flujoTramoHTML(c,rec,cola,'proceso');
   el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
-   ${tarjetasResumenHTML([{id:'tab-plan',v:num(planHoy),k:'Prendas del día'},{id:'tab-hechas',v:num(hechasHoy),k:'Hechas hoy'},{id:'tab-faltan',v:num(Math.max(0,planHoy-hechasHoy)),k:'Faltan',cls:planHoy-hechasHoy>0?'warn':''},{id:'tab-cola',v:cola.length,k:'Órdenes en cola',items:cola.map(f=>f.o)}])}
+   ${pestanasTabletHTML(TAB.vista,kt,hechasHoy,planHoy)}
    <div id="aviso-guardado"></div>
    ${errProgHTML()}
    ${tabletBuscadorHTML(c,cola,rec)}
-   ${flujoTramoHTML(c,rec,cola)}
-   ${tramosDelDiaHTML(c,rec)}
-   ${cola.map(card).join('')||(ERR_PROG?'':(esOperario()?sinProgramaHTML(c,rec):'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))}
+   ${cuerpo}
    <p class="mut no-print" style="font-size:var(--fs-xs)">«Hecho» SUMA lo que salió ahora; cuando llega a lo que entró a este centro, el paso se cierra y la orden pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
@@ -3061,7 +3089,10 @@ function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CE
   w.document.write(html);w.document.close()}
 /* ---------- C · Cambio de fases centralizado (Control de piso → Fases) y desde cualquier etiqueta de fase ---------- */
 let CTLF={fase:null,sel:new Set(),q:'',nueva:'',motivo:''};
-const puedeFases=()=>puede('ordenes')||puede('programa')||puede('avance');
+/* 24-sep (usuaria): los operarios NO cambian la fase, ni la piden: marcan INICIO, FIN y las unidades hechas. La mueven el supervisor o planificación. */
+function esVistaOperario(){return (typeof esOperarioTablet==='function'&&esOperarioTablet())||(typeof esOperario==='function'&&esOperario())}
+const MSG_OPERARIO_FASE='Los operarios no cambian la fase: marcan INICIO, FIN y las unidades hechas. Cuando terminas, la orden sale «libre» en la programación del centro y el supervisor o planificación mueven la fase.';
+const puedeFases=()=>!esVistaOperario()&&(puede('ordenes')||puede('programa')||puede('avance'));
 function fasesDisponibles(){return [...new Set([...FASES,...S.ordenes.map(x=>x.fase).filter(Boolean)])].sort((a,b)=>cmpFases(a,b))}
 function fasesCentralHTML(P){const ab=S.ordenes.filter(abierta);const cnt={};ab.forEach(o=>{const f=o.fase||'Sin fase';cnt[f]=(cnt[f]||0)+1});
   const fases=[...new Set([...fasesDisponibles(),...Object.keys(cnt)])];
@@ -3171,7 +3202,7 @@ function mismoGrupoFase(actual,nueva){const a=ordenDeFase(actual),b=ordenDeFase(
 function fasesParalelas(actual,nueva){const sa=secuenciaDe(actual),sb=secuenciaDe(nueva);return sa!=null&&sb!=null&&sa===sb&&actual!==nueva}
 /* Movimientos dentro del mismo grupo que en la práctica son devoluciones (no piden motivo): se reportan, no se bloquean */
 function retrocesosMismoGrupo(){const out=[];faseGrupos().forEach(g=>{const fs=faseMapeo().filter(r=>r.sistema===g.grupo).map(r=>r.fase);const ord=fs.slice().sort((a,b)=>faseNum(a)-faseNum(b));if(ord.length>1)out.push({grupo:g.grupo,fases:ord})});return out}
-function moverFases(ids,f,motivo){if(!puedeFases()){alert('Tu perfil no cambia fases.');return}motivo=String(motivo||'').trim();if(!f){alert('Elige la fase nueva.');return}
+function moverFases(ids,f,motivo){if(esVistaOperario()){alert(MSG_OPERARIO_FASE);return}if(!puedeFases()){alert('Tu perfil no cambia fases.');return}motivo=String(motivo||'').trim();if(!f){alert('Elige la fase nueva.');return}
   const devs=ids.map(id=>S.ordenes.find(x=>x.id===id)).filter(o=>o&&esDevolucionFase(o.fase,f));
   if(devs.length){if(!motivo){alert('Devolver la fase a un grupo anterior exige motivo'+(devs.length>1?' ('+devs.length+' de las órdenes marcadas son devolución)':'')+'. Elígelo de la tabla 15 (Motivos, uso «devolver a un área»).');return}
     if(!motivoValido('fase',motivo)){alert('El motivo debe elegirse de la tabla 15 (Motivos, uso «devolver a un área»); no se acepta texto libre. Si la tabla está vacía, configúrala en Configuración → Órdenes y materiales → 15 · Motivos.');return}}
@@ -8241,11 +8272,11 @@ function cierresSinFase(){const out=[];S.ordenes.filter(abierta).forEach(o=>{con
 function ultimoCierre(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};let mejor=null,cen=null;
   Object.keys(cs).forEach(c=>{const ci=cierreCentro(o,c);if(!ci)return;if(!mejor||(ci.ts||'')>(mejor.ts||'')){mejor=ci;cen=c}});
   return mejor?{centro:cen,cierre:mejor}:null}
-function tagCierre(o){const u=ultimoCierre(o);if(!u)return '';const fe=faseEstado(o.fase,o);
+function tagCierre(o){if(esVistaOperario())return '';const u=ultimoCierre(o);if(!u)return '';const fe=faseEstado(o.fase,o);
   const sinFase=!(fe.hechos||[]).includes(u.centro);
   return ` <span class="tag ${sinFase?'t-aviso':'t-ok'}" title="${esc(u.cierre.u||'')} · ${new Date(u.cierre.ts).toLocaleString('es-EC')}${u.cierre.faltan?' · faltan '+num(u.cierre.faltan)+' ('+esc(u.cierre.motivo||'')+')':''}">terminada en ${esc(nCen(u.centro))}${sinFase?' · fase sin actualizar':''}</span>`}
-function cierresSinFaseHTML(){const l=cierresSinFase();if(!l.length)return '';
-  return `<div class="panel" style="border:2px solid var(--aviso)"><h3>Terminadas en un centro con la fase sin actualizar <span class="note">${l.length} · el piso cerró el paso; la fase la mueves tú, con la regla de secuencia y la auditoría de siempre</span></h3><div class="body">
+function cierresSinFaseHTML(cens){const l=cierresSinFase().filter(x=>!cens||cens.includes(x.c));if(!l.length)return '';
+  return `<div class="panel" style="border:2px solid var(--aviso)"><h3>${cens?'Ya están libres: terminadas aquí, falta mover la fase':'Terminadas en un centro con la fase sin actualizar'} <span class="note">${l.length} · el piso cerró el paso${cens?' (el operario no cambia la fase)':''}; la fase la mueves tú, con la regla de secuencia y la auditoría de siempre</span></h3><div class="body">
    <table><thead><tr><th>Cuándo</th><th>Orden</th><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Siguiente</th><th></th></tr></thead><tbody>
    ${l.map(({o,c,cierre})=>{const sig=centroSiguiente(o,c);const fs=faseSugeridaTrasCierre(o,c);
      return `<tr><td style="white-space:nowrap">${new Date(cierre.ts).toLocaleString('es-EC')}</td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(nCen(c))}</td><td class="num">${num(cierre.pz)} de ${num(cierre.cant)}</td><td class="num">${cierre.faltan?'<span class="tag t-alerta">'+num(cierre.faltan)+'</span>':'—'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(cierre.motivo||'')}</td><td>${sig?esc(nCen(sig)):'<span class="mut">última etapa</span>'}</td>
@@ -8258,7 +8289,7 @@ function cierresOrdenHTML(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};c
 function listaParaEmpezar(o,c){const ant=centroAnteriorFueraTramo(o,c)||centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;   /* en un tramo paralelo manda el paso anterior al tramo (corte), no el compañero */
   const ac=((S.avance[o.id]||{}).centros)||{};if((ac[c]||0)>0)return null; // ya se empezó aquí
   return {centro:ant,ci}}
-function tagListaEmpezar(o,c){const l=listaParaEmpezar(o,c);if(!l)return '';
+function tagListaEmpezar(o,c){if(esVistaOperario())return '';const l=listaParaEmpezar(o,c);if(!l)return '';
   return ' <span class="tag t-ok" title="salieron '+num(l.ci.pz)+' de '+num(l.ci.cant)+(l.ci.faltan?' · faltan '+num(l.ci.faltan)+' ('+esc(l.ci.motivo||'')+')':'')+'">lista para empezar · terminada en '+esc(nCen(l.centro))+' · '+new Date(l.ci.ts).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>'}
 /* ---------- operario u supervisor de piso: lo dice el catálogo de perfiles, no el código ---------- */
 const PISO_TIPOS=[['','—'],['operario','Operario (registra y solicita)'],['supervisor','Supervisor de piso (registra y mueve fases)']];
@@ -8688,7 +8719,7 @@ function vCentro(el){
   if(CEN.tab==='prog'){
     const niv=nivelesCEN();const hasta=dsum(dom,7);
     const sec=seccionesModulos(cens,P);const secciones=sec?(modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')):'';
-    const listas=subAreasResumenHTML(cid,cens,P,dias)+cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
+    const listas=cierresSinFaseHTML(cens)+subAreasResumenHTML(cid,cens,P,dias)+cens.map(c=>listasNoProgramadasHTML(c,P,hasta)).join("");
     const tablas=cens.map(c=>colaCentroHTML(c,{filas,hasta,okPiso,P,h})).join('');   /* la línea de marcas se calcula adentro, sobre la cola que se ve */
     /* la cola se puede repintar sola: mismas variables, solo `filas` y `porQue` se recalculan con el texto nuevo */
     listaRegistrar('CEN.q',()=>{

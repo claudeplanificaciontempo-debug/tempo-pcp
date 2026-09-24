@@ -1508,6 +1508,21 @@ persona no se tocan y quedan `rutaRevisar`. Medido: exportación del 24-sep, 96 
 Empaque), 0 sin cordón con el paso; en el volcado del 13-sep, 66 de 66. **Orden sin categoría**: `recalcularRutas` ya no le rehace la ruta desde
 cero (no hay de dónde) — solo le AGREGA lo nuevo (`ordenarRutaPro` de la unión); antes podía dejarla en «Cordones → Empaque». Pruebas CO3–CO13.
 
+**Operarios: INICIO, FIN y unidades hechas; nada de fases (24-sep-2026, usuaria: «los operarios no pueden cambiar de fase… cuando ya está hecho sale
+“esto ya está libre” en el reporte de cada programación, no a ellos», «solo unidades hechas, sin segundas ni terceras», «arriba una pestañita pequeña
+En proceso / Hechas / En cola que se despliegue», «verifica que al cerrar una no se me cierren todas»).** `esVistaOperario()` (= `esOperarioTablet()` o
+`esOperario()`) saca al operario de `puedeFases()`: ni «Cambiar fase» ni la etiqueta de fase clicable ni **solicitud** (`moverFases`, `mFasePiso` y
+`guardarFasePiso` le responden `MSG_OPERARIO_FASE`; las solicitudes viejas las sigue aplicando planificación). Esto **reemplaza** lo del 16-sep (el
+operario pedía la fase) y deja sin efecto, para el operario, el diseño «la fase la pone quien recibe» (INICIO no mueve la fase). `tagCierre` y
+`tagListaEmpezar` no se le muestran; la programación de cada centro (Centro → Programación) abre con `cierresSinFaseHTML(cens)` = **«Ya están
+libres: terminadas aquí, falta mover la fase»** (el mismo panel de Control de piso, acotado a sus centros). **Mi centro**: pestañas pequeñas
+`pestanasTabletHTML` (En proceso · En cola · Hechas hoy con su número, más «prendas del día · faltan»), estado `TAB.vista`, cuentas en
+`cuentasTablet` (las mismas que dibuja cada pestaña); INICIO lleva a «En proceso». **FIN nunca cerró las demás** (solo marca el fin de ESE tramo),
+pero la confirmación de unidades era una pantalla aparte que tapaba a las otras hasta guardar: ahora va arriba de «En proceso» con las demás a la
+vista y la frase «terminar una no cierra las demás». Sin **segundas** en la tablet (`filaTallaTramoHTML`); si no completa, «Terminé esta orden»
+pide el porqué (tabla 15, uso cierre). La lista vieja de tarjetas (Hecho, cambio de fase, cronómetro) queda solo para el supervisor, plegada en
+«En cola». Pruebas TB1–TB10 (y TC, CC-c, TR, AR, HH, MT1, P1.3 pasadas a la regla nueva).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

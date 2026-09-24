@@ -2031,7 +2031,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("TC: la etiqueta de fase es clicable y abre el cambio de fase con motivo",faseTag(oT).includes("mCambiarFase('"+oT.id+"')")&&(()=>{mCambiarFase(oT.id);const ok=!!document.getElementById('cf-f')&&!!document.getElementById('cf-m');try{cerrar()}catch(e){}return ok})());
    // A · tablet
    __check("TC: existe el perfil 'tablet' (solo página Mi centro) y toma el centro asignado por usuario",perfilesDef().some(x=>x.id==='tablet')&&(()=>{S.params.tablets=Object.assign({},S.params.tablets,{u_test:{centro:'corte',rec:''}});const d=perfilDe({rol:'tablet',id:'u_test'});return d&&d.paginas.length===1&&d.paginas[0]==='tablet'&&d.centros[0]==='corte'})());
-   TAB={centro:'modulos',rec:null};page='tablet';render();h=document.getElementById('p-tablet').innerHTML;__check("TC: Mi centro muestra prendas del día, hechas, faltan y la cola con foto grande, WH+fase, producto, color, cliente, cantidades, entrega y botón Hecho",h.includes('Prendas del día')&&h.includes('Hechas hoy')&&h.includes('Faltan')&&(h.includes('tab-card')?h.includes('>Hecho<')&&h.includes('cronómetro'):true));
+   TAB={centro:'modulos',rec:null};page='tablet';render();h=document.getElementById('p-tablet').innerHTML;__check("TC: Mi centro muestra prendas del día, hechas y faltan (en las pestañas de arriba, 24-sep) y, para el supervisor, la cola con foto grande y botón Hecho",h.includes('Prendas del día')&&h.includes('Hechas hoy')&&/faltan/i.test(h)&&(h.includes('tab-card')?h.includes('>Hecho<')&&h.includes('cronómetro'):true));
    const oC=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='modulos'))||oT;cronoTablet(oC.id,'modulos','ini');const c1=S.avance[oC.id].crono.modulos;__check("TC: cronómetro inicio guarda hora y quién",!!c1.ini&&!c1.fin);cronoTablet(oC.id,'modulos','fin');__check("TC: cronómetro fin guarda minutos para comparar con el estándar",typeof S.avance[oC.id].crono.modulos.min==='number'&&minEstandarOrden(oC,'modulos')>=0);delete S.avance[oC.id].crono;
    __check("TC: la columna Tablet de Usuarios ofrece centro y recurso",tabletSelHTML('u_test').includes('<select')&&tabletSelHTML('u_test').includes('todo el centro'));
    // B · PDF
@@ -2246,7 +2246,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // c) tarjetas resumen
    const ym=hoy().slice(0,7);PM.mes=ym;TARJ={exp:{}};page='plan';render();h=document.getElementById('p-plan').innerHTML;__check("CC-c: el Bloque 2 y el Bloque 3 usan la tarjeta resumen del tema (número grande, clic despliega lista)",h.includes('kpi tarj')&&h.includes('data-t="b2-ords"')&&h.includes('data-t="b3-libs"'));
    {const oz=S.ordenes.filter(abierta).slice(0,2);TARJ.exp={'cc-x':true};const hx=tarjetasResumenHTML([{id:'cc-x',v:oz.length,k:'Prueba',items:oz}]);__check("CC-c: al hacer clic se despliega la lista con foto, WH y fase",hx.includes('tarj-lista')&&hx.includes('OP · fase')&&(!oz.length||hx.includes('fase-mini'))&&hx.includes("togTarj('cc-x')"));TARJ={exp:{}};}
-   TAB={centro:'modulos',rec:null};page='tablet';render();__check("CC-c: Mi centro usa las mismas tarjetas",document.getElementById('p-tablet').innerHTML.includes('kpi tarj'));TAB={centro:null,rec:null};
+   TAB={centro:'modulos',rec:null};page='tablet';render();__check("CC-c: Mi centro usa pestañas pequeñas con número en vez de las tarjetas grandes (decisión de la usuaria, 24-sep)",document.getElementById('p-tablet').innerHTML.includes('tab-pest'));TAB={centro:null,rec:null};
    // d) buscador común
    __check("CC-d: el buscador común ofrece WH, ODC, cliente y referencia",BUSQ_CAMPOS.some(x=>x[0]==='op')&&BUSQ_CAMPOS.some(x=>x[0]==='odc')&&BUSQ_CAMPOS.some(x=>x[0]==='cliente')&&BUSQ_CAMPOS.some(x=>x[0]==='ref'&&/Referencia/.test(x[1])));
    // e) motivos obligatorios de la tabla 15 + auditoría
@@ -2770,9 +2770,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TR: el supervisor corrige el fin y queda en auditoría",!!t3.fin&&!!t3.corregido&&auditoriaCambios().length===nA+1);
     TRAMO={paso:null,id:null,oid:null}}
    // la pantalla del flujo
-   TAB={centro:'modulos',rec,q:''};page='tablet';render();
-   {const h=document.getElementById('p-tablet').innerHTML;
-    __check("TR: Mi centro muestra el flujo (elegir orden, INICIO) y lo registrado hoy",(/INICIO<\/button>/.test(h)||/No hay órdenes programadas/.test(h))&&(/Lo registrado hoy/.test(h)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
+   TAB={centro:'modulos',rec,q:'',vista:'cola'};page='tablet';render();
+   {const h=document.getElementById('p-tablet').innerHTML;TAB.vista='hechas';render();const h2=document.getElementById('p-tablet').innerHTML;TAB.vista=null;
+    __check("TR: Mi centro muestra el flujo: INICIO en la pestaña «En cola» y lo registrado hoy en «Hechas hoy» (24-sep)",(/INICIO<\/button>/.test(h)||/No hay órdenes/.test(h))&&(/Lo registrado hoy/.test(h2)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
    if(rec&&bakPers!=null)R(rec).pers=bakPers;
    S.ordenes=S.ordenes.filter(o=>o!==oT);delete S.avance[oT.id];
    const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
@@ -2831,7 +2831,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    TAB={centro:'modulos',rec,q:''};iniciarTramo(oS.id,'modulos',rec);const tr2=tramosDe(oS.id).slice(-1)[0];terminarTramo(tr2.id,oS.id);
    page='tablet';render();
    {const h=document.getElementById('p-tablet').innerHTML;
-    __check("AR: junto a + y − hay botones de avance rápido tomados de parámetros",h.includes('>+'+num(prm('pasoRapido1',10))+'<')&&h.includes('>+'+num(prm('pasoRapido2',25))+'<')&&h.includes('setSegTramo('));}
+    __check("AR: junto a + y − hay botones de avance rápido tomados de parámetros",h.includes('>+'+num(prm('pasoRapido1',10))+'<')&&h.includes('>+'+num(prm('pasoRapido2',25))+'<')&&!h.includes('setSegTramo('));}   /* 24-sep: solo unidades hechas, sin segundas */
    setTallaTramo(tr2.id,oS.id,'S',+prm('pasoRapido2',25));
    __check("AR: el botón rápido suma ese número de golpe",(tr2.tallas||{}).S===+prm('pasoRapido2',25));
    TRAMO={paso:null,id:null,oid:null};
@@ -3057,7 +3057,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("HH: lo guardado en el tramo suma en «hechas del día» (una sola función)",hechasDelDia('modulos',rec,hoy()).pz===antesDia+20);
    TAB={centro:'modulos',rec,q:''};page='tablet';render();
    {const h=document.getElementById('p-tablet').innerHTML;
-    __check("HH: la tarjeta «Hechas hoy» de Mi centro muestra las 20 y «Faltan» baja",new RegExp('>'+num(antesDia+20)+'<[\\s\\S]{0,80}Hechas hoy').test(h));}
+    __check("HH: la pestaña «Hechas hoy» de Mi centro muestra las 20 prendas (24-sep: pestañas pequeñas)",new RegExp('Hechas hoy <b>\\d+</b> <span class="mut">· '+num(antesDia+20)+' prendas').test(h));}
    // al recargar (mismo dato en avance) se mantiene
    __check("HH: el dato vive en avance, así que se mantiene al recargar",((S.avance[oH.id]||{}).tallasLog||[]).filter(x=>x.centro==='modulos').reduce((a,x)=>a+x.pz,0)===20&&((S.avance[oH.id]||{}).tallas||{}).modulos.S===12);
    // 2 · sin curva de tallas, el registro por total también queda en tallasLog y suma
@@ -3206,7 +3206,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 1 · sin curva de tallas: una sola fila de TOTAL con el formato de una talla
    iniciarTramo(oS.id,'modulos',rec);const tr=tramosDe(oS.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-40*6e4).toISOString();terminarTramo(tr.id,oS.id);
    {const h=tallasSegHTML(oS,tr,'modulos',[]);
-    __check("MT1: sin curva de tallas se dibuja una fila Total con − + rápidos, número editable y segundas",h.includes('>Total<')&&h.includes("setTallaTramo('"+tr.id)&&h.includes('setTallaTramoVal(')&&h.includes('inputmode="numeric"')&&h.includes('segundas'));
+    __check("MT1: sin curva de tallas se dibuja una fila Total con − + rápidos y número editable, sin segundas (24-sep)",h.includes('>Total<')&&h.includes("setTallaTramo('"+tr.id)&&h.includes('setTallaTramoVal(')&&h.includes('inputmode="numeric"')&&!h.includes('segundas'));
     __check("MT1: la fila Total dice cuánto lleva de las prendas de la orden",h.includes('de '+num(oS.cant)));
     __check("MT1: la pantalla de confirmar ya no se queda sin campo",flujoTramoHTML('modulos',rec,[]).includes('setTallaTramoVal('));}
    setTallaTramoVal(tr.id,oS.id,'(total)',20);
@@ -3279,19 +3279,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("P1.5: fin y unidades del tramo guardan sin error y quedan en avance",!SAVE_ERR&&(((S.avance[oP.id]||{}).centros)||{}).modulos===30,SAVE_ERR?JSON.stringify(SAVE_ERR.errs):'');
    __check("P1.5: lo subido fue solo avance, bitácora, turnos y paros",__W.writes.length>0&&!__W.writes.some(w=>!DEJA.includes(w.t)),JSON.stringify([...new Set(__W.writes.map(w=>w.t))]));
    __check("P1.2: la siembra pendiente sigue en memoria pero no se guardó",!!S.params.pruebaSiembra&&JSON.parse(BASE.params||'{}').pruebaSiembra===undefined);
-   // 1.3 · lo que el operario hace fuera de sus tablas queda como solicitud en avance
-    {const nSol=solicitudesPiso().length;const fNueva=fasesDisponibles().find(f=>f!==oP.fase&&!esDevolucionFase(oP.fase,f))||fasesDisponibles().find(f=>f!==oP.fase)||oP.fase;
-    const faseAntes=oP.fase;mFasePiso(oP.id,'modulos');
-    const selF=document.getElementById('fp-f');if(selF)selF.value=fNueva;
-    guardarFasePiso(oP.id,'modulos');await __p(60);
-    __check("P1.3: el operario no cambia la fase: queda como solicitud en avance y planificación la aplica",oP.fase===faseAntes&&solicitudesPiso().length===nSol+1&&((S.avance[oP.id]||{}).solicitudes||[]).some(x=>x.tipo==='fase'&&x.f===fNueva));
-    __check("P1.3: pedirlo no rompe el guardado ni toca órdenes",!SAVE_ERR&&!__W.writes.some(w=>w.t==='ordenes'));
-    const it=pendientesHoy().find(x=>x.k==='solicPiso');
-    __check("P1.3: sale en Hoy → Pendientes del supervisor",!!it&&it.n>=1);
-    // planificación la aplica
+   // 1.3 · 24-sep (usuaria): el operario NO cambia la fase NI la pide — marca INICIO, FIN y unidades; la fase la mueven el supervisor o planificación
+    {const nSol=solicitudesPiso().length;const faseAntes=oP.fase;const al0=window.alert;const avs=[];window.alert=m=>avs.push(String(m));
+    try{cerrar()}catch(e){}mFasePiso(oP.id,'modulos');const abrio=!!document.getElementById('fp-f');
+    guardarFasePiso(oP.id,'modulos');await __p(60);window.alert=al0;
+    __check("P1.3: el operario no cambia la fase ni la pide: la ventana no se abre, no queda solicitud y se le explica por qué",!abrio&&oP.fase===faseAntes&&solicitudesPiso().length===nSol&&avs.some(m=>/no cambian la fase/.test(m)),JSON.stringify({abrio,sol:solicitudesPiso().length-nSol,avs:avs.length}));
+    __check("P1.3: intentarlo no rompe el guardado ni toca órdenes",!SAVE_ERR&&!__W.writes.some(w=>w.t==='ordenes'));
+    // las solicitudes que quedaron de antes de la regla las sigue aplicando planificación (no se pierden)
     PERFIL=adminP;__W.deny=null;const sol=solicitudesPiso('fase')[0];
-    aplicarSolicitudFase(sol.oid,sol.id);await __p(60);
-    __check("P1.3: planificación la aplica y la fase cambia con la auditoría de siempre",oP.fase===fNueva&&solicitudesPiso('fase').every(x=>x.id!==sol.id));
+    if(sol){aplicarSolicitudFase(sol.oid,sol.id);await __p(60);__check("P1.3: una solicitud vieja (de antes de la regla) la sigue aplicando planificación",solicitudesPiso('fase').every(x=>x.id!==sol.id))}
     PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba',email:'op@tempo.local'};__W.deny=t=>!DEJA.includes(t)}
    {const nR=pedidosReprog().length;__W.writes=[];
     const oFuera=S.ordenes.find(x=>abierta(x)&&x!==oP);
@@ -3456,16 +3452,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     await moverFases([oF.id],otra,motivoValido('fase',(motivosDe('fase')[0]||{}).motivo||'')?(motivosDe('fase')[0]||{}).motivo:'');await __p(120);
     __check("SF3: sin la función en la base avisa «falta ejecutar SUPABASE_MOVER_FASE.sql» y no cambia nada",alerts.length>n&&/SUPABASE_MOVER_FASE\.sql/.test(alerts[alerts.length-1])&&oF.fase===faseAntes&&JSON.stringify(filaDB().data)===snap);
     __RPC.falta=false}
-   // 3 · el operario sigue enviando solicitud
+   // 3 · 24-sep (usuaria): el operario NO mueve la fase ni la pide; la mueve el supervisor
    {PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec:(S.recursos.find(r=>r.centro==='modulos'&&r.activa)||{}).id};
-    const faseAntes=oF.fase;const nSol=solicitudesPiso().length;__RPC.ultimo=null;
-    mFasePiso(oF.id,'modulos');const sel=document.getElementById('fp-f');const otra=fasesDisponibles().find(f=>f!==oF.fase&&!esDevolucionFase(oF.fase,f))||fasesDisponibles().find(f=>f!==oF.fase)||oF.fase;if(sel)sel.value=otra;
-    guardarFasePiso(oF.id,'modulos');await __p(80);
-    __check("SF3: el operario no mueve la fase: queda solicitud y no se llama a la función",oF.fase===faseAntes&&solicitudesPiso().length===nSol+1&&!__RPC.ultimo);
-    // y el supervisor la aplica
-    PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};const sol=solicitudesPiso('fase').slice(-1)[0];
-    await aplicarSolicitudFase(sol.oid,sol.id);await __p(150);
-    __check("SF3: el supervisor aplica la solicitud del operario y la fase cambia en la base",oF.fase===sol.f&&filaDB().data.fase===sol.f);}
+    const faseAntes=oF.fase;const nSol=solicitudesPiso().length;__RPC.ultimo=null;const al0=window.alert;const avs=[];window.alert=m=>avs.push(String(m));
+    const otra=fasesDisponibles().find(f=>f!==oF.fase&&!esDevolucionFase(oF.fase,f))||fasesDisponibles().find(f=>f!==oF.fase)||oF.fase;
+    try{cerrar()}catch(e){}mFasePiso(oF.id,'modulos');const abrio=!!document.getElementById('fp-f');guardarFasePiso(oF.id,'modulos');await __p(80);window.alert=al0;
+    __check("SF3: el operario no mueve la fase ni deja solicitud, y no se llama a la función de la base",!abrio&&oF.fase===faseAntes&&solicitudesPiso().length===nSol&&!__RPC.ultimo&&avs.some(m=>/no cambian la fase/.test(m)));
+    // la mueve el supervisor, directamente
+    PERFIL={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};
+    await moverFases([oF.id],otra,'');await __p(150);
+    __check("SF3: el supervisor mueve la fase él mismo y cambia en la base",oF.fase===otra&&filaDB().data.fase===otra,JSON.stringify({fase:oF.fase,base:filaDB().data.fase,otra}));}
    // la bandeja de «fase sin actualizar» le sirve al supervisor
    {S.avance[oF.id]=S.avance[oF.id]||{};S.avance[oF.id].centros={modulos:100};
     cierresDe(oF.id).modulos={pz:100,cant:100,faltan:0,motivo:'',u:'prueba',ts:new Date().toISOString()};
@@ -3504,8 +3500,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     setPerfilDef('corte','piso','operario');PERFIL={id:'u1',rol:'corte',nombre:'Corte de prueba'};
     const faseAntes=oX.fase;const nSol=solicitudesPiso().length;__RPC.ultimo=null;
     const otra=fasesDisponibles().find(f=>f!==oX.fase&&!esDevolucionFase(oX.fase,f))||fasesDisponibles().find(f=>f!==oX.fase);
-    await moverFases([oX.id],otra,'');await __p(90);
-    __check("FU1: con el catálogo en «operario», corte no mueve la fase: queda solicitud",!esSupervisorPiso()&&oX.fase===faseAntes&&!__RPC.ultimo&&solicitudesPiso().length===nSol+1);
+    {const al0=window.alert;window.alert=()=>{};await moverFases([oX.id],otra,'');await __p(90);window.alert=al0}
+    __check("FU1: con el catálogo en «operario», corte no mueve la fase ni deja solicitud (24-sep)",!esSupervisorPiso()&&oX.fase===faseAntes&&!__RPC.ultimo&&solicitudesPiso().length===nSol);
     setPerfilDef('corte','piso','supervisor');PERFIL={id:'u1',rol:'corte',nombre:'Corte de prueba'};
     __check("FU1: al devolverle «supervisor», vuelve a mover fases",esSupervisorPiso());
     setPerfilDef('corte','piso',bak===undefined?'supervisor':bak)}
@@ -6067,8 +6063,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
      const fila=cola.find(f=>f.o.id===sinT.id);
      __check("TO5: y aparece marcada «sin tiempo estándar» en Mi centro",!!fila&&comoOperario(()=>{
-       TAB.centro=C;TAB.rec=rec;page="tablet";render();
-       return /sin tiempo est\u00e1ndar/.test(document.getElementById("p-tablet").innerHTML)}),sinT.op);
+       TAB.centro=C;TAB.rec=rec;page="tablet";const vis=[];['cola','proceso'].forEach(v=>{TAB.vista=v;render();vis.push(document.getElementById("p-tablet").innerHTML)});TAB.vista=null;   /* 24-sep: la cola y lo empezado van en pesta\u00f1as */
+       return vis.some(h=>/sin tiempo est\u00e1ndar/.test(h))}),sinT.op);
      __check("TO5: el tramo registra tiempo real igual (no depende del estándar)",(()=>{
        const t={id:"t-st",centro:C,rec:rec||null,ini:new Date(Date.now()-20*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}};
        const r=calcTramo(t,sinT);return r.trabajado>15&&r.trabajado<25})());
@@ -8317,6 +8313,29 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(sc){const antes=pasosProDe(sc);sc.materiales=(sc.materiales||[]).concat([cord]);recalcularRutas();const desp=(sc.rutaCompleta||[]).map(x=>x.centro);
      __check('CO13: una orden SIN categoría solo gana el paso nuevo: no pierde los que tenía',antes.every(c=>desp.includes(c))&&desp.includes('cordones'),sc.op+': '+antes.join('>')+' → '+desp.join('>'))}
     else __check('CO13: hay una orden sin categoría para probar',true)}}
+  /* 24-sep · tablet: el operario no toca fases, pestañas pequeñas arriba, FIN de una no tapa ni cierra a las demás, solo unidades hechas */
+  {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
+   const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')&&!tramosAbiertosDe(c,rec).some(x=>x.o.id===o.id)).slice(0,3);
+   cand.forEach(o=>{delete S.avance[o.id]});
+   const cf=window.confirm,al=window.alert;window.confirm=()=>true;const avisos=[];window.alert=m=>avisos.push(String(m));
+   PERFIL={id:'u-op2',rol:'tablet',nombre:'Operario 2'};S.params.tablets=S.params.tablets||{};S.params.tablets['u-op2']={centro:c,rec};TAB.vista=null;TRAMO={paso:null,id:null,oid:null};
+   __check('TB1: el operario no puede mover fases (ni el botón ni la etiqueta de fase clicable)',!puedeFases()&&!/mCambiarFase/.test(faseTag(cand[0])));
+   const f0=cand[0].fase;const nSol=solicitudesPiso().length;avisos.length=0;moverFases([cand[0].id],'8Empaque','');
+   __check('TB2: si lo intenta, la fase no cambia, NO se crea una solicitud y se le dice por qué',cand[0].fase===f0&&solicitudesPiso().length===nSol&&avisos.some(m=>/no cambian la fase/.test(m)),avisos.join(' | ').slice(0,120));
+   cand.forEach(o=>iniciarTramo(o.id,c,rec));page='tablet';render();let h=document.getElementById('p-tablet').innerHTML;const k=cuentasTablet(c,rec,tabletFilas(c,rec,programar()));
+   __check('TB3: al tocar INICIO, la pestaña «En proceso» de arriba dice cuántas y las muestra, cada una con su reloj',TAB.vista==='proceso'&&k.proceso>=3&&/En proceso <b>\d+<\/b>/.test(h)&&(h.match(/class="crono-vivo"/g)||[]).length===3,(h.match(/En proceso <b>\d+/)||[''])[0]+' · relojes '+(h.match(/class="crono-vivo"/g)||[]).length);
+   const t1=tramosAbiertosDe(c,rec).find(x=>x.o.id===cand[0].id);terminarTramo(t1.t.id,t1.o.id);h=document.getElementById('p-tablet').innerHTML;
+   __check('TB4: FIN de una NO cierra las demás, y mientras se confirman sus unidades las otras dos siguen a la vista',tramosAbiertosDe(c,rec).length===2&&/Confirma lo que salió/.test(h)&&(h.match(/class="crono-vivo"/g)||[]).length===2&&/terminar una no cierra las demás/.test(h),'abiertas '+tramosAbiertosDe(c,rec).length+' · relojes '+(h.match(/class="crono-vivo"/g)||[]).length);
+   __check('TB5: la confirmación pide solo las unidades hechas (sin segundas)',!/setSegTramo/.test(h)&&!/segundas/i.test(h.replace(/<[^>]+>/g,' ')));
+   guardarTramo(t1.t.id,t1.o.id);__check('TB6: al guardar, las otras dos siguen en proceso',tramosAbiertosDe(c,rec).length===2);
+   TAB.vista='cola';render();h=document.getElementById('p-tablet').innerHTML;
+   __check('TB7: «En cola» muestra la cola; el operario no ve el registro del supervisor ni «Cambiar fase»',/En cola <b>\d+<\/b>/.test(h)&&!/Registro rápido del supervisor/.test(h)&&!/>Cambiar fase</.test(h));
+   TAB.vista='hechas';render();h=document.getElementById('p-tablet').innerHTML;__check('TB8: «Hechas hoy» muestra lo registrado hoy',/Lo registrado hoy/.test(h));
+   __check('TB9: al operario no le salen las etiquetas de «terminada en…» ni «lista para empezar»',tagCierre(cand[0])===''&&tagListaEmpezar(cand[0],'empaque')==='');
+   PERFIL=adminP0();const cs=cierresSinFase()[0];
+   __check('TB10: la programación de cada centro muestra «Ya están libres» con lo que se terminó ahí (y solo de sus centros)',cs?(/Ya están libres/.test(cierresSinFaseHTML([cs.c]))&&cierresSinFaseHTML(['__otro__'])===''):cierresSinFaseHTML(['__otro__'])==='',cs?cs.o.op+' en '+cs.c:'sin cierres en el simulador');
+   tramosAbiertosDe(c,rec).forEach(x=>{const tr=tramosDe(x.o.id);const i=tr.findIndex(t=>t.id===x.t.id);if(i>=0)tr.splice(i,1)});cand.forEach(o=>{delete S.avance[o.id]});
+   TAB.vista=null;TRAMO={paso:null,id:null,oid:null};window.confirm=cf;window.alert=al;page='ordenes';render()}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
