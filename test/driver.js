@@ -7368,6 +7368,20 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check('MT14: la tablet de Maquila muestra cada orden afuera en una línea (salió, debe volver, días, FIN) sin «null personas» ni «el máximo»',/FIN · volvió/.test(h)&&/días afuera/.test(h)&&!/null personas/.test(h)&&!/\(el máximo\)/.test(h),h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,300))}
      ords.forEach(o=>{S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id]});window.confirm=cf;window.alert=al;PERFIL=adminP;PLAN=null;PLAN_ALL=null}
     else __check('MT0: hay recurso Maquila marcado como afuera en la tabla de Tramos paralelos',false)}
+   /* OD · aspecto Odoo (usuaria, 24-sep: «como están acostumbrados a Odoo»): por defecto, con los menús en la barra de arriba; el clásico se elige en Configuración */
+   {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;delete S.params.tema;page='ordenes';render();
+    const nav=document.getElementById('nav'),hdr=document.querySelector('header');
+    __check('OD1: por defecto se ve como Odoo y los menús van dentro de la barra de arriba',document.documentElement.dataset.tema==='odoo'&&nav.parentElement===hdr&&temaVisual()==='odoo');
+    const cf=window.confirm;window.confirm=()=>true;const nB=S.bitacora.length;setTema('clasico');
+    __check('OD2: en Configuración se vuelve al aspecto clásico (queda en la bitácora) y los menús regresan a su barra',document.documentElement.dataset.tema==='clasico'&&nav.parentElement!==hdr&&S.bitacora.length>nB&&/Aspecto de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''));
+    setTema('odoo');window.confirm=cf;
+    __check('OD3: el menú sigue funcionando dentro de la barra (sus entradas existen y abren páginas)',!!document.querySelector('header nav a[data-p="ordenes"]')&&document.querySelectorAll('header nav .grp').length>=3);
+    const o=S.ordenes.find(x=>abierta(x)&&grupoDe(x.fase||''));if(o){const h=statusbarFasesHTML(o);const g=grupoDe(o.fase);
+      __check('OD4: la ficha de la orden trae la barra de fases de Odoo, con la fase actual resaltada',/class="o-statusbar"/.test(h)&&/class="st on"/.test(h)&&h.includes(esc(o.fase))&&(h.match(/class="st/g)||[]).length<=8,h.slice(0,200));
+      abrirFichaOrden(o.id);__check('OD5: …y se ve al abrir la ficha',!!document.querySelector('.o-statusbar .st.on'));try{cerrar()}catch(e){}}
+    const cfgH=(()=>{page='config';CONF.tab='cal';render();return (document.getElementById('p-config')||{}).innerHTML||''})();
+    __check('OD6: el aspecto se elige en Configuración → Calendario y parámetros',/Aspecto de la pantalla/.test(cfgH)&&/setTema\(/.test(cfgH));
+    if(bak===undefined)delete S.params.tema;else S.params.tema=bak;page='ordenes';render();PERFIL=adminP}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);

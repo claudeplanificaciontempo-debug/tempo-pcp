@@ -342,6 +342,92 @@ tbody tr:hover td{background:var(--field)}
 .res-mas{padding:12px 16px;font-weight:600;color:#2C4C77;cursor:pointer;font-size:var(--fs-m)}
 .tag.t-hoy{background:#E7EEF7;border-color:#B9CBE2;color:#2C4C77}.tag.t-mut{background:var(--field);border-color:var(--rule);color:var(--ink3)}
 @media (max-width:860px){.res-cards{grid-template-columns:1fr}.res-dias{grid-auto-flow:row;grid-template-columns:repeat(2,1fr)}}
+/* ================= Aspecto Odoo (24-sep-2026) — todo bajo html[data-tema="odoo"]; el clásico queda igual ================= */
+html[data-tema="odoo"]{--o-brand:#714B67;--o-brand-2:#5E3F56;--o-brand-soft:#F4EEF3;--o-brand-line:#DCCAD7;--o-primary:#714B67;--o-primary-2:#5E3F56;--o-sec:#E7E9ED;--o-sec-2:#D8DADD;
+  --ink:#212529;--ink2:#495057;--ink3:#6C757D;--rule:#DEE2E6;--rule2:#E9ECEF;--paper:#FFFFFF;--bg:#F8F9FA;--field:#F8F9FA;
+  --ok:#198754;--aviso:#B7791F;--alerta:#D44C59;--medio:#017E84;--navy:#714B67;--navy2:#5E3F56;--navy3:#8A6680;--cobre:#017E84;--cobre2:#01A5AD;
+  --t-primary:#714B67;--t-accent:#017E84;--t-accent-soft:#E6F4F4;--t-card:#FFFFFF;--t-block:#714B67;--t-thead:#FFFFFF;--t-ink:#212529;--r:4px}
+html[data-tema="odoo"] body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;background:var(--bg);color:var(--ink)}
+/* barra de arriba = la de Odoo: nombre de la app y los menús en la misma barra */
+html[data-tema="odoo"] #app{grid-template-rows:46px 1fr}
+html[data-tema="odoo"] header{background:var(--o-brand);color:#fff;height:46px;padding:0 8px 0 12px;gap:4px;border-bottom:0;box-shadow:0 1px 2px rgba(0,0,0,.15);position:relative;z-index:30}
+html[data-tema="odoo"] header h1{color:#fff;font-size:16px;font-weight:700;margin:0 10px 0 2px;white-space:nowrap}
+html[data-tema="odoo"] header h1 .logo{background:rgba(255,255,255,.18)}
+html[data-tema="odoo"] header>.sub:first-of-type{display:none}
+html[data-tema="odoo"] header .sub,html[data-tema="odoo"] header .saved{color:rgba(255,255,255,.78);font-size:12px}
+html[data-tema="odoo"] header .saved{min-width:0}
+html[data-tema="odoo"] header button{background:transparent;border:0;color:#fff;border-radius:0;height:46px;padding:0 12px;font-weight:400}
+html[data-tema="odoo"] header button:hover{background:rgba(0,0,0,.14);color:#fff}
+html[data-tema="odoo"] #busg-host{flex:1 1 200px!important;min-width:120px;max-width:300px;margin-left:auto}html[data-tema="odoo"] header nav{overflow:visible;flex:0 0 auto}html[data-tema="odoo"] header .saved{white-space:nowrap}@media (max-width:1500px){html[data-tema="odoo"] header #version,html[data-tema="odoo"] header #quien{display:none}}@media (max-width:1280px){html[data-tema="odoo"] header h1{font-size:0;margin-right:4px}html[data-tema="odoo"] header h1 .logo{margin:0}html[data-tema="odoo"] header nav .grp{padding:0 9px;font-size:13.5px}}
+html[data-tema="odoo"] #busg-host input{background:rgba(255,255,255,.95);border:0;height:30px}
+html[data-tema="odoo"] header nav{background:transparent;padding:0;height:46px;align-items:stretch;gap:0;flex:0 1 auto;min-width:0}
+html[data-tema="odoo"] header nav .grp{color:rgba(255,255,255,.92);border-radius:0;padding:0 12px;height:46px;display:flex;align-items:center;font-size:14px;font-weight:400;letter-spacing:0;text-transform:none;box-shadow:none}
+html[data-tema="odoo"] header nav .grp:hover,html[data-tema="odoo"] header nav .grp.abierto{background:rgba(0,0,0,.14);color:#fff}
+html[data-tema="odoo"] header nav .grp.act{background:rgba(0,0,0,.18);color:#fff;font-weight:600;box-shadow:none}
+html[data-tema="odoo"] nav .gbody{background:#fff;border:1px solid var(--rule);border-radius:0 0 4px 4px;box-shadow:0 8px 18px rgba(0,0,0,.18);padding:4px 0;min-width:260px}
+html[data-tema="odoo"] nav .gbody a{color:var(--ink);border-radius:0;padding:6px 16px;font-size:14px;margin:0;box-shadow:none}
+html[data-tema="odoo"] nav .gbody a:hover{background:#F2F3F4;color:var(--ink)}
+html[data-tema="odoo"] nav .gbody a.on{background:var(--o-brand-soft);color:var(--o-brand);font-weight:600;box-shadow:none}
+html[data-tema="odoo"] nav .gbody a .ic svg{stroke:var(--ink3)}html[data-tema="odoo"] nav .gbody a.on .ic svg{stroke:var(--o-brand)}
+html[data-tema="odoo"] nav a .n{background:var(--o-brand);color:#fff}
+html[data-tema="odoo"] #navBtn{color:#fff;background:transparent;border:0}
+/* cabecera de cada pantalla = el panel de control de Odoo (blanco, título a la izquierda, filtros a la derecha) */
+html[data-tema="odoo"] main{padding:0 24px 60px}
+html[data-tema="odoo"] .page.on{padding-top:16px}
+html[data-tema="odoo"] .pagehead{background:#fff;margin:-16px -24px 16px;padding:10px 24px;border-bottom:1px solid var(--rule);align-items:center;min-height:52px}
+html[data-tema="odoo"] .pagehead h2{font-size:20px;font-weight:500;color:var(--ink);letter-spacing:0}
+html[data-tema="odoo"] .lede{color:var(--ink2)}
+/* botones: primario en el color de Odoo, secundario gris */
+html[data-tema="odoo"] .btn{background:var(--o-primary);border:1px solid var(--o-primary);color:#fff;border-radius:4px;padding:5px 12px;font-weight:500;box-shadow:none}
+html[data-tema="odoo"] .btn:hover{background:var(--o-primary-2);border-color:var(--o-primary-2);color:#fff}
+html[data-tema="odoo"] .btn.ghost,html[data-tema="odoo"] .btn.tint{background:var(--o-sec);border:1px solid var(--o-sec);color:#374151}
+html[data-tema="odoo"] .btn.ghost:hover,html[data-tema="odoo"] .btn.tint:hover{background:var(--o-sec-2);border-color:var(--o-sec-2);color:#1F2937;filter:none}
+html[data-tema="odoo"] .btn.tint svg{stroke:#374151}
+html[data-tema="odoo"] .btn.sm{padding:2px 8px;border-radius:3px}
+html[data-tema="odoo"] .btn.danger{background:#fff;color:var(--alerta);border-color:#F1C0C5}
+html[data-tema="odoo"] .filt-btn.on{background:var(--o-sec-2)}
+/* campos y buscador */
+html[data-tema="odoo"] input[type=text],html[data-tema="odoo"] input[type=number],html[data-tema="odoo"] input[type=date],html[data-tema="odoo"] input[type=month],html[data-tema="odoo"] input[type=datetime-local],html[data-tema="odoo"] select,html[data-tema="odoo"] textarea{border-radius:4px;border:1px solid var(--rule);padding:4px 8px}
+html[data-tema="odoo"] input:focus,html[data-tema="odoo"] select:focus,html[data-tema="odoo"] textarea:focus{outline:0;border-color:var(--o-brand);box-shadow:0 0 0 .15rem rgba(113,75,103,.18)}
+html[data-tema="odoo"] .busq input{padding-left:30px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236C757D' stroke-width='2.2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-3.6-3.6'/></svg>") no-repeat 9px 50%;background-size:15px}
+html[data-tema="odoo"] .busq-menu{border-radius:4px}
+/* listas como las de Odoo */
+html[data-tema="odoo"] th,html[data-tema="odoo"] table th,html[data-tema="odoo"] .panel table thead th{background:#fff;color:var(--ink);font-weight:700;font-size:13px;border-bottom:1px solid #CED4DA}
+html[data-tema="odoo"] td{border-bottom:1px solid #E7E9ED}
+html[data-tema="odoo"] tbody tr:hover td{background:#F5F5F6}
+/* bloques: hoja blanca con borde fino (sin franjas de color) */
+html[data-tema="odoo"] .panel{border:1px solid var(--rule);border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+html[data-tema="odoo"] .panel>h3,html[data-tema="odoo"] .panel h3{background:#fff;border-left:0;border-bottom:1px solid var(--rule2);font-size:15px;font-weight:600;color:var(--ink);border-radius:4px 4px 0 0}
+html[data-tema="odoo"] .sub-blk,html[data-tema="odoo"] .ed-blk,html[data-tema="odoo"] .filtros-blk{border:1px solid var(--rule);border-radius:4px}
+html[data-tema="odoo"] .kpis{border-radius:4px}
+html[data-tema="odoo"] .kpi .v{color:var(--ink)}
+html[data-tema="odoo"] .kpi.tarj{border-left:0;background:#fff;border-radius:4px}html[data-tema="odoo"] .kpi.tarj .v{color:var(--o-brand)}
+html[data-tema="odoo"] .warn{background:#FFF3CD;border:1px solid #FFE69C;color:#664D03;border-radius:4px}
+/* etiquetas redondeadas con los colores suaves de Odoo */
+html[data-tema="odoo"] .tag{border-radius:10px;padding:1px 8px;font-weight:500;border:1px solid transparent}
+html[data-tema="odoo"] .t-ok{background:#D1E7DD;border-color:#D1E7DD;color:#0F5132}
+html[data-tema="odoo"] .t-aviso{background:#FFF3CD;border-color:#FFF3CD;color:#664D03}
+html[data-tema="odoo"] .t-alerta{background:#F8D7DA;border-color:#F8D7DA;color:#842029}
+html[data-tema="odoo"] .t-falta{background:#E2E3E5;border-color:#E2E3E5;color:#41464B}
+html[data-tema="odoo"] .t-medio,html[data-tema="odoo"] .tag.t-hoy{background:#CFF4FC;border-color:#CFF4FC;color:#055160}
+html[data-tema="odoo"] .tag.t-mut{background:#E9ECEF;border-color:#E9ECEF;color:#495057}
+html[data-tema="odoo"] .fase-mini{background:#E9ECEF;border-color:#E9ECEF;color:#374151;border-radius:10px}
+html[data-tema="odoo"] .chip{border-radius:4px;padding:3px 10px;border:1px solid var(--rule);background:#fff;color:var(--ink2)}
+html[data-tema="odoo"] .chip.on{background:var(--o-brand-soft);border-color:var(--o-brand-line);color:var(--o-brand);font-weight:600}
+/* ventanas */
+html[data-tema="odoo"] .veil{background:rgba(0,0,0,.45)}
+html[data-tema="odoo"] .modal{border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+html[data-tema="odoo"] .modal h3{font-size:18px;font-weight:500;padding:14px 18px}
+@media (max-width:860px){html[data-tema="odoo"] #app{grid-template-rows:auto 1fr!important}html[data-tema="odoo"] header{height:auto!important;min-height:46px;flex-wrap:wrap;padding:0 8px}
+  html[data-tema="odoo"] header nav{flex-basis:100%;height:auto;flex-direction:column;background:var(--o-brand)}html[data-tema="odoo"] header nav .grp{height:40px}html[data-tema="odoo"] #busg-host{flex:1 1 100%!important;margin:0 0 6px}}
+/* barra de fases con flechas (la del formulario de Odoo); vale en los dos aspectos */
+.o-statusbar{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0;margin:0 0 12px}
+.o-statusbar .st{padding:5px 14px 5px 20px;font-size:12.5px;color:#495057;background:#EDEEF0;white-space:nowrap;cursor:pointer;margin-left:-5px;
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%,9px 50%)}
+.o-statusbar .st:first-child{margin-left:0;padding-left:12px;clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%)}
+.o-statusbar .st:hover{background:#E1E3E6}
+.o-statusbar .st.on{background:var(--o-brand,#714B67);color:#fff;font-weight:600}
+.o-statusbar .st.hecho{color:#868E96}
 </style>
 </head>
 <body>
@@ -817,7 +903,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 22:21';
+const APP_BUILD='2026-09-24 08:38';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1872,12 +1958,17 @@ function busquedaGeneralHTML(){const res=BUSG.abierto?buscarGeneral(BUSG.q):[];
     </div>`:''}</div>`}
 function dondeEstaTxt(o){try{const P=programar();const d=dondeEsta(o,P);return d&&d.n?d.n:'—'}catch(e){return '—'}}
 /* ficha de la orden: foto, ruta con el paso actual, fechas, avance por talla e historial */
+function statusbarFasesHTML(o){if(!o)return '';const g=grupoDe(o.fase||'');const gs=faseGrupos().slice().sort((a,b)=>a.orden-b.orden).filter(x=>!/^cerrad/i.test(x.grupo));if(!gs.length)return '';
+  const iAct=g?gs.findIndex(x=>x.grupo===g.grupo):-1;const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
+  const desde=iAct<0?0:Math.max(0,iAct-2),hasta=iAct<0?gs.length:Math.min(gs.length,iAct+4);   /* como Odoo: se ven las cercanas, el resto se pliega */
+  return '<div class="o-statusbar" title="fase de Odoo por grupos (tabla 5) · clic para cambiarla">'+(desde>0?'<span class="st hecho" title="'+esc(gs.slice(0,desde).map(x=>x.grupo).join(' · '))+'">…</span>':'')+gs.map((x,i)=>i<desde||i>=hasta?'':'<span class="st'+(i===iAct?' on':(iAct>=0&&i<iAct?' hecho':''))+'" onclick="mCambiarFase(\''+o.id+'\')">'+esc(i===iAct?cap(x.grupo)+' · '+(o.fase||''):cap(x.grupo))+'</span>').join('')+
+    (hasta<gs.length?'<span class="st" title="'+esc(gs.slice(hasta).map(x=>x.grupo).join(' · '))+'">…</span>':'')+(iAct<0?'<span class="st on" onclick="mCambiarFase(\''+o.id+'\')">'+esc(o.fase||'sin fase')+'</span>':'')+'</div>'}
 function abrirFichaOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;BUSG.abierto=false;
   let P=null;try{P=programar()}catch(e){}
   const ro=(P&&P.ordenes[o.id])||{};const pasos=(ro.pasos||[]);const d=P?dondeEsta(o,P):{k:null,n:'—'};
   const a=S.avance[o.id]||{};const curva=curvaCorte(o)||curvaPedida(o);const tallas=curva?Object.keys(curva):[];
   const hist=(o.fases||[]).slice(-12).reverse();
-  abrir(`<h3>${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">
+  abrir(`<h3>${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">${statusbarFasesHTML(o)}
    <div style="display:flex;gap:14px;flex-wrap:wrap">
     <div style="flex:none">${fotoDe(o)?fotoMini(o,150):'<div class="mut">sin foto</div>'}</div>
     <div style="flex:1;min-width:230px;font-size:var(--fs-s)">
@@ -3332,7 +3423,15 @@ function buscarQ(el,fn){const id=el.dataset.q||'_';clearTimeout(_qTimers[id]);
   if(espera>0)_qTimers[id]=setTimeout(run,espera);else run()}
 let ERR_PROG=null;   // si programar() falla para un operario, se avisa en vez de mostrar todo
 let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
-function render(){try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
+/* aspecto de la pantalla (24-sep-2026, usuaria: «como están acostumbrados a Odoo»): 'odoo' (por defecto) | 'clasico' */
+function temaVisual(){const t=(S&&S.params)?S.params.tema:null;return t==='clasico'?'clasico':'odoo'}
+function aplicarTema(){const t=temaVisual();const de=document.documentElement;if(de.dataset.tema!==t)de.dataset.tema=t;
+  const h=document.querySelector('header'),nav=document.getElementById('nav');if(!h||!nav)return;
+  if(t==='odoo'&&nav.parentElement!==h)h.insertBefore(nav,document.getElementById('busg-host')||h.querySelector('.spacer'));   /* Odoo: los menús van en la barra de arriba */
+  else if(t!=='odoo'&&nav.parentElement===h)h.after(nav)}
+function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=temaVisual();v=v==='clasico'?'clasico':'odoo';if(v===antes)return;
+  S.params.tema=v;bitacora('Aspecto de la pantalla: '+antes+' → '+v+' ('+quienFirma()+')');save();render()}
+function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
@@ -11041,6 +11140,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 <div><label>Excedentes: palabra en la ODC</label><input type="text" value="${esc(String(prmTxt('palabrasExcedente','EXCEDENTE')))}" placeholder="EXCEDENTE, SOBRANTE" onchange="setPalabrasExcedente(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden cuya ODC (o proyecto) contiene alguna de estas palabras es un <b>excedente</b>: prenda ya hecha en bodega; al cargarla nace con la ruta de solo el paso final. Varias palabras separadas por coma; vacío = ninguna.</div></div>
 <div><label>Excedentes: centro del paso final</label><select onchange="setCentroExcedente(this.value)"><option value="">— ninguno —</option>${S.centros.filter(c=>c.area==='pro').map(c=>`<option value="${c.id}" ${prmTxt('centroExcedente','empaque')===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)">etiquetar con la pistola (precios) o poner RFID es un proceso final, no estampado: hoy Empaque; el tiempo es el de empaque de la categoría.</div></div>
 <div><label>Días de holgura para la entrega</label><input type="number" min="0" step="1" value="${esc(String(colchonDias()))}" onchange="setColchon(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden que termina a esta distancia o menos de su fecha meta cuenta como «justa» (en riesgo) en la nivelación, el plan mensual y el detalle de cada orden${S.params.colchonEstimado?' · <span class="tag t-aviso">valor sembrado (3), sin confirmar</span>':''}</div></div>
+<div><label>Aspecto de la pantalla</label><select onchange="setTema(this.value)"><option value="odoo" ${temaVisual()==='odoo'?'selected':''}>Como Odoo (por defecto)</option><option value="clasico" ${temaVisual()==='clasico'?'selected':''}>Clásico (el anterior)</option></select><div class="mut" style="font-size:var(--fs-xs)">decisión de la usuaria (24-sep): que se vea como Odoo, porque la gente ya está acostumbrada. Solo cambia el aspecto; las pantallas y los botones son los mismos. Vale para todos los usuarios y queda en la bitácora.</div></div>
 <div><label>Orden terminada desde la fase</label><input type="number" min="1" max="9" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
 <div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>
 <div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>

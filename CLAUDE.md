@@ -1389,6 +1389,18 @@ del mes). Bitácora «Volvió de Maquila · N días afuera»; `tallasLog` lleva 
 con faltante queda sin control), ligado a D10. `FASE_DE_CADA_CENTRO.xlsx` ya lleva la fila de Maquila decidida (INICIO → 5Maquila Conf, FIN → 5Maquila
 Recepción; falta decir quién toca INICIO y FIN). Pruebas MT1–MT14 y MB3 actualizada.
 
+**Aspecto como Odoo (24-sep-2026, usuaria: «como están acostumbrados a Odoo sería más fácil la adaptación, sin dar tantas vueltas»).**
+Solo cambia el aspecto; pantallas, botones y flujo son los mismos. Todo el CSS nuevo va bajo `html[data-tema="odoo"]` al final del `<style>`
+(tokens `--o-brand` #714B67, `--o-primary`, `--o-sec`; los tokens de siempre `--t-primary`/`--navy`/`--ink` se reasignan ahí), así el aspecto
+**clásico** queda intacto. `temaVisual()` / `aplicarTema()` (corre al inicio de `render()`) / `setTema(v)` (permiso `config`, bitácora):
+parámetro `S.params.tema` = `'odoo'` (por defecto) | `'clasico'`, en Configuración → Calendario y parámetros. Con Odoo, `aplicarTema` **mueve
+`#nav` dentro del `<header>`** (los menús van en la barra de arriba, como Odoo; los desplegables son blancos) y lo devuelve al volver al
+clásico; la cabecera de cada pantalla (`.pagehead`) es el panel de control blanco; botones primario morado y secundario gris; listas, etiquetas
+(colores suaves de Bootstrap 5), bloques y ventanas al estilo Odoo. **Barra de fases con flechas** (`statusbarFasesHTML(o)`, vale en los dos
+aspectos): los grupos de la tabla 5 en orden, el actual resaltado con el nombre de la fase, las lejanas plegadas en «…», clic = `mCambiarFase`;
+está arriba de la ficha (`abrirFichaOrden`). Colores a confirmar con una captura del Odoo de la usuaria (Community es morado; Enterprise usa
+botones verde azulado #017E84): basta cambiar `--o-brand`/`--o-primary`. Pruebas OD1–OD6.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
