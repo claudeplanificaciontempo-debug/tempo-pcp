@@ -1403,6 +1403,18 @@ está arriba de la ficha (`abrirFichaOrden`). **Colores (24-sep, la usuaria mand
  azul, verde, gris grafito, barra blanca con verde azulado (letras oscuras en la barra) y morado Odoo; cada paleta solo define
 `--o-brand` (barra), `--o-primary` (botón), `--o-brand-soft`/`--o-brand-line` (lo elegido) y `--o-ring` (foco). Pruebas OD1–OD8.
 
+**Buscador como Odoo (24-sep-2026, la usuaria mandó capturas de Filtros y Agrupar por de su Odoo: «¿podemos copiarlos?»).** Con el
+aspecto Odoo, `simplificarPagina` llama a `panelBusquedaOdoo(root,pg)` en vez de `plegarFiltros` («Filtrar» queda solo en el clásico). **No crea filtros:**
+toma los que `controlesFiltro` ya reconoce, los agrupa por contenedor y arma, por grupo, el panel de Odoo: campo (`.o-sbox`) con el
+buscador adentro y cada filtro puesto como etiqueta (`.o-facet`, texto `facetFiltroTxt`, la ✕ = `soltarFiltro` que usa el «Seleccionar
+todas»/«Limpiar» del propio control o vacía el select); **Filtros** (`details.o-dd.o-f`) con fases, selecciones múltiples y selectores adentro
+(sus desplegables quedan abiertos dentro del menú; `esDesplegable` no los cierra); **Agrupar por** = la lista de `GRP_CAMPOS` con ✓ (`togCampoGRP`:
+clic agrega o quita un nivel, hasta 3; `desagruparGRP`), el select del agrupador queda oculto; **Favoritos** (solo el primer grupo) guarda la
+búsqueda actual con `navSnap` en `localStorage` por usuario y pantalla (`favClave`/`favoritosDe`/`guardarFavorito`/`aplicarFavorito`/`quitarFavorito`,
+éste con confirmación y en la GUARDIA). El panel del primer grupo va en la franja del título (`.pagehead`); los demás, arriba de su lista.
+`OSRCH` recuerda qué menú quedó abierto entre redibujos; los menús pegados al borde se abren hacia adentro. Mi centro (tablet) no cambia.
+Pruebas OB1–OB11; F2 y la H de «Filtrar» corren en el aspecto clásico.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

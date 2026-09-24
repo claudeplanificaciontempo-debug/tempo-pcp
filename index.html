@@ -431,6 +431,37 @@ html[data-tema="odoo"][data-color="blanco"]{--o-brand:#FFFFFF;--o-brand-2:#F2F3F
 html[data-tema="odoo"][data-color="morado"]{--o-brand:#714B67;--o-brand-2:#5E3F56;--o-primary:#714B67;--o-primary-2:#5E3F56;--o-brand-soft:#F4EEF3;--o-brand-line:#DCCAD7;--o-ring:rgba(113,75,103,.18);--navy:#714B67;--navy2:#5E3F56;--t-primary:#714B67;--t-block:#714B67}
 html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529;border-bottom:1px solid #DEE2E6;box-shadow:none}html[data-tema="odoo"][data-color="blanco"] header h1{color:#212529}html[data-tema="odoo"][data-color="blanco"] header h1 .logo{background:var(--o-primary)}html[data-tema="odoo"][data-color="blanco"] header nav .grp{color:#374151}html[data-tema="odoo"][data-color="blanco"] header nav .grp:hover,html[data-tema="odoo"][data-color="blanco"] header nav .grp.abierto{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-color="blanco"] header nav .grp.act{background:#E9ECEF;color:#111827}html[data-tema="odoo"][data-color="blanco"] header button{color:#374151}html[data-tema="odoo"][data-color="blanco"] header button:hover{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-color="blanco"] header .sub,html[data-tema="odoo"][data-color="blanco"] header .saved{color:#6C757D}html[data-tema="odoo"][data-color="blanco"] #busg-host input{background:#F2F3F4;border:1px solid #DEE2E6}html[data-tema="odoo"][data-color="blanco"] #navBtn{color:#374151}html[data-tema="odoo"][data-color="blanco"] .kpi.tarj .v{color:var(--o-primary)}html[data-tema="odoo"][data-color="blanco"] .o-statusbar .st.on{background:var(--o-primary)}
 @media (max-width:860px){html[data-tema="odoo"][data-color="blanco"] header nav{background:#fff}}
+
+/* ---- buscador como Odoo (24-sep-2026): campo con etiquetas + Filtros · Agrupar por · Favoritos ---- */
+.o-search{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 12px}
+.pagehead .o-search{flex-basis:100%;margin:8px 0 0}
+.o-sbox{flex:1 1 380px;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:32px;border:1px solid var(--rule);border-radius:4px;background:#fff;padding:2px 6px}
+.o-sbox:focus-within{border-color:var(--o-primary,#2A5B8C);box-shadow:0 0 0 .15rem var(--o-ring,rgba(42,91,140,.2))}
+.o-sbox>div,.o-sbox .busq{flex:1 1 200px;min-width:160px;margin:0}
+.o-sbox .busq input{border:0!important;box-shadow:none!important;height:26px;background-color:transparent}
+.o-sbox label{display:none}
+.o-sbox .o-ph{color:var(--ink3);font-size:13px;padding:0 4px}
+.o-facet{display:inline-flex;align-items:center;gap:5px;background:#E9ECEF;border-radius:3px;font-size:12.5px;padding:1px 4px 1px 1px;max-width:460px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.o-facet b{background:var(--o-primary,#2A5B8C);color:#fff;border-radius:2px;padding:1px 5px;font-weight:600;font-size:11px}
+.o-facet a{cursor:pointer;color:#6C757D;font-weight:700;padding:0 3px;text-decoration:none}.o-facet a:hover{color:#212529}
+.o-sbtns{display:flex;gap:2px;align-items:center;flex-wrap:wrap}
+.o-dd{position:relative}
+.o-dd>summary{list-style:none;cursor:pointer;padding:4px 10px;border-radius:4px;color:var(--ink2);font-size:13.5px;white-space:nowrap;user-select:none}
+.o-dd>summary::-webkit-details-marker{display:none}
+.o-dd>summary:hover,.o-dd[open]>summary{background:#E9ECEF;color:var(--ink)}
+.o-dd .o-ico{color:var(--o-primary,#2A5B8C)}
+.o-menu{position:absolute;top:100%;left:0;z-index:40;background:#fff;border:1px solid var(--rule);border-radius:4px;box-shadow:0 8px 20px rgba(0,0,0,.16);min-width:280px;max-width:520px;max-height:70vh;overflow:auto;padding:6px 0;margin-top:2px}
+.o-menu .o-item{padding:5px 16px 5px 10px;cursor:pointer;font-size:13.5px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.o-menu .o-item:hover{background:#F2F3F4}.o-menu .o-item.on{font-weight:600}
+.o-chk{display:inline-block;width:14px;color:var(--o-primary,#2A5B8C);font-weight:700}
+.o-menu .o-sep{border-top:1px solid var(--rule2);margin:6px 0}
+.o-menu .o-sec{padding:4px 12px}.o-menu .o-sec+.o-sec{border-top:1px solid var(--rule2);margin-top:4px;padding-top:8px}
+.o-menu .o-sec>label,.o-menu .o-sec>div>label,.o-menu .o-tit{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);margin:2px 0 4px;font-weight:600}
+.o-menu details{display:block}.o-menu details>summary.chip{display:none!important}
+.o-menu details>div{position:static!important;box-shadow:none!important;border:0!important;padding:0!important;margin:0!important;min-width:0!important;max-height:none!important;background:transparent!important}
+.o-menu select,.o-menu input[type=text]{width:100%}
+.o-menu .o-fav-nuevo{display:flex;gap:6px;padding:6px 12px 2px}.o-menu .o-fav-nuevo input{flex:1}
+.o-menu .o-item .o-x{margin-left:auto;color:#6C757D;padding:0 4px}.o-menu .o-item .o-x:hover{color:var(--alerta)}
 /* barra de fases con flechas (la del formulario de Odoo); vale en los dos aspectos */
 .o-statusbar{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0;margin:0 0 12px}
 .o-statusbar .st{padding:5px 14px 5px 20px;font-size:12.5px;color:#495057;background:#EDEEF0;white-space:nowrap;cursor:pointer;margin-left:-5px;
@@ -914,7 +945,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 09:16';
+const APP_BUILD='2026-09-24 09:34';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6405,6 +6436,69 @@ function controlesFiltro(root){const out=[];
     if(ctl.some(x=>/EG\.sel|togSel|masiva|compromiso|marcad/i.test(x.getAttribute('onchange')||'')))return;   /* no es filtro: edición */
     d.setAttribute('data-filt-tipo','sel');out.push(d)})});
   return out}
+
+/* ---------- Buscador como Odoo (24-sep-2026, usuaria: «así son las búsquedas, ¿podemos copiarlos?») ----------
+   Reordena los controles que controlesFiltro ya reconoce (no crea filtros): el buscador va dentro del campo, los filtros activos
+   son etiquetas con ✕, «Filtros» junta fases / selectores / selecciones múltiples, «Agrupar por» es la lista de campos del
+   agrupador común (clic = agrega o quita un nivel, hasta 3) y «Favoritos» guarda la búsqueda actual por usuario y pantalla. */
+let OSRCH={};   /* qué desplegable queda abierto por página (se redibuja todo al filtrar) */
+function textoLabelFiltro(c){const l=c.querySelector(':scope > label')||(c.previousElementSibling&&c.previousElementSibling.tagName==='LABEL'?c.previousElementSibling:null);
+  const t=l?(l.textContent||'').trim():'';if(t)return t.replace(/:$/,'');const tipo=c.getAttribute('data-filt-tipo');return tipo==='fases'?'Fase':'Filtro'}
+function facetFiltroTxt(c){const tipo=c.getAttribute('data-filt-tipo');const lab=textoLabelFiltro(c);
+  if(tipo==='fases'||tipo==='multi'){const xs=[...c.querySelectorAll('input[type=checkbox]:checked')].map(i=>((i.parentElement&&i.parentElement.textContent)||'').replace(/\s+/g,' ').trim()).filter(Boolean);
+    const s=(c.querySelector('summary')||{}).textContent||'';return lab+': '+(xs.length&&xs.length<=3?xs.join(' o '):s.replace(/▾/g,'').trim())}
+  if(tipo==='sel'){const v=[...c.querySelectorAll('select,input')].map(x=>x.tagName==='SELECT'?(x.selectedIndex>0?x.options[x.selectedIndex].text:''):String(x.value||'').trim()).filter(Boolean);return lab+': '+v.join(' · ')}
+  return lab}
+function soltarFiltro(c){const tipo=c.getAttribute('data-filt-tipo');
+  if(tipo==='fases'||tipo==='multi'){const b=[...c.querySelectorAll('button')].find(x=>/Seleccionar todas|^Limpiar$/.test((x.textContent||'').trim()));if(b){b.click();return}}
+  let hubo=false;c.querySelectorAll('select').forEach(x=>{if(x.selectedIndex>0){x.selectedIndex=0;x.dispatchEvent(new Event('change',{bubbles:true}));hubo=true}});
+  c.querySelectorAll('input[type=text],input[type=month],input[type=date],input[type=search]').forEach(x=>{if(String(x.value||'')){x.value='';x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));hubo=true}});
+  if(!hubo)render()}
+function togCampoGRP(id,k){const g=grpSt(id);let n=g.niveles.slice();if(n.includes(k))n=n.filter(x=>x!==k);else{if(n.length>=3)n=n.slice(0,2);n.push(k)}
+  g.niveles=n;g.exp=new Set();try{localStorage['__grp_'+claveUsr()+'_'+id]=JSON.stringify(g.niveles)}catch(e){}render()}
+function desagruparGRP(id){const g=grpSt(id);g.niveles=[];g.exp=new Set();try{localStorage['__grp_'+claveUsr()+'_'+id]=JSON.stringify([])}catch(e){}render()}
+/* Favoritos: la búsqueda actual (filtros, agrupación y buscador) con un nombre, por usuario y pantalla; se guarda en este navegador */
+function favClave(pg){return '__fav_'+claveUsr()+'_'+pg}
+function favoritosDe(pg){try{const x=JSON.parse(localStorage[favClave(pg)]||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
+function guardarFavorito(pg,nombre){nombre=String(nombre||'').trim();if(!nombre){alert('Escribe un nombre para la búsqueda.');return}
+  const l=favoritosDe(pg).filter(x=>x.n!==nombre);const s=navSnap();l.push({n:nombre,ts:new Date().toISOString(),st:s.st,grp:s.grp,busq:s.busq});
+  try{localStorage[favClave(pg)]=JSON.stringify(l)}catch(e){alert('No se pudo guardar en este navegador.');return}OSRCH[pg]=null;render()}
+function aplicarFavorito(pg,i){const f=favoritosDe(pg)[i];if(!f)return;const R=navRefs();
+  Object.keys(f.st||{}).forEach(k=>{if(R[k]&&typeof R[k]==='object'){Object.keys(R[k]).forEach(x=>delete R[k][x]);Object.assign(R[k],desclon(f.st[k]))}});
+  try{const g=JSON.parse(f.grp);Object.keys(g).forEach(k=>{GRP[k]={niveles:g[k].niveles,exp:new Set(g[k].exp)}})}catch(e){}
+  try{Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,JSON.parse(f.busq))}catch(e){}OSRCH[pg]=null;render()}
+function quitarFavorito(pg,i){const l=favoritosDe(pg);const f=l[i];if(!f)return;if(!confirm('¿Quitar la búsqueda guardada «'+f.n+'»?'))return;l.splice(i,1);try{localStorage[favClave(pg)]=JSON.stringify(l)}catch(e){}render()}
+function panelBusquedaOdoo(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))return 0;
+  const ctls=controlesFiltro(root);if(!ctls.length)return 0;
+  const grupos=[];ctls.forEach(c=>{if(c.closest('.o-search'))return;const k=c.closest('.row,.body,.pagehead,.res-tabs,h3')||c.parentElement;let g=grupos.find(x=>x.k===k);if(!g){g={k,cs:[]};grupos.push(g)}g.cs.push(c)});
+  const tipo=c=>c.getAttribute('data-filt-tipo');const top0=root.getBoundingClientRect().top;const ph=root.querySelector('.pagehead');
+  grupos.forEach((g,gi)=>{const cs=g.cs;const busq=cs.find(c=>tipo(c)==='busq');const filtros=cs.filter(c=>['fases','multi','sel'].includes(tipo(c)));const grp=cs.find(c=>tipo(c)==='grp');
+    const selG=grp?(grp.matches('select')?grp:grp.querySelector('select[onchange^="setNivelGRP("]')):null;const mG=selG?String(selG.getAttribute('onchange')||'').match(/setNivelGRP\('([^']+)'/):null;const idG=mG?mG[1]:null;
+    const p=document.createElement('div');p.className='o-search no-print';p.setAttribute('data-o-search',String(gi));
+    const box=document.createElement('div');box.className='o-sbox';
+    filtros.filter(filtroActivoCtl).forEach(c=>{const f=document.createElement('span');f.className='o-facet';f.innerHTML='<b>▼</b>'+esc(facetFiltroTxt(c))+' <a title="quitar este filtro">×</a>';f.title=facetFiltroTxt(c);f.querySelector('a').onclick=ev=>{ev.stopPropagation();soltarFiltro(c)};box.appendChild(f)});
+    if(idG&&grpSt(idG).niveles.length){const f=document.createElement('span');f.className='o-facet';const nom=k=>(GRP_CAMPOS.find(z=>z[0]===k)||[,k])[1];f.innerHTML='<b>≡</b>'+esc(grpSt(idG).niveles.map(nom).join(' › '))+' <a title="quitar la agrupación">×</a>';f.querySelector('a').onclick=ev=>{ev.stopPropagation();desagruparGRP(idG)};box.appendChild(f)}
+    {const cont=g.k;if(cont&&cont.parentElement&&(cont.classList.contains('row')||cont.classList.contains('res-tabs')))cont.parentElement.insertBefore(p,cont);else if(cont&&(cont.classList.contains('body')||cont.classList.contains('pagehead')))cont.insertBefore(p,cont.firstChild);else cs[0].parentElement.insertBefore(p,cs[0])}   /* a todo lo ancho, arriba de su lista */
+    if(busq)box.appendChild(busq);else{const sp=document.createElement('span');sp.className='o-ph';sp.textContent=box.children.length?'':'Filtros de esta lista';box.appendChild(sp)}
+    p.appendChild(box);const btns=document.createElement('div');btns.className='o-sbtns';p.appendChild(btns);
+    const mk=(cls,ico,txt)=>{const d=document.createElement('details');d.className='o-dd '+cls;const su=document.createElement('summary');su.innerHTML='<span class="o-ico">'+ico+'</span> '+txt;d.appendChild(su);const m=document.createElement('div');m.className='o-menu';d.appendChild(m);
+      const k=gi+':'+cls;const acomodar=()=>{m.style.left='';m.style.right='';const rc=m.getBoundingClientRect();if(rc.right>window.innerWidth-8){m.style.left='auto';m.style.right='0'}};   /* pegado al borde: se abre hacia adentro */
+      if(OSRCH[pg]===k){d.open=true;setTimeout(acomodar,0)}d.addEventListener('toggle',()=>{if(d.open){OSRCH[pg]=k;acomodar()}else if(OSRCH[pg]===k)OSRCH[pg]=null});btns.appendChild(d);return m};
+    if(filtros.length){const m=mk('o-f','▼','Filtros');filtros.forEach(c=>{const sec=document.createElement('div');sec.className='o-sec';if(!c.querySelector(':scope > label')&&!(c.previousElementSibling&&c.previousElementSibling.tagName==='LABEL')){const t=document.createElement('div');t.className='o-tit';t.textContent=textoLabelFiltro(c);sec.appendChild(t)}
+      sec.appendChild(c);c.querySelectorAll('details').forEach(d=>d.open=true);m.appendChild(sec)})}
+    if(idG){const m=mk('o-g','≡','Agrupar por');const niv=grpSt(idG).niveles;GRP_CAMPOS.forEach(([k,n])=>{const it=document.createElement('div');const on=niv.includes(k);it.className='o-item'+(on?' on':'');
+        it.innerHTML='<span class="o-chk">'+(on?'✓':'')+'</span>'+esc(n)+(on&&niv.length>1?' <span class="mut">('+(niv.indexOf(k)+1)+'.º)</span>':'');it.onclick=()=>togCampoGRP(idG,k);m.appendChild(it)});
+      if(niv.length){const sp=document.createElement('div');sp.className='o-sep';m.appendChild(sp);const it=document.createElement('div');it.className='o-item';it.textContent='Quitar la agrupación';it.onclick=()=>desagruparGRP(idG);m.appendChild(it)}
+      grp.setAttribute('data-filt-oculto','1')}
+    if(gi===0){const m=mk('o-fav','★','Favoritos');const l=favoritosDe(pg);
+      l.forEach((f,i)=>{const it=document.createElement('div');it.className='o-item';it.innerHTML='<span class="o-chk"></span>'+esc(f.n)+'<span class="o-x" title="quitar">×</span>';it.onclick=()=>aplicarFavorito(pg,i);it.querySelector('.o-x').onclick=ev=>{ev.stopPropagation();quitarFavorito(pg,i)};m.appendChild(it)});
+      if(l.length){const sp=document.createElement('div');sp.className='o-sep';m.appendChild(sp)}
+      const t=document.createElement('div');t.className='o-tit';t.style.padding='0 12px';t.textContent='Guardar búsqueda actual';m.appendChild(t);
+      const nv=document.createElement('div');nv.className='o-fav-nuevo';nv.innerHTML='<input type="text" placeholder="Nombre, p. ej. Confección de este mes"><button class="btn sm">Guardar</button>';
+      const inp=nv.querySelector('input');nv.querySelector('button').onclick=()=>guardarFavorito(pg,inp.value);inp.onkeydown=ev=>{if(ev.key==='Enter'){ev.preventDefault();guardarFavorito(pg,inp.value)}};m.appendChild(nv)}
+    /* el primero, si está arriba, va en la cabecera de la pantalla (como Odoo); los demás quedan junto a su lista */
+    if(gi===0&&ph&&!p.closest('.pagehead'))ph.appendChild(p)});   /* el de la lista principal va arriba, en la franja del título (como Odoo) */
+  return grupos.length}
 function plegarFiltros(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))return 0;
   const ctls=controlesFiltro(root);if(!ctls.length)return 0;
   const nAct=ctls.filter(filtroActivoCtl).length;const abierto=filtrosAbiertos(pg,nAct);FILT_VISTO[pg]=abierto;
@@ -6423,7 +6517,7 @@ function plegarFiltros(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))return 0;
     root.addEventListener('change',ev=>{const t=ev.target;if(t&&t.closest&&t.closest('[data-filt]')){filtCargar();if(FILT[pg]!==true){FILT[pg]=true;try{localStorage[filtClave()]=JSON.stringify(FILT)}catch(e){}}}},true)}
   return ctls.length}
 function simplificarPagina(pg){const root=document.getElementById('p-'+pg);if(!root)return;const rep=(que,e)=>{try{console.error('simplificarPagina·'+que,e)}catch(x){}if(window.__R&&Array.isArray(__R.errors))__R.errors.push({page:pg,msg:'simplificarPagina '+que+': '+((e&&e.message)||e)})};
-  try{ledesAAyuda(root)}catch(e){rep('ledes',e)}try{plegarFiltros(root,pg)}catch(e){rep('filtros',e)}}
+  try{ledesAAyuda(root)}catch(e){rep('ledes',e)}try{if(temaVisual()==='odoo')panelBusquedaOdoo(root,pg);else plegarFiltros(root,pg)}catch(e){rep('filtros',e)}}
 
 /* ---------- H · UN estado con semáforo y verbo para toda lista de órdenes ----------
    No calcula nada nuevo: usa liberada/faltaLiberarA (qué falta), el bloqueo del motor, diagAtraso (fecha meta),
@@ -13261,7 +13355,8 @@ document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.targ
 /* Solo los DESPLEGABLES se cierran al hacer clic fuera: menú «⋯» (details.acc), filtro de fases (details.ffases) y selectores múltiples
    (summary.chip). Los bloques de contenido (ficha de la orden, tarjetas de Hoy, paneles plegables) se quedan como los dejó la persona:
    hasta el 20-sep este cierre alcanzaba a todo <details> y la ficha se cerraba sola al tocar cualquier campo. */
-function esDesplegable(d){return d.classList.contains('acc')||d.classList.contains('ffases')||!!(d.firstElementChild&&d.firstElementChild.matches('summary.chip'))}
+function esDesplegable(d){if(d.closest('.o-menu')&&!d.classList.contains('o-dd'))return false;   /* dentro del menú de Filtros quedan abiertos */
+  return d.classList.contains('acc')||d.classList.contains('ffases')||d.classList.contains('o-dd')||!!(d.firstElementChild&&d.firstElementChild.matches('summary.chip'))}
 document.addEventListener('click',e=>{document.querySelectorAll('details[open]').forEach(d=>{if(esDesplegable(d)&&!d.contains(e.target))d.removeAttribute('open')})});
 </script>
 </body>
