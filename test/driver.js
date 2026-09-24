@@ -805,18 +805,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    PERFIL={rol:'piso',modo:'editar',nombre:'P'};const alertPrev=window.alert;let al='';window.alert=m=>al=m;anotarDecisionCap(x.c,x.m);__check("capacidad: sin permiso programa no anota",/no puede anotar/.test(al)&&(S.params.capDecisiones||[]).length===1);window.alert=alertPrev;PERFIL=adminP;
    recsC.forEach((r,i)=>r.activa=act[i]);PLAN=null;PLAN_ALL=null;CAPD.sel=null;render();__check("capacidad: al volver a alcanzar el problema se cierra con bitácora",!!p.cerrado&&S.bitacora.some(b=>/ya alcanza · problema cerrado/.test(b.t)));
    S.params.capDecisiones=[];S.params.capProblemas=[];__check("capacidad sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
-  /* Compras del mes */
-  {const antes=__R.errors.length;const adminP=PERFIL;COMP={mes:'',niveles:['prov']};page='compras';render();const html=()=>document.getElementById('p-compras').innerHTML;
-   const M=comprasMes('');__check("compras: monta productos a comprar, bodega y bandejas",typeof M.ords==='number'&&Array.isArray(M.items)&&Array.isArray(M.bodega)&&M.rep&&Array.isArray(M.sinDias),M.items.length+' items');
-   __check("compras: ningún item a comprar es tela propia (esa va en Macro)",M.items.every(t=>t.tipo!=='Tela externa'||t.disp!=='teje'));
-   __check("compras: la pantalla tiene A comprar, Ya lo tenemos, Bandejas, agrupar y las dos exportaciones (Excel con formato y CSV)",html().includes('A comprar')&&html().includes('Ya lo tenemos')&&html().includes('Bandejas')&&html().includes('Agrupar por')&&html().includes('exportarRequerimientoXLSX()')&&html().includes('exportarComprasCSV()'));
-   // días de proveedor: tabla sembrada en blanco, sin 15 por defecto; con un valor, sale la fecha límite
+  /* Compras del mes: pantalla RETIRADA el 24-sep (usuaria: «ya no nos va a servir en este aplicativo»); quedan los días por proveedor que usa el motor */
+  {const antes=__R.errors.length;const adminP=PERFIL;PERFIL=adminP0();
+   __check('CO1: la pantalla Compras del mes ya no existe (ni menú, ni sección, ni cálculo propio) y un enlace viejo lleva a la Macro',!document.querySelector('nav a[data-p="compras"]')&&!document.getElementById('p-compras')&&typeof vCompras==='undefined'&&typeof comprasMes==='undefined'&&redirigirPagina('compras')==='macro');
+   __check('CO2: Hoy ya no trae la bandeja «productos a comprar sin proveedor» (era de esa pantalla)',!pendientesHoy().some(i=>i.k==='sinProv'));
    sembrarDiasProveedor();const dp=diasProveedor();__check("compras: tabla de días por proveedor sembrada y en blanco (sin definir)",dp.length>=0&&dp.every(r=>r.dias===''||r.dias==null||!isNaN(+r.dias)));
    __check("compras: diasProvDe de un proveedor sin definir es null (nunca 15)",diasProvDe('__inexistente__')===null);
-   if(M.items.some(t=>t.disp==='pedir'&&t.prov)){const it=M.items.find(t=>t.disp==='pedir'&&t.prov&&t.minFecha);
-     if(it){let row=diasProveedor().find(r=>normFase(r.prov)===normFase(it.prov));if(!row){diasProveedor().push({prov:it.prov,dias:''});row=diasProveedor().slice(-1)[0]}row.dias=10;
-       const M2=comprasMes('');const it2=M2.items.find(t=>t.cod===it.cod&&t.prov===it.prov);__check("compras: con días del proveedor, la fecha límite = fecha requerida − días",!!it2&&it2.limite===dsum(it2.minFecha,-10)&&!M2.sinDias.some(p=>normFase(p)===normFase(it.prov)));
-       row.dias='';}}
    // el 15 fijo del motor ya no existe: la ruta textil usa diasProvOrden (0 si no hay tabla)
    {const o=S.ordenes.find(x=>(x.telas||[]).some(t=>produceTela(t)!=='propia'));if(o){const r=rutaTextilDe(o);const pv=r.find(p=>p.centro==='proveedor');if(pv)__check("motor: la ruta textil ya no trae 15 fijo; usa días del proveedor (0 sin dato)",pv.t===(diasProvOrden(o)||0)&&pv.t!==15,pv.t);}}
    __check("compras sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
@@ -1878,7 +1872,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 2 · Hoy: pendientes
    page='panorama';render();const items=pendientesHoy();const hp=()=>document.getElementById('p-panorama').innerHTML;
    __check("Hoy: una sola lista de pendientes con conteo y enlace por ítem",items.length>=12&&items.every(i=>typeof i.n==='number'&&i.titulo&&i.ir&&i.pagina)&&hp().includes('Pendientes')&&hp().includes('índice de todas las bandejas'));
-   __check("Hoy: cubre los once tipos pedidos",['sinFecha','sinOdc','sinWH','precioRaro','telaSinClasif','telaSinMerma','sinProv','provSinDias','catSinTiempo','faseNoCalza','noCalzan','capacidad','sinMedir'].every(k=>items.some(i=>i.k===k)));
+   __check("Hoy: cubre los tipos pedidos (sin «productos sin proveedor»: salió con Compras del mes, 24-sep)",['sinFecha','sinOdc','sinWH','precioRaro','telaSinClasif','telaSinMerma','provSinDias','catSinTiempo','faseNoCalza','noCalzan','capacidad','sinMedir'].every(k=>items.some(i=>i.k===k)));
    {const it=items.find(i=>i.n>0)||items[0];const pp=window.prompt;let calls=0;window.prompt=()=>{calls++;return calls===1?'5':'espera al cliente'};const nb=S.bitacora.length;posponerPend(it.k);window.prompt=pp;const p=pendPospuestos()[it.k];
      __check("Hoy: posponer no lo borra: queda en Pospuestos hasta la fecha, con quién y motivo, en bitácora",!!p&&p.hasta===dsum(hoy(),5)&&p.u&&p.motivo==='espera al cliente'&&pendientesHoy().find(i=>i.k===it.k).pospuesto===true&&S.bitacora.slice(-3).some(b=>/Pendiente pospuesto/.test(b.t))&&(it.n>0?hp().includes('Pospuestos (')||true:true));
      reactivarPend(it.k);__check("Hoy: reactivar lo devuelve a la lista",!pendPospuestos()[it.k]&&pendientesHoy().find(i=>i.k===it.k).pospuesto===false);}
@@ -2018,8 +2012,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("TC: 1Tejeduria → 0Ord Compras cambia la ruta (proveedor en vez de tejeduría) y marca la tela como comprada",!(oT.ruta||[]).some(p=>p.centro==='tej')&&(oT.ruta||[]).some(p=>p.centro==='proveedor')&&(oT.telas||[]).every(t=>t.ext)&&!!oT.compraTela);
    const nDesp=(S.params.alertasCompras||[]).filter(a=>!a.atendida).length;__check("TC: genera la alerta 'pasaron a compras'",nDesp===nAntes+1);
    __check("TC: la alerta sale en Hoy → Pendientes con las WH",(()=>{const it=pendientesHoy().find(x=>x.k==='pasoCompras');return !!it&&it.n>=1&&it.detalle.includes('WH/TEST-TC')})());
-   page='compras';render();__check("TC: Compras del mes muestra el panel 'pasaron a compras' con botón pedida",document.getElementById('p-compras').innerHTML.includes('pasaron a compras'));
-   const al=(S.params.alertasCompras||[]).find(a=>a.oid===oT.id);atenderCompra(al.id);__check("TC: 'pedida' atiende la alerta",al.atendida===true&&al.atendidaU!==undefined);
+   {const it=pendientesHoy().find(x=>x.k==='pasoCompras');__check("TC: desde Hoy se abre la ventana 'pasaron a compras' con el botón pedida (la pantalla Compras se retiró)",!!it&&/mAlertasCompras\(\)/.test(it.ir||'')&&(()=>{mAlertasCompras();const ok=!!document.querySelector('.alertas-compras')&&/pasaron a compras/.test(document.querySelector('.alertas-compras').innerHTML);return ok})())}
+   const al=(S.params.alertasCompras||[]).find(a=>a.oid===oT.id);atenderCompra(al.id);__check("TC: 'pedida' atiende la alerta",al.atendida===true&&al.atendidaU!==undefined);try{cerrar()}catch(e){}
    __check("TC: la etiqueta de fase es clicable y abre el cambio de fase con motivo",faseTag(oT).includes("mCambiarFase('"+oT.id+"')")&&(()=>{mCambiarFase(oT.id);const ok=!!document.getElementById('cf-f')&&!!document.getElementById('cf-m');try{cerrar()}catch(e){}return ok})());
    // A · tablet
    __check("TC: existe el perfil 'tablet' (solo página Mi centro) y toma el centro asignado por usuario",perfilesDef().some(x=>x.id==='tablet')&&(()=>{S.params.tablets=Object.assign({},S.params.tablets,{u_test:{centro:'corte',rec:''}});const d=perfilDe({rol:'tablet',id:'u_test'});return d&&d.paginas.length===1&&d.paginas[0]==='tablet'&&d.centros[0]==='corte'})());
@@ -3842,34 +3836,30 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const pri=[...document.querySelectorAll('nav a[data-cen]:not([data-sub])')].map(a=>a.dataset.cen);
     __check("MN1: Empaque sale del primer nivel del menú",!pri.includes('empaque')&&pri.includes('terminados'));
     __check("MN1: y sigue siendo sub-área de Terminados por la columna «Ítem de planificación»",grupoPlanDe('empaque')==='terminados'&&subAreasDe('terminados').includes('empaque'));}
-   // 2 · Terminados despliega sus sub-áreas
-   {render();const subs=[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')];
-    __check("MN2: Terminados muestra un sub-ítem por cada sub-área, en el orden del proceso",subs.length===subAreasDe('terminados').length&&subs.map(a=>a.dataset.cen).join()===subAreasDe('terminados').join());
-    __check("MN2: los sub-ítems van indentados y llevan a la pantalla del centro",subs.every(a=>a.className==='subnav'&&a.dataset.p==='centro'));
-    __check("MN2: y llevan la alerta cuando la sub-área no tiene minutos o no está en ninguna ruta",subs.some(a=>!!a.dataset.av)&&subs.every(a=>!!a.dataset.av===/t-alerta/.test(a.innerHTML)));
-    /* el «!» explica qué es y qué hacer (17-sep): tooltip en toda la entrada, con el nombre del centro, la causa y «Para que desaparezca» */
-    __check("MN2: el «!» tiene tooltip explicativo en toda la entrada del menú y en el propio «!», con el nombre del centro, la causa (⚠) y qué hacer para que desaparezca",subs.filter(a=>!!a.dataset.av).every(a=>a.getAttribute("title")===a.dataset.av&&a.querySelector(".tag").getAttribute("title")===a.dataset.av&&a.dataset.av.startsWith(nCen(a.dataset.cen)+" — ")&&/⚠ /.test(a.dataset.av)&&/Para que desaparezca:/.test(a.dataset.av))&&subs.filter(a=>!a.dataset.av).every(a=>!a.hasAttribute("title")));
+   // 2 · 24-sep (usuaria: «está todo muy mezclado»): las sub-áreas NO van en el menú; van como pestañas dentro del centro
+   {render();const pest=()=>[...document.querySelectorAll('#p-centro .o-notebook a')];const abrir=g=>{const cl=el=>{const ev=document.createEvent('MouseEvents');ev.initEvent('click',true,true);el.dispatchEvent(ev)};cl(document.querySelector('nav a[data-cen="'+g+'"]'));page='centro';render()};
+    __check("MN2: el menú ya no lista las sub-áreas (cada ítem sale una sola vez)",document.querySelectorAll('nav a[data-sub]').length===0&&document.querySelectorAll('nav a[data-cen="terminados"]').length===1);
+    abrir('terminados');
+    __check("MN2: Terminados abre con «Todo Terminados» y una pestaña por sub-área, en el orden del proceso",CEN.id==='terminados'&&!CEN.solo&&pest().length===subAreasDe('terminados').length+1&&/^Todo Terminados/.test(pest()[0].textContent)&&pest().slice(1).map(a=>a.textContent.replace('!','').trim()).join()===subAreasDe('terminados').map(nCen).join(),pest().map(a=>a.textContent).join('|'));
+    __check("MN2: la pestaña lleva el «!» y su explicación cuando la sub-área no tiene minutos o no está en ninguna ruta",subAreasDe('terminados').every((c,i)=>{const a=pest()[i+1];const av=alertaSubArea(c);return av?(a.getAttribute('title')===av&&/t-alerta/.test(a.innerHTML)):!/t-alerta/.test(a.innerHTML)}));
+    {const avs=subAreasDe('terminados').map(alertaSubArea).filter(Boolean);const a=document.querySelector('nav a[data-cen="terminados"]');
+     __check("MN2: el ítem del menú lleva un «!» si alguna de sus sub-áreas tiene alerta, con la lista en el tooltip",avs.length?(!!a.querySelector('.sub-bang')&&a.getAttribute('title')===avs.join('\n')):!a.querySelector('.sub-bang'))}
     __check("MN2: cada causa dice cómo se resuelve en ESE centro: plancha (marca de categoría o ruta a mano), lavado (por orden), etiquetas (centro de diseño: ruta a mano)",(()=>{const sinRuta=c=>alertasSubArea(c).find(x=>x.k==="ruta");const bakO=S.ordenes;S.ordenes=[];const p=sinRuta("plancha"),l=sinRuta("lavado"),e=sinRuta("etiquetas");S.ordenes=bakO;return !!p&&/Lleva plancha/.test(p.que)&&!!l&&/POR ORDEN/.test(l.que)&&!!e&&/centro de diseño/.test(e.que)&&/Level 1/.test(e.que)})());
     __check("MN2: Etiquetas ya no dice «sin origen»: su fuente de minutos es la tabla de reglas de etiqueta (4 confirmadas de 0,5 min), y solo queda la causa de ruta",(()=>{const or=origenTiempoCentro("etiquetas");const re=reglasEtiqueta().filter(r=>(r.centro||"etiquetas")==="etiquetas"&&r.confirmada!==false&&+r.min>0).length;return re>0?(/reglas de etiqueta/.test(or.txt)&&!or.brecha&&new RegExp(re+" reglas confirmadas").test(or.det)&&alertasSubArea("etiquetas").every(x=>x.k==="ruta")):/sin origen|sin confirmar/.test(or.txt+or.brecha)})(),JSON.stringify(origenTiempoCentro("etiquetas")));
-    // el menú se rehace solo si se mueve una sub-área
-    const bak=(CE('empaque')||{}).grupoPlan;setCentro('empaque','grupoPlan','modulos');render();
-    const subs2=[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].map(a=>a.dataset.cen);
-    const subm=[...document.querySelectorAll('nav a[data-sub][data-padre="modulos"]')].map(a=>a.dataset.cen);
-    __check("MN2: si cambias el «Ítem de planificación», el menú se actualiza solo",!subs2.includes('empaque')&&subm.includes('empaque')&&subm.includes('modulos'));
-    setCentro('empaque','grupoPlan',bak===undefined?'terminados':bak);render();
-    __check("MN2: y al devolverlo, vuelve",[...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].map(a=>a.dataset.cen).includes('empaque'));
-    // el sub-ítem abre SOLO esa sub-área; el padre sigue siendo el consolidado
-    const cl=el=>{const ev=document.createEvent('MouseEvents');ev.initEvent('click',true,true);el.dispatchEvent(ev)};
-    cl([...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].find(a=>a.dataset.cen==='plancha'));
-    __check("MN2: tocar un sub-ítem abre ESA sub-área sola",CEN.id==='terminados'&&CEN.solo==='plancha');
-    page='centro';render();const hs=document.getElementById('p-centro').innerHTML;
-    __check("MN2: y la pantalla lo dice y deja volver al consolidado",/sub-área de Terminados/.test(hs)&&/ver las \d+ juntas/.test(hs));
-    cl(document.querySelector('nav a[data-cen="terminados"]:not([data-sub])'));
-    __check("MN2: y tocar Terminados vuelve a las sub-áreas juntas",CEN.id==='terminados'&&!CEN.solo);
-    page='centro';render();__check("MN2: el consolidado nombra las sub-áreas que junta",/sub-áreas juntas/.test(document.getElementById('p-centro').innerHTML));}
+    // si cambia el «Ítem de planificación», las pestañas cambian solas
+    const bak=(CE('empaque')||{}).grupoPlan;setCentro('empaque','grupoPlan','modulos');abrir('terminados');const sinEmp=!pest().some(a=>/Empaque/.test(a.textContent));abrir('modulos');const enMod=pest().some(a=>/Empaque/.test(a.textContent));
+    __check("MN2: si cambias el «Ítem de planificación», las pestañas se actualizan solas",sinEmp&&enMod);
+    setCentro('empaque','grupoPlan',bak===undefined?'terminados':bak);abrir('terminados');
+    __check("MN2: y al devolverlo, vuelve",pest().some(a=>/Empaque/.test(a.textContent)));
+    // una pestaña abre SOLO esa sub-área; «Todo» vuelve al consolidado
+    pest().find(a=>/Plancha/.test(a.textContent)).click();
+    __check("MN2: tocar una pestaña abre ESA sub-área sola y el título lo dice",CEN.id==='terminados'&&CEN.solo==='plancha'&&/Terminados\s*\/\s*Plancha/.test(document.querySelector('#p-centro .pagehead h2').textContent)&&pest().find(a=>a.classList.contains('on')).textContent.includes('Plancha'));
+    pest()[0].click();
+    __check("MN2: «Todo Terminados» vuelve a las sub-áreas juntas",CEN.id==='terminados'&&!CEN.solo&&pest()[0].classList.contains('on'));
+    abrir('corte');__check("MN2: un centro sin subprocesos (Corte) no muestra pestañas",!document.querySelector('#p-centro .o-notebook'));}
    // 3 · Etiquetas con Estampado
    {__check("MN3: Etiquetas queda en el ítem de planificación Estampado",grupoPlanDe('etiquetas')==='estampado'&&!subAreasDe('terminados').includes('etiquetas')&&subAreasDe('estampado').includes('etiquetas'));
-    __check("MN3: y por eso ya no sale bajo Terminados en el menú",![...document.querySelectorAll('nav a[data-sub][data-padre="terminados"]')].some(a=>a.dataset.cen==='etiquetas'));
+    __check("MN3: y por eso ya no sale entre las pestañas de Terminados, sí entre las de Estampado",(()=>{CEN.id='terminados';CEN.solo='';page='centro';render();const t1=[...document.querySelectorAll('#p-centro .o-notebook a')].some(a=>/Etiquetas/.test(a.textContent));CEN.id='estampado';render();const t2=[...document.querySelectorAll('#p-centro .o-notebook a')].some(a=>/Etiquetas/.test(a.textContent));return !t1&&t2})());
     __check("MN3: la pantalla de Estampado la trae como sub-área propia",censDeGrupo('estampado').includes('etiquetas')&&censDeGrupo('estampado').includes('estampado'));
     const cat=perfilesDef();const ter=cat.find(x=>x.id==='terminado'),cor=cat.find(x=>x.id==='corte');
     __check("MN4: los perfiles cambian con ella: terminado deja de verla y corte/estampado/bordado la ve",!(ter.centros||[]).includes('etiquetas')&&(cor.centros||[]).includes('etiquetas'));
@@ -7668,14 +7658,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* órdenes de la base sin una sola línea de material: se reportan, no se estiman */
     const sinMat=ordenesReqSinMateriales('MES RQ');
     __check('RQ: una orden de la base sin líneas de material se cuenta aparte (no se inventa su requerimiento) y no entra a las cuentas de la macro',sinMat.some(o=>o.id===oAntes.id)&&!sinMat.some(o=>o.id===oDespues.id)&&/No puedo calcular el requerimiento/.test(reqSinMaterialesHTML('MES RQ')),JSON.stringify({n:sinMat.length}));
-    /* mes de entrega como agrupador de compras */
-    const M=comprasMes('');const conMes=M.items.filter(x=>x.mesEnt);
-    __check('RQ: cada producto a comprar trae el mes de la entrega más temprana y se puede agrupar por ese mes',M.items.length>0&&conMes.length>0&&/^\d{4}-\d{2}$/.test(conMes[0].mesEnt)&&claveCOMP('mesEnt',conMes[0])===conMes[0].mesEnt&&claveCOMP('mesEnt',{mesEnt:''})==='sin fecha de entrega'&&COMP_CAMPOS.some(c=>c[0]==='mesEnt'),JSON.stringify({items:M.items.length,conMes:conMes.length,ej:conMes[0]&&conMes[0].mesEnt}));
-    /* las dos pantallas dicen la base y ofrecen el Excel */
-    page='compras';render();const hc=document.getElementById('p-compras').innerHTML;
+    /* la Macro dice la base (Compras se retiró el 24-sep) */
     page='macro';render();const hm=document.getElementById('p-macro').innerHTML;
-    __check('RQ: Compras y Macro dicen de dónde sale la base (fases anteriores a Planificación, con el enlace a la tabla 1) y ya no la lista fija de tres fases',/Base: <b>todo lo anterior a/.test(hc)&&/Base: <b>todo lo anterior a/.test(hm)&&hc.includes('ordenes2')&&!/0Macro, 1Tejeduria, 1CD Tintoreria/.test(hm),JSON.stringify({c:/Base: <b>todo lo anterior a/.test(hc),m:/Base: <b>todo lo anterior a/.test(hm)}));
-    __check('RQ: Compras exporta el requerimiento en Excel con formato (y conserva el CSV)',/exportarRequerimientoXLSX\(\)/.test(hc)&&/exportarComprasCSV\(\)/.test(hc)&&typeof exportarRequerimientoXLSX==='function'&&typeof cargarExcelJS==='function',JSON.stringify({xlsx:/exportarRequerimientoXLSX/.test(hc)}));
+    __check('RQ: la Macro dice de dónde sale la base (fases anteriores a Planificación, con el enlace a la tabla 1) y ya no la lista fija de tres fases',/Base: <b>todo lo anterior a/.test(hm)&&hm.includes('ordenes2')&&!/0Macro, 1Tejeduria, 1CD Tintor/.test(hm));
     S.ordenes=S.ordenes.filter(x=>x.id!==oAntes.id&&x.id!==oDespues.id);delete S.avance[oAntes.id];delete S.avance[oDespues.id];
     t.forEach((r,i)=>r.montado=prevMont[i]);S.params.reqAntesPlan=prevFlag;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;}
    /* TM · Estado de tintorería: «Antes de tintorería» con el botón → Tintorería (usuaria, 21-sep: los baños se arman en otro sistema, pero la fase se mueve aquí) */
@@ -8105,7 +8090,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
    const pg=p=>document.getElementById('p-'+p);
    /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
-   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','compras','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
     const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
     __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
     page='avance';render();__check("F1: Avance del mes conserva a la vista el aviso «sin plan congelado» (es estado, no explicación)",!!pg('avance').querySelector('.lede.no-plegar'));

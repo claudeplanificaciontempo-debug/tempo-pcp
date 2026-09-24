@@ -1415,6 +1415,22 @@ búsqueda actual con `navSnap` en `localStorage` por usuario y pantalla (`favCla
 `OSRCH` recuerda qué menú quedó abierto entre redibujos; los menús pegados al borde se abren hacia adentro. Mi centro (tablet) no cambia.
 Pruebas OB1–OB11; F2 y la H de «Filtrar» corren en el aspecto clásico.
 
+**Compras del mes RETIRADA (24-sep-2026, usuaria: «eso ya no nos va a servir en este aplicativo, borremos»).** Se quitaron el menú, la
+sección, `vCompras`, `comprasMes`, el agrupador `COMP`/`COMP_CAMPOS`, `exportarRequerimientoXLSX` y `exportarComprasCSV`, y la bandeja `sinProv`
+de Hoy. **Se conserva** lo que usan otras partes: la tabla de días por proveedor (`diasProveedor`/`diasProvOrden`, el motor la usa
+para la ruta textil comprada), las alertas «pasaron a compras» (`S.params.alertasCompras`; ahora se ven en la ventana `mAlertasCompras()`
+que abre la bandeja `pasoCompras` de Hoy, con el botón «pedida»), la Macro del mes (ya no enlaza a Compras) y los helpers de Excel
+(`cargarExcelJS`/`xlsHoja`/`xlsPortada`, los usa la exportación de rutas). `PAGINAS_REDIRIGIDAS.compras='macro'`; `irEstadoOrden` lleva una orden
+en fase 0 a Órdenes. Donde este archivo hable de «Compras del mes», es historia. Pruebas CO1–CO2 y TC/RQ actualizadas.
+
+**Sub-áreas como pestañas dentro del centro (24-sep-2026, usuaria: «está todo muy mezclado… todo se ve como si fuera un solo centro»).**
+`armarNavSubCentros` ya **no** cuelga sub-ítems en el menú (↳ Calandrado, ↳ Plancha…): cada ítem de planificación sale una sola vez y
+lleva un «!» si alguna de sus sub-áreas tiene alerta (tooltip con la lista de `alertaSubArea`). Dentro del centro, `subAreasTabsHTML(cid,todos)`
+dibuja la fila de pestañas «Todo <ítem>» + una por sub-área (`subAreasDe`, orden del proceso; cada una con su «!» y la misma explicación),
+que fija `CEN.solo`; el título dice «Ítem / Sub-área». Un centro sin subprocesos (Corte) no tiene pestañas. Las pestañas de vista (Resumen,
+Planificación, Programación, Ejecución) siguen a la derecha del título. Esto reemplaza lo del menú del 16-sep («un sub-ítem por sub-área»).
+Pruebas MN2/MN3 reescritas.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
