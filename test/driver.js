@@ -7381,6 +7381,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       abrirFichaOrden(o.id);__check('OD5: …y se ve al abrir la ficha',!!document.querySelector('.o-statusbar .st.on'));try{cerrar()}catch(e){}}
     const cfgH=(()=>{page='config';CONF.tab='cal';render();return (document.getElementById('p-config')||{}).innerHTML||''})();
     __check('OD6: el aspecto se elige en Configuración → Calendario y parámetros',/Aspecto de la pantalla/.test(cfgH)&&/setTema\(/.test(cfgH));
+    /* colores (24-sep: «tampoco quiero ese morado»): por defecto verde azulado, se elige en Configuración y queda en bitácora */
+    {const bc=S.params.temaColor;delete S.params.temaColor;render();const def=document.documentElement.dataset.color;const nB2=S.bitacora.length;setTemaColor('azul');
+     __check('OD7: el color por defecto es el azul marino que eligió la usuaria (no el morado) y se cambia en Configuración, con bitácora',def==='marino'&&document.documentElement.dataset.color==='azul'&&S.bitacora.length>nB2&&/Color de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''),JSON.stringify({def,ahora:document.documentElement.dataset.color}));
+     __check('OD8: el color cambia de verdad la barra de arriba',getComputedStyle(document.querySelector('header')).backgroundColor==='rgb(21, 101, 192)',getComputedStyle(document.querySelector('header')).backgroundColor);
+     if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc}
     if(bak===undefined)delete S.params.tema;else S.params.tema=bak;page='ordenes';render();PERFIL=adminP}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;

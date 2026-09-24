@@ -1398,8 +1398,10 @@ parámetro `S.params.tema` = `'odoo'` (por defecto) | `'clasico'`, en Configurac
 clásico; la cabecera de cada pantalla (`.pagehead`) es el panel de control blanco; botones primario morado y secundario gris; listas, etiquetas
 (colores suaves de Bootstrap 5), bloques y ventanas al estilo Odoo. **Barra de fases con flechas** (`statusbarFasesHTML(o)`, vale en los dos
 aspectos): los grupos de la tabla 5 en orden, el actual resaltado con el nombre de la fase, las lejanas plegadas en «…», clic = `mCambiarFase`;
-está arriba de la ficha (`abrirFichaOrden`). Colores a confirmar con una captura del Odoo de la usuaria (Community es morado; Enterprise usa
-botones verde azulado #017E84): basta cambiar `--o-brand`/`--o-primary`. Pruebas OD1–OD6.
+está arriba de la ficha (`abrirFichaOrden`). **Colores (24-sep, la usuaria mandó captura de su Odoo: «la interfaz está ok, pero tampoco quiero ese morado»):** `S.params.temaColor` / `temaColor()` / `setTemaColor(v)`
+(permiso `config`, bitácora), atributo `data-color` en `<html>`; `TEMA_COLORES` = **azul marino (por defecto: lo eligió la usuaria el 24-sep)**, verde azulado (el del botón NUEVO de su Odoo),
+ azul, verde, gris grafito, barra blanca con verde azulado (letras oscuras en la barra) y morado Odoo; cada paleta solo define
+`--o-brand` (barra), `--o-primary` (botón), `--o-brand-soft`/`--o-brand-line` (lo elegido) y `--o-ring` (foco). Pruebas OD1–OD8.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
