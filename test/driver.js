@@ -2662,6 +2662,47 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("BG: buscar por WH encuentra la orden al instante",buscarGeneral('WH/BUSG').some(o=>o.id===oG.id)&&document.getElementById('busg-host').innerHTML.includes('WH/BUSG-1'));
    __check("BG: también encuentra por ODC, cliente y referencia",buscarGeneral('ODC-BUSG').length>0&&buscarGeneral('CLIENTE BUSG').length>0&&buscarGeneral('REF-BUSG').length>0);
    __check("BG: el resultado muestra foto, WH, cliente, fase y dónde está",(()=>{const h=document.getElementById('busg-host').innerHTML;return h.includes('fase-mini')&&h.includes('CLIENTE BUSG')&&h.includes('abrirFichaOrden(')})());
+   /* 24-sep (usuaria: «esa búsqueda está como rara»): la WH se lee, el código interno de una orden sin WH no calza con un número,
+      primero lo más probable, dice cuántas hay y por qué aparece cada fila */
+   {const temaAntes=S.params.tema;for(const tm of ['odoo','clasico']){S.params.tema=tm;setBusqG('WH/BUSG');const b=document.querySelector('#busg-wrap .busq-menu b');
+      const col=b?getComputedStyle(b).color:'';const fondo=getComputedStyle(document.querySelector('#busg-wrap .busq-menu')).backgroundColor;
+      __check("BG2: la WH de cada resultado se lee (no queda del color de la barra de arriba) · aspecto "+tm,!!b&&col!==fondo&&col!=='rgb(255, 255, 255)',col+' sobre '+fondo)}
+    S.params.tema=temaAntes;
+    const sw=JSON.parse(JSON.stringify(base));sw.id=uid();sw.op='SIN WH #77zq';sw.cliente='CLIENTE SW';sw.ref='REFSW';sw.odc='';sw.tareaId='';sw.estado='plan';S.ordenes.push(sw);
+    const w7=JSON.parse(JSON.stringify(base));w7.id=uid();w7.op='WH/MO/77123';w7.cliente='CLIENTE W7';w7.ref='R9';w7.odc='';w7.tareaId='';w7.estado='plan';S.ordenes.push(w7);
+    const r7=JSON.parse(JSON.stringify(base));r7.id=uid();r7.op='WH/MO/50001';r7.cliente='CLIENTE R7';r7.ref='77';r7.odc='';r7.tareaId='';r7.estado='plan';S.ordenes.push(r7);
+    const c7=JSON.parse(JSON.stringify(base));c7.id=uid();c7.op='WH/MO/50002';c7.cliente='CLIENTE C7';c7.ref='R8';c7.odc='ODC-A77B';c7.tareaId='';c7.estado='plan';S.ordenes.push(c7);PLAN=null;PLAN_ALL=null;
+    const res=buscarGeneralTodo('77');
+    __check("BG3: un número no calza con el código interno de una orden sin WH («SIN WH #77zq»); con letras o «#» sí",!res.some(o=>o.id===sw.id)&&!matchBusq(sw,'77','ORDF.q')&&buscarGeneralTodo('#77zq').some(o=>o.id===sw.id)&&matchBusq(sw,'77zq','ORDF.q'));
+    const iW=res.findIndex(o=>o.id===w7.id),iR=res.findIndex(o=>o.id===r7.id),iC=res.findIndex(o=>o.id===c7.id);
+    __check("BG4: primero la WH que empieza así, luego la referencia exacta, luego el resto",iW===0&&iR>iW&&iC>iR,[iW,iR,iC].join(','));
+    setBusqG('77');const h=document.getElementById('busg-host').innerHTML;
+    __check("BG5: si lo buscado no se ve en la fila, la fila dice dónde está (la ODC)",/ODC: <b>ODC-A77B<\/b>/.test(h));
+    const tope=BUSG_TOPE;const muchos=[];for(let i=0;i<tope+3;i++){const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op='WH/MO/66'+String(100+i);x.cliente='CLIENTE MUCHOS';x.estado='plan';S.ordenes.push(x);muchos.push(x.id)}PLAN=null;PLAN_ALL=null;
+    setBusqG('CLIENTE MUCHOS');const h2=document.getElementById('busg-host').innerHTML;
+    __check("BG6: cuando hay más de las que se dibujan, la lista lo dice («Se muestran N de M»)",h2.includes('Se muestran '+tope+' de '+(tope+3)),h2.match(/Se muestran[^<]*/)&&h2.match(/Se muestran[^<]*/)[0]);
+    {const pie=document.querySelector('#busg-wrap .busq-menu .busq-pie');
+     __check("BG6b: el aviso queda fijo al pie de la lista y no parece un resultado (sin manito)",!!pie&&getComputedStyle(pie).position==='sticky'&&getComputedStyle(pie).cursor==='default')}
+    /* la lista no se sale de la pantalla (en los dos aspectos) */
+    {const temaAntes=S.params.tema;for(const tm of ['odoo','clasico']){S.params.tema=tm;setBusqG('CLIENTE MUCHOS');const m=document.querySelector('#busg-wrap .busq-menu');const r=m.getBoundingClientRect();const w=document.documentElement.clientWidth||innerWidth;
+      __check("BG7: la lista del buscador de arriba queda dentro de la pantalla · aspecto "+tm,r.right<=w-11&&r.left>=0,Math.round(r.left)+'–'+Math.round(r.right)+' de '+w)}S.params.tema=temaAntes}
+    /* una sola vez por tecla: el campo tiene su data-q y el oninput no redibuja por su cuenta */
+    {const inp=document.getElementById('busg');
+     __check("BG8: el campo de arriba lo maneja buscarQ (data-q) y no dibuja dos veces por tecla",!!inp&&inp.dataset.q==='BUSG.q'&&!/setBusqG/.test(inp.getAttribute('oninput')||''))}
+    /* clic afuera la cierra y conserva lo escrito */
+    {setBusqG('CLIENTE MUCHOS');document.querySelector('main').dispatchEvent(new MouseEvent('click',{bubbles:true}));
+     __check("BG9: la lista se cierra al hacer clic afuera y lo escrito se conserva",!BUSG.abierto&&BUSG.q==='CLIENTE MUCHOS'&&!document.querySelector('#busg-wrap .busq-menu')&&(document.getElementById('busg')||{}).value==='CLIENTE MUCHOS')}
+    /* WH partida y número con separadores */
+    {const p1=JSON.parse(JSON.stringify(base));p1.id=uid();p1.op='WH/MO/88846-001';p1.cliente='CLIENTE P1';p1.ref='R1';p1.odc='';p1.tareaId='';p1.estado='plan';
+     const p0=JSON.parse(JSON.stringify(base));p0.id=uid();p0.op='WH/MO/88846';p0.cliente='CLIENTE P0';p0.ref='R0';p0.odc='';p0.tareaId='';p0.estado='plan';S.ordenes.push(p1,p0);muchos.push(p1.id,p0.id);PLAN=null;PLAN_ALL=null;
+     const a=buscarGeneralTodo('88846'),b=buscarGeneralTodo('WH/MO/88846'),c=buscarGeneralTodo('88-846'),d=buscarGeneralTodo('88 846');
+     __check("BG10: una WH partida («-001») cuenta por su número; la WH exacta va primero; «88-846» y «88 846» también la encuentran",numWHBusq(p1)==='88846'&&a.slice(0,2).every(o=>[p0.id,p1.id].includes(o.id))&&b[0]&&b[0].id===p0.id&&c.some(o=>o.id===p0.id)&&d.some(o=>o.id===p1.id),[a.slice(0,2).map(o=>o.op).join(','),b[0]&&b[0].op,c.length,d.length].join(' | '))}
+    /* Mi centro y el buscador del centro con la misma regla */
+    {const tq=TAB.q;TAB.q='77';const htT=tabletBuscadorHTML('corte',[],null);TAB.q=tq;
+     __check("BG11: Mi centro tampoco encuentra una orden sin WH por los dígitos de su código interno",!htT.includes('SIN WH #77zq'));
+     const cq=CEN.q;CEN.q='CLIENTE MUCHOS';let htC='';try{htC=buscarEnCentroHTML(['corte'],programar(),hoy(),hoy())}catch(e){htC='ERR '+e.message}CEN.q=cq;
+     __check("BG12: el buscador del centro dice cuántas hay en total («6 de M órdenes») y usa el mismo orden",htC.includes('6 de '+num(tope+3)+' órdenes'),(htC.match(/<span class="note">[^<]*/)||[''])[0].slice(0,120))}
+    S.ordenes=S.ordenes.filter(o=>![sw.id,w7.id,r7.id,c7.id,...muchos].includes(o.id));PLAN=null;PLAN_ALL=null;cerrarBusqG()}
    abrirFichaOrden(oG.id);
    {const md=document.getElementById('modal')||document.body;const h=md.innerHTML;
     __check("BG: la ficha trae ruta con el paso actual, fechas, avance por talla e historial",/Ruta<\/h4>/.test(h)&&/Historial de fases/.test(h)&&(/Avance por talla/.test(h)||/Sin curva de tallas/.test(h))&&/Ir a donde está/.test(h));

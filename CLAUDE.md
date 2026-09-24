@@ -1540,6 +1540,20 @@ filas aunque se dibujen solo 150 (OTR_TOPE_GENERAL); el pie es la suma de las se
 la tabla (`cuerpoOTRHTML`, `OTR_FILAS` del último render) y avisa lo que queda fuera de la base. Pruebas OTR1–OTR9 (OTR3 fija que el estado es el de la cola).
 Pendiente aparte: `cantCentro` busca el paso anterior en la ruta pendiente (afecta a la tablet).
 
+**Buscador de arriba (24-sep-2026, usuaria con captura: «esa búsqueda está como rara»; revisión adversarial con 9 hallazgos corregidos).**
+La lista vive dentro de `<header>`, que en el aspecto odoo tiene letra blanca: la WH salía blanco sobre blanco → `.busq-menu` fija
+`color:var(--ink)` (toda lista desplegable). `colocarMenuBusqG` le da ancho fijo (480 px o pantalla − 24) y la deja DENTRO de la pantalla
+midiendo contra la pantalla, no contra el campo (entre 861 y ~1150 px la barra Odoo ya es más ancha que la pantalla; eso es anterior y no se
+tocó); `pintarBusqG` la dibuja desde `render()` y desde el clic afuera, que la cierra conservando lo escrito (`onfocus` la reabre). El campo lleva
+`data-q="BUSG.q"` y lo maneja `buscarQ`: UN render por tecla y el foco se queda (antes dibujaba dos veces y perdía el foco). **Una sola regla
+para el campo OP en todas las listas** (`campoCalzaBusq`, que usan `matchBusq`, el buscador de arriba y Mi centro): un número no calza con el
+código interno de una orden sin WH («SIN WH #22wlqi», `valBusqQ`), con letras o «#» sí; un número con separadores («28-846», «28 846») compara
+solo dígitos (sin separadores NO: cruzaría el guion de «-001»). Orden común `ordenarBusq` (`rangoBusqG`: WH exacta → WH que empieza así, con
+`numWHBusq` que lee 28846 en «WH/MO/28846-001» → referencia/ODC/ID exactos → resto; abiertas antes; WH más nueva antes; `COL_OP` reutilizado):
+lo usan el buscador de arriba y el del centro, que ahora dice «6 de M órdenes». Arriba se dibujan `BUSG_TOPE` (40) con el pie fijo «Se muestran N
+de M» (`.busq-pie`); las filas de aviso llevan `.busq-nota` (sin manito); `porQueBusqG` dice en qué dato está lo buscado cuando no se ve en la
+fila. Pendiente aparte: el buscador de Entregas y de Costura no filtra su lista. Pruebas BG2–BG12.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

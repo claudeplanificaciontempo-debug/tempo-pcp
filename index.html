@@ -141,7 +141,7 @@ table.otr tfoot td{border-top:2px solid var(--ink);font-weight:600;background:va
 .mgrid td.dd-over{outline:2px dashed var(--ink);outline-offset:-3px;background:var(--field)}
 .capm td.cel{cursor:pointer;text-align:center;font-weight:600;min-width:86px}.capm td.cel.ok{background:#E8F3ED;color:var(--ok)}.capm td.cel.amb{background:#FBF3E2;color:#8A6417}.capm td.cel.rojo{background:#FBECE9;color:var(--alerta)}.capm td.cel.venc{background:var(--field);color:var(--mut)}.capm td.cel.sel{outline:2px solid var(--ink);outline-offset:-2px}.capm td.cel small{display:block;font-weight:400;font-size:10px;opacity:.85}
 .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px;align-items:start}.tarj{background:var(--field);border:1px solid var(--rule);border-radius:12px;padding:0}.tarj.warn{background:#FBF3E2;border-color:#E7D2A6}.tarj summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 16px;font-size:var(--fs-s)}.tarj summary::-webkit-details-marker{display:none}.tarj summary .car{margin-left:auto;font-size:11px;transition:transform .15s}.tarj[open] summary .car{transform:rotate(180deg)}.tarj[open]{grid-column:1/-1}.tarj .tarj-body{padding:0 8px 8px}.tarj .tarj-body .panel{margin:0;box-shadow:none}
-.fase-mini{font-size:10px;padding:0 5px;background:var(--field);color:var(--ink);border-color:var(--rule);vertical-align:middle;font-weight:400}.busq-menu{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);margin-top:4px;overflow:hidden}.busq-menu>div{padding:7px 12px;cursor:pointer;font-size:var(--fs-s);border-top:1px solid var(--rule2)}.busq-menu>div:first-child{border-top:0}.busq-menu>div:hover{background:var(--field)}
+.fase-mini{font-size:10px;padding:0 5px;background:var(--field);color:var(--ink);border-color:var(--rule);vertical-align:middle;font-weight:400}.busq-menu{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--paper);color:var(--ink);text-align:left;border:1px solid var(--rule);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);margin-top:4px;overflow:hidden}.busq-menu>div{padding:7px 12px;cursor:pointer;font-size:var(--fs-s);border-top:1px solid var(--rule2)}.busq-menu>div:first-child{border-top:0}.busq-menu>div:hover{background:var(--field)}
 .kpi.tarj{border-left:4px solid var(--t-accent);background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft));border-radius:8px}.kpi.tarj .v{color:var(--t-primary)}.kpi.tarj.clic{cursor:pointer}.kpi.tarj.clic:hover{filter:brightness(.97)}.kpi.tarj.abierta{outline:2px solid var(--t-accent)}.kpi.tarj.bad .v{color:var(--alerta)}.kpi.tarj.warn .v{color:var(--aviso)}.kpis.tarj-row{gap:8px;background:transparent;border:0}.panel h3{border-left:3px solid var(--t-accent)}.panel table thead th{background:var(--t-thead)}
 #navBtn{display:none;background:var(--t-accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:18px;cursor:pointer}
 @media (max-width:520px){.lib-grid{grid-template-columns:1fr!important}#busg-host{order:9;flex:1 0 100%!important;min-width:0;margin-top:6px}#busg-host>div{max-width:none!important;width:100%}#busg{font-size:16px;padding:10px}header{row-gap:8px}.tab-card .body{flex-direction:column;gap:10px}.tab-card .body>div{min-width:0!important;width:100%}.tab-card button{width:100%;font-size:18px!important;padding:14px!important}.tab-card img.foto-mini{width:100%!important;height:auto!important;max-height:220px;object-fit:cover}#p-tablet table,#p-control table{font-size:var(--fs-xs)}#p-tablet .scroll,#p-control .scroll{overflow-x:auto}#p-control .row>div,#p-tablet .row>div{min-width:0;flex:1 1 100%}.modal .body table{font-size:var(--fs-xs)}}
@@ -400,6 +400,8 @@ html[data-tema="odoo"] input[type=text],html[data-tema="odoo"] input[type=number
 html[data-tema="odoo"] input:focus,html[data-tema="odoo"] select:focus,html[data-tema="odoo"] textarea:focus{outline:0;border-color:var(--o-brand);box-shadow:0 0 0 .15rem var(--o-ring,rgba(113,75,103,.18))}
 html[data-tema="odoo"] .busq input{padding-left:30px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236C757D' stroke-width='2.2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-3.6-3.6'/></svg>") no-repeat 9px 50%;background-size:15px}
 html[data-tema="odoo"] .busq-menu{border-radius:4px}
+#busg-wrap .busq-menu{min-width:min(480px,calc(100vw - 24px))}   /* más ancha que el campo; colocarMenuBusqG la corre a la izquierda si se saldría de la pantalla */
+.busq-menu>div.busq-nota{cursor:default}.busq-menu>div.busq-nota:hover{background:none}.busq-menu>div.busq-pie{position:sticky;bottom:0;background:var(--paper);border-top:1px solid var(--rule)}   /* avisos: no son resultados */
 /* listas como las de Odoo */
 html[data-tema="odoo"] th,html[data-tema="odoo"] table th,html[data-tema="odoo"] .panel table thead th{background:#fff;color:var(--ink);font-weight:700;font-size:13px;border-bottom:1px solid #CED4DA}
 html[data-tema="odoo"] td{border-bottom:1px solid #E7E9ED}
@@ -956,7 +958,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 16:59';
+const APP_BUILD='2026-09-24 18:17';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1963,7 +1965,15 @@ function whCell(o,px){return fotoMini(o,px)+esc((o&&o.op)||'')+faseTag(o)+(typeo
 const BUSQ={};
 const BUSQ_CAMPOS=[['op','Orden de producción'],['odc','ODC'],['ref','Referencia (estilo)'],['color','Color'],['fase','Fase'],['cliente','Cliente'],['cat','Categoría'],['tareaId','ID de tarea (Odoo)']];
 function valBusq(o,c){switch(c){case 'op':return o.op;case 'odc':return String(o.odc||'');case 'ref':return o.ref;case 'color':return (C(o.color)||{}).n;case 'fase':return faseNombre(o.fase);case 'cliente':return o.cliente;case 'cat':return nombreCat(K(o.cat));case 'tareaId':return String(o.tareaId||'')}return ''}
-function matchBusq(o,q,id){if(!q)return true;const qn=normTxt(q);const c=BUSQ[id];if(c&&c!=='*')return normTxt(valBusq(o,c)||'').includes(qn);return BUSQ_CAMPOS.some(([k])=>normTxt(valBusq(o,k)||'').includes(qn))}
+/* 24-sep (usuaria: «esa búsqueda está como rara»): el código interno de una orden sin WH («SIN WH #22wlqi», hash de su clave) no es algo que
+   la gente escriba. Un NÚMERO buscado (WH, referencia, ODC, ID de tarea) no debe calzar con sus dígitos al azar; con letras o «#» sí se busca por él. */
+function valBusqQ(o,k,qn){const v=valBusq(o,k);if(k==='op'&&v!=null&&sinWHde(o)&&/^[\d\s./-]+$/.test(qn))return String(v).replace(/#\S+/,'');return v}
+const soloDigitosBusq=x=>String(x==null?'':x).replace(/\D+/g,'');
+/* «28-846», «28 846» o «28.846»: si lo buscado es un número escrito con separadores, en la OP se comparan solo los dígitos (como hacía Mi centro).
+   Sin separadores NO: «280» calzaría con «…28-001» cruzando el guion. */
+function campoCalzaBusq(o,k,qn){const v=valBusqQ(o,k,qn);if(normTxt(v||'').includes(qn))return true;
+  if(k==='op'&&/[\s./-]/.test(qn)&&/^[\d\s./-]+$/.test(qn)){const d=soloDigitosBusq(qn);return d.length>=3&&soloDigitosBusq(v).includes(d)}return false}
+function matchBusq(o,q,id){if(!q)return true;const qn=normTxt(q);const c=BUSQ[id];if(c&&c!=='*')return campoCalzaBusq(o,c,qn);return BUSQ_CAMPOS.some(([k])=>campoCalzaBusq(o,k,qn))}
 function setBusq(id,c){if(c)BUSQ[id]=c;else delete BUSQ[id];render();const n=document.querySelector('input[data-q="'+id+'"]');if(n)n.focus()}
 function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delete BUSQ[id];const c=BUSQ[id];const nomC=c&&c!=='*'?(BUSQ_CAMPOS.find(x=>x[0]===c)||[])[1]:null;
   return `<div class="busq" style="position:relative;${extra||''}"><input type="text" value="${esc(v)}" placeholder="${esc(ayuda('busq.placeholder'))}" data-q="${id}" oninput="buscarQ(this,v=>${setter})" onkeydown="if(event.key==='Enter'){event.preventDefault();setBusq('${id}','*')}else if(event.key==='Escape'){setBusq('${id}','*')}" style="width:100%;${nomC?'padding-right:150px':''}">
@@ -2037,18 +2047,42 @@ function ordenesQueVe(){const ab=S.ordenes.filter(o=>abierta(o)||o.estado==='cer
   const cens=S.centros.filter(c=>veCentro(c.id)).map(c=>c.id);
   if(!cens.length)return [];
   return ab.filter(o=>(o.ruta||[]).some(p=>cens.includes(p.centro))||cens.includes('tej')||cens.includes('tin'))}
-function buscarGeneral(q){const qn=normTxt(q||'');if(!qn||qn.length<2)return [];
-  return ordenesQueVe().filter(o=>BUSQ_CAMPOS.some(([k])=>normTxt(valBusq(o,k)||'').includes(qn))).slice(0,40)}
+const BUSG_TOPE=40;   /* filas que se dibujan; si hay más, la lista lo dice */
+/* 0 = el número de la WH empieza así · 1 = la referencia, la ODC o el ID de tarea son exactamente eso · 2 = el resto */
+/* −1 = la WH es exactamente eso · 0 = el número de la WH empieza así (el de «WH/MO/28846-001» es 28846, no 001) ·
+   1 = la referencia, la ODC o el ID de tarea son exactamente eso · 2 = el resto */
+function numWHBusq(o){if(sinWHde(o))return null;const t=String(o.op==null?'':o.op);const m=t.match(/MO\/(\d+)/i)||t.match(/(\d+)(?:-\d+)?\s*$/);return m?m[1]:null}
+function rangoBusqG(o,qn){if(!sinWHde(o)&&normTxt(o.op==null?'':o.op)===qn)return -1;
+  const dig=qn.replace(/^wh\/mo\//,'').replace(/[\s./-]/g,'');const wh=numWHBusq(o);
+  if(wh&&/^\d+$/.test(dig)&&wh.startsWith(dig))return 0;
+  if(['ref','odc','tareaId'].some(k=>normTxt(valBusq(o,k)||'')===qn))return 1;return 2}
+const COL_OP=new Intl.Collator('es',{numeric:true});
+/* el orden de TODO resultado de búsqueda de órdenes: primero lo más probable, abiertas antes, WH más nueva antes */
+function ordenarBusq(lista,qn){return lista.map(o=>({o,r:rangoBusqG(o,qn),a:abierta(o)?0:1,op:String(o.op==null?'':o.op)})).sort((x,y)=>x.r-y.r||x.a-y.a||COL_OP.compare(y.op,x.op)).map(x=>x.o)}
+function buscarGeneralTodo(q){const qn=normTxt(q||'');if(!qn||qn.length<2)return [];
+  return ordenarBusq(ordenesQueVe().filter(o=>BUSQ_CAMPOS.some(([k])=>campoCalzaBusq(o,k,qn))),qn)}
+function buscarGeneral(q){return buscarGeneralTodo(q).slice(0,BUSG_TOPE)}
+/* por qué aparece una fila cuando lo buscado no se ve en ella (la fila muestra WH, fase, cliente y referencia) */
+function porQueBusqG(o,qn){if(['op','fase','cliente','ref'].some(k=>campoCalzaBusq(o,k,qn)))return '';const c=BUSQ_CAMPOS.find(([k])=>campoCalzaBusq(o,k,qn));
+  return c?' · <span title="lo buscado está en este dato">'+esc(c[1])+': <b>'+esc(String(valBusq(o,c[0])==null?'':valBusq(o,c[0])))+'</b></span>':''}
 function setBusqG(v){BUSG.q=v;BUSG.abierto=!!v;render();const n=document.getElementById('busg');if(n){n.focus();try{n.setSelectionRange(n.value.length,n.value.length)}catch(e){}}}
 function cerrarBusqG(){BUSG.q='';BUSG.abierto=false;render()}
-function busquedaGeneralHTML(){const res=BUSG.abierto?buscarGeneral(BUSG.q):[];
+function busquedaGeneralHTML(){const todas=BUSG.abierto?buscarGeneralTodo(BUSG.q):[];const res=todas.slice(0,BUSG_TOPE);const qn=normTxt(BUSG.q||'');
+  /* data-q: buscarQ dibuja UNA vez y devuelve el foco al campo con el cursor donde estaba (antes dibujaba dos veces y el segundo le quitaba el foco) */
   return `<div id="busg-wrap" style="position:relative;flex:1;max-width:420px;min-width:150px">
-   <input id="busg" type="text" value="${esc(BUSG.q)}" placeholder="${esc(ayuda('busqg.placeholder'))}" oninput="buscarQ(this,v=>setBusqG(v))" onkeydown="if(event.key==='Escape')cerrarBusqG()" style="width:100%;padding:6px 10px;border:1px solid var(--rule);border-radius:8px">
-   ${BUSG.abierto&&BUSG.q?`<div class="busq-menu" style="left:0;right:0;max-height:60vh;overflow:auto">
+   <input id="busg" data-q="BUSG.q" type="text" value="${esc(BUSG.q)}" placeholder="${esc(ayuda('busqg.placeholder'))}" oninput="buscarQ(this,v=>{BUSG.q=v;BUSG.abierto=!!v})" onfocus="if(BUSG.q&&!BUSG.abierto)setBusqG(BUSG.q)" onkeydown="if(event.key==='Escape')cerrarBusqG()" style="width:100%;padding:6px 10px;border:1px solid var(--rule);border-radius:8px">
+   ${BUSG.abierto&&BUSG.q?`<div class="busq-menu" style="max-height:60vh;overflow:auto">
      ${res.length?res.map(o=>{const d=dondeEstaTxt(o);return `<div onclick="abrirFichaOrden('${o.id}')" style="display:flex;gap:8px;align-items:center;padding:6px 8px">
        ${fotoDe(o)?fotoMini(o,34):'<span style="width:34px;display:inline-block"></span>'}
-       <span style="flex:1;min-width:0"><b>${esc(o.op)}</b> ${faseTag(o)}<br><span class="mut" style="font-size:var(--fs-xs)">${esc(o.cliente||'')}${o.ref?' · '+esc(o.ref):''} · ${esc(d)}</span></span></div>`}).join(''):'<div class="mut" style="padding:8px">Ninguna orden con «'+esc(BUSG.q)+'» entre las que tu perfil puede ver.</div>'}
+       <span style="flex:1;min-width:0"><b>${esc(o.op)}</b> ${faseTag(o)}<br><span class="mut" style="font-size:var(--fs-xs)">${esc(o.cliente||'')}${o.ref?' · '+esc(o.ref):''} · ${esc(d)}${porQueBusqG(o,qn)}</span></span></div>`}).join('')+(todas.length>res.length?`<div class="mut busq-nota busq-pie" style="font-size:var(--fs-xs)">Se muestran ${num(res.length)} de ${num(todas.length)} · escribe más para acotar</div>`:''):(normTxt(BUSG.q||'').length<2?'<div class="mut busq-nota" style="padding:8px">Escribe al menos 2 letras o números.</div>':'<div class="mut busq-nota" style="padding:8px">Ninguna orden con «'+esc(BUSG.q)+'» entre las que tu perfil puede ver.</div>')}
     </div>`:''}</div>`}
+/* la lista es más ancha que el campo (480 px o el ancho de la pantalla menos 24): ancho fijo y colocada DENTRO de la pantalla, empezando donde
+   empieza el campo y corrida a la izquierda lo que haga falta. Se mide contra la pantalla, no contra el campo: entre 861 y ~1150 px la barra
+   de arriba del aspecto Odoo es más ancha que la pantalla y el campo mismo queda en parte afuera. */
+function colocarMenuBusqG(){const m=document.querySelector('#busg-wrap .busq-menu');const wr=document.getElementById('busg-wrap');if(!m||!wr)return;
+  const W=document.documentElement.clientWidth||innerWidth,c=wr.getBoundingClientRect();const ancho=Math.max(0,Math.min(Math.max(c.width,480),W-24));
+  const izq=Math.max(12,Math.min(c.left,W-12-ancho));m.style.width=ancho+'px';m.style.right='auto';m.style.left=(izq-c.left)+'px'}
+function pintarBusqG(){const h=document.getElementById('busg-host');if(!h)return;h.innerHTML=(S&&S.ordenes&&S.ordenes.length)?busquedaGeneralHTML():'';colocarMenuBusqG()}
 function dondeEstaTxt(o){try{const P=programar();const d=dondeEsta(o,P);return d&&d.n?d.n:'—'}catch(e){return '—'}}
 /* ficha de la orden: foto, ruta con el paso actual, fechas, avance por talla e historial */
 function statusbarFasesHTML(o){if(!o)return '';const g=grupoDe(o.fase||'');const gs=faseGrupos().slice().sort((a,b)=>a.orden-b.orden).filter(x=>!/^cerrad/i.test(x.grupo));if(!gs.length)return '';
@@ -2279,9 +2313,8 @@ function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const campo=simple?`<input id="tab-wh" type="search" inputmode="numeric" enterkeyhint="search" autocomplete="off" value="${esc(TAB.q||'')}" placeholder="Escribe la WH, por ejemplo 28300" style="width:100%;font-size:22px;padding:14px" data-q="TAB.q" oninput="buscarQ(this,v=>TAB.q=v)" onkeydown="if(event.key==='Enter'){event.preventDefault();TAB.q=this.value;render()}">`:busqHTML('TAB.q',TAB.q,'TAB.q=v','width:100%;font-size:20px;padding:14px');
   const cab=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><label style="font-size:17px">Buscar WH</label>${campo}</div>${simple?`<button class="btn" style="font-size:20px;padding:14px 20px" onclick="TAB.q=(document.getElementById('tab-wh')||{}).value||'';render()">Buscar</button>`:''}${TAB.q?`<button class="btn ghost" onclick="TAB.q='';render()">Limpiar</button>`:''}</div></div>`;
   if(!q)return cab;
-  const soloNum=x=>String(x||'').replace(/\D+/g,'');
-  const qn=soloNum(q);
-  const calza=o=>normTxt(o.op).includes(q)||normTxt(o.ref||'').includes(q)||(qn.length>=3&&soloNum(o.op).includes(qn));
+  /* la misma regla de todas las listas (campoCalzaBusq / matchBusq): un número no calza con el código interno de una orden sin WH; «28-300» sí encuentra la WH */
+  const calza=simple?(o=>campoCalzaBusq(o,'op',q)||campoCalzaBusq(o,'ref',q)):(o=>matchBusq(o,TAB.q,'TAB.q'));
   const TOPE=6;
   const enCola=cola.filter(f=>calza(f.o));
   const otras=S.ordenes.filter(o=>calza(o)&&!enCola.some(f=>f.o.id===o.id));
@@ -2885,14 +2918,14 @@ function llegadaACentroTxt(o,c,P){
 function buscarEnCentroHTML(cens,P,lun,dom){const q=String(CEN.q||'').trim();if(!q)return '';
   const c0=(CEN.solo||cens[0]);
   const enCentro=o=>cens.find(c=>pasosProDe(o).includes(c))||c0;   /* con sub-áreas, la de la ruta de esa orden; si no está en ninguna, la que se está mirando */
-  const l=ordenesQueVe().filter(o=>matchBusq(o,q,'CEN.q')).slice(0,6);
+  const todasC=ordenarBusq(ordenesQueVe().filter(o=>matchBusq(o,q,'CEN.q')),normTxt(q));const l=todasC.slice(0,6);   /* el mismo orden del buscador de arriba */
   if(!l.length)return '<div class="warn" style="font-size:var(--fs-s);margin-bottom:10px">No encuentro ninguna orden con <b>'+esc(q)+'</b> (busca por WH, cliente, estilo, color, ODC o fase). Si la orden existe pero no la ves, puede que tu perfil no la alcance.</div>';
   const fila=o=>{const c=enCentro(o);const ll=llegadaACentroTxt(o,c,P);
     return '<tr><td style="white-space:nowrap">'+whCell(o)+'</td><td>'+esc(o.cliente||'')+'</td><td>'+esc(o.ref||'')+'</td><td>'+esc((C(o.color)||{}).n||'')+'</td>'+
       '<td class="num">'+num(o.cant||0)+'</td><td>'+(typeof estadoSemaforoHTML==='function'?estadoSemaforoHTML(o,P):'')+'</td>'+
       '<td>'+esc(((()=>{try{const d=dondeEsta(o,P);return (d&&d.n)||'—'}catch(e){return '—'}})()))+'</td>'+   /* dondeEsta devuelve {k,n}: en pantalla va el nombre */
       '<td><span class="tag '+ll.cls+'">'+esc(nCen(c))+'</span> '+esc(ll.txt)+'</td></tr>'};
-  return '<div class="panel" style="margin-bottom:10px"><h3>Resultado de la búsqueda <span class="note">'+num(l.length)+' orden'+(l.length===1?'':'es')+' con «'+esc(q)+'» · dónde está y cuándo entra aquí</span></h3>'+
+  return '<div class="panel" style="margin-bottom:10px"><h3>Resultado de la búsqueda <span class="note">'+(todasC.length>l.length?num(l.length)+' de '+num(todasC.length)+' órdenes':num(l.length)+' orden'+(l.length===1?'':'es'))+' con «'+esc(q)+'» · dónde está y cuándo entra aquí'+(todasC.length>l.length?' · escribe más para acotar':'')+'</span></h3>'+
    '<div class="body"><table style="font-size:var(--fs-xs)"><thead><tr><th>OP · fase</th><th>Cliente</th><th>Estilo</th><th>Color</th><th class="num">Prendas</th><th>Estado</th><th>Dónde está</th><th>En este centro</th></tr></thead><tbody>'+
    l.map(fila).join('')+'</tbody></table>'+
    '<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Busca en toda la cartera que ves, no solo en la semana ('+fmtDia(lun)+' – '+fmtDia(dom)+'): por eso aparece aunque todavía no esté programada aquí.</p></div></div>'}
@@ -3563,7 +3596,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
-  {const host=document.getElementById('busg-host');if(host&&S.ordenes&&S.ordenes.length)host.innerHTML=busquedaGeneralHTML();else if(host)host.innerHTML='';}CAPM=null;SEMC={};
+  pintarBusqG();CAPM=null;SEMC={};
   if(typeof recalcularRutas==='function'&&typeof rutasPorRecalcular==='function'){const _r=rutasPorRecalcular();if(_r.total)recalcularRutas()}
   if(typeof armarNavSubCentros==='function')armarNavSubCentros();
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===page&&(!a.dataset.conf||a.dataset.conf===(typeof CONF!=='undefined'?CONF.tab:''))&&(!a.dataset.lib||a.dataset.lib===(typeof LIB!=='undefined'?LIB.et:'tela'))&&(!a.dataset.cen||a.dataset.cen===(typeof CEN!=='undefined'?CEN.id:'corte'))));
@@ -13507,6 +13540,8 @@ document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.targ
 function esDesplegable(d){if(d.closest('.o-menu')&&!d.classList.contains('o-dd'))return false;   /* dentro del menú de Filtros quedan abiertos */
   return d.classList.contains('acc')||d.classList.contains('ffases')||d.classList.contains('o-dd')||!!(d.firstElementChild&&d.firstElementChild.matches('summary.chip'))}
 document.addEventListener('click',e=>{document.querySelectorAll('details[open]').forEach(d=>{if(esDesplegable(d)&&!d.contains(e.target))d.removeAttribute('open')})});
+/* la lista del buscador de arriba se cierra al hacer clic afuera (conserva lo escrito: al volver al campo se reabre) */
+document.addEventListener('click',e=>{if(!BUSG.abierto)return;if(e.target&&e.target.closest&&e.target.closest('#busg-wrap'))return;if(e.target&&e.target.closest&&e.target.closest('#modal'))return;BUSG.abierto=false;pintarBusqG()});
 </script>
 </body>
 </html>
