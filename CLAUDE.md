@@ -1431,6 +1431,15 @@ que fija `CEN.solo`; el título dice «Ítem / Sub-área». Un centro sin subpro
 Planificación, Programación, Ejecución) siguen a la derecha del título. Esto reemplaza lo del menú del 16-sep («un sub-ítem por sub-área»).
 Pruebas MN2/MN3 reescritas.
 
+**Servidor interno (24-sep-2026, la usuaria: «hay un equipo Ubuntu en la red con dos aplicaciones; ¿cómo se alberga ahí?»).** Opción 1: solo
+la pantalla adentro; los datos siguen en Supabase. `despliegue-interno/instalar.sh` (se baja con curl desde raw.githubusercontent y se corre con
+`sudo bash instalar.sh 8080`): revisa que el puerto esté libre, usa el nginx o Apache que ya haya (si no hay, instala nginx sin su sitio de
+ejemplo del 80), sitio en `/var/www/tempo-pcp` abierto solo a redes privadas, actualizador `/opt/tempo-pcp/actualizar.sh` cada 15 minutos
+(comprueba `APP_BUILD` y el cierre del HTML antes de reemplazar; guarda las últimas 30 en `/var/lib/tempo-pcp/anteriores`), `--quitar`
+para deshacer. Guía para sistemas: `despliegue-interno/GUIA_SERVIDOR_UBUNTU.md`. `.gitattributes` deja los `.sh` con saltos de línea de Linux.
+Depende de que el repositorio siga público (si se hace privado, el actualizador necesita un token). La dirección pública sigue hasta que la
+usuaria decida apagarla. Falta en Supabase: agregar la dirección interna en Redirect URLs.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

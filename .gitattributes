@@ -1,0 +1,2 @@
+# los instaladores para Ubuntu deben quedar con saltos de línea de Linux
+*.sh text eol=lf
