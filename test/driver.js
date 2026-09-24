@@ -2080,9 +2080,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* REPORTERÍA: pestaña propia, vista general de órdenes, detalle completo, quién la ve */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
-   __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,wip,avancearea,cumplimiento,avance');
+   __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Órdenes de trabajo (24-sep), Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,wip,avancearea,ordtrabajo,cumplimiento,avance');
    __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,familias,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) */
-   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===5&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
+   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===6&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
    GRP={};WIPL={niveles:null,q:''};WIP={base:'abiertas',fases:null,mas:false};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();let h=document.getElementById('p-wip').innerHTML;
    const ab=S.ordenes.filter(abiertaDe);const usdT=ab.reduce((a,o)=>a+(+o.precio||0)*(+o.cant||0),0);const pzT=ab.reduce((a,o)=>a+(+o.cant||0),0);
    __check("REP: Producto en proceso es UNA pivot como la de Odoo: por fase por defecto, con Órdenes, Pedido (prendas) y Total $ por grupo y el total arriba; base = abiertas (dicha en pantalla)",grpSt('wip').niveles.join()==='fase'&&['Cliente','ODC','Estilo','Color','Entrega','Dónde está','Estado'].every(x=>h.includes('<th>'+x+'</th>'))&&/<th title="[^"]*">Producto<\/th>/.test(h)&&/<th class="num">Órdenes<\/th><th class="num"[^>]*>Prendas pedidas<\/th><th class="num"[^>]*>Total \$<\/th>/.test(h)&&h.includes('grp-row')&&/Fase:<\/span>/.test(h)&&h.includes('class="wip-total"')&&h.includes('$ '+num(usdT))&&h.includes('>'+num(pzT)+'</td>')&&/abiertas<\/span>/.test(h),JSON.stringify({niv:grpSt('wip').niveles,usdT,pzT}));
@@ -8336,6 +8336,49 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check('TB10: la programación de cada centro muestra «Ya están libres» con lo que se terminó ahí (y solo de sus centros)',cs?(/Ya están libres/.test(cierresSinFaseHTML([cs.c]))&&cierresSinFaseHTML(['__otro__'])===''):cierresSinFaseHTML(['__otro__'])==='',cs?cs.o.op+' en '+cs.c:'sin cierres en el simulador');
    tramosAbiertosDe(c,rec).forEach(x=>{const tr=tramosDe(x.o.id);const i=tr.findIndex(t=>t.id===x.t.id);if(i>=0)tr.splice(i,1)});cand.forEach(o=>{delete S.avance[o.id]});
    TAB.vista=null;TRAMO={paso:null,id:null,oid:null};window.confirm=cf;window.alert=al;page='ordenes';render()}
+  /* 24-sep · Reportería → Órdenes de trabajo: como la lista de Odoo, por área y en general, con lo que registra el piso */
+  {PERFIL=adminP0();const c='corte';const rec=(S.recursos.find(r=>r.centro===c&&r.activa)||{}).id;
+   const cand=S.ordenes.filter(o=>abierta(o)&&lanzada(o)&&pasosProDe(o).includes(c)&&!pasoHecho(o,c)&&!tramosAbiertosDe(c,rec).some(x=>x.o.id===o.id)).slice(0,2);
+   const al=window.alert;window.alert=()=>{};cand.forEach(o=>iniciarTramo(o.id,c,rec));window.alert=al;
+   const t0=tramosDe(cand[0].id).slice(-1)[0];t0.ini=new Date(Date.now()-40*6e4).toISOString();
+   OTR={area:'general',estado:'proceso',q:'',cen:null};page='ordtrabajo';render();const el=document.getElementById('p-ordtrabajo');const P=programar();
+   const filas=filasOTR(P);const f0=filas.find(f=>f.o.id===cand[0].id&&f.c===c);const kT=calcTramo(Object.assign({},t0,{fin:new Date().toISOString()}),cand[0]);
+   __check('OTR1: la página existe en Reportería (menú, registro de reportes e ícono)',!!document.querySelector('nav a[data-p="ordtrabajo"]')&&REPORTES.some(r=>r.p==='ordtrabajo')&&!!ICO_NAV.ordtrabajo);
+   const d0=f0?detOTR(f0):{};
+   __check('OTR2: una orden empezada en Corte sale «En proceso», con su inicio y la duración que corre (la misma cuenta de la tablet)',!!f0&&f0.est==='proceso'&&!!f0.ini&&Math.abs(d0.min-kT.trabajado)<0.5,f0&&JSON.stringify({est:f0.est,min:+(+d0.min).toFixed(1),tablet:+kT.trabajado.toFixed(1)}));
+   /* 24-sep (usuaria): «ese estado sería el nuestro»: el del Resumen del centro y la cola */
+   __check('OTR3: el estado es el nuestro: tramo abierto o «en proceso» del Resumen del centro → En proceso; grupo Disponible de la cola → Lista; el resto En espera / Revisar ruta',filas.slice(0,500).every(f=>{if(tramoAbiertoOrden(f.o.id,f.c,null))return f.est==='proceso';if(pasoHecho(f.o,f.c))return f.est==='hecho';const cerc=cercaniaCentro(f.o,f.c,P);
+     return enProcesoEnCentro(f.o,f.c,cerc)?f.est==='proceso':['revisar','anomalia'].includes(cerc.grupo)?f.est==='revisar':cerc.grupo==='disponible'?f.est==='listo':f.est==='espera'}));
+   __check('OTR3b: los nombres son los nuestros (En proceso · Listas · En espera · Terminadas), no los de Odoo',['En proceso','Listas','En espera','Terminadas'].every(n=>OTR_ESTADOS.some(e=>e[1]===n))&&!/Preparado|Esperando componentes|Esperando otra orden/.test(el.textContent));
+   {const pend=filas.filter(f=>f.est!=='hecho').slice(0,400);
+    __check('OTR3c: «Estado duración» es la marca de la cola (la más grave de MARCAS_CEN), sin cálculo propio',pend.every(f=>{const l=marcasDe(f.o,P,f.c);return f.m.k==='vuelta'||(l.length?f.m.k===l[0].k:['atiempo','sinfecha','sinmeta'].includes(f.m.k))}),pend.length+' filas')}
+   const nIt=itemsPlanProd().filter(it=>it.cens.some(veCentro)).length;
+   __check('OTR4: pestañas General + una por área; en General, una sección por área con su subtotal',el.querySelectorAll('.o-notebook a').length===1+nIt&&el.querySelectorAll('tr.otr-sec').length>=1,el.querySelectorAll('.o-notebook a').length+' / '+(1+nIt));
+   const tf=el.querySelector('table.otr tfoot');__check('OTR5: al pie, el total (órdenes de trabajo, pedido, producción y duración)',!!tf&&/Total/.test(tf.textContent)&&/\d+:\d\d/.test(tf.textContent));
+   /* en General, cada sección suma todas sus filas (no solo las que se dibujan) y las secciones dan el total del pie */
+   OTR.estado='todas';render();{const secs=[...el.querySelectorAll('tr.otr-sec')].map(tr=>+(tr.textContent.match(/·\s*([\d.]+)\s*órden|·\s*([\d.]+)\s*orden/)||[]).slice(1).find(Boolean).replace(/\./g,''));
+    const tot=+((el.querySelector('table.otr tfoot')||{}).textContent||'').match(/Total\s*·\s*([\d.]+)/)[1].replace(/\./g,'');
+    __check('OTR5b: en General las secciones suman el total del pie (también cuando hay que cortar filas)',secs.length>0&&secs.reduce((a,b)=>a+b,0)===tot,secs.join('+')+' = '+tot)}
+   __check('OTR5c: solo de lectura: ninguna fila de la tabla tiene botones ni enlaces que cambien algo',![...el.querySelectorAll('table.otr tbody [onclick], table.otr tbody button, table.otr tbody select, table.otr tbody input')].filter(x=>!(x.matches('img.foto-mini')&&(x.getAttribute('onclick')||'').startsWith('event.stopPropagation();mFoto('))).length);   /* la foto solo se abre en grande para verla */
+   OTR.estado='proceso';OTR.area='corte';render();__check('OTR6: la pestaña Corte muestra solo Corte',[...el.querySelectorAll('table.otr tbody tr[data-c]')].every(tr=>tr.dataset.c==='corte'));
+   /* por módulos: Confección tiene un botoncito por puesto y acota a ese puesto */
+   {const recsM=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);const itM=itemsPlanProd().find(it=>it.cens.includes('modulos'));
+    if(recsM.length>1&&itM&&itM.cens.length===1){OTR.area=itM.g;OTR.estado='todas';render();const chips=[...el.querySelectorAll('[data-lista="OTR.q"] .chips .chip')].map(x=>x.textContent.trim());
+      const r1=recsM.find(r=>OTR_FILAS.some(f=>f.c==='modulos'&&f.rec===r.id))||recsM[0];OTR.rec=r1.id;render();
+      __check('OTR6b: Confección se secciona por módulo (un botoncito por puesto) y acota a ese puesto',recsM.every(r=>chips.some(x=>x.startsWith(r.n)))&&filtrarOTR(OTR_FILAS).every(f=>f.rec===r1.id),chips.slice(0,6).join(' | '));
+      OTR.rec=null}}
+   /* al buscar, se redibujan también los números de los estados y de las pestañas */
+   {OTR.area='general';OTR.estado='todas';OTR.q='';render();const antes=(el.querySelector('.chips .chip.on .mut')||{}).textContent;OTR.q=cand[0].op;redibujarLista('OTR.q');
+    const desp=(el.querySelector('.chips .chip.on .mut')||{}).textContent;const filasV=el.querySelectorAll('table.otr tbody tr[data-c]').length;const pg=((el.querySelector('#otr-tabs a.on .mut')||{}).textContent||'');
+    __check('OTR7b: al escribir en el buscador cambian los números de los estados y de las pestañas (no se quedan viejos)',antes!==desp&&+String(desp).replace(/\./g,'')===filasV&&+pg.replace(/\./g,'')===filasV,antes+' → '+desp+' · filas '+filasV+' · pestaña '+pg);
+    OTR.q='';}
+   __check('OTR9: la página está en el catálogo de páginas de los perfiles',PAGINAS_DEF.some(p=>p[0]==='ordtrabajo'));
+   OTR.estado='todas';OTR.area='general';OTR.q=cand[0].op;render();
+   __check('OTR7: el buscador acota (por WH)',[...el.querySelectorAll('table.otr tbody tr')].filter(tr=>!tr.classList.contains('otr-sec')&&tr.children.length>2).every(tr=>tr.textContent.includes(cand[0].op)));
+   S.params.perfilesDef.push({id:'__otr',n:'Prueba solo corte',paginas:['ordtrabajo'],centros:['corte'],permisos:[]});PERFIL={id:'u-otr',rol:'__otr',nombre:'Prueba'};OTR={area:'general',estado:'proceso',q:'',cen:null};page='ordtrabajo';render();
+   __check('OTR8: quien ve solo su centro ve solo esa pestaña y esas órdenes',el.querySelectorAll('.o-notebook a').length===2&&filasOTR(P).every(f=>f.c==='corte'),el.querySelectorAll('.o-notebook a').length+' pestañas');
+   S.params.perfilesDef=S.params.perfilesDef.filter(d=>d.id!=='__otr');PERFIL=adminP0();
+   cand.forEach(o=>{const tr=tramosDe(o.id);for(let i=tr.length-1;i>=0;i--)if(!tr[i].fin)tr.splice(i,1)});OTR={area:'general',estado:'proceso',q:'',cen:null,rec:null};page='ordenes';render()}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

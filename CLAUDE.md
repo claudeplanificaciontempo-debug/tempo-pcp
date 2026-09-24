@@ -1523,6 +1523,23 @@ vista y la frase «terminar una no cierra las demás». Sin **segundas** en la t
 pide el porqué (tabla 15, uso cierre). La lista vieja de tarjetas (Hecho, cambio de fase, cronómetro) queda solo para el supervisor, plegada en
 «En cola». Pruebas TB1–TB10 (y TC, CC-c, TR, AR, HH, MT1, P1.3 pasadas a la regla nueva).
 
+**Reportería → Órdenes de trabajo (24-sep-2026, usuaria con captura de Odoo: «copiar esto, seccionando por corte, por módulos, y un general»;
+«sin agregar nada más, solo de lectura, como un control para ver qué están haciendo los operarios»; «ese estado sería el nuestro, según como estamos»).**
+Página `ordtrabajo` (`vOrdTrabajo`, estado `OTR={area,estado,q,cen,rec}`), sexta entrada de `REPORTES` y de `PAGINAS_DEF`; `migReporteria3` la da una vez a
+los perfiles con «Avance por área» que ven algún centro de producción, nunca desde una sesión de piso. Una fila por orden abierta con WH × centro de producción de
+su ruta completa que el perfil ve (`filasOTR`), con las columnas de la lista de Odoo y **sin ningún botón** (la fase en texto; la foto solo se abre en grande).
+**Nada propio:** Estado = `estadoOTR` (tramo abierto → En proceso; `pasoHecho` → Terminada; `enProcesoEnCentro` → En proceso; grupo de `cercaniaCentro`:
+disponible → Lista, revisar/anomalía → Revisar ruta, el resto → En espera; los nombres del Resumen del centro, **no** los de Odoo, y el «bloqueado por
+material» de la OT no es estado: regla del 23-sep). «Estado duración» = `marcaOTR` = la marca más grave de `MARCAS_CEN` (meta vencida / va tarde / paso
+tarde), «no ha vuelto» para un tramo afuera con `debeVolver` pasado, y si no hay marca «a tiempo», «sin fecha» o «sin fecha meta». Pedido = `o.cant` (la columna
+Pedido del archivo de tareas); Hechas = `avance.centros[c]` o el pedido completo si el paso está hecho (regla de Control de piso); fecha de inicio, personas
+(suma de los tramos abiertos) y duración (`calcTramo`, sin paros ni descansos) salen SOLO de los tramos del piso (`detOTR`, calculado solo para lo que se
+muestra o se suma; `TT_FIJO`/`tramosPorPuesto` evitan recorrer toda la cartera por cada tramo). Pestañas General + una por ítem de planificación; botoncitos
+por sub-área y, en un centro con varios puestos (Confección), por puesto (`OTR.rec`, `recsChipsCentro`). En General, cada sección cuenta y suma TODAS sus
+filas aunque se dibujen solo 150 (OTR_TOPE_GENERAL); el pie es la suma de las secciones. El buscador redibuja pestañas, botoncitos, números de estado y
+la tabla (`cuerpoOTRHTML`, `OTR_FILAS` del último render) y avisa lo que queda fuera de la base. Pruebas OTR1–OTR9 (OTR3 fija que el estado es el de la cola).
+Pendiente aparte: `cantCentro` busca el paso anterior en la ruta pendiente (afecta a la tablet).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

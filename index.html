@@ -93,7 +93,9 @@ td input,td select{padding:3px 5px;font-size:var(--fs-s)}
 .tab-pest button{border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:18px;padding:7px 16px;font-size:16px;cursor:pointer;font-family:inherit}
 .tab-pest button.on{background:var(--t-primary);color:#fff;border-color:var(--t-primary)}
 .tab-pest button.on .mut{color:rgba(255,255,255,.85)}
-.tab-pest-info{margin-left:auto;font-size:14px}   /* listas de trabajo largas: bajan hasta el final de la pantalla (24-sep) */
+.tab-pest-info{margin-left:auto;font-size:14px}
+table.otr tr.otr-sec td{background:var(--field);border-top:2px solid var(--rule)}   /* Órdenes de trabajo: cabecera de cada área en «General» (24-sep) */
+table.otr tfoot td{border-top:2px solid var(--ink);font-weight:600;background:var(--paper);position:sticky;bottom:0}   /* listas de trabajo largas: bajan hasta el final de la pantalla (24-sep) */
 .td-envuelve .sem{white-space:normal}   /* el estado se parte en líneas en las listas anchas (24-sep) */
 .empty{padding:36px 14px;text-align:center;color:var(--ink3)}
 .empty p{margin:0 0 14px}
@@ -533,6 +535,7 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
       <a data-p="gerencia">Resumen gerencial</a>
       <a data-p="wip">Producto en proceso</a>
       <a data-p="avancearea">Avance por área</a>
+      <a data-p="ordtrabajo">Órdenes de trabajo</a>
       <a data-p="cumplimiento">Cumplimiento de facturación</a>
       <a data-p="avance">Avance del mes</a>
     </div>
@@ -566,6 +569,7 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
     <section class="page" id="p-capacidad"></section>
     <section class="page" id="p-tablet"></section>
     <section class="page" id="p-avancearea"></section>
+    <section class="page" id="p-ordtrabajo"></section>
     <section class="page" id="p-salud"></section>
     <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
@@ -721,7 +725,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -733,6 +737,7 @@ function defPerfiles(){return [
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
 function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['wip','cumplimiento','avance','avancearea'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
   if(!S.params.migReporteria2){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['reporteria','vistaordenes','asignacion'].some(p=>d.paginas.includes(p)))return;['avancearea','wip'].forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria2=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (21-sep): '+n+' entradas «Avance por área» / «Producto en proceso» agregadas a los perfiles que tenían la reportería anterior (Reportería textil, Reportería por área, Vista general y Asignación por orden salieron del menú; sus enlaces viejos llevan a las nuevas)')}
+  if(!S.params.migReporteria3&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;const pro=new Set((S.centros||[]).filter(c=>c.area==='pro').map(c=>c.id));S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!d.paginas.includes('avancearea'))return;if(!(d.centros||[]).some(c=>c==='*'||pro.has(c)))return;if(!d.paginas.includes('ordtrabajo')){d.paginas.push('ordtrabajo');n++}});S.params.migReporteria3=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (24-sep): «Órdenes de trabajo» agregada a '+n+' perfiles que ya veían «Avance por área»')}
   if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
     if(!S.params.perfilesDef.some(x=>x.id==='jefatura'))S.params.perfilesDef.push({id:'jefatura',n:'Jefatura (todo menos configurar)',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos','calidadTin','configVer'],centros:['*'],paginas:['*'],desc:'Hace todo lo operativo: órdenes, programa, liberaciones, rutas, baños y piso. Ve la Configuración completa (recursos, personas, capacidades, tablas) pero NO la edita, y no crea usuarios.'});
     S.params.perfilesJefatura=new Date().toISOString();if(typeof bitacora==='function')bitacora('Perfil «Jefatura (todo menos configurar)» agregado al catálogo: todo lo operativo, ve la configuración sin editarla (decisión de la usuaria, 22-sep). Editable en Configuración → Usuarios.')}
@@ -951,7 +956,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 15:18';
+const APP_BUILD='2026-09-24 16:59';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1251,7 +1256,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={nivelacion:'scale',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
+const ICO_NAV={nivelacion:'scale',ordtrabajo:'ops',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -2547,8 +2552,10 @@ function esRecAfuera(rec){return !!rec&&tramosParalelos().some(t=>(t.grupos||[])
 function tramosAbiertosDe(c,rec){return todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
 function maxTramosAbiertos(){return Math.max(1,+prm('maxTramosAbiertos',4)||4)}
 /* cuántos tramos del mismo puesto solapan con este en el tiempo (para repartir las personas con honestidad) */
+let TT_FIJO=null;   /* índice de tramos por centro|recurso mientras se arma una lista larga (Órdenes de trabajo); fuera de eso, null */
+function tramosPorPuesto(){const m={};todosTramos().forEach(x=>{const k=x.t.centro+'|'+(x.t.rec||'');(m[k]=m[k]||[]).push(x)});return m}
 function tramosSolapados(t){if(!t||!t.ini)return 1;const ini=+new Date(t.ini),fin=t.fin?+new Date(t.fin):Date.now();
-  const l=todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null)&&x.t.id!==t.id&&x.t.ini)
+  const l=(TT_FIJO?(TT_FIJO[t.centro+'|'+(t.rec||'')]||[]):todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null))).filter(x=>x.t.id!==t.id&&x.t.ini)
     .filter(x=>{const a=+new Date(x.t.ini),b=x.t.fin?+new Date(x.t.fin):Date.now();return a<fin&&b>ini});
   return 1+l.length}
 function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
@@ -3260,6 +3267,7 @@ const REPORTES=[
   {p:'gerencia',n:'Resumen gerencial',desc:'la cartera completa por mes, cliente y familia: carga, pedido, avance y lo que falta'},
   {p:'wip',n:'Producto en proceso',desc:'las órdenes por fase (o cliente, familia, tipo de producto): órdenes, prendas pedidas y valor $, como la pivot de Odoo; se despliega hasta cada orden'},
   {p:'avancearea',n:'Avance por área',desc:'cómo va el programa de cada área esta semana: programadas, hechas, cumplimiento, atrasadas; cada ingeniero ve su área'},
+  {p:'ordtrabajo',n:'Órdenes de trabajo',desc:'como la lista de Odoo: cada orden en cada centro con inicio, personas, duración real, producción, estado y si va retrasada; por área o todas juntas'},
   {p:'cumplimiento',n:'Cumplimiento de facturación',desc:'semanas congeladas contra lo real'},
   {p:'avance',n:'Avance del mes',desc:'unidades hechas contra el plan congelado del mes'}];
 /* páginas retiradas el 21-sep: los enlaces viejos (perfiles, marcadores, bandejas) caen en la pantalla que las reemplaza */
@@ -3450,7 +3458,7 @@ function estadosPantalla(){const M={};
   try{M.AVA=AVA}catch(e){}try{M.TAB=TAB}catch(e){}try{M.CTLF=CTLF}catch(e){}
   try{M.EG=EG}catch(e){}try{M.GER=GER}catch(e){}try{M.RUT=RUT}catch(e){}try{M.COS=COS}catch(e){}
   try{M.CAPD=CAPD}catch(e){}try{M.NLF=NLF}catch(e){}try{M.PM=PM}catch(e){}
-  try{M.WIP=WIP}catch(e){}try{M.AUD=AUD}catch(e){}try{M.TARJ=TARJ}catch(e){}try{M.SIM=SIM}catch(e){}
+  try{M.WIP=WIP}catch(e){}try{M.OTR=OTR}catch(e){}try{M.AUD=AUD}catch(e){}try{M.TARJ=TARJ}catch(e){}try{M.SIM=SIM}catch(e){}
   return M}
 function refEstado(nombre){const [obj,k]=nombre.split('.');return {o:estadosPantalla()[obj],k}}
 function gruposFasesDe(fasesAll){const m={};fasesAll.forEach(f=>{const r=grupoDe(f);const g=r?r.grupo:'sin grupo en la tabla 5';(m[g]=m[g]||[]).push(f)});return Object.keys(m).sort((a,b)=>{const oa=ordenGrupo(a),ob=ordenGrupo(b);return (oa<0?99:oa)-(ob<0?99:ob)}).map(g=>({g,n:(ordenGrupo(g)>0?(ordenGrupo(g)-1):'—')+' · '+g.toUpperCase(),fases:m[g].sort((a,b)=>cmpFases(a,b))}))}
@@ -3565,7 +3573,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
    const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   try{cierresMesEnRender()}catch(e){try{console.error('cierresMesEnRender',e)}catch(x){}}   /* la historia de la cartera se toma sola */
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -10217,6 +10225,120 @@ function avanceTextilHTML(P,dias){const lun=dias[0];const ords=S.ordenes.filter(
   if(veArea('tin')){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');const banos=(P.banos||[]).filter(b=>!b.error);const bSem=banos.filter(b=>dias.includes(b.dia));const sal=(S.salidas_tin||[]).filter(s=>s.d&&lunesDe(s.d)===lun);const enCal=ords.filter(enCalidad).length;const reproc=ords.filter(o=>(S.avance[o.id]||{}).reproc).length;
     out.push(`<div class="panel"><h3>Tintorería <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dias[dias.length-1])}</span></h3><div class="body"><div class="kpis">${kpi(bSem.length+' · '+num(bSem.reduce((a,b)=>a+b.kg,0))+' kg','Baños programados esta semana')}${kpi(sal.length+' · '+num(sal.reduce((a,s)=>a+(s.kgReal||0),0))+' kg','Baños salidos esta semana')}${kpi(enCal,'En calidad',enCal?'warn':'')}${kpi(reproc,'Reprocesos en plan',reproc?'bad':'')}</div>${tabla(recs,r=>{const bs=bSem.filter(b=>b.rec===r.id);return bs.length+' baños · '+num(bs.reduce((a,b)=>a+b.kg,0))+' kg'})}</div></div>`)}
   return out.join('')}
+/* ==================== ÓRDENES DE TRABAJO (24-sep-2026) ====================
+   Como la lista «Órdenes de trabajo» de Odoo, con lo que registra NUESTRO piso. Una fila por orden (abierta y con WH) y por centro de producción
+   de su ruta que el perfil ve. Nada se calcula aparte: el estado es el de la cola y la tablet, el retraso el de diagAtraso, la duración la de
+   calcTramo (lo mismo que ve el operario), la producción la de avance.centros. Pestañas: General (todas las áreas, en secciones) y una por ítem
+   de planificación; dentro de un ítem con varias sub-áreas, botoncitos por sub-área. Al pie, los totales. */
+let OTR={area:'general',estado:'proceso',q:'',cen:null,rec:null};
+/* 24-sep (usuaria): «ese estado sería el nuestro, según como estamos»: los estados son los del Resumen del centro y de la cola, no los de Odoo */
+const OTR_ESTADOS=[
+  ['proceso','En proceso','t-aviso','En proceso','se está trabajando aquí: la fase de Odoo es la de este centro, o el piso le dio INICIO o registró unidades (lo mismo que «En proceso» del Resumen del centro)'],
+  ['listo','Listas','t-medio','Lista','el paso anterior ya terminó (grupo «Disponible» de la cola): se puede empezar'],
+  ['espera','En espera','t-lavado','En espera','todavía no llega: falta un paso anterior de su ruta o la tela (grupos «Por llegar» y «Todo lo que viene» de la cola)'],
+  ['revisar','Revisar ruta','t-alerta','Revisar ruta','no se sabe la secuencia (el centro se repite en la ruta o no está en ella) o la fase ya pasó de aquí y el paso sigue abierto: grupos «Revisar ruta» y «Ya salió de aquí» de la cola'],
+  ['hecho','Terminadas','t-ok','Terminada','el paso ya está terminado: unidades completas, cierre del paso, orden de trabajo de Odoo terminada o la fase'],
+  ['todas','Todas','','','']];
+function estadoOTR(o,c,P){if(tramoAbiertoOrden(o.id,c,null))return 'proceso';   /* la tablet la muestra corriendo: eso manda */
+  if(pasoHecho(o,c))return 'hecho';
+  const cerc=cercaniaCentro(o,c,P);if(enProcesoEnCentro(o,c,cerc))return 'proceso';
+  if(cerc.grupo==='revisar'||cerc.grupo==='anomalia')return 'revisar';
+  return cerc.grupo==='disponible'?'listo':'espera'}
+/* «Estado duración» = la marca de la cola (MARCAS_CEN, la más grave; las demás en el tooltip) y la vuelta de maquila que avisa la tablet. Nada propio. */
+function marcaOTR(o,c,P,est,trs){
+  if(est==='hecho')return {k:'hecho',n:'',cls:'',tip:''};
+  const af=trs.find(t=>t.afuera&&!t.fin);
+  if(af&&af.debeVolver&&hoy()>af.debeVolver)return {k:'vuelta',n:'no ha vuelto',cls:'t-alerta',tip:'salió a '+nRec(af.rec)+' y debía volver el '+fmtDia(af.debeVolver)+' (lo mismo que avisa la tablet)'};
+  const l=marcasDe(o,P,c);
+  if(l.length){const g=l[0];return {k:g.k,n:g.n,cls:g.cls,tip:g.det+(l.length>1?'\n\nTambién aplica: '+l.slice(1).map(m=>m.n+' — '+m.det).join('\n'):'')}}
+  const d=diagAtraso(o,P,c);
+  if(d.sinMeta)return {k:'sinmeta',n:'sin fecha meta',cls:'t-lavado',tip:'la orden no tiene fecha de entrega ni compromiso: no se puede decir si va tarde'};
+  if(!d.paso||!d.paso.fin)return {k:'sinfecha',n:'sin fecha',cls:'t-lavado',tip:'el programa no le dio fecha a este paso (sin liberar, bloqueada, sin recurso o sin tiempo): el motivo está en la cola del centro'};
+  return {k:'atiempo',n:'a tiempo',cls:'t-ok',tip:'sin marca de atraso: el programa termina la orden antes de su fecha meta ('+fmtDia(d.meta)+')'}}
+const OTR_ORD_MARCA={vuelta:0,vencida:0,tarde:1,paso:2,sinfecha:3,sinmeta:3,atiempo:4,hecho:5};
+function fmtHM(min){const m=Math.max(0,Math.round(+min||0));return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}   /* como Odoo: 00:13 · 80:55 */
+function fmtFechaHoraOdoo(iso){const d=new Date(iso);if(isNaN(d))return '';const p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())}
+let OTR_FILAS=null;   /* las filas del último render: el buscador solo filtra, no vuelve a calcular */
+/* una fila por orden (abierta y con WH) y por centro de producción de su ruta que el perfil ve */
+function filasOTR(P){const porOC={};todosTramos().forEach(({o,t})=>{const k=o.id+'|'+t.centro;(porOC[k]=porOC[k]||[]).push(t)});
+  const out=[];S.ordenes.forEach(o=>{if(!abierta(o)||!lanzada(o))return;const ro=((P&&P.ordenes)||{})[o.id]||{};
+    pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).forEach(c=>{if(!CE(c)||CE(c).area!=='pro'||!veCentro(c))return;
+      const trs=porOC[o.id+'|'+c]||[];const est=estadoOTR(o,c,P);
+      const ab=trs.filter(t=>!t.fin);const ult=ab[ab.length-1]||trs[trs.length-1];const paso=((ro.pasos)||[]).find(x=>x.centro===c)||null;
+      const rec=(ult&&ult.rec)||(paso&&paso.rec)||recFijadoDe(o,c)||null;
+      const ac=(((S.avance[o.id]||{}).centros)||{})[c]||0;
+      out.push({o,c,rec,est,trs,hechas:est==='hecho'?(+o.cant||0):ac,   /* la misma regla de Control de piso: paso terminado = el pedido completo */
+        ini:trs.reduce((m,t)=>t.ini&&(!m||t.ini<m)?t.ini:m,null),m:marcaOTR(o,c,P,est,trs)})})});
+  return out}
+/* duración (INICIO a FIN sin paros ni descansos, la de calcTramo) y personas (suma de los tramos abiertos): solo para lo que se muestra o se suma */
+function detOTR(f){if(f.det)return f.det;const ahora=new Date().toISOString();let min=0,pers=null,afuera=false;
+  f.trs.forEach(t=>{if(t.afuera){if(!t.fin)afuera=true;return}const k=calcTramo(t.fin?t:Object.assign({},t,{fin:ahora}),f.o);min+=(+k.trabajado||0);if(!t.fin&&k.pers!=null)pers=(pers||0)+(+k.pers||0)});
+  return f.det={min,pers,afuera}}
+function filtrarOTR(filas,opt){const o=Object.assign({area:OTR.area,cen:OTR.cen,rec:OTR.rec},opt||{});const q=normTxt(OTR.q);
+  return filas.filter(f=>(o.area==='general'||grupoPlanDe(f.c)===o.area)&&(!o.cen||f.c===o.cen)&&(!o.rec||f.rec===o.rec)&&matchBusq(f.o,q,'OTR.q'))}
+const OTR_TOPE_GENERAL=150,OTR_TOPE_AREA=600;
+function tablaOTRHTML(filas,items){const fijo=!TT_FIJO;if(fijo)TT_FIJO=tramosPorPuesto();
+  try{const lista=filas.filter(f=>OTR.estado==='todas'||f.est===OTR.estado);
+  const ordE=Object.fromEntries(OTR_ESTADOS.map(([k],i)=>[k,i]));
+  lista.sort((a,b)=>(ordE[a.est]-ordE[b.est])||(OTR_ORD_MARCA[a.m.k]-OTR_ORD_MARCA[b.m.k])||String(a.ini||'9').localeCompare(String(b.ini||'9'))||String(a.o.op).localeCompare(String(b.o.op)));
+  const est=k=>{const e=OTR_ESTADOS.find(x=>x[0]===k)||[];return '<span class="tag '+(e[2]||'')+'" title="'+esc(e[4]||'')+'">'+esc(e[3]||k)+'</span>'};
+  const marca=m=>m.n?'<span class="tag '+m.cls+'" style="white-space:nowrap" title="'+esc(m.tip)+'">'+esc(m.n)+'</span>':'';
+  const nRecs={};const cenTxt=f=>{const n=nRecs[f.c]!=null?nRecs[f.c]:(nRecs[f.c]=S.recursos.filter(r=>r.centro===f.c&&r.activa).length);
+    return f.rec&&n>1&&R(f.rec)?'<span title="'+esc(nCen(f.c))+'">'+esc(nRec(f.rec))+'</span>':esc(nCen(f.c))};
+  /* solo de lectura (usuaria, 24-sep): las columnas de la lista de Odoo; la fase en texto, sin botones */
+  const fila=f=>{const o=f.o;const d=detOTR(f);return `<tr data-c="${esc(f.c)}"><td style="white-space:nowrap">${esc(o.op)}</td><td>${cenTxt(f)}</td><td style="max-width:170px">${esc(o.cliente||'')}</td><td>${fotoMini(o)}</td><td>${esc(o.proyecto||'')}</td>
+    <td class="num">${num(+o.cant||0,2)}</td><td>${esc(o.fase||'')}</td><td class="num">${num(f.hechas,2)}</td>
+    <td style="white-space:nowrap">${f.ini?fmtFechaHoraOdoo(f.ini):''}</td>
+    <td class="num" ${d.pers!=null&&d.pers%1?'title="las personas del puesto repartidas entre las órdenes que corren a la vez"':''}>${d.pers!=null?num(d.pers,d.pers%1?1:0):''}</td>
+    <td class="num">${d.min?fmtHM(d.min):d.afuera?'<span class="mut" title="afuera (maquila): se cuentan días, no minutos">afuera</span>':''}</td>
+    <td>${est(f.est)}</td><td>${marca(f.m)}</td></tr>`};
+  const pie=l=>`<td class="num">${num(l.reduce((a,f)=>a+(+f.o.cant||0),0))}</td><td></td><td class="num">${num(l.reduce((a,f)=>a+(+f.hechas||0),0))}</td><td></td><td></td><td class="num"><b>${fmtHM(l.reduce((a,f)=>a+detOTR(f).min,0))}</b></td><td></td><td></td>`;
+  const nOT=n=>num(n)+' '+(n===1?'orden de trabajo':'órdenes de trabajo');
+  const bloque=(l,tope)=>l.slice(0,tope).map(fila).join('')+(l.length>tope?`<tr><td colspan="13" class="mut">Se muestran ${num(tope)} de ${num(l.length)}${OTR.area==='general'?' en esta sección':''} (los totales son de las ${num(l.length)}): elige un estado, un área o usa el buscador.</td></tr>`:'');
+  let cuerpo;
+  if(OTR.area==='general'){const secs=items.map(it=>({n:it.n,l:lista.filter(f=>it.cens.includes(f.c))}));
+      const otros=lista.filter(f=>!items.some(it=>it.cens.includes(f.c)));if(otros.length)secs.push({n:'Otros centros',l:otros});
+      cuerpo=secs.filter(x=>x.l.length).map(x=>`<tr class="otr-sec"><td colspan="5"><b>${esc(x.n)}</b> <span class="mut">· ${nOT(x.l.length)}</span></td>${pie(x.l)}</tr>`+bloque(x.l,OTR_TOPE_GENERAL)).join('')}
+  else cuerpo=bloque(lista,OTR_TOPE_AREA);
+  return `<div class="scroll alto"><table class="otr" style="font-size:var(--fs-s)"><thead><tr><th>Orden de fabricación</th><th>Centro de producción</th><th>Cliente</th><th>Foto</th><th>Proyecto</th><th class="num" title="la columna «Pedido» del archivo de tareas de Odoo">Pedido</th><th>Fase</th><th class="num" title="lo que el piso registró en este centro; si el paso está terminado, el pedido completo (la misma regla de Control de piso)">Hechas</th><th>Fecha de inicio</th><th class="num">Nro. empleados</th><th class="num" title="de INICIO a FIN, sin paros ni descansos (la misma cuenta de la tablet)">Duración real</th><th>Estado</th><th>Estado duración</th></tr></thead>
+   <tbody>${cuerpo||`<tr><td colspan="13" class="mut">${vacioOTRTxt(filas,items)}</td></tr>`}</tbody>
+   ${lista.length?`<tfoot><tr><td colspan="5"><b>Total</b> · ${nOT(lista.length)}</td>${pie(lista)}</tr></tfoot>`:''}</table></div>`}
+  finally{if(fijo)TT_FIJO=null}}
+/* por qué la tabla sale vacía: el perfil no ve producción, o hay filas pero en otros estados (con enlace) */
+function vacioOTRTxt(filas,items){if(!items.length)return 'Tu perfil no ve ningún centro de producción.';
+  if(OTR.estado!=='todas'&&filas.length){const c={};filas.forEach(f=>c[f.est]=(c[f.est]||0)+1);
+    const otros=OTR_ESTADOS.filter(([k])=>k!=='todas'&&c[k]).map(([k,n])=>`<a href="#" onclick="OTR.estado='${k}';render();return false">${num(c[k])} ${esc(n)}</a>`);
+    if(otros.length)return 'Ninguna en «'+esc((OTR_ESTADOS.find(x=>x[0]===OTR.estado)||[])[1]||'')+'». Con estos filtros hay: '+otros.join(' · ')+'.'}
+  return 'Ninguna orden de trabajo con estos filtros.'}
+function otrPestanasHTML(items){const t=OTR_FILAS||[];
+  const n=g=>filtrarOTR(t,{area:g,cen:null,rec:null}).filter(f=>OTR.estado==='todas'||f.est===OTR.estado).length;
+  const pest=(g,nom)=>`<a class="${OTR.area===g?'on':''}" onclick="OTR.area='${g}';OTR.cen=null;OTR.rec=null;render()">${esc(nom)} <span class="mut">${num(n(g))}</span></a>`;
+  return pest('general','General')+items.map(it=>pest(it.g,it.n)).join('')}
+/* lo que se redibuja al buscar: pestañas (por id), botoncitos, estados con su número, la tabla y el aviso de lo que queda fuera */
+function cuerpoOTRHTML(items){const todas=OTR_FILAS||[];
+  const tabs=document.getElementById('otr-tabs');if(tabs)tabs.innerHTML=otrPestanasHTML(items);
+  const itA=items.find(it=>it.g===OTR.area);
+  const cenR=OTR.cen||(itA&&itA.cens.length===1?itA.cens[0]:null);
+  const recs=cenR?recsChipsCentro(S.recursos.filter(r=>r.centro===cenR&&r.activa)):[];if(OTR.rec&&!recs.some(r=>r.id===OTR.rec))OTR.rec=null;
+  const base=filtrarOTR(todas);
+  const chip=(on,txt,js)=>`<span class="chip ${on?'on':''}" onclick="${js};render()">${txt}</span>`;
+  const subs=itA&&itA.cens.length>1?`<div class="chips" style="margin:0 0 8px">${['',...itA.cens].map(c=>chip((OTR.cen||'')===c,c?esc(nCen(c)):'Todo '+esc(itA.n),"OTR.cen="+(c?"'"+c+"'":'null')+";OTR.rec=null")).join('')}</div>`:'';
+  const porRec=recs.length?`<div class="chips" style="margin:0 0 8px">${[{id:''},...recs].map(r=>chip((OTR.rec||'')===r.id,r.id?esc(r.n):'Todos los puestos',"OTR.rec="+(r.id?"'"+r.id+"'":'null'))).join('')}</div>`:'';
+  const cnt={};base.forEach(f=>cnt[f.est]=(cnt[f.est]||0)+1);
+  const estados=`<div class="chips" style="margin:0 0 10px">${OTR_ESTADOS.filter(([k])=>k!=='revisar'||cnt[k]||OTR.estado===k).map(([k,n,,,tip])=>`<span class="chip ${OTR.estado===k?'on':''}" ${tip?'title="'+esc(tip)+'"':''} onclick="OTR.estado='${k}';render()">${esc(n)} <span class="mut">${num(k==='todas'?base.length:(cnt[k]||0))}</span></span>`).join('')}</div>`;
+  const fuera=avisoFueraDeBaseHTML('OTR.q',[...new Set(todas.map(f=>f.o))],'las órdenes con WH (abiertas) en los centros de producción que ves');
+  return subs+porRec+estados+`<div class="panel" style="padding:0">${tablaOTRHTML(base,items)}</div>`+fuera}
+function vOrdTrabajo(el){const P=S.ordenes.length?programar():{ordenes:{},pro:[]};
+  const items=itemsPlanProd().map(it=>Object.assign({},it,{cens:it.cens.filter(veCentro)})).filter(it=>it.cens.length);
+  if(OTR.area!=='general'&&!items.some(it=>it.g===OTR.area)){OTR.area='general';OTR.cen=null;OTR.rec=null}
+  const itA=items.find(it=>it.g===OTR.area);if(OTR.cen&&!(itA&&itA.cens.includes(OTR.cen))){OTR.cen=null;OTR.rec=null}
+  OTR_FILAS=filasOTR(P);
+  listaRegistrar('OTR.q',()=>cuerpoOTRHTML(items));
+  el.innerHTML=`<div class="pagehead"><h2>Órdenes de trabajo</h2><span class="spacer"></span>
+    <div style="width:280px">${busqHTML('OTR.q',OTR.q,'OTR.q=v','width:100%')}</div>
+    <div class="o-notebook" id="otr-tabs" style="order:99;flex-basis:100%">${otrPestanasHTML(items)}</div></div>
+   <p class="lede">Solo de lectura: un control de lo que están haciendo los operarios, como la lista de Odoo. Cada orden en cada centro con lo que registra el piso: cuándo empezó (INICIO), cuántas personas, cuánto lleva (sin paros ni descansos) y cuánto salió. El estado es el nuestro, el mismo del Resumen del centro y de la cola; «Estado duración» es la marca de atraso de la cola (meta vencida, va tarde, paso tarde). «General» junta todas las áreas.</p>
+   <div data-lista="OTR.q">${cuerpoOTRHTML(items)}</div>`}
 function vAvanceArea(el){
   const h=hoy();const P=S.ordenes.length?programar():{ordenes:{},pro:[],tej:[],banos:[],carga:{}};const lun=lunesDe(dsum(h,AVA.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
   const areas=areasAvance();const todas=areas.length===itemsPlanProd().length&&areas.every(a=>a.cens.length===a.todos.length);
