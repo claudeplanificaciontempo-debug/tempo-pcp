@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 18:12';
+const APP_BUILD='2026-09-23 20:51';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1144,6 +1144,7 @@ function etapas(o){const r=o.ruta||[];const pv=r.find(p=>p.centro==='proveedor')
 /* ================= MOTOR DE PROGRAMACIÓN ================= */
 /* Programa a capacidad finita: tejeduría → baños → ruta de producción. */
 let PLAN_ALL=null;
+let SIN_T_FECHA=true;   /* 23-sep: paso sin tiempo con fecha. false = el motor de antes (solo para medir el cambio) */
 function programarTodo(){if(PLAN_ALL)return PLAN_ALL;const g=PLAN;LIB_ALL=true;PLAN=null;try{PLAN_ALL=programar()}finally{LIB_ALL=false;PLAN=g}return PLAN_ALL}
 function llenarBins(itemsIn,capRef){ // reparte [{id,kg}] en baños de tamaño capRef; una WH se parte solo si hace falta para llenar el baño
   const items=itemsIn.filter(x=>x.kg>0).sort((a,b)=>b.kg-a.kg);
@@ -1283,6 +1284,9 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
   add('catSinTiempo','Categorías con pasos sin tiempo de operaciones',Object.keys(sinT).length,'la categoría no tiene operaciones de ese centro en la hoja LMO','Categorías y operaciones',"ir('categorias')");
   {let psp=[];try{psp=pasosSinProgramar()}catch(e){}add('pasoSinProgramar','Pasos de la ruta que el motor no programa (sin aviso en la orden)',psp.length,
     psp.slice(0,5).map(x=>x.op+' · '+nCen(x.c)+' ('+x.motivo+')').join(' · ')+(psp.length?' · la orden sale con fecha de fin sin ese paso: cárgale minutos (tiempo por prenda, técnica o hoja LMO) o quítalo de la ruta':''),'Salud del sistema',"ir('salud')")}
+  {let st=[];try{const P=programar();ab.forEach(o=>{const ro=P.ordenes[o.id]||{};(ro.pasos||[]).forEach(x=>{if(x.sinTiempo&&x.ini&&!x.error)st.push(o.op+' · '+nCen(x.centro))})})}catch(e){}
+   add('pasoSinTiempoFecha','Pasos con fecha pero sin tiempo estándar (la fecha no ocupa capacidad)',st.length,
+     st.slice(0,5).join(' · ')+(st.length?' · el programa les da fecha junto a sus pasos vecinos, sin ocupar capacidad; falta el SAM, la técnica o las puntadas (según el centro)':''),'Operaciones',"ir('operaciones')")}
   const fSin=ab.filter(o=>faseEstado(o.fase,o).sinFila).length;const cNo=Object.keys(((S.params.otCarga||{}).centrosNoMapeados)||{}).length;
   add('faseNoCalza','Fases o centros de Odoo que no calzan con las tablas',fSin+cNo,(fSin?fSin+' órdenes con fase sin fila (tabla 1)':'')+(fSin&&cNo?' · ':'')+(cNo?cNo+' centros de trabajo sin fila (tabla 6)':''),'Configuración → Órdenes y materiales',"CONF.tab='ordenes2';ir('config')");
   add('noCalzan','Decisiones que ya no calzan con el archivo',(((S.params.tareaCarga||{}).recarga||{}).noCalzan||[]).length,'fases, fechas, ODC o programaciones conservadas que el archivo trae distinto','Órdenes (bandeja)',"ir('ordenes')");
@@ -1330,7 +1334,7 @@ function mDetalleAsig(oid,extra){const o=S.ordenes.find(x=>x.id===oid);if(!o)ret
   abrir(`<h3>${esc(o.op)} <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${esc(o.cliente||'')} · ${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} prendas</span></h3><div class="body">
    <p style="font-size:var(--fs-s)">Entrega meta <b>${meta?fmtDia(meta):'—'}</b>${o.fechaCompromiso?' (compromiso)':' (pedida)'} · termina <b>${ro.finPro?fmtDia(ro.finPro):'—'}</b> · tela lista ${ro.telaLista?fmtDia(ro.telaLista):'—'}${ro.coleccion?' · colección '+esc(ro.coleccion.key)+' ('+ro.coleccion.n+')':''}${c.estado==='vencidaUnPaso'?' · <span class="tag t-alerta" title="meta vencida hace más de 30 días y un solo paso de producción pendiente">vencida hace '+c.diasVenc+' días con un solo paso pendiente ('+esc(nCen(c.paso))+'): probablemente entregada y mal cerrada en Odoo</span>':c.estado==='noLlega'?' · <span class="tag t-alerta">'+c.dias+' días tarde · '+esc(c.atasco)+'</span>'+(ro.fechaPosible?' · fecha posible '+fmtDia(ro.fechaPosible):''):c.estado==='sinProgramar'?' · <span class="tag t-aviso">sin programar: '+esc(c.motivo)+'</span>':c.holg!=null?' · holgura '+c.holg+' d':''}</p>
    <table><thead><tr><th>Paso</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Límite (para llegar)</th><th class="num">Min</th><th>Estado</th></tr></thead><tbody>
-   ${(ro.pasos||[]).map(p=>`<tr><td>${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''}</td><td>${p.rec?esc(nRec(p.rec)):'—'}</td><td>${p.ini?fmtDia(p.ini):'—'}</td><td>${p.fin?fmtDia(p.fin):'—'}</td><td>${p.limite?fmtDia(p.limite):'<span class="mut">—</span>'}</td><td class="num">${num(p.min||0)}</td><td>${p.hecho?'<span class="tag t-ok">hecho</span>':p.error?'<span class="tag t-alerta">'+esc(p.error)+'</span>':(p.limite&&p.fin>p.limite?'<span class="tag t-alerta">se pasa '+diasEntre(p.limite,p.fin)+' d</span>':'<span class="tag t-medio">programado</span>')}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin pasos programados.</td></tr>'}</tbody></table>
+   ${(ro.pasos||[]).map(p=>`<tr><td>${esc(nCen(p.centro))}${(o.recursoFijo||{})[p.centro]?' ⚲':''}</td><td>${p.rec?esc(nRec(p.rec)):'—'}</td><td>${p.ini?fmtDia(p.ini):'—'}</td><td>${p.fin?fmtDia(p.fin):'—'}</td><td>${p.limite?fmtDia(p.limite):'<span class="mut">—</span>'}</td><td class="num">${p.sinTiempo?'<span class="tag t-aviso" title="falta el tiempo estándar: la fecha sale de sus pasos vecinos y no ocupa capacidad. Falta '+esc(faltaTiempoTxt(o,p.centro))+'.">sin tiempo</span>':num(p.min||0)}</td><td>${p.hecho?'<span class="tag t-ok">hecho</span>':p.error?'<span class="tag t-alerta">'+esc(p.error)+'</span>':(p.limite&&p.fin>p.limite?'<span class="tag t-alerta">se pasa '+diasEntre(p.limite,p.fin)+' d</span>':'<span class="tag t-medio">programado</span>')}</td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin pasos programados.</td></tr>'}</tbody></table>
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Ruta: ${(o.ruta||[]).map(p=>esc(nCen(p.centro))).join(' → ')||'—'} · fase ${esc(o.fase||'—')}</p>${cierresOrdenHTML(o)}${extra||''}
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div></div>`,true)}
 /* ---------- B · Advertencias de fecha agrupadas por movimiento (una línea por acción, no una por orden) ---------- */
@@ -1621,6 +1625,23 @@ const corridas={};
     while(rest>1e-6&&guard++<400){const l=libre(r,d);if(l>1e-6){const u=Math.min(l,rest);if(!dry)usar(r,d,u);rest-=u;if(!fin)fin=d;ini=d;det.push({dia:d,q:u,tag})}if(rest>1e-6)d=antLabR(dsum(d,-1),r)}
     return{ini:ini||d,fin:fin||d,det}}
   const errPaso=(s)=>(s.p.centro==='estampado'&&o_.tecnica)?'sin máquina para la técnica':s.p.centro==='modulos'?'ningún módulo con polivalencia para esta familia':s.perm.length?'sin recurso habilitado para esta categoría':'sin recurso';
+  /* fecha de un paso sin tiempo estándar (usuaria, 23-sep: «entra, y debe tener fecha pero una alerta de que falta algo»):
+     el día en que termina el paso anterior programado (las prendas llegan y el paso no consume minutos); si no hay anterior, el día
+     en que empieza el siguiente; sin vecinos con tiempo: hacia atrás, el límite que le deja la meta; hacia adelante, la tela lista.
+     El «Arranca» del centro manda si es posterior. La fecha vive SOLO en el paso (ro.pasos): NO entra a P.pro ni a secMod, así
+     no infla prendas del día, % ni cumplimiento; y el recurso solo si está FIJADO (no se elige uno: con 0 minutos todos caían en el
+     mismo puesto). La tablet sigue la regla del 17-sep: el operario la ve cuando el supervisor le fija recurso y fecha. */
+  function fechaSinT(o,ro,phs,modo){phs.forEach(({paso,s})=>{
+    if(!s.cand.length){paso.error=errPaso(s);return}
+    const fijo=recFijadoDe(o,s.p.centro);const rf=fijo?s.cand.find(x=>x.id===fijo):null;const rCal=rf||s.cand[0];   /* rCal: solo para el calendario */
+    const i=ro.pasos.indexOf(paso);const real=x=>x&&!x.hecho&&!x.error&&!x.sinTiempo;
+    const prev=ro.pasos.slice(0,i).reverse().find(x=>x&&!x.hecho&&!x.error&&x.fin);   /* también un paso sin tiempo ya fechado: dos seguidos no quedan al revés */
+    const next=ro.pasos.slice(i+1).find(x=>real(x)&&x.ini);
+    let d=prev?prev.fin:(next?next.ini:((modo==='atras'&&paso.limite)?antLabR(paso.limite,rCal):sigLabR(ro.telaLista||ini,rCal)));
+    if(s.pc.desde&&s.pc.desde>d){d=sigLabR(s.pc.desde,rCal);if(paso.limite&&d>paso.limite)paso.porArranca=true}   /* el «Arranca» que fijó el centro; si lo pasa del límite, ESE es el atraso */
+    if(ro.telaLista&&d<ro.telaLista)d=sigLabR(ro.telaLista,rCal);   /* nunca antes de que la tela esté lista */
+    if(d<ini)d=sigLabR(ini,rCal);
+    if(rf)paso.rec=rf.id;paso.ini=d;paso.fin=d})}
   let o_=null;
   ords.forEach(o=>{o_=o;
     const ro=res.ordenes[o.id],av=S.avance[o.id]||{},et=etapas(o),fe=faseEstado(o.fase,o);
@@ -1641,13 +1662,18 @@ const corridas={};
       if(p.centro==='modulos')cand=cand.filter(r=>poliPct(r,K(o.cat))>0&&(r.id!=='maquila'||fijo==='maquila'||!maquilaPorDescarte()));   /* maquila por descarte: solo lo marcado va a maquila */
       if(fijo&&cand.some(r=>r.id===fijo))cand=cand.filter(r=>r.id===fijo);
       else{perm=recursosDe(K(o.cat));const enCentro=perm.filter(id=>cand.some(r=>r.id===id));if(enCentro.length)cand=cand.filter(r=>enCentro.includes(r.id))}
-      return{p,pend,tPaso,minRef,cand,perm,pc,hecho:minRef<=0}});
+      /* sin tiempo estándar (23-sep, usuaria: «entra y debe tener fecha pero una alerta»): NO es un paso hecho. Entra con fecha y sin
+         ocupar capacidad (fechaSinT). Los centros «por días» (lavado, calandrado) siguen como estaban: son esperas, no pasos sin dato. */
+      const sinT=SIN_T_FECHA&&pend>0&&!(minRef>0)&&!centroPorDias(p.centro);
+      return{p,pend,tPaso,minRef,cand,perm,pc,hecho:!sinT&&minRef<=0,sinT}});
+    const phs=[];   /* pasos sin tiempo de esta orden: se fechan al final, con los vecinos ya programados */
     const meta=fechaMetaDe(o);
     if(modoMotor==='atras'&&meta){
       // pasada en seco hacia atrás: desde la meta, cada paso termina cuando empieza el siguiente menos la espera
-      let hasta=meta;const plan=[];let ok=true;
+      let hasta=meta;const plan=[];let ok=true;let iniSig=null;   /* iniSig: inicio del paso con tiempo que sigue (límite de un paso sin tiempo) */
       for(let i=prep.length-1;i>=0;i--){const s=prep[i];
         if(s.hecho){plan[i]={hecho:true};continue}
+        if(s.sinT){const lim=iniSig||hasta;plan[i]={hecho:true,sinT:true,limite:lim};if(s.pc.desde&&s.pc.desde>lim)ok=false;continue}   /* sin tiempo: no ocupa ni corre días; su «Arranca» sí puede hacer que no llegue */
         if(!s.cand.length){plan[i]={error:true};continue}
         let best=null;const opts=[];
         s.cand.forEach(r=>{const pol=s.p.centro==='modulos'?poliPct(r,K(o.cat))/100:1;const q=s.pend*minPrendaR(r,s.p.centro,s.tPaso)/(pol||1);const x=fluirAtras(r,q,hasta,o.op,true);opts.push({r,q,x});
@@ -1655,23 +1681,25 @@ const corridas={};
         const ventana=s.p.centro==='modulos'?(+prm('ventanaColor',0)):0;
         if(ventana>0&&best){const lim=dsum(best.x.ini,-ventana);const mismo=opts.filter(x=>x.x.ini>=lim&&ultColor[x.r.id]===o.color).sort((a,b)=>a.x.ini>b.x.ini?-1:1)[0];if(mismo)best=mismo}
         const piso=maxD(ini,s.pc.desde||null);
-        plan[i]={r:best.r,q:best.q,ini:best.x.ini,fin:best.x.fin,limite:hasta,piso};
+        plan[i]={r:best.r,q:best.q,ini:best.x.ini,fin:best.x.fin,limite:hasta,piso};iniSig=best.x.ini;
         if(best.x.ini<piso)ok=false; // cruzó el hoy o el inicio que fijó el centro
-        const prev=prep.slice(0,i).reverse().find(x=>!x.hecho);
+        const prev=prep.slice(0,i).reverse().find(x=>!x.hecho&&!x.sinT);
         hasta=dsum(best.x.ini,-1-(prev?esperaDeCentro(prev.p.centro,o):0)); // el paso anterior termina antes, menos su espera
       }
       const primero=plan.find(x=>x&&!x.hecho&&!x.error);
       ro.reqTelaLista=primero?dsum(primero.ini,-1):null; // cuándo debía estar lista la tela para llegar
-      ro.limites=prep.map((s,i)=>{const pl=plan[i];return pl&&!pl.hecho&&!pl.error?{centro:s.p.centro,fin:pl.limite,ini:pl.ini}:null});
+      ro.limites=prep.map((s,i)=>{const pl=plan[i];return pl&&(pl.sinT||(!pl.hecho&&!pl.error))?{centro:s.p.centro,fin:pl.limite,ini:pl.sinT?pl.limite:pl.ini}:null});
       if(ok&&(!primero||cursor<=primero.ini)){
         // factible: se consume la capacidad exactamente como en la pasada en seco (mismo recurso, mismo límite)
         prep.forEach((s,i)=>{const pl=plan[i];
+          if(pl.sinT){const ph={centro:s.p.centro,min:0,sinTiempo:true,limite:pl.limite};ro.pasos.push(ph);phs.push({paso:ph,s});return}
           if(pl.hecho){if(s.tPaso>0)ro.pasos.push({centro:s.p.centro,min:0,hecho:true,fin:cursor});return}
           if(pl.error){ro.pasos.push({centro:s.p.centro,min:s.minRef,error:errPaso(s)});return}
           const x=fluirAtras(pl.r,pl.q,pl.limite,o.op,false);
           if(s.p.centro==='modulos'){ultColor[pl.r.id]=o.color;(secMod[pl.r.id]=secMod[pl.r.id]||[]).push({oid:o.id,op:o.op,color:o.color,min:pl.q})}
           x.det.forEach(d=>res.pro.push({rec:pl.r.id,centro:s.p.centro,dia:d.dia,min:d.q,pz:pl.q?d.q/pl.q*s.pend:0,op:o.op}));
           ro.pasos.push({centro:s.p.centro,min:pl.q,rec:pl.r.id,ini:x.ini,fin:x.fin,limite:pl.limite})});
+        fechaSinT(o,ro,phs,'atras');
         ro.finPro=ro.pasos.filter(x=>!x.hecho&&!x.error).reduce((m,x)=>maxD(m,x.fin),null)||cursor;
         ro.atraso=ro.finPro>meta;ro.motor='atras';ro.holgura=diasEntre(ro.finPro,meta); // factible por construcción; si no quedaba nada pendiente, misma regla que el motor de siempre
         return}
@@ -1680,7 +1708,8 @@ const corridas={};
     // ---- motor de siempre: lo antes posible desde la tela lista (también para las que no llegan en 'atras') ----
     prep.forEach(s=>{const p=s.p;
       if(s.hecho){if(s.tPaso>0)ro.pasos.push({centro:p.centro,min:0,hecho:true,fin:cursor});return}
-      if(s.pc.desde&&s.pc.desde>cursor)cursor=s.pc.desde; // el centro programó un inicio posterior
+      if(s.pc.desde&&s.pc.desde>cursor)cursor=s.pc.desde; // el centro programó un inicio posterior (también en un paso sin tiempo: su «Arranca» corre a los siguientes)
+      if(s.sinT){const lim=(ro.limites||[]).find(l=>l&&l.centro===p.centro);const ph=Object.assign({centro:p.centro,min:0,sinTiempo:true},lim?{limite:lim.fin}:{});ro.pasos.push(ph);phs.push({paso:ph,s});return}   /* sin minutos: no mueve el cursor */
       if(!s.cand.length){ro.pasos.push({centro:p.centro,min:s.minRef,error:errPaso(s)});return}
       const ventana=p.centro==='modulos'?(+prm('ventanaColor',0)):0;
       let best=null;const opts=[];
@@ -1695,12 +1724,13 @@ const corridas={};
       ro.pasos.push(Object.assign({centro:p.centro,min,rec:best.r.id,ini:x.ini,fin:x.fin},lim?{limite:lim.fin}:{}));
       cursor=x.fin;
     });
-    ro.finPro=cursor;ro.atraso=ro.finPro>(meta||o.fecha);if(!ro.motor)ro.motor='adelante';
+    fechaSinT(o,ro,phs,'adelante');
+    ro.finPro=ro.pasos.filter(x=>x.sinTiempo&&x.fin).reduce((m,x)=>maxD(m,x.fin),cursor);ro.atraso=ro.finPro>(meta||o.fecha);if(!ro.motor)ro.motor='adelante';
     if(ro.motor==='atras-no-llega'){
       ro.diasTarde=Math.max(0,diasEntre(meta,ro.finPro));ro.fechaPosible=ro.finPro;
       // paso atascado = el que más se pasó de su límite; la tela cuenta como paso: debía estar lista en reqTelaLista y lo estuvo en telaLista
       const sob=[];if(ro.reqTelaLista&&ro.telaLista>ro.reqTelaLista)sob.push({centro:et.provStep?'proveedor':(et.tin?'tin':(et.tej?'tej':'tela')),nombre:et.provStep?'esperar al proveedor de tela':et.tin?'esperar la tela (tintorería)':et.tej?'esperar la tela (tejeduría)':'tela lista',dias:diasEntre(ro.reqTelaLista,ro.telaLista)});
-      ro.pasos.forEach(x=>{if(x.limite&&x.fin>x.limite)sob.push({centro:x.centro,nombre:nCen(x.centro),dias:diasEntre(x.limite,x.fin)})});
+      ro.pasos.forEach(x=>{if(x.limite&&x.fin>x.limite&&(!x.sinTiempo||x.porArranca))sob.push({centro:x.centro,nombre:nCen(x.centro)+(x.porArranca?' · Arranca fijado':''),dias:diasEntre(x.limite,x.fin)})});
       sob.sort((a,b)=>b.dias-a.dias);ro.atasco=sob[0]||null;ro.sobrepasos=sob;
     }
   });
@@ -1861,7 +1891,7 @@ function abrirFichaOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return
    <h4 style="margin:12px 0 6px">Ruta</h4>
    <table style="font-size:var(--fs-s)"><thead><tr><th>Paso</th><th>Desde</th><th>Hasta</th><th class="num">Hechas</th><th></th></tr></thead><tbody>
    ${(o.ruta||[]).map(p=>{const pp=pasos.find(x=>x.centro===p.centro)||{};const hechas=(a.centros||{})[p.centro]||0;const aqui=d.k===p.centro;
-     return `<tr ${aqui?'style="background:var(--field);font-weight:600"':''}><td>${aqui?'▶ ':''}${esc(nCen(p.centro))}</td><td>${pp.ini?fmtDia(pp.ini):'—'}</td><td>${pp.fin?fmtDia(pp.fin):'—'}</td><td class="num">${num(hechas)} / ${num(o.cant)}</td><td>${hechas>=o.cant?'<span class="tag t-ok">hecho</span>':(aqui?'<span class="tag t-aviso">aquí</span>':'')}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin ruta cargada.</td></tr>'}
+     return `<tr ${aqui?'style="background:var(--field);font-weight:600"':''}><td>${aqui?'▶ ':''}${esc(nCen(p.centro))}</td><td>${pp.ini?fmtDia(pp.ini):'—'}</td><td>${pp.fin?fmtDia(pp.fin):'—'}</td><td class="num">${num(hechas)} / ${num(o.cant)}</td><td>${hechas>=o.cant?'<span class="tag t-ok">hecho</span>':(aqui?'<span class="tag t-aviso">aquí</span>':'')}${pp.sinTiempo?' <span class="tag t-aviso" title="falta el tiempo estándar: la fecha sale de sus pasos vecinos y no ocupa capacidad. Falta '+esc(faltaTiempoTxt(o,p.centro))+'.">sin tiempo estándar</span>':''}${(()=>{const af=avisoAfuera(o,p.centro);return af?' <span class="tag t-aviso" title="'+esc(af.tip)+'">'+esc(af.txt)+'</span>':''})()}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin ruta cargada.</td></tr>'}
    </tbody></table>
    ${tallas.length?`<h4 style="margin:12px 0 6px">Avance por talla <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${curvaCorte(o)?'contra lo cortado':'contra lo pedido'}</span></h4>
     <div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th>${tallas.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
@@ -2567,6 +2597,29 @@ function sembrarTramoMaquila(){if(S.params.tramoMaquilaSembrado||(typeof perfilS
   if(t&&g){t.grupos=t.grupos||[];if(!t.grupos.some(x=>x&&x.grupo===g.grupo)){t.grupos.push({grupo:g.grupo,centro:'modulos',u:quienFirma(),ts:new Date().toISOString(),nota:'decisión de la usuaria, 23-sep'});
     bitacora('Tramo paralelo «'+(t.n||'')+'»: las fases de «'+g.grupo+'» cuentan como Confección hecha afuera (decisión de la usuaria, 23-sep: se corta, va a maquila y vuelve para estampar)')}}
   S.params.tramoMaquilaSembrado=true}
+function sembrarMaquilaEsConfeccion(){if(S.params.maquilaEsConfeccion||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;
+  const cambios=[],recs=[];
+  tramosParalelos().forEach(t=>(t.grupos||[]).forEach(x=>{if(!x||!x.grupo||!x.centro)return;
+    if(!x.rec&&x.centro==='modulos'&&R('maquila')&&R('maquila').centro==='modulos'){x.rec='maquila';recs.push(x.grupo)}
+    if(!x.rec)return;   /* solo lo que se hace afuera por un recurso deja de excluirse */
+    faseMapeo().filter(r=>r.sistema===x.grupo).forEach(r=>{const ex=String(r.excluye||'').split(',').map(y=>y.trim()).filter(Boolean);if(!ex.includes(x.centro))return;
+      const antes=r.excluye;r.excluye=ex.filter(y=>y!==x.centro).join(',');cambios.push({fase:r.fase,antes,despues:r.excluye,centro:x.centro})})}));
+  if(cambios.length)FASE_CACHE.ver++;
+  /* las órdenes que ya están en esas fases recuperan el paso en su ruta pendiente (no hay que esperar la próxima carga) */
+  const fs=new Set(cambios.map(c=>normFase(c.fase)));let n=0;const ej=[];
+  if(fs.size)S.ordenes.filter(o=>abierta(o)&&!o.historia&&fs.has(normFase(o.fase||''))).forEach(o=>{const antes=(o.ruta||[]).map(p=>p.centro).join('>');
+    const nueva=conPasosPendientes(o,o.ruta||[],o.rutaCompleta||[]);if(nueva.length!==(o.ruta||[]).length){o.ruta=nueva;n++;if(ej.length<5)ej.push(o.op+': '+(antes||'—')+' → '+nueva.map(p=>p.centro).join('>'))}});
+  S.params.maquilaEsConfeccion={ts:new Date().toISOString(),u:quienFirma(),cambios,recursos:recs,ordenes:n,ejemplos:ej};
+  if(cambios.length||recs.length){PLAN=null;PLAN_ALL=null;
+    bitacora('Maquila es confección hecha afuera (decisión de la usuaria, 23-sep): '+(cambios.length?cambios.map(c=>'«'+c.fase+'» ya no excluye '+nCen(c.centro)).join(', '):'')+(recs.length?(cambios.length?' · ':'')+'la hace el recurso Maquila':'')+
+      (n?' · '+n+' órdenes recuperan el paso en su ruta · '+ej.join(' · '):''))}}
+function setTramoGrupoRec(i,j,rec){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
+  const t=tramosParalelos()[i];const x=t&&(t.grupos||[])[j];if(!x)return;const antes=x.rec||'';rec=String(rec||'');if(rec===antes)return;
+  if(rec&&(!R(rec)||R(rec).centro!==x.centro)){alert('Ese recurso no es de '+nCen(x.centro)+'.');return}
+  if(!rec&&!confirm('Sin recurso, '+nCen(x.centro)+' de las órdenes en las fases de «'+x.grupo+'» se programa en los recursos de planta (ya no va a '+nRec(antes)+'). ¿Seguro?')){render();return}
+  if(rec)x.rec=rec;else delete x.rec;delete t.sugerido;
+  bitacora('Tramo paralelo «'+(t.n||'')+'»: las fases de «'+x.grupo+'» las hace '+(rec?nRec(rec)+' (afuera)':'(nadie en particular)')+' · antes '+(antes?nRec(antes):'—')+' ('+quienFirma()+')');
+  PLAN=null;PLAN_ALL=null;save();render()}
 function addTramoGrupo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   const t=tramosParalelos()[i];if(!t)return;const g=String((document.getElementById('tg-g-'+i)||{}).value||'');const c=String((document.getElementById('tg-c-'+i)||{}).value||'');
   if(!g||!c){alert('Elige el grupo de fases y el centro del tramo al que equivale.');return}
@@ -2575,7 +2628,7 @@ function addTramoGrupo(i){if(!puede('config')){alert('Tu perfil no cambia la con
   bitacora('Tramo paralelo «'+(t.n||'')+'»: las fases de «'+g+'» cuentan como '+nCen(c)+' ('+quienFirma()+')');save();render()}
 function quitarTramoGrupo(i,j){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   const t=tramosParalelos()[i];if(!t||!(t.grupos||[])[j])return;const x=t.grupos[j];
-  if(!confirm('¿Quitar «'+x.grupo+'» del tramo «'+(t.n||'')+'»?\nSus fases volverán a dar por hechos los pasos del tramo aunque la orden de trabajo siga abierta.'))return;
+  if(!confirm('¿Quitar «'+x.grupo+'» del tramo «'+(t.n||'')+'»?\nSus fases volverán a dar por hechos los pasos del tramo aunque la orden de trabajo siga abierta.'+(x.rec?'\nY '+nCen(x.centro)+' de esas fases deja de ir a '+nRec(x.rec)+': se programa en los recursos de planta.':'')))return;
   t.grupos.splice(j,1);bitacora('Tramo paralelo «'+(t.n||'')+'»: sale el grupo «'+x.grupo+'» ('+quienFirma()+')');save();render()}
 function sembrarRutaPendienteReal(){if(S.params.rutaPendienteRealSembrada||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;
   if(!(S.ordenes||[]).length)return;   /* se espera a que haya órdenes cargadas */
@@ -2587,8 +2640,9 @@ function addTramoParalelo(){if(!puede('config')){alert('Tu perfil no cambia la c
   tramosParalelos().push({n:'Tramo nuevo',cens:[],u:quienFirma(),ts:new Date().toISOString()});bitacora('Tramo paralelo nuevo (vacío)');save();render()}
 function quitarTramoParalelo(i){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   const t=tramosParalelos()[i];if(!t)return;
-  if(!confirm('¿Quitar el tramo paralelo «'+(t.n||'')+'»?\nLos centros ('+((t.cens||[]).map(nCen).join(', ')||'ninguno')+') volverán a esperarse entre sí en la cola.'))return;
-  tramosParalelos().splice(i,1);bitacora('Tramo paralelo quitado: '+(t.n||'')+' ('+((t.cens||[]).map(nCen).join(', ')||'sin centros')+')');save();render()}
+  const conRec=(t.grupos||[]).filter(x=>x&&x.rec);const recTxt=conRec.map(x=>'«'+x.grupo+'»: '+nCen(x.centro)+' deja de ir a '+nRec(x.rec)+' y se programa en planta').join('; ');
+  if(!confirm('¿Quitar el tramo paralelo «'+(t.n||'')+'»?\nLos centros ('+((t.cens||[]).map(nCen).join(', ')||'ninguno')+') volverán a esperarse entre sí en la cola.'+(recTxt?'\nY '+recTxt+'.':'')))return;
+  tramosParalelos().splice(i,1);bitacora('Tramo paralelo quitado: '+(t.n||'')+' ('+((t.cens||[]).map(nCen).join(', ')||'sin centros')+')'+(recTxt?' · '+recTxt:''));PLAN=null;PLAN_ALL=null;save();render()}
 function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   return '<div class="panel"><h3>Tramos paralelos <span class="note">centros que no se esperan entre sí en la cola</span><span class="spacer"></span>'+
    (puede('config')?'<button class="btn ghost sm" onclick="addTramoParalelo()">+ Tramo</button>':'')+'</h3><div class="body">'+
@@ -2599,7 +2653,9 @@ function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.f
      (puede('config')?'<button class="btn ghost sm" onclick="quitarTramoParalelo('+i+')">Quitar tramo</button>':'')+'</div>'+
      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">'+cens.map(c=>'<label style="font-size:var(--fs-xs);white-space:nowrap"><input type="checkbox" '+((t.cens||[]).includes(c.id)?'checked':'')+' onchange="setTramoParaleloCen('+i+',\''+c.id+'\',this.checked)"> '+esc(c.n)+'</label>').join('')+'</div>'+
      '<div style="margin-top:6px;font-size:var(--fs-xs)"><b>Fases que cuentan dentro del tramo</b> <span class="mut">(una orden en esas fases está en el tramo: la orden de trabajo decide los otros centros)</span>: '+
-      (((t.grupos||[]).map((x,j)=>'<span class="tag t-medio">«'+esc(x.grupo)+'» = '+esc(nCen(x.centro))+(puede('config')?' <a href="#" onclick="quitarTramoGrupo('+i+','+j+');return false" title="quitar">✕</a>':'')+'</span>').join(' '))||'<span class="mut">ninguna</span>')+
+      (((t.grupos||[]).map((x,j)=>'<span class="tag t-medio">«'+esc(x.grupo)+'» = '+esc(nCen(x.centro))+(x.rec?' · afuera: '+esc(nRec(x.rec)):'')+
+       (puede('config')?' <select title="recurso que lo hace afuera: las órdenes en esas fases van a ese recurso, con fecha y el aviso «falta que regrese». Sin recurso, el paso de esas fases se programa en los recursos de planta (salvo que la tabla 1 lo excluya en la columna «excluye»)" onchange="setTramoGrupoRec('+i+','+j+',this.value)"><option value="">sin recurso</option>'+S.recursos.filter(r=>r.centro===x.centro).map(r=>'<option value="'+esc(r.id)+'"'+(x.rec===r.id?' selected':'')+'>'+esc(r.n)+'</option>').join('')+'</select>':'')+
+       (puede('config')?' <a href="#" onclick="quitarTramoGrupo('+i+','+j+');return false" title="quitar">✕</a>':'')+'</span>').join(' '))||'<span class="mut">ninguna</span>')+
       (puede('config')?' <select id="tg-g-'+i+'"><option value="">grupo de fases…</option>'+faseGrupos().map(g=>'<option value="'+esc(g.grupo)+'">'+esc(g.grupo)+'</option>').join('')+'</select> = <select id="tg-c-'+i+'"><option value="">centro…</option>'+(t.cens||[]).map(c=>'<option value="'+c+'">'+esc(nCen(c))+'</option>').join('')+'</select> <button class="btn ghost sm" onclick="addTramoGrupo('+i+')">+ agregar</button>':'')+'</div>'+
      (t.nota?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">'+esc(t.nota)+'</p>':'')+
      ((t.cens||[]).length===1?'<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Con un solo centro el tramo no hace nada: marca al menos dos.</p>':'')+'</div>').join('')+
@@ -2614,8 +2670,10 @@ function llegadaACentroTxt(o,c,P){
   if(tramoAbiertoOrden(o.id,c,null)||ac[c]>0)return {cls:'t-aviso',txt:'en proceso aquí'+(ac[c]?' · '+num(ac[c])+' de '+num(cantCentro(o,c)):'')};
   if(!pasosProDe(o).includes(c))return {cls:'',txt:'este centro NO está en su ruta'};
   const sec=secuenciaCentro(o,c);
-  const paso=((P&&P.pro)||[]).find(x=>x.oid===o.id&&x.centro===c);
-  const fecha=paso&&paso.ini?' · programada para el '+fmtDia(paso.ini):(paso&&paso.dia?' · programada para el '+fmtDia(paso.dia):' · sin fecha en el programa');
+  /* la fecha del paso sale del programa de la orden (antes buscaba en P.pro por un oid que esas filas no tienen: nunca la encontraba) */
+  const paso=(((P&&P.ordenes&&P.ordenes[o.id])||{}).pasos||[]).find(x=>x.centro===c&&x.ini);
+  const fecha=paso?' · programada para el '+fmtDia(paso.ini)+(paso.sinTiempo?' (sin tiempo estándar: no ocupa capacidad)':''):' · sin fecha en el programa';
+  {const af=afueraDeOrden(o);if(af)return {cls:'t-aviso',txt:af.txt+(af.centro!==c?' · después pasa por '+nCen(c):'')+fecha}}
   if(sec.estado==='disponible')return {cls:'t-ok',txt:'lista para entrar'+(sec.motivo?' ('+sec.motivo+')':'')+fecha};
   if(sec.estado==='proxima')return {cls:'t-aviso',txt:'todavía no: '+(sec.motivo||'falta un paso anterior')+fecha};
   return {cls:'',txt:(sec.motivo||'sin secuencia')+fecha}}
@@ -2799,7 +2857,7 @@ function vTablet(el){
 function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
   const filas=filasDeCentros(cens,P,lun,dom,'');const secs=cens.map(c=>{const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=dom));
     return `<h2>${esc(nCen(c))} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)} · ${cola.length} órdenes</small></h2><table><thead><tr><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">Unidades</th><th class="n">Min. totales</th></tr></thead><tbody>
-    ${cola.map((f,i)=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);return `<tr><td class="n"><b>${puestoDe(o,c)||i+1}</b></td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${num(mp,1)}</td><td class="n">${num(u)}</td><td class="n">${num(mp*u)}</td></tr>`}).join('')||'<tr><td colspan="9">Sin órdenes.</td></tr>'}</tbody></table>`}).join('');
+    ${cola.map((f,i)=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);return `<tr><td class="n"><b>${puestoDe(o,c)||i+1}</b></td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td>${esc(o.cliente||'')}</td><td>${esc(nombreCat(K(o.cat)))}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${mp>0?num(mp,1):'sin tiempo estándar'}</td><td class="n">${num(u)}</td><td class="n">${mp>0?num(mp*u):'—'}</td></tr>`}).join('')||'<tr><td colspan="9">Sin órdenes.</td></tr>'}</tbody></table>`}).join('');
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>Programa ${esc(nombre)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:14px 0 6px}small{font-weight:400;color:#555}table{width:100%;border-collapse:collapse}tr{page-break-inside:avoid}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:middle}th{background:#eee}td.n,th.n{text-align:right}img{width:70px;height:70px;object-fit:cover;border-radius:4px}</style></head><body><h1>${esc(nombre)} · programa</h1><div style="color:#555">TEMPOCODECA · generado ${new Date().toLocaleString('es-EC')}</div>${secs}<script>window.onload=function(){window.print()}<\/script></body></html>`;
   const w=window.open('','_blank');if(!w){alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');return}
   w.document.write(html);w.document.close()}
@@ -4928,7 +4986,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
@@ -5266,11 +5324,12 @@ function avanceCongelado(c,lun,dom,P){const f=congeladoDe(c,lun);if(!f)return nu
   const ac=oid=>((((S.avance[oid]||{}).centros)||{})[c])||0;
   const filas=(f.ords||[]).map(e=>{const o=S.ordenes.find(x=>x.id===e.oid);
     const base=+((f.hechasAl||{})[e.oid])||0;
-    const hechas=Math.max(0,ac(e.oid)-base);
+    const porFase=!!o&&pasoHecho(o,c)&&ac(e.oid)-base<(+e.pz||0);   /* «la fase prueba lo que ya pasó» (23-sep): p. ej. volvió de maquila */
+    const hechas=porFase?(+e.pz||0):Math.max(0,ac(e.oid)-base);
     const sigue=!!o&&(P.pro||[]).some(x=>x.centro===c&&x.op===e.op&&dias.includes(x.dia));
-    return {o,op:e.op,pzProg:e.pz,hechas,pct:e.pz?Math.min(100,hechas/e.pz*100):null,
+    return {o,op:e.op,pzProg:e.pz,hechas,porFase,pct:e.pz?Math.min(100,hechas/e.pz*100):null,
       atrasada:!!o&&e.pz>0&&hechas<e.pz&&dom<hoy(),
-      sacada:!sigue}});
+      sacada:!sigue&&!porFase}});
   const enFoto=new Set((f.ords||[]).map(e=>e.op));
   const agregadas=[...new Set((P.pro||[]).filter(x=>x.centro===c&&dias.includes(x.dia)&&!enFoto.has(x.op)).map(x=>x.op))]
     .map(op=>{const o=S.ordenes.find(y=>y.op===op);const xs=(P.pro||[]).filter(x=>x.centro===c&&x.op===op&&dias.includes(x.dia));
@@ -6260,6 +6319,8 @@ function estadoSemaforo(o,P){
   /* pasos con error del motor: la causa que el motor conoce */
   const pErr=(ro.pasos||[]).find(p=>p.error);if(pErr){tip.push(pErr.error);return out('gris','Sin programar · '+nCen(pErr.centro)+': '+pErr.error,'sinProg')}
   if(ro.error){tip.push(ro.error);return out('gris','Sin programar','sinProg')}
+  /* la orden está AFUERA (fase de maquila): se dice antes que cualquier «Lista en …» o «En Confección» */
+  {const af=afueraDeOrden(o);if(af){tip.push(af.tip);return out(vaTarde?'ambar':'verde',af.txt.charAt(0).toUpperCase()+af.txt.slice(1)+tardeTxt,'maquila')}}
   const paso=pasoProximoDe(o,P);
   if(!paso){const pend=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro'&&!pasoHecho(o,p.centro));
     if(!pend.length){const g=grupoDe(o.fase);const gn=String((g&&g.grupo)||'').toLowerCase();
@@ -6520,7 +6581,38 @@ function fasesDeProcNivel(p){return faseMapeo().filter(r=>r.nivel===p).map(r=>r.
 
 /* ---------- SAM: el mismo que usa el motor, nunca otro ---------- */
 /* minutos pendientes de una orden en un centro (minPendCentro ya descuenta lo hecho) */
-function recFijadoDe(o,c){const pc=((o||{}).progCentro||{})[c]||{};return pc.rec||((o||{}).recursoFijo||{})[c]||null}   /* la misma precedencia que usa programar(): lo fijado en la cola manda sobre el recurso fijo de la orden */
+function recFijadoDe(o,c){const pc=((o||{}).progCentro||{})[c]||{};return pc.rec||((o||{}).recursoFijo||{})[c]||recDeFaseTramo(o,c)||null}   /* 23-sep: al final, lo que dice la fase (maquila) */
+/* «Maquila es confección pero afuera» (usuaria, 23-sep). Un grupo de fases del tramo paralelo cuenta como un centro del tramo
+   (tabla Tramos paralelos, t.grupos) y, si la fila tiene recurso, ese paso lo hace ese recurso afuera: mientras la orden esté en
+   una fase de ese grupo y la fase no dé el paso por hecho (5Maquila Recepción sí lo da), la confección va a la maquila. */
+function grupoTramoDeFase(f,c){const g=grupoDe(f||'');if(!g)return null;for(const t of tramosParalelos())for(const x of (t.grupos||[]))if(x&&x.grupo===g.grupo&&(!c||x.centro===c))return{t,x};return null}
+function recDeFaseTramo(o,c){if(!o||!c)return null;const gt=grupoTramoDeFase(o.fase,c);if(!gt||!gt.x.rec)return null;const r=R(gt.x.rec);if(!r||r.activa===false||r.centro!==c)return null;
+  const fila=filaFaseDe(o.fase||'')||{};const ex=String(fila.excluye||'').split(',').map(y=>y.trim()).filter(Boolean);if(ex.length&&!ex.includes(c))return null;   /* la fase es de OTRO centro hecho afuera (corte en Ibarra): nadie decidió la confección */
+  if(faseEstadoTabla(o.fase).hechos.includes(c))return null;return gt.x.rec}
+/* el aviso «falta algo» de una orden que está afuera: texto corto y explicación */
+/* los avisos de «falta algo» de una orden en un centro, como etiquetas: afuera (maquila) y paso sin tiempo con fecha */
+/* «en proceso aquí» de la cola: si la fase es de maquila (afuera), lo dice y explica */
+function txtEnProceso(o,c){const af=avisoAfuera(o,c);return af&&!af.conflicto?'en proceso afuera · '+nRec(af.rec):'en proceso aquí'}
+function tipEnProceso(o,c){const af=avisoAfuera(o,c);return af&&!af.conflicto?af.tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro'}
+function faltaTiempoTxt(o,c){const ce=CE(c)||{};if(c==='estampado')return 'la técnica de la orden o su tiempo en la tabla de técnicas';if(ce.medida==='puntadas')return 'las puntadas de la orden o la velocidad de bordado';return 'el SAM (minutos por prenda) en Operaciones'}
+function avisosFaltaHTML(o,c,P){const t=[];const af=avisoAfuera(o,c);if(af)t.push('<span class="tag t-aviso" title="'+esc(af.tip)+'">'+esc(af.txt)+'</span>');
+  const pp=P&&P.ordenes?(((P.ordenes[o.id]||{}).pasos||[]).find(x=>x.centro===c)||null):null;
+  if(pp&&pp.sinTiempo&&pp.ini)t.push('<span class="tag t-aviso" title="falta el tiempo estándar de este paso: el programa le da fecha ('+esc(fmtDia(pp.ini))+') junto a sus pasos vecinos, sin ocupar capacidad. Falta '+esc(faltaTiempoTxt(o,c))+'.">sin tiempo estándar</span>');
+  return t.join(' ')}
+/* la orden está afuera por su fase (maquila), sea cual sea su próximo paso; null si no, o si hay conflicto */
+function afueraDeOrden(o){const gt=grupoTramoDeFase((o||{}).fase,null);if(!gt||!gt.x.centro)return null;const af=avisoAfuera(o,gt.x.centro);return af&&!af.conflicto?Object.assign({centro:gt.x.centro},af):null}
+function avisoAfuera(o,c){const rec=recDeFaseTramo(o,c);
+  if(!rec){const gt=grupoTramoDeFase((o||{}).fase,c);const r0=gt&&gt.x.rec?R(gt.x.rec):null;
+    if(r0&&r0.activa===false&&r0.centro===c&&!faseEstadoTabla(o.fase).hechos.includes(c)&&!pasoHecho(o,c))return{txt:'fase de '+r0.n+' · recurso inactivo: va a planta',rec:null,conflicto:true,
+      tip:'La fase de Odoo («'+(o.fase||'')+'») dice que '+nCen(c)+' se hace afuera, en '+r0.n+', pero ese recurso está inactivo (Configuración → Centros y recursos): el programa la carga en los recursos de planta.'};
+    return null}
+  if(pasoHecho(o,c))return null;const fila=filaFaseDe(o.fase||'')||{};const nr=nRec(rec);
+  const efec=recFijadoDe(o,c);if(efec&&efec!==rec)return{txt:'fase de '+nr+' · fijada en '+nRec(efec),rec:efec,conflicto:true,
+    tip:'La fase de Odoo («'+(o.fase||'')+'») dice que '+nCen(c)+' se hace afuera, en '+nr+', pero en la cola está fijada en '+nRec(efec)+' y eso manda: el programa la carga ahí. Si está afuera, quita lo fijado en la cola.'};
+  const txt=fila.esCola?'por salir a '+nr:'en '+nr+' · falta que regrese';
+  const tip='«Maquila es confección pero afuera» (decisión de la usuaria, 23-sep). La fase de Odoo («'+(o.fase||'')+'») dice que '+nCen(c)+' '+(fila.esCola?'se va a hacer':'se está haciendo')+' afuera, en '+nr+'. '+
+    'Entra al programa en ese recurso, con la fecha que da su capacidad configurada (Configuración → Centros y recursos); falta que regrese: queda hecha cuando Odoo la pase a la fase de recepción o se cierre su orden de trabajo.';
+  return{txt,tip,rec}}   /* la misma precedencia que usa programar(): lo fijado en la cola manda sobre el recurso fijo de la orden */
 function vaAMaquila(o){return recFijadoDe(o,'modulos')==='maquila'}
 function samOrdenCentro(o,c){const p=(o.ruta||[]).find(x=>x.centro===c);if(!p)return null;
   const m=minPrenda(c,p.t);return m>0?m:null}          // null = sin SAM, NO es cero
@@ -6935,6 +7027,7 @@ function marcarMaquila(ids,motivo){if(!puede('programa')){alert('Solo planificac
     registrarAuditoria('maquila',o,'confección: '+antes,'confección: maquila',motivo,false);n++});
   bitacora('Maquila · '+n+' orden(es) marcadas a maquila desde la nivelación · '+motivo+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;NIVC=null;save();render();return n}
 function quitarMaquila(id,motivo){if(!puede('programa')){alert('Solo planificación cambia esto.');return false}const o=S.ordenes.find(x=>x.id===id);if(!o||!vaAMaquila(o))return false;
+  {if(recDeFaseTramo(o,'modulos')){alert('La fase de Odoo («'+(o.fase||'')+'») dice que '+(o.op||id)+' está en maquila: mientras siga en esa fase, la confección va a maquila. Para cambiarlo, mueve la fase.');return false}}
   motivo=String(motivo||prompt('Motivo para devolver '+(o.op||id)+' a los módulos (obligatorio):')||'').trim();if(!motivo)return false;
   if(!confirm('¿Devolver '+(o.op||id)+' de maquila a los módulos de planta?'))return false;
   if(o.recursoFijo){delete o.recursoFijo.modulos;if(!Object.keys(o.recursoFijo).length)delete o.recursoFijo}const pc=(o.progCentro||{}).modulos;if(pc&&pc.rec==='maquila')delete pc.rec;registrarAuditoria('maquila',o,'confección: maquila','confección: (automático)',motivo,false);bitacora('Maquila · '+(o.op||id)+' vuelve a los módulos · '+motivo+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;NIVC=null;save();render();return true}
@@ -6948,7 +7041,7 @@ function maquilaDetalleHTML(){const d=maquilaDescarte();const ok=puede('programa
     <div><div class="mut" style="font-size:var(--fs-xs)">Saldo de Confección</div><div style="font-size:20px;font-weight:700">${num(aUnid(r.saldo.min,r.sam)||0,0)} <small>u</small></div></div>
     <div><div class="mut" style="font-size:var(--fs-xs)">Cabe en planta en el período</div><div style="font-size:20px;font-weight:700">${r.totalMin==null?'—':num(aUnid(r.totalMin,r.sam)||0,0)} <small>u</small></div></div>
     <div><div class="mut" style="font-size:var(--fs-xs)">Hay que mandar a maquila</div><div style="font-size:20px;font-weight:700;color:${d.totalU>0?'var(--aviso)':'var(--ok)'}">${num(d.totalU,0)} <small>u</small></div><div class="mut" style="font-size:var(--fs-xs)">${d.deficitMin>0?num(d.deficitMin/60,0)+' h que no caben · '+d.ordenes.length+' órdenes enteras':'todo cabe en planta'}</div></div>
-    <div><div class="mut" style="font-size:var(--fs-xs)">Ya marcadas a maquila</div><div style="font-size:20px;font-weight:700">${num(d.yaU,0)} <small>u</small></div><div class="mut" style="font-size:var(--fs-xs)">${ordenesEnMaquila().length} órdenes (fuera del saldo de planta)</div></div></div>`;
+    <div><div class="mut" style="font-size:var(--fs-xs)">Ya en maquila (marcadas o por la fase)</div><div style="font-size:20px;font-weight:700">${num(d.yaU,0)} <small>u</small></div><div class="mut" style="font-size:var(--fs-xs)">${ordenesEnMaquila().length} órdenes (fuera del saldo de planta)</div></div></div>`;
   const avisos=[d.faltaSinCubrir>0?'<div class="warn">Aun mandando todo lo que se puede, faltan <b>'+num(d.faltaSinCubrir/60,0)+' h</b>: las familias marcadas «no mandar» ('+d.noCabe.map(nom).map(esc).join(', ')+') no caben en planta.</div>':'',d.sinSAM>0?'<p class="mut" style="font-size:var(--fs-xs)">'+num(d.sinSAM,0)+' u sin SAM no entran en esta cuenta.</p>':''].join('');
   if(!(d.totalU>0))return cab+resumen+avisos+(d.faltaSinCubrir>0?'<p><span class="tag t-alerta">✕ no cabe y no se manda</span> <span class="mut">todas las familias con saldo están marcadas «no mandar»: quita la marca o agrega capacidad.</span></p>':`<p><span class="tag t-ok">✓ no hace falta mandar nada a maquila</span> <span class="mut">con los días y personas del escenario, la planta alcanza.</span></p>`)+enMaquilaHTML()+'</div></div>';
   const tabla=`${d.sobraMin>0?'<p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">Como se mandan órdenes enteras, la última se pasa <b>'+num(d.sobraMin/60,0)+' h</b> de lo que falta.</p>':''}<h4 style="margin:10px 0 6px">Por familia <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· en el orden configurado, órdenes enteras, ${esc(MAQUILA_CRITERIOS[d.criterio]||'')} (<a style="cursor:pointer" onclick="page='config';CONF.tab='nivel';render()">cambiar</a>)</span></h4>
@@ -6958,7 +7051,7 @@ function maquilaDetalleHTML(){const d=maquilaDescarte();const ok=puede('programa
    ${ok?`<div class="row" style="margin-top:10px;align-items:flex-end"><div style="flex:1"><label>Motivo (obligatorio)</label><input type="text" id="maq-motivo" placeholder="p. ej. la planta no alcanza en octubre con 10 personas en corte"></div><div><button class="btn" onclick="maquilaMarcarSel()">Mandar las marcadas a maquila</button></div></div><p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">Al mandarlas quedan con recurso fijo «maquila»: el programa las saca de los módulos y la nivelación de Confección deja de contarlas. Se deshace una por una abajo.</p>`:''}`;
   return cab+resumen+avisos+tabla+lista+enMaquilaHTML()+'</div></div>'}
 function enMaquilaHTML(){const l=ordenesEnMaquila();if(!l.length)return '';const ok=puede('programa');
-  return `<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Ya en maquila: ${l.length} órdenes · ${num(l.reduce((a,o)=>a+pendCentroUnid(o,'modulos'),0),0)} u pendientes</summary><div class="scroll" style="max-height:300px;margin-top:6px"><table><thead><tr><th>OP · fase</th><th>Familia</th><th>Cliente</th><th>Entrega</th><th class="num">Pendiente</th><th></th></tr></thead><tbody>${l.map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(famDeOrden(o))}</td><td>${esc(o.cliente||'')}</td><td>${esc(fechaMetaDe(o)||'—')}</td><td class="num">${num(pendCentroUnid(o,'modulos'),0)}</td><td>${ok?`<button class="btn ghost sm" onclick="quitarMaquila('${o.id}')">devolver a planta</button>`:''}</td></tr>`).join('')}</tbody></table></div></details>`}
+  return `<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Ya en maquila: ${l.length} órdenes · ${num(l.reduce((a,o)=>a+pendCentroUnid(o,'modulos'),0),0)} u pendientes</summary><div class="scroll" style="max-height:300px;margin-top:6px"><table><thead><tr><th>OP · fase</th><th>Familia</th><th>Cliente</th><th>Entrega</th><th class="num">Pendiente</th><th></th></tr></thead><tbody>${l.map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(famDeOrden(o))}</td><td>${esc(o.cliente||'')}</td><td>${esc(fechaMetaDe(o)||'—')}</td><td class="num">${num(pendCentroUnid(o,'modulos'),0)}</td><td>${recDeFaseTramo(o,'modulos')?`<span class="tag t-mut" title="la fase de Odoo («${esc(o.fase||'')}») dice que está en maquila: mientras siga en esa fase, la confección va a maquila">por la fase</span>`:(ok?`<button class="btn ghost sm" onclick="quitarMaquila('${o.id}')">devolver a planta</button>`:'')}</td></tr>`).join('')}</tbody></table></div></details>`}
 function tamborModulosHTML(recId){const r=nivUICalcular('modulos');if(!r||!r.saldo)return '';let P;try{P=programar()}catch(e){return '<div class="panel"><div class="body warn">No se pudo leer el programa: '+esc(e.message||e)+'</div></div>'}
   const meses=nivUIMeses();const f=nivUIFiltro();const ordsOk=new Set(S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o))&&(!f||f(o))).map(o=>o.id));
   const byOp={};S.ordenes.forEach(o=>{if(o.op)byOp[o.op]=o});
@@ -6971,7 +7064,7 @@ function tamborModulosHTML(recId){const r=nivUICalcular('modulos');if(!r||!r.sal
   const sinDato=[];const celda=(m,fid)=>{const c=(M[m.id]||{})[fid];if(!c)return '<td class="num mut">·</td>';const pv=m.id==='maquila'?undefined:(m.poli||{})[(K(fid)||{}).id];const pol=(pv==null||pv==='')?null:+pv;if(m.id!=='maquila'&&pol==null)sinDato.push(m.n+' · '+nom(fid));const bg=pol==null?'':pol>=80?'#E8F3ED':pol>=50?'#FAEBCB':'#F8DCD6';return `<td class="num" style="background:${bg}" title="${esc(nom(fid))} en ${esc(m.n)}: ${num(c.min/60,1)} h · ${num(c.pz,0)} u${m.id==='maquila'?'':(pol==null?' · polivalencia: sin dato':' · polivalencia '+num(pol)+' %')}">${num(c.min/60,0)}<br><small class="mut">${num(c.pz,0)} u</small></td>`};
   const capRec={};(r.cap&&r.cap.detalle||[]).forEach(x=>{capRec[x.rec]=x.cap});   /* el mismo promedio por día hábil (con ajustes y escenario) que usa la nivelación */
   const filas=mods.filter(m=>modTot[m.id]).map(m=>{const cap=(dias!=null&&capRec[m.id]!=null)?capRec[m.id]*dias:null;const tot=modTot[m.id]||0;const pct=cap?Math.round(tot/cap*100):null;
-    return `<tr><td><b>${esc(m.n)}</b>${m.id==='maquila'?' <span class="mut" style="font-size:var(--fs-xs)">(marcadas)</span>':''}</td>${fams.map(fid=>celda(m,fid)).join('')}<td class="num"><b>${num(tot/60,0)}</b> h</td><td class="num">${cap==null?'<span class="mut">—</span>':num(cap/60,0)+' h'}</td><td>${pct==null?'':'<span class="tag '+(pct>100?'t-alerta':pct>=90?'t-aviso':'t-ok')+'">'+pct+' %</span>'}</td></tr>`}).join('');
+    return `<tr><td><b>${esc(m.n)}</b>${m.id==='maquila'?' <span class="mut" style="font-size:var(--fs-xs)">(marcadas o en fase de maquila)</span>':''}</td>${fams.map(fid=>celda(m,fid)).join('')}<td class="num"><b>${num(tot/60,0)}</b> h</td><td class="num">${cap==null?'<span class="mut">—</span>':num(cap/60,0)+' h'}</td><td>${pct==null?'':'<span class="tag '+(pct>100?'t-alerta':pct>=90?'t-aviso':'t-ok')+'">'+pct+' %</span>'}</td></tr>`}).join('');
   const totFam=`<tr><td><b>Total</b></td>${fams.map(fid=>'<td class="num"><b>'+num(famTot[fid]/60,0)+'</b></td>').join('')}<td class="num"><b>${num(Object.values(famTot).reduce((a,b)=>a+b,0)/60,0)}</b> h</td><td></td><td></td></tr>`;
   return cab+`<div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Módulo</th>${fams.map(fid=>'<th class="num">'+esc(nom(fid))+'</th>').join('')}<th class="num">Programado</th><th class="num">Capacidad ${dias!=null?'('+dias+' días)':''}</th><th>Uso</th></tr></thead><tbody>${filas}${totFam}</tbody></table></div>
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Fondo verde = polivalencia ≥ 80 % (la planta hace bien esa familia) · ámbar 50–79 · rojo &lt; 50 · sin fondo = sin dato de polivalencia${sinDato.length?' ('+sinDato.length+' celdas: '+esc(sinDato.slice(0,4).join(', '))+(sinDato.length>4?'…':'')+' — se carga en Configuración → Centros y recursos)':''}. Capacidad = promedio por día hábil del módulo (con ajustes y escenario, el mismo de la nivelación) × días del período. Lo que va a maquila solo aparece si está marcado.</p></div></div>`}
@@ -7490,7 +7583,7 @@ function grupoTela(o,l,c,ctx){
   /* fase del propio grupo del centro o posterior con el paso sin cerrar: anomalía, nunca «lista para empezar» */
   if(c&&posicionFaseCentro(o,c)==='yaSalio')return{grupo:'anomalia',porQue:'la fase «'+esc(o.fase||'')+'» es del propio grupo o posterior a '+nCen(c)+' y el paso no está cerrado',anomalia:{tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya pasó de '+nCen(c)+', pero el paso no está cerrado aquí. Cerrar el paso o corregir la fase.'}};
   /* fase del propio grupo del centro (no CD): la orden está AQUÍ según Odoo → Disponible con etiqueta, esté o no en la lista (la lista solo trae fases anteriores) */
-  if(c&&!sinWH&&posicionFaseCentro(o,c)==='enProceso')return{grupo:'disponible',porQue:'la fase «'+esc(o.fase||'')+'» ya es la de '+nCen(c)+': en proceso aquí',anomalia:{tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro'},desacuerdo:(l&&l.tipo==='lista')?'':('la fase de Odoo dice que la orden está en '+nCen(c)+', pero la tela no figura como lista ('+((l&&l.tipo)||'sin dato')+')')};
+  if(c&&!sinWH&&posicionFaseCentro(o,c)==='enProceso')return{grupo:'disponible',porQue:'la fase «'+esc(o.fase||'')+'» ya es la de '+nCen(c)+': en proceso aquí',anomalia:{tipo:'enProceso',txt:txtEnProceso(o,c),tip:tipEnProceso(o,c)+''},desacuerdo:(l&&l.tipo==='lista')?'':('la fase de Odoo dice que la orden está en '+nCen(c)+', pero la tela no figura como lista ('+((l&&l.tipo)||'sin dato')+')')};
   /* ruta incompleta: este centro es el único paso de producción y no es el primero del flujo (p. ej. [bordado] solo) y la fase está antes: no es «lista para empezar», es una ruta a revisar */
   if(c&&!esPrimerCentroPro(c)&&pasosProDe(o).length<=1&&posicionFaseCentro(o,c)==='antes')return{grupo:'lejana',porQue:'ruta incompleta',rutaIncompleta:true,desacuerdo:'ruta incompleta: '+nCen(c)+' es el único paso de producción de la ruta y la fase de Odoo («'+(o.fase||'')+'») está antes de este centro: probablemente faltan pasos (corte, confección…). Revisar la ruta.'};
   /* tela lista pero la fase NO está en la lista del centro: la ruta dice que está aquí y la fase dice otra cosa */
@@ -7519,6 +7612,8 @@ function pasosSinTiempo(o,pendientes,ro){
 function posicionFaseCentro(o,c){const g=grupoDe(o.fase);const of=g?ordenGrupo(g.grupo):-1;const etapa=centroEtapaDe(c);const oe=etapa?ordenGrupo(etapa):-1;
   const fila=filaFaseDe(o.fase||'')||{};
   if(fila.sinCarga||faseDeCierre(o.fase))return 'yaSalio';
+  {const gt=grupoTramoDeFase(o.fase,c);if(gt&&!faseEstadoTabla(o.fase).hechos.includes(c)){   /* 23-sep: maquila = este centro, afuera */
+    const ex=String(fila.excluye||'').split(',').map(x=>x.trim()).filter(Boolean);if(fila.esCola||(ex.length&&!ex.includes(c)))return 'antes';return 'enProceso'}}
   if(oe<0||of<0)return 'antes';
   if(of>oe)return 'yaSalio';                                   // fase de un grupo posterior a la etapa del centro
   if(of===oe)return fila.esCola?'yaSalio':'enProceso';         // CD del propio grupo = esperando al SIGUIENTE centro
@@ -7540,6 +7635,7 @@ function cercaniaCentro(o,c,P){
   if(!ant){
     const l=llegadaTela(o,ro);out.llegada=l;
     const gt=grupoTela(o,l,c,out);out.grupo=gt.grupo;out.porQueTela=gt.porQue;if(gt.desacuerdo)out.desacuerdo=gt.desacuerdo;if(gt.anomalia)out.anomalia=gt.anomalia;if(gt.rutaIncompleta)out.rutaIncompleta=true;
+    if(!out.anomalia&&pos==='enProceso'&&avisoAfuera(o,c))out.anomalia={tipo:'enProceso',txt:txtEnProceso(o,c),tip:tipEnProceso(o,c)};   /* maquila: la etiqueta dice que está afuera */
     cortePorFecha(out);
     if(out.grupo==='lejana'&&llegaYa(l)){out.llegaYaFuera=true}   /* fuera de la lista (o movida por fecha): etiqueta, no cambia de grupo */
     /* dentro del grupo, lo que tiene fecha va antes que lo que no se sabe */
@@ -7552,7 +7648,7 @@ function cercaniaCentro(o,c,P){
   if(sec.estado==='disponible'){
     out.grupo='disponible';out.orden=-1;
     if(pos==='yaSalio'){out.grupo='anomalia';out.anomalia={tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») es del propio grupo o posterior a '+nCen(c)+', pero el paso no está cerrado aquí. Cerrar el paso (o corregir la fase) para que deje de aparecer.'}}
-    else if(pos==='enProceso')out.anomalia={tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro'};
+    else if(pos==='enProceso')out.anomalia={tipo:'enProceso',txt:txtEnProceso(o,c),tip:tipEnProceso(o,c)+''};
     if(!antHecho)out.desacuerdo='tramo no secuencial: '+(sec.motivo||'el orden real lo dan las órdenes de trabajo de Odoo');
     const cant=cantCentro(o,c);const ci=cierreCentro(o,ant);
     out.llegada=(ci&&(+ci.faltan||0)>0)?{tipo:'llegaron',pz:cant,cant:(+ci.cant||+o.cant||0),ant,motivo:ci.motivo||''}
@@ -7560,7 +7656,7 @@ function cercaniaCentro(o,c,P){
     return out}
   /* proxima: la LISTA de fases del centro decide (sin lista: todo es Por llegar y se avisa) */
   if(pos==='yaSalio'){out.grupo='anomalia';out.anomalia={tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») es del propio grupo o posterior a '+nCen(c)+', pero según la ruta todavía faltan pasos anteriores ('+pend.map(nCen).join(', ')+'). Revisar fase o ruta.'}}
-  else if(pos==='enProceso'){out.grupo='disponible';out.anomalia={tipo:'enProceso',txt:'en proceso aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») ya es la de '+nCen(c)+': la orden está en el centro, aunque según la ruta faltan pasos anteriores ('+pend.map(nCen).join(', ')+')'};out.desacuerdo='la fase de Odoo dice que la orden está en '+nCen(c)+', pero según la ruta faltan '+pend.map(nCen).join(', ')+' (paso sin cerrar)'}
+  else if(pos==='enProceso'){out.grupo='disponible';out.anomalia={tipo:'enProceso',txt:txtEnProceso(o,c),tip:tipEnProceso(o,c)+', aunque según la ruta faltan pasos anteriores ('+pend.map(nCen).join(', ')+')'};out.desacuerdo='la fase de Odoo dice que la orden está en '+nCen(c)+', pero según la ruta faltan '+pend.map(nCen).join(', ')+' (paso sin cerrar)'}
   else out.grupo=(rango==null||enLista)?'porLlegar':'lejana';
   const rec=paso.rec||null;const recTxt=rec?nRec(rec):null;
   if(!paso.fin){out.llegada={tipo:'sinProgramar',ant};out.orden=9e8}
@@ -7571,7 +7667,9 @@ function cercaniaCentro(o,c,P){
   if(out.sinTiempo.length)out.marca={tipo:'sinTiempo',centros:out.sinTiempo,
     txt:'paso sin tiempo: '+out.sinTiempo.map(nCen).join(', '),
     tip:'la ruta pasa por '+out.sinTiempo.map(nCen).join(', ')+', pero esa orden no tiene el tiempo por prenda cargado (técnica, puntadas o SAM). '
-      +'El motor no programa ese paso y el orden de llegada SÍ lo cuenta como pendiente: por eso salen más pasos de los que parece. Es un dato que falta, no un error de ruta.'};
+      +(()=>{const cf=out.sinTiempo.filter(c=>(((ro&&ro.pasos)||[]).find(x=>x.centro===c)||{}).sinTiempo);const sf=out.sinTiempo.filter(c=>!cf.includes(c));
+        return (cf.length?'Con fecha del programa (junto a sus pasos vecinos) sin ocupar capacidad: '+cf.map(nCen).join(', ')+'. ':'')+(sf.length?'Sin fecha en el programa (se cuentan por días o no tienen recurso): '+sf.map(nCen).join(', ')+'. ':'')})()
+      +'El orden de llegada los cuenta como pendientes. Es un dato que falta, no un error de ruta.'};
   else if(out.grupo==='lejana'&&llegaYa(out.llegada))out.marca={tipo:'revisar',
     txt:'revisar ruta',
     tip:'la fase de Odoo («'+(o.fase||'')+'») está fuera de la lista de '+nCen(c)+' (quedan '+pend.length+' pasos: '+pend.map(nCen).join(', ')+'), pero el programa ya termina el paso anterior. '
@@ -8002,7 +8100,8 @@ function mandaCola(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);if(!p&&col
   const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push('<span class="tag t-aviso" title="El motor usa el menor puesto entre todos los centros de la orden.">'+esc(nCen(otros[0][0]))+' la tiene en '+otros[0][1].pri+': manda ese</span>');
   const fp=enProcesoFueraDelPlan(o,c);
   if(fp)t.push('<span class="tag t-alerta" title="alguien la empezó en este centro sin que estuviera programada para su puesto: sigue visible en su tablet solo para terminarla">en proceso fuera del plan</span>');
-  if(pasoSinTiempo(o,c))t.push('<span class="tag t-aviso" title="la ruta pasa por aquí pero el paso no tiene SAM (minutos por prenda): el motor no lo programa y el operario no lo ve hasta que se le fije recurso y fecha en esta fila (columnas Recurso y Arranca; con «toda la cola» activado si no tiene fecha). Así queda visible en la tablet, marcado «sin tiempo estándar»; el tiempo real se registra igual">paso sin tiempo</span>');
+  if(pasoSinTiempo(o,c))t.push('<span class="tag t-aviso" title="falta el tiempo estándar: la ruta pasa por aquí pero el paso no tiene SAM (minutos por prenda). '+(centroPorDias(c)?'Este centro se cuenta por días: el programa no le da fecha.':'El programa le da fecha junto a sus pasos vecinos, sin ocupar capacidad.')+' El operario no la ve en la tablet hasta que se le fije recurso y fecha en esta fila (columnas Recurso y Arranca). Falta '+faltaTiempoTxt(o,c)+'.">paso sin tiempo</span>');
+  {const af=avisoAfuera(o,c);if(af)t.push('<span class="tag t-aviso" title="'+esc(af.tip)+'">'+esc(af.txt)+'</span>')}
   return t.join(' ')}
 /* ---------- Centros de producción: filtro de fases común, resumen día × familia, cruce familia × fase, color ---------- */
 function togFaseCEN(f){togSet(CEN,'fases',f)}
@@ -8027,7 +8126,7 @@ function diagAtraso(o,P,c){const ro=(P&&P.ordenes&&P.ordenes[o.id])||{};const me
   const terminada=faseTerminadaDe(o);const vencida=!!(meta&&meta<h);
   /* metaVencida NO depende del motor: una orden que el programa no pudo colocar (bloqueada, sin liberar) no tiene atraso calculado */
   return {ro,meta,terminada,vencida,metaVencida:vencida&&!terminada,orden:!!ro.atraso,finPro:ro.finPro||null,dias:ro.diasTarde||0,
-    paso,pasoTarde:!!(paso&&paso.fin&&paso.limite&&paso.fin>paso.limite),sinMeta:!meta}}
+    paso,pasoTarde:!!(paso&&paso.fin&&paso.limite&&paso.fin>paso.limite&&(!paso.sinTiempo||paso.porArranca)),sinMeta:!meta}}
 function marcaCentro(o,P,c){const t=[];   /* todas las marcas que aplican (Costura); mismos nombres y colores que la cola: MARCAS_CEN */
   if((o.prio||3)<=2)t.push('<span class="tag t-aviso" title="prioridad puesta en la orden">prioridad</span>');
   marcasDe(o,P,c).forEach(m=>t.push('<span class="tag '+m.cls+'" style="white-space:nowrap" title="'+esc(m.det)+'">'+esc(m.n)+'</span>'));
@@ -8235,7 +8334,7 @@ function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=pr
     const g=(f.cerc&&f.cerc.grupo)||'';const gTxt=(CERCANIA_GRUPOS.find(x=>x[0]===g)||[])[1]||'';
     return `<tr class="res-fila" onclick="if(!event.target.closest('button,img,.fase-mini'))abrirFichaOrden('${f.o.id}')" style="cursor:pointer">
      <td class="num mut">${i+1}</td>
-     <td style="white-space:nowrap">${whCell(f.o,40)}${multi?' <span class="tag t-mut" title="centro">'+esc(nCen(f.c))+'</span>':''}${puestoDe(f.o,f.c)?' <span class="tag t-mut" title="puesto manual en la cola">puesto '+puestoDe(f.o,f.c)+'</span>':''}</td>
+     <td style="white-space:nowrap">${whCell(f.o,40)}${multi?' <span class="tag t-mut" title="centro">'+esc(nCen(f.c))+'</span>':''}${puestoDe(f.o,f.c)?' <span class="tag t-mut" title="puesto manual en la cola">puesto '+puestoDe(f.o,f.c)+'</span>':''}${(()=>{const a=avisosFaltaHTML(f.o,f.c,P);return a?'<div style="margin-top:3px">'+a+'</div>':''})()}</td>
      <td>${esc(nombreCat(K(f.o.cat)))}<div class="mut" style="font-size:var(--fs-xs)">${esc(f.o.cliente||'')}</div></td>
      <td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td>
      <td style="min-width:130px"><b>${num(f.hechas||0)}</b> <span class="mut">de ${num(f.o.cant)}</span><div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:var(--ok)"></i></div></td>
@@ -8289,17 +8388,18 @@ function vCentro(el){
   const filas=filasDeCentros(cens,P,lun,dom,CEN.q).filter(f=>faseOkCEN(f.o));
   if(CEN.tab==='resumen'){el.innerHTML=cab+resumenCentroHTML(cid,cens,P,dias,recs,nombre,filas);return}
   if(CEN.tab==='plan'){
-    const enSemAll=filas.filter(f=>f.pzSem>0).sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1);
-    const enSem=enSemAll.filter(f=>filaEnDiaCEN(f,P,CEN.dia));   // la tarjeta del día filtra esta lista
+    const stSem=f=>!f.hecho&&!(f.pzSem>0)&&f.paso&&f.paso.sinTiempo&&f.paso.ini&&f.paso.ini>=lun&&f.paso.ini<=dom;   /* paso sin tiempo fechado esta semana: sin prendas en el programa, pero con fecha */
+    const enSemAll=filas.filter(f=>f.pzSem>0||stSem(f)).sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1);
+    const enSem=enSemAll.filter(f=>stSem(f)?(!CEN.dia||f.paso.ini===CEN.dia):filaEnDiaCEN(f,P,CEN.dia));   // la tarjeta del día filtra esta lista
     const porDia=dias.map(d=>{const xs=P.pro.filter(x=>cens.includes(x.centro)&&x.dia===d);return{d,min:xs.reduce((a,x)=>a+x.min,0),pz:xs.reduce((a,x)=>a+(x.pz||0),0),cap:recs.reduce((a,r)=>a+(labR(d,r)?capDia(r,d):0),0)}});
     const bloq=filas.filter(f=>f.bloq&&!f.hecho);const luego=filas.filter(f=>!f.hecho&&!f.bloq&&f.pzSem===0&&f.paso.ini&&f.paso.ini>dom);
     el.innerHTML=cab+avanceSemanaHTML(cid,cens,P,dias,recs,nombre)+(CEN.solo?'':resumenSubCentrosHTML(cid,P,lun,dom))+`<p class="lede">Lo que planificación asignó a ${esc(nombre)} esta semana: órdenes, prendas y fechas, y la carga de cada día contra la capacidad del centro. El centro programa sobre esto en la pestaña siguiente.</p>
     ${tarjetasDiaCENHTML(cens,P,dias,recs)}
     <div class="panel"><h3>Órdenes de la semana <span style="font-size:24px;font-weight:700;color:var(--t-primary);margin-left:6px">${enSem.length}</span> <span class="note">${enSem.length!==enSemAll.length?'de '+enSemAll.length+' · ':''}${num(enSem.reduce((a,f)=>a+f.pzSem,0))} prendas programadas · ordenadas por fecha de inicio</span><span class="spacer"></span><span style="font-weight:400">${grpSelHTML('cenplan',true)}</span></h3><div class="scroll" style="max-height:520px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th class="num">Esta semana</th><th class="num">Hechas</th><th>Recurso</th><th>Inicio</th><th>Fin</th><th>Marca</th><th>Liberada</th></tr></thead><tbody>
-     ${(grpSt('cenplan').todoAbierto=true,filasGRP('cenplan',enSem,f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant)}</td><td class="num"><b>${num(f.pzSem)}</b></td><td class="num">${num(f.hechas)}</td><td>${esc(nRec(f.paso.rec))}${((f.o.progCentro||{})[f.c]||{}).rec?' ⚲':''}</td><td>${fmtDia(f.paso.ini)}</td><td>${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td><td>${liberadaCorte(f.o)?'<span class="tag t-ok">sí</span>':'<span class="tag t-alerta">no</span>'}</td></tr>`,11,f=>f.o,f=>f.pzSem))||('<tr><td colspan="11" class="mut">Nada programado'+(CEN.dia?' el '+fmtDia(CEN.dia)+' con prendas pendientes':' en esta semana')+'.</td></tr>')}</tbody></table></div></div>
+     ${(grpSt('cenplan').todoAbierto=true,filasGRP('cenplan',enSem,f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}${(()=>{const a=avisosFaltaHTML(f.o,f.c,P);return a?'<div>'+a+'</div>':''})()}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.o.cant)}</td><td class="num">${f.pzSem>0?'<b>'+num(f.pzSem)+'</b>':'<span class="mut" title="paso sin tiempo estándar: tiene fecha pero no prendas en el programa del día">—</span>'}</td><td class="num">${num(f.hechas)}</td><td>${esc(nRec(f.paso.rec))}${((f.o.progCentro||{})[f.c]||{}).rec?' ⚲':''}</td><td>${fmtDia(f.paso.ini)}</td><td>${fmtDia(f.paso.fin)}</td><td>${marcaCentroUna(f.o,P,f.c)}</td><td>${liberadaCorte(f.o)?'<span class="tag t-ok">sí</span>':'<span class="tag t-alerta">no</span>'}</td></tr>`,11,f=>f.o,f=>f.pzSem))||('<tr><td colspan="11" class="mut">Nada programado'+(CEN.dia?' el '+fmtDia(CEN.dia)+' con prendas pendientes':' en esta semana')+'.</td></tr>')}</tbody></table></div></div>
     ${luego.length?`<div style="margin-top:14px"><h4 style="margin:0 0 6px">Vienen después <span class="mut" style="font-weight:400;font-size:var(--fs-s)">· ${luego.length} órdenes que el programa ya fechó en este centro, pero para <b>después</b> de esta semana · ninguna está en la lista de arriba</span> <span style="font-weight:400">${grpSelHTML('cenluego',true)}</span></h4>
      <div class="scroll" style="max-height:320px"><table><thead><tr><th>OP</th><th>Categoría</th><th class="num">Prendas</th><th>Inicio</th><th>Dónde está</th></tr></thead><tbody>
-     ${(grpSt('cenluego').todoAbierto=true,filasGRP('cenluego',luego.sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1).slice(0,150),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${dondeEstaEnCentro(f.o,P,f.c)}</td></tr>`,5,f=>f.o,f=>+f.o.cant||0))}
+     ${(grpSt('cenluego').todoAbierto=true,filasGRP('cenluego',luego.sort((a,b)=>(a.paso.ini||'9')<(b.paso.ini||'9')?-1:1).slice(0,150),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}${(()=>{const a=avisosFaltaHTML(f.o,f.c,P);return a?'<div>'+a+'</div>':''})()}</td><td>${esc(nombreCat(K(f.o.cat)))}</td><td class="num">${num(f.o.cant)}</td><td>${fmtDia(f.paso.ini)}</td><td>${dondeEstaEnCentro(f.o,P,f.c)}</td></tr>`,5,f=>f.o,f=>+f.o.cant||0))}
      </tbody></table></div></div>`:''}
     ${(bloq.length&&veSinFecha())?`<details class="panel" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Sin fecha todavía <span class="mut" style="font-weight:400">· ${bloq.length} órdenes esperan liberación o decisión</span></summary><div class="body" style="font-size:var(--fs-s)">${Object.entries(bloq.reduce((m,f)=>{m[f.bloq]=(m[f.bloq]||0)+1;return m},{})).map(([b,n])=>n+' '+esc(b)).join(' · ')}</div></details>`:''}`;
     return}
@@ -9284,8 +9384,8 @@ function vImprimir(el){
   // producción
   const cens=[...new Set(P.pro.filter(x=>x.dia===d).map(x=>x.centro))].sort((a,b)=>ordenPaso(a)-ordenPaso(b));
   // centros que aparecen en rutas pero sin tiempo por prenda: no se pueden programar todavía
-  const sinTiempo={};S.ordenes.forEach(o=>(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!(p.t>0)){sinTiempo[p.centro]=(sinTiempo[p.centro]||0)+1}}));
-  const aviso=Object.keys(sinTiempo).length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 12px">Sin tiempo por prenda, no programables aún: ${Object.entries(sinTiempo).sort((a,b)=>ordenPaso(a[0])-ordenPaso(b[0])).map(([c,n])=>esc(nCen(c))+' ('+n+' órdenes)').join(', ')}. Se programan cuando la categoría tenga hoja de operaciones o la orden tenga tiempos.</p>`:'';
+  const sinTiempo={};S.ordenes.filter(abierta).forEach(o=>(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!pasoHecho(o,p.centro)&&pasoSinTiempo(o,p.centro)){sinTiempo[p.centro]=(sinTiempo[p.centro]||0)+1}}));
+  const aviso=Object.keys(sinTiempo).length?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 12px">Sin tiempo estándar (tienen fecha en el programa pero no ocupan capacidad ni salen en esta hoja): ${Object.entries(sinTiempo).sort((a,b)=>ordenPaso(a[0])-ordenPaso(b[0])).map(([c,n])=>esc(nCen(c))+' ('+n+' órdenes)').join(', ')}. Falta el SAM (Operaciones), la técnica o las puntadas de la orden, según el centro.</p>`:'';
   const prov=S.ordenes.some(o=>o.samProv)?`<p class="mut" style="font-size:var(--fs-s);margin:8px 0 4px">Tiempos por prenda provisionales por familia (corte, confección, empaque); se reemplazan cuando se cargue la hoja de operaciones.</p>`:'';
   const pro=`<section class="imp">${cab('pro')}${prov}${aviso}${cens.length?cens.map(c=>{const recs=[...new Set(P.pro.filter(x=>x.dia===d&&x.centro===c).map(x=>x.rec))];const punt=(CE(c)||{}).medida==='puntadas';
     return `<h4 style="margin:14px 0 6px">${esc(nCen(c))}</h4><table><thead><tr><th>Recurso</th><th>Orden</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>${punt?'<th class="num">Puntadas/pz</th><th class="num">Puntadas total</th>':''}<th class="num">Minutos</th><th style="width:90px">Real pz</th><th style="width:110px">Firma</th></tr></thead><tbody>
@@ -10456,7 +10556,7 @@ function defFaseMapeo(){const rows=[];const add=(sistema,fases,extra)=>fases.for
   add('planificación',['2Planificacion']);
   add('preparación de corte',['3AEROPUERTO','3Trazos','3CD CORTE'],{por:{'3CD CORTE':{esCola:true}}});
   add('corte',['4Corte Planta','4Incompletos','4Preparacion Insumos','4CD Ensamble','4 Calidad Produccion'],{por:{'4CD Ensamble':{esCola:true},'4Incompletos':{bloqueo:true}}});
-  add('maquila externa',['5Corte Maquila Ibarra','5CD Maquila','5Maquila Conf','5Maquila Recepción'],{por:{'5Corte Maquila Ibarra':{excluye:'corte'},'5CD Maquila':{esCola:true,excluye:'modulos'},'5Maquila Conf':{excluye:'modulos'},'5Maquila Recepción':{desde:'terminados'}}});
+  add('maquila externa',['5Corte Maquila Ibarra','5CD Maquila','5Maquila Conf','5Maquila Recepción'],{por:{'5Corte Maquila Ibarra':{excluye:'corte'},'5CD Maquila':{esCola:true},'5Maquila Conf':{},'5Maquila Recepción':{desde:'terminados'}}});
   add('servicios',['6 CD BORDADO','6 CD SERIGRAFIA','6Bordado','6Serigrafia','6 Etiquetado'],{por:{'6 CD BORDADO':{esCola:true},'6 CD SERIGRAFIA':{esCola:true}}});
   add('confección',['7Confección','7Pulido']);
   add('terminados',['8Lavanderia','8Lavanderia Quito','8Botones','8Servicios y Terminados','8Empaque']);

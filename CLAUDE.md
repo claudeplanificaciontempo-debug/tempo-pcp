@@ -1341,6 +1341,37 @@ desde un perfil de piso. Pendiente de la usuaria: la tabla «fase de cada centro
 una orden que sale de maquila a servicios vuelve a tener confección pendiente si la OT de módulos sigue abierta (se salva con
 `recursoFijo modulos:'maquila'`). Pruebas MH, MH2, MH3, MH4 (y CC4, OF, registrar actualizadas).
 
+**«Maquila es confección pero afuera, entra, y debe tener fecha pero una alerta de que falta algo» (usuaria, 23-sep-2026 noche; dos
+rondas de revisión adversarial).** (1) **Paso sin tiempo estándar** (pendiente, sin SAM, no «por días»): el motor lo trataba como HECHO
+(`hecho:minRef<=0`) y lo saltaba. Ahora `sinT` en el prep de `programar()` y `fechaSinT(o,ro,phs,modo)` le da fecha = fin del
+paso anterior con tiempo; si no hay, inicio del siguiente; sin vecinos, hacia atrás `antLabR(límite)` y hacia adelante la tela lista; nunca
+antes de la tela lista. El «Arranca» (`progCentro.desde`) vale como en un paso real (corre el cursor; hacia atrás, si pasa el límite, `ok=false`).
+**La fecha vive SOLO en `ro.pasos`** (`sinTiempo:true`, `min:0`, `limite`): **no entra a `P.pro` ni a `secMod`** (la primera
+versión lo hacía e inflaba prendas del día, % del Resumen y cumplimiento: de ~101k a ~201k prendas), y el recurso **solo si está fijado**
+(`recFijadoDe`; elegir el «menos cargado» con 0 minutos mandaba todo al mismo puesto). **La tablet sigue la regla del 17-sep**
+(`programadoPara` solo mira `P.pro`; el operario la ve con `fijadaPara`). Medido con datos reales: fechas de pasos con tiempo, minutos,
+prendas de `P.pro` y atraso idénticos; 463 pasos ganan fecha; 23 órdenes con todo lo pendiente sin tiempo pasan su fin de «hoy» a su fecha
+meta (motor hacia atrás). `SIN_T_FECHA` (false = motor de antes) es SOLO para medir, como `TEJ_MODO`. Avisos: `mandaCola`, marca de
+cercanía (separa «con fecha» de «sin fecha / por días»), ficha, `mDetalleAsig` («sin SAM», no 0), Resumen del centro (`avisosFaltaHTML`),
+buscador del centro (`llegadaACentroTxt` ahora lee `ro.pasos`: antes buscaba en `P.pro` un `oid` que no existe y nunca daba fecha) y
+Hoy → Pendientes `pasoSinTiempoFecha`. `pasosSinProgramar` ya no los lista (tienen fecha). (2) **Maquila = confección hecha afuera**:
+`sembrarMaquilaEsConfeccion()` (una vez, no desde el piso; bandera `maquilaEsConfeccion` con `cambios`/`ordenes`/`ejemplos`) quita
+`modulos` de «excluye» en las fases de la tabla 1 del grupo del tramo que tiene recurso (5CD Maquila, 5Maquila Conf), pone `rec:'maquila'`
+en la fila `{grupo:'maquila externa',centro:'modulos'}` de Tramos paralelos y rearma la ruta pendiente de las órdenes en esas fases;
+`defFaseMapeo` ya no excluye. `recFijadoDe` cae al final en `recDeFaseTramo(o,c)` (no si la tabla da el paso por hecho —Recepción— ni si
+la fase excluye OTRO centro —5Corte Maquila Ibarra: nadie decidió su confección—). `avisoAfuera(o,c)`: «en Maquila · falta que regrese» /
+«por salir a Maquila» / «fase de Maquila · fijada en X» (lo fijado en la cola manda). `posicionFaseCentro` la trata como «en proceso» del
+centro y la cola dice «en proceso afuera» (`txtEnProceso`/`tipEnProceso`). `quitarMaquila` se niega mientras la FASE diga maquila;
+`setTramoGrupoRec` (Configuración → Tramos paralelos) cambia el recurso con bitácora y avisa que sin recurso esas fases van a planta.
+**Segunda ronda:** el límite de un paso sin tiempo es el inicio del paso con tiempo que le sigue (`iniSig`); por sí mismo nunca es «paso tarde» ni «cuello
+de botella» (`diagAtraso` y `sob` lo saltan) salvo que lo cause su propio «Arranca» (`paso.porArranca`); dos seguidos no quedan al revés (el anterior
+incluye pasos sin tiempo ya fechados); `faltaTiempoTxt(o,c)` dice qué falta según el centro (técnica, puntadas o SAM). `afueraDeOrden(o)` hace que el
+**semáforo** y el buscador del centro digan «En Maquila · falta que regrese» sea cual sea el próximo paso (el rojo de meta vencida sigue mandando).
+Recurso de maquila inactivo → aviso «va a planta»; quitar el tramo entero lo dice y va a la bitácora; la lista «Ya en maquila» marca «por la fase»
+en vez de ofrecer «devolver a planta». **Congelado semanal**: un paso que la fase, la OT o el cierre dan por hecho durante la semana cuenta como hecho
+(`porFase` en `avanceCongelado`; la maquila no registra en el piso). Hojas impresas: «sin tiempo estándar» en vez de 0,0. Planificación del centro
+lista el paso sin tiempo de la semana sin sumar prendas. Pruebas ST1–ST16, MQ1–MQ19 (y VN, aplicarOT, fases de maquila y MQ de descarte actualizadas).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
