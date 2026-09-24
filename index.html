@@ -946,7 +946,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-24 13:38';
+const APP_BUILD='2026-09-24 14:00';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1179,12 +1179,40 @@ function centrosPorOrden(){if(!Array.isArray(S.params.centrosPorOrden))S.params.
 function centrosDeCategoria(k){const cs=new Set();if(k)opsDe(k).forEach(x=>{if(x.centro)cs.add(x.centro)});const cpo=centrosPorOrden();cpo.forEach(c=>cs.delete(c));return cs}
 /* de los centros que dependen de la orden, cuáles aplican hoy según los campos propios de la orden (técnica, puntadas).
    lavado/plancha no entran aquí: su default sigue viniendo de la marca de categoría (lavaPlanchaDefault). */
+/* 24-sep-2026 (usuaria): «si la receta dice cordón, pasa por la ruta de cordón». Insumos de la receta (componentes de Odoo) que agregan un paso:
+   la palabra se busca en la categoría del insumo (p. ej. «INV / INSUMOS / CORDON PLANO»), en su nombre o en los dos. Tabla editable en
+   Configuración → Órdenes y materiales → «Insumos que agregan un paso a la ruta»; sin configurar = cordón (en la categoría) → Cordones. */
+const INSUMOS_RUTA_DEF=[{palabra:'CORDON',donde:'categoria',centro:'cordones'}];
+const INSUMOS_RUTA_DONDE={categoria:'en la categoría del insumo',producto:'en el nombre del insumo',ambos:'en la categoría o en el nombre'};
+function insumosRuta(){return S.params&&Array.isArray(S.params.insumosRuta)?S.params.insumosRuta:INSUMOS_RUTA_DEF.map(r=>Object.assign({},r))}
+function centrosPorInsumos(mats){const out=new Set();const cpo=centrosPorOrden();
+  const reglas=insumosRuta().filter(r=>r&&String(r.palabra||'').trim()&&r.centro&&cpo.includes(r.centro)&&CE(r.centro));if(!reglas.length)return out;
+  (mats||[]).forEach(m=>{if(!m)return;const cat=normTxt(m.ruta||'');const nom=normTxt(m.prod||m.n||'');
+    reglas.forEach(r=>{const p=normTxt(r.palabra);const d=r.donde||'categoria';if((d!=='producto'&&cat.includes(p))||(d!=='categoria'&&nom.includes(p)))out.add(r.centro)})});
+  return out}
+function insumoRutaEditable(){if(!puede('config')){alert('Solo quien configura puede cambiar esta tabla.');return false}return true}
+function guardarInsumosRuta(t,txt){S.params.insumosRuta=t;bitacora('Insumos que agregan un paso a la ruta · '+txt+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
+function setInsumoRutaRow(i,k,v){if(!insumoRutaEditable())return;const t=insumosRuta().map(r=>Object.assign({},r));const r=t[i];if(!r)return;const antes=r[k];r[k]=k==='palabra'?String(v||'').trim().toUpperCase():v;if(antes===r[k])return;
+  guardarInsumosRuta(t,'fila '+(i+1)+' · '+k+': «'+(antes==null?'':antes)+'» → «'+r[k]+'»')}
+function addInsumoRutaRow(){if(!insumoRutaEditable())return;const t=insumosRuta().map(r=>Object.assign({},r));t.push({palabra:'',donde:'categoria',centro:centrosPorOrden()[0]||''});guardarInsumosRuta(t,'fila nueva')}
+function delInsumoRutaRow(i){if(!insumoRutaEditable())return;const t=insumosRuta().map(r=>Object.assign({},r));const r=t[i];if(!r)return;
+  if(!confirm('¿Quitar la regla «'+(r.palabra||'(vacía)')+' → '+nCen(r.centro)+'»? Las órdenes sin ruta confirmada dejarán de recibir ese paso por su receta.'))return;
+  t.splice(i,1);guardarInsumosRuta(t,'quitada la regla «'+(r.palabra||'')+' → '+r.centro+'»')}
+function insumosRutaHTML(){const t=insumosRuta();const propia=!!(S.params&&Array.isArray(S.params.insumosRuta));const cpo=centrosPorOrden().filter(c=>CE(c));
+  const conRegla=S.ordenes.filter(o=>abierta(o)&&centrosPorInsumos(o.materiales).size).length;
+  return `<div class="panel"><h3>Insumos que agregan un paso a la ruta <span class="note">si la receta de la orden (componentes de Odoo) trae un insumo con esta palabra, la ruta pasa por ese paso · p. ej. un cordón → Cordones</span><span class="spacer"></span><button class="btn ghost sm" onclick="addInsumoRutaRow()">+ regla</button></h3><div class="body">
+   <table><thead><tr><th>Palabra</th><th>Dónde se busca</th><th>Paso que agrega</th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td><input type="text" style="width:160px" value="${esc(r.palabra||'')}" onchange="setInsumoRutaRow(${i},'palabra',this.value)"></td>
+    <td><select onchange="setInsumoRutaRow(${i},'donde',this.value)">${Object.entries(INSUMOS_RUTA_DONDE).map(([k,v])=>`<option value="${k}" ${(r.donde||'categoria')===k?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><select onchange="setInsumoRutaRow(${i},'centro',this.value)">${cpo.map(c=>`<option value="${c}" ${r.centro===c?'selected':''}>${esc(nCen(c))}</option>`).join('')}</select></td>
+    <td><button class="btn ghost sm" onclick="delInsumoRutaRow(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="mut">Sin reglas: ningún insumo agrega pasos a la ruta.</td></tr>'}</tbody></table>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${propia?'Editada en esta instalación (los cambios quedan en la bitácora).':'Valor de partida (24-sep-2026): cordón en la categoría del insumo → Cordones.'} Hoy <b>${conRegla}</b> órdenes abiertas tienen en su receta un insumo que agrega un paso. Las rutas <b>sin confirmar</b> lo reciben solas; las que <b>confirmó una persona</b> no se tocan y quedan marcadas «revisar ruta». Solo se ofrecen los pasos que decide la orden (Configuración → Centros → «Pasos que decide la orden»).</p></div></div>`}
 function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=centrosPorOrden();
   const tec=normTxt(String((o.tecnicaTxt||'')+' '+((TEC(o.tecnica)||{}).n||'')));
   if(cpo.includes('sublimado')&&/sublim/.test(tec)&&CE('sublimado'))out.add('sublimado');   /* la técnica dice sublimado: va a Sublimado, no a Estampado */
   else if(cpo.includes('estampado')&&(o.tecnica||o.tecnicaTxt))out.add('estampado');
   if(cpo.includes('apliques')&&/aplique/.test(tec)&&CE('apliques'))out.add('apliques');
   if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
+  centrosPorInsumos(o.materiales||o.comp).forEach(c=>out.add(c));   /* la receta: p. ej. un cordón → Cordones (24-sep) */
   return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
 function lavaPlanchaDefault(k){if(!k)return{lavado:false,plancha:false};
@@ -6165,7 +6193,9 @@ function recalcularRutas(motivo){
   const r=rutasPorRecalcular();
   if(!r.total)return {n:0,marcadas:0};
   let n=0;
-  r.auto.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
+  r.auto.forEach(o=>{const de=pasosProDe(o);const a0=rutaProSugerida(o,true);
+    /* sin categoría no hay de dónde rehacer la ruta: solo se AGREGA lo nuevo (p. ej. Cordones por la receta), nunca se quitan pasos (24-sep) */
+    const a=K(o.cat)?a0:ordenarRutaPro([...new Set([...de,...a0])]);
     if(!a.length||a.join()===de.join()){sellarRuta(o);return}
     const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
     const prev=Object.fromEntries((o.ruta||[]).map(x=>[x.centro,x.t]));
@@ -11378,6 +11408,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px"><b>Cuatro filas no se pueden desmarcar</b> (marcadas «siempre»): el avance de piso (unidades, tramos, paros, tallas y cierres), las firmas de liberación, el historial de fases con sus motivos y la programación por centro. Todo eso lo registran las personas y ningún archivo lo devuelve. La fase actual sí es decisión de esta tabla. Lo del archivo siempre se actualiza: Estado OP, cantidad, cliente, categoría, color, materiales, técnica, puntadas, precio, ruta completa; la fecha de entrega solo si no se cambió aquí. La fase de una orden existente NO se actualiza desde el archivo: la mueven los supervisores aquí; si el archivo trae otra, va a la bandeja "decisiones que ya no calzan" (fase del sistema vs fase del archivo). Las ediciones a mano de la ficha (telas, insumos) no se conservan: la ficha es espejo del archivo. Órdenes con número repetido: las decisiones quedan en la primera.</p></div></div>
   ${alcanceConfHTML()}
   ${columnasTareaHTML()}
+  ${insumosRutaHTML()}
   ${clavesConfHTML()}
   ${registroCargasHTML()}
   ${motivosPanelHTML()}
@@ -12386,7 +12417,7 @@ function edRefresh(){const a=document.getElementById('ed-telas'),b=document.getE
 
 function mOrden(id){const o=id?S.ordenes.find(x=>x.id===id):null;
   const ruta=o?JSON.parse(JSON.stringify(o.ruta||[])):[];const cs=ruta.map(p=>p.centro);
-  ED={telas:JSON.parse(JSON.stringify(o?(o.telas||[]):[])),ruta,tecnica:o?(o.tecnica||null):null,puntadas:o?(+o.puntadas||0):0,insumos:JSON.parse(JSON.stringify(o?(o.insumos||[]):[])),
+  ED={telas:JSON.parse(JSON.stringify(o?(o.telas||[]):[])),ruta,tecnica:o?(o.tecnica||null):null,puntadas:o?(+o.puntadas||0):0,materiales:o?(o.materiales||[]):[],insumos:JSON.parse(JSON.stringify(o?(o.insumos||[]):[])),
       origen:cs.includes('proveedor')?'externa':'propia',provDias:(ruta.find(p=>p.centro==='proveedor')||{}).t||15,
       opts:new Set(cs.filter(c=>CE(c)&&CE(c).area==='pro'&&!FIJOS_PRO.includes(c)))};
   ordenCentrosAuto(o).forEach(c=>ED.opts.add(c));
@@ -12480,7 +12511,7 @@ function desdeHoja(){const k=K(document.getElementById('f-cat').value);if(!k)ret
   const spc=samPorCentro(k);const lp=lavaPlanchaDefault(k);const cpo=centrosPorOrden();
   ED.opts=new Set(Object.keys(spc).filter(c=>!FIJOS_PRO.includes(c)&&!cpo.includes(c)));
   if(lp.lavado)ED.opts.add('lavado');if(lp.plancha)ED.opts.add('plancha'); // lavado/plancha no salen de las operaciones: se marcan por defecto de la categoría (PASO 7)
-  ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas}).forEach(c=>ED.opts.add(c)); // estampado/bordado: los decide la orden (técnica, puntadas), no la categoría
+  ordenCentrosAuto({tecnica:ED.tecnica,puntadas:ED.puntadas,materiales:ED.materiales}).forEach(c=>ED.opts.add(c)); // estampado/bordado: los decide la orden (técnica, puntadas), no la categoría
   if(!Object.keys(spc).length&&!lp.lavado&&!lp.plancha&&!ED.opts.size)return;
   ED.ruta=armarRuta(ED.origen,ED.provDias,[...ED.opts],[],k.id).map(p=>spcParaCentro(p,k,spc));
   edRefresh()}
@@ -12860,7 +12891,7 @@ function planTarea(rows,nombre){
     const RT=armarTelasDe(materiales,plan,{pantone:!!(colorDe(d.colorN).cod)});const telasKg=RT.telasKg,origs=RT.origs,origen=RT.origen,telas=RT.telas,sinClas=RT.sinClas;
     const kgTej=telasKg.filter(m=>m.produce==='propia').reduce((a,m)=>a+m.kg,0),kgTin=telasKg.filter(m=>m.falta!=='nada').reduce((a,m)=>a+m.kg,0);
     // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
-    const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
+    const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas,comp:d.comp})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
     const spc=k?samPorCentro(k):{};
     const sinHoja=!!k&&![...centrosDeCategoria(k)].some(c=>CE(c)&&CE(c).area==='pro');   /* la familia existe pero no aporta ningún centro de producción (sin hoja LMO); sin categoría resuelta no se inventa ruta */
     const optsRuta=sinHoja?[...new Set([...opts,...RUTA_DEFECTO_PRO.filter(c=>CE(c))])]:opts;

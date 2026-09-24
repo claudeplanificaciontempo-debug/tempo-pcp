@@ -2067,7 +2067,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delInsumoRutaRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -8292,6 +8292,31 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ORDF.tab='ord';render();selTodoOrdRut(false);__check('OL7: desmarcar vacía la selección',RUT.sel.size===0)}
    else __check('OL3: el perfil de las pruebas puede editar rutas',false);
    ORDF.tab=bakT;page=bakP;render()}
+  /* 24-sep: si la receta trae cordón, la ruta pasa por Cordones (tabla «Insumos que agregan un paso a la ruta») */
+  {const cord={prod:'CORDON PLANO 1 CM BIRCH',ruta:'INV / INSUMOS / CORDON PLANO'},hilo={prod:'HILO PARA COSER',ruta:'INV / INSUMOS / HILO PARA COSER'};
+   __check('CO3: una receta con cordón (en la categoría del insumo) agrega Cordones',ordenCentrosAuto({materiales:[hilo,cord]}).has('cordones'));
+   __check('CO4: sin cordón no se agrega',!ordenCentrosAuto({materiales:[hilo]}).has('cordones'));
+   __check('CO5: al cargar el archivo de tareas también (componentes de la fila)',ordenCentrosAuto({comp:[cord]}).has('cordones'));
+   const bak=S.params.insumosRuta;S.params.insumosRuta=[{palabra:'CORDON',donde:'producto',centro:'cordones'}];
+   __check('CO6: la tabla manda: buscando en el nombre, una categoría con cordón y un nombre sin cordón no agrega',!ordenCentrosAuto({materiales:[{prod:'X',ruta:'INV / INSUMOS / CORDON'}]}).has('cordones')&&ordenCentrosAuto({materiales:[{prod:'Cordón plano',ruta:'INV / X'}]}).has('cordones'));
+   S.params.insumosRuta=[];__check('CO7: sin reglas, ningún insumo agrega pasos',!ordenCentrosAuto({materiales:[cord]}).has('cordones'));
+   if(bak===undefined)delete S.params.insumosRuta;else S.params.insumosRuta=bak;
+   const nb=(S.bitacora||[]).length;addInsumoRutaRow();setInsumoRutaRow(insumosRuta().length-1,'palabra','broche');
+   __check('CO8: agregar y editar una regla queda en la bitácora (la palabra se guarda en mayúsculas)',insumosRuta().slice(-1)[0].palabra==='BROCHE'&&(S.bitacora||[]).length>=nb+2);
+   window.confirm=()=>false;const n0=insumosRuta().length;delInsumoRutaRow(n0-1);__check('CO9: quitar una regla pide confirmación',insumosRuta().length===n0);window.confirm=()=>true;delInsumoRutaRow(n0-1);
+   if(bak===undefined)delete S.params.insumosRuta;else S.params.insumosRuta=bak;
+   __check('CO10: la tabla se ve en Configuración',/Insumos que agregan un paso a la ruta/.test(insumosRutaHTML())&&/Cordones/.test(insumosRutaHTML()));
+   /* una orden cargada con cordón y ruta SIN confirmar recibe Cordones sola; una confirmada por una persona no se toca y queda «revisar ruta» */
+   const libres=S.ordenes.filter(o=>abierta(o)&&!rutaEditadaAMano(o)&&!rutaConfirmada(o)&&(o.rutaCompleta||[]).some(x=>x.centro==='empaque')&&!(o.rutaCompleta||[]).some(x=>x.centro==='cordones')).slice(0,2);
+   const conf=S.ordenes.find(o=>abierta(o)&&rutaEditadaAMano(o)&&!(o.rutaCompleta||[]).some(x=>x.centro==='cordones'));
+   if(libres.length&&conf){[...libres,conf].forEach(o=>{o.materiales=(o.materiales||[]).concat([cord])});const antesConf=(conf.rutaCompleta||[]).map(x=>x.centro).join('>');recalcularRutas();
+     __check('CO11: la ruta sin confirmar recibe Cordones sola al recalcular',libres.every(o=>(o.rutaCompleta||[]).some(x=>x.centro==='cordones')),libres.map(o=>o.op+': '+(o.rutaCompleta||[]).map(x=>x.centro).join('>')).join(' | '));
+     __check('CO12: la ruta revisada o confirmada por una persona NO se toca y queda para revisar',(conf.rutaCompleta||[]).map(x=>x.centro).join('>')===antesConf&&!!conf.rutaRevisar,conf.op+' '+(conf.rutaCompleta||[]).map(x=>x.centro).join('>')+' revisar='+!!conf.rutaRevisar)}
+   else __check('CO11: hay órdenes para probar la regla sobre lo cargado',false,libres.length+' libres · '+(conf?1:0)+' confirmada')
+   {const sc=S.ordenes.find(o=>abierta(o)&&!K(o.cat)&&!rutaEditadaAMano(o)&&(o.rutaCompleta||[]).some(x=>x.centro==='corte')&&!(o.rutaCompleta||[]).some(x=>x.centro==='cordones'));
+    if(sc){const antes=pasosProDe(sc);sc.materiales=(sc.materiales||[]).concat([cord]);recalcularRutas();const desp=(sc.rutaCompleta||[]).map(x=>x.centro);
+     __check('CO13: una orden SIN categoría solo gana el paso nuevo: no pierde los que tenía',antes.every(c=>desp.includes(c))&&desp.includes('cordones'),sc.op+': '+antes.join('>')+' → '+desp.join('>'))}
+    else __check('CO13: hay una orden sin categoría para probar',true)}}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

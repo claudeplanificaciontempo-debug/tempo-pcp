@@ -1498,6 +1498,16 @@ es la única definición de la lista visible (pantalla, redibujo y «marcar toda
 `.td-envuelve .sem{white-space:normal}` (el estado se parte en líneas; también el color y las etiquetas de la OP): a 1.510 px la tabla cabe
 sin moverse a los lados. Pruebas OL1–OL7.
 
+**La receta decide pasos: cordón → Cordones (24-sep-2026, usuaria: «si la receta dice cordón, obviamente pasa por la ruta de cordón»).**
+Tabla **«Insumos que agregan un paso a la ruta»** (Configuración → Órdenes y materiales, `insumosRutaHTML`; `S.params.insumosRuta`, sin configurar =
+`INSUMOS_RUTA_DEF` = CORDON en la categoría del insumo → `cordones`; `set/add/delInsumoRutaRow` con bitácora, `del` con confirmación y en la GUARDIA).
+`centrosPorInsumos(mats)` busca la palabra en `m.ruta` (categoría de Odoo, p. ej. «INV / INSUMOS / CORDON PLANO») y/o `m.prod`, y solo ofrece pasos
+de `centrosPorOrden()`. Entra por **`ordenCentrosAuto`** (materiales de la orden o `comp` de la fila al cargar), así vale al cargar tareas, en la ficha
+(`ED.materiales`), en la ruta sugerida y en `firmaRutaDe`: las rutas sin confirmar se rehacen solas (`recalcularRutas`), las confirmadas por una
+persona no se tocan y quedan `rutaRevisar`. Medido: exportación del 24-sep, 96 órdenes abiertas con cordón → las 96 con Cordones (entre Confección y
+Empaque), 0 sin cordón con el paso; en el volcado del 13-sep, 66 de 66. **Orden sin categoría**: `recalcularRutas` ya no le rehace la ruta desde
+cero (no hay de dónde) — solo le AGREGA lo nuevo (`ordenarRutaPro` de la unión); antes podía dejarla en «Cordones → Empaque». Pruebas CO3–CO13.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
