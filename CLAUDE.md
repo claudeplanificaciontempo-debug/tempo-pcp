@@ -1480,6 +1480,15 @@ Fecha Entrega) `leerTarea` dice cuál (`columnasFaltantesTarea`). Medido con la 
 contra el volcado del 13-sep: 4.509 tareas todas con ID, 1.422 órdenes en alcance, freno de incompleto no salta (2,3 %), 3 WH con varias tareas en
 Odoo (25112, 25347, 24121: no se aplican). Estado OP nuevo `to_close` (2 órdenes, fase 8). Pruebas CT1–CT6.
 
+**Archivo de OT exportado con filtro: lo terminado no se pierde (24-sep-2026).** `aplicarOT` toma el archivo como la verdad de cada orden que
+trae y le rearma `o.ot`; la usuaria mandó una exportación con solo las OT NO terminadas y, medido sobre el volcado, **172 órdenes abiertas perdían un
+paso que Odoo ya daba por terminado** (casi siempre el corte: volvían a «por cortar»). Ahora una OT **terminada** que el archivo no trae **se conserva**
+(`termPrev` dentro de `aplicarOT`, con sus unidades de `a.centros` y la marca `a.centrosOT`): en Odoo una OT terminada no vuelve atrás. Si el
+archivo la trae en otro estado (reabierta), manda el archivo. `otTerminadasQueNoVienen(p)` / `avisoOTFiltradaHTML(p)` avisan en la vista previa
+(«no trae ninguna OT terminada: parece filtrado», cuántos pasos se conservan) y `terminadasConservadas` queda en el aviso final, en `S.params.otCarga`
+y en el registro de cargas. Con los archivos reales del 24-sep: 0 pérdidas, 336 pasos conservados en 175 órdenes. Recomendación a la usuaria:
+exportar las OT sin filtrar por estado (lo filtrado no trae lo que se terminó desde la última carga). Pruebas OTF1–OTF5.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

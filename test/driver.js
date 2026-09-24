@@ -8261,6 +8261,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __R.borrado={foto,c0,h0,files:nFiles()};
    window.descargarJSON=dj;S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;NIVC=null;window.alert=al;page="ordenes";render();
    __check("BORRADO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* 24-sep: archivo de OT exportado con filtro (sin las terminadas): los pasos terminados que ya se sabían se conservan; una OT reabierta manda */
+  {const otRows=window.__otRows||[];if(otRows.length){const al=window.alert;window.alert=()=>{};
+    OT=planOT(otRows,'OT_completo.xlsx');aplicarOT();await __p(30);
+    const hEst=otRows[0].findIndex(x=>normTxt(x)==='estado');const filtrado=[otRows[0]].concat(otRows.slice(1).filter(r=>normTxt(r[hEst])!=='terminado'));
+    const fotoH=()=>{const m={};S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const fe=faseEstado(o);m[o.id]=(o.rutaCompleta||[]).filter(x=>pasoHecho(o,x.centro,fe)).map(x=>x.centro).sort().join(',')});return m};
+    const antes=fotoH();const pf=planOT(filtrado,'OT_filtrado.xlsx');const html=resumenOTHTML(pf);const tq=otTerminadasQueNoVienen(pf);
+    __check('OTF1: la vista previa avisa que el archivo no trae OT terminadas y que los pasos terminados se conservan',/no trae ninguna orden de trabajo terminada/.test(html)&&tq.pasos>0&&/se conservan/.test(html),tq.pasos);
+    OT=pf;aplicarOT();await __p(30);const desp=fotoH();
+    const pierden=Object.keys(antes).filter(id=>antes[id].split(',').filter(Boolean).some(c=>!(desp[id]||'').split(',').includes(c)));
+    __check('OTF2: cargar el archivo filtrado NO borra ningún paso terminado',pierden.length===0,pierden.length+' · '+pierden.slice(0,4).map(id=>(S.ordenes.find(o=>o.id===id)||{}).op).join(', '));
+    const cg=S.cargas.slice(-1)[0];__check('OTF3: el registro de cargas dice cuántos pasos terminados se conservaron',!!cg&&cg.tipo==='ot'&&cg.resumen.terminadasConservadas===tq.pasos,JSON.stringify(cg&&cg.resumen&&cg.resumen.terminadasConservadas)+' / '+tq.pasos);
+    const pc=planOT(otRows,'OT_completo.xlsx');__check('OTF4: con el archivo completo no hay aviso',!avisoOTFiltradaHTML(pc));
+    const o=S.ordenes.find(x=>x.ot&&x.ot.corte&&x.ot.corte.estado==='terminado'&&abiertaDe(x));
+    const filaC=o&&otRows.slice(1).find(r=>normFase(String(r[0]||''))===normFase(o.op)&&/CORTE/i.test(String(r[1]||''))&&normTxt(r[hEst])==='terminado');
+    if(filaC){const re=filaC.slice();re[hEst]='En progreso';OT=planOT([otRows[0],re],'OT_reabierta.xlsx');aplicarOT();await __p(30);
+      __check('OTF5: si el archivo trae la OT en otro estado (reabierta en Odoo), manda el archivo',!!o.ot.corte&&o.ot.corte.estado==='en proceso',o.op+' '+(o.ot.corte&&o.ot.corte.estado))}
+    else __check('OTF5: hay una orden con corte terminado por OT para probar la reapertura',false);
+    OT=planOT(otRows,'OT_completo.xlsx');aplicarOT();await __p(30);window.alert=al;OT=null}}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
