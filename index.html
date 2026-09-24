@@ -817,7 +817,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-23 20:51';
+const APP_BUILD='2026-09-23 22:21';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1263,7 +1263,9 @@ function pendientesHoy(){const ab=S.ordenes.filter(abierta);const items=[];const
    add('colaYaSalio','Órdenes que ya salieron de un centro pero el paso no está cerrado',ys.length,ys.slice(0,6).map(x=>x.op+' en '+nCen(x.c)+' (fase '+x.fase+')').join(' · ')+(ys.length?' · cerrar el paso o corregir la fase':''),'Centro',"ir('centro')");
    add('colaRutaIncompleta','Órdenes con ruta incompleta en la cola de un centro',ri.length,ri.slice(0,6).map(x=>x.op+' en '+nCen(x.c)+' (fase '+x.fase+')').join(' · ')+(ri.length?' · un solo paso de producción y la fase está antes: revisar la ruta en Órdenes → Rutas':''),'Órdenes',"ir('ordenes')");
    const sl=S.centros.filter(c=>c.area==='pro'&&c.activo!==false&&!fasesCentroDe(c.id));add('colaSinLista','Centros sin lista de fases para su cola',sl.length,sl.map(c=>c.n).join(', ')+' · Configuración → Calendario y parámetros → Fases visibles',"Configuración","CONF.tab='cal';ir('config')")}
-  {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin',ol.length,ol.map(x=>x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; el supervisor pone la hora real (no se cierra solo)','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
+  {const sv=todosTramos().filter(x=>x.t.afuera&&!x.t.fin&&!x.t.debeVolver&&!pasoHecho(x.o,x.t.centro));
+   add('afueraSinVuelta','Órdenes afuera (maquila) sin fecha de vuelta',sv.length,sv.slice(0,6).map(x=>x.o.op+' en '+nRec(x.t.rec)+' desde '+fmtDia(diaLocalDe(x.t.ini))+(x.t.sinVuelta?' ('+x.t.sinVuelta+')':'')).join(' · ')+(sv.length?' · el programa no les dio fecha de vuelta: no se inventa, falta el dato':''),'Confección',"irCentro('modulos')")}
+  {const ol=tramosOlvidados();add('tramoSinFin','Inicios de trabajo sin fin (o afuera que ya debían volver)',ol.length,ol.map(x=>x.afuera?x.o.op+' en '+nRec(x.t.rec)+' desde '+fmtDia(diaLocalDe(x.t.ini))+' · debía volver el '+fmtDia(x.debeVolver):x.o.op+' en '+nCen(x.t.centro)+' desde '+new Date(x.t.ini).toLocaleString('es-EC')).slice(0,6).join(' · ')+' · en planta: pasaron del tope de '+num(prm('topeHorasTramo',10))+' horas; afuera: pasó la fecha en que el programa decía que volvía. Nada se cierra solo','Mi centro',"TAB={centro:(tramosOlvidados()[0]||{t:{}}).t.centro||null,rec:(tramosOlvidados()[0]||{t:{}}).t.rec||null,q:''};ir('tablet')")}
   {const fr=centrosSinDatosReserva();add('reservaSinDatos','Lavado y plancha sin minutos ni % para la reserva',fr.length,fr.map(c=>nCen(c)).join(' y ')+': la reserva de Carga general sale en cero hasta cargar el SAM (minutos por prenda) y el % estimado en Configuración → Centros','Configuración → Centros y recursos',"CONF.tab='recursos';ir('config')")}
   {const sc=ordenesSinCurva();add('sinCurvaTallas','Órdenes sin curva de tallas',sc.length,'no tienen el pedido por talla ni registro de corte: el piso solo puede registrar el total · cárgalas en Configuración → Órdenes y materiales → 16 · Tallas',"Configuración → Órdenes y materiales","CONF.tab='ordenes2';ir('config')")}
   {const cf=cierresSinFase();add('cierreSinFase','Órdenes terminadas en un centro con fase sin actualizar',cf.length,cf.map(x=>x.o.op+' en '+nCen(x.c)).slice(0,8).join(', ')+' · el piso cerró el paso; la fase la mueves tú','Control de piso → Cambio de fases',"CTL.area='fases';ir('control')")}
@@ -2030,7 +2032,7 @@ function guardarFasePiso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)retu
   if(o.fase===f&&obs){const ult=(o.fases||[]).slice(-1)[0];if(ult)ult.obs=obs;bitacora('Observación de piso en '+nCen(c)+' · '+o.op+' ('+antes+' → '+f+'): '+obs+' ('+quienFirma()+')');save()}}
 /* --- buscador de Mi centro: el resultado se ve SIEMPRE como tarjeta, esté o no en la cola --- */
 function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
-  const ab=tramoAbiertoDe(c,rec||null);
+  const abEsta=tramoAbiertoOrden(o.id,c,rec||null);const abOtras=tramosAbiertosDe(c,rec||null).filter(x=>x.o.id!==o.id);const lleno=!esRecAfuera(rec)&&abOtras.length>=maxTramosAbiertos();
   const porConfirmar=(TRAMO.paso==='tallas'&&TRAMO.oid)?S.ordenes.find(x=>x.id===TRAMO.oid):null;
   const pedida=pedidosReprog().some(p=>p.oid===o.id&&p.centro===c&&!p.atendida);
   const hechas=fila?fila.hechas:((((S.avance[o.id]||{}).centros)||{})[c]||0);
@@ -2044,10 +2046,10 @@ function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
   else if(porConfirmar&&porConfirmar.id!==o.id){borde='var(--aviso)';
     nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">falta confirmar lo que salió de ${esc(porConfirmar.op)}: termínala primero</div>`;
     accion=irA(porConfirmar.op)}
-  else if(ab&&ab.o.id!==o.id){borde='var(--aviso)';
-    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">tienes abierta la ${esc(ab.o.op)}: termínala primero</div>`;
-    accion=irA(ab.o.op)}
-  else if(ab&&ab.o.id===o.id){nota='<div class="tag t-ok" style="font-size:15px;margin-top:6px">la tienes abierta ahora</div>';accion=irA(o.op)}
+  else if(abEsta){nota='<div class="tag t-ok" style="font-size:15px;margin-top:6px">la tienes abierta ahora</div>';accion=irA(o.op)}
+  else if(lleno){borde='var(--aviso)';
+    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">este puesto ya tiene ${abOtras.length} órdenes corriendo a la vez (el máximo): termina una primero</div>`;
+    accion=irA(abOtras[0].o.op)}
   else accion=`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="TAB.q='';iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">INICIO</button>`;
   return `<div class="panel" style="border:2px solid ${borde}"><div class="body" style="font-size:17px">
    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
@@ -2320,7 +2322,7 @@ function fijadaPara(o,c,rec){const pc=((o||{}).progCentro||{})[c];
   if(!pc||!pc.rec||!pc.desde)return false;
   if(rec&&pc.rec!==rec)return false;
   return pc.desde<=finVentanaTablet()}
-function visibleOperario(o,c,rec,P){return programadoPara(o,c,rec,P)||fijadaPara(o,c,rec)}
+function visibleOperario(o,c,rec,P){return programadoPara(o,c,rec,P)||fijadaPara(o,c,rec)||(esRecAfuera(rec)&&recFijadoDe(o,c)===rec&&!pasoHecho(o,c)&&(!!afueraDeOrden(o)||!!listaParaEmpezar(o,c)||!!tramoAbiertoOrden(o.id,c,rec)))}   /* afuera (maquila): lo que está allá, lo que ya puede salir o lo que tiene abierto */
 /* un paso de la ruta que el motor no programa por falta de minutos (ver revisión 3 del motor) */
 function pasoSinTiempo(o,c){const p=(o.ruta||[]).find(x=>x.centro===c);if(!p)return false;
   const t=(c==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
@@ -2357,6 +2359,12 @@ function hechasDelDia(centro,rec,dia){const d=dia||hoy();let tot=0;const detalle
 function tramosDe(oid){const a=S.avance[oid]=S.avance[oid]||{};if(!Array.isArray(a.tramos))a.tramos=[];return a.tramos}
 function todosTramos(){const out=[];S.ordenes.forEach(o=>{((S.avance[o.id]||{}).tramos||[]).forEach(t=>out.push({o,t}))});return out}
 /* todos los tramos abiertos de un puesto (23-sep: el módulo corre varias referencias a la vez) */
+/* un recurso «afuera» es el que la tabla de Tramos paralelos pone para un grupo de fases (hoy, Maquila): sale de la configuración */
+function diaLocalDe(ts){const d=new Date(ts);if(isNaN(d))return String(ts||'').slice(0,10);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+/* cuándo salió a maquila: la última vez que la orden entró a una fase del grupo de afuera que no es la cola de salida (5Maquila Conf) */
+function salidaAfueraDe(o,c){const h=(o&&o.fases)||[];for(let i=h.length-1;i>=0;i--){const x=h[i];const gt=grupoTramoDeFase(x.f,c);if(!gt)continue;const fila=filaFaseDe(x.f)||{};if(fila.esCola)continue;
+    const ex=String(fila.excluye||'').split(',').map(y=>y.trim()).filter(Boolean);if(ex.length&&!ex.includes(c))continue;return x.ts||null}return null}
+function esRecAfuera(rec){return !!rec&&tramosParalelos().some(t=>(t.grupos||[]).some(x=>x&&x.rec===rec))}
 function tramosAbiertosDe(c,rec){return todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
 function maxTramosAbiertos(){return Math.max(1,+prm('maxTramosAbiertos',4)||4)}
 /* cuántos tramos del mismo puesto solapan con este en el tiempo (para repartir las personas con honestidad) */
@@ -2403,6 +2411,9 @@ function horariosPanelHTML(){const cens=S.centros.filter(c=>c.area==='pro');
    </tbody></table></div></div></div>`}
 /* fórmula única del tiempo real de un tramo */
 function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new Date(t.fin):null;
+  if(t.afuera){const bruto=(ini&&fin)?Math.max(0,(fin-ini)/6e4):0;const paros=minParos(t,t.fin||undefined);const u=sumaCurva(t.tallas||{});const seg=sumaCurva(t.segundas||{});
+    return {brutoMin:bruto,paros,descansos:0,descansosFalta:false,almuerzoMarcado:false,avisoAlmuerzo:false,trabajado:Math.max(0,bruto-paros),pers:null,persFalta:false,persFuente:'afuera',
+      persTxt:'afuera: no se cuentan minutos-persona',minPersona:0,u,seg,uTot:u+seg,minPrendaReal:null,minPrendaTot:null,estandar:0,sem:'',tol:+prm('tolMinPrenda',15)||0,afuera:true,dias:bruto/1440}}
   const brutoMin=(ini&&fin)?Math.max(0,(fin-ini)/6e4):0;
   const paros=minParos(t,t.fin||undefined);
   const vent=minutosVentana(t.ini,t.fin,t.centro);
@@ -2492,18 +2503,24 @@ function setPersonasTramo(tid,oid,v){const t=(tramosDe(oid)||[]).find(x=>x.id===
   save();render()}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
+  if(!rec){const rf=recFijadoDe(o,c);if(rf&&esRecAfuera(rf))rec=rf}   /* una orden que va afuera se registra en ese recurso aunque se mire «todo el centro» */
   const abiertos=tramosAbiertosDe(c,rec||null);
   if(abiertos.some(x=>x.o.id===oid)){alert('Esta orden ya está empezada.');return}
-  if(abiertos.length>=maxTramosAbiertos()){
+  const afuera=esRecAfuera(rec);
+  if(!afuera&&abiertos.length>=maxTramosAbiertos()){   /* afuera (maquila) no tiene tope: se lleva muchas órdenes a la vez */
     alert('Este puesto ya tiene '+abiertos.length+' órdenes corriendo a la vez ('+abiertos.map(x=>x.o.op).join(', ')+'), que es el máximo.\nTermina una antes de empezar otra, o sube el máximo en Configuración → Calendario y parámetros.');return}
   const t={id:uid(),centro:c,rec:rec||null,ini:new Date().toISOString(),u:quienFirma(),paros:[],tallas:{}};
+  if(afuera){let P=null;try{P=PLAN||programar()}catch(e){}const pp=((((P||{}).ordenes||{})[oid]||{}).pasos||[]).find(x=>x.centro===c);t.afuera=true;
+    t.debeVolver=(pp&&pp.fin&&!pp.sinTiempo)?pp.fin:null;   /* control: cuándo decía el programa que volvía; un paso sin tiempo no tiene fecha real de vuelta */
+    if(!t.debeVolver)t.sinVuelta=!P?'el programa no se pudo calcular':!pp?'el programa no la tiene (sin liberar, sin fecha o bloqueada)':pp.sinTiempo?'falta el tiempo de maquila (SAM)':'sin fecha en el programa';
+    const sal=salidaAfueraDe(o,c);if(sal&&sal<t.ini){t.ini=sal;t.iniFuente='fase'}else t.iniFuente='inicio'}   /* si Odoo ya la tenía en maquila, salió ese día */
   tramosDe(oid).push(t);
   bitacora('Inicio de trabajo · '+o.op+' en '+nCen(c)+(rec?' ('+nRec(rec)+')':'')+' por '+quienFirma());
   save();render()}
 function terminarTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);if(!t||t.fin)return;
   t.fin=new Date().toISOString();t.uFin=quienFirma();
   const o=S.ordenes.find(x=>x.id===oid)||{};
-  bitacora('Fin de trabajo · '+(o.op||'')+' en '+nCen(t.centro)+' · '+fmtMinSeg(calcTramo(t,o).trabajado)+' ('+quienFirma()+')');
+  bitacora(t.afuera?'Volvió de '+nRec(t.rec)+' · '+(o.op||'')+' · '+num(calcTramo(t,o).dias,1)+' días afuera ('+quienFirma()+')':'Fin de trabajo · '+(o.op||'')+' en '+nCen(t.centro)+' · '+fmtMinSeg(calcTramo(t,o).trabajado)+' ('+quienFirma()+')');
   TRAMO={paso:'tallas',id:tid,oid};save();render()}
 function cerrarTramoUI(){const {id,oid}=TRAMO;if(id&&oid)terminarTramo(id,oid)}
 function setTallaTramo(tid,oid,talla,delta){const t=tramosDe(oid).find(x=>x.id===tid);if(!t)return;
@@ -2519,17 +2536,19 @@ function guardarTramo(tid,oid){const o=S.ordenes.find(x=>x.id===oid);const t=tra
   const c=calcTramo(t,o);t.min=+c.trabajado.toFixed(2);t.minPersona=+c.minPersona.toFixed(2);t.pers=c.pers;t.persFuente=c.persFuente;t.minPrenda=c.minPrendaReal!=null?+c.minPrendaReal.toFixed(3):null;t.minPrendaTot=c.minPrendaTot!=null?+c.minPrendaTot.toFixed(3):null;t.pz=u;t.seg=c.seg;t.excede=excede.length>0; // las unidades van en t.pz: t.u es QUIÉN empezó el tramo
   if(c.seg>0){const av=S.avance[oid];av.seg=av.seg||{};av.seg[t.centro]=Math.max(0,(+av.seg[t.centro]||0)+c.seg)} // el mismo dato que ve Control de piso
   a.tallasLog=a.tallasLog||[];const ts=new Date().toISOString();
-  Object.entries(t.tallas).forEach(([k,q])=>{prev[k]=(prev[k]||0)+q;a.tallasLog.push({ts,u:quienFirma(),centro:t.centro,rec:t.rec||null,talla:k,pz:q,base:b.base||'sin base',tramo:t.id,min:t.min,minPersona:t.minPersona,excede:excede.some(x=>x.startsWith(k+':'))})});
+  Object.entries(t.tallas).forEach(([k,q])=>{prev[k]=(prev[k]||0)+q;a.tallasLog.push({ts,u:quienFirma(),centro:t.centro,rec:t.rec||null,talla:k,pz:q,base:b.base||'sin base',tramo:t.id,afuera:t.afuera||undefined,min:t.min,minPersona:t.minPersona,excede:excede.some(x=>x.startsWith(k+':'))})});
   a.tallas[t.centro]=prev;a.centros=a.centros||{};a.centros[t.centro]=Math.min(o.cant,sumaCurva(prev));
   if(pasoReabierto(o,t.centro)&&a.centros[t.centro]>=cantCentro(o,t.centro)){try{cerrarCentro(o.id,t.centro,'')}catch(e){}}   /* reabierto: completo otra vez → se cierra (limpia la reapertura) */
   if(t.rec&&u>0){S.turnos=S.turnos||[];const tid=t.rec+'|'+hoy();let tu=S.turnos.find(x=>x.id===tid);if(!tu){tu={id:tid,rec:t.rec,d:hoy()};S.turnos.push(tu)}
     const paso=(o.ruta||[]).find(p=>p.centro===t.centro)||{};tu.pz=(tu.pz||0)+u;tu.std=(tu.std||0)+u*minPrenda(t.centro,paso.t||0);tu.ops=[...new Set([...(tu.ops||[]),o.op])]} // Reportería y Ejecución leen los turnos
-  bitacora('Tramo guardado · '+o.op+' en '+nCen(t.centro)+(t.rec?' ('+nRec(t.rec)+')':'')+': '+num(u)+' prendas en '+fmtMinSeg(t.min)+' · '+num(t.minPersona)+' min-persona'+(t.minPrenda!=null?' · SAM '+num(t.minPrenda,3):'')+((t.paros||[]).length?' · '+(t.paros||[]).length+' paros':'')+(excede.length?' · PASA DE LO '+(b.base==='corte'?'CORTADO':'PEDIDO'):'')+' ('+quienFirma()+')');
+  if(t.afuera)bitacora('Volvió de '+nRec(t.rec)+' · '+o.op+': '+num(u)+' prendas · '+num(calcTramo(t,o).dias,1)+' días afuera ('+quienFirma()+')');
+  else bitacora('Tramo guardado · '+o.op+' en '+nCen(t.centro)+(t.rec?' ('+nRec(t.rec)+')':'')+': '+num(u)+' prendas en '+fmtMinSeg(t.min)+' · '+num(t.minPersona)+' min-persona'+(t.minPrenda!=null?' · SAM '+num(t.minPrenda,3):'')+((t.paros||[]).length?' · '+(t.paros||[]).length+' paros':'')+(excede.length?' · PASA DE LO '+(b.base==='corte'?'CORTADO':'PEDIDO'):'')+' ('+quienFirma()+')');
   TRAMO={paso:null,id:null,oid:null};save();render();return true}
 /* --- olvidos: inicios que pasan del tope de horas sin fin --- */
 function tramosOlvidados(){const tope=+prm('topeHorasTramo',10)||10;const ahora=Date.now();
   // se mide el tiempo EFECTIVO: lo que está en paro (almuerzo, cierre del día) no cuenta como trabajo
   return todosTramos().filter(x=>{const t=x.t;if(t.fin||!t.ini)return false;
+    if(t.afuera){x.afuera=true;x.debeVolver=t.debeVolver||null;if(pasoHecho(x.o,t.centro))return false;return !!(t.debeVolver&&hoy()>t.debeVolver)}   /* afuera: ya debía volver (si Odoo ya dice que volvió, no); sin fecha de vuelta va a su propia bandeja */
     const efectivo=((ahora-new Date(t.ini))/6e4-minParos(t,ahora))/60;return efectivo>tope})}
 function mCorregirTramo(tid,oid){const t=tramosDe(oid).find(x=>x.id===tid);const o=S.ordenes.find(x=>x.id===oid);if(!t||!o)return;
   if(!(puede('programa')||puede('reprogramar')||puedeCentro(t.centro))){alert('Solo el supervisor corrige un tramo olvidado.');return}
@@ -2750,14 +2769,14 @@ function seccionColaTabletHTML(titulo,nota,filas,c,rec,modo,borde){if(!filas.len
 function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
   const olv=tramosOlvidados().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null));
   const avisoOlv=olv.length?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px">
-    <b>${olv.length} ${olv.length===1?'inicio':'inicios'} sin fin</b> de hace más de ${num(prm('topeHorasTramo',10))} horas de trabajo. El sistema no los cierra solo.
-    ${olv.map(x=>`<div style="margin-top:8px">${esc(x.o.op)} · empezó ${new Date(x.t.ini).toLocaleString('es-EC')} <button class="btn ghost" onclick="mCorregirTramo('${x.t.id}','${x.o.id}')">corregir</button></div>`).join('')}
+    ${olv.every(x=>x.afuera)?`<b>${olv.length} ${olv.length===1?'orden':'órdenes'} afuera que ya debían volver</b> (según el programa cuando salieron). El sistema no las cierra solo: toca FIN cuando vuelvan.`:`<b>${olv.length} ${olv.length===1?'inicio':'inicios'} sin fin</b> de hace más de ${num(prm('topeHorasTramo',10))} horas de trabajo. El sistema no los cierra solo.`}
+    ${olv.map(x=>`<div style="margin-top:8px">${esc(x.o.op)} · ${x.afuera?'salió el '+fmtDia(diaLocalDe(x.t.ini))+' · debía volver el '+fmtDia(x.debeVolver):'empezó '+new Date(x.t.ini).toLocaleString('es-EC')} <button class="btn ghost" onclick="mCorregirTramo('${x.t.id}','${x.o.id}')">corregir</button></div>`).join('')}
    </div></div>`:'';
   if(TRAMO.paso==='tallas'&&TRAMO.oid){const o=S.ordenes.find(x=>x.id===TRAMO.oid);const t=o?tramosDe(o.id).find(x=>x.id===TRAMO.id):null;
     if(o&&t){const cal=calcTramo(t,o);const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
       return avisoOlv+`<div class="panel"><div class="body" style="font-size:18px">
        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
-       <div class="mut" style="margin:8px 0">Trabajado ${fmtHMS(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
+       <div class="mut" style="margin:8px 0">${cal.afuera?'Afuera '+num(cal.dias,1)+' días (salió el '+fmtDia(diaLocalDe(t.ini))+(t.debeVolver?' · el programa decía que volvía el '+fmtDia(t.debeVolver):'')+') · no se cuentan minutos-persona ni SAM real</div><div style="display:none">':''}Trabajado ${fmtHMS(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
        ${cal.avisoAlmuerzo?'<div class="warn" style="font-size:16px">El horario tiene un descanso dentro de este tramo y no marcaste el paro de almuerzo. ¿Olvidaste marcarlo? Se descontó del horario.</div>':''}
        <h3 style="margin:10px 0">Confirma lo que salió</h3>
        ${tallasSegHTML(o,t,c,tallas)}
@@ -2767,7 +2786,12 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
         <button class="btn ghost" style="font-size:18px;padding:14px 20px" onclick="TRAMO={paso:null,id:null,oid:null};render()">Ahora no</button></div>
       </div></div>`}}
   const abiertos=tramosAbiertosDe(c,rec||null);
-  const tarjetaAbierta=(ab)=>{const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
+  const lineaAfuera=(ab)=>{const o=ab.o;const t=ab.t;const dias=Math.max(0,(Date.now()-new Date(t.ini))/864e5);const tarde=t.debeVolver&&hoy()>t.debeVolver;
+    return `<div class="panel" style="border:2px solid ${tarde?'var(--alerta)':'var(--t-accent)'}"><div class="body" style="font-size:17px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+     ${fotoMini(o,50)}<b style="font-size:20px">${esc(o.op)}</b>${faseTag(o)}
+     <span>salió el <b>${fmtDia(diaLocalDe(t.ini))}</b>${t.iniFuente==='fase'?' <span class="mut" style="font-size:14px">(según la fase de Odoo)</span>':''} · ${t.debeVolver?(tarde?'<b style="color:var(--alerta)">debía volver el '+fmtDia(t.debeVolver)+'</b>':'debe volver el <b>'+fmtDia(t.debeVolver)+'</b>'):'<span class="tag t-aviso" title="'+esc(t.sinVuelta||'')+'">sin fecha de vuelta</span>'} · ${num(dias,1)} días afuera</span>
+     <span class="spacer"></span><button class="btn" style="font-size:20px;padding:12px 22px" onclick="terminarTramo('${t.id}','${o.id}')">FIN · volvió</button></div></div>`};
+  const tarjetaAbierta=(ab)=>{if(ab.t.afuera)return lineaAfuera(ab);const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
     const parosCerrados=(t.paros||[]).filter(p=>p.fin).reduce((a,p)=>a+(+p.min||0),0);
     return `<div class="panel" style="border:2px solid var(--t-accent)"><div class="body" style="font-size:18px">
      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<div><b style="font-size:22px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div></div></div>
@@ -2784,7 +2808,7 @@ function flujoTramoHTML(c,rec,cola){const ab=tramoAbiertoDe(c,rec||null);
     </div></div>`};
   const topeAb=maxTramosAbiertos();
   const tarjetas=abiertos.map(tarjetaAbierta).join('');
-  const avisoTope=abiertos.length>=topeAb?`<div class="warn" style="font-size:16px">Este puesto ya tiene <b>${abiertos.length}</b> ${abiertos.length===1?'orden corriendo':'órdenes corriendo a la vez'} (el máximo). Termina una para empezar otra; el máximo se cambia en Configuración → Calendario y parámetros.</div>`:'';
+  const avisoTope=(!esRecAfuera(rec)&&abiertos.length>=topeAb)?`<div class="warn" style="font-size:16px">Este puesto ya tiene <b>${abiertos.length}</b> ${abiertos.length===1?'orden corriendo':'órdenes corriendo a la vez'} (el máximo). Termina una para empezar otra; el máximo se cambia en Configuración → Calendario y parámetros.</div>`:'';
   const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
   const vacio=!est.proceso.length&&!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length;
@@ -2815,8 +2839,8 @@ function tallasSegHTML(o,t,c,tallas){const b=baseTallas(o,c);const ya=((S.avance
 function tramosDelDiaHTML(c,rec){const h=hoy();const l=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===h);
   if(!l.length)return '';
   return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Segundas</th><th class="num">SAM real</th><th class="num">Personas</th><th>Quién</th></tr></thead><tbody>
-   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="SAM estándar ${num(cal.estandar,3)} · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.pers}</td><td class="mut">${esc(typeof t.u==='string'?t.u:(t.uFin||''))}</td></tr>`}).join('')}
-   </tbody></table></div>${descansosCentro(c).falta?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración → Centros cuando los definas.</p>`:''}${personasRec(rec,c).falta?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
+   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${t.afuera?new Date(t.ini).toLocaleString('es-EC'):new Date(t.ini).toLocaleTimeString('es-EC')}</td><td>${t.afuera?new Date(t.fin).toLocaleString('es-EC'):new Date(t.fin).toLocaleTimeString('es-EC')}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${cal.afuera?num(cal.dias,1)+' días afuera':fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="SAM estándar ${num(cal.estandar,3)} · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.afuera?'afuera':cal.pers}</td><td class="mut">${esc(typeof t.u==='string'?t.u:(t.uFin||''))}</td></tr>`}).join('')}
+   </tbody></table></div>${(!esRecAfuera(rec)&&descansosCentro(c).falta)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración → Centros cuando los definas.</p>`:''}${(!esRecAfuera(rec)&&personasRec(rec,c).falta)?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
 function vTablet(el){
   const asg=tabletDe();const admin=(puede('usuarios')||puede('programa'))&&!esOperario();
   const c=admin?(TAB.centro||asg.centro||null):(asg.centro||null);const rec=admin?(TAB.rec||asg.rec||null):(asg.rec||null);
@@ -7861,8 +7885,11 @@ function tiempoEfectivoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid)||{};
 /* ¿se puede cerrar? Una sola respuesta para todas las puertas. */
 function puedeCerrarPaso(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return{ok:false,motivo:'la orden no existe'};
   const e=tiempoEfectivoCentro(oid,c);const min=minMinutosCierre(c);const fuente=fuenteMinCierre(c);
+  {const re=((((S.avance[oid]||{}).cierres)||{})[c]||{}).reabierto;const desde=re&&re.ts;
+   if((tramosDe(oid)||[]).some(t=>t.centro===c&&t.afuera&&t.fin&&(!desde||t.fin>=desde)))return{ok:true,minutos:e.min,minimo:min,afuera:true}}   /* afuera: INICIO y FIN son de control; no se compara con el SAM */
   if(!e.tramos)return{ok:false,sinTramo:true,minutos:0,motivo:'Debe iniciar y registrar tiempo antes de cerrar'};
   if(e.min<min)return{ok:false,minutos:e.min,minimo:min,fuente,motivo:'Debe iniciar y registrar tiempo antes de cerrar'};
+
   /* pasa, pero ¿el tiempo es creíble contra el estándar? Sin SAM no se marca nada: es dato faltante. */
   const paso=(o.ruta||[]).find(p=>p.centro===c)||{};
   const est=minPrenda(c,(c==='estampado'&&o.tecnica)?(tecnicaT(o)||paso.t):paso.t);

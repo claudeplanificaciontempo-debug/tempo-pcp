@@ -3231,7 +3231,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // con un tramo abierto de otra orden
    iniciarTramo(oS.id,'modulos',rec);const tr3=tramosDe(oS.id).find(x=>!x.fin);TAB.q='28513';
    {const h=tabletBuscadorHTML('modulos',cola,rec);
-    __check("MB3: con un tramo abierto de otra orden, la tarjeta lo dice y ofrece ir a ella",h.includes(esc(oC.op))&&/tienes abierta la /.test(h)&&h.includes(esc(oS.op))&&!h.includes('>INICIO<'));}
+    /* desde el 23-sep un puesto corre varias órdenes a la vez: con otra abierta el buscador sigue ofreciendo INICIO; solo el máximo lo frena */
+    __check("MB3: con un tramo abierto de otra orden, la tarjeta sigue ofreciendo INICIO (varias a la vez); no dice «termínala primero»",h.includes(esc(oC.op))&&h.includes('>INICIO<')&&!/tienes abierta la /.test(h));}
    // con un tramo terminado y pendiente de confirmar
    terminarTramo(tr3.id,oS.id);
    {const h=tabletBuscadorHTML('modulos',cola,rec);
@@ -7327,6 +7328,46 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* la siembra es de UNA vez: si la usuaria vuelve a poner «excluye modulos», no se lo quita */
     if(filaConf){const antes=filaConf.excluye;filaConf.excluye='modulos';FASE_CACHE.ver++;sembrarMaquilaEsConfeccion();
       __check('MQ9: la siembra no vuelve a quitar lo que la usuaria ponga en la tabla 1',filaConf.excluye==='modulos');filaConf.excluye=antes;FASE_CACHE.ver++}}
+   /* MT · maquila: INICIO y FIN de control, como un centro más pero afuera (usuaria, 23-sep: «es un centro solo que afuera») */
+   {if(R('maquila')&&esRecAfuera('maquila')){const adminP=PERFIL;PERFIL=adminP0();const cf=window.confirm;window.confirm=()=>true;const al=window.alert;const als=[];window.alert=m=>als.push(String(m));
+     const base=S.ordenes.find(x=>abierta(x)&&liberada(x,'tela'))||S.ordenes[0];const mods=S.recursos.find(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
+     __check('MT1: Maquila es un recurso «afuera» (sale de la tabla de Tramos paralelos); un módulo de planta no',esRecAfuera('maquila')&&!(mods&&esRecAfuera(mods.id)));
+     const ords=[];for(let k=0;k<6;k++){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MT-'+k;o.estado='plan';o.cant=50;o.fase=fasesDisponibles().find(f=>/planificaci/i.test(f))||o.fase;delete o.tallasPedido;delete o.programa;delete o.progCentro;delete o.ot;o.recursoFijo={modulos:'maquila'};o.ruta=[{centro:'modulos',t:5},{centro:'empaque',t:1}];o.rutaCompleta=o.ruta.map(x=>Object.assign({},x));S.ordenes.push(o);S.avance[o.id]={lista:true};ords.push(o)}
+     PLAN=null;PLAN_ALL=null;programar();
+     ords.forEach(o=>iniciarTramo(o.id,'modulos','maquila'));
+     __check('MT2: maquila se lleva muchas órdenes a la vez: 6 INICIO seguidos, sin tope ni aviso',ords.every(o=>tramosDe(o.id).some(x=>!x.fin&&x.rec==='maquila'&&x.afuera))&&!als.length,JSON.stringify(als));
+     const o0=ords[0];const t0=tramosDe(o0.id).find(x=>x.rec==='maquila');
+     __check('MT3: al salir guarda cuándo decía el programa que volvía (control)','debeVolver' in t0,JSON.stringify(t0));
+     t0.ini=new Date(Date.now()-3*864e5).toISOString();t0.debeVolver=dsum(hoy(),5);   /* salió hace 3 días y vuelve en 5 */
+     __check('MT4: tres días afuera NO es un «inicio sin fin» (el tope de 10 horas es de planta)',!tramosOlvidados().some(x=>x.t===t0));
+     t0.debeVolver=dsum(hoy(),-1);
+     __check('MT5: si pasó la fecha en que debía volver, sale en Hoy como «ya debía volver»',tramosOlvidados().some(x=>x.t===t0&&x.afuera)&&/debía volver/.test((pendientesHoy().find(i=>i.k==='tramoSinFin')||{}).detalle||''),JSON.stringify((pendientesHoy().find(i=>i.k==='tramoSinFin')||{}).detalle||''));
+     terminarTramo(t0.id,o0.id);const cal=calcTramo(t0,o0);
+     __check('MT6: el FIN se lee en días afuera, sin minutos-persona ni SAM real',cal.afuera&&cal.dias>2.9&&cal.minPersona===0&&cal.minPrendaReal==null,JSON.stringify({d:cal.dias,mp:cal.minPersona}));
+     t0.tallas={};t0.tallas[TALLA_TOTAL]=50;const pzT=()=>(S.turnos||[]).filter(x=>x.rec==='maquila').reduce((a,x)=>a+(+x.pz||0),0);const nT=pzT();guardarTramo(t0.id,o0.id);
+     __check('MT7: al volver, las prendas cuentan para la orden y como real de Maquila, igual que por «Hecho» o Control de piso (una sola regla)',((((S.avance[o0.id]||{}).centros)||{}).modulos===50)&&pzT()===nT+50,JSON.stringify({c:(S.avance[o0.id]||{}).centros,antes:nT,despues:pzT()}));
+     const pc=puedeCerrarPaso(o0.id,'modulos');
+     __check('MT8: el cierre pasa con el INICIO y el FIN (control), sin compararlo contra el SAM',pc.ok&&pc.afuera&&!pc.tiempoBajo,JSON.stringify(pc));
+     PLAN=null;PLAN_ALL=null;const P=programar();
+     __check('MT9: la tablet de Maquila ve lo que va o está en maquila aunque no esté en el programa de los próximos días',ords.slice(1).every(o=>visibleOperario(o,'modulos','maquila',P)),JSON.stringify(ords.slice(1).map(o=>({f:o.fase,h:pasoHecho(o,'modulos'),r:recFijadoDe(o,'modulos')}))));
+     /* MT10: el buscador de la tablet deja iniciar otra orden aunque haya varias afuera */
+     {const o7=JSON.parse(JSON.stringify(ords[1]));o7.id=uid();o7.op='WH/MT-7';S.ordenes.push(o7);S.avance[o7.id]={lista:true};const h=tarjetaWHTabletHTML(o7,'modulos','maquila',{o:o7,hechas:0});
+      __check('MT10: con otras órdenes afuera, el buscador ofrece INICIO (no «termínala primero»)',/iniciarTramo\(/.test(h)&&!/termínala primero/.test(h),h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,200));ords.push(o7)}
+     /* MT11: si Odoo o el piso ya dicen que volvió, no es «ya debía volver» */
+     {const o1=ords[1];const t1=tramosDe(o1.id).find(x=>x.rec==='maquila'&&!x.fin);t1.debeVolver=dsum(hoy(),-2);const antes=tramosOlvidados().some(x=>x.t===t1);S.avance[o1.id].centros={modulos:o1.cant};
+      __check('MT11: «ya debía volver» se apaga cuando la orden ya consta como vuelta (aunque falte el FIN)',antes&&!tramosOlvidados().some(x=>x.t===t1))}
+     /* MT12: sin fecha de vuelta no se inventa: bandeja propia de dato faltante */
+     {const o2=ords[2];const t2=tramosDe(o2.id).find(x=>x.rec==='maquila'&&!x.fin);t2.debeVolver=null;t2.sinVuelta='prueba';const it=pendientesHoy().find(i=>i.k==='afueraSinVuelta');
+      __check('MT12: una orden afuera sin fecha de vuelta sale en Hoy como dato que falta, y no como «ya debía volver»',!!it&&it.n>=1&&it.detalle.includes(o2.op)&&!tramosOlvidados().some(x=>x.t===t2),JSON.stringify(it))}
+     /* MT13: si Odoo ya la tenía en 5Maquila Conf, la salida es ese día, y sin elegir recurso va a Maquila */
+     {const fC=fasesDisponibles().find(f=>normFase(f)===normFase('5Maquila Conf'));if(fC){const o9=JSON.parse(JSON.stringify(ords[3]));o9.id=uid();o9.op='WH/MT-9';o9.fase=fC;delete o9.recursoFijo;const sal=new Date(Date.now()-4*864e5).toISOString();o9.fases=[{f:fC,ts:sal,antes:'4CD Ensamble',origen:'odoo'}];
+        S.ordenes.push(o9);S.avance[o9.id]={lista:true};ords.push(o9);iniciarTramo(o9.id,'modulos',null);const t9=tramosDe(o9.id).find(x=>!x.fin)||{};
+        __check('MT13: INICIO de una orden que ya estaba en maquila: va a Maquila y la salida es el día en que entró a la fase',t9.rec==='maquila'&&t9.afuera&&t9.iniFuente==='fase'&&t9.ini===sal,JSON.stringify(t9))}}
+     /* MT14: en la tablet, la orden afuera es una línea con salió / debe volver / días y FIN; sin personas ni aviso de tope */
+     {TRAMO={paso:null,id:null,oid:null};const h=flujoTramoHTML('modulos','maquila',[]);
+      __check('MT14: la tablet de Maquila muestra cada orden afuera en una línea (salió, debe volver, días, FIN) sin «null personas» ni «el máximo»',/FIN · volvió/.test(h)&&/días afuera/.test(h)&&!/null personas/.test(h)&&!/\(el máximo\)/.test(h),h.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,300))}
+     ords.forEach(o=>{S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id]});window.confirm=cf;window.alert=al;PERFIL=adminP;PLAN=null;PLAN_ALL=null}
+    else __check('MT0: hay recurso Maquila marcado como afuera en la tabla de Tramos paralelos',false)}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);

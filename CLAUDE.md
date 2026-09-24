@@ -1372,6 +1372,23 @@ en vez de ofrecer «devolver a planta». **Congelado semanal**: un paso que la f
 (`porFase` en `avanceCongelado`; la maquila no registra en el piso). Hojas impresas: «sin tiempo estándar» en vez de 0,0. Planificación del centro
 lista el paso sin tiempo de la semana sin sumar prendas. Pruebas ST1–ST16, MQ1–MQ19 (y VN, aplicarOT, fases de maquila y MQ de descarte actualizadas).
 
+**Maquila: INICIO y FIN de control, como un centro más pero afuera (usuaria, 23-sep-2026 noche: «solo 5Maquila Conf es lo que está en
+maquila confeccionándose… mantenerle igual un inicio fin pero por control, porque es un centro solo que afuera, para no complicarnos»).**
+`esRecAfuera(rec)` = el recurso que la tabla de Tramos paralelos pone como «afuera» (hoy Maquila); se decide en INICIO y queda en el tramo
+(`t.afuera`): cambiar la configuración después no rehace el historial. Mi centro → Confección → Maquila usa el MISMO INICIO / FIN;
+INICIO sin tope de órdenes a la vez, con el recurso fijado aunque se mire «todo el centro», con la salida real tomada de la fase
+(`salidaAfueraDe`: el día en que entró a 5Maquila Conf, `t.iniFuente='fase'`) y con `t.debeVolver` = fin del programa al salir (un paso sin tiempo
+no tiene fecha real de vuelta: `t.sinVuelta` dice por qué y va a la bandeja `afueraSinVuelta` de Hoy, sin inventar fecha). `calcTramo` de un tramo
+afuera da días fuera, sin minutos-persona ni SAM real; `tramosOlvidados` lo marca solo si pasó `debeVolver` y la orden no consta como vuelta
+(`pasoHecho`); `puedeCerrarPaso` cierra con un tramo afuera ya cerrado (después de reabrir, si hubo), sin mínimo de minutos ni comparación
+con el SAM. Lo que vuelve **sí** suma a `S.turnos` como real de Maquila, igual que por «Hecho» o Control de piso (una sola regla). En la tablet
+cada orden afuera es una línea (salió el · debe volver el · días afuera · FIN · volvió) sin personas, Paro, reloj ni aviso de tope; el buscador de
+la tablet ya no dice «termínala primero» por otra orden abierta (desde el 23-sep un puesto corre varias a la vez; solo frena el máximo, y afuera
+no hay máximo). `visibleOperario` deja ver a la tablet de afuera lo que está allá, lo que ya puede salir o lo que tiene abierto (no todo lo marcado
+del mes). Bitácora «Volvió de Maquila · N días afuera»; `tallasLog` lleva `afuera`. Pendiente: devolución parcial (lo que sigue afuera tras un FIN
+con faltante queda sin control), ligado a D10. `FASE_DE_CADA_CENTRO.xlsx` ya lleva la fila de Maquila decidida (INICIO → 5Maquila Conf, FIN → 5Maquila
+Recepción; falta decir quién toca INICIO y FIN). Pruebas MT1–MT14 y MB3 actualizada.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
