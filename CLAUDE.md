@@ -1554,6 +1554,41 @@ lo usan el buscador de arriba y el del centro, que ahora dice «6 de M órdenes�
 de M» (`.busq-pie`); las filas de aviso llevan `.busq-nota` (sin manito); `porQueBusqG` dice en qué dato está lo buscado cuando no se ve en la
 fila. Pendiente aparte: el buscador de Entregas y de Costura no filtra su lista. Pruebas BG2–BG12.
 
+**Ruta en lote: revisar antes de pisar, y deshacer (25-sep-2026, usuaria: «al tener masivamente escogida la ruta, le marcaron y se hizo
+todo, se marcó por defecto; debería haber un mensaje de confirmación, porque puede ser que aplastéis»).** Causa: el paso 3 de «Definir ruta
+para las marcadas» venía PRE-MARCADO con la ruta más común (`rutaLoteBase`) y aplicar solo tenía un `confirm()` de una línea. Ahora el paso 3
+**arranca vacío** (la ruta más común se toma con «usar»), el botón dice «Revisar y aplicar» y `aplicarRutaLote(ok)` sin `ok` abre
+`revisionRutaLoteHTML` (`riesgoRutaLote`: pierden pasos, rutas confirmadas por persona que se pisan, ya liberadas que cambian, marcadas que no
+están en la lista visible `idsVisiblesRuta`); con cualquiera de esos hay que escribir **APLICAR** (`RLOTE.palabra`). «Confirmar como están»
+(`confirmarRutasSel(ok)` → `mConfirmarRutasSel`) igual: ruta por defecto o estimada sin revisar, sin pasos o fuera de la vista → **CONFIRMAR**
+(`RCONF`); dice cuántas marcadas se omiten. **No volver a pre-marcar la ruta del lote ni a aplicar con un confirm de una línea.** Cada orden
+guarda una **foto** antes de cada lote (`fotoAntesLote` → `o.rutaFotosLote[]`, se agregan, no se pisan; viajan en `aplicarTarea` con la ruta
+conservada). Panel **«Lotes de ruta aplicados»** (`lotesRutaHTML`, en Órdenes → Rutas y bajo la barra de Órdenes; `lotesRuta` agrupa por
+`rutaConf.ts` + nota; hora local con `fechaHoraLocal`) → `mDeshacerLoteRuta` (revisión: cuántas vuelven, cuáles NO y por qué) →
+`deshacerLoteRuta(k)` con la palabra **DESHACER** (`DLR`). Deshacer revierte **solo lo que hizo el lote** (`planDeshacerLote`: quita
+`e.mas`, devuelve `e.menos` con el paso de la foto y a la pendiente solo si estaba pendiente; la confirmación de antes; saca la entrada del
+lote de `rutaEditada`; de la completa solo sale lo que no estaba antes del lote; los pasos que vuelven toman el tiempo de hoy con
+`propagarTiempos` salvo el escrito a mano; marca atendidas las advertencias de fecha del lote y deja las nuevas con `avisosFechaLote`) y NO toca
+la parte textil ni lo posterior: salta (con el motivo) la orden editada después, con la ruta cambiada, con avance/inicio/cierre o el paso hecho
+en un paso que entró, con la fase de Odoo en ese centro (`enProcesoEnCentro`), con orden de trabajo de Odoo, tiempo a mano, puesto/recurso/
+«Arranca» fijados o tramos en ese centro, liberada (tela o corte) después del lote, o que toca centros que el perfil no edita. **Lotes de antes de hoy (sin foto)** se rehacen desde `rutaEditada` (etapa lote, mismo ts) y la confirmación
+anterior desde la auditoría DE ESE lote (`confAntesDeLote`: misma hora o después, mismo motivo, la más cercana; si era otro lote, se repone
+esa confirmación con la hora de ese lote y vuelve a quedar listado), marcada «aprox.»; sin foto la marca «revisar» no vuelve. La foto guarda
+además `mas`/`menos` por si la edición del lote no viaja en una recarga. Pruebas LR1–LR14 (y RLT).
+
+**Reportería → Órdenes de producción (consulta, 25-sep-2026, usuaria: «en Órdenes, una vez que se da la ruta, la orden desaparece (está bien
+para limpiar), pero las demás personas necesitan saber cómo están las órdenes de producción»).** Página `ordconsulta` (`vOrdConsulta`, estado
+`ORDC`, segunda entrada de `REPORTES`, `PAGINAS_DEF`, `ICO_NAV`, `estadosPantalla`; `migReporteria4` la da una vez a los perfiles con wip,
+avancearea u ordenes, nunca desde el piso). **Solo de lectura y SIN recorte por centro**: quien tiene la página ve todas las órdenes, con o sin
+ruta lista, con los datos de la lista de Órdenes (semáforo, fase, `rutaCeldaHTML` con lo hecho en gris, telas, entrega) y sin casillas ni
+botones. Estados por `estadoOrdC` (Abiertas = `abiertaDe`, la de Producto en proceso · Cerradas en Odoo/facturadas/stand by · No vinieron en el
+último archivo · Anuladas); chips de ruta (lista / por definir) y filtro de fases que cuentan con los demás filtros puestos; ordenada por
+fecha meta y WH (`COL_OP`); agrupada va entera (sin el tope de 600); con búsqueda los grupos se abren; los números de ruta y fases no dependen
+del buscador (mientras se escribe solo se repinta la lista). **La ficha** (`abrirFichaOrden`) ahora muestra la ruta COMPLETA con los pasos hechos
+(«hecho» = `pasoHecho`, con la marca «reabierto»), la barra de fases solo se toca con `puedeFases()` y si la orden es de las que el perfil
+trabaja (`ordenesQueVe`; si no, clase `solo-ver`, sin manito), e `irEstadoOrden` avisa si la orden ya no está abierta o si la pantalla destino
+no es del perfil, en vez de mandarlo a otra. Pruebas OC1–OC12 y REP (7 reportes).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
