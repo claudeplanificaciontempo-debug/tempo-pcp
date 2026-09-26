@@ -560,50 +560,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.verLista=true;render();const hl=document.getElementById('p-liberacion').innerHTML;const chT=chipsFaltaTela(oT);
      __check("liberación: casillas tintura / lavado de tela por tela",hl.includes('qué le falta')&&chT.includes('lavado de tela')&&chT.includes('setFaltaTela(')&&(!pendLiberacion('tela',null).length||hl.includes('setFaltaTela(')));LIB.verLista=false;}
      /* ===== 2a · FOTO del DOM de la lista del bloque 1 de Liberación, ANTES de extraerla ===== */
-     {page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.fases=null;LIB.verLista=true;LIB.sel=new Set();GRP={};render();
-      const host=document.getElementById('p-liberacion');const lista=document.getElementById('lib-lista');
-      const pendV=pendLiberacion('tela',null).filter(o=>okFiltrosB1(o));
-      __check("2a LIB DOM: existe #lib-lista cuando «Ver todas las pendientes» está abierto",!!lista===(pendV.length>0),pendV.length);
-      if(lista){const tabla=lista.querySelector('table');
-       const ths=[...tabla.querySelectorAll('thead th')].map(t=>t.textContent.trim().replace(/\s+/g,' '));
-       __check("2a LIB DOM: 8 columnas de tela, en este orden",ths.length===8&&ths[1]==='OP · fase'&&ths[2]==='Cliente'&&ths[3]==='Color'&&ths[4]==='Prendas'&&ths[5]==='Entrega'&&/^Tela · qué le falta/.test(ths[6])&&ths[7]==='Qué la frena',ths.join('|'));
-       const trs=[...tabla.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row'));
-       __check("2a LIB DOM: tantas filas como pendientes (tope 400)",trs.length===Math.min(400,pendV.length),trs.length+' vs '+pendV.length);
-       __check("2a LIB DOM: el encabezado de la lista dice cuántas órdenes",/Todas las pendientes · \d+ (orden|órdenes)/.test(lista.textContent));
-       if(trs.length){const tr=trs[0];const tds=[...tr.querySelectorAll('td')];
-        __check("2a LIB DOM: cada fila tiene 8 celdas",tds.length===8,tds.length);
-        __check("2a LIB DOM: celda 2 = foto/WH/fase (whCell)",!!tr.querySelector('td:nth-child(2) .fase-mini')||/WH\//.test(tds[1].textContent));
-        __check("2a LIB DOM: celda 7 = tela · qué le falta, con las casillas tintura/lavado por tela (setFaltaTela)",/setFaltaTela\(/.test(tds[6].innerHTML)||/sin tela/.test(tds[6].textContent));
-        __check("2a LIB DOM: celda 8 = qué la frena + control de ruta",/lista para liberar|falta|tag/.test(tds[7].innerHTML));
-        /* la casilla de seleccionar solo sale en las que ya se pueden liberar */
+     {page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.fases=null;LIB.vista=null;LIB.freno=null;LIB.sel=new Set();GRP={};render();
+      const pendV=pendLiberacion('tela',null).filter(o=>okFiltrosB1(o));const listasV=pendV.filter(o=>puedeLiberarA(o,'tela')),frenV=pendV.filter(o=>!puedeLiberarA(o,'tela'));
+      /* 26-sep: la lista está siempre a la vista (antes había que abrir «Ver todas las pendientes» o tocar una familia) y va partida en pestañas */
+      __check("2a LIB DOM: la lista (#lib-lista) está a la vista sin abrir nada",!!document.getElementById('lib-lista')===(pendV.length>0),pendV.length);
+      let ths=[],nFilas=0;
+      [['listas',listasV,'Ruta','Listas para liberar'],['frenadas',frenV,'Qué la frena','Frenadas']].forEach(([v,xs,ult,tit])=>{if(!xs.length)return;LIB.vista=v;render();
+        const lista=document.getElementById('lib-lista');const tabla=lista&&lista.querySelector('table');
+        if(!tabla){__check('2a LIB DOM ('+v+'): la pestaña dibuja su tabla',false);return}
+        ths=[...tabla.querySelectorAll('thead th')].map(t=>t.textContent.trim().replace(/\s+/g,' '));
+        __check("2a LIB DOM ("+v+"): 8 columnas de tela, en este orden",ths.length===8&&ths[1]==='OP · fase'&&ths[2]==='Cliente'&&ths[3]==='Color'&&ths[4]==='Prendas'&&ths[5]==='Entrega'&&/^Tela · qué le falta/.test(ths[6])&&ths[7]===ult,ths.join('|'));
+        const trs=[...tabla.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row'));nFilas+=trs.length;
+        __check("2a LIB DOM ("+v+"): tantas filas como órdenes de la pestaña (tope 400)",trs.length===Math.min(400,xs.length),trs.length+' vs '+xs.length);
+        __check("2a LIB DOM ("+v+"): el encabezado de la lista dice la pestaña y cuántas órdenes",lista.textContent.includes(tit+' · ')&&/ · \d+ (orden|órdenes)/.test(lista.textContent));
+        if(trs.length){const tr=trs[0];const tds=[...tr.querySelectorAll('td')];
+          __check("2a LIB DOM ("+v+"): cada fila tiene 8 celdas",tds.length===8,tds.length);
+          __check("2a LIB DOM ("+v+"): celda 2 = foto/WH/fase (whCell)",!!tr.querySelector('td:nth-child(2) .fase-mini')||/WH\//.test(tds[1].textContent));
+          __check("2a LIB DOM ("+v+"): celda 7 = tela · qué le falta, con las casillas tintura/lavado por tela (setFaltaTela)",/setFaltaTela\(/.test(tds[6].innerHTML)||/sin tela/.test(tds[6].textContent)||!tds[6].textContent.trim());
+          __check("2a LIB DOM ("+v+"): celda 8 = lista / qué la frena + control de ruta",/lista para liberar|falta|tag/i.test(tds[7].innerHTML));}
         const conCheck=trs.filter(t=>t.querySelector('td:nth-child(1) input[type=checkbox]')).length;
-        const listas=pendV.filter(o=>puedeLiberarA(o,'tela')).length;
-        __check("2a LIB DOM: hay casilla de selección exactamente en las órdenes listas para liberar",conCheck===Math.min(400,listas),conCheck+' vs '+listas);
-        /* estado seleccionado: marcar una y que se vea marcada tras redibujar */
-        const o0=pendV.find(o=>puedeLiberarA(o,'tela'));
-        if(o0){LIB.sel=new Set([o0.id]);render();
-         const tr0=[...document.querySelectorAll('#lib-lista tbody tr')].find(t=>t.innerHTML.indexOf("togLib('"+o0.id+"'")>=0);
-         __check("2a LIB DOM: la orden seleccionada sale con su casilla marcada tras el redibujo",!!tr0&&!!tr0.querySelector('input[type=checkbox]:checked'));
-         LIB.sel=new Set();render()}}
-       /* agrupación común: agrupar por cliente conserva las filas y muestra cabeceras con conteo */
-       grpSt('lib').niveles=['cliente'];render();
-       const t2=document.querySelector('#lib-lista table');
-       const trs2=t2?[...t2.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')):[];
+        __check("2a LIB DOM ("+v+"): casilla de selección solo en «Listas para liberar»",conCheck===(v==='listas'?Math.min(400,xs.length):0),conCheck+' en '+v)});
+      __check("2a LIB DOM: listas + frenadas = todas las pendientes (ninguna se pierde al partir en pestañas)",nFilas===Math.min(400,listasV.length)+Math.min(400,frenV.length)&&listasV.length+frenV.length===pendV.length,nFilas+' · '+listasV.length+'+'+frenV.length);
+      if(listasV.length){const o0=listasV[0];LIB.vista='listas';LIB.sel=new Set([o0.id]);render();
+        const tr0=[...document.querySelectorAll('#lib-lista tbody tr')].find(t=>t.innerHTML.indexOf("togLib('"+o0.id+"'")>=0);
+        __check("2a LIB DOM: la orden seleccionada sale con su casilla marcada tras el redibujo",!!tr0&&!!tr0.querySelector('input[type=checkbox]:checked'));LIB.sel=new Set()}
+      /* agrupación común: agrupar por cliente conserva las filas y muestra cabeceras con conteo */
+      if(pendV.length){const v0=listasV.length?'listas':'frenadas';const xs0=listasV.length?listasV:frenV;LIB.vista=v0;grpSt('lib').niveles=['cliente'];render();
+       const t2=document.querySelector('#lib-lista table');const trs2=t2?[...t2.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')):[];
        __check("2a LIB DOM: agrupar por cliente arranca con los grupos CERRADOS (0 filas visibles)",trs2.length===0,trs2.length);
-       const cabs=t2?[...t2.querySelectorAll('tbody tr.grp-row')]:[];
-       const suma=cabs.reduce((a,c)=>{const m=c.textContent.match(/(\d+)\s+(orden|órdenes)/);return a+(m?+m[1]:0)},0);
-       __check("2a LIB DOM: las cabeceras de grupo suman todas las filas de la lista",suma===trs.length,suma+' vs '+trs.length);
+       const cabs=t2?[...t2.querySelectorAll('tbody tr.grp-row')]:[];const suma=cabs.reduce((a,c)=>{const m=c.textContent.match(/(\d+)\s+(orden|órdenes)/);return a+(m?+m[1]:0)},0);
+       __check("2a LIB DOM: las cabeceras de grupo suman todas las filas de la pestaña",suma===Math.min(400,xs0.length),suma+' vs '+xs0.length);
        if(cabs[0]){const k=(cabs[0].getAttribute('onclick')||'').match(/togGRP\('lib','([^']*)'\)/);
-        if(k){togGRP('lib',k[1].replace(/\\'/g,"'"));const t3=document.querySelector('#lib-lista table');
-         const abiertas=t3?[...t3.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')).length:0;
-         __check("2a LIB DOM: abrir un grupo muestra sus filas",abiertas>0,abiertas);}}
-       __check("2a LIB DOM: y las cabeceras de grupo traen «seleccionar todo» y conteo",!!t2&&/Cliente:/.test(t2.innerHTML)&&/seleccionar todo|marcar el grupo/.test(t2.innerHTML)&&/prendas/.test(t2.innerHTML));
-       GRP={};render();
-       __R.libDOM={ths,filas:trs.length,pend:pendV.length};}
-      /* sin «Ver todas» y sin familia elegida, no hay lista: solo el aviso */
-      LIB.verLista=false;LIB.fam2=null;LIB.q='';render();
-      __check("2a LIB DOM: sin abrir «Ver todas» la lista no se dibuja y se muestra la ayuda",!document.getElementById('lib-lista')&&/Toca una familia/.test(document.getElementById('p-liberacion').innerHTML));
-      LIB.verLista=false;}
+         if(k){togGRP('lib',k[1].replace(/\\'/g,"'"));const t3=document.querySelector('#lib-lista table');const abiertas=t3?[...t3.querySelectorAll('tbody tr')].filter(tr=>!tr.classList.contains('grp-row')).length:0;
+           __check("2a LIB DOM: abrir un grupo muestra sus filas",abiertas>0,abiertas)}}
+       __check("2a LIB DOM: las cabeceras de grupo traen conteo y prendas, y «marcar el grupo» solo en Listas para liberar",!!t2&&/Cliente:/.test(t2.innerHTML)&&/prendas/.test(t2.innerHTML)&&(v0==='listas'?/seleccionar todo|marcar el grupo/.test(t2.innerHTML):!/seleccionar todo|marcar el grupo/.test(t2.innerHTML)),v0)}
+      GRP={};LIB.vista=null;render();
+      __R.libDOM={ths,filas:nFilas,pend:pendV.length};}
    page='macro';render();const hm=document.getElementById('p-macro').innerHTML;__check("macro: ya no dice que jaspe y llano van separados",!hm.includes('se tinturan separados')&&hm.includes('pueden ir en el mismo baño'));
    page='config';CONF.tab='ordenes2';render();__check("config: tabla 13 de propuesta 'qué le falta'",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
    page='ordenes';render();__check("tela 3 dimensiones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
@@ -1817,7 +1809,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // producción: sin botón masivo, una por una con dos verificaciones
    page='liberacion';LIB.et='corte';LIB.q='';LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.verLista=true;LIB.ym=null;LIB.odc=null;LIB.fam2=null;render();
    const h=()=>document.getElementById('p-liberacion').innerHTML;
-   __check("C: producción no tiene 'Liberar todo lo filtrado' ni 'Marcar todas'",!h().includes('Liberar todo lo filtrado')&&!/Marcar todas/.test(h())&&h().includes('marca en cada orden la materia prima y los insumos verificados en bodega'));
+   LIB.vista='listas';render();const pcC=partesLib('corte',LIB.ym);
+   __check("C: producción no tiene botones masivos (ni «Liberar todas las listas» ni «Marcar todas»): una por una",!h().includes('Liberar todas las listas')&&!/Marcar todas/.test(h())&&(!pcC.listas.length||h().includes('marca en cada orden la materia prima y los insumos verificados en bodega')),pcC.listas.length+' listas');LIB.vista=null;
    const o=S.ordenes.find(x=>abierta(x)&&puedeLiberarA(x,'corte')&&!liberada(x,'corte'));
    if(o){LIBV={};setLibV(o.id,'mp',true);const alertPrev=window.alert;let al='';window.alert=m=>al=m;liberarProd(o.id);window.alert=alertPrev;
      __check("C: sin las dos verificaciones no libera",/dos verificaciones/.test(al)&&!liberada(o,'corte'));
@@ -1831,7 +1824,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        page='auditoria';render();__check("C: la Auditoría de ruta muestra la edición (quién, cuándo, qué, por qué)",document.getElementById('p-auditoria').innerHTML.includes('Auditoría de ruta')&&document.getElementById('p-auditoria').innerHTML.includes('prueba ruta general'));
        // revertir el paso agregado/quitado para no ensuciar
        mRutaCentro(o2.id);const cb2=document.getElementById('rc-'+centro);if(cb2){cb2.checked=wasIn;document.getElementById('rc-motivo').value='revertir prueba';const cp2=window.confirm;window.confirm=()=>true;guardarRutaCentro(o2.id);window.confirm=cp2;}}}
-   __check("C: la liberación general conserva el botón masivo",(()=>{LIB.et='tela';page='liberacion';render();return document.getElementById('p-liberacion').innerHTML.includes('Liberar todo lo filtrado')})());
+   __check("C: la liberación general conserva el botón masivo (en «Listas para liberar»)",(()=>{LIB.et='tela';LIB.vista='listas';page='liberacion';render();const pt=partesLib('tela',LIB.ym);const r=!pt.listas.length||document.getElementById('p-liberacion').innerHTML.includes('Liberar todas las listas ('+pt.listas.length+')');LIB.vista=null;return r})());
    LIB.et='tela';LIB.verLista=false;page='liberacion';render();__check("C sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* D: tintorería (motivos, perfil, faltantes, reporte) */
   {const antes=__R.errors.length;const adminP=PERFIL;const _AV=JSON.stringify(S.avance);const _FA=JSON.stringify(S.ordenes.map(o=>o.fase));const _FS=JSON.stringify(S.ordenes.map(o=>o.fases||null));
@@ -2255,13 +2248,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
    const bakMot=JSON.stringify(S.params.motivos||null),bakAud=JSON.stringify(S.params.auditoriaCambios||null);S.params.motivos=[];S.params.auditoriaCambios=[];
    // a) filtro de fases agrupado
-   page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;render();let h=document.getElementById('p-liberacion').innerHTML;
+   page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;LIB.ym=null;render();let h=document.getElementById('p-liberacion').innerHTML;
    __check("CC-a: el filtro de fases es el común: agrupado por grupo de la tabla 5 con 'Seleccionar todas' y 'Limpiar'",h.includes('class="ffases"')&&h.includes('Seleccionar todas')&&h.includes('>Limpiar<')&&/\d · [A-ZÁÉÍÓÚ ]+<\/span>/.test(h));
    /* 25-sep (usuaria: «borremos eso»): Demanda agregada se retiró; un enlace viejo cae en el Resumen gerencial */
    {page='familias';render();__check("DA1: Demanda agregada ya no existe (menú, sección, código) y un enlace viejo abre el Resumen gerencial",!document.querySelector('nav a[data-p="familias"]')&&!document.getElementById('p-familias')&&typeof vFamilias==='undefined'&&typeof FAM==='undefined'&&PAGINAS_REDIRIGIDAS.familias==='gerencia'&&page==='gerencia'&&!PAGINAS_DEF.some(p=>p[0]==='familias'))}
    page='ordenes';ORDF.tab='ord';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
    // b) agrupador con horas y campos comunes
-   GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
+   GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ (orden|órdenes) · [\d.,]+ prendas · [\d.,]+ h( \([\d.,]+ min\))?<\/span>/.test(h)||!h.includes('grp-row'));
    __check("CC-b: el agrupador ofrece fase, familia, categoría, color, cliente y ODC en todas las listas",['Fase','Familia','Tipo de producto','Color','Cliente','ODC'].every(x=>h.includes('>'+x+'</option>')));
    GRP={};page='wip';WIPL={niveles:['cliente'],q:''};render();h=document.getElementById('p-wip').innerHTML;__check("CC-b: Producto en proceso (que reemplazó a Asignación por orden) usa el agrupador común (grp-row)",h.includes('grp-row')||!S.ordenes.some(abierta));WIPL={niveles:null,q:''};GRP={};
    // c) tarjetas resumen
@@ -2445,22 +2438,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];
    if(!S.params.motivos.some(m=>m.uso==='liberacion'))S.params.motivos.push({motivo:'Cliente cambió la orden',uso:'liberacion'});
    page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q='';LIB.q4='';LIB.fases=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.verLista=false;GRP={};render();let h=document.getElementById('p-liberacion').innerHTML;
-   __check("LB1: Liberación está en tres bloques con nombre (pendiente de liberar, resumen, órdenes liberadas)",['Bloque 1','Bloque 2','Bloque 3'].every(b=>h.includes(b))&&!h.includes('Bloque 4')&&/Pendiente de liberar a la planta/.test(h)&&/Resumen de lo liberado a la planta/.test(h)&&/Órdenes liberadas/.test(h));
-   __check("LB1: el encabezado y la explicación siguen",/<h2>Liberación<\/h2>/.test(h)&&/La liberación principal/.test(h));
+   __check("LB1: Liberación es una base partida en tres tarjetas-pestaña (Listas · Frenadas · Ya liberadas), la lista de la pestaña y «Más detalle» plegado (sin «Bloque 1/2/3»)",['lib-v-listas','lib-v-frenadas','lib-v-liberadas'].every(x=>h.includes('data-t="'+x+'"'))&&/class="panel lib-vista"/.test(h)&&/<details class="panel lib-mas"/.test(h)&&!/Bloque [1-4]/i.test(h));
+   __check("LB1: el encabezado y la explicación siguen",/<h2>Liberación<\/h2>/.test(h)&&/La liberación textil/.test(h));
    {const oTmp=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/LB-B1';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
     if(!rutaConfirmada(oTmp))confirmarRuta(oTmp,'persona','prueba del bloque 1');
-    render();const hb=document.getElementById('p-liberacion').innerHTML;
-    __check("LB2: el bloque 1 abre con la tarjeta de pendientes, los filtros ODC/Familia/Cliente y las tarjetas por familia",hb.includes('data-t=\"lb-pend\"')&&hb.includes('pendientes de liberar a la planta')&&hb.includes('<label>ODC</label>')&&hb.includes('LIB.fam2=')&&hb.includes(esc(oTmp.op)));
+    LIB.q=oTmp.op;render();const hb=document.getElementById('p-liberacion').innerHTML;LIB.q='';
+    __check("LB2: los filtros ODC/Familia/Cliente están en la fila de arriba y la orden sale en su pestaña",hb.includes('<label>ODC</label>')&&hb.includes('<label>Familia</label>')&&hb.includes('<label>Cliente</label>')&&hb.includes(esc(oTmp.op)));
     S.ordenes=S.ordenes.filter(x=>x!==oTmp);delete S.avance[oTmp.id];PLAN=null;PLAN_ALL=null;render();h=document.getElementById('p-liberacion').innerHTML}
-   __check("LB2: el bloque 2 son cuatro cuadrantes con barra de % liberado",['Carga por familia','Por tipo de producto','Por tipo de tela','Por color'].every(x=>h.includes(x))&&h.includes('class="lib-grid"'));
-   __check("LB2: lo que cargó lo liberado queda en un desplegable cerrado dentro del bloque 2",/<summary[^>]*><b>Qué cargó lo liberado<\/b>/.test(h)&&!/<details[^>]*open[^>]*><summary[^>]*><b>Qué cargó lo liberado/.test(h));
+   __check("LB2: «Más detalle» trae los cuatro cuadrantes con barra de % liberado",['Por familia','Por tipo de producto','Por tipo de tela','Por color'].every(x=>h.includes(x))&&h.includes('class="lib-grid"'));
+   __check("LB2: lo que cargó lo liberado queda en un desplegable cerrado dentro de «Más detalle»",/<summary[^>]*><b>Qué cargó lo liberado<\/b>/.test(h)&&!/<details[^>]*open[^>]*><summary[^>]*><b>Qué cargó lo liberado/.test(h));
    // el «Elegir órdenes 1×1» y los desplegables del bloque 2 viejo se reemplazaron por las tarjetas por familia (bloque 1) y los cuatro cuadrantes (bloque 2)
    __check("LB1: el buscador del bloque de filtros es el común y más chico",/busq/.test(h)&&/font-size:var\(--fs-s\);padding:4px 6px/.test(h));
    // seleccionar todo por grupo
-   const oPend=(()=>{const b=S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/LB-PEND';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;S.ordenes.push(o);delete S.avance[o.id];PLAN=null;PLAN_ALL=null;return o})();
-   GRP={};grpSt('lib').niveles=['cliente'];LIB.verLista=true;LIB.sel=new Set();LIB.q='';LIB.fases=null;LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;render();h=document.getElementById('p-liberacion').innerHTML;
+   const oPend=(()=>{const b=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).filter(t=>!t.ext).length&&(x.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)&&(C(x.color)||{}).cod)||S.ordenes.find(x=>abierta(x));const o=JSON.parse(JSON.stringify(b));o.id=uid();o.op='WH/LB-PEND';o.estado='plan';o.fase='0Macro';delete o.lib;delete o.programa;delete o.sinLanzar;delete o.sinFechaEntrega;S.ordenes.push(o);delete S.avance[o.id];confirmarRuta(o,'persona','prueba del grupo');PLAN=null;PLAN_ALL=null;return o})();
+   GRP={};grpSt('lib').mapa={};grpSt('lib').niveles=['cliente'];LIB.vista='listas';LIB.sel=new Set();LIB.q='';LIB.fases=null;LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;render();h=document.getElementById('p-liberacion').innerHTML;
    const key=Object.keys(grpSt('lib').mapa||{})[0];
-   __check("LB2: el detalle del bloque 1 se agrupa y cada grupo tiene 'seleccionar todo'",!!key&&h.includes('selGrupoLib(')&&h.includes('grp-row'));
+   __check("LB2: en «Listas para liberar» la lista se agrupa y cada grupo tiene 'marcar el grupo'",!!key&&h.includes('selGrupoLib(')&&h.includes('grp-row'),puedeLiberarA(oPend,'tela')?'':'la orden de prueba no quedó lista: '+faltaLiberarA(oPend,'tela').join(', '));
    if(key){const ids=grpSt('lib').mapa[key];selGrupoLib(key,true);
      __check("LB2: 'seleccionar todo' marca las órdenes de ese grupo",ids.length>0&&ids.every(id=>LIB.sel.has(id)));}
    else __check("LB2: 'seleccionar todo' marca las órdenes de ese grupo",true,'sin grupos con órdenes');
@@ -2469,7 +2462,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const oid=antesSel[0]||(S.ordenes.find(abierta)||{}).id;if(oid){mRutaCentro(oid);try{cerrar()}catch(x){}}
     render();
     __check("LB2: abrir y cerrar una orden no pierde la selección ni la posición",antesSel.every(id=>LIB.sel.has(id))&&LIB.sel.size===antesSel.length&&LIB.scroll===40,JSON.stringify({antesSel:antesSel.length,ahora:LIB.sel.size,scroll:LIB.scroll}));}
-   S.ordenes=S.ordenes.filter(x=>x!==oPend);PLAN=null;PLAN_ALL=null;LIB.sel=new Set();GRP={};
+   S.ordenes=S.ordenes.filter(x=>x!==oPend);PLAN=null;PLAN_ALL=null;LIB.sel=new Set();LIB.vista=null;GRP={};
    // ruta por defecto
    __check("LB3: la marca 'va por defecto en toda ruta' existe y viene sembrada en corte, confección y empaque",centrosRutaDefecto().includes('corte')&&centrosRutaDefecto().includes('modulos')&&centrosRutaDefecto().includes('empaque')&&S.params.rutaDefectoSembrada===true);
    page='config';CONF.tab='recursos';render();__check("LB3: la marca es editable en Configuración → Centros",document.getElementById('p-config').innerHTML.includes("'rutaDefecto',this.checked"));
@@ -2487,7 +2480,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("LB3: el aviso sale en Liberación cuando hay órdenes que la contradicen",contra.length?/no siguen la ruta por defecto/.test(h):!/no siguen la ruta por defecto/.test(h));}
    // bloque 3 resumen y bloque 4 con buscador y reversión auditada
    __check("LB5: el resumen de lo liberado dice órdenes, referencias, kg de tejeduría y horas",h.includes('data-t="lib-r-ord"')&&h.includes('data-t="lib-r-ref"')&&h.includes('data-t="lib-r-kg"')&&h.includes('data-t="lib-r-h"'));
-   __check("LB6: el bloque 4 tiene buscador común y botones de revertir y de fase",/Buscar entre las liberadas/.test(h)&&/data-q="LIB.q4"/.test(h)&&(/mRetirarLib\(/.test(h)||!/<td>Liberó<\/td>/.test(h)));
+   {const oLy=S.ordenes.find(x=>libRegistroDe(x,'tela')&&libLiberacion('tela',LIB.ym).includes(x));LIB.vista='liberadas';render();const hL=document.getElementById('p-liberacion').innerHTML;
+    __check("LB6: «Ya liberadas» usa el buscador de arriba (uno solo) y cada liberada trae desliberar/revertir y fase",!/data-q="LIB.q4"/.test(hL)&&/data-q="LIB.q"/.test(hL)&&(!oLy||((hL.includes("mDesliberar(['"+oLy.id+"']")||hL.includes("mRetirarLib('"+oLy.id+"'"))&&hL.includes("mCambiarFase('"+oLy.id+"')"))),oLy?oLy.op:'sin liberadas con registro');LIB.vista=null}
    {const o=S.ordenes.find(x=>abierta(x)&&liberada(x,'tela'))||(()=>{const x=S.ordenes.find(abierta);x.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};return x})();
     const nA=auditoriaCambios().length;const alerts=[];const a0=window.alert;window.alert=m=>alerts.push(String(m));
     retirarLib(o.id,'tela','');__check("LB6: revertir sin motivo no revierte",!!(o.lib&&o.lib.tela)&&auditoriaCambios().length===nA);
@@ -2496,7 +2490,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     window.alert=a0;o.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};}
    // liberación a producción: misma estructura
    LIB.et='corte';render();const h2=document.getElementById('p-liberacion').innerHTML;
-   __check("LB7: Liberación a producción tiene los mismos tres bloques, buscador y reversión",['Bloque 1','Bloque 2','Bloque 3'].every(b=>h2.includes(b))&&!h2.includes('Bloque 4')&&/Pendiente de liberar a producción/.test(h2)&&/Resumen de lo liberado a producción/.test(h2)&&/data-q="LIB.q4"/.test(h2));
+   __check("LB7: Liberación a producción tiene la misma forma: tres tarjetas-pestaña, buscador de arriba y «Más detalle»",['lib-v-listas','lib-v-frenadas','lib-v-liberadas'].every(x=>h2.includes('data-t="'+x+'"'))&&/<h2>Liberación a producción<\/h2>/.test(h2)&&/data-q="LIB.q"/.test(h2)&&/lib-mas/.test(h2));
    LIB.et='tela';LIB.verLista=false;LIB.q4='';
    const bm=JSON.parse(bakMot);if(bm)S.params.motivos=bm;else delete S.params.motivos;
    const ba=JSON.parse(bakAud);if(ba)S.params.auditoriaCambios=ba;else delete S.params.auditoriaCambios;
@@ -3236,16 +3230,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("LBB2: con órdenes marcadas la fila dice a cuánto subiría el %",!!f0&&f0.sel===+oA1.cant&&f0.pctSel>f0.pct&&Math.abs(f0.pctSel-(f0.lib+f0.sel)/f0.tot*100)<1e-9);
     const bar=barraLib(f0,v=>num(v));__check("LBB2: la barra pinta el % de hoy y el que subiría en otro color",bar.includes('var(--t-accent)')&&bar.includes('%'));}
    render();let h=document.getElementById('p-liberacion').innerHTML;
-   const tarj=[...h.matchAll(/LIB\.fam2='([^']*)';render\(\)"><div class="v">([\d.,]+)</g)].map(m=>[m[1],+m[2].replace(/\./g,'').replace(',','.')]);
-   __check("LBB3: las tarjetas por familia van de mayor a menor en unidades pendientes",tarj.length>0&&tarj.every((x,i)=>!i||tarj[i-1][1]>=x[1]),JSON.stringify(tarj.slice(0,4)));
-   __check("LBB3: la tarjeta de arriba dice cuántas órdenes y cuántas unidades están pendientes",h.includes('data-t="lb-pend"')&&h.includes('pendientes de liberar a la planta')&&h.includes(num(pen.reduce((a,o)=>a+ +o.cant,0))));
-   {LIB.fam2=famDeOrden(oA1);render();h=document.getElementById('p-liberacion').innerHTML;
-    __check("LBB3: al tocar una familia se abre su detalle con WH y fase, cliente, color, prendas, entrega y qué la frena",h.includes('Detalle de')&&h.includes('Qué la frena')&&h.includes('id="lib-lista"')&&h.includes('fase-mini')&&h.includes(esc(oA1.op)));
+   {const pp=partesLib('tela',ym);const vT=k=>{const m=h.match(new RegExp('data-t="lib-v-'+k+'"[^>]*><div class="v">([\\d.]+)</div>'));return m?+m[1].replace(/\./g,''):null};
+    __check("LBB3: las tres tarjetas cuadran con la base: listas + frenadas = pendientes y ya liberadas = liberadas",vT('listas')===pp.listas.length&&vT('frenadas')===pp.frenadas.length&&vT('liberadas')===pp.liberadas.length&&pp.listas.length+pp.frenadas.length===pen.length&&pp.liberadas.length===lib.length,JSON.stringify([vT('listas'),vT('frenadas'),vT('liberadas'),pen.length,lib.length]));
+    const pzP=pen.reduce((a,o)=>a+ +o.cant,0),pzLb=lib.reduce((a,o)=>a+ +o.cant,0);
+    __check("LBB3: la barra de arriba dice cuántas prendas están liberadas de cuántas",h.includes(num(pzLb)+' de '+num(pzP+pzLb)+' prendas'))}
+   {LIB.fam=new Set([famDeOrden(oA1)]);LIB.vista=puedeLiberarA(oA1,'tela')?'listas':'frenadas';render();h=document.getElementById('p-liberacion').innerHTML;
+    __check("LBB3: filtrar por una familia deja su lista con WH y fase, cliente, color, prendas, entrega y ruta / qué la frena",(h.includes('>Qué la frena<')||h.includes('>Ruta<'))&&h.includes('id="lib-lista"')&&h.includes('fase-mini')&&h.includes(esc(oA1.op)));
     {const s0=h.slice(h.indexOf('id="lib-lista"'));const tab=s0.slice(0,s0.indexOf('</table>'));
-     __check("LBB3: el detalle solo trae las órdenes de esa familia",tab.includes(esc(oA1.op))&&(famDeOrden(oB1)===famDeOrden(oA1)||!tab.includes(esc(oB1.op))));}
-    LIB.fam2=null}
+     __check("LBB3: el filtro de familia deja solo las órdenes de esa familia",tab.includes(esc(oA1.op))&&(famDeOrden(oB1)===famDeOrden(oA1)||!tab.includes(esc(oB1.op)))&&partesLib('tela',ym).pend.every(o=>famDeOrden(o)===famDeOrden(oA1)));}
+    LIB.fam=null;LIB.vista=null}
    {desconfirmarRuta(oB1,'prueba del bloqueo');LIB.q=oB1.op;render();h=document.getElementById('p-liberacion').innerHTML;
-    __check("LBB3: 'falta confirmar ruta' sale en Qué la frena y enlaza a Órdenes → Rutas",h.includes('falta confirmar ruta →')&&h.includes("irRutaDeOrden('")&&!puedeLiberarA(oB1,'tela'));
+    __check("LBB3: 'falta confirmar ruta' sale en Qué la frena y enlaza a Órdenes → Rutas (la orden y el resumen de motivos)",h.includes('falta confirmar ruta →')&&h.includes("irRutaDeOrden('")&&h.includes('irRutasFrenoLib()')&&/data-vista="frenadas"/.test(h)&&!puedeLiberarA(oB1,'tela'));
     confirmarRuta(oB1,'persona','orden de prueba');LIB.q=''}
    {LIB.ym=null;render();const hT=document.getElementById('p-liberacion').innerHTML;
     __check("LBB1: elegir 'Todos los meses' se respeta y no vuelve solo al mes en curso",(render(),LIB.ym===null),'ymAuto='+LIB.ymAuto);
@@ -3689,13 +3684,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("F1b: «todas» de un grupo marca solo ese grupo",!!LIB.fases&&g.fases.every(f=>LIB.fases.has(f))&&LIB.fases.size===g.fases.length);
     LIB.fases=null}
    // el filtro acota de verdad: tarjetas, conteo y el botón de liberar
-   {LIB.fases=new Set([fA]);LIB.fam2=null;LIB.verLista=true;render();
+   {LIB.fases=new Set([fA]);LIB.fam2=null;LIB.vista=puedeLiberarA(oA,'tela')?'listas':'frenadas';render();
     const h=document.getElementById('p-liberacion').innerHTML;
     const listas=pend().filter(o=>puedeLiberarA(o,'tela'));
     const s0=h.slice(h.indexOf('id="lib-lista"'));const tab=s0.slice(0,s0.indexOf('</table>'));
     __check("F1b: el filtro acota la lista del bloque 1",tab.includes(esc('WH/FIL-A'))&&!tab.includes(esc('WH/FIL-B')));
-    __check("F1b: y acota el conteo de la tarjeta y el botón «Liberar todo lo filtrado»",h.includes('>'+pend().length+'<')&&h.includes('Liberar todo lo filtrado ('+listas.length+')'));
-    LIB.fases=null}
+    const vT=k=>{const m=h.match(new RegExp('data-t="lib-v-'+k+'"[^>]*><div class="v">([\\d.]+)</div>'));return m?+m[1].replace(/\./g,''):null};
+    __check("F1b: y acota las tarjetas (listas + frenadas = lo filtrado) y el botón «Liberar todas las listas»",vT('listas')===listas.length&&vT('listas')+vT('frenadas')===pend().length&&(LIB.vista!=='listas'||!listas.length||h.includes('Liberar todas las listas ('+listas.length+')')),JSON.stringify([vT('listas'),vT('frenadas'),pend().length]));
+    LIB.fases=null;LIB.vista=null}
    S.ordenes=S.ordenes.filter(o=>![oA,oB,oC].includes(o));[oA,oB,oC].forEach(o=>{delete S.avance[o.id]});
    LIB.ym=bak.ym;LIB.fases=bak.fases;LIB.hija=bak.hija;LIB.tela=bak.tela;LIB.odc=bak.odc;LIB.fam=bak.fam;LIB.cli=bak.cli;LIB.fam2=null;LIB.verLista=false;
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -5642,7 +5638,6 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ["ORDF.q","Órdenes","ordenes",()=>{ORDF.q="";ORDF.tab="lista"}],
      ["RUT.q","Órdenes → Rutas","ordenes",()=>{RUT.q="";ORDF.tab="rutas"}],
      ["LIB.q","Liberación","liberacion",()=>{LIB.q="";LIB.et="tela";LIB.verLista=true}],
-     ["LIB.q4","Liberación · bloque 4","liberacion",()=>{LIB.q4="";LIB.et="tela"}],
      ["CEN.q","Centro","centro",()=>{CEN.q="";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true}],
      ["CTL.q","Control de piso","control",()=>{CTL.q="";CTL.area="pro";CTL.centro="corte"}],
      ["CTLF.q","Control → Cambio de fases","control",()=>{CTL.area="fases";CTLF.q=""}],
@@ -5834,16 +5829,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     while(S.ordenes.length<=300){const o=JSON.parse(JSON.stringify(bakOrds[S.ordenes.length%bakOrds.length]||{}));
       o.id="clon-busq-"+S.ordenes.length;o.op="WH/MO/"+(90000+S.ordenes.length);S.ordenes.push(o)}
     PLAN=null;PLAN_ALL=null;
-    LIB.et="tela";LIB.q="";LIB.q4="";LIB.verLista=true;LIB.ym=null;page="liberacion";render();
-    const a=document.querySelector('input[data-q="LIB.q"]'),b=document.querySelector('input[data-q="LIB.q4"]');
+    LIB.et="tela";LIB.q="";BUSG.q="";LIB.ym=null;page="liberacion";render();
+    const a=document.querySelector('#p-liberacion input[data-q="LIB.q"]'),b=document.querySelector('input[data-q="BUSG.q"]');
     if(a&&b){a.value="229";a.dispatchEvent(new Event("input",{bubbles:true}));
      await __p(50);                                  /* menos que el debounce */
      b.value="777";b.dispatchEvent(new Event("input",{bubbles:true}));
      await __p(500);
-     __R.bus.colision={LIBq:LIB.q,LIBq4:LIB.q4};
-     __check("AB4 Liberación · dos buscadores: lo escrito en el primero NO se pierde al pasar al segundo",
-       LIB.q==="229"&&LIB.q4==="777","LIB.q="+JSON.stringify(LIB.q)+" LIB.q4="+JSON.stringify(LIB.q4));}
-    LIB.q="";LIB.q4="";S.ordenes=bakOrds;PLAN=null;PLAN_ALL=null;render();}
+     __R.bus.colision={LIBq:LIB.q,BUSGq:BUSG.q};
+     __check("AB4 · dos buscadores en la misma pantalla (el de la lista y el de arriba): lo escrito en el primero NO se pierde al pasar al segundo",
+       LIB.q==="229"&&BUSG.q==="777","LIB.q="+JSON.stringify(LIB.q)+" BUSG.q="+JSON.stringify(BUSG.q));}
+    else __check("AB4 · dos buscadores: faltan los campos para probarlo",false,"a="+!!a+" b="+!!b);
+    LIB.q="";BUSG.q="";if('abierto' in BUSG)BUSG.abierto=false;S.ordenes=bakOrds;PLAN=null;PLAN_ALL=null;render();}
    /* ---------- 3g · la búsqueda solo ve la BASE ya filtrada de la pantalla ---------- */
    {const src=String(baseLiberacion);
     __check("AB4 Liberación · base: el buscador solo ve las órdenes del mes del Proyecto seleccionado",
@@ -6001,9 +5997,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("AB11: la lista se filtró con el texto (solo filas que calzan)",filas.every(tr=>/22918/.test(tr.textContent)),filas.length+" filas");
      const ths=host?[...host.querySelectorAll("#lib-lista thead th")].map(t=>t.textContent.trim().replace(/\s+/g," ")):[];
      __check("AB11: las 8 columnas siguen en su orden tras el repintado parcial (o no hay lista porque nada calza)",
-       ths.length===0||(ths.length===8&&ths[1]==="OP · fase"&&ths[7]==="Qué la frena"),ths.join("|"));
+       ths.length===0||(ths.length===8&&ths[1]==="OP · fase"&&(ths[7]==="Qué la frena"||ths[7]==="Ruta")),ths.join("|"));
      /* el aviso de base acotada también vive dentro del contenedor y se repinta con la lista */
-     __check("AB11: el aviso de «fuera del filtro» se repinta junto con la lista",!!host&&(/coinciden fuera de|coincide fuera de/.test(host.innerHTML)||!fueraDeBase("LIB.q",pendLiberacion("tela",LIB.ym))));
+     __check("AB11: el aviso de «fuera del filtro» se repinta junto con la lista",!!host&&(/coinciden fuera de|coincide fuera de/.test(host.innerHTML)||!fueraDeBase("LIB.q",baseLiberacion("tela",LIB.ym))));
      LIB.q="";render()}}
    /* ---------- 4 · el debounce y el redibujo: la causa de fondo ---------- */
    {const src=String(buscarQ);
@@ -8569,6 +8565,102 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};CONF={tab:'inicio',q:''};page='config';render();{const el3=document.getElementById('p-config');const tx=el3.innerText;
     __check('CFG13: quien solo ve la configuración no ve en la portada lo que no puede abrir (Usuarios, respaldo y borrado)',!/Respaldo y borrado/.test(tx)&&![...el3.querySelectorAll('.cfg-card-it')].some(a=>/ir\('usuarios'\)/.test(a.getAttribute('onclick')||''))&&!cfgResultados('borrar').some(x=>CONF_CATALOGO[x.i].tab==='borrado'),'')}
    PERFIL=bak;CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();page='ordenes';render()}
+  /* 26-sep (usuaria: «la parte de la liberación la puedes mejorar, está igual de confusa»): una base partida en tres pestañas */
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;window.alert=()=>{};window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
+   const bak={ym:LIB.ym,vista:LIB.vista,freno:LIB.freno,mas:LIB.mas};GRP={};LIB.sel=new Set();LIB.q='';LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.fases=null;LIB.freno=null;LIB.vista=null;LIB.mas=false;page='liberacion';LIB.et='tela';
+   const ym='2026-11',proy='NOVIEMBRE 2026';
+   const buena=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).length&&(o.telas||[]).filter(t=>!t.ext).length&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)&&(C(o.color)||{}).cod)||S.ordenes.find(abierta);
+   const mk=(op,cant,lib)=>{const o=JSON.parse(JSON.stringify(buena));o.id=uid();o.op=op;o.estado='plan';o.fase='0Macro';o.proyecto=proy;o.cant=cant;o.odc='ODC-LBN';delete o.programa;delete o.lib;delete o.sinLanzar;delete o.sinFechaEntrega;delete o.rutaConf;
+     if(lib)o.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oL=mk('WH/LBN-LISTA',500,false),oF=mk('WH/LBN-FRENA',300,false),oY=mk('WH/LBN-YA',200,true);confirmarRuta(oL,'persona','prueba');confirmarRuta(oY,'persona','prueba');   /* oF sin ruta confirmada: frenada */
+   const mios=[oL,oF,oY];PLAN=null;PLAN_ALL=null;LIB.ym=new Set([ym]);
+   const p=partesLib('tela',LIB.ym);const base=baseLiberacion('tela',LIB.ym);
+   __check("LBN1: la base del mes se parte en listas, frenadas y ya liberadas sin repetir ni perder ninguna",p.listas.length+p.frenadas.length+p.liberadas.length===base.length&&new Set(p.listas.concat(p.frenadas,p.liberadas).map(o=>o.id)).size===base.length&&p.listas.includes(oL)&&p.frenadas.includes(oF)&&p.liberadas.includes(oY),JSON.stringify({l:p.listas.length,f:p.frenadas.length,y:p.liberadas.length,base:base.length,oL:puedeLiberarA(oL,'tela')}));
+   render();let h=document.getElementById('p-liberacion').innerHTML;
+   const valTarj=k=>{const m=h.match(new RegExp('data-t="lib-v-'+k+'"[^>]*><div class="v">([\\d.]+)</div>'));return m?+m[1].replace(/\./g,''):null};
+   __check("LBN2: las tres tarjetas dicen cuántas hay listas, frenadas y ya liberadas (las mismas cuentas)",valTarj('listas')===p.listas.length&&valTarj('frenadas')===p.frenadas.length&&valTarj('liberadas')===p.liberadas.length,JSON.stringify([valTarj('listas'),valTarj('frenadas'),valTarj('liberadas')]));
+   {const pzL=p.liberadas.reduce((a,o)=>a+ +o.cant,0),tot=pzL+p.pend.reduce((a,o)=>a+ +o.cant,0);const pct=Math.round(100*pzL/tot);
+    __check("LBN2: la barra dice el % liberado en prendas (liberado ÷ liberado + pendiente)",h.includes(pct+' %</b> liberado · '+num(pzL)+' de '+num(tot)+' prendas'),pct+' % · '+pzL+' de '+tot)}
+   __check("LBN3: sin elegir, se abre «Listas para liberar» (hay listas) y la lista está a la vista",/data-vista="listas"/.test(h)&&h.includes('id="lib-lista"')&&h.includes(esc(oL.op)));
+   __check("LBN3: en Listas están los botones de liberar (marcar, liberar las marcadas y todas las listas)",h.includes('Liberar las marcadas (')&&h.includes('Liberar todas las listas ('+p.listas.length+')')&&/Marcar todas \(/.test(h));
+   /* una pestaña vacía no se puede elegir: cae a la primera que tenga órdenes */
+   {LIB.vista='liberadas';LIB.q=oF.op;render();const h2=document.getElementById('p-liberacion').innerHTML;
+    __check("LBN4: una pestaña sin órdenes con estos filtros no se queda en blanco: se ve la que sí tiene",/data-vista="frenadas"/.test(h2)&&h2.includes(esc(oF.op))&&/vacia\s*" data-t="lib-v-liberadas"/.test(h2)&&!/data-t="lib-v-liberadas" onclick/.test(h2),'');LIB.q='';LIB.vista=null}
+   /* frenadas: qué las frena, cuántas por motivo y dónde se arregla */
+   {LIB.vista='frenadas';render();const h3=document.getElementById('p-liberacion').innerHTML;const pf=partesLib('tela',LIB.ym);
+    const nRuta=pf.frenadas.filter(o=>faltaLiberarA(o,'tela').includes('falta confirmar ruta')).length;
+    __check("LBN5: Frenadas trae «Qué las frena» con cuántas órdenes por motivo y dónde se arregla",h3.includes('Qué las frena')&&h3.includes('Dónde se arregla')&&h3.includes('irRutasFrenoLib()')&&nRuta>0&&new RegExp('falta confirmar ruta</b></a></td><td class="num">'+num(nRuta)+'<').test(h3),nRuta);
+    LIB.freno='falta confirmar ruta';render();const s0=document.getElementById('lib-lista');
+    __check("LBN5: tocar un motivo deja en la lista solo las órdenes que lo tienen",!!s0&&s0.textContent.includes('Frenadas por «falta confirmar ruta» · '+num(nRuta))&&s0.innerHTML.includes(esc(oF.op)));
+    irRutasFrenoLib();__check("LBN5: «confirmar la ruta →» lleva a Órdenes → Rutas acotada a esas órdenes",page==='ordenes'&&ORDF.tab==='rutas'&&!!RUT.soloIds&&RUT.soloIds.has(oF.id)&&RUT.soloIds.size===nRuta,(RUT.soloIds?RUT.soloIds.size:0)+' vs '+nRuta);
+    RUT.soloIds=null;RUT.sel=new Set();ORDF.tab='lista';page='liberacion';LIB.freno=null;LIB.vista=null}
+   /* liberar desde Listas: la orden pasa a Ya liberadas y las tarjetas se mueven */
+   {LIB.vista='listas';LIB.sel=new Set([oL.id]);render();liberarA([...LIB.sel],'tela');const p2=partesLib('tela',LIB.ym);
+    __check("LBN6: liberar las marcadas pasa la orden de Listas a Ya liberadas (el total no cambia)",liberada(oL,'tela')&&!p2.listas.includes(oL)&&p2.liberadas.includes(oL)&&p2.listas.length+p2.frenadas.length+p2.liberadas.length===base.length)}
+   /* ya liberadas: un solo botón para quitar la liberación, con motivo; lo que libera la fase de Odoo se dice así */
+   {LIB.vista='liberadas';render();const h4=document.getElementById('p-liberacion').innerHTML;
+    __check("LBN7: en Ya liberadas cada una trae UN botón para deshacer (desliberar o revertir) y el de fase; el buscador es el de arriba",(h4.includes("mDesliberar(['"+oY.id+"']")!==h4.includes("mRetirarLib('"+oY.id+"'"))&&h4.includes("mCambiarFase('"+oY.id+"')")&&!/data-q="LIB.q4"/.test(h4)&&/data-q="LIB.q"/.test(h4));
+    const oc=S.ordenes.find(o=>liberada(o,'corte')&&!libRegistroDe(o,'corte'));
+    if(oc){const r=resumenLiberacion('corte');__check("LBN7: «Cuánto se liberó» cuenta aparte lo que libera la fase de Odoo (no es una fecha perdida)",r.porFase>0&&S.ordenes.filter(o=>liberada(o,'corte')&&!libRegistroDe(o,'corte')).length===r.porFase,r.porFase+' por fase · '+r.sinFecha+' sin fecha')}
+    else __check("LBN7: «Cuánto se liberó» cuenta aparte lo que libera la fase de Odoo (no es una fecha perdida)",resumenLiberacion('corte').porFase===0,'sin liberadas por fase en el simulador')}
+   /* la búsqueda que cae en otra pestaña lo dice */
+   {LIB.q=oY.op;const hq=listaVistaLibHTML('tela',LIB.ym,'listas');
+    __check("LBN8: si lo buscado está en otra pestaña, la lista lo dice con un enlace",/lib-otras/.test(hq)&&hq.includes("setVistaLib('liberadas')")&&/en «Ya liberadas»/.test(hq));LIB.q=''}
+   /* una sola fila de filtros (un solo buscador arriba) y «Más detalle» plegado, que obedece los filtros */
+   {LIB.vista=null;render();const el=document.getElementById('p-liberacion');
+    __check("LBN9: un solo panel de búsqueda en la pantalla (antes había dos) y un solo buscador",temaVisual()!=='odoo'||el.querySelectorAll('.o-search').length===1,el.querySelectorAll('.o-search').length);
+    __check("LBN9: un solo buscador de órdenes en toda la pantalla",el.querySelectorAll('input[data-q="LIB.q"]').length===1&&!el.querySelector('input[data-q="LIB.q4"]'));
+    const det=el.querySelector('details.lib-mas');__check("LBN10: «Más detalle» (avance por familia/tela/color, qué cargó, cuánto se liberó) viene plegado",!!det&&!det.open&&/Por familia/.test(det.innerHTML)&&/Cuánto se liberó/.test(det.innerHTML));
+    LIB.fam=new Set([famDeOrden(oL)]);const fams=resumenLibPor('tela',LIB.ym,famDeOrden,o=>+o.cant||0,null,o=>okFiltrosB1(o));
+    __check("LBN10: el avance por familia de «Más detalle» obedece los filtros de arriba",fams.length===1&&fams[0].k===famDeOrden(oL),JSON.stringify(fams.map(f=>f.k)));LIB.fam=null}
+   S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});PLAN=null;PLAN_ALL=null;
+   LIB.ym=bak.ym;LIB.vista=bak.vista;LIB.freno=bak.freno;LIB.mas=bak.mas;LIB.q='';LIB.sel=new Set();GRP={};window.alert=a0;window.confirm=c0;PERFIL=bakP;page='ordenes';render();
+   __check("LBN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* 26-sep · revisión adversarial de Liberación: botones que se actualizan, freno real de producción, enlaces, navegación */
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;let alertas=[];window.alert=m=>alertas.push(String(m));window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
+   const bak={ym:LIB.ym,et:LIB.et};GRP={};LIB.sel=new Set();LIB.q='';LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.fases=null;LIB.freno=null;LIB.vista=null;LIB.aviso=null;page='liberacion';LIB.et='tela';
+   const ym='2026-12',proy='DICIEMBRE 2026';
+   const buena=S.ordenes.find(o=>abierta(o)&&(o.telas||[]).length&&(o.telas||[]).filter(t=>!t.ext).length&&(o.telas||[]).filter(t=>!t.ext).every(t=>t.kg>0)&&(C(o.color)||{}).cod)||S.ordenes.find(abierta);
+   const mk=(op,cant)=>{const o=JSON.parse(JSON.stringify(buena));o.id=uid();o.op=op;o.estado='plan';o.fase='0Macro';o.proyecto=proy;o.cant=cant;o.odc='ODC-LBR';delete o.programa;delete o.lib;delete o.sinLanzar;delete o.sinFechaEntrega;delete o.rutaConf;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const o1=mk('WH/LBR-UNO',100),o2=mk('WH/LBR-DOS',200),oF=mk('WH/LBR-FRENA',50);confirmarRuta(o1,'persona','prueba');confirmarRuta(o2,'persona','prueba');
+   const mios=[o1,o2,oF];PLAN=null;PLAN_ALL=null;LIB.ym=new Set([ym]);LIB.vista='listas';render();
+   const btn=t=>[...document.querySelectorAll('#p-liberacion .lib-acciones button')].find(b=>b.textContent.includes(t));
+   /* marcar una casilla actualiza «Liberar las marcadas (N)» sin otro clic */
+   {togLib(o1.id,true);const b=btn('Liberar las marcadas');
+    __check("LBR1: marcar una casilla actualiza al momento «Liberar las marcadas (1)» y lo habilita",!!b&&/\(1\)/.test(b.textContent)&&!b.disabled,b?b.textContent+' '+b.disabled:'sin botón');
+    togLib(o1.id,false);const b2=btn('Liberar las marcadas');__check("LBR1: desmarcarla lo vuelve a (0) y lo apaga",!!b2&&/\(0\)/.test(b2.textContent)&&b2.disabled)}
+   /* escribir en el buscador repinta tarjetas, barra y botones, no solo la lista */
+   {LIB.q=o2.op;redibujarLista('LIB.q');const h=document.getElementById('p-liberacion').innerHTML;const b=btn('Liberar todas las listas');
+    __check("LBR2: al buscar, las tarjetas y «Liberar todas las listas (N)» siguen a la búsqueda (no quedan con los números de antes)",!!b&&/\(1\)/.test(b.textContent)&&/data-t="lib-v-listas"[^>]*><div class="v">1<\/div>/.test(h),b?b.textContent:'sin botón');
+    liberarListasLib('tela');__check("LBR2: y «Liberar todas las listas» libera SOLO lo que se ve con la búsqueda puesta",liberada(o2,'tela')&&!liberada(o1,'tela'));
+    LIB.q='';render()}
+   /* después de liberar, un aviso; la pestaña no salta sola a Frenadas */
+   {const h=document.getElementById('p-liberacion').innerHTML;
+    __check("LBR3: después de liberar sale «Se liberó 1 orden · verlas en Ya liberadas»",/lib-aviso/.test(h)&&/Se liberó 1 orden/.test(h)&&h.includes("setVistaLib('liberadas')"));
+    LIB.sel=new Set([o1.id]);liberarMarcadasLib('tela');const h2=document.getElementById('p-liberacion').innerHTML;const pp=partesLib('tela',LIB.ym);
+    __check("LBR3: al liberar las últimas listas la pantalla se queda en «Listas para liberar» con el aviso (no salta a Frenadas)",!pp.listas.length&&/data-vista="listas"/.test(h2)&&/lib-aviso/.test(h2),JSON.stringify({listas:pp.listas.length}));
+    setVistaLib('frenadas');__check("LBR3: cambiar de pestaña quita el aviso y vuelve la lista arriba",LIB.aviso===null&&LIB.scroll===0)}
+   /* un perfil que no puede abrir Configuración no recibe el enlace a Colores */
+   {const x=S.colores.find(c=>c.id===oF.color);const codAntes=x&&x.cod;if(x)x.cod='';LIB.vista='frenadas';
+    PERFIL={id:'u-lib',rol:'liberacion',nombre:'Libera',modo:'editar'};render();const h=document.getElementById('p-liberacion').innerHTML;const sinConfig=!puedeAbrirPagina('config');
+    __check("LBR4: «Dónde se arregla» solo trae enlace si el perfil puede abrir esa pantalla (si no, dice que lo arregla otra persona)",!sinConfig||page!=='liberacion'||(!h.includes("irAjuste('Colores')")&&(!/color sin Pantone/.test(h)||/lo arregla otra persona/.test(h))),sinConfig?'perfil sin Configuración':'este perfil sí abre Configuración');
+    PERFIL=adminP0();if(x)x.cod=codAntes;render()}
+   /* Liberación a producción: el Pantone no frena y lo que frena de verdad es la liberación textil */
+   {LIB.et='corte';LIB.vista='frenadas';render();const h=document.getElementById('p-liberacion').innerHTML;const fr=frenosLib(partesLib('corte',LIB.ym).frenadas,'corte').map(x=>x[0]);
+    __check("LBR5: en producción «color sin Pantone» no sale como freno (no impide liberar a producción)",!fr.includes('color sin Pantone'),fr.join(' | '));
+    __check("LBR5: una orden de tela propia sin la liberación textil dice «falta la liberación textil» (no «tela no tinturada») y enlaza a la textil",faltaLiberarA(oF,'corte').includes('falta la liberación textil')&&!faltaLiberarA(oF,'corte').includes('tela no tinturada')&&(!fr.includes('falta la liberación textil')||h.includes("irLib('tela')")),faltaLiberarA(oF,'corte').join(', '));
+    __check("LBR5: el semáforo lo dice con su verbo",faltaVerbo('falta la liberación textil')==='Falta liberar la tela')}
+   /* navegar a producción llega a producción; cambiar de página por el menú reinicia la pestaña */
+   {LIB.et='corte';LIB.vista='liberadas';page='ordenes';render();ir('liberacion');
+    __check("LBR6: ir a «Liberación a producción» desde otra pantalla llega a producción (antes caía en la textil)",page==='liberacion'&&LIB.et==='corte',LIB.et);
+    const a=document.querySelector('nav a[data-p="liberacion"][data-lib="tela"]');if(a){a.click();__check("LBR6: pasar por el menú a la otra liberación empieza en su pestaña por defecto (no hereda la elegida)",LIB.et==='tela'&&LIB.vista===null,LIB.vista)}}
+   /* Rutas acotada a las frenadas por ruta, sin marcar nada */
+   {LIB.et='tela';LIB.vista='frenadas';RUT.sel=new Set(['x-previa']);render();const ids=(LIB_FRENO_IDS['falta confirmar ruta']||[]).slice();irRutasFrenoLib();const h=document.getElementById('p-ordenes').innerHTML;
+    __check("LBR7: «confirmar la ruta →» abre Rutas con solo esas órdenes, sin marcar nada ni borrar lo marcado, y lo dice",page==='ordenes'&&ORDF.tab==='rutas'&&!!RUT.soloIds&&RUT.soloIds.size===ids.length&&RUT.sel.has('x-previa')&&rutasLista().every(o=>RUT.soloIds.has(o.id))&&/vienen de Liberación/.test(h),JSON.stringify({solo:RUT.soloIds&&RUT.soloIds.size,ids:ids.length}));
+    RUT.soloIds=null;RUT.sel=new Set();ORDF.tab='lista'}
+   S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});PLAN=null;PLAN_ALL=null;
+   LIB.ym=bak.ym;LIB.et=bak.et;LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.q='';LIB.sel=new Set();GRP={};window.alert=a0;window.confirm=c0;PERFIL=bakP;page='ordenes';render();
+   __check("LBR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

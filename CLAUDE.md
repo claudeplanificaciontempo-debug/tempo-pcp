@@ -1633,6 +1633,28 @@ pestaña, despliega la tabla y lleva la pantalla ahí; **no volver a escribir `C
 pestañas viejas dicen ahora «Configuración general → <pestaña nueva>». Medido con datos reales: la pestaña de Órdenes y fases pasó de
 ~19.600 px de alto a ~2.900. Pruebas CFG1–CFG13 (y PV, que ignora los controles `data-ver` de navegación).
 
+**Liberación más clara (26-sep-2026, usuaria: «la parte de la liberación la puedes mejorar, está igual de confusa»; revisión adversarial con 27 hallazgos
+reales corregidos).** Las dos páginas (`LIB.et` tela | corte, misma `vLiberacion`) dejaron los «Bloque 1/2/3», las tarjetas por familia que escondían la
+lista y el segundo buscador (`LIB.q4`). Ahora: UNA fila de filtros (`.row.lib-filtros`: mes del Proyecto, ODC, familia, cliente, categoría, tipo de tela,
+fases, mes de entrega, agrupador y el buscador `LIB.q`) que vale para toda la pantalla; **la base filtrada se parte en tres sin repetir**
+(`partesLib`: listas + frenadas + ya liberadas = base) y las tres tarjetas son también las pestañas (`tarjetasLibHTML`, `LIB.vista`, `vistaLib`: una
+tarjeta en 0 no se elige y cae a la primera con órdenes; recién liberadas las últimas, se queda en Listas con el aviso `LIB.aviso`); barra de % liberado en
+prendas (`avanceLibHTML`) y la línea «Además hay N liberadas de otros meses» (`otrosMesesLibHTML`). **Todo lo que depende del buscador se repinta
+junto** (`cuerpoLibHTML` es el contenedor `data-lista="LIB.q"`: tarjetas, barra, botones y lista) y **los botones calculan las órdenes al pulsar**
+(`liberarListasLib`, `liberarMarcadasLib`, `marcarTodasLib`, `lavadoMarcadasLib`, `listasLibAhora`); marcar una casilla (`togLib`) actualiza los botones.
+**Frenadas** abre con «Qué las frena» (`frenosLib`/`frenosLibHTML`/`FRENO_LIB`: cuántas órdenes y prendas por motivo, tocar uno = `LIB.freno`, y
+«dónde se arregla» con enlace solo si el perfil puede abrir esa pantalla, `frenoLinkOk`/`puedeAbrirPagina`; «sin receta de tela» dice cuántas SÍ traen la
+tela de Odoo y faltan enlazar en la tabla 8, `traeTelaOdoo`). «confirmar la ruta →» abre Órdenes → Rutas **acotada** a esas órdenes (`RUT.soloIds`, con
+aviso y «ver todas»; no marca nada; el menú la limpia). **Freno real de producción**: `faltaLiberarA(o,'corte')` dice **«falta la liberación textil»**
+(en vez de «tela no tinturada») a la tela propia que no tiene la textil (`faltaVerbo` → «Falta liberar la tela», enlaza a la textil con `irLib('tela')`);
+en producción el Pantone **no frena** (`noFrenaLib`: fuera de «Qué las frena», nota aparte y etiqueta gris en la fila). En Frenadas de la textil el semáforo
+dice lo que falta para la textil. **Ya liberadas**: lo último liberado primero, UN botón para deshacer (desliberar con `programa`, si no revertir) y
+«fase»; lo que da por liberado la fase de Odoo sale «por la fase de Odoo» (`libRegistroDe`) y **«Cuánto se liberó» lo cuenta aparte** (`porFase`, ya no
+como «sin fecha»; `libFechaDe` lee también tej/tin). **«Más detalle»** plegado (`LIB.mas`): avance por familia/tipo/tela/color (`bloqueLibB2` con el filtro
+`fl`: obedece los filtros), lo ya liberado, qué cargó, cuánto se liberó y las rutas que no siguen la de por defecto. `ir('liberacion')` va al enlace del
+menú de `LIB.et` (antes toda navegación por código caía en la textil) y cambiar de página por el menú reinicia la pestaña. Pruebas LBN1–LBN10, LBR1–LBR7 y
+las de Liberación reescritas (2a LIB DOM, LB, LBB, F1b, C, AB4 con el buscador de arriba, AB11).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
