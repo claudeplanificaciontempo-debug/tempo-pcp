@@ -802,22 +802,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("capacidad: la capacidad es calendario × recursos (capDia)",x.cap===capMesRecs(S.recursos.filter(r=>r.activa&&r.centro===x.c),x.m,x.u==='pt'));
    {const kb=Object.keys(M.celdas).find(k=>M.celdas[k].c==='bordado'&&!M.celdas[k].vencido);if(kb){const b=M.celdas[kb];const rB=S.recursos.filter(r=>r.activa&&r.centro==='bordado');const o1=b.det[0].o;const pt=(o1.ruta.find(p=>p.centro==='bordado')||{}).t;
      __check("capacidad: bordado va en puntadas (pend × puntadas) contra ppm × cabezas de cada bordadora, como el motor",b.u==='pt'&&Math.abs(b.det[0].min-o1.cant*pt)<1e-6&&b.cap===capMesRecs(rB,b.m,true)&&rB.every(r=>ptDia(r)===capDia(r)*(+r.ppm>0?+r.ppm:velBordado())*(+r.cabezas||1)),kb+' '+b.u)}}
-   __check("capacidad: la celda dice si incluye no liberadas",html().includes('no lib.')||html().includes('todo liberado'));
+   __check("capacidad: la celda dice si incluye no liberadas",html().includes('sin liberar')||html().includes('todo liberado'));
    __check("capacidad: umbral ámbar sembrado en params y editable",S.params.capAmbar===85&&/onchange="setCapAmbar/.test(html()));
    S.params.capAmbar=0;render();__check("capacidad: umbral 0 se respeta (todo lo que no es rojo es ámbar)",Object.values(matrizCapacidad()).length>=0&&!Object.values(matrizCapacidad().celdas).some(c=>estadoCel(c)==='ok'));S.params.capAmbar=85;
    // forzar un problema: capacidad 0 en el centro de la celda → rojo, se registra como nuevo, aviso en Hoy, se cierra al volver
    const recsC=S.recursos.filter(r=>r.activa&&r.centro===x.c);const act=recsC.map(r=>r.activa);recsC.forEach(r=>r.activa=false);PLAN=null;PLAN_ALL=null;
    const nb=S.bitacora.length;render();const ps=S.params.capProblemas||[];const p=ps.find(q=>q.c===x.c&&q.m===x.m&&!q.cerrado);
    __check("capacidad: un centro-mes que no alcanza se registra como problema nuevo con bitácora",!!p&&!p.visto&&S.bitacora.slice(nb).some(b=>/Capacidad: nuevo problema/.test(b.t)&&b.t.includes(fmtMesEG(x.m))));
-   __check("capacidad: la pantalla marca el problema como nuevo",html().includes('problemas nuevos sin ver')&&html().includes('>nuevo<'));
+   __check("capacidad: la pantalla marca el problema como nuevo",html().includes('nuevos sin ver')&&html().includes('>nuevo<'));
+   __check('CAP4: con los recursos apagados (capacidad 0) la tabla de arriba dice «capacidad 0», nunca «0%»',/capacidad 0/.test(html())&&!/>0%</.test(html()));
    page='panorama';render();__check("Hoy: avisa los problemas nuevos de capacidad con enlace",document.getElementById('p-panorama').innerHTML.includes('Capacidad y decisiones:')&&document.getElementById('p-panorama').innerHTML.includes('nuevos sin ver'));
    page='capacidad';CAPD.sel=x.c+'|'+x.m;render();__check("capacidad: detalle de la celda con faltan, órdenes por peso, no liberadas y meses con holgura",html().includes('Órdenes todavía NO liberadas')&&html().includes('Decisiones sobre')&&(html().includes('Meses cercanos con holgura')||html().includes('tiene holgura')));
    document.getElementById('capd-txt').value='Adelantar 3 órdenes a octubre; lo reprogramo a mano';const nb2=S.bitacora.length;anotarDecisionCap(x.c,x.m);
    const d=(S.params.capDecisiones||[]).find(z=>z.c===x.c&&z.m===x.m);__check("capacidad: la decisión queda con quién, cuándo, % y falta; marca el problema como visto; bitácora",!!d&&d.u&&d.ts&&d.falta>0&&!d.resuelto&&p.visto&&S.bitacora.slice(nb2).some(b=>/Capacidad · decisión/.test(b.t)));
    resolverDecisionCap(d.id);__check("capacidad: dar por resuelta guarda quién y cuándo",d.resuelto&&d.resueltoPor&&d.resueltoTs);
+   {CAPD.sel=null;render();const h=html();
+    __check('CAP5: una decisión dada por resuelta no cuenta como «sin decisión», y la fila dice que sigue sin alcanzar',/resuelta · sigue sin alcanzar/.test(h)&&(()=>{const esp=Object.values(matrizCapacidad().celdas).filter(z=>estadoCel(z)==='rojo'&&!(S.params.capDecisiones||[]).some(dd=>dd.c===z.c&&dd.m===z.m)).length;return h.includes('<div class="v">'+esp+'</div><div class="k">Sin decisión')})(),h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)&&h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)[0]);
+    CAPD.sel=x.c+'|'+x.m;render();const h2=html();const iDet=h2.indexOf('id="cap-detalle"'),iMat=h2.indexOf('Uso de capacidad por centro y mes');
+    __check('CAP6: el detalle de la celda elegida sale ARRIBA (junto a «qué hay que decidir», antes de la tabla) y tiene «cerrar»',iDet>0&&iDet<iMat&&/CAPD.sel=null;render\(\)/.test(h2));
+    __check('CAP7: el buscador de las órdenes de la celda se queda en el detalle (no se muda a la cabecera de la página)',!!document.querySelector('#cap-detalle .busq')&&!document.querySelector('#p-capacidad .pagehead .busq'));}
    __check("capacidad: historial lista problema y decisión",html().includes('>problema<')&&html().includes('>decisión<')&&html().includes('Adelantar 3 órdenes'));
+   {CAPD.hist=false;CAPD.cen=x.c;CAPD.hist=true;render();const dh=[...document.querySelectorAll('#p-capacidad details')].find(d=>/Historial/.test(d.querySelector('summary').textContent));
+    __check('CAP8: elegir un centro en el Historial lo deja abierto y el resumen dice el filtro',!!dh&&dh.open&&/solo /.test(dh.querySelector('summary').textContent));CAPD.cen='';CAPD.hist=false;render();
+    const tinC=Object.values(matrizCapacidad().celdas).find(z=>z.c==='tin'&&!z.vencido);
+    __check('CAP9: tintorería no dice «todo liberado» (se mide por baños: no se cuenta la liberación por orden)',!tinC||libCapTxt(tinC,false)==='por baños',tinC?tinC.m:'sin celdas de tintorería');}
    PERFIL={rol:'piso',modo:'editar',nombre:'P'};const alertPrev=window.alert;let al='';window.alert=m=>al=m;anotarDecisionCap(x.c,x.m);__check("capacidad: sin permiso programa no anota",/no puede anotar/.test(al)&&(S.params.capDecisiones||[]).length===1);window.alert=alertPrev;PERFIL=adminP;
    recsC.forEach((r,i)=>r.activa=act[i]);PLAN=null;PLAN_ALL=null;CAPD.sel=null;render();__check("capacidad: al volver a alcanzar el problema se cierra con bitácora",!!p.cerrado&&S.bitacora.some(b=>/ya alcanza · problema cerrado/.test(b.t)));
+   /* 25-sep (usuaria: «está como confusa»): en palabras arriba, lo que falta configurar aparte (azul, no rojo), leyenda, y lo técnico plegado al final */
+   {page='capacidad';CAPD.sel=null;render();const h=html();const iDec=h.search(/Dónde no alcanza · qué hay que decidir|ningún centro pasa del 100 %|Todavía no se puede saber si alcanza/),iTab=h.indexOf('Uso de capacidad por centro y mes'),iMot=h.indexOf('Comparar el motor de programación');
+    __check('CAP1: arriba va, en palabras, dónde no alcanza (o que todo alcanza); después la tabla; el comparador del motor queda plegado al final',iDec>=0&&iTab>iDec&&iMot>iTab&&/<details[^>]*>\s*<summary[^>]*>Comparar el motor/.test(h));
+    __check('CAP2: la tabla trae la leyenda de colores (alcanza · justo · no alcanza · falta capacidad · atrasado) con el umbral editable',/cel-ley ok/.test(h)&&/cel-ley falta/.test(h)&&/cel-ley venc/.test(h)&&/onchange="setCapAmbar/.test(h)&&!/null%/.test(h));}
+   {/* un centro SIN recursos: su celda es «falta capacidad» (azul), no «no alcanza», y no se registra como problema */
+    const M0=(CAPM=null,matrizCapacidad());const k0=Object.keys(M0.celdas).find(k=>M0.celdas[k].base==='proyecto'&&!M0.celdas[k].vencido);
+    if(k0){const c0=M0.celdas[k0].c;const quitados=S.recursos.filter(r=>r.centro===c0);S.recursos=S.recursos.filter(r=>r.centro!==c0);PLAN=null;PLAN_ALL=null;const nb0=S.bitacora.length;
+     page='capacidad';CAPD.sel=null;render();const h=html();const M1=matrizCapacidad();const x1=M1.celdas[k0];
+     __check('CAP3: un centro sin ningún recurso sale «falta capacidad» (dato que falta, en azul), NO como «no alcanza», no se registra como problema y la pantalla dice dónde configurarlo',!!x1&&estadoCel(x1)==='falta'&&!(S.params.capProblemas||[]).some(p=>p.c===c0&&!p.cerrado)&&h.includes('Falta configurar la capacidad de')&&/cel falta/.test(h)&&!S.bitacora.slice(nb0).some(b=>/nuevo problema/.test(b.t)&&b.t.includes(nombreCentroCap(c0))),c0);
+     S.recursos=S.recursos.concat(quitados);PLAN=null;PLAN_ALL=null;CAPM=null;render()}}
    S.params.capDecisiones=[];S.params.capProblemas=[];__check("capacidad sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* Compras del mes: pantalla RETIRADA el 24-sep (usuaria: «ya no nos va a servir en este aplicativo»); quedan los días por proveedor que usa el motor */
   {const antes=__R.errors.length;const adminP=PERFIL;PERFIL=adminP0();

@@ -1596,6 +1596,22 @@ familia); `migDemandaRetirada` le agrega una vez «gerencia» a los perfiles que
 Hoy · Órdenes · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad. Donde este archivo hable de Demanda agregada o de `FAM.fases`,
 es historia. Prueba DA1 (y CC-a, AB7, PN, REP ajustadas).
 
+**Capacidad y decisiones, más clara (25-sep-2026, usuaria: «puedes mejorar esa pestaña, está como confusa»).** Mismos cálculos
+(`matrizCapacidad`, `capMesRecs`, `minPendCentro`), otra presentación en `vCapacidad`: arriba cuatro cifras (No alcanza · Justo · Sin decisión ·
+Falta configurar), después **«Dónde no alcanza · qué hay que decidir»** (uso, faltan, sin liberar, decisión, «ver y decidir») con el **detalle
+de la celda elegida justo debajo** (`#cap-detalle`, «✕ cerrar», `verDetalleCap` lleva la pantalla ahí; su buscador lleva `data-filtro-local` y
+`controlesFiltro` ya no lo muda a la cabecera), luego los avisos (Proyectos de meses pasados que no están sumados a ningún mes; centros sin
+capacidad configurada; órdenes sin Proyecto) y la tabla centro × mes con **leyenda de colores** y el umbral «justo» editable dentro de ella;
+Historial (`CAPD.hist`) y «Comparar el motor» (`CAPD.cmp`, se apaga al plegar) van plegados al final. **Estados nuevos de celda** en
+`estadoCel`: `falta` = el centro no tiene NINGÚN recurso (`tieneRecursosCap`; azul, no es un problema de capacidad, no se registra; los
+abiertos se cierran con `p.cierre='faltaConfigurar'`), `dias` = centro que se mide por días (`centroPorDias`; gris «por días · no usa
+capacidad»); con recursos apagados sigue rojo («capacidad 0», nunca «0%» ni «null%»: `pctCapTxt`, `pctProbTxt`). «Sin decisión» = rojas SIN
+ninguna decisión; si todas están resueltas y sigue rojo, la fila dice «resuelta · sigue sin alcanzar». La columna de meses pasados se llama
+**«Meses pasados» / «Proyectos de meses pasados»** (`fmMesCap`), no «vencido» ni «atrasado» (vencida es otra cosa). Tintorería dice «por
+baños» (no hay liberación por orden). En el detalle, «Pendientes» son las prendas pendientes en ese centro (`pzPendCentro`, la misma cuenta
+de `minPendCentro`). Hoy usa las mismas palabras («no alcanza» / «sin capacidad configurada», contando centros). Pruebas CAP1–CAP9 y las de
+«capacidad:».
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
