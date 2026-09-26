@@ -1577,7 +1577,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=bakO;S.params.stockTela=bakSt;S.params.tejAnticipSem=bakAnt;PLAN=null;PLAN_ALL=null;}
   /* ===== los campos numéricos muestran el valor completo (r7 mostraba 9216 teniendo 921600 guardado) ===== */
   {const bakP=S.recursos.find(r=>r.id==='r7');const bakPpm=bakP?bakP.ppm:undefined;if(bakP){bakP.ppm=921600;bakP.cabezas=24}
-   CONF.tab='bordado';page='config';render();
+   CONF.tab='bordado';page='config';render();cfgAbrirTodo(true);   /* 25-sep: las tablas vienen plegadas; se abren para medir */
    const inp=[...document.querySelectorAll('#p-config input[type=number]')].find(i=>i.value==='921600');
    const anchos=[...document.querySelectorAll('#p-config input[type=number]')].map(i=>i.getBoundingClientRect().width);
    __check('el campo puntadas/min existe con el valor guardado completo',!!inp&&inp.value==='921600');
@@ -7615,8 +7615,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check('PV: el permiso nuevo está en la lista de permisos de Configuración → Usuarios, con su explicación',PERMISOS_DEF.some(p=>p[0]==='configVer'&&/sin poder cambiarla/i.test(p[1])),JSON.stringify(PERMISOS_DEF.find(p=>p[0]==='configVer')));
     PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};
     __check('PV: con ese perfil puede lo operativo pero NO configurar ni crear usuarios',puede('programa')&&puede('liberar')&&puede('ordenes')&&puede('configVer')&&!puede('config')&&!puede('usuarios'),JSON.stringify({programa:puede('programa'),config:puede('config'),usuarios:puede('usuarios')}));
-    page='config';render();
-    const el=document.getElementById('p-config');const ctr=[...el.querySelectorAll('input,select,textarea,button')];
+    page='config';CONF.tab='recursos';render();
+    const el=document.getElementById('p-config');const ctr=[...el.querySelectorAll('input,select,textarea,button')].filter(x=>x.getAttribute('data-ver')!=='1');
     __check('PV: ve la pantalla de Configuración entera (centros, recursos, personas, capacidades, tablas) con TODO apagado y un aviso que lo explica',page==='config'&&ctr.length>30&&ctr.every(x=>x.disabled)&&/no la puedes cambiar/i.test(el.innerHTML),JSON.stringify({page,controles:ctr.length,habilitados:ctr.filter(x=>!x.disabled).length}));
     aplicarNavPerfil();const a=document.querySelector('nav a[data-p="config"]');
     __check('PV: la entrada Configuración le aparece en el menú (antes solo se veía con permiso de editarla)',!!a&&a.style.display!=='none',a?('display='+(a.style.display||'(visible)')):'(sin entrada)');
@@ -8534,7 +8534,42 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const lx=lotesRuta().find(l=>l.motivo==='divergente (prueba)');if(lx){mDeshacerLoteRuta(lx.k);DLR.palabra='DESHACER';deshacerLoteRuta(lx.k)}window.alert=al;
      __check('LR14: un paso que estaba en la ruta completa pero no en la pendiente entra con el lote y, al deshacer, sale de la pendiente pero se queda en la completa',na===1&&enPendTrasLote&&!!lx&&(oD.rutaCompleta||[]).some(p=>p.centro===X)&&!(oD.ruta||[]).some(p=>p.centro===X),JSON.stringify({X,na,enPendTrasLote}));
      Object.keys(oD).forEach(k=>delete oD[k]);Object.assign(oD,JSON.parse(bak));PLAN=null;PLAN_ALL=null}}
-   ORDC={estado:'abiertas',ruta:'todas',q:'',fases:null};window.confirm=cf;page='ordenes';render()}  __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
+   ORDC={estado:'abiertas',ruta:'todas',q:'',fases:null};window.confirm=cf;page='ordenes';render()}  /* 25-sep (usuaria: «dale una mejor forma a Configuración, como dummies»): portada con los ajustes por tema, tablas agrupadas y plegadas, buscador */
+  {PERFIL=adminP0();CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();page='config';render();const el=document.getElementById('p-config');
+   __check('CFG1: Configuración abre en una portada con los ajustes agrupados por tema, cada uno con su explicación',CONF.tab==='inicio'&&el.querySelectorAll('.cfg-card').length>=5&&el.querySelectorAll('.cfg-card-it').length>=CONF_CATALOGO.length&&CONF_CATALOGO.every(e=>e.nombre&&e.desc&&CONF_GRUPOS.some(g=>g[0]===e.grupo)));
+   /* ninguna tabla queda sin su explicación (una tabla nueva sin fila en el catálogo aparecería en «Otros») */
+   const sinCat=[];let unidades=0,h3s=0;
+   CONF_TABS.filter(([k])=>k!=='inicio').forEach(([k])=>{CONF.tab=k;render();const us=[...el.querySelectorAll('.cfg-unit')];unidades+=us.length;h3s+=[...el.querySelectorAll('.cfg-unit > .panel > h3')].length;
+     us.forEach(u=>{if(!cfgEntradaDe(u.getAttribute('data-cfg-key')))sinCat.push(k+': '+((u.querySelector('h3')||{}).textContent||'').trim().slice(0,50))})});
+   __check('CFG2: toda tabla de Configuración tiene su nombre y su explicación en el catálogo (ninguna cae en «Otros»)',!sinCat.length,sinCat.join(' | '));
+   __check('CFG3: agrupar no pierde ni duplica tablas: cada tabla queda en una sola caja',unidades>0&&unidades===h3s,unidades+' / '+h3s);
+   CONF.tab='ordenes2';CFG_ABIERTOS=new Set();render();{const u=el.querySelector('.cfg-unit');const h3=u.querySelector('h3');
+    __check('CFG4: las tablas vienen plegadas (se ve el título y su explicación) y se abren tocando el título',u.classList.contains('cfg-plegado')&&!!u.querySelector('.cfg-desc')&&(cfgTogH3({target:h3},h3),!u.classList.contains('cfg-plegado')));
+    const b=h3.querySelector('button');if(b){const antes=u.classList.contains('cfg-plegado');cfgTogH3({target:b},h3);__check('CFG5: un botón dentro del título (Agregar…) no abre ni cierra la tabla',u.classList.contains('cfg-plegado')===antes)}}
+   {const r=cfgResultados('tallas');const i=CONF_CATALOGO.findIndex(e=>/Tallas/i.test(e.titulo));
+    __check('CFG6: el buscador encuentra el ajuste por palabra («tallas») y «ir» abre su pestaña con esa tabla desplegada',r.some(x=>x.i===i)&&(cfgIr(i),CONF.tab===CONF_CATALOGO[i].tab&&[...el.querySelectorAll('.cfg-unit')].some(u=>u.getAttribute('data-cfg-key')===cfgNorm(CONF_CATALOGO[i].titulo)&&!u.classList.contains('cfg-plegado'))))}
+   __check('CFG7: el menú dice «Configuración general» (antes decía «Centros y recursos» y abría todo)',/Configuración general/.test((document.querySelector('nav a[data-p="config"]')||{}).textContent||''));
+   CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();page='ordenes';render()}
+  /* 25-sep · revisión de la nueva Configuración: botón del título, avisos con la tabla cerrada, enlaces directos, perfil que solo ve, buscador */
+  {const bak=PERFIL;PERFIL=adminP0();CONF={tab:'ordenes2',q:''};CFG_ABIERTOS=new Set();page='config';render();const el=document.getElementById('p-config');
+   {const u=el.querySelector('.cfg-unit.cfg-plegado');const h3=u.querySelector('h3');const key=u.getAttribute('data-cfg-key');const b=document.createElement('button');b.textContent='+ Agregar (prueba)';h3.appendChild(b);
+    b.dispatchEvent(new MouseEvent('click',{bubbles:true}));render();const u2=[...el.querySelectorAll('.cfg-unit')].find(x=>x.getAttribute('data-cfg-key')===key);
+    __check('CFG8: tocar un botón del título (Agregar…) con la tabla cerrada la deja abierta al redibujar, así se ve la fila nueva',CFG_ABIERTOS.has(key)&&!!u2&&!u2.classList.contains('cfg-plegado'),key)}
+   const mal=[];let conAv=0,visibles=0;
+   CONF_TABS.filter(([k])=>k!=='inicio').forEach(([k])=>{CONF.tab=k;CFG_ABIERTOS=new Set();render();[...el.querySelectorAll('.cfg-unit')].forEach(u=>{const h3=u.querySelector('.cfg-h3');
+     const cuerpo=[...u.querySelectorAll('.warn, .tag.t-alerta')].filter(x=>!h3.contains(x));const tag=h3.querySelector('.cfg-aviso');
+     if(!!cuerpo.length!==!!tag)mal.push(k+': '+u.getAttribute('data-cfg-key'));if(tag){conAv++;if(u.classList.contains('cfg-plegado')&&getComputedStyle(tag).display!=='none')visibles++}})});
+   __check('CFG9: toda tabla que tiene un aviso adentro lo dice en su título, y el aviso se ve con la tabla cerrada',!mal.length&&visibles===conAv,JSON.stringify({mal,conAviso:conAv,visiblesCerradas:visibles}));
+   {page='ordenes';CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();render();irAjuste('16 · Tallas');const e=CONF_CATALOGO.find(x=>x.titulo==='16 · Tallas');
+    const u=[...document.querySelectorAll('#p-config .cfg-unit')].find(x=>x.getAttribute('data-cfg-key')===cfgNorm(e.titulo));
+    __check('CFG10: un enlace desde otra pantalla («revisar tallas») abre Configuración en la tabla justa, ya desplegada',page==='config'&&CONF.tab===e.tab&&!!u&&!u.classList.contains('cfg-plegado'),JSON.stringify({page,tab:CONF.tab,unidad:!!u}))}
+   {const fs=cfgPorCompletar();__check('CFG11: cada cosa de «Falta completar» lleva a una tabla que existe (ninguna queda sin enlace)',fs.every(x=>x.i>=0&&CONF_CATALOGO[x.i]),JSON.stringify(fs.map(x=>[x.txt.slice(0,40),x.i])))}
+   {const r=q=>cfgResultados(q).map(x=>CONF_CATALOGO[x.i].titulo);
+    __check('CFG12: el buscador encuentra por palabras de uso («aspecto» → Parámetros, «feriado» → Días de trabajo) y por el nombre viejo de la pestaña («Calendario y parámetros»)',r('aspecto').includes('Parámetros')&&r('feriado').some(t=>/Días de trabajo/.test(t))&&r('Calendario y parámetros').length>=3,JSON.stringify({aspecto:r('aspecto'),feriado:r('feriado')}))}
+   PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};CONF={tab:'inicio',q:''};page='config';render();{const el3=document.getElementById('p-config');const tx=el3.innerText;
+    __check('CFG13: quien solo ve la configuración no ve en la portada lo que no puede abrir (Usuarios, respaldo y borrado)',!/Respaldo y borrado/.test(tx)&&![...el3.querySelectorAll('.cfg-card-it')].some(a=>/ir\('usuarios'\)/.test(a.getAttribute('onclick')||''))&&!cfgResultados('borrar').some(x=>CONF_CATALOGO[x.i].tab==='borrado'),'')}
+   PERFIL=bak;CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();page='ordenes';render()}
+  __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
 </script>

@@ -1612,6 +1612,27 @@ baños» (no hay liberación por orden). En el detalle, «Pendientes» son las p
 de `minPendCentro`). Hoy usa las mismas palabras («no alcanza» / «sin capacidad configurada», contando centros). Pruebas CAP1–CAP9 y las de
 «capacidad:».
 
+**Configuración general, ordenada «para dummies» (25-sep-2026, usuaria: «revisa también lo de configuración, dale una mejor forma»).**
+Nada de lo que se guarda cambió: solo cómo se encuentra. El menú dice **«Configuración general»** (antes «Centros y recursos», que abría todo).
+Pestañas en palabras (`CONF_TABS`): **Inicio** (por defecto) · Centros y máquinas · Calendario y reglas · Telas y colores · Bordado y estampado ·
+Órdenes, fases y archivos de Odoo · Nivelación · Respaldo y borrado (esta última solo con `config`); **el id interno de cada pestaña no cambió**
+(`recursos`, `cal`, `ordenes2`, `borrado`…). **`CONF_CATALOGO`** = una fila por tabla de Configuración `{tab,titulo,nombre,grupo,desc,claves}`
+(nombre en palabras, qué hace, palabras de búsqueda) y `CONF_GRUPOS` los temas; **una tabla nueva de Configuración necesita su fila en el
+catálogo** (si no, cae en «Otros» y la prueba CFG2 falla). **Inicio** (`configInicioHTML`): «Falta completar» (`cfgPorCompletar`: centros activos
+sin recursos, fases sin secuencia, listas de motivos vacías, centros sin descansos, proveedores sin días, errores de grupos de módulos, esperas
+sin regla, borrado a medias; cada una enlaza a su tabla), tarjetas por tema con cada ajuste y su explicación, y «En otras pantallas»
+(Operaciones y tiempos, Categorías, Usuarios, Salud: solo las que el perfil puede abrir, `puedeAbrirPagina`). **Buscador de ajustes** arriba
+de todas las pestañas (`cfgResultados`: nombre, título, explicación, `claves` y los nombres de pestaña nuevos y viejos `CONF_TABS_ANTES`).
+**En cada pestaña** `organizarConfig(el)` (corre al final de `vConfig`, antes de `blindarConfigSoloVer`) agrupa las tablas por tema y las deja
+**plegadas** con su nombre y una línea de explicación (`.cfg-unit`, `data-cfg-key` = título normalizado; `cfgEntradaDe` empareja por la clave
+más larga); tocar el título abre o cierra (`cfgTogH3`, ignora botones, campos y el «?»), un botón del título (Agregar…) la deja abierta
+(`CFG_ABIERTOS`), «Abrir todas/Cerrar todas» (`cfgAbrirTodo`) y una tabla con avisos adentro lo dice en el título («⚠ tiene avisos»); un
+borrado a medias deja su tabla abierta **por el estado guardado**, no por palabras (hay una fase «INCOMPLETOS TIN»). **`irAjuste(titulo)`** es
+la única forma de mandar a una tabla desde otra pantalla (Hoy → Pendientes, capacidad, planificar días, tintorería, nivelación…): abre la
+pestaña, despliega la tabla y lleva la pantalla ahí; **no volver a escribir `CONF.tab='…';ir('config')` a mano**. Los textos que nombraban
+pestañas viejas dicen ahora «Configuración general → <pestaña nueva>». Medido con datos reales: la pestaña de Órdenes y fases pasó de
+~19.600 px de alto a ~2.900. Pruebas CFG1–CFG13 (y PV, que ignora los controles `data-ver` de navegación).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
