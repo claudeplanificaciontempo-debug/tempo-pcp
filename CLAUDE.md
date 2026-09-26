@@ -1589,6 +1589,13 @@ del buscador (mientras se escribe solo se repinta la lista). **La ficha** (`abri
 trabaja (`ordenesQueVe`; si no, clase `solo-ver`, sin manito), e `irEstadoOrden` avisa si la orden ya no está abierta o si la pantalla destino
 no es del perfil, en vez de mandarlo a otra. Pruebas OC1–OC12 y REP (7 reportes).
 
+**Demanda agregada RETIRADA (25-sep-2026, usuaria con captura: «borremos eso»).** Se quitaron el menú, la sección `p-familias`, `vFamilias`,
+el estado `FAM`, `GRUPOS_FASE`/`grupoFase` y `togMesFam`/`togFaseFam`/`togGrupoFam` (nadie más los usaba), la entrada de `PAGINAS_DEF`, el ícono y
+`estadosPantalla`. `PAGINAS_REDIRIGIDAS.familias='gerencia'`: un enlace o perfil viejo cae en el Resumen gerencial (la cartera por mes, cliente y
+familia); `migDemandaRetirada` le agrega una vez «gerencia» a los perfiles que tenían «familias» (nunca desde el piso). El menú Dirección queda
+Hoy · Órdenes · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad. Donde este archivo hable de Demanda agregada o de `FAM.fases`,
+es historia. Prueba DA1 (y CC-a, AB7, PN, REP ajustadas).
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

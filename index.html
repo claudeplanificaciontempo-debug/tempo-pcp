@@ -507,7 +507,6 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
     <div class="gbody" data-g="dir">
       <a data-p="panorama">Hoy</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
-      <a data-p="familias">Demanda agregada</a>
       <a data-p="plan">Planificar el mes</a>
       <a data-p="liberacion" data-lib="tela">Liberación</a>
       <a data-p="entregas">Entregas</a>
@@ -576,7 +575,6 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
     <section class="page" id="p-ordtrabajo"></section>
     <section class="page" id="p-ordconsulta"></section>
     <section class="page" id="p-salud"></section>
-    <section class="page" id="p-familias"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
     <section class="page" id="p-stock"></section>
@@ -730,7 +728,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['familias','Demanda agregada'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Centros y recursos'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -744,6 +742,7 @@ function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.
   if(!S.params.migReporteria2){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['reporteria','vistaordenes','asignacion'].some(p=>d.paginas.includes(p)))return;['avancearea','wip'].forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria2=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (21-sep): '+n+' entradas «Avance por área» / «Producto en proceso» agregadas a los perfiles que tenían la reportería anterior (Reportería textil, Reportería por área, Vista general y Asignación por orden salieron del menú; sus enlaces viejos llevan a las nuevas)')}
   if(!S.params.migReporteria3&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;const pro=new Set((S.centros||[]).filter(c=>c.area==='pro').map(c=>c.id));S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!d.paginas.includes('avancearea'))return;if(!(d.centros||[]).some(c=>c==='*'||pro.has(c)))return;if(!d.paginas.includes('ordtrabajo')){d.paginas.push('ordtrabajo');n++}});S.params.migReporteria3=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (24-sep): «Órdenes de trabajo» agregada a '+n+' perfiles que ya veían «Avance por área»')}
   if(!S.params.migReporteria4&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['wip','avancearea','ordenes'].some(p=>d.paginas.includes(p)))return;if(!d.paginas.includes('ordconsulta')){d.paginas.push('ordconsulta');n++}});S.params.migReporteria4=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (25-sep): «Órdenes de producción» (consulta) agregada a '+n+' perfiles que ya veían reportes u Órdenes')}
+  if(!S.params.migDemandaRetirada&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*')||!d.paginas.includes('familias'))return;if(!d.paginas.includes('gerencia')){d.paginas.push('gerencia');n++}});S.params.migDemandaRetirada=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Demanda agregada retirada (25-sep): '+n+' perfiles que la tenían reciben el Resumen gerencial')}
   if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
     if(!S.params.perfilesDef.some(x=>x.id==='jefatura'))S.params.perfilesDef.push({id:'jefatura',n:'Jefatura (todo menos configurar)',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos','calidadTin','configVer'],centros:['*'],paginas:['*'],desc:'Hace todo lo operativo: órdenes, programa, liberaciones, rutas, baños y piso. Ve la Configuración completa (recursos, personas, capacidades, tablas) pero NO la edita, y no crea usuarios.'});
     S.params.perfilesJefatura=new Date().toISOString();if(typeof bitacora==='function')bitacora('Perfil «Jefatura (todo menos configurar)» agregado al catálogo: todo lo operativo, ve la configuración sin editarla (decisión de la usuaria, 22-sep). Editable en Configuración → Usuarios.')}
@@ -962,7 +961,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-25 09:21';
+const APP_BUILD='2026-09-25 22:01';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1262,7 +1261,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',familias:'layers',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
+const ICO_NAV={nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -3310,7 +3309,7 @@ const REPORTES=[
   {p:'cumplimiento',n:'Cumplimiento de facturación',desc:'semanas congeladas contra lo real'},
   {p:'avance',n:'Avance del mes',desc:'unidades hechas contra el plan congelado del mes'}];
 /* páginas retiradas el 21-sep: los enlaces viejos (perfiles, marcadores, bandejas) caen en la pantalla que las reemplaza */
-const PAGINAS_REDIRIGIDAS={vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro'};   /* compras: pantalla retirada el 24-sep */
+const PAGINAS_REDIRIGIDAS={vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro',familias:'gerencia'};   /* compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep */
 function redirigirPagina(p){return PAGINAS_REDIRIGIDAS[p]||p}
 function reporteriaBarraHTML(){const vis=REPORTES.filter(r=>vePagina(r.p));if(vis.length<2)return '';
   return `<div class="chips no-print" style="margin:0 0 12px;align-items:center"><span class="mut" style="font-size:var(--fs-xs);margin-right:4px">Reportería:</span>${vis.map(r=>`<span class="chip ${page===r.p?'on':''}" title="${esc(r.desc||'')}" onclick="ir('${r.p}')">${esc(r.n)}</span>`).join('')}</div>`}
@@ -3493,7 +3492,7 @@ function podarFases(sel,fasesAll){if(!sel||!sel.size)return sel;
    acotada lo usan, y si falta uno fallan en silencio. Las pruebas comprueban que están los 17. */
 function estadosPantalla(){const M={};
   try{M.CEN=CEN}catch(e){}try{M.CG=CG}catch(e){}try{M.WIPL=WIPL}catch(e){}try{M.PMADD=PMADD}catch(e){}
-  try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.FAM=FAM}catch(e){}try{M.CTL=CTL}catch(e){}
+  try{M.LIB=LIB}catch(e){}try{M.ORDF=ORDF}catch(e){}try{M.CTL=CTL}catch(e){}
   try{M.AVA=AVA}catch(e){}try{M.TAB=TAB}catch(e){}try{M.CTLF=CTLF}catch(e){}
   try{M.EG=EG}catch(e){}try{M.GER=GER}catch(e){}try{M.RUT=RUT}catch(e){}try{M.COS=COS}catch(e){}
   try{M.CAPD=CAPD}catch(e){}try{M.NLF=NLF}catch(e){}try{M.PM=PM}catch(e){}
@@ -3612,7 +3611,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
    const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   try{cierresMesEnRender()}catch(e){try{console.error('cierresMesEnRender',e)}catch(x){}}   /* la historia de la cartera se toma sola */
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,familias:vFamilias,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
+  ({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page])(el);
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -4493,68 +4492,7 @@ function vCumplimiento(el){
 }
 
 /* ---------- Modo línea (tablet): un módulo, botones grandes ---------- */
-/* ---------- Demanda agregada por familia y subcategoría ---------- */
-let FAM={per:'horizonte',metrica:'hconf',fases:null,fam:null,prev:true};
-const GRUPOS_FASE=[['0','Preproducción (diseño, compras)'],['1','Tela (tejeduría, tintorería)'],['2','Corte y preparación (2–4)'],['5','Confección y servicios (5–7)'],['8','Terminados (8)']];
-function grupoFase(f){const n=faseNum(f);return n<=0?'0':n===1?'1':n<=4?'2':n<=7?'5':'8'}
-function vFamilias(el){
-  const ords=S.ordenes.filter(o=>abierta(o)||(FAM.prev&&o.estado==='prevision'));
-  if(!ords.length){el.innerHTML=`<div class="pagehead"><h2>Demanda agregada</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
-  const h=hoy();const mesDe=o=>mesPlan(o)||'Sin proyecto';
-  const minConf=o=>(o.ruta||[]).filter(p=>p.centro==='modulos').reduce((a,p)=>a+minPrenda('modulos',p.t),0);
-  const horasConf=o=>o.cant*minConf(o)/60;const horasPlanta=o=>o.cant*(o.ruta||[]).reduce((a,p)=>a+minPrenda(p.centro,p.t),0)/60;
-  const fasesAll=[...new Set(ords.map(o=>o.fase||'Sin fase'))].sort();if(!FAM.fases)FAM.fases=new Set(fasesAll);
-  const meses=[...new Set(ords.map(mesDe))].sort();const horizonte=meses.filter(m=>m!=='Sin fecha'&&m>=h.slice(0,7)).slice(0,6);
-  let rows=ords.filter(o=>faseOkFiltro(FAM.fases,o.fase));
-  if(FAM.per==='horizonte')rows=rows.filter(o=>horizonte.includes(mesDe(o)));else if(FAM.per==='meses')rows=rows.filter(o=>FAM.meses&&FAM.meses.has(mesDe(o)));else if(FAM.per!=='todo')rows=rows.filter(o=>mesDe(o)===FAM.per);
-  const padreDe=o=>{const k=K(o.cat);if(!k)return'—';const p=K(k.padre);return p?p.n:k.n};const hijaDe=o=>{const k=K(o.cat);return k?k.n:'—'};
-  const agg=(list,key)=>{const m={};list.forEach(o=>{const k=key(o);if(!m[k])m[k]={n:k,pz:0,hconf:0,hpl:0,ords:0,prev:0};m[k].pz+=+o.cant;m[k].hconf+=horasConf(o);m[k].hpl+=horasPlanta(o);m[k].ords++;if(o.estado==='prevision')m[k].prev++});return Object.values(m)};
-  const mk=FAM.metrica;const fmtV=v=>mk==='pz'?num(v):num(v,1)+' h';
-  const fams=agg(rows,padreDe).sort((a,b)=>b[mk]-a[mk]);const tot=fams.reduce((a,x)=>a+x[mk],0)||1;const mx=Math.max(1,...fams.map(x=>x[mk]));
-  if(!FAM.fam||!fams.some(f=>f.n===FAM.fam))FAM.fam=(fams[0]||{}).n;
-  const hijas=agg(rows.filter(o=>padreDe(o)===FAM.fam),hijaDe).sort((a,b)=>b[mk]-a[mk]);const totF=hijas.reduce((a,x)=>a+x[mk],0)||1;const mxH=Math.max(1,...hijas.map(x=>x[mk]));
-  const sinSam=rows.filter(o=>minConf(o)<=0).reduce((a,o)=>a+ +o.cant,0);
-  // mensual apilado (horizonte) con la capacidad de confección del mes como referencia
-  const rowsH=ords.filter(o=>faseOkFiltro(FAM.fases,o.fase)&&horizonte.includes(mesDe(o)));const lideres=agg(rowsH,padreDe).sort((a,b)=>b[mk]-a[mk]).slice(0,7).map(x=>x.n);
-  const pal=['#1f3a5f','#3b6ea5','#7aa6d6','#c8a24a','#8a5a3c','#5c7a4a','#9b6b9e','#9a9a9a'];
-  const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);
-  const capMes=m=>{const [y,mm]=m.split('-').map(Number);const nd=new Date(y,mm,0).getDate();let c=0;for(let d=1;d<=nd;d++){const ds=m+'-'+String(d).padStart(2,'0');mods.forEach(r=>{if(labR(ds,r))c+=capDia(r,ds)})}return c/60};
-  const mensual=horizonte.map(m=>{const r=rowsH.filter(o=>mesDe(o)===m);const fm=agg(r,padreDe);const vals=lideres.map(n=>(fm.find(x=>x.n===n)||{})[mk]||0);const total=fm.reduce((a,x)=>a+x[mk],0);vals.push(Math.max(0,total-vals.reduce((a,b)=>a+b,0)));return{m,total,vals,cap:mk==='hconf'?capMes(m):null}});
-  const mxM=Math.max(1,...mensual.map(x=>Math.max(x.total,x.cap||0)));const fm=m=>m==='Sin fecha'?m:new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long'});
-  const fmL=m=>m==='Sin fecha'?m:new Date(m+'-15T12:00:00').toLocaleDateString('es-EC',{month:'short',year:'2-digit'});
-  const nPrev=ords.filter(o=>o.estado==='prevision').length;
-  const grupos=GRUPOS_FASE.map(([g,n])=>({g,n,fases:fasesAll.filter(f=>grupoFase(f)===g)})).filter(x=>x.fases.length);
-  el.innerHTML=`<div class="pagehead"><h2>Demanda agregada</h2><span class="spacer"></span><button class="btn no-print" onclick="window.print()">Imprimir</button></div>
-  <p class="lede">Distribución de la cartera por familia y subcategoría, en prendas u horas estándar, por mes de entrega y filtrando por fase. Es la demanda bruta: no descuenta lo ya producido. ${nPrev?nPrev+' filas son previsión (estilos sin WH); el Resumen gerencial solo cuenta órdenes con WH, por eso sus totales difieren cuando la previsión está incluida.':''}</p>
-  <div class="panel"><div class="body"><div class="row" style="margin:0;align-items:flex-end;flex-wrap:wrap">
-    <div><label>Período</label><details><summary class="chip" style="list-style:none;cursor:pointer;display:inline-block;white-space:nowrap">${FAM.per==='horizonte'?(horizonte.length?fm(horizonte[0])+'–'+fm(horizonte[horizonte.length-1])+' '+horizonte[horizonte.length-1].slice(0,4):'Horizonte'):FAM.per==='todo'?'Todos los meses':(FAM.meses&&FAM.meses.size?FAM.meses.size+' meses':'Elige meses')} ▾</summary>
-      <div style="position:absolute;z-index:6;background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;margin-top:4px;min-width:240px;max-height:360px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)">
-       <div style="margin-bottom:8px"><button class="btn ghost sm" onclick="FAM.per='horizonte';render()">Horizonte</button> <button class="btn ghost sm" onclick="FAM.per='todo';render()">Todo</button></div>
-       ${meses.map(m=>`<label style="display:block;font-size:var(--fs-s);padding:2px 0"><input type="checkbox" ${FAM.per==='meses'&&FAM.meses&&FAM.meses.has(m)?'checked':''} onchange="togMesFam('${m}')"> ${fmL(m)}</label>`).join('')}</div></details></div>
-    <div><label>Familia para detalle</label><select onchange="FAM.fam=this.value;render()">${fams.map(f=>`<option value="${esc(f.n)}" ${f.n===FAM.fam?'selected':''}>${esc(f.n)}</option>`).join('')}</select></div>
-    <div><label>Métrica</label><div class="chips">${[['pz','Prendas'],['hconf','Horas confección'],['hpl','Horas planta']].map(([k,v])=>`<span class="chip ${FAM.metrica===k?'on':''}" onclick="FAM.metrica='${k}';render()">${v}</span>`).join('')}</div></div>
-    ${nPrev?`<div><label>Previsión</label><label class="chip ${FAM.prev?'on':''}" style="margin:0" onclick="FAM.prev=!FAM.prev;render()">${FAM.prev?'incluida':'excluida'}</label></div>`:''}
-    <div><label>Fases productivas</label>${selFases(fasesAll,FAM.fases,'FAM.fases','togFaseFam')}</div>
-  </div></div></div>
-  <div class="kpis"><div class="kpi"><div class="v">${num(rows.reduce((a,o)=>a+ +o.cant,0))}</div><div class="k">Prendas · demanda bruta seleccionada${(()=>{const pv=rows.filter(o=>o.estado==='prevision');const wh=rows.length-pv.length;return pv.length?`<br><span class="mut">${num(wh)} órdenes con WH · ${num(rows.filter(o=>o.estado!=='prevision').reduce((a,o)=>a+ +o.cant,0))} pz, más ${pv.length} previsiones · ${num(pv.reduce((a,o)=>a+ +o.cant,0))} pz</span>`:`<br><span class="mut">${num(wh)} órdenes con WH</span>`})()}</div></div><div class="kpi"><div class="v">${num(rows.reduce((a,o)=>a+horasConf(o),0),1)} h</div><div class="k">Horas de confección</div></div><div class="kpi"><div class="v">${num(rows.reduce((a,o)=>a+horasPlanta(o),0),1)} h</div><div class="k">Horas de planta</div></div><div class="kpi"><div class="v">${fams.length}</div><div class="k">Familias</div></div><div class="kpi"><div class="v">${new Set(rows.map(hijaDe)).size}</div><div class="k">Subcategorías · composición del portafolio</div></div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-   <div class="panel"><h3>Carga por familia <span class="note">${mk==='pz'?'prendas':'horas estándar'} · clic en una barra para abrir su composición</span></h3><div class="body">
-    ${fams.map(f=>`<div style="display:grid;grid-template-columns:150px 1fr 110px;gap:8px;align-items:center;padding:4px 0;cursor:pointer;${f.n===FAM.fam?'font-weight:600':''}" onclick="FAM.fam='${esc(f.n).replace(/'/g,"\\'")}';render()"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-s)">${esc(f.n)}</span><div class="bar" style="height:11px"><i style="width:${f[mk]/mx*100}%;background:${f.n===FAM.fam?'var(--ink)':'var(--medio)'}"></i></div><span class="num" style="font-size:var(--fs-s)">${fmtV(f[mk])} <span class="mut">${(100*f[mk]/tot).toFixed(1)}%</span></span></div>`).join('')||'<span class="mut">Sin datos.</span>'}</div></div>
-   <div class="panel"><h3>Subcategorías <span class="note">${esc(FAM.fam||'')}</span></h3><div class="body">
-    ${hijas.map(x=>`<div style="display:grid;grid-template-columns:150px 1fr 110px;gap:8px;align-items:center;padding:4px 0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-s)">${esc(x.n)}${x.prev?' <span class="tag t-aviso">prev.</span>':''}</span><div class="bar" style="height:11px"><i style="width:${x[mk]/mxH*100}%;background:var(--aviso)"></i></div><span class="num" style="font-size:var(--fs-s)">${fmtV(x[mk])} <span class="mut">${(100*x[mk]/totF).toFixed(1)}%</span></span></div>`).join('')||'<span class="mut">Sin datos.</span>'}</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-   <div class="panel"><h3>Distribución mensual <span class="note">principales familias del horizonte${mk==='hconf'?' · la línea es la capacidad de confección del mes con el calendario actual':''}</span></h3><div class="body">
-    <div style="display:flex;gap:14px;align-items:flex-end;height:250px;padding:0 6px">${mensual.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative"><div class="num" style="font-size:var(--fs-xs);margin-bottom:4px;${x.cap&&x.total>x.cap?'color:var(--alerta);font-weight:600':''}">${fmtV(x.total)}</div><div style="width:100%;max-width:90px;position:relative"><div style="display:flex;flex-direction:column-reverse;height:${Math.max(4,190*x.total/mxM)}px;border-radius:2px;overflow:hidden">${x.vals.map((v,i)=>`<div title="${esc(i<lideres.length?lideres[i]:'Otras')}: ${fmtV(v)}" style="height:${x.total?100*v/x.total:0}%;background:${pal[i%pal.length]}"></div>`).join('')}</div>${x.cap?`<div title="capacidad ${num(x.cap)} h" style="position:absolute;left:-8px;right:-8px;bottom:${190*x.cap/mxM}px;border-top:2px dashed var(--alerta)"></div>`:''}</div><div class="mut" style="font-size:var(--fs-xs);margin-top:6px;text-transform:capitalize">${fm(x.m)}</div>${x.cap?`<div class="mut" style="font-size:var(--fs-xs)">cap. ${num(x.cap)} h</div>`:''}</div>`).join('')}</div>
-    <div class="chips" style="margin-top:10px">${[...lideres,'Otras'].map((n,i)=>`<span class="chip" style="cursor:default"><i style="display:inline-block;width:10px;height:10px;background:${pal[i%pal.length]};margin-right:6px;vertical-align:middle"></i>${esc(n)}</span>`).join('')}</div></div></div>
-   <div class="panel"><h3>Detalle familia–subcategoría <span class="note">ordenado de mayor a menor carga</span></h3><div class="body"><table><thead><tr><th>Familia</th><th>Subcategoría</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">H. confección</th><th class="num">Participación</th></tr></thead><tbody>
-    ${hijas.map(x=>`<tr><td>${esc(FAM.fam)}</td><td>${esc(x.n)}</td><td class="num">${x.ords}</td><td class="num">${num(x.pz)}</td><td class="num">${num(x.hconf,1)}</td><td class="num">${(100*x[mk]/totF).toFixed(1)}%</td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sin datos.</td></tr>'}</tbody></table>
-    ${sinSam?`<div class="warn" style="margin-top:12px">Lectura de demanda bruta: no descuenta lo ya producido. <b>${num(sinSam)} prendas</b> no tienen tiempo estándar de confección, por lo que las horas pueden estar subestimadas.</div>`:'<p class="mut" style="font-size:var(--fs-xs);margin-top:12px">Lectura de demanda bruta: no descuenta lo ya producido.</p>'}</div></div>
-  </div>`;
-}
-function togMesFam(m){FAM.per='meses';FAM.meses=FAM.meses||new Set();if(FAM.meses.has(m))FAM.meses.delete(m);else FAM.meses.add(m);render()}
-function togFaseFam(f){if(FAM.fases.has(f))FAM.fases.delete(f);else FAM.fases.add(f);render()}
-function togGrupoFam(g,on){S.ordenes.forEach(o=>{const f=o.fase||'Sin fase';if(grupoFase(f)===g){if(on)FAM.fases.add(f);else FAM.fases.delete(f)}});render()}
+/* Demanda agregada: pantalla retirada el 25-sep-2026 (usuaria: «borremos eso»); un enlace viejo cae en el Resumen gerencial (PAGINAS_REDIRIGIDAS) */
 
 /* ---------- Liberación: tablero de lo que hay por liberar y lo liberado, filtros de casillas, liberación en bloque ---------- */
 let LIB={et:'tela',q:'',q4:'',fam:null,hija:null,cli:null,mes:null,fases:null,tela:null,sel:new Set(),verLista:false,scroll:0,ym:null,ymAuto:false,odc:null,famB:null,cliB:null,fam2:null};

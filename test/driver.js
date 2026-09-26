@@ -1654,7 +1654,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','familias','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','avancearea','salud'];
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','avancearea','salud'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -2081,7 +2081,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
    __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Órdenes de trabajo (24-sep), Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo,cumplimiento,avance');
-   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,familias,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) */
+   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) */
    __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===7&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
    GRP={};WIPL={niveles:null,q:''};WIP={base:'abiertas',fases:null,mas:false};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();let h=document.getElementById('p-wip').innerHTML;
    const ab=S.ordenes.filter(abiertaDe);const usdT=ab.reduce((a,o)=>a+(+o.precio||0)*(+o.cant||0),0);const pzT=ab.reduce((a,o)=>a+(+o.cant||0),0);
@@ -2237,7 +2237,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // a) filtro de fases agrupado
    page='liberacion';LIB.et='tela';LIB.q='';LIB.fases=null;render();let h=document.getElementById('p-liberacion').innerHTML;
    __check("CC-a: el filtro de fases es el común: agrupado por grupo de la tabla 5 con 'Seleccionar todas' y 'Limpiar'",h.includes('class="ffases"')&&h.includes('Seleccionar todas')&&h.includes('>Limpiar<')&&/\d · [A-ZÁÉÍÓÚ ]+<\/span>/.test(h));
-   page='familias';render();__check("CC-a: Demanda agregada usa el mismo filtro de fases",document.getElementById('p-familias').innerHTML.includes('class="ffases"'));
+   /* 25-sep (usuaria: «borremos eso»): Demanda agregada se retiró; un enlace viejo cae en el Resumen gerencial */
+   {page='familias';render();__check("DA1: Demanda agregada ya no existe (menú, sección, código) y un enlace viejo abre el Resumen gerencial",!document.querySelector('nav a[data-p="familias"]')&&!document.getElementById('p-familias')&&typeof vFamilias==='undefined'&&typeof FAM==='undefined'&&PAGINAS_REDIRIGIDAS.familias==='gerencia'&&page==='gerencia'&&!PAGINAS_DEF.some(p=>p[0]==='familias'))}
    page='ordenes';ORDF.tab='ord';ORDF.q='';render();__check("CC-a: Órdenes usa el mismo filtro de fases",document.getElementById('p-ordenes').innerHTML.includes('class="ffases"'));
    // b) agrupador con horas y campos comunes
    GRP={};grpSt('lib').niveles=['cliente'];page='liberacion';LIB.verLista=true;render();h=document.getElementById('p-liberacion').innerHTML;__check("CC-b: los grupos muestran unidades y horas",/\d+ órdenes · [\d.,]+ prendas · [\d.,]+ h<\/span>/.test(h)||!h.includes('grp-row'));
@@ -5774,8 +5775,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const CINCO=[["Órdenes","ORDF.fases","ordenes",()=>{ORDF.tab="lista";ORDF.q="";ORDF.fases=null;ORDF.estado="plan"}],
       ["Centro","CEN.fases","centro",()=>{CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.q="";CEN.todo=true;CEN.fases=null}],
       ["Carga general","CG.fases","produccion",()=>{CG.centro="corte";CG.q="";CG.fases=null}],
-      ["Liberación","LIB.fases","liberacion",()=>{LIB.et="tela";LIB.q="";LIB.ym=null;LIB.fases=null;LIB.verLista=true}],
-      ["Familias","FAM.fases","familias",()=>{FAM.fases=null}]];
+      ["Liberación","LIB.fases","liberacion",()=>{LIB.et="tela";LIB.q="";LIB.ym=null;LIB.fases=null;LIB.verLista=true}]];
     for(const [pant,varName,pag,prep] of CINCO){
       prep();page=pag;render();
       const r=refEstado(varName);
@@ -7036,7 +7036,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const pd=nivUIAreas().find(a=>a.porDias);if(pd){const c=pg().querySelector('.niv-card[data-area="'+pd.id+'"]');const r=nivUICalcular(pd.id);__check('PN: un centro por días muestra todas sus unidades como saldo y no pide SAM',!!c&&c.classList.contains('est-dias')&&!/sin SAM/.test(c.textContent)&&(!(r.saldo.unid>0)||c.querySelector('.saldo').textContent.replace(/\D/g,'')===String(Math.round(r.saldo.unid))),JSON.stringify({pd:pd.id,unid:r.saldo&&r.saldo.unid,txt:c&&c.textContent.trim().slice(0,80)}))}}
     /* menú Dirección en el orden de la usuaria (20-sep): Hoy · Órdenes · Demanda agregada · Planificar el mes · Liberación · Entregas · lo demás */
     {const ps=[...document.querySelectorAll('nav .gbody[data-g="dir"] > a')].map(a=>a.dataset.p);
-     __check('PN: el menú Dirección va Hoy · Órdenes · Demanda agregada · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad',ps.slice(0,6).join(',')==='panorama,ordenes,familias,plan,liberacion,entregas'&&ps.indexOf('auditoria')>5&&ps.indexOf('capacidad')>5,ps.join(','));}
+     __check('PN: el menú Dirección va Hoy · Órdenes · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad (Demanda agregada se retiró el 25-sep)',ps.slice(0,5).join(',')==='panorama,ordenes,plan,liberacion,entregas'&&ps.indexOf('auditoria')>4&&ps.indexOf('capacidad')>4,ps.join(','));}
     PM.paso=2;render();__check('PN: el paso 2 muestra el plan y esconde el paso 1',pg().querySelector('#plan-paso2').style.display!=='none'&&pg().querySelector('#plan-paso1').style.display==='none');PM.paso=1;render();
     /* personas: escenario → capacidad al instante; confirmar → ajuste de la semana → todo el sistema */
     const r=S.recursos.find(x=>x.activa&&x.centro==='corte'&&x.id!=='maquila'&&(x.pers||0)>0&&(x.min||0)>0&&(x.efic||0)>0);
@@ -8192,7 +8192,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
    const pg=p=>document.getElementById('p-'+p);
    /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
-   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','familias','auditoria','imprimir'];
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','auditoria','imprimir'];
     const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
     __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
     page='avance';render();__check("F1: Avance del mes conserva a la vista el aviso «sin plan congelado» (es estado, no explicación)",!!pg('avance').querySelector('.lede.no-plegar'));
