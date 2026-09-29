@@ -7069,7 +7069,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     /* la página Nivelación sigue siendo la misma nivelación y lleva a Planificar el mes */
     page='nivelacion';render();const hn=document.getElementById('p-nivelacion').innerHTML;__check('PN: la página Nivelación (Producción) sigue mostrando la misma nivelación y ofrece «Planificar el mes →»',/Saldo por/.test(hn)&&/Planificar el mes →/.test(hn)&&/nivUITogMes|meses/.test(hn));
     /* un día marcado en el calendario SOLO para Producción cuenta en la nivelación (antes solo contaban los marcados para «todas») */
-    {const bakEx=JSON.stringify(S.params.excepciones||null);const ymN=hoy().slice(0,7);const [yy,mm]=ymN.split('-').map(Number);let sab=null;for(let k=1;k<=new Date(yy,mm,0).getDate();k++){const d=ymN+'-'+String(k).padStart(2,'0');if(new Date(d+'T12:00:00').getDay()===6&&d>=hoy()&&!labDiaGeneral(d)){sab=d;break}}
+    {const bakEx=JSON.stringify(S.params.excepciones||null);const ymN=hoy().slice(0,7);const [yy,mm]=ymN.split('-').map(Number);let sab=null;for(let k=0;k<45;k++){const d=dsum(hoy(),k);if(new Date(d+'T12:00:00').getDay()===6&&!labDiaGeneral(d)){sab=d;break}}   /* los próximos 45 días: a fin de mes puede no quedar ningún sábado */
      if(sab){const antes=diasHabilesInc(sab,sab);S.params.excepciones=(S.params.excepciones||[]).filter(e=>!(e.fecha===sab));S.params.excepciones.push({fecha:sab,area:'pro',tipo:'trabaja',motivo:'prueba PN'});
       __check('PN: un sábado marcado en el calendario solo para Producción cuenta como día hábil en la nivelación (diasHabilesInc / finLabInc) y noHabilesEntre ya no lo descuenta',antes===0&&diasHabilesInc(sab,sab)===1&&finLabInc(sab,1)===sab&&!noHabilesEntre(sab,sab).length,JSON.stringify({sab,antes,ahora:diasHabilesInc(sab,sab)}));
       S.params.excepciones=bakEx==='null'?undefined:JSON.parse(bakEx);if(S.params.excepciones===undefined)delete S.params.excepciones;}else __check('PN: hay un sábado del mes para probar el calendario por área',false);}
@@ -8661,6 +8661,49 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});PLAN=null;PLAN_ALL=null;
    LIB.ym=bak.ym;LIB.et=bak.et;LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.q='';LIB.sel=new Set();GRP={};window.alert=a0;window.confirm=c0;PERFIL=bakP;page='ordenes';render();
    __check("LBR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* 26-sep (usuaria: «lo que falta, ponle tiempo estándar tú… pásame el Excel para que no dañemos»): Cargar tiempos desde Excel */
+  {const antes=__R.errors.length;const c0=window.confirm;window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
+   const hijas=S.categorias.filter(x=>x.padre&&!x.unificadaEn);const k=hijas.find(x=>!(x.samManda&&x.samManda.modulos));const k2=hijas.find(x=>x!==k);
+   const bak1=JSON.stringify(k.samManda||null),bak2=JSON.stringify(k2.samManda||null);const ce=CE('estampado');const bakCe=JSON.stringify({m:ce.minEstandar,x:ce.minEstandarMeta});
+   k2.samManda=Object.assign({},k2.samManda||{},{empaque:{min:0.55,fuente:'a mano',pendiente:false}});delete k2.samManda.corte;delete ce.minEstandar;delete ce.minEstandarMeta;
+   const rows=[['Tiempos por tipo'],['nota'],[],['Tipo de producto','Centro','Órdenes abiertas','Prendas','Hoy en la nube','Tiempo que queda (min/prenda)','De dónde sale','Industria','Comparación','Tu decisión','Tu tiempo (min/prenda)','Nota'],
+     ['FAMILIA X'],
+     [nombreCat(k),'Confección',3,300,'sin tiempo',4.9,'PROPUESTA · estimado','','','','',''],
+     [nombreCat(k2),'Empaque',1,10,'',0.3,'PROPUESTA · estimado','','','','',''],
+     [nombreCat(k2),'Corte',1,10,'',0.5,'Tu hoja de operaciones (LMO)','','','','',''],
+     [nombreCat(k2),'Corte',1,10,'',0.5,'Tu hoja de operaciones (LMO)','','','','0,8',''],
+     ['(todos los tipos)','Estampado',29,9000,'sin técnica',1.2,'PROPUESTA · órdenes sin técnica','','','','',''],
+     ['NO EXISTE / Nada','Confección',0,0,'',5,'PROPUESTA','','','','',''],
+     [nombreCat(k),'Empaque',0,0,'',0.4,'PROPUESTA','','','No usar','',''],
+     [nombreCat(k),'Centro raro',0,0,'',0.4,'PROPUESTA','','','','','']];
+   const p=planTiemposXLSX(rows,'prueba.xlsx');
+   __check("TX1: lee la hoja aunque tenga título arriba y bandas de grupo; separa lo que se pone, lo que se salta, lo que no calza y lo informativo",p.aplicar.length===3&&p.saltar.length===2&&p.noCalzan.length===2&&p.informativas===1,JSON.stringify({a:p.aplicar.map(x=>x.tipo+'|'+x.c+'|'+x.min),s:p.saltar.map(x=>x.porque),n:p.noCalzan.map(x=>x.porque),i:p.informativas}));
+   __check("TX2: una propuesta no pisa un tiempo que ya manda; lo que ella escribe en «Tu tiempo» sí manda",p.saltar.some(x=>/no se pisa/.test(x.porque))&&p.aplicar.some(x=>x.c==='corte'&&x.min===0.8&&x.deUsuaria));
+   TXLS=p;const n=aplicarTiemposXLSX();
+   __check("TX3: aplicar pone los tiempos (propuestas «por confirmar», los de ella confirmados) y el minuto del centro para «(todos los tipos)»",n===3&&k.samManda.modulos.min===4.9&&k.samManda.modulos.pendiente===true&&k2.samManda.corte.min===0.8&&k2.samManda.corte.pendiente===false&&k2.samManda.empaque.min===0.55&&+CE('estampado').minEstandar===1.2,JSON.stringify({n,k:k.samManda,k2:k2.samManda,est:CE('estampado').minEstandar}));
+   __check("TX4: queda en la bitácora y en el registro de cargas",S.bitacora.slice(-4).some(b=>/Tiempos cargados desde Excel \(prueba\.xlsx\)/.test(b.t))&&(S.cargas||[]).slice(-1)[0].tipo==='tiempos');
+   page='operaciones';render();__check("TX5: el botón «Cargar tiempos desde Excel» está en Operaciones → Tiempos que mandan",/mCargarTiemposXLSX\(\)/.test(document.getElementById('p-operaciones').innerHTML));
+   PERFIL={id:'u-c',rol:'consulta',nombre:'C',modo:'ver'};TXLS=planTiemposXLSX(rows,'x.xlsx');const a0=window.alert;let al='';window.alert=m=>al=String(m);const n2=aplicarTiemposXLSX();window.alert=a0;
+   __check("TX6: un perfil que no edita tiempos no puede aplicar",n2===0&&/no edita/.test(al),al);
+   PERFIL=adminP0();const r1=JSON.parse(bak1),r2=JSON.parse(bak2);if(r1)k.samManda=r1;else delete k.samManda;if(r2)k2.samManda=r2;else delete k2.samManda;{const b=JSON.parse(bakCe);if(b.m!=null)ce.minEstandar=b.m;else delete ce.minEstandar;if(b.x)ce.minEstandarMeta=b.x;else delete ce.minEstandarMeta}propagarTiempos('restaurar prueba TX');
+   window.confirm=c0;PERFIL=bakP;TXLS=null;page='ordenes';render();__check("TX sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 26-sep: los parámetros se guardan clave por clave (una pestaña vieja ya no borra lo que guardó otra sesión) */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();
+   await _save();const fila=()=>(sb.__DB.params||[]).find(r=>r.id==='global');
+   S.params.pmComp='orig';await _save();
+   __check("PM0: la fila de parámetros existe en la nube de prueba",!!fila()&&fila().data.pmComp==='orig');
+   /* otra sesión guarda dos cosas mientras esta pestaña sigue abierta */
+   fila().data=Object.assign({},fila().data,{pmOtra:'de otra sesión',pmComp:'cambiado por otra'});
+   S.params.pmLocal='de esta sesión';await _save();
+   __check("PM1: guardar no borra lo que otra sesión guardó después (antes se subía el objeto entero)",fila().data.pmOtra==='de otra sesión'&&fila().data.pmComp==='cambiado por otra'&&fila().data.pmLocal==='de esta sesión',JSON.stringify({otra:fila().data.pmOtra,comp:fila().data.pmComp,local:fila().data.pmLocal}));
+   __check("PM2: y lo nuevo de la otra sesión entra a la memoria de esta",S.params.pmOtra==='de otra sesión'&&S.params.pmComp==='cambiado por otra');
+   S.params.pmComp='mío';fila().data=Object.assign({},fila().data,{pmComp:'otra vez la otra'});await _save();
+   __check("PM3: si esta sesión cambió la misma clave, gana lo de esta sesión (lo último que se guardó)",fila().data.pmComp==='mío');
+   delete S.params.pmLocal;await _save();
+   __check("PM4: lo que esta sesión quita se quita también en la nube",!('pmLocal' in fila().data));
+   ['pmOtra','pmComp'].forEach(k=>delete S.params[k]);await _save();
+   __check("PM limpieza",!('pmOtra' in fila().data)&&!('pmComp' in fila().data));
+   PERFIL=bakP;__check("PM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

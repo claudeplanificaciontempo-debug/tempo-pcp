@@ -930,6 +930,18 @@ function frenoBorrado(t,ids,cur){const n=(ids||[]).length;if(!n)return false;
   BORRADO_FRENADO={ts:new Date().toISOString(),tabla:t,n,quedan:0,u:(typeof quienFirma==='function'?quienFirma():'')};
   try{if(typeof bitacora==='function')bitacora('FRENO: esta pestaña iba a vaciar '+(typeof nTabla==='function'?nTabla(t):t)+' en el servidor ('+n+' filas) porque no tenía ninguna cargada. NADA se borró; hay que recargar la página.')}catch(e){}
   return true}
+/* 26-sep: los parámetros se suben CLAVE POR CLAVE. Antes se subía el objeto entero y una pestaña abierta desde antes borraba, sin saberlo,
+   lo que otra sesión había guardado después (en la nube faltaban las marcas de las siembras del 21 y 23-sep). Ahora se relee la fila del
+   servidor: lo que esta sesión cambió contra lo que leyó gana; lo que no tocó queda como está en el servidor, y lo nuevo del servidor entra
+   también a memoria. Si no hay fila o no se puede leer, se sube lo de la sesión, como antes. */
+async function paramsParaSubir(){let base={};try{base=JSON.parse(BASE.params||'{}')}catch(e){}
+  let srv=null;try{const {data,error}=await sb.from('params').select('data').eq('id','global').single();if(!error&&data&&data.data&&typeof data.data==='object')srv=data.data}catch(e){}
+  if(!srv||BASE.params==null)return S.params;   /* sin lo que se leyó al entrar no hay con qué comparar: se sube lo de la sesión, como antes */
+  const mio=k=>JSON.stringify(S.params[k])!==JSON.stringify(base[k]);   /* esta sesión lo cambió, lo creó o lo quitó */
+  const env=Object.assign({},srv);Object.keys(S.params).forEach(k=>{if(mio(k))env[k]=S.params[k]});
+  Object.keys(base).forEach(k=>{if(!(k in S.params))delete env[k]});   /* lo que esta sesión quitó */
+  Object.keys(srv).forEach(k=>{if(!mio(k)&&!((k in base)&&!(k in S.params)))S.params[k]=srv[k]});   /* lo que guardó otra sesión y esta no tocó */
+  return env}
 async function _save(){
   const errs=[];
   const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=400){const {error}=await sb.from(t).upsert(rows.slice(i,i+400));if(error){errs.push({t,msg:error.message});return}}};
@@ -945,7 +957,7 @@ async function _save(){
     await up(t,rows);await del(t,ids,cur);
     if(!errs.length){BASE[t]=Object.fromEntries(S[t].map(r=>[r.id,JSON.stringify(sinId(r))]));await refrescarTS(t,rows.map(r=>r.id))}
   }
-  if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){await up('params',[{id:'global',data:S.params}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
+  if(JSON.stringify(S.params)!==BASE.params){if(puedeSubirTabla('params')){const env=await paramsParaSubir();await up('params',[{id:'global',data:env}]);if(!errs.length)BASE.params=JSON.stringify(S.params)}else saltadas.push('params')} // las siembras y migraciones automáticas se usan en memoria: la sesión del piso no las guarda
   const ba=BASE.avance||{};
   {let av=Object.entries(S.avance).filter(([id,v])=>JSON.stringify(v)!==ba[id]).map(([id,v])=>({id,data:v}));
    const prepA=await prepararSubida('avance',av);av=prepA.rows;
@@ -966,7 +978,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-26 15:19';
+const APP_BUILD='2026-09-29 08:42';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -5907,10 +5919,71 @@ function setSamManda(kid,c,v,fuente){const k=K(kid);if(!k||!CE(c))return;if(!(pu
   bitacora('SAM que manda sobre la hoja · '+nombreCat(k)+' · '+nCen(c)+': '+(antes==null?'(la hoja)':num(antes,2))+' → '+(v===''||v==null?'(la hoja)':num(+String(v).replace(',','.')||0,2))+' ('+quienFirma()+')');propagarTiempos('SAM de '+nombreCat(k)+' · '+nCen(c));save();render()}
 function confirmarSamManda(kid,c){const k=K(kid);const x=k&&k.samManda&&k.samManda[c];if(!x)return;if(!(puede('categorias')||puede('config')))return;x.pendiente=false;x.confU=quienFirma();x.confTs=new Date().toISOString();bitacora('SAM que manda confirmado · '+nombreCat(k)+' · '+nCen(c)+' = '+num(x.min,2)+' ('+quienFirma()+')');save();render()}
 function samMandaLista(){const out=[];S.categorias.filter(k=>k.padre&&k.samManda).forEach(k=>{Object.keys(k.samManda).forEach(c=>{const v=k.samManda[c];if(v&&v.min!=null)out.push({k,c,v})})});return out}
+/* ---------- Cargar tiempos desde Excel (26-sep-2026, usuaria: «lo que falta, ponle tiempo estándar tú… pásame el Excel con lo que
+   falta para que no dañemos») ----------
+   Lee la hoja «Tiempos por tipo» (la que arma el sistema, o cualquiera con las columnas Tipo de producto · Centro · Tiempo que queda ·
+   De dónde sale · Tu decisión · Tu tiempo). Solo toca los «tiempos que mandan sobre la hoja» (samManda, tipo × centro) y el minuto
+   estándar de un centro (tipo «(todos los tipos)»). Aplica: lo que la fila trae en «Tu tiempo» (manda lo de ella) y las PROPUESTAS que
+   no se marcaron «No usar», estas SOLO donde hoy no manda ningún tiempo. Lo que sale de la hoja de operaciones o de Kronos es
+   informativo y no se toca. Vista previa, confirmación, bitácora, registro de cargas y propagarTiempos (las órdenes abiertas se ponen al día). */
+let TXLS=null;
+function numXLS(v){if(v===''||v==null)return null;const n=typeof v==='number'?v:+String(v).trim().replace(/\s/g,'').replace(',','.');return isFinite(n)?n:null}
+function centroDeTexto(t){const n=normTxt(t);if(!n)return null;const c=S.centros.find(x=>normTxt(x.id)===n||normTxt(x.n||'')===n);return c?c.id:null}
+function catDeTexto(t){const n=normTxt(t);if(!n)return null;const hijas=S.categorias.filter(k=>k.padre&&!k.unificadaEn);
+  const exacta=hijas.find(k=>normTxt(nombreCat(k))===n);if(exacta)return exacta;
+  const porHija=hijas.filter(k=>normTxt(k.n||'')===n||normTxt(k.n||'')===normTxt(String(t).split('/').pop()));return porHija.length===1?porHija[0]:null}
+function planTiemposXLSX(rows,nombre){let hi=-1;
+  for(let i=0;i<Math.min(15,rows.length);i++){const r=(rows[i]||[]).map(x=>normTxt(x));if(r.includes('tipo de producto')&&r.includes('centro')){hi=i;break}}
+  if(hi<0)throw new Error('no encuentro las columnas «Tipo de producto» y «Centro» (¿es la hoja «Tiempos por tipo»?)');
+  const h=rows[hi].map(x=>normTxt(x));const col=(...ns)=>{for(const n of ns){const i=h.indexOf(normTxt(n));if(i>=0)return i}return -1};
+  const cT=col('tipo de producto'),cC=col('centro'),cP=col('tiempo que queda (min/prenda)','tiempo que queda','tiempo propuesto'),cU=col('tu tiempo (min/prenda)','tu tiempo'),cF=col('de donde sale'),cD=col('tu decision');
+  const plan={nombre,aplicar:[],saltar:[],noCalzan:[],informativas:0};
+  rows.slice(hi+1).forEach((r,i)=>{const fila=hi+2+i;const tipo=String(r[cT]||'').trim(),cen=String(r[cC]||'').trim();if(!tipo||!cen)return;   /* las bandas de grupo no traen centro */
+    const c=centroDeTexto(cen);if(!c){plan.noCalzan.push({fila,tipo,cen,porque:'centro desconocido'});return}
+    const dec=normTxt(cD>=0?r[cD]:'');if(/no usar/.test(dec)){plan.saltar.push({fila,tipo,cen,porque:'marcada «No usar»'});return}
+    const tu=cU>=0?numXLS(r[cU]):null,prop=cP>=0?numXLS(r[cP]):null,esProp=/propuesta/i.test(String(cF>=0?r[cF]:''));
+    if(tu==null&&!esProp){plan.informativas++;return}   /* sale de la hoja LMO, de Kronos o de la técnica: no se toca */
+    const min=tu!=null?tu:prop;if(!(min>0)){plan.noCalzan.push({fila,tipo,cen,porque:'sin un tiempo válido (mayor que 0)'});return}
+    if(/^\(?todos/i.test(tipo)){const ce=CE(c);const hoy=+ce.minEstandar||0;
+      if(hoy>0&&tu==null){plan.saltar.push({fila,tipo:'(todos los tipos)',cen:nCen(c),porque:'el centro ya tiene '+num(hoy,2)+' min/prenda'});return}
+      if(hoy>0&&Math.abs(hoy-min)<1e-9){plan.saltar.push({fila,tipo:'(todos los tipos)',cen:nCen(c),porque:'ya es '+num(hoy,2)});return}
+      plan.aplicar.push({fila,tipo:'(todos los tipos)',c,min,antes:hoy||null,deUsuaria:tu!=null,centro:true});return}
+    const k=catDeTexto(tipo);if(!k){plan.noCalzan.push({fila,tipo,cen,porque:'ese tipo de producto no está en el catálogo'});return}
+    const ya=k.samManda&&k.samManda[c]&&k.samManda[c].min!=null?+k.samManda[c].min:null;
+    if(ya!=null&&tu==null){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya manda '+num(ya,2)+' (no se pisa)'});return}
+    if(ya!=null&&Math.abs(ya-min)<1e-9){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya es '+num(ya,2)});return}
+    plan.aplicar.push({fila,tipo:nombreCat(k),kid:k.id,c,min,antes:ya,deUsuaria:tu!=null})});
+  return plan}
+function previaTiemposXLSXHTML(p){const lin=(xs,f)=>xs.slice(0,80).map(f).join('');
+  return `<div style="font-size:var(--fs-s)"><p style="margin:0 0 6px"><b>${num(p.aplicar.length)}</b> ${p.aplicar.length===1?'tiempo se pone':'tiempos se ponen'} · ${num(p.saltar.length)} se saltan · ${num(p.noCalzan.length)} no calzan · ${num(p.informativas)} filas solo informativas (salen de tu hoja de operaciones, de Kronos o de la técnica: no se tocan)</p>
+   ${p.aplicar.length?`<table><thead><tr><th>Tipo de producto</th><th>Centro</th><th class="num">Hoy</th><th class="num">Queda</th><th>Por qué</th></tr></thead><tbody>${lin(p.aplicar,x=>`<tr><td>${esc(x.tipo)}</td><td>${esc(nCen(x.c))}</td><td class="num">${x.antes!=null?num(x.antes,2):'<span class="mut">—</span>'}</td><td class="num"><b>${num(x.min,2)}</b></td><td class="mut">${x.deUsuaria?'lo escribiste tú':'propuesta (queda «por confirmar»)'}</td></tr>`)}</tbody></table>`:'<p class="mut">Nada que poner: todo lo del archivo ya tiene un tiempo que manda, o es informativo.</p>'}
+   ${p.saltar.length?`<details style="margin-top:8px"><summary>Se saltan (${p.saltar.length})</summary><ul>${lin(p.saltar,x=>`<li>${esc(x.tipo)} · ${esc(x.cen)}: ${esc(x.porque)}</li>`)}</ul></details>`:''}
+   ${p.noCalzan.length?`<div class="warn" style="margin-top:8px"><b>No calzan (${p.noCalzan.length})</b><ul style="margin:4px 0 0">${lin(p.noCalzan,x=>`<li>fila ${x.fila}: ${esc(x.tipo)} · ${esc(x.cen)} — ${esc(x.porque)}</li>`)}</ul></div>`:''}</div>`}
+function mCargarTiemposXLSX(){if(!(puede('categorias')||puede('config'))){alert('Tu perfil no edita los tiempos.');return}TXLS=null;
+  abrir(`<h3>Cargar tiempos desde Excel</h3><div class="body"><p style="margin-top:0;font-size:var(--fs-s)">Sube el Excel de tiempos (hoja «Tiempos por tipo»). Se ponen las filas donde escribiste <b>Tu tiempo</b> (manda lo tuyo) y las <b>PROPUESTAS</b> que no marcaste «No usar»; las propuestas solo donde hoy no manda ningún tiempo. Lo que sale de tu hoja de operaciones (LMO), de Kronos o de la técnica no se toca. Antes de aplicar ves qué cambia.</p>
+   <input type="file" accept=".xlsx,.xls" onchange="leerTiemposXLSX(event)"><div id="txls-res" style="margin-top:10px"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="txls-ok" disabled onclick="aplicarTiemposXLSX()">Aplicar</button></div>`)}
+async function leerTiemposXLSX(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('txls-res');res.innerHTML='<span class="mut">Leyendo…</span>';
+  try{if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)})}
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=wb.SheetNames.find(n=>normTxt(n)===normTxt('Tiempos por tipo'))||wb.SheetNames[0];
+    TXLS=planTiemposXLSX(XLSX.utils.sheet_to_json(wb.Sheets[hoja],{header:1,raw:true,defval:''}),f.name);res.innerHTML=previaTiemposXLSXHTML(TXLS);
+    const b=document.getElementById('txls-ok');if(b)b.disabled=!TXLS.aplicar.length}
+  catch(e){TXLS=null;res.innerHTML='<div class="warn">No se pudo leer el archivo: '+esc(e.message||String(e))+'</div>'}}
+function aplicarTiemposXLSX(){const p=TXLS;if(!(puede('categorias')||puede('config'))){alert('Tu perfil no edita los tiempos.');return 0}if(!p||!p.aplicar.length)return 0;
+  if(typeof perfilSoloPiso==='function'&&perfilSoloPiso()){alert('Desde un perfil de piso no se cambian los tiempos.');return 0}
+  if(!confirm('Se ponen '+p.aplicar.length+(p.aplicar.length===1?' tiempo':' tiempos')+' y las órdenes abiertas se ponen al día con ellos. Las propuestas quedan «por confirmar». ¿Continuar?'))return 0;
+  const ts=new Date().toISOString(),u=quienFirma();const lineas=[];
+  p.aplicar.forEach(x=>{const fuente=(x.deUsuaria?'usuaria':'propuesta')+' · Excel '+p.nombre;
+    if(x.centro){const ce=CE(x.c);if(!ce)return;ce.minEstandar=x.min;ce.minEstandarMeta={fuente,ts,u,pendiente:!x.deUsuaria};lineas.push(nCen(x.c)+' (todos los tipos) '+(x.antes!=null?num(x.antes,2):'—')+' → '+num(x.min,2));return}
+    const k=K(x.kid);if(!k)return;k.samManda=k.samManda||{};k.samManda[x.c]={min:x.min,fuente,ts,u,pendiente:!x.deUsuaria};lineas.push(nombreCat(k)+' · '+nCen(x.c)+' '+(x.antes!=null?num(x.antes,2):'—')+' → '+num(x.min,2))});
+  const n=lineas.length;const prop=propagarTiempos('tiempos desde Excel '+p.nombre);
+  bitacora('Tiempos cargados desde Excel ('+p.nombre+') por '+u+': '+n+' · '+lineas.slice(0,12).join(' · ')+(n>12?' …':'')+' · '+prop+' pasos de órdenes abiertas puestos al día');
+  registrarCarga('tiempos',p.nombre,{aplicados:n,saltados:p.saltar.length,noCalzan:p.noCalzan.length,pasos:prop});
+  TXLS=null;save();try{cerrar()}catch(e){}render();return n}
 function samMandaHTML(){const ok=puede('categorias')||puede('config');const l=samMandaLista();const pend=l.filter(x=>x.v.pendiente).length;const dif=tiemposRutasDif();
   const hojaDe=(k,c)=>{const r={};opsDe(k).forEach(x=>{if(x.centro===c)r[c]=(r[c]||0)+(+x.sam||0)});return r[c]};
   const cats=S.categorias.filter(k=>k.padre&&!k.unificadaEn&&k.inactiva!==true).sort((a,b)=>nombreCat(a).localeCompare(nombreCat(b)));
-  return `<div class="panel" id="sam-manda"><h3>Tiempos que mandan sobre la hoja <span class="note">por tipo de producto y centro · lo que está aquí gana a la suma de la hoja de operaciones (p. ej. camisetas 4 y pico, no las 44 operaciones sumadas) · ${l.length} valores${pend?' · <b>'+pend+' por confirmar con Santiago</b>':''}</span></h3><div class="body">
+  return `<div class="panel" id="sam-manda"><h3>Tiempos que mandan sobre la hoja ${ok?'<button class="btn ghost sm" style="float:right" onclick="mCargarTiemposXLSX()" title="sube el Excel de tiempos: pone tus tiempos y las propuestas que aceptes, sin pisar lo que ya manda">Cargar tiempos desde Excel</button>':''}<span class="note">por tipo de producto y centro · lo que está aquí gana a la suma de la hoja de operaciones (p. ej. camisetas 4 y pico, no las 44 operaciones sumadas) · ${l.length} valores${pend?' · <b>'+pend+' por confirmar con Santiago</b>':''}</span></h3><div class="body">
    ${dif.n?`<div class="warn" style="margin-bottom:8px"><b>${dif.n} pasos de ${dif.ordenes} órdenes abiertas tienen otro tiempo guardado</b> (${num(dif.antesH,0)} h → ${num(dif.despuesH,0)} h con los valores de hoy). Normalmente no pasa: cada cambio aquí, en Centros, en la hoja o en Calendario y parámetros se aplica solo a todo lo abierto. <a style="cursor:pointer;text-decoration:underline" onclick="mAplicarTiempos()">Ver el antes/después y aplicar →</a></div>`:'<p class="mut" style="font-size:var(--fs-xs)"><b>Todo lo abierto ya tiene estos tiempos.</b> Cualquier cambio aquí (o en el minuto de un centro, la hoja de operaciones, ojales y botones, etiquetas o el minuto estimado) se aplica al momento a todas las órdenes abiertas y queda en bitácora con las horas antes/después; lo cerrado no se toca.</p>'}
    <div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-s)"><thead><tr><th>Tipo de producto</th>${SAM_MANDA_CENTROS.map(c=>'<th class="num">'+esc(nCen(c))+' <span class="mut" style="font-weight:400">(hoja)</span></th>').join('')}<th>Origen</th><th></th></tr></thead><tbody>
    ${cats.map(k=>{const sm=k.samManda||{};if(!Object.keys(sm).length&&!/camiseta/i.test(nombreCat(k)))return '';return `<tr><td><b>${esc(nombreCat(k))}</b></td>${SAM_MANDA_CENTROS.map(c=>{const v=sm[c];const h=hojaDe(k,c);return '<td class="num"><input type="number" step="0.01" style="width:70px" value="'+(v&&v.min!=null?v.min:'')+'" placeholder="'+(h!=null?num(h,2):'—')+'" '+(ok?'':'disabled')+' onchange="setSamManda(\''+k.id+'\',\''+c+'\',this.value)"> <span class="mut" style="font-size:var(--fs-xs)">'+(h!=null?'('+num(h,2)+')':'')+'</span></td>'}).join('')}<td style="font-size:var(--fs-xs)">${[...new Set(Object.values(sm).map(v=>v.fuente))].map(esc).join(' · ')}${Object.values(sm).some(v=>v.pendiente)?' <span class="tag t-aviso">por confirmar</span>':(Object.keys(sm).length?' <span class="tag t-ok">confirmado</span>':'')}</td><td>${ok&&Object.values(sm).some(v=>v.pendiente)?Object.keys(sm).filter(c=>sm[c].pendiente).map(c=>'<button class="btn ghost sm" onclick="confirmarSamManda(\''+k.id+'\',\''+c+'\')">✓ '+esc(nCen(c))+'</button>').join(' '):''}</td></tr>`}).join('')}</tbody></table></div>
@@ -13135,7 +13208,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración general → Órdenes, fases y archivos de Odoo → Registro de cargas. */
-const TIPOS_CARGA={tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)'};
+const TIPOS_CARGA={tiempos:'Tiempos por tipo (Excel)',tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
