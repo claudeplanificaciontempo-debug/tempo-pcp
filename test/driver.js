@@ -8665,6 +8665,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});PLAN=null;PLAN_ALL=null;
    LIB.ym=bak.ym;LIB.et=bak.et;LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.q='';LIB.sel=new Set();GRP={};window.alert=a0;window.confirm=c0;PERFIL=bakP;page='ordenes';render();
    __check("LBR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* 30-sep (usuaria: «¿a qué se refiere?»): «órdenes que no vinieron y tenían decisiones de persona» contaba lo que llena la OT sola */
+  {const antes=__R.errors.length;const o={id:'dp-1',op:'WH/DP-1',cant:10,recursoFijo:{modulos:'maquila'},recursoFijoOT:{modulos:'maquila'},ot:{modulos:{estado:'terminado'},corte:{estado:'terminado'}},lib:{}};
+   S.avance['dp-1']={centros:{corte:10,modulos:10},centrosOT:{corte:true,modulos:true},tejida:true,tinturada:true,lista:true};
+   __check("DP1: lo que trae la orden de trabajo (unidades, tela lista, el puesto de maquila) NO es decisión de persona",decisionesPersonaDe(o).length===0,JSON.stringify(decisionesPersonaDe(o)));
+   o.lib={corte:{ts:'2026-09-30',u:'x'}};o.recursoFijo.empaque='r-emp';S.avance['dp-1'].centros.empaque=4;S.avance['dp-1'].tramos=[{id:'t1'}];
+   const dd=decisionesPersonaDe(o);
+   __check("DP2: sí cuentan la liberación, un recurso fijado a mano, avance registrado aquí y los registros del piso",dd.includes('liberada')&&dd.some(x=>/recurso fijado/.test(x))&&dd.some(x=>/avance registrado aquí/.test(x))&&dd.some(x=>/registros del piso/.test(x)),JSON.stringify(dd));
+   delete S.avance['dp-1'];
+   __check("DP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 30-sep (bandeja «fase que no calza con la tabla»: 0Definir Telas, 8Cotizaciones, 6Sublimado): la tabla 1 de la nube había perdido la secuencia
      y tres fases (una pestaña vieja guardaba los parámetros enteros). Ahora se completa al entrar, sin pisar lo editado. */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bak=JSON.stringify(S.params.faseMapeo);const bf={};['fasesSecuencia19','fasesSecuencia20','faseDefinirTelas30'].forEach(k=>{bf[k]=S.params[k];delete S.params[k]});

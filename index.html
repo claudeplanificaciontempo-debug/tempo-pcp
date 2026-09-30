@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 16:32';
+const APP_BUILD='2026-09-30 16:54';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10173,7 +10173,9 @@ function vOrdenes(el){
           return Object.entries(g).sort((a,b)=>a[1].length-b[1].length).map(([k,l])=>'<div style="margin-top:6px"><b>'+esc(NOM[k]||('Otras ('+k+')'))+' — '+l.length+'</b><div style="font-size:var(--fs-xs);line-height:1.6">'+
             l.slice(0,TOPE).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')+
             (l.length>TOPE?'<br><span class="mut">… y '+(l.length-TOPE)+' más</span>':'')+'</div></div>').join('')})()}</details></div>`:'')+
-      ((rc.eliminadasConDecision||[]).length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${rc.eliminadasConDecision.length} órdenes que no vinieron en la recarga (siguen en el sistema, marcadas) tenían decisiones de persona</b>: ${rc.eliminadasConDecision.slice(0,40).map(esc).join(', ')}${rc.eliminadasConDecision.length>40?' …':''}</div>`:'')})()}
+      (()=>{const l=(rc.eliminadasConDecision||[]).map(op=>S.ordenes.find(o=>o.op===op)).filter(Boolean).map(o=>({o,d:decisionesPersonaDe(o)})).filter(x=>x.d.length);if(!l.length)return '';
+        const porQue=o=>o.fueraAlcance?'cerrada en Odoo o fuera de alcance':'no vino en el archivo';
+        return `<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${l.length} ${l.length===1?'orden que no vino':'órdenes que no vinieron'} en la recarga y ${l.length===1?'tenía':'tenían'} algo decidido por una persona aquí</b> <span class="mut">(no se borran: siguen en el sistema, marcadas; revisa si esa decisión ya no hace falta)</span><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${l.slice(0,40).map(x=>esc(x.o.op)+' · '+esc(porQue(x.o))+' · '+esc(x.d.join(', '))).join('<br>')}${l.length>40?'<br><span class="mut">… y '+(l.length-40)+' más</span>':''}</div></div>`})()})()}
   ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
     const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
     return (sm.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · carga real sin medir (${sm.length} órdenes)</b>: fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después. ${Object.entries(porF).map(([f,v])=>esc(f)+' ('+v.n+' órdenes · '+num(v.pz)+' prendas)').join(', ')}</div>`:'')+
@@ -12401,7 +12403,7 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
     termPrev.forEach(([c,r])=>{o.ot[c]=r;if(centrosOTPrev[c])a.centrosOT[c]=true;p.terminadasConservadas=(p.terminadasConservadas||0)+1});
     Object.entries(centros).forEach(([c,reg])=>{o.ot[c]={estado:reg.estado,ini:reg.ini,fin:reg.fin,odoo:reg.odoo,iniTs:reg.iniTs||null,finTs:reg.finTs||null};
       if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
-      if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso}});
+      if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso;o.recursoFijoOT=Object.assign({},o.recursoFijoOT||{},{[c]:reg.recurso})}});
     o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
     o.otTs=ts;const add=empatarRutaConOT(o);o.ruta=o.historia?[]:conPasosPendientes(o,o.ruta||[],o.rutaCompleta||[]);if(add.length){p.rutaEmpatada=(p.rutaEmpatada||0)+1;p.pasosOT=(p.pasosOT||0)+add.length}
     if(rutaConfirmada(o)){const tiene=new Set(((o.rutaCompleta||[]).concat(o.ruta||[])).map(x=>x.centro));const dif=(centrosOdooDe(o)||[]).filter(c=>!tiene.has(c));if(dif.length){p.confNoTocadas=(p.confNoTocadas||[]);p.confNoTocadas.push({op:o.op,centros:dif})}}});
@@ -13288,6 +13290,20 @@ function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.
    2) Órdenes de trabajo, 3) Fotos. Nada se escribe en S durante la vista previa; nada se guarda antes de confirmar.
    Reemplaza a «Actualizar desde Odoo», «Recarga Parte 2», «Órdenes de trabajo» y «Fotos» como diálogos sueltos. */
 let ACT={paso:1};
+/* 30-sep (usuaria: «¿a qué se refiere?», 90 órdenes cerradas en Odoo marcadas «con decisiones de persona»): lo que llena el sistema solo NO es una
+   decisión de persona — unidades y «tela lista» que trae la OT (avance.centros con centrosOT, tejida/tinturada/lista), el puesto que dice la OT
+   (recursoFijoOT) o un objeto vacío. Solo cuenta lo que alguien decidió aquí. Devuelve la lista en palabras. */
+const AVANCE_AUTOMATICO=['centros','centrosOT','tejida','tinturada','lista'];
+function decisionesPersonaDe(o){if(!o)return [];const out=[];const lleno=x=>!!x&&typeof x==='object'&&Object.keys(x).length>0;
+  if(lleno(o.lib))out.push('liberada');if(o.prio===1)out.push('urgente');if(lleno(o.progCentro))out.push('puesto o fecha fijados en la cola');
+  const rfOT=o.recursoFijoOT||{};const rf=Object.keys(o.recursoFijo||{}).filter(c=>o.recursoFijo[c]&&rfOT[c]!==o.recursoFijo[c]&&!(o.ot&&o.ot[c]&&!rfOT[c]&&!(o.recursoFijo[c]==='maquila'&&((typeof auditoriaTodo==='function')?auditoriaTodo():[]).some(x=>x&&x.oid===o.id&&x.tipo==='maquila'))));
+  if(rf.length)out.push('recurso fijado ('+rf.map(nCen).join(', ')+')');
+  if(o.fechaCompromiso)out.push('fecha compromiso');if(lleno(o.opsSam))out.push('SAM por orden');
+  const a=S.avance[o.id]||{};const ac=a.centros||{},aot=a.centrosOT||{};
+  const man=Object.keys(ac).filter(c=>+ac[c]>0&&!aot[c]);if(man.length)out.push('avance registrado aquí ('+man.map(nCen).join(', ')+')');
+  const otras=Object.keys(a).filter(k=>!AVANCE_AUTOMATICO.includes(k)&&(Array.isArray(a[k])?a[k].length:(a[k]&&typeof a[k]==='object'?Object.keys(a[k]).length:!!a[k])));
+  if(otras.length)out.push('registros del piso ('+otras.join(', ')+')');
+  return out}
 function mActualizarDatos(paso){if(!puede('ordenes')){alert('Tu perfil no carga datos.');return}ACT.paso=paso||ACT.paso||1;TAREA=null;OT=null;FOTOS=null;TALLAS_CARGA=null;
   const chip=(n,t)=>`<span class="chip ${ACT.paso===n?'on':''}" style="cursor:pointer" onclick="mActualizarDatos(${n})">${n} · ${t}</span>`;
   const ix=(S.params&&S.params.fotosIdx)||{};const conFoto=S.ordenes.filter(o=>fotoDe(o)).length;const CF=S.params.fotosCarga;const CT=S.params.tareaCarga;const CO=S.params.otCarga;
@@ -13748,7 +13764,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
   const idsNuevos=new Set(ordenesPlan.map(o=>o.id).concat(existRep.map(o=>o.id),existConf.map(o=>o.id)));
   const fueraAlc={},fueraAlcId={};((p.excluidas||{}).alcance||[]).forEach(x=>{if(x.clave)fueraAlc[x.clave]=x;if(x.existeId)fueraAlcId[x.existeId]=x});
   const cons={fase:0,fecha:0,lib:0,prio:0,progCentro:0,recursoFijo:0,fechaCompromiso:0,foto:0,fases:0,opsSam:0,faltaConf:0,rutaEditada:0,ot:0,terminadaF:0,avance:0};const noCalzan=[];
-  const eliminadas=S.ordenes.filter(o=>!idsNuevos.has(o.id));const elimConDec=eliminadas.filter(o=>o.lib||o.prio===1||o.progCentro||o.recursoFijo||o.fechaCompromiso||o.opsSam||(S.avance[o.id]&&Object.keys(S.avance[o.id]).length));
+  const eliminadas=S.ordenes.filter(o=>!idsNuevos.has(o.id));const elimConDec=eliminadas.filter(o=>decisionesPersonaDe(o).length);
   let actualizadas=0,nuevas=0;
   ordenesPlan.forEach(o=>{const v=prev[o.id];const nueva=o.fase;if(o.claveRepetida)o.claveRepetida={ts,archivo:p.archivo||'',txt:'clave repetida — revisar'};
     if(!v){nuevas++;o.fases=[{f:nueva||null,ts,u,origen:'archivo',antes:null}];if(typeof sellarRuta==='function')sellarRuta(o);return}
@@ -13773,7 +13789,7 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
       if(v.lib.tela&&v.lib.tela.ok&&sist==='previo a producción')noCalzan.push({op:o.op,decision:'liberada a planta ('+(v.lib.tela.u||'')+')',motivo:'la fase nueva es '+o.fase+' (previo a producción)'})}
     if(conserva('prio')&&v.prio!=null&&v.prio!==3){o.prio=v.prio;cons.prio++}
     if(conserva('progCentro')&&v.progCentro){o.progCentro=v.progCentro;cons.progCentro++;Object.keys(v.progCentro).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'programación en '+nCen(c),motivo:'ese centro ya no está en la ruta'})})}
-    if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está en la ruta de la orden'})})}
+    if(conserva('recursoFijo')&&v.recursoFijo){o.recursoFijo=v.recursoFijo;if(v.recursoFijoOT)o.recursoFijoOT=v.recursoFijoOT;cons.recursoFijo++;Object.keys(v.recursoFijo).forEach(c=>{if(!(o.rutaCompleta||[]).some(pp=>pp.centro===c))noCalzan.push({op:o.op,decision:'módulo fijado '+nRec(v.recursoFijo[c]),motivo:nCen(c)+' ya no está en la ruta de la orden'})})}
     if(conserva('odc')&&v.odcManual){const nuevo=String(o.odc||'').trim(),mio=String(v.odc||'').trim();o.odc=v.odc;o.odcManual=v.odcManual;cons.odc=(cons.odc||0)+1;if(nuevo&&!/pendiente/i.test(nuevo)&&nuevo!==mio)noCalzan.push({op:o.op,decision:'ODC asignado a mano: '+mio+' ('+(v.odcManual.u||'')+')',motivo:'el archivo trae '+nuevo+'; se conserva el tuyo',tipo:'odc',sistema:mio,archivo:nuevo})}
     if(conserva('fechaCompromiso')&&v.fechaCompromiso){o.fechaCompromiso=v.fechaCompromiso;cons.fechaCompromiso++;if(esFacturada(o)&&!esFacturada(v))noCalzan.push({op:o.op,decision:'compromiso '+v.fechaCompromiso,motivo:'la orden llegó a '+o.fase+' según el archivo (sin fecha exacta)'})}
     if(conserva('foto')&&v.foto){o.foto=v.foto;cons.foto++}
