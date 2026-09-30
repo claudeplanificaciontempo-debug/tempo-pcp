@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 15:58';
+const APP_BUILD='2026-09-30 16:06';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2844,7 +2844,7 @@ function pasosProDe(o){return (o&&o.ruta||[]).map(p=>p.centro).filter(c=>CE(c)&&
    el sublimado y los apliques se reparten y la prenda puede entrar a módulos sin que bordado haya terminado. Los
    centros de un mismo tramo NO se bloquean entre sí; lo anterior al tramo (corte) sí manda. Es una tabla editable:
    Configuración general → Centros y máquinas → «Tramos paralelos». El motor de fechas NO cambia: sigue programando en orden. */
-const TRAMOS_PARALELOS_DEF=[{n:'Estampado, bordado y confección',cens:['estampado','sublimado','apliques','bordado','modulos'],nota:'El orden real lo deciden las órdenes de trabajo de Odoo y el piso; ninguno espera a los otros.'}];
+const TRAMOS_PARALELOS_DEF=[{n:'Estampado, bordado y confección',cens:['estampado','sublimado','apliques','bordado','modulos','etiquetas'],nota:'El orden real lo deciden las órdenes de trabajo de Odoo y el piso; ninguno espera a los otros.'}];
 function tramosParalelos(){if(!Array.isArray(S.params.tramosParalelos))S.params.tramosParalelos=JSON.parse(JSON.stringify(TRAMOS_PARALELOS_DEF)).map(t=>Object.assign(t,{sugerido:true}));
   return S.params.tramosParalelos}
 function tramoParaleloDe(c){return tramosParalelos().find(t=>(t.cens||[]).includes(c))||null}
@@ -2864,6 +2864,12 @@ function setTramoParaleloCen(i,cen,on){if(!puede('config')){alert('Tu perfil no 
 function setTramoParaleloN(i,v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');return}
   const t=tramosParalelos()[i];if(!t)return;t.n=String(v||'').trim();delete t.sugerido;t.u=quienFirma();t.ts=new Date().toISOString();save()}
 /* grupos de fases que, dentro de un tramo, cuentan como un centro (usuaria, 23-sep: maquila externa = Confección hecha afuera) */
+/* 30-sep (usuaria: «la etiqueta estampada puede ser antes o después [de confección]»): Etiquetas entra al tramo paralelo de Confección.
+   Así ninguno espera al otro en la cola ni en la tablet. El motor de fechas no cambió: la programa en el orden del proceso (después de Confección). */
+function sembrarEtiquetasEnTramo30(){if(S.params.etiqTramo30||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;const ts=tramosParalelos();
+  const ya=ts.some(x=>(x.cens||[]).includes('etiquetas'));const t=ts.find(x=>(x.cens||[]).includes('modulos'));
+  if(!ya&&t&&CE('etiquetas')){t.cens=(t.cens||[]).concat(['etiquetas']);bitacora('Tramo paralelo «'+(t.n||'')+'»: se agrega Etiquetas (decisión de la usuaria, 30-sep: la etiqueta estampada puede ir antes o después de confección). Editable en Configuración general → Centros y máquinas → Tramos paralelos')}
+  S.params.etiqTramo30={ts:new Date().toISOString(),agregado:!ya&&!!t}}
 function sembrarTramoMaquila(){if(S.params.tramoMaquilaSembrado||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;const ts=tramosParalelos();const t=ts.find(x=>(x.cens||[]).includes('modulos'));
   const g=faseGrupos().find(x=>normTxt(x.grupo)===normTxt('maquila externa'));
   if(t&&g){t.grupos=t.grupos||[];if(!t.grupos.some(x=>x&&x.grupo===g.grupo)){t.grupos.push({grupo:g.grupo,centro:'modulos',u:quienFirma(),ts:new Date().toISOString(),nota:'decisión de la usuaria, 23-sep'});
@@ -5317,7 +5323,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion();sembrarEtiquetaRefs30()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion();sembrarEtiquetaRefs30();sembrarEtiquetasEnTramo30()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
