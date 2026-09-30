@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 17:06';
+const APP_BUILD='2026-09-30 17:27';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1293,8 +1293,11 @@ const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;re
    cierre según la columna «sistema» de la tabla de fases. Antes miraba solo el estado interno y daba por
    abiertas a las facturadas, que es de donde salían los tres números distintos. */
 const abierta=o=>(typeof abiertaDe==='function')?abiertaDe(o):(!o.estado||o.estado==='plan');
-const ESTADOS_ORD={plan:'Abiertas',prevision:'Previsión (sin WH)',cerrada:'Cerradas / facturadas / stand by',anulada:'Anuladas'};
-const matchEstadoOrd=(o,k)=>k==='cerrada'?((o.estado||'plan')==='cerrada'||(o.estado||'plan')==='standby'):(o.estado||'plan')===k;
+const ESTADOS_ORD={plan:'Abiertas',prevision:'Previsión (sin WH)',cerrada:'Cerradas en Odoo / facturadas / stand by',anulada:'Anuladas'};
+/* 30-sep (usuaria: «si la orden ya está cerrada no debería salir como pendiente de ruta»): «Abiertas» miraba el estado interno y dejaba ahí
+   las que Odoo ya cerró (Estado OP done, fase de cierre, no vino en el archivo). Ahora usa la definición única abiertaDe: lo cerrado va a Cerradas. */
+function estadoChipOrd(o){const e=(o&&o.estado)||'plan';if(e==='anulada')return 'anulada';if(!abiertaDe(o))return 'cerrada';return e==='prevision'?'prevision':'plan'}
+const matchEstadoOrd=(o,k)=>estadoChipOrd(o)===k;
 const faseNombre=f=>String(f||'').replace(/^\d\s*/,'');
 /* qué ya pasó según la fase: SOLO desde las tablas editables de Configuración general → Órdenes, fases y archivos de Odoo
    (tabla 1 fases → grupo, con columna "tela" para el grupo textil; tabla 4 centro → etapa; tabla 5 grupos → orden de flujo).
@@ -10122,7 +10125,7 @@ function barraSelOrdHTML(lista){const n=RUT.sel.size;const nPuede=lista.filter(e
 function vOrdenes(el){
   if(ORDF.tab==='rutas'){el.innerHTML=`<div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span><div class="chips">${[['ord','Órdenes'],['rutas','Rutas']].map(([k,n])=>`<span class="chip ${ORDF.tab===k||(k==='ord'&&!ORDF.tab)?'on':''}" onclick="ORDF.tab='${k}';render()">${n}</span>`).join('')}</div></div>`+rutasHTML();return}
   const P=S.ordenes.length?programar():null;
-  const cnt={};S.ordenes.forEach(o=>{const e=(o.estado||'plan')==='standby'?'cerrada':(o.estado||'plan');cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
+  const cnt={};S.ordenes.forEach(o=>{const e=estadoChipOrd(o);cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
   const lista=listaOrdActual();
   const cntEd={porEditar:0,editadas:0,todas:0};S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).forEach(o=>{cntEd.todas++;if(matchEdicionOrd(o,'editadas'))cntEd.editadas++;else cntEd.porEditar++});
   const fasesAll=[...new Set(S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).map(o=>o.fase||'Sin fase'))].sort((a,b)=>cmpFases(a,b));

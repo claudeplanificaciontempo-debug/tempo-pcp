@@ -1667,6 +1667,8 @@ las de Liberación reescritas (2a LIB DOM, LB, LBB, F1b, C, AB4 con el buscador 
 
 **Foto grande al pasar el mouse, en toda pantalla (30-sep-2026, usuaria con captura de Costos: «que pasemos el mouse y se vea así»).** `fotoZoomInit` existía desde el 19-sep pero solo se llamaba desde `arrancarCrono` (pantallas con reloj de la tablet): en Órdenes, Liberación y las demás listas nunca se encendía. Ahora `render()` la llama siempre (idempotente). La capa lleva rótulo como en Costos: `fotoMini` pone `data-cap` = `fotoCapDe(o)` (WH · ref · tipo de producto · color) y el zoom lo muestra debajo de la foto (`.zoom-cap`). El aviso de órdenes sin WH ahora cuenta por fase y marca «en producción sin WH» las que ya están en una fase de producción (el «7Confección» se leía como «7 de confección»).
 
+**Órdenes → «Abiertas» = `abiertaDe` (30-sep-2026, usuaria: «si la orden ya está cerrada no debería salir como pendiente de ruta»).** El chip de estado de Órdenes (`matchEstadoOrd`) miraba el estado INTERNO y dejaba en «Abiertas» las que Odoo ya cerró (salían con el semáforo «Cerrada en Odoo»). Ahora `estadoChipOrd(o)`: anulada → Anuladas; `!abiertaDe(o)` → «Cerradas en Odoo / facturadas / stand by» (incluye `noArchivo`, que antes no salía en ningún chip); si no, Previsión o Abiertas. Con el volcado: Abiertas 1.156 → 1.079 (= `abiertaDe`), Cerradas 5 → 82.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
