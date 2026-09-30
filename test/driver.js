@@ -946,7 +946,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const cuatro=['Level 1','Level 2','Camiseta CR','Camiseta CV'];
     const ks=cuatro.map(n=>S.categorias.find(k=>k.padre&&k.n===n));
     __check('ETIQ: las cuatro categorías de la regla SÍ existen en el catálogo real',ks.every(Boolean)&&ks.every(k=>(K(k.padre)||{}).n==='CAMISETAS'));
-    __check('ETIQ: y la regla les carga 0,50 min de etiqueta a las cuatro',ks.every(k=>!!etiquetaDe(k)&&+samPorCentro(k).etiquetas===0.5));
+    /* 30-sep: Level 1 y Level 2 por categoría; Camiseta CR y CV solo en las referencias 4204/4240 (CR) y 4208 (CV) */
+    __check('ETIQ: la regla carga 0,50 min a Level 1 y Level 2 por categoría, y a Camiseta CR/CV solo en sus referencias (4204, 4240, 4208)',ks.slice(0,2).every(k=>!!etiquetaDe(k)&&+samPorCentro(k).etiquetas===0.5)&&ks.slice(2).every(k=>!etiquetaDe(k))&&+spcOrden({ref:'4240'},ks[2]).etiquetas===0.5&&+spcOrden({ref:'4208'},ks[3]).etiquetas===0.5&&!(+spcOrden({ref:'6505'},ks[3]).etiquetas>0));
     const otra=S.categorias.find(k=>k.padre&&k.n==='Polo Basica');
     __check('ETIQ: y a una que no está en la regla, no',!!otra&&!etiquetaDe(otra)&&samPorCentro(otra).etiquetas===undefined);
     // con las órdenes reales cargadas: cuántas llevan la etiqueta
@@ -3915,7 +3916,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("MN2: la pestaña lleva el «!» y su explicación cuando la sub-área no tiene minutos o no está en ninguna ruta",subAreasDe('terminados').every((c,i)=>{const a=pest()[i+1];const av=alertaSubArea(c);return av?(a.getAttribute('title')===av&&/t-alerta/.test(a.innerHTML)):!/t-alerta/.test(a.innerHTML)}));
     {const avs=subAreasDe('terminados').map(alertaSubArea).filter(Boolean);const a=document.querySelector('nav a[data-cen="terminados"]');
      __check("MN2: el ítem del menú lleva un «!» si alguna de sus sub-áreas tiene alerta, con la lista en el tooltip",avs.length?(!!a.querySelector('.sub-bang')&&a.getAttribute('title')===avs.join('\n')):!a.querySelector('.sub-bang'))}
-    __check("MN2: cada causa dice cómo se resuelve en ESE centro: plancha (marca de categoría o ruta a mano), lavado (por orden), etiquetas (centro de diseño: ruta a mano)",(()=>{const sinRuta=c=>alertasSubArea(c).find(x=>x.k==="ruta");const bakO=S.ordenes;S.ordenes=[];const p=sinRuta("plancha"),l=sinRuta("lavado"),e=sinRuta("etiquetas");S.ordenes=bakO;return !!p&&/Lleva plancha/.test(p.que)&&!!l&&/POR ORDEN/.test(l.que)&&!!e&&/centro de diseño/.test(e.que)&&/Level 1/.test(e.que)})());
+    __check("MN2: cada causa dice cómo se resuelve en ESE centro: plancha (marca de categoría o ruta a mano), lavado (por orden), etiquetas (entra sola por la tabla de etiqueta, 30-sep)",(()=>{const sinRuta=c=>alertasSubArea(c).find(x=>x.k==="ruta");const bakO=S.ordenes;S.ordenes=[];const p=sinRuta("plancha"),l=sinRuta("lavado"),e=sinRuta("etiquetas");S.ordenes=bakO;return !!p&&/Lleva plancha/.test(p.que)&&!!l&&/POR ORDEN/.test(l.que)&&!!e&&/entra solo a la ruta/.test(e.que)&&/Level 1/.test(e.que)})());
     __check("MN2: Etiquetas ya no dice «sin origen»: su fuente de minutos es la tabla de reglas de etiqueta (4 confirmadas de 0,5 min), y solo queda la causa de ruta",(()=>{const or=origenTiempoCentro("etiquetas");const re=reglasEtiqueta().filter(r=>(r.centro||"etiquetas")==="etiquetas"&&r.confirmada!==false&&+r.min>0).length;return re>0?(/reglas de etiqueta/.test(or.txt)&&!or.brecha&&new RegExp(re+" reglas confirmadas").test(or.det)&&alertasSubArea("etiquetas").every(x=>x.k==="ruta")):/sin origen|sin confirmar/.test(or.txt+or.brecha)})(),JSON.stringify(origenTiempoCentro("etiquetas")));
     // si cambia el «Ítem de planificación», las pestañas cambian solas
     const bak=(CE('empaque')||{}).grupoPlan;setCentro('empaque','grupoPlan','modulos');abrir('terminados');const sinEmp=!pest().some(a=>/Empaque/.test(a.textContent));abrir('modulos');const enMod=pest().some(a=>/Empaque/.test(a.textContent));
@@ -3947,14 +3948,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};
    sembrarRutaDefecto();
    /* 1 · ETIQUETADO */
-   {__check("D1: la etiqueta de serigrafía sale de una tabla editable con las CUATRO categorías dictadas",
-     ['Level 1','Level 2','Camiseta CR','Camiseta CV'].every(c=>reglasEtiqueta().some(r=>normFase(r.cat)===normFase(c)&&+r.min===0.5&&r.centro==='etiquetas'&&r.confirmada!==false)));
+   {__check("D1: la etiqueta de serigrafía sale de una tabla editable con las CUATRO categorías dictadas (desde el 30-sep, CR y CV quedan sin confirmar: solo sus referencias)",
+     ['Level 1','Level 2','Camiseta CR','Camiseta CV'].every(c=>reglasEtiqueta().some(r=>normFase(r.cat)===normFase(c)&&!r.ref&&+r.min===0.5&&r.centro==='etiquetas'&&(r.confirmada!==false)===/^level/i.test(c))));
     __check("D1: la regla «SERIGRAFIA + ETIQUETAR → Etiquetas» quedó retirada del mapeo",!reglasFamCentro().some(r=>normTxt(r.familia)==='serigrafia'&&normTxt(r.prefijo||'').startsWith('etiquetar')));
     __check("D1: las operaciones de la LMO que iban a Etiquetas NO se borraron: quedaron SIN centro y con el motivo",
      (S.operaciones||[]).every(o=>o.centro!=='etiquetas')&&(S.operaciones||[]).filter(o=>o.centroPend).every(o=>/Level 1/.test(o.centroMotivo||'')));
     // calce EXACTO: Camiseta CR no debe arrastrar a Camiseta CV ni al revés
     const cr=S.categorias.find(k=>k.n==='Camiseta CR'),cv=S.categorias.find(k=>k.n==='Camiseta CV');
-    __check("D1: Camiseta CR y Camiseta CV cargan cada una sus 0,50 min de etiqueta",!!etiquetaDe(cr)&&!!etiquetaDe(cv)&&+samPorCentro(cr).etiquetas===0.5);
+    __check("D1: Camiseta CR y Camiseta CV ya no llevan etiqueta por categoría entera: solo sus referencias (4204/4240 y 4208), y una no arrastra a la otra",!etiquetaDe(cr)&&!etiquetaDe(cv)&&!etiquetaDeOrden({cat:cr.id,ref:'6505'})&&((K(cr.padre)||{}).n!=='CAMISETAS'||(!!etiquetaDeOrden({cat:cr.id,ref:'4204'})&&!!etiquetaDeOrden({cat:cv.id,ref:'4208'}))));   /* en el catálogo de demostración el padre no es CAMISETAS: la parte positiva la prueban ETIQ (catálogo real) y ET */
     const pol=S.categorias.find(k=>k.n==='Polo Basica');
     __check("D1: y una categoría que NO está en la tabla no lleva etiqueta (ni 0 mudo: simplemente no aparece)",!etiquetaDe(pol)&&samPorCentro(pol).etiquetas===undefined);
     // una regla sin confirmar no aplica
@@ -3996,7 +3997,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     generarRutasEstimadas();
     __check("D5: se le pone ruta y queda como «estimada – sin revisar», no confirmada",pasosProDe(o).length>0&&estadoRuta(o)==='sinRevisar'&&estadoRutaTxt(o)==='estimada – sin revisar'&&!rutaConfirmada(o));
     __check("D5: estampado y bordado NO entran: dependen del diseño",!pasosProDe(o).some(c=>CENTROS_DISENO.includes(c)));
-    __check("D5: y la pantalla avisa que esa carga puede estar faltando",/dependen del diseño/.test(rutasEstimadasHTML())&&/puede estar faltando/.test(rutasEstimadasHTML()+rutasEstimadasResumenHTML()));
+    __check("D5: y la pantalla avisa que esa carga puede estar faltando (cuando la categoría tiene minutos de diseño)",(()=>{const hay=(rutasEstimadas().conDiseno||[]).length>0;const t=rutasEstimadasHTML()+rutasEstimadasResumenHTML();return hay?(/dependen del diseño/.test(t)&&/puede estar faltando/.test(t)):!/puede estar faltando/.test(t)})());
     __check("D5: se revisa una por una, con la ruta a la vista y el botón de editar",/marcarRutaRevisada\(/.test(rutasEstimadasHTML())&&/mRutaCentro\(/.test(rutasEstimadasHTML()));
     const nR=rutasEstimadas().sinRevisar.length;marcarRutaRevisada(o.id);
     __check("D5: marcarla como revisada la mueve de lado y deja quién y cuándo",estadoRuta(o)==='revisada'&&rutasEstimadas().sinRevisar.length===nR-1&&!!rutaConf(o).revisadaTs);
@@ -8664,6 +8665,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.ordenes=S.ordenes.filter(o=>!mios.includes(o));mios.forEach(o=>{delete S.avance[o.id]});PLAN=null;PLAN_ALL=null;
    LIB.ym=bak.ym;LIB.et=bak.et;LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.q='';LIB.sel=new Set();GRP={};window.alert=a0;window.confirm=c0;PERFIL=bakP;page='ordenes';render();
    __check("LBR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* 30-sep (usuaria: «Level 1 y Level 2 son con etiqueta estampada por defecto y no se está cargando; las referencias en camisetas 4208, 4204, 4240 serían esas») */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakR=JSON.stringify(S.params.reglasEtiqueta||null),bakF=JSON.stringify(S.params.etiqRefs30||null);
+   const pad={id:'k-et-cam',n:'CAMISETAS'},lv={id:'k-et-lv1',n:'Level 1',padre:'k-et-cam'},cr={id:'k-et-cr',n:'Camiseta CR',padre:'k-et-cam'},jg={id:'k-et-jog',n:'Jogger Moda'};
+   const nk=[pad,lv,cr,jg].filter(k=>!K(k.id));S.categorias.push(...nk);
+   S.params.reglasEtiqueta=defReglasEtiqueta();delete S.params.etiqRefs30;sembrarEtiquetaRefs30();
+   const oL={id:'et-l',cat:'k-et-lv1',ref:'9999'},o40={id:'et-40',cat:'k-et-cr',ref:'4240'},oOtra={id:'et-6505',cat:'k-et-cr',ref:'6505'},oJ={id:'et-j',cat:'k-et-jog',ref:'4240'};
+   __check("ET1: Level 1 lleva etiqueta por su categoría y el paso entra a la ruta sola",!!etiquetaDeOrden(oL)&&ordenCentrosAuto(oL).has('etiquetas'));
+   __check("ET2: en CAMISETAS la referencia 4240 lleva etiqueta; otra referencia de Camiseta CR ya no (la regla por categoría entera quedó sin confirmar, no borrada)",ordenCentrosAuto(o40).has('etiquetas')&&!ordenCentrosAuto(oOtra).has('etiquetas')&&reglasEtiqueta().some(r=>/camiseta cr/i.test(r.cat)&&!r.ref&&r.confirmada===false));
+   __check("ET3: la 4240 de un jogger NO lleva etiqueta (la referencia se acota a CAMISETAS)",!etiquetaDeOrden(oJ)&&!ordenCentrosAuto(oJ).has('etiquetas'));
+   __check("ET4: la etiqueta por referencia carga sus minutos en el paso (0,5) y la de categoría no se suma dos veces",Math.abs((spcOrden(o40,K('k-et-cr')).etiquetas||0)-0.5)<1e-9&&!(spcOrden(oOtra,K('k-et-cr')).etiquetas>0)&&Math.abs((spcOrden(oL,K('k-et-lv1')).etiquetas||0)-0.5)<1e-9,JSON.stringify({a:spcOrden(o40,K('k-et-cr')).etiquetas,b:spcOrden(oOtra,K('k-et-cr')).etiquetas,c:spcOrden(oL,K('k-et-lv1')).etiquetas}));
+   const n1=reglasEtiqueta().length;sembrarEtiquetaRefs30();
+   __check("ET5: la siembra corre una sola vez y queda en la bitácora",reglasEtiqueta().length===n1&&S.bitacora.slice(-30).some(b=>/Etiqueta estampada \(usuaria 30-sep\)/.test(b.t)));
+   page='operaciones';render();__check("ET6: la tabla muestra la columna Referencia y el botón + referencia",/Referencia/.test(document.getElementById('p-operaciones').innerHTML)&&/addReglaEtiqueta\(true\)/.test(document.getElementById('p-operaciones').innerHTML));
+   S.params.reglasEtiqueta=JSON.parse(bakR);if(S.params.reglasEtiqueta==null)delete S.params.reglasEtiqueta;const f=JSON.parse(bakF);if(f)S.params.etiqRefs30=f;else delete S.params.etiqRefs30;
+   S.categorias=S.categorias.filter(k=>!nk.includes(k));PERFIL=bakP;page='ordenes';render();
+   __check("ET sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 26-sep (usuaria: «lo que falta, ponle tiempo estándar tú… pásame el Excel para que no dañemos»): Cargar tiempos desde Excel */
   {const antes=__R.errors.length;const c0=window.confirm;window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
    const hijas=S.categorias.filter(x=>x.padre&&!x.unificadaEn);const k=hijas.find(x=>!(x.samManda&&x.samManda.modulos));const k2=hijas.find(x=>x!==k);

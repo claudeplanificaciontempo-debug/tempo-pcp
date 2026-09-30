@@ -774,7 +774,7 @@ const vePagina=p=>{const d=perfilDe(PERFIL);if(!d)return false;return d.paginas.
 function comoEntraEnRuta(c){
   if(c==='lavado')return 'el lavado se agrega POR ORDEN: en Liberación (en lote) o desde la ruta de la orden, botón «Lavado» (planta o Quito); no sale de las operaciones de la LMO';
   if(c==='plancha')return 'marca «Lleva plancha» en las categorías que planchan (Configuración general → Órdenes, fases y archivos de Odoo → categoría) para que entre en las rutas de las órdenes NUEVAS, y agrégalo a mano en la ruta de las órdenes ya cargadas (Órdenes → Rutas, o el botón «ruta» de la cola); no sale de las operaciones de la LMO';
-  if(c==='etiquetas')return 'es un centro de diseño: NO entra solo a las rutas (CENTROS_DISENO). Agrégalo a mano en la ruta de las órdenes que llevan etiqueta de serigrafía (las categorías de la tabla de reglas de etiqueta: Level 1, Level 2, Camiseta CR y CV), desde Órdenes → Rutas o el botón «ruta» de la cola';
+  if(c==='etiquetas')return 'entra solo a la ruta de las órdenes que están en la tabla «Etiqueta de serigrafía» (Configuración → Operaciones): por categoría (Level 1, Level 2…) o por referencia (4208, 4204, 4240…). Para otra orden, agrégalo a mano desde Órdenes → Rutas o el botón «ruta» de la cola';
   return 'las rutas salen de las operaciones de la LMO de cada categoría: mapea una operación a este centro (Configuración → Operaciones → Mapeo) o agrégalo a mano en la ruta de las órdenes (Órdenes → Rutas)'}
 function alertasSubArea(c){const or=origenTiempoCentro(c);const n=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.centro===c)).length;
   const av=[];
@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 15:02';
+const APP_BUILD='2026-09-30 15:58';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1250,6 +1250,7 @@ function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=cent
   if(cpo.includes('apliques')&&/aplique/.test(tec)&&CE('apliques'))out.add('apliques');
   if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
   centrosPorInsumos(o.materiales||o.comp).forEach(c=>out.add(c));   /* la receta: p. ej. un cordón → Cordones (24-sep) */
+  {const et=(typeof etiquetaDeOrden==='function')?etiquetaDeOrden(o):null;if(et){const ce=et.centro||'etiquetas';if(CE(ce)&&CE(ce).activo!==false)out.add(ce)}}   /* 30-sep: etiqueta estampada (tabla de reglas, por categoría o referencia) */
   return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
 function lavaPlanchaDefault(k){if(!k)return{lavado:false,plancha:false};
@@ -5009,12 +5010,31 @@ function sembrarPerfilesEtiquetas(){if(S.params.etiqPerfilSembrado)return;
 function defReglasEtiqueta(){return ['Level 1','Level 2','Camiseta CR','Camiseta CV'].map(c=>({cat:c,min:0.5,centro:'etiquetas',confirmada:true}))}
 function reglasEtiqueta(){if(!Array.isArray(S.params.reglasEtiqueta))S.params.reglasEtiqueta=defReglasEtiqueta();return S.params.reglasEtiqueta}
 /* calce EXACTO por nombre de la categoría o de su padre: «Camiseta CR» no debe arrastrar a «Camiseta CV» */
-function etiquetaDe(k){if(!k)return null;const nm=normFase(k.n||''),pad=normFase((K(k.padre)||{}).n||'');
-  return reglasEtiqueta().find(r=>r.cat&&r.confirmada!==false&&(nm===normFase(r.cat)||pad===normFase(r.cat)))||null}
-function addReglaEtiqueta(){reglasEtiqueta().push({cat:'',min:0,centro:'etiquetas',confirmada:false});save();render()}
+function catCalzaEtq(k,cat){if(!k)return false;const x=normFase(cat||'');return !!x&&(normFase(k.n||'')===x||normFase((K(k.padre)||{}).n||'')===x)}
+function etiquetaDe(k){if(!k)return null;
+  return reglasEtiqueta().find(r=>r.cat&&!String(r.ref==null?'':r.ref).trim()&&r.confirmada!==false&&catCalzaEtq(k,r.cat))||null}
+/* 30-sep (usuaria: «Level 1 y Level 2 son con etiqueta estampada por defecto y no se está cargando; y las referencias de camisetas 4208, 4204, 4240»):
+   una regla puede ser por CATEGORÍA (cat) o por REFERENCIA (ref = el estilo de la orden). La de categoría manda; la de referencia solo
+   aplica si la categoría no tiene regla (nunca se suman dos etiquetas). Desde hoy la regla también PONE el paso en la ruta (ordenCentrosAuto). */
+/* referencia + (opcional) categoría: la 4240 de CAMISETAS lleva etiqueta; la 4240 de Jogger Moda no */
+function etiquetaRefDe(ref,k){const x=normFase(ref==null?'':String(ref));if(!x)return null;
+  return reglasEtiqueta().find(r=>r.ref&&r.confirmada!==false&&normFase(String(r.ref))===x&&(!r.cat||catCalzaEtq(k,r.cat)))||null}
+function etiquetaDeOrden(o){if(!o)return null;const k=K(o.cat);return etiquetaDe(k)||etiquetaRefDe(o.ref,k)}
+/* minutos por centro de la ORDEN: los de su categoría + la etiqueta por referencia (si la categoría no trae la suya) */
+function spcOrden(o,k){const s=k?(samPorCentro(k)||{}):{};if(k&&etiquetaDe(k))return s;const r=etiquetaRefDe(o&&o.ref,k);if(!r||!(+r.min>0))return s;
+  const ce=r.centro||'etiquetas';if(!CE(ce))return s;return Object.assign({},s,{[ce]:(+s[ce]||0)+(+r.min||0)})}
+function claveSpc(o,k){const r=(k&&etiquetaDe(k))?null:etiquetaRefDe(o&&o.ref,k);return (k?k.id:'-')+(r?'|ref:'+normFase(String(r.ref)):'')}
+function addReglaEtiqueta(porRef){reglasEtiqueta().push(porRef?{cat:'CAMISETAS',ref:'',min:0.5,centro:'etiquetas',confirmada:false}:{cat:'',min:0,centro:'etiquetas',confirmada:false});save();render()}
+function sembrarEtiquetaRefs30(){if(S.params.etiqRefs30||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return;const rs=reglasEtiqueta();const add=[];
+  ['4208','4204','4240'].forEach(ref=>{if(!rs.some(r=>r.ref&&normFase(String(r.ref))===normFase(ref))){rs.push({cat:'CAMISETAS',ref,min:0.5,centro:'etiquetas',confirmada:true,fuente:'usuaria 30-sep (camisetas con etiqueta estampada)'});add.push(ref)}});
+  /* «las referencias en camisetas 4208, 4204, 4240 serían esas con etiquetas estampadas»: Camiseta CR y CV ya no llevan etiqueta por categoría entera.
+     No se borran: quedan sin confirmar (no aplican) con la nota; volver a marcarlas las repone. */
+  const apag=[];rs.forEach(r=>{if(r.cat&&!r.ref&&/^camiseta c[rv]$/i.test(String(r.cat).trim())&&r.confirmada!==false){r.confirmada=false;r.nota='30-sep: solo las referencias 4204, 4240 (CR) y 4208 (CV) llevan etiqueta';apag.push(r.cat)}});
+  S.params.etiqRefs30={ts:new Date().toISOString(),agregadas:add,apagadas:apag};
+  if((add.length||apag.length)&&typeof bitacora==='function')bitacora('Etiqueta estampada (usuaria 30-sep): Level 1 y Level 2 siguen por categoría; en CAMISETAS solo las referencias '+(add.length?add.join(', '):'4208, 4204, 4240')+' (0,5 min)'+(apag.length?'; '+apag.join(' y ')+' dejan de llevarla por categoría entera (sin borrar la regla: queda sin confirmar)':'')+'. El paso Etiquetas entra solo a la ruta. Editable en Configuración → Operaciones → Etiqueta de serigrafía')}
 function setReglaEtiqueta(i,k,v){const r=reglasEtiqueta()[i];if(!r)return;const antes=r[k];
   r[k]=(k==='min')?(+String(v).replace(',','.')||0):(k==='confirmada'?!!v:v);
-  bitacora('Regla de etiqueta ['+(r.cat||'sin categoría')+'] · '+k+': '+antes+' → '+r[k]+' ('+quienFirma()+')');propagarTiempos('regla de etiqueta '+(r.cat||''));save();render()}
+  bitacora('Regla de etiqueta ['+(r.cat||(r.ref!=null?'ref. '+(r.ref||'?'):'sin categoría'))+'] · '+k+': '+antes+' → '+r[k]+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;propagarTiempos('regla de etiqueta '+(r.cat||r.ref||''));save();render()}
 function delReglaEtiqueta(i){const r=reglasEtiqueta()[i];if(!r)return;
   if(!confirm('¿Quitar la regla de etiqueta de «'+(r.cat||'sin categoría')+'»?\n\nEsa categoría dejará de cargar sus '+num(r.min||0,2)+' min de etiqueta. La regla se pierde; las operaciones de la LMO no se tocan.'))return;
   reglasEtiqueta().splice(i,1);bitacora('Quitada la regla de etiqueta de '+(r.cat||'sin categoría')+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
@@ -5297,28 +5317,31 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion();sembrarEtiquetaRefs30()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
   S.params.ojalBotonConfirmado=new Date().toISOString();
   if(l.length&&typeof bitacora==='function')bitacora('Ojales y botones (decisión 16-sep): los tiempos de la tabla son DEFINITIVOS. Se confirmaron '+l.length+' filas que estaban sin confirmar ('+l.map(r=>r.match).join(', ')+'); un 0 confirmado aplica 0. Editable en Configuración.')}
 /* ---------- 1 · tabla editable de reglas de etiqueta (Configuración → Operaciones) ---------- */
-function reglasEtiquetaHTML(){const rs=reglasEtiqueta();
+function reglasEtiquetaHTML(){const rs=reglasEtiqueta();const nAb=new Map();S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const r=etiquetaDeOrden(o);if(r)nAb.set(r,(nAb.get(r)||0)+1)});
   const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   const cats=[...new Set(S.categorias.map(k=>k.n).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  const sinCat=rs.filter(r=>r.cat&&!cats.some(c=>normFase(c)===normFase(r.cat)));
-  return `<div class="panel"><h3>Etiqueta de serigrafía <span class="note">qué categorías llevan etiqueta y cuántos minutos · decisión del 16-sep</span><span class="spacer"></span><button class="btn ghost sm" onclick="addReglaEtiqueta()">+ categoría</button></h3><div class="body">
-   <p class="lede" style="margin-top:0"><b>Solo estas categorías llevan etiqueta.</b> Ninguna de ellas tiene una operación de etiqueta en la hoja LMO, así que el minutaje sale de aquí: es la única fuente. Una regla sin confirmar no aplica y sale como brecha.</p>
-   <table><thead><tr><th>Categoría (padre o hija)</th><th class="num">SAM</th><th>Centro</th><th>Confirmada</th><th></th></tr></thead><tbody>
-   ${rs.map((r,i)=>`<tr><td><input list="dl-cats-etiq" value="${esc(r.cat||'')}" onchange="setReglaEtiqueta(${i},'cat',this.value)" style="width:200px"></td>
+  const sinCat=rs.filter(r=>r.cat&&!cats.some(c=>normFase(c)===normFase(r.cat)));const refSin=rs.filter(r=>r.ref&&r.confirmada!==false&&!nAb.get(r));
+  return `<div class="panel"><h3>Etiqueta de serigrafía <span class="note">qué órdenes llevan etiqueta estampada, por categoría o por referencia, y cuántos minutos</span><span class="spacer"></span><button class="btn ghost sm" onclick="addReglaEtiqueta()">+ categoría</button><button class="btn ghost sm" onclick="addReglaEtiqueta(true)">+ referencia</button></h3><div class="body">
+   <p class="lede" style="margin-top:0"><b>Las órdenes de estas categorías o referencias llevan etiqueta estampada:</b> el paso <b>${esc(nCen('etiquetas'))}</b> entra solo a su ruta y carga estos minutos (la hoja LMO no trae esa operación). Una fila con referencia vale solo para esa referencia dentro de su categoría (la 4240 de CAMISETAS sí, la 4240 de un jogger no); la fila sin referencia vale para toda la categoría y manda; nunca se suman dos. Las rutas que confirmó una persona no se tocan: quedan marcadas «revisar ruta». Una regla sin confirmar no aplica.</p>
+   <table><thead><tr><th>Categoría (padre o hija)</th><th>Referencia <span class="mut">(vacía = toda la categoría)</span></th><th class="num">SAM</th><th>Centro</th><th>Confirmada</th><th class="num">Órdenes abiertas</th><th></th></tr></thead><tbody>
+   ${rs.map((r,i)=>`<tr><td><input list="dl-cats-etiq" value="${esc(r.cat||'')}" onchange="setReglaEtiqueta(${i},'cat',this.value)" style="width:200px">${r.nota?`<div class="mut" style="font-size:var(--fs-xs)">${esc(r.nota)}</div>`:''}</td>
+     <td><input type="text" value="${esc(r.ref||'')}" placeholder="toda la categoría" onchange="setReglaEtiqueta(${i},'ref',String(this.value||'').trim())" style="width:120px"></td>
      <td class="num"><input type="number" step="0.01" style="width:90px" value="${r.min}" onchange="setReglaEtiqueta(${i},'min',this.value)"></td>
      <td><select onchange="setReglaEtiqueta(${i},'centro',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td>
      <td><input type="checkbox" ${r.confirmada!==false?'checked':''} onchange="setReglaEtiqueta(${i},'confirmada',this.checked)">${r.confirmada===false?' <span class="tag t-alerta" style="font-size:var(--fs-xs)">no aplica</span>':''}</td>
-     <td><button class="btn ghost sm" onclick="delReglaEtiqueta(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Sin reglas: ninguna categoría lleva etiqueta.</td></tr>'}
+     <td class="num">${nAb.get(r)||0}</td>
+     <td><button class="btn ghost sm" onclick="delReglaEtiqueta(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sin reglas: ninguna orden lleva etiqueta.</td></tr>'}
    </tbody></table>
    <datalist id="dl-cats-etiq">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
    ${sinCat.length?`<p class="mut" style="margin-top:8px"><span class="tag t-alerta">brecha</span> ${sinCat.length} ${sinCat.length===1?'regla apunta':'reglas apuntan'} a una categoría que no está en el catálogo: <b>${sinCat.map(r=>esc(r.cat)).join(', ')}</b>. Mientras no exista, esa etiqueta no carga en ninguna orden.</p>`:''}
+   ${refSin.length?`<p class="mut" style="margin-top:8px">${refSin.length===1?'La referencia':'Las referencias'} <b>${refSin.map(r=>esc(r.ref)).join(', ')}</b> no ${refSin.length===1?'tiene':'tienen'} hoy órdenes abiertas (se compara con la referencia / estilo de la orden). Cuando entren, llevarán la etiqueta.</p>`:''}
   </div></div>`}
 /* ==================== PARTE A · ajustes de Dirección, Liberación y Producción (16-sep-2026) ==================== */
 
@@ -6007,13 +6030,13 @@ function tiempoEsperadoPaso(o,p,k,spc){if(p.centro==='modulos'&&o.opsSam&&!(k.sa
 /* qué cambiaría en las órdenes ABIERTAS si se aplican los tiempos de hoy. Horas = prendas PENDIENTES × minuto, solo pasos no hechos (la misma base que las pantallas de carga);
    los pasos con tiempo puesto a mano en la ficha (p.tManual) no se tocan y se cuentan aparte */
 function tiemposRutasDif(){const cache={};let n=0,antes=0,despues=0,manual=0;const ords=new Set();const porFam={};const porCentro={};
-  S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const k=K(o.cat);if(!k)return;const spc=cache[k.id]||(cache[k.id]=samPorCentro(k)||{});
+  S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const k=K(o.cat);if(!k)return;const _ck=claveSpc(o,k);const spc=cache[_ck]||(cache[_ck]=spcOrden(o,k));
     ['ruta','rutaCompleta'].forEach(rk=>{(o[rk]||[]).forEach(p=>{if(!CE(p.centro)||CE(p.centro).area!=='pro')return;if(p.centro==='bordado')return;const t=tiempoEsperadoPaso(o,p,k,spc);const nt=+((t||{}).t||0);if(Math.abs(nt-(+p.t||0))<1e-6)return;if(p.tManual){if(rk==='ruta')manual++;return}
       if(rk==='ruta'){n++;ords.add(o.id);const f=famDeOrden(o);const pend=(centroPorDias(p.centro)||pasoHecho(o,p.centro))?0:pendCentroUnid(o,p.centro);antes+=(+p.t||0)*pend;despues+=nt*pend;porFam[f]=porFam[f]||{n:0,antes:0,despues:0};porFam[f].n++;porFam[f].antes+=(+p.t||0)*pend;porFam[f].despues+=nt*pend;porCentro[p.centro]=porCentro[p.centro]||{n:0,antes:0,despues:0};porCentro[p.centro].n++;porCentro[p.centro].antes+=(+p.t||0)*pend;porCentro[p.centro].despues+=nt*pend}})})});
   return {n,ordenes:ords.size,manual,antesH:antes/60,despuesH:despues/60,porFam,porCentro,base:'órdenes abiertas · prendas pendientes · pasos no hechos'}}
 function propagarTiempos(quien){if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return 0;   /* el piso no guarda órdenes ni params: no toca nada */
   const d=tiemposRutasDif();if(!d.n)return 0;const motivo=String(quien||'cambio de configuración');
-  const cache={};let n=0;S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const k=K(o.cat);if(!k)return;const spc=cache[k.id]||(cache[k.id]=samPorCentro(k)||{});let toco=false;
+  const cache={};let n=0;S.ordenes.forEach(o=>{if(!abiertaDe(o))return;const k=K(o.cat);if(!k)return;const _ck=claveSpc(o,k);const spc=cache[_ck]||(cache[_ck]=spcOrden(o,k));let toco=false;
     ['ruta','rutaCompleta'].forEach(rk=>{(o[rk]||[]).forEach(p=>{if(!CE(p.centro)||CE(p.centro).area!=='pro')return;if(p.centro==='bordado')return;if(p.tManual)return;const t=tiempoEsperadoPaso(o,p,k,spc);const nt=+((t||{}).t||0);if(Math.abs(nt-(+p.t||0))<1e-6)return;if(p.tOrig==null)p.tOrig=+p.t||0;p.tAntes=+p.t||0;p.t=nt;if(t&&t.estandar)p.estandar=true;else delete p.estandar;toco=true;if(rk==='ruta')n++})});
     if(toco)o.tiemposAplicados={ts:new Date().toISOString(),u:quienFirma(),motivo}});
   S.params.tiemposAplicados=(S.params.tiemposAplicados||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),motivo,pasos:n,ordenes:d.ordenes,antesH:Math.round(d.antesH),despuesH:Math.round(d.despuesH),porFam:Object.fromEntries(Object.entries(d.porFam).map(([f,x])=>[f,{n:x.n,antesH:Math.round(x.antes/60),despuesH:Math.round(x.despues/60)}]))}]);
@@ -7841,8 +7864,8 @@ function origenTiempoCentro(c){const ce=CE(c)||{};
   const n=(S.operaciones||[]).filter(x=>x.centro===c).length;
   if(n)return{txt:'operaciones de la LMO',det:n+' operaciones mapeadas'};
   /* reglas de etiqueta (tabla editable) que apuntan a este centro: son su fuente de minutos por prenda */
-  const re=(typeof reglasEtiqueta==='function')?reglasEtiqueta().filter(r=>(r.centro||'etiquetas')===c&&r.cat):[];const reOk=re.filter(r=>r.confirmada!==false&&+r.min>0);
-  if(reOk.length)return{txt:'tabla de reglas de etiqueta (Configuración → Operaciones)',det:reOk.length+' reglas confirmadas: '+reOk.map(r=>r.cat+' '+num(r.min,2)+' min').join(', ')+(re.length>reOk.length?' · '+(re.length-reOk.length)+' sin confirmar o en 0 (no cuentan)':'')};
+  const re=(typeof reglasEtiqueta==='function')?reglasEtiqueta().filter(r=>(r.centro||'etiquetas')===c&&(r.cat||r.ref)):[];const reOk=re.filter(r=>r.confirmada!==false&&+r.min>0);
+  if(reOk.length)return{txt:'tabla de reglas de etiqueta (Configuración → Operaciones)',det:reOk.length+' reglas confirmadas: '+reOk.map(r=>(r.cat||('ref. '+r.ref))+' '+num(r.min,2)+' min').join(', ')+(re.length>reOk.length?' · '+(re.length-reOk.length)+' sin confirmar o en 0 (no cuentan)':'')};
   if(re.length)return{txt:'tabla de reglas de etiqueta',det:re.length+' reglas, ninguna confirmada con minutos',brecha:'las reglas de etiqueta que le apuntan están sin confirmar o en 0',que:'confirma las reglas de etiqueta (Configuración → Operaciones → reglas de etiqueta) o ponles minutos'};
   return{txt:'sin origen',det:'ni SAM (minutos por prenda) en el centro ni operaciones mapeadas ni reglas que le apunten',brecha:'sin SAM (minutos por prenda) no hay horas'}}
 function subAreasResumenHTML(g,cens,P,dias){if(!cens||cens.length<2)return '';
@@ -8904,7 +8927,7 @@ function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)retur
 /* ruta editable por el centro: solo los pasos de sus centros (y los opcionales que le tocan), con motivo obligatorio; sin tiempo = se reporta */
 const RUTA_EDITABLE_POR={corte:['estampado','bordado','sublimado','apliques','calandrado'],estampado:['estampado','bordado','sublimado','apliques','calandrado'],sublimado:['estampado','bordado','sublimado','apliques','calandrado'],apliques:['estampado','bordado','sublimado','apliques','calandrado'],calandrado:['estampado','bordado','sublimado','apliques','calandrado'],bordado:['estampado','bordado','sublimado','apliques','calandrado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones','cordones'],botones:['etiquetas','lavado','plancha','botones','cordones'],lavado:['etiquetas','lavado','plancha','botones','cordones'],cordones:['etiquetas','lavado','plancha','botones','cordones'],plancha:['etiquetas','lavado','plancha','botones','cordones'],empaque:['empaque']};
 function centrosEditablesRuta(){if(puede('programa'))return S.centros.filter(c=>c.area==='pro').map(c=>c.id);if(!puede('ruta'))return [];const set=new Set();centrosPerfil().forEach(c=>{(RUTA_EDITABLE_POR[c]||[c]).forEach(x=>set.add(x));if(c==='*')S.centros.filter(x=>x.area==='pro').forEach(x=>set.add(x.id))});return [...set]}
-function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});   /* como la ficha: hoja LMO, puntadas para bordado, el centro para lavado/plancha */
+function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;const edit=centrosEditablesRuta();const k=K(o.cat);const spc=spcOrden(o,k);const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});   /* como la ficha: hoja LMO, puntadas para bordado, el centro para lavado/plancha */
   const ruta=o.ruta||[];const todos=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   abrir(`<h3>Ruta de ${esc(o.op)} <span class="note">${esc(nombreCat(K(o.cat)))} · ${num(o.cant)} pz</span></h3><div class="body">
    <p class="lede" style="margin-top:0">Marca o desmarca los pasos de tus centros. Un paso agregado toma el tiempo de la hoja de operaciones de la categoría; si la categoría no tiene tiempo para ese centro, el paso entra <b>sin tiempo</b> y queda en la bandeja "sin tiempo por prenda" hasta que se cargue. El motivo es obligatorio y todo queda en la bitácora.</p>
@@ -9098,7 +9121,7 @@ function aplicarRutasArchivo(){const p=RUTAS_ARCH;if(!p)return;
   if(!puedeEditarRuta()){alert('Solo el jefe de planificación de producción crea o edita rutas.');return}
   if(!confirm('¿Poner la ruta del archivo en '+p.aplican.length+' órdenes?'+(p.cambian?'\n'+p.cambian+' de ellas tienen hoy otra ruta y se reemplaza.':'')))return;
   const ts=new Date().toISOString(),u=quienFirma();let n=0;
-  p.aplican.forEach(x=>{const o=x.o;const k=K(o.cat);const sam=k?(samPorCentro(k)||{}):{};
+  p.aplican.forEach(x=>{const o=x.o;const k=K(o.cat);const sam=spcOrden(o,k);
     const comp=x.cens.map((c,i)=>{const t=(x.ts[i]!=null&&!isNaN(x.ts[i])&&x.ts[i]>0)?x.ts[i]:(+((tiempoPaso({centro:c,t:0},k,sam,+o.puntadas||0)||{}).t)||0);return {centro:c,t}});
     const antes=x.antes.join(' → ');
     o.rutaCompleta=comp;const fila=filaFaseDe(o.fase);o.ruta=(fila&&fila.sistema==='cerrada')?[]:conPasosPendientes(o,pasosPendientes(o.rutaCompleta,fila),o.rutaCompleta);
@@ -9146,7 +9169,7 @@ function rutasDistintas(ords){const m={};ords.forEach(o=>{const k=pasosProComple
 function centrosLote(){const edit=centrosEditablesRuta();return S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id)).map(c=>({id:c.id,n:c.n,editable:edit.includes(c.id)}))}
 /* plan por orden: qué entra, qué sale, qué se conserva y qué queda sin tiempo. No escribe nada. */
 function planRutaLote(ords,cens){const sel=new Set(cens||[]);const cl=centrosLote();const out={filas:[],cambian:0,igual:0,mas:{},menos:{},sinT:{},hechosConservados:0,omitidas:0,conAvance:0,divergen:0,liberadas:0,editadasMano:0,confirmadas:0,revisar:0,prendas:0};
-  ords.forEach(o=>{const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};cl.forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const fe=faseEstado(o.fase,o);const tiene=pasosProCompleta(o);const enPend=new Set((o.ruta||[]).map(p=>p.centro));const ac=(S.avance[o.id]||{}).centros||{};const mas=[],menos=[],conserv=[],sinT=[],omit=[],conAvance=[];
+  ords.forEach(o=>{const k=K(o.cat);const spc=spcOrden(o,k);const sam={};cl.forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const fe=faseEstado(o.fase,o);const tiene=pasosProCompleta(o);const enPend=new Set((o.ruta||[]).map(p=>p.centro));const ac=(S.avance[o.id]||{}).centros||{};const mas=[],menos=[],conserv=[],sinT=[],omit=[],conAvance=[];
     cl.forEach(c=>{const en=tiene.includes(c.id);const want=sel.has(c.id);if(!c.editable||pasoHecho(o,c.id,fe)||pasoFijoPorFase(o,c.id)){   /* hecho = fase de Odoo, cierre en piso o unidades completas (la misma puerta del motor); o excluido por la fase (maquila) */if(en&&!want)conserv.push(c.id);if(!en&&want)omit.push(c.id);return}
       if(want&&!enPend.has(c.id)){mas.push(c.id);if(!(sam[c.id]>0))sinT.push(c.id)}   /* entra si no está en la ruta PENDIENTE (lo que el motor lee), aunque rutaCompleta lo traiga */
       if(!want&&en){menos.push(c.id);if((ac[c.id]||0)>0||(typeof tramoAbiertoOrden==='function'&&tramoAbiertoOrden(o.id,c.id)))conAvance.push(c.id)}});
@@ -9370,7 +9393,7 @@ function deshacerLoteRuta(k){const frase=String(DLR.palabra||'').trim().toUpperC
     /* 1 · los pasos que el lote agregó salen de la pendiente; de la completa, solo si antes del lote no estaban ahí */
     x.mas.forEach(c=>{o.ruta=(o.ruta||[]).filter(q=>q.centro!==c);const estaba=!!(x.antesCens&&x.antesCens.includes(c));if(o.rutaCompleta&&!estaba)o.rutaCompleta=o.rutaCompleta.filter(q=>q.centro!==c)});
     /* 2 · los que quitó, de vuelta: con su paso de antes (foto) o el tiempo de hoy; a la completa, y a la pendiente solo si estaba pendiente antes */
-    if(x.menos.length){const k2=K(o.cat);const spc=k2?(samPorCentro(k2)||{}):{};
+    if(x.menos.length){const k2=K(o.cat);const spc=spcOrden(o,k2);
       const quitadoAntes=c=>{const ant=(o.rutaEditada||[]).filter(q=>q!==x.e&&q.ts<l.ts&&((q.mas||[]).includes(c)||(q.menos||[]).includes(c))).slice(-1)[0];return !!(ant&&(ant.menos||[]).includes(c))};
       x.menos.forEach(c=>{const paso=(x.foto&&x.foto.pasos&&x.foto.pasos[c])?JSON.parse(JSON.stringify(x.foto.pasos[c])):{centro:c,t:+((tiempoPaso({centro:c,t:0},k2,spc,+o.puntadas||0)||{}).t)||0};
         const enComp=x.foto?x.foto.comp.includes(c):true;const enPend=x.foto?x.foto.pend.includes(c):(!pasoHecho(o,c)&&!pasoFijoPorFase(o,c)&&!quitadoAntes(c)&&(c!=='lavado'||!!o.lavadoModo));
@@ -9532,7 +9555,7 @@ function rutasHTML(){const contras=contradiccionesOT();const base=rutasBase().fi
 function guardarRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
   if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
   const motivo=(document.getElementById('rc-motivo')||{}).value.trim();if(!motivo){alert('Escribe el motivo.');return}
-  const edit=centrosEditablesRuta();const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
+  const edit=centrosEditablesRuta();const k=K(o.cat);const spc=spcOrden(o,k);const sam={};S.centros.filter(c=>c.area==='pro').forEach(c=>{sam[c.id]=+((tiempoPaso({centro:c.id,t:0},k,spc,+o.puntadas||0)||{}).t)||0});const antes=(o.ruta||[]).map(p=>p.centro);const mas=[],menos=[],sinT=[];
   S.centros.filter(c=>c.area==='pro'&&edit.includes(c.id)).forEach(c=>{const el=document.getElementById('rc-'+c.id);if(!el||el.disabled)return;const en=antes.includes(c.id);
     if(el.checked&&!en){mas.push(c.id)}if(!el.checked&&en){menos.push(c.id)}});
   if(!mas.length&&!menos.length){confirmarRuta(o,'persona',motivo);PLAN=null;PLAN_ALL=null;save();cerrar();render();return} // guardar sin cambios también confirma
@@ -13165,7 +13188,7 @@ function guardarOrden(id){const g=x=>document.getElementById(x).value;
   const col=buscarColor(g('f-col'));if(!col){alert('Elige un color del catálogo.');return}
   const o={op:g('f-op'),ref:g('f-ref'),cat:g('f-cat'),color:col.id,cant:+g('f-cant'),fecha:g('f-fec'),prio:+g('f-prio'),fase:g('f-fase')||null,telas:ED.telas.filter(t=>t.kg>0),ruta:ED.ruta,samProv:false,telasManual:true,tecnica:ED.tecnica||null,puntadas:+ED.puntadas||0,insumos:(ED.insumos||[]).filter(x=>x.n)};
   if(id){const ex=S.ordenes.find(x=>x.id===id);if(ex)['cliente','depto','odc','proyecto','colorOdoo','precio','prodTot','estado','lib','recursoFijo','terminadaF','opsSam','puntadas'].forEach(k=>{if(ex[k]!==undefined&&o[k]===undefined)o[k]=ex[k]})}
-  {const k=K(o.cat);const spc=k?(samPorCentro(k)||{}):{};(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(!c||c.area!=='pro'||p.centro==='bordado'||!k)return;const e=tiempoEsperadoPaso(o,p,k,spc);const et=+((e||{}).t||0);
+  {const k=K(o.cat);const spc=spcOrden(o,k);(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(!c||c.area!=='pro'||p.centro==='bordado'||!k)return;const e=tiempoEsperadoPaso(o,p,k,spc);const et=+((e||{}).t||0);
     if(Math.abs((+p.t||0)-et)>1e-6){if(!p.tManual)p.tManual={u:quienFirma(),ts:new Date().toISOString(),regla:et}}else delete p.tManual})}   /* tiempo puesto a mano en la ficha: se respeta cuando cambia la configuración (tManual); si vuelve a coincidir con la regla, deja de ser manual */
   if(!o.estado)o.estado='plan';
   const bordadoAplica=(o.ruta||[]).some(p=>p.centro==='bordado');const cBor=CE('bordado');
@@ -13518,8 +13541,8 @@ function planTarea(rows,nombre){
     const RT=armarTelasDe(materiales,plan,{pantone:!!(colorDe(d.colorN).cod)});const telasKg=RT.telasKg,origs=RT.origs,origen=RT.origen,telas=RT.telas,sinClas=RT.sinClas;
     const kgTej=telasKg.filter(m=>m.produce==='propia').reduce((a,m)=>a+m.kg,0),kgTin=telasKg.filter(m=>m.falta!=='nada').reduce((a,m)=>a+m.kg,0);
     // BLOQUE I: ruta textil por origen + ruta de producción deducida (Parte 1) con estampado/bordado por orden
-    const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas,comp:d.comp})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
-    const spc=k?samPorCentro(k):{};
+    const opts=[...ordenCentrosAuto({tecnica:d.tecnicaTxt,puntadas:d.puntadas,comp:d.comp,cat:k?k.id:null,ref:d.stilo})];const lp=k?lavaPlanchaDefault(k):{lavado:false,plancha:false};if(lp.lavado)opts.push('lavado');if(lp.plancha)opts.push('plancha');
+    const spc=spcOrden({ref:d.stilo},k);
     const sinHoja=!!k&&![...centrosDeCategoria(k)].some(c=>CE(c)&&CE(c).area==='pro');   /* la familia existe pero no aporta ningún centro de producción (sin hoja LMO); sin categoría resuelta no se inventa ruta */
     const optsRuta=sinHoja?[...new Set([...opts,...RUTA_DEFECTO_PRO.filter(c=>CE(c))])]:opts;
     const pro=armarRuta('propia',0,optsRuta,[],k?k.id:null).filter(p=>!['tej','tin','proveedor'].includes(p.centro)).map(p=>tiempoPaso(p,k,spc,d.puntadas));
