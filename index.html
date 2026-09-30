@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 16:06';
+const APP_BUILD='2026-09-30 16:32';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3266,6 +3266,19 @@ const FASES_SEC_20=[['0Diseño',0],['0Reproceso diseño',0.1],['0Recetas Insumos
  ['6Serigrafia',6],['6 CD SERIGRAFIA',6],['6Sublimado',6],['6Bordado',6],['6 Etiquetado',6.1],['6Pulido Bordado',6.1],['6 CD BORDADO',6.3],
  ['7Confección',7],['7Pulido',7.1],
  ['8Lavanderia',8],['8Lavanderia Quito',8],['8Botones',8],['8Servicios y Terminados',8],['8Empaque',8.1],['8Empaque Terminado',8.2],['8Cross',8.3],['8Centro Distribucion',8.4],['8Novedades',8.5],['8Embodegado',8.6],['8Exportacion',8.6],['8Cotizaciones',8.6],['Facturado',9],['Stand by',9]];
+/* 30-sep (usuaria, bandeja «fase que no calza con la tabla»: «en Definir Telas estamos por definir: queda pendiente por tela, aún no está comprada;
+   en Cotizaciones todo de producción está terminado, solo falta facturar»). 0Definir Telas es nueva en Odoo: previo a producción, entre Recetas (0,2) y
+   Adquisición (0,3), a confirmar. Una sola vez; si la fila ya existe no se toca. */
+function sembrarFaseDefinirTelas30(){if(S.params.faseDefinirTelas30)return;const t=faseMapeo();let nueva=false;
+  if(!t.some(x=>normFase(x.fase)===normFase('0Definir Telas'))){t.push({fase:'0Definir Telas',sistema:'previo a producción',esCola:false,sinCarga:false,bloqueo:false,excluye:'',desde:'',tela:'',montado:false,secuencia:0.25,que:'se está definiendo la tela: todavía no está comprada',pendiente:true});nueva=true;if(typeof FASE_CACHE!=='undefined')FASE_CACHE.ver++}
+  S.params.faseDefinirTelas30={ts:new Date().toISOString(),nueva};
+  if(nueva&&typeof bitacora==='function')bitacora('Tabla 1 · fase nueva de Odoo «0Definir Telas» (usuaria, 30-sep: se está definiendo la tela, todavía no está comprada): previo a producción, secuencia 0,25 (entre Recetas y Adquisición, a confirmar)')}
+/* la tabla 1 se completa AL ENTRAR (antes solo corría si alguien abría ciertas pantallas: ruta en lote, rutas estimadas…); una pestaña vieja
+   que guardaba los parámetros enteros la dejó sin secuencia y sin 6Sublimado, 6Pulido Bordado y 8Cotizaciones. Solo toca la tabla 1:
+   agrega las filas que faltan y llena lo vacío; lo editado a mano no se pisa (la del 20-sep solo corre si su bandera tampoco está). */
+function sembrarTabla1AlEntrar(){if(!S||!S.params||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
+  const falta=!S.params.fasesSecuencia19||!S.params.fasesSecuencia20||!S.params.faseDefinirTelas30;if(!falta)return false;
+  sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarFaseDefinirTelas30();return true}
 function sembrarFasesSecuencia20(){if(S.params.fasesSecuencia20)return;const t=faseMapeo();let n=0;const sinFila=[];
   FASES_SEC_20.forEach(([fase,sec])=>{const r=t.find(x=>normFase(x.fase)===normFase(fase));if(!r){sinFila.push(fase);return}if(+r.secuencia!==sec){r.secuencia=sec;n++}});
   S.params.fasesSecuencia20=new Date().toISOString();if(typeof FASE_CACHE!=='undefined')FASE_CACHE.ver++;
@@ -3635,6 +3648,7 @@ function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configura
   S.params.tema=v;bitacora('Aspecto de la pantalla: '+antes+' → '+v+' ('+quienFirma()+')');save();render()}
 function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
+  try{if(sembrarTabla1AlEntrar())save()}catch(e){try{console.error('sembrarTabla1AlEntrar',e)}catch(x){}}   /* 30-sep: la tabla 1 completa (fases y secuencia) aunque nadie abra ciertas pantallas */
   const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   pintarBusqG();CAPM=null;SEMC={};
@@ -5323,7 +5337,7 @@ function sembrarTiempos21(){if(S.params.tiempos21Sembrado)return;const ts=new Da
 /* después de TODAS las siembras: las órdenes abiertas se ponen al día con los tiempos de hoy, una sola vez por base (bandera propia; el piso no lo hace) */
 function sembrarPropagacionTiempos(){if(S.params.tiempos21Propagado)return;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return;if(!(S.ordenes||[]).length)return;
   const n=propagarTiempos('tiempos del 21-sep (Kronos · Santiago): puesta al día de las órdenes abiertas');S.params.tiempos21Propagado={ts:new Date().toISOString(),u:quienFirma(),pasos:n};save()}
-function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion();sembrarEtiquetaRefs30();sembrarEtiquetasEnTramo30()}
+function sembrarDecisiones16(){sembrarMaquilaPorDescarte();sembrarTiempos21();sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarFaseDefinirTelas30();sembrarEtiquetado();sembrarPlanchaConfirmada();sembrarLavado();sembrarOjalBotonConfirmados();sembrarPermisoRutas();sembrarUnificacionJeans();sembrarTiemposSG();sembrarTiemposSG2();sembrarRutasEmpaque();sembrarRutaDefecto22();sembrarFirmasRuta();sembrarPropagacionTiempos();sembrarRequerimientoAntesPlan();sembrarMotivosCierre();sembrarMotivosDevolucion();sembrarTramoMaquila();sembrarRutaPendienteReal();sembrarMaquilaEsConfeccion();sembrarEtiquetaRefs30();sembrarEtiquetasEnTramo30()}
 /* 4 · los tiempos de ojales y botones de la tabla son DEFINITIVOS: se confirman todas las filas */
 function sembrarOjalBotonConfirmados(){if(S.params.ojalBotonConfirmado)return;
   const l=tiemposOjalBoton().filter(r=>r.sinConfirmar);l.forEach(r=>{delete r.sinConfirmar});
