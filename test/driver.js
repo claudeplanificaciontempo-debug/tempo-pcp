@@ -1233,6 +1233,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const wf1=nivelar({id:"wf-cap",saldoMin:cg2.calc.saldoMin,capDia:capFuerza,inicio:ini2,compromiso:COMP});
       /* sobre CORTE, que cabe con holgura: acortar el compromiso a la mitad de los días que necesita */
       const compCorto=finLabInc(ini2,Math.max(1,Math.floor(cCorte.calc.diasNec*0.5)));
+      /* 30-sep: la base es un compromiso con holgura contado desde el inicio (el 31-dic fijo dejó de alcanzar al correr los días) */
+      const compLargo=finLabInc(ini2,cCorte.calc.diasNec+5);
+      const wf0=nivelar({id:"wf-comp0",saldoMin:cCorte.calc.saldoMin,capDia:cCorte.calc.capDia,inicio:ini2,compromiso:compLargo});
       const wf2=nivelar({id:"wf-comp",saldoMin:cCorte.calc.saldoMin,capDia:cCorte.calc.capDia,inicio:ini2,compromiso:compCorto});
       const ficha=r=>({capDia:r.capDia,saldoMin:r.saldoMin,netoMin:r.netoMin,diasNec:r.diasNec,
         inicio:r.inicio,fin:r.fin,compromiso:r.compromiso,diasDisp:r.diasDisp,alcanzableMin:r.alcanzableMin,
@@ -1241,7 +1244,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __R.c4.whatIfCompromiso=Object.assign(ficha(wf2),{sobre:"corte",compOriginal:cCorte.calc.compromiso,rezagoOriginal:cCorte.calc.rezagoMin});
       __check("C4: bajando la capacidad aparece rezago",wf1.rezagoMin>0&&wf1.cabe===false,wf1.rezagoMin);
       __check("C4: adelantando el compromiso aparece rezago donde antes cabía",
-        cCorte.calc.cabe===true&&wf2.rezagoMin>0&&wf2.cabe===false&&compCorto<cCorte.calc.compromiso,compCorto+" / "+wf2.rezagoMin);
+        wf0.cabe===true&&wf2.rezagoMin>0&&wf2.cabe===false&&compCorto<compLargo,compCorto+" / "+wf2.rezagoMin+" · base "+compLargo+" cabe "+wf0.cabe);
       __check("C4: el rezago es exactamente neto − alcanzable",
         Math.abs(wf1.rezagoMin-(wf1.netoMin-wf1.alcanzableMin))<1e-6);
       __check("C4: y la holgura es negativa cuando no cabe",wf2.holgura<0,wf2.holgura);
