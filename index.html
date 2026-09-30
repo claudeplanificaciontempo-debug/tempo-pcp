@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-09-30 17:27';
+const APP_BUILD='2026-09-30 18:03';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10105,8 +10105,11 @@ function vImprimir(el){
 /* ---------- Órdenes ---------- */
 let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord',edicion:'porEditar'};
 /* «editada» = ruta confirmada por una persona o por Odoo (rutaConfirmada). Por editar = todo lo demás: al confirmar, sale de la lista */
-const EDICION_ORD={porEditar:'Por editar (ruta sin confirmar)',editadas:'Ruta lista (confirmada o prenda terminada)',todas:'Todas'};
-function matchEdicionOrd(o,k){if(k==='todas'||!k)return true;const c=(typeof rutaLista==='function')?rutaLista(o):false;return k==='editadas'?c:!c}
+/* 30-sep (usuaria: «tengo unas que dicen Definir Telas y están como terminadas… no tiene sentido»): «Ruta lista» mezclaba las que tienen la ruta
+   CONFIRMADA (siguen en proceso: Definir Telas, Reproceso diseño…) con las TERMINADAS que no necesitan ruta. Ahora son dos filtros distintos. */
+const EDICION_ORD={porEditar:'Por definir ruta',editadas:'Ruta confirmada',terminadas:'Terminadas o cerradas (no necesitan ruta)',todas:'Todas'};
+function matchEdicionOrd(o,k){if(k==='todas'||!k)return true;const na=(typeof rutaNoAplica==='function')?rutaNoAplica(o):null;
+  if(k==='terminadas')return !!na;if(na)return false;const conf=(typeof rutaConfirmada==='function')?rutaConfirmada(o):false;return k==='editadas'?conf:!conf}
 function togFaseOrdF(f){ORDF.fases=ORDF.fases||new Set();if(ORDF.fases.has(f))ORDF.fases.delete(f);else ORDF.fases.add(f);render()}
 /* selector compacto de fases con casillas, agrupadas por etapa; sel=null o vacío = todas */
 function selFases(fasesAll,sel,varName,togFn,cuentas){return filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)}
@@ -10127,12 +10130,12 @@ function vOrdenes(el){
   const P=S.ordenes.length?programar():null;
   const cnt={};S.ordenes.forEach(o=>{const e=estadoChipOrd(o);cnt[e]=(cnt[e]||0)+1});const q=normTxt(ORDF.q);
   const lista=listaOrdActual();
-  const cntEd={porEditar:0,editadas:0,todas:0};S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).forEach(o=>{cntEd.todas++;if(matchEdicionOrd(o,'editadas'))cntEd.editadas++;else cntEd.porEditar++});
+  const cntEd={porEditar:0,editadas:0,terminadas:0,todas:0};S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).forEach(o=>{cntEd.todas++;['porEditar','editadas','terminadas'].forEach(k=>{if(matchEdicionOrd(o,k))cntEd[k]++})});
   const fasesAll=[...new Set(S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)).map(o=>o.fase||'Sin fase'))].sort((a,b)=>cmpFases(a,b));
   ORDF.fases=podarFases(ORDF.fases,fasesAll);   // conserva el centinela: «ninguna» no se convierte en «todas»
   const filtros=`<div class="panel"><div class="body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
     <div style="flex:2;min-width:340px"><label>Estado</label><div class="chips" style="margin:0">${Object.entries(ESTADOS_ORD).filter(([k])=>cnt[k]).map(([k,v])=>`<span class="chip ${ORDF.estado===k?'on':''}" onclick="ORDF.estado='${k}';ORDF.fases=null;render()">${v} <span class="mut">${cnt[k]}</span></span>`).join('')}</div></div>
-    <div class="no-plegar sub-blk" style="flex-basis:100%;order:9;margin:2px 0 0"><div class="sub-t">Edición <span class="mut">— al guardar la ficha o confirmar la ruta, la orden pasa a «ruta lista»; las de prenda terminada (fase con «sin carga» en la tabla 1) o cerradas en Odoo ya están ahí: no hay nada que editar</span></div><div class="chips" style="margin:0;max-width:none">${Object.entries(EDICION_ORD).map(([k,v])=>`<span class="chip ${ORDF.edicion===k?'on':''}" onclick="ORDF.edicion='${k}';render()">${v} <span class="mut">${cntEd[k]}</span></span>`).join('')}</div></div>
+    <div class="no-plegar sub-blk" style="flex-basis:100%;order:9;margin:2px 0 0"><div class="sub-t">Ruta <span class="mut">— <b>Por definir</b>: falta confirmar su ruta · <b>Confirmada</b>: alguien la revisó (la orden sigue en proceso, en la fase que sea) · <b>Terminadas o cerradas</b>: la prenda ya está hecha (fase con «sin carga» en la tabla 1) u Odoo la cerró; no hay ruta que definir</span></div><div class="chips" style="margin:0;max-width:none">${Object.entries(EDICION_ORD).map(([k,v])=>`<span class="chip ${ORDF.edicion===k?'on':''}" onclick="ORDF.edicion='${k}';render()">${v} <span class="mut">${cntEd[k]}</span></span>`).join('')}</div></div>
     <div style="flex:1;min-width:200px"><label>Buscar</label>${busqHTML('ORDF.q',ORDF.q,'ORDF.q=v','width:100%')}</div>
     <div><label>Fases</label>${selFases(fasesAll,ORDF.fases,'ORDF.fases','togFaseOrdF')}</div>
     ${grpSelHTML('ord')}</div></div>`;
