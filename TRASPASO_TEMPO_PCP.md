@@ -289,7 +289,7 @@ resumen por centro compacto; semanas vacías ocultas (15-sep). Estado: septiembr
 ### 2.64 Orden de las operaciones (hoja de producción) y ruta por defecto al cargar (19/20-sep)
 - Operaciones → «Cargar orden de las operaciones»: el paso de cada operación dentro de la prenda (595 de 595 calzan); el balanceo
   usa el orden real. Una orden nueva de familia sin hoja de operaciones nace con corte → confección → empaque (estimada; corte y
-  empaque en 0 con aviso). Entrega `entregas/TIEMPOS_PARA_LLENAR3.xlsx` para ingeniería. Ver `TIEMPOS_SANTIAGO_REPORTE.md`.
+  empaque en 0 con aviso). Entrega `TIEMPOS_PARA_LLENAR3.xlsx (entregado aparte; ya no está en el repositorio)` para ingeniería. Ver `TIEMPOS_SANTIAGO_REPORTE.md`.
 
 ### 2.63 ID de tarea de Odoo como identidad de la orden (19-sep)
 - El archivo de tareas puede traer la columna «ID» (ID de la tarea en Odoo): con ella la orden se reconoce por el ID aunque

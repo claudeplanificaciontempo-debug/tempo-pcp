@@ -14,3 +14,7 @@ test/fixtures/fotos_*.csv
 
 test/fixtures/maestro_rows.json
 test/fixtures/ordenops_rows.json
+
+# Excel con datos de la planta: nunca en el repositorio (es público)
+entregas/
+*.xlsx

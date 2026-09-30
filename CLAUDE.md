@@ -1067,7 +1067,7 @@ confirmada** (`empatarRutaConOT` → `[]`; `aplicarOT` reporta `confNoTocadas` e
 **Ruta por defecto al cargar (20-sep-2026):** en `planTarea`, si la categoría existe pero no aporta ningún centro de producción (sin hoja LMO), la
 orden nace con `RUTA_DEFECTO_PRO` (corte → confección → empaque) además de lo que pida la orden, marcada `rutaDefecto:true` y `rutaConf` «estimada» con nota;
 corte y empaque quedan en 0 con aviso (`sinTiempo`), confección con el minuto estimado. Sin categoría resuelta no se inventa ruta. Prueba RD. El servidor
-del harness acepta `POST /guardar?nombre=` (guarda en test/.out/exports: para sacar Excel armados en el navegador con SheetJS; entregas en `entregas/`).
+del harness acepta `POST /guardar?nombre=` (guarda en test/.out/exports: para sacar Excel armados en el navegador con SheetJS; nunca en `entregas/` ni en ninguna carpeta del repositorio: es público y `.gitignore` ya excluye `*.xlsx`).
 
 **Reportería: propuesta de esquema (20-sep-2026, SIN construir):** `REPORTERIA_ESQUEMA_PROPUESTA.md` — inventario de todo lo que reporta el sistema,
 solapes (tres listas de órdenes con cuatro estados; «hechas» de cuatro formas; minutos pendientes sumados aparte del `cargaUnica`; Resumen gerencial con
