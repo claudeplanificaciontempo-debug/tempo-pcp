@@ -2084,7 +2084,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delInsumoRutaRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerLoteRuta","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delInsumoRutaRow","delPasoCategoriaRow","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerLoteRuta","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -8687,6 +8687,26 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("T1A4: lo que ya estaba escrito a mano no se pisa",faseMapeo()[0].que==='editado a mano');
    S.params.faseMapeo=JSON.parse(bak);Object.keys(bf).forEach(k=>{if(bf[k]===undefined)delete S.params[k];else S.params[k]=bf[k]});FASE_CACHE.ver++;PERFIL=bakP;render();
    __check("T1A sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (usuaria: «las Level 1 tienen estampado y etiquetado; corrige las que ya se confirmó la ruta») */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakF=JSON.stringify(S.params.correccionPasos01||null);const bakE=JSON.stringify(S.params.reglasEtiqueta||null);
+   const pad={id:'k-lv-cam',n:'CAMISETAS'},lv={id:'k-lv-1',n:'Level 1',padre:'k-lv-cam'};const nk=[pad,lv].filter(k=>!K(k.id));S.categorias.push(...nk);
+   S.params.reglasEtiqueta=defReglasEtiqueta();
+   const base=S.ordenes.find(o=>abiertaDe(o)&&!rutaNoAplica(o)&&(o.ruta||[]).some(p=>p.centro==='corte'));const fase=base.fase;
+   const mk=(id,conf)=>{const o=JSON.parse(JSON.stringify(base));o.id=id;o.op='WH/LV-'+id;o.cat='k-lv-1';o.tecnica=null;o.tecnicaTxt='';o.fase=fase;
+     o.ruta=[{centro:'corte',t:0.5},{centro:'modulos',t:5},{centro:'empaque',t:0.3}];o.rutaCompleta=o.ruta.map(p=>Object.assign({},p));delete o.rutaEditada;
+     if(conf)o.rutaConf={estado:'confirmada',origen:'persona',u:'U',ts:'2026-09-29T10:00:00Z'};else delete o.rutaConf;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const oC=mk('lv-c',true),oS=mk('lv-s',false);
+   __check("LV1: Level 1 lleva Estampado aunque la orden no traiga técnica (tabla «Pasos que lleva siempre una categoría»)",ordenCentrosAuto(oS).has('estampado')&&ordenCentrosAuto(oS).has('etiquetas')&&pasosDeCategoria(K('k-lv-1')).includes('estampado'));
+   delete S.params.correccionPasos01;sembrarCorreccionPasosConfirmadas01();
+   const cen=o=>pasosProCompleta(o);
+   __check("LV2: a la ruta CONFIRMADA de Level 1 se le agregan Estampado y Etiquetas, en el orden del proceso, y sigue confirmada",cen(oC).includes('estampado')&&cen(oC).includes('etiquetas')&&(oC.ruta||[]).some(p=>p.centro==='estampado')&&rutaConfirmada(oC)&&oC.rutaConf.origen==='persona'&&ordenPaso('estampado')<ordenPaso('modulos'),JSON.stringify({c:cen(oC),r:(oC.ruta||[]).map(p=>p.centro)}));
+   __check("LV3: queda en auditoría y bitácora, y no se quitó ningún paso",auditoriaTodo().some(x=>x.oid===oC.id&&x.tipo==='ruta'&&/corrección del 01-oct/.test(x.motivo||''))&&S.bitacora.slice(-5).some(b=>/Rutas confirmadas corregidas \(01-oct\)/.test(b.t))&&['corte','modulos','empaque'].every(c=>cen(oC).includes(c)));
+   const n1=JSON.stringify(oC.rutaCompleta);sembrarCorreccionPasosConfirmadas01();
+   __check("LV4: corre una sola vez",JSON.stringify(oC.rutaCompleta)===n1&&!!S.params.correccionPasos01);
+   page='config';CONF.tab='ordenes2';render();__check("LV5: la tabla está en Configuración → Órdenes, fases y archivos",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-config').innerHTML));
+   S.ordenes=S.ordenes.filter(o=>o!==oC&&o!==oS);S.categorias=S.categorias.filter(k=>!nk.includes(k));S.params.correccionPasos01=JSON.parse(bakF)||S.params.correccionPasos01;S.params.reglasEtiqueta=JSON.parse(bakE);if(S.params.reglasEtiqueta==null)delete S.params.reglasEtiqueta;
+   PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("LV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 30-sep (usuaria: «Level 1 y Level 2 son con etiqueta estampada por defecto y no se está cargando; las referencias en camisetas 4208, 4204, 4240 serían esas») */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakR=JSON.stringify(S.params.reglasEtiqueta||null),bakF=JSON.stringify(S.params.etiqRefs30||null);
    const pad={id:'k-et-cam',n:'CAMISETAS'},lv={id:'k-et-lv1',n:'Level 1',padre:'k-et-cam'},cr={id:'k-et-cr',n:'Camiseta CR',padre:'k-et-cam'},jg={id:'k-et-jog',n:'Jogger Moda'};
