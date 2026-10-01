@@ -492,7 +492,7 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
 .o-statusbar .st:hover{background:#E1E3E6}
 .o-statusbar.solo-ver .st{cursor:default}.o-statusbar.solo-ver .st:hover{background:#EDEEF0}.o-statusbar.solo-ver .st.on:hover{background:var(--o-brand,#714B67)}
 .o-statusbar .st.on{background:var(--o-brand,#714B67);color:#fff;font-weight:600}
-.o-statusbar .st.hecho{color:#868E96}
+.o-statusbar .st.hecho{color:#6C757D}
 /* ================= Modo oscuro (01-oct-2026, usuaria: sol y luna «para los dos modos») =================
    Preferencia de cada persona (localStorage), no de la planta. Cambia las variables de color y tapa los blancos fijos.
    Lo que se imprime (programas, albaranes) abre en su propia ventana y no cambia. */
@@ -532,6 +532,13 @@ html[data-modo="oscuro"] .capm td.cel.amb,html[data-modo="oscuro"] .cel-ley.amb{
 html[data-modo="oscuro"] .niv-pill.faltante,html[data-modo="oscuro"] .t-falta{background:#26313D!important;color:#A9C4E4!important;border-color:#4A5B6E!important}
 html[data-modo="oscuro"] .res-dia-t .hoyt,html[data-modo="oscuro"] .res-mas,html[data-modo="oscuro"] .res-dia{color:#A9C4E4!important}
 html[data-modo="oscuro"] .cel-ley,html[data-modo="oscuro"] .capm td.cel{color:var(--ink)}
+/* menús y lo que se ilumina al pasar el mouse o al estar elegido (01-oct: «al seleccionar no se lee») */
+html[data-modo="oscuro"] nav .gbody a:hover,html[data-modo="oscuro"] .o-menu .o-item:hover,html[data-modo="oscuro"] .o-notebook a:hover,html[data-modo="oscuro"] .o-statusbar .st:hover,html[data-modo="oscuro"] .o-statusbar.solo-ver .st:hover{background:var(--o-sec)!important;color:var(--ink)!important}
+html[data-modo="oscuro"] nav .gbody a.on{background:var(--o-brand-soft)!important;color:var(--t-primary)!important}html[data-modo="oscuro"] nav .gbody a.on .ic svg{stroke:var(--t-primary)!important}
+html[data-modo="oscuro"] tbody tr:hover td{background:#232A31!important}
+html[data-modo="oscuro"][data-color="blanco"] header nav .grp:hover,html[data-modo="oscuro"][data-color="blanco"] header nav .grp.abierto,html[data-modo="oscuro"][data-color="blanco"] header button:hover{background:rgba(255,255,255,.08)!important;color:var(--ink)!important}
+html[data-modo="oscuro"] .o-statusbar .st:not(.on){background:var(--o-sec)!important;color:var(--ink2)!important}html[data-modo="oscuro"] .o-statusbar .st.hecho{color:var(--ink3)!important}
+html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(--t-primary)!important}
 /* el interruptor sol / luna */
 .modo-sw{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden;margin:0 6px;height:30px}
 .modo-sw button{background:transparent!important;border:0!important;height:30px!important;width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;color:inherit;opacity:.65;cursor:pointer}
@@ -1029,7 +1036,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 15:50';
+const APP_BUILD='2026-10-01 17:08';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
