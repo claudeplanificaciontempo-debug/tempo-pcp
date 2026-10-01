@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 11:35';
+const APP_BUILD='2026-10-01 12:05';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -3335,6 +3335,19 @@ function correccionPasosConfirmadas(flag,motivo){if(S.params[flag]||!S.ordenes||
     const mas=agregarPasosARuta(o,pide,motivo,ts,u);if(!mas.length)return;n++;mas.forEach(c=>porPaso[c]=(porPaso[c]||0)+1);if(ej.length<8)ej.push(o.op+' +'+mas.map(nCen).join(', '))});
   S.params[flag]={ts,u,ordenes:n,porPaso,ejemplos:ej};PLAN=null;PLAN_ALL=null;
   bitacora('Rutas confirmadas corregidas ('+motivo.replace(/^corrección del /,'').replace(/:.*/,'')+'): '+n+' órdenes'+(n?' · '+Object.entries(porPaso).map(([c,m])=>nCen(c)+' +'+m).join(', ')+' · p. ej. '+ej.slice(0,4).join('; '):'')+'. Solo se agregaron pasos; la confirmación se mantiene ('+u+')');return true}
+/* 01-oct: la etiqueta que la corrección del 01-oct agregó a rutas CONFIRMADAS cuando la regla todavía decía «todas las Camiseta CR/CV»: si la
+   orden ya no la pide (no es de las referencias 4204/4240/4208) y el paso no se hizo, sale. Solo lo que agregó esa corrección; nada más. */
+function sembrarEtiquetaSobrante01(){if(S.params.etiqSobrante01||!S.params.etiqRefs30||!S.ordenes||!S.ordenes.length)return false;if(!puedeEditarRuta())return false;
+  const ts=new Date().toISOString(),u=quienFirma();const ej=[];let n=0;
+  S.ordenes.forEach(o=>{const e=(o.rutaEditada||[]).find(x=>x&&x.etapa==='correccion'&&(x.mas||[]).includes('etiquetas')&&/corrección del 01-oct: Level 1/.test(x.motivo||''));if(!e)return;
+    if(etiquetaDeOrden(o)||pasoHecho(o,'etiquetas',faseEstado(o.fase,o)))return;
+    o.ruta=(o.ruta||[]).filter(p=>p.centro!=='etiquetas');o.rutaCompleta=(o.rutaCompleta||[]).filter(p=>p.centro!=='etiquetas');
+    o.rutaEditada=o.rutaEditada.concat([{ts,u,mas:[],menos:['etiquetas'],motivo:'la etiqueta va solo en Camiseta CR/CV 4204, 4240 y 4208 (se deshace lo agregado el 01-oct)',etapa:'correccion'}]);sellarRuta(o);
+    registrarAuditoria('ruta',o,'con Etiquetas','sin Etiquetas · sigue confirmada','la etiqueta va solo en Camiseta CR/CV 4204, 4240 y 4208',false);n++;if(ej.length<6)ej.push(o.op)});
+  S.params.etiqSobrante01={ts,u,ordenes:n,ejemplos:ej};if(n){PLAN=null;PLAN_ALL=null;bitacora('Etiqueta quitada de '+n+' rutas confirmadas de camisetas que no son 4204/4240/4208 (la había agregado la corrección del 01-oct con la regla vieja) · p. ej. '+ej.join(', ')+' ('+u+')')}return true}
+function sembrarEtiquetasAlEntrar(){if(!S||!S.params||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
+  if(S.params.etiquetadoSembrado&&S.params.etiqRefs30&&S.params.etiqTramo30)return false;
+  sembrarEtiquetado();sembrarEtiquetaRefs30();sembrarEtiquetasEnTramo30();PLAN=null;PLAN_ALL=null;return true}
 function sembrarTabla1AlEntrar(){if(!S||!S.params||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
   const falta=!S.params.fasesSecuencia19||!S.params.fasesSecuencia20||!S.params.faseDefinirTelas30;if(!falta)return false;
   sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarFaseDefinirTelas30();return true}
@@ -3708,6 +3721,7 @@ function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configura
 function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   try{if(sembrarTabla1AlEntrar())save()}catch(e){try{console.error('sembrarTabla1AlEntrar',e)}catch(x){}}
+  try{if(sembrarEtiquetasAlEntrar())save();if(sembrarEtiquetaSobrante01())save()}catch(e){try{console.error('sembrarEtiquetasAlEntrar',e)}catch(x){}}   /* 01-oct: los ajustes de etiqueta (16-sep y 30-sep) al entrar, antes de corregir rutas */
   try{if(sembrarCorreccionPasosConfirmadas01())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01',e)}catch(x){}}   /* 01-oct: una sola vez */
   try{if(sembrarPasosPolo01())save();if(S.params.pasosPolo01&&sembrarCorreccionPasosConfirmadas01b())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01b',e)}catch(x){}}   /* 01-oct (2): Polo Basica 7907/4164 → Bordado */   /* 30-sep: la tabla 1 completa (fases y secuencia) aunque nadie abra ciertas pantallas */
   const _scroll=tomarScroll();
@@ -6181,7 +6195,7 @@ function rutaProSugerida(o,rehacer){const k=K(o.cat);
   if(typeof ordenCentrosAuto==='function')ordenCentrosAuto(o).forEach(c=>cs.add(c));
   /* rehacer=true: los centros que dependen de la ORDEN (estampado, bordado…) salen de la técnica y las
      puntadas de ahora, así que si la orden dejó de pedirlos, se quitan. Si no, nunca se pierde un paso. */
-  const dep=rehacer?centrosPorOrden():[];
+  const dep=rehacer?centrosPorOrden().concat(['etiquetas']):[];   /* 01-oct: la etiqueta la decide la tabla de etiqueta, no la hoja */
   (o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!dep.includes(p.centro))cs.add(p.centro)});
   const l=[...cs].filter(c=>CE(c)&&CE(c).area==='pro');
   const emp=l.filter(c=>c==='empaque');
@@ -6480,13 +6494,23 @@ function recalcularRutas(motivo){
     const addOT=empatarRutaConOT(o);   /* lo que Odoo sí ejecutó vuelve a la ruta aunque el catálogo no lo traiga */
     registrarAuditoria('ruta',o,de.join(' → ')||'(sin ruta)',a.join(' → ')+(addOT.length?' + OT: '+addOT.map(nCen).join(', '):''),'ruta rehecha: '+(motivo||'cambió la categoría o su hoja de operaciones'),false);
     sellarRuta(o);n++});
-  let marcadas=0;
-  r.manual.forEach(o=>{const de=pasosProDe(o);const a=rutaProSugerida(o,true);
-    if(!a.length||a.join()===de.join()){sellarRuta(o);return}   // no cambiaría nada: se vuelve a sellar y ya
-    o.rutaRevisar={ts:new Date().toISOString(),motivo:motivo||'cambió la categoría o su hoja de operaciones',
-      firmaVieja:o.rutaFirma,firmaNueva:firmaRutaDe(o),propuesta:a.join(' → ')};
-    registrarAuditoria('ruta',o,'ruta editada a mano','marcada para revisar',(motivo||'cambió la categoría')+': la ruta se hizo a mano y no se toca',false);marcadas++});
-  if(n||marcadas)bitacora('Rutas rehechas: '+n+' actualizadas, '+marcadas+' editadas a mano marcadas para revisar'+(motivo?' ('+motivo+')':'')+' ('+quienFirma()+')');
+  /* 01-oct (usuaria, al cargar la hoja LMO: 653 marcadas y la línea repetida en la bitácora): la marca se ponía sin sellar la firma, así que se
+     volvía a poner —y a escribir en la bitácora— en cada dibujo. Ahora: solo cuentan las diferencias en pasos que vienen de la HOJA (Botones,
+     Corte, Confección…), no en los que decide la orden (estampado, bordado, etiqueta…); se marca una vez y se sella; la marca vieja que ya no
+     corresponde se quita. Una marca de la OT (tipo 'ot') no se pisa. */
+  let marcadas=0,limpias=0;const porOrden=centrosPorOrden().concat(['etiquetas']);const deHoja=c=>!porOrden.includes(c);
+  r.manual.forEach(o=>{const de=pasosProCompleta(o);const a=rutaProSugerida(o,true);   /* contra la ruta COMPLETA: lo ya hecho no es «falta» */
+    /* falta cualquier paso que la hoja o la ORDEN piden (p. ej. ganó puntadas → Bordado); sobra solo cuenta si es de la hoja (un estampado sin técnica puesto a mano no se marca) */
+    const agrega=a.filter(c=>!de.includes(c)),quita=de.filter(c=>deHoja(c)&&!a.includes(c));const dif=agrega.concat(quita);
+    const mOT=o.rutaRevisar&&o.rutaRevisar.tipo==='ot';
+    if(!a.length||!dif.length){if(o.rutaRevisar&&!mOT){delete o.rutaRevisar;limpias++}sellarRuta(o);return}   // nada de la hoja cambiaría: se sella y ya
+    const prop=a.join(' → ');
+    if(!mOT&&!(o.rutaRevisar&&o.rutaRevisar.propuesta===prop)){
+      o.rutaRevisar={ts:new Date().toISOString(),motivo:(motivo||'cambió la categoría o su hoja de operaciones')+' · '+(agrega.length?'le falta '+agrega.map(nCen).join(', '):'')+(agrega.length&&quita.length?' · ':'')+(quita.length?'la hoja ya no trae '+quita.map(nCen).join(', '):''),
+        firmaVieja:o.rutaFirma,firmaNueva:firmaRutaDe(o),propuesta:prop};
+      registrarAuditoria('ruta',o,'ruta editada a mano','marcada para revisar',(motivo||'cambió la categoría')+': la ruta se hizo a mano y no se toca',false);marcadas++}
+    sellarRuta(o)});
+  if(n||marcadas||limpias)bitacora('Rutas rehechas: '+n+' actualizadas, '+marcadas+' editadas a mano marcadas para revisar'+(limpias?', '+limpias+' marcas que ya no corresponden quitadas':'')+(motivo?' ('+motivo+')':'')+' ('+quienFirma()+')');
   if(n)PLAN=null,PLAN_ALL=null;
   return {n,marcadas}}
 function rutasParaRevisar(){return S.ordenes.filter(o=>abierta(o)&&o.rutaRevisar)}

@@ -30,8 +30,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('planLMO: 4 inconsistencias (codigo gen vs subcentro)',plan.inconsistencias.length===4,plan.inconsistencias.map(i=>i.nombre+' / '+i.codGen).join(' | '));
   __check('planLMO: la inconsistencia de PEGAR BOLSILLO PARCHE (CON-00) está',plan.inconsistencias.some(i=>/PEGAR BOLSILLO PARCHE/i.test(i.nombre)&&i.subcen==='CON-00'));
   const porCentroT={};plan.ops.forEach(o=>{porCentroT[o.centroTEMPO]=(porCentroT[o.centroTEMPO]||0)+1});
-  __check('mapeo familia->centro: Corte 66, Confección 448, Bordado 7, Empaque 47, Botones 16, Estampado 9, Etiquetas 2',
-    porCentroT.corte===66&&porCentroT.modulos===448&&porCentroT.bordado===7&&porCentroT.empaque===47&&porCentroT.botones===16&&porCentroT.estampado===9&&porCentroT.etiquetas===2,
+  /* 01-oct: la decisión del 16-sep (la regla «SERIGRAFIA + ETIQUETAR → Etiquetas» se retira) corre al entrar, antes de leer la hoja: las 2 de etiqueta ya no van a Etiquetas */
+  __check('mapeo familia->centro: Corte 66, Confección 448 (+2 de etiqueta sin su regla), Bordado 7, Empaque 47, Botones 16, Estampado 9, Etiquetas 0 (decisión 16-sep)',
+    porCentroT.corte===66&&(porCentroT.modulos===448||porCentroT.modulos===450)&&porCentroT.bordado===7&&porCentroT.empaque===47&&porCentroT.botones===16&&porCentroT.estampado===9&&!porCentroT.etiquetas&&Object.values(porCentroT).reduce((a,b)=>a+b,0)===595,
     JSON.stringify(porCentroT));
   LMO=plan;aplicarLMO();await __p(50);
   /* MEDICIÓN de operaciones de etiquetas y de ojales/botones (LMO real) */
@@ -8153,7 +8154,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const recarga=()=>{const pr=window.prompt;window.prompt=()=>'APLICAR';TAREA=planTarea(window.__tareaRows,'Tarea__project_task__95_.xlsx');aplicarTarea();window.prompt=pr;PLAN=null;PLAN_ALL=null};
    /* AU1 · una carga NO pisa lo decidido en la app (rutaConf y tallasPedido estaban en la tabla 14 y se perdían igual) */
    {const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x)&&(x.telas||[]).some(t=>!t.ext)&&(x.ruta||[]).some(p=>p.centro==='tej'));
-    confirmarRuta(o,'persona','auditoría');o.tallasPedido={S:5,M:7};o.tallasPedidoMeta={u:'t'};o.histLib=[{ts:'x',accion:'liberada',et:'tela'}];o.lavadoModo='planta';o.rutaRevGeneral={u:'t'};o.rutaFirma='FIRMA-VIEJA';o.rutaRevisar={ts:'x',motivo:'m'};
+    confirmarRuta(o,'persona','auditoría');o.tallasPedido={S:5,M:7};o.tallasPedidoMeta={u:'t'};o.histLib=[{ts:'x',accion:'liberada',et:'tela'}];o.lavadoModo='planta';o.rutaRevGeneral={u:'t'};o.rutaFirma='FIRMA-VIEJA';o.rutaRevisar={tipo:'ot',ts:'x',motivo:'m'};   /* 01-oct: tipo ot (una marca de catálogo sin diferencia real ahora se quita sola) */
     const op=o.op;recarga();const o1=S.ordenes.find(x=>x.op===op);
     __check("AU1: tras «Actualizar datos» la confirmación de ruta sigue (antes se borraba en cada carga)",!!o1&&rutaConfirmada(o1)&&o1.rutaConf.origen==='persona');
     __check("AU1: y también la curva de tallas, el historial de liberaciones, el lavado a mano, la marca de ruta revisada, la firma de catálogo y la marca «revisar»",!!o1&&o1.tallasPedido&&o1.tallasPedido.M===7&&!!o1.tallasPedidoMeta&&(o1.histLib||[]).length===1&&o1.lavadoModo==='planta'&&!!o1.rutaRevGeneral&&!!o1.rutaFirma&&!!o1.rutaRevisar);   /* la firma viaja y el render la vuelve a sellar contra el catálogo de hoy */
@@ -8705,6 +8706,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("T1A4: lo que ya estaba escrito a mano no se pisa",faseMapeo()[0].que==='editado a mano');
    S.params.faseMapeo=JSON.parse(bak);Object.keys(bf).forEach(k=>{if(bf[k]===undefined)delete S.params[k];else S.params[k]=bf[k]});FASE_CACHE.ver++;PERFIL=bakP;render();
    __check("T1A sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (3) (al cargar la hoja LMO en la nube: «653 editadas a mano marcadas para revisar» repetido en la bitácora en cada dibujo) */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();
+   const base=S.ordenes.find(o=>abiertaDe(o)&&!rutaNoAplica(o)&&K(o.cat)&&pasosProCompleta(o).includes('corte'));const k=K(base.cat);
+   const mk=(id,cens)=>{const o=JSON.parse(JSON.stringify(base));o.id=id;o.op='WH/RM-'+id;o.ruta=cens.map(c=>({centro:c,t:1}));o.rutaCompleta=o.ruta.map(p=>Object.assign({},p));
+     o.rutaConf={estado:'confirmada',origen:'persona',u:'U',ts:'2026-09-29T10:00:00Z'};delete o.rutaRevisar;o.tecnica=null;o.tecnicaTxt='';o.puntadas=0;S.ordenes.push(o);delete S.avance[o.id];return o};
+   const sug=rutaProSugerida(base,true).filter(c=>!centrosPorOrden().concat(['etiquetas']).includes(c));
+   const falta=sug.find(c=>c!=='empaque'&&c!=='corte')||sug[0];
+   const oA=mk('rm-a',sug.filter(c=>c!==falta)),oB=mk('rm-b',sug.concat(['estampado']));
+   [oA,oB].forEach(o=>o.rutaFirma='firma-vieja');
+   const b0=S.bitacora.length;recalcularRutas('prueba RM');recalcularRutas('prueba RM');recalcularRutas('prueba RM');
+   __check("RM1: una ruta confirmada a mano a la que la hoja le agrega un paso queda marcada «para revisar», con el paso en el motivo, una sola vez",!!oA.rutaRevisar&&new RegExp('le falta '+nCen(falta)).test(oA.rutaRevisar.motivo)&&S.bitacora.slice(b0).filter(b=>/Rutas rehechas/.test(b.t)).length===1&&!rutaDesactualizada(oA),JSON.stringify({rv:oA.rutaRevisar,falta,lin:S.bitacora.slice(b0).map(b=>b.t.slice(0,80))}));
+   __check("RM2: la diferencia en un paso que decide la orden (estampado) no marca la ruta",!oB.rutaRevisar);
+   oB.rutaRevisar={ts:'2026-09-01T00:00:00Z',motivo:'vieja',propuesta:'x'};oB.rutaFirma='otra';recalcularRutas('prueba RM');
+   __check("RM3: una marca vieja que ya no corresponde se quita sola",!oB.rutaRevisar);
+   S.ordenes=S.ordenes.filter(o=>o!==oA&&o!==oB);PERFIL=bakP;PLAN=null;PLAN_ALL=null;
+   __check("RM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (2) (usuaria: «las Level 2 no: van uno a uno; todas las polos básicas con estilos 7907 y 4164 son bordadas») */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=JSON.stringify(S.params.pasosCategoria||null),bakF=JSON.stringify(S.params.pasosPolo01||null),bakC=JSON.stringify(S.params.correccionPasos01b||null);
    const pad={id:'k-po-p',n:'POLOS'},pb={id:'k-po-b',n:'Polo Basica',padre:'k-po-p'},l2={id:'k-po-l2',n:'Level 2'};const nk=[pad,pb,l2].filter(k=>!K(k.id));S.categorias.push(...nk);
