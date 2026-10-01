@@ -2099,7 +2099,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
    __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Órdenes de trabajo (24-sep), Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo,cumplimiento,avance');
-   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,ordenes,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) */
+   __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,envivo,ordenes,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) + Planta en vivo después de Hoy (01-oct) */
    __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===7&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
    GRP={};WIPL={niveles:null,q:''};WIP={base:'abiertas',fases:null,mas:false};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();let h=document.getElementById('p-wip').innerHTML;
    const ab=S.ordenes.filter(abiertaDe);const usdT=ab.reduce((a,o)=>a+(+o.precio||0)*(+o.cant||0),0);const pzT=ab.reduce((a,o)=>a+(+o.cant||0),0);
@@ -7057,7 +7057,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const pd=nivUIAreas().find(a=>a.porDias);if(pd){const c=pg().querySelector('.niv-card[data-area="'+pd.id+'"]');const r=nivUICalcular(pd.id);__check('PN: un centro por días muestra todas sus unidades como saldo y no pide SAM',!!c&&c.classList.contains('est-dias')&&!/sin SAM/.test(c.textContent)&&(!(r.saldo.unid>0)||c.querySelector('.saldo').textContent.replace(/\D/g,'')===String(Math.round(r.saldo.unid))),JSON.stringify({pd:pd.id,unid:r.saldo&&r.saldo.unid,txt:c&&c.textContent.trim().slice(0,80)}))}}
     /* menú Dirección en el orden de la usuaria (20-sep): Hoy · Órdenes · Demanda agregada · Planificar el mes · Liberación · Entregas · lo demás */
     {const ps=[...document.querySelectorAll('nav .gbody[data-g="dir"] > a')].map(a=>a.dataset.p);
-     __check('PN: el menú Dirección va Hoy · Órdenes · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad (Demanda agregada se retiró el 25-sep)',ps.slice(0,5).join(',')==='panorama,ordenes,plan,liberacion,entregas'&&ps.indexOf('auditoria')>4&&ps.indexOf('capacidad')>4,ps.join(','));}
+     __check('PN: el menú Dirección va Hoy · Planta en vivo · Órdenes · Planificar el mes · Liberación · Entregas · Auditoría · Capacidad (Demanda agregada se retiró el 25-sep; Planta en vivo, 01-oct)',ps.slice(0,6).join(',')==='panorama,envivo,ordenes,plan,liberacion,entregas'&&ps.indexOf('auditoria')>4&&ps.indexOf('capacidad')>4,ps.join(','));}
     PM.paso=2;render();__check('PN: el paso 2 muestra el plan y esconde el paso 1',pg().querySelector('#plan-paso2').style.display!=='none'&&pg().querySelector('#plan-paso1').style.display==='none');PM.paso=1;render();
     /* personas: escenario → capacidad al instante; confirmar → ajuste de la semana → todo el sistema */
     const r=S.recursos.find(x=>x.activa&&x.centro==='corte'&&x.id!=='maquila'&&(x.pers||0)>0&&(x.min||0)>0&&(x.efic||0)>0);
@@ -8737,6 +8737,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    [['pasosCategoria',bakT],['pasosPolo01',bakF],['correccionPasos01b',bakC]].forEach(([k,v])=>{const x=JSON.parse(v);if(x==null&&k==='pasosCategoria')delete S.params[k];else S.params[k]=x||S.params[k]});
    PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (usuaria: «un dashboard general donde se vea cómo está la planta en el momento: cuánto avanza, en qué eficiencia por centro») */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const h=hoy();
+   page='envivo';render();const el=document.getElementById('p-envivo');
+   __check("EV1: la página Planta en vivo existe en el menú y se dibuja con una tarjeta por ítem de planificación",!!document.querySelector('nav a[data-p="envivo"]')&&!!el.querySelector('.env-kpis')&&el.querySelectorAll('.env-c').length===areasAvance().length&&!!ENV.int);
+   const o=S.ordenes.find(x=>abiertaDe(x)&&samRutaCompleta(x,'corte')>0);const rc=S.recursos.find(r=>r.centro==='corte'&&r.activa!==false);
+   const sam=samRutaCompleta(o,'corte');const sinAntes=eficienciaHoy(['corte'],h);
+   const a=S.avance[o.id]=S.avance[o.id]||{};const bakA=JSON.stringify(a);a.tramos=(a.tramos||[]).concat([{id:'ev-t',centro:'corte',rec:rc.id,ini:h+'T08:00:00',fin:h+'T10:00:00',u:'op',paros:[],tallas:{'(total)':100},persManual:2}]);
+   const r=eficienciaHoy(['corte'],h);const c=calcTramo(a.tramos[a.tramos.length-1],o);
+   __check("EV2: eficiencia = prendas × SAM ÷ minutos-persona trabajados (la misma cuenta del tramo)",r.cerrados===sinAntes.cerrados+1&&Math.abs((r.gan-sinAntes.gan)-100*sam)<1e-6&&Math.abs((r.minP-sinAntes.minP)-c.minPersona)<1e-6,JSON.stringify({gan:r.gan,minP:r.minP,sam,mp:c.minPersona}));
+   __check("EV3: sin tramos cerrados hoy la eficiencia no se inventa (sin registros) y el color es gris",colorEficiencia(null)==='gris'&&eficienciaHoy(['centro-que-no-existe'],h).ef===null);
+   S.avance[o.id]=JSON.parse(bakA);
+   entrarTV();__check("EV4: el modo pantalla esconde la cabecera y se sale con el botón",document.documentElement.classList.contains('envivo-tv'));salirTV();
+   __check("EV5: la meta de eficiencia es editable y queda en la bitácora",(()=>{const m0=metaEficiencia();setMetaEficiencia(80);const ok=metaEficiencia()===80&&S.bitacora.slice(-2).some(b=>/Meta de eficiencia/.test(b.t));S.params.metaEficiencia=m0;return ok})());
+   page='ordenes';render();__check("EV6: al salir de la página el reloj de actualización se apaga",!ENV.int);
+   PERFIL=bakP;__check("EV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (usuaria: sol y luna «para los dos modos»): modo claro / oscuro, preferencia de cada persona */
   {const antes=__R.errors.length;page='ordenes';render();const sw=document.getElementById('modo-sw');
    __check("MO1: la cabecera tiene el interruptor sol / luna con dos botones",!!sw&&sw.querySelectorAll('button').length===2);

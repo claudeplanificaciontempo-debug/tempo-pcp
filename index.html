@@ -539,6 +539,15 @@ html[data-modo="oscuro"] tbody tr:hover td{background:#232A31!important}
 html[data-modo="oscuro"][data-color="blanco"] header nav .grp:hover,html[data-modo="oscuro"][data-color="blanco"] header nav .grp.abierto,html[data-modo="oscuro"][data-color="blanco"] header button:hover{background:rgba(255,255,255,.08)!important;color:var(--ink)!important}
 html[data-modo="oscuro"] .o-statusbar .st:not(.on){background:var(--o-sec)!important;color:var(--ink2)!important}html[data-modo="oscuro"] .o-statusbar .st.hecho{color:var(--ink3)!important}
 html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(--t-primary)!important}
+/* Planta en vivo */
+.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.env-c{background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
+.env-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:15px}
+.env-l{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-s);margin-top:6px}
+.env-bar{height:8px;border-radius:4px;background:var(--field);margin-top:4px;overflow:hidden}.env-bar i{display:block;height:8px;border-radius:4px}
+.env-now{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule2);font-size:var(--fs-s);color:var(--ink2)}
+html.envivo-tv header,html.envivo-tv nav,html.envivo-tv #nav,html.envivo-tv .atras{display:none!important}
+html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}html.envivo-tv .env-h{font-size:22px}html.envivo-tv .env-l{font-size:17px}html.envivo-tv .env-kpis .v{font-size:40px}html.envivo-tv .lede{display:none}
 /* el interruptor sol / luna */
 .modo-sw{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden;margin:0 6px;height:30px}
 .modo-sw button{background:transparent!important;border:0!important;height:30px!important;width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;color:inherit;opacity:.65;cursor:pointer}
@@ -565,6 +574,7 @@ html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw{b
     <div class="grp" data-g="dir">Dirección <span class="car">▾</span></div>
     <div class="gbody" data-g="dir">
       <a data-p="panorama">Hoy</a>
+      <a data-p="envivo">Planta en vivo</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
       <a data-p="plan">Planificar el mes</a>
       <a data-p="liberacion" data-lib="tela">Liberación</a>
@@ -624,6 +634,7 @@ html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw{b
     <section class="page" id="p-liberacion"></section>
     <section class="page" id="p-panorama"></section>
     <section class="page" id="p-gerencia"></section>
+    <section class="page" id="p-envivo"></section>
     <section class="page" id="p-plan"></section>
     <section class="page" id="p-cumplimiento"></section>
     <section class="page" id="p-avance"></section>
@@ -787,7 +798,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías, rutas y operaciones'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)']];
-const PAGINAS_DEF=[['panorama','Hoy'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Configuración general'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['envivo','Planta en vivo'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['cumplimiento','Cumplimiento'],['avance','Avance del mes'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['categorias','Categorías y operaciones'],['config','Configuración general'],['usuarios','Usuarios']];
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
@@ -800,6 +811,7 @@ function defPerfiles(){return [
 function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.params.perfilesDef=defPerfiles();if(!S.params.migReporteria){const PR=['wip','cumplimiento','avance','avancearea'];let n=0;['corte','modulos','tintoreria','terminado'].forEach(id=>{const d=S.params.perfilesDef.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;PR.forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería: '+n+' entradas de menú agregadas a los perfiles de supervisores de centro (solo consulta; la tablet no la ve)')}
   if(!S.params.migReporteria2){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['reporteria','vistaordenes','asignacion'].some(p=>d.paginas.includes(p)))return;['avancearea','wip'].forEach(p=>{if(!d.paginas.includes(p)){d.paginas.push(p);n++}})});S.params.migReporteria2=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (21-sep): '+n+' entradas «Avance por área» / «Producto en proceso» agregadas a los perfiles que tenían la reportería anterior (Reportería textil, Reportería por área, Vista general y Asignación por orden salieron del menú; sus enlaces viejos llevan a las nuevas)')}
   if(!S.params.migReporteria3&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;const pro=new Set((S.centros||[]).filter(c=>c.area==='pro').map(c=>c.id));S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!d.paginas.includes('avancearea'))return;if(!(d.centros||[]).some(c=>c==='*'||pro.has(c)))return;if(!d.paginas.includes('ordtrabajo')){d.paginas.push('ordtrabajo');n++}});S.params.migReporteria3=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (24-sep): «Órdenes de trabajo» agregada a '+n+' perfiles que ya veían «Avance por área»')}
+  if(!S.params.migEnVivo01&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['panorama','avancearea'].some(p=>d.paginas.includes(p)))return;if(!d.paginas.includes('envivo')){d.paginas.push('envivo');n++}});S.params.migEnVivo01=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Planta en vivo (01-oct): agregada a '+n+' perfiles que ya veían Hoy o Avance por área')}
   if(!S.params.migReporteria4&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['wip','avancearea','ordenes'].some(p=>d.paginas.includes(p)))return;if(!d.paginas.includes('ordconsulta')){d.paginas.push('ordconsulta');n++}});S.params.migReporteria4=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (25-sep): «Órdenes de producción» (consulta) agregada a '+n+' perfiles que ya veían reportes u Órdenes')}
   if(!S.params.migDemandaRetirada&&typeof PERFIL!=='undefined'&&PERFIL&&!tipoPiso(S.params.perfilesDef.find(x=>x.id===PERFIL.rol))){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*')||!d.paginas.includes('familias'))return;if(!d.paginas.includes('gerencia')){d.paginas.push('gerencia');n++}});S.params.migDemandaRetirada=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Demanda agregada retirada (25-sep): '+n+' perfiles que la tenían reciben el Resumen gerencial')}
   if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
@@ -1036,7 +1048,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 17:08';
+const APP_BUILD='2026-10-01 17:25';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1372,7 +1384,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   print:'<svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',tablet:'<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>',
   cat:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',ops:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>'};
-const ICO_NAV={nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
+const ICO_NAV={envivo:'factory',nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',cumplimiento:'check',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',operaciones:'ops',config:'gear',usuarios:'users',wip:'layers',entregas:'box',avance:'chart',auditoria:'doc',capacidad:'scale'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -3795,7 +3807,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
    const need={categorias:'categorias',operaciones:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa'}[page];if((need&&!String(need).split('|').some(x=>puede(x)))||(PERFIL&&!vePagina(page==='operaciones'?'categorias':page)&&page!=='albaran'))page=primeraPagina();
   try{cierresMesEnRender()}catch(e){try{console.error('cierresMesEnRender',e)}catch(x){}}   /* la historia de la cartera se toma sola */
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  const _vista=({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page]);MEMO=new Map();try{_vista(el)}finally{MEMO=null}
+  const _vista=({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,avance:vAvance,albaran:vAlbaran,cumplimiento:vCumplimiento,tablet:vTablet,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,envivo:vEnVivo,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,operaciones:vOperaciones,config:vConfig,usuarios:vUsuarios}[page]);MEMO=new Map();try{_vista(el)}finally{MEMO=null}
   if(REPORTES.some(r=>r.p===page))el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML());
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   if(page==='auditoria'&&puede('programa'))el.insertAdjacentHTML('beforeend',auditoriaCambiosHTML());
@@ -3807,6 +3819,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
   avisoGuardado();verBotonesAdmin();
   try{simplificarPagina(page)}catch(e){try{console.error('simplificarPagina',e)}catch(x){}}   /* para Dummies (F): párrafos explicativos al «?» del título, filtros bajo «Filtrar» */
   try{fotoZoomInit()}catch(e){}   /* 30-sep: la foto grande al pasar el mouse en todas las listas (antes solo se encendía donde había un reloj) */
+  if(typeof envivoReloj==='function')envivoReloj();
   if(document.querySelector('.crono-vivo'))arrancarCrono();else if(CRONO_INT){clearInterval(CRONO_INT);CRONO_INT=null}   /* 23-sep: puede haber varios relojes, uno por orden en curso */
   devolverScroll(_scroll);
 }
@@ -10930,6 +10943,69 @@ function vOrdTrabajo(el){const P=S.ordenes.length?programar():{ordenes:{},pro:[]
     <div class="o-notebook" id="otr-tabs" style="order:99;flex-basis:100%">${otrPestanasHTML(items)}</div></div>
    <p class="lede">Solo de lectura: un control de lo que están haciendo los operarios, como la lista de Odoo. Cada orden en cada centro con lo que registra el piso: cuándo empezó (INICIO), cuántas personas, cuánto lleva (sin paros ni descansos) y cuánto salió. El estado es el nuestro, el mismo del Resumen del centro y de la cola; «Estado duración» es la marca de atraso de la cola (meta vencida, va tarde, paso tarde). «General» junta todas las áreas.</p>
    <div data-lista="OTR.q">${cuerpoOTRHTML(items)}</div>`}
+/* ==================== PLANTA EN VIVO (01-oct-2026, usuaria: «un dashboard general donde se vea cómo está la planta en el momento:
+   cuánto avanza y en qué eficiencia está cada centro») ====================
+   No crea cuentas propias: el avance es datosDiaCentro (programadas hoy por el motor vs hechasDelDia), la semana es avanceSemanaCentro,
+   la eficiencia sale de los tramos INICIO/FIN del piso (calcTramo): minutos ganados (prendas × SAM de la orden) ÷ minutos-persona
+   trabajados, sin paros ni descansos. Sin tramos cerrados hoy la eficiencia no se inventa: «sin registros hoy». Se refresca sola
+   (solo la tabla avance, lo nuevo desde la última lectura) cada prm('segEnVivo',60) s mientras la página está abierta.
+   Modo pantalla (TV): sin menú ni cabecera, letra grande. */
+let ENV={tv:false,ult:null,ts:null,int:null,leyendo:false};
+function metaEficiencia(){return prm('metaEficiencia',85)}
+function setMetaEficiencia(v){if(!puede('programa')){alert('Solo planificación cambia la meta de eficiencia.');render();return}const n=+String(v).replace(',','.');if(!(n>0&&n<=200)){alert('Escribe un porcentaje entre 1 y 200.');render();return}
+  const antes=metaEficiencia();S.params.metaEficiencia=n;bitacora('Meta de eficiencia de Planta en vivo: '+antes+' % → '+n+' % ('+quienFirma()+')');save();render()}
+function eficienciaHoy(cens,d){const r={gan:0,minP:0,cerrados:0,abiertos:0,pers:0,paros:0,afuera:0,sinSAM:0};
+  todosTramos().forEach(({o,t})=>{if(!cens.includes(t.centro))return;
+    if(t.afuera){if(!t.fin)r.afuera++;return}
+    if(!t.fin){r.abiertos++;let c=null;try{c=calcTramo(t,o)}catch(e){}if(c&&c.pers>0)r.pers+=c.pers;if(paroAbierto(t))r.paros++;return}
+    if(diaLocalDe(t.fin)!==d)return;let c=null;try{c=calcTramo(t,o)}catch(e){return}if(!(c.minPersona>0))return;
+    r.cerrados++;r.minP+=c.minPersona;const est=samRutaCompleta(o,t.centro);if(est>0)r.gan+=c.u*est;else r.sinSAM++});
+  r.ef=(r.minP>0&&r.gan>0)?Math.round(r.gan/r.minP*100):null;return r}
+/* el SAM del paso se busca en la ruta COMPLETA: al terminar, el paso sale de la pendiente y su trabajo no debe perder su valor */
+function samRutaCompleta(o,c){const p=((o.ruta||[]).concat(o.rutaCompleta||[])).find(q=>q.centro===c);return p?(+minPrenda(c,p.t||0)||0):0}
+function colorEficiencia(ef){if(ef==null)return 'gris';const m=metaEficiencia();return ef>=m?'verde':(ef>=m-15?'ambar':'rojo')}
+const ENV_COL={verde:'var(--ok)',ambar:'var(--aviso)',rojo:'var(--alerta)',gris:'var(--ink3)'};
+function datosEnVivo(){const d=hoy();let P=null;try{P=programar()}catch(e){P=null}const lun=lunesDe(d);const dias=[...Array(7)].map((_,i)=>dsum(lun,i));
+  const items=areasAvance().map(it=>{const recs=S.recursos.filter(r=>it.cens.includes(r.centro)&&r.activa!==false);
+    const dd=P?datosDiaCentro(it.cens,P,d,recs):{pz:0,hechas:0,lab:true,reg:false};const sem=P?avanceSemanaCentro(it.cens,P,dias,recs):null;const ef=eficienciaHoy(it.cens,d);
+    return {it,dd,sem,ef,avance:dd.pz>0?Math.round(dd.hechas/dd.pz*100):null,color:colorEficiencia(ef.ef)}});
+  const tot={hechas:0,pz:0,gan:0,minP:0,abiertos:0,paros:0,pers:0};items.forEach(x=>{tot.hechas+=x.dd.hechas||0;tot.pz+=x.dd.pz||0;tot.gan+=x.ef.gan;tot.minP+=x.ef.minP;tot.abiertos+=x.ef.abiertos;tot.paros+=x.ef.paros;tot.pers+=x.ef.pers});
+  tot.avance=tot.pz>0?Math.round(tot.hechas/tot.pz*100):null;tot.ef=(tot.minP>0&&tot.gan>0)?Math.round(tot.gan/tot.minP*100):null;
+  return {d,P,items,tot,errorProg:!P}}
+async function refrescarEnVivo(){if(ENV.leyendo||page!=='envivo'||(typeof guardando!=='undefined'&&guardando)||(typeof document!=='undefined'&&document.hidden))return;ENV.leyendo=true;
+  try{if(!ENV.ult){const ts=Object.values((BASE_TS&&BASE_TS.avance)||{}).filter(Boolean).sort();ENV.ult=ts[ts.length-1]||null}
+    let q=sb.from('avance').select('id,data,actualizado');if(ENV.ult&&typeof q.gt==='function')q=q.gt('actualizado',ENV.ult);
+    const {data,error}=await q.order('actualizado').range(0,999);if(error)return;let n=0;
+    (data||[]).forEach(r=>{const local=JSON.stringify(S.avance[r.id]||null),base=(BASE.avance||{})[r.id];
+      if(S.avance[r.id]&&base!=null&&local!==base)return;   /* esta pestaña tiene cambios sin guardar en esa orden: no se pisan */
+      if(local===JSON.stringify(r.data))return;S.avance[r.id]=r.data;BASE.avance=BASE.avance||{};BASE.avance[r.id]=JSON.stringify(r.data);BASE_TS.avance=BASE_TS.avance||{};BASE_TS.avance[r.id]=r.actualizado;n++;
+      if(!ENV.ult||r.actualizado>ENV.ult)ENV.ult=r.actualizado});
+    ENV.ts=new Date();if(n){PLAN=null;PLAN_ALL=null}if(page==='envivo')render()}catch(e){}finally{ENV.leyendo=false}}
+function envivoReloj(){const on=page==='envivo';if(on&&!ENV.int){const seg=Math.max(15,prm('segEnVivo',60));ENV.int=setInterval(refrescarEnVivo,seg*1000);if(!ENV.ts)ENV.ts=new Date()}
+  else if(!on&&ENV.int){clearInterval(ENV.int);ENV.int=null;if(ENV.tv)salirTV()}}
+function entrarTV(){ENV.tv=true;document.documentElement.classList.add('envivo-tv');try{document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}render()}
+function salirTV(){ENV.tv=false;document.documentElement.classList.remove('envivo-tv');try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}if(page==='envivo')render()}
+function vEnVivo(el){const D=datosEnVivo();const t=D.tot;const hora=new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+  const pct=v=>v==null?'—':v+' %';const seg=prm('segEnVivo',60);
+  const kpi=(l,v,nota)=>`<div class="kpi env-k"><div class="k">${l}</div><div class="v">${v}</div>${nota?`<div class="mut" style="font-size:var(--fs-xs)">${nota}</div>`:''}</div>`;
+  const tarjeta=x=>{const ef=x.ef;const col=ENV_COL[x.color];const av=x.avance;const sinReg=!ef.cerrados&&!ef.abiertos;
+    return `<div class="env-c" style="border-top:4px solid ${col}"><div class="env-h"><b>${esc(x.it.n)}</b><span class="spacer"></span><a class="mut" style="font-size:var(--fs-xs);cursor:pointer" onclick="irItemPlan&&irItemPlan('${x.it.g}')">abrir</a></div>
+      <div class="env-l"><span>Avance hoy</span><b>${pct(av)}</b></div>
+      <div class="env-bar"><i style="width:${Math.min(100,av||0)}%;background:${col}"></i></div>
+      <div class="env-l mut"><span>${num(x.dd.hechas||0)} de ${num(x.dd.pz||0)} prendas programadas hoy</span></div>
+      <div class="env-l"><span>Eficiencia hoy</span><b style="color:${col}">${ef.ef==null?(sinReg?'sin registros':'—'):ef.ef+' %'}</b></div>
+      <div class="env-l mut"><span>${ef.cerrados?ef.cerrados+' tramos cerrados · '+num(Math.round(ef.gan))+' min ganados de '+num(Math.round(ef.minP))+' trabajados':'nadie ha cerrado un INICIO/FIN hoy'}</span></div>
+      ${x.sem&&x.sem.pct!=null?`<div class="env-l"><span>Semana</span><b>${x.sem.pct} %</b></div>`:''}
+      <div class="env-now">${ef.abiertos?`<b>${ef.abiertos}</b> ${ef.abiertos===1?'orden':'órdenes'} en curso${ef.pers?' · '+num(Math.round(ef.pers*10)/10)+' personas':''}`:'nada en curso ahora'}${ef.paros?` · <span class="tag t-alerta">${ef.paros} ${ef.paros===1?'paro abierto':'paros abiertos'}</span>`:''}${ef.afuera?` · ${ef.afuera} afuera (maquila)`:''}</div></div>`};
+  const ok=puede('programa');
+  el.innerHTML=`<div class="pagehead"><h2>Planta en vivo</h2><span class="spacer"></span>
+    <span class="mut" style="font-size:var(--fs-s)">${fmtDia(D.d)} · ${hora} · se actualiza cada ${seg} s${ENV.ts?' · última lectura '+ENV.ts.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):''}</span>
+    ${ENV.tv?'<button class="btn ghost sm" onclick="salirTV()">Salir de pantalla completa</button>':'<button class="btn ghost sm" onclick="refrescarEnVivo()">Actualizar ahora</button> <button class="btn sm" onclick="entrarTV()" title="sin menú ni cabecera, letra grande: para un televisor en la planta">Modo pantalla</button>'}</div>
+   <p class="lede">Cómo va cada centro <b>hoy</b>, con lo que el piso registra en las tablets (INICIO, FIN y prendas hechas). <b>Avance</b> = prendas hechas ÷ prendas que el programa le pone hoy. <b>Eficiencia</b> = minutos que valen las prendas hechas (prendas × SAM de la orden) ÷ minutos-persona trabajados, sin paros ni descansos; solo cuenta lo que se cerró hoy con FIN. Color por la meta de eficiencia: verde desde ${metaEficiencia()} %, ámbar hasta 15 puntos menos, rojo por debajo, gris sin registros.</p>
+   ${D.errorProg?'<div class="warn">No se pudo calcular el programa: el avance contra lo programado no se muestra.</div>':''}
+   <div class="kpis env-kpis">${kpi('Prendas hechas hoy',num(t.hechas))}${kpi('Avance del día',pct(t.avance),num(t.hechas)+' de '+num(t.pz)+' programadas')}${kpi('Eficiencia planta',t.ef==null?'sin registros':t.ef+' %',t.minP?num(Math.round(t.gan))+' de '+num(Math.round(t.minP))+' min':'')}${kpi('En curso ahora',num(t.abiertos),t.pers?num(Math.round(t.pers*10)/10)+' personas':'')}${kpi('Paros abiertos',num(t.paros))}</div>
+   <div class="env-g">${D.items.map(tarjeta).join('')||'<div class="empty">Tu perfil no ve ningún centro de producción.</div>'}</div>
+   ${ENV.tv?'':`<p class="mut" style="font-size:var(--fs-xs);margin-top:12px">Meta de eficiencia: ${ok?`<input type="number" min="1" max="200" step="1" value="${metaEficiencia()}" style="width:64px" onchange="setMetaEficiencia(this.value)"> %`:metaEficiencia()+' %'} · la cambia planificación y queda en la bitácora. Los mismos números del avance están en Reportería → Avance por área y en el Resumen de cada centro.</p>`}`}
 function vAvanceArea(el){
   const h=hoy();const P=S.ordenes.length?programar():{ordenes:{},pro:[],tej:[],banos:[],carga:{}};const lun=lunesDe(dsum(h,AVA.sem*7)),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);
   const areas=areasAvance();const todas=areas.length===itemsPlanProd().length&&areas.every(a=>a.cens.length===a.todos.length);
