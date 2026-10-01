@@ -8787,6 +8787,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const r2=[['Tiempos por tipo'],[''],[''],['Familia','Tipo de producto','Centro','SAM cargado hoy','Tu tiempo (min/prenda)'],['C · por confirmar'],[fam,k.n,'Empaque',0.41,0.41]];
    TXLS=planTiemposXLSX(r2,'pendientes.xlsx');const nAp=TXLS.aplicar.length;aplicarTiemposXLSX();
    __check("KS3: escribir en «Tu tiempo» el mismo número que está «por confirmar» lo confirma",nAp===1&&k.samManda.empaque.min===0.41&&k.samManda.empaque.pendiente===false);
+   {const r4=[['Lo que falta'],[''],[''],['Familia','Tipo de producto','Centro','Tu tiempo (min/prenda)'],[fam,k.n,'Bordado (puntadas en Odoo)','']];const p4=planTiemposXLSX(r4,'resumen.xlsx');
+    __check("KS4: una fila sin nada escrito es solo información aunque su centro no sea del sistema (resumen SAM, hoja «Lo que falta»)",p4.informativas===1&&p4.noCalzan.length===0&&/Lo que falta/.test(String(leerTiemposXLSX)),JSON.stringify({i:p4.informativas,n:p4.noCalzan}))}
    const r=JSON.parse(bak);if(r)k.samManda=r;else delete k.samManda;propagarTiempos('restaurar prueba KS');
    window.confirm=c0;PERFIL=bakP;TXLS=null;__check("KS sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 26-sep (usuaria: «lo que falta, ponle tiempo estándar tú… pásame el Excel para que no dañemos»): Cargar tiempos desde Excel */

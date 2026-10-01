@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 12:05';
+const APP_BUILD='2026-10-01 12:20';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6075,6 +6075,7 @@ function planTiemposXLSX(rows,nombre){let hi=-1;
   const cU=kronos?cS:col('tu tiempo (min/prenda)','tu tiempo'),cF=kronos?-1:col('de donde sale');
   const plan={nombre,aplicar:[],saltar:[],noCalzan:[],informativas:0,formato:kronos?'sam':'tiempos'};
   rows.slice(hi+1).forEach((r,i)=>{const fila=hi+2+i;const tipo=String(r[cT]||'').trim(),cen=String(r[cC]||'').trim();if(!tipo||!cen)return;   /* las bandas de grupo no traen centro */
+    if((cU<0||numXLS(r[cU])==null)&&!/propuesta/i.test(String(cF>=0?r[cF]:''))){plan.informativas++;return}   /* 01-oct: una fila sin nada escrito es solo información, aunque su centro no sea uno del sistema (p. ej. «Bordado (puntadas en Odoo)») */
     const c=centroDeTexto(cen);if(!c){plan.noCalzan.push({fila,tipo,cen,porque:'centro desconocido'});return}
     const dec=normTxt(cD>=0?r[cD]:'');if(/no usar/.test(dec)){plan.saltar.push({fila,tipo,cen,porque:'marcada «No usar»'});return}
     const tu=cU>=0?numXLS(r[cU]):null,prop=cP>=0?numXLS(r[cP]):null,esProp=/propuesta/i.test(String(cF>=0?r[cF]:''));
@@ -6104,7 +6105,7 @@ function mCargarTiemposXLSX(){if(!(puede('categorias')||puede('config'))){alert(
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="txls-ok" disabled onclick="aplicarTiemposXLSX()">Aplicar</button></div>`)}
 async function leerTiemposXLSX(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('txls-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   try{if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)})}
-    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=wb.SheetNames.find(n=>normTxt(n)===normTxt('Tiempos por tipo'))||wb.SheetNames.find(n=>normTxt(n)===normTxt('SAM por tipo'))||wb.SheetNames[0];
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=wb.SheetNames.find(n=>normTxt(n)===normTxt('Tiempos por tipo'))||wb.SheetNames.find(n=>normTxt(n)===normTxt('SAM por tipo'))||wb.SheetNames.find(n=>normTxt(n)===normTxt('Lo que falta'))||wb.SheetNames[0];   /* 01-oct: el resumen SAM trae «Resumen SAM» + «Lo que falta» */
     TXLS=planTiemposXLSX(XLSX.utils.sheet_to_json(wb.Sheets[hoja],{header:1,raw:true,defval:''}),f.name);res.innerHTML=previaTiemposXLSXHTML(TXLS);
     const b=document.getElementById('txls-ok');if(b)b.disabled=!TXLS.aplicar.length}
   catch(e){TXLS=null;res.innerHTML='<div class="warn">No se pudo leer el archivo: '+esc(e.message||String(e))+'</div>'}}
