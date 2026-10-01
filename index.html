@@ -540,14 +540,16 @@ html[data-modo="oscuro"][data-color="blanco"] header nav .grp:hover,html[data-mo
 html[data-modo="oscuro"] .o-statusbar .st:not(.on){background:var(--o-sec)!important;color:var(--ink2)!important}html[data-modo="oscuro"] .o-statusbar .st.hecho{color:var(--ink3)!important}
 html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(--t-primary)!important}
 /* Planta en vivo */
-.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;align-items:start}
+.env-t{width:100%;margin-top:10px;font-size:var(--fs-s);border-collapse:collapse}.env-t th{font-weight:600;color:var(--ink3);font-size:var(--fs-xs);text-align:left;padding:3px 4px;border-bottom:1px solid var(--rule)}.env-t th.num,.env-t td.num{text-align:right}
+.env-t td{padding:4px;border-bottom:1px solid var(--rule2)}.env-t tr.env-quieta td{color:var(--ink3)}.env-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
 .env-c{background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
 .env-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:15px}
 .env-l{display:flex;justify-content:space-between;gap:8px;font-size:var(--fs-s);margin-top:6px}
 .env-bar{height:8px;border-radius:4px;background:var(--field);margin-top:4px;overflow:hidden}.env-bar i{display:block;height:8px;border-radius:4px}
 .env-now{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule2);font-size:var(--fs-s);color:var(--ink2)}
 html.envivo-tv header,html.envivo-tv nav,html.envivo-tv #nav,html.envivo-tv .atras{display:none!important}
-html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}html.envivo-tv .env-h{font-size:22px}html.envivo-tv .env-l{font-size:17px}html.envivo-tv .env-kpis .v{font-size:40px}html.envivo-tv .lede{display:none}
+html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}html.envivo-tv .env-t{font-size:16px}html.envivo-tv .env-h{font-size:22px}html.envivo-tv .env-l{font-size:17px}html.envivo-tv .env-kpis .v{font-size:40px}html.envivo-tv .lede{display:none}
 /* el interruptor sol / luna */
 .modo-sw{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden;margin:0 6px;height:30px}
 .modo-sw button{background:transparent!important;border:0!important;height:30px!important;width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;color:inherit;opacity:.65;cursor:pointer}
@@ -1048,7 +1050,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 17:25';
+const APP_BUILD='2026-10-01 17:55';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10954,8 +10956,8 @@ let ENV={tv:false,ult:null,ts:null,int:null,leyendo:false};
 function metaEficiencia(){return prm('metaEficiencia',85)}
 function setMetaEficiencia(v){if(!puede('programa')){alert('Solo planificación cambia la meta de eficiencia.');render();return}const n=+String(v).replace(',','.');if(!(n>0&&n<=200)){alert('Escribe un porcentaje entre 1 y 200.');render();return}
   const antes=metaEficiencia();S.params.metaEficiencia=n;bitacora('Meta de eficiencia de Planta en vivo: '+antes+' % → '+n+' % ('+quienFirma()+')');save();render()}
-function eficienciaHoy(cens,d){const r={gan:0,minP:0,cerrados:0,abiertos:0,pers:0,paros:0,afuera:0,sinSAM:0};
-  todosTramos().forEach(({o,t})=>{if(!cens.includes(t.centro))return;
+function eficienciaHoy(cens,d,rec){const r={gan:0,minP:0,cerrados:0,abiertos:0,pers:0,paros:0,afuera:0,sinSAM:0};
+  todosTramos().forEach(({o,t})=>{if(!cens.includes(t.centro))return;if(rec&&(t.rec||null)!==rec)return;
     if(t.afuera){if(!t.fin)r.afuera++;return}
     if(!t.fin){r.abiertos++;let c=null;try{c=calcTramo(t,o)}catch(e){}if(c&&c.pers>0)r.pers+=c.pers;if(paroAbierto(t))r.paros++;return}
     if(diaLocalDe(t.fin)!==d)return;let c=null;try{c=calcTramo(t,o)}catch(e){return}if(!(c.minPersona>0))return;
@@ -10968,7 +10970,12 @@ const ENV_COL={verde:'var(--ok)',ambar:'var(--aviso)',rojo:'var(--alerta)',gris:
 function datosEnVivo(){const d=hoy();let P=null;try{P=programar()}catch(e){P=null}const lun=lunesDe(d);const dias=[...Array(7)].map((_,i)=>dsum(lun,i));
   const items=areasAvance().map(it=>{const recs=S.recursos.filter(r=>it.cens.includes(r.centro)&&r.activa!==false);
     const dd=P?datosDiaCentro(it.cens,P,d,recs):{pz:0,hechas:0,lab:true,reg:false};const sem=P?avanceSemanaCentro(it.cens,P,dias,recs):null;const ef=eficienciaHoy(it.cens,d);
-    return {it,dd,sem,ef,avance:dd.pz>0?Math.round(dd.hechas/dd.pz*100):null,color:colorEficiencia(ef.ef)}});
+    const fila=(n,cens2,recs2,rec)=>{const d2=P?datosDiaCentro(cens2,P,d,recs2,rec||undefined):{pz:0,hechas:0};const e2=eficienciaHoy(cens2,d,rec||null);
+      return {n,pz:d2.pz||0,hechas:d2.hechas||0,avance:d2.pz>0?Math.round(d2.hechas/d2.pz*100):null,ef:e2,color:colorEficiencia(e2.ef),afuera:rec&&esRecAfuera(rec)}};
+    let filas=[];
+    if(it.cens.length>1)filas=it.cens.slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(c=>fila(nCen(c),[c],S.recursos.filter(r=>r.centro===c&&r.activa!==false)));
+    else{const rs=recsChipsCentro(recs);if(rs.length>1)filas=rs.map(r=>fila(r.n||r.id,it.cens,[r],r.id))}
+    return {it,dd,sem,ef,filas,avance:dd.pz>0?Math.round(dd.hechas/dd.pz*100):null,color:colorEficiencia(ef.ef)}});
   const tot={hechas:0,pz:0,gan:0,minP:0,abiertos:0,paros:0,pers:0};items.forEach(x=>{tot.hechas+=x.dd.hechas||0;tot.pz+=x.dd.pz||0;tot.gan+=x.ef.gan;tot.minP+=x.ef.minP;tot.abiertos+=x.ef.abiertos;tot.paros+=x.ef.paros;tot.pers+=x.ef.pers});
   tot.avance=tot.pz>0?Math.round(tot.hechas/tot.pz*100):null;tot.ef=(tot.minP>0&&tot.gan>0)?Math.round(tot.gan/tot.minP*100):null;
   return {d,P,items,tot,errorProg:!P}}
@@ -10996,6 +11003,7 @@ function vEnVivo(el){const D=datosEnVivo();const t=D.tot;const hora=new Date().t
       <div class="env-l"><span>Eficiencia hoy</span><b style="color:${col}">${ef.ef==null?(sinReg?'sin registros':'—'):ef.ef+' %'}</b></div>
       <div class="env-l mut"><span>${ef.cerrados?ef.cerrados+' tramos cerrados · '+num(Math.round(ef.gan))+' min ganados de '+num(Math.round(ef.minP))+' trabajados':'nadie ha cerrado un INICIO/FIN hoy'}</span></div>
       ${x.sem&&x.sem.pct!=null?`<div class="env-l"><span>Semana</span><b>${x.sem.pct} %</b></div>`:''}
+      ${(x.filas||[]).length?`<table class="env-t"><thead><tr><th></th><th>${x.it.cens.length>1?'Centro':'Puesto'}</th><th class="num">Hechas</th><th class="num">Prog.</th><th class="num">Avance</th><th class="num">Efic.</th><th>Ahora</th></tr></thead><tbody>${x.filas.map(f=>`<tr class="${!f.pz&&!f.hechas&&!f.ef.abiertos&&!f.ef.afuera?'env-quieta':''}"><td><span class="env-dot" style="background:${ENV_COL[f.color]}"></span></td><td>${esc(f.n)}</td><td class="num">${num(f.hechas)}</td><td class="num">${num(f.pz)}</td><td class="num">${f.avance==null?'—':f.avance+' %'}</td><td class="num">${f.afuera?'<span class="mut">afuera</span>':(f.ef.ef==null?'<span class="mut">—</span>':f.ef.ef+' %')}</td><td>${f.ef.abiertos?f.ef.abiertos+' en curso':''}${f.ef.paros?` <span class="tag t-alerta">${f.ef.paros} paro${f.ef.paros>1?'s':''}</span>`:''}${f.ef.afuera?f.ef.afuera+' afuera':''}</td></tr>`).join('')}</tbody></table>`:''}
       <div class="env-now">${ef.abiertos?`<b>${ef.abiertos}</b> ${ef.abiertos===1?'orden':'órdenes'} en curso${ef.pers?' · '+num(Math.round(ef.pers*10)/10)+' personas':''}`:'nada en curso ahora'}${ef.paros?` · <span class="tag t-alerta">${ef.paros} ${ef.paros===1?'paro abierto':'paros abiertos'}</span>`:''}${ef.afuera?` · ${ef.afuera} afuera (maquila)`:''}</div></div>`};
   const ok=puede('programa');
   el.innerHTML=`<div class="pagehead"><h2>Planta en vivo</h2><span class="spacer"></span>
