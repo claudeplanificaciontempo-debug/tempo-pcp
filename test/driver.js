@@ -8737,6 +8737,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    [['pasosCategoria',bakT],['pasosPolo01',bakF],['correccionPasos01b',bakC]].forEach(([k,v])=>{const x=JSON.parse(v);if(x==null&&k==='pasosCategoria')delete S.params[k];else S.params[k]=x||S.params[k]});
    PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (usuaria: sol y luna «para los dos modos»): modo claro / oscuro, preferencia de cada persona */
+  {const antes=__R.errors.length;page='ordenes';render();const sw=document.getElementById('modo-sw');
+   __check("MO1: la cabecera tiene el interruptor sol / luna con dos botones",!!sw&&sw.querySelectorAll('button').length===2);
+   setModo('oscuro');const bgO=getComputedStyle(document.body).backgroundColor;const okO=document.documentElement.dataset.modo==='oscuro'&&sw.querySelector('button.on').dataset.m==='oscuro';
+   let guardado=null;try{guardado=localStorage.getItem('tempo.modo.'+claveUsr())}catch(e){}
+   __check("MO2: modo oscuro: el fondo se oscurece, el botón queda marcado y la preferencia se guarda para esa persona",okO&&(bgO.match(/\d+/g)||[]).slice(0,3).every(x=>+x<60)&&modoVisual()==='oscuro'&&(guardado==='oscuro'||guardado===null),bgO+' guardado:'+guardado);
+   setModo('claro');render();
+   __check("MO3: volver a claro deja todo como antes",document.documentElement.dataset.modo==='claro'&&getComputedStyle(document.body).backgroundColor!==bgO&&modoVisual()==='claro');
+   __check("MO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (usuaria: «las Level 1 tienen estampado y etiquetado; corrige las que ya se confirmó la ruta») */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakF=JSON.stringify(S.params.correccionPasos01||null);const bakE=JSON.stringify(S.params.reglasEtiqueta||null);
    const pad={id:'k-lv-cam',n:'CAMISETAS'},lv={id:'k-lv-1',n:'Level 1',padre:'k-lv-cam'};const nk=[pad,lv].filter(k=>!K(k.id));S.categorias.push(...nk);

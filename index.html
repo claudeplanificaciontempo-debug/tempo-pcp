@@ -493,6 +493,52 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
 .o-statusbar.solo-ver .st{cursor:default}.o-statusbar.solo-ver .st:hover{background:#EDEEF0}.o-statusbar.solo-ver .st.on:hover{background:var(--o-brand,#714B67)}
 .o-statusbar .st.on{background:var(--o-brand,#714B67);color:#fff;font-weight:600}
 .o-statusbar .st.hecho{color:#868E96}
+/* ================= Modo oscuro (01-oct-2026, usuaria: sol y luna «para los dos modos») =================
+   Preferencia de cada persona (localStorage), no de la planta. Cambia las variables de color y tapa los blancos fijos.
+   Lo que se imprime (programas, albaranes) abre en su propia ventana y no cambia. */
+html[data-modo="oscuro"]{color-scheme:dark}
+html[data-modo="oscuro"],html[data-modo="oscuro"][data-tema],html[data-modo="oscuro"][data-tema][data-color]{--ink:#E4E8EC;--ink2:#B4BEC8;--ink3:#8995A1;--rule:#39414A;--rule2:#2D343B;--paper:#1C2127;--bg:#121619;--field:#252B32;
+  --t-card:#1C2127;--t-thead:#232930;--t-ink:#E4E8EC;--t-accent-soft:#1B3540;--o-brand-soft:#243444;--o-brand-line:#3A4D61;--o-sec:#2B323A;--o-sec-2:#363E47;--ok:#4FB37F;--alerta:#E2685A;--aviso:#D7A74A}
+html[data-modo="oscuro"][data-tema][data-color="blanco"]{--o-brand:#1C2127;--o-brand-2:#232930}
+html[data-modo="oscuro"] body{background:var(--bg);color:var(--ink)}
+html[data-modo="oscuro"] input,html[data-modo="oscuro"] select,html[data-modo="oscuro"] textarea{background-color:var(--field);color:var(--ink);border-color:var(--rule)}
+html[data-modo="oscuro"] nav .gbody,html[data-modo="oscuro"] .pagehead,html[data-modo="oscuro"] th,html[data-modo="oscuro"] table th,html[data-modo="oscuro"] .panel table thead th,html[data-modo="oscuro"] .panel>h3,html[data-modo="oscuro"] .panel h3,html[data-modo="oscuro"] .kpi.tarj,html[data-modo="oscuro"] .chip,html[data-modo="oscuro"] .btn.danger,html[data-modo="oscuro"] .o-sbox,html[data-modo="oscuro"] .o-menu,html[data-modo="oscuro"] .modal,html[data-modo="oscuro"] .busq-menu{background:var(--paper)!important;color:var(--ink)}
+html[data-modo="oscuro"] .busq input{background-color:var(--field)!important}
+html[data-modo="oscuro"] .btn.ghost,html[data-modo="oscuro"] .btn.tint{color:var(--ink)!important}
+html[data-modo="oscuro"] .o-facet,html[data-modo="oscuro"] .o-dd>summary:hover,html[data-modo="oscuro"] .o-dd[open]>summary{background:var(--o-sec)!important;color:var(--ink)}
+html[data-modo="oscuro"] .o-facet a{color:var(--ink3)}
+html[data-modo="oscuro"] .warn{background:#3A2F12!important;border-color:#5A4A1E!important;color:#F2D58A!important}
+html[data-modo="oscuro"] .t-ok{background:#16352A!important;border-color:#16352A!important;color:#9FD9B9!important}
+html[data-modo="oscuro"] .t-aviso{background:#3A2F12!important;border-color:#3A2F12!important;color:#F2D58A!important}
+html[data-modo="oscuro"] .t-alerta{background:#3E1C20!important;border-color:#3E1C20!important;color:#F2A7AE!important}
+html[data-modo="oscuro"] .t-falta,html[data-modo="oscuro"] .tag.t-mut,html[data-modo="oscuro"] .fase-mini{background:#2B323A!important;border-color:#2B323A!important;color:#C9D1D9!important}
+html[data-modo="oscuro"] .t-medio,html[data-modo="oscuro"] .tag.t-hoy{background:#123843!important;border-color:#123843!important;color:#9EDCEB!important}
+html[data-modo="oscuro"] [style*="background:#fff"],html[data-modo="oscuro"] [style*="background:#FFF"],html[data-modo="oscuro"] [style*="background: #fff"],html[data-modo="oscuro"] [style*="background:white"],html[data-modo="oscuro"] [style*="background:#F2F3F4"],html[data-modo="oscuro"] [style*="background:#F8FAFA"],html[data-modo="oscuro"] [style*="background:#F5F5F6"],html[data-modo="oscuro"] [style*="background:#F1F3F5"]{background:var(--paper)!important}
+html[data-modo="oscuro"] [style*="color:#374151"],html[data-modo="oscuro"] [style*="color:#212529"],html[data-modo="oscuro"] [style*="color:#111827"],html[data-modo="oscuro"] [style*="color:#1F2937"],html[data-modo="oscuro"] [style*="color:#1f2937"],html[data-modo="oscuro"] [style*="color:#495057"],html[data-modo="oscuro"] [style*="color:#555"],html[data-modo="oscuro"] [style*="color:#000"]{color:var(--ink)!important}
+html[data-modo="oscuro"] #foto-zoom{background:var(--paper)!important;border-color:var(--rule)!important}html[data-modo="oscuro"] #foto-zoom .zoom-cap{color:var(--ink)!important}
+html[data-modo="oscuro"] img{filter:none}
+/* texto con el color de la marca: en oscuro un tono claro del mismo color (la barra de arriba no cambia) */
+html[data-modo="oscuro"],html[data-modo="oscuro"][data-tema],html[data-modo="oscuro"][data-tema][data-color]{--navy:#A9C4E4;--navy2:#C3D6EC;--t-primary:#A9C4E4;--t-accent:#7CC4CF}
+html[data-modo="oscuro"] .kpi .v,html[data-modo="oscuro"] .kpi.tarj .v,html[data-modo="oscuro"] .chip.on,html[data-modo="oscuro"] .niv-card,html[data-modo="oscuro"] .niv-grupo,html[data-modo="oscuro"] .niv-grupo-t,html[data-modo="oscuro"] .nc{color:var(--t-primary)!important}
+html[data-modo="oscuro"] .chip.on{background:var(--o-brand-soft)!important;border-color:var(--o-brand-line)!important}
+html[data-modo="oscuro"] [style*="background:var(--ink)"]{background:#2B323A!important;color:#fff!important}
+/* recuadros con fondo claro fijo (avisos, celdas de capacidad, día de hoy): se tiñen del color de su texto sobre el papel oscuro */
+html[data-modo="oscuro"] .cel,html[data-modo="oscuro"] .cel-ley,html[data-modo="oscuro"] .res-aviso,html[data-modo="oscuro"] .res-dia,html[data-modo="oscuro"] [style*="background:#FBF3E2"],html[data-modo="oscuro"] [style*="background:#EAF0F8"],html[data-modo="oscuro"] [style*="background:#FBECE9"],html[data-modo="oscuro"] [style*="background:#E8F3ED"],html[data-modo="oscuro"] [style*="background:#E7EEF7"],html[data-modo="oscuro"] [style*="background:#FFF3CD"],html[data-modo="oscuro"] [style*="background:#EEF3FB"],html[data-modo="oscuro"] [style*="background:#EDEEF0"],html[data-modo="oscuro"] [style*="background:#E4EAF1"],html[data-modo="oscuro"] [style*="background:#D6DCE3"],html[data-modo="oscuro"] [style*="background:#FFF7E0"],html[data-modo="oscuro"] [style*="background:#FFF3E6"],html[data-modo="oscuro"] [style*="background:#FAF4E4"],html[data-modo="oscuro"] [style*="background:#FAEBCB"],html[data-modo="oscuro"] [style*="background:#F8DCD6"],html[data-modo="oscuro"] [style*="background:#F8D7DA"],html[data-modo="oscuro"] [style*="background:#e7f0e3"],html[data-modo="oscuro"] [style*="background:#E9ECEF"],html[data-modo="oscuro"] [style*="background:#eee"],html[data-modo="oscuro"] [style*="background:#E8F3F6"],html[data-modo="oscuro"] [style*="background:#F4F8FC"],html[data-modo="oscuro"] [style*="background:#FFF8E1"],html[data-modo="oscuro"] [style*="background:#EEF2F5"]{background:color-mix(in srgb,currentColor 16%,var(--paper))!important}
+html[data-modo="oscuro"] [style*="color:#2C4C77"],html[data-modo="oscuro"] [style*="color:#27466E"]{color:#A9C4E4!important}
+html[data-modo="oscuro"] [style*="color:#8A6417"],html[data-modo="oscuro"] [style*="color:#8A6412"],html[data-modo="oscuro"] [style*="color:#664D03"]{color:#F2D58A!important}
+html[data-modo="oscuro"] [style*="color:#A3301F"]{color:#F2A7AE!important}html[data-modo="oscuro"] [style*="color:#1F6B45"]{color:#9FD9B9!important}html[data-modo="oscuro"] [style*="color:#6C757D"]{color:var(--ink3)!important}
+/* clases con color fijo: celdas de Capacidad, pastilla «falta un dato», textos del Resumen del centro */
+html[data-modo="oscuro"] .capm td.cel.amb,html[data-modo="oscuro"] .cel-ley.amb{color:#F2D58A!important}html[data-modo="oscuro"] .capm td.cel.falta,html[data-modo="oscuro"] .cel-ley.falta{color:#A9C4E4!important}
+html[data-modo="oscuro"] .niv-pill.faltante,html[data-modo="oscuro"] .t-falta{background:#26313D!important;color:#A9C4E4!important;border-color:#4A5B6E!important}
+html[data-modo="oscuro"] .res-dia-t .hoyt,html[data-modo="oscuro"] .res-mas,html[data-modo="oscuro"] .res-dia{color:#A9C4E4!important}
+html[data-modo="oscuro"] .cel-ley,html[data-modo="oscuro"] .capm td.cel{color:var(--ink)}
+/* el interruptor sol / luna */
+.modo-sw{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden;margin:0 6px;height:30px}
+.modo-sw button{background:transparent!important;border:0!important;height:30px!important;width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;color:inherit;opacity:.65;cursor:pointer}
+.modo-sw button.on{background:rgba(255,255,255,.18)!important;opacity:1}
+.modo-sw svg{width:16px;height:16px}
+html:not([data-tema="odoo"]) .modo-sw{border-color:var(--rule)}html:not([data-tema="odoo"]) .modo-sw button.on{background:var(--field)!important}
+html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw{border-color:var(--rule)}html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw button.on{background:var(--field)!important}
 </style>
 </head>
 <body>
@@ -504,6 +550,7 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
     <span class="saved" id="saved"></span>
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
+    <span class="modo-sw" id="modo-sw" title="Modo claro u oscuro (se guarda para ti en este navegador)"><button data-m="claro" onclick="setModo('claro')" aria-label="Modo claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button data-m="oscuro" onclick="setModo('oscuro')" aria-label="Modo oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></span>
     <button onclick="logout()">Salir</button>
   </header>
 
@@ -982,7 +1029,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 12:20';
+const APP_BUILD='2026-10-01 15:50';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1033,7 +1080,7 @@ async function guardarPassNueva(){if(!sb)return;
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user)await entrar(session.user);else{verLogin('entrar');msgLogin('login-msg','Listo: entra con tu contraseña nueva.',true)}}
 function esVueltaDeRecuperacion(){const h=String(location.hash||'')+'&'+String(location.search||'');return /type=recovery/.test(h)}
-async function iniciar(){
+async function iniciar(){try{pintarModo()}catch(e){}
   if(SUPABASE_URL.startsWith('PEGA')){mostrarLogin('Falta configurar la conexión: abre el archivo y pega la URL y la clave del proyecto al inicio del script.');return}
   if(typeof supabase==='undefined'){mostrarLogin('No se pudo cargar la conexión (cdn.jsdelivr.net). Revise internet o avise a sistemas.');return}
   sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -3712,7 +3759,12 @@ const TEMA_COLORES=[['marino','Azul marino (elegido por la usuaria, 24-sep)'],['
 function temaColor(){const c=(S&&S.params)?S.params.temaColor:null;return TEMA_COLORES.some(x=>x[0]===c)?c:'marino'}   /* por defecto azul marino: lo eligió la usuaria el 24-sep (antes: «tampoco quiero ese morado») */
 function setTemaColor(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=temaColor();if(!TEMA_COLORES.some(x=>x[0]===v)||v===antes)return;
   S.params.temaColor=v;bitacora('Color de la pantalla: '+(TEMA_COLORES.find(x=>x[0]===antes)||[,antes])[1]+' → '+(TEMA_COLORES.find(x=>x[0]===v)||[,v])[1]+' ('+quienFirma()+')');save();render()}
-function aplicarTema(){const t=temaVisual();const de=document.documentElement;if(de.dataset.tema!==t)de.dataset.tema=t;{const c=temaColor();if(de.dataset.color!==c)de.dataset.color=c}
+/* 01-oct: modo claro / oscuro, preferencia de cada persona en este navegador (no es configuración de la planta) */
+let MODO_MEM=null;   /* lo elegido en esta sesión manda aunque el navegador no deje guardar (ventana privada, almacenamiento bloqueado) */
+function modoVisual(){if(MODO_MEM)return MODO_MEM;let m=null;try{m=localStorage.getItem('tempo.modo.'+claveUsr())||localStorage.getItem('tempo.modo')}catch(e){}return m==='oscuro'?'oscuro':'claro'}
+function pintarModo(){const m=modoVisual();const de=document.documentElement;if(de.dataset.modo!==m)de.dataset.modo=m;document.querySelectorAll('#modo-sw button').forEach(b=>b.classList.toggle('on',b.dataset.m===m))}
+function setModo(m){m=m==='oscuro'?'oscuro':'claro';MODO_MEM=m;try{localStorage.setItem('tempo.modo',m);localStorage.setItem('tempo.modo.'+claveUsr(),m)}catch(e){}pintarModo()}
+function aplicarTema(){try{pintarModo()}catch(e){}const t=temaVisual();const de=document.documentElement;if(de.dataset.tema!==t)de.dataset.tema=t;{const c=temaColor();if(de.dataset.color!==c)de.dataset.color=c}
   const h=document.querySelector('header'),nav=document.getElementById('nav');if(!h||!nav)return;
   if(t==='odoo'&&nav.parentElement!==h)h.insertBefore(nav,document.getElementById('busg-host')||h.querySelector('.spacer'));   /* Odoo: los menús van en la barra de arriba */
   else if(t!=='odoo'&&nav.parentElement===h)h.after(nav)}
