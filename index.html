@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 09:54';
+const APP_BUILD='2026-10-01 10:07';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -1231,7 +1231,17 @@ function centrosPorInsumos(mats){const out=new Set();const cpo=centrosPorOrden()
    Calce exacto por nombre de la categoría o de su padre (como la etiqueta). Sin configurar = Level 1 → Estampado. Entra por ordenCentrosAuto. */
 const PASOS_CATEGORIA_DEF=[{cat:'Level 1',centro:'estampado'}];
 function pasosCategoria(){return S.params&&Array.isArray(S.params.pasosCategoria)?S.params.pasosCategoria:PASOS_CATEGORIA_DEF.map(r=>Object.assign({},r))}
-function pasosDeCategoria(k){if(!k)return [];const out=new Set();pasosCategoria().forEach(r=>{if(r&&r.cat&&r.centro&&CE(r.centro)&&CE(r.centro).activo!==false&&catCalzaEtq(k,r.cat))out.add(r.centro)});return [...out]}
+function pasosDeCategoria(k){if(!k)return [];const out=new Set();pasosCategoria().forEach(r=>{if(r&&r.cat&&!String(r.ref||'').trim()&&r.centro&&CE(r.centro)&&CE(r.centro).activo!==false&&catCalzaEtq(k,r.cat))out.add(r.centro)});return [...out]}
+/* 01-oct (usuaria: «todas las polos básicas con estilos 7907 y 4164 son bordadas»): una fila puede llevar además una REFERENCIA (estilo de la orden);
+   entonces vale solo para esa referencia dentro de la categoría. Las Level 2 NO tienen regla: el bordado se decide una por una. */
+function filaPasoCalza(r,o){if(!r||!r.cat||!r.centro||!CE(r.centro)||CE(r.centro).activo===false)return false;if(!catCalzaEtq(K(o&&o.cat),r.cat))return false;
+  const ref=String(r.ref||'').trim();return !ref||normFase(ref)===normFase(String((o&&o.ref)||''))}
+function pasosDeOrden(o){if(!o)return [];const out=new Set();pasosCategoria().forEach(r=>{if(filaPasoCalza(r,o))out.add(r.centro)});return [...out]}
+function sembrarPasosPolo01(){if(!S||!S.params||S.params.pasosPolo01||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
+  const t=pasosCategoria().map(r=>Object.assign({},r));const add=[];
+  ['7907','4164'].forEach(ref=>{if(!t.some(r=>normFase(r.cat||'')===normFase('Polo Basica')&&String(r.ref||'').trim()===ref&&r.centro==='bordado')){t.push({cat:'Polo Basica',ref,centro:'bordado',fuente:'usuaria 01-oct'});add.push(ref)}});
+  S.params.pasosCategoria=t;S.params.pasosPolo01={ts:new Date().toISOString(),agregadas:add};
+  if(add.length)bitacora('Pasos que lleva siempre una categoría: Polo Basica estilos '+add.join(' y ')+' → Bordado (usuaria, 01-oct). Las Level 2 no llevan regla: se deciden una por una');return true}
 function guardarPasosCategoria(t,txt){S.params.pasosCategoria=t;bitacora('Pasos que lleva siempre una categoría · '+txt+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
 function setPasoCategoriaRow(i,k,v){if(!insumoRutaEditable())return;const t=pasosCategoria().map(r=>Object.assign({},r));const r=t[i];if(!r)return;const antes=r[k];r[k]=String(v||'').trim();if(antes===r[k])return;
   guardarPasosCategoria(t,'fila '+(i+1)+' · '+k+': «'+(antes==null?'':antes)+'» → «'+r[k]+'»')}
@@ -1241,13 +1251,14 @@ function delPasoCategoriaRow(i){if(!insumoRutaEditable())return;const t=pasosCat
   t.splice(i,1);guardarPasosCategoria(t,'quitada la regla «'+(r.cat||'')+' → '+r.centro+'»')}
 function pasosCategoriaHTML(){const t=pasosCategoria();const propia=!!(S.params&&Array.isArray(S.params.pasosCategoria));const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   const cats=[...new Set(S.categorias.map(k=>k.n).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-  const n=r=>S.ordenes.filter(o=>abiertaDe(o)&&r.cat&&catCalzaEtq(K(o.cat),r.cat)).length;
-  return `<div class="panel"><h3>Pasos que lleva siempre una categoría <span class="note">aunque la orden no traiga técnica · p. ej. Level 1 → Estampado</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPasoCategoriaRow()">+ regla</button></h3><div class="body">
-   <table><thead><tr><th>Categoría (padre o hija)</th><th>Paso que agrega</th><th class="num">Órdenes abiertas</th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td><input list="dl-cats-pcat" value="${esc(r.cat||'')}" onchange="setPasoCategoriaRow(${i},'cat',this.value)" style="width:200px"></td>
+  const n=r=>S.ordenes.filter(o=>abiertaDe(o)&&filaPasoCalza(r,o)).length;
+  return `<div class="panel"><h3>Pasos que lleva siempre una categoría <span class="note">aunque la orden no traiga técnica ni puntadas · p. ej. Level 1 → Estampado · Polo Basica 7907 → Bordado</span><span class="spacer"></span><button class="btn ghost sm" onclick="addPasoCategoriaRow()">+ regla</button></h3><div class="body">
+   <table><thead><tr><th>Categoría (padre o hija)</th><th>Referencia <span class="mut">(vacía = toda la categoría)</span></th><th>Paso que agrega</th><th class="num">Órdenes abiertas</th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td><input list="dl-cats-pcat" value="${esc(r.cat||'')}" onchange="setPasoCategoriaRow(${i},'cat',this.value)" style="width:200px"></td>
+    <td><input type="text" value="${esc(r.ref||'')}" placeholder="toda la categoría" onchange="setPasoCategoriaRow(${i},'ref',this.value)" style="width:110px"></td>
     <td><select onchange="setPasoCategoriaRow(${i},'centro',this.value)">${cens.map(c=>`<option value="${c.id}" ${r.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></td><td class="num">${n(r)}</td>
-    <td><button class="btn ghost sm" onclick="delPasoCategoriaRow(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="mut">Sin reglas.</td></tr>'}</tbody></table>
+    <td><button class="btn ghost sm" onclick="delPasoCategoriaRow(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Sin reglas.</td></tr>'}</tbody></table>
    <datalist id="dl-cats-pcat">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
-   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${propia?'Editada en esta instalación (los cambios quedan en la bitácora).':'Valor de partida (01-oct-2026): Level 1 → Estampado.'} Las rutas <b>sin confirmar</b> reciben el paso solas; las que <b>confirmó una persona</b> no se tocan y quedan marcadas «revisar ruta». La etiqueta estampada va aparte, en Operaciones → Etiqueta de serigrafía.</p>
+   <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${propia?'Editada en esta instalación (los cambios quedan en la bitácora).':'Valor de partida (01-oct-2026): Level 1 → Estampado; Polo Basica 7907 y 4164 → Bordado. Las Level 2 no llevan regla: el bordado se decide una por una.'} Las rutas <b>sin confirmar</b> reciben el paso solas; las que <b>confirmó una persona</b> no se tocan y quedan marcadas «revisar ruta». La etiqueta estampada va aparte, en Operaciones → Etiqueta de serigrafía.</p>
   </div></div>`}
 function insumoRutaEditable(){if(!puede('config')){alert('Solo quien configura puede cambiar esta tabla.');return false}return true}
 function guardarInsumosRuta(t,txt){S.params.insumosRuta=t;bitacora('Insumos que agregan un paso a la ruta · '+txt+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
@@ -1272,7 +1283,7 @@ function ordenCentrosAuto(o){const out=new Set();if(!o)return out;const cpo=cent
   if(cpo.includes('apliques')&&/aplique/.test(tec)&&CE('apliques'))out.add('apliques');
   if(cpo.includes('bordado')&&(+o.puntadas||0)>0)out.add('bordado');
   centrosPorInsumos(o.materiales||o.comp).forEach(c=>out.add(c));   /* la receta: p. ej. un cordón → Cordones (24-sep) */
-  if(typeof pasosDeCategoria==='function'&&o.cat)pasosDeCategoria(K(o.cat)).forEach(c=>out.add(c));   /* 01-oct: la categoría lo pide siempre (Level 1 → Estampado) */
+  if(typeof pasosDeOrden==='function'&&o.cat)pasosDeOrden(o).forEach(c=>out.add(c));   /* 01-oct: la categoría (o su referencia) lo pide siempre: Level 1 → Estampado, Polo Basica 7907/4164 → Bordado */
   {const et=(typeof etiquetaDeOrden==='function')?etiquetaDeOrden(o):null;if(et){const ce=et.centro||'etiquetas';if(CE(ce)&&CE(ce).activo!==false)out.add(ce)}}   /* 30-sep: etiqueta estampada (tabla de reglas, por categoría o referencia) */
   return out}
 /* marca de lavado/plancha por defecto de una categoría (propia si la tiene, si no la del padre) */
@@ -3306,7 +3317,7 @@ function sembrarFaseDefinirTelas30(){if(S.params.faseDefinirTelas30)return;const
    abiertas con la ruta CONFIRMADA que les falte lo que piden la tabla «Pasos que lleva siempre una categoría» o la de etiqueta (Level 1 → Estampado
    y Etiquetas; Level 2 y CAMISETAS 4204/4240/4208 → Etiquetas) se les AGREGA ese paso. No se quita nada ni se toca la confirmación. Si la fase ya
    pasó ese paso, entra solo a la ruta completa. Auditoría por orden, una bitácora. Corre solo con órdenes cargadas y con permiso de rutas. */
-function pasosQuePideLaOrden(o){const out=new Set();if(typeof pasosDeCategoria==='function')pasosDeCategoria(K(o.cat)).forEach(c=>out.add(c));
+function pasosQuePideLaOrden(o){const out=new Set();if(typeof pasosDeOrden==='function')pasosDeOrden(o).forEach(c=>out.add(c));
   const et=(typeof etiquetaDeOrden==='function')?etiquetaDeOrden(o):null;if(et){const ce=et.centro||'etiquetas';if(CE(ce)&&CE(ce).activo!==false)out.add(ce)}return [...out]}
 function agregarPasosARuta(o,cens,motivo,ts,u){const k=K(o.cat);const spc=spcOrden(o,k);const comp=(o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:(o.ruta||[]).map(p=>Object.assign({},p));
   const poner=(arr,paso)=>{if(arr.some(q=>q.centro===paso.centro))return;const idx=ordenPaso(paso.centro);let pos=arr.length;for(let i=0;i<arr.length;i++){if(ordenPaso(arr[i].centro)>idx){pos=i;break}}arr.splice(pos,0,paso)};
@@ -3315,13 +3326,15 @@ function agregarPasosARuta(o,cens,motivo,ts,u){const k=K(o.cat);const spc=spcOrd
     if(!pasoFijoPorFase(o,c)){o.ruta=o.ruta||[];poner(o.ruta,{centro:c,t})}mas.push(c)});
   if(!mas.length)return [];o.rutaCompleta=comp;o.rutaEditada=(o.rutaEditada||[]).concat([{ts,u,mas,menos:[],motivo,etapa:'correccion'}]);sellarRuta(o);
   registrarAuditoria('ruta',o,antesTxt,pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(nCen).join(' → ')+' · sigue confirmada',motivo,false);return mas}
-function sembrarCorreccionPasosConfirmadas01(){if(S.params.correccionPasos01||!S.ordenes||!S.ordenes.length)return false;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return false;if(!puedeEditarRuta())return false;
-  const ts=new Date().toISOString(),u=quienFirma();const motivo='corrección del 01-oct: Level 1 lleva Estampado y Etiquetas; Level 2 y camisetas 4204/4240/4208, Etiquetas (decisión de la usuaria)';
+function sembrarCorreccionPasosConfirmadas01(){return correccionPasosConfirmadas('correccionPasos01','corrección del 01-oct: Level 1 lleva Estampado y Etiquetas; Level 2 y camisetas 4204/4240/4208, Etiquetas (decisión de la usuaria)')}
+function sembrarCorreccionPasosConfirmadas01b(){return correccionPasosConfirmadas('correccionPasos01b','corrección del 01-oct (2): Polo Basica estilos 7907 y 4164 llevan Bordado (decisión de la usuaria)')}
+function correccionPasosConfirmadas(flag,motivo){if(S.params[flag]||!S.ordenes||!S.ordenes.length)return false;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return false;if(!puedeEditarRuta())return false;
+  const ts=new Date().toISOString(),u=quienFirma();
   const porPaso={},ej=[];let n=0;
   S.ordenes.forEach(o=>{if(!abiertaDe(o)||rutaNoAplica(o)||!rutaConfirmada(o))return;const pide=pasosQuePideLaOrden(o);if(!pide.length)return;
     const mas=agregarPasosARuta(o,pide,motivo,ts,u);if(!mas.length)return;n++;mas.forEach(c=>porPaso[c]=(porPaso[c]||0)+1);if(ej.length<8)ej.push(o.op+' +'+mas.map(nCen).join(', '))});
-  S.params.correccionPasos01={ts,u,ordenes:n,porPaso,ejemplos:ej};PLAN=null;PLAN_ALL=null;
-  bitacora('Rutas confirmadas corregidas (01-oct): '+n+' órdenes'+(n?' · '+Object.entries(porPaso).map(([c,m])=>nCen(c)+' +'+m).join(', ')+' · p. ej. '+ej.slice(0,4).join('; '):'')+'. Solo se agregaron pasos; la confirmación se mantiene ('+u+')');return true}
+  S.params[flag]={ts,u,ordenes:n,porPaso,ejemplos:ej};PLAN=null;PLAN_ALL=null;
+  bitacora('Rutas confirmadas corregidas ('+motivo.replace(/^corrección del /,'').replace(/:.*/,'')+'): '+n+' órdenes'+(n?' · '+Object.entries(porPaso).map(([c,m])=>nCen(c)+' +'+m).join(', ')+' · p. ej. '+ej.slice(0,4).join('; '):'')+'. Solo se agregaron pasos; la confirmación se mantiene ('+u+')');return true}
 function sembrarTabla1AlEntrar(){if(!S||!S.params||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
   const falta=!S.params.fasesSecuencia19||!S.params.fasesSecuencia20||!S.params.faseDefinirTelas30;if(!falta)return false;
   sembrarFasesSecuencia19();sembrarFasesSecuencia20();sembrarFaseDefinirTelas30();return true}
@@ -3695,7 +3708,8 @@ function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configura
 function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
   try{if(sembrarTabla1AlEntrar())save()}catch(e){try{console.error('sembrarTabla1AlEntrar',e)}catch(x){}}
-  try{if(sembrarCorreccionPasosConfirmadas01())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01',e)}catch(x){}}   /* 01-oct: una sola vez */   /* 30-sep: la tabla 1 completa (fases y secuencia) aunque nadie abra ciertas pantallas */
+  try{if(sembrarCorreccionPasosConfirmadas01())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01',e)}catch(x){}}   /* 01-oct: una sola vez */
+  try{if(sembrarPasosPolo01())save();if(S.params.pasosPolo01&&sembrarCorreccionPasosConfirmadas01b())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01b',e)}catch(x){}}   /* 01-oct (2): Polo Basica 7907/4164 → Bordado */   /* 30-sep: la tabla 1 completa (fases y secuencia) aunque nadie abra ciertas pantallas */
   const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
   pintarBusqG();CAPM=null;SEMC={};
@@ -9010,6 +9024,10 @@ function mRutaCentro(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;con
    confirmar es un acto de una persona, o la coincidencia exacta con las órdenes de trabajo de Odoo. */
 function rutaConf(o){return (o&&o.rutaConf)||null}
 function rutaConfirmada(o){const r=rutaConf(o);return !!(r&&r.estado==='confirmada')}
+/* 01-oct (usuaria: «las que no tienen WH, la ruta fue confirmada; cuando actualice los centros debe hacer match y si no está, que salga para confirmar»).
+   Una marca «revisar» cuenta mientras nadie haya vuelto a confirmar la ruta DESPUÉS de ponerse (cualquier forma de confirmar la resuelve). */
+function revisarRutaPendiente(o){const rv=o&&o.rutaRevisar;if(!rv||rv.tipo!=='ot')return false;   /* solo la marca de la OT; la de cambio de catálogo sigue en su panel */
+  const rc=rutaConf(o);return !(rc&&rc.estado==='confirmada'&&rc.ts&&rv.ts&&rc.ts>rv.ts)}
 /* La ruta NO se revisa cuando ya no hay producción pendiente (decisión de la usuaria, 20-sep-2026): la prenda está terminada y solo
    falta facturar (fase con «sin carga» en la tabla 1: prenda terminada / cerrada) o la orden ya no está abierta (Estado OP de Odoo
    cerrado, archivada, fuera de alcance). Es un estado DERIVADO de la fase: no escribe rutaConf; si la fase vuelve atrás, la ruta
@@ -9100,10 +9118,11 @@ function liberadasSinRuta(){return S.ordenes.filter(o=>abierta(o)&&(liberada(o,'
 function rutaCeldaHTML(o){const cens=pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b));if(!cens.length)return '<span class="tag t-alerta">sin ruta de producción</span>';
   const fe=faseEstado(o.fase,o);const txt=cens.map(c=>pasoHecho(o,c,fe)?'<span class="mut" title="hecho">'+esc(nCen(c))+'</span>':esc(nCen(c))).join(' → ');
   const rc=rutaConf(o);const est=rutaConfirmada(o)?' <span class="tag t-ok" title="confirmada por '+esc(rc.origen)+'">✓</span>':(rutaNoAplica(o)?'':(o.rutaDefecto?' <span class="tag t-aviso" title="ruta por defecto: su familia no tiene hoja de operaciones">por defecto</span>':''));
-  return txt+est}
+  const rv=(typeof revisarRutaPendiente==='function'&&revisarRutaPendiente(o))?' <span class="tag t-alerta" title="'+esc(o.rutaRevisar.motivo||'')+'">revisar: Odoo trae '+esc((o.rutaRevisar.odoo||[]).map(nCen).join(', '))+'</span>':'';   /* 01-oct: la OT trajo un centro que la ruta confirmada no tiene */
+  return txt+est+rv}
 /* ✓ Ruta ok desde la lista: confirma la ruta tal como está (persona), sella, audita; la lista se redibuja sin moverse */
 function rutaOkFila(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!puedeEditarRuta()){alert('Solo el jefe de planificaci\u00f3n de producci\u00f3n crea o edita rutas. Tu perfil las ve, pero no las cambia.');return}
-  if(rutaConfirmada(o))return;if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);confirmarRuta(o,'persona','ruta ok desde la lista: est\u00e1 bien tal cual');
+  const rv=revisarRutaPendiente(o);if(rutaConfirmada(o)&&!rv)return;if(typeof sellarRuta==='function'&&!o.rutaFirma)sellarRuta(o);confirmarRuta(o,'persona',rv?'ruta ok desde la lista: revisada contra la orden de trabajo de Odoo ('+(o.rutaRevisar.motivo||'')+')':'ruta ok desde la lista: est\u00e1 bien tal cual');
   PLAN=null;PLAN_ALL=null;save();render()}   /* render() conserva el scroll: la fila sale de «por editar» y la lista no se mueve */
 /* ---------- Las rutas trabajadas, fuera de la base (23-sep-2026) ----------
    Una fila por WH con su ruta y quién la confirmó. Se saca a Excel (o CSV) y se vuelve a cargar después de recargar
@@ -10153,7 +10172,7 @@ let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord',edici
    CONFIRMADA (siguen en proceso: Definir Telas, Reproceso diseño…) con las TERMINADAS que no necesitan ruta. Ahora son dos filtros distintos. */
 const EDICION_ORD={porEditar:'Por definir ruta',editadas:'Ruta confirmada',terminadas:'Terminadas o cerradas (no necesitan ruta)',todas:'Todas'};
 function matchEdicionOrd(o,k){if(k==='todas'||!k)return true;const na=(typeof rutaNoAplica==='function')?rutaNoAplica(o):null;
-  if(k==='terminadas')return !!na;if(na)return false;const conf=(typeof rutaConfirmada==='function')?rutaConfirmada(o):false;return k==='editadas'?conf:!conf}
+  if(k==='terminadas')return !!na;if(na)return false;const conf=((typeof rutaConfirmada==='function')?rutaConfirmada(o):false)&&!revisarRutaPendiente(o);return k==='editadas'?conf:!conf}
 function togFaseOrdF(f){ORDF.fases=ORDF.fases||new Set();if(ORDF.fases.has(f))ORDF.fases.delete(f);else ORDF.fases.add(f);render()}
 /* selector compacto de fases con casillas, agrupadas por etapa; sel=null o vacío = todas */
 function selFases(fasesAll,sel,varName,togFn,cuentas){return filtroFasesHTML(fasesAll,sel,varName,togFn,cuentas)}
@@ -10193,7 +10212,7 @@ function vOrdenes(el){
       <td><span class="tag ${faseNum(o.fase)>=8?'t-ok':faseNum(o.fase)>=4?'t-medio':faseNum(o.fase)>=1?'t-aviso':'t-lavado'}" title="${esc(o.fase||'')}">${o.fase?esc(faseNombre(o.fase)):'—'}</span></td>
       <td style="font-size:var(--fs-xs);min-width:190px">${rutaCeldaHTML(o)}</td>
       <td style="white-space:nowrap">${o.fecha}</td>
-      <td style="white-space:nowrap">${puedeEditarRuta()&&!rutaLista(o)&&pasosProCompleta(o).length?`<button class="btn sm" onclick="rutaOkFila('${o.id}')" title="la ruta está bien tal cual: se confirma sin abrir la ficha (${esc(pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(nCen).join(' → '))})">✓ Ruta ok</button> `:''}${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
+      <td style="white-space:nowrap">${puedeEditarRuta()&&(!rutaLista(o)||revisarRutaPendiente(o))&&pasosProCompleta(o).length?`<button class="btn sm" onclick="rutaOkFila('${o.id}')" title="la ruta está bien tal cual: se confirma sin abrir la ficha (${esc(pasosProCompleta(o).slice().sort((a,b)=>ordenPaso(a)-ordenPaso(b)).map(nCen).join(' → '))})">✓ Ruta ok</button> `:''}${puede('ordenes')?`<button class="btn ghost sm" onclick="mOrden('${o.id}')">Editar</button> <button class="btn ghost sm" onclick="delOrden('${o.id}')">×</button>`:''}</td></tr>`};
   const cabT=`<thead><tr>${conSel?'<th title="marca órdenes para definir su ruta en lote">✓</th>':''}<th>OP</th><th>Ref.</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Telas (kg crudo)</th><th>Estado</th><th>Fase</th><th>Ruta</th><th>Entrega</th><th></th></tr></thead>`;
   /* la lista de Órdenes se puede repintar sola, sin tocar el buscador (redibujo parcial) */
   const listaOrdHTML=()=>{const q2=normTxt(ORDF.q);
@@ -12451,14 +12470,18 @@ function aplicarOT(){if(!OT)return;const p=OT;const ts=new Date().toISOString();
     const termPrev=Object.entries(o.ot||{}).filter(([c,r])=>r&&r.estado==='terminado'&&!centros[c]);const seQueda=c=>termPrev.some(([k])=>k===c);
     Object.keys(o.ot||{}).forEach(c=>{if(a.centrosOT&&a.centrosOT[c]&&!seQueda(c))delete a.centros[c]});
     const centrosOTPrev=a.centrosOT||{};
-    o.ot={};a.centrosOT={};
+    const otAntes=centrosOdooDe(o)||[];o.ot={};a.centrosOT={};
     termPrev.forEach(([c,r])=>{o.ot[c]=r;if(centrosOTPrev[c])a.centrosOT[c]=true;p.terminadasConservadas=(p.terminadasConservadas||0)+1});
     Object.entries(centros).forEach(([c,reg])=>{o.ot[c]={estado:reg.estado,ini:reg.ini,fin:reg.fin,odoo:reg.odoo,iniTs:reg.iniTs||null,finTs:reg.finTs||null};
       if(reg.estado==='terminado'){a.centros[c]=o.cant;a.centrosOT[c]=true;cierres++;if(c==='corte'){a.tejida=true;a.tinturada=true;a.lista=true}}
       if(reg.recurso&&reg.recursoConfiable&&R(reg.recurso)&&(reg.estado==='terminado'||reg.estado==='en proceso')){o.recursoFijo=o.recursoFijo||{};o.recursoFijo[c]=reg.recurso;o.recursoFijoOT=Object.assign({},o.recursoFijoOT||{},{[c]:reg.recurso})}});
     o.esperandoMaterial=Object.entries(centros).filter(([c,r])=>r.estado==='bloqueado por material').map(([c])=>c);
     o.otTs=ts;const add=empatarRutaConOT(o);o.ruta=o.historia?[]:conPasosPendientes(o,o.ruta||[],o.rutaCompleta||[]);if(add.length){p.rutaEmpatada=(p.rutaEmpatada||0)+1;p.pasosOT=(p.pasosOT||0)+add.length}
-    if(rutaConfirmada(o)){const tiene=new Set(((o.rutaCompleta||[]).concat(o.ruta||[])).map(x=>x.centro));const dif=(centrosOdooDe(o)||[]).filter(c=>!tiene.has(c));if(dif.length){p.confNoTocadas=(p.confNoTocadas||[]);p.confNoTocadas.push({op:o.op,centros:dif})}}});
+    if(rutaConfirmada(o)){const tiene=new Set(((o.rutaCompleta||[]).concat(o.ruta||[])).map(x=>x.centro));const dif=(centrosOdooDe(o)||[]).filter(c=>!tiene.has(c));
+      if(dif.length){p.confNoTocadas=(p.confNoTocadas||[]);p.confNoTocadas.push({op:o.op,centros:dif});
+        /* Odoo trae en ESTA carga un centro que antes no tenía (p. ej. la orden sin WH que recibió sus órdenes de trabajo) y la ruta confirmada no lo
+           trae: vuelve a «por definir ruta» con el motivo; la ruta no se toca. Lo que ya venía en la carga anterior no se vuelve a marcar. */
+        const nuevos=dif.filter(c=>!otAntes.includes(c));if(nuevos.length&&!revisarRutaPendiente(o)){o.rutaRevisar={tipo:'ot',ts,odoo:dif,motivo:'Odoo tiene orden de trabajo en '+dif.map(nCen).join(', ')+' y la ruta confirmada no lo trae'};p.paraConfirmar=(p.paraConfirmar||0)+1}}}});
   S.params.otCarga={archivo:p.archivo,fecha:ts,filas:p.filas,ordenesArchivo:p.ordenesArchivo.size,cruce:p.cruce,ignoradas:p.ignoradas,esperandoMaterial:p.esperandoMaterial.slice(0,2000),moduloDesdeOperacion:p.moduloDesdeOperacion,noTerminadaConFin:p.noTerminadaConFin,ordenes:Object.keys(p.porOrden).length,cont:p.cont,cancelados:p.cancelados,ordenesNoEncontradas:Object.keys(p.ordenesNoEncontradas),centrosNoMapeados:p.centrosNoMapeados,centrosSinCentro:p.centrosSinCentro,estadosNoReconocidos:p.estadosNoReconocidos,contradicciones:p.contradicciones.slice(0,2000),columnas:p.columnas};
   S.params.otCarga.confNoTocadas=(p.confNoTocadas||[]).slice(0,2000);S.params.otCarga.terminadasConservadas=p.terminadasConservadas||0;
   registrarCarga('ot',p.archivo,{ordenes:Object.keys(p.porOrden).length,cierres,terminadasConservadas:p.terminadasConservadas||0,rutaEmpatada:p.rutaEmpatada||0,pasosOT:p.pasosOT||0,confNoTocadas:(p.confNoTocadas||[]).length,noEncontradas:Object.keys(p.ordenesNoEncontradas).length,contradicciones:p.contradicciones.length,filas:p.filas,alertas:p.contradicciones.slice(0,60).map(x=>x.op+': '+nCen(x.centro)+' fase dice '+x.faseDice+', OT dice '+x.otDice)});
@@ -12469,7 +12492,7 @@ function mReporteOT(){const C=S.params.otCarga;if(!C){alert('Todavía no se ha c
   const porCentro={};C.contradicciones.forEach(x=>{const k=nCen(x.centro)+': fase '+x.faseDice+' / OT '+x.otDice;porCentro[k]=(porCentro[k]||0)+1});
   abrir(`<h3>Reporte de órdenes de trabajo · ${esc(C.archivo)}</h3><div class="body" style="max-height:70vh;overflow:auto">
    <p class="mut" style="margin-top:0">Cargado ${new Date(C.fecha).toLocaleString('es-EC')} · ${C.filas} filas · ${C.ordenes} órdenes · terminadas ${C.cont.terminado}, en proceso ${C.cont['en proceso']}, para hacer ${C.cont['para hacer']}, canceladas ${C.cancelados}.</p>
-   ${(C.confNoTocadas||[]).length?`<h4>Ruta confirmada que la OT no tocó (${C.confNoTocadas.length})</h4><p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">Odoo tiene orden de trabajo en un centro que la ruta confirmada no trae. No se aplicó nada: revísalas una por una (Órdenes → Rutas → editar) si corresponde.</p><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Centros con OT fuera de la ruta</th></tr></thead><tbody>${C.confNoTocadas.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>`:''}
+   ${(C.confNoTocadas||[]).length?`<h4>Ruta confirmada que la OT no tocó (${C.confNoTocadas.length})</h4><p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">Odoo tiene orden de trabajo en un centro que la ruta confirmada no trae. La ruta no se cambió: las que se confirmaron antes de que llegaran esas órdenes de trabajo volvieron a <b>Órdenes → Por definir ruta</b> para que las revises y confirmes.</p><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Centros con OT fuera de la ruta</th></tr></thead><tbody>${C.confNoTocadas.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>`:''}
    <h4>Esperando componentes (${(C.esperandoMaterial||[]).length} órdenes bloqueadas por material)</h4><div class="scroll" style="max-height:160px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th class="num">Prendas</th><th>Centros esperando</th></tr></thead><tbody>${(C.esperandoMaterial||[]).slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td class="num">${x.cant}</td><td>${x.centros.map(c=>esc(nCen(c))).join(', ')}</td></tr>`).join('')}</tbody></table></div>
    <h4>Contradicciones fase vs OT (${C.contradicciones.length}) — la OT terminada da el paso por hecho; si la fase ya pasó el centro gana la fase (fuera del tramo paralelo)</h4><p style="font-size:var(--fs-s)">${Object.entries(porCentro).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')||'ninguna'}</p>
    <div class="scroll" style="max-height:220px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Orden</th><th>Fase</th><th>Centro</th><th>Fase dice</th><th>OT dice</th></tr></thead><tbody>${C.contradicciones.slice(0,400).map(x=>`<tr><td>${esc(x.op)}</td><td>${esc(x.fase)}</td><td>${esc(nCen(x.centro))}</td><td>${x.faseDice}</td><td>${x.otDice}</td></tr>`).join('')}</tbody></table></div>

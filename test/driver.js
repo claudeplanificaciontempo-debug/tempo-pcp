@@ -8369,6 +8369,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __R.borrado={foto,c0,h0,files:nFiles()};
    window.descargarJSON=dj;S=JSON.parse(copia);PLAN=null;PLAN_ALL=null;NIVC=null;window.alert=al;page="ordenes";render();
    __check("BORRADO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  /* 01-oct (usuaria: «las que no tienen WH, la ruta fue confirmada; cuando actualice los centros debe hacer match y si no está, que salga para confirmar») */
+  {const otRows=window.__otRows||[];if(otRows.length){const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const al=window.alert;window.alert=()=>{};
+    OT=planOT(otRows,'OT_ro.xlsx');aplicarOT();
+    const o=S.ordenes.find(x=>abiertaDe(x)&&!rutaNoAplica(x)&&(centrosOdooDe(x)||[]).length>=2);
+    if(o){const c=(centrosOdooDe(o)||[]).find(x=>x!=='corte')||centrosOdooDe(o)[0];const bak=JSON.stringify({ot:o.ot,ruta:o.ruta,rc:o.rutaCompleta,conf:o.rutaConf||null,rv:o.rutaRevisar||null});
+     /* como la orden sin WH: la ruta se confirmó cuando Odoo todavía no tenía ese centro, y la ruta no lo trae */
+     o.ruta=(o.ruta||[]).filter(p=>p.centro!==c);o.rutaCompleta=(o.rutaCompleta||[]).filter(p=>p.centro!==c);const ot0=Object.assign({},o.ot);delete o.ot[c];
+     o.rutaConf={estado:'confirmada',origen:'persona',u:'U',ts:'2026-09-29T10:00:00Z'};delete o.rutaRevisar;
+     OT=planOT(otRows,'OT_ro2.xlsx');aplicarOT();
+     __check("RO1: Odoo trae una orden de trabajo en un centro que la ruta confirmada no tiene → vuelve a «Por definir ruta» con el motivo; la ruta no se toca",revisarRutaPendiente(o)&&matchEdicionOrd(o,'porEditar')&&!matchEdicionOrd(o,'editadas')&&!pasosProCompleta(o).includes(c)&&/revisar: Odoo trae/.test(rutaCeldaHTML(o)),JSON.stringify({c,rv:o.rutaRevisar}));
+     rutaOkFila(o.id);
+     __check("RO2: confirmarla otra vez («✓ Ruta ok» o cualquier otra forma) la devuelve a «Ruta confirmada»",!revisarRutaPendiente(o)&&matchEdicionOrd(o,'editadas')&&/orden de trabajo de Odoo/.test(o.rutaConf.nota||''));
+     OT=planOT(otRows,'OT_ro3.xlsx');aplicarOT();
+     __check("RO3: si la siguiente carga trae lo mismo, no se vuelve a marcar",!revisarRutaPendiente(o)&&matchEdicionOrd(o,'editadas'));
+     const r=JSON.parse(bak);o.ot=r.ot;o.ruta=r.ruta;o.rutaCompleta=r.rc;if(r.conf)o.rutaConf=r.conf;else delete o.rutaConf;if(r.rv)o.rutaRevisar=r.rv;else delete o.rutaRevisar}
+    else __check("RO: hay una orden con dos centros de OT para probar",false);
+    window.alert=al;PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+    __check("RO sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}}
   /* 24-sep: archivo de OT exportado con filtro (sin las terminadas): los pasos terminados que ya se sabían se conservan; una OT reabierta manda */
   {const otRows=window.__otRows||[];if(otRows.length){const al=window.alert;window.alert=()=>{};
     OT=planOT(otRows,'OT_completo.xlsx');aplicarOT();await __p(30);
@@ -8687,6 +8705,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("T1A4: lo que ya estaba escrito a mano no se pisa",faseMapeo()[0].que==='editado a mano');
    S.params.faseMapeo=JSON.parse(bak);Object.keys(bf).forEach(k=>{if(bf[k]===undefined)delete S.params[k];else S.params[k]=bf[k]});FASE_CACHE.ver++;PERFIL=bakP;render();
    __check("T1A sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (2) (usuaria: «las Level 2 no: van uno a uno; todas las polos básicas con estilos 7907 y 4164 son bordadas») */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=JSON.stringify(S.params.pasosCategoria||null),bakF=JSON.stringify(S.params.pasosPolo01||null),bakC=JSON.stringify(S.params.correccionPasos01b||null);
+   const pad={id:'k-po-p',n:'POLOS'},pb={id:'k-po-b',n:'Polo Basica',padre:'k-po-p'},l2={id:'k-po-l2',n:'Level 2'};const nk=[pad,pb,l2].filter(k=>!K(k.id));S.categorias.push(...nk);
+   delete S.params.pasosCategoria;delete S.params.pasosPolo01;sembrarPasosPolo01();
+   const o79={id:'po-1',cat:'k-po-b',ref:'7907'},o41={id:'po-2',cat:'k-po-b',ref:'4164'},oOtra={id:'po-3',cat:'k-po-b',ref:'1234'},oL2={id:'po-4',cat:'k-po-l2',ref:'7907'};
+   __check("PB1: Polo Basica 7907 y 4164 llevan Bordado aunque no traigan puntadas; otra referencia de Polo Basica no; Level 2 no tiene regla",ordenCentrosAuto(o79).has('bordado')&&ordenCentrosAuto(o41).has('bordado')&&!ordenCentrosAuto(oOtra).has('bordado')&&!ordenCentrosAuto(oL2).has('bordado')&&pasosCategoria().some(r=>r.cat==='Level 1'));
+   const base=S.ordenes.find(o=>abiertaDe(o)&&!rutaNoAplica(o)&&(o.ruta||[]).some(p=>p.centro==='corte'));const oc=JSON.parse(JSON.stringify(base));oc.id='po-c';oc.op='WH/PO-C';oc.cat='k-po-b';oc.ref='7907';oc.puntadas=0;oc.tecnica=null;oc.tecnicaTxt='';
+   oc.ruta=[{centro:'corte',t:0.5},{centro:'modulos',t:5},{centro:'empaque',t:0.3}];oc.rutaCompleta=oc.ruta.map(p=>Object.assign({},p));oc.rutaConf={estado:'confirmada',origen:'persona',u:'U',ts:'2026-09-29T10:00:00Z'};delete oc.rutaEditada;S.ordenes.push(oc);
+   delete S.params.correccionPasos01b;sembrarCorreccionPasosConfirmadas01b();
+   __check("PB2: a la ruta CONFIRMADA de una Polo Basica 7907 se le agrega Bordado (sigue confirmada; sin puntadas queda sin tiempo, con aviso)",pasosProCompleta(oc).includes('bordado')&&rutaConfirmada(oc)&&!!S.params.correccionPasos01b&&S.params.correccionPasos01b.ordenes>=1,JSON.stringify(pasosProCompleta(oc)));
+   page='config';CONF.tab='ordenes2';render();__check("PB3: la tabla muestra la columna Referencia",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-config').innerHTML)&&/toda la categoría/.test(document.getElementById('p-config').innerHTML));
+   S.ordenes=S.ordenes.filter(o=>o!==oc);S.categorias=S.categorias.filter(k=>!nk.includes(k));
+   [['pasosCategoria',bakT],['pasosPolo01',bakF],['correccionPasos01b',bakC]].forEach(([k,v])=>{const x=JSON.parse(v);if(x==null&&k==='pasosCategoria')delete S.params[k];else S.params[k]=x||S.params[k]});
+   PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("PB sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (usuaria: «las Level 1 tienen estampado y etiquetado; corrige las que ya se confirmó la ruta») */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakF=JSON.stringify(S.params.correccionPasos01||null);const bakE=JSON.stringify(S.params.reglasEtiqueta||null);
    const pad={id:'k-lv-cam',n:'CAMISETAS'},lv={id:'k-lv-1',n:'Level 1',padre:'k-lv-cam'};const nk=[pad,lv].filter(k=>!K(k.id));S.categorias.push(...nk);
