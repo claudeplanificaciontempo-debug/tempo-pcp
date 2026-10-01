@@ -982,7 +982,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 10:07';
+const APP_BUILD='2026-10-01 11:35';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -6055,8 +6055,11 @@ function planTiemposXLSX(rows,nombre){let hi=-1;
   for(let i=0;i<Math.min(15,rows.length);i++){const r=(rows[i]||[]).map(x=>normTxt(x));if(r.includes('tipo de producto')&&r.includes('centro')){hi=i;break}}
   if(hi<0)throw new Error('no encuentro las columnas «Tipo de producto» y «Centro» (¿es la hoja «Tiempos por tipo»?)');
   const h=rows[hi].map(x=>normTxt(x));const col=(...ns)=>{for(const n of ns){const i=h.indexOf(normTxt(n));if(i>=0)return i}return -1};
-  const cT=col('tipo de producto'),cC=col('centro'),cP=col('tiempo que queda (min/prenda)','tiempo que queda','tiempo propuesto'),cU=col('tu tiempo (min/prenda)','tu tiempo'),cF=col('de donde sale'),cD=col('tu decision');
-  const plan={nombre,aplicar:[],saltar:[],noCalzan:[],informativas:0};
+  const cT=col('tipo de producto'),cC=col('centro'),cP=col('tiempo que queda (min/prenda)','tiempo que queda','tiempo propuesto'),cD=col('tu decision');
+  const cS=col('sam (min/prenda)'),cPC=col('por confirmar'),cQC=col('que confirmar'),cFu=col('fuente'),cFam=col('familia');
+  const kronos=cS>=0&&col('tu tiempo (min/prenda)','tu tiempo')<0;   /* formato «SAM por tipo»: el SAM de la fila es el valor que ella trae */
+  const cU=kronos?cS:col('tu tiempo (min/prenda)','tu tiempo'),cF=kronos?-1:col('de donde sale');
+  const plan={nombre,aplicar:[],saltar:[],noCalzan:[],informativas:0,formato:kronos?'sam':'tiempos'};
   rows.slice(hi+1).forEach((r,i)=>{const fila=hi+2+i;const tipo=String(r[cT]||'').trim(),cen=String(r[cC]||'').trim();if(!tipo||!cen)return;   /* las bandas de grupo no traen centro */
     const c=centroDeTexto(cen);if(!c){plan.noCalzan.push({fila,tipo,cen,porque:'centro desconocido'});return}
     const dec=normTxt(cD>=0?r[cD]:'');if(/no usar/.test(dec)){plan.saltar.push({fila,tipo,cen,porque:'marcada «No usar»'});return}
@@ -6067,11 +6070,14 @@ function planTiemposXLSX(rows,nombre){let hi=-1;
       if(hoy>0&&tu==null){plan.saltar.push({fila,tipo:'(todos los tipos)',cen:nCen(c),porque:'el centro ya tiene '+num(hoy,2)+' min/prenda'});return}
       if(hoy>0&&Math.abs(hoy-min)<1e-9){plan.saltar.push({fila,tipo:'(todos los tipos)',cen:nCen(c),porque:'ya es '+num(hoy,2)});return}
       plan.aplicar.push({fila,tipo:'(todos los tipos)',c,min,antes:hoy||null,deUsuaria:tu!=null,centro:true});return}
-    const k=catDeTexto(tipo);if(!k){plan.noCalzan.push({fila,tipo,cen,porque:'ese tipo de producto no está en el catálogo'});return}
-    const ya=k.samManda&&k.samManda[c]&&k.samManda[c].min!=null?+k.samManda[c].min:null;
-    if(ya!=null&&tu==null){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya manda '+num(ya,2)+' (no se pisa)'});return}
-    if(ya!=null&&Math.abs(ya-min)<1e-9){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya es '+num(ya,2)});return}
-    plan.aplicar.push({fila,tipo:nombreCat(k),kid:k.id,c,min,antes:ya,deUsuaria:tu!=null})});
+    const fam=cFam>=0?String(r[cFam]||'').trim():'';
+    const ks=fam?S.categorias.filter(k=>k.padre&&!k.unificadaEn&&normTxt(k.n||'')===normTxt(tipo)&&normTxt((K(k.padre)||{}).n||'')===normTxt(fam)):[];   /* con familia: todas las hijas con ese nombre en esa familia */
+    const lista=ks.length?ks:[catDeTexto(tipo)].filter(Boolean);if(!lista.length){plan.noCalzan.push({fila,tipo:(fam?fam+' / ':'')+tipo,cen,porque:'ese tipo de producto no está en el catálogo'});return}
+    const pend=kronos&&cPC>=0?/^s/i.test(normTxt(r[cPC])):false;const porQue=kronos&&cQC>=0?String(r[cQC]||'').trim():'';const fu=kronos&&cFu>=0?String(r[cFu]||'').trim():'';
+    lista.forEach(k=>{const ya=k.samManda&&k.samManda[c]&&k.samManda[c].min!=null?+k.samManda[c].min:null;
+      if(ya!=null&&tu==null){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya manda '+num(ya,2)+' (no se pisa)'});return}
+      if(ya!=null&&Math.abs(ya-min)<1e-9&&!(kronos?!!(k.samManda[c].pendiente)!==pend:(tu!=null&&!!k.samManda[c].pendiente))){plan.saltar.push({fila,tipo:nombreCat(k),cen:nCen(c),porque:'ya es '+num(ya,2)});return}
+      plan.aplicar.push({fila,tipo:nombreCat(k),kid:k.id,c,min,antes:ya,deUsuaria:tu!=null,pend:kronos?pend:undefined,porQue,fuenteTxt:fu})})});
   return plan}
 function previaTiemposXLSXHTML(p){const lin=(xs,f)=>xs.slice(0,80).map(f).join('');
   return `<div style="font-size:var(--fs-s)"><p style="margin:0 0 6px"><b>${num(p.aplicar.length)}</b> ${p.aplicar.length===1?'tiempo se pone':'tiempos se ponen'} · ${num(p.saltar.length)} se saltan · ${num(p.noCalzan.length)} no calzan · ${num(p.informativas)} filas solo informativas (salen de tu hoja de operaciones, de Kronos o de la técnica: no se tocan)</p>
@@ -6084,17 +6090,17 @@ function mCargarTiemposXLSX(){if(!(puede('categorias')||puede('config'))){alert(
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="txls-ok" disabled onclick="aplicarTiemposXLSX()">Aplicar</button></div>`)}
 async function leerTiemposXLSX(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('txls-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   try{if(typeof XLSX==='undefined'){await new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=err;document.head.appendChild(sc)})}
-    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=wb.SheetNames.find(n=>normTxt(n)===normTxt('Tiempos por tipo'))||wb.SheetNames[0];
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=wb.SheetNames.find(n=>normTxt(n)===normTxt('Tiempos por tipo'))||wb.SheetNames.find(n=>normTxt(n)===normTxt('SAM por tipo'))||wb.SheetNames[0];
     TXLS=planTiemposXLSX(XLSX.utils.sheet_to_json(wb.Sheets[hoja],{header:1,raw:true,defval:''}),f.name);res.innerHTML=previaTiemposXLSXHTML(TXLS);
     const b=document.getElementById('txls-ok');if(b)b.disabled=!TXLS.aplicar.length}
   catch(e){TXLS=null;res.innerHTML='<div class="warn">No se pudo leer el archivo: '+esc(e.message||String(e))+'</div>'}}
 function aplicarTiemposXLSX(){const p=TXLS;if(!(puede('categorias')||puede('config'))){alert('Tu perfil no edita los tiempos.');return 0}if(!p||!p.aplicar.length)return 0;
   if(typeof perfilSoloPiso==='function'&&perfilSoloPiso()){alert('Desde un perfil de piso no se cambian los tiempos.');return 0}
-  if(!confirm('Se ponen '+p.aplicar.length+(p.aplicar.length===1?' tiempo':' tiempos')+' y las órdenes abiertas se ponen al día con ellos. Las propuestas quedan «por confirmar». ¿Continuar?'))return 0;
+  if(!confirm('Se ponen '+p.aplicar.length+(p.aplicar.length===1?' tiempo':' tiempos')+' y las órdenes abiertas se ponen al día con ellos. '+(p.formato==='sam'?'Las filas con «Por confirmar = SÍ» quedan «por confirmar» con su motivo.':'Las propuestas quedan «por confirmar».')+' ¿Continuar?'))return 0;
   const ts=new Date().toISOString(),u=quienFirma();const lineas=[];
-  p.aplicar.forEach(x=>{const fuente=(x.deUsuaria?'usuaria':'propuesta')+' · Excel '+p.nombre;
+  p.aplicar.forEach(x=>{const fuente=x.fuenteTxt?(x.fuenteTxt+' · Excel '+p.nombre):((x.deUsuaria?'usuaria':'propuesta')+' · Excel '+p.nombre);const pendiente=x.pend!==undefined?x.pend:!x.deUsuaria;
     if(x.centro){const ce=CE(x.c);if(!ce)return;ce.minEstandar=x.min;ce.minEstandarMeta={fuente,ts,u,pendiente:!x.deUsuaria};lineas.push(nCen(x.c)+' (todos los tipos) '+(x.antes!=null?num(x.antes,2):'—')+' → '+num(x.min,2));return}
-    const k=K(x.kid);if(!k)return;k.samManda=k.samManda||{};k.samManda[x.c]={min:x.min,fuente,ts,u,pendiente:!x.deUsuaria};lineas.push(nombreCat(k)+' · '+nCen(x.c)+' '+(x.antes!=null?num(x.antes,2):'—')+' → '+num(x.min,2))});
+    const k=K(x.kid);if(!k)return;k.samManda=k.samManda||{};k.samManda[x.c]=Object.assign({min:x.min,fuente,ts,u,pendiente},pendiente&&x.porQue?{porConfirmar:x.porQue}:{});lineas.push(nombreCat(k)+' · '+nCen(x.c)+' '+(x.antes!=null?num(x.antes,2):'—')+' → '+num(x.min,2))});
   const n=lineas.length;const prop=propagarTiempos('tiempos desde Excel '+p.nombre);
   bitacora('Tiempos cargados desde Excel ('+p.nombre+') por '+u+': '+n+' · '+lineas.slice(0,12).join(' · ')+(n>12?' …':'')+' · '+prop+' pasos de órdenes abiertas puestos al día');
   registrarCarga('tiempos',p.nombre,{aplicados:n,saltados:p.saltar.length,noCalzan:p.noCalzan.length,pasos:prop});

@@ -8757,6 +8757,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.params.reglasEtiqueta=JSON.parse(bakR);if(S.params.reglasEtiqueta==null)delete S.params.reglasEtiqueta;const f=JSON.parse(bakF);if(f)S.params.etiqRefs30=f;else delete S.params.etiqRefs30;
    S.categorias=S.categorias.filter(k=>!nk.includes(k));PERFIL=bakP;page='ordenes';render();
    __check("ET sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 01-oct (usuaria trae «SAM_PARA_CARGAR_01OCT.xlsx», hoja «SAM por tipo» sacada de otro sistema): el mismo botón la lee tal como viene */
+  {const antes=__R.errors.length;const c0=window.confirm;window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
+   const hijas=S.categorias.filter(x=>x.padre&&!x.unificadaEn);const k=hijas.find(x=>!(x.samManda&&(x.samManda.corte||x.samManda.empaque)));const fam=(K(k.padre)||{}).n;
+   const bak=JSON.stringify(k.samManda||null);
+   const rows=[['categoria_id','Familia','Tipo de producto','centro','Centro','SAM (min/prenda)','Por confirmar','Qué confirmar','Fuente'],
+     ['x',fam,k.n,'corte','Corte',0.77,'NO','','Kronos · prueba'],['x',fam,k.n,'empaque','Empaque',0.41,'SÍ','difiere 40% de la hoja LMO','Kronos · prueba'],['x','NO EXISTE','Nada','corte','Corte',1,'NO','','Kronos']];
+   const p=planTiemposXLSX(rows,'SAM_prueba.xlsx');
+   __check("KS1: la hoja «SAM por tipo» (Familia · Tipo · centro · SAM · Por confirmar · Fuente) se lee tal como viene",p.formato==='sam'&&p.aplicar.length===2&&p.noCalzan.length===1&&p.aplicar.some(x=>x.c==='empaque'&&x.pend===true),JSON.stringify({f:p.formato,a:p.aplicar.length,n:p.noCalzan.length}));
+   TXLS=p;aplicarTiemposXLSX();
+   __check("KS2: «Por confirmar = SÍ» queda pendiente con su motivo y su fuente; «NO» queda confirmado",k.samManda.corte.min===0.77&&k.samManda.corte.pendiente===false&&k.samManda.empaque.pendiente===true&&/difiere/.test(k.samManda.empaque.porConfirmar||'')&&/Kronos · prueba/.test(k.samManda.empaque.fuente));
+   const r2=[['Tiempos por tipo'],[''],[''],['Familia','Tipo de producto','Centro','SAM cargado hoy','Tu tiempo (min/prenda)'],['C · por confirmar'],[fam,k.n,'Empaque',0.41,0.41]];
+   TXLS=planTiemposXLSX(r2,'pendientes.xlsx');const nAp=TXLS.aplicar.length;aplicarTiemposXLSX();
+   __check("KS3: escribir en «Tu tiempo» el mismo número que está «por confirmar» lo confirma",nAp===1&&k.samManda.empaque.min===0.41&&k.samManda.empaque.pendiente===false);
+   const r=JSON.parse(bak);if(r)k.samManda=r;else delete k.samManda;propagarTiempos('restaurar prueba KS');
+   window.confirm=c0;PERFIL=bakP;TXLS=null;__check("KS sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 26-sep (usuaria: «lo que falta, ponle tiempo estándar tú… pásame el Excel para que no dañemos»): Cargar tiempos desde Excel */
   {const antes=__R.errors.length;const c0=window.confirm;window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
    const hijas=S.categorias.filter(x=>x.padre&&!x.unificadaEn);const k=hijas.find(x=>!(x.samManda&&x.samManda.modulos));const k2=hijas.find(x=>x!==k);
