@@ -541,6 +541,13 @@ html[data-modo="oscuro"] .o-statusbar .st:not(.on){background:var(--o-sec)!impor
 html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(--t-primary)!important}
 /* Planta en vivo */
 .env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;align-items:start}
+.env-reloj{font-size:20px;font-weight:700;color:var(--alerta);letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-right:14px;white-space:nowrap}
+html.envivo-tv .env-reloj{font-size:34px}
+.env-sem{display:inline-flex;gap:3px;align-items:center;padding:2px 4px;border-radius:8px;background:#22272E;vertical-align:middle;margin-right:6px}
+.env-sem i{width:9px;height:9px;border-radius:50%;background:#4A525C;display:block}
+.env-sem i.sr.on{background:#E5484D;box-shadow:0 0 5px #E5484D}.env-sem i.sa.on{background:#F5A524;box-shadow:0 0 5px #F5A524}.env-sem i.sv.on{background:#30A46C;box-shadow:0 0 5px #30A46C}
+.env-semv{font-weight:700;vertical-align:middle}.env-semv.env-verde{color:var(--ok)}.env-semv.env-ambar{color:var(--aviso)}.env-semv.env-rojo{color:var(--alerta)}.env-semv.env-gris{color:var(--ink3);font-weight:600}
+html.envivo-tv .env-sem i{width:13px;height:13px}
 .env-t{width:100%;margin-top:10px;font-size:var(--fs-s);border-collapse:collapse}.env-t th{font-weight:600;color:var(--ink3);font-size:var(--fs-xs);text-align:left;padding:3px 4px;border-bottom:1px solid var(--rule)}.env-t th.num,.env-t td.num{text-align:right}
 .env-t td{padding:4px;border-bottom:1px solid var(--rule2)}.env-t tr.env-quieta td{color:var(--ink3)}.env-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
 .env-c{background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
@@ -1050,7 +1057,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-01 17:55';
+const APP_BUILD='2026-10-02 10:58';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -10988,7 +10995,12 @@ async function refrescarEnVivo(){if(ENV.leyendo||page!=='envivo'||(typeof guarda
       if(local===JSON.stringify(r.data))return;S.avance[r.id]=r.data;BASE.avance=BASE.avance||{};BASE.avance[r.id]=JSON.stringify(r.data);BASE_TS.avance=BASE_TS.avance||{};BASE_TS.avance[r.id]=r.actualizado;n++;
       if(!ENV.ult||r.actualizado>ENV.ult)ENV.ult=r.actualizado});
     ENV.ts=new Date();if(n){PLAN=null;PLAN_ALL=null}if(page==='envivo')render()}catch(e){}finally{ENV.leyendo=false}}
-function envivoReloj(){const on=page==='envivo';if(on&&!ENV.int){const seg=Math.max(15,prm('segEnVivo',60));ENV.int=setInterval(refrescarEnVivo,seg*1000);if(!ENV.ts)ENV.ts=new Date()}
+function relojEnVivoTxt(){const d=new Date();const f=d.toLocaleDateString('es-EC',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});return f.charAt(0).toUpperCase()+f.slice(1)+' · '+d.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}
+function tickRelojEnVivo(){const e=document.getElementById('env-reloj');if(e)e.textContent=relojEnVivoTxt()}
+/* semáforo de eficiencia: tres luces, se enciende la que toca (verde ≥ meta, ámbar hasta 15 puntos menos, rojo debajo; apagado = sin registros) */
+function semaforoEfHTML(ef,txt){const c=colorEficiencia(ef);const tit=ef==null?'sin registros hoy':('eficiencia '+ef+' % · meta '+metaEficiencia()+' %');
+  return `<span class="env-sem" title="${esc(tit)}"><i class="sr${c==='rojo'?' on':''}"></i><i class="sa${c==='ambar'?' on':''}"></i><i class="sv${c==='verde'?' on':''}"></i></span><span class="env-semv env-${c}">${txt!=null?txt:(ef==null?'sin registros':ef+' %')}</span>`}
+function envivoReloj(){const on=page==='envivo';if(on&&!ENV.clk){ENV.clk=setInterval(tickRelojEnVivo,1000)}else if(!on&&ENV.clk){clearInterval(ENV.clk);ENV.clk=null}if(on)tickRelojEnVivo();if(on&&!ENV.int){const seg=Math.max(15,prm('segEnVivo',60));ENV.int=setInterval(refrescarEnVivo,seg*1000);if(!ENV.ts)ENV.ts=new Date()}
   else if(!on&&ENV.int){clearInterval(ENV.int);ENV.int=null;if(ENV.tv)salirTV()}}
 function entrarTV(){ENV.tv=true;document.documentElement.classList.add('envivo-tv');try{document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}render()}
 function salirTV(){ENV.tv=false;document.documentElement.classList.remove('envivo-tv');try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}if(page==='envivo')render()}
@@ -11000,18 +11012,18 @@ function vEnVivo(el){const D=datosEnVivo();const t=D.tot;const hora=new Date().t
       <div class="env-l"><span>Avance hoy</span><b>${pct(av)}</b></div>
       <div class="env-bar"><i style="width:${Math.min(100,av||0)}%;background:${col}"></i></div>
       <div class="env-l mut"><span>${num(x.dd.hechas||0)} de ${num(x.dd.pz||0)} prendas programadas hoy</span></div>
-      <div class="env-l"><span>Eficiencia hoy</span><b style="color:${col}">${ef.ef==null?(sinReg?'sin registros':'—'):ef.ef+' %'}</b></div>
+      <div class="env-l"><span>Eficiencia hoy</span><b>${semaforoEfHTML(ef.ef,ef.ef==null?(sinReg?'sin registros':'—'):null)}</b></div>
       <div class="env-l mut"><span>${ef.cerrados?ef.cerrados+' tramos cerrados · '+num(Math.round(ef.gan))+' min ganados de '+num(Math.round(ef.minP))+' trabajados':'nadie ha cerrado un INICIO/FIN hoy'}</span></div>
       ${x.sem&&x.sem.pct!=null?`<div class="env-l"><span>Semana</span><b>${x.sem.pct} %</b></div>`:''}
-      ${(x.filas||[]).length?`<table class="env-t"><thead><tr><th></th><th>${x.it.cens.length>1?'Centro':'Puesto'}</th><th class="num">Hechas</th><th class="num">Prog.</th><th class="num">Avance</th><th class="num">Efic.</th><th>Ahora</th></tr></thead><tbody>${x.filas.map(f=>`<tr class="${!f.pz&&!f.hechas&&!f.ef.abiertos&&!f.ef.afuera?'env-quieta':''}"><td><span class="env-dot" style="background:${ENV_COL[f.color]}"></span></td><td>${esc(f.n)}</td><td class="num">${num(f.hechas)}</td><td class="num">${num(f.pz)}</td><td class="num">${f.avance==null?'—':f.avance+' %'}</td><td class="num">${f.afuera?'<span class="mut">afuera</span>':(f.ef.ef==null?'<span class="mut">—</span>':f.ef.ef+' %')}</td><td>${f.ef.abiertos?f.ef.abiertos+' en curso':''}${f.ef.paros?` <span class="tag t-alerta">${f.ef.paros} paro${f.ef.paros>1?'s':''}</span>`:''}${f.ef.afuera?f.ef.afuera+' afuera':''}</td></tr>`).join('')}</tbody></table>`:''}
+      ${(x.filas||[]).length?`<table class="env-t"><thead><tr><th></th><th>${x.it.cens.length>1?'Centro':'Puesto'}</th><th class="num">Hechas</th><th class="num">Prog.</th><th class="num">Avance</th><th class="num">Efic.</th><th>Ahora</th></tr></thead><tbody>${x.filas.map(f=>`<tr class="${!f.pz&&!f.hechas&&!f.ef.abiertos&&!f.ef.afuera?'env-quieta':''}"><td></td><td>${esc(f.n)}</td><td class="num">${num(f.hechas)}</td><td class="num">${num(f.pz)}</td><td class="num">${f.avance==null?'—':f.avance+' %'}</td><td class="num" style="white-space:nowrap">${f.afuera?'<span class="mut">afuera</span>':semaforoEfHTML(f.ef.ef,f.ef.ef==null?'—':null)}</td><td>${f.ef.abiertos?f.ef.abiertos+' en curso':''}${f.ef.paros?` <span class="tag t-alerta">${f.ef.paros} paro${f.ef.paros>1?'s':''}</span>`:''}${f.ef.afuera?f.ef.afuera+' afuera':''}</td></tr>`).join('')}</tbody></table>`:''}
       <div class="env-now">${ef.abiertos?`<b>${ef.abiertos}</b> ${ef.abiertos===1?'orden':'órdenes'} en curso${ef.pers?' · '+num(Math.round(ef.pers*10)/10)+' personas':''}`:'nada en curso ahora'}${ef.paros?` · <span class="tag t-alerta">${ef.paros} ${ef.paros===1?'paro abierto':'paros abiertos'}</span>`:''}${ef.afuera?` · ${ef.afuera} afuera (maquila)`:''}</div></div>`};
   const ok=puede('programa');
   el.innerHTML=`<div class="pagehead"><h2>Planta en vivo</h2><span class="spacer"></span>
-    <span class="mut" style="font-size:var(--fs-s)">${fmtDia(D.d)} · ${hora} · se actualiza cada ${seg} s${ENV.ts?' · última lectura '+ENV.ts.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):''}</span>
+    <span class="env-reloj" id="env-reloj">${relojEnVivoTxt()}</span><span class="mut" style="font-size:var(--fs-s)">se actualiza cada ${seg} s${ENV.ts?' · última lectura '+ENV.ts.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):''}</span>
     ${ENV.tv?'<button class="btn ghost sm" onclick="salirTV()">Salir de pantalla completa</button>':'<button class="btn ghost sm" onclick="refrescarEnVivo()">Actualizar ahora</button> <button class="btn sm" onclick="entrarTV()" title="sin menú ni cabecera, letra grande: para un televisor en la planta">Modo pantalla</button>'}</div>
    <p class="lede">Cómo va cada centro <b>hoy</b>, con lo que el piso registra en las tablets (INICIO, FIN y prendas hechas). <b>Avance</b> = prendas hechas ÷ prendas que el programa le pone hoy. <b>Eficiencia</b> = minutos que valen las prendas hechas (prendas × SAM de la orden) ÷ minutos-persona trabajados, sin paros ni descansos; solo cuenta lo que se cerró hoy con FIN. Color por la meta de eficiencia: verde desde ${metaEficiencia()} %, ámbar hasta 15 puntos menos, rojo por debajo, gris sin registros.</p>
    ${D.errorProg?'<div class="warn">No se pudo calcular el programa: el avance contra lo programado no se muestra.</div>':''}
-   <div class="kpis env-kpis">${kpi('Prendas hechas hoy',num(t.hechas))}${kpi('Avance del día',pct(t.avance),num(t.hechas)+' de '+num(t.pz)+' programadas')}${kpi('Eficiencia planta',t.ef==null?'sin registros':t.ef+' %',t.minP?num(Math.round(t.gan))+' de '+num(Math.round(t.minP))+' min':'')}${kpi('En curso ahora',num(t.abiertos),t.pers?num(Math.round(t.pers*10)/10)+' personas':'')}${kpi('Paros abiertos',num(t.paros))}</div>
+   <div class="kpis env-kpis">${kpi('Prendas hechas hoy',num(t.hechas))}${kpi('Avance del día',pct(t.avance),num(t.hechas)+' de '+num(t.pz)+' programadas')}${kpi('Eficiencia planta',semaforoEfHTML(t.ef),t.minP?num(Math.round(t.gan))+' de '+num(Math.round(t.minP))+' min':'')}${kpi('En curso ahora',num(t.abiertos),t.pers?num(Math.round(t.pers*10)/10)+' personas':'')}${kpi('Paros abiertos',num(t.paros))}</div>
    <div class="env-g">${D.items.map(tarjeta).join('')||'<div class="empty">Tu perfil no ve ningún centro de producción.</div>'}</div>
    ${ENV.tv?'':`<p class="mut" style="font-size:var(--fs-xs);margin-top:12px">Meta de eficiencia: ${ok?`<input type="number" min="1" max="200" step="1" value="${metaEficiencia()}" style="width:64px" onchange="setMetaEficiencia(this.value)"> %`:metaEficiencia()+' %'} · la cambia planificación y queda en la bitácora. Los mismos números del avance están en Reportería → Avance por área y en el Resumen de cada centro.</p>`}`}
 function vAvanceArea(el){

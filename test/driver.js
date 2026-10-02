@@ -8752,7 +8752,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("EV5: la meta de eficiencia es editable y queda en la bitácora",(()=>{const m0=metaEficiencia();setMetaEficiencia(80);const ok=metaEficiencia()===80&&S.bitacora.slice(-2).some(b=>/Meta de eficiencia/.test(b.t));S.params.metaEficiencia=m0;return ok})());
    {page='envivo';render();const D=datosEnVivo();const conSub=D.items.find(x=>x.it.cens.length>1);const conf=D.items.find(x=>x.it.cens.length===1&&recsChipsCentro(S.recursos.filter(r=>r.centro===x.it.cens[0]&&r.activa!==false)).length>1);
     __check("EV7: cada área trae el detalle por unidad: una fila por sub-área (p. ej. Terminados) y una por puesto donde el centro tiene varios (p. ej. los módulos de Confección)",(!conSub||conSub.filas.length===conSub.it.cens.length)&&(!conf||conf.filas.length>1)&&!!document.querySelector('#p-envivo .env-t')&&(conSub||conf)?true:false,JSON.stringify({sub:conSub&&conSub.it.n,conf:conf&&conf.it.n}))}
-   page='ordenes';render();__check("EV6: al salir de la página el reloj de actualización se apaga",!ENV.int);
+   {page='envivo';render();const rj=document.getElementById('env-reloj');const luz=v=>{const x=document.createElement('div');x.innerHTML=semaforoEfHTML(v);return [...x.querySelectorAll('i.on')].map(i=>i.className.split(' ')[0]).join()};const m=metaEficiencia();
+    __check("EV8: arriba va la fecha y hora con segundos (reloj vivo) y cada eficiencia tiene su semáforo: verde ≥ meta, ámbar hasta 15 puntos menos, rojo debajo, apagado sin registros",!!rj&&/[0-9]{2}:[0-9]{2}:[0-9]{2}/.test(rj.textContent)&&!!ENV.clk&&luz(m)==='sv'&&luz(m-5)==='sa'&&luz(m-20)==='sr'&&luz(null)==='',rj&&rj.textContent)}
+   page='ordenes';render();__check("EV6: al salir de la página el reloj de actualización se apaga",!ENV.int&&!ENV.clk);
    PERFIL=bakP;__check("EV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (usuaria: sol y luna «para los dos modos»): modo claro / oscuro, preferencia de cada persona */
   {const antes=__R.errors.length;page='ordenes';render();const sw=document.getElementById('modo-sw');
