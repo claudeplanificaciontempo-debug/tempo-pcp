@@ -542,7 +542,7 @@ html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(
 /* Plan mensual · Bloque 3 simple (02-oct) */
 .b3-franja{display:grid;grid-template-columns:3fr 1fr;gap:12px;align-items:stretch}.b3-franja>.kpis{margin:0}
 .b3-meta{display:flex;flex-direction:column;justify-content:center;gap:6px;border:2px solid var(--o-brand-line,var(--rule));border-radius:10px}.b3-meta input{font-size:20px;font-weight:600;width:100%}
-.b3-linea{font-size:var(--fs-m);margin:14px 0 6px}.b3-esp{font-size:22px}.b3-falta{color:var(--alerta)}
+.b3-linea{font-size:var(--fs-m);margin:14px 0 6px}.b3-esp{font-size:22px;color:var(--ok);font-weight:800}.b3-usd{color:var(--ok);font-weight:800}.b3-det{margin:8px 0;font-size:var(--fs-s);line-height:1.6}.b3-det li{margin-bottom:6px}.b3-det .mut{font-size:var(--fs-xs)}.b3-falta{color:var(--alerta)}
 @media (max-width:860px){.b3-franja{grid-template-columns:1fr}}
 /* Planta en vivo */
 .env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;align-items:start}
@@ -1062,7 +1062,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 15:56';
+const APP_BUILD='2026-10-02 16:06';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -4278,11 +4278,11 @@ function vPlan(el){
       <div class="b3-franja">${tarjetasResumenHTML([{id:'b3-libs',v:libs.length,k:'<b>Liberadas</b> · '+usd(usdL),items:libs},{id:'b3-porlib',v:porLib0.length,k:'<b>Por liberar</b> · '+usd(usdP0)+' · '+irLib,cls:porLib0.length?'warn':'',items:porLib0},{id:'b3-total',v:enMes.length,k:'<b>Total del plan</b> · '+usd(usdL+usdP0)+(()=>{const sp=enMes.filter(o=>!(o.precio>0)).reduce((a,o)=>a+ +o.cant,0);return sp?' · <span class="tag t-aviso" title="sin precio en Odoo: ese valor no se suma">'+num(sp)+' pz sin precio</span>':''})(),items:enMes}])}
        <div class="kpi b3-meta"><div class="k"><b>Meta</b> del mes ($)</div><input type="number" value="${meta||''}" placeholder="escribe la meta" ${puede('programa')?'':'disabled'} onchange="setMeta('${ym}',this.value)"></div></div>
       <p class="b3-linea">Facturas en ${esc(mesTxt)}: <b class="b3-esp">${usd(esp)}</b> <span class="mut">(lo liberado que termina este mes)</span> · ${linea}</p>
-      <details id="b3-detalle"${meta&&brecha>0?' open':''}><summary style="cursor:pointer" class="mut">Ver detalle</summary>
-       <ul style="margin:8px 0;font-size:var(--fs-s)">
-        <li>${num(dentro.length)} liberadas terminan dentro de ${esc(mesTxt)}: <b>${usd(esp)}</b>.</li>
-        ${fuera.length?`<li>${num(fuera.length)} liberadas terminan <b>después</b> del mes: ${usd(usdFuera)} (no cuentan para este mes).</li>`:''}
-        <li>${num(porLib0.length)} por liberar: ${usd(usdP0)}. Liberando todo lo pendiente llegas a <b>${usd(totalConTodo)}</b>${meta?' ('+pctConTodo+' % de la meta)':''}.${meta&&totalConTodo<meta?' Faltan <b>'+usd(meta-totalConTodo)+'</b> que no están en el plan: para llegar habría que adelantar órdenes del mes siguiente cambiando su fecha de entrega.':''}</li>
+      <details id="b3-detalle"${meta&&brecha>0?' open':''}><summary style="cursor:pointer" class="mut">¿De dónde sale este número?</summary>
+       <ul class="b3-det">
+        <li><b>${num(dentro.length)} liberadas que terminan en ${esc(mesTxt)}</b>: <b class="b3-usd">${usd(esp)}</b> → esto es lo que facturas este mes.</li>
+        ${fuera.length?`<li><b>${num(fuera.length)} liberadas que terminan <b>después</b> de ${esc(mesTxt)}</b>: <span class="mut" style="font-size:inherit">${usd(usdFuera)}</span> → ya están liberadas, pero según el programa salen el mes siguiente; se facturan entonces, no en este mes.</li>`:''}
+        <li><b>${num(porLib0.length)} todavía por liberar</b>: ${usd(usdP0)} → si las liberas todas y alcanzan a salir este mes, facturarías hasta <b class="b3-usd">${usd(totalConTodo)}</b>${meta?' ('+pctConTodo+' % de la meta)':''} <span class="mut">(${usd(esp)} + ${usd(usdP0)})</span>.${meta&&totalConTodo<meta?' Faltan <b>'+usd(meta-totalConTodo)+'</b> que no están en el plan: para llegar habría que adelantar órdenes del mes siguiente cambiando su fecha de entrega.':''}</li>
        </ul>${tablaProp}</details>
      </div></div>`})();
   const bloque5=planBloqueDiv('4','Congelar','lo que entra al plan y, al congelar, lo que ven todas las áreas')

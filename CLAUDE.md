@@ -1695,6 +1695,8 @@ cuántas, la lista plegada con «quitar» y las quitadas con «devolver» = `pla
 entrega (664). Liberada/por liberar en «Qué entra» con el mismo criterio del Bloque 3 (sin bloqueo en el programa). `enPlanMes` (Liberación «EN EL
 PLAN») y `planCongeladoCentroHTML` miran también el plan entero (antes solo lo agregado a mano), y Congelar cuenta `planMesOidsTot` (decía «0 órdenes»).
 El aviso de arriba ahora es de las órdenes **sin fecha de entrega** (no entran a ningún mes). `PMADD`/`candidatasPlan` quedan sin pantalla.
+El detalle del Bloque 3 se llama «¿De dónde sale este número?» y dice en palabras qué es cada línea (`.b3-det`); lo que se factura va en verde y negrita
+(`.b3-esp`, `.b3-usd`) y lo liberado que sale el mes siguiente en gris.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
