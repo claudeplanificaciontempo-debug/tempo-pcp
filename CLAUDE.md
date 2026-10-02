@@ -1698,6 +1698,18 @@ El aviso de arriba ahora es de las órdenes **sin fecha de entrega** (no entran 
 El detalle del Bloque 3 se llama «¿De dónde sale este número?» y dice en palabras qué es cada línea (`.b3-det`); lo que se factura va en verde y negrita
 (`.b3-esp`, `.b3-usd`) y lo liberado que sale el mes siguiente en gris.
 
+**Filtros como Odoo en TODA barra (02-oct-2026, usuaria con captura del menú Filtros de su Odoo: «me pones a filtrar solo las áreas; tiene filtros por
+defecto y un filtro personalizado donde se escoge por qué; debería estar en todas las barras del sistema»).** El botón «Filtros» de `panelBusquedaOdoo` trae,
+para todo grupo con buscador (`input[data-q]`): **filtros listos** por secciones (`FILTROS_LISTOS`: Estado · Fecha de entrega · Liberación · Ruta · Otros;
+cada uno llama a la definición de siempre: `abiertaDe`, `esMetaVencida`/`esOrdenVaTarde`, `mesEntregaNiv`, `liberada`, `rutaLista`/`rutaConfirmada`,
+`sinWHde`, `vaAMaquila`), los filtros propios de la pantalla **plegados en una línea** (`OSRCH_IN` recuerda el que se abrió) y **«Añadir filtro
+personalizado»** (`filtroPersHTML`: campo de `CAMPOS_FILTRO` · condición de `OPS_FILTRO` por tipo txt/num/fecha · valor · «Aplicar» · «⊕ Agregar
+condición»; solo DOM, no redibuja hasta aplicar). Estado `FOD[idBuscador]={rap,pers}`; como en Odoo, dentro de una sección se suma (o), entre secciones y
+entre filtros personalizados se exige todo (y). Se aplica **dentro de `matchBusq`** (`okFiltrosOdoo`), así vale en toda lista con buscador; por eso
+`GER` y `CG` ya no se saltan `matchBusq` sin texto, y **Entregas y Costura ya filtran** con su buscador (antes solo estaba dibujado). Cada filtro es
+una etiqueta en la barra con ✕ (`soltarSeccionListos`/`soltarFiltroPers`: «soltar», no «quitar», porque no borran datos); Favoritos guarda `FOD`.
+Solo en el aspecto Odoo (el clásico conserva «Filtrar»). Pruebas FO1–FO10.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

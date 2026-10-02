@@ -7518,6 +7518,38 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const conPanel=[];['liberacion','wip','control'].forEach(p=>{page=p;render();if(pg(p).querySelector('.o-search'))conPanel.push(p)});page='tablet';render();
      __check('OB11: Liberación, Producto en proceso y Control de piso tienen el buscador de Odoo; Mi centro (tablet) no cambia',conPanel.length===3&&!pg('tablet').querySelector('.o-search'),conPanel.join(','))}
     window.confirm=cf;if(bak===undefined)delete S.params.tema;else S.params.tema=bak;page='ordenes';render();PERFIL=adminP}
+   /* FO · Filtros como Odoo (02-oct): filtros listos por secciones + «Añadir filtro personalizado», en TODA barra de búsqueda (aplicados en matchBusq) */
+   {PERFIL=adminP0();const antes=__R.errors.length;const bakT=S.params.tema;S.params.tema='odoo';const pg=p=>document.getElementById('p-'+p);
+    Object.keys(FOD).forEach(k=>delete FOD[k]);page='ordenes';ORDF.estado='plan';ORDF.edicion='todas';ORDF.fases=null;ORDF.q='';render();
+    const fo=pg('ordenes').querySelector('.o-dd.o-f');const nItems=FILTROS_LISTOS.reduce((a,s)=>a+s.items.length,0);
+    __check('FO1: «Filtros» trae los filtros listos por secciones (sin escribir) y «Añadir filtro personalizado» con campo, condición, valor, Aplicar y Agregar condición',!!fo&&fo.querySelectorAll('[data-filtro-listo]').length===nItems&&!!fo.querySelector('.o-pers .o-pers-campo')&&!!fo.querySelector('.o-pers .o-pers-op')&&!!fo.querySelector('.o-pers .o-pers-valor')&&/Aplicar/.test(fo.querySelector('.o-pers').textContent)&&/Agregar condición/.test(fo.querySelector('.o-pers').textContent));
+    const n0=listaOrdActual().length;FOD['ORDF.q']={rap:['vencidas'],pers:[]};PLAN=null;const P=programar();const l1=listaOrdActual();
+    __check('FO2: un filtro listo usa la definición de siempre (Meta vencida = esMetaVencida) y acota la lista',n0>0&&l1.length<=n0&&l1.every(o=>esMetaVencida(o,P)),l1.length+' de '+n0);
+    FOD['ORDF.q']={rap:['esteMes','sigMes'],pers:[]};const ym=hoy().slice(0,7),sg=mesSiguiente(ym);const l2=listaOrdActual();
+    __check('FO3: dos filtros de la MISMA sección se suman (este mes o el siguiente), como en Odoo',l2.length>0&&l2.every(o=>[ym,sg].includes(mesEntregaNiv(o)))&&l2.length===S.ordenes.filter(o=>matchEstadoOrd(o,ORDF.estado)&&[ym,sg].includes(mesEntregaNiv(o))).length);
+    FOD['ORDF.q']={rap:['esteMes','libProd'],pers:[]};const l3=listaOrdActual();
+    __check('FO3b: filtros de secciones DISTINTAS se exigen juntos (este mes y liberadas)',l3.every(o=>mesEntregaNiv(o)===ym&&liberada(o,'corte')));
+    delete FOD['ORDF.q'];const cli=(listaOrdActual().find(o=>o.cliente&&+o.cant>10)||{}).cliente||'';const pal=normTxt(cli).split(' ')[0];   /* el cliente de una orden de la lista que cumple las dos */
+    FOD['ORDF.q']={rap:[],pers:[[{k:'cliente',op:'c',v:pal},{k:'cant',op:'gt',v:'10'}]]};const l4=listaOrdActual();
+    __check('FO4: filtro personalizado con dos condiciones (Cliente contiene X y Prendas > 10): se cumplen las dos',l4.length>0&&l4.every(o=>normTxt(o.cliente||'').includes(pal)&&+o.cant>10),l4.length+' · '+pal);
+    FOD['ORDF.q']={rap:[],pers:[[{k:'entrega',op:'lt',v:ym+'-01'}],[{k:'odc',op:'lleno'}]]};const l5=listaOrdActual();
+    __check('FO5: fecha «antes del» y «no está vacío»; dos filtros personalizados se exigen juntos',l5.every(o=>String(fechaMetaDe(o)||'')<ym+'-01'&&String(o.odc||'').trim()!==''));
+    render();const fac=[...pg('ordenes').querySelectorAll('.o-facet')].map(x=>x.textContent);
+    __check('FO6: cada filtro puesto es una etiqueta en la barra con su texto y su ✕',fac.some(x=>/Fecha de entrega \(meta\) antes del/.test(x))&&fac.some(x=>/ODC no está vacío/.test(x)),fac.join(' | '));
+    {const x=[...pg('ordenes').querySelectorAll('.o-facet')].find(e=>/ODC no está vacío/.test(e.textContent));x.querySelector('a').click();__check('FO6b: la ✕ quita solo ese filtro',(FOD['ORDF.q'].pers||[]).length===1&&FOD['ORDF.q'].pers[0][0].k==='entrega')}
+    FOD['ORDF.q']={rap:['vencidas'],pers:[]};guardarFavorito('ordenes','prueba FO');Object.keys(FOD).forEach(k=>delete FOD[k]);const iF=favoritosDe('ordenes').findIndex(f=>f.n==='prueba FO');aplicarFavorito('ordenes',iF);
+    __check('FO7: los Favoritos guardan también estos filtros',iF>=0&&(FOD['ORDF.q']||{}).rap&&FOD['ORDF.q'].rap.includes('vencidas'));
+    {const cf=window.confirm;window.confirm=()=>true;quitarFavorito('ordenes',favoritosDe('ordenes').findIndex(f=>f.n==='prueba FO'));window.confirm=cf}
+    Object.keys(FOD).forEach(k=>delete FOD[k]);
+    /* en todas las barras: cada pantalla con buscador lleva el mismo menú, y el filtro sin texto escrito también acota (Resumen gerencial y Carga general se lo saltaban) */
+    const conFO=[];for(const p of ['liberacion','wip','ordconsulta','entregas','gerencia','control','ordtrabajo']){page=p;render();const f=pg(p)&&pg(p).querySelector('.o-dd.o-f [data-filtro-listo]');if(f)conFO.push(p)}
+    __check('FO8: el menú de Filtros con filtros listos y personalizado está en todas las barras (Liberación, Producto en proceso, Órdenes de producción, Entregas, Resumen gerencial, Control de piso, Órdenes de trabajo)',conFO.length===7,conFO.join(','));
+    {page='entregas';render();const L0=listaEntregas().lista.length;FOD['EG.q']={rap:['vencidas'],pers:[]};const L1=listaEntregas().lista;FOD['EG.q']={rap:[],pers:[]};EG.q='ZZZ_NO_EXISTE_ZZZ';const L2=listaEntregas().lista.length;EG.q='';
+     __check('FO9: el buscador y los filtros de Entregas ya filtran la lista (antes solo estaba dibujado)',L1.every(o=>esMetaVencida(o,programar()))&&L1.length<=L0&&L2===0,[L0,L1.length,L2].join('/'))}
+    {GER.q='';GER.meses=null;const P2=programar();const a0=ordenesGER(P2).length;FOD['GER.q']={rap:['sinWH'],pers:[]};const a1=ordenesGER(P2);delete FOD['GER.q'];
+     __check('FO10: en el Resumen gerencial un filtro sin texto escrito también acota (antes se saltaba matchBusq)',a1.every(o=>sinWHde(o))&&a1.length<=a0,a0+' → '+a1.length)}
+    Object.keys(FOD).forEach(k=>delete FOD[k]);if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;page='ordenes';render();
+    __check('FO sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP}
    /* TS · «En piso pueden producir hasta tres o cuatro referencias al mismo tiempo: está saliendo una, en la mitad está otra y está entrando otra» (usuaria, 23-sep) */
    {PERFIL=adminP0();const c='modulos';const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
     const cand=S.ordenes.filter(o=>abierta(o)&&pasosProDe(o).includes('modulos')).slice(0,5);

@@ -473,10 +473,14 @@ html[data-tema="odoo"][data-color="blanco"] header{background:#fff;color:#212529
 .o-menu .o-sep{border-top:1px solid var(--rule2);margin:6px 0}
 .o-menu .o-sec{padding:4px 12px}.o-menu .o-sec+.o-sec{border-top:1px solid var(--rule2);margin-top:4px;padding-top:8px}
 .o-menu .o-sec>label,.o-menu .o-sec>div>label,.o-menu .o-tit{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);margin:2px 0 4px;font-weight:600}
-.o-menu details{display:block}.o-menu details>summary.chip{display:none!important}
+.o-menu details{display:block}.o-menu details>summary.chip{display:flex!important;justify-content:space-between;width:100%;margin:2px 0;border-radius:4px}   /* 02-oct: plegados en una línea dentro del menú */
 .o-menu details>div{position:static!important;box-shadow:none!important;border:0!important;padding:0!important;margin:0!important;min-width:0!important;max-height:none!important;background:transparent!important}
 .o-menu select,.o-menu input[type=text]{width:100%}
-.o-menu .o-fav-nuevo{display:flex;gap:6px;padding:6px 12px 2px}.o-menu .o-fav-nuevo input{flex:1}
+.o-menu .o-fav-nuevo{display:flex;gap:6px;padding:6px 12px 2px}
+.o-pers-cuerpo{padding:6px 12px 8px;background:var(--field);border-top:1px solid var(--rule2)}.o-pers-fila{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.o-pers-fila select,.o-pers-fila input{font-size:13px;padding:3px 6px;min-width:0}.o-menu .o-pers-fila .o-pers-campo{width:170px;flex:none}.o-menu .o-pers-fila .o-pers-op{width:120px;flex:none}.o-menu .o-pers-fila .o-pers-valor{width:150px;flex:none}.o-dd.o-f .o-menu{min-width:340px}
+.o-pers-x{cursor:pointer;color:var(--ink3);font-size:16px;padding:0 4px}.o-pers-pie{display:flex;gap:12px;align-items:center;margin-top:4px}.o-pers-mas{cursor:pointer;color:var(--o-primary,var(--t-primary));font-size:13px}
+.o-item .o-x{margin-left:auto;color:var(--ink3);padding-left:10px}.o-menu .o-fav-nuevo input{flex:1}
 .o-menu .o-item .o-x{margin-left:auto;color:#6C757D;padding:0 4px}.o-menu .o-item .o-x:hover{color:var(--alerta)}
 /* pestañas de sub-áreas dentro de un centro (24-sep-2026) */
 .o-notebook{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--rule);margin:8px 0 0;flex-basis:100%;order:99}
@@ -1062,7 +1066,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 16:06';
+const APP_BUILD='2026-10-02 17:13';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
@@ -2123,7 +2127,48 @@ const soloDigitosBusq=x=>String(x==null?'':x).replace(/\D+/g,'');
    Sin separadores NO: «280» calzaría con «…28-001» cruzando el guion. */
 function campoCalzaBusq(o,k,qn){const v=valBusqQ(o,k,qn);if(normTxt(v||'').includes(qn))return true;
   if(k==='op'&&/[\s./-]/.test(qn)&&/^[\d\s./-]+$/.test(qn)){const d=soloDigitosBusq(qn);return d.length>=3&&soloDigitosBusq(v).includes(d)}return false}
-function matchBusq(o,q,id){if(!q)return true;const qn=normTxt(q);const c=BUSQ[id];if(c&&c!=='*')return campoCalzaBusq(o,c,qn);return BUSQ_CAMPOS.some(([k])=>campoCalzaBusq(o,k,qn))}
+/* ---------- Filtros como Odoo (02-oct-2026, usuaria con captura de su Odoo: «el filtrado no: me pones a filtrar solo las áreas; tiene filtros por
+   defecto y un filtro personalizado donde se escoge por qué; debería estar en todas las barras del sistema») ----------
+   FOD[id] (id = el buscador de la lista, p. ej. 'ORDF.q') = {rap:[claves de FILTROS_LISTOS], pers:[[{k,op,v},…],…]}. Se aplican en matchBusq,
+   que ya usa toda lista con buscador; no crean otra definición: cada filtro listo llama a la función de siempre (abiertaDe, esMetaVencida,
+   liberada, rutaLista…). Odoo: dentro de una sección se suma (o), entre secciones se exige todo (y); un filtro personalizado exige todas sus condiciones. */
+const FOD={};
+const FILTROS_LISTOS=[
+  {sec:'Estado',items:[['abiertas','Abiertas',o=>abiertaDe(o)],['cerradas','Cerradas en Odoo / facturadas / stand by',o=>!abiertaDe(o)]]},
+  {sec:'Fecha de entrega',items:[['vencidas','Meta vencida',o=>esMetaVencida(o,programar())],['tarde','Van tarde según el programa',o=>esOrdenVaTarde(o,programar())],
+    ['esteMes','Entrega este mes',o=>mesEntregaNiv(o)===hoy().slice(0,7)],['sigMes','Entrega el mes siguiente',o=>mesEntregaNiv(o)===mesSiguiente(hoy().slice(0,7))],['sinFecha','Sin fecha de entrega',o=>mesEntregaNiv(o)==='sin fecha']]},
+  {sec:'Liberación',items:[['libTela','Tela liberada',o=>liberada(o,'tela')],['libProd','Liberadas a producción',o=>liberada(o,'corte')],['porLib','Por liberar a producción',o=>!liberada(o,'corte')]]},
+  {sec:'Ruta',items:[['rutaDef','Ruta por definir',o=>!rutaLista(o)],['rutaOk','Ruta confirmada',o=>rutaConfirmada(o)]]},
+  {sec:'Otros',items:[['sinWH','Sin WH (diseño)',o=>sinWHde(o)],['conWH','Con WH',o=>!sinWHde(o)],['urgentes','Urgentes',o=>o.prio===1],['maquila','Van a maquila',o=>vaAMaquila(o)]]}];
+const CAMPOS_FILTRO=[['op','Orden de producción (WH)','txt',o=>o.op],['cliente','Cliente','txt',o=>o.cliente],['odc','ODC','txt',o=>o.odc],['ref','Referencia (estilo)','txt',o=>o.ref],
+  ['fam','Familia','txt',o=>famDeOrden(o)],['cat','Tipo de producto','txt',o=>nombreCat(K(o.cat))],['color','Color','txt',o=>(C(o.color)||{}).n],['fase','Fase','txt',o=>faseNombre(o.fase)],
+  ['proyecto','Proyecto','txt',o=>o.proyecto],['tela','Tela','txt',o=>(o.telas||[]).map(t=>nTela(t.tela)).join(' · ')],['tecnica','Técnica','txt',o=>[o.tecnicaTxt,(TEC(o.tecnica)||{}).n].filter(Boolean).join(' ')],
+  ['tareaId','ID de tarea (Odoo)','txt',o=>o.tareaId],['cant','Prendas','num',o=>o.cant],['precio','Precio (PVP)','num',o=>o.precio],
+  ['entrega','Fecha de entrega (meta)','fecha',o=>fechaMetaDe(o)],['fechaOdoo','Fecha de entrega de Odoo','fecha',o=>o.fecha]];
+const OPS_FILTRO={txt:[['c','contiene'],['nc','no contiene'],['eq','es igual a'],['ne','no es igual a'],['vacio','está vacío'],['lleno','no está vacío']],
+  num:[['eq','='],['ne','≠'],['gt','>'],['ge','≥'],['lt','<'],['le','≤'],['vacio','está vacío']],
+  fecha:[['eq','es el'],['lt','antes del'],['gt','después del'],['vacio','está vacío'],['lleno','no está vacío']]};
+const SIN_VALOR_FILTRO=['vacio','lleno'];
+function campoFiltro(k){return CAMPOS_FILTRO.find(x=>x[0]===k)}
+function condFiltroOk(o,c){const cf=campoFiltro(c.k);if(!cf)return true;let v;try{v=cf[3](o)}catch(e){v=null}const vacio=v==null||String(v).trim()==='';
+  if(c.op==='vacio')return vacio;if(c.op==='lleno')return !vacio;const t=cf[2];
+  if(t==='txt'){const a=normTxt(v==null?'':String(v)),b=normTxt(c.v||'');if(c.op==='c')return a.includes(b);if(c.op==='nc')return !a.includes(b);if(c.op==='eq')return a===b;if(c.op==='ne')return a!==b;return true}
+  if(vacio)return false;
+  if(t==='num'){const a=+v,b=+String(c.v).replace(',','.');if(!isFinite(b))return true;return {eq:a===b,ne:a!==b,gt:a>b,ge:a>=b,lt:a<b,le:a<=b}[c.op]}
+  if(t==='fecha'){const a=String(v).slice(0,10),b=String(c.v||'');if(!b)return true;return {eq:a===b,lt:a<b,gt:a>b}[c.op]}
+  return true}
+function condFiltroTxt(c){const cf=campoFiltro(c.k);if(!cf)return '';const op=(OPS_FILTRO[cf[2]].find(x=>x[0]===c.op)||[,c.op])[1];
+  return cf[1]+' '+op+(SIN_VALOR_FILTRO.includes(c.op)?'':' «'+(cf[2]==='fecha'?fmtDia(c.v):c.v)+'»')}
+function hayFiltrosOdoo(id){const f=FOD[id];return !!(f&&((f.rap&&f.rap.length)||(f.pers&&f.pers.length)))}
+function okFiltrosOdoo(o,id){const f=FOD[id];if(!f)return true;
+  if(f.rap&&f.rap.length){for(const s of FILTROS_LISTOS){const on=s.items.filter(x=>f.rap.includes(x[0]));if(on.length&&!on.some(x=>{try{return x[2](o)}catch(e){return false}}))return false}}
+  if(f.pers&&f.pers.length&&!f.pers.every(g=>g.every(c=>condFiltroOk(o,c))))return false;return true}
+function togFiltroListo(id,k){const f=FOD[id]=FOD[id]||{rap:[],pers:[]};f.rap=f.rap.includes(k)?f.rap.filter(x=>x!==k):f.rap.concat(k);render()}
+function soltarSeccionListos(id,sec){const f=FOD[id];if(!f)return;const ks=(FILTROS_LISTOS.find(x=>x.sec===sec)||{items:[]}).items.map(x=>x[0]);f.rap=f.rap.filter(k=>!ks.includes(k));render()}
+function agregarFiltroPers(id,conds){conds=(conds||[]).filter(c=>campoFiltro(c.k)&&(SIN_VALOR_FILTRO.includes(c.op)||String(c.v==null?'':c.v).trim()!==''));
+  if(!conds.length){alert('Elige el campo, la condición y escribe el valor.');return}const f=FOD[id]=FOD[id]||{rap:[],pers:[]};f.pers.push(conds);render()}
+function soltarFiltroPers(id,i){const f=FOD[id];if(!f)return;f.pers.splice(i,1);render()}
+function matchBusq(o,q,id){if(id&&FOD[id]&&!okFiltrosOdoo(o,id))return false;if(!q)return true;const qn=normTxt(q);const c=BUSQ[id];if(c&&c!=='*')return campoCalzaBusq(o,c,qn);return BUSQ_CAMPOS.some(([k])=>campoCalzaBusq(o,k,qn))}
 function setBusq(id,c){if(c)BUSQ[id]=c;else delete BUSQ[id];render();const n=document.querySelector('input[data-q="'+id+'"]');if(n)n.focus()}
 function busqHTML(id,valor,setter,extra){const v=valor||'';if(!v&&BUSQ[id])delete BUSQ[id];const c=BUSQ[id];const nomC=c&&c!=='*'?(BUSQ_CAMPOS.find(x=>x[0]===c)||[])[1]:null;
   return `<div class="busq" style="position:relative;${extra||''}"><input type="text" value="${esc(v)}" placeholder="${esc(ayuda('busq.placeholder'))}" data-q="${id}" oninput="buscarQ(this,v=>${setter})" onkeydown="if(event.key==='Enter'){event.preventDefault();setBusq('${id}','*')}else if(event.key==='Escape'){setBusq('${id}','*')}" style="width:100%;${nomC?'padding-right:150px':''}">
@@ -4434,7 +4479,7 @@ function mColsEntregas(){const cols=colsEntregas();const li=c=>`<label style="di
 /* filtro (cliente, meses, familia, categoría, tela) y árbol de agrupación, comunes a pantalla y PDF */
 function listaEntregas(){const ords=S.ordenes.filter(o=>abierta(o));const telasOrden=o=>(o.telas||[]).map(t=>t.tela);
   const ok=set=>v=>!set||!set.size||set.has(v);const okTela=set=>o=>!set||!set.size||telasOrden(o).some(t=>set.has(t));
-  const lista=ords.filter(o=>(!EG.cli||o.cliente===EG.cli)&&ok(EG.meses)((o.fecha||'').slice(0,7))&&ok(EG.fam)(padreEG(o))&&ok(EG.hija)(hijaEG(o))&&okTela(EG.tela)(o));
+  const qEG=normTxt(EG.q||'');const lista=ords.filter(o=>(!EG.cli||o.cliente===EG.cli)&&ok(EG.meses)((o.fecha||'').slice(0,7))&&ok(EG.fam)(padreEG(o))&&ok(EG.hija)(hijaEG(o))&&okTela(EG.tela)(o)&&matchBusq(o,qEG,'EG.q'));   /* 02-oct: el buscador de Entregas ya filtra (antes solo estaba dibujado) */
   return{ords,lista,arbol:agruparEG(lista,nivelesEG()),telasOrden}}
 function selNivelesEG(){const n=nivelesEG();const sel=(i)=>`<select onchange="setNivelEG(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${EG_CAMPOS_GRUPO.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
   return `<div><label>Agrupar por <span class="mut" title="Agrupar no esconde nada: reordena y suma. El PDF sale con esta misma agrupación.">(anidado, como Odoo)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
@@ -5878,7 +5923,7 @@ function clientesGER(){return [...new Set(S.ordenes.filter(o=>abierta(o)||o.esta
 function pasaFiltrosGER(o,P){if(!enMesGER(o))return false;
   if(GER.cli&&GER.cli.size&&!GER.cli.has(o.cliente||'Sin cliente'))return false;
   if(GER.est&&GER.est.size&&!GER.est.has(estadoGERDe(o,P)))return false;
-  if(GER.q&&!matchBusq(o,normTxt(GER.q),'GER.q'))return false;
+  if(!matchBusq(o,normTxt(GER.q||''),'GER.q'))return false;
   return true}
 function ordenesGER(P){return S.ordenes.filter(o=>(abierta(o)||o.estado==='prevision')&&pasaFiltrosGER(o,P))}
 
@@ -6871,13 +6916,33 @@ function desagruparGRP(id){const g=grpSt(id);g.niveles=[];g.exp=new Set();try{lo
 function favClave(pg){return '__fav_'+claveUsr()+'_'+pg}
 function favoritosDe(pg){try{const x=JSON.parse(localStorage[favClave(pg)]||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
 function guardarFavorito(pg,nombre){nombre=String(nombre||'').trim();if(!nombre){alert('Escribe un nombre para la búsqueda.');return}
-  const l=favoritosDe(pg).filter(x=>x.n!==nombre);const s=navSnap();l.push({n:nombre,ts:new Date().toISOString(),st:s.st,grp:s.grp,busq:s.busq});
+  const l=favoritosDe(pg).filter(x=>x.n!==nombre);const s=navSnap();l.push({n:nombre,ts:new Date().toISOString(),st:s.st,grp:s.grp,busq:s.busq,fod:JSON.stringify(FOD)});
   try{localStorage[favClave(pg)]=JSON.stringify(l)}catch(e){alert('No se pudo guardar en este navegador.');return}OSRCH[pg]=null;render()}
 function aplicarFavorito(pg,i){const f=favoritosDe(pg)[i];if(!f)return;const R=navRefs();
   Object.keys(f.st||{}).forEach(k=>{if(R[k]&&typeof R[k]==='object'){Object.keys(R[k]).forEach(x=>delete R[k][x]);Object.assign(R[k],desclon(f.st[k]))}});
   try{const g=JSON.parse(f.grp);Object.keys(g).forEach(k=>{GRP[k]={niveles:g[k].niveles,exp:new Set(g[k].exp)}})}catch(e){}
-  try{Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,JSON.parse(f.busq))}catch(e){}OSRCH[pg]=null;render()}
+  try{Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,JSON.parse(f.busq))}catch(e){}
+  try{Object.keys(FOD).forEach(k=>delete FOD[k]);if(f.fod)Object.assign(FOD,JSON.parse(f.fod))}catch(e){}OSRCH[pg]=null;render()}
 function quitarFavorito(pg,i){const l=favoritosDe(pg);const f=l[i];if(!f)return;if(!confirm('¿Quitar la búsqueda guardada «'+f.n+'»?'))return;l.splice(i,1);try{localStorage[favClave(pg)]=JSON.stringify(l)}catch(e){}render()}
+let FPERS_ABIERTO={};let OSRCH_IN={};   /* pantalla:grupo con «Añadir filtro personalizado» desplegado */
+function filtroPersHTML(idQ,pg,gi){const w=document.createElement('div');w.className='o-pers';const k=pg+':'+gi;
+  const cab=document.createElement('div');cab.className='o-item o-pers-cab';cab.innerHTML='<span class="o-chk">'+(FPERS_ABIERTO[k]?'▾':'▸')+'</span>Añadir filtro personalizado';w.appendChild(cab);
+  const cuerpo=document.createElement('div');cuerpo.className='o-pers-cuerpo';if(!FPERS_ABIERTO[k])cuerpo.style.display='none';w.appendChild(cuerpo);
+  cab.onclick=ev=>{ev.stopPropagation();FPERS_ABIERTO[k]=!FPERS_ABIERTO[k];cuerpo.style.display=FPERS_ABIERTO[k]?'':'none';cab.querySelector('.o-chk').textContent=FPERS_ABIERTO[k]?'▾':'▸'};
+  const filas=document.createElement('div');cuerpo.appendChild(filas);
+  const nuevaFila=()=>{const f=document.createElement('div');f.className='o-pers-fila';
+    const sc=document.createElement('select');sc.className='o-pers-campo';CAMPOS_FILTRO.forEach(([ck,cn])=>{const op=document.createElement('option');op.value=ck;op.textContent=cn;sc.appendChild(op)});sc.value='cliente';
+    const so=document.createElement('select');so.className='o-pers-op';const iv=document.createElement('input');iv.className='o-pers-valor';
+    const armar=()=>{const t=campoFiltro(sc.value)[2];so.innerHTML=OPS_FILTRO[t].map(([ok,on])=>'<option value="'+ok+'">'+esc(on)+'</option>').join('');iv.type=t==='num'?'number':t==='fecha'?'date':'text';iv.value='';iv.placeholder=t==='txt'?'escribe aquí':'';iv.style.display=''};
+    const vis=()=>{iv.style.display=SIN_VALOR_FILTRO.includes(so.value)?'none':''};sc.onchange=()=>{armar();vis()};so.onchange=vis;armar();
+    iv.onkeydown=ev=>{if(ev.key==='Enter'){ev.preventDefault();aplicar()}};
+    const x=document.createElement('a');x.className='o-pers-x';x.textContent='×';x.title='quitar esta condición';x.onclick=ev=>{ev.stopPropagation();if(filas.children.length>1)f.remove();else{sc.value='cliente';armar()}};
+    [sc,so,iv,x].forEach(e=>f.appendChild(e));filas.appendChild(f);return f};
+  const aplicar=()=>{const conds=[...filas.querySelectorAll('.o-pers-fila')].map(f=>({k:f.querySelector('.o-pers-campo').value,op:f.querySelector('.o-pers-op').value,v:f.querySelector('.o-pers-valor').value}));FPERS_ABIERTO[k]=false;agregarFiltroPers(idQ,conds)};
+  nuevaFila();
+  const pie=document.createElement('div');pie.className='o-pers-pie';const ap=document.createElement('button');ap.className='btn sm';ap.textContent='Aplicar';ap.onclick=ev=>{ev.stopPropagation();aplicar()};
+  const mas=document.createElement('a');mas.className='o-pers-mas';mas.textContent='⊕ Agregar condición';mas.title='todas las condiciones se tienen que cumplir';mas.onclick=ev=>{ev.stopPropagation();nuevaFila()};
+  pie.appendChild(ap);pie.appendChild(mas);cuerpo.appendChild(pie);return w}
 function panelBusquedaOdoo(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))return 0;
   const ctls=controlesFiltro(root);if(!ctls.length)return 0;
   const grupos=[];ctls.forEach(c=>{if(c.closest('.o-search'))return;const k=c.closest('.row,.body,.pagehead,.res-tabs,h3')||c.parentElement;let g=grupos.find(x=>x.k===k);if(!g){g={k,cs:[]};grupos.push(g)}g.cs.push(c)});
@@ -6886,6 +6951,10 @@ function panelBusquedaOdoo(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))retur
     const selG=grp?(grp.matches('select')?grp:grp.querySelector('select[onchange^="setNivelGRP("]')):null;const mG=selG?String(selG.getAttribute('onchange')||'').match(/setNivelGRP\('([^']+)'/):null;const idG=mG?mG[1]:null;
     const p=document.createElement('div');p.className='o-search no-print';p.setAttribute('data-o-search',String(gi));
     const box=document.createElement('div');box.className='o-sbox';
+    const inpQ=busq?busq.querySelector('input[data-q]'):null;const idQ=inpQ?inpQ.getAttribute('data-q'):null;const fod=idQ?FOD[idQ]:null;
+    if(fod){FILTROS_LISTOS.forEach(sx=>{const on=sx.items.filter(x=>(fod.rap||[]).includes(x[0]));if(!on.length)return;const f=document.createElement('span');f.className='o-facet';const t=on.map(x=>x[1]).join(' o ');
+        f.innerHTML='<b>▼</b>'+esc(t)+' <a title="quitar este filtro">×</a>';f.title=sx.sec+': '+t;f.querySelector('a').onclick=ev=>{ev.stopPropagation();soltarSeccionListos(idQ,sx.sec)};box.appendChild(f)});
+      (fod.pers||[]).forEach((gq,i)=>{const f=document.createElement('span');f.className='o-facet';const t=gq.map(condFiltroTxt).filter(Boolean).join(' y ');f.innerHTML='<b>▼</b>'+esc(t)+' <a title="quitar este filtro">×</a>';f.title=t;f.querySelector('a').onclick=ev=>{ev.stopPropagation();soltarFiltroPers(idQ,i)};box.appendChild(f)})}
     filtros.filter(filtroActivoCtl).forEach(c=>{const f=document.createElement('span');f.className='o-facet';f.innerHTML='<b>▼</b>'+esc(facetFiltroTxt(c))+' <a title="quitar este filtro">×</a>';f.title=facetFiltroTxt(c);f.querySelector('a').onclick=ev=>{ev.stopPropagation();soltarFiltro(c)};box.appendChild(f)});
     if(idG&&grpSt(idG).niveles.length){const f=document.createElement('span');f.className='o-facet';const nom=k=>(GRP_CAMPOS.find(z=>z[0]===k)||[,k])[1];f.innerHTML='<b>≡</b>'+esc(grpSt(idG).niveles.map(nom).join(' › '))+' <a title="quitar la agrupación">×</a>';f.querySelector('a').onclick=ev=>{ev.stopPropagation();desagruparGRP(idG)};box.appendChild(f)}
     {const cont=g.k;if(cont&&cont.parentElement&&(cont.classList.contains('row')||cont.classList.contains('res-tabs')))cont.parentElement.insertBefore(p,cont);else if(cont&&(cont.classList.contains('body')||cont.classList.contains('pagehead')))cont.insertBefore(p,cont.firstChild);else cs[0].parentElement.insertBefore(p,cs[0])}   /* a todo lo ancho, arriba de su lista */
@@ -6894,8 +6963,14 @@ function panelBusquedaOdoo(root,pg){if(!root||PAGS_SIN_PLEGAR.includes(pg))retur
     const mk=(cls,ico,txt)=>{const d=document.createElement('details');d.className='o-dd '+cls;const su=document.createElement('summary');su.innerHTML='<span class="o-ico">'+ico+'</span> '+txt;d.appendChild(su);const m=document.createElement('div');m.className='o-menu';d.appendChild(m);
       const k=gi+':'+cls;const acomodar=()=>{m.style.left='';m.style.right='';const rc=m.getBoundingClientRect();if(rc.right>window.innerWidth-8){m.style.left='auto';m.style.right='0'}};   /* pegado al borde: se abre hacia adentro */
       if(OSRCH[pg]===k){d.open=true;setTimeout(acomodar,0)}d.addEventListener('toggle',()=>{if(d.open){OSRCH[pg]=k;acomodar()}else if(OSRCH[pg]===k)OSRCH[pg]=null});btns.appendChild(d);return m};
-    if(filtros.length){const m=mk('o-f','▼','Filtros');filtros.forEach(c=>{const sec=document.createElement('div');sec.className='o-sec';if(!c.querySelector(':scope > label')&&!(c.previousElementSibling&&c.previousElementSibling.tagName==='LABEL')){const t=document.createElement('div');t.className='o-tit';t.textContent=textoLabelFiltro(c);sec.appendChild(t)}
-      sec.appendChild(c);c.querySelectorAll('details').forEach(d=>d.open=true);m.appendChild(sec)})}
+    if(filtros.length||idQ){const m=mk('o-f','▼','Filtros');
+      if(idQ){const act=(FOD[idQ]||{}).rap||[];FILTROS_LISTOS.forEach((sx,si)=>{if(si)m.appendChild(Object.assign(document.createElement('div'),{className:'o-sep'}));
+          sx.items.forEach(([k,n])=>{const it=document.createElement('div');const on=act.includes(k);it.className='o-item'+(on?' on':'');it.setAttribute('data-filtro-listo',k);it.innerHTML='<span class="o-chk">'+(on?'✓':'')+'</span>'+esc(n);it.onclick=()=>togFiltroListo(idQ,k);m.appendChild(it)})});
+        const pers=(FOD[idQ]||{}).pers||[];if(pers.length){m.appendChild(Object.assign(document.createElement('div'),{className:'o-sep'}));pers.forEach((gq,i)=>{const it=document.createElement('div');it.className='o-item on';it.innerHTML='<span class="o-chk">✓</span>'+esc(gq.map(condFiltroTxt).filter(Boolean).join(' y '))+'<span class="o-x" title="quitar">×</span>';it.onclick=()=>soltarFiltroPers(idQ,i);m.appendChild(it)})}
+        if(filtros.length){const sp=document.createElement('div');sp.className='o-sep';m.appendChild(sp)}}
+      filtros.forEach(c=>{const sec=document.createElement('div');sec.className='o-sec';if(!c.querySelector(':scope > label')&&!(c.previousElementSibling&&c.previousElementSibling.tagName==='LABEL')){const t=document.createElement('div');t.className='o-tit';t.textContent=textoLabelFiltro(c);sec.appendChild(t)}
+      sec.appendChild(c);{const kIn=pg+':'+gi+':'+textoLabelFiltro(c);c.querySelectorAll('details').forEach(d=>{d.open=!!OSRCH_IN[kIn];d.addEventListener('toggle',()=>{OSRCH_IN[kIn]=d.open})})}m.appendChild(sec)});   /* 02-oct: plegados en una línea (la lista de fases abierta alargaba el menú); se recuerda el que se abrió */
+      if(idQ){m.appendChild(Object.assign(document.createElement('div'),{className:'o-sep'}));m.appendChild(filtroPersHTML(idQ,pg,gi))}}
     if(idG){const m=mk('o-g','≡','Agrupar por');const niv=grpSt(idG).niveles;GRP_CAMPOS.forEach(([k,n])=>{const it=document.createElement('div');const on=niv.includes(k);it.className='o-item'+(on?' on':'');
         it.innerHTML='<span class="o-chk">'+(on?'✓':'')+'</span>'+esc(n)+(on&&niv.length>1?' <span class="mut">('+(niv.indexOf(k)+1)+'.º)</span>':'');it.onclick=()=>togCampoGRP(idG,k);m.appendChild(it)});
       if(niv.length){const sp=document.createElement('div');sp.className='o-sep';m.appendChild(sp);const it=document.createElement('div');it.className='o-item';it.textContent='Quitar la agrupación';it.onclick=()=>desagruparGRP(idG);m.appendChild(it)}
@@ -9801,10 +9876,11 @@ function vCostura(el,embebido){
     <div class="panel"><h3>${esc(r?r.n:'')} <span class="note">${sec.length} órdenes · ${num(tot)} min estándar · ${cambios} cambios de hilo · ${num(tot/(capDia(r,h)||1),1)} días de cola</span></h3><div class="body">
      <div style="display:flex;height:16px;border-radius:2px;overflow:hidden;margin-bottom:12px;background:var(--field)">${sec.map((x,i)=>`<i style="flex:${x.min/tot};background:${colHex(x.color)};${i>0&&sec[i-1].color!==x.color?'border-left:2px solid #fff;':''}" title="${esc(x.op)} · ${esc((C(x.color)||{}).n||'')} · ${num(x.min)} min"></i>`).join('')}</div>
      <table><thead><tr><th>#</th><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas pend.</th><th class="num">Minutos</th><th>Inicio</th><th>Fin</th><th>Marca</th><th></th></tr></thead><tbody>
-     ${sec.map((x,i)=>{const o=byId[x.oid]||{};const paso=((P.ordenes[x.oid]||{}).pasos||[]).find(p=>p.centro==='modulos')||{};const late=P.ordenes[x.oid]&&P.ordenes[x.oid].atraso;
+     ${(()=>{const qC=normTxt(COS.q||'');return sec.map((x,i)=>{const o=byId[x.oid]||{};if(o.id&&!matchBusq(o,qC,'COS.q'))return '';   /* 02-oct: el buscador de Costura filtra las filas; el número de la secuencia no cambia */
+       const paso=((P.ordenes[x.oid]||{}).pasos||[]).find(p=>p.centro==='modulos')||{};const late=P.ordenes[x.oid]&&P.ordenes[x.oid].atraso;
        return `<tr><td class="mut">${i+1}${o.prio===1?' ⚑':''}${(o.recursoFijo||{}).modulos?' ⚲':''}</td><td style="white-space:nowrap">${o.id?whCell(o):esc(x.op)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colHex(x.color)};margin-right:5px;vertical-align:middle"></i>${esc((C(x.color)||{}).n||'')}${i>0&&sec[i-1].color!==x.color?' <span class="tag t-aviso">cambio de hilo</span>':''}</td>
          <td class="num">${num(Math.max(0,o.cant-(((S.avance[x.oid]||{}).centros||{}).modulos||0)))}</td><td class="num">${num(x.min)}</td><td>${paso.ini?fmtDia(paso.ini):'—'}</td><td>${paso.fin?fmtDia(paso.fin):'—'}</td><td>${marcaCentro(o,P)}</td>
-         <td>${puede('avance')&&late?`<button class="btn ghost sm" onclick="COS.tab='rebalanceo';COS.evalId='${x.oid}';render()">mover</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin órdenes en este módulo.</td></tr>'}</tbody></table></div></div>`;
+         <td>${puede('avance')&&late?`<button class="btn ghost sm" onclick="COS.tab='rebalanceo';COS.evalId='${x.oid}';render()">mover</button>`:''}</td></tr>`}).join('')})()||'<tr><td colspan="10" class="mut">'+(sec.length?'Ninguna orden de este módulo calza con la búsqueda o los filtros.':'Sin órdenes en este módulo.')+'</td></tr>'}</tbody></table></div></div>`;
     return}
   if(COS.tab==='rebalanceo'){
     const pend=(S.propuestas||[]).filter(p=>p.estado==='PENDIENTE');const hist=(S.propuestas||[]).filter(p=>p.estado!=='PENDIENTE').slice(-15).reverse();
@@ -10701,7 +10777,7 @@ function vPro(el){
     const sd=saldoAreaNiv(d.area,d.meses,filtroSelNiv(d))||{ordenes:[],sinSAM:[],unid:0,unidSinSAM:0};
     let base=sd.ordenes.concat(sd.sinSAM||[]).filter((o,i,arr)=>arr.indexOf(o)===i);if(d.ids){const set=new Set(d.ids);base=base.filter(o=>set.has(o.id))}
     const c=a.tipo==='centro'?a.id:'modulos';const uDe=o=>a.porFase?(+o.cant||0):pendCentroUnid(o,c);
-    const dets=base.filter(o=>faseOkCG(o)&&(!CG.q||matchBusq(o,CG.q,'CG.q')));
+    const dets=base.filter(o=>faseOkCG(o)&&matchBusq(o,normTxt(CG.q||''),'CG.q'));
     const uTot=base.reduce((x,o)=>x+uDe(o),0);
     const selTxt=[(d.meses||[]).join(', ')||'todos los meses',d.fam?'familia '+d.fam:'',d.hija?'tipo '+d.hija:'',d.cli?'cliente '+d.cli:'',d.txt||''].filter(Boolean).map(esc).join(' · ');
     bloque3=`<div class="panel" id="cg-saldo"><h3>Saldo por procesar en ${esc(a.n)} <span class="note">${selTxt} · <b>${base.length}</b> órdenes · <b>${num(uTot,0)}</b> u${dets.length!==base.length?' · '+dets.length+' con el filtro de fases/buscador de esta pantalla':''}</span><span class="spacer"></span>${grpSelHTML('cg')}<button class="btn ghost sm" onclick="nivUIVolver()">← volver a «Nivelación»</button><button class="btn ghost sm" onclick="CG.det=null;render()">cerrar</button></h3>
