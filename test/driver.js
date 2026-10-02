@@ -526,7 +526,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     window.prompt=promptPrev;}
    page='ordenes';render();__check("replan/auditoría sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* avance del mes contra el plan congelado */
-  {const antes=__R.errors.length;const ym=hoy().slice(0,7);const confirmPrev=window.confirm;window.confirm=()=>true;
+  {const antes=__R.errors.length;const ym=hoy().slice(0,7);const confirmPrev=window.confirm;window.confirm=()=>true;const bakPMav=JSON.stringify(S.params.planMes||null),bakPlav=JSON.stringify(S.planes||[]);
    const f0=filasAvance(ym);__check("avance: sin plan congelado la base es provisional y parte en 0",!f0.B.congelado&&sumAV(f0.filas).hechas===0);
    congelarPlan(ym);const pl=(S.planes||[]).filter(p=>p.mes===ym).slice(-1)[0];__check("avance: congelar el plan guarda la base orden × centro con h0",!!(pl&&pl.base&&pl.base.length)&&pl.base.every(f=>typeof f.pz==='number'&&typeof f.h0==='number'));
    const f1=filasAvance(ym);const r=f1.filas.find(x=>!x.sinReg&&x.pz>2&&x.centro==='corte')||f1.filas.find(x=>!x.sinReg&&x.pz>2);
@@ -541,7 +541,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const cli=[...new Set(f1.filas.map(x=>x.cliente||'Sin cliente'))][0];AV.f={cliente:new Set([cli])};render();const hv2=document.getElementById('p-avance').innerHTML;
    __check("avance: filtrar esconde y lo dice",hv2.includes('filtros: Cliente = '+cli)&&/se muestran \d+ de \d+/.test(hv2));
    let csvOk=false;const cU=URL.createObjectURL;URL.createObjectURL=b=>{csvOk=b&&b.size>50;return 'blob:x'};try{exportarAvanceCSV()}catch(e){}URL.createObjectURL=cU;__check("avance: exporta CSV con la agrupación",csvOk);
-   AV.f={};window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   AV.f={};window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));{const pmB=JSON.parse(bakPMav);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlav);}}
   /* tela: tres dimensiones (produce, disponibilidad, qué le falta); lavado de tela como baño oscuro; sin regla jaspe */
   {const antes=__R.errors.length;
    const dPlana=dimensionesTela({cod:'01018728',prod:'OXFORD CHINA 100% COTTON BONE',origen:'EXTERNA'});
@@ -670,8 +670,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("sin WH sin errores",__R.errors.length===antes);}
   /* el plan va por Proyecto; aceptar fases del archivo en lote */
   {const antes=__R.errors.length;__check("proyecto: 'OCTUBRE 2026' → 2026-10, 'Septiembre 2026' → 2026-09, vacío → null",mesPlan({proyecto:'OCTUBRE 2026'})==='2026-10'&&mesPlan({proyecto:'Septiembre 2026'})==='2026-09'&&mesPlan({proyecto:''})===null&&mesPlan({proyecto:'X'})===null);
-   const ym=hoy().slice(0,7);const c=calcularPlan(ym);const esp=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);__check("plan mensual: la demanda del mes es por Proyecto",c.dem.ords===esp.length&&c.dem.pz===esp.reduce((x,o)=>x+ +o.cant,0),c.dem.ords+' vs '+esp.length);
-   page='plan';render();__check("plan mensual: dice que va por Proyecto",document.getElementById('p-plan').innerHTML.includes('por Proyecto (mes de Odoo)'));
+   const ym=hoy().slice(0,7);const c=calcularPlan(ym);const esp=S.ordenes.filter(o=>abierta(o)&&planMesOidsTot(ym).has(o.id));__check("plan mensual (02-oct): la demanda del mes son las órdenes del plan (entrega hasta el mes), ya no el Proyecto",c.dem.ords===esp.length&&c.dem.pz===esp.reduce((x,o)=>x+ +o.cant,0),c.dem.ords+' vs '+esp.length);
+   page='plan';render();__check("plan mensual: dice qué entra (toda orden abierta con entrega hasta el mes)",document.getElementById('p-plan').innerHTML.includes('entra toda orden abierta con entrega hasta el mes'));
    const rc=S.params.tareaCarga&&S.params.tareaCarga.recarga;if(rc){const o=S.ordenes.find(x=>abierta(x)&&!(x.fases||[]).some(f=>f.origen==='app')&&normFase(x.fase)===normFase('3CD CORTE'))||S.ordenes.find(x=>abierta(x)&&!(x.fases||[]).some(f=>f.origen==='app'));
      const oMov=S.ordenes.find(x=>abierta(x)&&x!==o);setFase(oMov.id,oMov.fase===('4Corte Planta')?'3CD CORTE':'4Corte Planta');
      rc.noCalzan.push({op:o.op,decision:'fase en el sistema: '+o.fase,motivo:'el archivo trae 4Corte Planta',tipo:'fase',sistema:o.fase,archivo:'4Corte Planta'});rc.noCalzan.push({op:oMov.op,decision:'fase en el sistema: '+oMov.fase,motivo:'el archivo trae 8Empaque',tipo:'fase',sistema:oMov.fase,archivo:'8Empaque'});
@@ -1975,36 +1975,31 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const chica=rM.find(r=>r.cap<(prm('granMin',120))*1.2&&compatible(r,tela));if(chica&&cC){const iS=mk(cC,Math.min(30,chica.cap-5));PLAN=null;const bS=programar().banos.find(b=>b.id===iS);__check("tin: un baño menor a la pequeña y sin piqué va a la pequeña, no a la grande",!!bS&&bS.rec===chica.id,bS&&nRec(bS.rec));}
      S.banos_conf=(S.banos_conf||[]).filter(b=>!bc.includes(b.id));S.ordenes=S.ordenes.filter(x=>!oTs.includes(x.id));S.colores=S.colores.filter(c=>![cC.id,cO.id,cM.id].includes(c.id));}
    S.recursos=bakRC.recursos;S.centros=bakRC.centros;PLAN=null;PLAN_ALL=null;__check("tin reglas sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
-  /* PLAN MENSUAL: bloques en orden · agregar al plan con aviso de capacidad · congelar · Liberación y Carga que viene */
+  /* PLAN MENSUAL (02-oct: sin «Agregar órdenes al plan»; el plan = toda orden abierta con entrega hasta el mes) · quitar/devolver · congelar · Liberación y Carga que viene */
   {const antes=__R.errors.length;const adminP=PERFIL;const bakPM=JSON.stringify(S.params.planMes||null);const bakPlanes=JSON.stringify(S.planes||[]);window.confirm=()=>true;
-   const ym=hoy().slice(0,7);PM.mes=ym;S.params.planMes={};PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};
+   const ym=hoy().slice(0,7);PM.mes=ym;PM.paso=2;S.params.planMes={};
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
    const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);
    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta)||S.ordenes[0];
-   const mk=(op,mes)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.proyecto=nomMes(mes);o.estado='plan';o.fase='0Ord Compras';o.fecha=mes+'-20';o.odc='ODC-TEST-PM';delete o.lib;delete o.programa;S.ordenes.push(o);return o};
-   const dN2=new Date(sig+'-15T12:00:00');dN2.setMonth(dN2.getMonth()+1);const sig2=dN2.toISOString().slice(0,7);
-   const o1=mk('WH/TEST-PM-1',sig),o2=mk('WH/TEST-PM-2',sig),oS=mk('WH/TEST-PM-SIG',sig2);PLAN=null;PLAN_ALL=null;PMADD.incluirSig=true;   /* la base del plan ya trae todo lo del mes: para probar «Agregar» las de prueba son del mes siguiente (jaladas) */
+   const mk=(op,fecha)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.proyecto=nomMes(fecha.slice(0,7));o.estado='plan';o.fase='0Ord Compras';o.fecha=fecha;delete o.fechaCompromiso;o.odc='ODC-TEST-PM';delete o.lib;delete o.programa;S.ordenes.push(o);return o};
+   const o1=mk('WH/TEST-PM-1',ym+'-20'),oS=mk('WH/TEST-PM-SIG',sig+'-10');PLAN=null;PLAN_ALL=null;
    page='plan';render();const hp=()=>document.getElementById('p-plan').innerHTML;let h=hp();
    const i1=h.indexOf('BLOQUE 1'),i2=h.indexOf('BLOQUE 2'),i3=h.indexOf('BLOQUE 3'),i4=h.indexOf('BLOQUE 4'),i5=h.indexOf('BLOQUE 5');
-   __check("PM: cinco bloques en orden (días y capacidad → resumen → meta → agregar → congelar)",i1>0&&i1<i2&&i2<i3&&i3<i4&&i4<i5,[i1,i2,i3,i4,i5].join(','));
+   __check("PM: cuatro bloques en orden (días y capacidad → resumen → meta → congelar) y ya no hay «Agregar órdenes al plan» ni «jalar del mes siguiente» (02-oct)",i1>0&&i1<i2&&i2<i3&&i3<i4&&i5<0&&!h.includes('Agregar órdenes al plan')&&!h.includes('Jalar del mes siguiente')&&!h.includes('id="pm-agregar"'),[i1,i2,i3,i4,i5].join(','));
    __check("PM: el calendario de días está arriba de la capacidad y de los KPIs",h.indexOf('id="plan-cal"')<h.indexOf('Capacidad del mes por área')&&h.indexOf('id="plan-cal"')<h.indexOf('class="kpis'));
-   __check("PM: el agrupador de agregar es el anidado común (Cliente, ODC, Fase, Familia, Tela, Mes) y jala del mes siguiente",h.includes('Agrupar por (anidado, hasta 3)')&&h.includes('Jalar del mes siguiente')&&['ODC','Cliente','Fase','Familia','Tela','Mes de entrega'].every(x=>h.includes('>'+x+'</option>'))&&h.includes("setNivelGRP('pmadd'"));
-   GRP={};grpSt('pmadd').niveles=['odc'];render();h=hp();
-   __check("PM: las órdenes del mes aparecen agrupadas (grupo ODC con conteo, prendas y minutos) y colapsadas",h.includes('ODC ODC-TEST-PM')&&/2 órdenes · [\d.]+ prendas/.test(h)&&h.includes('marcar el grupo')&&!h.slice(h.indexOf('<h3>Agregar órdenes al plan')).includes(esc(o1.op)));
-   {const ms=[...h.matchAll(/togGRP\('pmadd','([^']+)'\)/g)].map(x=>x[1]);const k=ms.find(x=>/ODC-TEST-PM/.test(x))||ms[0];if(k)togGRP('pmadd',k.replace(/\\'/g,String.fromCharCode(39)));h=hp();}   /* abre el grupo de las de prueba (con «jalar» hay cientos de candidatas y ya no es el primero) */
-   __check("PM: al expandir el grupo se ven las órdenes con foto/WH, fase, cliente, categoría, color, prendas y entrega",h.includes(esc(o1.op))&&h.includes(esc(o2.op))&&h.includes(esc(faseNombre(o1.fase||'—')))&&h.includes(o1.fecha));
-   __check("PM: la de dos meses adelante NO aparece ni jalando del mes siguiente",!h.includes(esc(oS.op)));
-   togPMADD(o1.id);h=hp();__check("PM: al marcar avisa ANTES de guardar si la capacidad alcanza o no (con minutos y centro)",/Con lo marcado <b>(alcanza|YA NO ALCANZA)/.test(h)&&/min/.test(h.slice(h.indexOf('Con lo marcado'),h.indexOf('Con lo marcado')+400)));
-   planMesAgregar(ym,[o1.id]);h=hp();__check("PM: agregar la guarda y aparece en 'En el plan' con fase, cliente, categoría, color, prendas y entrega",planMesOids(ym).has(o1.id)&&h.includes('En el plan de')&&h.includes(esc(o1.op))&&h.includes(esc(faseNombre(o1.fase||'—'))));
-   __check("PM: el resumen del plan se actualiza al agregar (1 orden, sus prendas, borrador sin congelar)",planMesOids(ym).has(o1.id)&&h.includes('En el plan de')&&h.includes('borrador (sin congelar)'));
-   __check("PM: la orden agregada ya no está entre las disponibles",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');return i>0&&!h.slice(i).includes(esc(o1.op))})());
+   __check("PM: «Qué entra al plan» = toda orden abierta con entrega hasta el mes; la del mes siguiente no entra (para adelantarla se cambia su fecha)",planMesOidsTot(ym).has(o1.id)&&!planMesOidsTot(ym).has(oS.id)&&h.includes('Qué entra al plan')&&h.includes('para adelantar una orden, cambia su fecha de entrega')&&h.includes(esc(o1.op))&&!h.includes(esc(oS.op)));
+   {const n=[...planMesOidsTot(ym)].filter(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&abierta(o)}).length;const c=calcularPlan(ym);
+    __check("PM: una sola cifra de órdenes en toda la pantalla (Resumen, Total del plan y Qué entra = las del plan que se congela)",c.dem.ords===n&&h.includes('<b>'+num(n)+' órdenes</b>')&&h.includes('Órdenes del plan'),JSON.stringify([c.dem.ords,n]));}
+   __check("PM: el Bloque 2 ya no tiene una segunda «Facturación esperada» (lo que se factura vive en el Bloque 3)",!h.includes('Facturación esperada'));
+   __check("PM: «Horizonte rodante» y la columna «% de lo visible» salieron; el detalle del mes va plegado",!h.includes('Horizonte rodante')&&!h.includes('% de lo visible')&&h.includes('class="panel pm-detalle"'));
+   planMesQuitar(ym,o1.id);h=hp();__check("PM: «quitar» la saca del plan sin borrar nada y aparece en «quitadas del plan» con «devolver»",!planMesOidsTot(ym).has(o1.id)&&planMesQuitadas(ym).has(o1.id)&&/quitadas del plan/.test(h)&&h.includes("planMesAgregar('"+ym+"',['"+o1.id+"'])"));
+   planMesAgregar(ym,[o1.id]);h=hp();__check("PM: «devolver» la vuelve a meter al plan",planMesOidsTot(ym).has(o1.id)&&!planMesQuitadas(ym).has(o1.id));
    page='liberacion';LIB.et='tela';LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q=o1.op;render();const hl=document.getElementById('p-liberacion').innerHTML;__check("PM→Liberación: la orden del plan sin liberar dice EN EL PLAN — pendiente de liberar",liberada(o1,'tela')||hl.includes('EN EL PLAN')&&hl.includes('pendiente de liberar'),liberada(o1,'tela')?'(ya liberada)':'');
    page='plan';render();congelarPlan(ym);__check("PM: congelar guarda versión con oids y marca planMes.congelado (versión, quién, cuándo)",!!planMesCongelado(ym)&&planMesCongelado(ym).ver>=1&&!!planMesCongelado(ym).ts&&(S.planes||[]).some(p=>p.mes===ym&&(p.oids||[]).includes(o1.id)));
-   h=hp();__check("PM: bloque 5 dice CONGELADO con versión y fecha, y 'En el plan' lo marca congelado",h.includes('CONGELADO')&&h.includes('versión v')&&h.includes('CONGELADO v'));
+   h=hp();__check("PM: el bloque Congelar dice CONGELADO con versión y cuenta las órdenes del plan (antes decía «0 órdenes»: contaba solo las agregadas a mano)",h.includes('CONGELADO')&&h.includes('versión v')&&h.includes('CONGELADO v')&&h.includes(planMesOidsTot(ym).size+' órdenes fijadas'));
    const cen=(o1.ruta||[]).map(p=>p.centro).find(cid=>CE(cid)&&CE(cid).area==='pro');if(cen){page='produccion';CG={area:'pro',centro:cen,sem:null,det:null,cruce:'fam',fases:null,q:''};render();const hc=document.getElementById('p-produccion').innerHTML;__check("PM→Centro: 'Carga que viene' muestra el plan congelado con la orden, fase y 'pendiente de liberar' si no está liberada",hc.includes('Plan mensual congelado')&&hc.includes(esc(o1.op))&&hc.includes('congelado')&&(liberada(o1,'corte')||hc.includes('pendiente de liberar')))}
-   page='plan';render();planMesQuitar(ym,o1.id);__check("PM: quitar del plan la saca y vuelve a borrador (des-congela)",!planMesOids(ym).has(o1.id)&&!planMesCongelado(ym));
-   PMADD.incluirSig=true;grpSt('pmadd').exp=new Set();grpSt('pmadd').todoAbierto=true;const nivB=grpSt('pmadd').niveles.slice();grpSt('pmadd').niveles=[];render();h=hp();grpSt('pmadd').niveles=nivB;__check("PM: 'jalar del mes siguiente' lista las órdenes del mes siguiente marcadas con su mes (la de dos meses adelante sigue fuera)",h.includes(esc(o2.op))&&h.includes('la estás jalando')&&!h.includes(esc(oS.op)));PMADD.incluirSig=false;grpSt('pmadd').todoAbierto=false;
-   S.ordenes=S.ordenes.filter(o=>![o1.id,o2.id,oS.id].includes(o.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlanes);PMADD={grp:'odc',exp:new Set(),sel:new Set(),incluirSig:false,q:''};LIB.q='';PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   page='plan';render();planMesQuitar(ym,o1.id);__check("PM: quitar del plan la saca y vuelve a borrador (des-congela)",!planMesOidsTot(ym).has(o1.id)&&!planMesCongelado(ym));
+   S.ordenes=S.ordenes.filter(o=>![o1.id,oS.id].includes(o.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlanes);LIB.q='';PM.paso=1;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("PM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* FOTOS, FASE y BUSCADOR como Odoo en las pantallas de órdenes */
   {const antes=__R.errors.length;const adminP=PERFIL;const o=S.ordenes.find(x=>abierta(x)&&x.fase&&x.op)||S.ordenes[0];const fase=faseNombre(o.fase||'');
@@ -2144,15 +2139,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const oP=mk('WH/TEST-OB-PROC','4CD Ensamble'),oT=mk('WH/TEST-OB-TEMP','0Ord Compras');PLAN=null;PLAN_ALL=null;
    page='plan';render();let h=document.getElementById('p-plan').innerHTML;
    __check("OB1: el plan arranca con TODA orden abierta con fecha meta hasta el mes (la misma base que la nivelación), esté en la fase que esté: cuenta en 'En el plan' y en la capacidad",planMesOidsTot(ym).has(oP.id)&&planMesOidsTot(ym).has(oT.id)&&h.includes('con entrega hasta')&&h.includes(esc(oP.op))&&h.includes(esc(oT.op)));
-   __check("OB2: en 'Agregar' solo quedan las excepciones (mes siguiente, sin fecha, quitadas): ninguna de las dos aparece ahí",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');const seg=h.slice(i);return seg.includes('solo excepciones')&&!seg.includes(esc(oP.op))&&!seg.includes(esc(oT.op))})());
-   GRP={};grpSt('pmadd').niveles=['fase'];grpSt('pmadd').todoAbierto=true;render();h=document.getElementById('p-plan').innerHTML;
-   __check("OB3: agrupar por FASE en agregar sigue disponible y la orden temprana está en el plan (en la base, no en agregar)",h.includes('>Fase</option>')&&h.includes(esc(faseNombre(oT.fase)))&&h.includes(esc(oT.op)));
+   __check("OB2 (02-oct): ya no hay «Agregar órdenes al plan»: el plan es la base entera",!h.includes('<h3>Agregar órdenes al plan')&&!h.includes('solo excepciones'));
+   if(0)__check("OB2: en 'Agregar' solo quedan las excepciones (mes siguiente, sin fecha, quitadas): ninguna de las dos aparece ahí",(()=>{const i=h.indexOf('<h3>Agregar órdenes al plan');const seg=h.slice(i);return seg.includes('solo excepciones')&&!seg.includes(esc(oP.op))&&!seg.includes(esc(oT.op))})());
    /* quitar de la base deja la orden anotada como quitada (nada se borra) y «agregar» la devuelve; con entrega el mes siguiente entra solo jalándola */
-   {planMesQuitar(ym,oT.id);const h2=document.getElementById('p-plan').innerHTML;const enCand=(()=>{const i=h2.indexOf('<h3>Agregar órdenes al plan');return h2.slice(i).includes(esc(oT.op))})();
-    __check("PB: «quitar» saca una orden de la base del plan sin borrar nada (queda en quitadas), la muestra en Agregar con la marca «quitada», y «agregar» la devuelve a la base",!planMesOidsTot(ym).has(oT.id)&&planMesQuitadas(ym).has(oT.id)&&enCand&&/quitada/.test(h2)&&(()=>{planMesAgregar(ym,[oT.id]);return planMesOidsTot(ym).has(oT.id)&&!planMesQuitadas(ym).has(oT.id)&&!(planMesOids(ym).has(oT.id))})(),JSON.stringify({q:[...planMesQuitadas(ym)],enCand}));
+   {planMesQuitar(ym,oT.id);const h2=document.getElementById('p-plan').innerHTML;const enQuit=/quitadas del plan/.test(h2)&&h2.includes("planMesAgregar('"+ym+"',['"+oT.id+"'])");
+    __check("PB: «quitar» saca una orden de la base del plan sin borrar nada (queda en quitadas), la muestra en «quitadas del plan» con «devolver», y devolver la vuelve a la base",!planMesOidsTot(ym).has(oT.id)&&planMesQuitadas(ym).has(oT.id)&&enQuit&&(()=>{planMesAgregar(ym,[oT.id]);return planMesOidsTot(ym).has(oT.id)&&!planMesQuitadas(ym).has(oT.id)})());
     const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);const oN=mk('WH/TEST-PB-SIG','4CD Ensamble');oN.fecha=sig+'-10';PLAN=null;PLAN_ALL=null;PMADD.incluirSig=false;render();const h3=document.getElementById('p-plan').innerHTML;const enAgr=()=>{const hh=document.getElementById('p-plan').innerHTML;const i=hh.indexOf('<h3>Agregar órdenes al plan');return hh.slice(i).includes(esc(oN.op))};
-    const noSinJalar=!planMesOidsTot(ym).has(oN.id)&&!enAgr();PMADD.incluirSig=true;render();const conJalar=enAgr();planMesAgregar(ym,[oN.id]);
-    __check("PB: una orden con entrega el mes siguiente no está en la base ni en Agregar; con «Jalar del mes siguiente» aparece y agregarla la mete al plan como agregada",noSinJalar&&conJalar&&planMesOidsTot(ym).has(oN.id)&&planMesOids(ym).has(oN.id),JSON.stringify({noSinJalar,conJalar}));
+    __check("PB (02-oct): una orden con entrega el mes siguiente no entra al plan y no hay cómo «jalarla» (para adelantarla se cambia su fecha)",!planMesOidsTot(ym).has(oN.id)&&!document.getElementById('p-plan').innerHTML.includes('Jalar del mes siguiente'));
     __check("PB: la base del plan y la base de la nivelación son la misma: todo el saldo de Confección de los meses ≤ mes está dentro del plan",(()=>{NIVUI.meses=nivUIMesesDisp().filter(m=>m<=ym);const sal=saldoProceso('modulos',NIVUI.meses,null);const tot=planMesOidsTot(ym);return !!sal&&sal.ordenes.every(o=>tot.has(o.id))})());
     __check("PB: las órdenes en proceso con entrega posterior al mes no entran al plan pero se informan",(()=>{const f=enProcesoFueraDelMes(ym);const hh=document.getElementById('p-plan').innerHTML;return f.every(o=>!planBase(ym).some(x=>x.id===o.id))&&(!f.length||/en proceso con entrega después de/.test(hh))})());
     /* revisión (21-sep): quitar una agregada que además ya es de la base la anota como quitada; una quitada cuya fecha se movió al mes siguiente vuelve como AGREGADA (no se pierde) */
@@ -2161,10 +2154,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check('PB: quitar y devolver no pierden órdenes: quitada de la base (aunque estuviera agregada) y, si su fecha ya se movió, «agregar» la mete como agregada',q1&&q2,JSON.stringify({q1,q2}));planMesQuitar(ym,oQ.id);S.ordenes=S.ordenes.filter(x=>x.id!==oQ.id);}
     /* con el plan congelado manda la foto: una orden nueva del mes NO entra sola; se avisa */
     {const cf=window.confirm;window.confirm=()=>true;const al=window.alert;window.alert=()=>{};const bakPl=JSON.stringify(S.planes||[]);congelarPlan(ym);const foto=planFotoCongelada(ym);const oNew=mk('WH/TEST-PB-NEW','4CD Ensamble');oNew.fecha=ym+'-26';PLAN=null;PLAN_ALL=null;render();const hh=document.getElementById('p-plan').innerHTML;
-     __check('PB: con el plan congelado, planMesOidsTot es la foto (una orden que entra después no la cambia) y la pantalla avisa cuántas entraron después de congelar; candidatasPlan es el único criterio de «Agregar» para los bloques 3 y 4',!!foto&&!planMesOidsTot(ym).has(oNew.id)&&nuevasTrasCongelar(ym).some(o=>o.id===oNew.id)&&/entraron DESPUÉS de congelar/.test(hh)&&/candIds\.has/.test(String(vPlan))&&/candidatasPlan\(ym\)\.filter/.test(String(agregarAlPlanHTML)),JSON.stringify({foto:!!foto,n:nuevasTrasCongelar(ym).length}));
+     __check('PB: con el plan congelado, planMesOidsTot es la foto (una orden que entra después no la cambia) y la pantalla avisa cuántas entraron después de congelar',!!foto&&!planMesOidsTot(ym).has(oNew.id)&&nuevasTrasCongelar(ym).some(o=>o.id===oNew.id)&&/entraron DESPUÉS de congelar/.test(hh),JSON.stringify({foto:!!foto,n:nuevasTrasCongelar(ym).length}));
      S.ordenes=S.ordenes.filter(x=>x.id!==oNew.id);S.planes=JSON.parse(bakPl);const r=planMesReg(ym);if(r)r.congelado=null;window.confirm=cf;window.alert=al;}
-    S.ordenes=S.ordenes.filter(x=>x.id!==oN.id);PMADD.incluirSig=false;}
-   grpSt('pmadd').todoAbierto=false;
+    S.ordenes=S.ordenes.filter(x=>x.id!==oN.id);}
    __check("OB4: resumen por centro compacto (bloques con % uso, unidades, horas y alcanza/no alcanza)",h.includes('cen-card')&&h.includes('% uso')&&/alcanza|no alcanza|sin capacidad/.test(h)&&!h.includes('<th class="num">Programado (h)</th>'));
    __check("OB5: las semanas sin nada no se muestran en las metas semanales",(()=>{const c=calcularPlan(ym);const vac=c.metas.filter(x=>!(Object.values(x.prod).some(p=>p.pz>0)||Object.values(x.real).some(v=>v>0)||x.ords>0));return !vac.length||h.includes(vac.length+' semana(s) sin nada, ocultas')})());
    __check("OB6: 'sin liberar' ya no se lista aparte en Base del plan (vive una sola vez en 'Por liberar' de la Meta, Bloque 3)",!h.includes('Ver las')&&!h.includes('sin liberar o sin decidir (foto y fase)'));
@@ -2191,7 +2183,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const mk=(op,fase,proy)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=proy;o.estado='plan';o.fase=fase;o.fecha=ym+'-20';delete o.programa;S.ordenes.push(o);return o};
    const oF=mk('WH/TEST-AJ-FUT','4CD Ensamble',nomMes(sig)),oS=mk('WH/TEST-AJ-SINMES','4CD Ensamble','PROYECTO RARO 77');PLAN=null;PLAN_ALL=null;
    __check("AJ1: una orden con fecha meta en el mes cuenta en el plan aunque su Proyecto diga el mes siguiente o no tenga mes",planMesOidsTot(ym).has(oF.id)&&planMesOidsTot(ym).has(oS.id));
-   page='plan';render();let h=document.getElementById('p-plan').innerHTML;__check("AJ1: el desplegable de en proceso muestra de qué Proyecto es cada una",(()=>{const i=h.indexOf(esc(oF.op));return i>0&&h.slice(i,i+900).includes(esc(nomMes(sig)))})());
+   page='plan';render();let h=document.getElementById('p-plan').innerHTML;__check("AJ1: la lista del plan muestra la fecha de entrega de cada una (es lo que decide el mes, no el Proyecto)",(()=>{const i=h.indexOf(esc(oF.op));return i>0&&h.slice(i,i+1200).includes(oF.fecha)})());
    faseGrupos().find(g=>g.grupo==='corte').enProceso=false;FASE_CACHE.ver++;__check("AJ3: la columna «en proceso» de la tabla 5 ya NO decide el plan (la base es la fecha meta hasta el mes, como la nivelación): apagarla no saca la orden",planMesOidsTot(ym).has(oF.id));faseGrupos().find(g=>g.grupo==='corte').enProceso=true;FASE_CACHE.ver++;
    __check("AJ2: la orden sin mes de Proyecto va a la bandeja de Hoy → Pendientes y no se le asigna mes",(()=>{const it=pendientesHoy().find(x=>x.k==='sinMesProyecto');return !!it&&it.n>=1&&it.detalle.includes('PROYECTO RARO 77')&&mesPlan(oS)===null})());
    S.ordenes=S.ordenes.filter(x=>![oF.id,oS.id].includes(x.id));const pmB=JSON.parse(bakPM);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.params.faseGrupos=JSON.parse(bakFG);FASE_CACHE.ver++;
@@ -2211,7 +2203,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
    const oV=JSON.parse(JSON.stringify(baseO));oV.id=uid();oV.op='WH/TEST-VENC';oV.proyecto=nomMes(ym);oV.estado='plan';oV.fase='4CD Ensamble';oV.fecha=dsum(hoy(),-10);oV.lib={tela:{ok:true},corte:{ok:true}};delete oV.programa;S.ordenes.push(oV);PLAN=null;PLAN_ALL=null;
    const c=calcularPlan(ym);const P=programar();
-   __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);const v=enMes.filter(o=>esMetaVencida(o,P)).length;const r=enMes.filter(o=>esOrdenVaTarde(o,P)).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso&&!faseTerminadaDe(o)).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
+   __check("VR1: la orden con entrega pasada cuenta como VENCIDA y no como en riesgo",c.dem.vencidas>=1&&(()=>{const enMes=S.ordenes.filter(o=>abierta(o)&&planMesOidsTot(ym).has(o.id));const v=enMes.filter(o=>esMetaVencida(o,P)).length;const r=enMes.filter(o=>esOrdenVaTarde(o,P)).length;return c.dem.vencidas===v&&c.dem.riesgo===r&&v+r>=(enMes.filter(o=>P.ordenes[o.id]&&P.ordenes[o.id].atraso&&!faseTerminadaDe(o)).length)})(),c.dem.vencidas+' / '+c.dem.riesgo);
    page='plan';render();let h=document.getElementById('p-plan').innerHTML;
    __check("VR3: el Bloque 2 muestra dos contadores (Vencidas y En riesgo) con enlace a Hoy → Advertencias, sin la tabla larga",h.includes('Vencidas (fecha meta pasada)')&&h.includes('En riesgo según el programa')&&h.includes("irNoLlegan('"+ym+"','venc')")&&!h.includes('órdenes en riesgo según el programa <span')&&!h.includes('clic para ver por qué y en qué paso se atascan'));
    NLF={mes:ym,tipo:null};page='panorama';render();h=document.getElementById('p-panorama').innerHTML;
@@ -2237,14 +2229,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.params.metas=S.params.metas||{};S.params.metas[ym]=1e9;
    page='plan';render();let hh=document.getElementById('p-plan').innerHTML;
    __check("B3-1: la lista 'sin liberar' de Base del plan ya no se repite (solo número y enlace a Liberación)",!hh.includes('sin liberar o sin decidir (foto y fase)')&&!/Ver las \d+ sin liberar/.test(hh));
-   __check("B3-4a: texto corregido a 'sin bloqueo en el programa' (ya no 'liberadas y con fecha')",hh.includes('sin bloqueo en el programa')&&!hh.includes('liberadas y con fecha'));
-   __check("B3-2: facturación esperada solo cuenta lo que termina DENTRO del mes",hh.includes('Facturación esperada (termina dentro del mes)'));
-   __check("B3-2: lo liberado que termina DESPUÉS del mes se muestra aparte, sin sumarse a la esperada",/Liberado pero termina después del mes \(\d+ órdenes\)/.test(hh));
-   __check("B3-3: aparece 'Liberando todo lo pendiente del mes llegas a $ A (B% de la meta)'",/Liberando todo lo pendiente del mes llegas a <b>\$\s*[\d.,]+<\/b> \(\d+% de la meta\)/.test(hh));
+   __check("B3-4a: el Bloque 3 es una franja simple Liberadas · Por liberar · Total del plan · Meta (02-oct)",hh.includes('b3-franja')&&hh.includes('<b>Liberadas</b>')&&hh.includes('<b>Por liberar</b>')&&hh.includes('<b>Total del plan</b>')&&hh.includes('b3-meta')&&!hh.includes('liberadas y con fecha'));
+   __check("B3-2: facturación esperada solo cuenta lo que termina DENTRO del mes (una sola línea «Facturas en …»)",hh.includes('lo liberado que termina este mes')&&hh.includes('b3-linea'));
+   __check("B3-2: lo liberado que termina DESPUÉS del mes se muestra aparte (en el detalle), sin sumarse a la esperada",/liberadas terminan <b>después<\/b> del mes/.test(hh));
+   __check("B3-3: aparece 'Liberando todo lo pendiente llegas a $ A (B % de la meta)' y la línea dice cuánto falta para la meta",/Liberando todo lo pendiente llegas a <b>\$\s*[0-9.,]+<\/b> \([0-9]+ % de la meta\)/.test(hh)&&/te faltan <b class="b3-falta">/.test(hh));
    __check("B3-4b: 'Por liberar' dice 'sin liberar', ya no 'sin fecha'",hh.includes('órdenes del mes sin liberar, ordenadas por valor')&&!hh.includes('órdenes del mes sin fecha, ordenadas por valor'));
-   __check("B3-5: la orden candidata de Bloque 4 no se repite en la tabla de Bloque 3; se enlaza al Bloque 4",hh.includes('ya están disponibles para agregar en el')&&hh.includes('pm-agregar')&&hh.includes('scrollIntoView')&&!hh.includes(esc(oCand.op)));
+   __check("B3-5 (02-oct): sin Bloque 4: la orden con entrega el mes siguiente no está en el plan ni en «Qué liberar primero», y no hay enlace a «Agregar»",!hh.includes('pm-agregar')&&!hh.includes('ya están disponibles para agregar en el')&&!hh.includes(esc(oCand.op)));
    __check("B3-5: la orden bloqueada que NO es candidata de Bloque 4 (ya está en la base del plan) sí sale en la tabla directa con botón liberar",hh.includes(esc(oNoCand.op)));
-   __check("B3-anchor: el panel de Agregar (Bloque 4) tiene el ancla id=\"pm-agregar\" para el enlace",hh.includes('id="pm-agregar"'));
+   __check("B3-anchor (02-oct): el bloque Congelar lleva «Qué entra al plan» (id=pm-entra)",hh.includes('id="pm-entra"'));
    S.ordenes=S.ordenes.filter(x=>![oDentro.id,oFuera.id,oCand.id,oNoCand.id].includes(x.id));
    const metasB=JSON.parse(bakMetas);if(metasB)S.params.metas=metasB;else delete S.params.metas;
    PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -2378,15 +2370,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const ym=hoy().slice(0,7);
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
    const mk2=(p)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/B2M-'+o.id.slice(0,4);o.estado='plan';o.proyecto=new Date(ym+'-15T12:00:00').toLocaleDateString('es-EC',{month:'long'})+' '+ym.slice(0,4);Object.assign(o,p);delete o.programa;S.ordenes.push(o);return o};
-   const oComp=mk2({fecha:dsum(hoy(),-30),fechaCompromiso:dsum(hoy(),30)});
+   const oComp=mk2({fecha:dsum(hoy(),-30),fechaCompromiso:(ym+'-28'>hoy()?ym+'-28':dsum(hoy(),1))});   /* 02-oct: compromiso futuro DENTRO del mes (el plan del mes es por fecha meta) */
    const oVenc=mk2({fecha:dsum(hoy(),-30),fechaCompromiso:''});
+   const rCg=planMesReg(ym),cg0=rCg&&rCg.congelado;if(rCg)rCg.congelado=null;   /* el resumen del plan lee la foto si el mes está congelado: aquí se prueba la regla, no la foto */
    PLAN=null;PLAN_ALL=null;const P0=programar();
    [oComp,oVenc].forEach(o=>{P0.ordenes[o.id]=Object.assign({},P0.ordenes[o.id]||{},{atraso:false,bloqueo:null})});
    P0.ordenes[oComp.id].atraso=true; // el motor dice que no llega al compromiso
    const c=calcularPlan(ym);
    __check("B2M: una orden con fecha de Odoo pasada pero compromiso futuro NO cuenta como vencida",!S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym&&(()=>{const f=fechaMetaDe(o);return f&&f<hoy()})()).some(o=>o.id===oComp.id)&&fechaMetaDe(oComp)===oComp.fechaCompromiso);
    __check("B2M: si el motor dice que no llega al compromiso, cuenta como en riesgo",c.dem.riesgo>=1);
-   __check("B2M: sin compromiso manda la fecha de Odoo y sí es vencida",fechaMetaDe(oVenc)===oVenc.fecha&&c.dem.vencidas>=1);
+   __check("B2M: sin compromiso manda la fecha de Odoo y sí es vencida",fechaMetaDe(oVenc)===oVenc.fecha&&c.dem.vencidas>=1);if(rCg)rCg.congelado=cg0;
    S.ordenes=S.ordenes.filter(o=>o!==oComp&&o!==oVenc);PLAN=null;PLAN_ALL=null;
    __check("B2M sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* TEJEDURÍA EN EL MOTOR (B1): stock → programado a mano → corrida automática estimada */
@@ -5652,7 +5645,6 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ["EG.q","Entregas","entregas",()=>{EG.q=""}],
      ["COS.q","Costura","costura",()=>{COS.q=""}],
      ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q="";/* el buscador vive en el detalle de una celda: se abre la primera que tenga órdenes */CAPD.sel=null;page="capacidad";render();const M=(typeof CAPM!=="undefined"&&CAPM)||null;if(M&&M.celdas){const k=Object.keys(M.celdas).find(k=>((M.celdas[k]||{}).det||[]).length);if(k)CAPD.sel=k}}],
-     ["PMADD.q","Plan mensual → agregar","plan",()=>{PMADD.q=""}],
      ["TAB.q","Mi centro (tablet)","tablet",()=>{TAB.q="";TAB.centro="corte"}]];
     const inp=id=>document.querySelector('input[data-q="'+id+'"]');
     for(const [id,pant,pag,prep] of PANT){
@@ -5902,7 +5894,6 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       ["Órdenes","ORDF.q","ordenes",()=>{ORDF.tab="lista";ORDF.estado="cerrada";ORDF.fases=null}],
       ["Carga general","CG.q","produccion",()=>{CG.centro="corte";CG.area="pro";CG.fases=null}],
       ["Resumen gerencial","GER.q","gerencia",()=>{GER.meses=new Set([hoy().slice(0,7)]);GER.cli=null;GER.estado=null}],
-      ["Plan → agregar","PMADD.q","plan",()=>{PMADD.sel=new Set();PMADD.incluirSig=false}],
       ["Entregas","EG.q","entregas",()=>{EG.meses=new Set([hoy().slice(0,7)]);EG.cli=null;EG.fam=null;EG.hija=null;EG.tela=null}],
       ["Producto en proceso","WIPL.q","wip",()=>{}]];
     for(const [pant,id,pag,prep] of PANT){
@@ -6968,7 +6959,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {PERFIL=adminP0();const ym=hoy().slice(0,7);PM.mes=ym;PM.paso=1;NIVUI.area='corte';NIVUI.esc={};SIM={on:false,ym:null,rec:null,cambios:{},motivo:''};const bakAj=JSON.stringify(S.params.ajustesCap||null);page='plan';render();const pg=()=>document.getElementById('p-plan');let h=pg().innerHTML;
     __check('PN: la pantalla se llama «Planificar el mes», tiene los dos pasos como chips y el paso 1 trae, en orden, el calendario de días, «Nivelación» (ya no «¿Alcanza la capacidad?») con los recuadros por área y, debajo, las personas SOLO del centro elegido (Corte); el paso 2 queda en el DOM pero oculto',/<h2>Planificar el mes/.test(h)&&/1 · Nivelación/.test(h)&&/2 · Plan mensual/.test(h)&&h.indexOf('id="plan-cal"')<h.indexOf('<h3>Nivelación')&&h.indexOf('<h3>Nivelación')<h.indexOf('Personas y horas en Corte')&&!/Alcanza la capacidad/.test(h)&&!/Personas y horas en Confección/.test(h)&&h.indexOf("NIVUI.area='corte'")<h.indexOf('Personas y horas en Corte')&&/Saldo por/.test(h)&&pg().querySelector('#plan-paso1').style.display!=='none'&&pg().querySelector('#plan-paso2').style.display==='none'&&/Resumen del mes/.test(pg().querySelector('#plan-paso2').innerHTML)&&document.querySelector('nav a[data-p="plan"]').textContent.trim()==='Planificar el mes');
     __check('PN: la nivelación del paso 1 mira el mes del plan MÁS lo pendiente de meses anteriores (nunca meses posteriores) y lo dice en el título',(NIVUI.meses||[]).includes(ym)&&(NIVUI.meses||[]).every(m=>m<=ym)&&nivUIMesesDisp().filter(m=>m<ym).every(m=>(NIVUI.meses||[]).includes(m))&&(!nivUIMesesDisp().some(m=>m<ym)||/lo pendiente de/.test(h)),JSON.stringify({niv:NIVUI.meses,ym,disp:nivUIMesesDisp().slice(0,4)}));
-    __check('PN: en el paso 2 la base ya trae lo pendiente de meses anteriores (misma base que la nivelación) y «Agregar» es solo para excepciones: mes siguiente, sin fecha y quitadas',!/Lo pendiente de meses anteriores/.test(pg().innerHTML)&&/solo excepciones/.test(pg().innerHTML)&&/Órdenes sin fecha/.test(pg().innerHTML)&&planBase(ym).every(o=>mesEntregaNiv(o)<=ym&&mesEntregaNiv(o)!=='sin fecha'));
+    __check('PN: en el paso 2 la base ya trae lo pendiente de meses anteriores (misma base que la nivelación); desde el 02-oct no hay «Agregar»: para adelantar se cambia la fecha',!/Lo pendiente de meses anteriores/.test(pg().innerHTML)&&!/solo excepciones/.test(pg().innerHTML)&&!/Agregar órdenes al plan/.test(pg().innerHTML)&&/Qué entra al plan/.test(pg().innerHTML)&&planBase(ym).every(o=>mesEntregaNiv(o)<=ym&&mesEntregaNiv(o)!=='sin fecha'));
     /* HP · personas Y horas por día en el escenario (usuaria, 20-sep noche): las dos se guardan como el ajuste de la semana */
     {const rc=S.recursos.find(r=>r.activa&&r.centro==='corte'&&r.id!=='maquila');if(rc){const sem=semanasMes(ym);const dia=sem.map(w=>w.dias.find(d=>labR(d,rc))).find(Boolean);const cap0=dia?capDia(rc,dia):null;const min0=+(rc.min||0);
       const hh=personasNivHTML(ym,'corte');__check('HP: la tabla de personas trae también horas por día (configurado · vigente · escenario) con su propio campo',/Horas por día/.test(hh)&&new RegExp("nivCapSet\\('"+ym+"','"+rc.id+"','min'").test(hh)&&new RegExp("nivCapSet\\('"+ym+"','"+rc.id+"','pers'").test(hh));
@@ -7212,7 +7203,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const dv=o=>{const m=fechaMetaDe(o);return m?diasEntre(m,hoy()):0};const posDe=o=>nl.indexOf(esc(o.op)+faseTag(o));   /* solo la celda de la orden; las que quedan fuera de las 150 visibles no cuentan aunque su WH se nombre en otra fila */   /* la celda de la orden (WH + fase), no una mención suelta de la WH en otra fila (p. ej. «va tarde por su colección: WH/…») */
      const pos=S.ordenes.filter(o=>abierta(o)&&esMetaVencida(o,P)).map(o=>({o,i:posDe(o)})).filter(x=>x.i>=0).sort((a,b)=>a.i-b.i);
      __check('VN: la lista de vencidas va de la más vieja a la más nueva (las 150 que se ven son las de más días)',pos.length>1&&pos.every((x,k)=>k===0||dv(pos[k-1].o)>=dv(x.o)),pos.length+' filas · '+JSON.stringify(pos.map((x,k)=>k&&dv(pos[k-1].o)<dv(x.o)?{antes:pos[k-1].o.op,dA:dv(pos[k-1].o),esta:x.o.op,d:dv(x.o),i:x.i,ctx:nl.slice(Math.max(0,x.i-160),x.i+40).replace(/<[^>]+>/g,' ')}:null).filter(Boolean).slice(0,2)))}
-    const ym=mesPlan(oBloq);if(ym){const c=calcularPlan(ym);const enMes=S.ordenes.filter(o=>abierta(o)&&mesPlan(o)===ym);
+    const ym=mesPlan(oBloq);if(ym){const c=calcularPlan(ym);const enMes=S.ordenes.filter(o=>abierta(o)&&planMesOidsTot(ym).has(o.id));
       __check('VN: el Plan cuenta vencidas y terminadas con la misma regla',c.dem.vencidas===enMes.filter(o=>esMetaVencida(o,P)).length&&c.dem.terminadas===enMes.filter(faseTerminadaDe).reduce((a,o)=>a+ +o.cant,0))}
     /* el número 8 es un parámetro: se respeta lo configurado, y queda en bitácora */
     const bak=S.params.faseTerminada;S.params.faseTerminada=9;
@@ -8183,10 +8174,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x)&&!rutaConfirmada(x)&&!liberada(x,'corte'));alerts.length=0;liberarCorte(o.id);
     __check("AU6: liberarCorte ya no libera una orden sin ruta confirmada (usaba puedeLiberar, sin esa regla)",!liberada(o,'corte')&&alerts.some(a=>/falta confirmar ruta/.test(a)),alerts.join(' | ').slice(0,120));}
    /* AU7 · Plan mensual: bordado en puntadas contra capacidad en puntadas */
-   {PMADD.sel=new Set();PMADD.ym='2026-10';const html=agregarAlPlanHTML('2026-10',calcularPlan('2026-10'));
-    const fila=(html.match(/<tr><td>Bordado[^]*?<\/tr>/)||[''])[0];
-    __check("AU7: la tabla «Capacidad del plan por centro» muestra bordado en puntadas (carga y capacidad en la misma unidad; antes puntadas contra minutos)",!fila||(/\(puntadas\)/.test(fila)&&/M puntadas/.test(fila)),fila.replace(/<[^>]+>/g,' ').slice(0,160));
-    __check("AU7: los demás centros siguen en horas",/Corte<\/td><td class="num">[\d.,]+ h<\/td>/.test(html));}
+   {__check("AU7 (02-oct): la tabla «Capacidad del plan por centro» salió del plan mensual (repetía la nivelación del paso 1)",typeof agregarAlPlanHTML==='undefined'&&!String(vPlan).includes('Capacidad del plan por centro'));}
    /* AU8 · pasos que el motor no programa sin decirlo */
    {const P=programar();const psp=pasosSinProgramar(P);
     __check("AU8: pasosSinProgramar solo lista pasos de producción pendientes sin fecha, de órdenes liberadas sin bloqueo ni error",psp.every(x=>{const o=S.ordenes.find(y=>y.id===x.oid);const ro=P.ordenes[o.id]||{};return liberada(o,'corte')&&!ro.bloqueo&&!ro.error&&!pasoHecho(o,x.c)&&!((ro.pasos||[]).find(p=>p.centro===x.c)||{}).ini}));
