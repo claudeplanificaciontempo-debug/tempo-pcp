@@ -573,6 +573,40 @@ html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-colu
 .modo-sw svg{width:16px;height:16px}
 html:not([data-tema="odoo"]) .modo-sw{border-color:var(--rule)}html:not([data-tema="odoo"]) .modo-sw button.on{background:var(--field)!important}
 html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw{border-color:var(--rule)}html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) .modo-sw button.on{background:var(--field)!important}
+/* ===== Revisión «para dummies» (02-oct-2026): un lugar por lote de trabajo ===== */
+/* ux:B0a */
+/* · */
+/* · */
+/* ux:B0b */
+/* · */
+/* · */
+/* ux:B1 */
+/* · */
+/* · */
+/* ux:B2 */
+/* · */
+/* · */
+/* ux:B3 */
+/* · */
+/* · */
+/* ux:B4 */
+/* · */
+/* · */
+/* ux:B5 */
+/* · */
+/* · */
+/* ux:B6 */
+/* · */
+/* · */
+/* ux:B7 */
+/* · */
+/* · */
+/* ux:B8 */
+/* · */
+/* · */
+/* ux:B9 */
+/* · */
+/* · */
 </style>
 </head>
 <body>
@@ -1066,7 +1100,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 17:13';
+const APP_BUILD='2026-10-02 17:50';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD}
 async function revisarVersion(){try{const r=await fetch(location.pathname+'?nocache='+Date.now(),{cache:'no-store'});if(!r.ok)return;const t=await r.text();const m=t.match(/APP_BUILD=\x27([^\x27]+)\x27/);if(!m)return;
