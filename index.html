@@ -1566,7 +1566,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-03 17:41';
+const APP_BUILD='2026-10-03 18:29';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -11191,25 +11191,40 @@ function sembrarTiposMaq(){if(S.params.tiposMaq19)return false;
   S.params.tiposMaq=t;S.params.tiposMaq19={ts:new Date().toISOString(),u:quienFirma(),creados,ampliados,apagados};
   if(typeof bitacora==='function')bitacora('Tipos de máquina: una sola tabla con los 19 tipos y sus alias (hoja de operaciones, Kronos e inventario; los TP «por confirmar con planta»): '+creados+' creados, '+ampliados+' ampliados'+(apagados?', '+apagados+' nombres sueltos apagados (ahora son alias; no se borró nada)':''));
   return true}
-function addTipoMaq(){tiposMaqEditables().push({tipo:'',alias:'',aliasTP:'',familia:'',activa:true,pendiente:true});save();render()}
-function setTipoMaq(i,k,v){const r=tiposMaqEditables()[i];if(!r)return;const antes=r[k];r[k]=(k==='activa')?!!v:v;if(k==='tipo'||k==='alias'||k==='aliasTP'||k==='familia')r.pendiente=!String(r.tipo||'').trim();
+/* 03-oct (arreglo 3): toda edición de la tabla de tipos de máquina exige el permiso «config», como las reglas del inventario (setReglaInvMaq) */
+function addTipoMaq(){if(!puede('config'))return;tiposMaqEditables().push({tipo:'',alias:'',aliasTP:'',familia:'',activa:true,pendiente:true});save();render()}
+function setTipoMaq(i,k,v){if(!puede('config'))return;if(k==='activa')return v?encenderTipoMaq(i):apagarTipoMaq(i);   /* apagar y encender van por UN camino, con confirmación */
+  const r=tiposMaqEditables()[i];if(!r)return;const antes=r[k];r[k]=(k==='activa')?!!v:v;if(k==='tipo'||k==='alias'||k==='aliasTP'||k==='familia')r.pendiente=!String(r.tipo||'').trim();
   bitacora('Tipos de máquina · '+(r.tipo||'(sin nombre)')+' · '+k+': '+(antes===true?'sí':antes===false?'no':(antes||'—'))+' → '+(v===true?'sí':v===false?'no':(v||'—'))+' ('+quienFirma()+')');save();render()}
-function delTipoMaq(i){const r=tiposMaqEditables()[i];if(!r)return;if(!confirm('¿Quitar el tipo de máquina «'+(r.tipo||'')+'»? Las operaciones y máquinas que lo usan quedan «sin homologar» hasta que lo vuelvas a crear o pongas su nombre como alias de otro tipo.'))return;
-  tiposMaqEditables().splice(i,1);bitacora('Tipo de máquina quitado: '+(r.tipo||'')+' ('+quienFirma()+')');save();render()}
+/* 03-oct (arreglo 2): un tipo de máquina NO se borra (antes la «×» lo sacaba de la tabla con splice). Se APAGA: queda en la tabla con quién y
+   cuándo, y se puede volver a encender. Mientras está apagado sus nombres dejan de reconocerse (infoMaquina no mira los apagados): las
+   operaciones y máquinas que lo usan quedan «sin homologar», a la vista, hasta encenderlo o decir de qué otro tipo son. */
+function usosTipoMaq(r){let ops=0,maqs=0;const k=claveMaq(r&&r.tipo);if(!k)return {ops,maqs};
+  (S.operaciones||[]).forEach(o=>{if(claveMaq(normMaquina(o.maq))===k)ops++});(S.maquinas||[]).forEach(m=>{if(m.estado!=='baja'&&claveMaq(normMaquina(m.tipo))===k)maqs++});return {ops,maqs}}
+function apagarTipoMaq(i){if(!puede('config'))return;const r=tiposMaqEditables()[i];if(!r||r.activa===false)return;
+  const us=usosTipoMaq(r);const nombres=[r.tipo,...listaAlias(r.alias),...listaAlias(r.aliasTP)].filter(x=>String(x||'').trim());
+  if(!confirm('¿Apagar el tipo de máquina «'+(r.tipo||'(sin nombre)')+'»? No se borra: queda en la tabla, apagado, y lo puedes volver a encender.\n\nMientras esté apagado sus nombres ('+(nombres.join(', ')||'—')+') no se reconocen: '+us.ops+' '+(us.ops===1?'operación':'operaciones')+' y '+us.maqs+' '+(us.maqs===1?'máquina':'máquinas')+' que lo usan quedan «sin homologar» hasta que lo enciendas o digas de qué otro tipo son.'))return;
+  const ts=new Date().toISOString(),q=quienFirma();r.activa=false;r.apagado={ts,u:q};
+  bitacora('Tipo de máquina apagado (no se borra): '+(r.tipo||'(sin nombre)')+' · '+us.ops+' operaciones y '+us.maqs+' máquinas quedan sin homologar ('+q+')');save();render()}
+function encenderTipoMaq(i){if(!puede('config'))return;const r=tiposMaqEditables()[i];if(!r||r.activa!==false)return;
+  if(!confirm('¿Volver a encender el tipo de máquina «'+(r.tipo||'(sin nombre)')+'»? Sus nombres vuelven a reconocerse en las operaciones, el inventario y el balanceo.'))return;
+  const ts=new Date().toISOString(),q=quienFirma();r.activa=true;r.encendido={ts,u:q};
+  bitacora('Tipo de máquina encendido de nuevo: '+(r.tipo||'(sin nombre)')+' ('+q+')');save();render()}
 /* planta confirmó que los nombres TP son la misma máquina: pasan a alias confirmados */
-function confirmarAliasTP(i){const r=tiposMaqEditables()[i];const tp=listaAlias(r&&r.aliasTP);if(!tp.length)return;
+function confirmarAliasTP(i){if(!puede('config'))return;const r=tiposMaqEditables()[i];const tp=listaAlias(r&&r.aliasTP);if(!tp.length)return;
   if(!confirm('¿Planta confirmó que «'+tp.join(', ')+'» es la misma máquina que «'+r.tipo+'»? Pasan a ser otros nombres confirmados de ese tipo.'))return;
   r.alias=listaAlias(r.alias).concat(tp).join(', ');r.aliasTP='';r.tpConfirmado={ts:new Date().toISOString(),u:quienFirma(),alias:tp.join(', ')};
   bitacora('Tipos de máquina · '+r.tipo+' · nombres TP confirmados con planta: '+tp.join(', ')+' ('+quienFirma()+')');save();render()}
 /* un nombre sin homologar pasa a ser otro nombre de un tipo, o un tipo nuevo */
-function homologarNombreMaq(nombre,tipo){const n=String(nombre==null?'':nombre).trim();if(!n||!tipo)return;const t=tiposMaqEditables();
-  if(tipo==='__nuevo'){const ex=t.find(x=>claveMaq(x.tipo)===claveMaq(n));if(ex){ex.pendiente=false;ex.activa=true}else t.push({tipo:n,alias:'',aliasTP:'',familia:'',activa:true});
+function homologarNombreMaq(nombre,tipo){if(!puede('config'))return;const n=String(nombre==null?'':nombre).trim();if(!n||!tipo)return;const t=tiposMaqEditables();
+  if(tipo==='__nuevo'){const ex=t.find(x=>claveMaq(x.tipo)===claveMaq(n));if(ex){ex.pendiente=false;if(ex.activa===false)ex.encendido={ts:new Date().toISOString(),u:quienFirma()};ex.activa=true}else t.push({tipo:n,alias:'',aliasTP:'',familia:'',activa:true});
     bitacora('Tipos de máquina · «'+n+'» queda como tipo propio (era un nombre sin homologar) ('+quienFirma()+')')}
   else{const r=t.find(x=>claveMaq(x.tipo)===claveMaq(tipo));if(!r)return;r.alias=listaAlias(r.alias).concat([n]).join(', ');
     const suelta=t.find(x=>x!==r&&claveMaq(x.tipo)===claveMaq(n)&&x.pendiente);if(suelta){suelta.activa=false;suelta.absorbidoEn=r.tipo}
     bitacora('Tipos de máquina · «'+n+'» pasa a ser otro nombre de «'+r.tipo+'» ('+quienFirma()+')')}
   save();render()}
-/* índice de nombres: manda el alias de un tipo activo, luego el nombre de un tipo activo; los inactivos solo si no hay otro */
+/* índice de nombres: manda el alias de un tipo activo, luego el nombre de un tipo activo. Los apagados quedan en el índice pero infoMaquina no
+   los usa (03-oct, arreglo 2): apagar un tipo deja sus nombres «sin homologar» */
 function armarIdxTiposMaq(){const ix={alias:new Map(),tipo:new Map()};const put=(m,k,v)=>{if(k&&!m.has(k))m.set(k,v)};
   [true,false].forEach(act=>tiposMaq().forEach(r=>{if((r.activa!==false)!==act||!String(r.tipo||'').trim())return;
     listaAlias(r.alias).forEach(a=>put(ix.alias,claveMaq(a),{r,act,tp:false}));listaAlias(r.aliasTP).forEach(a=>put(ix.alias,claveMaq(a),{r,act,tp:true}));
@@ -11218,7 +11233,7 @@ let IDX_TM=null;   /* el índice se rehace solo si la tabla cambió (firma corta
 function idxTiposMaq(){const t=tiposMaq();const sig=t.map(r=>[r.tipo,r.alias,r.aliasTP,r.familia,r.activa!==false?1:0,r.pendiente?1:0,r.porConfirmar?1:0].join('|')).join('\n');
   if(!IDX_TM||IDX_TM.sig!==sig)IDX_TM={sig,ix:armarIdxTiposMaq()};return IDX_TM.ix}
 function infoMaquina(nombre){const n=claveMaq(nombre);if(!n)return null;const ix=idxTiposMaq();
-  const a=ix.alias.get(n),b=ix.tipo.get(n);const h=(a&&a.act)?a:(b&&b.act)?b:(a||b);if(!h)return null;
+  const a=ix.alias.get(n),b=ix.tipo.get(n);const h=(a&&a.act)?a:(b&&b.act)?b:null;if(!h)return null;   /* un tipo apagado ya no reconoce sus nombres */
   return {tipo:String(h.r.tipo).trim(),familia:h.r.familia||'',porConfirmar:h.tp||!!h.r.porConfirmar,pendiente:!!h.r.pendiente,activo:h.act}}
 /* normaliza cualquier nombre de máquina (hoja, Kronos, inventario): el tipo oficial si calza; si no, el nombre tal cual («sin homologar») */
 function normMaquina(nombre){const s=String(nombre==null?'':nombre).trim();if(!s)return '';const i=infoMaquina(s);return i?i.tipo:s}
@@ -11242,9 +11257,9 @@ function tiposMaqPanelHTML(){const t=tiposMaq();const usos={},maqs={};(S.operaci
      <td><input type="text" style="width:240px" value="${esc(r.alias||'')}" placeholder="otros nombres, separados por coma" onchange="setTipoMaq(${i},'alias',this.value)"></td>
      <td><input type="text" style="width:190px" value="${esc(r.aliasTP||'')}" placeholder="—" onchange="setTipoMaq(${i},'aliasTP',this.value)">${listaAlias(r.aliasTP).length?` <button class="btn ghost sm" onclick="confirmarAliasTP(${i})" title="planta confirmó que es la misma máquina">confirmar</button>`:''}${r.porConfirmar?' <span class="tag t-aviso" title="nombre con sufijo TP">por confirmar con planta</span>':''}</td>
      <td class="num">${num(usos[r.tipo]||0)}</td><td class="num">${num(maqs[r.tipo]||0)}</td>
-     <td style="text-align:center"><input type="checkbox" ${r.activa!==false?'checked':''} onchange="setTipoMaq(${i},'activa',this.checked)"></td>
-     <td><button class="btn ghost sm" onclick="delTipoMaq(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="8" class="mut">La tabla está vacía a propósito: agrega los tipos que hagan falta.</td></tr>'}
-   </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Nada se agrupa solo: si dos nombres son la misma máquina, deja uno como tipo y escribe el otro en sus otros nombres.</p></div></div>`}
+     <td>${r.activa!==false?'sí':`<span class="tag t-mut" title="${esc(r.apagado?'apagado el '+fechaHoraLocal(r.apagado.ts)+' por '+(r.apagado.u||'—')+': sus nombres no se reconocen':'apagado: sus nombres no se reconocen')}">apagado</span>`}</td>
+     <td>${r.absorbidoEn?'':r.activa!==false?`<button class="btn ghost sm" onclick="apagarTipoMaq(${i})" title="no se borra: queda en la tabla, apagado, y se puede volver a encender">apagar</button>`:`<button class="btn ghost sm" onclick="encenderTipoMaq(${i})" title="sus nombres vuelven a reconocerse">encender</button>`}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">La tabla está vacía a propósito: agrega los tipos que hagan falta.</td></tr>'}
+   </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Nada se agrupa solo: si dos nombres son la misma máquina, deja uno como tipo y escribe el otro en sus otros nombres. «Apagar» no borra: el tipo queda en la tabla y se vuelve a encender; mientras está apagado, sus nombres salen «sin homologar».</p></div></div>`}
 /* --- operarias por módulo y su especialidad por tipo de máquina (no obligatorio llenar) --- */
 const NIVELES_ESP=[[1,'1 · aprende'],[2,'2 · hace'],[3,'3 · referente']];
 function operarias(){if(!Array.isArray(S.params.operarias))S.params.operarias=[];return S.params.operarias}
@@ -11273,7 +11288,7 @@ function refEnCurso(rec,P){const ym=hoy().slice(0,7);const ops=[...new Set((P.pr
   const top=Object.entries(porCat).sort((a,b)=>b[1]-a[1])[0];
   return {ords,top:top?top[0]:null,pz:ords.reduce((a,o)=>a+ +o.cant,0)}}
 function modulosVistaHTML(P){const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa&&veCentro('modulos')&&!esMaquilaRec(r));   /* 03-oct: la maquila no tiene máquinas ni se balancea */
-  const maqPorRec={};(S.maquinas||[]).forEach(m=>{if(!m.rec)return;maqPorRec[m.rec]=(maqPorRec[m.rec]||0)+((m.estado||'operativa')==='operativa'?1:0)});
+  const maqPorRec={};(S.maquinas||[]).forEach(m=>{if(!m.rec)return;maqPorRec[m.rec]=(maqPorRec[m.rec]||0)+(maqOperativa(m)?1:0)});   /* 03-oct (arreglo 4): una sola regla de «máquina operativa» */
   /* 02-oct (revisión «para dummies», B4): la cifra dice «personas»; si NINGÚN módulo tiene máquinas ni operarias, un solo aviso arriba en vez de la
      misma advertencia amarilla en cada tarjeta. «Este mes» = lo programado en el módulo en el mes en curso (refEnCurso), con el tipo que más pesa. */
   const ninguno=mods.length>0&&mods.every(r=>!(maqPorRec[r.id]||0)&&!operariasDe(r.id).length);
@@ -11352,7 +11367,7 @@ function vBalanceo(el){
     <h4 style="margin:14px 0 6px">Máquinas</h4><table><thead><tr><th>Tipo</th><th class="num">Pide</th><th class="num">Tiene</th><th class="num">En stock</th><th>Resultado</th></tr></thead><tbody>
     ${tipos.map(t=>{const d=(tiene[t]||0)-(necesita[t]||0);return `<tr><td>${esc(t)}</td><td class="num">${necesita[t]||0}</td><td class="num">${tiene[t]||0}</td><td class="num">${stock[t]||'<span class="mut">·</span>'}</td><td>${d<0?`<span class="tag t-alerta">faltan ${-d}${stock[t]?' · hay '+Math.min(stock[t],-d)+' en stock':''}</span>`:d>0?`<span class="tag t-aviso">sobran ${d}</span>`:'<span class="tag t-ok">justo</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" class="mut">Sin máquinas registradas para este módulo.</td></tr>'}</tbody></table>
     ${sinMaq?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinMaq} operaciones sin tipo de máquina: se cuentan como manuales.</p>`:''}
-    ${!S.maquinas.some(m=>m.rec===rec.id)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Este módulo no tiene máquinas registradas; regístralas en Configuración general → Centros y máquinas → Máquinas de confección para comparar el inventario.</p>`:''}</div>
+    ${!(S.maquinas||[]).some(m=>m.rec===rec.id&&maqOperativa(m))?`<p class="mut bal-sin-maq" style="font-size:var(--fs-xs);margin-top:8px">Este módulo no tiene máquinas operativas registradas${(S.maquinas||[]).some(m=>m.rec===rec.id)?' (las que tiene están dadas de baja, paradas, en mantenimiento o por revisar: no cuentan)':''}; regístralas o revisa su estado en Configuración general → Centros y máquinas → Máquinas de confección para comparar el inventario.</p>`:''}</div>
   </div></section>`}
 
 /* ---------- Programa del día para imprimir ---------- */
@@ -13739,6 +13754,7 @@ function togTec(rid,tid){const r=R(rid);r.tecnicas=r.tecnicas||[];const i=r.tecn
 const MAQ_INV_DEF={estados:[{texto:'O.K',estado:'operativa'},{texto:'MANTENIMIENTO PREVENTIVO',estado:'operativa'},{texto:'PARADA',estado:'parada'}],lugares:[{texto:'B/O',centro:'botones'}],noEntran:[{texto:'GENERADOR'}]};
 const ESTADOS_MAQ=['operativa','mantenimiento','parada','revisar','baja'];
 const ESTADO_MAQ_TXT={operativa:'operativa',mantenimiento:'en mantenimiento',parada:'parada',revisar:'por revisar',baja:'dada de baja'};
+const MSG_BAJA_ARCHIVO='el archivo dice baja: confirmar con dar de baja';   /* 03-oct (arreglo 1): el archivo o lo pegado no da de baja solo */
 const CAMPOS_MAQ_INV=['tipo','tipoInv','marca','modelo','serial','obs','area','centro','rec','estado','fechaMant','invFeb'];
 const CAMPO_MAQ_TXT={cod:'número',tipo:'tipo',tipoInv:'tipo en el inventario',marca:'marca',modelo:'modelo',serial:'serial',obs:'observación',area:'área',centro:'centro',rec:'módulo o recurso',estado:'estado',fechaMant:'fecha de mantenimiento',invFeb:'inventario feb-2026'};
 let INVMAQ=null;
@@ -13759,8 +13775,9 @@ function claveCabInv(h){return claveMaq(String(h==null?'':h).replace(/\([^)]*\)/
 function colsInvMaq(cab){const hs=(cab||[]).map(claveCabInv);const out={};
   COLS_INV_MAQ.forEach(([k,pats])=>{let i=-1;for(const p of pats){i=hs.indexOf(p);if(i>=0)break}
     if(i<0)for(const p of pats){i=hs.findIndex(h=>h.startsWith(p+' ')||h.startsWith(p+'_'));if(i>=0)break}out[k]=i});return out}
-function leerHojaInvMaq(rows,hoja){rows=Array.isArray(rows)?rows:[];const esCab=c=>/^numero[ _]de[ _]maquina|^numero_maquina/.test(claveCabInv(c));
-  const hi=rows.slice(0,30).findIndex(r=>Array.isArray(r)&&r.some(esCab));if(hi<0)return null;
+function filaCabInvMaq(rows){const esCab=c=>/^numero[ _]de[ _]maquina|^numero_maquina/.test(claveCabInv(c));return (Array.isArray(rows)?rows:[]).slice(0,30).findIndex(r=>Array.isArray(r)&&r.some(esCab))}
+function leerHojaInvMaq(rows,hoja){rows=Array.isArray(rows)?rows:[];
+  const hi=filaCabInvMaq(rows);if(hi<0)return null;
   const col=colsInvMaq(rows[hi]);const g=(r,k)=>col[k]>=0?r[col[k]]:'';const recs=[];let vacias=0;
   const K=['num','area','marca','modelo','serial','tipoInv','obs','modulo','invFeb','estadoTxt'];
   rows.slice(hi+1).forEach((r,j)=>{if(!Array.isArray(r))return;const x={hoja,fila:hi+j+2};K.forEach(k=>x[k]=txtCelda(g(r,k)));
@@ -13790,7 +13807,7 @@ function estadoInvMaq(obs,inv){const reglas=(maqInv().estados||[]).filter(r=>cla
   return {estado:'revisar',sinRegla:'(sin observación ni marca de inventario)'}}
 /* hojas = {nombre: filas[][]}; opts.parcial (lo pegado): no marca «no vino» lo que no está */
 function planMaquinas(hojas,nombre,opts){opts=opts||{};
-  const p={archivo:nombre||'',parcial:!!opts.parcial,hojas:[],campos:[],maquinas:[],nuevas:[],iguales:[],cambiadas:[],conservadas:[],volvieron:[],noEntran:[],repetidas:[],noVinieron:[],difHojas:[],sinHomologar:{},sinRegla:{},avisos:[],vacias:0};
+  const p={archivo:nombre||'',parcial:!!opts.parcial,hojas:[],campos:[],maquinas:[],nuevas:[],iguales:[],cambiadas:[],conservadas:[],volvieron:[],noEntran:[],repetidas:[],noVinieron:[],difHojas:[],sinHomologar:{},sinRegla:{},avisos:[],vacias:0,bajaArchivo:[],cambioNumero:[]};
   const leidas=[];Object.keys(hojas||{}).forEach(n=>{const h=leerHojaInvMaq(hojas[n],n);p.hojas.push(h?{nombre:n,tipo:h.porModulo?'modulos':'inventario',filas:h.filas}:{nombre:n,tipo:'otra'});if(h){leidas.push(h);p.vacias+=h.vacias}});
   if(!leidas.length){p.error='Ninguna hoja tiene la columna «NUMERO DE MAQUINA»: no parece el archivo del inventario de máquinas.';return p}
   leidas.sort((a,b)=>(b.porModulo?1:0)-(a.porModulo?1:0));   /* la hoja por módulo manda: va primero */
@@ -13819,10 +13836,13 @@ function planMaquinas(hojas,nombre,opts){opts=opts||{};
     let centro='',rec='';const modulo=s.de.mod?s.de.mod.modulo:'';
     if(modulo){const l=lugarInvMaq(modulo);if(l.error){p.noEntran.push(Object.assign(ref,{motivo:l.error}));return}centro=l.centro;rec=l.rec;if(l.aviso)p.avisos.push({num,txt:l.aviso})}
     else{centro=centroDeAreaInv(r.area);if(r.area&&!centro)p.avisos.push({num,txt:'el área «'+r.area+'» no es un centro de Configuración: la máquina queda sin centro'})}
-    const ed=claveMaq(r.estadoTxt);const est=(ed&&ESTADOS_MAQ.includes(ed))?{estado:ed}:r.estadoTxt?estadoInvMaq(r.estadoTxt,''):estadoInvMaq(r.obs,r.invFeb);
+    const ed=claveMaq(r.estadoTxt);let est=(ed&&ESTADOS_MAQ.includes(ed))?{estado:ed}:r.estadoTxt?estadoInvMaq(r.estadoTxt,''):estadoInvMaq(r.obs,r.invFeb);
+    /* 03-oct (arreglo 1): dar de baja pide motivo, así que el archivo (o lo pegado) no da de baja solo: si dice «baja», la máquina entra «por
+       revisar» con ese motivo y la vista previa lo lista. Si ya está de baja en el sistema, coincide y no cambia. */
+    if(est.estado==='baja'&&(existentes.get(num)||{}).estado!=='baja'){est={estado:'revisar',motivoRevisar:MSG_BAJA_ARCHIVO};p.bajaArchivo.push({num,hoja:base.hoja,fila:base.fila})}
     if(est.sinRegla)p.sinRegla[est.sinRegla]=(p.sinRegla[est.sinRegla]||0)+1;
     if(!maqHomologada(r.tipoInv))p.sinHomologar[r.tipoInv]=(p.sinHomologar[r.tipoInv]||0)+1;
-    const x={cod:num,tipo:normMaquina(r.tipoInv),tipoInv:r.tipoInv,marca:r.marca,modelo:r.modelo,serial:r.serial,obs:r.obs,area:r.area,centro,rec,estado:est.estado,fechaMant:r.fechaMant,invFeb:r.invFeb,hoja:base.hoja,fila:base.fila};
+    const x={cod:num,tipo:normMaquina(r.tipoInv),tipoInv:r.tipoInv,marca:r.marca,modelo:r.modelo,serial:r.serial,obs:r.obs,area:r.area,centro,rec,estado:est.estado,fechaMant:r.fechaMant,invFeb:r.invFeb,hoja:base.hoja,fila:base.fila,motivoRevisar:est.motivoRevisar||''};
     p.maquinas.push(x);const m=existentes.get(num);if(!m){p.nuevas.push(x);return}vistos.add(m);
     const cambios=[],conserv=[];
     CAMPOS_MAQ_INV.forEach(k=>{if(!campos.has(k))return;const a=txtCelda(m[k]),b=txtCelda(x[k]);if(a===b)return;
@@ -13830,7 +13850,16 @@ function planMaquinas(hojas,nombre,opts){opts=opts||{};
     if(m.noVino)p.volvieron.push(m);
     if(cambios.length)p.cambiadas.push({x,m,cambios,conservados:conserv});else if(conserv.length)p.conservadas.push({x,m,conservados:conserv});else p.iguales.push({x,m})});
   if(!p.parcial)p.noVinieron=(S.maquinas||[]).filter(m=>!vistos.has(m)&&!por.has(txtCelda(m.cod)));
+  /* 03-oct (arreglo 8): una «nueva» y una que «no vino» con el MISMO serial pueden ser la misma máquina con otro número. Solo se AVISA, no se
+     aplica nada solo. Cuentan los seriales no vacíos (ni «S/N» o parecido) que aparecen una sola vez en el archivo y una sola vez en el sistema. */
+  if(!p.parcial&&p.nuevas.length&&p.noVinieron.length){const cuenta=l=>{const c=new Map();l.forEach(x=>{const s=claveSerialMaq(x.serial);if(s)c.set(s,(c.get(s)||0)+1)});return c};
+    const enArch=cuenta(p.maquinas),enSis=cuenta(S.maquinas||[]);const nv=new Map();
+    p.noVinieron.forEach(m=>{const s=claveSerialMaq(m.serial);if(s&&enSis.get(s)===1)nv.set(s,m)});
+    p.nuevas.forEach(x=>{const s=claveSerialMaq(x.serial);const m=(s&&enArch.get(s)===1)?nv.get(s):null;
+      if(m)p.cambioNumero.push({archivo:x.cod,sistema:txtCelda(m.cod),serial:txtCelda(x.serial),tipoArchivo:x.tipo||'',tipoSistema:m.tipo||''})})}
   return p}
+/* serial que sirve para reconocer una máquina: vacío, «S/N», «N/A», «sin serial», guiones o ceros no sirven */
+function claveSerialMaq(s){const k=claveMaq(txtCelda(s));if(!k||/^(s\s*[\/.\-]?\s*n\.?|n\s*[\/.]?\s*a\.?|sin serial|no tiene|ninguno|-+|0+|\?+)$/.test(k))return '';return k}
 function hayQueAplicarInv(p){return !!p&&!p.error&&(p.nuevas.length+p.cambiadas.length+p.volvieron.length+(p.parcial?0:p.noVinieron.filter(m=>!m.noVino).length))>0}
 function previaInvMaqHTML(p){if(!p)return '';if(p.error)return '<div class="warn">'+esc(p.error)+'</div>';
   const L=(xs,f)=>xs.slice(0,200).map(f).join('')+(xs.length>200?'<li class="mut">y '+num(xs.length-200)+' más</li>':'');
@@ -13839,15 +13868,16 @@ function previaInvMaqHTML(p){if(!p)return '';if(p.error)return '<div class="warn
   p.maquinas.forEach(x=>{const k=clave(x);enArch[k]=(enArch[k]||0)+1});(S.maquinas||[]).forEach(m=>{if(!maqOperativa(m))return;const k=clave(m);enSis[k]=(enSis[k]||0)+1});
   const otrosRec=[...new Set(p.maquinas.filter(x=>x.rec&&!mods.some(r=>r.id===x.rec)).map(x=>x.rec))].map(R).filter(Boolean);
   const sinRec=[...new Set(p.maquinas.filter(x=>!x.rec).map(clave))];
-  const filaL=(k,n,pers)=>`<tr><td>${n}</td><td class="num"><b>${enArch[k]?num(enArch[k]):'<span class="mut">·</span>'}</b></td><td class="num">${enSis[k]?num(enSis[k]):'<span class="mut">·</span>'}</td><td class="num">${pers!=null?num(pers):'<span class="mut">—</span>'}</td></tr>`;
+  const filaL=(k,n,pers)=>`<tr data-k="${esc(k)}"><td>${n}</td><td class="num"><b>${enArch[k]?num(enArch[k]):'<span class="mut">·</span>'}</b></td><td class="num">${enSis[k]?num(enSis[k]):'<span class="mut">·</span>'}</td><td class="num">${pers!=null?num(pers):'<span class="mut">—</span>'}</td></tr>`;
   const card=(v,k,cls)=>`<div class="kpi ${cls||''}"><div class="v">${num(v)}</div><div class="k">${k}</div></div>`;
   const nC=c=>esc(CAMPO_MAQ_TXT[c]||c);
   return `<div class="inv-prev">
    <p class="inv-hojas">${p.hojas.map(h=>'«'+esc(h.nombre)+'» '+(h.tipo==='modulos'?'(máquinas por módulo, '+num(h.filas)+' filas)':h.tipo==='inventario'?'(inventario completo, '+num(h.filas)+' filas)':'(no es del inventario: no se lee)')).join(' · ')}. <b>Nada se guarda hasta «Aplicar».</b></p>
    <div class="kpis">${card(p.nuevas.length,'nuevas')}${card(p.iguales.length,'iguales (no cambian)')}${card(p.cambiadas.length,'cambian',p.cambiadas.length?'warn':'')}${card(p.noEntran.length,'no entran (con su motivo)',p.noEntran.length?'warn':'')}${card(p.repetidas.length,'repetidas idénticas: se toman una vez')}${p.parcial?'':card(p.noVinieron.length,'ya están y no vinieron: quedan, marcadas «no vino»')}</div>
    ${hayQueAplicarInv(p)?'':'<p class="inv-igual"><span class="tag t-ok">sin cambios</span> Es igual a lo que ya está: no hay nada que aplicar.</p>'}
+   ${p.cambioNumero.length?`<div class="warn inv-cambio-num"><b>Posible cambio de número (${num(p.cambioNumero.length)})</b> — no se aplica solo:<ul>${L(p.cambioNumero,c=>`<li title="${esc('serial '+c.serial)}">posible cambio de número: la N.º <b>${esc(c.sistema)}</b> del sistema y la N.º <b>${esc(c.archivo)}</b> del archivo tienen el mismo serial${claveMaq(c.tipoSistema)&&claveMaq(c.tipoSistema)!==claveMaq(c.tipoArchivo)?' <span class="mut">(tipos distintos: '+esc(c.tipoSistema)+' y '+esc(c.tipoArchivo)+')</span>':''}</li>`)}</ul>Si es la misma máquina, cambia a mano el número de la del sistema (lista de máquinas) y vuelve a cargar el archivo. Si no, aplica igual: entra la nueva y la del sistema queda marcada «no vino».</div>`:''}
    <h4>Por módulo y lugar</h4><table class="ajustada"><thead><tr><th>Dónde</th><th class="num">En el archivo</th><th class="num" title="máquinas operativas que ya están en el sistema">Hoy (operativas)</th><th class="num">Personas configuradas</th></tr></thead><tbody>
-    ${mods.map(r=>filaL(r.id,esc(r.n),r.pers)).join('')}${otrosRec.map(r=>filaL(r.id,esc(r.n)+(claveMaq(r.n)!==claveMaq(nCen(r.centro))?' <span class="mut">('+esc(nCen(r.centro))+')</span>':''),null)).join('')}${sinRec.map(k=>filaL(k,'Sin módulo · '+esc(k.slice(1)?nCen(k.slice(1)):'sin área'),null)).join('')}
+    ${mods.map(r=>filaL(r.id,esc(r.n),r.pers)).join('')}${otrosRec.map(r=>filaL(r.id,esc(r.n)+(claveMaq(r.n)!==claveMaq(nCen(r.centro))?' <span class="mut">('+esc(nCen(r.centro))+')</span>':''),r.pers)).join('')}${sinRec.map(k=>filaL(k,'Sin módulo · '+esc(k.slice(1)?nCen(k.slice(1)):'sin área'),null)).join('')}
     <tr class="inv-tot"><td>Total</td><td class="num">${num(p.maquinas.length)}</td><td></td><td></td></tr></tbody></table>
    ${p.cambiadas.length?`<details open><summary>Cambian (${num(p.cambiadas.length)})</summary><ul>${L(p.cambiadas,c=>`<li><b>${esc(c.x.cod)}</b> · ${c.cambios.map(d=>nC(d.k)+': '+esc(valCampoMaq(d.k,d.antes)||'—')+' → <b>'+esc(valCampoMaq(d.k,d.despues)||'—')+'</b>').join(' · ')}${c.conservados.length?' <span class="mut">(se conserva lo cambiado a mano: '+c.conservados.map(d=>nC(d.k)).join(', ')+')</span>':''}</li>`)}</ul></details>`:''}
    ${p.conservadas.length?`<details><summary>Cambiadas a mano: el archivo dice otra cosa y se conserva lo de aquí (${num(p.conservadas.length)})</summary><ul>${L(p.conservadas,c=>`<li><b>${esc(c.x.cod)}</b> · ${c.conservados.map(d=>nC(d.k)+': aquí «'+esc(valCampoMaq(d.k,d.actual)||'—')+'», el archivo «'+esc(valCampoMaq(d.k,d.archivo)||'—')+'»').join(' · ')}</li>`)}</ul></details>`:''}
@@ -13856,6 +13886,7 @@ function previaInvMaqHTML(p){if(!p)return '';if(p.error)return '<div class="warn
    ${p.repetidas.length?`<details><summary>Repetidas idénticas (${num(p.repetidas.length)}) · se toman una vez</summary><ul>${L(p.repetidas,x=>`<li><b>${esc(x.num)}</b> · hoja «${esc(x.hoja)}», fila ${x.fila} = fila ${x.filaPrimera}</li>`)}</ul></details>`:''}
    ${!p.parcial&&p.noVinieron.length?`<details><summary>Ya están en el sistema y no vinieron (${num(p.noVinieron.length)}) · quedan, marcadas «no vino»</summary><ul>${L(p.noVinieron,m=>`<li><b>${esc(m.cod||'(sin número)')}</b> · ${esc(m.tipo||'')} · ${esc(lugarMaqTxt(m))} · ${esc(ESTADO_MAQ_TXT[m.estado||'operativa']||m.estado)}${m.ejemplo?' · máquina de ejemplo':''}</li>`)}</ul></details>`:''}
    ${Object.keys(p.sinRegla).length?`<div class="warn"><b>Observaciones sin regla</b> — esas máquinas entran «por revisar» y no cuentan en el balanceo: ${Object.entries(p.sinRegla).map(([t,n])=>'«'+esc(t)+'» ×'+n).join(' · ')}. Si alguna significa operativa, parada o de baja, agrégala en «Cómo se lee el archivo del inventario» y vuelve a cargar.</div>`:''}
+   ${p.bajaArchivo.length?`<div class="warn inv-baja-arch"><b>${num(p.bajaArchivo.length)} ${p.bajaArchivo.length===1?'máquina dice':'máquinas dicen'} «baja» en el archivo</b> — entran «por revisar» y no cuentan en el balanceo: el archivo no da de baja solo. Si de verdad salió, usa «dar de baja» en la lista de máquinas (pide el motivo): ${p.bajaArchivo.slice(0,40).map(x=>'<b>'+esc(x.num)+'</b>').join(', ')}${p.bajaArchivo.length>40?' y '+num(p.bajaArchivo.length-40)+' más':''}.</div>`:''}
    ${Object.keys(p.sinHomologar).length?`<div class="warn"><b>Tipos sin homologar</b> — entran con el nombre del inventario y no cuentan para ningún tipo hasta que se diga cuál es (Tipos de máquina): ${Object.entries(p.sinHomologar).map(([t,n])=>'«'+esc(t)+'» ×'+n).join(' · ')}.</div>`:''}
    ${p.difHojas.length?`<details><summary>Las dos hojas dicen distinto (${num(p.difHojas.length)}) · manda la hoja por módulo</summary><ul>${L(p.difHojas,d=>`<li><b>${esc(d.num)}</b> · ${nC(d.campo)}: «${esc(d.manda)}» (${esc(d.hoja)}) y «${esc(d.otra)}» (${esc(d.hojaOtra)})</li>`)}</ul></details>`:''}
    ${p.avisos.length?`<div class="warn">${[...new Set(p.avisos.map(a=>a.txt))].map(t=>esc(t)+' ('+num(p.avisos.filter(a=>a.txt===t).length)+')').join('<br>')}</div>`:''}
@@ -13867,9 +13898,20 @@ function mCargarInvMaq(){if(!puede('config')){alert('Tu perfil no edita las máq
   abrir(`<h3>Cargar inventario de máquinas</h3><div class="body"><p class="inv-intro">Sube el Excel de Mantenimiento <b>tal como viene</b> (la hoja de máquinas por módulo y la del inventario completo) o el CSV de máquinas por módulo. Cada máquina se reconoce por su <b>número</b>. Antes de guardar ves cuáles entran, cuáles cambian y cuáles no entran y por qué. ${ayudaTipHTML('Módulo 1…11 → su módulo de Confección. B/O → Botones. Sin módulo → queda en el inventario de su área (Corte, Confección, Tintorería) sin contar para ningún módulo. El estado sale de la observación con la tabla «Cómo se lee el archivo del inventario». Lo que cambiaste a mano aquí no se pisa: la vista previa lo dice.')}</p>
    <input type="file" accept=".xlsx,.xls,.csv" onchange="leerInvMaq(event)"><div id="invmaq-res" class="inv-res"></div></div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="invmaq-ok" disabled onclick="aplicarInvMaq()">Aplicar</button></div>`,true)}
+/* 03-oct (arreglo 6): el número de máquina y el serial se leen como se VEN en la celda. Con raw:true SheetJS da el número crudo y un serial
+   guardado como número con formato de ceros («00099123») perdía los ceros de adelante. Para esas dos columnas manda el texto que muestra la
+   celda (raw:false = cell.w); el valor crudo queda para la fecha de mantenimiento (número de serie de Excel). Un número largo que la celda
+   muestra en notación científica (1,23E+11) no se toma: ahí vale el número entero. */
+function textoCeldaInv(crudo,visto){if(typeof crudo!=='number')return txtCelda(crudo);const v=visto==null?'':String(visto).trim();
+  if(!v||(/^-?[\d.,]+e[+-]?\d+$/i.test(v)&&Number.isInteger(crudo)))return txtCelda(crudo);return v}
+function hojaInvMaqConTexto(crudas,vistas){crudas=Array.isArray(crudas)?crudas:[];vistas=Array.isArray(vistas)?vistas:[];const hi=filaCabInvMaq(crudas);if(hi<0)return crudas;
+  const col=colsInvMaq(crudas[hi]);const cols=['num','serial'].map(k=>col[k]).filter(i=>i>=0);
+  return crudas.map((r,j)=>{if(j<=hi||!Array.isArray(r))return r;const v=Array.isArray(vistas[j])?vistas[j]:[];const out=r.slice();cols.forEach(i=>{if(typeof out[i]==='number')out[i]=textoCeldaInv(out[i],v[i])});return out})}
+function hojasInvMaqDeLibro(wb,XL){XL=XL||XLSX;const o={};(wb.SheetNames||[]).forEach(n=>{const ws=wb.Sheets[n];
+  o[n]=hojaInvMaqConTexto(XL.utils.sheet_to_json(ws,{header:1,raw:true,defval:''}),XL.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}))});return o}
 async function leerInvMaq(ev){const f=ev.target.files[0];if(!f)return;const res=document.getElementById('invmaq-res');res.innerHTML='<span class="mut">Leyendo…</span>';
   try{let hojas;if(/\.csv$/i.test(f.name))hojas=hojasDeCSV(await f.text(),f.name);
-    else{await cargarSheetJS();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});hojas={};wb.SheetNames.forEach(n=>{hojas[n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''})})}
+    else{await cargarSheetJS();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});hojas=hojasInvMaqDeLibro(wb)}
     INVMAQ=planMaquinas(hojas,f.name);res.innerHTML=previaInvMaqHTML(INVMAQ);const b=document.getElementById('invmaq-ok');if(b)b.disabled=!hayQueAplicarInv(INVMAQ)}
   catch(e){INVMAQ=null;res.innerHTML='<div class="warn">No se pudo leer el archivo: '+esc(e.message||String(e))+'</div>'}}
 function aplicarInvMaq(){const p=INVMAQ;if(!p||p.error)return 0;
@@ -13879,13 +13921,13 @@ function aplicarInvMaq(){const p=INVMAQ;if(!p||p.error)return 0;
   const nNV=p.parcial?0:p.noVinieron.filter(m=>!m.noVino).length;const nCons=p.conservadas.length+p.cambiadas.filter(c=>c.conservados.length).length;
   if(!confirm('Se agregan '+p.nuevas.length+' máquinas y cambian '+p.cambiadas.length+(nNV?'; '+nNV+' que no vinieron quedan marcadas «no vino» (no se borran)':'')+'.'+(nCons?' Lo cambiado a mano en '+nCons+' se conserva.':'')+' ¿Aplicar?'))return 0;
   const ts=new Date().toISOString(),fuente=p.archivo;
-  p.nuevas.forEach(x=>{const m={id:uid(),cod:x.cod};CAMPOS_MAQ_INV.forEach(k=>{if(p.campos.includes(k))m[k]=x[k]});if(!m.tipo)m.tipo=x.tipo;if(!m.estado)m.estado=x.estado;m.fuente=fuente;m.cargaTs=ts;S.maquinas.push(m)});
-  p.cambiadas.forEach(c=>{c.cambios.forEach(d=>{c.m[d.k]=c.x[d.k]});c.m.fuente=fuente;c.m.cargaTs=ts});
+  p.nuevas.forEach(x=>{const m={id:uid(),cod:x.cod};CAMPOS_MAQ_INV.forEach(k=>{if(p.campos.includes(k))m[k]=x[k]});if(!m.tipo)m.tipo=x.tipo;if(!m.estado)m.estado=x.estado;if(x.motivoRevisar&&m.estado==='revisar')m.motivoRevisar=x.motivoRevisar;m.fuente=fuente;m.cargaTs=ts;S.maquinas.push(m)});
+  p.cambiadas.forEach(c=>{c.cambios.forEach(d=>{c.m[d.k]=c.x[d.k]});if(c.cambios.some(d=>d.k==='estado')){if(c.x.motivoRevisar&&c.m.estado==='revisar')c.m.motivoRevisar=c.x.motivoRevisar;else delete c.m.motivoRevisar}c.m.fuente=fuente;c.m.cargaTs=ts});
   p.volvieron.forEach(m=>{delete m.noVino});
   if(!p.parcial)p.noVinieron.forEach(m=>{if(!m.noVino)m.noVino={ts,archivo:fuente}});   /* la primera marca se conserva */
   const sh=Object.values(p.sinHomologar).reduce((a,b)=>a+b,0),rv=Object.values(p.sinRegla).reduce((a,b)=>a+b,0);
-  bitacora('Inventario de máquinas ('+fuente+'): '+p.nuevas.length+' nuevas, '+p.cambiadas.length+' cambiaron, '+p.iguales.length+' iguales'+(nCons?', '+nCons+' con lo cambiado a mano conservado':'')+(p.noEntran.length?', '+p.noEntran.length+' no entraron':'')+(p.repetidas.length?', '+p.repetidas.length+' repetidas tomadas una vez':'')+(nNV?', '+nNV+' marcadas «no vino»':'')+(rv?', '+rv+' por revisar':'')+(sh?', '+sh+' con tipo sin homologar':'')+' ('+quienFirma()+')');
-  registrarCarga('maquinas',fuente,{nuevas:p.nuevas.length,cambiadas:p.cambiadas.length,iguales:p.iguales.length,conservadas:nCons,noEntran:p.noEntran.length,repetidas:p.repetidas.length,noVinieron:nNV,porRevisar:rv,sinHomologar:sh,parcial:p.parcial});
+  bitacora('Inventario de máquinas ('+fuente+'): '+p.nuevas.length+' nuevas, '+p.cambiadas.length+' cambiaron, '+p.iguales.length+' iguales'+(nCons?', '+nCons+' con lo cambiado a mano conservado':'')+(p.noEntran.length?', '+p.noEntran.length+' no entraron':'')+(p.repetidas.length?', '+p.repetidas.length+' repetidas tomadas una vez':'')+(nNV?', '+nNV+' marcadas «no vino»':'')+(rv?', '+rv+' por revisar':'')+(p.bajaArchivo.length?', '+p.bajaArchivo.length+' decían «baja» en el archivo: quedan por revisar (dar de baja pide motivo)':'')+(p.cambioNumero.length?', '+p.cambioNumero.length+' con posible cambio de número (mismo serial; no se aplicó)':'')+(sh?', '+sh+' con tipo sin homologar':'')+' ('+quienFirma()+')');
+  registrarCarga('maquinas',fuente,{nuevas:p.nuevas.length,cambiadas:p.cambiadas.length,iguales:p.iguales.length,conservadas:nCons,noEntran:p.noEntran.length,repetidas:p.repetidas.length,noVinieron:nNV,porRevisar:rv,bajaArchivo:p.bajaArchivo.length,cambioNumero:p.cambioNumero.length,sinHomologar:sh,parcial:p.parcial});
   INVMAQ=null;save();cerrar();render();return p.nuevas.length+p.cambiadas.length}
 /* pegar desde Excel: el mismo camino (plan, vista previa, aplicar), sin marcar «no vino» lo que no se pegó */
 function mPegarMaq(){if(!puede('config')){alert('Tu perfil no edita las máquinas.');return}INVMAQ=null;
@@ -13900,25 +13942,30 @@ function addMaq(){S.maquinas.push({id:uid(),tipo:'Recta',cod:'',rec:'',estado:'o
 /* setter de TEXTO para la tabla de máquinas (número y serial nunca pasan a número: «0123» conserva su cero); deja la marca «cambiado a mano» */
 function setMaq(id,k,v){const m=(S.maquinas||[]).find(x=>x.id===id);if(!m)return;if(!puede('config')){alert('Tu perfil no edita las máquinas.');render();return}
   const nv=String(v==null?'':v).trim();if(k==='estado'&&!ESTADOS_MAQ.includes(nv))return;
+  if(k==='estado'&&nv==='baja'&&m.estado!=='baja'){if(!darBajaMaq(id))render();return}   /* 03-oct (arreglo 1): dar de baja SIEMPRE pide el motivo (darBajaMaq) */
   if(k==='cod'&&nv&&(S.maquinas||[]).some(x=>x!==m&&txtCelda(x.cod)===nv)){alert('Ya hay otra máquina con el número «'+nv+'».');render();return}
   const antes=txtCelda(m[k]);if(antes===nv)return;const ts=new Date().toISOString(),u=quienFirma();
-  m[k]=nv;if(k==='rec'&&nv&&R(nv))m.centro=R(nv).centro;if(k==='estado'&&nv!=='baja'&&m.baja)m.baja=Object.assign({},m.baja,{reactivada:ts});
+  m[k]=nv;if(k==='rec'&&nv&&R(nv))m.centro=R(nv).centro;if(k==='estado'&&nv!=='baja'&&m.baja)m.baja=Object.assign({},m.baja,{reactivada:ts,reactivadaU:u});if(k==='estado')delete m.motivoRevisar;   /* alguien decidió el estado a mano */
   m.editado=Object.assign({},m.editado,{[k]:{ts,u,antes}});
   bitacora('Máquina '+(txtCelda(m.cod)||'(sin número)')+' · '+(CAMPO_MAQ_TXT[k]||k)+': '+(valCampoMaq(k,antes)||'—')+' → '+(valCampoMaq(k,nv)||'—')+' ('+u+')');save();render()}
 /* la «×» de antes: ya no borra. Queda en la lista como «dada de baja», con su motivo, y deja de contar */
-function darBajaMaq(id){const m=(S.maquinas||[]).find(x=>x.id===id);if(!m)return;if(!puede('config')){alert('Tu perfil no edita las máquinas.');return}
-  if(m.estado==='baja'){alert('Ya está dada de baja. Para volver a usarla, cambia su estado.');return}
+/* devuelve true si quedó de baja (setMaq la usa para que el desplegable vuelva a su valor si se cancela) */
+function darBajaMaq(id){const m=(S.maquinas||[]).find(x=>x.id===id);if(!m)return false;if(!puede('config')){alert('Tu perfil no edita las máquinas.');return false}
+  if(m.estado==='baja'){alert('Ya está dada de baja. Para volver a usarla, cambia su estado.');return false}
   const motivo=(prompt('¿Por qué se da de baja la máquina '+(txtCelda(m.cod)||'(sin número)')+' ('+(m.tipo||'')+')? No se borra: queda en la lista como «dada de baja» y deja de contar en el balanceo.')||'').trim();
-  if(!motivo){alert('Sin motivo no se da de baja.');return}
-  const ts=new Date().toISOString(),u=quienFirma(),antes=m.estado||'operativa';m.estado='baja';m.baja={ts,u,motivo,antes};m.editado=Object.assign({},m.editado,{estado:{ts,u,antes}});
-  bitacora('Máquina '+(txtCelda(m.cod)||'(sin número)')+' dada de baja ('+motivo+'); antes '+(ESTADO_MAQ_TXT[antes]||antes)+' ('+u+')');save();render()}
+  if(!motivo){alert('Sin motivo no se da de baja.');return false}
+  const ts=new Date().toISOString(),u=quienFirma(),antes=m.estado||'operativa';m.estado='baja';m.baja={ts,u,motivo,antes};m.editado=Object.assign({},m.editado,{estado:{ts,u,antes}});delete m.motivoRevisar;
+  bitacora('Máquina '+(txtCelda(m.cod)||'(sin número)')+' dada de baja ('+motivo+'); antes '+(ESTADO_MAQ_TXT[antes]||antes)+' ('+u+')');save();render();return true}
 /* decisión 15 de la usuaria (03-oct): las 9 máquinas de ejemplo (mq_ej_*) NO se borran: quedan de baja y marcadas «ejemplo», una sola vez */
 function sembrarEjemplosMaqBaja(){const l=(S.maquinas||[]).filter(m=>/^mq_ej_/.test(String(m.id||''))&&!m.ejemplo);if(!l.length)return false;
   const ts=new Date().toISOString(),u=quienFirma()||'sistema';
   l.forEach(m=>{const antes=m.estado||'operativa';m.ejemplo=true;m.estado='baja';m.baja={ts,u,motivo:'máquina de ejemplo: no es del inventario real',antes};m.editado=Object.assign({},m.editado,{estado:{ts,u,antes}})});
   bitacora('Máquinas de ejemplo dadas de baja (no se borran): '+l.map(m=>txtCelda(m.cod)||m.id).join(', ')+' — '+l.length+' que no son del inventario real; dejan de contar en el balanceo');return true}
-function sembrarMaquinasAlEntrar(){if(!S||!S.params||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!puede('config'))return false;
-  let c=false;if(!S.params.tiposMaq19&&sembrarTiposMaq())c=true;if(sembrarEjemplosMaqBaja())c=true;return c}
+/* 03-oct (arreglo 9): siembra solo una sesión que PUEDE guardar la configuración: la misma regla con que _save salta params (puedeSubirTabla:
+   un perfil de piso no la sube) y nada si la última carga del servidor quedó incompleta (save no escribe). Si no, sembraría solo en memoria y
+   lo volvería a intentar en cada pantalla. En producción lo siembra un administrador al entrar. */
+function sembrarMaquinasAlEntrar(){if(!S||!S.params||CARGA_INCOMPLETA)return false;if(!puedeSubirTabla('params')||!puede('config'))return false;
+  let c=false;if(!S.params.tiposMaq19&&sembrarTiposMaq())c=true;if(puedeSubirTabla('maquinas')&&sembrarEjemplosMaqBaja())c=true;return c}
 /* tabla «Cómo se lee el archivo del inventario»: observación → estado, módulo del archivo → centro, y lo que no es máquina de producción */
 function setReglaInvMaq(lista,i,k,v){if(!puede('config'))return;const c=maqInvEditable();const r=(c[lista]||[])[i];if(!r)return;const antes=r[k];r[k]=String(v==null?'':v).trim();
   bitacora('Inventario de máquinas · cómo se lee ('+lista+') · fila '+(i+1)+' · '+k+': '+(antes||'—')+' → '+(r[k]||'—')+' ('+quienFirma()+')');save();render()}
@@ -13948,8 +13995,8 @@ function resumenMaq(){const L=(S.maquinas||[]).filter(m=>m.estado!=='baja');if(!
 /* el panel de Configuración general → Centros y máquinas → Máquinas de confección */
 function maquinasPanelHTML(){const L=S.maquinas||[];const ops=L.filter(maqOperativa).length;
   const ult=(S.cargas||[]).filter(c=>c.tipo==='maquinas').sort((a,b)=>a.ts<b.ts?1:-1)[0];
-  const nEj=L.filter(m=>m.ejemplo).length,nBaja=L.filter(m=>m.estado==='baja').length,nNV=L.filter(m=>m.noVino&&m.estado!=='baja').length,nRev=L.filter(m=>m.estado==='revisar').length,nSinH=L.filter(m=>m.estado!=='baja'&&m.tipo&&!maqHomologada(m.tipo)).length;
-  const avisos=[nBaja?num(nBaja)+' dadas de baja'+(nEj?' ('+num(nEj)+' de ejemplo)':'')+': siguen en la lista, no cuentan':'',nNV?num(nNV)+' no vinieron en la última carga':'',nRev?num(nRev)+' por revisar (su observación no tiene regla)':'',nSinH?num(nSinH)+' con tipo sin homologar':''].filter(Boolean);
+  const nEj=L.filter(m=>m.ejemplo).length,nBaja=L.filter(m=>m.estado==='baja').length,nNV=L.filter(m=>m.noVino&&m.estado!=='baja').length,nRev=L.filter(m=>m.estado==='revisar').length,nRevB=L.filter(m=>m.estado==='revisar'&&m.motivoRevisar===MSG_BAJA_ARCHIVO).length,nSinH=L.filter(m=>m.estado!=='baja'&&m.tipo&&!maqHomologada(m.tipo)).length;
+  const avisos=[nBaja?num(nBaja)+' dadas de baja'+(nEj?' ('+num(nEj)+' de ejemplo)':'')+': siguen en la lista, no cuentan':'',nNV?num(nNV)+' no vinieron en la última carga':'',nRev?num(nRev)+' por revisar'+(nRevB===nRev?' (el archivo dice «baja»: confirmar con «dar de baja»)':nRevB?' ('+num(nRev-nRevB)+' con una observación sin regla y '+num(nRevB)+' que el archivo dice «baja»: confirmar con «dar de baja»)':' (su observación no tiene regla)'):'',nSinH?num(nSinH)+' con tipo sin homologar':''].filter(Boolean);
   const porCen={};(S.recursos||[]).forEach(r=>{if(!CE(r.centro)||CE(r.centro).area!=='pro'||esMaquilaRec(r))return;(porCen[r.centro]=porCen[r.centro]||[]).push(r)});
   const optRec=m=>{const ex=m.rec&&!Object.values(porCen).some(l=>l.some(r=>r.id===m.rec))?`<option value="${esc(m.rec)}" selected>${esc((R(m.rec)||{}).n||m.rec)}</option>`:'';
     return `<option value="">Sin módulo (inventario del área)</option>${ex}${(S.centros||[]).filter(c=>porCen[c.id]).map(c=>`<optgroup label="${esc(c.n)}">${porCen[c.id].map(r=>`<option value="${r.id}" ${m.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</optgroup>`).join('')}`};
@@ -13959,7 +14006,7 @@ function maquinasPanelHTML(){const L=S.maquinas||[];const ops=L.filter(maqOperat
   const fila=m=>`<tr${m.estado==='baja'?' class="mut"':''}><td><input type="text" style="width:64px" value="${esc(txtCelda(m.cod))}" onchange="setMaq('${m.id}','cod',this.value)"></td>
    <td><select onchange="setMaq('${m.id}','tipo',this.value)">${tiposSel.concat(!m.tipo||tiposSel.includes(m.tipo)?[]:[m.tipo]).map(t=>`<option ${m.tipo===t?'selected':''}>${esc(t)}</option>`).join('')}</select>${m.tipo&&!maqHomologada(m.tipo)?' <span class="tag t-aviso" title="este nombre no calza con ningún tipo: se homologa en Tipos de máquina">sin homologar</span>':''}${m.tipoInv&&claveMaq(m.tipoInv)!==claveMaq(m.tipo)?`<div class="maq-sub">inventario: ${esc(m.tipoInv)}</div>`:''}</td>
    <td><select onchange="setMaq('${m.id}','rec',this.value)">${optRec(m)}</select>${!m.rec&&(m.centro||m.area)?`<div class="maq-sub">área: ${esc(m.centro?nCen(m.centro):m.area)}</div>`:''}</td>
-   <td><select onchange="setMaq('${m.id}','estado',this.value)">${ESTADOS_MAQ.map(e=>`<option value="${e}" ${(m.estado||'operativa')===e?'selected':''}>${ESTADO_MAQ_TXT[e]}</option>`).join('')}</select></td>
+   <td><select onchange="setMaq('${m.id}','estado',this.value)">${ESTADOS_MAQ.filter(e=>e!=='baja'||m.estado==='baja').map(e=>`<option value="${e}" ${(m.estado||'operativa')===e?'selected':''}>${ESTADO_MAQ_TXT[e]}</option>`).join('')}</select>${m.estado==='revisar'&&m.motivoRevisar?`<div class="maq-sub maq-motivo-rev">${esc(m.motivoRevisar)}</div>`:''}</td>
    <td><input type="text" style="width:170px" value="${esc(m.obs||'')}" placeholder="—" onchange="setMaq('${m.id}','obs',this.value)"></td>
    <td class="maq-sub">${esc([m.marca,m.modelo].filter(Boolean).join(' · ')||'—')}${m.fechaMant?'<div>mant. '+esc(/^\d{4}-\d{2}-\d{2}$/.test(m.fechaMant)?fmtDia(m.fechaMant):m.fechaMant)+'</div>':''}</td>
    <td><input type="text" style="width:110px" value="${esc(txtCelda(m.serial))}" placeholder="—" onchange="setMaq('${m.id}','serial',this.value)"></td>
@@ -15093,7 +15140,7 @@ function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='tallas')return [num(r.n)+' órdenes con curva',r.formato?'formato '+r.formato:'',r.sinOrden?num(r.sinOrden)+' WH sin orden':'',r.difSuma?num(r.difSuma)+' con suma distinta':'',r.sinTalla?num(r.sinTalla)+' líneas sin talla':'',r.componentes?num(r.componentes)+' líneas que no son prenda':'',r.sinWH?num(r.sinWH)+' tareas sin WH (no entran)':'',r.variosPacks?num(r.variosPacks)+' WH con varios packs sin resolver':'',r.codigoDistinto?num(r.codigoDistinto)+' líneas con otro código':'',r.cambian?num(r.cambian)+' curvas cambiadas':'',r.tallasNuevas?num(r.tallasNuevas)+' tallas fuera de los juegos':''].filter(Boolean).join(' · ');
   if(c.tipo==='maestro')return [num(r.filas)+' productos',num(r.nuevos)+' nuevos',num(r.actualizados)+' actualizados',num(r.tempo)+' TEMPO',num(r.conProv)+' con proveedor',num(r.sinProv)+' sin proveedor',r.conservaProv?num(r.conservaProv)+' conservan proveedor':'',r.cambiaProv?num(r.cambiaProv)+' cambian de proveedor':'',r.nuevosProv?num(r.nuevosProv)+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
   if(c.tipo==='rutas')return [num(r.aplicadas)+' rutas puestas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' WH que no existen aquí':''].filter(Boolean).join(' · ');
-  if(c.tipo==='maquinas')return [num(r.nuevas)+' nuevas',num(r.cambiadas)+' cambiaron',num(r.iguales)+' iguales',r.conservadas?num(r.conservadas)+' con lo cambiado a mano conservado':'',r.noEntran?num(r.noEntran)+' no entraron':'',r.repetidas?num(r.repetidas)+' repetidas':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.porRevisar?num(r.porRevisar)+' por revisar':'',r.sinHomologar?num(r.sinHomologar)+' con tipo sin homologar':'',r.parcial?'pegado (parcial)':''].filter(Boolean).join(' · ');
+  if(c.tipo==='maquinas')return [num(r.nuevas)+' nuevas',num(r.cambiadas)+' cambiaron',num(r.iguales)+' iguales',r.conservadas?num(r.conservadas)+' con lo cambiado a mano conservado':'',r.noEntran?num(r.noEntran)+' no entraron':'',r.repetidas?num(r.repetidas)+' repetidas':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.porRevisar?num(r.porRevisar)+' por revisar':'',r.bajaArchivo?num(r.bajaArchivo)+' decían «baja» (por revisar)':'',r.cambioNumero?num(r.cambioNumero)+' con posible cambio de número':'',r.sinHomologar?num(r.sinHomologar)+' con tipo sin homologar':'',r.parcial?'pegado (parcial)':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [num(r.subidas)+' subidas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' sin orden':'',r.errores?num(r.errores)+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?num(c.nuevas)+' nuevas':'',c.act!=null?num(c.act)+' actualizadas':'',c.cerradas?num(c.cerradas)+' cerradas':''].filter(Boolean).join(' · ')}
 function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});
