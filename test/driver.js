@@ -2002,6 +2002,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // D/E
    page='tintoreria';render();const ht=document.getElementById('p-tintoreria').innerHTML;__check("E: baños confirmados muestran máquina y fecha estimada de salida",!(S.banos_conf||[]).length||ht.includes('Máquina · sale (est.)'));
    page='control';CTL.area='tin';render();const hc=document.getElementById('p-control').innerHTML;__check("D/E: control de piso tintorería con 'Sale (est.)' y órdenes con foto en miniatura",hc.includes('Sale (est.)')&&(S.ordenes.some(o=>fotoDe(o))?hc.includes('foto-mini')||!/mBanoHecho/.test(hc):true));
+   {const bakT=CTL.todo;
+    __check("UX-B8: Control de piso · Tintorería: la explicación va en el «?» del título (no en un párrafo bajo la tabla), «Hecho» es el botón principal y «Reprocesar» el gris; la fila vacía ocupa las 11 columnas",!/"Hecho" pide los kg reales/.test(hc)&&/class="ayuda"[^>]*title="Hecho pide los kg reales/.test(hc)&&(!/mBanoHecho/.test(hc)||/class="btn sm"[^>]*onclick="mBanoHecho/.test(hc))&&!/colspan="10" class="mut">Sin baños/.test(hc)&&/title="fecha estimada de salida">Sale \(est\.\)/.test(hc));
+    CTL.area='tej';CTL.todo=false;render();const hj=document.getElementById('p-control').innerHTML;
+    __check("UX-B8: Control de piso · Tejeduría: la cabecera ofrece «Por tejer» y «Todas» (marcada la elegida, no un interruptor que dice su estado); los kilos dicen «kg» y la lista ocupa el alto de la pantalla",/class="chip on"[^>]*>Por tejer</.test(hj)&&/onclick="CTL\.todo=true;render\(\)">Todas</.test(hj)&&!/solo lo activo/.test(hj)&&/class="scroll alto"/.test(hj)&&(!/setEstado\('/.test(hj)||/[0-9] kg/.test(hj)));
+    CTL.todo=true;render();const hj2=document.getElementById('p-control').innerHTML;
+    __check("UX-B8: al elegir «Todas» queda marcada esa opción",/class="chip on"[^>]*>Todas</.test(hj2)&&!/class="chip on"[^>]*>Por tejer</.test(hj2));
+    CTL.area='tin';CTL.todo=bakT;}
    // F/D2
    WIP.base='abiertas';WIP.fases=null;Object.keys(FOD).forEach(k=>delete FOD[k]);page='wip';WIPL={niveles:['color'],q:''};render();const hw=document.getElementById('p-wip').innerHTML;__check("F: Producto en proceso lista órdenes con foto y agrupa por COLOR (agrupador común)",hw.includes('Producto en proceso')&&hw.includes('Color:')&&hw.includes("setNivelGRP('wip'")&&hw.includes('grp-row'));
    WIPL={niveles:null,q:''};
@@ -2092,6 +2099,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // A · tablet
    __check("TC: existe el perfil 'tablet' (solo página Mi centro) y toma el centro asignado por usuario",perfilesDef().some(x=>x.id==='tablet')&&(()=>{S.params.tablets=Object.assign({},S.params.tablets,{u_test:{centro:'corte',rec:''}});const d=perfilDe({rol:'tablet',id:'u_test'});return d&&d.paginas.length===1&&d.paginas[0]==='tablet'&&d.centros[0]==='corte'})());
    TAB={centro:'modulos',rec:null};page='tablet';render();h=document.getElementById('p-tablet').innerHTML;__check("TC: Mi centro muestra prendas del día, hechas y faltan (en las pestañas de arriba, 24-sep) y, para el supervisor, la cola con foto grande y botón Hecho",h.includes('Prendas del día')&&h.includes('Hechas hoy')&&/faltan/i.test(h)&&(h.includes('tab-card')?h.includes('>Hecho<')&&h.includes('cronómetro'):true));
+   TAB.vista='cola';render();h=document.getElementById('p-tablet').innerHTML;__check("UX-B8: quien no es operario ve el título «Mi centro · …», el aviso de que mira TODA la cola (cada operario ve solo lo de su puesto) y la explicación de «Hecho» dentro del registro rápido",/<h2>Mi centro · /.test(h)&&/Estás viendo toda la cola de [\s\S]*Cada operario ve solo lo programado para su puesto en los próximos [0-9]+ días hábiles/.test(h)&&(!/Registro rápido del supervisor/.test(h)||/Registro rápido del supervisor[\s\S]*«Hecho» SUMA lo que salió ahora/.test(h)));TAB.vista=null;
    const oC=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>p.centro==='modulos'))||oT;cronoTablet(oC.id,'modulos','ini');const c1=S.avance[oC.id].crono.modulos;__check("TC: cronómetro inicio guarda hora y quién",!!c1.ini&&!c1.fin);cronoTablet(oC.id,'modulos','fin');__check("TC: cronómetro fin guarda minutos para comparar con el estándar",typeof S.avance[oC.id].crono.modulos.min==='number'&&minEstandarOrden(oC,'modulos')>=0);delete S.avance[oC.id].crono;
    __check("TC: la columna Tablet de Usuarios ofrece centro y recurso",tabletSelHTML('u_test').includes('<select')&&tabletSelHTML('u_test').includes('todo el centro'));
    // B · PDF
@@ -3370,6 +3378,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     window.confirm=()=>true;guardarTramo(tr2.id,oS.id);const t2=tramosDe(oS.id).find(x=>x.id===tr2.id);
     __check("MT2: al confirmar se guarda con 0 prendas y el tiempo trabajado",t2.pz===0&&t2.min>0&&t2.minPrenda===null);
     __check("MT2: el tramo guardado conserva QUIÉN trabajó (las unidades van en pz, ya no pisan la persona)",typeof t2.u==='string'&&t2.u.length>0&&tramosDelDiaHTML('modulos',rec).includes(t2.u));
+    {const hd=tramosDelDiaHTML('modulos',rec);const conSeg=todosTramos().some(x=>x.t.centro==='modulos'&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()&&calcTramo(x.t,x.o).seg);
+     __check("UX-B8: el supervisor ve en «Hechas hoy» «N registros hoy» (no «tramos») y además SAM real, Personas y Quién; «Segundas» solo si alguna fila las tiene",/registros? hoy/.test(hd)&&!/tramos ·/.test(hd)&&/<th>Empezó<\/th><th>Terminó<\/th><th class="num">Tiempo<\/th>/.test(hd)&&/>SAM real<\/th>/.test(hd)&&/<th class="num">Personas<\/th>/.test(hd)&&/<th>Quién<\/th>/.test(hd)&&(/<th class="num">Segundas<\/th>/.test(hd)===conSeg));}
     window.confirm=cp}
    TRAMO={paso:null,id:null,oid:null};
    // 3 · el resultado de la búsqueda se ve siempre
@@ -3382,7 +3392,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("MB1: acepta el número suelto y la WH completa",tabletBuscadorHTML('modulos',cola,rec).includes('>INICIO<'));}
    TAB.q='77777';
    {const h=tabletBuscadorHTML('modulos',cola,rec);
-    __check("MB2: una WH que no está programada aquí sale bloqueada, con pedir reprogramación",h.includes(esc(oF.op))&&/no programada en/.test(h)&&h.includes("pedirReprogramacion('"+oF.id+"'"));}
+    __check("MB2: una WH que no está programada aquí sale bloqueada, con pedir reprogramación",h.includes(esc(oF.op))&&/no programada en/.test(h)&&h.includes("pedirReprogramacion('"+oF.id+"'"));
+    __check("UX-B8: «no programada en …» va en ámbar (no es un error, solo no le toca hoy) y con la frase corta",/tag t-aviso[^>]*>no programada en/.test(h)&&!/tag t-alerta[^>]*>no programada en/.test(h)&&/Hoy no está programada aquí\. Pide que la reprogramen\./.test(h));}
    TAB.q='ZZ-NO-EXISTE';
    __check("MB2: si no existe ninguna orden con eso, lo dice",/No existe ninguna orden/.test(tabletBuscadorHTML('modulos',cola,rec)));
    // con un tramo abierto de otra orden
@@ -3832,7 +3843,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const h2=flujoTramoHTML('modulos',rec,cola);
      __check("PE2: con tiempo corrido ofrece «Terminar orden» para cerrar el paso",h2.includes('terminarOrdenCentro(null,')&&h2.includes(oProc.id)&&h2.includes('Terminar orden'));}
     __check("PE4: Disponibles ofrece INICIO y Próximas no",h.includes("iniciarTramo('"+oDisp.id)&&!h.includes("iniciarTramo('"+oProx.id)&&h.includes('todavía no ·'));
-    __check("PE4: la próxima se ve igual, con la fase en la que está",h.includes(esc(oProx.op))&&h.includes(esc(faseNombre(fProx))));}
+    __check("PE4: la próxima se ve igual, con la fase en la que está",h.includes(esc(oProx.op))&&h.includes(esc(faseNombre(fProx))));
+    __check("UX-B8: «Próximas» viene plegada con su número y «todavía no se pueden empezar»; adentro se parte como la cola del centro y cada fila dice «todavía no · …» en gris, sin píldora",/<details class="panel tab-prox"/.test(h)&&/Próximas · [0-9]+ <span class="mut">· todavía no se pueden empezar/.test(h)&&/class="tab-subgrupo">[^<]+ · [0-9]+/.test(h)&&/class="mut tab-linea">todavía no · falta Corte/i.test(h)&&!/tag t-aviso[^>]*>todavía no/.test(h));
+    {const cn=(C(oDisp.color)||{}).n;
+     __check("UX-B8: la fila de la cola dice tipo · color · prendas por hacer; ya no lleva «sin tallas cargadas» ni la píldora roja del tramo paralelo",!h.includes('sin tallas cargadas para esta WH')&&!/t-alerta[^>]*>tramo paralelo/.test(h)&&(!cn||h.includes(esc(cn)))&&/<b>[0-9.]+<\/b> por hacer/.test(h));}
+    {const muchas=Array.from({length:TOPE_COLA_TAB+5},()=>({o:oDisp,hechas:0}));const hs=seccionColaTabletHTML('Disponibles',NOTA_COLA_TAB.disponible,muchas,'modulos',rec,'disponible',null);
+     const nSin=muchas.filter(f=>sinCurvaEnCentro(f.o,'modulos')).length;
+     __check("UX-B8: si una sección tiene más filas de las que se dibujan, lo dice («Se muestran 40 de 45») y dibuja solo esas",hs.includes('Se muestran '+num(TOPE_COLA_TAB)+' de '+num(muchas.length)+'. Escribe la WH arriba para encontrar otra.')&&(hs.match(/class="tab-fila"/g)||[]).length===TOPE_COLA_TAB&&/>Disponibles · [0-9]+<span class="ayuda-d">/.test(hs));
+     __check("UX-B8: el supervisor ve al pie de la sección cuántas no tienen curva de tallas, en UNA línea",nSin?hs.includes(num(nSin)+' de '+num(muchas.length)+' sin curva de tallas: se registra solo el total'):!hs.includes('sin curva de tallas'));}
+    __check("UX-B8: la pestaña «En cola» dice además cuántas se pueden empezar (Disponibles + Revisar ruta)",(()=>{const k=cuentasTablet('modulos',rec,cola);return k.empezar===cola.filter(f=>['disponible','sinSecuencia'].includes(estadoOrdenCentro(f.o,'modulos',rec))).length&&/En cola <b>[0-9.]+<\/b> <span class="mut">· [0-9.]+ para empezar<\/span>/.test(pestanasTabletHTML('cola',k,0,0))})());}
    {iniciarTramo(oDisp.id,'modulos',rec);const tr=tramosDe(oDisp.id).find(x=>!x.fin);tr.ini=new Date(Date.now()-90*6e4).toISOString();
     __check("PE3: con un inicio sin fin la orden pasa a EN PROCESO",estadoOrdenCentro(oDisp,'modulos',rec)==='proceso'&&!!tramoAbiertoOrden(oDisp.id,'modulos',null));
     const h=flujoTramoHTML('modulos',rec,[{o:oDisp,hechas:0}]);
@@ -7746,6 +7765,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.avance[o.id]={cierres:{corte:{pz:o.cant,cant:o.cant,faltan:0,u:'prueba',ts:new Date().toISOString()}}};
     const sm=secuenciaCentro(o,'modulos'),sb=secuenciaCentro(o,'bordado');
     __check('TP: al cerrar corte, confección queda DISPONIBLE aunque bordado no esté hecho, y bordado también: los del tramo no se esperan entre sí',sm.estado==='disponible'&&sb.estado==='disponible'&&/tramo paralelo/.test(sm.motivo||'')&&!pasoHecho(o,'bordado'),JSON.stringify({modulos:sm,bordado:sb.estado}));
+    {const hf=filaColaTabletHTML({o,hechas:0},'modulos',null,'disponible');
+     __check('UX-B8: en la tablet el compañero de tramo sale en una línea gris («También pasa por Bordado: puede ir antes o después de este paso»), no en rojo; el estado y el motivo no cambian',(sm.paralelos||[]).includes('bordado')&&hf.includes('class="mut tab-linea">También pasa por '+esc(nCen('bordado'))+': puede ir antes o después de este paso')&&!/t-alerta/.test(hf),hf.slice(0,240));}
     const le=listaParaEmpezar(o,'modulos');
     __check('TP: «lista para empezar» en confección apunta al paso anterior de FUERA del tramo (corte), no al compañero de tramo',!!le&&le.centro==='corte',JSON.stringify({centro:le&&le.centro}));
     /* manda la configuración: si se saca confección del tramo, vuelve a esperar a bordado */
@@ -8620,10 +8641,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const t1=tramosAbiertosDe(c,rec).find(x=>x.o.id===cand[0].id);terminarTramo(t1.t.id,t1.o.id);h=document.getElementById('p-tablet').innerHTML;
    __check('TB4: FIN de una NO cierra las demás, y mientras se confirman sus unidades las otras dos siguen a la vista',tramosAbiertosDe(c,rec).length===2&&/Confirma lo que salió/.test(h)&&(h.match(/class="crono-vivo"/g)||[]).length===2&&/terminar una no cierra las demás/.test(h),'abiertas '+tramosAbiertosDe(c,rec).length+' · relojes '+(h.match(/class="crono-vivo"/g)||[]).length);
    __check('TB5: la confirmación pide solo las unidades hechas (sin segundas)',!/setSegTramo/.test(h)&&!/segundas/i.test(h.replace(/<[^>]+>/g,' ')));
+   __check('UX-B8: al tocar FIN el operario ve una sola línea «Trabajaste … (sin contar paros ni descansos) · N personas»; minutos-persona y SAM real van en el «?»',/Trabajaste <b>[0-9]+:[0-9]{2}:[0-9]{2}<\/b> \(sin contar paros ni descansos\) · [0-9]+(,[0-9])? personas?<span class="ayuda-d">/.test(h)&&!/min-persona/.test(h));
    guardarTramo(t1.t.id,t1.o.id);__check('TB6: al guardar, las otras dos siguen en proceso',tramosAbiertosDe(c,rec).length===2);
    TAB.vista='cola';render();h=document.getElementById('p-tablet').innerHTML;
    __check('TB7: «En cola» muestra la cola; el operario no ve el registro del supervisor ni «Cambiar fase»',/En cola <b>\d+<\/b>/.test(h)&&!/Registro rápido del supervisor/.test(h)&&!/>Cambiar fase</.test(h));
+   __check('UX-B8: el operario ve «· N para empezar» en la pestaña, su puesto como título y no el aviso de «toda la cola» del supervisor',/En cola <b>[0-9.]+<\/b> <span class="mut">· [0-9.]+ para empezar<\/span>/.test(h)&&!/Estás viendo toda la cola/.test(h)&&!/<h2>Mi centro · /.test(h));
    TAB.vista='hechas';render();h=document.getElementById('p-tablet').innerHTML;__check('TB8: «Hechas hoy» muestra lo registrado hoy',/Lo registrado hoy/.test(h));
+   __check('UX-B8: «Hechas hoy» del operario: «N registros hoy» y las columnas Orden · Empezó · Terminó · Tiempo · Paros · Unidades, sin SAM real, Personas ni Quién',/registros? hoy/.test(h)&&/<th>Empezó<\/th><th>Terminó<\/th><th class="num">Tiempo<\/th>/.test(h)&&!/>SAM real</.test(h)&&!/<th>Quién<\/th>/.test(h)&&!/<th class="num">Personas<\/th>/.test(h));
    __check('TB9: al operario no le salen las etiquetas de «terminada en…» ni «lista para empezar»',tagCierre(cand[0])===''&&tagListaEmpezar(cand[0],'empaque')==='');
    PERFIL=adminP0();const cs=cierresSinFase()[0];
    __check('TB10: la programación de cada centro muestra «Ya están libres» con lo que se terminó ahí (y solo de sus centros)',cs?(/Ya están libres/.test(cierresSinFaseHTML([cs.c]))&&cierresSinFaseHTML(['__otro__'])===''):cierresSinFaseHTML(['__otro__'])==='',cs?cs.o.op+' en '+cs.c:'sin cierres en el simulador');

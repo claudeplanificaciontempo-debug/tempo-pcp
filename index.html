@@ -951,6 +951,17 @@ table.wip-plegado thead tr:first-child th:nth-child(n+2):nth-child(-n+9){font-si
 /* · */
 /* · */
 /* ux:B8 */
+/* Mi centro (tablet) y Control de piso, revisión «para dummies» (02-oct): fase legible, filas a un ancho cómodo, líneas grises para lo que no es problema */
+#p-tablet .fase-mini{font-size:13px}
+#p-tablet>.panel,#p-tablet>.tab-pest,#p-tablet>.tab-vista-sup{max-width:1100px}   /* en pantallas anchas INICIO queda cerca de la orden; en la tablet no cambia nada (no se toca la franja del título) */
+#p-tablet .tab-linea{font-size:14px;margin-top:2px}
+#p-tablet .tab-pie{font-size:var(--fs-s);margin:10px 0 0}
+#p-tablet .tab-vista-sup{font-size:var(--fs-s);margin:0 0 10px}
+#p-tablet details.tab-prox>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:17px}
+#p-tablet details.tab-prox>summary .mut{font-weight:400}
+#p-tablet .tab-subgrupo{font-size:16px;margin:16px 0 2px}
+#p-tablet .tab-prox .body>.tab-subgrupo:first-child{margin-top:0}
+#p-control .ctl-ver{display:inline-flex;gap:4px;align-items:center}
 /* · */
 /* · */
 /* ux:B9 */
@@ -2887,9 +2898,9 @@ function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
   const porHacer=Math.max(0,(+o.cant||0)-hechas);
   const irA=op=>`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="TAB.q='';render()">Ir a ${esc(op)}</button>`;
   let nota='',accion='',borde='var(--t-accent)';
-  if(!enCola){borde='var(--aviso)';
-    nota=`<div class="tag t-alerta" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
-     <p class="mut" style="font-size:14px;margin:8px 0 0">Esta orden existe pero hoy no está programada en este centro, así que no se puede registrar aquí. Planificación decide: tú no reprogramas.</p>`;
+  if(!enCola){borde='var(--aviso)';   /* 02-oct: no es un error (solo no le toca hoy): ámbar, no rojo */
+    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
+     <p class="mut" style="font-size:14px;margin:8px 0 0">Hoy no está programada aquí. Pide que la reprogramen.</p>`;
     accion=pedida?'<span class="tag t-ok">ya pediste la reprogramación</span>':`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="pedirReprogramacion('${o.id}','${c}')">Pedir reprogramación</button>`}
   else if(porConfirmar&&porConfirmar.id!==o.id){borde='var(--aviso)';
     nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">falta confirmar lo que salió de ${esc(porConfirmar.op)}: termínala primero</div>`;
@@ -3574,7 +3585,7 @@ function secuenciaCentro(o,c){const ru=pasosProDe(o);
   const pendAll=antes.filter(x=>!pasoHecho(o,x));
   const compa=pendAll.filter(x=>mismoTramoParalelo(x,c));   /* del mismo tramo: no se esperan entre sí (decisión 22-sep) */
   const pend=pendAll.filter(x=>!mismoTramoParalelo(x,c));
-  if(!pend.length)return{estado:'disponible',motivo:compa.length?'tramo paralelo: '+compa.map(x=>nCen(x)).join(', ')+' no lo detiene (el orden real lo deciden las OT y el piso)':''};
+  if(!pend.length)return{estado:'disponible',motivo:compa.length?'tramo paralelo: '+compa.map(x=>nCen(x)).join(', ')+' no lo detiene (el orden real lo deciden las OT y el piso)':'',paralelos:compa};   /* paralelos: solo para la vista (la tablet lo dice en gris, 02-oct); estado y motivo no cambian */
   const et=centroEtapaDe(c);const gr=et?faseGrupos().find(g=>g.grupo===et):null;
   if(gr&&gr.secuencial===false&&pend.every(x=>centroEtapaDe(x)===et))
     return{estado:'disponible',motivo:'tramo no secuencial ('+esc(et)+'): el orden real lo dan las órdenes de trabajo de Odoo'};
@@ -3599,35 +3610,58 @@ function cambiosDisponibilidad(){const out={centros:{},aProxima:0,aDisponible:0,
 function transcurridoTxt(ini){if(!ini)return '';const min=Math.max(0,(Date.now()-new Date(ini))/6e4);return fmtHMS(min)}
 function barraAvanceHTML(hechas,total){const p=total>0?Math.min(100,Math.round(hechas/total*100)):0;
   return `<div class="bar" style="height:10px;margin:6px 0 2px"><i style="width:${p}%"></i></div><div class="mut" style="font-size:14px">${num(hechas)} de ${num(total)} · ${p}%</div>`}
+/* ¿esta orden no tiene curva de tallas en este centro? (se registra solo el total). La fila de la cola ya no lo dice (02-oct): el operario lo ve al
+   empezar y al confirmar las unidades (tablaTallasTramoHTML / tallasSegHTML) y el supervisor tiene la cuenta al pie de cada sección (pieSinCurvaTabHTML) */
+function sinCurvaEnCentro(o,c){return !baseTallas(o,c).tallas&&!tallasDeOrden(o).length}
+/* una fila de la cola de Mi centro (02-oct, para dummies): WH y fase; debajo tipo · color · prendas por hacer y, si falta, «sin tiempo estándar».
+   Lo que no es un problema va en una línea gris (también pasa por…, todavía no…, está afuera); el ámbar queda para «Revisar ruta». */
 function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c);const hechas=f.hechas||0;
   const fuera=!!f.fueraDelPlan;   // iniciada aquí pero sin programa: solo se puede terminar
-  const sinT=!baseTallas(o,c).tallas&&!tallasDeOrden(o).length;
   const ab=tramoAbiertoOrden(o.id,c,null);
-  const mot=motivoEstadoCentro(o,c);
-  const btn=modo==='proxima'
-    ? '<span class="tag t-aviso" style="font-size:15px" title="'+esc(mot)+'">todavía no · '+esc(mot)+'</span>'
+  const sec=secuenciaCentro(o,c);const mot=sec.motivo;
+  const af=avisoAfuera(o,c);   /* afuera (maquila) según su fase: dicho en gris, para no confundirla con lo que está en planta; en el puesto de afuera no se repite */
+  const colorN=(C(o.color)||{}).n||'';
+  const btn=modo==='proxima'?''
     : (ab?`<button class="btn" style="font-size:20px;padding:14px 22px;background:var(--aviso);border-color:var(--aviso)" onclick="TRAMO={paso:null,id:null,oid:null};render()">EN CURSO · ${transcurridoTxt(ab.ini)}</button>`
         :(fuera&&modo!=='proceso'?'<span class="mut" style="font-size:15px">fuera del plan: no se puede iniciar</span>'
           :`<button class="btn" style="font-size:20px;padding:14px 22px" onclick="iniciarTramo('${o.id}','${c}'${rec?",'"+rec+"'":''})">${modo==='proceso'?'CONTINUAR':'INICIO'}</button>`));
-  return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
+  const derecha=(btn||modo==='proceso')?`<div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
+    ${modo==='proceso'?(puedeCerrarPaso(o.id,c).ok?`<button class="btn ghost" style="font-size:15px" onclick="terminarOrdenCentro(null,'${o.id}','${c}')">Terminar orden</button>`:hintCierreHTML(o.id,c)):''}</div>`:'';
+  return `<div class="tab-fila" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
    ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${opVisibleHTML(o)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
-    <div class="mut">${esc(nombreCat(K(o.cat)))} · ${num(Math.max(0,total-hechas))} por hacer${(()=>{   /* las dos advertencias en UNA etiqueta; el detalle al tocar o pasar el mouse (02-oct) */
-      const fs=[];if(sinT)fs.push('sin tallas cargadas para esta WH');if(!fuera&&pasoSinTiempo(o,c))fs.push('sin tiempo estándar (el supervisor te la asignó a mano: la ruta pasa por aquí pero no tiene SAM, minutos por prenda, cargado; el tiempo real se registra igual)');
-      return fs.length?' · <span class="tag t-aviso" title="'+esc(fs.join(' · '))+'">'+(fs.length>1?'⚠ faltan datos':(sinT?'sin tallas cargadas':'sin tiempo estándar'))+'</span>':''})()}</div>
-    ${modo==='sinSecuencia'?'<div class="tag t-aviso" style="font-size:14px;margin-top:4px">'+esc(mot)+'</div>':(modo==='disponible'&&mot&&!esVistaOperario())?'<div class="tag t-mut" style="font-size:13px;margin-top:4px">'+esc(mot)+'</div>':''}
+    <div class="mut">${esc(nombreCat(K(o.cat)))}${colorN?' · '+dotColor(o.color)+esc(colorN):''} · <b>${num(Math.max(0,total-hechas))}</b> por hacer${(!fuera&&pasoSinTiempo(o,c))?' · <span class="tag t-falta" title="'+esc('Falta '+faltaTiempoTxt(o,c)+'. El tiempo real se registra igual.')+'">sin tiempo estándar</span>':''}</div>
+    ${(af&&(!af.rec||af.rec!==rec))?'<div class="mut tab-linea" title="'+esc(af.tip)+'">'+esc(af.txt)+'</div>':''}
+    ${modo==='proxima'?'<div class="mut tab-linea">todavía no · '+esc(mot)+'</div>':''}
+    ${modo==='sinSecuencia'?'<div class="tag t-aviso" style="font-size:14px;margin-top:4px">'+esc(mot)+'</div>':''}
+    ${(modo==='disponible'&&(sec.paralelos||[]).length)?'<div class="mut tab-linea">También pasa por '+esc(sec.paralelos.map(x=>nCen(x)).join(', '))+': puede ir antes o después de este paso</div>':''}
     ${modo==='proceso'?barraAvanceHTML(hechas,total):''}</div>
-   <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
-    ${modo==='proceso'?(puedeCerrarPaso(o.id,c).ok?`<button class="btn ghost" style="font-size:15px" onclick="terminarOrdenCentro(null,'${o.id}','${c}')">Terminar orden</button>`:hintCierreHTML(o.id,c)):''}</div></div>`}
+   ${derecha}</div>`}
 /* lo que explica cada sección de Mi centro: va en el «?» del título (02-oct); «disponible» lo decide la RUTA (el paso anterior ya está hecho), no el número de fase */
 const NOTA_COLA_TAB={proceso:'Ya empezaste y no has terminado: toca CONTINUAR, o «Terminar orden» cuando salga todo.',
   disponible:'Ya terminó el paso anterior de su ruta: puedes empezarlas.',
   proxima:'Todavía falta un paso antes de este centro: se ven, pero no se pueden empezar.',
   sinSecuencia:'No se sabe por la ruta si ya toca aquí: puedes empezarla, pero avisa a planificación.'};
+/* filas por sección que se dibujan (tope de PANTALLA, como BUSG_TOPE; no es un valor de negocio): si hay más, se dice cuántas y cómo encontrar otra */
+const TOPE_COLA_TAB=40;
+function filasColaTabHTML(filas,c,rec,modo){return `<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">${filas.slice(0,TOPE_COLA_TAB).map(f=>filaColaTabletHTML(f,c,rec,modo)).join('')}</div>`
+  +(filas.length>TOPE_COLA_TAB?`<p class="mut tab-pie">Se muestran ${num(TOPE_COLA_TAB)} de ${num(filas.length)}. Escribe la WH arriba para encontrar otra.</p>`:'')}
+/* el supervisor ve en UNA línea cuántas no tienen curva de tallas (el operario lo ve en la orden al empezar y al confirmar) */
+function pieSinCurvaTabHTML(filas,c){if(esVistaOperario()||!filas.length)return '';const n=filas.filter(f=>sinCurvaEnCentro(f.o,c)).length;
+  return n?`<p class="mut tab-pie">${num(n)} de ${num(filas.length)} sin curva de tallas: se registra solo el total</p>`:''}
 function seccionColaTabletHTML(titulo,nota,filas,c,rec,modo,borde){if(!filas.length)return '';
   return `<div class="panel"${borde?` style="border:2px solid ${borde}"`:''}><div class="body">
    <h3 style="margin:0 0 4px">${esc(titulo)} · ${num(filas.length)}${ayudaTipHTML(nota)}</h3>
-   <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">${filas.slice(0,40).map(f=>filaColaTabletHTML(f,c,rec,modo)).join('')}</div>
+   ${filasColaTabHTML(filas,c,rec,modo)}${pieSinCurvaTabHTML(filas,c)}
   </div></div>`}
+/* «Próximas» (02-oct): todavía no se pueden empezar, así que vienen plegadas (TAB.verProx recuerda si se abrió) y adentro se parten como la cola
+   del centro (Por llegar / Todo lo que viene, de f.cerc.grupo: no es otra clasificación, solo subdivide lo que estadoOrdenCentro ya dio por «próxima»).
+   El contenido se dibuja siempre, abierto o cerrado. */
+function proximasTabletHTML(filas,c,rec){if(!filas.length)return '';
+  const orden=CERCANIA_GRUPOS.map(g=>g[0]);const gk=f=>{const g=(f.cerc||{}).grupo;return orden.includes(g)?g:'lejana'};
+  const grupos=orden.map(g=>[g,filas.filter(f=>gk(f)===g)]).filter(x=>x[1].length);
+  return `<details class="panel tab-prox" ${TAB.verProx?'open':''} ontoggle="TAB.verProx=this.open"><summary title="${esc(NOTA_COLA_TAB.proxima)}">Próximas · ${num(filas.length)} <span class="mut">· todavía no se pueden empezar</span></summary>
+   <div class="body">${grupos.map(([g,l])=>`<h4 class="tab-subgrupo">${esc(nGrupoCerc(g))} · ${num(l.length)}${ayudaTipHTML(notaGrupoCerc(g))}</h4>${filasColaTabHTML(l,c,rec,'proxima')}`).join('')}
+   ${pieSinCurvaTabHTML(filas,c)}</div></details>`}
 function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
   const olv=tramosOlvidados().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null));
   const avisoOlv=olv.length?`<div class="panel" style="border:2px solid var(--alerta)"><div class="body" style="font-size:17px">
@@ -3637,9 +3671,16 @@ function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
   let confirma='';   /* 24-sep: la confirmación de unidades de UNA orden ya no reemplaza la pantalla: las demás en proceso siguen a la vista */
   if(TRAMO.paso==='tallas'&&TRAMO.oid){const o=S.ordenes.find(x=>x.id===TRAMO.oid);const t=o?tramosDe(o.id).find(x=>x.id===TRAMO.id):null;
     if(o&&t){const cal=calcTramo(t,o);const b=baseTallas(o,c);const tallas=b.tallas?Object.keys(b.tallas):tallasDeOrden(o);
+      /* 02-oct: el operario ve una sola línea («Trabajaste … · N personas»); el cálculo completo (minutos-persona, SAM real) va en su «?».
+         El supervisor lo sigue viendo a la vista. Todo sale de calcTramo, como siempre. */
+      const persT=num(cal.pers,cal.pers%1?1:0)+' '+(cal.pers===1?'persona':'personas');   /* repartidas entre órdenes a la vez puede dar 2,3: un decimal, no 2.3333 */
+      const detalleCal='Trabajado '+fmtHMS(cal.trabajado)+(cal.paros?' · paros '+num(cal.paros)+' min':'')+(cal.descansos?' · descansos '+num(cal.descansos)+' min':'')+' · '+persT+' ('+(cal.persTxt||'')+') · '+num(cal.minPersona)+' minutos-persona'+(cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,2)+' min por prenda':'');
+      const lineaCal=cal.afuera?'Afuera '+num(cal.dias,1)+' días (salió el '+fmtDia(diaLocalDe(t.ini))+(t.debeVolver?' · el programa decía que volvía el '+fmtDia(t.debeVolver):'')+') · no se cuentan minutos-persona ni SAM real'
+        :esVistaOperario()?'Trabajaste <b>'+fmtHMS(cal.trabajado)+'</b> (sin contar paros ni descansos) · '+persT+ayudaTipHTML(detalleCal)
+        :'Trabajado '+fmtHMS(cal.trabajado)+(cal.paros?' · paros '+num(cal.paros)+' min':'')+(cal.descansos?' · descansos '+num(cal.descansos)+' min':'')+' · '+persT+' ('+esc(cal.persTxt)+') · '+num(cal.minPersona)+' min-persona'+(cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,2)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,2)+' con segundas':''):'');
       confirma=`<div class="panel" style="border:2px solid var(--ok)"><div class="body" style="font-size:18px">
        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}<span class="tag t-ok" style="font-size:14px">terminaste · confirma las unidades</span></div>
-       <div class="mut" style="margin:8px 0">${cal.afuera?'Afuera '+num(cal.dias,1)+' días (salió el '+fmtDia(diaLocalDe(t.ini))+(t.debeVolver?' · el programa decía que volvía el '+fmtDia(t.debeVolver):'')+') · no se cuentan minutos-persona ni SAM real</div><div style="display:none">':''}Trabajado ${fmtHMS(cal.trabajado)}${cal.paros?' · paros '+num(cal.paros)+' min':''}${cal.descansos?' · descansos '+num(cal.descansos)+' min':''} · ${cal.pers} ${cal.pers===1?'persona':'personas'} (${esc(cal.persTxt)}) · ${num(cal.minPersona)} min-persona${cal.minPrendaReal!=null?' · SAM real '+num(cal.minPrendaReal,3)+' min/prenda (buenas)'+(cal.seg?' · '+num(cal.minPrendaTot,3)+' con segundas':''):''}</div>
+       <div class="mut" style="margin:8px 0">${lineaCal}</div>
        ${cal.avisoAlmuerzo?'<div class="warn" style="font-size:16px">El horario tiene un descanso dentro de este tramo y no marcaste el paro de almuerzo. ¿Olvidaste marcarlo? Se descontó del horario.</div>':''}
        <h3 style="margin:10px 0">Confirma lo que salió</h3>
        ${tallasSegHTML(o,t,c,tallas)}
@@ -3665,7 +3706,7 @@ function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
       ${pa?`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="reanudarTramo('${t.id}','${o.id}')">Reanudar</button>`
          :`<button class="btn" style="font-size:22px;padding:16px 26px" onclick="terminarTramo('${t.id}','${o.id}')">FIN</button>
            <button class="btn ghost" style="font-size:20px;padding:14px 22px;border-color:var(--alerta);color:var(--alerta)" onclick="mPararTramo('${t.id}','${o.id}')">Paro</button>`}</div>
-     <div class="mut" style="font-size:15px;margin-top:10px;text-align:center">${cal.pers} ${cal.pers===1?'persona':'personas'} · <span title="${esc(cal.persTxt||'')}">${esc(cal.persFuente==='repartida'?'repartidas entre las órdenes que corren a la vez':cal.persFuente==='declarada'?'puestas a mano':'del puesto')}</span>
+     <div class="mut" style="font-size:15px;margin-top:10px;text-align:center">${num(cal.pers,cal.pers%1?1:0)} ${cal.pers===1?'persona':'personas'} · <span title="${esc(cal.persTxt||'')}">${esc(cal.persFuente==='repartida'?'repartidas entre las órdenes que corren a la vez':cal.persFuente==='declarada'?'puestas a mano':'del puesto')}</span>
       · ¿cuántas van en esta orden? <input type="number" min="0" step="1" inputmode="numeric" style="width:70px;font-size:16px" value="${t.persManual||''}" placeholder="auto" onchange="setPersonasTramo('${t.id}','${o.id}',this.value)"></div>
      ${pa?'':tablaTallasTramoHTML(o,t,c,true)}
     </div></div>`};
@@ -3682,23 +3723,23 @@ function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
      +(nada?'<div class="panel"><div class="empty">No hay órdenes en proceso. Toca «En cola» para empezar una.</div></div>':'')}
   if(vista==='cola')return avisoOlv
    +seccionColaTabletHTML('Disponibles',NOTA_COLA_TAB.disponible,est.disponible,c,rec,'disponible',null)
-   +seccionColaTabletHTML('Próximas',NOTA_COLA_TAB.proxima,est.proxima,c,rec,'proxima',null)
-   +seccionColaTabletHTML('Revisar ruta',NOTA_COLA_TAB.sinSecuencia,est.sinSecuencia,c,rec,'sinSecuencia','var(--alerta)')
+   +proximasTabletHTML(est.proxima,c,rec)
+   +seccionColaTabletHTML('Revisar ruta',NOTA_COLA_TAB.sinSecuencia,est.sinSecuencia,c,rec,'sinSecuencia','var(--aviso)')
    +(!est.disponible.length&&!est.proxima.length&&!est.sinSecuencia.length?'<div class="panel"><div class="empty">No hay órdenes en cola en este centro.</div></div>':'');
   return avisoOlv+confirma+tarjetas+avisoTope
    +seccionColaTabletHTML('En proceso',NOTA_COLA_TAB.proceso,est.proceso,c,rec,'proceso','var(--t-accent)')
    +seccionColaTabletHTML('Disponibles',NOTA_COLA_TAB.disponible,est.disponible,c,rec,'disponible',null)
-   +seccionColaTabletHTML('Próximas',NOTA_COLA_TAB.proxima,est.proxima,c,rec,'proxima',null)
-   +seccionColaTabletHTML('Revisar ruta',NOTA_COLA_TAB.sinSecuencia,est.sinSecuencia,c,rec,'sinSecuencia','var(--alerta)')
+   +proximasTabletHTML(est.proxima,c,rec)
+   +seccionColaTabletHTML('Revisar ruta',NOTA_COLA_TAB.sinSecuencia,est.sinSecuencia,c,rec,'sinSecuencia','var(--aviso)')
    +(vacio?'<div class="panel"><div class="empty">No hay órdenes programadas en este centro.</div></div>':'')}
 /* las pestañas pequeñas de arriba de Mi centro (24-sep): cuántas en proceso, en cola y hechas hoy; al tocarlas se despliegan */
 function cuentasTablet(c,rec,cola){const abiertos=tramosAbiertosDe(c,rec||null);const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoOrdenCentro(f.o,c,rec);if(est[e])est[e].push(f)});
   const enProc=new Set(abiertos.map(x=>x.o.id).concat(est.proceso.map(f=>f.o.id)));
   const hoyL=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy());
-  return {proceso:enProc.size,cola:est.disponible.length+est.proxima.length+est.sinSecuencia.length,hechasOrd:new Set(hoyL.map(x=>x.o.id)).size,confirmar:TRAMO.paso==='tallas'&&!!TRAMO.oid}}
+  return {proceso:enProc.size,cola:est.disponible.length+est.proxima.length+est.sinSecuencia.length,empezar:est.disponible.length+est.sinSecuencia.length,hechasOrd:new Set(hoyL.map(x=>x.o.id)).size,confirmar:TRAMO.paso==='tallas'&&!!TRAMO.oid}}   /* empezar = las que tienen INICIO (Disponibles + Revisar ruta) */
 function pestanasTabletHTML(v,k,hechasHoy,planHoy){const b=(id,txt,n,extra)=>`<button class="${v===id?'on':''}" onclick="TAB.vista='${id}';render()">${txt} <b>${n}</b>${extra||''}</button>`;
-  return `<div class="tab-pest no-print">${b('proceso','En proceso',k.proceso,k.confirmar?' <span class="tag t-ok" style="font-size:12px">confirmar</span>':'')}${b('cola','En cola',k.cola)}${b('hechas','Hechas hoy',k.hechasOrd,' <span class="mut">· '+num(hechasHoy)+' prendas</span>')}
+  return `<div class="tab-pest no-print">${b('proceso','En proceso',k.proceso,k.confirmar?' <span class="tag t-ok" style="font-size:12px">confirmar</span>':'')}${b('cola','En cola',k.cola,' <span class="mut">· '+num(k.empezar||0)+' para empezar</span>')}${b('hechas','Hechas hoy',k.hechasOrd,' <span class="mut">· '+num(hechasHoy)+' prendas</span>')}
    <span class="tab-pest-info mut">Prendas del día ${num(planHoy)} · faltan ${num(Math.max(0,planHoy-hechasHoy))}</span></div>`}
 /* --- una fila de registro (talla o total) con − + rápidos y número editable (24-sep: sin segundas en la tablet) --- */
 const TALLA_TOTAL='(total)';
@@ -3717,17 +3758,20 @@ function tallasSegHTML(o,t,c,tallas){const b=baseTallas(o,c);const ya=((S.avance
     return `<div class="warn" style="font-size:16px;margin-bottom:10px">Esta WH no tiene curva de tallas cargada: se registra solo el <b>total</b>.</div>
      <div style="display:flex;flex-direction:column;gap:10px">${filaTallaTramoHTML(o,t,c,TALLA_TOTAL,hechoC,+o.cant||null,'Total')}</div>`}
   return `<div style="display:flex;flex-direction:column;gap:10px">${tallas.map(tt=>filaTallaTramoHTML(o,t,c,tt,ya[tt]||0,(b.tallas||{})[tt])).join('')}</div>`}
+/* «Hechas hoy» (02-oct): el operario ve Orden · Empezó · Terminó · Tiempo · Paros · Unidades; el supervisor además SAM real (2 decimales, con su color),
+   Personas y Quién. «Segundas» solo si alguna fila del día las tiene (la tablet ya no las registra). Todo sale de calcTramo, una vez por fila. */
 function tramosDelDiaHTML(c,rec){const h=hoy();const l=todosTramos().filter(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===h);
   if(!l.length)return '';
-  return `<div class="panel"><h3>Lo registrado hoy <span class="note">${l.length} tramos · quién, cuándo, tiempo, paros y unidades por talla</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Desde</th><th>Hasta</th><th class="num">Trabajado</th><th class="num">Paros</th><th class="num">Unidades</th><th class="num">Segundas</th><th class="num">SAM real</th><th class="num">Personas</th><th>Quién</th></tr></thead><tbody>
-   ${l.map(({o,t})=>{const cal=calcTramo(t,o);return `<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${t.afuera?fechaHoraLocal(t.ini,false):horaLocal(t.ini)}</td><td>${t.afuera?fechaHoraLocal(t.fin,false):horaLocal(t.fin)}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${cal.afuera?num(cal.dias,1)+' días afuera':fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td><td class="num">${cal.seg?num(cal.seg):'—'}</td><td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="SAM estándar ${num(cal.estandar,3)} · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,3)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.afuera?'afuera':cal.pers}</td><td class="mut">${esc(typeof t.u==='string'?t.u:(t.uFin||''))}</td></tr>`}).join('')}
-   </tbody></table></div>${(!esRecAfuera(rec)&&descansosCentro(c).falta)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración general → Centros cuando los definas.</p>`:''}${(!esRecAfuera(rec)&&personasRec(rec,c).falta)?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
+  const filas=l.map(x=>Object.assign({cal:calcTramo(x.t,x.o)},x));const verSeg=filas.some(x=>x.cal.seg);const sup=!esVistaOperario();
+  return `<div class="panel"><h3>Lo registrado hoy <span class="note">${num(l.length)} ${l.length===1?'registro':'registros'} hoy</span></h3><div class="body"><div class="scroll" style="max-height:320px"><table style="font-size:var(--fs-s)"><thead><tr><th>Orden</th><th>Empezó</th><th>Terminó</th><th class="num">Tiempo</th><th class="num">Paros</th><th class="num">Unidades</th>${verSeg?'<th class="num">Segundas</th>':''}${sup?'<th class="num" title="minutos por prenda reales de este registro">SAM real</th><th class="num">Personas</th><th>Quién</th>':''}</tr></thead><tbody>
+   ${filas.map(({o,t,cal})=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td>${t.afuera?fechaHoraLocal(t.ini,false):horaLocal(t.ini)}</td><td>${t.afuera?fechaHoraLocal(t.fin,false):horaLocal(t.fin)}${t.corregido?' <span class="tag t-aviso" title="corregido por '+esc(t.corregido.u)+': '+esc(t.corregido.motivo)+'">corregido</span>':''}</td><td class="num">${cal.afuera?num(cal.dias,1)+' días afuera':fmtMinSeg(cal.trabajado)}</td><td class="num">${cal.paros?num(cal.paros)+' min':'—'}</td><td class="num">${num(cal.u)}</td>${verSeg?`<td class="num">${cal.seg?num(cal.seg):'—'}</td>`:''}${sup?`<td class="num">${cal.minPrendaReal!=null?`<span class="tag ${cal.sem==='ok'?'t-ok':cal.sem==='aviso'?'t-aviso':'t-alerta'}" title="SAM estándar ${num(cal.estandar,2)} · tolerancia ${cal.tol}%">${num(cal.minPrendaReal,2)}</span>`:'—'}</td><td class="num" title="${esc(cal.persTxt)}">${cal.afuera?'afuera':num(cal.pers,cal.pers%1?1:0)}</td><td class="mut">${esc(typeof t.u==='string'?t.u:(t.uFin||''))}</td>`:''}</tr>`).join('')}
+   </tbody></table></div>${(sup&&!esRecAfuera(rec)&&descansosCentro(c).falta)?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">El horario de ${esc(nCen(c))} no tiene descansos cargados: el tiempo trabajado no descuenta ningún descanso. Cárgalos en Configuración general → Centros cuando los definas.</p>`:''}${(sup&&!esRecAfuera(rec)&&personasRec(rec,c).falta)?`<p class="mut" style="font-size:var(--fs-xs)">Este puesto no tiene personas configuradas: los minutos-persona se calculan con 1 persona.</p>`:''}</div></div>`}
 function vTablet(el){
   const asg=tabletDe();const admin=(puede('usuarios')||puede('programa'))&&!esOperario();
   const c=admin?(TAB.centro||asg.centro||null):(asg.centro||null);const rec=admin?(TAB.rec||asg.rec||null):(asg.rec||null);
   const cens=S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
   const sel=admin?`<div class="row no-print" style="margin:0;align-items:flex-end"><div><label>Centro</label><select onchange="TAB.centro=this.value||null;TAB.rec=null;render()"><option value="">—</option>${cens.map(x=>`<option value="${x.id}" ${c===x.id?'selected':''}>${esc(x.n)}</option>`).join('')}</select></div>${c?`<div><label>Recurso</label><select onchange="TAB.rec=this.value||null;render()"><option value="">todo el centro</option>${S.recursos.filter(r=>r.activa&&r.centro===c).map(r=>`<option value="${r.id}" ${rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></div>`:''}</div>`:'';
-  if(!c){el.innerHTML=`<div class="pagehead"><h2>Mi centro</h2><span class="spacer"></span>${sel}</div><div class="panel"><div class="empty">${admin?'Elige un centro (y un recurso) para ver la pantalla de la tablet tal como la ve el operario.':'Esta tablet no tiene centro asignado. Pide a planificación que lo asigne en Configuración → Usuarios (columna Tablet).'}</div></div>`;return}
+  if(!c){el.innerHTML=`<div class="pagehead"><h2>Mi centro</h2><span class="spacer"></span>${sel}</div><div class="panel"><div class="empty">${admin?'Elige un centro (y un puesto) para ver su cola.':'Esta tablet no tiene centro asignado. Pide a planificación que lo asigne en Configuración → Usuarios (columna Tablet).'}</div></div>`;return}
   let P={pro:[],ordenes:{},secMod:{}};if(S.ordenes.length){try{P=programar();ERR_PROG=null}catch(e){ERR_PROG=String((e&&e.message)||e);registrarErrProg(e,c)}}const h=hoy();const r=rec?R(rec):null;const nombre=r?r.n:nCen(c);
   const cola=tabletFilas(c,rec,P);
   const planHoy=P.pro.filter(x=>x.dia===h&&x.centro===c&&(!rec||x.rec===rec)).reduce((a,x)=>a+(x.pz||0),0);
@@ -3740,7 +3784,7 @@ function vTablet(el){
      <div style="flex:1;min-width:240px;font-size:18px;line-height:1.5"><div><span class="mut" style="font-size:14px">#${i+1}</span> <b style="font-size:22px">${esc(o.op)}</b>${faseTag(o)}</div>
       <div>${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div><div class="mut">${esc(o.cliente||'')}</div>
       ${f.fueraDelPlan?'<div><span class="tag t-alerta" title="esta orden no está programada para este puesto; la empezaste y por eso sigue aquí. Solo se puede TERMINAR.">fuera del plan · solo terminar</span></div>':''}
-      ${(!f.fueraDelPlan&&pasoSinTiempo(o,c))?'<div><span class="tag t-aviso" title="el supervisor te la asignó a mano: la ruta pasa por aquí pero no tiene SAM (minutos por prenda) cargado. El tiempo real se registra igual.">sin tiempo estándar</span></div>':''}
+      ${(!f.fueraDelPlan&&pasoSinTiempo(o,c))?'<div><span class="tag t-falta" title="'+esc('Falta '+faltaTiempoTxt(o,c)+'. El tiempo real se registra igual.')+'">sin tiempo estándar</span></div>':''}
       <div><b>${num(f.hechas)}</b> / ${num(cantCentro(o,c))} prendas${cantCentro(o,c)!==(+o.cant||0)?' <span class="mut" style="font-size:14px">(de '+num(o.cant)+' del pedido: el paso anterior cerró con menos)</span>':''}</div>${tagListaEmpezar(o,c)}${(baseTallas(o,c).tallas?'<div style="font-size:15px">'+difTallasHTML(o,c)+'</div>':'<div class="tag t-aviso">sin curva de tallas: solo total</div>')}${tallas?`<div class="mut" style="font-size:15px">Tallas: ${esc(tallas)}</div>`:''}
       ${cr.fin?`<div class="mut" style="font-size:14px">Tardó ${cronoTxt(cr)} · estándar ${num(std)} min${cr.tallas?' · '+Object.entries(cr.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(', '):''}</div>`:''}</div>
      <div style="flex:none;display:flex;flex-direction:column;gap:10px;min-width:170px">
@@ -3751,16 +3795,19 @@ function vTablet(el){
   const kt=cuentasTablet(c,rec,cola);
   if(!['proceso','cola','hechas'].includes(TAB.vista))TAB.vista=(kt.confirmar||kt.proceso)?'proceso':'cola';
   if(kt.confirmar)TAB.vista='proceso';   /* recién tocado FIN: se confirma ahí, con las demás a la vista */
+  /* 02-oct: quien no es operario ve la cola SIN el filtro del operario (tabletFilas solo filtra con esOperario): la pantalla lo dice */
+  const avisoVistaSup=esOperario()?'':`<p class="mut tab-vista-sup">Estás viendo toda la cola de ${esc(nombre)}. Cada operario ve solo lo programado para su puesto en los próximos ${num(diasVentanaTablet())} días hábiles.</p>`;
+  /* la explicación de «Hecho» y del cronómetro es del registro rápido del supervisor: va dentro de él (el operario no tiene esos botones) */
+  const notaHecho=`<p class="mut" style="font-size:var(--fs-xs);margin:4px 8px 8px">«Hecho» SUMA lo que salió ahora; cuando llega a lo que entró a este centro, el paso se cierra y la orden pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración general → Calendario y reglas → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
   const cuerpo=TAB.vista==='hechas'?(tramosDelDiaHTML(c,rec)||'<div class="panel"><div class="empty">Todavía no hay nada registrado hoy en este puesto.</div></div>')
-    :TAB.vista==='cola'?flujoTramoHTML(c,rec,cola,'cola')+(esVistaOperario()?(cola.length||ERR_PROG?'':sinProgramaHTML(c,rec)):(cola.length?`<details class="panel no-print" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Registro rápido del supervisor <span class="note">las mismas órdenes con «Hecho», cambio de fase y cronómetro; el operario no ve esto</span></summary><div style="padding:0 8px 8px">${cola.map(card).join('')}</div></details>`:'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))
+    :TAB.vista==='cola'?avisoVistaSup+flujoTramoHTML(c,rec,cola,'cola')+(esVistaOperario()?(cola.length||ERR_PROG?'':sinProgramaHTML(c,rec)):(cola.length?`<details class="panel no-print" style="padding:0"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Registro rápido del supervisor <span class="note">las mismas órdenes con «Hecho», cambio de fase y cronómetro; el operario no ve esto</span></summary>${notaHecho}<div style="padding:0 8px 8px">${cola.map(card).join('')}</div></details>`:'<div class="panel"><div class="empty">Sin órdenes en cola.</div></div>'))
     :flujoTramoHTML(c,rec,cola,'proceso');
-  el.innerHTML=`<div class="pagehead"><h2>${esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
+  el.innerHTML=`<div class="pagehead"><h2>${esVistaOperario()?esc(nombre):'Mi centro · '+esc(nombre)}</h2><span class="spacer"></span>${sel}</div>
    ${pestanasTabletHTML(TAB.vista,kt,hechasHoy,planHoy)}
    <div id="aviso-guardado"></div>
    ${errProgHTML()}
    ${tabletBuscadorHTML(c,cola,rec)}
-   ${cuerpo}
-   <p class="mut no-print" style="font-size:var(--fs-xs)">«Hecho» SUMA lo que salió ahora; cuando llega a lo que entró a este centro, el paso se cierra y la orden pasa al siguiente. ${permiteParcial(c)?'Este centro permite registrar parcial.':'Parcial está desactivado (Configuración general → Calendario y reglas → parámetro modulosParcial).'} El cronómetro es opcional: si no se usa, no pasa nada.</p>`;
+   ${cuerpo}`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
 function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
@@ -12037,25 +12084,31 @@ function vControl(el){
       <div><label>Área</label><select onchange="CTL.area=this.value;CTL.centro=null;render()">${areasOK.map(a=>`<option value="${a}" ${CTL.area===a?'selected':''}>${a==='fases'?'Cambio de fases':AREAS[a]}</option>`).join('')}</select></div>
       ${CTL.area==='pro'?`<div><label>Centro</label><select onchange="CTL.centro=this.value||null;render()"><option value="">Todos</option>${S.centros.filter(c=>c.area==='pro').sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id)).map(c=>`<option value="${c.id}" ${CTL.centro===c.id?'selected':''}>${esc(c.n)}</option>`).join('')}</select></div>`:''}
       ${grpSelHTML('ctl')}<div><label>Buscar</label>${busqHTML('CTL.q',CTL.q,'CTL.q=v','width:160px')}</div>
-      <div><label>&nbsp;</label><label class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=!CTL.todo;render()">${CTL.todo?'todas las órdenes':'solo lo activo'}</label></div></div></div>
+      ${CTL.area==='fases'?'':`<div><label>Mostrar</label><span class="ctl-ver"><span class="chip ${!CTL.todo?'on':''}" style="margin:0" title="${esc({tej:'solo las órdenes con tela por tejer',tin:'solo los baños de hoy y de los dos días siguientes',pro:'solo lo programado hoy o mañana, o lo que ya tiene avance'}[CTL.area]||'')}" onclick="CTL.todo=false;render()">${{tej:'Por tejer',tin:'Hoy y 2 días',pro:'Hoy y mañana'}[CTL.area]||'Activas'}</span><span class="chip ${CTL.todo?'on':''}" style="margin:0" onclick="CTL.todo=true;render()">Todas</span></span></div>`}</div></div>
     <p class="lede">Lo que Odoo no ve: unidades parciales del día, tela que ya salió, reprocesos y prioridades. Las fases y los cierres por centro entran solos con las cargas de Odoo.</p>`;
   let cuerpo='';
   if(CTL.area==='fases'){cuerpo=cierresSinFaseHTML()+solicitudesPisoHTML()+fasesCentralHTML(P)}else if(CTL.area==='tej'){
     const lista=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&filtro(o)).map(o=>{const r=P.ordenes[o.id]||{};const a=S.avance[o.id]||{};const hecha=a.tejida||faseEstado(o.fase,o).tejida;return{o,r,a,hecha}})
       .filter(x=>CTL.todo||!x.hecha).sort((x,y)=>(x.r.finTej||'9')<(y.r.finTej||'9')?-1:1);
-    cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
+    /* 02-oct: «Máquina · fin» dice de dónde sale la fecha (origen que ya guarda programar() en ro.telas): en stock · programada a mano · estimada por el
+       sistema (gris) · sin máquina compatible. La entrega va en rojo solo si la meta está vencida (esMetaVencida, la definición única). */
+    const maqTej=t=>t.error?'<span class="tag t-alerta">'+esc(t.error)+'</span>':t.origen==='stock'?'en stock'
+      :t.origen==='estimado'?'<span class="mut" title="fecha estimada por el sistema · sin programar a mano en Tejeduría">'+esc(nRec(t.rec))+' · '+fmtDia(t.fin)+' (estimado)</span>'
+      :esc(nRec(t.rec))+' · '+fmtDia(t.fin);
+    const entregaTej=o=>!o.fecha?'—':esMetaVencida(o,P)?'<span class="fecha" style="color:var(--alerta);font-weight:600" title="meta vencida · '+esc(String(o.fecha))+'">'+fmtDia(String(o.fecha).slice(0,10))+'</span>':fmtFecha(o.fecha);
+    cuerpo=`<div class="panel"><h3>Tejeduría <span class="note">${lista.length} órdenes${CTL.todo?'':' con tela por tejer'}</span></h3><div class="scroll alto"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th>Telas (kg crudo)</th><th>Máquina · fin</th><th>Tejida</th><th>Urgente</th><th>Entrega</th></tr></thead><tbody>
      ${grpMap('ctl',lista.slice(0,300),8,x=>x.o,({o,r,a,hecha})=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td>${esc((C(o.color)||{}).n||'')}</td>
-       <td style="font-size:var(--fs-xs)">${(o.telas||[]).filter(t=>!t.ext).map(t=>esc(nTela(t.tela))+' '+num(kgCrudo(t.tela,t.kg))).join(' · ')||'<span class="tag t-alerta">sin tela</span>'}</td>
-       <td style="font-size:var(--fs-xs)">${(r.telas||[]).map(t=>esc(nRec(t.rec))+' '+fmtDia(t.fin)).join('<br>')||'—'}</td>
+       <td style="font-size:var(--fs-xs)">${(o.telas||[]).filter(t=>!t.ext).map(t=>esc(nTela(t.tela))+' '+num(kgCrudo(t.tela,t.kg))+' kg').join(' · ')||'<span class="tag t-alerta">sin tela</span>'}</td>
+       <td style="font-size:var(--fs-xs)">${(r.telas||[]).map(maqTej).join('<br>')||'—'}</td>
        <td>${hecha?'<span class="tag t-ok">✓</span>':`<input type="checkbox" ${ok?'':'disabled'} onchange="setEstado('${o.id}','tejida',this.checked)">`}</td>
-       <td><input type="checkbox" ${o.prio===1?'checked':''} ${puede('ordenes')?'':'disabled'} onchange="setPrio('${o.id}',this.checked)"></td><td>${fmtFecha(o.fecha)}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Nada pendiente.</td></tr>'}</tbody></table></div></div>`;
+       <td><input type="checkbox" ${o.prio===1?'checked':''} ${puede('ordenes')?'':'disabled'} onchange="setPrio('${o.id}',this.checked)"></td><td style="white-space:nowrap">${entregaTej(o)}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Nada pendiente.</td></tr>'}</tbody></table></div>
+     ${lista.length>300?`<p class="mut" style="font-size:var(--fs-xs);padding:8px 12px;margin:0">Se muestran 300 de ${num(lista.length)} · usa el buscador o agrupa</p>`:''}</div>`;
   }else if(CTL.area==='tin'){
     const bs=P.banos.filter(b=>!b.error&&b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&filtro(o)})).filter(b=>CTL.todo||b.dia<=dsum(h,2)).sort((x,y)=>x.dia<y.dia?-1:x.dia>y.dia?1:ORDEN_FAM[x.fam]-ORDEN_FAM[y.fam]);
-    cuerpo=`<div class="panel"><h3>Tintorería <span class="note">${bs.length} baños${CTL.todo?'':' de hoy y los dos días siguientes'}</span></h3><div class="scroll"><table><thead><tr><th>Sale (est.)</th><th>Máquina</th><th>Color</th><th>Telas</th><th class="num">Kg crudo</th><th class="num">Llenado</th><th class="num">Sale (kg)</th><th>Estado</th><th>Órdenes</th><th>Hecho</th><th>Reproceso</th></tr></thead><tbody>
+    cuerpo=`<div class="panel"><h3>Tintorería <span class="note">${bs.length} baños${CTL.todo?'':' de hoy y los dos días siguientes'}</span>${ayudaTipHTML('Hecho pide los kg reales de cada tela del baño, libera la máquina y manda las órdenes a Calidad de tintorería (más abajo); queda en el registro «Tintorería entregados» al final de la página de Tintorería. Reprocesar vuelve a programar el baño desde hoy y lo deja marcado hasta que se dé por listo.')}</h3><div class="scroll"><table><thead><tr><th title="fecha estimada de salida">Sale (est.)</th><th>Máquina</th><th>Color</th><th>Telas</th><th class="num">Kg crudo</th><th class="num">Llenado</th><th class="num">Sale (kg)</th><th>Estado</th><th>Órdenes</th><th>Hecho</th><th>Reproceso</th></tr></thead><tbody>
      ${bs.slice(0,200).map(b=>{const reproc=b.oids.some(id=>(S.avance[id]||{}).reproc);return `<tr><td>${fmtDia(b.dia)}</td><td>${esc(nRec(b.rec))}</td><td><b>${esc(b.colorN)}</b>${b.cod?'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(b.cod)+'</span>':''}${reproc?' <span class="tag t-alerta">reproceso</span>':''}</td><td style="font-size:var(--fs-xs)">${b.telas.map(nTela).map(esc).join(' + ')}</td><td class="num">${num(b.kg)}</td><td class="num">${Math.round(b.fill*100)}%</td><td class="num mut">${num(banoAcabado(b))}</td>
        <td>${b.est==='ok'?'<span class="tag t-ok">ok</span>':b.est==='aprob'?'<span class="tag t-aviso">aprobación</span>':'<span class="tag t-alerta">bajo</span>'}</td><td style="font-size:var(--fs-xs)">${b.oids.map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?fotoMini(o,28)+esc(o.op)+faseTag(o):''}).join(' ')}</td>
-       <td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="mBanoHecho('${b.id}')">hecho</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&enCalidad(o)})?'<span class="tag t-aviso" title="Esperando la revisión de calidad">en calidad</span>':b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&(S.avance[id]||{}).calidadOk&&!liberadaCorte(o)})?'<span class="tag t-ok" title="Calidad aprobó; planificación la libera en Liberación a producción">calidad ok · en cola de liberación</span>':''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'quitar':'reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="10" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div>
-     <p class="mut" style="font-size:var(--fs-xs);padding:8px 12px">"Hecho" pide los kg reales de cada tela del baño, lo saca del programa (la máquina queda libre) y pasa las órdenes a Calidad de tintorería (abajo); queda en el registro "Tintorería entregados" al final de la página de Tintorería. "Reprocesar" vuelve a programar el baño desde hoy con 10 horas y lo deja marcado hasta que se dé por listo.</p></div>`+calidadTinHTML(ok)+reprocesosTinHTML();
+       <td><button class="btn sm" ${ok?'':'disabled'} onclick="mBanoHecho('${b.id}')">Hecho</button> ${b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&enCalidad(o)})?'<span class="tag t-aviso" title="Esperando la revisión de calidad">en calidad</span>':b.oids.some(id=>{const o=S.ordenes.find(x=>x.id===id);return o&&(S.avance[id]||{}).calidadOk&&!liberadaCorte(o)})?'<span class="tag t-ok" title="Calidad aprobó; planificación la libera en Liberación a producción">calidad ok · en cola de liberación</span>':''}</td><td><button class="btn ghost sm" ${ok?'':'disabled'} onclick="banoReproceso('${b.oids.join(',')}',${reproc})">${reproc?'Quitar reproceso':'Reprocesar'}</button></td></tr>`}).join('')||'<tr><td colspan="11" class="mut">Sin baños en estos días.</td></tr>'}</tbody></table></div></div>`+calidadTinHTML(ok)+reprocesosTinHTML();
   }else{
     const cens=S.centros.filter(c=>c.area==='pro'&&veCentro(c.id)&&(!CTL.centro||c.id===CTL.centro)).sort((x,y)=>ordenPaso(x.id)-ordenPaso(y.id));
     const hoyOps={};P.pro.filter(x=>x.dia===h).forEach(x=>{hoyOps[x.centro+'|'+x.op]=(hoyOps[x.centro+'|'+x.op]||0)+(x.pz||0)});
