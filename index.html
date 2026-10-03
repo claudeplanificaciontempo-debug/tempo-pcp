@@ -596,7 +596,7 @@ td label:not(.chip):has(> input[type=checkbox]),td label:not(.chip):has(> input[
 .kpis:not(.tarj-row)>.kpi.warn,.kpis:not(.tarj-row)>.kpi.bad{margin:0;padding:14px 18px;border:0;border-radius:0;font-size:inherit;line-height:inherit;color:inherit;background:var(--paper)}
 .kpis:not(.tarj-row)>.kpi.warn{box-shadow:inset 0 3px 0 var(--aviso)}
 .kpis:not(.tarj-row)>.kpi.bad{box-shadow:inset 0 3px 0 var(--alerta)}
-.kpis>.kpi.tarj.warn{margin:0;padding:14px 18px;font-size:inherit;line-height:inherit;color:inherit;border:0;border-left:4px solid var(--aviso);border-radius:8px;background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft))}
+.kpis>.kpi.tarj.warn{margin:0;padding:14px 18px;font-size:inherit;line-height:inherit;color:inherit;border:1px solid var(--rule);border-left:4px solid var(--aviso);border-radius:8px;background:linear-gradient(180deg,var(--t-card),var(--t-accent-soft))}
 html[data-tema="odoo"] .kpis>.kpi.tarj.warn{border-left:0;border-radius:4px;background:#fff;box-shadow:inset 0 3px 0 var(--aviso)}
 .tarj.warn:not(.kpi),html[data-tema="odoo"] .tarj.warn:not(.kpi){background:var(--field);border-color:var(--rule);border-left:4px solid var(--aviso);padding:0;margin-bottom:0;color:inherit;font-size:inherit;line-height:inherit}
 html[data-modo="oscuro"] .kpis>.kpi.warn,html[data-modo="oscuro"] .kpis>.kpi.bad{background:var(--paper)!important;border-color:var(--aviso)!important;color:var(--ink)!important}
@@ -727,8 +727,8 @@ html.envivo-tv .env-g{grid-template-columns:repeat(auto-fill,minmax(420px,1fr))}
 /* · */
 /* ux:B2 */
 /* B2 · Liberación (textil y a producción) y Entregas (02-oct-2026, revisión «para dummies»). Filas de una o dos líneas; solo variables de color. */
-/* · Liberación: la OP con un ancho mínimo (sin el nowrap de antes); si la orden no tiene foto, su hueco (las WH quedan alineadas); «en el plan» chico, debajo */
-.lib-op-l1{min-width:220px}
+/* · Liberación: la OP con un ancho mínimo y en una línea (WH + fase juntas: pulido V2, sin el nowrap la fase bajaba bajo el hueco de la foto); si la orden no tiene foto, su hueco (las WH quedan alineadas); «en el plan» chico, debajo */
+.lib-op-l1{min-width:220px;white-space:nowrap}
 .foto-esp{display:inline-block;height:1px;margin-right:6px;vertical-align:middle}   /* espacio invisible del ancho de la foto: alinea las WH sin foto */
 .lib-plan{margin-top:2px;line-height:1.2}
 /* · tela: una línea por tela con su desplegable; sin confirmar = borde punteado gris (propuesta del catálogo); confirmada = ✓ verde */
@@ -739,6 +739,8 @@ td.lib-tela select.sel-prop{border-style:dashed;color:var(--ink3)}
 /* · última columna en letra chica: la ruta (la misma de Órdenes; con permiso se toca para corregirla) o lo que la frena (dos líneas como máximo) */
 td.lib-ult{font-size:var(--fs-xs)}
 td.lib-ult .lib-chips{max-width:360px}
+td.lib-ult.lib-fr{min-width:340px}
+td.lib-tela.lib-fr .tl-l{white-space:normal}   /* pulido V2: en Frenadas la línea de la tela puede partirse (el desplegable baja) para que «Qué la frena» quepa sin cortar la tabla */   /* pulido V2: en Frenadas los chips van de a dos por línea, como en producción (antes uno por línea y filas de 4-5 líneas) */
 .lib-ruta.clic{cursor:pointer}
 .lib-ruta.clic:hover{text-decoration:underline}
 #p-liberacion td label.lib-rev{color:var(--ink3);margin:0 0 0 6px}
@@ -758,7 +760,9 @@ a.lib-ruta-ed{white-space:nowrap}
 .eg-agrupar>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .eg-agrupar label{display:inline;margin:0}
 .eg-t td.nw,.eg-t td .tag{white-space:nowrap}
-table td.eg-comp input[type=date]{border-color:transparent;background:transparent;box-shadow:none;width:150px;min-width:0}
+.eg-t th,.eg-t td{padding-left:8px;padding-right:8px}   /* pulido V2: doce columnas; con 10 px a cada lado la lista no cabía y cortaba la última */
+.eg-t td.eg-color{min-width:120px}   /* pulido V2: un color largo («AZUL MARINO COMBINADO») baja a una segunda línea en vez de ensanchar toda la tabla */
+table td.eg-comp input[type=date]{border-color:transparent;background:transparent;box-shadow:none;width:132px;min-width:0}
 table td.eg-comp input.vacio{color:var(--ink3)}
 table tr:hover td.eg-comp input[type=date],table td.eg-comp input[type=date]:focus{border-color:var(--rule);background:var(--paper)}
 .kpi .v .eg-de{font-size:var(--fs-s);font-weight:400;color:var(--ink3)}
@@ -776,6 +780,8 @@ table tr:hover td.eg-comp input[type=date],table td.eg-comp input[type=date]:foc
 .pm-bloque-n{font-size:var(--fs-s)}
 /* grilla de días: «faltan N días · propongo … · Aplicar» debajo del nombre del área */
 #plan-cal .pm-falta{white-space:normal;min-width:180px;max-width:260px;margin-top:3px;line-height:1.6;font-weight:400}
+#plan-cal .pm-dias{font-size:var(--fs-xs);white-space:nowrap;font-weight:400}   /* pulido V2: cuántos días trabaja el área en el mes, al lado de su nombre */
+.niv-card .niv-pill{max-width:100%;white-space:normal;border-radius:12px}   /* pulido V2: «⚠ enviar 17.232 u · 3 familias» ya no se sale de la tarjeta */
 /* cuadrito de la nivelación: nota corta + «?», y el resultado (fin, total, déficit) resaltado */
 .niv-nota{font-size:var(--fs-xs)}
 .niv-nota .ayuda-txt{max-width:560px}
@@ -804,6 +810,8 @@ tr.aud-grupo summary{cursor:pointer}
 .cg-cel .cg-pct{display:inline-block;font-size:var(--fs-m)}
 .cg-cel .cg-h{display:block;font-size:var(--fs-xs);color:var(--ink3);white-space:nowrap}
 .cap-clic,.bal-hint{font-weight:400;font-size:var(--fs-s);color:var(--ink3);margin-left:6px}
+.panel>h3>.cap-clic,.panel>h3>.bal-hint{margin-left:-6px}   /* pulido V2: dentro del título (flex con 10 px) el punto medio queda a 4 px, como los demás separadores */
+.kpi.tarj.sel{outline:2px solid var(--t-primary);outline-offset:-1px}   /* pulido V2: Balanceo marca la tarjeta del módulo elegido arriba */
 .kpi.tarj[data-t^="balmod-"] .v small{font-size:var(--fs-s);font-weight:400;color:var(--ink3)}
 .tarj .bm-sep{display:none}.tarj .bm-l{display:block}
 .bm-aviso{margin:0 0 10px}
@@ -1504,7 +1512,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 21:17';
+const APP_BUILD='2026-10-02 21:24';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -4374,11 +4382,11 @@ function auditoriaCambiosHTML(filtro){
   const fila=e=>{const o=byId[e.oid];return `<tr><td style="white-space:nowrap">${fechaHoraLocal(e.ts)}</td><td>${esc(e.u||'')}</td><td>${audQueTxt(e)}</td><td style="white-space:nowrap">${o?whCell(o):esc(e.op||'')}</td><td>${txtAD(e,e.antes)}</td><td>${txtAD(e,e.despues)}</td><td>${e.motivo?esc(e.motivo):'<span class="mut">—</span>'}</td></tr>`};
   const grupo=g=>{const e=g[0];const a=AUD_AUTO.find(([rx])=>rx.test(e.motivo||''));const mot=a?String(e.motivo||'').replace(a[0],'').trim():String(e.motivo||'');
     const quien=a?'automático (sesión de '+esc(e.u||'—')+')':esc(e.u||'—');
-    return `<tr class="aud-grupo"><td colspan="7"><details><summary><b>${audGrupoTxt(e,g.length)}</b> · ${fechaHoraLocal(e.ts)} · ${quien}${mot?' · '+esc(mot):''} <span class="mut">▸ ver las órdenes</span></summary>
+    return `<tr class="aud-grupo"><td colspan="7"><details><summary><b>${audGrupoTxt(e,g.length)}</b> · ${fechaHoraLocal(e.ts)} · ${quien}${mot?' · '+esc(mot):''} <span class="mut">· ver las órdenes</span></summary>
      <div class="aud-grupo-l"><table><thead><tr><th>OP · fase</th><th>Antes</th><th>Después</th></tr></thead><tbody>${g.slice(0,topeG).map(x=>{const o=byId[x.oid];return `<tr><td style="white-space:nowrap">${o?whCell(o,22):esc(x.op||'')}</td><td>${txtAD(x,x.antes)}</td><td>${txtAD(x,x.despues)}</td></tr>`}).join('')}${g.length>topeG?`<tr><td colspan="3" class="mut">Se muestran ${topeG} de ${num(g.length)}.</td></tr>`:''}</tbody></table></div></details></td></tr>`};
   const tit=filtro==='ruta'?'Cambios y confirmaciones de ruta':'Cambios de fase y reversiones de liberación, cierres y otros';
   const ayuda=filtro==='ruta'?'Cada vez que una ruta se confirma, se desconfirma o cambia (a mano, en lote, desde un archivo o porque el sistema la rehízo al cambiar la categoría o su hoja de operaciones) queda aquí: quién, cuándo, cómo estaba antes y cómo quedó. Los registros seguidos de la misma persona, con el mismo motivo y en el mismo minuto van juntos en una fila: ábrela para ver las órdenes.':'Las devoluciones de fase y las reversiones de liberación piden un motivo de la lista de motivos (Configuración general → Órdenes, fases y archivos de Odoo). Cada fila dice quién, cuándo, cómo estaba antes y cómo quedó. Los registros seguidos iguales (misma persona, mismo motivo, mismo minuto) van juntos en una fila plegable.';
-  return `<div class="panel aud-cambios"><h3>${tit} ${ayudaTipHTML(ayuda)}<span class="note">${num(L.length)} ${L.length===1?'registro':'registros'}</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP · fase</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead><tbody>${filas.slice(0,tope).map(f=>f.g?grupo(f.g):fila(f.e)).join('')||'<tr><td colspan="7" class="mut">Todavía no hay registros.</td></tr>'}${filas.length>tope?`<tr><td colspan="7" class="mut">Se muestran ${tope} de ${num(filas.length)} filas: las más recientes.</td></tr>`:''}</tbody></table></div></div></div>`}
+  return `<div class="panel aud-cambios"><h3>${tit} ${ayudaTipHTML(ayuda)}<span class="note">${num(L.length)} ${L.length===1?'registro':'registros'}</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table>${(filas.length&&filas.slice(0,tope).every(f=>f.g))?'':'<thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP · fase</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead>'}<tbody>${filas.slice(0,tope).map(f=>f.g?grupo(f.g):fila(f.e)).join('')||'<tr><td colspan="7" class="mut">Todavía no hay registros.</td></tr>'}${filas.length>tope?`<tr><td colspan="7" class="mut">Se muestran ${tope} de ${num(filas.length)} filas: las más recientes.</td></tr>`:''}</tbody></table></div></div></div>`}
 /* f) Navegación: "← atrás" cuando se llega a una pantalla desde un clic en otra; vuelve con filtros y scroll */
 let NAVH=[];let NAV_PROG=false;
 function navRefs(){return estadosPantalla()}   // un solo mapa de estados para todo el sistema
@@ -5083,9 +5091,11 @@ function vEntregas(el){
   const estimadaEG=o=>{const r=P.ordenes[o.id]||{};if(r.finPro)return fmtFecha(r.finPro)+marcaEG(o);const b=String(r.bloqueo||'');
     if(b&&!/sin liberar/.test(b))return '<span class="tag t-lavado" title="el programa todavía no le da fecha">'+esc(b)+'</span>'+marcaEG(o);
     return '<span class="mut" title="'+esc(b?'sin fecha estimada: '+b:'sin fecha estimada del programa')+'">—</span>'+marcaEG(o)};
-  const fila=o=>{const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td class="nw">${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(hijaEG(o)||'—')}</span></td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td class="nw">${estimadaEG(o)}</td>
-     <td class="nw"><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
-     <td class="eg-comp"><input type="date" class="${o.fechaCompromiso?'':'vacio'}" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} title="la fecha de entrega que le comprometes al cliente" onchange="setCompromiso('${o.id}',this.value)"></td></tr>`};
+  const fila=o=>{const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td class="nw">${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(hijaEG(o)||'—')}</span></td><td class="eg-color">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td>
+     <td class="eg-comp"><input type="date" class="${o.fechaCompromiso?'':'vacio'}" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} title="la fecha de entrega que le comprometes al cliente" onchange="setCompromiso('${o.id}',this.value)"></td>
+     <td>${estimadaEG(o)}</td><td class="nw"><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td></tr>`};
+  /* pulido V2 (02-oct): «Fecha de compromiso» —lo único que se edita aquí— va justo después de «Pedido (entrega)», así nunca queda cortada en el borde
+     derecho de la lista; «Estimada» deja bajar su etiqueta bajo la fecha y los encabezados largos van al pasar el mouse */
   const todasSel=lista.length>0&&lista.every(o=>EG.sel.has(o.id));
   const barra=selCount?`<div class="eg-masiva no-print"><b>${num(selCount)} ${selCount===1?'seleccionada':'seleccionadas'}</b><span class="mut">·</span><label for="eg-masiva">Fecha de compromiso</label><input type="date" id="eg-masiva" value="${EG.masiva}" onchange="EG.masiva=this.value"><button class="btn sm" onclick="aplicarMasivaEG()" title="pone esta fecha de compromiso a las marcadas">Aplicar</button><button class="btn ghost sm" onclick="marcarTodoEG(false)">Quitar selección</button></div>`:'';
   el.innerHTML=`<div class="pagehead"><h2>Entregas${clis.length?` <span class="eg-cli no-print" data-filtro-local="1">de <select title="cliente: la pantalla y el PDF son de un cliente a la vez" onchange="EG.cli=this.value;render()">${clis.map(c=>`<option value="${esc(c)}" ${EG.cli===c?'selected':''}>${esc(c)}</option>`).join('')}</select></span>`:''}</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
@@ -5102,7 +5112,7 @@ function vEntregas(el){
     {id:'eg-tarde',v:num(tarde.size),k:'Va tarde según el programa',cls:tarde.size?'warn':'',items:lista.filter(o=>tarde.has(o.id)),title:'el programa la termina después de su fecha meta'},
     {id:'eg-sinlib',v:num(sinLib.length),k:'Sin liberar · '+num(sinLibPz)+' prendas',cls:sinLib.length?'warn':'',items:sinLib,title:'por resolver antes de comprometer una fecha'},
     {id:'eg-comp',v:num(conComp.length)+' <span class="eg-de">de '+num(lista.length)+'</span>',k:'Con fecha de compromiso',items:conComp,title:'las que ya tienen fecha de compromiso con el cliente'}])}</div>
-  ${lista.length?`<div class="eg-agrupar no-print" data-filtro-local="1">${selNivelesEG()}</div>${barra}<div class="scroll lista"><table class="eg-t"><thead><tr><th class="no-print" style="width:24px"><input type="checkbox" title="marcar todas las que ves" ${todasSel?'checked':''} onchange="marcarTodoEG(this.checked)"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th title="tipo de producto (la familia, al pasar el mouse)">Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
+  ${lista.length?`<div class="eg-agrupar no-print" data-filtro-local="1">${selNivelesEG()}</div>${barra}<div class="scroll lista"><table class="eg-t"><thead><tr><th class="no-print" style="width:24px"><input type="checkbox" title="marcar todas las que ves" ${todasSel?'checked':''} onchange="marcarTodoEG(this.checked)"></th><th>OP</th><th>ODC</th><th>Estilo</th><th title="Departamento">Depto.</th><th title="tipo de producto (la familia, al pasar el mouse)">Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th style="width:132px" title="la fecha de entrega que le comprometes al cliente">Fecha de compromiso</th><th title="Estimada por el programa: la fecha en que el programa termina la orden">Estimada</th><th>Liberación</th></tr></thead><tbody>
    ${filasArbolEG(arbol,fila,12)}</tbody></table></div>`:'<p class="mut">Nada pendiente con estos filtros.</p>'}
   ${avisoFueraDeBaseHTML('EG.q',lista,'los meses, la familia, el tipo de producto y la tela del filtro')}
   </section>`;
@@ -5451,13 +5461,15 @@ function frenosFilaLibHTML(o,et,falta){let venc=false;try{venc=esMetaVencida(o,P
   const ed=puedeEditarRuta()?'<a class="lib-ruta-ed" onclick="mRutaCentro(\''+o.id+'\')" title="revisar y corregir la ruta aquí">✎ ruta</a>':'';
   const rev=et==='corte'?revGeneralTagHTML(o):rutaCtrlLib(o);
   return (venc?'<div class="lib-venc"><span class="sem sem-rojo" title="la fecha meta ya pasó y la orden no está terminada">🔴 Meta vencida</span></div>':'')
-   +'<div class="lib-chips">'+[tagsCompactasHTML(chips,4),pant,ed,rev].filter(Boolean).join(' ')+'</div>'}
+   +'<div class="lib-chips">'+[tagsCompactasHTML(chips,4),pant].filter(Boolean).join(' ')+'</div>'
+   /* pulido V2: la acción («✎ ruta») y la marca de ruta revisada (decisión LIB-3, se queda) van en su propia línea, separadas de los frenos */
+   +((ed||rev)?'<div class="lib-sub">'+[ed,rev].filter(Boolean).join(' · ')+'</div>':'')}
 function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const lista=puedeLiberarA(o,et);const falta=lista?[]:faltaLiberarA(o,et);
   return `<tr><td>${(et!=='corte'&&lista&&puedeF)?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td>
    <td class="lib-op">${opLibHTML(o)}</td>
    <td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td>
    <td class="num">${num(o.cant)}</td><td>${fmtFecha(o.fecha)}</td>
-   ${et==='tela'?`<td class="lib-tela">${chipsFaltaTela(o)||'<span class="mut">—</span>'}</td>`:''}
+   ${et==='tela'?`<td class="lib-tela${lista?'':' lib-fr'}">${chipsFaltaTela(o)||'<span class="mut">—</span>'}</td>`:''}
    <td class="lib-ult${lista?'':' lib-fr'}">${!lista?frenosFilaLibHTML(o,et,falta):(et==='corte'?celdaLibProd(o):rutaLibHTML(o))}</td></tr>`}
 /* ---------- la lista del bloque 1 de Liberación, a su propia función (16-sep-2026, punto 2a) ----------
    Es EXACTAMENTE la plantilla que vivía dentro de bloqueLibB1: se movió, no se cambió. Recibe en `ctx`
@@ -6404,7 +6416,8 @@ function detalleAgrupableHTML(id,ords,titulo,nota,extraCol,plegado){
    ${(grpSt(id).todoAbierto=true,filasGRP(id,ords.slice(0,400),fila,nCols))}
    </tbody></table></div></div>`;
   const nt=`${num(ords.length)} ${ords.length===1?'orden':'órdenes'} · ${num(ords.reduce((a,o)=>a+ +o.cant||0,0))} prendas${nota?' · '+nota:''}`;
-  if(plegado)return `<details class="panel no-print det-agr" ${DETAGR[id]?'open':''} ontoggle="DETAGR['${id}']=this.open"><summary>${esc(plegado)} <span class="note">${esc(titulo)} · ${nt}</span></summary>${cuerpo}</details>`;
+  /* pulido V2: plegado, el resumen no repite el título (el texto de «Ver las N órdenes…» ya dice qué es) */
+  if(plegado)return `<details class="panel no-print det-agr" ${DETAGR[id]?'open':''} ontoggle="DETAGR['${id}']=this.open"><summary>${esc(plegado)} <span class="note">${nt}</span></summary>${cuerpo}</details>`;
   return `<div class="panel no-print"><h3>${esc(titulo)} <span class="note">${nt}</span></h3>${cuerpo}</div>`}
 /* ==================== PARTE B · Reportería gerencial, sub-centros y congelado (16-sep-2026) ==================== */
 
@@ -7590,7 +7603,7 @@ function plegarAvisos(root,pg){if(!root||pg==='tablet')return 0;let n=0;
     const cuerpo=document.createElement('div');cuerpo.className='warn-pl-cuerpo';cuerpo.innerHTML=d.innerHTML;
     const f0=cuerpo.firstChild,b0=cuerpo.firstElementChild;let res='';
     if(b0&&b0.tagName==='B'&&(f0===b0||(f0.nodeType===3&&!f0.textContent.trim()))){res=b0.innerHTML;b0.remove();const t0=cuerpo.firstChild;if(t0&&t0.nodeType===3)t0.textContent=t0.textContent.replace(/^[\s:—–-]+/,'')}
-    else{const m=txt.match(/^.{20,120}?[.:;](\s|$)/);res=esc(m?m[0].trim():txt.slice(0,110).trim()+'…')}
+    else{const m=txt.match(/^.{20,120}?[.:;](\s|$)/);res=esc(m?m[0].trim().replace(/[:;]$/,''):txt.slice(0,110).trim()+'…')}   /* pulido V2: sin «:» suelto antes de «· ver detalle» */
     const sm=document.createElement('summary');sm.innerHTML=res+' <span class="mut warn-pl-ver">· ver detalle</span>';
     det.appendChild(sm);det.appendChild(cuerpo);d.replaceWith(det);n++});return n}
 /* Varios avisos sobre una lista, en UN recuadro plegado (02-oct): el resumen dice cuántos y cuáles, y si alguno pide hacer algo.
@@ -10655,7 +10668,8 @@ function dondeEsta(o,P){if(!liberada(o,'tela'))return{k:'sin_liberar',n:'Sin lib
   const u=ultimoCierre(o);if(u&&centroSiguiente(o,u.centro)===pend[0].centro)return{k:pend[0].centro,n:'Esperando en '+nCen(pend[0].centro)};
   return{k:pend[0].centro,n:'En '+nCen(pend[0].centro)}}
 /* pestaña "Carga que viene" del centro: qué le va a llegar y de dónde, más lo programado del mes que aún no está liberado */
-function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);const PA=S.ordenes.length?programarTodo():{pro:[],ordenes:{}};
+/* okFn (pulido V2): qué filas se ven (filtro de fases y buscador de quien llama); sin él, el filtro de fases de Centro (CEN.fases), como siempre */
+function cargaQueVieneHTML(cens,nombre,P,okFn,out){const ok=okFn||faseOkCEN;const h=hoy();const ym=h.slice(0,7);const PA=S.ordenes.length?programarTodo():{pro:[],ordenes:{}};
   const filas=[];S.ordenes.filter(abierta).forEach(o=>{const c=cens.find(x=>(o.ruta||[]).some(p=>p.centro===x));if(!c)return;const fe=faseEstado(o.fase,o);const ac=(S.avance[o.id]||{}).centros||{};
     if(pasoHecho(o,c,fe))return;const d=dondeEsta(o,P);if(d.k===c||d.k==='fin')return;const paso=((P.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};const pasoA=((PA.ordenes[o.id]||{}).pasos||[]).find(p=>p.centro===c)||{};
     filas.push({o,c,d,ini:paso.ini||null,iniTodo:pasoA.ini||null,pz:o.cant-(ac[c]||0)})});
@@ -10665,10 +10679,10 @@ function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);co
   const pzMes=(PP)=>PP.pro.filter(x=>cens.includes(x.centro)&&x.dia&&x.dia.startsWith(ym)).reduce((a,x)=>a+(x.pz||0),0);
   const opsMes=(PP)=>new Set(PP.pro.filter(x=>cens.includes(x.centro)&&x.dia&&x.dia.startsWith(ym)).map(x=>x.op));
   const todo=pzMes(PA),lib=pzMes(P),opsT=opsMes(PA),opsL=opsMes(P);const porLib=[...opsT].filter(op=>!opsL.has(op));
-  const filasF=filas.filter(f=>faseOkCEN(f.o));
+  const filasF=filas.filter(f=>ok(f.o));if(out)out.ords=filasF.map(f=>f.o);   /* out.ords: las órdenes que se ven aquí (para el aviso «fuera de lo elegido») */
   /* el grupo «Sin liberar»: la tarjeta de arriba ya no despliega su propia copia de la lista; lleva al panel de ese grupo (02-oct, B4) */
   const ks=Object.keys(grupos);const kSinLib=ks.find(k=>k==='Sin liberar')||ks.find(k=>k==='Sin liberar a producción')||ks.find(k=>/^Sin liberar/.test(k));
-  const sinLib=kSinLib?grupos[kSinLib].f:[];const topeG=300;
+  const sinLib=kSinLib?grupos[kSinLib].f.filter(f=>ok(f.o)):[];const topeG=300;
   /* 02-oct (revisión «para dummies», B4): las tarjetas dicen su alcance en el rótulo (este mes / todos los meses) y la base en el tooltip; en las tablas,
      una sola columna «Llega aquí» (la fecha del programa o, si no la hay, la que tendría liberada) y sin la columna «Liberación», que repetía el título del grupo */
   return `<div class="kpis"><div class="kpi" title="Base: toda la cartera abierta, liberada o no (como Resumen gerencial)"><div class="v">${num(todo)}</div><div class="k">Prendas programadas en ${esc(fmtMesEG(ym))} para ${esc(nombre)}</div></div>
@@ -10676,12 +10690,13 @@ function cargaQueVieneHTML(cens,nombre,P){const h=hoy();const ym=h.slice(0,7);co
    <div class="kpi ${todo-lib>0?'warn':''}" title="Prendas que el mes necesita en este centro y que planificación todavía no libera"><div class="v">${num(Math.max(0,todo-lib))}</div><div class="k">Por liberar este mes · ${num(porLib.length)} ${porLib.length===1?'orden':'órdenes'}</div></div>
    <div class="kpi" title="Todo lo que tiene un paso pendiente en este centro y hoy está antes (textil, sin liberar o en un paso anterior), de cualquier mes"><div class="v">${num(filas.length)}</div><div class="k">Órdenes en camino (todos los meses) · ${num(filas.reduce((a,f)=>a+f.pz,0))} prendas</div></div></div>
   ${cruceFamFaseHTML(filasF)}
-  ${sinLib.length?tarjetasResumenHTML([{id:'cv-sinlib',v:num(sinLib.length),k:'Sin liberar todavía · '+num(sinLib.reduce((a,f)=>a+f.pz,0))+' prendas que este centro necesita · <span class="mut">ver la lista ↓</span>',onclick:'verSinLibCV()',title:'La lista está más abajo, en el grupo «'+kSinLib+'»',cls:'warn'}]):''}
+  ${sinLib.length?tarjetasResumenHTML([{id:'cv-sinlib',v:num(sinLib.length),k:'Sin liberar todavía (todos los meses) · '+num(sinLib.reduce((a,f)=>a+f.pz,0))+' prendas que este centro necesita · <span class="mut">ver la lista ↓</span>',onclick:'verSinLibCV()',title:'La lista está más abajo, en el grupo «'+kSinLib+'»',cls:'warn'}]):''}
   ${grpSelHTML('cenv')}
   ${planCongeladoCentroHTML(cens,nombre)}
-  ${Object.keys(grupos).sort((a,b)=>ordenG(a)-ordenG(b)).map(g=>{const fs=grupos[g].f.filter(f=>faseOkCEN(f.o)).sort((a,b)=>(a.ini||a.iniTodo||'9')<(b.ini||b.iniTodo||'9')?-1:1);
-   return `<div class="panel" ${g===kSinLib?'id="cv-g-sinlib"':''}><h3>${esc(g)} <span class="note">${num(grupos[g].n)} ${grupos[g].n===1?'orden':'órdenes'} · ${num(grupos[g].pz)} prendas</span></h3><div class="scroll" style="max-height:420px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Llega aquí</th><th>Marca</th></tr></thead><tbody>
-   ${filasGRP('cenv',fs.slice(0,topeG),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td><span class="t2" title="${esc(nombreCat(K(f.o.cat)))}">${esc(nombreCat(K(f.o.cat)))}</span></td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.pz)}</td><td>${f.ini?fmtDia(f.ini):f.iniTodo?'<span class="mut" title="fecha que tendría en este centro si se liberara (programa con toda la cartera)">si se libera: '+fmtDia(f.iniTodo)+'</span>':'<span class="mut">sin fecha</span>'}</td><td>${marcaCentroUna(f.o,P,f.c)}</td></tr>`,6,f=>f.o,f=>f.pz)}${fs.length>topeG?`<tr><td colspan="6" class="mut">Se muestran las ${topeG} que llegan primero, de ${num(fs.length)}.</td></tr>`:''}</tbody></table></div></div>`}).join('')||'<div class="panel"><div class="empty">Nada en camino: todo lo que tiene paso aquí ya está en este centro o terminado.</div></div>'}`}
+  ${Object.keys(grupos).sort((a,b)=>ordenG(a)-ordenG(b)).map(g=>{const fs=grupos[g].f.filter(f=>ok(f.o)).sort((a,b)=>(a.ini||a.iniTodo||'9')<(b.ini||b.iniTodo||'9')?-1:1);
+   if(!fs.length)return '';const nG=fs.length,pzG=fs.reduce((a,f)=>a+f.pz,0);   /* el conteo del título es el de la lista que se ve (filtro y buscador puestos) */
+   return `<div class="panel" ${g===kSinLib?'id="cv-g-sinlib"':''}><h3>${esc(g)} <span class="note">${num(nG)} ${nG===1?'orden':'órdenes'} · ${num(pzG)} prendas</span></h3><div class="scroll" style="max-height:420px"><table><thead><tr><th>OP</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Llega aquí</th><th>Marca</th></tr></thead><tbody>
+   ${filasGRP('cenv',fs.slice(0,topeG),f=>`<tr><td style="white-space:nowrap">${whCell(f.o)}</td><td><span class="t2" title="${esc(nombreCat(K(f.o.cat)))}">${esc(nombreCat(K(f.o.cat)))}</span></td><td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td><td class="num">${num(f.pz)}</td><td>${f.ini?fmtDia(f.ini):f.iniTodo?'<span class="mut" title="fecha que tendría en este centro si se liberara (programa con toda la cartera)">si se libera: '+fmtDia(f.iniTodo)+'</span>':'<span class="mut">sin fecha</span>'}</td><td>${marcaCentroUna(f.o,P,f.c)}</td></tr>`,6,f=>f.o,f=>f.pz)}${fs.length>topeG?`<tr><td colspan="6" class="mut">Se muestran las ${topeG} que llegan primero, de ${num(fs.length)}.</td></tr>`:''}</tbody></table></div></div>`}).join('')||(filas.length?'<div class="panel"><div class="empty">Nada en camino con el buscador o el filtro de fases de arriba.</div></div>':'<div class="panel"><div class="empty">Nada en camino: todo lo que tiene paso aquí ya está en este centro o terminado.</div></div>')}`}
 /* la explicación de «Carga que viene» va al «?» de su cinta de sección (seccionHoy), junto al título (02-oct, B4) */
 function cargaQueVieneNota(nombre){return 'Lo que va a llegar a '+nombre+' y dónde está ahora, para jalar a tiempo. Una orden aparece aquí si tiene paso pendiente en este centro y hoy está en un paso anterior, en textil o sin liberar. La fecha es la que el programa estima para que entre aquí; si la orden no está liberada, en gris va la que tendría si se liberara.'}
 /* la tarjeta «Sin liberar todavía» lleva al panel de ese grupo, más abajo (02-oct, B4) */
@@ -10925,7 +10940,7 @@ function vCapacidad(el){
   /* 02-oct (revisión «para dummies», B4): en una línea; el detalle por centro va en el tooltip (es lo mismo que dice la columna «Meses pasados»). Se quitó
      «ver cuáles», que solo abría la celda del primer centro aunque el texto hablaba de todas. */
   const vencHTML=vencs.length?`<div class="panel" style="border-left:4px solid var(--rule)"><div class="body" style="font-size:var(--fs-s)" title="${esc('Por centro: '+vencs.map(x=>nombreCentroCap(x.c)+' '+fmtCarga(x.carga,x.u)).join(' · '))}"><b>${num(ordVenc.size)} ${ordVenc.size===1?'orden de Proyectos de meses pasados no está sumada':'órdenes de Proyectos de meses pasados no están sumadas'} a ningún mes</b>: los % de la tabla no ${ordVenc.size===1?'la cuentan':'las cuentan'}. Toca una celda de la columna «Meses pasados» para ver las de cada centro.</div></div>`:'';
-  const faltaHTML=cenFalta.length?`<div class="panel" style="border-left:4px solid #27466E;background:#EAF0F8"><div class="body" style="color:#27466E"><b>Falta configurar la capacidad de ${cenFalta.map(c=>esc(nombreCentroCap(c))).join(', ')}</b>: ${cenFalta.length===1?'no tiene':'no tienen'} ningún recurso en Configuración general → Centros y máquinas, así que su carga no se puede comparar con nada. No es que no alcance: es un dato que falta. ${puede('config')?`<a href="#" onclick="irAjuste('Recursos de producción');return false">Ir a Centros y recursos</a>`:''}</div></div>`:'';
+  const faltaHTML=cenFalta.length?`<div class="panel" style="border-left:4px solid var(--t-primary);background:var(--t-accent-soft)"><div class="body"><b>Falta configurar la capacidad de ${cenFalta.map(c=>esc(nombreCentroCap(c))).join(', ')}</b>: ${cenFalta.length===1?'no tiene':'no tienen'} ningún recurso en Configuración general → Centros y máquinas, así que su carga no se puede comparar con nada. No es que no alcance: es un dato que falta. ${puede('config')?`<a href="#" onclick="irAjuste('Recursos de producción');return false">Ir a Centros y máquinas</a>`:''}</div></div>`:'';
   const leyenda=`<div class="cap-ley"><span class="cel-ley ok">alcanza</span> menos de ${num(umbral,1)} % · <span class="cel-ley amb">justo</span> desde ${puede('config')?`<input type="number" min="0" max="100" step="any" style="width:64px;padding:1px 4px" value="${umbral}" onchange="setCapAmbar(this.value)" title="desde qué % se pinta «justo» (el cambio queda en la bitácora)">`:num(umbral,1)} % · <span class="cel-ley rojo">no alcanza</span> más de 100 % · <span class="cel-ley falta">falta capacidad</span> centro sin recursos · <span class="cel-ley dias">por días</span> se mide en días, no usa capacidad · <span class="cel-ley venc">meses pasados</span> Proyectos de meses que ya pasaron: no están sumados a ningún mes</div>`;
   el.innerHTML=`<div class="pagehead"><h2>Capacidad y decisiones</h2></div>
    <p class="lede">¿Alcanza la capacidad? Para cada centro y cada mes se compara la carga (prendas pendientes × minutos por prenda del centro; bordado en puntadas) con la capacidad (calendario del mes × recursos activos; el mes en curso, solo los días que quedan). Cuenta todas las órdenes abiertas por mes de Proyecto, liberadas o no. Tejeduría y tintorería van según su programa. Aquí solo se anota lo que se decide: el sistema no mueve nada.</p>
@@ -11077,7 +11092,7 @@ function modulosVistaHTML(P){const mods=S.recursos.filter(r=>r.centro==='modulos
   const cards=mods.map(r=>{const c=refEnCurso(r.id,P);const ops=operariasDe(r.id).length;const nm=maqPorRec[r.id]||0;
     return {id:'balmod-'+r.id,v:num(r.pers)+'<small> personas</small>',
       k:'<b>'+esc(r.n)+'</b>'+(ninguno?'':sep+'<span class="bm-l">'+num(nm)+' '+(nm===1?'máquina':'máquinas')+' · '+(ops?num(ops)+' '+(ops===1?'operaria':'operarias'):'<span class="mut">sin operarias</span>')+'</span>')+sep+'<span class="bm-l mut">'+(c.ords.length?'Este mes: '+num(c.pz)+' prendas'+(c.top&&c.top!=='—'?' · sobre todo '+esc(c.top):''):'nada programado este mes')+'</span>',
-      items:c.ords,porFam:true,cls:(!ninguno&&nm===0)?'warn':''}});
+      items:c.ords,porFam:true,cls:[(!ninguno&&nm===0)?'warn':'',r.id===BAL.rec?'sel':''].filter(Boolean).join(' '),title:r.id===BAL.rec?'es el módulo elegido arriba: el balanceo de abajo es de este':''}});
   const irCfg=puedeAbrirPagina('config');
   const aviso=ninguno?`<div class="warn bm-aviso">Ningún módulo tiene máquinas ni operarias cargadas: se registran en Configuración general → Centros y máquinas${irCfg?` (<a style="cursor:pointer;text-decoration:underline" onclick="irAjuste('Máquinas de confección')">máquinas de confección</a> · <a style="cursor:pointer;text-decoration:underline" onclick="irAjuste('Operarias y especialidades')">operarias</a>)`:''}.</div>`:'';
   return `<div class="panel"><h3>Módulos de confección ${ayudaTipHTML('Las máquinas se registran en Configuración general → Centros y máquinas → Máquinas de confección; las operarias, en Operarias y especialidades. Tolerancia por puesto: '+num(prm('tolPuesto',2))+' % (cuánto puede pasarse un puesto del ritmo antes de abrir otro; es distinta del semáforo de carga de los centros). Por ahora ese valor no se cambia desde la pantalla: no tiene un campo en Configuración.')}<span class="note">personas, máquinas registradas y lo programado este mes · clic en una tarjeta abre sus órdenes</span></h3><div class="body">${aviso}${tarjetasResumenHTML(cards)}</div></div>`}
@@ -11108,7 +11123,7 @@ function vBalanceo(el){
   const nO=ords.length,nH=lista.length;
   const listaHTML=`<div class="panel"><h3>Órdenes programadas en ${esc(rec.n)} · ${esc(fmtMesEG(ym))} <span class="note">${num(nO)} ${nO===1?'orden':'órdenes'} · ${num(ords.reduce((a,o)=>a+ +o.cant,0))} prendas · ${num(nH)} ${nH===1?'hoja de operaciones':'hojas de operaciones'}</span><span class="bal-hint">· elige una hoja y pulsa «Ver balanceo»</span></h3><div class="body"><table class="ajustada"><thead><tr><th>Hoja de operaciones (familia)</th><th>Categorías</th><th class="num">N.º de órdenes</th><th class="num">Prendas</th><th>Cuáles</th><th></th></tr></thead><tbody>
    ${lista.map(([g,v])=>`<tr ${BAL.grupo===g?'style="background:var(--field)"':''}><td><b>${esc(v.lmo||(v.p?v.p.n:g))}</b>${v.lmo?'':' <span class="tag t-aviso">sin hoja</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${esc([...v.hijas].join(', '))}</td><td class="num">${num(v.ords.length)}</td><td class="num">${num(v.pz)}</td><td style="font-size:var(--fs-xs)">${v.ords.slice(0,8).map(o=>'<span class="bal-ord">'+whCell(o,22)+(o.opsSam?' <span class="tag t-aviso" title="tiene tiempos ajustados solo para esta referencia">ajustada</span>':'')+'</span>').join(' ')}${v.ords.length>8?' <span class="mut">+'+(v.ords.length-8)+'</span>':''}</td><td><button class="btn sm" onclick="BAL.grupo='${g}';BAL.ref=null;render()">${BAL.grupo===g?'Viendo ▾':'Ver balanceo →'}</button></td></tr>`).join('')}</tbody></table></div></div>`;
-  const detBal=detalleAgrupableHTML('bal',ords,'Detalle de las órdenes','agrupa como en el resto de Planificación de producción',null,(nO===1?'Ver la orden':'Ver las '+num(nO)+' órdenes')+' con cliente, ODC y color');
+  const detBal=detalleAgrupableHTML('bal',ords,'Detalle de las órdenes','',null,(nO===1?'Ver la orden':'Ver las '+num(nO)+' órdenes')+' con cliente, ODC y color');
   if(!BAL.grupo){el.innerHTML=cab+vistaMods+listaHTML+detBal;return}
   const G=grupos[BAL.grupo];const oRef=BAL.ref?G.ords.find(o=>o.id===BAL.ref):null;if(BAL.ref&&!oRef)BAL.ref=null;const k=oRef?K(oRef.cat):G.k0;const opsC=k?(oRef?opsConfeccionDe(k,oRef):opsConfeccion(k)):[];const samTot=opsC.reduce((a,x)=>a+x.sam,0);
   const puedeAj=puede('programa')||puedeCentro('modulos');const nAj=opsC.filter(x=>x.ajustada).length;
@@ -11150,7 +11165,8 @@ function vBalanceo(el){
 let IMP={dia:null,area:'todas'};
 function vImprimir(el){
   if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Programa del día</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
-  const P=programar();const dias=[...new Set([...P.tej.map(x=>x.dia),...P.banos.filter(b=>b.dia).map(b=>b.dia),...P.pro.map(x=>x.dia)])].sort();
+  /* pulido V2: los días salen solo de lo que esta página dibuja (baños y producción); antes sumaba tejeduría y ofrecía sábados con «Nada que mostrar» */
+  const P=programar();const dias=[...new Set([...P.banos.filter(b=>b.dia&&!b.error).map(b=>b.dia),...P.pro.map(x=>x.dia).filter(Boolean)])].sort();
   if(!IMP.dia||!dias.includes(IMP.dia))IMP.dia=dias.find(d=>d>=hoy())||dias[0];
   const d=IMP.dia,byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);
   const cab=(area)=>`<div class="imp-cab"><div><b>${AREAS[area]}</b> · Programa del ${new Date(d+'T12:00:00').toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div><div class="mut">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div></div>`;
@@ -11629,7 +11645,8 @@ function vPro(el){
   const lista=CG.centro?cens.filter(c=>c.id===CG.centro):cens;
   const fasesAll=[...new Set(S.ordenes.filter(abierta).map(o=>o.fase||'Sin fase'))].sort((a,b)=>cmpFases(a,b));
   const prog=cargaUnica('programadas',{ym});const todo=cargaUnica('abiertas',{ym});
-  const faltaRes=centrosSinDatosReserva();
+  /* pulido V2: el aviso de la reserva solo si toca a un centro que se está mirando (con Corte elegido no aplica) */
+  const faltaRes=centrosSinDatosReserva().filter(c=>lista.some(x=>x.id===c));
   const cab=`<div class="pagehead"><h2>Carga general</h2></div>
   <p class="lede">Cuánta carga hay contra cuánta capacidad, por área, centro, familia y semana. Aquí no se decide el mes (eso es Plan mensual) ni qué hacer con la sobrecarga (eso es Capacidad y decisiones): esto solo muestra.</p>
   <div class="panel"><div class="body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
@@ -11655,7 +11672,7 @@ function vPro(el){
    <div class="body"><div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th>${sems.map(w=>`<th class="num"><span class="cg-sem">semana del</span>${fmtDia(w)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
    ${lista.map(filaCen).join('')||'<tr><td colspan="'+(sems.length+2)+'" class="mut">Sin centros.</td></tr>'}
    </tbody></table></div>
-   ${faltaRes.length?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)">La reserva de ${faltaRes.map(c=>esc(nCen(c))).join(' y ')} sale <b>cero</b>: falta cargar el SAM (minutos por prenda) y el % estimado en Configuración general → Centros. Está avisado en Hoy → Pendientes.</div>`:''}
+   ${faltaRes.length?`<div class="warn" style="margin-top:8px;font-size:var(--fs-s)">La reserva de ${faltaRes.map(c=>esc(nCen(c))).join(' y ')} sale en <b>0</b>: falta su SAM (minutos por prenda) y su % estimado en Configuración general → Centros.</div>`:''}
    ${refOficialHTML(ym,lista[0]?lista[0].id:'',(prog.centros[(lista[0]||{}).id]||{}).total||0)}
    </div></div>`;
   /* Bloque 2 · familia por centro */
@@ -11695,10 +11712,12 @@ function vPro(el){
      ${filasGRP('cg',dets,o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(minPendCentro(o,c))}</td><td><a style="cursor:pointer" onclick="irEstadoOrden('${o.id}')">ver dónde está →</a></td></tr>`,7)||'<tr><td colspan="7" class="mut">Sin órdenes.</td></tr>'}
      </tbody></table></div></div></div>`}
   const cvCen=CG.centro||(CG.area==='pro'?'':'');
-  const cargaViene=(CG.area==='pro'&&cvCen)?seccionHoy('Carga que viene · '+nCen(cvCen),cargaQueVieneNota(nCen(cvCen)),cargaQueVieneHTML([cvCen],nCen(cvCen),P||programar())):(CG.area==='pro'?'<p class="mut" style="margin-top:18px">Elige un centro arriba para ver <b>Carga que viene</b>: lo que va a llegar y dónde está ahora.</p>':'');
+  /* pulido V2: las listas de «Carga que viene» obedecen al buscador y al filtro de fases de ESTA pantalla (antes usaban CEN.fases, el de Centro, que aquí no se ve) */
+  const okCV=o=>faseOkCG(o)&&matchBusq(o,normTxt(CG.q||''),'CG.q');const cvOut={ords:[]};
+  const cargaViene=(CG.area==='pro'&&cvCen)?seccionHoy('Carga que viene · '+nCen(cvCen),cargaQueVieneNota(nCen(cvCen)),cargaQueVieneHTML([cvCen],nCen(cvCen),P||programar(),okCV,cvOut)):(CG.area==='pro'?'<p class="mut" style="margin-top:18px">Elige un centro arriba para ver <b>Carga que viene</b>: lo que va a llegar y dónde está ahora.</p>':'');
   /* llegando desde la nivelación: solo el saldo por procesar; el resto queda colapsado hasta cerrar o pedirlo */
   if(CG.det&&CG.det.saldo&&!CG.det.verResto){el.innerHTML=cab+bloque3+`<p class="mut" style="font-size:var(--fs-s);margin-top:12px">El resto de Carga general (carga por semana, familia por centro, carga que viene, sin liberar) está colapsado para no confundir el saldo con lo programado de la semana. <a style="cursor:pointer;text-decoration:underline" onclick="CG.det.verResto=true;render()">ver el resto de Carga general</a></p>`;return}
-  el.innerHTML=cab+bloque1+bloque2+bloque3+avisoFueraDeBaseHTML('CG.q',ordsF,'el área o centro elegido y el filtro de fases')+cargaViene;
+  el.innerHTML=cab+bloque1+bloque2+bloque3+avisoFueraDeBaseHTML('CG.q',ordsF.concat(cvOut.ords),'lo elegido arriba (área, centro y filtro de fases)')+cargaViene;
 }
 function togFaseCG(f){togSet(CG,'fases',f)}
 /* Asignación por orden: ahora vive en Reportería (no se borró) */
@@ -13549,7 +13568,7 @@ function planMesHTML(opts){opts=opts||{};
     <td>${!i.carga?'<span class="mut">sin carga programada</span>':i.faltan?`<span class="tag t-alerta">faltan ${i.faltan} días</span> propongo ${i.prop.map(d=>fmtDia(d)).join(', ')||'—'} <button class="btn ghost sm" onclick="aplicarProp('${a}','${ym}')">Aplicar</button>`:`<span class="tag t-ok">alcanza</span> <span class="mut">sobran ${vis(a,i.cap-i.carga)}${i.capDiaA?' ≈ '+Math.floor((i.cap-i.carga)/i.capDiaA)+' días':''}</span>`}</td></tr>`}).join('')}
   </tbody></table>`}
   <div class="scroll" style="margin-top:8px"><table style="font-size:var(--fs-xs)"><thead><tr><th>Área</th>${dias.map(d=>`<th class="num" style="padding:4px 3px;${dow(d)===0||dow(d)===6?'color:var(--alerta)':''}">${d.slice(8)}<br><span class="mut">${['D','L','M','M','J','V','S'][dow(d)]}</span></th>`).join('')}</tr></thead><tbody>
-  ${areas.map(a=>{const i=info[a];return `<tr><td>${AREAS[a]}${opts.soloDias&&i.carga&&i.faltan?`<div class="pm-falta"><span class="tag t-aviso">faltan ${i.faltan} ${i.faltan===1?'día':'días'}</span> ${i.prop.length?`propongo ${i.prop.map(x=>fmtDia(x)).join(', ')} <button class="btn ghost sm" onclick="aplicarProp('${a}','${ym}')" title="marca esos días como laborables en ${AREAS[a]}; queda en la bitácora">Aplicar</button>`:'<span class="mut">no quedan días libres en el mes</span>'}</div>`:''}</td>${dias.map(d=>{const on=i.r0&&labR(d,i.r0);const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&(e.area===a||e.area==='todas'));const prop=i.prop.includes(d);
+  ${areas.map(a=>{const i=info[a];return `<tr><td>${AREAS[a]}${opts.soloDias?(()=>{const x=diasMesArea(a,ym);return ' <span class="mut pm-dias" title="días que trabaja '+esc(AREAS[a])+' en el mes: '+x.sem+' d/sem = '+x.base+(x.mas?' + '+x.mas+' marcados como trabaja':'')+(x.menos?' − '+x.menos+' marcados como no trabaja':'')+'">· '+x.total+' días</span>'})():''}${opts.soloDias&&i.carga&&i.faltan?`<div class="pm-falta"><span class="tag t-aviso">faltan ${i.faltan} ${i.faltan===1?'día':'días'}</span> ${i.prop.length?`propongo ${i.prop.map(x=>fmtDia(x)).join(', ')} <button class="btn ghost sm" onclick="aplicarProp('${a}','${ym}')" title="marca esos días como laborables en ${AREAS[a]}; queda en la bitácora">Aplicar</button>`:'<span class="mut">no quedan días libres en el mes</span>'}</div>`:''}</td>${dias.map(d=>{const on=i.r0&&labR(d,i.r0);const ex=(S.params.excepciones||[]).find(e=>e.fecha===d&&(e.area===a||e.area==='todas'));const prop=i.prop.includes(d);
     return `<td style="padding:2px;text-align:center"><span class="chip ${on?'on':''}" style="padding:2px 6px;margin:0;${prop&&!on?'border:1px dashed var(--alerta);':''}${ex&&ex.area==='todas'?'opacity:.6;':''}" title="${on?'trabaja':'no trabaja'}${ex?' · '+(ex.motivo||'excepción'):''}${prop?' · propuesto':''}" onclick="togDia('${a}','${d}',${on})">${on?'✓':'·'}</span></td>`}).join('')}</tr>`}).join('')}
   </tbody></table></div>
   ${opts.soloDias?'':`<p class="mut" style="font-size:var(--fs-xs);margin:6px 0 0">La carga es la que el programa pone en ese mes con el calendario actual: si un mes no alcanza, parte de su carga se corre al siguiente, así que conviene revisar los meses en orden. Los días punteados en rojo son los que propongo agregar.</p>`}`;
