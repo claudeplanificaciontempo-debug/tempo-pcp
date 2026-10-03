@@ -393,7 +393,7 @@ nombre distinto de la hoja SIN agrupar; los TP quedan `porConfirmar`), `normMaqu
 activo y `opsConfeccion` la usa. **Operarias** (`operarias`, `NIVELES_ESP` 1/2/3, `operariasDe`) con nombre, módulo y
 especialidad; llenarla no es obligatorio. Parámetros `tolPuesto` (2 %, reemplaza el 1.02 de `repartirPuestos`) y
 `nivelMinEsp` (2). Balanceo abre con `modulosVistaHTML` (personas, máquinas, operarias y referencia en curso).
-`delTipoMaq`/`delOperaria` están en la lista GUARDIA. Ver `BALANCEO_ETAPA1_REPORTE.md`.
+`delOperaria` está en la lista GUARDIA (desde el 03-oct los tipos de máquina no se borran: se apagan con `apagarTipoMaq`/`encenderTipoMaq`). Ver `BALANCEO_ETAPA1_REPORTE.md`.
 
 **Búsqueda general y textos (15-sep-2026 noche):** barra `busquedaGeneralHTML` en la cabecera (`#busg-host`, la inyecta
 `render()`), estado `BUSG`, `buscarGeneral` sobre `ordenesQueVe()` (respeta perfiles) y `abrirFichaOrden(oid)` (foto,
@@ -1759,6 +1759,55 @@ el orden real de las operaciones se perdió al recargar la hoja el 01-oct; base 
 decisiones con recomendación en su §8. **No construir ninguna etapa sin el «adelante» de la usuaria.** Ojo: `test/fixtures/lmo_rows.json` (hoja de
 operaciones con tiempos) está publicado en el repositorio público desde 695199f.
 
+**Máquinas por módulo · etapa 1 del balanceo (03-oct-2026, «adelante» de la usuaria con sus cuatro respuestas).** Configuración general →
+Centros y máquinas → Máquinas de confección → **«Cargar inventario»** (permiso `config`, nunca desde el piso): lee el Excel de Mantenimiento tal como
+viene, con sus dos hojas (`cargarSheetJS`; la hoja con «MODULO» manda, la otra completa fecha de mantenimiento, área e «inventario feb-2026»), o el CSV
+del paquete. Patrón de la casa: `planMaquinas` (no escribe en S) → `previaInvMaqHTML` → `aplicarInvMaq` (confirmación, bitácora,
+`registrarCarga('maquinas')`). **Llave = número de máquina como texto; el serial también es texto** (`textoCeldaInv`: lo que muestra la celda, para no
+perder ceros). Módulo n → recurso «Módulo n» de Confección; B/O → el recurso de Botones; sin módulo → el inventario de su área, sin recurso (no cuenta
+para ningún módulo). El estado sale de la tabla editable **«Cómo se lee el archivo del inventario»** (`MAQ_INV_DEF`): O.K y MANTENIMIENTO
+PREVENTIVO → operativa, PARADA → parada, generador → no entra, observación sin regla → **por revisar** (no cuenta, se lista). **El archivo nunca da de
+baja**: un «baja» del archivo, de lo pegado o de una regla entra por revisar con `MSG_BAJA_ARCHIVO`; **dar de baja pide motivo siempre**
+(`darBajaMaq`, también desde el desplegable de estado vía `setMaq`); la «×» pasó a «dar de baja». Recargar el mismo archivo no cambia nada; lo
+cambiado a mano (`m.editado`) no se pisa; lo que no vino queda marcado «no vino»; una nueva y una que no vino con el mismo serial único salen como
+**«posible cambio de número»** (solo aviso). Las 9 de ejemplo `mq_ej_*` quedan de baja con `ejemplo:true` (`sembrarEjemplosMaqBaja`, una vez).
+**Una sola tabla de tipos** `tiposMaq` (`TIPOS_MAQ_DEF`, 19 tipos con familia y alias de la hoja, de Kronos y del inventario; los TP en «por confirmar
+con planta»; `sembrarTiposMaq` una vez con bandera `tiposMaq19`; la lista fija `TIPOS_MAQ` se retiró): **los tipos no se borran, se apagan**
+(`apagarTipoMaq`/`encenderTipoMaq` con confirmación; un tipo apagado deja de reconocer sus nombres; dejar como tipo propio un nombre de un tipo apagado lo
+enciende con confirmación). Todo nombre pasa por `normMaquina`; lo que no calza sale como «nombres sin homologar» (hoy VERTICAL y SESGADORA en la
+hoja, y cuatro tipos de Corte del inventario). **Una sola regla de máquina operativa** (`maqOperativa`) en Balanceo y sus tarjetas; la maquila salió
+del selector de Balanceo (`esMaquilaRec`); arreglos H1–H5 del Paso 0. Las siembras de máquinas corren solo si la sesión puede subir params
+(`puedeSubirTabla('params')`) y sin `CARGA_INCOMPLETA`: **en producción las hace un administrador al entrar**. El motor no lee máquinas. Con el Excel
+real: entran 161 (136 de módulos y Botones; 14 Confección, 8 Corte, 3 Tintorería sin módulo), 138 operativas, 7 paradas, 16 por revisar (EN BODEGA,
+NO FISICAMENTE, TINTORERIA sin regla) y 8 no entran. El archivo real y su JSON (`test/fixtures/maquinaria_hojas.json`) NO van al repo (seriales).
+Pruebas IM1–IM15, IM-REAL, MQA1–MQA9, BAL-H1–H5. Ver `MAQUINAS_MODULO_REPORTE.md`.
+
+**Reportería = el tablero de la gerencia (03-oct-2026, usuaria: «la parte de reportes: borra lo que no debe ir, y pon lo que sí es importante»).**
+Reportería son **cinco** reportes: **Resumen gerencial · Órdenes de producción · Producto en proceso · Avance por área · Órdenes de trabajo** (menú,
+`REPORTES`, `PAGINAS_DEF` e `ICO_NAV` iguales; prueba TG1). **Cumplimiento salió como página** (`PAGINAS_REDIRIGIDAS.cumplimiento='gerencia'`; quedan
+`vCumplimiento`, `cumplimientoFacturacion`, `congelarSemana` y las semanas guardadas; hoy mide 0 porque `moverFases` registra origen 'manual' y la cuenta
+solo acepta 'app': arreglarlo cambia lo que se mide, espera decisión). **Avance del mes se fundió en Avance por área** como vista **Semana | Mes**
+(`AVA.vista`, `vistaAVA`/`setVistaAVA`; «Mes» = `vAvanceMes`, la vAvance de siempre, filtrada por `veCentro` con `filasAvanceVisibles` y «solo lo tuyo», también
+el CSV; `PAGINAS_REDIRIGIDAS.avance='avancearea'`). Migración `migReporteria5` (una vez, bitácora; «no desde el piso» = `sesionDePisoMig()` →
+`perfilSoloPiso()`, que ahora usan también las migraciones 3, 4, EnVivo y DemandaRetirada): quien tenía Cumplimiento recibe el Resumen gerencial, quien
+tenía Avance del mes recibe Avance por área. **El Resumen gerencial abre con cinco tarjetas** (`kpisGerencia`/`tarjetasGerenciaHTML`, con `programar()`,
+la base escrita en gris y la fórmula en el title; **ninguna crea una cuenta propia**): Facturación del mes = `facturacionPlanMes(ym,P)` (sacada del Bloque 3,
+que la usa también; clic → Planificar el mes paso 2) · Meta vencida = `carteraDe('abiertas',esMetaVencida)` (las de diseño sin WH dichas aparte) · La
+orden va tarde = `esOrdenVaTarde` + el cuello de botella más repetido · ¿Alcanza <mes>? = `alcanzaMesGER` (`nivUIAreas`/`nivUICalcular` con los meses del
+paso 1, `mesesNivPlan`; guarda y devuelve `NIVUI` y apaga el simulador mientras calcula) · Producto en proceso = lanzadas `enWIPGerencia` (clic =
+`irWIPGerencia`: base lanzadas + esas fases, así la pivot cuadra; un perfil que ve solo sus centros verá solo lo suyo, y la tarjeta lo dice). Semáforo común
+`semaforoHTML` (lo usa también Planta en vivo). **Metas de los indicadores** = tabla `S.params.metasKPI` (Calendario y reglas; nace vacía; sin meta la tarjeta
+queda gris; permiso `config` y bitácora). **Meta del mes en $** (`setMeta`): permiso `programa`, bitácora, **vacío = sin meta, 0 = 0**, y el campo es de
+texto y entiende «50.000» y «1.000.000» (`montoMetaTxt`; lo que no entiende avisa y no borra). Debajo: «¿Se puede confiar en estas cifras?» (rutas por
+confirmar, pasos con fecha sin tiempo, prendas sin precio, fases sin aceptar, horas desde la última carga **de Odoo** —`esCargaOdoo`/`TIPOS_CARGA_ODOO`, la
+misma en Hoy—, registro del piso) y UNA tabla **«La cartera por…»** (chips Cliente | Fase | ODC | Estilo | Familia, base `carteraDe('abiertas')`); **sus
+filtros llevan `data-filtro-local="panel"`**: la barra de Odoo se arma pero no sube a la cabecera — **no cambiarlo a "1"** (la gerencia perdería Filtros
+listos, filtro personalizado y Favoritos, y falla FO8). Salieron del gerencial: la segunda franja de cifras, la hoja imprimible, «Pedido y avance»
+(`pesoFase`), «Carga contra capacidad», «Carga por mes del Proyecto», «Dónde está la cartera», «Carga por cliente» y «Órdenes que van tarde» (las rutas sin
+Empaque y las categorías sin hoja viven en Salud). Pendientes para la usuaria: Terminadas a tiempo, eficiencia (espera registros del piso), flechas mes
+contra mes, si «Meta vencida» cuenta las de diseño sin WH y si los supervisores de piso deben ver el Resumen gerencial. Pruebas TG (50+). Ver
+`REPORTERIA_TABLERO_REPORTE.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
@@ -1787,8 +1836,8 @@ operaciones con tiempos) está publicado en el repositorio público desde 695199
 - Siempre hacer commit + push al terminar un cambio para que Netlify republique.
 
 ## Pendientes conocidos
-- Cargar el catálogo completo de máquinas de confección (156 máquinas de
-  costura + 11 de corte, archivo de mantenimiento preventivo ya analizado).
+- Cargar en producción el inventario de máquinas (el cargador existe desde el 03-oct: Configuración general → Centros y
+  máquinas → Máquinas de confección → «Cargar inventario»; antes debe entrar un administrador para que corran las siembras).
 - Pestañas de maestros de operaciones (Centro/Subcentro/Sección/Familia de
   Operación) en Configuración — los datos ya se cargan desde Odoo pero falta
   la UI de edición dedicada.

@@ -8909,6 +8909,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TG10: volver a vaciar un mes que ya no tiene meta no escribe en la bitácora",S.bitacora.length===nb3);
     alerts.length=0;setMeta(ym,'-5');setMeta(ym,'abc');
     __check("TG10: un monto negativo o que no es número se rechaza con aviso y no se guarda",alerts.length===2&&!tieneM());
+    __check("TG10b: el monto se lee como se escribe aquí: 50.000 = cincuenta mil, 1.000.000 = un millón, 1.234,5 con coma decimal; vacío = sin meta; texto = no se entiende",montoMetaTxt('50.000')===50000&&montoMetaTxt('1.000.000')===1000000&&montoMetaTxt('1.234,5')===1234.5&&montoMetaTxt('$ 75 000')===75000&&montoMetaTxt('0')===0&&montoMetaTxt('')===null&&montoMetaTxt('abc')===undefined&&montoMetaTxt('1e')===undefined);
+    {PM.mes=ym;PM.paso=2;page='plan';render();const iE=document.querySelector('#p-plan .b3-meta input');alerts.length=0;
+     if(iE){iE.value='50.000';iE.dispatchEvent(new Event('change'))}
+     const okMil=tieneM()&&+S.params.metas[ym]===50000;
+     page='plan';render();const iE2=document.querySelector('#p-plan .b3-meta input');const muestra=iE2?iE2.value:'';
+     if(iE2){iE2.value='1e';iE2.dispatchEvent(new Event('change'))}
+     __check("TG10c: escribir «50.000» en el campo de la meta guarda 50.000 (no 50), el campo lo muestra con puntos de miles, y lo que no se entiende avisa y NO borra la meta",!!iE&&okMil&&muestra==='50.000'&&+S.params.metas[ym]===50000&&alerts.length===1,'campo '+muestra+' · meta '+(S.params.metas||{})[ym]+' · avisos '+alerts.length)}
     if(bakM===undefined)delete S.params.metas;else S.params.metas=bakM;PM.mes=pm.mes;PM.paso=pm.paso;page='gerencia';render();}
    /* 10d · textos: el «?», la cabecera, UN aviso de «hechas», la historia y la última carga de Odoo */
    {page='gerencia';GER.q='';GER.meses=null;GER.cli=null;GER.est=null;render();const hG=pgG().innerHTML;
