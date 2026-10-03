@@ -305,6 +305,27 @@ cambiar de paleta) aplicados a `.kpi.tarj`, `.panel h3`, `thead` y la cinta de b
 `@media (max-width:860px)` (menú colapsable `nav.abierto`, cabecera en dos filas, tarjetas en columna, tablas con scroll propio).
 Ver `COMPONENTES_COMUNES_TEMA_RESPONSIVE_REPORTE.md`.
 
+**Lo que se lee en pantalla, reglas comunes (02-oct-2026, revisión «para dummies», lote B0b).** **Fechas**: un solo formato. Día = `fmtDia`
+(«vie, 02 oct»; **el año solo cuando no es el año en curso**: «vie, 22 ene 2027»); en una celda, `fmtFecha(iso)` (span `.fecha`, sin partir, la ISO
+en el title, «—» si no hay); fecha con hora = `fechaHoraLocal(ts[,false])` (24 h, sin segundos, sin día de la semana con `false`); de una marca de
+tiempo, `fmtDiaTs(ts)`; hora sola, `horaLocal(ts)`; mes = `mesCortoTxt(ym)` («oct 2026», nunca «oct 26»), varios seguidos `mesesCortoTxt` («jun – oct
+2026»); semana = `fmtPer` («Sem. 40 · lun, 28 sept», con `lunesSemISO`). **Nunca la fecha ISO cruda ni `toLocaleString('es-EC')` sin opciones en
+pantalla** (solo quedan en textos que se guardan: bitácora, auditoría, Excel). **Orden sin WH**: `whCell` usa `opVisibleHTML(o)` → «Sin WH · ref 6098»
+(«Sin WH · ID 7002» con ID de tarea), el código interno «SIN WH #…» solo en el title; `o.op`, la clave y el buscador no cambian. **Cliente** en una
+celda: `td.cli` (una línea con «…», nombre entero en el title); **categoría**: `<span class="t2">` (dos líneas). **Etiquetas por fila**: estado
+(semáforo) + fase + como máximo UNA etiqueta más; el resto con `tagsCompactasHTML(tags,max)` («+N» gris, lista en el title). **Color**: rojo
+(`t-alerta`) SOLO para meta vencida, déficit de capacidad o error de guardado; ámbar (`t-aviso`) algo que alguien tiene que hacer; azul suave
+(`t-medio`) información; `t-falta` un dato de configuración que falta (borde punteado en el aspecto Odoo); gris (`t-mut`) neutro; verde listo.
+Tarjetas con fondo blanco: el estado va en el número y en una franja. **Explicaciones**: `simplificarPagina` mueve al «?» los `p.lede`/`div.lede`,
+los `span.lede` DENTRO de un título (`ledesAAyuda`) y la parte explicativa de las notas largas de los títulos de panel (`notasAAyuda`: quedan a la
+vista los trozos con número, etiqueta o la base de la cifra; no en Configuración); `redibujarLista` hace lo mismo con su lista. **Avisos**: un
+`div.warn` de más de 160 letras sin botones se pliega en una línea (`plegarAvisos`; nunca los `aviso-…`, la tablet ni las ventanas); varios avisos
+sobre una lista van en `avisosPlegadosHTML(id,titulo,html)` (un recuadro plegado, recordado por usuario). **Vacíos** dicen qué falta y dónde se
+hace. **Panel de búsqueda** sin buscador: sin la caja «Filtros de esta lista»; si solo agrupa, se queda junto a su lista. Números con `num()`
+(«1.079»), «prendas» (no «pz») salvo donde no cabe, porcentaje con espacio («85 %»). La prueba **DISEÑO** del simulador (junto a GUARDIA) falla si
+suben las letras de 9/10 px o los colores hex escritos a mano en un `style`, si vuelve una celda con la fecha cruda o si una tarjeta de cifras
+queda de otra altura que sus vecinas.
+
 **Dirección · Hoy y Escenarios (15-sep-2026 noche):** la página **Escenarios** se borró entera (menú, sección, `vEscenarios`, `ESC`, `conEscenario` y el enlace de Programación por centro); no guardaba nada en base, todo era memoria. **Hoy** (`vPanorama`) usa `tarjetasResumenHTML` arriba (ids `hoy-*`), una sección **Bandejas del día** (`hoyBandejasHTML`, ids `hb-*`: sin fecha, por liberar, entregas de la semana, en riesgo, vencidas, por terminar en 7 días, tela por llegar, por liberar a corte) y **Necesita decisión** (`hoyDecisionHTML`, ids `hd-*`: baños, capacidad, no llegan, faltantes) que SOLO enlaza a Capacidad y decisiones (sigue siendo pantalla aparte). Las listas de tarjeta se agrupan por familia (`card.porFam`, `famDeOrden`) y cada fila tiene `irEstadoOrden(oid)` (Órdenes / Compras / Liberación / Tintorería / Centro del próximo paso / Control) que usa `ir()` y por eso deja el «← atrás». `seccionHoy(titulo,nota,cuerpo)` pinta las cintas de sección. Mes en curso sin cambios. Ver `DIRECCION_HOY_REPORTE.md`.
 
 **Tejeduría en el motor (15-sep-2026 noche, AUTORIZADO B1 · solo la sección 1 de `programar()`):** los kg de cada tela se
