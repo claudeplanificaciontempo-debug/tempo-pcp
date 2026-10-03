@@ -4555,8 +4555,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     GER.meses=new Set([m0]);render();
     const h=document.getElementById('p-gerencia').innerHTML;
     __check("B1: lo seleccionado se dice junto a los filtros y la tabla «La cartera por…» trae pedidas y lo que falta",/Sumando/.test(h)&&/Prendas pedidas/.test(h)&&/Faltan/.test(h));
-    // y los bloques de abajo respetan el filtro: la tabla por mes solo trae el mes elegido
-    __check("B1: el bloque de cartera por mes ya no muestra los otros meses",ms.filter(m=>m!==m0&&m!=='Sin proyecto').every(m=>!h.includes('>'+fmtMesEG(m)+'<')));
+    /* 03-oct: la tabla por mes del Proyecto ya no existe (quedó UNA tabla «La cartera por…»), así que «no muestra los otros meses» ya no probaba nada.
+       Ahora se prueba sobre lo que hay: con un mes elegido, la tabla suma solo las órdenes de ese mes y su base lo dice */
+    {GER.cli=null;GER.est=null;GER.q='';GER.meses=new Set([m0]);render();const gb=document.querySelector('#p-gerencia .ger-base');const esp=carteraDe('abiertas',o=>(mesPlan(o)||'Sin proyecto')===m0);const gt=gb?gb.textContent:'';
+     __check("B1: con un mes elegido, la tabla «La cartera por…» suma solo las órdenes de ese mes (la base lo dice y cuadra con la cartera abierta de ese mes)",!!gb&&/con los filtros de arriba/.test(gt)&&gt.includes(num(esp.length)+' órdenes')&&gt.includes(num(esp.reduce((a,o)=>a+(+o.cant||0),0))+' prendas'),gt.slice(0,160));}
     GER.meses=null;render();
     __check("B1: y al quitar el filtro vuelven todos",/Todos los meses/.test(document.getElementById('p-gerencia').innerHTML));}
    /* 2 · resumen por sub-centro */
@@ -4875,7 +4877,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const b=brechaHechas();
     __check("RE5: mientras quede una ruta mal, «hechas» se marca como afectado",!!b&&b.n>=1&&/afectado/.test(avisoHechasHTML()));
     page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
-    __check("RE5: y el aviso se ve en el Resumen gerencial",/con brecha/.test(document.getElementById('p-gerencia').innerHTML));
+    __check("RE5: y el aviso se ve en el Resumen gerencial (uno solo: «Hechas» puede estar afectado; la etiqueta «con brecha» salió el 03-oct)",(()=>{const hh=document.getElementById('p-gerencia').innerHTML;return (hh.match(/puede estar afectado/g)||[]).length===1&&!/con brecha/.test(hh)})());
     /* 5 · la foto del mes: se marca, y al corregir se vuelve a tomar; las cerradas no se tocan */
     {S.params.cierresMes={};const bakPro=S.ordenes.map(o=>o.proyecto);
      const nomMes=m=>['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+m.slice(5,7)-1]+' '+m.slice(0,4);
@@ -5083,12 +5085,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     recalcularRutas('prueba: cambió la categoría');
     __check("RT3: y se rehace con la categoría nueva",!rutaDesactualizada(auto));
     S.ordenes=S.ordenes.filter(o=>o!==auto&&o!==aMano);}
-   /* 4 · sin rutas malas, la etiqueta «con brecha» desaparece */
+   /* 4 · sin rutas malas, el aviso de «hechas» desaparece */
    {const bakOrd=S.ordenes;
     S.ordenes=S.ordenes.filter(o=>!abierta(o)||rutaTerminaEnEmpaque(o)||!pasosProDe(o).length);
     __check("RT4: cuando no queda ninguna ruta sin Empaque, no hay brecha",brechaHechas()===null&&avisoHechasHTML()==='');
     page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
-    __check("RT4: y la etiqueta «con brecha» desaparece de Hechas",!/con brecha/.test(document.getElementById('p-gerencia').innerHTML));
+    __check("RT4: y el aviso de «hechas» desaparece del Resumen gerencial",!/puede estar afectado|con brecha/.test(document.getElementById('p-gerencia').innerHTML));
     S.ordenes=bakOrd;
     const mala=mk('WH/RT-6',conHoja.id,[{centro:'corte',t:1},{centro:'bordado',t:2}]);
     __check("RT4: y vuelve a aparecer si aparece una ruta mala",!!brechaHechas()&&/afectado/.test(avisoHechasHTML()));
@@ -8731,6 +8733,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};PLAN=null;PLAN_ALL=null;GER.meses=null;GER.cli=null;GER.est=null;GER.q='';GER.det=null;GER.abierto='cliente';TARJ.exp={};
    const bakMK=S.params.metasKPI;delete S.params.metasKPI;const bakWIP=WIP.base;
    const pgG=()=>document.getElementById('p-gerencia');const pzDe=l=>l.reduce((a,o)=>a+(+o.cant||0),0);
+   /* dibuja Planificar el mes → paso 1 del mes ym, SIN filtros de cliente o familia ni escenario sin guardar (como lo ve la tarjeta), lee la clase est-* de
+      cada recuadro de la nivelación (sin Maquila, sin vacíos y sin los «por días», que no miden capacidad) y devuelve la palabra que tocaría; deja todo como estaba */
+   const nivPaso1=ym=>{const bakN=JSON.stringify(NIVUI),escRef=NIVUI.esc,simOn=SIM.on,pm={mes:PM.mes,paso:PM.paso},pg0=page;
+     NIVUI.cliente='';NIVUI.familia='';NIVUI.esc={};SIM.on=false;PM.mes=ym;PM.paso=1;page='plan';render();
+     const cards=[...document.querySelectorAll('#p-plan #plan-paso1 .niv-card')].filter(c=>c.dataset.area!=='maquila'&&!c.classList.contains('vacia'));
+     const est={};cards.forEach(c=>{const m=[...c.classList].find(x=>/^est-/.test(x));const e=m?m.slice(4):'?';if(e!=='dias')est[c.dataset.area]=e});
+     const vs=Object.values(est);const veredicto=vs.includes('deficit')?'No':vs.includes('riesgo')?'Justo':vs.includes('faltante')?'Falta un dato':vs.includes('ok')?'Sí':'—';
+     const nb=JSON.parse(bakN);Object.keys(NIVUI).forEach(k=>{if(!(k in nb))delete NIVUI[k]});Object.assign(NIVUI,nb);NIVUI.esc=escRef;SIM.on=simOn;PM.mes=pm.mes;PM.paso=pm.paso;page=pg0;
+     return {est,veredicto,n:Object.keys(est).length}};
+   const ordenEst=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
    /* 1 · Reportería queda con cinco reportes, coherentes en el menú, el registro, el catálogo de páginas y los íconos */
    {const rep=[...document.querySelectorAll('nav .gbody[data-g="rep"] a')].map(a=>a.dataset.p);
     __check("TG1: Reportería queda con Resumen gerencial · Órdenes de producción · Producto en proceso · Avance por área · Órdenes de trabajo (menú = REPORTES)",rep.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo'&&REPORTES.map(r=>r.p).join()===rep.join(),rep.join());
@@ -8751,7 +8763,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TG2: Facturación = la proyección del Bloque 3 de Planificar el mes (facturacionPlanMes), con liberadas y por liberar",v('ger-fact')==='$ '+num(F.esp)&&txt('ger-fact').includes('liberadas '+num(F.libs.length))&&txt('ger-fact').includes('por liberar '+num(F.porLib0.length)),v('ger-fact')+' / '+F.esp);
     const wip=carteraDe('lanzadas',o=>enProcesoPlan(o)&&!faseTerminadaDe(o));
     __check("TG2: Producto en proceso = lanzadas en fases «en proceso» (tabla 5) sin terminar: $ (usdOrden) y prendas",v('ger-wip')==='$ '+num(wip.reduce((a,o)=>a+usdOrden(o),0))&&txt('ger-wip').includes(num(pzDe(wip))+' prendas'));
-    __check("TG2: ¿Alcanza el mes? sale de la nivelación (kpisGerencia → alcanzaMesGER → nivUICalcular)",/alcanzaMesGER\(/.test(String(kpisGerencia))&&/nivUICalcular\(/.test(String(alcanzaMesGER))&&/¿Alcanza /.test(txt('ger-alcanza'))&&/según Planificar el mes/.test(txt('ger-alcanza')));
+    /* 03-oct (revisión): ¿Alcanza? se prueba DIBUJANDO Planificar el mes paso 1 (mismo mes, sin filtros ni escenario): la palabra de la tarjeta sale de los recuadros de la nivelación */
+    {const N1=nivPaso1(ym);page='gerencia';render();
+     __check("TG2: ¿Alcanza el mes? dice lo mismo que los recuadros de Planificar el mes → paso 1 (dibujado, mismo mes, sin filtros ni escenario; sin Maquila, vacíos ni «por días»)",N1.n>0&&v('ger-alcanza')===N1.veredicto&&/¿Alcanza /.test(txt('ger-alcanza'))&&/según Planificar el mes/.test(txt('ger-alcanza')),v('ger-alcanza')+' / paso 1: '+N1.veredicto+' · '+JSON.stringify(N1.est));}
     __check("TG2: cada tarjeta dice su base en una línea gris y su fórmula al pasar el mouse",[...el.querySelectorAll('.ger-tarjetas .kpi.tarj')].every(x=>!!x.querySelector('.ger-kb')&&(x.getAttribute('title')||'').length>60));
     /* el Bloque 3 de Planificar el mes dice lo mismo */
     const pmB={mes:PM.mes,paso:PM.paso};PM.mes=ym;PM.paso=2;page='plan';render();const b3=((document.querySelector('#p-plan .b3-esp')||{}).textContent||'').trim();
@@ -8786,7 +8800,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TG4: dibujar el Resumen gerencial no cambia la selección de la nivelación (meses, cliente, familia, área, escenario sin guardar)",JSON.stringify(NIVUI)===antesN&&NIVUI.esc===escRef&&SIM.on===simOn);
     const A=alcanzaMesGER(hoy().slice(0,7));
     __check("TG4: ¿Alcanza? mira los mismos meses que el paso 1 de Planificar el mes (el mes y los anteriores con saldo), sin los filtros ni el escenario de la usuaria",JSON.stringify(A.meses)===JSON.stringify(mesesNivPlan(hoy().slice(0,7)))&&JSON.stringify(NIVUI)===antesN);
-    __check("TG4: su color sale de la nivelación: déficit rojo, riesgo ámbar, falta un dato gris, todas llegan verde (sin Maquila ni las áreas «por días»)",A.color===(A.deficit.length?'rojo':A.riesgo.length?'ambar':A.faltante.length?'gris':A.ok.length?'verde':'gris')&&A.areas.every(x=>x.a.tipo!=='maquila'&&!x.a.porDias));
+    /* 03-oct (revisión): el color se prueba contra la pantalla, no contra su propia fórmula: A se calculó con filtros y escenario puestos en la nivelación;
+       el paso 1 se dibuja sin ellos y cada recuadro tiene que tener el mismo estado que ¿Alcanza? */
+    {const N1=nivPaso1(hoy().slice(0,7));const aEst={};A.areas.filter(x=>!x.vacia).forEach(x=>{aEst[x.a.id]=x.est});
+     const colorDe=vs=>vs.includes('deficit')?'rojo':vs.includes('riesgo')?'ambar':vs.includes('faltante')?'gris':vs.includes('ok')?'verde':'gris';
+     __check("TG4: cada recuadro de Planificar el mes → paso 1 (dibujado; sin Maquila, vacíos ni «por días») tiene el mismo estado que ¿Alcanza?, aunque la nivelación tenga filtros y escenario puestos, y el color de la tarjeta sale de ellos",N1.n>0&&ordenEst(N1.est)===ordenEst(aEst)&&A.color===colorDe(Object.values(N1.est))&&A.areas.every(x=>x.a.tipo!=='maquila'&&!x.a.porDias)&&JSON.stringify(NIVUI)===antesN,'paso 1 '+ordenEst(N1.est)+' · tarjeta '+ordenEst(aEst)+' · '+A.color);}
     delete NIVUI.esc.corte;const nb=JSON.parse(bakN);Object.keys(NIVUI).forEach(k=>{if(!(k in nb))delete NIVUI[k]});Object.assign(NIVUI,nb);NIVUI.esc=escRef;}
    /* 5 · dibujar el tablero no cambia S */
    {const d=document.createElement('div');const h0=JSON.stringify(S);vGerencia(d);const h1=JSON.stringify(S);
@@ -8794,7 +8812,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* 6 · lo que salió del Resumen gerencial, la línea de confianza y la tabla única */
    {page='gerencia';render();const h=pgG().innerHTML;
     __check("TG6: salieron la segunda franja, «Pedido y avance» (pesos por etapa en el código), «Carga contra capacidad» sumada, las tablas por mes y por cliente repetidas y «Órdenes que van tarde, las más grandes»",!/Pedido y avance|Carga contra capacidad|Carga por mes del Proyecto|Carga por cliente|las más grandes|Dónde está la cartera|Horas de planta pendientes/.test(h)&&!/pesoFase/.test(String(vGerencia))&&!pgG().querySelector('section.imp'));
-    __check("TG6: los paneles de mantenimiento no están en el Resumen gerencial y sí en Salud del sistema",!/Órdenes cuya familia no tiene hoja|Categorías sin hoja de operaciones/.test(h)&&!/<h3>Ruta no termina en Empaque/.test(h)&&/id:'empaque'/.test(String(vSalud))&&/id:'sinhoja'/.test(String(vSalud)));
+    /* 03-oct (revisión): Salud del sistema se DIBUJA y se miran sus recuadros (antes solo se buscaba el texto en el código de vSalud) */
+    {page='salud';render();const ps=document.getElementById('p-salud');const P0=programar();const rse=rutasSinEmpaque(P0),csh=categoriasSinHoja();
+     const tE=ps.querySelector('[data-t="salud-t-empaque"]'),tH=ps.querySelector('[data-t="salud-t-sinhoja"]');const vT=t=>((t&&t.querySelector('.v'))||{}).textContent||'';
+     const rE=ps.querySelector('#salud-empaque'),rH=ps.querySelector('#salud-sinhoja');
+     __check("TG6: los paneles de mantenimiento no están en el Resumen gerencial y sí en Salud del sistema (dibujada): su tarjeta con la misma cuenta y, si hay algo, su recuadro",!/Órdenes cuya familia no tiene hoja|Categorías sin hoja de operaciones/.test(h)&&!/<h3>Ruta no termina en Empaque/.test(h)
+       &&!!tE&&!!tH&&vT(tE).trim()===num(rse.length)&&vT(tH).trim()===num(csh.sin.length)
+       &&(rse.length?(!!rE&&rE.textContent.trim().length>0):!rE)&&(csh.sin.length?(!!rH&&/sin hoja/i.test(rH.textContent)):!rH),
+       'Empaque '+rse.length+(rE?' (recuadro)':'')+' · sin hoja '+csh.sin.length+(rH?' (recuadro)':''));
+     page='gerencia';render();}
     __check("TG6: el Resumen gerencial usa el programa real (programar()), no programarTodo()",/const P=programar\(\)/.test(String(vGerencia))&&!/programarTodo\(/.test(String(vGerencia).replace(/\/\*[^]*?\*\//g,''))&&!/programarTodo/.test(String(kpisGerencia)));
     const P=programar();const c=confianzaGER(P);const pc=pgG().querySelector('.ger-confianza');const n=k=>((pc&&pc.querySelector('[data-c="'+k+'"]'))||{}).textContent||'';
     __check("TG6: debajo de las tarjetas, «¿Se puede confiar en estas cifras?» con números de bandejas que ya existen y el enlace a Salud del sistema",!!pc&&/¿Se puede confiar en estas cifras\?/.test(pc.textContent)&&n('rutas').startsWith(num(rutasPorDefinir().length)+' ')&&n('sinTiempo').startsWith(num(pasosSinTiempoFecha(P).length)+' ')&&n('sinPrecio').startsWith(num(c.sinPrecio)+' ')&&!!n('carga')&&/registro del piso/.test(n('piso'))&&/Salud del sistema/.test(pc.innerHTML));
@@ -8811,14 +8837,27 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {page='gerencia';render();TARJ.exp={};togTarj('ger-venc');const lv=pgG().querySelector('.tarj-lista');const hayV=carteraDe('abiertas',o=>esMetaVencida(o,programar())).length>0;
     __check("TG7: tocar Meta vencida despliega su lista (agrupada por familia) con la fecha meta y el enlace a Advertencias de fecha",!hayV||(!!lv&&/Fecha meta/.test(lv.innerHTML)&&/Advertencias de fecha/.test(lv.innerHTML)&&!!lv.querySelector('tr.grp-row')));
     TARJ.exp={};render();const oc=id=>pgG().querySelector('[data-t="'+id+'"]').getAttribute('onclick')||'';
-    __check("TG7: Facturación, ¿Alcanza? y Producto en proceso llevan a su pantalla (no abren paneles nuevos)",/irFacturacionPlan\(/.test(oc('ger-fact'))&&/irNivelacionPlan\(/.test(oc('ger-alcanza'))&&/WIP\.base='lanzadas'/.test(oc('ger-wip')));
+    __check("TG7: Facturación, ¿Alcanza? y Producto en proceso llevan a su pantalla (no abren paneles nuevos)",/irFacturacionPlan\(/.test(oc('ger-fact'))&&/irNivelacionPlan\(/.test(oc('ger-alcanza'))&&/irWIPGerencia\(/.test(oc('ger-wip')));
     const pmB={mes:PM.mes,paso:PM.paso};irNivelacionPlan(hoy().slice(0,7));__check("TG7: ¿Alcanza? abre Planificar el mes en el paso 1",page==='plan'&&PM.paso===1);PM.mes=pmB.mes;PM.paso=pmB.paso;
-    page='gerencia';render();WIP.base='abiertas';pgG().querySelector('[data-t="ger-wip"]').click();__check("TG7: Producto en proceso abre la pivot con la base «lanzadas»",page==='wip'&&WIP.base==='lanzadas');WIP.base=bakWIP;}
+    /* 03-oct (revisión): tocar «Producto en proceso» abre la pivot con la base lanzadas Y las fases de la tarjeta; antes abría todas las fases y no cuadraba.
+       Se prueba con una búsqueda y un filtro listo puestos en la pivot: los suelta, y el total de órdenes y prendas de la pivot es el de la tarjeta */
+    {page='gerencia';render();const kmW=((pgG().querySelector('[data-t="ger-wip"] .ger-km')||{}).textContent||'').trim();const bakF=WIP.fases,bakQ=WIPL.q,bakFod=FOD['WIPL.q'];
+     WIP.base='abiertas';WIP.fases=null;WIPL.q='zzz';FOD['WIPL.q']={rap:['vencidas'],pers:[]};
+     pgG().querySelector('[data-t="ger-wip"]').click();
+     const tr=document.querySelector('#p-wip .wip-total');const tds=tr?[...tr.querySelectorAll('td')].map(x=>x.textContent.trim()):[];
+     const fsW=fasesWIPGerencia();const todasL=carteraDe('lanzadas');
+     __check("TG7: Producto en proceso abre la pivot con la base «lanzadas» y solo las fases de la tarjeta: el total de órdenes y prendas de la pivot es el que dice la tarjeta (suelta la búsqueda y los filtros listos que hubiera)",page==='wip'&&WIP.base==='lanzadas'&&tds.length>=3&&kmW===tds[2]+' prendas · '+tds[1]+' órdenes'&&!WIPL.q&&!FOD['WIPL.q'],'tarjeta «'+kmW+'» · pivot '+tds.slice(1,3).join(' / '));
+     __check("TG7: las fases fijadas son las de la tarjeta (enProcesoPlan y no terminadas), podadas contra la base; con una fase terminada o fuera de proceso en la base, no entra",(!fsW.length?(WIP.fases&&WIP.fases.has(FASE_NINGUNA)):fsW.every(f=>faseOkFiltro(WIP.fases,f)))&&todasL.filter(o=>!enWIPGerencia(o)).every(o=>!faseOkFiltro(WIP.fases,o.fase)),fsW.length+' fases · '+todasL.filter(o=>!enWIPGerencia(o)).length+' lanzadas fuera');
+     WIP.base=bakWIP;WIP.fases=bakF;WIPL.q=bakQ||'';if(bakFod)FOD['WIPL.q']=bakFod;else delete FOD['WIPL.q'];}}
    /* 8 · migración única de perfiles (nunca desde el piso, con bitácora) */
    {const cat=perfilesDef();const prueba={id:'tb-rep',n:'Prueba reportería',permisos:[],centros:[],paginas:['cumplimiento','avance']};cat.push(prueba);
     const flag=S.params.migReporteria5;delete S.params.migReporteria5;const pf=PERFIL;
     PERFIL={id:'u-t',rol:'tablet',nombre:'Tablet'};perfilesDef();
     __check("TG8: la migración no corre desde un perfil de piso",!S.params.migReporteria5&&!prueba.paginas.includes('gerencia'));
+    /* 03-oct (revisión): «no desde el piso» con la definición única (perfilSoloPiso), no buscando PERFIL.rol en el catálogo: un perfil viejo de piso
+       (rol «piso» con su área) no está en el catálogo y con la regla anterior pasaba como si no fuera de piso */
+    PERFIL={id:'u-p',rol:'piso',area:'tej',nombre:'Piso tejeduría'};perfilesDef();
+    __check("TG8: tampoco desde un perfil viejo de piso (rol «piso» con área, fuera del catálogo): la regla es perfilSoloPiso(), la definición única",!S.params.migReporteria5&&!prueba.paginas.includes('gerencia')&&perfilSoloPiso()&&/sesionDePisoMig\(\)/.test(String(perfilesDef))&&/perfilSoloPiso\(\)/.test(String(sesionDePisoMig))&&!/migReporteria5&&[^{]*tipoPiso\(/.test(String(perfilesDef)));
     PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};const nb=S.bitacora.length;perfilesDef();
     __check("TG8: los perfiles que tenían Cumplimiento reciben el Resumen gerencial y los que tenían Avance del mes, Avance por área; queda en la bitácora",prueba.paginas.includes('gerencia')&&prueba.paginas.includes('avancearea')&&!!S.params.migReporteria5&&/Reportería \(03-oct\)/.test(JSON.stringify(S.bitacora.slice(nb))));
     prueba.paginas=['cumplimiento','avance'];perfilesDef();
@@ -8833,6 +8872,62 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     setVistaAVA('semana');const hs=document.getElementById('p-avancearea').innerHTML;
     __check("TG9: «Semana» sigue siendo el resumen de la semana por área",/Resumen de la semana/.test(hs)&&!/av-mes/.test(hs));
     try{if(ls0==null)delete localStorage['__ava_vista_'+claveUsr()];else localStorage['__ava_vista_'+claveUsr()]=ls0}catch(e){}AVA.vista=v0||'semana';}
+   /* 10 · arreglos de la revisión del lote (03-oct) */
+   /* 10a · los filtros de «La cartera por…» se quedan junto a su tabla: con el aspecto Odoo no suben a la cabecera, encima de las tarjetas que no filtran */
+   {const bakT=S.params.tema;S.params.tema='odoo';GER.q='';GER.meses=null;GER.cli=null;GER.est=null;page='gerencia';render();
+    const inp=pgG().querySelector('input[data-q="GER.q"]');const os=inp&&inp.closest('.o-search');const ph=pgG().querySelector('.pagehead');
+    __check("TG10: aspecto Odoo: la barra de búsqueda de «La cartera por…» (buscador y Filtros con meses, cliente, estado y los filtros listos) está dentro de su panel, junto a la tabla, y no en la cabecera",!!os&&!!os.closest('.ger-consultas')&&!os.closest('.pagehead')&&!(ph&&ph.querySelector('.o-search'))&&/Meses del Proyecto/.test(os.textContent)&&!!os.querySelector('.o-dd.o-f [data-filtro-listo]'),os?(os.closest('.pagehead')?'en la cabecera':'en '+((os.parentElement&&os.parentElement.className)||'?')):'sin barra');
+    const d=document.createElement('div');d.innerHTML='<div data-filtro-local="1"><div class="busq"><input data-q="X1"></div></div><div class="row" data-filtro-local="panel"><div class="busq"><input data-q="X2"></div></div>';
+    const cs=controlesFiltro(d);
+    __check("TG10: data-filtro-local=\"1\" sigue fuera de la barra (Capacidad, Entregas, Planificar el mes) y «panel» entra a la barra sin subir a la cabecera",cs.length===1&&!!cs[0].querySelector('input[data-q="X2"]'));
+    S.params.tema='clasico';render();const inpC=pgG().querySelector('input[data-q="GER.q"]');
+    __check("TG10: aspecto clásico: los filtros siguen dentro de «La cartera por…»",!!inpC&&!!inpC.closest('.ger-consultas'));
+    if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;render();}
+   /* 10b · Avance por área → Mes: cada ingeniero ve su área (como la vista Semana) */
+   {const cat=perfilesDef();const prueba={id:'tb-uno',n:'Prueba un centro',permisos:[],centros:['corte'],paginas:['avancearea']};cat.push(prueba);const pf=PERFIL;const v0=AVA.vista;const f0=AV.f;
+    AV.f={};const ym=AV.mes||hoy().slice(0,7);const todasF=filasAvance(ym).filas;const deCorte=todasF.filter(r=>r.centro==='corte');const pzDe2=l=>l.reduce((a,r)=>a+r.pz,0);
+    PERFIL={id:'u-uno',rol:'tb-uno',nombre:'Ingeniero de corte'};AVA.vista='mes';page='avancearea';render();
+    const pa=document.getElementById('p-avancearea');const tot=pa.querySelector('.av-total');const hA=pa.innerHTML;
+    const porC=[...pa.querySelectorAll('.panel')].find(p=>/^Por centro/.test(((p.querySelector('h3')||{}).textContent||'').trim()));const noms=porC?[...porC.querySelectorAll('tbody tr td:first-child')].map(x=>x.textContent.trim()):[];
+    __check("TG10: Avance por área → Mes con un perfil de un solo centro: solo sus filas (las de otras áreas no se muestran ni se suman) y dice «solo lo tuyo»",page==='avancearea'&&/solo lo tuyo/.test(hA)&&(deCorte.length?(!!tot&&tot.querySelector('td:nth-child(2)').textContent.trim()===num(pzDe2(deCorte))&&noms.length>0&&noms.every(n=>n===nCen('corte'))):/Nada planificado/.test(hA)),'corte '+deCorte.length+' de '+todasF.length+' orden·centro · '+noms.join(','));
+    __check("TG10: el archivo exportado de la vista Mes usa las mismas filas (las que el perfil ve)",/filasAvanceVisibles\(/.test(String(exportarAvanceCSV))&&filasAvanceVisibles(ym).filas.every(r=>r.centro==='corte'));
+    PERFIL=pf;render();const tot2=pa.querySelector('.av-total');
+    __check("TG10: quien ve todos los centros ve todo, sin «solo lo tuyo»",!/solo lo tuyo/.test(pa.innerHTML)&&(!todasF.length||(!!tot2&&tot2.querySelector('td:nth-child(2)').textContent.trim()===num(pzDe2(todasF)))));
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-uno');AVA.vista=v0||'semana';AV.f=f0||{};}
+   /* 10c · la meta en $ del mes: con permiso, en la bitácora, y vacío ≠ 0 */
+   {const ym=hoy().slice(0,7);const bakM=S.params.metas?JSON.parse(JSON.stringify(S.params.metas)):undefined;const pf=PERFIL;const pm={mes:PM.mes,paso:PM.paso};
+    if(S.params.metas)delete S.params.metas[ym];const tieneM=()=>!!S.params.metas&&Object.prototype.hasOwnProperty.call(S.params.metas,ym);const ultBit=()=>((S.bitacora[S.bitacora.length-1]||{}).t)||'';
+    PERFIL={rol:'consulta',modo:'editar',nombre:'Consulta'};alerts.length=0;setMeta(ym,'500');
+    __check("TG10: la meta del mes exige el permiso de planificación (programa): sin él avisa y no guarda",alerts.length===1&&!tieneM());
+    PERFIL=pf;const nb=S.bitacora.length;setMeta(ym,'0');
+    __check("TG10: 0 es una meta en $ 0 escrita a propósito: se guarda 0, queda en la bitácora y la tarjeta dice «meta en $ 0», no «escribe la meta»",S.params.metas[ym]===0&&S.bitacora.length===nb+1&&/\(sin meta\) → \$ 0/.test(ultBit())&&facturacionPlanMes(ym).hayMeta===true&&(()=>{page='gerencia';render();const t=pgG().querySelector('[data-t="ger-fact"]').textContent;return /meta en \$ 0/.test(t)&&!/escribe la meta/.test(t)})(),ultBit());
+    PM.mes=ym;PM.paso=2;page='plan';render();const inpM=document.querySelector('#p-plan .b3-meta input');
+    __check("TG10: Planificar el mes muestra la meta en 0 (no el campo vacío)",!!inpM&&inpM.value==='0',inpM?inpM.value:'sin campo');
+    const nb2=S.bitacora.length;setMeta(ym,'');
+    __check("TG10: vaciar el campo deja el mes SIN meta (se quita, no se guarda 0) y queda en la bitácora; la tarjeta vuelve a «escribe la meta» y el campo queda vacío",!tieneM()&&S.bitacora.length===nb2+1&&/\$ 0 → \(sin meta\)/.test(ultBit())&&facturacionPlanMes(ym).hayMeta===false&&(()=>{page='gerencia';render();return /escribe la meta/.test(pgG().querySelector('[data-t="ger-fact"]').textContent)})()&&(()=>{page='plan';render();const i=document.querySelector('#p-plan .b3-meta input');return !!i&&i.value===''})(),ultBit());
+    const nb3=S.bitacora.length;setMeta(ym,'');
+    __check("TG10: volver a vaciar un mes que ya no tiene meta no escribe en la bitácora",S.bitacora.length===nb3);
+    alerts.length=0;setMeta(ym,'-5');setMeta(ym,'abc');
+    __check("TG10: un monto negativo o que no es número se rechaza con aviso y no se guarda",alerts.length===2&&!tieneM());
+    if(bakM===undefined)delete S.params.metas;else S.params.metas=bakM;PM.mes=pm.mes;PM.paso=pm.paso;page='gerencia';render();}
+   /* 10d · textos: el «?», la cabecera, UN aviso de «hechas», la historia y la última carga de Odoo */
+   {page='gerencia';GER.q='';GER.meses=null;GER.cli=null;GER.est=null;render();const hG=pgG().innerHTML;
+    const ay=((pgG().querySelector('.pagehead .ayuda-cab .ayuda-txt'))||{}).textContent||'';const cab=((pgG().querySelector('.ger-cab'))||{}).textContent||'';
+    __check("TG10: el «?» del Resumen gerencial dice que las tarjetas no cambian con los filtros y que cada una dice su base (ya no «miran TODA la cartera abierta»)",/no cambian con los filtros; cada una dice su base/.test(ay)&&!/miran TODA la cartera|miran siempre toda la cartera/.test(hG),ay.slice(0,120));
+    __check("TG10: la cabecera dice «Resumen al <día>»",cab.indexOf('Resumen al '+fmtDia(hoy()))===0,cab.slice(0,80));
+    const nAv=(hG.match(/puede estar afectado/g)||[]).length;
+    __check("TG10: UN solo aviso de la brecha de «hechas» (el de junto a los chips), sin la etiqueta «con brecha» en la línea de la base",!/con brecha/.test(hG)&&nAv===(brechaHechas()?1:0),nAv+' avisos · brecha '+JSON.stringify(brechaHechas()));
+    const hist=pgG().querySelector('details.ger-hist > summary');
+    __check("TG10: «Historia por Proyecto» dice que se mide como si todo estuviera liberado y que las tarjetas usan el programa real",!!hist&&/como si todo estuviera liberado/.test(hist.textContent)&&/las tarjetas usan el programa real/.test(hist.textContent));
+    const bakC=S.cargas;const hace=x=>new Date(Date.now()-x*36e5).toISOString();
+    S.cargas=[{id:'c1',tipo:'ot',ts:hace(5)},{id:'c2',tipo:'tiempos',ts:hace(0.2)},{id:'c3',tipo:'maquinas',ts:hace(0.1)},{id:'c4',tipo:'rutas',ts:hace(0.3)},{id:'c5',tipo:'fotosRef',ts:hace(0.4)}];
+    const u=ultimaCargaOdoo();render();const lc=((pgG().querySelector('[data-c="carga"]'))||{}).textContent||'';
+    __check("TG10: «última carga de Odoo» solo cuenta cargas de Odoo (tareas, órdenes de trabajo, fotos y tallas): tiempos, máquinas, rutas o fotos por referencia no la renuevan",!!u.u&&u.u.id==='c1'&&u.horas===5&&/hace 5 h/.test(lc),lc);
+    S.cargas=[{id:'v1',ts:hace(2)}];
+    __check("TG10: las filas viejas sin tipo (antes del registro unificado) eran cargas de Odoo y cuentan",(ultimaCargaOdoo().u||{}).id==='v1');
+    S.cargas=[{id:'x',tipo:'tiempos',ts:hace(1)}];render();
+    __check("TG10: sin ninguna carga de Odoo, la cabecera lo dice (no toma la de tiempos)",!ultimaCargaOdoo().u&&/sin cargas de Odoo registradas/.test(((pgG().querySelector('.ger-cab'))||{}).textContent||''));
+    S.cargas=bakC;render();}
    if(bakMK===undefined)delete S.params.metasKPI;else S.params.metasKPI=bakMK;
    window.alert=a0;window.confirm=c0;PERFIL=adminP;GER.abierto=null;GER.det=null;TARJ.exp={};PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("TG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
