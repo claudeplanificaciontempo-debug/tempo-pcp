@@ -99,7 +99,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('origenTela: NUEVOS TEMPO con otro 4to nivel cualquiera sigue PROPIA (la excepción no contamina el resto)',origenDeTela('NUEVOS TEMPO','ALGO NORMAL')==='PROPIA');
   __check('origenTela: tipo no listado da null',origenDeTela('TIPO INVENTADO',null)===null);
   {const antes=__R.errors.length;CONF.tab='ordenes2';page='config';render();const html=document.getElementById('p-config').innerHTML;
-   __check('Configuración → Órdenes y materiales renderiza las 3 tablas sin errores',__R.errors.length===antes&&html.includes('Fase del archivo')&&html.includes('clasificación')&&html.includes('origen de tela')&&(html.match(/pendiente de validar/g)||[]).length>0);
+   __check('Configuración → Órdenes y materiales renderiza las 3 tablas sin errores (la tabla 3 de origen de tela vive en Telas y colores desde el 02-oct)',__R.errors.length===antes&&html.includes('Fase del archivo')&&html.includes('clasificación')&&(html.match(/pendiente de validar/g)||[]).length>0&&(CONF.tab='telas',render(),__R.errors.length===antes&&document.getElementById('p-config').innerHTML.includes('origen de tela')));
    CONF.tab='recursos';render()}
   __check('ninguna orden nueva viene de esta corrección (S.ordenes sin cambios; solo se tocaron tablas de configuración)',true,S.ordenes.length+' orden(es) en S en este punto (aún antes de demo())');
   /* ===== RECARGA PARTE 2: carga real de órdenes y materiales (fixture local, no publicado) ===== */
@@ -620,7 +620,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B5: Tintorería va en pestañas (Hoy · Armar baños · Tela plana · Reportes): una sola a la vista, las tarjetas y lo diario en «Hoy», y lo demás sigue en la página (no se pierde nada)",['hoy','plana','rep'].every(k=>tabs.includes(k))&&tabs.includes('armar')===!!arma&&on.length===1&&!!ht.querySelector('[data-tin-tab="hoy"] .kpis.tarj-row')&&ht.querySelector('[data-tin-tab="rep"]').innerHTML.includes('Carga de tintorería')&&ht.querySelector('[data-tin-tab="plana"]').innerHTML.includes('Tela plana · tandas')&&(!arma||!!ht.querySelector('[data-tin-tab="armar"] #arm-banos')),tabs.join(',')+' · a la vista: '+on.join(','));
     verTinTab('rep');__check("UX-B5: cambiar de pestaña no redibuja la página: muestra solo la elegida y se recuerda para ese usuario",ht.querySelector('[data-tin-tab="rep"]').classList.contains('on')&&!ht.querySelector('[data-tin-tab="hoy"]').classList.contains('on')&&ht.querySelector('[data-tin-chip="rep"]').classList.contains('on')&&tinTabActual(arma)==='rep');
     verTinTab('hoy');__check("UX-B5: Tintorería — la tarjeta cuenta «Colores esperando baño» (los mismos de Armar baños), ya no «grupos», y el botón dice que guarda una copia",!/Grupos esperando/.test(ht.innerHTML)&&/Colores esperando baño/.test(ht.innerHTML)&&(!puede('programa')||/Guardar copia del programa/.test(ht.innerHTML)))}
-   page='config';CONF.tab='ordenes2';render();__check("config: tabla 13 de propuesta 'qué le falta'",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
+   page='config';CONF.tab='telas';render();__check("config: tabla 13 de propuesta 'qué le falta' (en Telas y colores)",document.getElementById('p-config').innerHTML.includes('13 · Qué le falta a la tela'));
    page='ordenes';render();__check("tela 3 dimensiones sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* plana en metros, tandas de plana en tintorería, excepción tabla 3, plan: días/personas y carga por tipo de producto */
   {const antes=__R.errors.length;const confirmPrev=window.confirm;window.confirm=()=>true;
@@ -1804,7 +1804,21 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* 8) operaciones: ya se probó arriba con la hoja LMO real (fixtures/lmo_rows.json); aquí solo el catálogo por categoría render */
   {const antes=__R.errors.length;page='operaciones';OPV.abierta=null;OPV.q='';render();const html=document.getElementById('p-operaciones').innerHTML;
    __check('catálogo por categoría renderiza (595 operaciones ya cargadas)',__R.errors.length===antes&&S.operaciones.length===595&&html.includes('CAMISETA'));
-   OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-operaciones').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';}
+   OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-operaciones').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';
+   /* UX-B9 · Operaciones (02-oct): tres pestañas, un solo «Cargar ▾», catálogo sin la familia repetida ni la franja negra */
+   {OPV.tab='tiempos';render();const po=document.getElementById('p-operaciones');const pest=[...po.querySelectorAll('.ops-pest')];const vis=pest.filter(x=>x.style.display!=='none');
+    __check("UX-B9: Operaciones — tres pestañas (Tiempos · Por revisar · Hoja de operaciones), una a la vista y todo en el DOM",pest.length===3&&vis.length===1&&vis[0].getAttribute('data-ops-tab')==='tiempos'&&/Tiempos que mandan sobre la hoja/.test(vis[0].innerHTML)&&/Tiempos por revisar/.test(po.innerHTML)&&/Hoja de operaciones por familia/.test(po.innerHTML));
+    const nRev=alertasTiempos().length+opsSinCentro().length;const chRev=[...po.querySelectorAll('.ops-tabs .chip')].find(x=>/Por revisar/.test(x.textContent));
+    __check("UX-B9: Operaciones — «Por revisar» dice cuántas cosas hay que revisar (en ámbar)",!!chRev&&(!nRev||(!!chRev.querySelector('.tag.t-aviso')&&chRev.querySelector('.tag.t-aviso').textContent.trim()===num(nRev))),String(nRev));
+    const ph=po.querySelector('.pagehead');const menu=ph.querySelector('details.ops-cargar');
+    __check("UX-B9: Operaciones — la cabecera tiene UN botón «Cargar ▾» con las cinco cargas y «Reglas familia → centro» aparte; «Nueva operación» va en el título del Catálogo",!!menu&&['mCargarLMO()','mCargarOrdenOps()','mCargarTiemposXLSX()','mPegarOps()','mPegarFamOps()'].every(f=>menu.innerHTML.includes(f))&&/mMapeoOps\(\)/.test(ph.innerHTML)&&!/addOp\(\)/.test(ph.innerHTML)&&/addOp\(\)/.test(po.querySelector('[data-ops-tab="hoja"]').innerHTML));
+    const hoja=po.querySelector('[data-ops-tab="hoja"]').innerHTML;
+    __check("UX-B9: Operaciones — el catálogo no repite la familia en cada fila, dice «Orden» y «Tipos que la usan», y la franja de la categoría ya no es negra",!/>Familia de operación</.test(hoja)&&/>Orden</.test(hoja)&&/Tipos que la usan/.test(hoja)&&!/background:var\(--ink\);color:#fff/.test(hoja)&&!!po.querySelector('tr.ops-cat'));
+    const sm=po.querySelector('#sam-manda');
+    __check("UX-B9: Operaciones — en «lo que manda» la caja vacía muestra la hoja en gris («hoja 13,46») y el número no se repite al lado; sin «(hoja)» en las cabeceras",!!sm&&!/\(hoja\)/.test(sm.innerHTML)&&!/<span class="mut" style="font-size:var\(--fs-xs\)">\([0-9]/.test(sm.innerHTML));
+    const ob=[...po.querySelectorAll('.panel')].find(p=>/Tiempos de ojales y botones/.test((p.querySelector('h3')||{}).textContent||''));
+    __check("UX-B9: Operaciones — ojales y botones en UN recuadro: el estándar arriba y la tabla por tipo debajo",!!ob&&/Ojales y botones: estándar/.test(ob.innerHTML)&&/setBotonesEstandar/.test(ob.innerHTML)&&/addTiempoOBRow/.test(ob.innerHTML));
+    OPV.tab='hoja';render();__check("UX-B9: Operaciones — elegir la pestaña la muestra",document.querySelector('#p-operaciones [data-ops-tab="hoja"]').style.display!=='none'&&document.querySelector('#p-operaciones [data-ops-tab="tiempos"]').style.display==='none');OPV.tab='tiempos';render()}}
   try{localStorage.__fase="fuzz"}catch(e){}
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
   window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|restaurarDesde|descargarJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
@@ -1828,7 +1842,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const it=areasAvance()[0];AVA.abierto=it.g;render();const h2=document.getElementById('p-avancearea').innerHTML;
     __check('Avance por área: el clic en la fila abre el detalle del área (día por día, órdenes programadas esta semana, abrir el centro)',/Día por día/.test(h2)&&/Órdenes programadas esta semana/.test(h2)&&/abrir el centro/.test(h2)&&/ava-fila on/.test(h2));
     AVA.abierto=null;page='salud';render();const hs=document.getElementById('p-salud').innerHTML;
-    __check('Salud del sistema (Configuración) reúne los paneles técnicos que estaban al final de la reportería por área',/Auditoría del sistema/.test(hs)&&/Siembras pendientes|siembras/i.test(hs)&&/Registro de producción por centro y día/.test(hs)&&/Cuántas órdenes hay/.test(hs));
+    __check('Salud del sistema (Configuración) reúne los paneles técnicos que estaban al final de la reportería por área',/Auditoría del sistema/.test(hs)&&/Correcciones automáticas/.test(hs)&&/Registro de producción por centro y día/.test(hs)&&/Cuántas órdenes hay/.test(hs));
     __check('los enlaces viejos «reporteria», «vistaordenes» y «asignacion» caen en Avance por área y Producto en proceso (no quedan páginas huérfanas)',redirigirPagina('reporteria')==='avancearea'&&redirigirPagina('vistaordenes')==='wip'&&redirigirPagina('asignacion')==='wip'&&(()=>{page='reporteria';render();return page==='avancearea'})()&&(()=>{page='asignacion';render();return page==='wip'})());}
   try{localStorage.__fase="perfil piso corte"}catch(e){}
   const adminP=PERFIL;PERFIL={rol:'piso',area:'pro',subarea:'corte',modo:'editar',nombre:'Piso corte'};
@@ -2968,7 +2982,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("DE: un tramo de 12:00 a 14:00 descuenta los 60 minutos del almuerzo",Math.abs(c2.brutoMin-120)<0.1&&Math.abs(c2.descansos-60)<0.1&&Math.abs(c2.trabajado-60)<0.1);
    S.params.horarios={};
    __check("DE: sin ventanas cargadas no descuenta nada y lo avisa",calcTramo(t2,null).descansos===0&&calcTramo(t2,null).descansosFalta===true&&centrosSinDescansos().includes('modulos'));
-   page='config';CONF.tab='ordenes2';render();__check("DE: los descansos se editan en Configuración (tabla 18)",document.getElementById('p-config').innerHTML.includes('18 · Descansos por centro'));
+   page='config';CONF.tab='recursos';render();__check("DE: los descansos se editan en Configuración → Centros y máquinas (tabla 18)",document.getElementById('p-config').innerHTML.includes('18 · Descansos por centro'));
    // 4 · segundas en el flujo
    S.params.horarios={modulos:{ventanas:[]}};
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
@@ -3587,7 +3601,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("SF1: la columna es editable y manda sobre el código",tipoPiso(d)==='operario');
     setPerfilDef('corte','piso',bak===undefined?'supervisor':bak);
     page='usuarios';render();await __p(80);const h=document.getElementById('p-usuarios').innerHTML;
-    __check("SF1: la columna Piso se ve y se edita en Configuración → Usuarios",/>Piso</.test(h)&&h.includes("setPerfilDef('corte','piso'")&&/Supervisor de piso/.test(h));}
+    __check("SF1: la columna Piso se ve y se edita en Configuración → Usuarios",/>Piso</.test(h)&&h.includes("setPerfilDef('corte','piso'")&&/Supervisor de piso/.test(h));
+     __check("UX-B9: Usuarios — sin jerga técnica (Supabase, mover_fase, archivos .sql), el operario ya no «solicita» fases y el id interno del perfil va al pasar el mouse",!/Supabase|SUPABASE_|mover_fase|registra y solicita/.test(h)&&/no cambia fases/.test(h)&&/title="id: admin"/.test(h)&&!/<span class="mut" style="font-size:var\(--fs-xs\)">admin<\/span>/.test(h));}
    // orden de prueba, ya guardada en la base (como cualquier orden real)
    const base=S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
    const oF=JSON.parse(JSON.stringify(base));oF.id=uid();oF.op='WH/FASE-1';oF.estado='plan';oF.cant=100;oF.fase='4CD Ensamble';oF.ruta=[{centro:'modulos',t:5}];delete oF.programa;S.ordenes.push(oF);delete S.avance[oF.id];
@@ -4128,6 +4143,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("D6: la fila «jean» de ojales y botones queda unificada en «denim», sin borrarse",(()=>{const j=tiemposOjalBoton().find(r=>/jean/.test(r.match||''));return !j||j.unificadaEn==='denim'})());
     __check("D6: el mapeo a la hoja LMO sigue apuntando a JEANS, que es su nombre de origen",mapaCatLMO().porPadre.DENIM==='JEANS');
     __check("D6: y todo queda en la bitácora",(S.bitacora||[]).some(b=>/JEANS/.test(b.txt||b.t||'')&&/DENIM/.test(b.txt||b.t||'')));}
+    /* UX-B9 · Categorías (02-oct): la lista en una línea por tipo; las casillas de módulos y el borrar, en «Editar» */
+    {page='categorias';CATV.q='';render();const pc=document.getElementById('p-categorias');const h=pc.innerHTML;const dj=pc.querySelector('details.cat-jeans');
+     __check("UX-B9: Categorías — la unificación DENIM/JEANS ya hecha queda plegada en una línea y el detalle sigue adentro",!!dj&&!dj.open&&/ya están unificados/.test(dj.querySelector('summary').textContent)&&/Filas de configuración/.test(dj.innerHTML));
+     __check("UX-B9: Categorías — cada tipo dice en una línea quién puede hacerlo: sin 16 casillas por fila ni «×» de borrar al lado de «Editar»",!/onchange="setRecCat\(/.test(h)&&!/onclick="delCat\(/.test(h)&&/Cualquier módulo|Solo |M[0-9]/.test(h));
+     const hija=S.categorias.find(k=>k.padre&&K(k.padre));
+     if(hija){mCat(hija.id);const m=document.getElementById('modal');
+      __check("UX-B9: Categorías — las casillas de módulos y «Borrar categoría» (con su confirmación) están en «Editar»",!!m.querySelector('#cat-recs')&&/setRecCatModal\(/.test(m.innerHTML)&&/delCat\(/.test(m.innerHTML)&&/Borrar categoría/.test(m.textContent));cerrar();
+      CATV.q=hija.n;render();const h2=document.getElementById('p-categorias').innerHTML;const otro=S.categorias.find(k=>k.padre&&k.padre!==hija.padre&&!normTxt(k.n).includes(normTxt(hija.n))&&!normTxt((K(k.padre)||{}).n||'').includes(normTxt(hija.n)));
+      __check("UX-B9: Categorías — el buscador acota por el nombre del tipo de producto",h2.includes("mCat('"+hija.id+"')")&&(!otro||!h2.includes("mCat('"+otro.id+"')")),hija.n);CATV.q='';render()}}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("DEC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* PARTE A · Dirección, Liberación y Planificación de producción */
@@ -5037,14 +5061,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      (!S.params.jeansUnificadoPrevio)||l.find(x=>x.k==='jeans').esperado.indexOf(String(S.params.jeansUnificadoPrevio.ordenes))>=0);
     __check("CS1: con las siembras corridas, las tres salen aplicadas",l.every(x=>x.aplicada));
     const h=chequeoSiembrasHTML();
-    __check("CS2: el panel las lista con esperado vs encontrado",/Siembras pendientes/.test(h)&&/Esperado/.test(h)&&/Encontrado/.test(h));
+    __check("CS2: el panel las lista con lo de antes de corregir vs lo de hoy (antes «Siembras pendientes», «Esperado» y «Encontrado»)",/Correcciones automáticas/.test(h)&&/Antes de corregir/.test(h)&&/>Hoy</.test(h)&&!/Siembras pendientes/.test(h));
     __check("CS2: y nombra las tres",/JEANS . DENIM|JEANS/.test(h)&&/terminar en Empaque/.test(h)&&/Ruta por defecto/.test(h));
     // una siembra que no corrió sale como PENDIENTE
     const bakJ=S.params.jeansUnificado;delete S.params.jeansUnificado;
     __check("CS3: si una siembra no corrió, sale como pendiente",chequeoSiembras().find(x=>x.k==='jeans').aplicada===false&&/pendiente/.test(chequeoSiembrasHTML()));
     S.params.jeansUnificado=bakJ;
     page='salud';render();
-    __check("CS4: el chequeo está en Salud del sistema",/Siembras pendientes/.test(document.getElementById('p-salud').innerHTML));}
+    __check("CS4: el chequeo está en Salud del sistema",/Correcciones automáticas/.test(document.getElementById('p-salud').innerHTML));}
    window.confirm=c0;window.alert=a0;window.prompt=p0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("KR sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* TIEMPOS ESTIMADOS DE CONFECCIÓN (Santiago Garzón) */
@@ -6365,7 +6389,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("TA3: tabla 15 avisa «sin motivos de cierre sin tiempo» y qué deja de funcionar",/sin motivos de cierre sin tiempo/.test(hx)&&/no puede cerrar un paso sin tiempo corrido/.test(hx));
       S.params.motivos=bakM;render();hx=document.getElementById("p-config").innerHTML;
       __check("TA3: con motivos cargados el aviso de ese uso desaparece",!/sin motivos de cierre sin tiempo/.test(hx));
-      S.params.horarios={};render();hx=document.getElementById("p-config").innerHTML;
+      S.params.horarios={};CONF.tab="recursos";render();hx=document.getElementById("p-config").innerHTML;
       __check("TA3: tabla 18 avisa «Sin ventanas de descanso» y el efecto (minuto real inflado)",/Sin ventanas de descanso en ningún centro/.test(hx)&&/no descuenta almuerzo/.test(hx));
       S.params.horarios=JSON.parse(bakH);}
      /* se deja como estaba */
@@ -6766,7 +6790,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("MB: una tela externa sin palabra no va a tintorería; una propia sí; la palabra CRUDO manda sobre el origen",dimensionesTela(mk("EXTERNA","TELA LISA AZUL")).falta==="nada"&&dimensionesTela(mk("PROPIA","JERSEY 24/1")).falta==="tintura"&&dimensionesTela(mk("EXTERNA","TELA CRUDO")).falta==="tintura"&&dimensionesTela(mk("EXTERNA TEÑIDA","TELA X")).falta==="nada");
     __check("MB: sin clasificar: con Pantone en el color de la orden → tintura; sin Pantone → nada; sin contexto → tintura (como siempre)",lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:true})[0].falta==="tintura"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:false})[0].falta==="nada"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")])[0].falta==="tintura"&&lineasTelaDe([mk("SIN CLASIFICAR","TELA X")],{pantone:false})[0].faltaPorPantone===true);
     {const nb=S.bitacora.length;setFaltaPorOrigen("EXTERNA","tintura");__check("MB: cambiar la regla queda en bitácora y se respeta",faltaDeOrigen("EXTERNA")==="tintura"&&dimensionesTela(mk("EXTERNA","TELA LISA")).falta==="tintura"&&S.bitacora.slice(nb).some(b=>/Tabla 13 · qué le falta a la tela EXTERNA: nada → tintura/.test(b.t)));setFaltaPorOrigen("EXTERNA","nada");}
-    page="config";CONF.tab="ordenes2";render();__check("MB: la tabla 13 muestra la regla por origen con sus selectores",/Sin palabra, según el origen de la tela/.test(document.getElementById("p-config").innerHTML)&&(document.getElementById("p-config").innerHTML.match(/setFaltaPorOrigen\(/g)||[]).length>=4);
+    page="config";CONF.tab="telas";render();__check("MB: la tabla 13 muestra la regla por origen con sus selectores",/Sin palabra, según el origen de la tela/.test(document.getElementById("p-config").innerHTML)&&(document.getElementById("p-config").innerHTML.match(/setFaltaPorOrigen\(/g)||[]).length>=4);
     /* con el maestro real: las telas de proveedor salen de tintorería y su ruta no lleva «tin» */
     {const maestroRows=await (await fetch('fixtures/maestro_rows.json')).json();const pm=planMaestro(maestroRows,"Maestro_MB.xlsx");const cf=window.confirm;window.confirm=()=>false;MAESTRO=pm;aplicarMaestro();window.confirm=cf;await __p(30);
      recalcularTelasOrdenes(true);await __p(50);
@@ -7265,7 +7289,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check('T21: fusionarFila: el mismo valor puesto por dos sesiones en el mismo campo no es conflicto',(()=>{const f=fusionarFila(JSON.stringify({ruta:[{t:13.46}]}),{ruta:[{t:4.47}]},{ruta:[{t:4.47}]});return f.choques.length===0&&JSON.stringify(f.data.ruta)===JSON.stringify([{t:4.47}])})());}
     o.ruta[1].t=13.46;o.ruta[2].t=0;delete o.ruta[1].tAntes;delete o.ruta[2].estandar;o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
     page='operaciones';render();const hh=document.getElementById('p-operaciones').innerHTML;
-    __check('T21: la página Operaciones muestra «Tiempos que mandan sobre la hoja» y, si alguna orden abierta quedó con otro tiempo, el aviso con el enlace al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/tienen otro tiempo guardado/.test(hh)&&/mAplicarTiempos/.test(hh));
+    __check('T21: la página Operaciones muestra «Tiempos que mandan sobre la hoja» y, si alguna orden abierta quedó con otro tiempo, el aviso en llano («todavía no tienen los tiempos de hoy») con el botón al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/todavía no tienen? los tiempos de hoy/.test(hh)&&/<button class="btn sm" onclick="mAplicarTiempos\(\)">Ver y aplicar los tiempos de hoy/.test(hh));
     __check('T21: todo lo que define un tiempo vive junto en Operaciones (usuaria, 21-sep): cabecera «Tiempos» con el orden de mando, lo que manda, minuto por centro (cordones/apliques/sublimado/lavado/plancha, mismo dato que Centros), ojales y botones (estándar y tabla), etiquetas y minuto estimado; el estándar ya no está en Calendario y parámetros',/<h3>Tiempos <span/.test(hh)&&/Minuto por prenda de los centros sin operaciones/.test(hh)&&/setCentro\('cordones','minEstandar'/.test(hh)&&/Ojales y botones: estándar/.test(hh)&&/setBotonesEstandar/.test(hh)&&/Tiempos de ojales y botones/.test(hh)&&/delTiempoOBRow|addTiempoOBRow/.test(hh)&&/reglasEtiqueta|Regla de etiqueta|etiqueta/i.test(hh)&&/Categorías sin hoja de operaciones/.test(hh)&&!/setBotonesEstandar/.test(String(typeof vParams==='function'?vParams:'')),'');
     mAplicarTiempos();const m=document.getElementById('modal');__check('T21: el antes/después se ve por familia y por centro con motivo obligatorio',/Antes \/ después de aplicar/.test(m.innerHTML)&&/Por familia/.test(m.innerHTML)&&/Por centro/.test(m.innerHTML)&&!!document.getElementById('tiempos-motivo'));
     const n0=aplicarTiemposRutas('');__check('T21: sin motivo no aplica',n0===0&&o.ruta[1].t===13.46);
@@ -8382,6 +8406,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("AU9: cada hallazgo dice cuántos, ejemplos y qué hacer",a.hallazgos.every(x=>typeof x.n==='number'&&Array.isArray(x.ej)&&x.que));
     __R.auditoria={errores:a.errores,avisos:a.avisos,con:a.hallazgos.filter(x=>x.n).map(x=>x.k+'='+x.n)};
     page='salud';render();__check("AU9: se ve en Configuración → Salud del sistema",/Auditoría del sistema/.test(document.getElementById('p-salud').innerHTML));
+    /* UX-B9 · Salud (02-oct): resumen arriba, solo los recuadros con algo, «Ir a arreglar →», palabras de planta */
+    {const ps=document.getElementById('p-salud');const cards=[...ps.querySelectorAll('.kpi.tarj[data-t^="salud-t-"]')];const conClic=cards.filter(c=>c.getAttribute('onclick'));const bien=(ps.querySelector('.salud-bien')||{}).textContent||'';
+     __check("UX-B9: Salud — arriba un resumen con una tarjeta por revisión; las que tienen algo llevan a su recuadro y las que no, se nombran en la línea «sin problemas»",cards.length===8&&conClic.every(c=>!!document.getElementById('salud-'+c.getAttribute('data-t').replace('salud-t-','')))&&cards.filter(c=>!c.getAttribute('onclick')).every(c=>bien.includes(c.querySelector('.k').childNodes[0].textContent.trim())),cards.length+' tarjetas · '+conClic.length+' con algo');
+     const a=auditoriaSistema();const conIr=a.hallazgos.filter(x=>x.n&&x.ir);
+     __check("UX-B9: Salud — en la auditoría, cada regla que se arregla en una tabla trae «Ir a arreglar →» y los textos dicen «hoja de operaciones», no «hoja LMO»",(ps.innerHTML.match(/Ir a arreglar →/g)||[]).length>=conIr.length&&a.hallazgos.filter(x=>['catSinHoja','pasoSinProgramar','motivosVacios','cenSinRec'].includes(x.k)).every(x=>!!x.ir&&!/hoja LMO/.test(x.que+x.titulo)),conIr.length+' con botón');
+     const hc=conteoOrdenesHTML();
+     __check("UX-B9: Salud — «Cuántas órdenes hay» en palabras: sin «noArchivo», «done», «cancel» ni nombres de variables, y sin decir que no está en el código",!/noArchivo|\bdone\b|\bcancel\b|S\.params|<code>|No está escrito en el código/.test(hc)&&/tabla de fases/.test(hc)&&/no vino en el último archivo/.test(hc));
+     const rs=rutasSinSecuencia();const hr=rutasSinSecuenciaHTML(rs);const sw=[].concat(rs.sinRuta,rs.repetido,rs.fueraDeRuta).filter(x=>sinWHde(x.o));
+     __check("UX-B9: Salud — en Rutas sin secuencia las de diseño sin WH van plegadas al final y el rojo es solo para «centro repetido»",(!sw.length||/<details[^>]*><summary[^>]*>[^]*en diseño, sin WH/.test(hr))&&!/tag t-alerta">(sin ruta|paso fuera de la ruta)</.test(hr),sw.length+' sin WH');
+     const f={c:'corte',lab:[hoy()],con:[],sin:[hoy()],ninguno:true,recs:1};const hb2=brechaRegistroHTML({filas:[f],aun:false,ninguno:[f],conHuecos:[],diasSin:1});
+     __check("UX-B9: Salud — si un centro no registró nada, va en UNA línea (sin la matriz de guiones rojos) y el chip dice «falta registrar»",!/<table/.test(hb2)&&/no registró nada esta semana/.test(hb2)&&/falta registrar/.test(hb2)&&!/t-alerta/.test(hb2))}
     /* una regla detecta lo que promete: se siembra un recurso de otro centro en un paso y una WH repetida */
     const o=S.ordenes.find(x=>abiertaDe(x)&&lanzada(x));const dupl=JSON.parse(JSON.stringify(o));dupl.id='dup_'+o.id;S.ordenes.push(dupl);const a2=auditoriaSistema();S.ordenes.pop();
     __check("AU9: la regla de WH repetida detecta una orden duplicada",(a2.hallazgos.find(x=>x.k==='opRepetida')||{}).n===1);}
@@ -8772,6 +8807,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {page='ordenes';CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();render();irAjuste('16 · Tallas');const e=CONF_CATALOGO.find(x=>x.titulo==='16 · Tallas');
     const u=[...document.querySelectorAll('#p-config .cfg-unit')].find(x=>x.getAttribute('data-cfg-key')===cfgNorm(e.titulo));
     __check('CFG10: un enlace desde otra pantalla («revisar tallas») abre Configuración en la tabla justa, ya desplegada',page==='config'&&CONF.tab===e.tab&&!!u&&!u.classList.contains('cfg-plegado'),JSON.stringify({page,tab:CONF.tab,unidad:!!u}))}
+   {CONF={tab:'inicio',q:''};render();const fs=cfgPorCompletar();const filas=[...el.querySelectorAll('.cfg-falta-fila')];const fc=el.querySelector('.cfg-falta');
+    __check('UX-B9: Inicio — «Falta completar» va en filas (cuántas · qué falta · qué pasa mientras tanto) con un botón «Completar →» que también usa quien solo mira; sin notas para el programador («dime…»)',filas.length===fs.length&&fs.every(x=>'n' in x&&!!x.t&&'det' in x&&!!x.txt)&&filas.every((f,j)=>fs[j].i<0||(!!f.querySelector('button[data-ver="1"]')&&/Completar/.test(f.textContent)))&&!/\bdime\b/i.test(fc?fc.textContent:''),filas.length+' filas');
+    const port=el.querySelector('.cfg-portada');
+    __check('UX-B9: Inicio — la portada va en columnas que se rellenan (sin huecos) y cada ajuste lleva «›» y su explicación entera al pasar el mouse',!!port&&getComputedStyle(port).display==='block'&&[...el.querySelectorAll('.cfg-card-it')].every(a=>!!a.querySelector('.cfg-flecha')&&!!a.title))}
+   {const tabDe=t=>(CONF_CATALOGO.find(e=>e.titulo===t)||{}).tab;
+     __check('UX-B9: cada pestaña es un tema — Tramos paralelos y Descansos están en Centros y máquinas; Restricciones de faltante y las tablas 8, 9, 10, 11, 13 y 3 en Telas y colores; ya no existe el aviso «se mudaron» ni la tabla repetida de motivos de reproceso',tabDe('Tramos paralelos')==='recursos'&&tabDe('18 · Descansos por centro')==='recursos'&&['Restricciones de faltante','8 · Categoría de Odoo → tela corta → tela del catálogo','9 · Parámetros por tela','10 · Merma de tintura por tela corta × tipo','11 · Palabras que marcan JASPE en el nombre del producto','13 · Qué le falta a la tela: por palabras del producto y, si no, por origen','3 · Tercer nivel de MP → origen de tela'].every(t=>tabDe(t)==='telas')&&!CONF_CATALOGO.some(e=>/se mudaron|Motivos de reproceso/.test(e.nombre+e.titulo)));
+     const llaves=()=>[...el.querySelectorAll('.cfg-unit')].map(u=>u.getAttribute('data-cfg-key'));const enPlanta=['Tramos paralelos','18 · Descansos por centro'],enTelas=['Restricciones de faltante','8 · Categoría de Odoo → tela corta → tela del catálogo','9 · Parámetros por tela','10 · Merma de tintura por tela corta × tipo','11 · Palabras que marcan JASPE en el nombre del producto','13 · Qué le falta a la tela: por palabras del producto y, si no, por origen','3 · Tercer nivel de MP → origen de tela'];
+     CONF.tab='recursos';render();const kr=llaves();CONF.tab='telas';render();const kt=llaves();CONF.tab='ordenes2';render();const ko=llaves();const ho=el.innerHTML;
+     __check('UX-B9: las tablas se ven en su pestaña nueva y salieron de la de Odoo',enPlanta.every(t=>kr.includes(cfgNorm(t)))&&enTelas.every(t=>kt.includes(cfgNorm(t)))&&!enPlanta.concat(enTelas).some(t=>ko.includes(cfgNorm(t)))&&!/se mudaron/.test(ho),JSON.stringify({recursos:kr.length,telas:kt.length,odoo:ko.length}));
+     __check('UX-B9: la tabla 15 lleva UN selector de uso y un solo botón «Agregar motivo» (no un botón por uso), y «rechazo» la sigue encontrando en el buscador',!!el.querySelector('#mot-uso-nuevo')&&/addMotivoRow\(document\.getElementById\('mot-uso-nuevo'\)\.value\)/.test(ho)&&!/addMotivoRow\('fase'\)/.test(ho)&&cfgResultados('rechazo').some(x=>CONF_CATALOGO[x.i].titulo==='15 · Motivos'));
+     {const t15=motivos();const n=t15.filter(r=>r.uso==='reproceso').length;CONF.motUso='reproceso';render();const filas=[...el.querySelectorAll('input[onchange^="setMotivoRow("]')].filter(x=>/'motivo'/.test(x.getAttribute('onchange')));CONF.motUso='';render();
+      __check('UX-B9: «Ver» de la tabla 15 muestra solo los motivos de reproceso de tintorería (el panel suelto que los repetía salió) y no cambia nada guardado',filas.length===n&&motivos().length===t15.length,filas.length+' de '+n)}
+     CONF.tab='recursos';render();__check('UX-B9: Operarias lleva un selector de módulo y un solo botón «Agregar operaria»',!S.recursos.some(r=>r.centro==='modulos'&&r.activa)||(!!el.querySelector('#op-mod-nueva')&&!/onclick="addOperaria\('mod/.test(el.innerHTML)))}
    {const fs=cfgPorCompletar();__check('CFG11: cada cosa de «Falta completar» lleva a una tabla que existe (ninguna queda sin enlace)',fs.every(x=>x.i>=0&&CONF_CATALOGO[x.i]),JSON.stringify(fs.map(x=>[x.txt.slice(0,40),x.i])))}
    {const r=q=>cfgResultados(q).map(x=>CONF_CATALOGO[x.i].titulo);
     __check('CFG12: el buscador encuentra por palabras de uso («aspecto» → Parámetros, «feriado» → Días de trabajo) y por el nombre viejo de la pestaña («Calendario y parámetros»)',r('aspecto').includes('Parámetros')&&r('feriado').some(t=>/Días de trabajo/.test(t))&&r('Calendario y parámetros').length>=3,JSON.stringify({aspecto:r('aspecto'),feriado:r('feriado')}))}
