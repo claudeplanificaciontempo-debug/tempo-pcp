@@ -727,7 +727,7 @@ html.envivo-tv .env-g{column-width:420px}
 /* B2 · Liberación (textil y a producción) y Entregas (02-oct-2026, revisión «para dummies»). Filas de una o dos líneas; solo variables de color. */
 /* · Liberación: la OP con un ancho mínimo (sin el nowrap de antes); si la orden no tiene foto, su hueco (las WH quedan alineadas); «en el plan» chico, debajo */
 .lib-op-l1{min-width:220px}
-.foto-hueco{display:inline-block;height:1px;margin-right:6px;vertical-align:middle}
+.foto-esp{display:inline-block;height:1px;margin-right:6px;vertical-align:middle}   /* espacio invisible del ancho de la foto: alinea las WH sin foto */
 .lib-plan{margin-top:2px;line-height:1.2}
 /* · tela: una línea por tela con su desplegable; sin confirmar = borde punteado gris (propuesta del catálogo); confirmada = ✓ verde */
 .tl-l{white-space:nowrap;line-height:1.7;font-size:var(--fs-xs)}
@@ -1502,7 +1502,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 20:03';
+const APP_BUILD='2026-10-02 20:40';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -2624,7 +2624,7 @@ const FILTROS_LISTOS=[
   {sec:'Fecha de entrega',items:[['vencidas','Meta vencida',o=>esMetaVencida(o,programar())],['tarde','Van tarde según el programa',o=>esOrdenVaTarde(o,programar())],
     ['esteMes','Entrega este mes',o=>mesEntregaNiv(o)===hoy().slice(0,7)],['sigMes','Entrega el mes siguiente',o=>mesEntregaNiv(o)===mesSiguiente(hoy().slice(0,7))],['sinFecha','Sin fecha de entrega',o=>mesEntregaNiv(o)==='sin fecha']]},
   {sec:'Liberación',items:[['libTela','Tela liberada',o=>liberada(o,'tela')],['libProd','Liberadas a producción',o=>liberada(o,'corte')],['porLib','Por liberar a producción',o=>!liberada(o,'corte')]]},
-  {sec:'Ruta',items:[['rutaDef','Ruta por definir',o=>!rutaLista(o)],['rutaOk','Ruta confirmada',o=>rutaConfirmada(o)]]},
+  {sec:'Ruta',items:[['rutaDef','Ruta por definir',o=>matchEdicionOrd(o,'porEditar')],['rutaOk','Ruta confirmada',o=>matchEdicionOrd(o,'editadas')],['rutaNoAplica','Terminadas o cerradas (no necesitan ruta)',o=>matchEdicionOrd(o,'terminadas')]]},   /* la misma regla que las fichas de Órdenes (matchEdicionOrd, con las marcas de la OT): una sola definición */
   {sec:'Otros',items:[['sinWH','Sin WH (diseño)',o=>sinWHde(o)],['conWH','Con WH',o=>!sinWHde(o)],['urgentes','Urgentes',o=>o.prio===1],['maquila','Van a maquila',o=>vaAMaquila(o)]]}];
 const CAMPOS_FILTRO=[['op','Orden de producción (WH)','txt',o=>o.op],['cliente','Cliente','txt',o=>o.cliente],['odc','ODC','txt',o=>o.odc],['ref','Referencia (estilo)','txt',o=>o.ref],
   ['fam','Familia','txt',o=>famDeOrden(o)],['cat','Tipo de producto','txt',o=>nombreCat(K(o.cat))],['color','Color','txt',o=>(C(o.color)||{}).n],['fase','Fase','txt',o=>faseNombre(o.fase)],
@@ -5412,7 +5412,7 @@ function irRutaDeOrden(oid){const o=S.ordenes.find(x=>x.id===oid);ORDF.tab='ruta
    (es información, no un problema; el texto largo va al pasar el mouse). Listas: la tela con su desplegable (chipsFaltaTela) y la ruta, la MISMA de
    Órdenes (rutaCeldaHTML; con permiso, clic = revisarla o corregirla en mRutaCentro). Frenadas: frenosFilaLibHTML. Nada se calcula aquí. */
 function opLibHTML(o){const ep=enPlanMes(o);const px=prm('fotoMiniPx',44);
-  const hueco=fotoDe(o)?'':'<span class="foto-hueco" style="width:'+px+'px"></span>';
+  const hueco=fotoDe(o)?'':'<span class="foto-esp" style="width:'+px+'px"></span>';
   let plan='';if(ep){const cg=ep.congelado;const tit='Entró al plan de '+mesCortoTxt(ep.ym)+(cg?' (congelado'+(cg.ts?' el '+fmtDiaTs(cg.ts):'')+')':'')+': EN EL PLAN — pendiente de liberar. Es obligatorio liberarla'+(sinWHde(o)?'; todavía no se puede liberar porque Odoo no le ha dado número de WH':'')+'.';
     plan='<div class="lib-plan" style="padding-left:'+(px+6)+'px"><span class="tag t-medio" title="'+esc(tit)+'">'+(cg?'plan congelado':'en el plan')+'</span></div>'}
   return '<div class="lib-op-l1">'+hueco+whCell(o)+'</div>'+plan}
