@@ -416,6 +416,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    delete o1.foto;__check("fotos: tras una recarga de órdenes el enlace se vuelve a colgar por OP",colgarFotos()===1&&!!o1.foto);
    cerrar();page="ordenes";ORDF.q=o1.op;const g0=ORDF.grupo;ORDF.grupo=null;GRP={};grpSt("ord").niveles=[];render();const hO=document.getElementById("p-ordenes").innerHTML;ORDF.q="";ORDF.grupo=g0;__check("fotos: miniaturas en la lista de órdenes",hO.includes("foto-mini"));
    page="imprimir";IMP.area="pro";render();const hI=document.getElementById("p-imprimir").innerHTML;__check("fotos: hoja impresa de producción lleva la foto (54 px)",__R.errors.length===antes&&(hI.includes("foto-mini")||!hI.includes(o1.op)),hI.includes(o1.op));
+   __check("UX-B4: Programa del día — el aviso de pasos sin tiempo es del día y queda fuera de la hoja impresa; «sin técnica» ya no se repite en cada fila; el detalle del día va plegado",!/Sin tiempo estándar \(tienen fecha/.test(hI)&&!/· sin técnica/.test(hI)&&!document.querySelector('#p-imprimir #hoja .imp-aviso')&&(!!document.querySelector('#p-imprimir details.det-agr')||/Nada que mostrar/.test(hI)));
+   {IMP.area="tin";render();const hT=document.getElementById("p-imprimir").innerHTML;const hayB=programar().banos.some(b=>!b.error&&b.dia===IMP.dia&&S.recursos.some(r=>r.id===b.rec&&r.activa));
+    __check("UX-B4: Programa del día — tintorería sin baños ese día es una línea, no una tabla de columnas vacías",hayB?/Llenado<\/th>/.test(hT):(/sin baños programados para este día/.test(hT)&&!/Llenado<\/th>/.test(hT)),hayB?'hay baños':'sin baños');IMP.area="pro";}
    page="macro";render();const hM=document.getElementById("p-macro").innerHTML;__check("fotos: la macro no lleva fotos",!hM.includes("foto-mini"));
    page="liberacion";LIB.et="corte";render();__check("fotos: liberación renderiza con miniaturas sin errores",__R.errors.length===antes);
    page="ordenes";render();}
@@ -815,6 +818,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const nb=S.bitacora.length;render();const ps=S.params.capProblemas||[];const p=ps.find(q=>q.c===x.c&&q.m===x.m&&!q.cerrado);
    __check("capacidad: un centro-mes que no alcanza se registra como problema nuevo con bitácora",!!p&&!p.visto&&S.bitacora.slice(nb).some(b=>/Capacidad: nuevo problema/.test(b.t)&&b.t.includes(fmtMesEG(x.m))));
    __check("capacidad: la pantalla marca el problema como nuevo",html().includes('nuevos sin ver')&&html().includes('>nuevo<'));
+   __check("UX-B4: Capacidad — «nuevo» solo en la lista de qué decidir, no en las celdas de la tabla (ya van en rojo); sin el enlace «ver cuáles» que abría un solo centro; tarjetas que dicen «casos»",![...document.querySelectorAll('#p-capacidad td.cel')].some(td=>/nuevo/.test(td.textContent))&&!/ver cuáles/.test(html())&&/casos de un centro en un mes por encima del 100 %/.test(html()));
    __check('CAP4: con los recursos apagados (capacidad 0) la tabla de arriba dice «capacidad 0», nunca «0%»',/capacidad 0/.test(html())&&!/>0%</.test(html()));
    page='panorama';render();__check("Hoy: avisa los problemas nuevos de capacidad con enlace",document.getElementById('p-panorama').innerHTML.includes('Capacidad y decisiones:')&&document.getElementById('p-panorama').innerHTML.includes('nuevos sin ver'));
    page='capacidad';CAPD.sel=x.c+'|'+x.m;render();__check("capacidad: detalle de la celda con faltan, órdenes por peso, no liberadas y meses con holgura",html().includes('Órdenes todavía NO liberadas')&&html().includes('Decisiones sobre')&&(html().includes('Meses cercanos con holgura')||html().includes('tiene holgura')));
@@ -2322,6 +2326,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    retirarLib(oL.id,'tela','Cliente cambió la orden');const au2=auditoriaCambios().slice(-1)[0];__check("CC-e: revertir con motivo de la tabla revierte y queda en auditoría con antes/después",!(oL.lib&&oL.lib.tela)&&au2&&au2.tipo==='liberacion'&&/liberada/.test(au2.antes)&&au2.despues==='sin liberar'&&au2.motivo==='Cliente cambió la orden');
    oL.lib={tela:{ok:true,u:'t',ts:new Date().toISOString()}};
    page='auditoria';render();__check("CC-e: Auditoría de replanificación muestra los cambios de fase y las reversiones",document.getElementById('p-auditoria').innerHTML.includes('Cambios de fase y reversiones de liberación'));
+   {/* UX-B4: Auditoría en tres pestañas con su número; los registros seguidos iguales en UNA fila; los centros por su nombre; «Qué» según lo que pasó */
+    const oA=S.ordenes.find(abierta)||S.ordenes[0];const tsF=new Date(Date.now()+60e3).toISOString();const tsP=new Date(Date.now()-3600e3).toISOString();
+    for(let i=0;i<6;i++)auditoriaCambios().push({id:'uxb4-'+i,ts:tsF,u:'Prueba B4',tipo:'ruta',dev:false,oid:oA.id,op:oA.op,antes:'corte → modulos',despues:'corte → modulos → empaque',motivo:'ruta rehecha: prueba UX-B4'});
+    auditoriaCambios().push({id:'uxb4-d',ts:tsP,u:'Prueba B4',tipo:'ruta',dev:true,oid:oA.id,op:oA.op,antes:'confirmada (persona)',despues:'por definir',motivo:'prueba desconfirmar'});
+    AUD.tab='rutas';page='auditoria';render();const elA=document.getElementById('p-auditoria');const hA=elA.innerHTML;
+    __check("UX-B4: Auditoría en tres pestañas con su número; solo se ve la elegida y las otras siguen en la página",elA.querySelectorAll('.aud-tabs .chip').length===3&&elA.querySelectorAll('[data-aud-sec]').length===3&&elA.querySelectorAll('[data-aud-sec]:not([hidden])').length===1&&!!elA.querySelector('[data-aud-sec="rutas"]:not([hidden])')&&/Rutas · [0-9]/.test(elA.querySelector('.aud-tabs').textContent));
+    __check("UX-B4: seis registros seguidos iguales (misma persona, motivo y minuto) van en UNA fila plegable «6 rutas rehechas · automático»",/6 rutas rehechas/.test(hA)&&/automático \(sesión de Prueba B4\)/.test(hA)&&!!elA.querySelector('tr.aud-grupo details'));
+    __check("UX-B4: Antes y Después nombran el centro, no el código interno; «por definir» se lee «ruta desconfirmada»",hA.includes(esc(nCen('corte'))+' → '+esc(nCen('modulos')))&&!/>corte → modulos/.test(hA)&&/ruta desconfirmada/.test(hA));
+    AUD.tab='';render();const secV=elA.querySelector('[data-aud-sec]:not([hidden])');
+    __check("UX-B4: sin pestaña elegida se abre la del registro más reciente",!!secV&&secV.getAttribute('data-aud-sec')==='rutas',secV?secV.getAttribute('data-aud-sec'):'ninguna');
+    S.params.auditoriaCambios=auditoriaCambios().filter(e=>!/^uxb4-/.test(e.id||''));render();}
    page='liberacion';LIB.et='tela';render();__check("CC-e: el botón 'retirar' de Liberación abre el modal con motivo (mRetirarLib)",document.getElementById('p-liberacion').innerHTML.includes('mRetirarLib(')||!document.getElementById('p-liberacion').innerHTML.includes('retirar</button>'));
    // f) navegación atrás
    NAVH.length=0;page='ordenes';ORDF.q='';render();LIB.q='WH/ATRAS';ir('liberacion');__check("CC-f: llegar por clic desde otra pantalla muestra '← atrás'",page==='liberacion'&&NAVH.length===1&&document.getElementById('p-liberacion').innerHTML.includes('← atrás'));
@@ -2554,9 +2569,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    if(/Familia por fase/.test(h)){CEN.cruce='fase';render();const h2=document.getElementById('p-centro').innerHTML;
      __check("CP4: al darla vuelta, las fases pasan a las filas",/ver familias en las filas/.test(h2));CEN.cruce='fam'}
    else __check("CP4: al darla vuelta, las fases pasan a las filas",true,'sin órdenes en camino en esta base');
-   __check("CP4: 'Sin liberar' se muestra como tarjeta desplegable",/data-t="cv-sinlib"/.test(h)||!/Sin liberar/.test(h));
+   __check("CP4: 'Sin liberar' se muestra como tarjeta que lleva al panel de su grupo (ya no despliega una copia de la lista)",/data-t="cv-sinlib"/.test(h)||!/Sin liberar/.test(h));
    __check("CP2: 'Carga que viene' también usa el filtro de fases y el agrupador comunes",/class="ffases"/.test(h)&&/grp-sel|— sin agrupar —/.test(h));
    __check("CP6: 'Carga que viene' no muestra la entrega, muestra la marca",!/<th>Entrega<\/th>/.test(h));
+   {const tbs=[...document.querySelectorAll('#p-produccion table')].filter(t=>t.tHead&&/Llega aquí/.test(t.tHead.textContent));
+    __check("UX-B4: Carga que viene — cada grupo tiene UNA columna «Llega aquí» (sin «Si estuviera liberada» ni «Liberación», que repetía el título del grupo)",tbs.every(t=>!/Si estuviera liberada|Liberación/.test(t.tHead.textContent)&&t.tHead.querySelectorAll('th').length===6),tbs.length+' tablas');
+    __check("UX-B4: la tarjeta «Sin liberar todavía» lleva al panel de su grupo en vez de repetir la lista",!/data-t="cv-sinlib"/.test(h)||(/verSinLibCV\(\)/.test(h)&&/id="cv-g-sinlib"/.test(h)));
+    const pan=[...document.querySelectorAll('#p-produccion .panel')].find(p=>{const t=p.querySelector('h3');return t&&/^Familia por fase/.test(t.textContent.trim())});
+    const fsP=pan?(((pan.querySelector('thead th')||{}).textContent||'').trim()==='Familia'?[...pan.querySelectorAll('thead th[title]')].map(x=>x.getAttribute('title')):[...pan.querySelectorAll('tbody td:first-child span[title]')].map(x=>x.getAttribute('title'))):[];
+    __check("UX-B4: «Familia por fase» pone las fases en el orden del proceso (cmpFases) y sin el número de Odoo pegado al nombre",!pan||(fsP.every((f,i)=>i===0||cmpFases(fsP[i-1],f)<=0)&&!/<th class="num"[^>]*>[0-9][A-Za-zÁÉÍÓÚáéíóúÑñ]/.test(pan.innerHTML)),fsP.slice(0,6).join(' · '))}
    // el filtro de fases acota de verdad
    {page='centro';CEN.id='modulos';CEN.tab='plan';CEN.fases=new Set(['∅']);render();const hv=document.getElementById('p-centro').innerHTML;
     __check("CP2: 'ninguna fase' deja la vista vacía (el filtro acota de verdad)",/0 prendas programadas/.test(hv)||/Nada programado/.test(hv));CEN.fases=null}
@@ -2671,6 +2692,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    page='produccion';CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:''};render();let h=document.getElementById('p-produccion').innerHTML;
    __check("CG: Carga general dice su base y separa firme, en proceso y reserva",/base: <b>programadas<\/b>/.test(h)&&/firme, en proceso y reserva/.test(h)&&/todas las abiertas/.test(h));
    __check("CG: muestra 8 semanas por defecto (parámetro semCarga)",semanasCarga().length===8&&prm('semCarga',8)===8);
+   __check("UX-B4: Carga general no nombra la clave interna «semCarga» ni dice que se cambia en Configuración (no hay ese campo); sin «consulta: carga contra capacidad»; cada celda dice % y horas, o «—» si no hay nada programado esa semana",!/semCarga/.test(h)&&!/consulta: carga contra capacidad/.test(h)&&!/min si se cuenta todo lo abierto/.test(h)&&(/ h de [0-9.,]+ h</.test(h)||/nada programado esa semana/.test(h)||/sin capacidad configurada/.test(h)));
    page='capacidad';render();__check("CG: Capacidad y decisiones dice que su base es «todas las abiertas» y cuál es el número oficial",/base: <b>todas las abiertas<\/b>/.test(document.getElementById('p-capacidad').innerHTML)&&/plan congelado/.test(document.getElementById('p-capacidad').innerHTML));
    // 3 · Asignación por orden se retiró el 21-sep (usuaria): su enlace cae en Producto en proceso; clasificarAsig sigue vivo para el detalle
    __check("CG: Asignación por orden ya no está en Reportería ni en el menú; el enlace viejo lleva a Producto en proceso y clasificarAsig sigue existiendo",!document.querySelector('nav a[data-p=\"asignacion\"]')&&!REPORTES.some(r=>r.p==='asignacion')&&typeof vAsignacion==='undefined'&&typeof clasificarAsig==='function'&&(()=>{page='asignacion';render();return page==='wip'})());
@@ -2703,6 +2725,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("BE1: las tablas de tipos de máquina, operarias y máquinas por módulo están en Configuración",/Tipos de máquina/.test(hc)&&/Operarias y especialidades/.test(hc)&&/Máquinas de confección/.test(hc));
    page='balanceo';render();const hb=document.getElementById('p-balanceo').innerHTML;
    __check("BE1: Balanceo abre con la vista de módulos (personas, máquinas y referencia en curso)",/Módulos de confección/.test(hb)&&/data-t="balmod-/.test(hb));
+   __check("UX-B4: Balanceo — cada tarjeta dice «personas»; la tolerancia ya no se nombra por su clave interna («tolPuesto»); sin la instrucción al pie; con la lista de hojas, el botón dice «Ver balanceo» y el detalle de las órdenes va plegado",/<small> personas<\/small>/.test(hb)&&!/tolPuesto/.test(hb)&&!/Haz clic en «balanceo»/.test(hb)&&(BAL.grupo||!/Órdenes programadas en/.test(hb)||(/Ver balanceo →/.test(hb)&&!!document.querySelector('#p-balanceo details.det-agr'))));
    const bt=JSON.parse(bakT);if(bt)S.params.tiposMaq=bt;else delete S.params.tiposMaq;
    const bo=JSON.parse(bakO);if(bo)S.params.operarias=bo;else delete S.params.operarias;
    PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render();
