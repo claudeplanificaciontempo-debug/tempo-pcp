@@ -701,6 +701,43 @@ html[data-modo="oscuro"] body .kpis>.kpi.tarj.bad .v{color:var(--alerta)!importa
 /* · */
 /* · */
 /* ux:B2 */
+/* B2 · Liberación (textil y a producción) y Entregas (02-oct-2026, revisión «para dummies»). Filas de una o dos líneas; solo variables de color. */
+/* · Liberación: la OP con un ancho mínimo (sin el nowrap de antes); si la orden no tiene foto, su hueco (las WH quedan alineadas); «en el plan» chico, debajo */
+.lib-op-l1{min-width:220px}
+.foto-hueco{display:inline-block;height:1px;margin-right:6px;vertical-align:middle}
+.lib-plan{margin-top:2px;line-height:1.2}
+/* · tela: una línea por tela con su desplegable; sin confirmar = borde punteado gris (propuesta del catálogo); confirmada = ✓ verde */
+.tl-l{white-space:nowrap;line-height:1.7;font-size:var(--fs-xs)}
+td.lib-tela select.sel-falta{width:auto;min-width:0;max-width:none;font-size:var(--fs-xs);padding:1px 4px;height:auto;margin:0 0 0 2px;vertical-align:middle;border-radius:4px}
+td.lib-tela select.sel-prop{border-style:dashed;color:var(--ink3)}
+.tl-ok{color:var(--ok);font-weight:700;margin-left:4px}
+/* · última columna en letra chica: la ruta (la misma de Órdenes; con permiso se toca para corregirla) o lo que la frena (dos líneas como máximo) */
+td.lib-ult{font-size:var(--fs-xs)}
+td.lib-ult .lib-chips{max-width:360px}
+.lib-ruta.clic{cursor:pointer}
+.lib-ruta.clic:hover{text-decoration:underline}
+#p-liberacion td label.lib-rev{color:var(--ink3);margin:0 0 0 6px}
+.lib-chips .tag{margin:1px 0}
+a.lib-ruta-ed{white-space:nowrap}
+.lib-venc{margin-bottom:2px}
+.lib-verif{display:flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+.lib-sub{margin-top:3px;color:var(--ink3)}
+.lib-acciones .spacer{flex:1}
+/* · Entregas: el cliente en el título; ODC, fechas y etiquetas de la tabla en una línea; la fecha de compromiso como edición en línea (borde al pasar el mouse) */
+.pagehead h2 .eg-cli{font-weight:400;color:var(--ink2);font-size:.72em;white-space:nowrap}
+.pagehead h2 .eg-cli select{width:auto;max-width:380px;font-size:var(--fs-m);font-weight:600;color:var(--ink);padding:3px 8px;margin-left:4px;vertical-align:middle}
+.eg-masiva{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 12px;margin:0 0 8px;border:1px solid var(--rule);border-left:4px solid var(--o-primary,var(--t-accent));border-radius:6px;background:var(--field);font-size:var(--fs-s)}
+.eg-masiva label{display:inline;margin:0;color:var(--ink2)}
+.eg-masiva input[type=date]{width:160px;min-width:0}
+.eg-agrupar{margin:0 0 8px}
+.eg-agrupar>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.eg-agrupar label{display:inline;margin:0}
+.eg-t td.nw,.eg-t td .tag{white-space:nowrap}
+table td.eg-comp input[type=date]{border-color:transparent;background:transparent;box-shadow:none;width:150px;min-width:0}
+table td.eg-comp input.vacio{color:var(--ink3)}
+table tr:hover td.eg-comp input[type=date],table td.eg-comp input[type=date]:focus{border-color:var(--rule);background:var(--paper)}
+.kpi .v .eg-de{font-size:var(--fs-s);font-weight:400;color:var(--ink3)}
+@media print{.eg-kpis .tarj-lista,.eg-masiva,.eg-agrupar{display:none}}
 /* · */
 /* · */
 /* ux:B3 */
@@ -746,7 +783,7 @@ html[data-modo="oscuro"] body .kpis>.kpi.tarj.bad .v{color:var(--alerta)!importa
       <a data-p="envivo">Planta en vivo</a>
       <a data-p="ordenes" class="on">Órdenes <span class="n" id="n-ord"></span></a>
       <a data-p="plan">Planificar el mes</a>
-      <a data-p="liberacion" data-lib="tela">Liberación</a>
+      <a data-p="liberacion" data-lib="tela">Liberación textil</a>
       <a data-p="entregas">Entregas</a>
       <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
       <a data-p="capacidad" data-perm="programa">Capacidad y decisiones</a>
@@ -1217,7 +1254,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-02 19:09';
+const APP_BUILD='2026-10-02 19:35';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -4636,7 +4673,7 @@ function colsEntregas(){const P=S.ordenes.length?programar():{ordenes:{}};const 
     {k:'depto',n:'Departamento',def:true,grupo:'cliente',v:o=>esc(o.depto||'')},
     {k:'proyecto',n:'Proyecto (mes)',def:false,grupo:'cliente',v:o=>esc(o.proyecto||'')},
     {k:'telas',n:'Telas (solo nombres)',def:false,grupo:'cliente',v:o=>esc([...new Set((o.telas||[]).map(t=>nTela(t.tela)))].join(', '))},
-    {k:'estimada',n:'Fecha estimada por el programa',def:false,interno:true,v:o=>{const r=ro(o);return r.finPro?fmtDia(r.finPro)+(r.atraso?' (atraso)':''):(r.bloqueo?esc(r.bloqueo):'—')}},
+    {k:'estimada',n:'Fecha estimada por el programa',def:false,interno:true,v:o=>{const r=ro(o);let m='';try{m=esMetaVencida(o,P)?' (meta vencida)':esOrdenVaTarde(o,P)?' (va tarde)':''}catch(e){}return (r.finPro?fmtDia(r.finPro):(r.bloqueo?esc(r.bloqueo):'—'))+m}},   /* 02-oct: la marca común de fecha, como la pantalla */
     {k:'lib',n:'Estado de liberación',def:false,interno:true,v:o=>esc(estadoLibEG(o))},
     {k:'fase',n:'Fase de Odoo',def:false,interno:true,v:o=>esc(o.fase||'')},
     {k:'estadoOP',n:'Estado OP de Odoo',def:false,interno:true,v:o=>esc(o.estadoOP||'')},
@@ -4665,7 +4702,11 @@ function listaEntregas(){const ords=S.ordenes.filter(o=>abierta(o));const telasO
   const qEG=normTxt(EG.q||'');const lista=ords.filter(o=>(!EG.cli||o.cliente===EG.cli)&&ok(EG.meses)((o.fecha||'').slice(0,7))&&ok(EG.fam)(padreEG(o))&&ok(EG.hija)(hijaEG(o))&&okTela(EG.tela)(o)&&matchBusq(o,qEG,'EG.q'));   /* 02-oct: el buscador de Entregas ya filtra (antes solo estaba dibujado) */
   return{ords,lista,arbol:agruparEG(lista,nivelesEG()),telasOrden}}
 function selNivelesEG(){const n=nivelesEG();const sel=(i)=>`<select onchange="setNivelEG(${i},this.value)"><option value="">${i===0?'— sin agrupar —':'— y luego —'}</option>${EG_CAMPOS_GRUPO.map(([k,v])=>`<option value="${k}" ${n[i]===k?'selected':''}>${v}</option>`).join('')}</select>`;
-  return `<div><label>Agrupar por <span class="mut" title="Agrupar no esconde nada: reordena y suma. El PDF sale con esta misma agrupación.">(anidado, como Odoo)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
+  return `<div><label>Agrupar por${ayudaTipHTML('Agrupar no esconde nada: reordena y suma (hasta tres niveles, uno dentro de otro). El PDF para el cliente sale con esta misma agrupación.')}</label><div style="display:flex;gap:6px;flex-wrap:wrap">${[0,1,2].filter(i=>i<=n.length).map(sel).join('')}</div></div>`}
+/* Entregas (02-oct-2026, revisión «para dummies», lote B2): el cliente va en el título («Entregas de [cliente ▾]»: la pantalla es de un cliente a la vez,
+   así se ve cuál está elegido); el buscador y los filtros van juntos en UNA fila (sube a la barra de búsqueda); el agrupador queda encima de la tabla; la
+   barra de fecha de compromiso aparece solo con órdenes marcadas (la casilla del encabezado marca todas). Arriba, cinco tarjetas con las marcas COMUNES de
+   fecha (esMetaVencida = meta vencida, rojo · esOrdenVaTarde = va tarde, ámbar: las mismas de Hoy), no el «atraso» del motor. El PDF no cambia. */
 function vEntregas(el){
   if(EG.pdf){vEntregasPDF(el);return}
   const P=S.ordenes.length?programar():{ordenes:{}};const L=listaEntregas();const {ords,lista,arbol,telasOrden}=L;
@@ -4675,27 +4716,33 @@ function vEntregas(el){
   if(!EG.cli&&clis.length){EG.cli=clis[0];vEntregas(el);return}
   const pzTot=lista.reduce((a,o)=>a+ +o.cant,0);const selCount=EG.sel.size;const nCols=colsEntregas().filter(colPdfOn).length;
   const sinLib=lista.filter(o=>!liberada(o,'tela')),sinLibPz=sinLib.reduce((a,o)=>a+ +o.cant,0);
-  const fila=o=>{const r=P.ordenes[o.id]||{};const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td>${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td>${r.finPro?fmtFecha(r.finPro)+(r.atraso?' <span class="tag t-alerta">atraso</span>':''):(r.bloqueo?'<span class="tag t-lavado">'+esc(r.bloqueo)+'</span>':'—')}</td>
-     <td><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
-     <td><input type="date" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} onchange="setCompromiso('${o.id}',this.value)"></td></tr>`};
-  el.innerHTML=`<div class="pagehead"><h2>Entregas</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
-  <p class="lede no-print"><b>Base: todas las órdenes abiertas</b> (con WH, no facturadas ni en stand by), <b>liberadas o no</b> — la misma base que el plan mensual. Con la fecha estimada según el programa, el estado de liberación y tu fecha de compromiso. <b>Esta pantalla es interna</b>; el PDF para el cliente solo lleva las columnas que marques en "Columnas del PDF" y sale con la misma agrupación.</p>
-  <div class="panel no-print"><div class="body" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
-   <div><label>Cliente</label><select onchange="EG.cli=this.value;render()">${clis.map(c=>`<option value="${esc(c)}" ${EG.cli===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+  const venc=new Set(),tarde=new Set();lista.forEach(o=>{let v=false,t=false;try{v=esMetaVencida(o,P);t=!v&&esOrdenVaTarde(o,P)}catch(e){}if(v)venc.add(o.id);else if(t)tarde.add(o.id)});
+  const conComp=lista.filter(o=>o.fechaCompromiso);
+  const marcaEG=o=>venc.has(o.id)?' <span class="tag t-alerta" title="la fecha meta ya pasó y la orden no está terminada">meta vencida</span>':tarde.has(o.id)?' <span class="tag t-aviso" title="el programa la termina después de su fecha meta">va tarde</span>':'';
+  /* sin fecha del programa: «sin liberar» ya lo dice la columna Liberación; a la vista solo lo que agrega algo (baño pendiente de decisión, tela pendiente) */
+  const estimadaEG=o=>{const r=P.ordenes[o.id]||{};if(r.finPro)return fmtFecha(r.finPro)+marcaEG(o);const b=String(r.bloqueo||'');
+    if(b&&!/sin liberar/.test(b))return '<span class="tag t-lavado" title="el programa todavía no le da fecha">'+esc(b)+'</span>'+marcaEG(o);
+    return '<span class="mut" title="'+esc(b?'sin fecha estimada: '+b:'sin fecha estimada del programa')+'">—</span>'+marcaEG(o)};
+  const fila=o=>{const lib=estadoLibEG(o);return `<tr><td class="no-print"><input type="checkbox" ${EG.sel.has(o.id)?'checked':''} onchange="togSelEG('${o.id}',this.checked)"></td><td style="white-space:nowrap">${whCell(o)}</td><td class="nw">${esc(o.odc||'')}</td><td>${esc(o.ref||'')}</td><td>${esc(o.depto||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(hijaEG(o)||'—')}</span></td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="tag t-aviso" title="sin fecha de entrega en Odoo">sin fecha</span>'}</td><td class="nw">${estimadaEG(o)}</td>
+     <td class="nw"><span class="tag ${lib==='sin liberar'?'t-lavado':'t-ok'}">${esc(lib)}</span></td>
+     <td class="eg-comp"><input type="date" class="${o.fechaCompromiso?'':'vacio'}" value="${o.fechaCompromiso||''}" ${puede('ordenes')?'':'disabled'} title="la fecha de entrega que le comprometes al cliente" onchange="setCompromiso('${o.id}',this.value)"></td></tr>`};
+  const todasSel=lista.length>0&&lista.every(o=>EG.sel.has(o.id));
+  const barra=selCount?`<div class="eg-masiva no-print"><b>${num(selCount)} ${selCount===1?'seleccionada':'seleccionadas'}</b><span class="mut">·</span><label for="eg-masiva">Fecha de compromiso</label><input type="date" id="eg-masiva" value="${EG.masiva}" onchange="EG.masiva=this.value"><button class="btn sm" onclick="aplicarMasivaEG()" title="pone esta fecha de compromiso a las marcadas">Aplicar</button><button class="btn ghost sm" onclick="marcarTodoEG(false)">Quitar selección</button></div>`:'';
+  el.innerHTML=`<div class="pagehead"><h2>Entregas${clis.length?` <span class="eg-cli no-print" data-filtro-local="1">de <select title="cliente: la pantalla y el PDF son de un cliente a la vez" onchange="EG.cli=this.value;render()">${clis.map(c=>`<option value="${esc(c)}" ${EG.cli===c?'selected':''}>${esc(c)}</option>`).join('')}</select></span>`:''}</h2><span class="spacer"></span><button class="btn ghost no-print" onclick="mColsEntregas()">Columnas del PDF (${nCols})</button> <button class="btn no-print" onclick="EG.pdf=true;render()">PDF para el cliente</button> <button class="btn ghost no-print" onclick="window.print()" title="imprime esta pantalla tal cual, con los datos internos">Imprimir pantalla</button></div>
+  <p class="lede no-print"><b>Base: todas las órdenes abiertas</b> (con WH, no facturadas ni en stand by), <b>liberadas o no</b> — la misma base que el plan mensual — de un cliente a la vez (se elige en el título). Con la fecha estimada según el programa, el estado de liberación y tu fecha de compromiso. «Meta vencida» (rojo) y «va tarde» (ámbar) son las mismas marcas de Hoy. Para poner la fecha de compromiso a varias, márcalas (la casilla del encabezado marca todas) y aparece la barra para aplicarla. <b>Esta pantalla es interna</b>; el PDF para el cliente solo lleva las columnas que marques en "Columnas del PDF" y sale con la misma agrupación.</p>
+  <div class="row no-print eg-filtros" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin:0 0 12px">
+   <div style="width:220px"><label>Buscar</label>${busqHTML('EG.q',EG.q,'EG.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
    ${selMulti('Meses de entrega',meses,EG.meses,'EG.meses','togMesEG',fmtMesEG)}
    ${selMulti('Familia',fams,EG.fam,'EG.fam','togFamEG')}${selMulti('Categoría',hijas,EG.hija,'EG.hija','togHijaEG')}${selMulti('Tipo de tela',telasDisp,EG.tela,'EG.tela','togTelaEG',nTela)}
-   ${(EG.meses||EG.fam||EG.hija||EG.tela)?`<div><button class="btn ghost sm" onclick="EG.meses=null;EG.fam=null;EG.hija=null;EG.tela=null;render()">Limpiar filtros</button></div>`:''}
-   <span style="border-left:1px solid var(--rule);height:34px"></span>${selNivelesEG()}</div></div>
-  <div class="panel no-print"><div class="body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-   <b style="font-size:var(--fs-s)">Edición masiva de fecha de compromiso</b><span class="mut" style="font-size:var(--fs-s)">${selCount} seleccionadas</span>
-   <input type="date" id="eg-masiva" value="${EG.masiva}" onchange="EG.masiva=this.value">
-   <button class="btn sm" ${selCount?'':'disabled title="marca al menos una orden"'} onclick="aplicarMasivaEG()">Aplicar a las seleccionadas</button>
-   <div style="width:200px"><label>Buscar</label>${busqHTML('EG.q',EG.q,'EG.q=v','width:100%;font-size:var(--fs-s);padding:4px 6px')}</div>
-   <button class="btn ghost sm" onclick="marcarTodoEG(true)">Marcar todas</button>
-   <button class="btn ghost sm" onclick="marcarTodoEG(false)">Ninguna</button></div></div>
+   ${(EG.meses||EG.fam||EG.hija||EG.tela)?`<div><button class="btn ghost sm" onclick="EG.meses=null;EG.fam=null;EG.hija=null;EG.tela=null;render()">Limpiar filtros</button></div>`:''}</div>
   <section class="imp"><div class="imp-cab"><div><b>${esc(EG.cli||'Todos los clientes')}</b> <span class="mut">· vista interna</span></div><div class="mut">TEMPOCODECA · al ${new Date().toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-  <div class="kpis" style="margin:10px 0 16px"><div class="kpi"><div class="v">${lista.length}</div><div class="k">Órdenes abiertas (liberadas o no)</div></div><div class="kpi"><div class="v">${num(pzTot)}</div><div class="k">Prendas por entregar</div></div><div class="kpi ${sinLib.length?'warn':''}"><div class="v">${sinLib.length}</div><div class="k">Sin liberar · ${num(sinLibPz)} prendas · por resolver antes de comprometer</div></div><div class="kpi"><div class="v">${lista.filter(o=>o.fechaCompromiso).length}</div><div class="k">Con fecha de compromiso</div></div></div>
-  ${lista.length?`<div class="scroll lista"><table><thead><tr><th class="no-print" style="width:24px"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
+  <div class="eg-kpis" style="margin:10px 0 16px">${tarjetasResumenHTML([
+    {id:'eg-abiertas',v:num(lista.length),k:'Órdenes abiertas (liberadas o no) · '+num(pzTot)+' prendas por entregar',title:'todas las de este cliente con los filtros puestos: son las de la tabla de abajo'},
+    {id:'eg-venc',v:num(venc.size),k:'Meta vencida',cls:venc.size?'bad':'',items:lista.filter(o=>venc.has(o.id)),title:'la fecha meta ya pasó y la orden no está terminada (la misma cuenta de Hoy)'},
+    {id:'eg-tarde',v:num(tarde.size),k:'Va tarde según el programa',cls:tarde.size?'warn':'',items:lista.filter(o=>tarde.has(o.id)),title:'el programa la termina después de su fecha meta'},
+    {id:'eg-sinlib',v:num(sinLib.length),k:'Sin liberar · '+num(sinLibPz)+' prendas',cls:sinLib.length?'warn':'',items:sinLib,title:'por resolver antes de comprometer una fecha'},
+    {id:'eg-comp',v:num(conComp.length)+' <span class="eg-de">de '+num(lista.length)+'</span>',k:'Con fecha de compromiso',items:conComp,title:'las que ya tienen fecha de compromiso con el cliente'}])}</div>
+  ${lista.length?`<div class="eg-agrupar no-print" data-filtro-local="1">${selNivelesEG()}</div>${barra}<div class="scroll lista"><table class="eg-t"><thead><tr><th class="no-print" style="width:24px"><input type="checkbox" title="marcar todas las que ves" ${todasSel?'checked':''} onchange="marcarTodoEG(this.checked)"></th><th>OP</th><th>ODC</th><th>Estilo</th><th>Departamento</th><th title="tipo de producto (la familia, al pasar el mouse)">Categoría</th><th>Color</th><th class="num">Prendas</th><th>Pedido (entrega)</th><th>Estimada por el programa</th><th>Liberación</th><th style="width:150px">Fecha de compromiso</th></tr></thead><tbody>
    ${filasArbolEG(arbol,fila,12)}</tbody></table></div>`:'<p class="mut">Nada pendiente con estos filtros.</p>'}
   ${avisoFueraDeBaseHTML('EG.q',lista,'los meses, la familia, el tipo de producto y la tela del filtro')}
   </section>`;
@@ -4993,21 +5040,48 @@ function okFiltrosB1(o){const ok=(set,v)=>!set||!set.size||set.has(v);
 function togSetOdcLib(v){togSet(LIB,'odc',v)}
 function togSetYmLib(v){if(LIB.ym&&!LIB.ym.has)LIB.ym=new Set([LIB.ym]);togSet(LIB,'ym',v);LIB.fam2=null}
 function irRutaDeOrden(oid){const o=S.ordenes.find(x=>x.id===oid);ORDF.tab='rutas';RUT.ver='pend';RUT.q=o?refDe(o):'';ir('ordenes')}
-function celdaLibProd(o,lista,falta){const v=LIBV[o.id]||{};const rg=o.rutaRevGeneral;const puedeF=puede('programa')||puede('liberar');const soloVer=lista&&!puedeF;if(soloVer)lista=false;
-  return `${rg?`<span class="tag t-ok" title="${esc(rg.u||'')} · ${fmtDiaTs(rg.ts)}">ruta revisada en general</span>`:'<span class="tag t-aviso">ruta sin revisar en general</span>'} ${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')" title="revisar y corregir la ruta antes de liberar">ruta</button>`:''}<br>
-   ${lista?`<label style="display:inline-block;margin:4px 10px 0 0"><input type="checkbox" ${v.mp?'checked':''} onchange="setLibV('${o.id}','mp',this.checked)"> materia prima verificada en bodega</label><label style="display:inline-block;margin:4px 10px 0 0"><input type="checkbox" ${v.ins?'checked':''} onchange="setLibV('${o.id}','ins',this.checked)"> insumos verificados en bodega</label> <button class="btn sm" ${v.mp&&v.ins?'':'disabled'} onclick="liberarProd('${o.id}')">Liberar a producción</button>`:(soloVer?'<span class="tag t-ok">lista para liberar · tu perfil no libera</span>':(()=>{const fr=falta.filter(x=>!noFrenaLib(x,'corte'));return (fr.length?`<span class="tag t-aviso" title="${esc(fr.join(' · '))}">Falta: ${esc(String(fr[0]).replace(/^falta /,''))}${fr.length>1?' +'+(fr.length-1):''}</span>`:'')+(fr.length<falta.length?' <span class="tag t-mut" title="el Pantone no impide liberar a producción">color sin Pantone · no frena</span>':'')})())}`}
-function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const lista=puedeLiberarA(o,et);const falta=lista?[]:faltaLiberarA(o,et);const ep=enPlanMes(o);
-  /* estado + como máximo una etiqueta más (02-oct): si lo primero que falta es la ruta, el verbo del semáforo ES el enlace a confirmarla; el resto, «+N» al pasar el mouse */
-  const RUTA_F='falta confirmar ruta',lnkRuta=`irRutaDeOrden('${o.id}')`,titRuta='ir a Órdenes → Rutas y confirmar la ruta de su referencia';
-  const semT=()=>{if(et!=='tela')return estadoSemaforoHTML(o);let venc=false;try{venc=esMetaVencida(o,PLAN||null)}catch(e){}const verbo=esc(faltaVerbo(falta[0]));return '<span class="sem sem-'+(venc?'rojo':'gris')+'" title="'+esc('falta para la liberación textil: '+falta.join(', '))+'">'+(venc?'🔴 Meta vencida · ':'⚪ ')+(falta[0]===RUTA_F?'<a class="sem-lnk" onclick="'+lnkRuta+'" title="'+titRuta+'">'+verbo+' →</a>':verbo)+'</span>'};
-  const resto=lista?[]:falta.slice(1);const iR=resto.indexOf(RUTA_F);if(iR>0)resto.unshift(resto.splice(iR,1)[0]);
-  const frena=(lista?'<span class="sem sem-verde">🟢 Lista para liberar</span>':semT()+' ')+(lista?'':tagsCompactasHTML(resto.map(x=>x===RUTA_F?{txt:'falta confirmar ruta →',cls:'t-aviso',title:titRuta,onclick:lnkRuta}:{txt:x,cls:'t-aviso'}),iR>=0?1:0));
+/* ---------- Fila de la lista de Liberación (02-oct-2026, revisión «para dummies», lote B2): una o dos líneas, igual en las dos liberaciones ----------
+   OP · fase = whCell (con el hueco de la foto si no tiene: así las WH quedan alineadas) y, debajo, chico y en azul, «en el plan» o «plan congelado»
+   (es información, no un problema; el texto largo va al pasar el mouse). Listas: la tela con su desplegable (chipsFaltaTela) y la ruta, la MISMA de
+   Órdenes (rutaCeldaHTML; con permiso, clic = revisarla o corregirla en mRutaCentro). Frenadas: frenosFilaLibHTML. Nada se calcula aquí. */
+function opLibHTML(o){const ep=enPlanMes(o);const px=prm('fotoMiniPx',44);
+  const hueco=fotoDe(o)?'':'<span class="foto-hueco" style="width:'+px+'px"></span>';
+  let plan='';if(ep){const cg=ep.congelado;const tit='Entró al plan de '+mesCortoTxt(ep.ym)+(cg?' (congelado'+(cg.ts?' el '+fmtDiaTs(cg.ts):'')+')':'')+': EN EL PLAN — pendiente de liberar. Es obligatorio liberarla'+(sinWHde(o)?'; todavía no se puede liberar porque Odoo no le ha dado número de WH':'')+'.';
+    plan='<div class="lib-plan" style="padding-left:'+(px+6)+'px"><span class="tag t-medio" title="'+esc(tit)+'">'+(cg?'plan congelado':'en el plan')+'</span></div>'}
+  return '<div class="lib-op-l1">'+hueco+whCell(o)+'</div>'+plan}
+/* la marca «ruta revisada en general» de producción: se queda hasta que la usuaria decida si la usa (no frena ni libera; la que manda es la ruta confirmada) */
+function revGeneralTagHTML(o){const rg=o.rutaRevGeneral;
+  return rg?'<span class="tag t-ok" title="ruta revisada en la liberación general · '+esc(rg.u||'')+' · '+fmtDiaTs(rg.ts)+'">ruta revisada en general</span>'
+    :'<span class="tag t-mut" title="marca de la liberación general: nadie la ha marcado todavía. Es solo una marca: no frena ni libera (la que manda es la ruta confirmada)">ruta sin revisar en general</span>'}
+/* Listas de la liberación textil: la ruta en letra chica (la de Órdenes, con lo hecho en gris) y la casilla «revisada» */
+function rutaLibHTML(o){const ed=puedeEditarRuta();
+  return '<span class="lib-ruta'+(ed?' clic':'')+'" '+(ed?'onclick="mRutaCentro(\''+o.id+'\')" title="clic: revisar o corregir la ruta"':'title="la ruta de producción de la orden"')+'>'+rutaCeldaHTML(o)+'</span> '+rutaCtrlLib(o)}
+/* Listas de la liberación a producción: «☐ Materia prima ☐ Insumos [Liberar]» en una línea (es la firma de bodega) y, debajo, chico, la ruta */
+function celdaLibProd(o){const v=LIBV[o.id]||{};const puedeF=puede('programa')||puede('liberar');
+  const ruta='<div class="lib-sub">'+(puedeEditarRuta()?'<a class="lib-ruta-ed" onclick="mRutaCentro(\''+o.id+'\')" title="revisar y corregir la ruta antes de liberar">✎ ruta</a> ':'')+revGeneralTagHTML(o)+'</div>';
+  if(!puedeF)return '<span class="tag t-ok">lista para liberar · tu perfil no libera</span>'+ruta;
+  return '<div class="lib-verif"><label title="materia prima verificada en bodega"><input type="checkbox" '+(v.mp?'checked':'')+' onchange="setLibV(\''+o.id+'\',\'mp\',this.checked)"> Materia prima</label>'
+   +'<label title="insumos verificados en bodega"><input type="checkbox" '+(v.ins?'checked':'')+' onchange="setLibV(\''+o.id+'\',\'ins\',this.checked)"> Insumos</label>'
+   +'<button class="btn sm" '+(v.mp&&v.ins?'title="liberar a producción"':'disabled title="marca primero la materia prima y los insumos verificados en bodega"')+' onclick="liberarProd(\''+o.id+'\')">Liberar</button></div>'+ruta}
+/* «Qué la frena» en la fila, igual en las dos liberaciones: arriba, SOLO si la meta venció, «🔴 Meta vencida» (el rojo es solo para eso); abajo, un chip
+   ámbar por freno con las MISMAS palabras de la tabla «Qué las frena» (faltaLiberarA) y, si el perfil puede ir, la flecha que lleva adonde se arregla
+   (FRENO_LIB / frenoLinkOk; la ruta, a Órdenes → Rutas con su referencia). A lo sumo cuatro a la vista y «+N». «✎ ruta» la corrige aquí mismo. */
+function frenosFilaLibHTML(o,et,falta){let venc=false;try{venc=esMetaVencida(o,PLAN||programar())}catch(e){}
+  const fr=falta.filter(x=>!noFrenaLib(x,et));
+  const chips=fr.map(x=>{const f=FRENO_LIB[x]||{};const ok=frenoLinkOk(f);const esRuta=x==='falta confirmar ruta';const clic=ok?(esRuta?'irRutaDeOrden(\''+o.id+'\')':f.ir):'';
+    return {txt:x+(clic?' →':''),cls:'t-aviso',title:esRuta&&ok?'ir a Órdenes → Rutas y confirmar la ruta de su referencia':(f.donde||x)+(f.ir&&!ok?' (lo arregla otra persona)':''),onclick:clic}});
+  const pant=fr.length<falta.length?'<span class="tag t-mut" title="el Pantone no impide liberar a producción">color sin Pantone · no frena</span>':'';
+  const ed=puedeEditarRuta()?'<a class="lib-ruta-ed" onclick="mRutaCentro(\''+o.id+'\')" title="revisar y corregir la ruta aquí">✎ ruta</a>':'';
+  const rev=et==='corte'?revGeneralTagHTML(o):rutaCtrlLib(o);
+  return (venc?'<div class="lib-venc"><span class="sem sem-rojo" title="la fecha meta ya pasó y la orden no está terminada">🔴 Meta vencida</span></div>':'')
+   +'<div class="lib-chips">'+[tagsCompactasHTML(chips,4),pant,ed,rev].filter(Boolean).join(' ')+'</div>'}
+function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const lista=puedeLiberarA(o,et);const falta=lista?[]:faltaLiberarA(o,et);
   return `<tr><td>${(et!=='corte'&&lista&&puedeF)?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td>
-   <td style="white-space:nowrap">${whCell(o)}</td>
+   <td class="lib-op">${opLibHTML(o)}</td>
    <td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td>
    <td class="num">${num(o.cant)}</td><td>${fmtFecha(o.fecha)}</td>
-   ${et==='tela'?`<td>${chipsFaltaTela(o)||'<span class="mut">—</span>'}</td>`:''}
-   <td style="font-size:var(--fs-xs)${et==='corte'?';min-width:340px':''}">${ep?'<span class="tag t-medio" title="EN EL PLAN'+(ep.congelado?' · congelado':'')+' — pendiente de liberar: ya entró al plan mensual, es obligatorio liberarla'+(sinWHde(o)?'; todavía no se puede liberar porque Odoo no le ha dado número de WH':'')+'">En el plan</span> ':''}${et==='corte'?celdaLibProd(o,lista,falta):frena+' <span style="white-space:nowrap">'+rutaCtrlLib(o)+'</span>'}</td></tr>`}
+   ${et==='tela'?`<td class="lib-tela">${chipsFaltaTela(o)||'<span class="mut">—</span>'}</td>`:''}
+   <td class="lib-ult${lista?'':' lib-fr'}">${!lista?frenosFilaLibHTML(o,et,falta):(et==='corte'?celdaLibProd(o):rutaLibHTML(o))}</td></tr>`}
 /* ---------- la lista del bloque 1 de Liberación, a su propia función (16-sep-2026, punto 2a) ----------
    Es EXACTAMENTE la plantilla que vivía dentro de bloqueLibB1: se movió, no se cambió. Recibe en `ctx`
    lo que necesita (detalle, famSel, cab, nCols). Existe para poder repintar SOLO la lista al escribir
@@ -5058,7 +5132,7 @@ function avisoLiberadasHTML(et){const a=LIB.aviso;if(!a||a.et!==et)return '';
 /* qué frena a una orden y dónde se arregla (los textos salen de faltaLiberarA; aquí solo se dice a dónde ir) */
 const FRENO_LIB={
   'falta confirmar ruta':{donde:'Órdenes → Rutas: confirmar la ruta',ir:'irRutasFrenoLib()',p:'ordenes'},
-  'falta la liberación textil':{donde:'Liberación (la textil): liberar primero la tela',ir:"irLib('tela')",p:'liberacion'},
+  'falta la liberación textil':{donde:'Liberación textil: liberar primero la tela',ir:"irLib('tela')",p:'liberacion'},
   'sin lanzar en Odoo (sin WH)':{donde:'en Odoo: todavía no tiene orden de producción (WH)'},
   'sin fecha de entrega':{donde:'en Odoo: falta la fecha de entrega'},
   'sin receta de tela':{donde:'en Odoo: la lista de materiales no trae tela'},
@@ -5078,19 +5152,25 @@ function traeTelaOdoo(o){return o.sinTelaKg===false||(o.materiales||[]).some(m=>
 function frenosLib(frenadas,et){const m={};frenadas.forEach(o=>faltaLiberarA(o,et).filter(x=>!noFrenaLib(x,et)).forEach(x=>{(m[x]=m[x]||{n:0,pz:0,ids:[],enlazar:0});m[x].n++;m[x].pz+=+o.cant||0;m[x].ids.push(o.id);if(/receta|sin telas/.test(x)&&traeTelaOdoo(o))m[x].enlazar++}));
   return Object.entries(m).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0],'es'))}
 function frenosLibHTML(frenadas,et){const l=frenosLib(frenadas,et);LIB_FRENO_IDS={};l.forEach(([x,v])=>{LIB_FRENO_IDS[x]=v.ids});if(!l.length)return '';
-  return `<div class="lib-frenos"><div style="font-size:var(--fs-s);margin:0 0 6px"><b>Qué las frena</b> <span class="mut" style="font-size:var(--fs-xs)">· una orden puede tener varias cosas · toca una para ver solo esas órdenes</span></div>
+  /* 02-oct (lote B2): sin «tabla 2 / tabla 12» a la vista; la instrucción larga y lo que no frena van al «?» */
+  const nPant=et==='corte'?frenadas.filter(o=>faltaLiberarA(o,et).includes('color sin Pantone')).length:0;
+  const linkCat=frenoLinkOk({ir:1,p:'config'});
+  const ayEnl='Odoo sí trae la tela en la lista de materiales, pero el sistema todavía no sabe qué tela del catálogo es. Se enlaza en Configuración general → «Qué tela es cada categoría de Odoo» (tabla 8); si no la reconoce como tela, también en «Tipos de material» (tabla 2). Después se pulsa «Recalcular telas de las órdenes» en «Catálogo de productos y proveedores» (tabla 12).';
+  const ayTit='Una orden puede tener varias cosas a la vez: cada fila cuenta las órdenes que tienen ese motivo. Toca una para ver solo esas órdenes.'+(nPant?' '+num(nPant)+(nPant===1?' de estas también tiene':' de estas también tienen')+' el color sin código Pantone: no frena la liberación a producción, solo se avisa en la fila («color sin Pantone · no frena»).':'');
+  return `<div class="lib-frenos"><div style="font-size:var(--fs-s);margin:0 0 6px"><b>Qué las frena</b>${ayudaTipHTML(ayTit)}</div>
    <table class="lib-frenos-t" style="font-size:var(--fs-s)"><thead><tr><th>Le falta</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Dónde se arregla</th></tr></thead><tbody>${l.map(([x,v])=>{const f=FRENO_LIB[x]||{};const on=LIB.freno===x;
-     const enl=v.enlazar?`<br><span style="font-size:var(--fs-xs)">${num(v.enlazar)} de ellas sí traen la tela de Odoo: falta enlazar su categoría en ${frenoLinkOk({ir:1,p:'config'})?`<a style="cursor:pointer;text-decoration:underline" onclick="irAjuste('8 · Categoría de Odoo')">8 · Categoría de Odoo → tela del catálogo →</a>`:'Configuración general → 8 · Categoría de Odoo → tela del catálogo'} (y la tabla 2 si no la reconoce como tela); después, «Recalcular telas de las órdenes» en la tabla 12.</span>`:'';
+     const enl=v.enlazar?(()=>{const t=(v.enlazar===v.n?(v.n===1?'trae la tela de Odoo':'las '+num(v.n)+' traen la tela de Odoo'):num(v.enlazar)+(v.enlazar===1?' ya trae la tela':' ya traen la tela'))+': falta enlazarla';
+       return (linkCat?`<a style="cursor:pointer;text-decoration:underline" onclick="irAjuste('8 · Categoría de Odoo')">${t} →</a>`:t+' <span class="mut" style="font-size:var(--fs-xs)">(lo arregla otra persona)</span>')+ayudaTipHTML(ayEnl)})():'';
+     const donde=frenoLinkOk(f)?`<a style="cursor:pointer;text-decoration:underline" onclick="${f.ir}">${esc(f.donde)} →</a>`:esc(f.donde||'—')+(f.ir?' <span class="mut" style="font-size:var(--fs-xs)">(lo arregla otra persona)</span>':'');
      return `<tr class="${on?'on':''}"><td><a class="lib-freno" style="cursor:pointer" onclick="LIB.freno=${on?'null':"'"+esc(jsq(x))+"'"};LIB.scroll=0;render()">${on?'✓ ':''}<b>${esc(x)}</b></a></td><td class="num">${num(v.n)}</td><td class="num mut">${num(v.pz)}</td>
-      <td>${v.enlazar&&v.enlazar===v.n?enl.replace(/^<br>/,''):(frenoLinkOk(f)?`<a style="cursor:pointer;text-decoration:underline" onclick="${f.ir}">${esc(f.donde)} →</a>`:esc(f.donde||'—')+(f.ir?' <span class="mut" style="font-size:var(--fs-xs)">(lo arregla otra persona)</span>':'')+enl)}</td></tr>`}).join('')}</tbody></table>
-   ${et==='corte'&&frenadas.some(o=>faltaLiberarA(o,et).includes('color sin Pantone'))?`<p class="mut" style="margin:6px 0 0;font-size:var(--fs-xs)">${num(frenadas.filter(o=>faltaLiberarA(o,et).includes('color sin Pantone')).length)} de estas también tienen el color sin código Pantone: no frena la liberación a producción, solo se avisa.</p>`:''}
+      <td>${v.enlazar&&v.enlazar===v.n?enl:donde+(enl?' · '+enl:'')}</td></tr>`}).join('')}</tbody></table>
    ${LIB.freno?`<p style="margin:6px 0 0;font-size:var(--fs-s)">Viendo solo las que tienen <b>${esc(LIB.freno)}</b> · <a style="cursor:pointer;text-decoration:underline" onclick="LIB.freno=null;LIB.scroll=0;render()">ver todas las frenadas</a></p>`:''}</div>`}
 function tarjetasLibHTML(p,et,vista){const pzs=xs=>xs.reduce((a,o)=>a+(+o.cant||0),0);
   const subs={listas:et==='tela'?'ruta confirmada y receta completa: se pueden liberar ya':'tela lista y ruta confirmada: falta tu verificación en bodega',
     frenadas:'les falta algo · abajo dice qué y dónde se arregla',liberadas:et==='tela'?'ya pasan a tejeduría y tintorería':'ya entran a corte y a los centros'};
   const c=(k,tit,cls)=>{const n=p[k].length;const on=vista===k;
     return `<div class="kpi tarj lib-t ${cls} ${n?'clic':'vacia'} ${on?'abierta':''}" data-t="lib-v-${k}" ${n?`onclick="setVistaLib('${k}')"`:''} title="${n?'ver la lista':'no hay ninguna con estos filtros'}"><div class="v">${num(n)}</div>
-      <div class="k"><b>${tit}</b> · ${num(pzs(p[k]))} prendas${on?' <span class="mut" style="font-size:var(--fs-xs)">▾ abajo</span>':''}<br><span class="mut" style="font-size:var(--fs-xs)">${subs[k]}</span></div></div>`};
+      <div class="k"><b>${tit}</b> · ${num(pzs(p[k]))} prendas<br><span class="mut" style="font-size:var(--fs-xs)">${subs[k]}</span></div></div>`};
   return `<div class="kpis tarj-row lib-tarjetas">${c('listas','Listas para liberar',p.listas.length?'ok':'')}${c('frenadas','Frenadas',p.frenadas.length?'warn':'')}${c('liberadas','Ya liberadas','')}</div>`}
 function avanceLibHTML(p,et){const pzs=xs=>xs.reduce((a,o)=>a+(+o.cant||0),0);const lib=pzs(p.liberadas),pen=pzs(p.pend),tot=lib+pen;if(!tot)return '';
   const pct=Math.round(100*lib/tot);
@@ -5098,8 +5178,11 @@ function avanceLibHTML(p,et){const pzs=xs=>xs.reduce((a,o)=>a+(+o.cant||0),0);co
     <div class="bar" style="flex:1 1 260px;height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--ok)"></i></div>
     <span style="white-space:nowrap"><b>${pct} %</b> liberado · ${num(lib)} de ${num(tot)} prendas</span>
     <span class="mut" style="font-size:var(--fs-xs)">órdenes del Proyecto de ${esc(mesesLibTxt(LIB.ym))}${filtrosLibActivos()?' · con los filtros puestos':''}</span></div>`}
-function cabLib(et,vista){const ult=vista==='listas'?(et==='corte'?'Verificación en bodega y liberar':'Ruta'):'Qué la frena';
-  return `<thead><tr><th style="width:26px"></th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th title="propuesta del catálogo: confírmala tela por tela">Tela · qué le falta</th>':''}<th>${ult}</th></tr></thead>`}
+/* cabecera de la lista. En «Listas para liberar» de la textil, la casilla del encabezado marca todas las que ves (como Odoo) y desmarcada no deja
+   ninguna; aparece marcada cuando todas las listas están marcadas (02-oct, lote B2). Producción va una por una: sin casilla. */
+function cabLib(et,vista,todas){const ult=vista==='listas'?(et==='corte'?'Verificado en bodega':'Ruta'):'Qué la frena';
+  const chk=(et!=='corte'&&vista==='listas'&&(puede('programa')||puede('liberar')))?`<input type="checkbox" title="marcar todas las que ves" ${todas?'checked':''} onchange="if(this.checked)marcarTodasLib('${et}');else ningunaLib()">`:'';
+  return `<thead><tr><th style="width:26px">${chk}</th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th title="propuesta del catálogo: confírmala tela por tela">Tela · qué le falta</th>':''}<th${et==='corte'&&vista==='listas'?' title="tu firma: la materia prima y los insumos están en bodega"':''}>${ult}</th></tr></thead>`}
 function filaLiberadaLib(o,et){const reg=libRegistroDe(o,et);const puedeF=puede('programa')||puede('liberar');
   const quitar=reg?(puedeDesliberar()?`<button class="btn ghost sm" onclick="mDesliberar(['${o.id}'],'${et}')" title="desliberar: vuelve a la lista de pendientes, pide motivo, queda en auditoría y avisa si ya tiene avance">desliberar</button> `
     :(puedeF?`<button class="btn ghost sm" onclick="mRetirarLib('${o.id}','${et}')" title="revertir la liberación: pide motivo de la tabla 15 y queda en auditoría">revertir</button> `:'')):'';
@@ -5107,7 +5190,7 @@ function filaLiberadaLib(o,et){const reg=libRegistroDe(o,et);const puedeF=puede(
    <td style="font-size:var(--fs-s)">${reg?libFechaTxt(o,et):'<span class="tag t-medio" title="nadie la liberó en el sistema: Odoo ya la tiene en una fase donde se da por liberada. Para devolverla, se cambia la fase.">por la fase de Odoo</span>'}</td>
    <td style="white-space:nowrap">${quitar}${puedeF?`<button class="btn ghost sm" onclick="mCambiarFase('${o.id}')" title="devolver o cambiar la fase: si la secuencia de la tabla 1 baja, pide motivo">fase</button>`:''}</td></tr>`}
 function listaLiberadasLibHTML(et,xs){
-  return `<div class="scroll" id="lib-lista-lib" style="max-height:520px">
+  return `<div class="scroll lista" id="lib-lista-lib">
    <p class="mut" style="font-size:var(--fs-xs);margin:0 0 6px">Ya liberadas · ${num(xs.length)} ${xs.length===1?'orden':'órdenes'} · lo último liberado primero${xs.length>400?' (se muestran las primeras 400)':''}</p>
    <table><thead><tr><th>OP · fase</th><th>Cliente</th><th>ODC</th><th>Referencia</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>Liberada</th><th></th></tr></thead>
    <tbody>${filasGRP('lib',xs.slice(0,400),o=>filaLiberadaLib(o,et),9)||'<tr><td colspan="9" class="mut">Ninguna orden liberada con estos filtros.</td></tr>'}</tbody></table></div>`}
@@ -5117,7 +5200,7 @@ function listaVistaLibHTML(et,ym,vista,p0){const p=p0||partesLib(et,ym);let h=''
   else{const fr=LIB.freno&&vista==='frenadas'?p.frenadas.filter(o=>faltaLiberarA(o,et).includes(LIB.freno)):p.frenadas;
     const xs=vista==='listas'?p.listas:fr;
     h=listaLibB1HTML(et,{detalle:xs,titulo:vista==='listas'?'Listas para liberar':(LIB.freno&&vista==='frenadas'?'Frenadas por «'+LIB.freno+'»':'Frenadas'),
-      vacio:vista==='listas'?'Ninguna lista para liberar con estos filtros.':'Ninguna frenada con estos filtros.',cab:cabLib(et,vista),nCols:et==='tela'?8:7});
+      vacio:vista==='listas'?'Ninguna lista para liberar con estos filtros.':'Ninguna frenada con estos filtros.',cab:cabLib(et,vista,vista==='listas'&&xs.length>0&&xs.every(o=>LIB.sel.has(o.id))),nCols:et==='tela'?8:7});
     const tapadas=vista==='frenadas'&&LIB.freno?p.frenadas.length-fr.length:0;
     if(tapadas>0)h=`<p class="lib-otras" style="font-size:var(--fs-s);margin:0 0 8px">Hay ${num(tapadas)} ${tapadas===1?'frenada más':'frenadas más'} por otros motivos · <a style="cursor:pointer;text-decoration:underline" onclick="LIB.freno=null;LIB.scroll=0;render()">ver todas las frenadas</a></p>`+h}
   if(String(LIB.q||'').trim()){const otras=LIB_VISTAS.filter(([k])=>k!==vista&&p[k].length);
@@ -5128,15 +5211,15 @@ function accionesLibHTML(et,p,vista){const puedeF=puede('programa')||puede('libe
     const listas=p.listas;const sel=[...LIB.sel].filter(id=>listas.some(o=>o.id===id));
     const lav=puedeEditarRuta()?`<button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="lavadoMarcadasLib('${et}')" title="agregar o quitar el lavado (planta o Quito) a las órdenes marcadas">Lavado de las marcadas (${sel.length})</button>`:'';
     const ning=`<button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="ningunaLib()">Ninguna</button>`;
-    if(!puedeF||et==='corte'){const txt=!puedeF?'Tu perfil puede ver esta lista, pero no liberar.':'Una por una: marca en cada orden la materia prima y los insumos verificados en bodega y pulsa «Liberar a producción».';
+    if(!puedeF||et==='corte'){const txt=!puedeF?'Tu perfil puede ver esta lista, pero no liberar.':'Una por una: marca en cada orden la materia prima y los insumos verificados en bodega y pulsa «Liberar».';
       return `<div class="lib-acciones" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><span class="mut" style="font-size:var(--fs-s)">${txt}</span>${lav?`<span class="mut" style="font-size:var(--fs-xs)">Lavado: marca un grupo entero con «Agrupar por» →</span>${ning}${lav}`:''}</div>`}
+    /* 02-oct (lote B2): UNA acción principal, como Odoo. «Marcar todas» y «Ninguna» pasaron a la casilla del encabezado; la explicación, al «?».
+       «Liberar todas las listas» se queda (secundario, a la derecha, con la misma confirmación de siempre) */
     return `<div class="lib-acciones" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px">
-     <span style="font-size:var(--fs-s)">Marca las que vas a liberar (o una familia entera con «Agrupar por») y pulsa liberar:</span>
-     <button class="btn ghost sm" onclick="marcarTodasLib('${et}')">Marcar todas (${listas.length})</button>
-     ${ning}
      <button class="btn sm" ${sel.length?'':'disabled title="marca al menos una orden"'} onclick="liberarMarcadasLib('${et}')">Liberar las marcadas (${sel.length})</button>
-     <button class="btn ghost sm" ${listas.length?'':'disabled'} onclick="liberarListasLib('${et}')">Liberar todas las listas (${listas.length})</button>
-     ${lav}</div>`}
+     ${lav}${ayudaTipHTML('Marca las órdenes que vas a liberar con su casilla: la del encabezado marca todas las que ves y la de cada grupo marca el grupo entero (agrupa con «Agrupar por», por ejemplo por familia). Después pulsa «Liberar las marcadas». «Liberar todas las listas» libera de una vez todas las que ves con los filtros y la búsqueda puestos (pide confirmación).')}
+     <span class="spacer"></span>
+     <button class="btn ghost sm" ${listas.length?'':'disabled'} onclick="liberarListasLib('${et}')" title="libera todas las listas que ves ahora, con los filtros y la búsqueda puestos (pide confirmación)">Liberar todas las listas (${listas.length})</button></div>`}
   if(vista==='frenadas')return frenosLibHTML(p.frenadas,et);
   return `<p class="mut" style="font-size:var(--fs-s);margin:0 0 8px">${puedeDesliberar()||puedeF?'Si una se liberó por error, «desliberar» (o «revertir») la devuelve a la lista con motivo; queda en la auditoría.':'Solo consulta.'}</p>`}
 function otrosMesesLibHTML(et){if(!LIB.ym||(LIB.ym.has&&!LIB.ym.size))return '';const qn=normTxt(LIB.q);
@@ -5176,7 +5259,7 @@ function vLiberacion(el){
   const L=p.liberadas;const kgL=L.reduce((a,o)=>a+kgDeOrden(o),0);const hL=L.reduce((a,o)=>a+minPendiente(o)/60,0);const pzL=L.reduce((a,o)=>a+(+o.cant||0),0);
   const qn=normTxt(LIB.q);const fl=o=>okFiltrosB1(o)&&matchBusq(o,qn,'LIB.q');
   const gLibT=faseGrupos().filter(g=>g.libTela).sort((a,b)=>(a.orden||0)-(b.orden||0)).map(g=>'«'+g.grupo+'»');
-  el.innerHTML=`<div class="pagehead"><h2>${et==='tela'?'Liberación':'Liberación a producción'}</h2><span class="spacer"></span></div>
+  el.innerHTML=`<div class="pagehead"><h2>${et==='tela'?'Liberación textil':'Liberación a producción'}</h2><span class="spacer"></span></div>
   <p class="lede">${et==='tela'?'La liberación textil: nada se teje ni se tiñe hasta que se libera aquí.':'La liberación a producción: la orden entra a corte y a los demás centros solo con esta firma. La tela salió de tintorería con calidad aprobada (o llegó del proveedor) y tú verificas en bodega la materia prima y los insumos. Calidad no libera: solo aprueba la tela.'}
    Arriba ves, de las órdenes del Proyecto del mes, cuántas están <b>listas</b> para liberar, cuántas están <b>frenadas</b> (y qué les falta) y cuántas <b>ya se liberaron</b>; toca una tarjeta para ver su lista. Los filtros y la búsqueda valen para toda la pantalla. ${et==='tela'?(gLibT.length?'Las órdenes que Odoo ya tiene en una fase de '+esc(gLibT.join(', '))+' no aparecen aquí: ya pasaron esta liberación (lo decide la columna «libera tela» de la tabla 5, en Configuración general → Órdenes, fases y archivos de Odoo).':'Ninguna fase de Odoo da la tela por liberada (tabla 5, columna «libera tela»): todas piden la firma aquí.'):'Las que ya pasaron corte no aparecen; las que Odoo ya tiene en una fase liberada salen en «Ya liberadas» con la marca «por la fase de Odoo».'}</p>
   <div class="row lib-filtros" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:0 0 12px">
@@ -5223,7 +5306,9 @@ function liberarProd(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(
   bitacora('Liberada a producción '+o.op+' por '+u+' · materia prima e insumos verificados en bodega el '+hoy());if(page==='liberacion'){LIB.aviso={n:1,et:'corte'};LIB.vista='listas'}PLAN=null;PLAN_ALL=null;save();render()}
 function togRutaRev(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(puede('programa')||puede('liberar')))return;
   if(o.rutaRevGeneral){delete o.rutaRevGeneral;bitacora('Ruta '+o.op+': quitada la marca de revisada en la liberación general')}else{o.rutaRevGeneral={u:quienFirma(),ts:new Date().toISOString()};bitacora('Ruta '+o.op+' marcada como revisada en la liberación general por '+quienFirma())}save();render()}
-function rutaCtrlLib(o){const rg=o.rutaRevGeneral;return `${puedeEditarRuta()?`<button class="btn ghost sm" onclick="mRutaCentro('${o.id}')" title="revisar y corregir la ruta">ruta</button> `:''}<label style="font-size:var(--fs-xs)" title="marca que ya revisaste la ruta aquí"><input type="checkbox" ${rg?'checked':''} ${(puede('programa')||puede('liberar'))?'':'disabled'} onchange="togRutaRev('${o.id}')"> revisada</label>`}
+/* la casilla «revisada» de la liberación textil (02-oct, lote B2): el botón «ruta» salió porque la ruta misma se toca para corregirla. La casilla se
+   queda hasta que la usuaria decida si la usa: es solo una marca (o.rutaRevGeneral), no frena ni libera; la que manda es la ruta confirmada */
+function rutaCtrlLib(o){const rg=o.rutaRevGeneral;return `<label class="lib-rev" title="marca que ya revisaste la ruta aquí${rg?' · '+esc(rg.u||'')+' · '+fmtDiaTs(rg.ts):''} (es solo una marca: no frena ni libera)"><input type="checkbox" ${rg?'checked':''} ${(puede('programa')||puede('liberar'))?'':'disabled'} onchange="togRutaRev('${o.id}')"> revisada</label>`}
 function filaProd(o,hijaDe,kgDe){const v=LIBV[o.id]||{};const rg=o.rutaRevGeneral;const lista=puedeLiberarA(o,'corte');
   return `<tr><td></td><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td>${esc(hijaDe(o))}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(o.cant)}</td><td class="num">${num(kgDe(o))}</td><td>${fmtFecha(o.fecha)}</td><td>${esc(faseNombre(o.fase||'—'))}</td>
    <td style="font-size:var(--fs-xs);min-width:340px">
@@ -7114,7 +7199,7 @@ function controlesFiltro(root){const out=[];
   root.querySelectorAll('details > summary.chip').forEach(s=>{const d=s.parentElement;if(d.classList.contains('ffases'))return;const w=d.parentElement;if(w&&w.tagName==='DIV'&&w.querySelector(':scope > label')){if(!(w.closest('#modal')||w.closest('[data-filtro-local]'))){w.setAttribute('data-filt-tipo','multi');if(!out.includes(w))out.push(w)}}});
   /* vecinos: dentro del mismo contenedor (.row / panel .body) de un control detectado, todo <div><label>…</label><select|input></div> es un filtro */
   const contenedores=new Set(out.map(c=>c.closest('.row,.body,.pagehead')).filter(Boolean));
-  contenedores.forEach(ct=>{ct.querySelectorAll(':scope > div, :scope > div > div').forEach(d=>{if(out.includes(d)||d.closest('#modal'))return;const h=[...d.children];const lab=h.find(x=>x.tagName==='LABEL');if(!lab)return;
+  contenedores.forEach(ct=>{ct.querySelectorAll(':scope > div, :scope > div > div').forEach(d=>{if(out.includes(d)||d.closest('#modal')||d.closest('[data-filtro-local]'))return;const h=[...d.children];const lab=h.find(x=>x.tagName==='LABEL');if(!lab)return;
     const esCtl=x=>x.tagName==='SELECT'||(x.tagName==='INPUT'&&/^(text|month|search|date)$/.test(x.type||'text'))||(x.tagName==='DIV'&&x.children.length&&[...x.children].every(y=>y.tagName==='SELECT'));   /* un div con solo selects (agrupador anidado) también */
     const ctl=h.filter(x=>x!==lab);if(!ctl.length||!ctl.every(esCtl))return;
     const lt=(lab.textContent||'').trim();if(/^(área|area|centro|vista|semana|mes\b|per[ií]odo|recurso|m[oó]dulo|base|máquina|maquina|día|dia)/i.test(lt))return;   /* base de la pantalla, no filtro */
@@ -11561,7 +11646,7 @@ function liberarA(ids,et){if(et==='corte'&&ids.length&&!confirm('¿Liberar '+ids
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');if(n&&page==='liberacion'){LIB.aviso={n,et};if(LIB.vista!=='liberadas')LIB.vista='listas';LIB.sel=new Set()}save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
 function retirarLib(id,et,motivo){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;motivo=String(motivo||'').trim();if(!motivoValido('liberacion',motivo)){alert('Para revertir una liberación elige el motivo de la tabla 15 (Motivos, uso «reversión de liberación»); no hay texto libre.');return}const antes='liberada '+(et==='tela'?'textil':'a producción');if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];registrarAuditoria('liberacion',o,antes,'sin liberar',motivo);bitacora('Reversión de liberación '+et+' '+o.op+' · '+motivo+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render()}
 function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}
-function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(!(o.telas||[]).length)f.push('sin telas en la receta');
+function faltaLiberar(o){const f=[];const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);if(!(o.telas||[]).length)f.push('sin receta de tela');   /* 02-oct: el mismo nombre que en la textil (antes «sin telas en la receta») */
   if(etapas(o).provStep){if(!(a.lista||a.tinturada))f.push('tela externa no recibida')}else if(!(a.lista||fe.lista)){if(!(a.tinturada||fe.tinturada))f.push('tela no tinturada');else if(!a.calidadOk)f.push('en calidad: falta la aprobación')}if(!(C(o.color)||{}).cod)f.push('color sin Pantone');return f}
 function liberarCorte(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,'corte')){alert('No se puede liberar: '+faltaLiberarA(o,'corte').join(', '));return}
   if(!confirm('¿Liberar '+o.op+' a producción? Confirmas que la tela está en bodega con calidad aprobada y que revisaste los insumos (BOM).'))return;
@@ -13055,11 +13140,17 @@ function aplicarRutaTextil(o){const tx=rutaTextilDe(o);const esTx=p=>['tej','tin
 function setFaltaTela(oid,i,v){const o=S.ordenes.find(x=>x.id===oid);if(!o||!o.telas||!o.telas[i])return;if(!(puede('liberar')||puede('programa'))){alert('Tu perfil no decide esto.');return}
   const tl=o.telas[i];const antes=faltaTela(tl);if(antes===v)return;tl.faltaConf={v,u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||'',ts:new Date().toISOString(),antes};aplicarRutaTextil(o);
   bitacora('Tela '+o.op+' · '+nTela(tl.tela)+': '+antes+' → '+v+' (decidido en liberación)');PLAN=null;PLAN_ALL=null;save();render()}
-function chipsFaltaTela(o){const ok=puede('liberar')||puede('programa');return (o.telas||[]).map((tl,i)=>{const f=faltaTela(tl);const conf=tl.faltaConf;
-  return `<div style="white-space:nowrap;font-size:var(--fs-xs)"><span title="${esc(produceTela(tl))} · ${esc(tl.disp||'')}${tl.prov?' · '+esc(tl.prov):''}">${esc(nTela(tl.tela))}${tl.ud==='m'?' <b>'+num(tl.m,0)+' m</b> <span class="mut" title="tela plana: se mide en metros; los kilos se registran en la tanda de tintorería">(plana)</span>':(tl.kg>0?' '+num(tl.kg,1)+' kg':'')}</span>
-   <label style="margin-left:6px"><input type="checkbox" ${f==='tintura'?'checked':''} ${ok?'':'disabled'} onchange="setFaltaTela('${o.id}',${i},this.checked?'tintura':'nada')"> tintura</label>
-   <label style="margin-left:4px"><input type="checkbox" ${f==='lavado'?'checked':''} ${ok?'':'disabled'} onchange="setFaltaTela('${o.id}',${i},this.checked?'lavado':'nada')"> lavado de tela</label>
-   ${conf?`<span class="mut" title="${esc(conf.u)} · ${fechaHoraLocal(conf.ts)}">✓ ${esc(conf.u||'')}</span>`:'<span class="mut" title="propuesta del sistema por catálogo; nadie la ha confirmado">· propuesta</span>'}</div>`}).join('')}
+/* Qué le falta a cada tela, en UNA línea: «Fleece perchado · 91 kg [tintura ▾]» (02-oct, lote B2). El desplegable llama a setFaltaTela, el mismo
+   dato de siempre (tintura, lavado de tela o nada: un solo valor). Sin confirmar: borde punteado gris (propuesta del catálogo); confirmada: ✓ verde con
+   quién y cuándo al pasar el mouse. Sin permiso de liberar o de programa se lee como texto. */
+function chipsFaltaTela(o){const ok=puede('liberar')||puede('programa');const TXT={tintura:'tintura',lavado:'lavado de tela',nada:'nada (ya viene lista)'};
+  const propTit='propuesta del sistema por catálogo; nadie la ha confirmado';
+  return (o.telas||[]).map((tl,i)=>{const f=faltaTela(tl);const conf=tl.faltaConf;const quien=conf?esc(conf.u||'')+' · '+fechaHoraLocal(conf.ts):'';
+  const cant=tl.ud==='m'?' · <b>'+num(tl.m,0)+' m</b> <span class="mut" title="tela plana: se mide en metros; los kilos se registran en la tanda de tintorería">(plana)</span>':(tl.kg>0?' · '+num(tl.kg,1)+' kg':'');
+  const ops=Object.keys(TXT).concat(TXT[f]?[]:[f]);
+  const ctl=ok?'<select class="sel-falta'+(conf?'':' sel-prop')+'" title="'+(conf?'qué le falta a esta tela · confirmado por '+quien:propTit)+'" onchange="setFaltaTela(\''+o.id+'\','+i+',this.value)">'+ops.map(v=>'<option value="'+esc(v)+'"'+(f===v?' selected':'')+'>'+esc(TXT[v]||v)+'</option>').join('')+'</select>'
+    :'<span class="'+(conf?'':'mut')+'" title="'+(conf?'confirmado por '+quien:propTit)+'">'+esc(TXT[f]||f)+'</span>';
+  return '<div class="tl-l"><span title="'+esc(produceTela(tl))+' · '+esc(tl.disp||'')+(tl.prov?' · '+esc(tl.prov):'')+'">'+esc(nTela(tl.tela))+'</span>'+cant+' '+ctl+(conf?'<span class="tl-ok" title="confirmada por '+quien+'">✓</span>':'')+'</div>'}).join('')}
 function filaCatTela(ruta){const n=normFase(ruta);return catTela().find(r=>normFase(r.ruta)===n)||null}
 function addCatTelaRow(){catTela().push({ruta:'',corta:'',tela:'',pendiente:true});save();render()}
 function setCatTelaRow(i,k,v){catTela()[i][k]=v;save()}function togCatTelaRow(i){const r=catTela()[i];r.pendiente=!r.pendiente;save();render()}function delCatTelaRow(i){if(!confirm('¿Quitar esta fila? Se pierde lo configurado en ella.'))return;catTela().splice(i,1);save();render()}
