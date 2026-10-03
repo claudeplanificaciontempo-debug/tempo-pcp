@@ -7,7 +7,7 @@ Con el «adelante» de la usuaria y sus cuatro respuestas:
 
 | # | Decisión | Cómo quedó |
 |---|---|---|
-| 15 | Las 9 máquinas de ejemplo (`mq_ej_*`) | **No se borran.** Al entrar un administrador quedan `estado:'baja'` + `ejemplo:true`, con su estado anterior y una línea de bitácora. Una sola vez. La «×» de la tabla pasó a **«dar de baja»** (pide motivo; la máquina sigue en la lista y deja de contar). |
+| 15 | Las 9 máquinas de ejemplo (`mq_ej_*`) | **No se borran.** Al entrar un administrador quedan `estado:'baja'` + `ejemplo:true`, con su estado anterior y una línea de bitácora. Una sola vez. La «×» de la tabla pasó a **«dar de baja»** (pide motivo; la máquina sigue en la lista y deja de contar). Desde la segunda vuelta (§7) es el **único** camino para dar de baja. |
 | 16 | Las 10 de Botones y ojales (B/O) | Van al **recurso del centro Botones**, buscado por su centro (no por un id escrito). Nunca cuentan como «stock» para los módulos. |
 | 17 | «MANTENIMIENTO PREVENTIVO 2026» | **Operativa**, con el texto guardado en la observación. |
 | 18 | Tipos de máquina | **Una sola tabla** `tiposMaq` con los 19 tipos, su familia y sus alias, para el inventario, las operaciones y el balanceo. |
@@ -36,6 +36,7 @@ Configuración general → Centros y máquinas → **Tipos de máquina**.
   - Las filas sueltas que sembró la versión del 15-sep, y que ahora son alias de un tipo, **se apagan, no se borran**, y
     dicen de qué tipo son.
   - Sin configurar, la pantalla usa la lista de fábrica (solo lectura). Por eso una sesión de piso también la ve.
+- **Un tipo no se borra: se apaga** (segunda vuelta, §7). Editar la tabla exige el permiso `config`.
 
 ## 2 · Cargar el inventario de máquinas
 
@@ -61,7 +62,9 @@ confirmación y deja bitácora y `registrarCarga('maquinas')`; `TIPOS_CARGA` tie
 - **Estado, por la observación,** con la misma tabla editable:
   - «O.K» y «MANTENIMIENTO PREVENTIVO» → operativa;
   - «PARADA» → parada;
-  - **una observación sin regla deja la máquina «por revisar»**: no cuenta y se lista para que alguien diga qué significa.
+  - **una observación sin regla deja la máquina «por revisar»**: no cuenta y se lista para que alguien diga qué significa;
+  - **«baja» (escrito en el archivo, en lo pegado o por una regla) tampoco da de baja**: entra «por revisar» con el motivo
+    «el archivo dice baja: confirmar con dar de baja» (segunda vuelta, §7).
 - **Qué se guarda de cada máquina:** marca, modelo, serial, fecha de mantenimiento, «inventario feb-2026», área, el tipo
   como lo escribe Mantenimiento (`tipoInv`) y el archivo de donde vino.
 
@@ -154,7 +157,8 @@ La pantalla se rehace en la etapa 3; aquí solo se corrigió esto:
 | «MANUAL» salía como máquina que falta | Lo de la familia «manual» no se pide ni falta |
 | Stock | Solo las operativas de Confección sin módulo. Las de Botones, Corte o Tintorería tienen su centro y no se ofrecen |
 | H2: «17 de 2 operaciones sin orden real» | Divide entre las operaciones (`opsC.length`) |
-| H3: asterisco «provisional» en todas | Solo en las operaciones provisionales |
+| H3: asterisco «provisional» en todas | Solo en las operaciones provisionales (la prueba ahora dibuja la pantalla, §7) |
+| «Este módulo no tiene máquinas registradas» contaba las de baja | Una sola regla, `maqOperativa`, en la tarjeta del módulo y en el aviso (§7) |
 | H4: pegar usaba la lista fija `TIPOS_MAQ` | Pasa por `normMaquina`, con vista previa, la observación guardada, bitácora y `registrarCarga` |
 | H5: «nivel mínimo de especialidad» (no se usa) | Ya no se muestra; el parámetro queda |
 | Maquila en el selector | Fuera del selector y de las tarjetas de módulos (`esMaquilaRec`: la misma regla de la cola, `esRecAfuera` u `ordenRecChip`) |
@@ -174,8 +178,8 @@ miraron capturas de la vista previa, del panel y de Balanceo, en modo claro y os
   - VERTICAL y SESGADORA «sin homologar»;
   - alias nuevo y homologar desde la tabla;
   - la siembra respeta lo de antes y una segunda siembra no cambia nada.
-- **BAL**, **BAL-H1…H5**: maquila fuera del selector; tiene = necesita; MANUAL no falta; stock; H2 y H3; H5; pegar
-  desde Excel.
+- **BAL**, **BAL-H1…H5**: maquila fuera del selector; tiene = necesita; MANUAL no falta; stock; H2 y H3 (desde la
+  segunda vuelta, dibujando la pantalla, §7); H5; pegar desde Excel.
 - **IM1–IM15**, con filas **sintéticas** (números y seriales inventados, uno con cero adelante, uno repetido idéntico,
   uno B/O, uno PARADA, uno sin número, un «S/N» y un generador):
   - las 9 de ejemplo dadas de baja y no borradas;
@@ -209,10 +213,37 @@ miraron capturas de la vista previa, del panel y de Balanceo, en modo claro y os
 3. **TP por confirmar con planta:** decisión 55; están en la columna aparte.
 4. **Decisión 19** (Plancha, Bordadora y Multiagujas como máquinas del módulo): etapa 3.
 5. **En producción:**
-   - las 9 de ejemplo se marcan y la tabla de tipos se guarda la primera vez que entra un administrador;
+   - **lo siembra un administrador al entrar**: las 9 de ejemplo se marcan y la tabla de tipos se guarda la primera vez
+     que entra alguien con permiso `config` cuya sesión puede guardar la configuración (§7, punto 9). Una tablet, un
+     supervisor de piso o planificación no siembran nada;
    - después hay que cargar el Excel con «Cargar inventario».
 6. **Sin SQL.** `maquinas` la escriben admin y planificación; `params` (tipos y reglas) solo admin.
 7. **Queda para las etapas siguientes:**
    - el resto del Balanceo (etapa 3);
    - la máquina dañada del día en la tablet (`maqFuera`, etapa 5);
    - unificar los otros cargadores con `cargarSheetJS` (hoy solo lo usa este).
+
+## 7 · Segunda vuelta (03-oct): nueve arreglos del lote
+
+Sobre `main` = 97ef02d (los dos lotes de ayer juntos). **El motor no se tocó.** Sin seriales ni marcas: solo conteos.
+
+| # | Qué estaba mal | Cómo quedó |
+|---|---|---|
+| 1 | El desplegable de estado ofrecía «dada de baja» y daba de baja **sin motivo**. Un archivo o lo pegado con estado «baja» también daba de baja solo. | Elegir «baja» pasa por **«dar de baja»** (`darBajaMaq`): sin motivo no se da de baja; con motivo queda quién, cuándo y por qué. La opción «dada de baja» solo aparece en una máquina que **ya** está de baja (para volver a usarla se elige otro estado). Lo que viene del archivo, de lo pegado o de una regla que diga «baja» entra **«por revisar»** con el motivo «el archivo dice baja: confirmar con dar de baja»; la vista previa lo lista y la lista de máquinas muestra el motivo. Si la máquina ya estaba de baja en el sistema, coincide y no cambia. |
+| 2 | La «×» de **Tipos de máquina** borraba el tipo de la tabla. | **Ya no se borra: se apaga** (`apagarTipoMaq`, con confirmación, quién y cuándo, bitácora). El botón dice «apagar»; un tipo apagado dice «encender» (`encenderTipoMaq`, también con confirmación). La tabla nunca pierde filas. **Qué pasa con un tipo apagado:** sus nombres **dejan de reconocerse** (`normMaquina` devuelve el nombre tal cual y sale «sin homologar», a la vista); antes un tipo inactivo seguía calzando si ningún otro tenía ese nombre. Al encenderlo vuelven. La columna «Activa» ya no es una casilla: dice «sí» o «apagado». Las filas «ahora es otro nombre de…» no llevan botón. |
+| 3 | Agregar, editar, homologar, confirmar TP y quitar tipos no pedían permiso. | Las seis (`addTipoMaq`, `setTipoMaq`, `homologarNombreMaq`, `confirmarAliasTP`, `apagarTipoMaq`, `encenderTipoMaq`) empiezan con `if(!puede('config'))return`, como las reglas del inventario. |
+| 4 | La tarjeta del módulo y el aviso de Balanceo contaban «máquinas» con dos reglas distintas: el aviso «no tiene máquinas registradas» contaba también las de baja. | Una sola regla, **`maqOperativa`**, en las dos. El aviso dice «no tiene máquinas operativas registradas» y, si las tiene de baja, paradas o por revisar, lo dice. |
+| 5 | La prueba de H2/H3 solo buscaba texto dentro del código. | Ahora **dibuja** Balanceo con una referencia de verdad: deja 2 operaciones con orden real y el resto provisional, cuenta los «*» en la pantalla y lee el «X de Y» del aviso contra el número de operaciones. Restaura el orden de las operaciones al terminar. |
+| 6 | Al cargar el Excel, número y serial se leían como número crudo: un serial guardado como número con formato de ceros («00099123») llegaba sin los ceros. | Para **número y serial** manda **el texto que muestra la celda** (`hojaInvMaqConTexto` / `hojasInvMaqDeLibro`: una lectura cruda y una con formato); la fecha de mantenimiento sigue leyéndose del número de Excel. Un número largo que la celda muestra en notación científica no se toma: queda el número entero. **Con el archivo real de hoy no cambia nada**: 12 seriales de la hoja por módulo y 13 de la del inventario vienen guardados como número, ninguno con formato de ceros. El arreglo protege la próxima carga. |
+| 7 | En la vista previa, la fila de **Botones** decía «—» en «Personas configuradas». | Dice las personas del recurso, igual que los módulos. |
+| 8 | Una máquina que cambió de número entraba como «nueva» y la vieja quedaba «no vino», sin aviso. | La vista previa **avisa** «posible cambio de número: la N.º X del sistema y la N.º Y del archivo tienen el mismo serial». Solo cuenta un serial no vacío (ni «S/N», «N/A», guiones o ceros) que aparece **una sola vez en el archivo y una sola vez en el sistema**. **No se aplica nada solo**: si es la misma máquina, se cambia a mano el número de la del sistema y se vuelve a cargar. |
+| 9 | La siembra de tipos y de las máquinas de ejemplo podía correr en una sesión que no puede guardar la configuración. | `sembrarMaquinasAlEntrar` usa **la misma regla con que se guarda** (`puedeSubirTabla('params')`: un perfil de piso no sube la configuración) y no siembra si la última carga del servidor quedó incompleta. **En producción lo siembra un administrador al entrar.** |
+
+**Pruebas nuevas** (`test/driver.js`, bloque «BALANCEO etapa 1»):
+- **BAL-H2/H3 (dibujado)** y **MQA4** en el mismo dibujo de Balanceo.
+- **MQA1–MQA3** y **MQA6–MQA9**, con datos sintéticos (números y seriales inventados). MQA6 arma un Excel de verdad con
+  SheetJS si carga en el simulador; si no, prueba solo la lectura de celda y lo dice.
+- La lista **GUARDIA** ya no tiene `delTipoMaq` (no existe); MQA2 comprueba que apagar no hace `splice` y pide confirmación.
+
+**Resultado:** simulador completo, sin ventana: **3.486 comprobaciones, 0 fallas, 0 errores** (antes de esta vuelta, con los
+mismos archivos de prueba: 3.462). En el simulador SheetJS sí cargó, así que MQA6 probó también el Excel de verdad.

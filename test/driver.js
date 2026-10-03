@@ -511,6 +511,37 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    setObjetivoHora(mod.id,40);__check("objetivo: el historial guarda el valor anterior",mod.objetivoHist[1].antes===50&&objetivoHora(mod).antes===50);
    hb=document.getElementById('p-balanceo').innerHTML;__check("balanceo: objetivo y ritmo teórico lado a lado",!btn||(hb.includes('Objetivo prendas/hora (supervisora)')&&hb.includes('Ritmo teórico')));
    __check("objetivo: el historial guarda el motivo",mod.objetivoHist[1].motivo==='prueba de objetivo');window.prompt=()=>'';setObjetivoHora(mod.id,20);__check("objetivo: sin motivo no se cambia",objetivoHora(mod).v===40);window.prompt=promptPrev;setObjetivoHora(mod.id,'');page='ordenes';render();__check("perfiles/centro/balanceo sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+   /* BAL-H2/H3 (03-oct, reescrita): se DIBUJA Balanceo con una referencia cuyas operaciones mezclan orden real (2, puesto a mano) y provisional (el resto),
+      se cuentan los «*» en #p-balanceo y se lee el «X de Y» del aviso contra el número de operaciones. En el mismo dibujo, MQA4: una sola regla de
+      «máquina operativa» (las de baja o paradas no cuentan en la tarjeta del módulo ni en el aviso «no tiene máquinas»). */
+   {const bakM=S.maquinas,bakOp=JSON.stringify(S.params.operarias||null),bakBal=JSON.stringify(BAL);let bakOrd=[],catBak=null;
+    try{const P=programar();let oRef=null,recB=null,mesB=null;const conOps=k=>!!k&&new Set(opsConfeccion(k).map(z=>z.op)).size>=3;
+     const enMod=x=>x.centro==='modulos'&&x.rec&&!esMaquilaRec(R(x.rec))&&S.ordenes.some(y=>y.op===x.op);
+     for(const x of P.pro){if(!enMod(x))continue;const o=S.ordenes.find(y=>y.op===x.op);if(conOps(K(o.cat))){oRef=o;recB=x.rec;mesB=x.dia.slice(0,7);break}}
+     /* si ninguna orden programada en un módulo tiene hoja de 3+ operaciones en este punto del recorrido, se toma una programada y se le pone
+        (solo durante la prueba) una categoría que sí la tiene; se devuelve en el finally */
+     if(!oRef){const kc=S.categorias.find(conOps),x=P.pro.find(enMod);if(kc&&x){oRef=S.ordenes.find(y=>y.op===x.op);catBak={o:oRef,cat:oRef.cat};oRef.cat=kc.id;recB=x.rec;mesB=x.dia.slice(0,7)}}
+     __check("BAL-H2/H3: hay una orden programada en un módulo con hoja de confección de 3 o más operaciones para dibujar la prueba",!!oRef,JSON.stringify({proMod:P.pro.filter(enMod).length,catsConOps:S.categorias.filter(conOps).length,ops:S.operaciones.length}));
+     if(oRef){const k=K(oRef.cat);const ops=opsConfeccion(k);const ids=[...new Set(ops.map(x=>x.op))];
+      bakOrd=ids.map(id=>{const o=OP(id);return [o,Object.prototype.hasOwnProperty.call(o,'orden'),o.orden]});
+      ids.forEach(id=>{delete OP(id).orden});OP(ids[0]).orden=1;OP(ids[1]).orden=2;   /* dos con orden real, el resto sin orden (provisional) */
+      const expReal=ops.filter(x=>x.op===ids[0]||x.op===ids[1]).length,expProv=ops.length-expReal;
+      S.params.operarias=[];const otroMod=modulosPlanta().find(r=>r.id!==recB&&r.activa)||{};
+      S.maquinas=[{id:'mb1',cod:'7101',tipo:'Recta',rec:recB,centro:'modulos',estado:'baja',baja:{ts:'2026-10-01T10:00:00Z',u:'prueba',motivo:'prueba',antes:'operativa'}},{id:'mb2',cod:'7102',tipo:'Overlock',rec:recB,centro:'modulos',estado:'parada'},{id:'mb3',cod:'7103',tipo:'Recta',rec:otroMod.id,centro:'modulos',estado:'operativa'}];
+      BAL.rec=recB;BAL.mes=mesB;BAL.grupo=null;BAL.ref=null;page='balanceo';render();
+      const claves=[...document.querySelectorAll('#p-balanceo button')].map(b=>((b.getAttribute('onclick')||'').match(/^BAL\.grupo='([^']*)'/)||[])[1]).filter(Boolean);
+      let hallado=false,gHall=null;for(const g of claves){BAL.grupo=g;BAL.ref=null;render();if(document.querySelector('#p-balanceo select option[value="'+oRef.id+'"]')){hallado=true;gHall=g;break}}
+      BAL.ref=oRef.id;render();const root=document.getElementById('p-balanceo');
+      const ast=[...root.querySelectorAll('span[title="orden provisional (archivo)"]')];const w=[...root.querySelectorAll('.warn')].find(x=>/sin orden real/.test(x.textContent));const mm=w&&w.textContent.match(/([0-9]+) de ([0-9]+)/);
+      __check("BAL-H2/H3 (dibujado): con 2 operaciones con orden real y el resto provisional, Balanceo marca con «*» SOLO las provisionales y el aviso dice «X de Y» contra el número de OPERACIONES de la referencia",hallado&&expProv>0&&ast.length===expProv&&ast.every(s=>s.textContent==='*')&&!!mm&&+mm[1]===expProv&&+mm[2]===ops.length,JSON.stringify({hallado,ast:ast.length,expProv,txt:mm&&mm[0],nOps:ops.length}));
+      /* MQA4: el aviso sale en el balanceo de la hoja elegida; las tarjetas de los módulos, en la vista de arriba (sin hoja elegida) */
+      const hb=root.innerHTML;const aviso1=root.querySelector('.bal-sin-maq');
+      BAL.grupo=null;BAL.ref=null;render();const card=document.querySelector('#p-balanceo [data-t="balmod-'+recB+'"]');
+      __check("MQA4: Balanceo — un módulo cuyas máquinas están de baja o paradas dice «no tiene máquinas operativas» (antes la de baja contaba como registrada) y su tarjeta dice 0 máquinas (maqOperativa)",!!aviso1&&/no tiene máquinas operativas/.test(hb)&&/dadas de baja, paradas/.test(aviso1.textContent)&&!!card&&/(^|[^0-9])0 máquinas/.test(card.textContent),card&&card.textContent);
+      S.maquinas.push({id:'mb4',cod:'7104',tipo:'Recta',rec:recB,centro:'modulos',estado:'operativa'});render();const card2=document.querySelector('#p-balanceo [data-t="balmod-'+recB+'"]');
+      BAL.grupo=gHall;BAL.ref=oRef.id;render();const aviso2=document.querySelector('#p-balanceo .bal-sin-maq');
+      __check("MQA4: con una máquina operativa el aviso desaparece y la tarjeta dice 1 máquina (la misma regla que el cuadro de máquinas del balanceo)",!aviso2&&!!document.querySelector('#p-balanceo span[title="orden provisional (archivo)"]')&&!!card2&&/(^|[^0-9])1 máquina([^s]|$)/.test(card2.textContent)&&/maqOperativa\(m\)/.test(String(modulosVistaHTML)),card2&&card2.textContent)}}
+    finally{bakOrd.forEach(([o,had,v])=>{if(had)o.orden=v;else delete o.orden});if(catBak)catBak.o.cat=catBak.cat;S.maquinas=bakM;const bo2=JSON.parse(bakOp);if(bo2)S.params.operarias=bo2;else delete S.params.operarias;Object.assign(BAL,{grupo:null,ref:null},JSON.parse(bakBal));page='ordenes';render()}}
   /* historial de fases y cumplimiento de facturación */
   {const antes=__R.errors.length;const o=S.ordenes.find(x=>abierta(x)&&x.fase&&!esFacturada(x));const fFact=faseMapeo().find(r=>r.sistema==='cerrada'&&/factur/i.test(r.fase));
    __check("fases: la carga deja un historial inicial con origen archivo",(o.fases||[]).length>=1&&o.fases[0].origen==='archivo');
@@ -2170,7 +2201,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // guardia: ninguna función que borra sin confirmación, y ninguna función de borrado nueva
    const src=[...document.scripts].map(x=>x.textContent).sort((a,b)=>b.length-a.length)[0]||'';
    const fns=[...new Set([...src.matchAll(/(?:async )?function ((?:del|borrar|limpiar|vaciar|quitar|eliminar|deshacer|retirar)[A-Za-z0-9_]*)\(/g)].map(x=>x[1]))].sort();
-   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delInsumoRutaRow","delPasoCategoriaRow","delReglaInvMaq","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delTipoMaq","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerLoteRuta","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
+   const conocidas=["quitarFavorito","quitarMaquila","quitarMarcaConflictoId","quitarMarcaWHSinOdoo","quitarTramoParalelo","quitarTramoGrupo","borrarOperativo","delCat","delCatTelaRow","delCentro","delCentroEtapaRow","delCentroOTRow","delClasifMaterialRow","delDiasProvRow","delEsperaRow","delEstadoOTRow","delExc","delFaseGrupoRow","delFaseMapeoRow","delGrupoMod","delInsumoRutaRow","delPasoCategoriaRow","delReglaInvMaq","delKgUdRow","delMapaHija","delMermaTinturaRow","delMotivoReprocRow","delMotivoRow","delTallaJuego","delVentana","delOperaria","delOp","delOrden","delOrigenTelaCuartoRow","delOrigenTelaRow","delPalabraJaspeRow","delParamTelaRow","delPerfilDef","delProgTejRow","delPropFaltaRow","delRec","delRegla","delReglaEtiqueta","delReglaRuta","delRestrFaltRow","delRow","delRuta","delTiempoOBRow","deshacerBanoConf","deshacerHechoCentro","deshacerLoteRuta","deshacerTandaPlana","limpiarMes","limpiarHuerfanosTrasBorrado","quitarAjusteCap","quitarAjusteOp","quitarFaseCentro","retirarLib"];const nuevas=fns.filter(f=>!conocidas.includes(f));
    __check("GUARDIA: no hay funciones de borrado nuevas sin revisar (agrega la nueva a la lista solo si pide confirmación y dice qué se pierde)",nuevas.length===0,nuevas.join(', '));
    const sinConf=fns.filter(n=>{const i=src.indexOf('function '+n+'(');const body=src.slice(i,i+700);return !/confirm\(|prompt\(|frase|puede\('config'\)|motivoValido\(/.test(body)});
    __check("GUARDIA: toda función que borra pide confirmación (confirm/prompt/frase)",sinConf.length===0,sinConf.join(', '));
@@ -2838,7 +2869,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("BAL-H1: «MANUAL» (lo que se hace a mano) no sale como máquina que falta",!cm.tipos.some(t=>esMaqManual(t)||/manual/i.test(t))&&!('Manual' in cm.pide));
     __check("BAL-H1: en stock solo las operativas de Confección sin módulo (las de Botones y de Corte no se ofrecen a los módulos); «por revisar» no cuenta",cm.stock.Overlock===1&&!cm.stock.Recta&&!cm.stock.Botonera&&cm.tiene.Recta===2,JSON.stringify(cm.stock));
     S.maquinas=bakM}
-   __check("BAL-H2/H3: el aviso de operaciones sin orden real divide entre las OPERACIONES (no entre las órdenes del mes) y el asterisco «provisional» sale solo en las provisionales",/prov\+' de '\+opsC\.length/.test(String(vBalanceo))&&!/prov\+' de '\+ops\.length/.test(String(vBalanceo))&&/x\.provisional\?'<span title="orden provisional/.test(String(vBalanceo)));
+   /* BAL-H2/H3 se prueba dibujando Balanceo más arriba, junto a la prueba de balanceo con órdenes programadas (aquí ya no hay órdenes programadas en módulos) */
    __check("BAL-H5: el nivel mínimo de especialidad (no se usa en ningún cálculo) ya no se muestra",!/Nivel mínimo de especialidad/.test(operariasPanelHTML()));
    /* IM · inventario de máquinas (03-oct): cargador del archivo de Mantenimiento, con filas SINTÉTICAS (números, marcas y seriales inventados) */
    {const bakM=S.maquinas;const bakInv=JSON.stringify(S.params.maqInv||null);const nCar=(S.cargas||[]).length;S.maquinas=[];
@@ -2896,6 +2927,84 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("IM-REAL: las 29 con «MANTENIMIENTO PREVENTIVO 2026» quedan operativas con su observación; las 3 repetidas idénticas se toman una vez; números y seriales como texto",pr2.maquinas.filter(x=>x.rec&&/MANTENIMIENTO PREVENTIVO/.test(x.obs)&&x.estado==='operativa').length===29&&pr2.repetidas.length===3&&pr2.maquinas.every(x=>typeof x.serial==='string'&&typeof x.cod==='string'));
       __check("IM-REAL: lo que no entra se lista con su motivo (el generador, las filas sin número o «S/N», las que solo traen el número) y las máquinas sin módulo quedan en el inventario de su área, sin recurso",pr2.noEntran.some(x=>/GENERADOR/.test(x.motivo))&&pr2.noEntran.filter(x=>/S\/N/.test(x.motivo)).length===2&&pr2.noEntran.some(x=>/solo el número/.test(x.motivo))&&pr2.maquinas.filter(x=>!x.rec).every(x=>!!x.centro)&&pr2.maquinas.some(x=>!x.rec&&x.centro==='corte')&&pr2.maquinas.some(x=>!x.rec&&x.centro==='tin'),JSON.stringify(pr2.noEntran.map(x=>x.motivo)))}
     else __check("IM-REAL: el archivo real no está en test/fixtures: prueba omitida",true)}
+   /* MQA · arreglos del lote de máquinas (03-oct): baja con motivo, tipos que se apagan, permisos, número y serial como se ven en la celda,
+      personas de Botones en la vista previa, posible cambio de número y siembra solo si la sesión puede guardar la configuración */
+   {const bakM=S.maquinas,bakTM=JSON.stringify(S.params.tiposMaq||null),bak19=JSON.stringify(S.params.tiposMaq19||null),bakInv2=JSON.stringify(S.params.maqInv||null),bakPerf=PERFIL,bakCar=JSON.stringify(S.cargas||[]);
+    const pr0=window.prompt,cf0=window.confirm,al0=window.alert,sp0=window.perfilSoloPiso;
+    const modN=n=>(modulosPlanta().find(r=>numModuloRec(r)===n)||{}).id;const boR=S.recursos.find(r=>r.centro==='botones');
+    try{
+     /* 1 · dar de baja SIEMPRE con motivo; el archivo o lo pegado no da de baja solo */
+     S.maquinas=[{id:'ma1',cod:'7001',tipo:'Recta',rec:modN(1),centro:'modulos',estado:'operativa',serial:'S-7001'},{id:'ma2',cod:'7002',tipo:'Overlock',rec:modN(1),centro:'modulos',estado:'baja',baja:{ts:'2026-10-01T10:00:00Z',u:'prueba',motivo:'prueba',antes:'operativa'}}];
+     page='config';CONF.tab='recursos';render();
+     const selE=id=>{const s=[...document.querySelectorAll('#p-config select')].find(x=>(x.getAttribute('onchange')||'').includes("setMaq('"+id+"','estado'"));return s?[...s.options].map(o=>o.value):null};
+     const o1=selE('ma1'),o2=selE('ma2');
+     __check("MQA1: el desplegable de estado de una máquina en uso ya no ofrece «dada de baja» (eso lo hace el botón, que pide motivo); en una que ya está de baja sí sale",!!o1&&!o1.includes('baja')&&o1.includes('operativa')&&!!o2&&o2.includes('baja'),JSON.stringify({o1,o2}));
+     window.alert=()=>{};window.prompt=()=>'';setMaq('ma1','estado','baja');const m1=S.maquinas[0];
+     __check("MQA1: elegir «baja» por setMaq pasa por darBajaMaq: sin motivo NO se da de baja",m1.estado==='operativa'&&!m1.baja);
+     window.prompt=()=>'se quemó el motor (prueba)';setMaq('ma1','estado','baja');
+     __check("MQA1: con motivo queda de baja con quién, cuándo y el motivo (m.baja) y sigue en la lista",m1.estado==='baja'&&!!m1.baja&&m1.baja.motivo==='se quemó el motor (prueba)'&&!!m1.baja.u&&!!m1.baja.ts&&S.maquinas.length===2&&!maqOperativa(m1));
+     S.maquinas=[{id:'ma3',cod:'7003',tipo:'Recta',rec:modN(2),centro:'modulos',estado:'operativa'}];S.cargas=JSON.parse(bakCar);
+     mPegarMaq();document.getElementById('f-paste').value='RECTA\t7004\tMódulo 3\tbaja\nRECTA\t7003\tMódulo 2\tbaja';procesarPasteMaq();
+     const pp=INVMAQ,n4=pp.nuevas.find(x=>x.cod==='7004'),c3=pp.cambiadas.find(c=>c.x.cod==='7003');const hp=document.getElementById('invmaq-res').innerHTML;
+     __check("MQA1: lo pegado con estado «baja» NO entra como baja: queda «por revisar» con el motivo «el archivo dice baja: confirmar con dar de baja» y la vista previa lo dice",!!n4&&n4.estado==='revisar'&&n4.motivoRevisar===MSG_BAJA_ARCHIVO&&MSG_BAJA_ARCHIVO==='el archivo dice baja: confirmar con dar de baja'&&!!c3&&c3.x.estado==='revisar'&&c3.cambios.some(d=>d.k==='estado'&&d.despues==='revisar')&&pp.bajaArchivo.length===2&&/dicen «baja» en el archivo/.test(hp)&&!pp.maquinas.some(x=>x.estado==='baja'),JSON.stringify(pp.maquinas.map(x=>[x.cod,x.estado])));
+     aplicarInvMaq();const m3=S.maquinas.find(m=>m.cod==='7003'),m4=S.maquinas.find(m=>m.cod==='7004');
+     page='config';CONF.tab='recursos';render();const hc=document.getElementById('p-config').innerHTML;
+     __check("MQA1: al aplicar quedan «por revisar» (no de baja) y el motivo se ve en la lista de máquinas",!!m3&&!!m4&&m3.estado==='revisar'&&m4.estado==='revisar'&&m4.motivoRevisar===MSG_BAJA_ARCHIVO&&!S.maquinas.some(m=>m.estado==='baja')&&/maq-motivo-rev/.test(hc)&&hc.includes(MSG_BAJA_ARCHIVO));
+     maqInvEditable().estados.push({texto:'DADA DE BAJA',estado:'baja'});
+     const pf=planMaquinas({MODULOS:[['NUMERO DE MAQUINA','TIPO DE MAQUINA','OBSERVACIONES','MODULO'],[7005,'OVERLOCK','DADA DE BAJA',1]]},'prueba_baja.xlsx');
+     __check("MQA1: del Excel tampoco: una observación cuya regla dice «baja» entra «por revisar» con ese motivo",(pf.nuevas[0]||{}).estado==='revisar'&&(pf.nuevas[0]||{}).motivoRevisar===MSG_BAJA_ARCHIVO&&pf.bajaArchivo.length===1,JSON.stringify(pf.nuevas));
+     /* 2 · los tipos de máquina se APAGAN, no se borran */
+     S.maquinas.push({id:'ma9',cod:'7009',tipo:'Overlock',rec:modN(1),centro:'modulos',estado:'operativa'});
+     const nT=tiposMaqEditables().length;const iO=tiposMaq().findIndex(r=>r.tipo==='Overlock');const nb=S.bitacora.length;
+     window.confirm=()=>false;apagarTipoMaq(iO);const sigue=tiposMaq()[iO].activa!==false;
+     window.confirm=()=>true;apagarTipoMaq(iO);const rO=tiposMaq()[iO];
+     __check("MQA2: apagar un tipo de máquina pide confirmación, NO lo borra (la tabla tiene las mismas filas), guarda quién y cuándo, y deja bitácora",iO>=0&&sigue&&S.params.tiposMaq.length===nT&&rO.activa===false&&!!rO.apagado&&!!rO.apagado.u&&!!rO.apagado.ts&&S.bitacora.length===nb+1&&/apagado \(no se borra\)/.test(S.bitacora[S.bitacora.length-1].t));
+     __check("MQA2: con el tipo apagado sus nombres ya no se reconocen: normMaquina devuelve el nombre tal cual y queda «sin homologar» (antes un tipo inactivo seguía calzando si nadie más tenía ese nombre)",normMaquina('OVERLOK 4 HILOS')==='OVERLOK 4 HILOS'&&!maqHomologada('Overlock')&&!maqHomologada('OVERLOK 4 HILOS')&&!tiposMaqActivos().includes('Overlock')&&nombresSinHomologar().some(x=>x.nombre==='OVERLOK 4 HILOS'||x.nombre==='Overlock'));
+     page='config';CONF.tab='recursos';render();const ht=document.getElementById('p-config').innerHTML;
+     __check("MQA2: la tabla ya no tiene «×» ni delTipoMaq: el botón dice «apagar» y el tipo apagado ofrece «encender»",!/delTipoMaq\(/.test(ht)&&/onclick="apagarTipoMaq\([0-9]+\)"[^>]*>apagar</.test(ht)&&ht.includes('onclick="encenderTipoMaq('+iO+')"')&&typeof window.delTipoMaq==='undefined');
+     encenderTipoMaq(iO);
+     __check("MQA2: encenderlo de nuevo vuelve a reconocer sus nombres, sin perder ni sumar filas",tiposMaq()[iO].activa===true&&!!tiposMaq()[iO].encendido&&normMaquina('OVERLOK 4 HILOS')==='Overlock'&&S.params.tiposMaq.length===nT);
+     __check("MQA2: apagar no hace splice y pide confirmación (GUARDIA: no hay forma de borrar un tipo)",!/splice/.test(String(apagarTipoMaq))&&/confirm\(/.test(String(apagarTipoMaq))&&/confirm\(/.test(String(encenderTipoMaq))&&!/splice/.test(String(setTipoMaq))&&!/splice/.test(String(homologarNombreMaq)));
+     /* 3 · permisos: sin «config» no se toca la tabla de tipos */
+     PERFIL={rol:'planificacion',modo:'editar',nombre:'Plan'};const sinP=!puede('config');const snap=JSON.stringify(S.params.tiposMaq),nb3=S.bitacora.length;
+     const iR=tiposMaq().findIndex(r=>r.tipo==='Recta'),iTP=tiposMaq().findIndex(r=>listaAlias(r.aliasTP).length>0);
+     addTipoMaq();setTipoMaq(iR,'alias','ALIAS SIN PERMISO');setTipoMaq(iR,'activa',false);homologarNombreMaq('NOMBRE SIN PERMISO','Recta');homologarNombreMaq('OTRO SIN PERMISO','__nuevo');if(iTP>=0)confirmarAliasTP(iTP);apagarTipoMaq(iR);
+     PERFIL=bakPerf;
+     __check("MQA3: sin el permiso «config» (perfil de planificación) no se agrega, edita, homologa, confirma TP, apaga ni enciende ningún tipo de máquina: la tabla y la bitácora no cambian",sinP&&JSON.stringify(S.params.tiposMaq)===snap&&S.bitacora.length===nb3&&normMaquina('NOMBRE SIN PERMISO')==='NOMBRE SIN PERMISO');
+     __check("MQA3: las seis funciones de la tabla de tipos empiezan con if(!puede('config'))return, como setReglaInvMaq",[addTipoMaq,setTipoMaq,homologarNombreMaq,confirmarAliasTP,apagarTipoMaq,encenderTipoMaq].every(f=>/^function [A-Za-z]+\([^)]*\)\{if\(!puede\('config'\)\)return;/.test(String(f))));
+     /* 6 · número y serial como se ven en la celda */
+     const cabX=['NUMERO DE MAQUINA','SERIAL DE MAQUINA','TIPO DE MAQUINA','MODULO','FECHA MANTENIMIENTO'];
+     const hx=hojaInvMaqConTexto([cabX,[7201,99123,'RECTA',1,45652],[7202,123456789012,'OVERLOCK',1,'']],[cabX,['7201','00099123','RECTA','1','26/12/2024'],['7202','1.23457E+11','OVERLOCK','1','']]);
+     __check("MQA6: número y serial se toman como se VEN en la celda (serial con formato de ceros → «00099123»), la fecha sigue cruda para leerla como fecha y un número que la celda muestra en notación científica queda entero",hx[1][1]==='00099123'&&hx[1][0]==='7201'&&hx[1][4]===45652&&hx[2][1]==='123456789012'&&textoCeldaInv(5,'')==='5'&&textoCeldaInv('ABC','x')==='ABC',JSON.stringify(hx.slice(1)));
+     S.maquinas=[];const px=planMaquinas({MODULOS:hx},'x.xlsx');
+     __check("MQA6: y así entran al plan: serial «00099123» y la fecha de mantenimiento leída del número de Excel",(px.nuevas[0]||{}).serial==='00099123'&&(px.nuevas[0]||{}).fechaMant==='2024-12-26'&&(px.nuevas[1]||{}).serial==='123456789012',JSON.stringify(px.nuevas.map(x=>[x.cod,x.serial,x.fechaMant])));
+     let xl=false;try{await Promise.race([cargarSheetJS(),new Promise((_,rj)=>setTimeout(()=>rj(new Error('tiempo')),15000))]);xl=typeof XLSX!=='undefined'}catch(e){xl=false}
+     if(xl){const ws=XLSX.utils.aoa_to_sheet([cabX,[7201,99123,'RECTA',1,45652]]);ws['B2'].z='00000000';ws['E2'].z='dd/mm/yyyy';const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MODULOS');
+      const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});const crudo=XLSX.utils.sheet_to_json(XLSX.read(buf,{type:'array'}).Sheets.MODULOS,{header:1,raw:true,defval:''});
+      S.maquinas=[];mCargarInvMaq();await leerInvMaq({target:{files:[new File([buf],'inventario_ceros.xlsx')]}});const pl2=INVMAQ;const hres=(document.getElementById('invmaq-res')||{}).innerHTML||'';cerrar();
+      __check("MQA6: con un Excel de verdad (armado con SheetJS: serial guardado como número 99123 con formato «00000000»), «Cargar inventario» lee «00099123» como lo muestra la celda (con raw:true llegaba 99123) y la fecha sigue leída",crudo[1][1]===99123&&!!pl2&&(pl2.nuevas[0]||{}).serial==='00099123'&&(pl2.nuevas[0]||{}).cod==='7201'&&(pl2.nuevas[0]||{}).fechaMant==='2024-12-26'&&/Nuevas/.test(hres),JSON.stringify(pl2&&pl2.nuevas))}
+     else __check("MQA6: SheetJS no cargó en el simulador (sin internet): se probó solo la lectura de celda (hojaInvMaqConTexto)",true);
+     /* 7 · personas de Botones en la vista previa */
+     S.maquinas=[];const persB=boR.pers;boR.pers=3;
+     const p7=planMaquinas({MODULOS:[['NUMERO DE MAQUINA','TIPO DE MAQUINA','OBSERVACIONES','MODULO'],[7301,'BOTONERA','O.K','B/O']]},'b.xlsx');const d7=document.createElement('div');d7.innerHTML=previaInvMaqHTML(p7);const fb=d7.querySelector('tr[data-k="'+boR.id+'"]');
+     boR.pers=persB;
+     __check("MQA7: en la vista previa la fila de Botones dice las personas configuradas del recurso (antes «—»), igual que los módulos",!!fb&&fb.children[3].textContent.trim()===num(3),fb&&fb.innerHTML);
+     /* 8 · posible cambio de número: mismo serial en una «nueva» y en una que «no vino» */
+     S.maquinas=[['mc1','7401','SER-AAA'],['mc2','7402','SER-BBB'],['mc3','7403','SER-DUP'],['mc4','7404','SER-DUP'],['mc5','7405',''],['mc6','7406','S/N']].map(([id,cod,serial])=>({id,cod,serial,tipo:'Recta',rec:modN(1),centro:'modulos',estado:'operativa'}));
+     const cab8=['NUMERO DE MAQUINA','SERIAL DE MAQUINA','TIPO DE MAQUINA','OBSERVACIONES','MODULO'];
+     const p8=planMaquinas({MODULOS:[cab8,[7501,'SER-AAA','RECTA','O.K',1],[7502,'SER-DUP','RECTA','O.K',1],[7503,'','RECTA','O.K',1],[7504,'S/N','RECTA','O.K',1],[7505,'SER-NUEVO','RECTA','O.K',1],[7506,'SER-ZZZ','RECTA','O.K',1],[7507,'SER-ZZZ','RECTA','O.K',1]]},'cambio_numero.xlsx');
+     const d8=document.createElement('div');d8.innerHTML=previaInvMaqHTML(p8);const w8=d8.querySelector('.inv-cambio-num');
+     __check("MQA8: una nueva y una que no vino con el MISMO serial (único en el archivo y en el sistema) se avisan como posible cambio de número; vacíos, «S/N» y seriales repetidos no",p8.cambioNumero.length===1&&p8.cambioNumero[0].archivo==='7501'&&p8.cambioNumero[0].sistema==='7401'&&!!w8&&w8.textContent.includes('posible cambio de número: la N.º 7401 del sistema y la N.º 7501 del archivo tienen el mismo serial'),JSON.stringify(p8.cambioNumero));
+     __check("MQA8: solo se avisa, no se aplica: la del sistema conserva su número, la del archivo sigue como «nueva» y la del sistema como «no vino»",S.maquinas.find(m=>m.id==='mc1').cod==='7401'&&p8.nuevas.some(x=>x.cod==='7501')&&p8.noVinieron.some(m=>m.id==='mc1'));
+     /* 9 · la siembra solo en una sesión que puede guardar la configuración */
+     delete S.params.tiposMaq19;S.maquinas=[{id:'mq_ej_9',cod:'EJ-9',tipo:'Recta',rec:'',estado:'operativa'}];
+     window.perfilSoloPiso=()=>true;const noSube=!puedeSubirTabla('params');const r9=sembrarMaquinasAlEntrar();window.perfilSoloPiso=sp0;
+     __check("MQA9: una sesión que no puede guardar la configuración (la misma regla con que _save salta params: puedeSubirTabla) no siembra tipos ni marca ejemplos, aunque tenga el permiso «config»",noSube&&puede('config')&&r9===false&&!S.params.tiposMaq19&&S.maquinas[0].estado==='operativa'&&!S.maquinas[0].ejemplo&&/puedeSubirTabla\('params'\)/.test(String(sembrarMaquinasAlEntrar)));
+     const r9b=sembrarMaquinasAlEntrar();
+     __check("MQA9: la misma sesión pudiendo guardar sí siembra (una vez)",r9b===true&&!!S.params.tiposMaq19&&S.maquinas[0].estado==='baja'&&S.maquinas[0].ejemplo===true&&sembrarMaquinasAlEntrar()===false);
+    }finally{window.prompt=pr0;window.confirm=cf0;window.alert=al0;window.perfilSoloPiso=sp0;PERFIL=bakPerf;S.maquinas=bakM;INVMAQ=null;try{cerrar()}catch(e){}
+     const t0=JSON.parse(bakTM);if(t0)S.params.tiposMaq=t0;else delete S.params.tiposMaq;const f0=JSON.parse(bak19);if(f0)S.params.tiposMaq19=f0;else delete S.params.tiposMaq19;
+     const i0=JSON.parse(bakInv2);if(i0)S.params.maqInv=i0;else delete S.params.maqInv;S.cargas=JSON.parse(bakCar);page='ordenes';render()}}
    const bt=JSON.parse(bakT);if(bt)S.params.tiposMaq=bt;else delete S.params.tiposMaq;
    const bo=JSON.parse(bakO);if(bo)S.params.operarias=bo;else delete S.params.operarias;
    PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render();
