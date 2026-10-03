@@ -158,7 +158,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(/captura=ux/.test(location.search)){const m=location.search.match(/captura=ux([a-z]+?)(f?)(q?)$/)||[];const p=m[1]||'ordenes';PERFIL=adminP0();FILT={};
       if(p==='plan'){PM.mes=hoy().slice(0,7);PM.paso=1}if(p==='ordenes'){grpSt('ord').niveles=[];ORDF.q='';ORDF.fases=null;ORDF.estado='plan';ORDF.tab='ord'}if(p==='entregas'){EG.q='';EG.meses=new Set()}if(p==='control'){CTL.area='pro'}if(p==='liberacion'){LIB.et='tela'}
       if(m[2])FILT[p]=true;
-      if(['maqplan','tamborplan','wip','avancearea'].includes(p)){const cl={};let k=0;S.ordenes.forEach(o=>{if(!o.cliente)return;cl[o.cliente]=cl[o.cliente]||('Cliente '+(++k));o.cliente=cl[o.cliente]})}   /* captura pública: sin nombres de clientes */
+      if(['maqplan','tamborplan','wip','avancearea','gerencia'].includes(p)){const cl={};let k=0;S.ordenes.forEach(o=>{if(!o.cliente)return;cl[o.cliente]=cl[o.cliente]||('Cliente '+(++k));o.cliente=cl[o.cliente]})}   /* captura pública: sin nombres de clientes */
       if(p==='wip'){WIP={base:'abiertas',fases:null,mas:false};WIPL={niveles:null,q:''};GRP={};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();const g=grpSt('wip');const cnt={};wipBase().forEach(o=>{const f=o.fase||'Sin fase';cnt[f]=(cnt[f]||0)+1});const fs2=Object.keys(cnt).filter(f=>cnt[f]>=3&&cnt[f]<=12).sort((a,b)=>cmpFases(a,b));fs2.slice(0,2).forEach(f=>g.exp.add('|'+f))}
       if(p==='avancearea'){AVA={sem:0,abierto:(areasAvance()[0]||{}).g||null}}
       if(p==='maqplan'||p==='tamborplan'){PM.mes=hoy().slice(0,7);PM.paso=1;NIVUI.area=p==='maqplan'?'maquila':'modulos';page='plan';if(p==='maqplan'){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');mods.forEach(m=>nivCapSet(PM.mes,m.id,'pers','2'))}render();const el=document.querySelector('#p-plan .niv-grupos');if(el)el.scrollIntoView();document.querySelectorAll('main,#app').forEach(x=>{x.style.height='auto';x.style.maxHeight='none';x.style.overflow='visible'});[...document.body.childNodes].filter(n=>n.nodeType===3).forEach(n=>n.remove());document.body.classList.add('captura');__R.done=true;return}
@@ -521,9 +521,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const o2=S.ordenes.find(x=>abierta(x)&&x.fase&&!esFacturada(x)&&x!==o);const fc2=o2.fechaCompromiso;o2.fechaCompromiso=dsum(hoy(),-5);setFase(o2.id,fFact.fase);const R2=cumplimientoFacturacion();const f2=R2.filas.find(x=>x.o.id===o2.id);
    __check("cumplimiento: compromiso vencido → tarde con 5 días",!!f2&&!f2.aTiempo&&f2.dias===5&&R2.total.tarde>=1&&R2.total.atrasoProm>=5);
    __check("cumplimiento: las facturadas del archivo sin fecha exacta no se miden",R2.sinFecha.every(x=>!x.ff.exacta)&&R2.sinComp.every(x=>!x.fechaCompromiso));
-   page='cumplimiento';render();const hc=document.getElementById('p-cumplimiento').innerHTML;
+   const dCu=document.createElement('div');vCumplimiento(dCu);const hc=dCu.innerHTML;   /* 03-oct: sin página; la vista y la cuenta se conservan */
+   page='cumplimiento';render();__check("TG: Cumplimiento ya no es página: el enlace viejo abre el Resumen gerencial y no queda ni sección ni entrada de menú",page==='gerencia'&&!document.getElementById('p-cumplimiento')&&!document.querySelector('nav a[data-p="cumplimiento"]')&&document.getElementById('p-gerencia').classList.contains('on'));
    __check("cumplimiento: pantalla dice facturación, no entrega, y que lo incompleto no se mide",hc.includes('Cumplimiento de facturación')&&hc.includes('Se mide por referencias, no por unidades')&&hc.includes('% de referencias cumplidas a tiempo')&&hc.includes('Por mes de compromiso')&&hc.includes('Por cliente')&&hc.includes('Por ODC')&&!/prendas a tiempo/i.test(hc));
-   __check("UX-B7: Cumplimiento sin el aviso amarillo de 5 renglones: la explicación va al «?» del título y los encabezados son cortos (la aclaración al pasar el mouse)",![...document.querySelectorAll('#p-cumplimiento .panel .warn')].some(w=>/Se mide por referencias/.test(w.textContent))&&!!document.querySelector('#p-cumplimiento .panel h3 .ayuda-d')&&(!cumplimientoFacturacion().filas.length||/<th class="num" title="[^"]*">Medidas<\/th>/.test(hc))&&!/Prendas de esas referencias \(informativo/.test(hc));
+   __check("UX-B7: Cumplimiento sin el aviso amarillo de 5 renglones: la explicación va al «?» del título y los encabezados son cortos (la aclaración al pasar el mouse)",![...dCu.querySelectorAll('.panel .warn')].some(w=>/Se mide por referencias/.test(w.textContent))&&!!dCu.querySelector('.panel h3 .ayuda-d')&&(!cumplimientoFacturacion().filas.length||/<th class="num" title="[^"]*">Medidas<\/th>/.test(hc))&&!/Prendas de esas referencias \(informativo/.test(hc));
    mOrden(o.id);__check("ficha: muestra el historial de fases",document.getElementById('modal').innerHTML.includes('Historial de fases'));cerrar();
    setFase(o.id,o.fases[0].f);setFase(o2.id,o2.fases[0].f);o.fechaCompromiso=fc;o2.fechaCompromiso=fc2;page='ordenes';render();__check("fases/cumplimiento sin errores",__R.errors.length===antes);}
   /* replanificación por referencia y auditoría */
@@ -547,7 +548,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* avance del mes contra el plan congelado */
   {const antes=__R.errors.length;const ym=hoy().slice(0,7);const confirmPrev=window.confirm;window.confirm=()=>true;const bakPMav=JSON.stringify(S.params.planMes||null),bakPlav=JSON.stringify(S.planes||[]);
    const f0=filasAvance(ym);__check("avance: sin plan congelado la base es provisional y parte en 0",!f0.B.congelado&&sumAV(f0.filas).hechas===0);
-   {AV.mes=ym;AV.f={};page='avance';render();const pa=document.getElementById('p-avance');
+   {AV.mes=ym;AV.f={};page='avance';render();const pa=document.getElementById('p-avancearea');
+    __check("TG: un enlace viejo a «Avance del mes» abre Avance por área en la vista Mes (los mismos cálculos de antes)",page==='avancearea'&&AVA.vista==='mes'&&!document.getElementById('p-avance')&&!!pa.querySelector('.pagehead .ava-vista .chip.on')&&pa.querySelector('.pagehead .ava-vista .chip.on').textContent.trim()==='Mes'&&/<h2>Avance por área<\/h2>/.test(pa.innerHTML));
     __check("UX-B7: Avance del mes sin plan congelado: aviso arriba con el paso que falta (no escondido en un párrafo), el mes en la cabecera, la explicación en el «?» y la fila Total sin fondo oscuro",!!pa.querySelector('.av-sincong')&&/todavía no tiene el plan congelado/.test(pa.innerHTML)&&!!pa.querySelector('.pagehead .av-mes select')&&/Base: el plan del mes/.test((pa.querySelector('.pagehead .ayuda-d')||{}).innerHTML||'')&&!/background:var\(--ink\)/.test(pa.innerHTML))}
    congelarPlan(ym);const pl=(S.planes||[]).filter(p=>p.mes===ym).slice(-1)[0];__check("avance: congelar el plan guarda la base orden × centro con h0",!!(pl&&pl.base&&pl.base.length)&&pl.base.every(f=>typeof f.pz==='number'&&typeof f.h0==='number'));
    const f1=filasAvance(ym);const r=f1.filas.find(x=>!x.sinReg&&x.pz>2&&x.centro==='corte')||f1.filas.find(x=>!x.sinReg&&x.pz>2);
@@ -555,15 +557,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const f2=filasAvance(ym);const r2=f2.filas.find(x=>x.oid===r.oid&&x.centro===r.centro);__check("avance: hechas = lo registrado desde el plan, no el acumulado de la orden",!!r2&&r2.hechas===2&&r2.h0===h.pz,JSON.stringify(r2&&{hechas:r2.hechas,h0:r2.h0,hTot:r2.hTot}));
      S.avance[o.id].centros[r.centro]=h.pz;}
    const sr=f1.filas.find(x=>x.sinReg);__check("avance: orden×centro sin registro se marca y no cuenta como 0",!sr||(sr.hechas===0&&sumAV([sr]).pzSinReg===sr.pz&&sumAV([sr]).faltan===0));
-   AV.mes=ym;AV.niveles=['cliente','cat'];AV.f={};page='avance';render();const hv=document.getElementById('p-avance').innerHTML;
+   AV.mes=ym;AV.niveles=['cliente','cat'];AV.f={};page='avance';render();const hv=document.getElementById('p-avancearea').innerHTML;
    const T=sumAV(f1.filas);const arbol=arbolAV(f1.filas,['cliente','cat']);const sumaG=arbol.grupos.reduce((a,g)=>a+g.s.pz,0);
    __check("avance: agrupar cliente → categoría suma igual al total (no esconde nada)",sumaG===T.pz&&arbol.grupos.every(g=>g.sub.grupos.reduce((a,x)=>a+x.s.pz,0)===g.s.pz));
    __check("avance: pantalla declara la base (plan del mes), aplicado y desglose por centro",hv.includes('Base: el plan del mes')&&hv.includes('Aplicado:')&&hv.includes('agrupado por Cliente → Categoría')&&hv.includes('↳')&&hv.includes('Por centro'));
    __check("UX-V4: Avance del mes dice «Prendas plan» en las tablas (no «Unid. plan»): la misma palabra que las tarjetas",!/Unid\. plan/.test(hv)&&/Prendas plan/.test(hv));
-   const cli=[...new Set(f1.filas.map(x=>x.cliente||'Sin cliente'))][0];AV.f={cliente:new Set([cli])};render();const hv2=document.getElementById('p-avance').innerHTML;
+   const cli=[...new Set(f1.filas.map(x=>x.cliente||'Sin cliente'))][0];AV.f={cliente:new Set([cli])};render();const hv2=document.getElementById('p-avancearea').innerHTML;
    __check("avance: filtrar esconde y lo dice",hv2.includes('filtros: Cliente = '+cli)&&/se muestran \d+ de \d+/.test(hv2));
    let csvOk=false;const cU=URL.createObjectURL;URL.createObjectURL=b=>{csvOk=b&&b.size>50;return 'blob:x'};try{exportarAvanceCSV()}catch(e){}URL.createObjectURL=cU;__check("avance: exporta CSV con la agrupación",csvOk);
-   AV.f={};window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));{const pmB=JSON.parse(bakPMav);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlav);}}
+   AV.f={};AVA.vista='semana';window.confirm=confirmPrev;page='ordenes';render();__check("avance sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));{const pmB=JSON.parse(bakPMav);if(pmB)S.params.planMes=pmB;else delete S.params.planMes;S.planes=JSON.parse(bakPlav);}}
   /* tela: tres dimensiones (produce, disponibilidad, qué le falta); lavado de tela como baño oscuro; sin regla jaspe */
   {const antes=__R.errors.length;
    const dPlana=dimensionesTela({cod:'01018728',prod:'OXFORD CHINA 100% COTTON BONE',origen:'EXTERNA'});
@@ -1849,7 +1851,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   window.confirm=()=>true;
   try{localStorage.__fase="reporteria admin"}catch(e){}
   /* 7) reportería en sus dos vistas y perfiles por sub-área / solo ver */
-  {const antes=__R.errors.length;AVA={sem:0,abierto:null};page='avancearea';try{render()}catch(e){__R.errors.push({page:'avancearea',msg:e.message})}
+  {const antes=__R.errors.length;AVA={sem:0,abierto:null,vista:'semana'};page='avancearea';try{render()}catch(e){__R.errors.push({page:'avancearea',msg:e.message})}
     const html=document.getElementById('p-avancearea').innerHTML;__check('Avance por área sin errores',__R.errors.length===antes);
     __check('Avance por área (admin): una fila por ítem de planificación con Corte y Confección, columnas programadas/hechas/cumplimiento/atrasadas/congelado, y tejeduría y tintorería de la semana',html.includes('Resumen de la semana')&&/<b>Corte<\/b>/.test(html)&&/<b>Confección<\/b>/.test(html)&&html.includes('Contra lo congelado')&&/Tejeduría <span/.test(html)&&/Tintorería <span/.test(html));
     __check('UX-B7: Avance por área — «sin registros» ya no va en rojo, donde dice «sin congelar» hay un enlace para congelar en el centro, y Tintorería dice «baños» en vez de «0 · 0 kg»',!/t-alerta[^>]*>sin registros/.test(html)&&(!/sin congelar<\/span>/.test(html)||/congelar en el centro/.test(html))&&!/<div class="v">[0-9.]+ · [0-9.]+ kg<\/div>/.test(html));
@@ -1865,7 +1867,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('piso corte puede registrar en corte',puedeCentro('corte')&&!puedeCentro('modulos'));
   __check('piso corte no ve tejeduría ni tintorería',!veArea('tej')&&!veArea('tin')&&veArea('pro'));
   {const antes=__R.errors.length;page='control';CTL.area=null;render();const html=document.getElementById('p-'+page).innerHTML;__check('control de piso de piso corte solo muestra sus centros',__R.errors.length===antes&&CTL.area==='pro'&&html.includes('Corte')&&!html.includes('Confección</h3>'));
-   AVA={sem:0,abierto:null};page='avancearea';render();const h2=document.getElementById('p-'+page).innerHTML;__check('Avance por área de piso corte: solo sus áreas (Corte, Estampado, Bordado), sin Confección ni Tejeduría, y avisa «Ves solo tu área»',/<b>Corte<\/b>/.test(h2)&&/<b>Estampado<\/b>/.test(h2)&&!/<b>Confección<\/b>/.test(h2)&&!/Tejeduría <span/.test(h2)&&/Ves solo tu área/.test(h2));
+   AVA={sem:0,abierto:null,vista:'semana'};page='avancearea';render();const h2=document.getElementById('p-'+page).innerHTML;__check('Avance por área de piso corte: solo sus áreas (Corte, Estampado, Bordado), sin Confección ni Tejeduría, y avisa «Ves solo tu área»',/<b>Corte<\/b>/.test(h2)&&/<b>Estampado<\/b>/.test(h2)&&!/<b>Confección<\/b>/.test(h2)&&!/Tejeduría <span/.test(h2)&&/Ves solo tu área/.test(h2));
    __check('reportería piso sin errores',__R.errors.length===antes);}
   try{localStorage.__fase="perfil solo ver"}catch(e){}
   PERFIL={rol:'piso',area:'pro',subarea:'confeccion',modo:'ver',nombre:'Solo ve'};
@@ -2192,9 +2194,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* REPORTERÍA: pestaña propia, vista general de órdenes, detalle completo, quién la ve */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
-   __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Producto en proceso, Avance por área, Órdenes de trabajo (24-sep), Cumplimiento y Avance del mes — y ya NO Vista general, Asignación por orden ni las dos reporterías (usuaria, 21-sep)",!!g&&links.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo,cumplimiento,avance');
+   __check("REP: el menú tiene la pestaña Reportería con Resumen gerencial, Órdenes de producción, Producto en proceso, Avance por área y Órdenes de trabajo — y ya NO Vista general, Asignación por orden, las dos reporterías (21-sep), Cumplimiento de facturación ni Avance del mes (03-oct)",!!g&&links.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo');
    __check("REP: Dirección ya no repite Producto en proceso, Cumplimiento, Avance ni el Resumen gerencial (viven solo en Reportería)",!document.querySelector('nav .gbody[data-g="dir"] a[data-p="cumplimiento"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="avance"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="wip"]')&&!document.querySelector('nav .gbody[data-g="dir"] a[data-p="gerencia"]')&&[...document.querySelectorAll('nav .gbody[data-g="dir"] a')].map(a=>a.dataset.p).join()==='panorama,envivo,ordenes,plan,liberacion,entregas,auditoria,capacidad');   /* orden de la usuaria (20-sep) + Planta en vivo después de Hoy (01-oct) */
-   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===7&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
+   __check("REP: cada reporte es una entrada de REPORTES (preparado para crecer) y el menú es la misma lista",Array.isArray(REPORTES)&&REPORTES.length===5&&REPORTES.every(r=>r.p&&r.n)&&REPORTES.map(r=>r.p).join()===links.join());
    GRP={};WIPL={niveles:null,q:''};WIP={base:'abiertas',fases:null,mas:false};try{delete localStorage['__grp_'+claveUsr()+'_wip']}catch(e){}page='wip';render();let h=document.getElementById('p-wip').innerHTML;
    const ab=S.ordenes.filter(abiertaDe);const usdT=ab.reduce((a,o)=>a+(+o.precio||0)*(+o.cant||0),0);const pzT=ab.reduce((a,o)=>a+(+o.cant||0),0);
    __check("REP: Producto en proceso es UNA pivot como la de Odoo: por fase por defecto, con Órdenes, Pedido (prendas) y Total $ por grupo y el total arriba; base = abiertas (dicha en pantalla)",grpSt('wip').niveles.join()==='fase'&&['Cliente','ODC','Estilo','Color','Entrega','Dónde está','Estado'].every(x=>h.includes('<th>'+x+'</th>'))&&/<th title="[^"]*">Producto<\/th>/.test(h)&&/<th class="num">Órdenes<\/th><th class="num"[^>]*>Prendas pedidas<\/th><th class="num"[^>]*>Total \$<\/th>/.test(h)&&h.includes('grp-row')&&/Fase:<\/span>/.test(h)&&h.includes('class="wip-total"')&&h.includes('$ '+num(usdT))&&h.includes('>'+num(pzT)+'</td>')&&/abiertas<\/span>/.test(h),JSON.stringify({niv:grpSt('wip').niveles,usdT,pzT}));
@@ -2209,7 +2211,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("REP: la barra de reportes aparece en las pantallas de Reportería",(()=>{render();return document.getElementById('p-wip').innerHTML.includes('Reportería:')})()&&(()=>{page='avancearea';render();return document.getElementById('p-avancearea').innerHTML.includes('Reportería:')})());GRP={};
    __check("UX-B0a_sistemico_disposicion: la barra de Reportería son pestañas en una línea dentro de la franja del título (no un renglón de chips de 420 px delante de la cabecera), con la pantalla actual marcada",(()=>{const bar=document.querySelector('#p-avancearea .pagehead .rep-barra.o-notebook');return !!bar&&!!bar.querySelector('a.on')&&/Avance por área/.test(bar.querySelector('a.on').textContent)&&!document.querySelector('#p-avancearea > .chips')})());
    const o=S.ordenes.find(abierta);if(o){mDetalleOrden(o.id);const m=document.body.innerHTML;__check("REP: el detalle de la orden trae ruta/pasos, dónde está, qué le falta, historial de fases y foto",m.includes('Historial de fases')&&m.includes('Qué le falta')&&m.includes('<th>Paso</th>')&&m.includes(esc(o.op)));try{cerrar()}catch(e){}}
-   const dC=perfilesDef().find(x=>x.id==='corte'),dT=perfilesDef().find(x=>x.id==='tablet');__check("REP: los supervisores de centro ven Reportería (consulta) y la tablet no",!!dC&&['wip','cumplimiento','avance','avancearea'].every(p=>dC.paginas.includes(p))&&!dC.paginas.includes('vistaordenes')&&!!dT&&dT.paginas.length===1&&dT.paginas[0]==='tablet'&&!!S.params.migReporteria&&!!S.params.migReporteria2);
+   const dC=perfilesDef().find(x=>x.id==='corte'),dT=perfilesDef().find(x=>x.id==='tablet');__check("REP: los supervisores de centro ven Reportería (consulta) y la tablet no",!!dC&&['wip','avancearea'].every(p=>dC.paginas.includes(p))&&!dC.paginas.includes('vistaordenes')&&!!dT&&dT.paginas.length===1&&dT.paginas[0]==='tablet'&&!!S.params.migReporteria&&!!S.params.migReporteria2);
    __check("REP: supervisor de centro no tiene permiso de editar en esos reportes (solo consulta)",!(dC.permisos.includes('programa')||dC.permisos.includes('ordenes')||dC.permisos.includes('*')));
    page='ordenes';render();__check("REP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* SIMULADOR DE CAPACIDAD por semana en el plan mensual: provisional, guardar con motivo, base + extra, gerencia lo ve */
@@ -3637,7 +3639,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    // 3.3 · los centros siguientes trabajan contra lo que salió
    __check("CC3: el siguiente centro trabaja contra lo que realmente salió (180, no 200)",cantCentro(oC,'modulos')===180&&cantCentro(oC,'corte')===200);
    __check("CC3: el faltante se ve en la ficha de la orden",/Cerrada en estos centros/.test(cierresOrdenHTML(oC))&&cierresOrdenHTML(oC).includes('Merma de corte'));
-   {page='avance';AV.mes=hoy().slice(0,7);render();const ha=document.getElementById('p-avance').innerHTML;
+   {page='avance';AV.mes=hoy().slice(0,7);render();const ha=document.getElementById('p-avancearea').innerHTML;AVA.vista='semana';
     __check("CC3: el reporte de avance tiene el panel de cerradas con faltante",/Cerradas con faltante/.test(ha)&&ha.includes(esc(oC.op))&&/Merma de corte/.test(ha)&&cierresConFaltante().some(x=>x.o.id===oC.id));}
    {page='control';CTL.area='pro';CTL.q='';const bakTodo=CTL.todo;CTL.todo=true;render();const h=document.getElementById('p-control').innerHTML;
     __check("CC3: Control de piso muestra el cierre con el faltante y el botón de reabrir",h.includes(esc(oC.op))&&/cerrada 180 de 200/.test(h)&&/faltan 20/.test(h)&&h.includes('reabrirCierre('));CTL.todo=bakTodo;}
@@ -4443,7 +4445,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("B1: con dos meses SUMA los dos, no reemplaza",dos.length>=sel.length&&dos.every(o=>[ms[0],ms[1]].includes(mesPlan(o)||'Sin proyecto')));}
     GER.meses=new Set([m0]);render();
     const h=document.getElementById('p-gerencia').innerHTML;
-    __check("B1: el total de lo seleccionado se muestra arriba",/Sumando/.test(h)&&/Prendas pedidas/.test(h)&&/Lo que falta/.test(h));
+    __check("B1: lo seleccionado se dice junto a los filtros y la tabla «La cartera por…» trae pedidas y lo que falta",/Sumando/.test(h)&&/Prendas pedidas/.test(h)&&/Faltan/.test(h));
     // y los bloques de abajo respetan el filtro: la tabla por mes solo trae el mes elegido
     __check("B1: el bloque de cartera por mes ya no muestra los otros meses",ms.filter(m=>m!==m0&&m!=='Sin proyecto').every(m=>!h.includes('>'+fmtMesEG(m)+'<')));
     GER.meses=null;render();
@@ -4567,10 +4569,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       return t.venc===ords.filter(o=>esMetaVencida(o,P)).length&&t.tarde===ords.filter(o=>esOrdenVaTarde(o,P)).length})());
     page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
     __check("GV: y la pantalla usa los mismos nombres, no inventa otros",/Meta vencida/.test(h)&&/La orden va tarde/.test(h)&&!/>En riesgo</.test(h));
-    {const P2=programarTodo(),o2=ordenesGER(P2);const ven=o2.filter(o=>esMetaVencida(o,P2)),rie=o2.filter(o=>esOrdenVaTarde(o,P2));const pzs=l=>num(l.reduce((a,o)=>a+(+o.cant||0),0));
-     __check("UX-V4: las tarjetas de arriba dicen también las prendas de «Meta vencida» y «La orden va tarde» (la misma lista de la tarjeta, sin cálculo nuevo)",(!ven.length||h.includes('Meta vencida <span class="mut">· '+pzs(ven)+' prendas</span>'))&&(!rie.length||h.includes('La orden va tarde <span class="mut">· '+pzs(rie)+' prendas</span>')),ven.length+' vencidas / '+rie.length+' van tarde');
-     const cajas=[...document.querySelectorAll('#p-gerencia .ger-2col .tabla-x')].filter(x=>x.offsetParent!==null);
-     __check("UX-V4: ninguna tabla del Resumen gerencial queda cortada a lo ancho (dos columnas solo si cada tabla cabe entera; si no, una debajo de la otra)",window.innerWidth<1200||(cajas.length>0&&cajas.every(x=>x.scrollWidth<=x.clientWidth+2)),window.innerWidth+' px · '+cajas.map(x=>x.scrollWidth+'/'+x.clientWidth).join(' '))}}
+    {const P2=programar(),o2=carteraDe('abiertas');const ven=o2.filter(o=>esMetaVencida(o,P2)),rie=o2.filter(o=>esOrdenVaTarde(o,P2));const pzs=l=>num(l.reduce((a,o)=>a+(+o.cant||0),0));   /* 03-oct: las tarjetas miran la cartera abierta con el programa real */
+     __check("UX-V4: las tarjetas de arriba dicen también las prendas de «Meta vencida» y «La orden va tarde» (la misma lista de la tarjeta, sin cálculo nuevo)",h.includes('<b>Meta vencida</b> <span class="ger-km">'+pzs(ven)+' prendas')&&h.includes('<b>La orden va tarde</b> <span class="ger-km">'+pzs(rie)+' prendas'),ven.length+' vencidas / '+rie.length+' van tarde');
+     const cajas=[...document.querySelectorAll('#p-gerencia .ger-tarjetas .kpi.tarj')].filter(x=>x.offsetParent!==null);const tops=cajas.map(x=>Math.round(x.getBoundingClientRect().top));
+     __check("UX-V4: las cinco tarjetas del Resumen gerencial caben en una fila a lo ancho de la pantalla y ninguna se corta",window.innerWidth<1200||(cajas.length===5&&tops.every(t=>Math.abs(t-tops[0])<=1)&&cajas.every(x=>x.scrollWidth<=x.clientWidth+2)),window.innerWidth+' px · '+cajas.map(x=>x.scrollWidth+'/'+x.clientWidth).join(' '))}}
    /* «hechas» = último paso de la ruta COMPLETA en orden de proceso, y la brecha de ruta sin Empaque */
    {const o=S.ordenes.find(x=>abierta(x)&&!faseTerminadaDe(x)&&rutaHechasDe(x).length>1&&!pasoHecho(x,rutaHechasDe(x)[rutaHechasDe(x).length-1]));
     if(o){const ru=rutaHechasDe(o);const ult=ru[ru.length-1];
@@ -4596,17 +4598,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     abrirBloqueGER('fase');
     __check("GB: abrir otro cierra el anterior: solo uno a la vez",GER.abierto==='fase');
     abrirBloqueGER('fase');
-    __check("GB: tocarlo otra vez lo cierra",GER.abierto===null);
+    __check("GB: tocarlo otra vez lo deja abierto: la tabla siempre está a la vista (03-oct)",GER.abierto==='fase');
     abrirBloqueGER('odc');
     __check("GB: y se recuerda cuál quedó abierto",(()=>{try{return localStorage['__ger_'+claveUsr()]==='odc'}catch(e){return true}})());
     page='gerencia';render();const h=document.getElementById('p-gerencia').innerHTML;
-    __check("GB: los cinco bloques están, y solo el abierto muestra su tabla",GER_BLOQUES.every(b=>h.includes(esc(b.n)))&&document.querySelectorAll('#p-gerencia [data-ger-abierto]').length===1&&document.querySelector('#p-gerencia [data-ger-abierto]').dataset.gerAbierto===GER.abierto);
+    __check("GB: los cinco cortes están (chips), y solo el elegido muestra su tabla",GER_BLOQUES.every(b=>h.includes('>'+esc(b.chip)+'</span>'))&&document.querySelectorAll('#p-gerencia [data-ger-abierto]').length===1&&document.querySelector('#p-gerencia [data-ger-abierto]').dataset.gerAbierto===GER.abierto);
     __check("GB: el detalle se abre al tocar una fila",/verDetalleGER\(/.test(h));
-    __check("UX-B7: «Ver la cartera por…» son pestañas (una por corte, la abierta marcada) y ya no hay cinco paneles «tocar para abrir»",document.querySelectorAll('#p-gerencia .ger-tabs a').length===GER_BLOQUES.length&&!!document.querySelector('#p-gerencia .ger-tabs a.on')&&!/tocar para abrir/.test(h));
-    __check("UX-B7: la sección imprimible no repite las cifras de arriba («Con entrega vencida», Órdenes y Prendas), las notas van al «?» y el título dice «por mes del Proyecto» (nunca «Invalid Date»)",!/Con entrega vencida/.test(h)&&!/<b>Notas:<\/b>/.test(h)&&!!document.querySelector('#p-gerencia section.imp .imp-cab .ayuda-d')&&/Carga por mes del Proyecto/.test(h)&&!/Invalid Date/.test(h)&&document.querySelectorAll('#p-gerencia section.imp .kpi').length<=3);
+    __check("UX-B7: «La cartera por…» son chips (uno por corte, el elegido marcado) y ya no hay cinco paneles «tocar para abrir»",document.querySelectorAll('#p-gerencia .ger-tabs .chip').length===GER_BLOQUES.length&&!!document.querySelector('#p-gerencia .ger-tabs .chip.on')&&!/tocar para abrir/.test(h));
+    __check("UX-B7: ya no hay sección imprimible con una segunda franja de cifras (03-oct: las cinco tarjetas son el tablero), las notas van al «?» del título y nunca sale «Invalid Date»",!/Con entrega vencida/.test(h)&&!/<b>Notas:<\/b>/.test(h)&&!document.querySelector('#p-gerencia section.imp')&&!!document.querySelector('#p-gerencia .pagehead .ayuda-cab')&&!/Invalid Date/.test(h)&&document.querySelectorAll('#p-gerencia .kpi').length===5);
     __check("UX-B7: los paneles que corrigen rutas salieron del Resumen gerencial y están en Órdenes → Rutas → Más herramientas",!/Poner la ruta por defecto|Órdenes cuya familia no tiene hoja de operaciones/.test(h)&&/Ruta no termina en Empaque/.test(rutasHTML()));
-    {const ords=ordenesGER(programarTodo());const tr=document.querySelector('#p-gerencia section.imp .ger-2col table tbody tr:last-child');const sinPz=ords.filter(sinWHde).reduce((a,o)=>a+ +o.cant,0);
-     __check("UX-B7: «con WH / sin WH» del Resumen gerencial sale de sinWHde (la definición única), no del estado",!!tr&&tr.children[4].textContent.trim()===num(sinPz),tr?tr.children[4].textContent+' / '+num(sinPz):'sin fila')}
+    {const P3=programar();const n=carteraDe('abiertas',o=>esMetaVencida(o,P3)&&sinWHde(o)).length;const t=(document.querySelector('#p-gerencia [data-t="ger-venc"]')||{}).textContent||'';
+     __check("UX-B7: «sin WH» del Resumen gerencial sale de sinWHde (la definición única), no del estado",n?t.includes('incluye '+num(n)+' de diseño sin WH'):!/sin WH/.test(t),t.slice(0,160))}
     GER.abierto=null;GER.det=null;}
    /* columnas propias de cada bloque */
    {GER.abierto='fase';const h1=bloqueGERHTML(GER_BLOQUES[1],ordenesGER(P),P);
@@ -8570,10 +8572,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
    const pg=p=>document.getElementById('p-'+p);
    /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
-   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','cumplimiento','avance','wip','balanceo','config','operaciones','categorias','usuarios','auditoria','imprimir'];
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','wip','balanceo','config','operaciones','categorias','usuarios','auditoria','imprimir'];
     const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
     __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
-    page='avance';render();__check("F1: Avance del mes conserva a la vista el aviso «sin plan congelado» (es estado, no explicación; desde el 02-oct es un aviso con el botón para congelar)",(()=>{const e=pg('avance');return !!e.querySelector('.av-sincong,.lede.no-plegar')||/plan congelado v/.test(e.innerHTML)})());
+    page='avance';render();__check("F1: Avance por área → Mes (antes Avance del mes) conserva a la vista el aviso «sin plan congelado» (es estado, no explicación; desde el 02-oct es un aviso con el botón para congelar)",(()=>{const e=pg('avancearea');AVA.vista='semana';return !!e.querySelector('.av-sincong,.lede.no-plegar')||/plan congelado v/.test(e.innerHTML)})());
     __check("F1: el «?» cuelga del título (h2/h3) en las pantallas principales",!sinAyuda.length,sinAyuda.join(', '));
     page='ordenes';render();const ay=pg('ordenes').querySelector('.pagehead .ayuda-cab');const txtAntes=ay?ay.querySelector('.ayuda-txt').textContent.trim():'';
     __check("F1: el texto del «?» es el del párrafo que estaba antes (no se pierde nada) y se abre al tocar",!!ay&&txtAntes.length>40&&(ay.querySelector('.ayuda').click(),ay.classList.contains('abierto')));}
@@ -8614,6 +8616,117 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __R.semaforo=(()=>{const d={};e.forEach(x=>{const k=x.color+' '+x.txt.replace(/\d+ días?/,'N días').replace(/ (a|en|para) .*/,' …').replace(/el \w+, \d+ \w+/,'<día>').replace(/hoy|mañana/,'<día>');d[k]=(d[k]||0)+1});return Object.entries(d).sort((a,b)=>b[1]-a[1])})();}
    window.alert=al;PERFIL=adminP0();FILT={};ORDF.q='';page='ordenes';render();
    __check("DUMMIES sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
+  try{localStorage.__fase="tablero gerencial"}catch(e){}
+  /* TABLERO DEL RESUMEN GERENCIAL · TG (03-oct, usuaria: «la parte de reportes: borra lo que no debe ir, y pon lo que sí es importante») */
+  {const antes=__R.errors.length;const adminP=PERFIL;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));const c0=window.confirm;window.confirm=()=>true;
+   PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};PLAN=null;PLAN_ALL=null;GER.meses=null;GER.cli=null;GER.est=null;GER.q='';GER.det=null;GER.abierto='cliente';TARJ.exp={};
+   const bakMK=S.params.metasKPI;delete S.params.metasKPI;const bakWIP=WIP.base;
+   const pgG=()=>document.getElementById('p-gerencia');const pzDe=l=>l.reduce((a,o)=>a+(+o.cant||0),0);
+   /* 1 · Reportería queda con cinco reportes, coherentes en el menú, el registro, el catálogo de páginas y los íconos */
+   {const rep=[...document.querySelectorAll('nav .gbody[data-g="rep"] a')].map(a=>a.dataset.p);
+    __check("TG1: Reportería queda con Resumen gerencial · Órdenes de producción · Producto en proceso · Avance por área · Órdenes de trabajo (menú = REPORTES)",rep.join()==='gerencia,ordconsulta,wip,avancearea,ordtrabajo'&&REPORTES.map(r=>r.p).join()===rep.join(),rep.join());
+    __check("TG1: Cumplimiento y Avance del mes salieron del catálogo de páginas, de los íconos, de las secciones y del despachador; cada reporte tiene su ícono y su página en el catálogo",!PAGINAS_DEF.some(x=>x[0]==='cumplimiento'||x[0]==='avance')&&!ICO_NAV.cumplimiento&&!ICO_NAV.avance&&REPORTES.every(r=>ICO_NAV[r.p]&&PAGINAS_DEF.some(x=>x[0]===r.p))&&!document.getElementById('p-avance')&&!document.getElementById('p-cumplimiento')&&!/cumplimiento:vCumplimiento|avance:vAvance/.test(String(render)));
+    __check("TG1: los enlaces viejos redirigen: cumplimiento → Resumen gerencial, avance → Avance por área (vista Mes)",PAGINAS_REDIRIGIDAS.cumplimiento==='gerencia'&&PAGINAS_REDIRIGIDAS.avance==='avancearea'&&(()=>{const v=AVA.vista;const p=redirigirPagina('avance');const ok=p==='avancearea'&&AVA.vista==='mes';AVA.vista=v;return ok})());
+    __check("TG1: la cuenta de Cumplimiento y las semanas congeladas se conservan (nada se borra): solo dejó de haber pantalla",typeof cumplimientoFacturacion==='function'&&typeof congelarSemana==='function'&&typeof vCumplimiento==='function');}
+   /* 2 · las cinco tarjetas y sus cifras = las definiciones únicas */
+   {page='gerencia';render();const el=pgG();const P=programar();const ym=hoy().slice(0,7);
+    const ids=[...el.querySelectorAll('.ger-tarjetas .kpi.tarj')].map(x=>x.dataset.t);
+    __check("TG2: el tablero es UNA fila de cinco tarjetas (tarjetasResumenHTML): Facturación, Meta vencida, La orden va tarde, ¿Alcanza?, Producto en proceso",ids.join()==='ger-fact,ger-venc,ger-tarde,ger-alcanza,ger-wip'&&el.querySelectorAll('.ger-tarjetas .kpis.tarj-row').length===1,ids.join());
+    const v=id=>{const t=el.querySelector('.ger-tarjetas [data-t="'+id+'"] .ger-n');return t?t.textContent.trim():null};const txt=id=>(el.querySelector('.ger-tarjetas [data-t="'+id+'"]')||{}).textContent||'';
+    const ven=carteraDe('abiertas',o=>esMetaVencida(o,P)),tar=carteraDe('abiertas',o=>esOrdenVaTarde(o,P));
+    __check("TG2: Meta vencida = carteraDe('abiertas', esMetaVencida), con sus prendas y su $",v('ger-venc')===num(ven.length)&&txt('ger-venc').includes(num(pzDe(ven))+' prendas')&&txt('ger-venc').includes('$ '+num(ven.reduce((a,o)=>a+usdOrden(o),0))),v('ger-venc')+' / '+ven.length);
+    const sinWH=ven.filter(sinWHde).length;
+    __check("TG2: las de diseño sin WH se dicen aparte (sinWHde, no el estado)",!sinWH?!/de diseño sin WH/.test(txt('ger-venc')):txt('ger-venc').includes('incluye '+num(sinWH)+' de diseño sin WH'));
+    __check("TG2: La orden va tarde = carteraDe('abiertas', esOrdenVaTarde) con programar() (el programa real), y dice su cuello de botella",v('ger-tarde')===num(tar.length)&&txt('ger-tarde').includes(num(pzDe(tar))+' prendas')&&(!tar.length||/frena sobre todo|sin cuello de botella/.test(txt('ger-tarde'))),v('ger-tarde')+' / '+tar.length);
+    const F=facturacionPlanMes(ym,P);
+    __check("TG2: Facturación = la proyección del Bloque 3 de Planificar el mes (facturacionPlanMes), con liberadas y por liberar",v('ger-fact')==='$ '+num(F.esp)&&txt('ger-fact').includes('liberadas '+num(F.libs.length))&&txt('ger-fact').includes('por liberar '+num(F.porLib0.length)),v('ger-fact')+' / '+F.esp);
+    const wip=carteraDe('lanzadas',o=>enProcesoPlan(o)&&!faseTerminadaDe(o));
+    __check("TG2: Producto en proceso = lanzadas en fases «en proceso» (tabla 5) sin terminar: $ (usdOrden) y prendas",v('ger-wip')==='$ '+num(wip.reduce((a,o)=>a+usdOrden(o),0))&&txt('ger-wip').includes(num(pzDe(wip))+' prendas'));
+    __check("TG2: ¿Alcanza el mes? sale de la nivelación (kpisGerencia → alcanzaMesGER → nivUICalcular)",/alcanzaMesGER\(/.test(String(kpisGerencia))&&/nivUICalcular\(/.test(String(alcanzaMesGER))&&/¿Alcanza /.test(txt('ger-alcanza'))&&/según Planificar el mes/.test(txt('ger-alcanza')));
+    __check("TG2: cada tarjeta dice su base en una línea gris y su fórmula al pasar el mouse",[...el.querySelectorAll('.ger-tarjetas .kpi.tarj')].every(x=>!!x.querySelector('.ger-kb')&&(x.getAttribute('title')||'').length>60));
+    /* el Bloque 3 de Planificar el mes dice lo mismo */
+    const pmB={mes:PM.mes,paso:PM.paso};PM.mes=ym;PM.paso=2;page='plan';render();const b3=((document.querySelector('#p-plan .b3-esp')||{}).textContent||'').trim();
+    __check("TG2: Planificar el mes (Bloque 3) calcula con facturacionPlanMes y muestra la misma cifra que la tarjeta",b3==='$ '+num(F.esp)&&/facturacionPlanMes\(ym,P\)/.test(String(vPlan)),b3+' / '+num(F.esp));
+    PM.mes=pmB.mes;PM.paso=pmB.paso;page='gerencia';render();}
+   /* 3 · metas vacías = gris; con meta, el color sale de la tabla */
+   {const el=pgG();const pzAb=pzDe(carteraDe('abiertas'));
+    __check("TG3: «Metas de los indicadores» nace vacía: sin meta, ninguna tarjeta se pinta (las tres luces apagadas en facturación, meta vencida, va tarde y producto en proceso)",S.params.metasKPI===undefined&&['ger-fact','ger-venc','ger-tarde','ger-wip'].every(id=>{const t=el.querySelector('[data-t="'+id+'"]');return !!t&&!!t.querySelector('.env-sem.apagado')&&!t.classList.contains('bad')&&!t.classList.contains('warn')}));
+    __check("TG3: sin meta colorKPI da gris, y leer la tabla vacía no la crea",colorKPI('metaVencida',50)==='gris'&&colorKPI('facturacion',10)==='gris'&&S.params.metasKPI===undefined);
+    const nBit=S.bitacora.length;
+    setMetaKPI('metaVencida','verde',100);
+    __check("TG3: con una sola cifra sigue gris (hacen falta verde y ámbar)",colorKPI('metaVencida',5)==='gris');
+    setMetaKPI('metaVencida','ambar',100);
+    __check("TG3: con la meta escrita, el color sale de la tabla (menos es mejor: verde hasta 100 %)",colorKPI('metaVencida',5)==='verde'&&(pzAb===0||!!pgG().querySelector('[data-t="ger-venc"] .env-sem i.sv.on')));
+    __check("TG3: cada cambio de meta queda en la bitácora",S.bitacora.length>=nBit+2&&/Meta del indicador «Meta vencida»/.test(JSON.stringify(S.bitacora.slice(nBit))));
+    setMetaKPI('metaVencida','verde',0);setMetaKPI('metaVencida','ambar',0);
+    __check("TG3: 0 es 0, no «sin meta»: con verde y ámbar en 0, cualquier % mayor es rojo",colorKPI('metaVencida',0.5)==='rojo'&&colorKPI('metaVencida',0)==='verde');
+    alerts.length=0;setMetaKPI('facturacion','verde',80);setMetaKPI('facturacion','ambar',90);
+    __check("TG3: en facturación (más es mejor) el verde no puede quedar debajo del ámbar: avisa y no guarda",alerts.length===1&&metaKPI('facturacion').ambar==null);
+    const pf=PERFIL;PERFIL={rol:'planificacion',modo:'editar',nombre:'Plan'};alerts.length=0;setMetaKPI('vaTarde','verde',1);PERFIL=pf;
+    __check("TG3: solo quien configura cambia las metas",alerts.length===1&&!metaKPI('vaTarde'));
+    setMetaKPI('metaVencida','verde','');setMetaKPI('metaVencida','ambar','');setMetaKPI('facturacion','verde','');
+    __check("TG3: vaciar las cifras deja el indicador sin meta (gris), sin un 0 inventado",!metaKPI('metaVencida')&&!metaKPI('facturacion')&&colorKPI('metaVencida',5)==='gris');
+    const ctab=CONF.tab;CONF.tab='cal';page='config';render();const hc=document.getElementById('p-config').innerHTML;
+    __check("TG3: la tabla vive en Configuración general → Calendario y reglas, con su fila en el catálogo de ajustes",/Metas de los indicadores/.test(hc)&&CONF_CATALOGO.some(x=>x.tab==='cal'&&x.titulo==='Metas de los indicadores')&&KPI_INDICADORES.every(d=>hc.includes('data-kpi="'+d.id+'"')));
+    CONF.tab=ctab;page='gerencia';render();}
+   /* 4 · ¿alcanza el mes? no toca la selección que la usuaria tiene puesta en la nivelación */
+   {const bakN=JSON.stringify(NIVUI);const escRef=NIVUI.esc;const ms=nivUIMesesDisp();
+    NIVUI.meses=ms.length?[ms[ms.length-1]]:null;NIVUI.cliente='CLIENTE-X';NIVUI.familia='FAM-X';NIVUI.area='corte';NIVUI.esc.corte={diasAdic:7};NIVUI.verCalc=true;
+    const antesN=JSON.stringify(NIVUI);const simOn=SIM.on;
+    const d=document.createElement('div');vGerencia(d);
+    __check("TG4: dibujar el Resumen gerencial no cambia la selección de la nivelación (meses, cliente, familia, área, escenario sin guardar)",JSON.stringify(NIVUI)===antesN&&NIVUI.esc===escRef&&SIM.on===simOn);
+    const A=alcanzaMesGER(hoy().slice(0,7));
+    __check("TG4: ¿Alcanza? mira los mismos meses que el paso 1 de Planificar el mes (el mes y los anteriores con saldo), sin los filtros ni el escenario de la usuaria",JSON.stringify(A.meses)===JSON.stringify(mesesNivPlan(hoy().slice(0,7)))&&JSON.stringify(NIVUI)===antesN);
+    __check("TG4: su color sale de la nivelación: déficit rojo, riesgo ámbar, falta un dato gris, todas llegan verde (sin Maquila ni las áreas «por días»)",A.color===(A.deficit.length?'rojo':A.riesgo.length?'ambar':A.faltante.length?'gris':A.ok.length?'verde':'gris')&&A.areas.every(x=>x.a.tipo!=='maquila'&&!x.a.porDias));
+    delete NIVUI.esc.corte;const nb=JSON.parse(bakN);Object.keys(NIVUI).forEach(k=>{if(!(k in nb))delete NIVUI[k]});Object.assign(NIVUI,nb);NIVUI.esc=escRef;}
+   /* 5 · dibujar el tablero no cambia S */
+   {const d=document.createElement('div');const h0=JSON.stringify(S);vGerencia(d);const h1=JSON.stringify(S);
+    __check("TG5: dibujar el Resumen gerencial no cambia S (la huella es la misma antes y después)",h0===h1,h0.length+' / '+h1.length);}
+   /* 6 · lo que salió del Resumen gerencial, la línea de confianza y la tabla única */
+   {page='gerencia';render();const h=pgG().innerHTML;
+    __check("TG6: salieron la segunda franja, «Pedido y avance» (pesos por etapa en el código), «Carga contra capacidad» sumada, las tablas por mes y por cliente repetidas y «Órdenes que van tarde, las más grandes»",!/Pedido y avance|Carga contra capacidad|Carga por mes del Proyecto|Carga por cliente|las más grandes|Dónde está la cartera|Horas de planta pendientes/.test(h)&&!/pesoFase/.test(String(vGerencia))&&!pgG().querySelector('section.imp'));
+    __check("TG6: los paneles de mantenimiento no están en el Resumen gerencial y sí en Salud del sistema",!/Órdenes cuya familia no tiene hoja|Categorías sin hoja de operaciones/.test(h)&&!/<h3>Ruta no termina en Empaque/.test(h)&&/id:'empaque'/.test(String(vSalud))&&/id:'sinhoja'/.test(String(vSalud)));
+    __check("TG6: el Resumen gerencial usa el programa real (programar()), no programarTodo()",/const P=programar\(\)/.test(String(vGerencia))&&!/programarTodo\(/.test(String(vGerencia).replace(/\/\*[^]*?\*\//g,''))&&!/programarTodo/.test(String(kpisGerencia)));
+    const P=programar();const c=confianzaGER(P);const pc=pgG().querySelector('.ger-confianza');const n=k=>((pc&&pc.querySelector('[data-c="'+k+'"]'))||{}).textContent||'';
+    __check("TG6: debajo de las tarjetas, «¿Se puede confiar en estas cifras?» con números de bandejas que ya existen y el enlace a Salud del sistema",!!pc&&/¿Se puede confiar en estas cifras\?/.test(pc.textContent)&&n('rutas').startsWith(num(rutasPorDefinir().length)+' ')&&n('sinTiempo').startsWith(num(pasosSinTiempoFecha(P).length)+' ')&&n('sinPrecio').startsWith(num(c.sinPrecio)+' ')&&!!n('carga')&&/registro del piso/.test(n('piso'))&&/Salud del sistema/.test(pc.innerHTML));
+    __check("TG6: «pasos con fecha sin tiempo estándar» es la misma cuenta que la bandeja de Hoy",(pendientesHoy().find(x=>x.k==='pasoSinTiempoFecha')||{}).n===pasosSinTiempoFecha(P).length);
+    const chips=[...pgG().querySelectorAll('.ger-consultas .ger-tabs .chip')].map(x=>x.textContent.trim());
+    __check("TG6: UNA tabla «La cartera por…» con chips Cliente | Fase | ODC | Estilo | Familia, siempre a la vista, que dice su base",chips.join('|')==='Cliente|Fase|ODC|Estilo|Familia'&&pgG().querySelectorAll('[data-ger-abierto]').length===1&&/La cartera por…/.test(h)&&/Base: cartera abierta/.test(h),chips.join('|'));
+    abrirBloqueGER('odc');const tb=pgG().querySelector('[data-ger-abierto="odc"]');
+    __check("TG6: las fechas de la tabla van con fmtDia (no «10-12»)",!!tb&&![...tb.querySelectorAll('tbody td')].some(x=>/^[0-9]{2}-[0-9]{2}$/.test(x.textContent.trim())));
+    abrirBloqueGER('odc');__check("TG6: tocar el chip elegido no cierra la tabla",GER.abierto==='odc'&&!!pgG().querySelector('[data-ger-abierto="odc"]'));
+    __check("TG6: los filtros acotan la tabla y no las tarjetas (y la pantalla lo dice)",(()=>{const v0=pgG().querySelector('[data-t="ger-venc"] .ger-n').textContent;GER.q='zzz-no-existe-zzz';render();const v1=pgG().querySelector('[data-t="ger-venc"] .ger-n').textContent;const vacia=ordenesGER(programar()).length===0;GER.q='';render();return v0===v1&&vacia&&/no las tarjetas/.test(pgG().innerHTML)})());
+    __check("TG6: la historia por Proyecto queda plegada",!!pgG().querySelector('details.ger-hist')&&!pgG().querySelector('details.ger-hist').open&&/Historia de la cartera/.test(pgG().querySelector('details.ger-hist').innerHTML));
+    GER.abierto='cliente';}
+   /* 7 · tocar las tarjetas */
+   {page='gerencia';render();TARJ.exp={};togTarj('ger-venc');const lv=pgG().querySelector('.tarj-lista');const hayV=carteraDe('abiertas',o=>esMetaVencida(o,programar())).length>0;
+    __check("TG7: tocar Meta vencida despliega su lista (agrupada por familia) con la fecha meta y el enlace a Advertencias de fecha",!hayV||(!!lv&&/Fecha meta/.test(lv.innerHTML)&&/Advertencias de fecha/.test(lv.innerHTML)&&!!lv.querySelector('tr.grp-row')));
+    TARJ.exp={};render();const oc=id=>pgG().querySelector('[data-t="'+id+'"]').getAttribute('onclick')||'';
+    __check("TG7: Facturación, ¿Alcanza? y Producto en proceso llevan a su pantalla (no abren paneles nuevos)",/irFacturacionPlan\(/.test(oc('ger-fact'))&&/irNivelacionPlan\(/.test(oc('ger-alcanza'))&&/WIP\.base='lanzadas'/.test(oc('ger-wip')));
+    const pmB={mes:PM.mes,paso:PM.paso};irNivelacionPlan(hoy().slice(0,7));__check("TG7: ¿Alcanza? abre Planificar el mes en el paso 1",page==='plan'&&PM.paso===1);PM.mes=pmB.mes;PM.paso=pmB.paso;
+    page='gerencia';render();WIP.base='abiertas';pgG().querySelector('[data-t="ger-wip"]').click();__check("TG7: Producto en proceso abre la pivot con la base «lanzadas»",page==='wip'&&WIP.base==='lanzadas');WIP.base=bakWIP;}
+   /* 8 · migración única de perfiles (nunca desde el piso, con bitácora) */
+   {const cat=perfilesDef();const prueba={id:'tb-rep',n:'Prueba reportería',permisos:[],centros:[],paginas:['cumplimiento','avance']};cat.push(prueba);
+    const flag=S.params.migReporteria5;delete S.params.migReporteria5;const pf=PERFIL;
+    PERFIL={id:'u-t',rol:'tablet',nombre:'Tablet'};perfilesDef();
+    __check("TG8: la migración no corre desde un perfil de piso",!S.params.migReporteria5&&!prueba.paginas.includes('gerencia'));
+    PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};const nb=S.bitacora.length;perfilesDef();
+    __check("TG8: los perfiles que tenían Cumplimiento reciben el Resumen gerencial y los que tenían Avance del mes, Avance por área; queda en la bitácora",prueba.paginas.includes('gerencia')&&prueba.paginas.includes('avancearea')&&!!S.params.migReporteria5&&/Reportería \(03-oct\)/.test(JSON.stringify(S.bitacora.slice(nb))));
+    prueba.paginas=['cumplimiento','avance'];perfilesDef();
+    __check("TG8: corre una sola vez (la bandera queda en S.params)",!prueba.paginas.includes('gerencia')&&!prueba.paginas.includes('avancearea'));
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-rep');if(flag)S.params.migReporteria5=flag;PERFIL=pf;}
+   /* 9 · Avance por área: Semana | Mes, recordado */
+   {const v0=AVA.vista;let ls0=null;try{ls0=localStorage['__ava_vista_'+claveUsr()]}catch(e){}
+    page='avancearea';setVistaAVA('mes');const hm=document.getElementById('p-avancearea').innerHTML;
+    __check("TG9: Avance por área con el selector Semana | Mes: «Mes» muestra el avance contra el plan del mes (lo que era Avance del mes)",/ava-vista/.test(hm)&&/av-mes/.test(hm)&&/Prendas plan/.test(hm)&&/Base: el plan del mes/.test(hm));
+    let rec=null;try{rec=localStorage['__ava_vista_'+claveUsr()]}catch(e){rec='mes'}
+    __check("TG9: la vista elegida se recuerda (por usuario)",rec==='mes'&&(()=>{AVA.vista=null;return vistaAVA()==='mes'})());
+    setVistaAVA('semana');const hs=document.getElementById('p-avancearea').innerHTML;
+    __check("TG9: «Semana» sigue siendo el resumen de la semana por área",/Resumen de la semana/.test(hs)&&!/av-mes/.test(hs));
+    try{if(ls0==null)delete localStorage['__ava_vista_'+claveUsr()];else localStorage['__ava_vista_'+claveUsr()]=ls0}catch(e){}AVA.vista=v0||'semana';}
+   if(bakMK===undefined)delete S.params.metasKPI;else S.params.metasKPI=bakMK;
+   window.alert=a0;window.confirm=c0;PERFIL=adminP;GER.abierto=null;GER.det=null;TARJ.exp={};PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("TG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== BORRADO DE DATOS DE PRUEBA · construido el 17-sep (las 7 correcciones del Paso 0) + revisión adversarial ===== */
   try{localStorage.__fase="borrado"}catch(e){}
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();
