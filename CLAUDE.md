@@ -1731,6 +1731,34 @@ entre filtros personalizados se exige todo (y). Se aplica **dentro de `matchBusq
 una etiqueta en la barra con ✕ (`soltarSeccionListos`/`soltarFiltroPers`: «soltar», no «quitar», porque no borran datos); Favoritos guarda `FOD`.
 Solo en el aspecto Odoo (el clásico conserva «Filtrar»). Pruebas FO1–FO10.
 
+**Revisión «para dummies» de TODAS las pantallas (02-oct-2026, usuaria: «hay cosas que se ven feas; la interfaz es para dummies; manda a
+revisar todo»).** Se sacaron fotos de las 48 pantallas con los datos reales (`test/.out/snap.js` en el harness `?captura=audit` → HTML estático
+→ Chrome headless → PNG en `test/.out/exports/fotos/`, todo ignorado por git); 10 revisores + 10 verificadores encontraron 179 cosas
+(`test/.out/exports/revision_ux.json`). Se aplicaron 160 en 11 lotes (un lote común B0a/B0b y nueve por grupo de pantallas B1–B9, en paralelo
+en worktrees, cada uno con su CSS bajo una marca `/* ux:Bn */` del `<style>`), y una revisión visual de antes contra después encontró 76 más, de las
+que se corrigieron 64 (pulidos V1–V4). Reglas comunes que quedaron: párrafo «Lo que se lee en pantalla, reglas comunes» (más arriba). Cosas
+concretas que no hay que deshacer: `notasAAyuda` deja a la vista los trozos que dicen QUÉ se mira («familia X», «cliente Y»…); `.foto-esp` es el
+espacio invisible que alinea las WH sin foto (no `.foto-hueco`, que es el recuadro de la ficha); `.tarj>summary` (no `.tarj summary`) para no
+deformar los `<summary>` de adentro; Tintorería va en pestañas (Hoy · Armar baños · Tela plana · Reportes); Hoy → Pendientes en tres bloques
+(Para hoy · Órdenes por completar · Configuración y tiempos); Órdenes agrupada va entera (sin el tope de 600); Control de piso → Tejeduría separa
+las órdenes sin tela definida; Mi centro separa «Afuera: <recurso>» de Disponibles. La sección «Ruta» de los filtros listos usa
+`matchEdicionOrd` (la misma regla que las fichas de Órdenes). **Quedan para la usuaria** (no implementadas): 14 decisiones (Hoy sin cifras
+repetidas y franja «Cómo vamos», baños en Hoy, filtros duplicados de Órdenes, la «×» de borrar en cada fila, una sola lista de rutas, casilla
+«revisada» de Liberación, qué cuenta «Liberadas» en el plan, «sin registros» en rojo, «Hecho» en Ejecución, horas o minutos en centros, qué % de
+avance en el gerencial, cronómetro viejo de la tablet, desplegable de 46 fases en Control de piso, nombres cortos del menú), la propuesta de
+**tablero gerencial de KPI** (sin construir) y tres arreglos de fondo: **`hoy()` usa la hora UTC** (desde las 19:00 de Ecuador el sistema ya está en
+el día siguiente; corregirlo mueve el motor), y los recortes que van contra «nada se borra»: `setAsist` borra turnos de más de 90 días,
+`registrarFase` corta `o.fases` a 60 y `congelar()` corta `S.programas` a 20.
+
+**Paquete de balanceo (02-oct-2026, PASO 0 hecho, nada construido).** Planificación entregó `ENTREGA_CODE_BALANCEO.zip` (base de operaciones de
+Kronos por familia, 292 listados por referencia, 136 máquinas por módulo, rutina `balancear.js`, maqueta, tablet) con siete etapas que se autorizan
+una por una. El diagnóstico `BALANCEO_BASE_PASO0.md` vive en `test/.out/balanceo/` (NO en el repo: lleva datos de planta). Lo esencial: se puede
+sin tocar el motor; la rutina da los 6 casos pero su función `cerrar` choca con la `cerrar()` de las ventanas (renombrar); la tabla `maquinas`
+tiene 9 de ejemplo; «máquina dañada = parada» vaciaría el módulo y «gente de hoy = asistencia» mueve el programa de los demás módulos (medido);
+el orden real de las operaciones se perdió al recargar la hoja el 01-oct; base y listados en tablas leídas a demanda (+1,3 % al entrar). 62
+decisiones con recomendación en su §8. **No construir ninguna etapa sin el «adelante» de la usuaria.** Ojo: `test/fixtures/lmo_rows.json` (hoja de
+operaciones con tiempos) está publicado en el repositorio público desde 695199f.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
