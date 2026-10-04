@@ -36,7 +36,7 @@ Ninguna tiene una cuenta propia: cada una llama a la definición que ya existe. 
 Arreglo de la revisión: antes, el clic en la tarjeta 5 abría la pivot con todas las fases y no cuadraba. Ahora fija también las fases y suelta la búsqueda y los filtros listos de la pivot. La regla depende solo de la fase, así que las órdenes son exactamente las de la tarjeta. Lo prueba TG7.
 
 ## 4. Metas de los indicadores
-- Tabla «Metas de los indicadores» en Configuración general → Calendario y reglas (S.params.metasKPI). Nace vacía: sin meta, la tarjeta queda gris; no se inventa ninguna meta.
+- Tabla «Metas de los indicadores» en Configuración general → Calendario y reglas (S.params.metasKPI). Nació vacía: sin meta, la tarjeta queda gris; no se inventa ninguna meta. Desde el 04-oct trae los números que la usuaria aceptó (sección 10).
 - Facturación del mes se mide en % de la meta del mes (más es mejor). Meta vencida y La orden va tarde se miden en % de las prendas abiertas (menos es mejor). Hacen falta las dos cifras: verde y ámbar.
 - Vacío = sin meta; 0 = 0.
 - Solo quien configura (permiso config) cambia las metas, y queda en la bitácora.
@@ -94,3 +94,30 @@ Decisión de la usuaria: «los supervisores deben ver el avance por área pero n
 **Lo que no cubre:** es blindaje de pantalla (como «ver la configuración»): los precios siguen llegando al navegador con las órdenes, porque la base no filtra columnas por perfil. El respaldo JSON completo (Configuración → Respaldo y borrado) solo lo baja quien configura y lleva todo. `mPrecios` y `vCumplimiento` no tienen entrada.
 
 **Pruebas:** FAC1–FAC7 y la GUARDIA FAC del simulador. FAC2 dibuja cada pantalla que pueden abrir Corte, Módulos, Terminado, Tintorería, Consulta y Liberación (con «gerencia» en sus páginas, como en producción), con pestañas, tarjetas y desplegables abiertos, la ficha, el detalle y la búsqueda de arriba, y exige cero «$» y «USD» en el texto y en los title (la única excepción es la línea gris). La GUARDIA falla si una función nueva arma un monto («'$ '», «$ ${», usd(, usdOrden(…) sin pasar por `veFacturacion()`, salvo las del Resumen gerencial, que solo se llaman desde él.
+
+## 10. Las metas del tablero (04-oct-2026)
+La usuaria aceptó («ok») los números de la tabla de ejemplo:
+
+| Qué | Valor | Dónde se cambia |
+|---|---|---|
+| Meta de facturación de **octubre 2026** | **$ 400.000** | Planificar el mes → paso 2 → Meta de facturación |
+| Facturación del mes (% de la meta, más es mejor) | verde **desde 95 %** · ámbar **desde 80 %** | Configuración general → Calendario y reglas → «Metas de los indicadores» |
+| Meta vencida (% de las prendas abiertas, menos es mejor) | verde **hasta 5 %** · ámbar **hasta 10 %** | ídem |
+| La orden va tarde (% de las prendas abiertas, menos es mejor) | verde **hasta 5 %** · ámbar **hasta 10 %** | ídem |
+
+**Siembra única** `sembrarMetasEjemplo04` (`METAS_EJEMPLO_04`), desde `render()` antes de dibujar, al lado de la tabla 1 al entrar:
+- pone cada valor **solo si no está escrito**. Lo escrito manda, incluso 0; y lo **vaciado a propósito** también: `setMeta` y `setMetaKPI` dejan su línea en la bitácora, y si esa cifra ya se tocó no se vuelve a poner. Si completar una cifra chocaría con la otra ya escrita (verde debajo del ámbar en facturación), no se completa y la bitácora lo dice;
+- dos banderas (`S.params.metasKPI04` y `S.params.metaFact04`) con quién y cuándo, y una línea en la bitácora por cada una que dice que son los números del ejemplo aceptados el 04-oct y dónde se cambian;
+- nunca desde un perfil de piso ni sin poder guardar la configuración; los colores piden **config**; la meta en $ pide **programa** (como `setMeta`) y además **«Ver valores en $»**. En producción la pone el primer administrador (o, la meta en $, Jefatura) que entre.
+
+**Con los datos reales** (simulador, volcado completo, hoy 04-oct), el Resumen gerencial dibujado sale así (los montos en $ no se escriben aquí: el repositorio es público):
+
+| Tarjeta | Cifra | Medida | Color |
+|---|---|---|---|
+| Facturación de octubre | la proyección (lo liberado que termina en octubre) | por debajo del 80 % de la meta | **rojo** |
+| Meta vencida | 321 órdenes (incluye 53 de diseño sin WH) | 22 % de las prendas abiertas (más de 10 %) | **rojo** |
+| La orden va tarde | 36 órdenes (frena sobre todo Bordado) | 3,9 % de las prendas abiertas (hasta 5 %) | **verde** |
+
+¿Alcanza el mes? y Producto en proceso no cambian (la primera sale de la nivelación; la segunda es informativa).
+
+**Pruebas:** MK1–MK6 (la siembra corrió al entrar desde `render()`; desde cero pone todo; es única; lo escrito, el 0, lo vaciado a propósito y lo que chocaría se respetan; piso, Planificación, Jefatura y Administración; las tarjetas dibujadas llevan la clase y la luz que da cada meta; la tabla de Configuración muestra las cifras). TG3 sigue probando la tabla vacía (borra las metas y no vuelven: la siembra ya corrió).

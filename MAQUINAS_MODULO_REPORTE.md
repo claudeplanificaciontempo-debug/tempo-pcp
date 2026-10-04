@@ -129,10 +129,12 @@ lágrima 1 · Remachadora 1. **Todos los nombres del inventario de módulos calz
 | 11 | 6 | 1 | 5 | Atracadora 2 |
 | Botones | 1 | 5 | — | Botonera 2, Ojaladora 2 |
 
-**Estados:**
-- 138 operativas. Entre ellas, las **29 con «MANTENIMIENTO PREVENTIVO 2026»**, todas de módulos o Botones.
+**Estados** (con las reglas del 04-oct, §8):
+- **148 operativas.** Entre ellas, las **29 con «MANTENIMIENTO PREVENTIVO 2026»** (todas de módulos o Botones), las **7 «EN
+  BODEGA»** (Confección sin módulo: reserva de los módulos) y las **3 «TINTORERIA»** (en Tintorería, sin módulo).
 - 7 paradas: las de Corte con «PARADA».
-- **16 por revisar**, porque su observación no tiene regla: «EN BODEGA» 7, «NO FISICAMENTE» 6 y «TINTORERIA» 3.
+- **6 de baja por regla**: «NO FISICAMENTE», con el motivo «no está físicamente».
+- **0 por revisar.** Antes del 04-oct eran 138 operativas y 16 por revisar (EN BODEGA 7, NO FISICAMENTE 6, TINTORERIA 3).
 
 **No entran 8, cada una con su motivo:**
 - 3 filas sin número (dos ventiladores y un esmeril);
@@ -204,9 +206,9 @@ miraron capturas de la vista previa, del panel y de Balanceo, en modo claro y os
 
 ## 6 · Pendientes
 
-1. **Observaciones sin regla (16 máquinas):** «EN BODEGA», «NO FISICAMENTE» y «TINTORERIA». La usuaria decide si cada
-   una es operativa, parada o de baja; se agrega en «Cómo se lee el archivo del inventario» y se vuelve a cargar. No se
-   adivinó.
+1. ~~**Observaciones sin regla (16 máquinas)**~~ **Resuelto el 04-oct** (§8): la usuaria decidió «solo deja activas las que
+   están». **Falta en producción volver a cargar el Excel** con «Cargar inventario» para que las 16 se lean con las reglas
+   nuevas (lo ya cargado no cambia solo; el panel lo avisa).
 2. **Nombres sin homologar:**
    - de la hoja de operaciones: VERTICAL y SESGADORA;
    - del inventario de Corte: RECTA PUNTADA FRANCESA, HILBANADORA, RECTA PUNTADA ZIGZAG y PULIDORA.
@@ -247,3 +249,42 @@ Sobre `main` = 97ef02d (los dos lotes de ayer juntos). **El motor no se tocó.**
 
 **Resultado:** simulador completo, sin ventana: **3.486 comprobaciones, 0 fallas, 0 errores** (antes de esta vuelta, con los
 mismos archivos de prueba: 3.462). En el simulador SheetJS sí cargó, así que MQA6 probó también el Excel de verdad.
+
+## 8 · Tercera vuelta (04-oct): las 16 «por revisar»
+
+Decisión de la usuaria: **«solo deja activas las que están»**. El motor no se tocó; sin seriales ni marcas, solo conteos.
+
+| Observación | Cuántas | Queda | Por qué |
+|---|---|---|---|
+| EN BODEGA | 7 | **operativa** | Están, en bodega. Son Confección sin módulo: cuentan como **reserva** de los módulos (el «en stock» del balanceo). |
+| TINTORERIA | 3 | **operativa** | Están, en Tintorería. Sin módulo: no cuentan para ningún módulo de confección. |
+| NO FISICAMENTE | 6 | **dada de baja** | Motivo «no está físicamente». |
+
+**Cómo se hizo:**
+- Las tres reglas están en la **lista de fábrica** de «Cómo se lee el archivo del inventario» (`REGLAS_INV_04` dentro de
+  `MAQ_INV_DEF`). En producción esa tabla nunca se editó (`S.params.maqInv` no existe), así que manda la lista de fábrica.
+- **Siembra única** `sembrarReglasInvMaq04` (desde `sembrarMaquinasAlEntrar`, o sea al entrar): si la tabla ya se había
+  editado, le agrega las tres; si una regla de la tabla ya lee esa observación (igual o contenida, p. ej. «BODEGA»), se
+  conserva y la nueva no entra. Bandera `S.params.reglasInvMaq04` con quién, cuándo, cuáles agregó y cuáles ya estaban, y
+  una línea en la bitácora. Nunca desde el piso; solo con permiso `config`.
+- **Columna nueva «Motivo (solo con «dada de baja»)»** en la tabla «Observación → estado»: visible y editable (apagada si la
+  regla no es de baja). Una regla de baja **con motivo** da de baja al cargar: la máquina entra con
+  `m.baja = {ts, u, motivo, antes, regla, porRegla:true, archivo}` (la forma de `darBajaMaq` más la regla). **Sin motivo,
+  sigue como antes**: entra «por revisar» con «el archivo dice baja: confirmar con dar de baja». Así «dar de baja pide motivo»
+  se cumple: el motivo lo dio la usuaria en la regla.
+- Una máquina **ya de baja coincide** (no cambia su motivo); una con el estado **cambiado a mano se conserva**; una baja por
+  regla no queda «a mano» (si el archivo la vuelve a traer en uso, cambia y la baja queda marcada como reactivada).
+- **Vista previa:** un renglón con el estado con que quedan («148 operativas · 7 paradas · 6 de baja · 0 por revisar», contando
+  lo cambiado a mano) y otro con cuántas entran de baja por regla y con qué motivo. La confirmación, la bitácora y el registro
+  de cargas lo cuentan («6 de baja por regla («no está físicamente» ×6)»).
+- **Lista de máquinas:** debajo del estado, «no está físicamente · por la regla «NO FISICAMENTE»»; el aviso de arriba dice
+  cuántas de baja son por regla y, si hay máquinas «por revisar» cuya observación ya tiene regla, pide volver a cargar.
+
+**Con el Excel real** (planMaquinas, lista de fábrica): entran **161** = **148 operativas + 7 paradas + 6 de baja + 0 por
+revisar**; 136 con módulo o Botones; 8 Confección sin módulo operativas (las 7 de bodega y 1 sin observación) que cuentan como
+reserva; 3 de Tintorería; 8 filas no entran (igual que antes).
+
+**Pruebas:** IM6 cambió de observación (la fila «sin regla» ya no puede ser «EN BODEGA»); **IM-REAL (04-oct)**, tres
+comprobaciones nuevas con el archivo real, una de ellas con la ventana «Cargar inventario» dibujada; **IM16–IM22** con filas
+sintéticas (lista de fábrica, siembra sobre una tabla editada sin pisar, piso y permisos, columna motivo dibujada y editable,
+baja por regla al leer y al aplicar, recarga sin cambios, regla sin motivo = por revisar, aviso de recargar).
