@@ -71,6 +71,26 @@ migReporteria5 corre una vez (bandera en S.params), deja línea en la bitácora 
 3. Cumplimiento mide 0: fechaFacturada solo toma como día exacto un cambio de fase con origen «app», y mover la fase desde la pantalla guarda origen «manual». Ninguna orden queda medible. Arreglarlo cambia lo que se mide: espera decisión.
 4. Flechas mes contra mes: no están; falta juntar meses de historia.
 5. Hoy repite «vencidas» (tarjeta y bandeja): está en las decisiones de la revisión «para dummies».
-6. ¿«Meta vencida» cuenta las de diseño sin WH? Hoy sí, dicho aparte en la tarjeta. Decisión de la usuaria.
-7. Los supervisores de piso reciben el Resumen gerencial porque tenían Cumplimiento. Si no deben verlo, se les quita en Configuración → Usuarios.
+6. ¿«Meta vencida» cuenta las de diseño sin WH? **Decidido (usuaria, 04-oct): sí cuentan**, como ya hacía la tarjeta, que lo dice aparte («incluye N de diseño sin WH»).
+7. Los supervisores de piso recibían el Resumen gerencial porque tenían Cumplimiento. **Resuelto el 04-oct** con el permiso «Ver valores en $» (sección 9): ven Avance por área, sin dinero.
 8. Las otras migraciones de perfiles siguen con la regla vieja de «no desde el piso» (ya corrieron en producción); para reutilizar el patrón, usar sesionDePisoMig().
+
+## 9. La facturación solo la ven los altos mandos (04-oct-2026)
+Decisión de la usuaria: «los supervisores deben ver el avance por área pero no como valores de facturación; la facturación es gerencial, de altos mandos».
+
+**El permiso.** Nuevo en la lista de Configuración → Usuarios: «Ver valores en $ (facturación, precios, montos)» (`facturacion`). Es de **mirar**, no de hacer: `veFacturacion()` es la única regla del $ y no depende del modo «solo ve» (un perfil que solo mira y tiene el permiso sí ve los $). Lo tienen Administración (por «todo») y **Jefatura**, que lo recibe una sola vez por siembra (bandera `S.params.permFacturacion04`, línea en la bitácora con quién y cuándo, nunca desde un perfil de piso; si después se le quita en Usuarios, no vuelve). No lo tienen Planificación, Consulta, Liberación, Tintorería, los perfiles de centro, los de piso ni la tablet.
+
+**El Resumen gerencial pide el permiso** (`PERM_PAGINA.gerencia`, la misma tabla que usan el menú, `render()`, `puedeAbrirPagina()` y la barra de Reportería). Sin él no sale en el menú aunque esté en las páginas del perfil (los supervisores lo tienen desde la migración del 03-oct: no se les quitó nada, solo no se abre). Un enlace a él, o a los viejos «Cumplimiento» y «Demanda agregada», lleva a **Avance por área**. Las migraciones que daban el Resumen gerencial ya no se lo dan a quien no tiene el permiso: le dan Avance por área. En Usuarios, la casilla de la página dice «(además pide «Ver valores en $»)».
+
+**Sin el permiso, qué cambia en cada pantalla** (con el permiso todo se ve igual que antes: se comparó el dibujo de Administración y Jefatura antes y después, letra por letra):
+- **Producto en proceso**: sin la columna «Total $», sin el valor en la cabecera ni en cada grupo, sin «sin precio». Quedan órdenes y prendas pedidas. El texto de la pestaña en la barra de Reportería no menciona el valor.
+- **Planificar el mes, paso 2**: el Bloque 3 pasa a «Liberadas y por liberar» (órdenes y prendas, sin montos ni meta) con la línea gris «Los valores en $ los ven solo los perfiles con permiso «Ver valores en $»». En Congelar, las versiones y la comparación con el programa no llevan la fila Facturación ni los $. «Metas semanales de facturación» pasa a «Entregas por semana» (órdenes, prendas, por cliente en prendas, real y cumplimiento). La guía no habla de precios. La meta en $ del mes solo la escribe quien la ve (`setMeta`).
+- **Entregas**: «Precio unitario» y «Total $» no aparecen en la ventana de columnas ni en el PDF para el cliente, aunque alguien con permiso los haya marcado, y no se pueden marcar.
+- **Órdenes**: el aviso de precio fuera de rango dice la orden y «N veces el típico del archivo», sin montos. Lo mismo en la vista previa de «Actualizar datos → Tareas de Odoo».
+- **Filtros de todas las listas**: «Añadir filtro personalizado» no ofrece «Precio (PVP)».
+- **Configuración** (para un perfil que configure sin el permiso): sin «Costos para valorar decisiones» (y `setCosto` no cambia nada) ni la fila de facturación de «Metas de los indicadores».
+- Avance por área (Semana y Mes), Órdenes de trabajo, Órdenes de producción, los centros, Control de piso, Mi centro, Hoy, Planta en vivo, la ficha y la búsqueda de arriba ya no tenían $: no cambiaron. Los archivos que baja un supervisor (Avance por área en CSV, rutas) no llevan $.
+
+**Lo que no cubre:** es blindaje de pantalla (como «ver la configuración»): los precios siguen llegando al navegador con las órdenes, porque la base no filtra columnas por perfil. El respaldo JSON completo (Configuración → Respaldo y borrado) solo lo baja quien configura y lleva todo. `mPrecios` y `vCumplimiento` no tienen entrada.
+
+**Pruebas:** FAC1–FAC7 y la GUARDIA FAC del simulador. FAC2 dibuja cada pantalla que pueden abrir Corte, Módulos, Terminado, Tintorería, Consulta y Liberación (con «gerencia» en sus páginas, como en producción), con pestañas, tarjetas y desplegables abiertos, la ficha, el detalle y la búsqueda de arriba, y exige cero «$» y «USD» en el texto y en los title (la única excepción es la línea gris). La GUARDIA falla si una función nueva arma un monto («'$ '», «$ ${», usd(, usdOrden(…) sin pasar por `veFacturacion()`, salvo las del Resumen gerencial, que solo se llaman desde él.

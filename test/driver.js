@@ -2209,6 +2209,19 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("GUARDIA: nadie recorta la bitácora ni las salidas de tintorería ni borra el avance de paso",!src.includes('S.bitacora=S.bitacora.slice')&&!src.includes('S.salidas_tin=S.salidas_tin.slice')&&src.split('delete S.avance[').length===1&&src.split('localStorage.clear').length===1);
    __check("GUARDIA: solo dos lugares llaman delete() en la base (guardar diferencias y el borrado operativo con frase)",src.split('.delete().in(').length-1===2);
    __check("GUARDIA: la recarga no elimina órdenes: las que no vienen quedan como noArchivo",src.includes("estado:'noArchivo'"));
+   /* GUARDIA FAC (04-oct) · ninguna pantalla nueva muestra $ sin pasar por veFacturacion(): toda función que arma un monto («'$ '», «$ ${», «'$'+», usd(, usdOrden(, usdDe()
+      llama a veFacturacion(), salvo las del Resumen gerencial, que solo se dibujan detrás de su puerta (vGerencia, render y el menú) */
+   {    const MARCA=/'[$] |[$] '|[$]'[+]|[$] [$][{]|[^A-Za-z]usd[(]|usdOrden[(]|usdDe[(]/;
+    const ini=[...src.matchAll(/(?:^|\n)(?:async )?function ([A-Za-z0-9_$]+)[(]/g)];const cuerpos={};
+    ini.forEach((x,i)=>{const fin=i+1<ini.length?ini[i+1].index:src.length;cuerpos[x[1]]=src.slice(x.index,fin).replace(/[/][*][\s\S]*?[*][/]/g,'').replace(/^\n?(?:async )?function [A-Za-z0-9_$]+[(]/,'')});
+    const SOLO_GERENCIA=['kpisGerencia','tarjetasGerenciaHTML','bloqueGERHTML','cierresMesHTML'];
+    const conMonto=Object.keys(cuerpos).filter(n=>MARCA.test(cuerpos[n]));
+    const sinPuerta=conMonto.filter(n=>!SOLO_GERENCIA.includes(n)&&!/veFacturacion[(]/.test(cuerpos[n]));
+    __check("GUARDIA FAC: toda función que arma un monto en $ pasa por veFacturacion() (o es del Resumen gerencial, que tiene su propia puerta)",conMonto.length>=8&&sinPuerta.length===0,'sin puerta: '+sinPuerta.join(', ')+' · con monto: '+conMonto.join(', '));
+    const llamadores=f=>Object.keys(cuerpos).filter(n=>n!==f&&new RegExp('[^A-Za-z0-9_]'+f+'[(]').test(cuerpos[n]));
+    const fuera=SOLO_GERENCIA.map(f=>[f,llamadores(f).filter(n=>!['vGerencia','consultasGERHTML'].concat(SOLO_GERENCIA).includes(n))]).filter(x=>x[1].length);
+    __check("GUARDIA FAC: las funciones con $ del Resumen gerencial solo se llaman desde el Resumen gerencial, y vGerencia exige el permiso",fuera.length===0&&/veFacturacion[(]/.test(cuerpos.vGerencia||'')&&PERM_PAGINA.gerencia==='facturacion',JSON.stringify(fuera));
+    __check("GUARDIA FAC: veFacturacion() no depende de modo:'ver' (es un permiso de mirar) y es la única regla: nadie más pregunta por 'facturacion' a mano",!/modo/.test(String(veFacturacion))&&(src.match(/includes[(]'facturacion'[)]/g)||[]).length===1,(src.match(/includes[(]'facturacion'[)]/g)||[]).length);}
    /* DISEÑO · que no vuelvan los problemas de la revisión «para dummies» (02-oct). Las líneas base se midieron ese día: si una sube, alguien escribió
       a mano lo que hay que sacar de un componente común (fmtFecha / fechaHoraLocal para fechas, clases tag t-* y variables para colores, --fs-xs para letra chica). */
    {const n9=(src.match(/font-size:(9|10)px/g)||[]).length,nIso=(src.match(/<td[^>]*>\$\{(esc\()?[a-zA-Z.]*\.fecha(Compromiso)?(\}|\|\|)/g)||[]).length,nHex=(src.match(/style="[^"]*#[0-9A-Fa-f]{3,6}/g)||[]).length;
@@ -4876,8 +4889,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const maloExtra=mk('WH/EMP-E',[{centro:'corte',t:1},{centro:'bordado',t:1}]);
     const b=brechaHechas();
     __check("RE5: mientras quede una ruta mal, «hechas» se marca como afectado",!!b&&b.n>=1&&/afectado/.test(avisoHechasHTML()));
-    page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
-    __check("RE5: y el aviso se ve en el Resumen gerencial (uno solo: «Hechas» puede estar afectado; la etiqueta «con brecha» salió el 03-oct)",(()=>{const hh=document.getElementById('p-gerencia').innerHTML;return (hh.match(/puede estar afectado/g)||[]).length===1&&!/con brecha/.test(hh)})());
+    const pRE=PERFIL;PERFIL=adminP0();page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();   /* 04-oct: el Resumen gerencial pide «Ver valores en $» (planificación no lo tiene) */
+    __check("RE5: y el aviso se ve en el Resumen gerencial (uno solo: «Hechas» puede estar afectado; la etiqueta «con brecha» salió el 03-oct)",page==='gerencia'&&(()=>{const hh=document.getElementById('p-gerencia').innerHTML;return (hh.match(/puede estar afectado/g)||[]).length===1&&!/con brecha/.test(hh)})(),page);PERFIL=pRE;
     /* 5 · la foto del mes: se marca, y al corregir se vuelve a tomar; las cerradas no se tocan */
     {S.params.cierresMes={};const bakPro=S.ordenes.map(o=>o.proyecto);
      const nomMes=m=>['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+m.slice(5,7)-1]+' '+m.slice(0,4);
@@ -5089,8 +5102,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const bakOrd=S.ordenes;
     S.ordenes=S.ordenes.filter(o=>!abierta(o)||rutaTerminaEnEmpaque(o)||!pasosProDe(o).length);
     __check("RT4: cuando no queda ninguna ruta sin Empaque, no hay brecha",brechaHechas()===null&&avisoHechasHTML()==='');
-    page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();
-    __check("RT4: y el aviso de «hechas» desaparece del Resumen gerencial",!/puede estar afectado|con brecha/.test(document.getElementById('p-gerencia').innerHTML));
+    const pRT=PERFIL;PERFIL=adminP0();page='gerencia';GER.meses=null;GER.cli=null;GER.est=null;GER.q='';render();   /* 04-oct: el Resumen gerencial pide «Ver valores en $» (planificación no lo tiene) */
+    __check("RT4: y el aviso de «hechas» desaparece del Resumen gerencial",page==='gerencia'&&!/puede estar afectado|con brecha/.test(document.getElementById('p-gerencia').innerHTML),page);PERFIL=pRT;
     S.ordenes=bakOrd;
     const mala=mk('WH/RT-6',conHoja.id,[{centro:'corte',t:1},{centro:'bordado',t:2}]);
     __check("RT4: y vuelve a aparecer si aparece una ruta mala",!!brechaHechas()&&/afectado/.test(avisoHechasHTML()));
@@ -8850,7 +8863,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("TG7: las fases fijadas son las de la tarjeta (enProcesoPlan y no terminadas), podadas contra la base; con una fase terminada o fuera de proceso en la base, no entra",(!fsW.length?(WIP.fases&&WIP.fases.has(FASE_NINGUNA)):fsW.every(f=>faseOkFiltro(WIP.fases,f)))&&todasL.filter(o=>!enWIPGerencia(o)).every(o=>!faseOkFiltro(WIP.fases,o.fase)),fsW.length+' fases · '+todasL.filter(o=>!enWIPGerencia(o)).length+' lanzadas fuera');
      WIP.base=bakWIP;WIP.fases=bakF;WIPL.q=bakQ||'';if(bakFod)FOD['WIPL.q']=bakFod;else delete FOD['WIPL.q'];}}
    /* 8 · migración única de perfiles (nunca desde el piso, con bitácora) */
-   {const cat=perfilesDef();const prueba={id:'tb-rep',n:'Prueba reportería',permisos:[],centros:[],paginas:['cumplimiento','avance']};cat.push(prueba);
+   {const cat=perfilesDef();const prueba={id:'tb-rep',n:'Prueba reportería',permisos:['facturacion'],centros:[],paginas:['cumplimiento','avance']};cat.push(prueba);
+    const prueba2={id:'tb-rep2',n:'Prueba reportería sin $',permisos:['avance'],centros:[],paginas:['cumplimiento']};cat.push(prueba2);   /* 04-oct: el Resumen gerencial pide «Ver valores en $» */
     const flag=S.params.migReporteria5;delete S.params.migReporteria5;const pf=PERFIL;
     PERFIL={id:'u-t',rol:'tablet',nombre:'Tablet'};perfilesDef();
     __check("TG8: la migración no corre desde un perfil de piso",!S.params.migReporteria5&&!prueba.paginas.includes('gerencia'));
@@ -8860,9 +8874,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TG8: tampoco desde un perfil viejo de piso (rol «piso» con área, fuera del catálogo): la regla es perfilSoloPiso(), la definición única",!S.params.migReporteria5&&!prueba.paginas.includes('gerencia')&&perfilSoloPiso()&&/sesionDePisoMig\(\)/.test(String(perfilesDef))&&/perfilSoloPiso\(\)/.test(String(sesionDePisoMig))&&!/migReporteria5&&[^{]*tipoPiso\(/.test(String(perfilesDef)));
     PERFIL={rol:'admin',modo:'editar',nombre:'Dirección'};const nb=S.bitacora.length;perfilesDef();
     __check("TG8: los perfiles que tenían Cumplimiento reciben el Resumen gerencial y los que tenían Avance del mes, Avance por área; queda en la bitácora",prueba.paginas.includes('gerencia')&&prueba.paginas.includes('avancearea')&&!!S.params.migReporteria5&&/Reportería \(03-oct\)/.test(JSON.stringify(S.bitacora.slice(nb))));
-    prueba.paginas=['cumplimiento','avance'];perfilesDef();
-    __check("TG8: corre una sola vez (la bandera queda en S.params)",!prueba.paginas.includes('gerencia')&&!prueba.paginas.includes('avancearea'));
-    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-rep');if(flag)S.params.migReporteria5=flag;PERFIL=pf;}
+    __check("TG8 (04-oct): un perfil con Cumplimiento SIN «Ver valores en $» no recibe el Resumen gerencial: recibe Avance por área, y la bitácora lo dice",!prueba2.paginas.includes('gerencia')&&prueba2.paginas.includes('avancearea')&&/sin permiso «Ver valores en [$]»/.test(JSON.stringify(S.bitacora.slice(nb))),JSON.stringify(prueba2.paginas));
+    prueba.paginas=['cumplimiento','avance'];prueba2.paginas=['cumplimiento'];perfilesDef();
+    __check("TG8: corre una sola vez (la bandera queda en S.params)",!prueba.paginas.includes('gerencia')&&!prueba.paginas.includes('avancearea')&&!prueba2.paginas.includes('avancearea'));
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-rep'&&x.id!=='tb-rep2');if(flag)S.params.migReporteria5=flag;PERFIL=pf;}
    /* 9 · Avance por área: Semana | Mes, recordado */
    {const v0=AVA.vista;let ls0=null;try{ls0=localStorage['__ava_vista_'+claveUsr()]}catch(e){}
     page='avancearea';setVistaAVA('mes');const hm=document.getElementById('p-avancearea').innerHTML;
@@ -9621,6 +9636,127 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    ['pmOtra','pmComp'].forEach(k=>delete S.params[k]);await _save();
    __check("PM limpieza",!('pmOtra' in fila().data)&&!('pmComp' in fila().data));
    PERFIL=bakP;__check("PM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* FAC · 04-oct (usuaria): «los supervisores deben ver el avance por área pero no como valores de facturación; la facturación es gerencial, de altos
+     mandos». Permiso «Ver valores en $» (facturacion, veFacturacion): sin él no se abre el Resumen gerencial ni sale ningún $ en pantalla, impresión ni
+     archivo. Las pruebas DIBUJAN cada pantalla de cada perfil (con sus pestañas, tarjetas y desplegables abiertos) y buscan «$» y «USD» en el texto y en
+     los title; la única excepción es la línea gris que explica el permiso (SIN_PERMISO_USD). */
+  try{localStorage.__fase="facturacion"}catch(e){}
+  {const antes=__R.errors.length;const bakP=PERFIL;const c0=window.confirm;window.confirm=()=>true;const a0=window.alert;window.alert=()=>{};const dormir=ms=>new Promise(r=>setTimeout(r,ms));
+   const cat=perfilesDef();
+   /* (c) la siembra: una vez, con bitácora, solo a Jefatura (Administración lo tiene por «todo») */
+   {const jf=cat.find(x=>x.id==='jefatura');const bit=S.bitacora.filter(b=>/Permiso «Ver valores en [$]»/.test(b.t));
+    __check("FAC1: el permiso nuevo «Ver valores en $» está en la lista de permisos de Configuración → Usuarios",PERMISOS_DEF.some(p=>p[0]==='facturacion'&&/Ver valores en [$]/.test(p[1])),JSON.stringify(PERMISOS_DEF.find(p=>p[0]==='facturacion')));
+    __check("FAC1: la siembra corrió una vez: Jefatura tiene el permiso, quedó la bandera y la bitácora lo dice, con quién y cuándo",!!S.params.permFacturacion04&&!!jf&&jf.permisos.includes('facturacion')&&bit.length>=1&&!!bit[0].ts&&bit[0].u!==undefined,JSON.stringify({flag:S.params.permFacturacion04,jf:jf&&jf.permisos,bit:bit.length}));
+    __check("FAC1: nadie más lo recibe: Planificación, Consulta, Liberación, Tintorería, los perfiles de centro y la tablet NO lo tienen (Administración por «todo»)",['planificacion','consulta','liberacion','tintoreria','corte','modulos','terminado','tablet'].every(id=>{const d=cat.find(x=>x.id===id);return !d||!perfilVeFacturacion(d)})&&perfilVeFacturacion(cat.find(x=>x.id==='admin')),cat.filter(perfilVeFacturacion).map(d=>d.id).join(','));
+    const nb=S.bitacora.length;perfilesDef();perfilesDef();
+    __check("FAC1: correr otra vez no vuelve a sembrar ni escribe otra línea en la bitácora",S.bitacora.length===nb);
+    jf.permisos=jf.permisos.filter(x=>x!=='facturacion');perfilesDef();const respeta=!jf.permisos.includes('facturacion');jf.permisos.push('facturacion');
+    __check("FAC1: lo editado manda: si en Usuarios le quitan el permiso a Jefatura, la siembra no se lo vuelve a dar",respeta);
+    const flag=S.params.permFacturacion04;delete S.params.permFacturacion04;jf.permisos=jf.permisos.filter(x=>x!=='facturacion');
+    PERFIL={id:'u-t',rol:'tablet',nombre:'Tablet'};perfilesDef();const desdePiso=!S.params.permFacturacion04&&!jf.permisos.includes('facturacion');
+    PERFIL={id:'u-p',rol:'piso',area:'tej',nombre:'Piso tejeduría'};perfilesDef();const desdePisoViejo=!S.params.permFacturacion04&&!jf.permisos.includes('facturacion');
+    S.params.permFacturacion04=flag;jf.permisos.push('facturacion');PERFIL=bakP;
+    __check("FAC1: la siembra nunca corre desde un perfil de piso (ni la tablet ni un perfil viejo de piso)",desdePiso&&desdePisoViejo,JSON.stringify({desdePiso,desdePisoViejo}));
+    __check("FAC1: el perfil viejo de piso de tejeduría ya no trae «gerencia» en su menú",!perfilDe({rol:'piso',area:'tej'}).paginas.includes('gerencia'));}
+   /* (a) sin el permiso: cada pantalla, pestaña, tarjeta y desplegable de cada perfil, sin un solo «$» */
+   const sinLinea=t=>String(t==null?'':t).split(SIN_PERMISO_USD).join('');
+   const dolares=(root,donde,out)=>{if(!root)return;const txt=sinLinea(root.textContent);const re=/[$]|USD/g;let m,n=0;while((m=re.exec(txt))&&n<2){out.push(donde+' · texto: …'+txt.slice(Math.max(0,m.index-80),m.index+40).replace(/\s+/g,' '));n++}
+     root.querySelectorAll('[title],[placeholder],[aria-label]').forEach(el=>['title','placeholder','aria-label'].forEach(a=>{const v=el.getAttribute(a);if(v&&/[$]|USD/.test(sinLinea(v)))out.push(donde+' · '+a+': '+v.slice(0,160))}))};
+   const abrirTarjetas=()=>{try{[...document.querySelectorAll('[onclick*="togTarj("]')].forEach(e=>{const id=(e.getAttribute('onclick').match(/togTarj[(]'([^']+)'/)||[])[1];if(id)TARJ.exp[id]=true})}catch(e){}};
+   const estados=async(p,cap)=>{const R=async(est,fn)=>{try{if(fn)fn();render()}catch(e){cap('ERROR '+est+': '+e.message);return}if(page!==p){cap('ERROR '+est+': la página cambió a '+page);return}cap(est)};
+     await R('al entrar');abrirTarjetas();await R('tarjetas abiertas');TARJ.exp={};
+     if(p==='ordenes'){for(const ed of ['porEditar','editadas','terminadas','todas'])await R('fichas '+ed,()=>{ORDF.tab='ord';ORDF.edicion=ed});await R('rutas',()=>{ORDF.tab='rutas'});ORDF.tab='ord';ORDF.edicion='porEditar'}
+     if(p==='plan'){await R('paso 1',()=>{PM.paso=1});await R('paso 2',()=>{PM.paso=2});abrirTarjetas();await R('paso 2 con tarjetas abiertas');TARJ.exp={};PM.paso=1}
+     if(p==='liberacion'){for(const v of ['listas','frenadas','liberadas'])await R('vista '+v,()=>{LIB.vista=v;LIB.mas=true});LIB.mas=false;LIB.vista=null}
+     if(p==='entregas'){await R('PDF para el cliente',()=>{EG.pdf=true});EG.pdf=false;try{render();mColsEntregas();cap('ventana «Columnas del PDF»',document.getElementById('modal'));cerrar()}catch(e){cap('ERROR mColsEntregas: '+e.message)}}
+     if(p==='wip'){for(const b of ['abiertas','lanzadas','liberadas'])await R('base '+b,()=>{WIP.base=b;WIP.mas=true});await R('grupos abiertos',()=>{WIP.base='abiertas';grpSt('wip').todoAbierto=true});grpSt('wip').todoAbierto=false;WIP.mas=false}
+     if(p==='avancearea'){await R('Semana',()=>{AVA.vista='semana';AVA.abierto=null});for(const a of areasAvance())await R('Semana · '+a.g,()=>{AVA.vista='semana';AVA.abierto=a.g});await R('Mes',()=>{AVA.vista='mes';AVA.abierto=null});AVA.vista='semana'}
+     if(p==='ordtrabajo'){const its=[...new Set([...document.querySelectorAll('#p-ordtrabajo [onclick*="OTR.area="]')].map(e=>(e.getAttribute('onclick').match(/OTR[.]area='([^']*)'/)||[])[1]).filter(Boolean))];for(const a of its)await R('área '+a,()=>{OTR.area=a;OTR.cen=null;OTR.rec=null});OTR.area='general'}
+     if(p==='ordconsulta'){for(const e of ORDC_ESTADOS.map(x=>x[0]))await R('estado '+e,()=>{ORDC.estado=e});ORDC.estado='abiertas'}
+     if(p==='centro'){const cid=CEN.id;for(const t of ['resumen','plan','prog','ejec'])await R(cid+' · '+t,()=>{CEN.tab=t;CEN.solo=''});CEN.tab='resumen'}
+     if(p==='control'){for(const a of ['tej','tin','pro','fases'])await R('área '+a,()=>{CTL.area=a;CTL.centro=null})}
+     if(p==='tintoreria'){for(const t of ['hoy','armar','plana','rep'])await R('pestaña '+t,()=>{TIN.tab=t});TIN.tab=null}
+     if(p==='tablet'){for(const v of ['proceso','cola','hechas'])await R('vista '+v,()=>{TAB.vista=v})}};
+   const recorrer=async(rol,extra)=>{const out=[];let visitas=0;PERFIL=Object.assign({id:'u-'+rol,rol,modo:'editar',nombre:'Prueba '+rol},extra||{});NAVH.length=0;aplicarNavPerfil();
+     const anchors=[...document.querySelectorAll('nav a[data-p]')].filter(a=>a.style.display!=='none');const menu=anchors.map(a=>a.dataset.p);dolares(document.querySelector('nav'),rol+' · menú',out);
+     const hechas=new Set();
+     for(const a of anchors){const key=a.dataset.p+(a.dataset.cen?':'+a.dataset.cen:'')+(a.dataset.lib?':'+a.dataset.lib:'');if(hechas.has(key))continue;hechas.add(key);
+       try{a.click()}catch(e){out.push(key+' · ERROR '+e.message)}const p=page;
+       await estados(p,(est,root)=>{if(String(est).startsWith('ERROR')){out.push(rol+' · '+key+' · '+est);return}const el=root||document.getElementById('p-'+p);if(!root&&el)el.querySelectorAll('details').forEach(d=>d.open=true);visitas++;dolares(el,rol+' · '+key+' · '+est,out)})}
+     /* las páginas que puede abrir aunque no estén en el menú (las del catálogo de páginas) */
+     for(const [p] of PAGINAS_DEF){if([...hechas].some(k=>k.split(':')[0]===p)||!vePagina(p)||!permPaginaOk(p))continue;page=p;try{render()}catch(e){out.push(rol+' · '+p+' · ERROR '+e.message);continue}if(page!==p)continue;hechas.add(p);
+       await estados(p,(est,root)=>{if(String(est).startsWith('ERROR')){out.push(rol+' · '+p+' · '+est);return}const el=root||document.getElementById('p-'+p);if(!root&&el)el.querySelectorAll('details').forEach(d=>d.open=true);visitas++;dolares(el,rol+' · '+p+' (fuera del menú) · '+est,out)})}
+     /* la ficha, el detalle y la búsqueda de arriba con una orden que SÍ tiene precio */
+     const o=(ordenesQueVe()||[]).find(x=>+x.precio>0&&abiertaDe(x))||S.ordenes.find(x=>+x.precio>0);
+     if(o){try{abrirFichaOrden(o.id);dolares(document.getElementById('modal'),rol+' · ficha de la orden',out);cerrar()}catch(e){out.push(rol+' · ficha · ERROR '+e.message)}
+       try{mDetalleOrden(o.id);dolares(document.getElementById('modal'),rol+' · detalle de la orden',out);cerrar()}catch(e){out.push(rol+' · detalle · ERROR '+e.message)}
+       try{BUSG.q=String(o.op||'').slice(-5);BUSG.abierto=true;render();dolares(document.getElementById('busg-host'),rol+' · búsqueda de arriba',out);BUSG.q='';BUSG.abierto=false;render()}catch(e){out.push(rol+' · búsqueda · ERROR '+e.message)}}
+     /* el Resumen gerencial por los tres caminos */
+     const ger={};for(const p of ['gerencia','cumplimiento','familias']){try{ir(p)}catch(e){}ger['ir '+p]=page;page=p;try{render()}catch(e){}ger['render '+p]=page}
+     page='wip';try{render()}catch(e){}const opsFiltro=page==='wip'?[...document.querySelectorAll('#p-wip .o-pers-campo option')].map(x=>x.value):[];   /* las otras secciones guardan lo último que se dibujó (puede ser de otro perfil) */
+     return {menu,visitas,out,ger,precioEnFiltro:camposFiltro().some(x=>x[0]==='precio')||opsFiltro.includes('precio')}};
+   const conGer=['corte','modulos','terminado','tintoreria','liberacion'];const bakPag={};
+   conGer.forEach(id=>{const d=cat.find(x=>x.id===id);if(!d||!Array.isArray(d.paginas)||d.paginas.includes('*'))return;bakPag[id]=d.paginas.slice();['gerencia','ordtrabajo'].forEach(p=>{if(!d.paginas.includes(p))d.paginas.push(p)})});   /* como en producción: los supervisores ya tienen «gerencia» en su menú (migración del 03-oct) */
+   for(const rol of ['corte','modulos','terminado','tintoreria','consulta','liberacion']){const r=await recorrer(rol);
+     __check("FAC2 ("+rol+"): sin «Ver valores en $» ninguna pantalla que puede abrir muestra «$» ni «USD» (texto, title, pestañas, tarjetas y desplegables abiertos, ficha, detalle y búsqueda de arriba)",r.visitas>=8&&r.out.length===0,r.visitas+' vistas · '+r.out.slice(0,6).join(' || '));
+     __check("FAC2 ("+rol+"): el Resumen gerencial no está en su menú (aunque lo tenga en sus páginas) y no se abre con ir('gerencia'), ir('cumplimiento') ni ir('familias')",!r.menu.includes('gerencia')&&Object.values(r.ger).every(x=>x!=='gerencia'),JSON.stringify(r.ger));
+     __check("FAC2 ("+rol+"): el filtro personalizado no ofrece «Precio (PVP)»",!r.precioEnFiltro);}
+   conGer.forEach(id=>{const d=cat.find(x=>x.id===id);if(d&&bakPag[id])d.paginas=bakPag[id]});
+   /* Avance por área y Producto en proceso siguen para los supervisores, sin $ */
+   {PERFIL={id:'u-co',rol:'corte',modo:'editar',nombre:'Corte'};aplicarNavPerfil();page='gerencia';render();const pg=page;
+    AVA.vista='semana';AVA.abierto=null;page='avancearea';render();const ha=document.getElementById('p-avancearea').innerHTML;
+    WIP.base='abiertas';WIP.fases=null;page='wip';render();const hw=document.getElementById('p-wip');const ths=[...hw.querySelectorAll('thead th')].map(x=>x.textContent.trim());
+    __check("FAC3: un supervisor que pide el Resumen gerencial cae en Avance por área, que muestra su avance (programadas, hechas, cumplimiento) sin $",pg==='avancearea'&&/Resumen de la semana/.test(ha)&&/Programadas/.test(ha)&&!/[$]/.test(sinLinea(document.getElementById('p-avancearea').textContent)),pg);
+    __check("FAC3: Producto en proceso sin el permiso: órdenes y prendas por fase, sin la columna «Total $», sin el valor en la cabecera ni «sin precio»",ths.includes('Prendas pedidas')&&!ths.some(t=>/[$]/.test(t))&&!/sin precio/.test(hw.textContent)&&!/cuánto valen/.test(hw.textContent),ths.join('|'));}
+   /* (b) con el permiso (Administración y Jefatura) todo se ve igual que antes */
+   for(const rol of ['admin','jefatura']){PERFIL={id:'u-'+rol,rol,modo:'editar',nombre:'Prueba '+rol};aplicarNavPerfil();const a=document.querySelector('nav a[data-p="gerencia"]');
+     page='gerencia';GER.q='';GER.meses=null;GER.cli=null;GER.est=null;render();const gOk=page==='gerencia';const tf=((document.querySelector('#p-gerencia [data-t="ger-fact"]')||{}).textContent)||'';
+     WIP.base='abiertas';WIP.fases=null;page='wip';render();const thsW=[...document.querySelectorAll('#p-wip thead th')].map(x=>x.textContent.trim());const cabW=(document.querySelector('#p-wip .pagehead')||{}).textContent||'';
+     PM.paso=2;page='plan';render();const b3=((document.querySelector('#p-plan [data-bloque="3"]')||{}).textContent||'')+' '+((document.querySelector('#p-plan .b3-franja')||{}).textContent||'');PM.paso=1;
+     __check("FAC4 ("+rol+"): con el permiso, el Resumen gerencial está en el menú y se abre con la tarjeta de facturación en $",!!a&&a.style.display!=='none'&&a.dataset.perm==='facturacion'&&gOk&&/[$] /.test(tf),tf.slice(0,120));
+     __check("FAC4 ("+rol+"): con el permiso, Producto en proceso trae la columna «Total $» y el valor en la cabecera",thsW.includes('Total $')&&/[$] /.test(cabW),thsW.join('|'));
+     __check("FAC4 ("+rol+"): con el permiso, el Bloque 3 de Planificar el mes es «Meta de facturación» con sus $",/Meta de facturación/.test(b3)&&/[$] /.test(b3),b3.slice(0,160));
+     __check("FAC4 ("+rol+"): con el permiso, Entregas ofrece precio y total en el PDF y el filtro personalizado ofrece el precio",colsEntregas().some(c=>c.k==='precio')&&colsEntregas().some(c=>c.k==='total')&&camposFiltro().some(x=>x[0]==='precio'));}
+   /* (d) «Ver valores en $» es de MIRAR: un perfil que solo mira (modo ver) con el permiso SÍ ve los $ */
+   {PERFIL={id:'u-jv',rol:'jefatura',modo:'ver',nombre:'Jefatura solo ve'};aplicarNavPerfil();page='gerencia';render();const ok1=page==='gerencia'&&/[$] /.test(((document.querySelector('#p-gerencia [data-t="ger-fact"]')||{}).textContent)||'');
+    const pv={id:'tb-fac-ver',n:'Prueba solo mira con $',permisos:['facturacion'],centros:[],paginas:['wip','gerencia']};perfilesDef().push(pv);PERFIL={id:'u-pv',rol:'tb-fac-ver',modo:'ver',nombre:'Mira'};aplicarNavPerfil();
+    page='wip';render();const ok2=page==='wip'&&[...document.querySelectorAll('#p-wip thead th')].some(x=>x.textContent.trim()==='Total $');const menu=[...document.querySelectorAll('nav a[data-p]')].filter(a=>a.style.display!=='none').map(a=>a.dataset.p);
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-fac-ver');
+    __check("FAC5: un perfil «solo ve» (modo ver, que no edita nada) con el permiso SÍ ve los $: el Resumen gerencial y la columna Total $",ok1&&ok2&&menu.includes('gerencia')&&!puede('programa'),JSON.stringify({ok1,ok2,menu}));}
+   /* (e) archivos, impresiones y textos sueltos sin $ */
+   {const B0=window.Blob;const caps=[];window.Blob=function(p,o){caps.push((p||[]).map(x=>typeof x==='string'?x:'').join(''));return new B0(p,o)};const ck=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.download)return;return ck.call(this)};
+    try{PERFIL={id:'u-co',rol:'corte',modo:'editar',nombre:'Corte'};AV.mes=hoy().slice(0,7);exportarAvanceCSV();exportarRutasCSV()}catch(e){caps.push('ERROR '+e.message)}finally{window.Blob=B0;HTMLAnchorElement.prototype.click=ck}
+    __check("FAC6: los archivos que baja un supervisor (Avance por área en CSV, rutas en CSV) no traen ningún $",caps.length===2&&caps.every(c=>c.length>20&&!/[$]|USD/.test(c)),caps.map(c=>c.length+' '+c.slice(0,60)).join(' | '));
+    const fr=filasRutasExport();__check("FAC6: el archivo de rutas (Excel o CSV) no tiene columnas de precio ni de total",!RUTAS_COLS.some(c=>/precio|total|[$]/i.test(c.k))&&!(fr[0]&&Object.keys(fr[0]).some(k=>/precio|total|[$]/i.test(k))),RUTAS_COLS.map(c=>c.k).join(','));
+    /* Entregas: aunque Administración haya marcado precio y total para el PDF, quien no tiene el permiso no los ve ni en la ventana ni en el PDF, y no los puede marcar */
+    PERFIL=adminP0();const cfg=pdfEntregasCfg();const bk=JSON.stringify(cfg.cols);setColPdf('precio',true);setColPdf('total',true);cerrar();const marcadas=cfg.cols.precio===true&&cfg.cols.total===true;
+    PERFIL={id:'u-cs',rol:'consulta',modo:'editar',nombre:'Consulta'};page='entregas';EG.pdf=true;render();const hp=document.getElementById('p-entregas');const thP=[...hp.querySelectorAll('thead th')].map(x=>x.textContent.trim());
+    EG.pdf=false;render();mColsEntregas();const hm=document.getElementById('modal').textContent;cerrar();
+    delete cfg.cols.precio;setColPdf('precio',true);cerrar();const noMarca=cfg.cols.precio===undefined;
+    cfg.cols=JSON.parse(bk);
+    __check("FAC6: Entregas → PDF para el cliente: sin el permiso no salen «Precio unitario» ni «Total $» aunque estén marcadas, la ventana de columnas no los ofrece y setColPdf no los marca",marcadas&&!thP.some(t=>/Precio unitario|Total [$]/.test(t))&&!/Precio unitario|Total [$]/.test(hm)&&noMarca,JSON.stringify({marcadas,th:thP.slice(0,12),noMarca}));
+    /* el aviso de precio fuera de rango (Órdenes y vista previa de la carga): sin el permiso dice cuántas veces el típico, sin montos */
+    const tc=S.params.tareaCarga=S.params.tareaCarga||{};const bkPR=tc.precioRaro;tc.precioRaro=[{op:'WH/MO/FAC1',cliente:'Cliente prueba',odc:'9',ref:'R1',color:'NEGRO',cant:10,total:1000,precio:100,mediana:5}];
+    PERFIL={id:'u-cs',rol:'consulta',modo:'editar',nombre:'Consulta'};page='ordenes';ORDF.tab='ord';render();const to=sinLinea(document.getElementById('p-ordenes').textContent);
+    PERFIL=adminP0();render();const ta=document.getElementById('p-ordenes').textContent;
+    let rtSin='',rtCon='';if(window.__planT){const pp=Object.assign({},window.__planT,{precioRaro:tc.precioRaro});PERFIL={id:'u-pl',rol:'planificacion',modo:'editar',nombre:'Plan'};rtSin=resumenTareaHTML(pp);PERFIL=adminP0();rtCon=resumenTareaHTML(pp)}
+    if(bkPR===undefined)delete tc.precioRaro;else tc.precioRaro=bkPR;
+    __check("FAC6: Órdenes → «precio por prenda fuera de rango»: sin el permiso, la orden y «20 veces el típico», sin montos; con el permiso, los montos de siempre",/WH\/MO\/FAC1/.test(to)&&/20 veces el típico/.test(to)&&!/[$]/.test(to)&&/[$] 1[.]000 = [$] 100,00 por prenda/.test(ta),to.slice(to.indexOf('FAC1')-20,to.indexOf('FAC1')+120));
+    __check("FAC6: la vista previa de la carga de tareas tampoco muestra el precio sin el permiso (planificación) y sí con él",!window.__planT||(!/[$]/.test(rtSin)&&/20 veces el típico/.test(rtSin)&&/[$]100,00[/]pz/.test(rtCon)));
+    /* Configuración: los costos en $ y la fila de facturación de las metas, solo con el permiso (un perfil que configura sin el permiso, hecho a mano) */
+    const pc={id:'tb-conf-sin',n:'Configura sin $',permisos:['config'],centros:['*'],paginas:['config']};perfilesDef().push(pc);PERFIL={id:'u-cf',rol:'tb-conf-sin',modo:'editar',nombre:'Conf'};
+    page='config';CONF.tab='cal';render();const enConf=page==='config';const hc=document.getElementById('p-config');hc.querySelectorAll('details').forEach(d=>d.open=true);const tcfg=hc.innerHTML;
+    const bkC=JSON.stringify(S.params.costos||{});setCosto('minCorte','99');const costoNoCambia=JSON.stringify(S.params.costos||{})===bkC;
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-conf-sin');PERFIL=adminP0();page='config';CONF.tab='cal';render();const tcfgA=document.getElementById('p-config').innerHTML;CONF.tab='inicio';
+    __check("FAC6: Configuración → Calendario y reglas: sin el permiso no salen «Costos para valorar decisiones» ni la fila de facturación de las metas, y setCosto no cambia nada; con él, sí",enConf&&!/Costos para valorar decisiones/.test(tcfg)&&!/data-kpi="facturacion"/.test(tcfg)&&costoNoCambia&&/Costos para valorar decisiones/.test(tcfgA)&&/data-kpi="facturacion"/.test(tcfgA),JSON.stringify({enConf,costoNoCambia}));
+    /* la meta en $ del mes: la escribe quien la ve */
+    const ym=hoy().slice(0,7);const bkM=JSON.stringify(S.params.metas||{});PERFIL={id:'u-pl',rol:'planificacion',modo:'editar',nombre:'Plan'};setMeta(ym,'12345');const noMeta=JSON.stringify(S.params.metas||{})===bkM;PERFIL=adminP0();
+    __check("FAC6: sin el permiso, setMeta no escribe la meta en $ del mes (aunque el perfil tenga «programa»)",noMeta);}
+   /* Usuarios: el permiso y la casilla del Resumen gerencial lo dicen */
+   {PERFIL=adminP0();page='usuarios';render();await dormir(30);const hu=document.getElementById('p-usuarios').innerHTML;
+    __check("FAC7: Configuración → Usuarios ofrece el permiso «Ver valores en $» y la casilla del Resumen gerencial dice que además lo pide",/Ver valores en [$] [(]facturación, precios, montos[)]/.test(hu)&&/Resumen gerencial [(]además pide «Ver valores en [$]»[)]/.test(hu));}
+   window.confirm=c0;window.alert=a0;PERFIL=bakP||adminP0();aplicarNavPerfil();page='ordenes';render();
+   __check("FAC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
