@@ -1792,7 +1792,7 @@ el CSV; `PAGINAS_REDIRIGIDAS.avance='avancearea'`). Migración `migReporteria5` 
 `perfilSoloPiso()`, que ahora usan también las migraciones 3, 4, EnVivo y DemandaRetirada): quien tenía Cumplimiento recibe el Resumen gerencial, quien
 tenía Avance del mes recibe Avance por área. **El Resumen gerencial abre con cinco tarjetas** (`kpisGerencia`/`tarjetasGerenciaHTML`, con `programar()`,
 la base escrita en gris y la fórmula en el title; **ninguna crea una cuenta propia**): Facturación del mes = `facturacionPlanMes(ym,P)` (sacada del Bloque 3,
-que la usa también; clic → Planificar el mes paso 2) · Meta vencida = `carteraDe('abiertas',esMetaVencida)` (las de diseño sin WH dichas aparte) · La
+que la usa también; clic → Planificar el mes paso 2) · Meta vencida = `carteraDe('abiertas',esMetaVencida)` (**incluye las de diseño sin WH**, decisión de la usuaria del 04-oct; la tarjeta dice cuántas) · La
 orden va tarde = `esOrdenVaTarde` + el cuello de botella más repetido · ¿Alcanza <mes>? = `alcanzaMesGER` (`nivUIAreas`/`nivUICalcular` con los meses del
 paso 1, `mesesNivPlan`; guarda y devuelve `NIVUI` y apaga el simulador mientras calcula) · Producto en proceso = lanzadas `enWIPGerencia` (clic =
 `irWIPGerencia`: base lanzadas + esas fases, así la pivot cuadra; un perfil que ve solo sus centros verá solo lo suyo, y la tarjeta lo dice). Semáforo común
@@ -1805,8 +1805,24 @@ filtros llevan `data-filtro-local="panel"`**: la barra de Odoo se arma pero no s
 listos, filtro personalizado y Favoritos, y falla FO8). Salieron del gerencial: la segunda franja de cifras, la hoja imprimible, «Pedido y avance»
 (`pesoFase`), «Carga contra capacidad», «Carga por mes del Proyecto», «Dónde está la cartera», «Carga por cliente» y «Órdenes que van tarde» (las rutas sin
 Empaque y las categorías sin hoja viven en Salud). Pendientes para la usuaria: Terminadas a tiempo, eficiencia (espera registros del piso), flechas mes
-contra mes, si «Meta vencida» cuenta las de diseño sin WH y si los supervisores de piso deben ver el Resumen gerencial. Pruebas TG (50+). Ver
+contra mes y las metas de los indicadores (la tabla nace vacía: las tarjetas salen grises hasta que la usuaria dé las cifras). Los supervisores NO ven el Resumen gerencial ni ningún $ (04-oct, párrafo siguiente). Pruebas TG (50+). Ver
 `REPORTERIA_TABLERO_REPORTE.md`.
+
+**La facturación solo la ven los altos mandos (04-oct-2026, usuaria: «los supervisores deben ver el avance por área pero no como valores de
+facturación; la facturación es gerencial, de altos mandos»).** Permiso de MIRAR `facturacion` = «Ver valores en $ (facturación, precios, montos)» en
+`PERMISOS_DEF`; **`veFacturacion()` es la ÚNICA puerta del dinero** (= `perfilVeFacturacion(perfilDe(PERFIL))`, no depende de `modo:'ver'`: un perfil que
+solo mira y tiene el permiso sí ve los $). **Toda pantalla, exporte o impresión nueva con montos pasa por `veFacturacion()`**: la prueba **GUARDIA FAC**
+(junto a la GUARDIA) falla si una función arma un monto (`'$ '`, `usd(`, `usdOrden(`…) sin pasar por ella, y FAC2 recorre todas las páginas de seis
+perfiles sin el permiso buscando «$» y «USD». `PERM_PAGINA` + `permPaginaOk(p)` es la tabla única de qué permiso pide cada página (menú, `render()`,
+`ir()`, `puedeAbrirPagina`, barra de Reportería): el **Resumen gerencial pide `facturacion`**; sin él, `redirigirPagina` lleva gerencia, cumplimiento y
+familias a Avance por área. Siembra `permFacturacion04` (una vez, bitácora, nunca desde el piso, va DESPUÉS de crear Jefatura y ANTES de las migraciones
+que preguntan por el permiso): solo **Jefatura**; Administración lo tiene por «*»; **Planificación, Consulta, Liberación y los perfiles de centro NO** (se da
+en Configuración → Usuarios). Sin el permiso: Producto en proceso sin «Total $» (ni se calcula), Planificar el mes Bloque 3 = «Liberadas y por liberar» en
+órdenes y prendas con la línea gris `SIN_PERMISO_USD` (y `setMeta` pide el permiso), Entregas sin precio ni total, filtro personalizado sin «Precio»
+(`camposFiltro`; un filtro de precio guardado antes se suelta solo: `podarFiltrosPers`), configuración sin costos ni la meta de facturación, y un monto
+escrito dentro de un nombre de producto de Odoo («… / $0.70») se ve «(valor oculto)» (`txtSinMonto`). Prendas, órdenes, horas, avance y cumplimiento
+se siguen viendo. **Es un candado de PANTALLA**: los precios siguen llegando al navegador con las órdenes (la RLS no filtra columnas). Pruebas FAC1–FAC8.
+Donde este archivo hable de Bloque 3 «Meta de facturación», «Total $» o del Resumen gerencial para todos, vale solo con el permiso.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

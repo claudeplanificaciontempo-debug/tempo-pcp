@@ -9723,6 +9723,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     page='wip';render();const ok2=page==='wip'&&[...document.querySelectorAll('#p-wip thead th')].some(x=>x.textContent.trim()==='Total $');const menu=[...document.querySelectorAll('nav a[data-p]')].filter(a=>a.style.display!=='none').map(a=>a.dataset.p);
     S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tb-fac-ver');
     __check("FAC5: un perfil «solo ve» (modo ver, que no edita nada) con el permiso SÍ ve los $: el Resumen gerencial y la columna Total $",ok1&&ok2&&menu.includes('gerencia')&&!puede('programa'),JSON.stringify({ok1,ok2,menu}));}
+   /* (f) un filtro personalizado de precio guardado antes (un Favorito viejo) se suelta sin el permiso: sin etiqueta vacía ni «filtro activo» fantasma; y un monto escrito dentro de un nombre de producto de Odoo se tapa */
+   {const bakF=JSON.stringify(FOD['WIPL.q']||null);PERFIL={id:'u-fc',rol:'corte',modo:'editar',nombre:'Supervisor corte'};aplicarNavPerfil();
+    FOD['WIPL.q']={rap:[],pers:[[{k:'precio',op:'gt',v:'1'}],[{k:'cliente',op:'c',v:'a'},{k:'precio',op:'lt',v:'9'}]]};
+    page='wip';WIPL.q='';render();const f=FOD['WIPL.q'];const etiquetas=[...document.querySelectorAll('#p-wip .o-facet')].map(x=>x.textContent.trim());
+    const okPoda=f.pers.length===1&&f.pers[0].length===1&&f.pers[0][0].k==='cliente'&&!etiquetas.some(t=>/^[▼✓]?\s*×?$/.test(t.replace(/\s+/g,' ').trim()));
+    FOD['WIPL.q']={rap:[],pers:[[{k:'precio',op:'gt',v:'1'}]]};const hay=hayFiltrosOdoo('WIPL.q');
+    const tapado=txtSinMonto('[MAQUILA] FALDA BASICA 3014 / $0.70')==='[MAQUILA] FALDA BASICA 3014 / (valor oculto)'&&txtSinMonto('SHORT MODA 4588 $1,05').indexOf('$')<0;
+    PERFIL={id:'u-fa',rol:'admin',modo:'editar',nombre:'Admin'};aplicarNavPerfil();const visible=txtSinMonto('SHORT MODA 4588 $1,05')==='SHORT MODA 4588 $1,05';
+    const bf=JSON.parse(bakF);if(bf)FOD['WIPL.q']=bf;else delete FOD['WIPL.q'];
+    __check("FAC8: sin el permiso, un filtro de precio guardado antes se suelta solo (queda el de cliente, no hay etiqueta vacía ni filtro activo fantasma), y un monto dentro de un nombre de producto de Odoo se ve como «(valor oculto)»; con el permiso se ve tal cual",okPoda&&!hay&&tapado&&visible,JSON.stringify({pers:f.pers,etiquetas,hay,tapado,visible}));}
    /* (e) archivos, impresiones y textos sueltos sin $ */
    {const B0=window.Blob;const caps=[];window.Blob=function(p,o){caps.push((p||[]).map(x=>typeof x==='string'?x:'').join(''));return new B0(p,o)};const ck=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.download)return;return ck.call(this)};
     try{PERFIL={id:'u-co',rol:'corte',modo:'editar',nombre:'Corte'};AV.mes=hoy().slice(0,7);exportarAvanceCSV();exportarRutasCSV()}catch(e){caps.push('ERROR '+e.message)}finally{window.Blob=B0;HTMLAnchorElement.prototype.click=ck}
