@@ -1824,6 +1824,18 @@ escrito dentro de un nombre de producto de Odoo («… / $0.70») se ve «(valor
 se siguen viendo. **Es un candado de PANTALLA**: los precios siguen llegando al navegador con las órdenes (la RLS no filtra columnas). Pruebas FAC1–FAC8.
 Donde este archivo hable de Bloque 3 «Meta de facturación», «Total $» o del Resumen gerencial para todos, vale solo con el permiso.
 
+**Reglas del inventario y metas dictadas (04-oct-2026).** (1) Inventario: «solo deja activas las que están». La lista de fábrica de «Cómo se lee el
+archivo del inventario» trae `REGLAS_INV_04`: EN BODEGA → operativa (reserva de Confección sin módulo), TINTORERIA → operativa (en Tintorería, no cuenta
+para módulos), NO FISICAMENTE → **dada de baja con el motivo «no está físicamente»**. Una regla de baja **puede llevar su motivo** (columna «Motivo», solo con
+«dada de baja»): con motivo la máquina entra de baja por regla (`m.baja.porRegla`, misma forma que `darBajaMaq` + la regla); **sin motivo sigue entrando
+«por revisar»** (`MSG_BAJA_ARCHIVO`). Una observación que calza con varias reglas de estados distintos («PARADA EN BODEGA») queda por revisar con el motivo
+escrito, no gana la más larga. `sembrarReglasInvMaq04` (una vez, bandera `reglasInvMaq04`) solo agrega las reglas si la tabla ya fue editada. Con el Excel
+real: **161 = 148 operativas + 7 paradas + 6 de baja por regla, 0 por revisar**, 8 no entran. Lo ya cargado se relee con «Cargar inventario» (el panel
+avisa `revisarConReglaHoy`). (2) Metas: la usuaria aceptó los números del ejemplo (`METAS_EJEMPLO_04`, `sembrarMetasEjemplo04`, banderas `metasKPI04` y
+`metaFact04`; nunca pisan lo escrito, ni 0 ni lo vaciado a propósito): meta de facturación de octubre 2026 = $ 400.000 (**inventada para el ejemplo:
+la usuaria debe poner la real**), Facturación verde desde 95 % / ámbar desde 80 %, Meta vencida y La orden va tarde verde hasta 5 % / ámbar hasta 10 %.
+Desde noviembre la meta en $ vuelve a estar vacía hasta que alguien la escriba. Pruebas IM16–IM23, MK1–MK6.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.

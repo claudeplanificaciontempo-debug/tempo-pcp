@@ -3000,6 +3000,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      S.maquinas=[{id:'mv1',cod:'8201',tipo:'Recta',centro:'modulos',estado:'revisar',obs:'EN BODEGA'},{id:'mv2',cod:'8202',tipo:'Recta',centro:'modulos',estado:'revisar',obs:'OBSERVACION SIN REGLA'}];
      page='config';CONF.tab='recursos';render();const hV=document.getElementById('p-config').innerHTML;
      __check("IM22: una máquina «por revisar» cuya observación ya tiene regla (cargada antes de la regla) se avisa: «vuelve a cargar el inventario»; la que sigue sin regla no",revisarConReglaHoy(S.maquinas[0])&&!revisarConReglaHoy(S.maquinas[1])&&/1 por revisar ya tiene regla/.test(hV));
+     {const bakI=JSON.stringify(S.params.maqInv===undefined?null:S.params.maqInv);S.params.maqInv=JSON.parse(JSON.stringify(MAQ_INV_DEF));
+      const a=estadoInvMaq('PARADA EN BODEGA',''),b=estadoInvMaq('EN BODEGA',''),c=estadoInvMaq('NO FISICAMENTE',''),d=estadoInvMaq('TINTORERIA PARADA','');
+      const bi=JSON.parse(bakI);if(bi===null)delete S.params.maqInv;else S.params.maqInv=bi;
+      __check("IM23: una observación que calza con reglas de estados distintos («PARADA EN BODEGA», «TINTORERIA PARADA») queda «por revisar» con el motivo escrito; EN BODEGA sola es operativa y NO FISICAMENTE es baja con su motivo",a.estado==='revisar'&&/varias reglas/.test(a.motivoRevisar||'')&&d.estado==='revisar'&&b.estado==='operativa'&&c.estado==='baja'&&c.motivo==='no está físicamente',JSON.stringify({a,b,c,d}))}
     }finally{window.confirm=cf0;window.alert=al0;window.perfilSoloPiso=sp0;PERFIL=bakPerf;S.maquinas=bakM;INVMAQ=null;try{cerrar()}catch(e){}
      const i0=JSON.parse(bakInv);if(i0)S.params.maqInv=i0;else delete S.params.maqInv;const f0=JSON.parse(bakFl);if(f0)S.params.reglasInvMaq04=f0;else delete S.params.reglasInvMaq04;S.cargas=JSON.parse(bakCar);page='ordenes';render()}}
    /* MQA · arreglos del lote de máquinas (03-oct): baja con motivo, tipos que se apagan, permisos, número y serial como se ven en la celda,

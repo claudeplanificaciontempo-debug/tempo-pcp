@@ -1591,7 +1591,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-04 17:20';
+const APP_BUILD='2026-10-04 17:44';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -13915,12 +13915,16 @@ function lugarInvMaq(txt){const t=txtCelda(txt);if(!t)return {centro:'',rec:''};
 function centroDeAreaInv(area){const k=claveMaq(area);if(!k)return '';const c=(S.centros||[]).find(c=>claveMaq(c.n)===k||claveMaq(c.id)===k);return c?c.id:''}
 /* estado por la observación (o, si está vacía, por la marca del inventario feb-2026): primero igual, después «contiene» (la regla más larga) */
 function estadoInvMaq(obs,inv){const reglas=(maqInv().estados||[]).filter(r=>claveMaq(r.texto)&&ESTADOS_MAQ.includes(r.estado));
+  /* igual gana; si no, la que está contenida. 04-oct: si la observación contiene varias reglas con estados DISTINTOS («PARADA EN BODEGA»),
+     no se elige una sola: la máquina queda «por revisar» con el motivo (antes ganaba la más larga y una parada podía contar como reserva) */
   const busca=t=>{const k=claveMaq(t);if(!k)return null;const ex=reglas.find(r=>claveMaq(r.texto)===k);if(ex)return ex;
-    return reglas.filter(r=>k.includes(claveMaq(r.texto))).sort((a,b)=>claveMaq(b.texto).length-claveMaq(a.texto).length)[0]||null};
+    const cont=reglas.filter(r=>k.includes(claveMaq(r.texto))).sort((a,b)=>claveMaq(b.texto).length-claveMaq(a.texto).length);
+    if(new Set(cont.map(r=>r.estado)).size>1)return {varias:cont};return cont[0]||null};
+  const varias=r=>({estado:'revisar',motivoRevisar:'la observación calza con varias reglas que dicen cosas distintas: '+r.varias.map(x=>'«'+x.texto+'» → '+(ESTADO_MAQ_TXT[x.estado]||x.estado)).join(', ')+'. Revisa la máquina o ajusta las reglas'});
   const o=txtCelda(obs),v=txtCelda(inv);
   const res=r=>({estado:r.estado,regla:r.texto,motivo:r.estado==='baja'?String(r.motivo==null?'':r.motivo).trim():''});   /* 04-oct: el motivo solo vale con «dada de baja» */
-  if(o){const r=busca(o);return r?res(r):{estado:'revisar',sinRegla:o}}
-  if(v){const r=busca(v);return r?res(r):{estado:'revisar',sinRegla:v}}
+  if(o){const r=busca(o);return r?(r.varias?varias(r):res(r)):{estado:'revisar',sinRegla:o}}
+  if(v){const r=busca(v);return r?(r.varias?varias(r):res(r)):{estado:'revisar',sinRegla:v}}
   return {estado:'revisar',sinRegla:'(sin observación ni marca de inventario)'}}
 /* hojas = {nombre: filas[][]}; opts.parcial (lo pegado): no marca «no vino» lo que no está */
 function planMaquinas(hojas,nombre,opts){opts=opts||{};
@@ -14114,7 +14118,7 @@ function sembrarMaquinasAlEntrar(){if(!S||!S.params||CARGA_INCOMPLETA)return fal
 function sembrarReglasInvMaq04(){if(!S||!S.params||S.params.reglasInvMaq04)return false;if((typeof perfilSoloPiso==='function'&&perfilSoloPiso())||!puede('config'))return false;
   const ts=new Date().toISOString(),u=quienFirma()||'sistema';const v=S.params.maqInv;const out={ts,u,agregadas:[],yaEstaban:[],fabrica:!(v&&typeof v==='object')};
   if(!out.fabrica){if(!Array.isArray(v.estados))v.estados=[];
-    REGLAS_INV_04.forEach(r=>{const k=claveMaq(r.texto);const ya=v.estados.find(x=>{const kx=claveMaq(x&&x.texto);return kx&&(kx===k||k.includes(kx))});
+    REGLAS_INV_04.forEach(r=>{const k=claveMaq(r.texto);const ya=v.estados.find(x=>{const kx=claveMaq(x&&x.texto);return kx&&ESTADOS_MAQ.includes(x.estado)&&(kx===k||k.includes(kx))});   /* una regla sin estado válido no lee nada (estadoInvMaq la ignora) */
       if(ya){out.yaEstaban.push(r.texto+(claveMaq(ya.texto)!==k?' (la lee «'+ya.texto+'»)':'')+' → '+(ESTADO_MAQ_TXT[ya.estado]||ya.estado));return}
       v.estados.push(Object.assign({},r));out.agregadas.push(r.texto)})}
   S.params.reglasInvMaq04=out;
@@ -14156,7 +14160,8 @@ function maquinasPanelHTML(){const L=S.maquinas||[];const ops=L.filter(maqOperat
   const nEj=L.filter(m=>m.ejemplo).length,nBaja=L.filter(m=>m.estado==='baja').length,nNV=L.filter(m=>m.noVino&&m.estado!=='baja').length,nRev=L.filter(m=>m.estado==='revisar').length,nRevB=L.filter(m=>m.estado==='revisar'&&m.motivoRevisar===MSG_BAJA_ARCHIVO).length,nSinH=L.filter(m=>m.estado!=='baja'&&m.tipo&&!maqHomologada(m.tipo)).length;
   const nBajaR=L.filter(m=>m.estado==='baja'&&m.baja&&m.baja.porRegla).length,nRevR=L.filter(revisarConReglaHoy).length;
   const avisos=[nBaja?num(nBaja)+' dadas de baja'+(nEj||nBajaR?' ('+[nEj?num(nEj)+' de ejemplo':'',nBajaR?num(nBajaR)+' por regla del archivo':''].filter(Boolean).join(', ')+')':'')+': siguen en la lista, no cuentan':'',
-    nRevR?'<span class="maq-rev-regla">'+num(nRevR)+(nRevR===1?' por revisar ya tiene regla':' por revisar ya tienen regla')+' en «Cómo se lee el archivo del inventario»: vuelve a cargar el inventario para que se '+(nRevR===1?'lea':'lean')+' con la tabla</span>':'',nNV?num(nNV)+' no vinieron en la última carga':'',nRev?num(nRev)+' por revisar'+(nRevB===nRev?' (el archivo dice «baja»: confirmar con «dar de baja»)':nRevB?' ('+num(nRev-nRevB)+' con una observación sin regla y '+num(nRevB)+' que el archivo dice «baja»: confirmar con «dar de baja»)':' (su observación no tiene regla)'):'',nSinH?num(nSinH)+' con tipo sin homologar':''].filter(Boolean);
+    nRevR?'<span class="maq-rev-regla">'+num(nRevR)+(nRevR===1?' por revisar ya tiene regla':' por revisar ya tienen regla')+' en «Cómo se lee el archivo del inventario»: vuelve a cargar el inventario para que se '+(nRevR===1?'lea':'lean')+' con la tabla</span>':'',nNV?num(nNV)+' no vinieron en la última carga':'',nRev?(()=>{const nO=L.filter(m=>m.estado==='revisar'&&m.motivoRevisar&&m.motivoRevisar!==MSG_BAJA_ARCHIVO&&!revisarConReglaHoy(m)).length;const nSR=Math.max(0,nRev-nRevB-nO-nRevR);
+      return num(nRev)+' por revisar ('+[nSR?num(nSR)+' con una observación sin regla':'',nRevR?num(nRevR)+' que ya tienen regla: vuelve a cargar':'',nRevB?num(nRevB)+' que el archivo dice «baja»: confirmar con «dar de baja»':'',nO?num(nO)+' con otro motivo, mira la lista':''].filter(Boolean).join(' · ')+')'})():'',nSinH?num(nSinH)+' con tipo sin homologar':''].filter(Boolean);
   const porCen={};(S.recursos||[]).forEach(r=>{if(!CE(r.centro)||CE(r.centro).area!=='pro'||esMaquilaRec(r))return;(porCen[r.centro]=porCen[r.centro]||[]).push(r)});
   const optRec=m=>{const ex=m.rec&&!Object.values(porCen).some(l=>l.some(r=>r.id===m.rec))?`<option value="${esc(m.rec)}" selected>${esc((R(m.rec)||{}).n||m.rec)}</option>`:'';
     return `<option value="">Sin módulo (inventario del área)</option>${ex}${(S.centros||[]).filter(c=>porCen[c.id]).map(c=>`<optgroup label="${esc(c.n)}">${porCen[c.id].map(r=>`<option value="${r.id}" ${m.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</optgroup>`).join('')}`};
