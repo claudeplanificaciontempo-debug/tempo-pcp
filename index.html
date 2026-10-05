@@ -1646,7 +1646,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 09:30';
+const APP_BUILD='2026-10-05 09:31';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3092,7 +3092,10 @@ function tarjetaWHTabletHTML(o,c,rec,fila){const enCola=!!fila;
   const porHacer=Math.max(0,(+o.cant||0)-hechas);
   const irA=op=>`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="TAB.q='';render()">Ir a ${esc(op)}</button>`;
   let nota='',accion='',borde='var(--t-accent)';
-  if(!enCola){borde='var(--aviso)';   /* 02-oct: no es un error (solo no le toca hoy): ámbar, no rojo */
+  const pLib=porLiberarEn(o,c);   /* 04-oct: sin liberar a producción en su primer centro: se dice, sin INICIO ni «pedir reprogramación» */
+  if(pLib){borde='var(--aviso)';
+    nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">${esc(MSG_POR_LIBERAR)}</div>${esVistaOperario()?'':'<p class="mut" style="font-size:14px;margin:8px 0 0">Qué la frena: '+esc(pLib.txt)+'</p>'}`}
+  else if(!enCola){borde='var(--aviso)';   /* 02-oct: no es un error (solo no le toca hoy): ámbar, no rojo */
     nota=`<div class="tag t-aviso" style="font-size:15px;margin-top:6px">no programada en ${esc(nCen(c))} · pedir reprogramación</div>
      <p class="mut" style="font-size:14px;margin:8px 0 0">Hoy no está programada aquí. Pide que la reprogramen.</p>`;
     accion=pedida?'<span class="tag t-ok">ya pediste la reprogramación</span>':`<button class="btn" style="font-size:17px;padding:12px 16px" onclick="pedirReprogramacion('${o.id}','${c}')">Pedir reprogramación</button>`}
@@ -3152,13 +3155,21 @@ function tabletBuscadorHTML(c,cola,rec){const q=normTxt(TAB.q||'');
   const calza=simple?(o=>campoCalzaBusq(o,'op',q)||campoCalzaBusq(o,'ref',q)):(o=>matchBusq(o,TAB.q,'TAB.q'));
   const TOPE=6;
   const enCola=cola.filter(f=>calza(f.o));
-  const otras=S.ordenes.filter(o=>calza(o)&&!enCola.some(f=>f.o.id===o.id));
-  if(esOperario()&&otras.length&&!enCola.length)return cab+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:19px">
+  let otras=S.ordenes.filter(o=>calza(o)&&!enCola.some(f=>f.o.id===o.id));
+  /* 04-oct: la buscan y está en su primer centro sin liberar a producción: se dice eso (no «no está programada») y no se ofrece INICIO */
+  let avisoLib='';
+  if(esOperario()&&!enCola.length){const pl=otras.filter(o=>porLiberarEn(o,c));if(pl.length){otras=otras.filter(o=>!pl.includes(o));
+    avisoLib=`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:19px">
+   <b>${esc(MSG_POR_LIBERAR.charAt(0).toUpperCase()+MSG_POR_LIBERAR.slice(1))}.</b>
+   <div class="mut" style="font-size:var(--fs-s);margin-top:6px">${pl.length===1?'La orden':'Las '+pl.length+' órdenes'} con «${esc(TAB.q)}» todavía no ${pl.length===1?'está liberada':'están liberadas'} a producción: no se puede${pl.length===1?'':'n'} empezar en ${esc(nCen(c))} hasta que planificación ${pl.length===1?'la libere':'las libere'}.</div>
+   <div class="mut" style="font-size:var(--fs-xs);margin-top:8px">${esc(pl.slice(0,6).map(o=>o.op).join(' · '))}</div>
+   </div></div>`}}
+  if(esOperario()&&otras.length&&!enCola.length)return cab+avisoLib+`<div class="panel" style="border:2px solid var(--aviso)"><div class="body" style="font-size:19px">
    <b>No está programada — consulte al supervisor.</b>
    <div class="mut" style="font-size:var(--fs-s);margin-top:6px">${otras.length===1?'La orden':'Las '+otras.length+' órdenes'} que coincide${otras.length===1?'':'n'} con «${esc(TAB.q)}» existe${otras.length===1?'':'n'}, pero no está${otras.length===1?'':'n'} programada${otras.length===1?'':'s'} para ${esc(nCen(c))}${rec?' · '+esc(nRec(rec)):''} en los próximos ${num(diasVentanaTablet())} días hábiles.</div>
    <div class="mut" style="font-size:var(--fs-xs);margin-top:8px">${esc(otras.slice(0,6).map(o=>o.op).join(' · '))}</div>
    </div></div>`;
-  if(esOperario())return cab+`<div style="display:flex;flex-direction:column;gap:10px">${enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f)).join('')}</div>`;
+  if(esOperario())return cab+avisoLib+`<div style="display:flex;flex-direction:column;gap:10px">${enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f)).join('')}</div>`;
   if(!enCola.length&&!otras.length)return cab+`<div class="panel"><div class="empty">No existe ninguna orden con «${esc(TAB.q)}».</div></div>`;
   const cards=enCola.slice(0,TOPE).map(f=>tarjetaWHTabletHTML(f.o,c,rec,f));
   otras.slice(0,Math.max(0,TOPE-cards.length)).forEach(o=>cards.push(tarjetaWHTabletHTML(o,c,rec,null)));
@@ -3374,13 +3385,13 @@ function fijadaPara(o,c,rec){const pc=((o||{}).progCentro||{})[c];
   if(!pc||!pc.rec||!pc.desde)return false;
   if(rec&&pc.rec!==rec)return false;
   return pc.desde<=finVentanaTablet()}
-function visibleOperario(o,c,rec,P){return programadoPara(o,c,rec,P)||fijadaPara(o,c,rec)||(esRecAfuera(rec)&&recFijadoDe(o,c)===rec&&!pasoHecho(o,c)&&(!!afueraDeOrden(o)||!!listaParaEmpezar(o,c)||!!tramoAbiertoOrden(o.id,c,rec)))}   /* afuera (maquila): lo que está allá, lo que ya puede salir o lo que tiene abierto */
+function visibleOperario(o,c,rec,P){return (programadoPara(o,c,rec,P)||fijadaPara(o,c,rec)||(esRecAfuera(rec)&&recFijadoDe(o,c)===rec&&!pasoHecho(o,c)&&(!!afueraDeOrden(o)||!!listaParaEmpezar(o,c)||!!tramoAbiertoOrden(o.id,c,rec))))&&puedeEmpezarEnCentro(o,c)}   /* 04-oct: sin liberar a producción en su primer centro no la ve (empezada sí) */   /* afuera (maquila): lo que está allá, lo que ya puede salir o lo que tiene abierto */
 /* un paso de la ruta que el motor no programa por falta de minutos (ver revisión 3 del motor) */
 function pasoSinTiempo(o,c){const p=(o.ruta||[]).find(x=>x.centro===c);if(!p)return false;
   const t=(c==='estampado'&&o.tecnica)?(tecnicaT(o)||p.t):p.t;
   return !(minPrenda(c,t)>0)}
 function tabletFilas(c,rec,P){ // una orden cerrada en este centro ya no aparece
-const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas);
+const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const filas=filasDeCentros([c],P,lun,dom,'');let cola=colaCentro(c,filas).filter(f=>puedeEmpezarEnCentro(f.o,c));   /* 04-oct: lo que no está liberado a producción en su primer centro no llega a la tablet (ni al supervisor): se ve en la cola del centro */
   if(esOperario()){
     /* SOLO lo programado para este puesto dentro de la ventana; nada de recurso fijo sin programa */
     cola=cola.filter(f=>visibleOperario(f.o,c,rec,P));
@@ -3557,6 +3568,7 @@ function setPersonasTramo(tid,oid,v){const t=(tramosDe(oid)||[]).find(x=>x.id===
   save();render()}
 /* --- inicio, paro, fin --- */
 function iniciarTramo(oid,c,rec){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
+  if(!puedeEmpezarEnCentro(o,c)){alert('La orden '+(o.op||'')+' '+MSG_POR_LIBERAR+'.');return}   /* 04-oct: la misma puerta de la cola y la tablet */
   if(!rec){const rf=recFijadoDe(o,c);if(rf&&esRecAfuera(rf))rec=rf}   /* una orden que va afuera se registra en ese recurso aunque se mire «todo el centro» */
   const abiertos=tramosAbiertosDe(c,rec||null);
   if(abiertos.some(x=>x.o.id===oid)){alert('Esta orden ya está empezada.');return}
@@ -3746,13 +3758,14 @@ function tramosParalelosHTML(){const ts=tramosParalelos();const cens=S.centros.f
 function llegadaACentroTxt(o,c,P){
   if(pasoHecho(o,c)){const ci=cierreCentro(o,c);return {cls:'t-ok',txt:'ya pasó por aquí'+(ci?' · cerrada el '+fmtDiaTs(ci.ts)+' con '+num(ci.pz)+' de '+num(ci.cant):'')}}
   const ac=((S.avance[o.id]||{}).centros)||{};
-  if(tramoAbiertoOrden(o.id,c,null)||ac[c]>0)return {cls:'t-aviso',txt:'en proceso aquí'+(ac[c]?' · '+num(ac[c])+' de '+num(cantCentro(o,c)):'')};
+  if(tramoAbiertoOrden(o.id,c,null)||ac[c]>0)return {cls:'t-aviso',txt:'en proceso aquí'+(ac[c]?' · '+num(ac[c])+' de '+num(cantCentro(o,c)):'')+(sinLibProdEn(o,c)?' · sin liberar a producción':'')};
   if(!pasosProDe(o).includes(c))return {cls:'',txt:'este centro NO está en su ruta'};
   const sec=secuenciaCentro(o,c);
   /* la fecha del paso sale del programa de la orden (antes buscaba en P.pro por un oid que esas filas no tienen: nunca la encontraba) */
   const paso=(((P&&P.ordenes&&P.ordenes[o.id])||{}).pasos||[]).find(x=>x.centro===c&&x.ini);
   const fecha=paso?' · programada para el '+fmtDia(paso.ini)+(paso.sinTiempo?' (sin tiempo estándar: no ocupa capacidad)':''):' · sin fecha en el programa';
   {const af=afueraDeOrden(o);if(af)return {cls:'t-aviso',txt:af.txt+(af.centro!==c?' · después pasa por '+nCen(c):'')+fecha}}
+  {const pl=porLiberarEn(o,c);if(pl)return {cls:'t-aviso',txt:'todavía no está liberada a producción (qué la frena: '+pl.txt+')'+fecha}}   /* 04-oct: nunca «lista para entrar» sin la liberación a producción */
   if(sec.estado==='disponible')return {cls:'t-ok',txt:'lista para entrar'+(sec.motivo?' ('+sec.motivo+')':'')+fecha};
   if(sec.estado==='proxima')return {cls:'t-aviso',txt:'todavía no: '+(sec.motivo||'falta un paso anterior')+fecha};
   return {cls:'',txt:(sec.motivo||'sin secuencia')+fecha}}
@@ -3822,7 +3835,7 @@ function filaColaTabletHTML(f,c,rec,modo){const o=f.o;const total=cantCentro(o,c
   const derecha=(btn||modo==='proceso')?`<div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${btn}
     ${modo==='proceso'?(puedeCerrarPaso(o.id,c).ok?`<button class="btn ghost" style="font-size:15px" onclick="terminarOrdenCentro(null,'${o.id}','${c}')">Terminar orden</button>`:hintCierreHTML(o.id,c)):''}</div>`:'';
   return `<div class="tab-fila" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--rule2);padding-bottom:10px">
-   ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${opVisibleHTML(o)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}
+   ${fotoMini(o,64)}<div style="flex:1;min-width:170px"><b style="font-size:19px">${opVisibleHTML(o)}</b> ${faseTag(o)}${tagListaEmpezar(o,c)}${tagSinLibProdHTML(o,c)}
     <div class="mut">${esc(nombreCat(K(o.cat)))}${colorN?' · '+dotColor(o.color)+esc(colorN):''} · <b>${num(Math.max(0,total-hechas))}</b> por hacer${(!fuera&&pasoSinTiempo(o,c))?' · <span class="tag t-falta" title="'+esc('Falta '+faltaTiempoTxt(o,c)+'. El tiempo real se registra igual.')+'">sin tiempo estándar</span>':''}</div>
     ${(af&&(!af.rec||af.rec!==rec))?'<div class="mut tab-linea" title="'+esc(af.tip)+'">'+esc(af.txt)+'</div>':''}
     ${modo==='proxima'?'<div class="mut tab-linea">todavía no · '+esc(mot)+'</div>':''}
@@ -3900,7 +3913,7 @@ function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
   const tarjetaAbierta=(ab)=>{if(ab.t.afuera)return lineaAfuera(ab);const o=ab.o;const t=ab.t;const pa=paroAbierto(t);const cal=calcTramo(Object.assign({},t,{fin:new Date().toISOString()}),o);
     const parosCerrados=(t.paros||[]).filter(p=>p.fin).reduce((a,p)=>a+(+p.min||0),0);
     return `<div class="panel" style="border:2px solid var(--t-accent)"><div class="body" style="font-size:18px">
-     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<div><b style="font-size:22px">${esc(o.op)}</b> ${faseTag(o)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div></div></div>
+     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${fotoMini(o,70)}<div><b style="font-size:22px">${esc(o.op)}</b> ${faseTag(o)}${tagSinLibProdHTML(o,c)}<div class="mut">${esc(nombreCat(K(o.cat)))} · ${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</div></div></div>
      <div style="margin:14px 0;text-align:center">
       <div class="crono-vivo" data-ini="${esc(t.ini)}" data-paros="${parosCerrados}" ${pa?`data-pausa="${esc(pa.ini)}"`:''} style="font-size:46px;font-weight:700;letter-spacing:.04em;color:${pa?'var(--aviso)':'var(--t-primary)'}">0:00:00</div>
       <div class="mut" style="font-size:15px">empezó ${horaLocal(t.ini)}${parosCerrados?' · paros '+num(parosCerrados)+' min':''}${pa?' · <b>en paro: '+esc(pa.motivo)+'</b>':''}</div></div>
@@ -4785,6 +4798,15 @@ function vPanorama(el){
 }
 function ir(p){p=redirigirPagina(p);const a=(p==='liberacion'&&document.querySelector('nav a[data-p="liberacion"][data-lib="'+LIB.et+'"]'))||document.querySelector('nav a[data-p="'+p+'"]');if(!a)return;if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
 function irLib(et){if(LIB.et!==et){LIB.vista=null;LIB.freno=null;LIB.aviso=null}LIB.et=et;LIB.sel=new Set();ir('liberacion')}
+/* desde la cola, el Resumen o el buscador de un centro: Liberación a producción acotada a ESA orden (04-oct). Si los filtros de la
+   pantalla la esconderían se limpian; si el mes del Proyecto elegido no la incluye, se ven todos los meses. Solo navega: no libera nada. */
+function irLibProdOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  if(typeof puedeAbrirPagina==='function'&&!puedeAbrirPagina('liberacion')){alert('La orden '+(o.op||'')+' '+MSG_POR_LIBERAR+'. Tu perfil no abre Liberación a producción.');return}
+  if(LIB.et!=='corte'){LIB.freno=null;LIB.aviso=null;LIB.scroll=0}LIB.et='corte';LIB.sel=new Set();
+  if(!okFiltrosB1(o)){LIB.odc=null;LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null}
+  LIB.ymAuto=true;if(!mesEnFiltro(o,LIB.ym))LIB.ym=null;
+  LIB.freno=null;LIB.aviso=null;LIB.vista=puedeLiberarA(o,'corte')?'listas':'frenadas';
+  LIB.q=o.op||'';BUSQ['LIB.q']='op';ir('liberacion')}
 
 /* ---------- Resumen gerencial = EL tablero (03-oct-2026, usuaria: «la parte de reportes: borra lo que no debe ir, y pon lo que sí es importante») ----------
    Cinco tarjetas; cada una usa la definición que YA existe (aquí no hay cuentas propias):
@@ -9284,7 +9306,8 @@ function filasDeCentros(cens,P,lun,dom,q){q=normTxt(q||'');const filas=[];S.orde
    queda anotada en `desacuerdo` (se ve en el tooltip, no se esconde). */
 const CERCANIA_GRUPOS=[
   ['puesto','Con puesto manual','alguien las puso a mano en este orden: van primero, siempre a la vista'],
-  ['disponible','Disponible','el paso anterior ya terminó: se puede jalar ahora'],
+  ['disponible','Disponible','el paso anterior ya terminó: se puede jalar ahora (en el primer centro de producción: la tela está lista y la orden liberada a producción)'],
+  ['porLiberar','Por liberar a producción','la tela está lista, pero la orden todavía no está liberada a producción: no se puede empezar (sin ✓ ni INICIO) hasta que planificación la libere'],
   ['porLlegar','Por llegar','la fase está en la lista de fases de este centro, de la más cercana a la más lejana'],
   ['revisar','Revisar ruta','no se puede saber la secuencia: el centro se repite en la ruta o la orden no tiene ruta'],
   ['lejana','Todo lo que viene','fases más atrás de la última visible de este centro'],
@@ -9449,6 +9472,12 @@ function posicionFaseCentro(o,c){const g=grupoDe(o.fase);const of=g?ordenGrupo(g
   if(of>oe)return 'yaSalio';                                   // fase de un grupo posterior a la etapa del centro
   if(of===oe)return fila.esCola?'yaSalio':'enProceso';         // CD del propio grupo = esperando al SIGUIENTE centro
   return 'antes'}
+/* en la ENTRADA a producción, «Disponible» exige además la liberación a producción (04-oct): sin ella va al grupo «Por liberar a
+   producción» (sin ✓, sin hecho, sin INICIO); ya empezada se queda donde está y lleva la etiqueta «sin liberar a producción».
+   La llegada (tela) y el resto de la clasificación no cambian: es la misma puerta que puedeEmpezarEnCentro. */
+function frenoProdCerc(o,c,out){if(!out||out.grupo!=='disponible')return out;const s=sinLibProdEn(o,c);if(!s)return out;
+  if(empezadaEnCentro(o,c)){out.sinLibProd=s;return out}
+  out.grupo='porLiberar';out.porLiberar=s;return out}
 function cercaniaCentro(o,c,P){
   const sec=secuenciaCentro(o,c);                 // manda para clasificar
   const ant=centroAnteriorPro(o,c);
@@ -9472,7 +9501,7 @@ function cercaniaCentro(o,c,P){
     /* dentro del grupo, lo que tiene fecha va antes que lo que no se sabe */
     out.orden=(l.tipo==='fecha')?(l.dias||0):(l.tipo==='lista'?-1:9e8);
     if(sec.estado!=='disponible')out.desacuerdo='la ruta dice que faltan '+pend.map(nCen).join(', ')+', pero este es el primer centro de producción de la ruta';
-    return out}
+    return frenoProdCerc(o,c,out)}
   /* el resto: el paso anterior es un centro de producción */
   const paso=((ro.pasos)||[]).find(p=>p.centro===ant)||{};
   const antHecho=pasoHecho(o,ant);
@@ -9484,7 +9513,7 @@ function cercaniaCentro(o,c,P){
     const cant=cantCentro(o,c);const ci=cierreCentro(o,ant);
     out.llegada=(ci&&(+ci.faltan||0)>0)?{tipo:'llegaron',pz:cant,cant:(+ci.cant||+o.cant||0),ant,motivo:ci.motivo||''}
       :{tipo:'lista',ant};
-    return out}
+    return frenoProdCerc(o,c,out)}
   /* proxima: la LISTA de fases del centro decide (sin lista: todo es Por llegar y se avisa) */
   if(pos==='yaSalio'){out.grupo='anomalia';out.anomalia={tipo:'yaSalio',txt:'ya salió de aquí',tip:'la fase de Odoo («'+(o.fase||'')+'») es del propio grupo o posterior a '+nCen(c)+', pero según la ruta todavía faltan pasos anteriores ('+pend.map(nCen).join(', ')+'). Revisar fase o ruta.'}}
   else if(pos==='enProceso'){out.grupo='disponible';out.anomalia={tipo:'enProceso',txt:txtEnProceso(o,c),tip:tipEnProceso(o,c)+', aunque según la ruta faltan pasos anteriores ('+pend.map(nCen).join(', ')+')'};out.desacuerdo='la fase de Odoo dice que la orden está en '+nCen(c)+', pero según la ruta faltan '+pend.map(nCen).join(', ')+' (paso sin cerrar)'}
@@ -9508,7 +9537,7 @@ function cercaniaCentro(o,c,P){
   /* «llega ya» (hoy, mañana o atrasada): SOLO cambia de grupo si la fase está en la lista; fuera de la lista es una etiqueta (decisión 17-sep) */
   cortePorFecha(out);
   if(out.grupo==='lejana'&&llegaYa(out.llegada)){out.llegaYaFuera=true}
-  return out}
+  return frenoProdCerc(o,c,out)}
 /* corte por fecha dentro de Por llegar (17-sep): fase en la lista, pero la llegada programada supera diasPorLlegar()
    → baja a «Todo lo que viene», marcada lejosPorFecha (etiqueta «llega en X días»). No toca Disponible ni las anomalías. */
 function cortePorFecha(out){if(out.grupo!=='porLlegar')return;const l=out.llegada;if(!l||l.tipo!=='fecha')return;
@@ -9518,7 +9547,7 @@ function llegaYa(l){if(!l)return false;
   if(l.tipo==='atrasado')return true;
   return l.tipo==='fecha'&&l.dias!=null&&l.dias<=1}
 /* el orden dentro de la cola: primero el grupo, después la fecha de llegada */
-const ORDEN_GRUPO_CERC={disponible:0,porLlegar:1,revisar:2,lejana:3,anomalia:4};
+const ORDEN_GRUPO_CERC={disponible:0,porLiberar:1,porLlegar:2,revisar:3,lejana:4,anomalia:5};
 /* grupo · 1e9 + fase · 1e6 + llegada: cada llave pesa más que todo lo que viene después (la fórmula sin reescalar dejaba una fase cercana sin programar detrás de todas las demás) */
 function ordenCercania(x){const fr=(x.faseRank==null)?999:Math.max(0,Math.min(999,x.faseRank+1));return (ORDEN_GRUPO_CERC[x.grupo]!=null?ORDEN_GRUPO_CERC[x.grupo]:9)*1e9+fr*1e6+Math.min(9e5,(x.orden||0)+1e3)}
 /* las anomalías «ya salió de aquí» de todos los centros (para la bandeja de Hoy) */
@@ -9526,7 +9555,8 @@ function anomaliasCola(){return memo('anomaliasCola',anomaliasColaCalc)}
 function anomaliasColaCalc(){let P=null;try{P=programar()}catch(e){return []}const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const out=[];
   S.centros.filter(c=>c.area==='pro'&&c.activo!==false).forEach(c=>{filasDeCentros([c.id],P,lun,dom,'').filter(f=>!f.hecho&&!f.bloq&&f.cerc&&(f.cerc.grupo==='anomalia'||f.cerc.rutaIncompleta)).forEach(f=>out.push({op:f.o.op,id:f.o.id,c:c.id,fase:f.o.fase,tipo:f.cerc.grupo==='anomalia'?'yaSalio':'rutaIncompleta',rutaIncompleta:!!f.cerc.rutaIncompleta||pasosProDe(f.o).length<=1}))});return out}
 /* la etiqueta para la fila, en negrita roja cuando toca */
-function llegadaHTML(x){const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
+function llegadaHTML(x){if(x&&x.porLiberar)return porLiberarHTML(x.porLiberar);   /* 04-oct: tela lista pero sin liberar a producción: nunca «lista para empezar» */
+  const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
   if(x&&x.porQueTela)t.tip=(t.tip?t.tip+' · ':'')+x.porQueTela;
   const m=x&&x.marca;
   const esc2=v=>esc(String(v==null?'':v));
@@ -9555,13 +9585,13 @@ function ordenColaTip(cola){const n=cola.length;if(!n)return '';
   const sug=!!(cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido);
   return 'Orden de la cola: puesto manual ('+conPuesto+' de '+n+') → orden de llegada → fecha de llegada → entrega'+(sug?' (lista de fases sugerida, sin confirmar)':'')+'. '
    +'Primero el puesto manual ('+conPuesto+' de '+n+' lo tienen), después el orden de llegada a este centro '
-   +'(Disponible = el paso anterior ya terminó; Por llegar = la fase está en la lista de fases de este centro, en su orden, y llega dentro de '+diasPorLlegar()+' días hábiles; '
+   +'(Disponible = el paso anterior ya terminó, y en el primer centro de producción la tela está lista y la orden liberada a producción; Por liberar a producción = tela lista pero sin liberar a producción: no se puede empezar; Por llegar = la fase está en la lista de fases de este centro, en su orden, y llega dentro de '+diasPorLlegar()+' días hábiles; '
    +'Todo lo que viene = fases más atrás de la última visible, o llegada programada a más de '+diasPorLlegar()+' días hábiles; Ya salió de aquí = la fase ya pasó de este centro y el paso no está cerrado), '
    +'luego la fecha de llegada y la entrega. Cuándo llega sale del fin programado del paso anterior de esa orden; se cuenta en días hábiles del calendario del recurso de ese paso, '
    +'hoy no cuenta (el siguiente día hábil es «mañana»). Lo que no se sabe dice «sin programar» o «sin dato de llegada»: no se estima. '
    +'Lista de fases visibles de este centro: Configuración general → Calendario y reglas'+(sug?' (sugerida, sin confirmar)':'')+'.'}
 function ordenColaNotaHTML(cola){const n=cola.length;if(!n)return '';
-  const m={};cola.forEach(f=>{const g=puestoDe(f.o,f.c)>0?'puesto':((f.cerc&&f.cerc.grupo)||'porLlegar');m[g]=(m[g]||0)+1});
+  const m={};cola.forEach(f=>{const g=grupoColaDe(f);m[g]=(m[g]||0)+1});
   const fijos=['disponible','porLlegar','lejana','anomalia'];
   const conteos=CERCANIA_GRUPOS.filter(([g])=>fijos.includes(g)||m[g]).map(([g])=>esc(nGrupoCerc(g))+' <b>'+(m[g]||0)+'</b>').join(' · ');
   const sug=!!(cola[0]&&fasesCentroDe(cola[0].c)&&fasesCentroDe(cola[0].c).sugerido);
@@ -9569,15 +9599,17 @@ function ordenColaNotaHTML(cola){const n=cola.length;if(!n)return '';
   return '<p class="cola-conteos" style="font-size:var(--fs-s);margin:2px 0 4px">'+conteos
    +(sug?' <span class="tag t-falta"'+irConf+' title="La lista de fases que ve esta cola es la sugerida y nadie la confirmó. Se confirma en Configuración general → Calendario y reglas → «Fases visibles en la cola de cada centro».">fases sin confirmar</span>':'')+'</p>'}
 /* los grupos colapsables de la cola: Revisar ruta y Lejanas vienen cerrados (decisión 1) */
-const CERC_ABIERTO={puesto:true,disponible:true,porLlegar:true,revisar:false,lejana:false,anomalia:true};
+const CERC_ABIERTO={puesto:true,disponible:true,porLiberar:true,porLlegar:true,revisar:false,lejana:false,anomalia:true};
 /* Si hay buscador, filtro de fases o filtro de día puesto, NINGÚN grupo se queda cerrado:
    esconder una coincidencia dentro de un grupo colapsado es la peor forma de «no encontrar». */
 function filtroActivoCEN(){return !!(String(CEN.q||'').trim()||(CEN.fases&&CEN.fases.size)||CEN.dia)}
 function cercAbierto(g){if(filtroActivoCEN())return true;const m=(CEN.cercAbre||{});return (m[g]==null)?CERC_ABIERTO[g]:m[g]}
 function togCercCEN(g){CEN.cercAbre=CEN.cercAbre||{};CEN.cercAbre[g]=!cercAbierto(g);render()}
 /* parte la cola en los cuatro grupos, en el orden de pantalla */
-function partirPorCercania(cola){const m={puesto:[],disponible:[],porLlegar:[],revisar:[],lejana:[],anomalia:[]};
-  cola.forEach(f=>{if(puestoDe(f.o,f.c)>0){m.puesto.push(f);return}const g=(f.cerc&&f.cerc.grupo)||'porLlegar';(m[g]||m.porLlegar).push(f)});return m}
+/* el grupo de pantalla de una fila: el puesto manual primero, salvo «Por liberar a producción», que manda (con puesto o sin él no se puede empezar) */
+function grupoColaDe(f){const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g==='porLiberar')return g;return puestoDe(f.o,f.c)>0?'puesto':g}
+function partirPorCercania(cola){const m={puesto:[],disponible:[],porLiberar:[],porLlegar:[],revisar:[],lejana:[],anomalia:[]};
+  cola.forEach(f=>{const g=grupoColaDe(f);(m[g]||m.porLlegar).push(f)});return m}
 /* dentro de Por llegar / Disponible: una subcabecera por FASE, en el orden de la lista del centro (la cola ya viene ordenada así) */
 function porFaseHTML(l,fila,pzDe,nCols){let out='',ult=null;l.forEach(f=>{const k=f.o.fase||'Sin fase';if(k!==ult){ult=k;const del=l.filter(x=>(x.o.fase||'Sin fase')===k);
     /* la subcabecera dice la fase como la etiqueta de cada fila (faseNombre, sin el número de Odoo pegado: «3CD CORTE» se leía como una cantidad); la agrupación sigue por la fase completa (02-oct) */
@@ -9766,6 +9798,7 @@ function confirmarCierreSinTiempo(oid,c){const m=String((document.getElementById
   if(cerrarCentro(oid,c,mf,{sinTiempo:true,motivoSinTiempo:m})){try{cerrar()}catch(e){}render();
     alert('Cerrado sin tiempo. Queda registrado con tu nombre, la fecha y el motivo.')}}
 function mCerrarCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;
+  if(!puedeEmpezarEnCentro(o,c)){alert('La orden '+(o.op||'')+' '+MSG_POR_LIBERAR+'.');return}   /* 04-oct */
   const f=faltanteCierre(o,c);const sig=centroSiguiente(o,c);
   /* si no hay tiempo corrido: al operario se le explica; al supervisor se le ofrece el camino con motivo */
   {const t=puedeCerrarPaso(oid,c);
@@ -9829,7 +9862,40 @@ function cierresOrdenHTML(o){const cs=((S.avance[(o||{}).id]||{}).cierres)||{};c
   return `<h4 style="margin:12px 0 6px">Cerrada en estos centros</h4><table style="font-size:var(--fs-s)"><thead><tr><th>Centro</th><th class="num">Salieron</th><th class="num">Faltan</th><th>Motivo</th><th>Quién · cuándo</th><th>Tallas que faltaron</th></tr></thead><tbody>
    ${ks.map(c=>{const x=cs[c];return `<tr><td>${esc(nCen(c))}</td><td class="num">${num(x.pz)} de ${num(x.cant)}</td><td class="num">${x.faltan?'<span class="tag t-alerta">'+num(x.faltan)+'</span>':'—'}</td><td>${esc(x.motivo||'')}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(x.u||'')} · ${fechaHoraLocal(x.ts)}</td><td class="mut" style="font-size:var(--fs-xs)">${x.tallas?Object.entries(x.tallas).map(([t,q])=>esc(t)+' '+num(q)).join(' · '):'—'}</td></tr>`}).join('')}
    </tbody></table>`}
-function listaParaEmpezar(o,c){const ant=centroAnteriorFueraTramo(o,c)||centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;   /* en un tramo paralelo manda el paso anterior al tramo (corte), no el compañero */
+/* ---------- «Lista para empezar» SOLO si está liberada a producción (04-oct-2026, decisión de la usuaria) ----------
+   El programa NO cambia: sigue dándoles fecha y capacidad. Cambia lo que se muestra y lo que se puede hacer.
+   En la ENTRADA a producción de su ruta (el primer centro de producción de la ruta completa o, si ese centro está en un tramo
+   paralelo, un compañero suyo de tramo mientras ninguno haya empezado) una orden solo puede empezar si está liberada a
+   producción: liberada(o,'corte'), la misma definición de Liberación a producción (la firma, o la fase de Odoo que ya la da
+   por liberada). Lo que le falta lo dice faltaLiberarA(o,'corte'). Una orden ya EMPEZADA ahí (INICIO sin FIN, unidades
+   registradas, paso reabierto o la fase de Odoo ya es la de este centro) no se esconde: sigue donde está, con la etiqueta
+   «sin liberar a producción». Es la ÚNICA puerta: la usan la cola y el Resumen del centro (grupo «Por liberar a producción»),
+   listaParaEmpezar, el buscador del centro y la tablet (lo que ve el operario, la tarjeta del buscador, INICIO, «Hecho» y
+   el visto de terminar). No crear otro criterio en ninguna pantalla. */
+function empezadaEnCentro(o,c){if(!o||!c)return false;
+  if(tramoAbiertoOrden(o.id,c,null))return true;                                   // INICIO sin FIN
+  if(((((S.avance[o.id]||{}).centros)||{})[c]||0)>0)return true;                   // unidades registradas aquí
+  if(pasoReabierto(o,c))return true;                                                 // ya pasó por aquí y alguien lo reabrió
+  try{return posicionFaseCentro(o,c)==='enProceso'}catch(e){return false}}          // la fase de Odoo dice que se está haciendo aquí
+function esEntradaProduccion(o,c){const ru=rutaHechasDe(o);const i=ru.indexOf(c);if(i<0)return false;const antes=ru.slice(0,i);
+  if(antes.some(x=>!mismoTramoParalelo(x,c)))return false;                          // hay un paso anterior que manda (p. ej. Corte): no es la entrada
+  return !antes.some(x=>pasoHecho(o,x)||empezadaEnCentro(o,x))}                      // compañeros de tramo: si uno ya empezó, la orden ya entró a producción
+/* null = la liberación no la frena aquí · {oid,falta,txt} = está en su entrada a producción sin liberar (empezada o no) */
+function sinLibProdEn(o,c){if(!o||!c||liberada(o,'corte')||!esEntradaProduccion(o,c))return null;
+  const f=faltaLiberarA(o,'corte');
+  return {oid:o.id,falta:f,txt:f.length?f.join(' · '):'nada: está lista para liberar, solo falta que planificación la libere'}}
+/* sin liberar y SIN empezar: no se puede empezar (null = sí puede) */
+function porLiberarEn(o,c){const s=sinLibProdEn(o,c);return (s&&!empezadaEnCentro(o,c))?s:null}
+function puedeEmpezarEnCentro(o,c){return !porLiberarEn(o,c)}
+const MSG_POR_LIBERAR='todavía no está liberada a producción · avisa a planificación';
+/* la etiqueta de la empezada sin liberar: no se esconde, se dice */
+function tagSinLibProdHTML(o,c){const s=sinLibProdEn(o,c);if(!s||!empezadaEnCentro(o,c))return '';
+  return ' <span class="tag t-aviso" title="'+esc('ya empezó en '+nCen(c)+', pero la orden no está liberada a producción: no se esconde, sigue donde está. Lo que le falta para liberarla: '+s.txt)+'">sin liberar a producción</span>'}
+/* la fila «Por liberar a producción»: qué le falta (faltaLiberarA) y, si el perfil abre Liberación a producción, el enlace acotado a esa orden */
+function porLiberarHTML(s,conEnlace){if(!s)return '';const lnk=conEnlace!==false&&!esVistaOperario()&&(typeof puedeAbrirPagina!=='function'||puedeAbrirPagina('liberacion'));
+  return '<span class="tag t-aviso" title="'+esc('la tela está lista, pero la orden todavía no está liberada a producción: no se puede empezar (sin ✓, sin «hecho» y sin INICIO) hasta que planificación la libere en Liberación a producción. El programa le sigue dando fecha y capacidad.')+'" style="white-space:nowrap">por liberar a producción</span>'
+   +'<div class="mut por-lib-falta" style="font-size:var(--fs-xs);white-space:normal">qué la frena: '+esc(s.txt)+(lnk?' · <a onclick="event.stopPropagation();irLibProdOrden(\''+s.oid+'\')">liberar →</a>':'')+'</div>'}
+function listaParaEmpezar(o,c){if(!puedeEmpezarEnCentro(o,c))return null;const ant=centroAnteriorFueraTramo(o,c)||centroAnteriorPro(o,c);if(!ant)return null;const ci=cierreCentro(o,ant);if(!ci)return null;   /* en un tramo paralelo manda el paso anterior al tramo (corte), no el compañero */
   const ac=((S.avance[o.id]||{}).centros)||{};if((ac[c]||0)>0)return null; // ya se empezó aquí
   return {centro:ant,ci}}
 function tagListaEmpezar(o,c){if(esVistaOperario())return '';const l=listaParaEmpezar(o,c);if(!l)return '';
@@ -9889,6 +9955,7 @@ function listasNoProgramadasHTML(c,P,hasta){const l=listasNoProgramadas(c,P,hast
    </tbody></table></div></div>`}
 function centroSiguiente(o,c){const ru=(o.ruta||[]).filter(p=>CE(p.centro)&&CE(p.centro).area==='pro');const i=ru.findIndex(p=>p.centro===c);return (i>=0&&i+1<ru.length)?ru[i+1].centro:null}
 function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!regHechoOk(c)){alert('Tu perfil no registra en '+nCen(c)+'.');return}
+  if(!puedeEmpezarEnCentro(o,c)){alert('La orden '+(o.op||'')+' '+MSG_POR_LIBERAR+'.');return}   /* 04-oct */
   if(baseTallas(o,c).tallas||tallasDeOrden(o).length){mRegistroTallas(oid,c);return}   /* con curva: por talla, igual que la tablet (el total dañaba la curva de los centros siguientes) */
   const a=S.avance[oid]||{};const hechasPrev=(a.centros||{})[c]||0;const llega=cantCentro(o,c);const pend=Math.max(0,llega-hechasPrev);const parc=permiteParcial(c);
   abrir(`<h3>Registrar hecho en ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)"><b>${esc(o.op)}</b> · ${esc(nombreCat(K(o.cat)))} · pedido <b>${num(o.cant)}</b> prendas${llega!==(+o.cant||0)?' (a este centro llegan '+num(llega)+')':''}. Ya registradas aquí: <b>${num(hechasPrev)}</b> · faltan <b>${num(pend)}</b>. Lo que escribas <b>se suma</b>.</p>
@@ -9954,6 +10021,7 @@ function enProcesoFueraDelPlan(o,c){const ts=(((S.avance[o.id]||{}).tramos)||[])
    Resumen y Planificación) y en la cola va bajo Pendientes, no apilado bajo la WH. mandaCola = todas, en HTML, para quien las quiera todas. */
 function mandaColaTags(o,c,colaNumerada){const t=[];const p=puestoDe(o,c);
   if(enProcesoFueraDelPlan(o,c))t.push({k:'fuera',cls:'t-alerta',txt:'en proceso fuera del plan',title:'alguien la empezó en este centro sin que estuviera programada para su puesto: sigue visible en su tablet solo para terminarla'});
+  {const s=sinLibProdEn(o,c);if(s&&empezadaEnCentro(o,c))t.push({k:'sinLibProd',cls:'t-aviso',txt:'sin liberar a producción',title:'ya empezó en '+nCen(c)+', pero la orden no está liberada a producción: no se esconde, sigue donde está. Qué la frena: '+s.txt})}
   if(o.prio&&o.prio!==3)t.push({k:'prio',cls:'t-alerta',txt:'prio global '+o.prio+' manda',title:'La prioridad global de la orden (Órdenes) va antes que el puesto del centro en el motor.'});
   {const af=avisoAfuera(o,c);if(af)t.push({k:'afuera',cls:'t-aviso',txt:af.txt,title:af.tip})}
   const otros=Object.entries(o.progCentro||{}).filter(([k,v])=>k!==c&&v&&v.pri&&p&&v.pri<p);if(otros.length)t.push({k:'otro',cls:'t-aviso',txt:nCen(otros[0][0])+' la tiene en '+otros[0][1].pri+': manda ese',title:'El motor usa el menor puesto entre todos los centros de la orden.'});
@@ -10094,7 +10162,7 @@ function colaVisible(cens,filas,hasta){return [].concat(...cens.map(c=>{const al
   return (CEN.todo?all:all.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta))).map(f=>f.o)}))}
 /* acciones de la fila en un menú «⋯» (17-sep): ✓ hecho, quitar lo fijado, ruta (editar solo con permiso ruta; los demás la ven en la ficha) */
 function accionesColaHTML(f,pc){const acc=[];
-  if(regHechoOk(f.c))acc.push(`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`);
+  if(regHechoOk(f.c)&&puedeEmpezarEnCentro(f.o,f.c))acc.push(`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`);
   if(pc.rec||pc.desde||pc.pri){const bq=((pc.rec||pc.desde)&&bloqueoRecPiso()===TXT_REC_FALTA)?TXT_REC_FALTA:'';   /* 04-oct: sin la función del servidor, el piso no quita recurso ni arranque */
     acc.push(bq?`<button class="btn ghost sm" disabled title="${esc('quitar lo fijado: '+bq)}">quitar lo fijado</button>`:`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar lo fijado</button>`)}
   if(puedeEditarRuta())acc.push(`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros (permiso ruta)">ruta</button>`);
@@ -10155,15 +10223,16 @@ function ordenUrgencia(f){const k=estadoListaCentro(f).k;return k==='atrasada'?0
 /* qué entra al Resumen de un centro: órdenes de PLANTA — con WH y con la tela liberada por planificación. Lo de diseño,
    recetas o macro (sin WH o sin liberar) no tiene sentido en la pantalla de un centro todavía (decisión de la usuaria, 19-sep). */
 function enPlantaParaCentro(o){return lanzada(o)&&liberada(o,'tela')}
-function listasYEspera(c,filas){const cola=colaCentro(c,filas).filter(f=>enPlantaParaCentro(f.o));const listas=[],espera=[];
-  /* Listas = el paso anterior terminó (grupo Disponible). El puesto manual solo ORDENA dentro de su lista: no vuelve «lista» a una orden que no llegó */
+function listasYEspera(c,filas){const cola=colaCentro(c,filas).filter(f=>enPlantaParaCentro(f.o));const listas=[],espera=[],porLib=[];
+  /* Listas = el paso anterior terminó (grupo Disponible). El puesto manual solo ORDENA dentro de su lista: no vuelve «lista» a una orden que no llegó.
+     Por liberar a producción (04-oct) = el grupo de la cola del mismo nombre: tela lista en su primer centro y sin liberar a producción; no es «lista» */
   const proceso=[];
-  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g!=='disponible'){espera.push(f);return}
+  cola.forEach(f=>{const g=(f.cerc&&f.cerc.grupo)||'porLlegar';if(g==='porLiberar'){porLib.push(f);return}if(g!=='disponible'){espera.push(f);return}
     if(enProcesoEnCentro(f.o,c,f.cerc))proceso.push(f);else listas.push(f)});
   const fecha=f=>(f.paso.fin||f.paso.ini||'9');
   const porUrgencia=(a,b)=>(puestoDe(a.o,c)||SIN_PUESTO)-(puestoDe(b.o,c)||SIN_PUESTO)||ordenUrgencia(a)-ordenUrgencia(b)||(fecha(a)<fecha(b)?-1:fecha(a)>fecha(b)?1:0)||((a.o.fecha||'')<(b.o.fecha||'')?-1:1);
   listas.sort(porUrgencia);proceso.sort(porUrgencia);
-  return{cola,proceso,listas,espera}}
+  return{cola,proceso,listas,porLib,espera}}
 /* «se está cortando / cosiendo»: la fase de Odoo ya es la de este centro (posicionFaseCentro), o el piso registró unidades / tiene un tramo abierto aquí */
 function enProcesoEnCentro(o,c,cerc){try{if(cerc&&cerc.anomalia&&cerc.anomalia.tipo==='enProceso')return true;if(typeof posicionFaseCentro==='function'&&posicionFaseCentro(o,c)==='enProceso')return true;return estadoOrdenCentro(o,c,null)==='proceso'}catch(e){return false}}
 /* pedir a planificación que congele la semana: queda en la bitácora (la única tabla que el piso escribe) y en Hoy → Pendientes;
@@ -10228,25 +10297,25 @@ function diaPorDiaHTML(cens,P,dias,recs,nombre){const h=hoy();const rec=CEN.rec|
    En la vista «Todo <ítem>» con varias sub-áreas va una columna «Paso» (02-oct): antes era una etiqueta gris igual a la de la fase */
 function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=prm('filasResumenCentro',8);
   const porC=cens.map(c=>({c,...listasYEspera(c,filas)}));const fuera=[].concat(...cens.map(c=>colaCentro(c,filas))).filter(f=>!enPlantaParaCentro(f.o)).length;
-  let proceso=[].concat(...porC.map(x=>x.proceso)),listas=[].concat(...porC.map(x=>x.listas)),espera=[].concat(...porC.map(x=>x.espera));
-  if(CEN.rec){proceso=proceso.filter(f=>recDeFila(f)===CEN.rec);listas=listas.filter(f=>recDeFila(f)===CEN.rec);espera=espera.filter(f=>recDeFila(f)===CEN.rec)}
-  if(CEN.dia){proceso=proceso.filter(f=>filaEnDiaCEN(f,P,CEN.dia));listas=listas.filter(f=>filaEnDiaCEN(f,P,CEN.dia));espera=espera.filter(f=>filaEnDiaCEN(f,P,CEN.dia))}
-  const tab=CEN.lista==='espera'?'espera':CEN.lista==='proceso'?'proceso':'listas';const L=tab==='espera'?espera:tab==='proceso'?proceso:listas;
+  let proceso=[].concat(...porC.map(x=>x.proceso)),listas=[].concat(...porC.map(x=>x.listas)),porLib=[].concat(...porC.map(x=>x.porLib||[])),espera=[].concat(...porC.map(x=>x.espera));
+  if(CEN.rec){proceso=proceso.filter(f=>recDeFila(f)===CEN.rec);listas=listas.filter(f=>recDeFila(f)===CEN.rec);porLib=porLib.filter(f=>recDeFila(f)===CEN.rec);espera=espera.filter(f=>recDeFila(f)===CEN.rec)}
+  if(CEN.dia){proceso=proceso.filter(f=>filaEnDiaCEN(f,P,CEN.dia));listas=listas.filter(f=>filaEnDiaCEN(f,P,CEN.dia));porLib=porLib.filter(f=>filaEnDiaCEN(f,P,CEN.dia));espera=espera.filter(f=>filaEnDiaCEN(f,P,CEN.dia))}
+  const tab=CEN.lista==='espera'?'espera':CEN.lista==='proceso'?'proceso':CEN.lista==='porLib'?'porLib':'listas';const L=tab==='espera'?espera:tab==='proceso'?proceso:tab==='porLib'?porLib:listas;
   const vis=CEN.verTodo?L:L.slice(0,nVer);const multi=cens.length>1;
   const fila=(f,i)=>{let e=(tab==='listas'||tab==='proceso')?estadoListaCentro(f):null;if(tab==='proceso'&&e&&e.k!=='atrasada')e=null;   /* en proceso: solo interesa si ya debía haber salido */const pend=Math.max(0,(+f.o.cant||0)-(f.hechas||0));const pct=f.o.cant?Math.min(100,Math.round((f.hechas||0)/f.o.cant*100)):0;
     const g=(f.cerc&&f.cerc.grupo)||'';const gTxt=(CERCANIA_GRUPOS.find(x=>x[0]===g)||[])[1]||'';
     return `<tr class="res-fila" onclick="if(!event.target.closest('button,img,.fase-mini'))abrirFichaOrden('${f.o.id}')" style="cursor:pointer">
      <td class="num mut">${i+1}</td>${multi?'<td class="res-paso" title="paso de este ítem que le toca a la orden">'+esc(nCen(f.c))+'</td>':''}
-     <td style="white-space:nowrap">${whCell(f.o,40)}${puestoDe(f.o,f.c)?' <span class="tag t-mut" title="puesto manual en la cola">puesto '+puestoDe(f.o,f.c)+'</span>':''}${(()=>{const a=avisosFaltaHTML(f.o,f.c,P);return a?'<div style="margin-top:3px">'+a+'</div>':''})()}</td>
+     <td style="white-space:nowrap">${whCell(f.o,40)}${tagSinLibProdHTML(f.o,f.c)}${puestoDe(f.o,f.c)?' <span class="tag t-mut" title="puesto manual en la cola">puesto '+puestoDe(f.o,f.c)+'</span>':''}${(()=>{const a=avisosFaltaHTML(f.o,f.c,P);return a?'<div style="margin-top:3px">'+a+'</div>':''})()}</td>
      <td>${esc(nombreCat(K(f.o.cat)))}<div class="mut" style="font-size:var(--fs-xs)">${esc(f.o.cliente||'')}</div></td>
      <td style="white-space:nowrap">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</td>
      <td style="min-width:130px"><b>${num(f.hechas||0)}</b> <span class="mut">de ${num(f.o.cant)}</span><div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:var(--ok)"></i></div></td>
      <td style="white-space:nowrap">${f.paso.fin?fmtDia(f.paso.fin):'<span class="mut">—</span>'}</td>
-     <td style="white-space:nowrap">${tab==='proceso'?'<span class="tag t-hoy" title="la fase de Odoo ya es la de '+esc(nCen(f.c))+' o el piso ya registró aquí">En '+esc(nCen(f.c))+'</span> ':''}${e?'<span class="tag '+e.cls+'" title="'+esc(e.tip)+'">'+esc(e.txt)+'</span>':(llegadaHTML(f.cerc)||'')+(gTxt?' <span class="tag t-mut" title="grupo de la cola">'+esc(gTxt)+'</span>':'')}${e&&g&&g!=='disponible'&&puestoDe(f.o,f.c)?' '+llegadaHTML(f.cerc):''}</td>
-     <td class="num">${(tab!=='espera'&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="Terminar esta orden en ${esc(nCen(f.c))}: queda lista para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(tab!=='espera'?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
+     <td style="${tab==='porLib'?'min-width:200px':'white-space:nowrap'}">${tab==='porLib'?porLiberarHTML((f.cerc||{}).porLiberar):(tab==='proceso'?'<span class="tag t-hoy" title="la fase de Odoo ya es la de '+esc(nCen(f.c))+' o el piso ya registró aquí">En '+esc(nCen(f.c))+'</span> ':'')+(e?'<span class="tag '+e.cls+'" title="'+esc(e.tip)+'">'+esc(e.txt)+'</span>':(llegadaHTML(f.cerc)||'')+(gTxt?' <span class="tag t-mut" title="grupo de la cola">'+esc(gTxt)+'</span>':''))+(e&&g&&g!=='disponible'&&puestoDe(f.o,f.c)?' '+llegadaHTML(f.cerc):'')}</td>
+     <td class="num">${(tab!=='espera'&&tab!=='porLib'&&regHechoOk(f.c))?`<button class="visto" onclick="event.stopPropagation();mCerrarCentro('${f.o.id}','${f.c}')" title="Terminar esta orden en ${esc(nCen(f.c))}: queda lista para el siguiente centro${puedeCerrarPaso(f.o.id,f.c).ok?'':' · sin tiempo corrido pide motivo'}">✓</button>`:'<span class="mut" title="'+(tab==='porLib'?'todavía no está liberada a producción: el visto aparece cuando planificación la libere':tab!=='espera'?'tu perfil no registra en este centro':'todavía no llega a este centro: el visto aparece cuando esté lista')+'">—</span>'}</td></tr>`};
   const verbo=nombre;
-  return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='proceso'?'on':''}" onclick="CEN.lista='proceso';CEN.verTodo=false;render()" title="la fase de Odoo ya es la de este centro, o el piso ya registró aquí">En proceso <b>${num(proceso.length)}</b></span><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas en ${esc(verbo)} <b>${num(listas.length)}</b></span><span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
-    <span class="mut" style="font-size:var(--fs-xs)">${ayudaTipHTML((tab==='proceso'?'Lo que ya se está haciendo aquí (fase de Odoo en este centro o avance registrado), por urgencia':tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí')+'. '+(tab==='proceso'?'En proceso = la fase de Odoo ya es la de este centro (p. ej. 4Corte Planta en Corte, 7Confección en Confección) o el piso ya registró unidades o tiene un tramo abierto aquí. No están esperando: ya se están haciendo.':tab==='listas'?'Listas = el paso anterior ya terminó (o la tela está lista en el primer centro): se pueden trabajar ya. El puesto manual solo cambia el orden; no vuelve «lista» a una orden que todavía no llegó. Solo entran órdenes de planta: con WH y con la tela liberada por planificación.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa. Solo órdenes de planta (con WH y tela liberada); lo de diseño no entra.'))}</span></div>
+  return `<div class="panel res-lista"><div class="res-tabs"><span class="res-tab ${tab==='proceso'?'on':''}" onclick="CEN.lista='proceso';CEN.verTodo=false;render()" title="la fase de Odoo ya es la de este centro, o el piso ya registró aquí">En proceso <b>${num(proceso.length)}</b></span><span class="res-tab ${tab==='listas'?'on':''}" onclick="CEN.lista='listas';CEN.verTodo=false;render()">Listas en ${esc(verbo)} <b>${num(listas.length)}</b></span>${(porLib.length||tab==='porLib')?`<span class="res-tab ${tab==='porLib'?'on':''}" onclick="CEN.lista='porLib';CEN.verTodo=false;render()" title="la tela está lista, pero todavía no están liberadas a producción: no se pueden empezar hasta que planificación las libere">Por liberar a producción <b>${num(porLib.length)}</b></span>`:''}<span class="res-tab ${tab==='espera'?'on':''}" onclick="CEN.lista='espera';CEN.verTodo=false;render()">En espera <b>${num(espera.length)}</b></span><span class="spacer"></span>
+    <span class="mut" style="font-size:var(--fs-xs)">${ayudaTipHTML(tab==='porLib'?'Por liberar a producción = en este centro empieza su producción y la tela ya está lista, pero planificación todavía no la libera a producción: no se puede empezar (sin visto ni INICIO). Cada fila dice qué la frena; «liberar →» abre Liberación a producción con esa orden. El programa le sigue dando fecha y capacidad. Solo órdenes de planta (con WH y tela liberada).':(tab==='proceso'?'Lo que ya se está haciendo aquí (fase de Odoo en este centro o avance registrado), por urgencia':tab==='listas'?'Ordenadas por urgencia: con puesto manual primero, luego atrasadas, las de hoy y las que siguen':'En el orden de la cola: Por llegar (por fase, la más cercana primero) → Todo lo que viene → Revisar ruta → Ya salió de aquí')+'. '+(tab==='proceso'?'En proceso = la fase de Odoo ya es la de este centro (p. ej. 4Corte Planta en Corte, 7Confección en Confección) o el piso ya registró unidades o tiene un tramo abierto aquí. No están esperando: ya se están haciendo.':tab==='listas'?'Listas = el paso anterior ya terminó (o, en el primer centro de producción, la tela está lista y la orden está liberada a producción): se pueden trabajar ya. El puesto manual solo cambia el orden; no vuelve «lista» a una orden que todavía no llegó. Solo entran órdenes de planta: con WH y con la tela liberada por planificación.':'En espera = todavía no llegan a este centro: les falta un paso anterior o la tela. El estado dice cuándo llegan según el programa. Solo órdenes de planta (con WH y tela liberada); lo de diseño no entra.'))}</span></div>
    ${(()=>{const sT=L.filter(f=>{const pp=P&&P.ordenes?(((P.ordenes[f.o.id]||{}).pasos||[]).find(x=>x.centro===f.c)||null):null;return pp&&pp.sinTiempo});const n=sT.length;if(!n)return '';
      /* pulido V3 (02-oct): qué falta sale de las órdenes que NO tienen tiempo (antes, del primer centro con órdenes: en Terminados decía Botones
         y eran de Empaque) y el enlace va después de «·», sin repetir «en Operaciones» */
@@ -10254,7 +10323,7 @@ function listaResumenCentroHTML(cens,P,filas,nombre){const h=hoy();const nVer=pr
      const lnk=que=>/técnica/i.test(que)?` · <a onclick="irAjuste('Técnicas de estampado')">completar →</a>`:(!/puntadas/i.test(que)&&typeof puedeAbrirPagina==='function'&&puedeAbrirPagina('operaciones'))?` · <a onclick="ir('operaciones')">completar →</a>`:'';
      return `<p class="res-sinT"><span class="tag t-falta">sin tiempo estándar</span> ${num(n)} de estas órdenes no ${n===1?'tiene':'tienen'} tiempo estándar: el programa les da fecha pero no mide su carga · falta ${ques.map(q=>esc(q)+lnk(q)).join('; o ')}</p>`})()}
    <div class="scroll"><table class="res-tabla"><thead><tr><th>#</th>${multi?'<th title="paso de este ítem que le toca a la orden">Paso</th>':''}<th>Orden</th><th>Producto</th><th>Color</th><th>Prendas hechas</th><th title="fin programado del paso en este centro">Debe salir</th><th>Estado</th><th title="marca que la orden terminó en este centro: queda lista para el siguiente">Terminar</th></tr></thead><tbody>
-   ${vis.map(fila).join('')||'<tr><td colspan="'+(multi?9:8)+'" class="mut" style="padding:14px">'+(tab==='proceso'?'Nada en proceso ahora':tab==='listas'?'Ninguna orden lista'+(CEN.rec?' en '+esc(nRec(CEN.rec)):'')+(CEN.dia?' el '+fmtDia(CEN.dia):'')+'.':'Nada en espera.')+'</td></tr>'}
+   ${vis.map(fila).join('')||'<tr><td colspan="'+(multi?9:8)+'" class="mut" style="padding:14px">'+(tab==='porLib'?'Nada por liberar a producción.':tab==='proceso'?'Nada en proceso ahora':tab==='listas'?'Ninguna orden lista'+(CEN.rec?' en '+esc(nRec(CEN.rec)):'')+(CEN.dia?' el '+fmtDia(CEN.dia):'')+'.':'Nada en espera.')+'</td></tr>'}
    </tbody></table></div>
    ${L.length>vis.length?`<div class="res-mas" onclick="CEN.verTodo=true;render()">Ver las ${num(L.length-vis.length)} restantes</div>`:(CEN.verTodo&&L.length>nVer?`<div class="res-mas" onclick="CEN.verTodo=false;render()">Ver menos</div>`:'')}
    ${fuera?`<p class="mut res-fuera">${num(fuera)} ${fuera===1?'orden de este centro todavía no llega':'órdenes de este centro todavía no llegan'} a planta (sin WH o con la tela sin liberar)${(typeof puedeAbrirPagina!=='function'||puedeAbrirPagina('ordenes'))?' · <a onclick="ir(\'ordenes\')">verlas en Órdenes →</a>':''}</p>`:''}
@@ -12378,7 +12447,7 @@ let OTR={area:'general',estado:'proceso',q:'',cen:null,rec:null};
 const OTR_ESTADOS=[
   ['proceso','En proceso','t-aviso','En proceso','se está trabajando aquí: la fase de Odoo es la de este centro, o el piso le dio INICIO o registró unidades (lo mismo que «En proceso» del Resumen del centro)'],
   ['listo','Listas','t-medio','Lista','el paso anterior ya terminó (grupo «Disponible» de la cola): se puede empezar'],
-  ['espera','En espera','t-lavado','En espera','todavía no llega: falta un paso anterior de su ruta o la tela (grupos «Por llegar» y «Todo lo que viene» de la cola)'],
+  ['espera','En espera','t-lavado','En espera','todavía no llega: falta un paso anterior de su ruta o la tela (grupos «Por llegar» y «Todo lo que viene» de la cola), o en su primer centro todavía no está liberada a producción (grupo «Por liberar a producción»)'],
   ['revisar','Revisar ruta','t-alerta','Revisar ruta','no se sabe la secuencia (el centro se repite en la ruta o no está en ella) o la fase ya pasó de aquí y el paso sigue abierto: grupos «Revisar ruta» y «Ya salió de aquí» de la cola'],
   ['hecho','Terminadas','t-ok','Terminada','el paso ya está terminado: unidades completas, cierre del paso, orden de trabajo de Odoo terminada o la fase'],
   ['todas','Todas','','','']];

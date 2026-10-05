@@ -5,6 +5,9 @@ async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>
 function __check(nombre,cond,detalle){__R.checks.push({nombre,ok:!!cond,detalle:detalle===undefined?'':String(detalle)})}
 const __p=ms=>new Promise(r=>setTimeout(r,ms));
 function adminP0(){return {id:"u-adm",rol:"admin",nombre:"Admin",modo:"editar"}}
+/* 04-oct-2026: en su PRIMER centro de producción una orden solo se puede empezar (INICIO, «Hecho», terminar) si está liberada a producción.
+   Las pruebas que arman una orden de planta para registrar en ese centro la liberan con esta firma de prueba (la misma marca que deja liberarA). */
+function __libProdPrueba(o){o.lib=Object.assign({},o.lib||{},{corte:{ok:true,u:'prueba',ts:'2026-09-01T12:00:00.000Z'}});return o}
 async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
@@ -3955,7 +3958,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
    const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
-   const oO=JSON.parse(JSON.stringify(base));oO.id=uid();oO.op='WH/MO/28513';oO.estado='plan';oO.cant=100;delete oO.tallasPedido;delete oO.programa;oO.ruta=[{centro:'modulos',t:5}];S.ordenes.push(oO);delete S.avance[oO.id];
+   const oO=JSON.parse(JSON.stringify(base));oO.id=uid();oO.op='WH/MO/28513';oO.estado='plan';oO.cant=100;delete oO.tallasPedido;delete oO.programa;oO.ruta=[{centro:'modulos',t:5}];__libProdPrueba(oO);S.ordenes.push(oO);delete S.avance[oO.id];
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];const hayM=motivosDe('cierre').length;if(!hayM)S.params.motivos.push({motivo:'Merma de confección',uso:'cierre'});
    S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec};
    PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};TRAMO={paso:null,id:null,oid:null};TAB.centro='modulos';TAB.rec=rec;TAB.q='';PLAN=null;PLAN_ALL=null;
@@ -6057,7 +6060,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* ===== CF · cola por fase con corte de profundidad (17-sep) ===== */
    {const c="corte";PLAN=null;PLAN_ALL=null;const Pf=programar();const lun=lunesDe(hoy());
     const filas=filasDeCentros([c],Pf,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);const m=partirPorCercania(cola);
-    __check("CF: los grupos de pantalla son Con puesto manual · Disponible · Por llegar · Revisar ruta · Todo lo que viene · Ya salió de aquí",CERCANIA_GRUPOS.map(g=>g[0]).join()==="puesto,disponible,porLlegar,revisar,lejana,anomalia"&&"puesto" in m&&"anomalia" in m);
+    __check("CF: los grupos de pantalla son Con puesto manual · Disponible · Por liberar a producción (04-oct) · Por llegar · Revisar ruta · Todo lo que viene · Ya salió de aquí",CERCANIA_GRUPOS.map(g=>g[0]).join()==="puesto,disponible,porLiberar,porLlegar,revisar,lejana,anomalia"&&"puesto" in m&&"porLiberar" in m&&"anomalia" in m);
     /* el orden: grupo → posición de la fase en la lista → llegada; la fórmula no deja que una llave pise a la anterior */
     __check("CF: una orden de la primera fase sin programar va ANTES que una de la segunda fase que llega en 2 días",ordenCercania({grupo:"porLlegar",faseRank:0,orden:9e8})<ordenCercania({grupo:"porLlegar",faseRank:1,orden:2}));
     __check("CF: dentro de Por llegar la cola va por fase en el orden de la lista",(()=>{const l=m.porLlegar;for(let i=1;i<l.length;i++){if((l[i-1].cerc.faseRank||0)>(l[i].cerc.faseRank||0))return false}return true})(),m.porLlegar.map(f=>f.o.fase+"#"+f.cerc.faseRank).slice(0,8).join(" | "));
@@ -7914,7 +7917,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.ordenes=S.ordenes.filter(x=>![oT,oD,oSin].includes(x));[oT,oD,oSin].forEach(x=>delete S.avance[x.id]);}
    /* MH · tres decisiones de la usuaria (23-sep, noche): maquila en el tramo · reabrir = reprogramación con motivo · «Hecho» suma */
    {const bakCf=window.confirm,bakAl=window.alert;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
-    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.cant=224;delete x.otTs;delete x.terminadaF;Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};return x};
+    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.cant=224;delete x.otTs;delete x.terminadaF;Object.assign(x,extra||{});__libProdPrueba(x);S.ordenes.push(x);S.avance[x.id]={};return x};
     const creadas=[];
     /* (1) maquila: vuelve de maquila con el estampado pendiente en Odoo → el estampado NO está hecho */
     const fRec=fasesDisponibles().find(f=>/maquila/i.test(f)&&/recep/i.test(f))||fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&/maquila/i.test(g.grupo)});
@@ -7956,7 +7959,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const bakCf=window.confirm,bakAl=window.alert,bakPr=window.prompt;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
     const fP=fasesDisponibles().find(f=>faseNum(f)>=1&&faseNum(f)<4)||fasesDisponibles()[0];
     const mk=(op,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fP;x.estado='plan';x.cant=224;delete x.ot;delete x.otTs;delete x.rutaCompleta;delete x.tallasPedido;
-      x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};
+      x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];Object.assign(x,extra||{});__libProdPrueba(x);S.ordenes.push(x);S.avance[x.id]={};
       tramosDe(x.id).push({id:'t-'+uid(),centro:'corte',rec:null,ini:new Date(Date.now()-60*6e4).toISOString(),fin:new Date().toISOString(),u:'op',paros:[],tallas:{}});return x};
     const creadas=[];const reg=(o,q)=>{marcarHechoCentro(o.id,'corte');const el=document.getElementById('hc-q');if(el){el.value=String(q);confirmarHechoCentro(o.id,'corte')}};
     /* una sola cuenta: corrección en Control de piso + «Hecho» */
@@ -8120,7 +8123,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {if(R('maquila')&&esRecAfuera('maquila')){const adminP=PERFIL;PERFIL=adminP0();const cf=window.confirm;window.confirm=()=>true;const al=window.alert;const als=[];window.alert=m=>als.push(String(m));
      const base=S.ordenes.find(x=>abierta(x)&&liberada(x,'tela'))||S.ordenes[0];const mods=S.recursos.find(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
      __check('MT1: Maquila es un recurso «afuera» (sale de la tabla de Tramos paralelos); un módulo de planta no',esRecAfuera('maquila')&&!(mods&&esRecAfuera(mods.id)));
-     const ords=[];for(let k=0;k<6;k++){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MT-'+k;o.estado='plan';o.cant=50;o.fase=fasesDisponibles().find(f=>/planificaci/i.test(f))||o.fase;delete o.tallasPedido;delete o.programa;delete o.progCentro;delete o.ot;o.recursoFijo={modulos:'maquila'};o.ruta=[{centro:'modulos',t:5},{centro:'empaque',t:1}];o.rutaCompleta=o.ruta.map(x=>Object.assign({},x));S.ordenes.push(o);S.avance[o.id]={lista:true};ords.push(o)}
+     const ords=[];for(let k=0;k<6;k++){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MT-'+k;o.estado='plan';o.cant=50;o.fase=fasesDisponibles().find(f=>/planificaci/i.test(f))||o.fase;delete o.tallasPedido;delete o.programa;delete o.progCentro;delete o.ot;o.recursoFijo={modulos:'maquila'};o.ruta=[{centro:'modulos',t:5},{centro:'empaque',t:1}];o.rutaCompleta=o.ruta.map(x=>Object.assign({},x));__libProdPrueba(o);S.ordenes.push(o);S.avance[o.id]={lista:true};ords.push(o)}
      PLAN=null;PLAN_ALL=null;programar();
      ords.forEach(o=>iniciarTramo(o.id,'modulos','maquila'));
      __check('MT2: maquila se lleva muchas órdenes a la vez: 6 INICIO seguidos, sin tope ni aviso',ords.every(o=>tramosDe(o.id).some(x=>!x.fin&&x.rec==='maquila'&&x.afuera))&&!als.length,JSON.stringify(als));
@@ -8777,11 +8780,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("UX-B6: las pestañas de vista tienen nombres cortos (Resumen · Planificación · Programación · Ejecución) y el nombre largo va al pasar el mouse",(()=>{const cs=[...pc().querySelectorAll('.pagehead .chip')];const t=cs.map(x=>x.textContent);return ['Resumen','Planificación','Programación','Ejecución'].every(x=>t.includes(x))&&!t.some(x=>/Programación del centro|Ejecución y desviaciones/.test(x))&&cs.some(x=>/Programación del centro/.test(x.getAttribute('title')||''))})());
    /* RC2 · la semana con carga del volcado (la siguiente): las dos listas parten la cola entera y no repiten nada */
    {abrir('corte',1);const P=programar();const lun=lunesDe(dsum(h,7)),dom=dsum(lun,6);
-    const filas=filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o));const {cola,proceso,listas,espera}=listasYEspera('corte',filas);
+    const filas=filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o));const {cola,proceso,listas,porLib,espera}=listasYEspera('corte',filas);
     __check("RC2: En proceso = grupo Disponible cuya fase de Odoo ya es la del centro (o el piso registró aquí); no está en Listas",proceso.every(f=>f.cerc&&f.cerc.grupo==='disponible'&&enProcesoEnCentro(f.o,'corte',f.cerc))&&listas.every(f=>!enProcesoEnCentro(f.o,'corte',f.cerc))&&!proceso.some(f=>listas.includes(f)));
     __check("RC2: una orden en fase 4Corte Planta (se está cortando) sale En proceso y no en Listas",(()=>{const f=cola.find(x=>/corte planta/i.test(x.o.fase||''));return !f||(proceso.includes(f)&&!listas.includes(f))})());
     const ids=x=>x.map(f=>f.o.id).sort().join(',');
-    __check("RC2: En proceso + Listas + En espera = la cola del centro (colaCentro) acotada a órdenes de planta, sin repetir ni perder ninguna",proceso.length+listas.length+espera.length===cola.length&&ids(proceso.concat(listas,espera))===ids(cola)&&new Set(listas.map(f=>f.o.id)).size===listas.length);
+    __check("RC2: En proceso + Listas + Por liberar a producción + En espera = la cola del centro (colaCentro) acotada a órdenes de planta, sin repetir ni perder ninguna",proceso.length+listas.length+porLib.length+espera.length===cola.length&&ids(proceso.concat(listas,porLib,espera))===ids(cola)&&new Set(listas.map(f=>f.o.id)).size===listas.length);
+    __check("RC2: Por liberar a producción = SOLO el grupo de la cola del mismo nombre, y ninguna de Listas está sin liberar a producción (04-oct)",porLib.every(f=>f.cerc&&f.cerc.grupo==='porLiberar'&&!liberada(f.o,'corte'))&&listas.every(f=>puedeEmpezarEnCentro(f.o,'corte'))&&espera.every(f=>!(f.cerc&&f.cerc.grupo==='porLiberar')));
     __check("RC2: Listas = SOLO grupo Disponible (el puesto manual ordena, no promueve); En espera = todo lo demás",listas.every(f=>f.cerc&&f.cerc.grupo==='disponible')&&espera.every(f=>!(f.cerc&&f.cerc.grupo==='disponible')));
     __check("RC2: solo órdenes de planta: con WH y con la tela liberada; lo de diseño / sin WH no entra al Resumen",listas.concat(espera).every(f=>lanzada(f.o)&&liberada(f.o,'tela')));
     {const oD=S.ordenes.find(o=>abiertaDe(o)&&!lanzada(o)&&(o.ruta||[]).some(p=>p.centro==='corte'));if(oD){oD.progCentro=Object.assign({},oD.progCentro,{corte:{pri:1}});const r2=listasYEspera('corte',filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o)));
@@ -8791,7 +8795,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RC2: Listas va por urgencia: puesto manual primero y luego atrasada → para hoy → futuro → sin programar (nunca al revés)",(()=>{let ok=true;for(let i=1;i<listas.length;i++){const a=listas[i-1],b=listas[i];const pa=puestoDe(a.o,'corte')||SIN_PUESTO,pb=puestoDe(b.o,'corte')||SIN_PUESTO;if(pa<pb)continue;if(pa>pb){ok=false;break}if(ordenUrgencia(a)>ordenUrgencia(b)){ok=false;break}}return ok})());
     __check("RC2: En espera conserva el orden de la cola (Por llegar → Todo lo que viene → Revisar → Ya salió)",(()=>{const enCola=cola.filter(f=>espera.includes(f));return enCola.map(f=>f.o.id).join(',')===espera.map(f=>f.o.id).join(',')})());
     const t=[...pc().querySelectorAll('.res-tab')].map(txt);
-    __check("RC2: los conteos de las tres pestañas son los de las listas",t.length===3&&t[0]==='En proceso '+num(proceso.length)&&t[1]==='Listas en Corte '+num(listas.length)&&t[2]==='En espera '+num(espera.length),JSON.stringify(t));
+    __check("RC2: los conteos de las pestañas son los de las listas («Por liberar a producción» solo aparece si hay alguna, entre Listas y En espera)",(porLib.length?t.length===4&&t[2]==='Por liberar a producción '+num(porLib.length)&&t[3]==='En espera '+num(espera.length):t.length===3&&t[2]==='En espera '+num(espera.length))&&t[0]==='En proceso '+num(proceso.length)&&t[1]==='Listas en Corte '+num(listas.length),JSON.stringify(t));
     const n=prm('filasResumenCentro',8);const filasDOM=pc().querySelectorAll('.res-tabla tbody tr.res-fila');
     __check("RC2: se muestran las primeras N (parámetro filasResumenCentro, 8) y «Ver las X restantes» completa",filasDOM.length===Math.min(n,listas.length)&&(listas.length<=n||txt(pc().querySelector('.res-mas'))==='Ver las '+num(listas.length-n)+' restantes'));
     __check("RC2: cada fila lleva foto/WH/fase (whCell), producto, color, prendas hechas de pedidas, debía salir, estado y el visto",[...filasDOM].every(tr=>tr.children.length===8&&tr.querySelector('.fase-mini')&&tr.querySelector('.bar')&&tr.querySelector('.visto')));
@@ -8872,6 +8876,97 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    window.alert=al;PERFIL=adminP0();CEN.sem=0;CEN.rec='';CEN.lista='listas';CEN.verTodo=false;CEN.dia=null;CEN.tab='plan';PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("RESUMEN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== AUDITORÍA DEL SISTEMA (19-sep-2026): lo que se encontró y se corrigió, fijado en pruebas ===== */
+  /* LP · «LISTA PARA EMPEZAR» SOLO SI ESTÁ LIBERADA A PRODUCCIÓN (04-oct-2026, decisión de la usuaria). Con datos reales salían «lista para
+     empezar» en Corte (y con INICIO en la tablet) órdenes con la tela lista que todavía esperaban en «Liberación a producción → Listas para liberar».
+     El programa NO cambia; cambia lo que se muestra y lo que se puede hacer. Se DIBUJAN la cola, el Resumen, la tablet del operario y su buscador. */
+  try{localStorage.__fase="lista solo liberada a produccion"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;const bakP=PERFIL;const alerts=[];window.alert=m=>alerts.push(String(m));window.confirm=()=>true;
+   const temp=[];const bitBak=S.bitacora.slice();const bakGRP=GRP;const bakCEN=JSON.stringify({id:CEN.id,solo:CEN.solo,tab:CEN.tab,q:CEN.q,todo:CEN.todo,lista:CEN.lista,verTodo:CEN.verTodo,dia:CEN.dia,rec:CEN.rec,sem:CEN.sem,cercAbre:CEN.cercAbre});const bakFases=CEN.fases;
+   const bakTAB={centro:TAB.centro,rec:TAB.rec,q:TAB.q,vista:TAB.vista};const bakLIB={et:LIB.et,vista:LIB.vista,q:LIB.q,ym:LIB.ym,ymAuto:LIB.ymAuto,sel:LIB.sel,aviso:LIB.aviso,freno:LIB.freno};const bakB=BUSQ['LIB.q'];
+   const C='corte';const rec=(S.recursos.find(r=>r.activa&&r.centro===C)||{}).id||null;const uid0='op-lp-'+uid();
+   S.params.tablets=S.params.tablets||{};
+   const comoOperario=f=>{const g=PERFIL;PERFIL={id:uid0,rol:'tablet',modo:'editar',nombre:'Operario LP'};try{return f()}finally{PERFIL=g}};
+   const pc=()=>document.getElementById('p-centro');
+   try{
+    PERFIL=adminP0();S.params.tablets[uid0]={centro:C,rec};
+    const base=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length)||S.ordenes.find(abierta);
+    const mk=(op)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.estadoOP='confirmed';o.fase='2Planificacion';o.fecha=dsum(hoy(),5);o.cant=60;o.cliente='CLIENTE LP';
+      ['lib','programa','sinLanzar','sinFechaEntrega','rutaConf','ot','rutaRevisar','histLib','recursoFijo','urgente','progCentro','rutaEditada','compromiso','fechaCompromiso','excedente','tallasPedido'].forEach(k=>delete o[k]);
+      o.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};if(!(o.telas||[]).length)o.telas=[{tela:(S.telas[0]||{}).id,kg:50}];
+      o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:1},{centro:'empaque',t:1}];o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
+      S.ordenes.push(o);temp.push(o);S.avance[o.id]={calidadOk:true,tinturada:true};confirmarRuta(o,'persona','prueba LP');
+      if(rec)o.progCentro={[C]:{rec,desde:hoy()}};   /* fijada al puesto: candidata a la tablet aunque el motor la programe fuera de la ventana */
+      return o};
+    const oA=mk('WH/LP-001');   /* tela lista, sin liberar a producción, sin empezar */
+    const oE=mk('WH/LP-002');S.avance[oE.id].centros={[C]:10};   /* sin liberar, pero YA EMPEZADA (10 unidades registradas en Corte) */
+    PLAN=null;PLAN_ALL=null;const P0=programar();
+    /* --- 1 · la puerta única --- */
+    __check("LP1: puedeEmpezarEnCentro es la puerta única: tela lista y sin liberar a producción en su primer centro → no puede empezar, y lo que le falta sale de faltaLiberarA",
+      !liberada(oA,'corte')&&puedeLiberarA(oA,'corte')&&!puedeEmpezarEnCentro(oA,C)&&!!porLiberarEn(oA,C)&&JSON.stringify(porLiberarEn(oA,C).falta)===JSON.stringify(faltaLiberarA(oA,'corte'))&&puedeEmpezarEnCentro(oA,'modulos'),JSON.stringify(porLiberarEn(oA,C)));
+    const cA=cercaniaCentro(oA,C,P0);
+    __check("LP1: en la cola de Corte va al grupo «Por liberar a producción», no a Disponible (la tela sí está lista)",cA.grupo==='porLiberar'&&(cA.llegada||{}).tipo==='lista'&&!!cA.porLiberar,JSON.stringify({g:cA.grupo,l:cA.llegada}));
+    __check("LP1: nunca dice «lista para empezar» y listaParaEmpezar no la da por lista",!/lista para empezar/.test(llegadaHTML(cA))&&/por liberar a producción/.test(llegadaHTML(cA))&&!listaParaEmpezar(oA,C)&&!tagListaEmpezar(oA,C));
+    /* --- 2 · la cola DIBUJADA --- */
+    GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;CEN.cercAbre=null;render();
+    {const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='';let cabA=null,cabE=null;const orden=[];
+     trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim();orden.push(cab.split(/[0-9]/)[0].trim());return}
+       const ds=tr.getAttribute('ondragstart')||'';if(ds.includes("'"+oA.id+"'"))cabA=cab;if(ds.includes("'"+oE.id+"'"))cabE=cab});
+     const rA=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));const rE=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oE.id+"'"));
+     __check("LP2: la cola DIBUJADA pone la orden bajo «Por liberar a producción», después de Disponible y antes de Por llegar",!!rA&&/^Por liberar a producción/.test(cabA||'')&&(orden.indexOf('Disponible')<0||orden.indexOf('Disponible')<orden.indexOf('Por liberar a producción'))&&(orden.indexOf('Por llegar')<0||orden.indexOf('Por liberar a producción')<orden.indexOf('Por llegar')),JSON.stringify({cabA,orden}));
+     __check("LP2: su fila no ofrece ✓ hecho y dice qué le falta, con el enlace a Liberación a producción de esa orden",!!rA&&!/marcarHechoCentro\(/.test(rA.innerHTML)&&/por liberar a producción/.test(rA.textContent)&&/qué la frena:/.test(rA.textContent)&&faltaLiberarA(oA,'corte').every(x=>rA.textContent.includes(x))&&rA.innerHTML.includes("irLibProdOrden('"+oA.id+"')"),rA?rA.textContent.slice(0,200):'(sin fila)');
+     __check("LP2: la ya EMPEZADA sin liberar no se esconde: sigue en Disponible, con ✓ y la etiqueta «sin liberar a producción»",!!rE&&/^Disponible/.test(cabE||'')&&/sin liberar a producción/.test(rE.textContent)&&/marcarHechoCentro\(/.test(rE.innerHTML)&&cercaniaCentro(oE,C,P0).grupo==='disponible'&&!!cercaniaCentro(oE,C,P0).sinLibProd,JSON.stringify({cabE}));}
+    /* sin permiso para abrir Liberación: dice lo que falta, sin enlace */
+    {const pa=window.puedeAbrirPagina;window.puedeAbrirPagina=()=>false;const h=porLiberarHTML(porLiberarEn(oA,C));window.puedeAbrirPagina=pa;
+     __check("LP2: un perfil que no abre Liberación a producción ve lo que falta pero no el enlace",/qué la frena:/.test(h)&&!/irLibProdOrden/.test(h));}
+    /* las acciones también se niegan por código (no solo por pantalla) */
+    {alerts.length=0;const nT=tramosDe(oA.id).length;iniciarTramo(oA.id,C,rec);marcarHechoCentro(oA.id,C);mCerrarCentro(oA.id,C);
+     __check("LP2: INICIO, «Hecho» y Terminar se niegan con «todavía no está liberada a producción · avisa a planificación» y no registran nada",alerts.length===3&&alerts.every(a=>a.includes(MSG_POR_LIBERAR))&&tramosDe(oA.id).length===nT&&!((S.avance[oA.id]||{}).centros||{})[C]&&!document.getElementById('veil').classList.contains('on'),JSON.stringify(alerts));try{cerrar()}catch(e){}}
+    /* --- 3 · el Resumen del centro DIBUJADO --- */
+    NAVH.length=0;irCentro(C,null,'resumen');CEN.rec='';CEN.dia=null;CEN.sem=0;CEN.verTodo=true;CEN.lista='listas';render();
+    {const tabs=[...pc().querySelectorAll('.res-tab')].map(x=>x.textContent.replace(/\s+/g,' ').trim());const iL=tabs.findIndex(t=>/^Listas en/.test(t)),iP=tabs.findIndex(t=>/^Por liberar a producción/.test(t)),iE=tabs.findIndex(t=>/^En espera/.test(t));
+     const enListas=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].some(tr=>tr.textContent.includes(oA.op));
+     CEN.lista='porLib';render();const fr=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].find(tr=>tr.textContent.includes(oA.op));
+     __check("LP3: el Resumen tiene la pestaña «Por liberar a producción» entre Listas y En espera; la orden está ahí y no en Listas",iL>=0&&iP===iL+1&&iE===iP+1&&!enListas&&!!fr,JSON.stringify(tabs));
+     __check("LP3: su fila no tiene el visto de terminar y dice qué le falta, con el enlace",!!fr&&!fr.querySelector('.visto')&&/qué la frena:/.test(fr.textContent)&&/irLibProdOrden\(/.test(fr.innerHTML));
+     CEN.lista='proceso';render();const fe=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].find(tr=>tr.textContent.includes(oE.op));
+     __check("LP3: la empezada sin liberar sigue En proceso, con la etiqueta «sin liberar a producción»",!!fe&&/sin liberar a producción/.test(fe.textContent));}
+    /* --- 4 · la tablet del operario de Corte --- */
+    if(rec){PLAN=null;PLAN_ALL=null;const P1=programar();
+     __check("LP4: la orden SÍ es candidata para el puesto (programada o fijada), pero el operario no la ve: visibleOperario usa la misma puerta",(programadoPara(oA,C,rec,P1)||fijadaPara(oA,C,rec))&&!visibleOperario(oA,C,rec,P1)&&visibleOperario(oE,C,rec,P1));
+     const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+     __check("LP4: la cola de la tablet no la trae; la empezada sí",!cola.some(f=>f.o.id===oA.id)&&cola.some(f=>f.o.id===oE.id)&&comoOperario(()=>!ordenesQueVe().some(o=>o.id===oA.id)));
+     page='tablet';TAB.centro=C;TAB.rec=rec;TAB.q='';const vistas=[];comoOperario(()=>{['cola','proceso'].forEach(v=>{TAB.vista=v;render();vistas.push(document.getElementById('p-tablet').innerHTML)})});
+     __check("LP4: Mi centro DIBUJADO como operario: ni en «En cola» ni en «En proceso», y sin INICIO para ella",vistas.every(h=>!h.includes(oA.op)&&!h.includes("iniciarTramo('"+oA.id+"'")),'');
+     __check("LP4: la empezada sin liberar sigue en su tablet con la etiqueta «sin liberar a producción»",vistas.some(h=>h.includes(oE.op)&&/sin liberar a producción/.test(h)));
+     TAB.q=oA.op;let hb='';comoOperario(()=>{TAB.vista='cola';render();hb=document.getElementById('p-tablet').innerHTML});
+     __check("LP4: si el operario la BUSCA por su WH, dice «todavía no está liberada a producción · avisa a planificación» y no ofrece INICIO (ni «no está programada»)",/[Tt]odavía no está liberada a producción · avisa a planificación/.test(hb)&&hb.includes(oA.op)&&!hb.includes("iniciarTramo('"+oA.id+"'")&&!/No está programada/.test(hb),hb.slice(0,300));
+     const hs=tabletBuscadorHTML(C,tabletFilas(C,rec,programar()),rec);
+     __check("LP4: el supervisor que la busca en Mi centro ve lo mismo y lo que le falta, sin INICIO ni «pedir reprogramación»",hs.includes(MSG_POR_LIBERAR)&&/Qué la frena:/.test(hs)&&!hs.includes("iniciarTramo('"+oA.id+"'")&&!/pedirReprogramacion\('/.test(hs.slice(hs.indexOf(oA.op))),'');
+     TAB.q='';}
+    else __check("LP4: (sin recurso activo en Corte en este momento de la prueba)",true);
+    /* --- 5 · el programa NO cambia --- */
+    {PLAN=null;PLAN_ALL=null;const Pa=programar();const k1=window.sinLibProdEn;window.sinLibProdEn=()=>null;PLAN=null;PLAN_ALL=null;const Pb=programar();const cB=cercaniaCentro(oA,C,Pb).grupo;window.sinLibProdEn=k1;PLAN=null;PLAN_ALL=null;
+     const fechas=P=>JSON.stringify(Object.keys(P.ordenes).sort().map(k=>{const r=P.ordenes[k]||{};return [k,r.finPro||null,r.bloqueo||null,(r.pasos||[]).map(p=>[p.centro,p.ini||null,p.fin||null,p.rec||null])]}));
+     const roA=Pa.ordenes[oA.id]||{};const pA=(roA.pasos||[]).find(p=>p.centro===C)||{};
+     __check("LP5: el programa (P.pro y todas las fechas) es IDÉNTICO con la puerta y sin ella; sin ella la orden vuelve a Disponible (la puerta solo cambia lo que se ve)",JSON.stringify(Pa.pro)===JSON.stringify(Pb.pro)&&fechas(Pa)===fechas(Pb)&&cB==='disponible',cB);
+     __check("LP5: y el programa le sigue dando fecha y capacidad a la orden sin liberar",!roA.bloqueo&&!!pA.ini,JSON.stringify({b:roA.bloqueo,ini:pA.ini}));
+     __check("LP5: GUARDIA — programar() no consulta la puerta (el motor no se tocó)",!/puedeEmpezarEnCentro|porLiberarEn|sinLibProdEn|frenoProdCerc|empezadaEnCentro/.test(String(programar)));}
+    /* --- 6 · el enlace lleva a Liberación a producción acotada a esa orden --- */
+    {LIB.et='tela';LIB.q='';LIB.ym=new Set(['1999-01']);LIB.ymAuto=true;irLibProdOrden(oA.id);const hL=(document.getElementById('p-liberacion')||{}).innerHTML||'';
+     __check("LP6: «liberar →» abre Liberación a producción buscando esa WH, aunque el mes elegido no la incluya",page==='liberacion'&&LIB.et==='corte'&&LIB.q===oA.op&&hL.includes(oA.op),JSON.stringify({page,et:LIB.et,q:LIB.q}));}
+    /* --- 7 · al liberarla pasa a Disponible (y vuelve a la tablet) --- */
+    {page='ordenes';liberarA([oA.id],'corte');PLAN=null;PLAN_ALL=null;const P2=programar();const c2=cercaniaCentro(oA,C,P2);
+     GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;render();
+     const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='',cabA=null;trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim();return}if((tr.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"))cabA=cab});
+     const rA=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));
+     __check("LP7: liberada a producción pasa a «Disponible», con ✓ hecho y sin el aviso",liberada(oA,'corte')&&puedeEmpezarEnCentro(oA,C)&&c2.grupo==='disponible'&&!c2.porLiberar&&/^Disponible/.test(cabA||'')&&!!rA&&/marcarHechoCentro\(/.test(rA.innerHTML)&&!/por liberar a producción/.test(rA.textContent),JSON.stringify({g:c2.grupo,cabA}));
+     if(rec)__check("LP7: y el operario de Corte ya la ve en su tablet",visibleOperario(oA,C,rec,P2)&&comoOperario(()=>tabletFilas(C,rec,programar())).some(f=>f.o.id===oA.id));}
+   }catch(e){__R.errors.push({page:'driver LP',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{try{cerrar()}catch(e){}window.alert=a0;window.confirm=c0;PERFIL=bakP;delete S.params.tablets[uid0];
+    const ids=new Set(temp.map(o=>o.id));S.ordenes=S.ordenes.filter(o=>!ids.has(o.id));ids.forEach(id=>delete S.avance[id]);S.bitacora=bitBak;GRP=bakGRP;
+    Object.assign(CEN,JSON.parse(bakCEN));CEN.fases=bakFases;Object.assign(TAB,bakTAB);Object.assign(LIB,bakLIB);if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;
+    PLAN=null;PLAN_ALL=null;page='ordenes';render()}
+   __check("LP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   try{localStorage.__fase="auditoria sistema"}catch(e){}
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();
    const recarga=()=>{const pr=window.prompt;window.prompt=()=>'APLICAR';TAREA=planTarea(window.__tareaRows,'Tarea__project_task__95_.xlsx');aplicarTarea();window.prompt=pr;PLAN=null;PLAN_ALL=null};
