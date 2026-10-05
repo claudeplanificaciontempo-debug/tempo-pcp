@@ -1836,6 +1836,16 @@ avisa `revisarConReglaHoy`). (2) Metas: la usuaria aceptó los números del ejem
 la usuaria debe poner la real**), Facturación verde desde 95 % / ámbar desde 80 %, Meta vencida y La orden va tarde verde hasta 5 % / ámbar hasta 10 %.
 Desde noviembre la meta en $ vuelve a estar vacía hasta que alguien la escriba. Pruebas IM16–IM23, MK1–MK6.
 
+**Liberación a producción en lote (04-oct-2026, usuaria: «debería permitir liberar en masivo»).** En «Liberación a producción → Listas para
+liberar» cada orden lista tiene casilla (y por grupo con «Agrupar por», más «Marcar todas las listas» / «Desmarcar»); **una sola selección** (`LIB.sel`)
+para «Liberar las marcadas (N)» y «Lavado de las marcadas (N)». `mLiberarProdLote` muestra órdenes y prendas y exige la casilla **«Verifiqué en bodega
+la materia prima y los insumos de estas N órdenes»** (es la firma: el sistema no sabe si el material llegó); dice cuántas marcadas no entran por los
+filtros. `aplicarLibProdLote` pasa cada orden por la MISMA comprobación de la fila (`puedeLiberarA`: ruta confirmada, calidad…), salta la que no se puede con
+su motivo (`faltaLiberarA`) y registra lo MISMO que la fila con **`registrarLibProd`** (única función de las dos formas: `o.lib.corte={ok,u,ts,mpOk,insOk,
+fechaVerif}` + `avance.lista` + `o.histLib` con `et:'corte'`), más `o.lib.corte.lote` (LP-AAAAMMDD-xxxxx) y una sola línea de bitácora. Permiso = el de la
+fila (`puedeLibProdLote`, nunca desde el piso); deshacer sigue siendo por orden (desliberar). La fila individual no cambió. Pruebas LPL0–LPL10. Donde este
+archivo diga que producción se libera «una por una», es historia.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
