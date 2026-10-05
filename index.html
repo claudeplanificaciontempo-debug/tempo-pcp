@@ -1646,7 +1646,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-04 21:24';
+const APP_BUILD='2026-10-05 08:40';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -11924,7 +11924,7 @@ async function ejecutarBorrado(){if(!puede('config')){alert('Solo el administrad
   const h=limpiarHuerfanosTrasBorrado(conservarFotosIdx)||{};const previo=S.params.borradoIncompleto;delete S.params.borradoIncompleto;delete S.params.borradoEnCurso;
   const resumen='borradas '+r.borradas.map(x=>nTabla(x.t)+' '+num(x.n)).join(', ')+' (verificadas en cero) · limpiados en Configuración: '+num(h.pendPospuestos)+' bandejas pospuestas, '+num(h.planMesOids)+' órdenes en borradores del plan, '+num(h.planMesCongelados)+' meses congelados, '+num(h.progCongelado)+' congelados semanales, '+num(h.alertasCompras)+' alertas de compras, '+num(h.advertencias)+' advertencias de fecha, '+num(h.noCalzan)+' «no calzan», '+num(h.resumenes)+' resúmenes de carga, '+num(h.pedidosReprog)+' pedidos de reprogramación, '+(conservarFotosIdx?'índice de fotos conservado ('+num(h.fotosIdx)+')':num(h.fotosIdx)+' fotos del índice')+' · conservados: configuración completa, '+num((S.bitacora||[]).length)+' líneas de bitácora, '+num((S.params.auditoriaCambios||[]).length)+' de auditoría ('+num(audPiso)+' copiadas del piso) y '+num(Object.keys(S.params.cierresMes||{}).length)+' cierres de mes';
   S.params.borrados=(S.params.borrados||[]).concat([{ts,u:quienFirma(),conteos:{ordenes:c.ordenes,avance:c.avanceReg,planes:c.planes,banos:c.banos,salidas:c.salidas,programas:c.programas,cargas:c.cargas,propuestas:c.propuestas,turnos:c.turnos,paros:c.paros},huerfanos:h,audPiso,conservarFotosIdx,respaldo:nombre,rutaServidor:up.ruta,respaldoPrevio:previo?{respaldo:previo.respaldo,rutaServidor:previo.rutaServidor}:null,resumen}]);
-  bitacora('BORRADO de datos de prueba TERMINADO por '+quienFirma()+' el '+ts.slice(0,16).replace('T',' ')+': '+resumen+' · respaldo '+nombre+' (local) y '+up.ruta+' (servidor)'+(previo?' · respaldo del intento anterior: '+previo.rutaServidor:''));
+  bitacora('BORRADO de datos de prueba TERMINADO por '+quienFirma()+' el '+diaLocalDeTs(ts)+' '+horaLocalDeTs(ts)+': '+resumen+' · respaldo '+nombre+' (local) y '+up.ruta+' (servidor)'+(previo?' · respaldo del intento anterior: '+previo.rutaServidor:''));
   await saveBorrado();render();veloBorrado('');BORRANDO=false;
   /* 8 · pantalla final */
   const ext=await conteosExternosBorrado();

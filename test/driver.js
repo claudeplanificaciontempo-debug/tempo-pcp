@@ -3319,7 +3319,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TR: Mi centro también lo avisa y ofrece corregirlo",/inicios sin fin|inicio sin fin/i.test(document.getElementById('p-tablet').innerHTML)&&document.getElementById('p-tablet').innerHTML.includes('mCorregirTramo('));
     // el supervisor corrige con auditoría
     mCorregirTramo(t3.id,oT.id);const fin=new Date(new Date(t3.ini).getTime()+45*6e4);
-    document.getElementById('ct-fin').value=new Date(fin.getTime()-fin.getTimezoneOffset()*6e4).toISOString().slice(0,16);document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
+    document.getElementById('ct-fin').value=inputLocalDeTs(fin);   /* la hora escrita es la de la planta (04-oct), no la del equipo */document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
     const nA=auditoriaCambios().length;corregirTramo(t3.id,oT.id);
     __check("TR: el supervisor corrige el fin y queda en auditoría",!!t3.fin&&!!t3.corregido&&auditoriaCambios().length===nA+1);
     TRAMO={paso:null,id:null,oid:null}}
@@ -3362,7 +3362,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const hoyD=hoy();
    const t1={centro:'modulos',rec,ini:hoyD+'T09:00:00',fin:hoyD+'T09:30:00',paros:[],tallas:{}};
    const t2={centro:'modulos',rec,ini:hoyD+'T12:00:00',fin:hoyD+'T14:00:00',paros:[],tallas:{}};
-   const mkFecha=(s)=>{const [f,h]=s.split('T');const [Y,M,D2]=f.split('-').map(Number);const [hh,mm]=h.split(':').map(Number);return new Date(Y,M-1,D2,hh,mm).toISOString()};
+   const mkFecha=(s)=>{const [f,h]=s.split('T');return tsDeLocal(f,h)};   /* 9:00 de la planta (04-oct: los descansos van en la hora de la planta, no en la del equipo) */
    t1.ini=mkFecha(t1.ini);t1.fin=mkFecha(t1.fin);t2.ini=mkFecha(t2.ini);t2.fin=mkFecha(t2.fin);
    const c1=calcTramo(t1,null),c2=calcTramo(t2,null);
    __check("DE: un tramo de 9:00 a 9:30 no descuenta el almuerzo de 12:30 a 13:30",Math.abs(c1.brutoMin-30)<0.1&&c1.descansos===0&&Math.abs(c1.trabajado-30)<0.1);
