@@ -1414,7 +1414,7 @@ Recepción; falta decir quién toca INICIO y FIN). Pruebas MT1–MT14 y MB3 actu
 Solo cambia el aspecto; pantallas, botones y flujo son los mismos. Todo el CSS nuevo va bajo `html[data-tema="odoo"]` al final del `<style>`
 (tokens `--o-brand` #714B67, `--o-primary`, `--o-sec`; los tokens de siempre `--t-primary`/`--navy`/`--ink` se reasignan ahí), así el aspecto
 **clásico** queda intacto. `temaVisual()` / `aplicarTema()` (corre al inicio de `render()`) / `setTema(v)` (permiso `config`, bitácora):
-parámetro `S.params.tema` = `'odoo'` (por defecto) | `'clasico'`, en Configuración → Calendario y parámetros. Con Odoo, `aplicarTema` **mueve
+parámetro `S.params.tema` = `'odoo'` (por defecto hasta el 04-oct; desde entonces el valor vacío es el aspecto «Tablero», que va encima de este: ver «Aspecto Tablero» más abajo) | `'clasico'`, en Configuración → Calendario y parámetros. Con Odoo, `aplicarTema` **mueve
 `#nav` dentro del `<header>`** (los menús van en la barra de arriba, como Odoo; los desplegables son blancos) y lo devuelve al volver al
 clásico; la cabecera de cada pantalla (`.pagehead`) es el panel de control blanco; botones primario morado y secundario gris; listas, etiquetas
 (colores suaves de Bootstrap 5), bloques y ventanas al estilo Odoo. **Barra de fases con flechas** (`statusbarFasesHTML(o)`, vale en los dos
@@ -1835,6 +1835,31 @@ avisa `revisarConReglaHoy`). (2) Metas: la usuaria aceptó los números del ejem
 `metaFact04`; nunca pisan lo escrito, ni 0 ni lo vaciado a propósito): meta de facturación de octubre 2026 = $ 400.000 (**inventada para el ejemplo:
 la usuaria debe poner la real**), Facturación verde desde 95 % / ámbar desde 80 %, Meta vencida y La orden va tarde verde hasta 5 % / ámbar hasta 10 %.
 Desde noviembre la meta en $ vuelve a estar vacía hasta que alguien la escriba. Pruebas IM16–IM23, MK1–MK6.
+
+**Aspecto «Tablero» (04-oct-2026, usuaria con la imagen de un tablero: «¿puedes cambiar así el tema, manteniendo la barra arriba?»; eligió «Solo
+arriba»).** Es el aspecto **por defecto** y va **encima del aspecto Odoo**: `<html>` lleva `data-tema="odoo"` (menú dentro de la barra, buscador de Odoo,
+barra de fases: todo lo que dependía de `temaVisual()==='odoo'` sigue igual) **y además** `data-estilo="tablero"`. `S.params.tema` = `tablero` | `odoo` |
+`clasico` (`ASPECTOS`, `nombreAspecto`; vacío o desconocido = tablero); `aspectoVisual()` es la elección completa, `temaVisual()` sigue diciendo `odoo` o
+`clasico` y `esTablero()` pregunta por el Tablero. `setTema` acepta los tres (permiso `config`, bitácora con los nombres); selector en Configuración general →
+Calendario y reglas. **Todo el CSS va al final del `<style>` bajo la marca `/* ux:tablero */` y cada selector lleva `[data-estilo="tablero"]`** (la prueba
+ASP9 falla si no, o si una regla escribe un color fuera de una variable): fondo gris claro, todo en tarjetas blancas de 12 px con sombra suave, título de
+27 px, botón principal azul sólido (#1F5BD8 en la paleta azul marino; las demás paletas de `temaColor` siguen mandando en la barra y el botón), secundarios
+blancos con borde, tablas con cabecera gris, etiquetas en pastilla, letra **Inter** (Google Fonts, el mismo enlace que IBM Plex). **Tarjetas de cifras**:
+campo opcional **`ico`** (una clave de `ICO`; se sumaron clock, alert, truck, cash, flag, bolt, play y pause) en Hoy, Resumen gerencial, Planta en vivo,
+Planificar el mes, Liberación, Avance por área (vista Mes y textil) y Resumen del centro; `kpiIcoHTML(k)` y `kpiMasHTML()` (el «›» redondo de las que se
+tocan) **solo dibujan en el Tablero**: con Odoo y Clásico el HTML es el mismo de antes (comparado con las 48 fotos del simulador: idéntico). El fondo de
+la tarjeta se **tiñe con la clase de estado que ya tenía** (`ok` verde suave, `warn` ámbar suave, `bad` rojo suave, sin clase blanca): en el Tablero esto
+reemplaza la regla del 02-oct «tarjetas con fondo blanco, el estado va en el número y en una franja», que sigue valiendo en Odoo y Clásico (la prueba
+UX-B0a de Capacidad distingue). Una fila de 7 u 8 tarjetas va en dos filas de cuatro (`:has`). **Avisos y bandejas** con la forma del panel «Requieren
+atención» del ejemplo pero en **ámbar** (es lo que alguien tiene que hacer; el rojo sigue siendo solo lo grave): Hoy → Pendientes / Advertencias / Otros,
+«Qué las frena» de Liberación, `.warn`, `details.avisos`. En el Tablero `--ok`, `--aviso` y `--alerta` son un tono más oscuros (contraste ≥ 4,5 sobre
+blanco). **Modo oscuro**: bloque `html[data-modo="oscuro"][data-estilo="tablero"]` con su versión de cada tono suave, tarjeta, pastilla, cabecera de tabla,
+pestaña y elemento elegido. **Teléfono** (≤ 860 px): una grilla escrita a mano con varias `fr` pasa a una columna, las tarjetas van en columna y (≤ 520 px)
+cada tabla lleva su propio desplazamiento. **Mi centro**: con Inter los botones grandes quedaban 3 px más bajos; `line-height` 1.4 los deja como antes o
+más altos. Pruebas ASP1–ASP12 (dibujan las pantallas: tinte por clase, íconos, «›», Odoo y Clásico como antes, paleta, CSS acotado, alto de INICIO,
+contraste ≥ 4,5 en oscuro medido con getComputedStyle y 390 px en un marco). **No se construyó** (es aspecto, no pantallas): los gráficos del ejemplo
+(barras por mes, dona), la campana, las flechas «vs semana anterior» y la línea de contexto con «|» y la pastilla «❄ Programa congelado» bajo el título
+como componente común (cada pantalla trae su propia línea).
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y

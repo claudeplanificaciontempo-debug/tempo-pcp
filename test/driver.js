@@ -882,7 +882,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {CAPD.sel=null;render();const h=html();
     __check('CAP5: una decisión dada por resuelta no cuenta como «sin decisión», y la fila dice que sigue sin alcanzar',/resuelta · sigue sin alcanzar/.test(h)&&(()=>{const esp=Object.values(matrizCapacidad().celdas).filter(z=>estadoCel(z)==='rojo'&&!(S.params.capDecisiones||[]).some(dd=>dd.c===z.c&&dd.m===z.m)).length;return h.includes('<div class="v">'+esp+'</div><div class="k">Sin decisión')})(),h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)&&h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)[0]);
     {const kw=document.querySelector('#p-capacidad .kpis:not(.tarj-row)>.kpi.warn');const sib=kw&&[...kw.parentElement.children].find(z=>z!==kw&&!z.classList.contains('warn')&&!z.classList.contains('bad'));
-     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto y fondo que sus vecinas, sin margen debajo (el aviso es el número en ámbar y una franja arriba)",!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor),kw?kw.getBoundingClientRect().height+' / '+(sib?sib.getBoundingClientRect().height:'—'):'sin tarjeta de aviso')}
+     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto que sus vecinas, sin margen debajo; el fondo es el de sus vecinas (aviso = número en ámbar y franja) salvo en el aspecto Tablero, donde se tiñe de ámbar suave (decisión de la usuaria del 04-oct)",!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&(aspectoVisual()==='tablero'?getComputedStyle(kw).backgroundColor!==getComputedStyle(sib).backgroundColor:getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor)),kw?kw.getBoundingClientRect().height+' / '+(sib?sib.getBoundingClientRect().height:'—'):'sin tarjeta de aviso')}
      {const td=document.querySelector('#p-capacidad table.ajustada');__check("UX-B0a_sistemico_disposicion: «Dónde no alcanza» es una tabla ajustada a su contenido (el dato cerca de su nombre), no estirada a todo el ancho",!/Dónde no alcanza · qué hay que decidir/.test(html())||(!!td&&getComputedStyle(td).width!=='100%'))}
     CAPD.sel=x.c+'|'+x.m;render();const h2=html();const iDet=h2.indexOf('id="cap-detalle"'),iMat=h2.indexOf('Uso de capacidad por centro y mes');
     __check('CAP6: el detalle de la celda elegida sale ARRIBA (junto a «qué hay que decidir», antes de la tabla) y tiene «cerrar»',iDet>0&&iDet<iMat&&/CAPD.sel=null;render\(\)/.test(h2));
@@ -9879,6 +9879,94 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     CONF.tab=ctab;
    }finally{S.bitacora=bitBak;repon();window.alert=a0;window.confirm=c0;window.perfilSoloPiso=sp0;PERFIL=bakP||adminP0();page='ordenes';render()}
    __check("MK sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+   /* ASP · aspecto «Tablero» (04-oct-2026, usuaria: «¿puedes cambiar así el tema, manteniendo la barra arriba?», eligió «Solo arriba»): es el aspecto
+      por defecto y va ENCIMA del aspecto Odoo (data-tema="odoo" + data-estilo="tablero"); Odoo y Clásico se ven como antes; las tarjetas de cifras
+      llevan ícono y se tiñen con la clase de estado que ya tenían; en modo oscuro todo se lee (contraste ≥ 4,5) y a 390 px nada se sale de la pantalla.
+      Las pruebas DIBUJAN las pantallas y miden con getComputedStyle. */
+   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema,bakC=S.params.temaColor;const bakM=modoVisual();const cf0=window.confirm;window.confirm=()=>true;
+    const de=document.documentElement;const pg=p=>document.getElementById('p-'+p);const cs=(e,p)=>e?getComputedStyle(e)[p]:'';
+    const ponTema=v=>{if(v===undefined)delete S.params.tema;else S.params.tema=v;render()};
+    const sonda=v=>{const d=document.createElement('div');d.style.background=v;document.body.appendChild(d);const c=getComputedStyle(d).backgroundColor;d.remove();return c};
+    /* las pantallas principales (las de la imagen de la usuaria y las que ella usa a diario) */
+    const PAGS=[['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Planta en vivo',()=>{page='envivo'}],['Órdenes',()=>{page='ordenes';ORDF.tab='ord'}],
+      ['Liberación',()=>{page='liberacion';LIB.et='tela'}],['Planificar el mes · 1',()=>{page='plan';PM.paso=1}],['Planificar el mes · 2',()=>{page='plan';PM.paso=2}],['Avance por área',()=>{page='avancearea'}],
+      ['Mi centro',()=>{page='tablet';TAB.centro='modulos'}],['Resumen del centro',()=>{const c=(S.centros.find(x=>x.id==='corte')||S.centros.find(x=>x.area==='pro')||{}).id;page='centro';CEN.id=c;CEN.solo='';CEN.tab='resumen';CEN.rec=''}]];
+    const dibuja=f=>{f();render();return document.querySelector('.page.on')};
+    try{
+     ponTema(undefined);setModo('claro');page='panorama';render();
+     const hdr=document.querySelector('header'),nav=document.getElementById('nav');
+     __check("ASP1: por defecto el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris claro y la letra es Inter",
+       aspectoVisual()==='tablero'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='tablero'&&nav.parentElement===hdr&&cs(document.body,'backgroundColor')==='rgb(244, 246, 250)'&&/^Inter/.test(cs(document.body,'fontFamily'))&&!document.querySelector('aside,.sidebar'),
+       cs(document.body,'backgroundColor')+' · '+cs(document.body,'fontFamily').slice(0,30));
+     /* tarjetas: ícono en un círculo de color, el «›» en las que se tocan y el fondo teñido según la clase de estado */
+     const tinte={bad:sonda('var(--tb-red-soft)'),warn:sonda('var(--tb-amber-soft)'),ok:sonda('var(--tb-green-soft)'),'':sonda('var(--paper)')};
+     const icoEsp={'Hoy':6,'Resumen gerencial':5,'Planta en vivo':5,'Liberación':3,'Planificar el mes · 2':5,'Resumen del centro':4};
+     const malT=[],malI=[];let nTarj=0,nTenidas=0;
+     PAGS.forEach(([n,f])=>{const el=dibuja(f);if(!el)return;
+       el.querySelectorAll('.kpis>.kpi').forEach(k=>{if(!k.offsetParent)return;nTarj++;const cl=k.classList.contains('bad')?'bad':k.classList.contains('warn')?'warn':k.classList.contains('ok')?'ok':'';if(cl)nTenidas++;
+         if(cs(k,'backgroundColor')!==tinte[cl])malT.push(n+' «'+((k.querySelector('.k')||k).textContent||'').trim().slice(0,30)+'» '+cl+' '+cs(k,'backgroundColor'));
+         if(parseFloat(cs(k,'borderTopLeftRadius'))<10)malT.push(n+': esquina '+cs(k,'borderTopLeftRadius'))});
+       const nIco=el.querySelectorAll('.kpi-ico').length;if(icoEsp[n]!=null&&nIco<icoEsp[n])malI.push(n+': '+nIco+' íconos (se esperaban '+icoEsp[n]+')');
+       el.querySelectorAll('.kpi-ico').forEach(i=>{const r=i.getBoundingClientRect();if(i.offsetParent&&(Math.abs(r.width-r.height)>1||parseFloat(cs(i,'borderTopLeftRadius'))<r.width/2-1))malI.push(n+': ícono que no es un círculo')})});
+     __check("ASP2: en las pantallas principales cada tarjeta de cifras es una tarjeta redondeada con el fondo teñido por la clase de estado que ya tenía (rojo suave = bad, ámbar suave = warn, verde suave = ok, blanca la informativa)",nTarj>20&&nTenidas>0&&!malT.length,nTarj+' tarjetas · '+nTenidas+' teñidas · '+malT.slice(0,4).join(' | '));
+     __check("ASP3: las tarjetas de Hoy, Resumen gerencial, Planta en vivo, Liberación, Planificar el mes y el Resumen del centro llevan su ícono en un círculo (campo ico)",!malI.length,malI.slice(0,4).join(' | '));
+     {const el=dibuja(PAGS[0][1]);const k=el.querySelector('.kpi.tarj.clic');const m=k&&k.querySelector('.kpi-mas');const tv=k&&k.querySelector('.tarj-ver');
+      const h2=el.querySelector('.pagehead h2');
+      __check("ASP4: una tarjeta que se toca lleva el botoncito redondo «›» arriba a la derecha (el «ver lista» queda en el DOM, oculto) y el título de la pantalla es grande y en negrita",!!m&&cs(m,'position')==='absolute'&&parseFloat(cs(m,'borderTopLeftRadius'))>=12&&(!tv||cs(tv,'display')==='none')&&parseFloat(cs(h2,'fontSize'))>=26&&+cs(h2,'fontWeight')>=700,(m?cs(m,'position'):'sin «›»')+' · h2 '+cs(h2,'fontSize')+'/'+cs(h2,'fontWeight'))}
+     /* el selector en Configuración y la bitácora */
+     {const cfgH=(()=>{const ct=CONF.tab;CONF.tab='cal';page='config';render();const h=(pg('config')||{}).innerHTML||'';CONF.tab=ct;return h})();
+      const sel=[...(pg('config')||document).querySelectorAll('select')].find(s=>/setTema\(/.test(s.getAttribute('onchange')||''));
+      __check("ASP5: Configuración general → Calendario y reglas ofrece «Tablero (nuevo)» (por defecto, elegido), «Como Odoo» y «Clásico»",!!sel&&[...sel.options].map(o=>o.value).join(',')==='tablero,odoo,clasico'&&sel.value==='tablero'&&/Tablero \(nuevo\) · por defecto/.test(cfgH),sel?[...sel.options].map(o=>o.value+(o.selected?'*':'')).join(','):'sin selector')}
+     /* Odoo y Clásico: como antes (mismo HTML que antes de pasar por el Tablero, sin ícono ni «›» ni data-estilo, y los estilos de siempre) */
+     const nB=S.bitacora.length;setTema('odoo');
+     const okBit=S.bitacora.length>nB&&/^Aspecto de la pantalla: Tablero \(nuevo\) → Como Odoo/.test(S.bitacora[S.bitacora.length-1].t||'');
+     const htmlOdoo=PAGS.slice(0,2).map(([n,f])=>{const el=dibuja(f);return el.innerHTML});
+     const k0=pg('panorama')&&(()=>{dibuja(PAGS[0][1]);return pg('panorama').querySelector('.kpi.tarj')})();const ph=pg('panorama').querySelector('.pagehead');
+     const diag={radio:k0?cs(k0,'borderTopLeftRadius'):'-',ph:cs(ph,'backgroundColor'),body:cs(document.body,'backgroundColor'),barra:cs(hdr,'height'),ico:!!pg('panorama').querySelector('.kpi-ico,.kpi-mas,.tarj-ver')};
+     const odooOk=!de.hasAttribute('data-estilo')&&de.dataset.tema==='odoo'&&nav.parentElement===hdr&&!pg('panorama').querySelector('.kpi-ico,.kpi-mas,.tarj-ver')&&!!k0&&[...k0.children].map(c=>c.className).join(',')==='v,k'&&cs(k0,'borderTopLeftRadius')==='4px'&&cs(ph,'backgroundColor')==='rgb(255, 255, 255)'&&cs(document.body,'backgroundColor')==='rgb(248, 249, 250)'&&cs(hdr,'height')==='46px';
+     ponTema(undefined);PAGS.slice(0,2).forEach(([n,f])=>dibuja(f));S.params.tema='odoo';
+     const igual=PAGS.slice(0,2).every(([n,f],i)=>dibuja(f).innerHTML===htmlOdoo[i]);
+     __check("ASP6: con «Como Odoo» todo queda como antes del Tablero (sin data-estilo, sin íconos ni «›», tarjetas de 4 px, cabecera blanca, barra de 46 px) y el HTML de Hoy y del Resumen gerencial es el mismo antes y después de pasar por el Tablero; el cambio queda en la bitácora",odooOk&&igual&&okBit,JSON.stringify({odooOk,igual,okBit,diag}));
+     setTema('clasico');page='panorama';render();const kC=pg('panorama').querySelector('.kpi.tarj');
+     __check("ASP7: con «Clásico» vuelve el aspecto anterior: sin data-tema odoo ni data-estilo, el menú en su propia barra, tarjetas sin ícono",de.dataset.tema==='clasico'&&!de.hasAttribute('data-estilo')&&nav.parentElement!==hdr&&!pg('panorama').querySelector('.kpi-ico,.kpi-mas')&&!!kC&&[...kC.children].map(c=>c.className).join(',')==='v,k',de.dataset.tema+' · '+(kC?[...kC.children].map(c=>c.className).join(','):'-'));
+     ponTema(undefined);
+     /* la paleta de la barra (Configuración) sigue mandando en el Tablero */
+     {const bc=S.params.temaColor;S.params.temaColor='azul';render();const bgA=cs(hdr,'backgroundColor');delete S.params.temaColor;render();const bgM=cs(hdr,'backgroundColor');if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc;render();
+      __check("ASP8: en el Tablero la barra de arriba sigue la paleta de Configuración (azul → azul; por defecto el azul marino oscuro)",bgA==='rgb(21, 101, 192)'&&bgM==='rgb(19, 38, 74)',bgA+' · '+bgM)}
+     /* todo el CSS del Tablero va bajo [data-estilo="tablero"]: así Odoo y Clásico no pueden cambiar */
+     {const st=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');const a=st.indexOf('/* ux:tablero */');const css=a>=0?st.slice(a).replace(/\/\*[\s\S]*?\*\//g,''):'';const sels=[];
+      css.replace(/([^{}]+)\{/g,(m,x)=>{x=x.trim();if(!x.startsWith('@media'))x.split(',').forEach(y=>sels.push(y.trim()));return m});
+      const fuera=sels.filter(x=>x&&!x.includes('[data-estilo="tablero"]'));const aMano=[];css.replace(/url[(][^)]*[)]/g,'').replace(/([a-z-]+)[ ]*:[ ]*([^;{}]+)/g,(m,p,v)=>{if(!p.startsWith('--')&&/#[0-9a-fA-F]{3,8}(?![0-9a-zA-Z])|rgba?[(]/.test(v))aMano.push(p+':'+v.slice(0,30));return m});
+      __check("ASP9: cada regla del aspecto Tablero va bajo [data-estilo=\"tablero\"] y no escribe colores fuera de sus variables de tokens",a>=0&&sels.length>100&&!fuera.length&&!aMano.length,sels.length+' selectores · fuera: '+fuera.slice(0,3).join(' | ')+' · colores a mano: '+aMano.slice(0,3).join(' | '))}
+     /* Mi centro sigue cómodo: los botones grandes no quedan más chicos que en el aspecto Odoo */
+     {const alto=()=>{page='tablet';TAB.centro='modulos';render();const bs=[...pg('tablet').querySelectorAll('button')].filter(x=>x.offsetParent);return bs.length?Math.max(...bs.map(x=>x.getBoundingClientRect().height)):null};
+      const hT=alto();S.params.tema='odoo';const hO=alto();ponTema(undefined);
+      __check("ASP10: Mi centro (tablet) sigue cómodo: sus botones (INICIO, las pestañas) no quedan más bajos que en el aspecto Odoo",hT==null&&hO==null||(hT!=null&&hO!=null&&hT>=hO-0.5),hT+' vs '+hO)}
+     /* modo oscuro: los textos de tarjetas, pastillas y tablas se leen (contraste ≥ 4,5, medido con getComputedStyle) */
+     {const rgba=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+      const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
+      const lum=c=>{const t=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*t(c.r)+0.7152*t(c.g)+0.0722*t(c.b)};
+      const fondo=e=>{const capas=[];let p=e;while(p&&p.nodeType===1){const c=rgba(getComputedStyle(p).backgroundColor);if(c&&c.a>0)capas.push(c);if(c&&c.a>=1)break;p=p.parentElement}
+        let b={r:255,g:255,b:255,a:1};if(!capas.length||capas[capas.length-1].a<1){const hb=rgba(getComputedStyle(document.body).backgroundColor);if(hb&&hb.a>0)b=sobre(hb,b)}for(let i=capas.length-1;i>=0;i--)b=sobre(capas[i],b);return b};
+      const medir=root=>{const malos=[];let n=0;const vistos=new Set();
+        root.querySelectorAll('.kpi, .kpi *, .tag, table th, table td, table td *, .res-card *, .env-c *, .lib-frenos *').forEach(e=>{if(vistos.has(e))return;vistos.add(e);
+          if(e.closest('svg,select,input,textarea,button,.foto-mini,.ayuda-txt,.o-menu,.acc-m'))return;let dd=e.closest('details');while(dd){if(!dd.open&&!e.closest('summary'))return;dd=dd.parentElement&&dd.parentElement.closest('details')}
+          if(![...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))return;if(!e.offsetParent)return;const st=getComputedStyle(e);if(st.visibility==='hidden')return;
+          const f=rgba(st.color);if(!f||f.a===0)return;const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);const r=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);n++;
+          if(r<4.5)malos.push(Math.round(r*100)/100+' «'+(e.textContent||'').trim().slice(0,24)+'» '+st.color+' sobre rgb('+[b.r,b.g,b.b].map(Math.round).join(',')+')')});return {n,malos}};
+      setModo('oscuro');let n=0;const mal=[];
+      PAGS.forEach(([nm,f])=>{const el=dibuja(f);if(!el)return;const r=medir(el);n+=r.n;r.malos.forEach(x=>mal.push(nm+': '+x))});
+      const bgO=cs(document.body,'backgroundColor');setModo('claro');render();
+      __check("ASP11: modo oscuro con el Tablero: los textos de las tarjetas, las pastillas y las tablas de las pantallas principales tienen contraste ≥ 4,5 (medido con getComputedStyle)",n>200&&!mal.length&&(bgO.match(/[0-9]+/g)||[]).slice(0,3).every(x=>+x<40),n+' textos · '+mal.length+' bajo 4,5 · '+mal.slice(0,4).join(' | '))}
+     /* teléfono: a 390 px nada se sale de la pantalla (se dibuja una copia de la página en un marco de 390 px) */
+     {const mal=[];
+      for(const [nm,f] of PAGS){const el=dibuja(f);if(!el)continue;const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+       const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:390px;height:844px;border:0;visibility:hidden';document.body.appendChild(fr);
+       try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(60);const d=fr.contentDocument;const m=d.querySelector('main');
+        if(!m||d.documentElement.scrollWidth>391||m.scrollWidth>m.clientWidth+1)mal.push(nm+': página '+d.documentElement.scrollWidth+' · main '+(m?m.scrollWidth+'/'+m.clientWidth:'-'))}finally{fr.remove()}}
+      __check("ASP12: a 390 px de ancho (teléfono) las pantallas principales no se salen a los lados: tarjetas en columna y tablas con su propio desplazamiento",!mal.length,mal.slice(0,4).join(' | '))}
+    }finally{if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);window.confirm=cf0;PERFIL=bakP;page='ordenes';render()}
+    __check("ASP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
