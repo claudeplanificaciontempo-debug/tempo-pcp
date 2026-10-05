@@ -472,7 +472,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("calendario/versión sin errores",__R.errors.length===antes);page='ordenes';render();}
   /* perfiles por catálogo, carga que viene, ruta por centro, advertencias, balanceo y objetivo */
   {const antes=__R.errors.length;const adminP=PERFIL;
-   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet + jefatura (ve la configuración sin editarla)",perfilesDef().length===10&&perfilesDef().some(x=>x.id==='tablet')&&perfilesDef().some(x=>x.id==='jefatura')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)),String(perfilesDef().length));
+   __check("perfiles: catálogo sembrado con los 7 perfiles + consulta + tablet + jefatura (ve la configuración sin editarla) + ingeniería (05-oct)",perfilesDef().length===11&&perfilesDef().some(x=>x.id==='tablet')&&perfilesDef().some(x=>x.id==='jefatura')&&perfilesDef().some(x=>x.id==='ingenieria')&&['admin','planificacion','tintoreria','liberacion','corte','modulos','terminado'].every(id=>perfilesDef().some(x=>x.id===id)),String(perfilesDef().length));
    PERFIL={rol:'corte',modo:'editar',nombre:'Corte'};
    __check("perfil corte: ve corte, estampado, bordado y etiquetas; reprograma pero YA NO edita rutas",(sembrarPermisoRutas(),veCentro('corte')&&veCentro('estampado')&&veCentro('bordado')&&veCentro('etiquetas')&&!veCentro('modulos')&&!puede('config')&&!puede('usuarios')&&puede('reprogramar')&&!puede('ruta')&&puedeCentro('corte')));
    __check("perfil corte: menú sin Configuración ni Dirección",!vePagina('config')&&!vePagina('ordenes')&&vePagina('centro')&&vePagina('control'));
@@ -1754,7 +1754,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','config','usuarios','albaran','avancearea','salud'];
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','ingops','ingref','ingtipos','ingmaq','ingrev','config','usuarios','albaran','avancearea','salud'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -1856,23 +1856,23 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    banoListo(oM.id);await __p(30);__check('en máquina → hecho pasa a calidad',enCalidad(oM)&&oM.fase==='1Calidad Tintoreria');
    [oM,oI,oS].forEach((o,i)=>{o.fase=bak[i][0];const a=JSON.parse(bak[i][1]);if(a)S.avance[o.id]=a;else delete S.avance[o.id]});S.banos_conf=bcBak;PLAN=null;}
   /* 8) operaciones: ya se probó arriba con la hoja LMO real (fixtures/lmo_rows.json); aquí solo el catálogo por categoría render */
-  {const antes=__R.errors.length;page='operaciones';OPV.abierta=null;OPV.q='';render();const html=document.getElementById('p-operaciones').innerHTML;
-   __check('catálogo por categoría renderiza (595 operaciones ya cargadas)',__R.errors.length===antes&&S.operaciones.length===595&&html.includes('CAMISETA'));
-   OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-operaciones').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';
-   /* UX-B9 · Operaciones (02-oct): tres pestañas, un solo «Cargar ▾», catálogo sin la familia repetida ni la franja negra */
-   {OPV.tab='tiempos';render();const po=document.getElementById('p-operaciones');const pest=[...po.querySelectorAll('.ops-pest')];const vis=pest.filter(x=>x.style.display!=='none');
-    __check("UX-B9: Operaciones — tres pestañas (Tiempos · Por revisar · Hoja de operaciones), una a la vista y todo en el DOM",pest.length===3&&vis.length===1&&vis[0].getAttribute('data-ops-tab')==='tiempos'&&/Tiempos que mandan sobre la hoja/.test(vis[0].innerHTML)&&/Tiempos por revisar/.test(po.innerHTML)&&/Hoja de operaciones por familia/.test(po.innerHTML));
-    const nRev=alertasTiempos().length+opsSinCentro().length;const chRev=[...po.querySelectorAll('.ops-tabs .chip')].find(x=>/Por revisar/.test(x.textContent));
-    __check("UX-B9: Operaciones — «Por revisar» dice cuántas cosas hay que revisar (en ámbar)",!!chRev&&(!nRev||(!!chRev.querySelector('.tag.t-aviso')&&chRev.querySelector('.tag.t-aviso').textContent.trim()===num(nRev))),String(nRev));
+  {const antes=__R.errors.length;page='ingops';ING_V.ops='hoja';OPV.abierta=null;OPV.q='';render();const html=document.getElementById('p-ingops').innerHTML;
+   __check('catálogo por categoría renderiza (595 operaciones ya cargadas) · ahora en Ingeniería → Operaciones',__R.errors.length===antes&&S.operaciones.length===595&&html.includes('CAMISETA'));
+   OPV.q='bolsillo';render();__check('búsqueda en catálogo',document.getElementById('p-ingops').innerHTML.toLowerCase().includes('bolsillo'));OPV.q='';
+   /* UX-B9 · Operaciones (02-oct) → Ingeniería (05-oct): la hoja, las técnicas y la base van en pestañas de Ingeniería → Operaciones; los tiempos en Tipos de producto; lo que no cuadra en Por revisar */
+   {page='ingops';ING_V.ops='hoja';render();const po=document.getElementById('p-ingops');const pest=[...po.querySelectorAll('.ops-pest')];const vis=pest.filter(x=>x.style.display!=='none');page='ingtipos';render();const pt=document.getElementById('p-ingtipos');page='ingrev';render();const pr=document.getElementById('p-ingrev');page='ingops';render();
+    __check("UX-B9: Ingeniería → Operaciones — tres pestañas (Hoja de operaciones · Técnicas de estampado · Base general), una a la vista y todo en el DOM; los tiempos que mandan en Tipos de producto y los tiempos por revisar en Por revisar",pest.length===3&&vis.length===1&&vis[0].getAttribute('data-ops-tab')==='hoja'&&/Hoja de operaciones por familia/.test(vis[0].innerHTML)&&/Técnicas de estampado/.test(po.innerHTML)&&/Base general de operaciones/.test(po.innerHTML)&&/Tiempos que mandan sobre la hoja/.test(pt.innerHTML)&&/Tiempos por revisar/.test(pr.innerHTML));
+    const nRev=alertasTiempos().length+opsSinCentro().length;const chRev=document.querySelector('nav a[data-p="ingrev"]');
+    __check("UX-B9: Ingeniería — «Por revisar» es su propia página del menú y lista las incoherencias de tiempos y las operaciones sin centro",!!chRev&&/Tiempos por revisar/.test(pr.innerHTML)&&/Operaciones sin centro/.test(pr.innerHTML),String(nRev));
     const ph=po.querySelector('.pagehead');const menu=ph.querySelector('details.ops-cargar');
     __check("UX-B9: Operaciones — la cabecera tiene UN botón «Cargar ▾» con las cinco cargas y «Reglas familia → centro» aparte; «Nueva operación» va en el título del Catálogo",!!menu&&['mCargarLMO()','mCargarOrdenOps()','mCargarTiemposXLSX()','mPegarOps()','mPegarFamOps()'].every(f=>menu.innerHTML.includes(f))&&/mMapeoOps\(\)/.test(ph.innerHTML)&&!/addOp\(\)/.test(ph.innerHTML)&&/addOp\(\)/.test(po.querySelector('[data-ops-tab="hoja"]').innerHTML));
     const hoja=po.querySelector('[data-ops-tab="hoja"]').innerHTML;
     __check("UX-B9: Operaciones — el catálogo no repite la familia en cada fila, dice «Orden» y «Tipos que la usan», y la franja de la categoría ya no es negra",!/>Familia de operación</.test(hoja)&&/>Orden</.test(hoja)&&/Tipos que la usan/.test(hoja)&&!/background:var\(--ink\);color:#fff/.test(hoja)&&!!po.querySelector('tr.ops-cat'));
-    const sm=po.querySelector('#sam-manda');
+    const sm=pt.querySelector('#sam-manda');
     __check("UX-B9: Operaciones — en «lo que manda» la caja vacía muestra la hoja en gris («hoja 13,46») y el número no se repite al lado; sin «(hoja)» en las cabeceras",!!sm&&!/\(hoja\)/.test(sm.innerHTML)&&!/<span class="mut" style="font-size:var\(--fs-xs\)">\([0-9]/.test(sm.innerHTML));
-    const ob=[...po.querySelectorAll('.panel')].find(p=>/Tiempos de ojales y botones/.test((p.querySelector('h3')||{}).textContent||''));
+    const ob=[...pt.querySelectorAll('.panel')].find(p=>/Tiempos de ojales y botones/.test((p.querySelector('h3')||{}).textContent||''));
     __check("UX-B9: Operaciones — ojales y botones en UN recuadro: el estándar arriba y la tabla por tipo debajo",!!ob&&/Ojales y botones: estándar/.test(ob.innerHTML)&&/setBotonesEstandar/.test(ob.innerHTML)&&/addTiempoOBRow/.test(ob.innerHTML));
-    OPV.tab='hoja';render();__check("UX-B9: Operaciones — elegir la pestaña la muestra",document.querySelector('#p-operaciones [data-ops-tab="hoja"]').style.display!=='none'&&document.querySelector('#p-operaciones [data-ops-tab="tiempos"]').style.display==='none');OPV.tab='tiempos';render()}}
+    ING_V.ops='tecnicas';render();__check("UX-B9: Operaciones — elegir la pestaña la muestra",document.querySelector('#p-ingops [data-ops-tab="tecnicas"]').style.display!=='none'&&document.querySelector('#p-ingops [data-ops-tab="hoja"]').style.display==='none');ING_V.ops='hoja';render()}}
   try{localStorage.__fase="fuzz"}catch(e){}
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
   window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|restaurarDesde|descargarJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
@@ -2002,7 +2002,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* PANTALLA: menú horizontal · pendientes en Hoy · ODC a mano */
   {const antes=__R.errors.length;const adminP=PERFIL;
    // 1 · menú horizontal con íconos parejos
-   const grps=[...document.querySelectorAll('nav .grp')];__check("menú: seis grupos arriba (Dirección, textil, producción, Reportería, piso, configuración)",grps.length===6&&getComputedStyle(document.getElementById('app')).gridTemplateColumns.split(' ').length===1&&getComputedStyle(document.querySelector('nav')).flexDirection==='row');
+   const grps=[...document.querySelectorAll('nav .grp')];__check("menú: siete grupos arriba (Dirección, textil, producción, Reportería, piso, Ingeniería, configuración)",grps.length===7&&getComputedStyle(document.getElementById('app')).gridTemplateColumns.split(' ').length===1&&getComputedStyle(document.querySelector('nav')).flexDirection==='row');
    __check("menú: TODAS las entradas tienen ícono",[...document.querySelectorAll('nav a[data-p]')].every(a=>a.querySelector('svg')));
    const g0=grps[0],g1=grps[1];g0.click();const b0=document.querySelector('nav .gbody[data-g="'+g0.dataset.g+'"]');__check("menú: clic en un grupo despliega su submenú",b0.classList.contains('abierto')&&getComputedStyle(b0).display!=='none'&&g0.classList.contains('abierto'));
    g1.click();__check("menú: abrir otro grupo cierra el anterior",!b0.classList.contains('abierto')&&document.querySelector('nav .gbody[data-g="'+g1.dataset.g+'"]').classList.contains('abierto'));
@@ -2953,8 +2953,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("BE1: hay parámetros para la tolerancia del puesto y el nivel mínimo de especialidad, distintos del semáforo",prm('tolPuesto',2)===2&&prm('nivelMinEsp',2)===2&&repartirPuestos.toString().includes("prm('tolPuesto'")&&!repartirPuestos.toString().includes('1.02'));
    S.params.operarias=[];addOperaria('mod1');const io=operarias().length-1;setOperaria(io,'n','Prueba');setEspOperaria(io,tiposMaqActivos()[0],3);
    __check("BE1: operarias con nombre, módulo y especialidad por tipo de máquina (tres niveles)",operariasDe('mod1').length===1&&operarias()[io].esp[tiposMaqActivos()[0]]===3&&NIVELES_ESP.length===3);
-   page='config';CONF.tab='recursos';render();const hc=document.getElementById('p-config').innerHTML;
-   __check("BE1: las tablas de tipos de máquina, operarias y máquinas por módulo están en Configuración",/Tipos de máquina/.test(hc)&&/Operarias y especialidades/.test(hc)&&/Máquinas de confección/.test(hc));
+   page='ingmaq';render();const hc=document.getElementById('p-ingmaq').innerHTML;
+   __check("BE1: las tablas de tipos de máquina, operarias y máquinas por módulo están en Ingeniería → Máquinas y operarias (05-oct; antes en Configuración)",/Tipos de máquina/.test(hc)&&/Operarias y especialidades/.test(hc)&&/Máquinas de confección/.test(hc));
    page='balanceo';render();const hb=document.getElementById('p-balanceo').innerHTML;
    __check("BE1: Balanceo abre con la vista de módulos (personas, máquinas y referencia en curso)",/Módulos de confección/.test(hb)&&/data-t="balmod-/.test(hb));
    __check("UX-B4: Balanceo — cada tarjeta dice «personas»; la tolerancia ya no se nombra por su clave interna («tolPuesto»); sin la instrucción al pie; con la lista de hojas, el botón dice «Ver balanceo» y el detalle de las órdenes va plegado",/<small> personas<\/small>/.test(hb)&&!/tolPuesto/.test(hb)&&!/Haz clic en «balanceo»/.test(hb)&&(BAL.grupo||!/Órdenes programadas en/.test(hb)||(/Ver balanceo →/.test(hb)&&!!document.querySelector('#p-balanceo details.det-agr'))));
@@ -3011,7 +3011,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     mPegarMaq();document.getElementById('f-paste').value='RECTA ELÉCTRONICA\t9101\tMódulo 3\t\nOVERLOK 4 HILOS\t9102\tB/O\tparada';procesarPasteMaq();
     __check("BAL-H4: pegar desde Excel normaliza con la tabla de tipos (no con una lista fija), muestra vista previa y no marca «no vino» lo que no se pegó",!!INVMAQ&&INVMAQ.parcial&&INVMAQ.nuevas.length===2&&INVMAQ.nuevas[0].tipo==='Recta'&&INVMAQ.nuevas[0].rec===modN(3)&&INVMAQ.nuevas[0].estado==='operativa'&&INVMAQ.nuevas[1].tipo==='Overlock'&&INVMAQ.nuevas[1].estado==='parada'&&INVMAQ.nuevas[1].rec===bo.id&&INVMAQ.noVinieron.length===0&&/Nuevas/.test(document.getElementById('invmaq-res').innerHTML)&&!document.getElementById('invmaq-ok').disabled,JSON.stringify(INVMAQ&&INVMAQ.nuevas));
     const nc2=S.cargas.length;aplicarInvMaq();__check("BAL-H4: lo pegado deja bitácora y registro de cargas, sin tocar las que no se pegaron",S.maquinas.some(m=>m.cod==='9101'&&m.tipo==='Recta')&&S.cargas.length===nc2+1&&S.maquinas.length===17&&!S.maquinas.some(m=>!m.ejemplo&&m.noVino));
-    page='config';CONF.tab='recursos';render();const hc2=document.getElementById('p-config').innerHTML;
+    page='ingmaq';render();const hc2=document.getElementById('p-ingmaq').innerHTML;
     __check("IM13: la tabla de máquinas ya no borra: el botón es «dar de baja» (con motivo); hay «Cargar inventario» y la tabla de cómo se lee el archivo",/darBajaMaq\(/.test(hc2)&&!/delRow\('maquinas'/.test(hc2)&&/mCargarInvMaq\(\)/.test(hc2)&&/Cómo se lee el archivo del inventario/.test(hc2)&&/Sin módulo · Corte/.test(hc2));
     const m9=S.maquinas.find(m=>m.cod==='9102');const pr=window.prompt;window.prompt=()=>'';darBajaMaq(m9.id);const sigue=m9.estado!=='baja';window.prompt=()=>'se vendió (prueba)';darBajaMaq(m9.id);window.prompt=pr;
     __check("IM14: dar de baja pide motivo, no borra la máquina y deja de contar",sigue&&S.maquinas.includes(m9)&&m9.estado==='baja'&&m9.baja.motivo==='se vendió (prueba)'&&!maqOperativa(m9));
@@ -3054,10 +3054,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const rF=sembrarReglasInvMaq04();
      __check("IM18: la siembra nunca corre desde un perfil de piso ni sin el permiso «config»; sin tabla editada no la crea (manda la lista de fábrica, que ya trae las tres) y deja la bandera; corre dentro de sembrarMaquinasAlEntrar (desde render)",rP===false&&sinC&&rC===false&&rF===true&&S.params.maqInv===undefined&&(S.params.reglasInvMaq04||{}).fabrica===true&&/sembrarReglasInvMaq04\(\)/.test(String(sembrarMaquinasAlEntrar))&&/sembrarMaquinasAlEntrar\(\)/.test(String(render)));
      /* la columna «motivo» en la tabla de reglas: visible, editable, solo con «dada de baja» */
-     page='config';CONF.tab='recursos';render();
-     const inpM=i=>[...document.querySelectorAll('#p-config input')].find(x=>(x.getAttribute('onchange')||'').includes("setReglaInvMaq('estados',"+i+",'motivo'"));
+     page='ingmaq';render();
+     const inpM=i=>[...document.querySelectorAll('#p-ingmaq input')].find(x=>(x.getAttribute('onchange')||'').includes("setReglaInvMaq('estados',"+i+",'motivo'"));
      const iNF=maqInv().estados.findIndex(r=>r.texto==='NO FISICAMENTE'),iOK=maqInv().estados.findIndex(r=>r.texto==='O.K');const mNF=inpM(iNF),mOK=inpM(iOK);
-     const thR=[...document.querySelectorAll('#p-config table.inv-reglas-estados th')].map(x=>x.textContent).join('|');
+     const thR=[...document.querySelectorAll('#p-ingmaq table.inv-reglas-estados th')].map(x=>x.textContent).join('|');
      __check("IM19: la tabla «Observación → estado» tiene la columna «Motivo (solo con «dada de baja»)»: en NO FISICAMENTE se ve «no está físicamente» y se puede editar; en una regla que no es de baja el campo queda apagado",!!mNF&&mNF.value==='no está físicamente'&&!mNF.disabled&&!!mOK&&mOK.disabled&&/Motivo \(solo con «dada de baja»\)/.test(thR),thR);
      const nb2=S.bitacora.length;setReglaInvMaq('estados',iNF,'motivo','salió de la planta (prueba)');
      __check("IM19: editar el motivo crea la tabla editable, guarda el texto y deja bitácora",((S.params.maqInv&&S.params.maqInv.estados[iNF])||{}).motivo==='salió de la planta (prueba)'&&S.bitacora.length===nb2+1&&/motivo: no está físicamente → salió de la planta \(prueba\)/.test(S.bitacora[S.bitacora.length-1].t));
@@ -3075,7 +3075,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("IM21: al aplicar, 8106 (nueva) y 8105 quedan DE BAJA con la forma de darBajaMaq más la regla: {motivo «no está físicamente», u, ts, antes, regla «NO FISICAMENTE», porRegla:true}; no quedan «a mano»; la que ya estaba de baja conserva su motivo; la cambiada a mano no se toca; 8101 cuenta como reserva de Confección sin módulo y la de Tintorería no",mx('8106').estado==='baja'&&b6.motivo==='no está físicamente'&&b6.regla==='NO FISICAMENTE'&&b6.porRegla===true&&!!b6.u&&!!b6.ts&&b6.antes===''&&!(mx('8106').editado&&mx('8106').editado.estado)&&mx('8105').estado==='baja'&&b5.antes==='revisar'&&b5.porRegla===true&&!mx('8105').motivoRevisar&&mx('8104').baja.motivo==='se vendió (prueba)'&&mx('8103').estado==='operativa'&&!maqOperativa(mx('8106'))&&maqEnStockModulos(mx('8101'))&&!maqEnStockModulos(mx('8102')),JSON.stringify({b6,b5}));
      const ubI=(S.bitacora[S.bitacora.length-1]||{}).t||'';const cI=S.cargas[S.cargas.length-1]||{};
      __check("IM21: la bitácora y el registro de cargas cuentan las de baja por regla y su motivo",S.bitacora.length>nb3&&/2 dadas de baja por la regla del archivo \(«no está físicamente» ×2\)/.test(ubI)&&S.cargas.length===nc3+1&&(cI.resumen||{}).bajaRegla===2&&/2 de baja por regla \(«no está físicamente» ×2\)/.test(resumenCargaTxt(cI)),ubI);
-     page='config';CONF.tab='recursos';render();const hM=document.getElementById('p-config').innerHTML;
+     page='ingmaq';render();const hM=document.getElementById('p-ingmaq').innerHTML;
      __check("IM21: en la lista de máquinas se ve el motivo y la regla, y el aviso de arriba cuenta las de baja por regla",/maq-baja-regla">no está físicamente · por la regla «NO FISICAMENTE»/.test(hM)&&/[0-9]+ dadas de baja \([^)]*2 por regla del archivo\)/.test(hM));
      const pI2=planMaquinas(hI,'inventario_04oct_prueba.xlsx');
      __check("IM21: recargar el mismo archivo no vuelve a dar de baja (ya están de baja: coinciden) ni cambia nada",pI2.bajaRegla.length===0&&pI2.nuevas.length===0&&pI2.cambiadas.length===0&&!hayQueAplicarInv(pI2),JSON.stringify(pI2.cambiadas.map(c=>[c.x.cod,c.cambios])));
@@ -3085,7 +3085,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("IM22: si la regla «dada de baja» no trae motivo, la máquina entra «por revisar» con el motivo de siempre (dar de baja pide motivo)",pS.bajaRegla.length===0&&pS.bajaArchivo.length===4&&pS.maquinas.filter(x=>/NO FISICAMENTE/.test(x.obs)).every(x=>x.estado==='revisar'&&x.motivoRevisar===MSG_BAJA_ARCHIVO));
      setReglaInvMaq('estados',iNF,'motivo','no está físicamente');
      S.maquinas=[{id:'mv1',cod:'8201',tipo:'Recta',centro:'modulos',estado:'revisar',obs:'EN BODEGA'},{id:'mv2',cod:'8202',tipo:'Recta',centro:'modulos',estado:'revisar',obs:'OBSERVACION SIN REGLA'}];
-     page='config';CONF.tab='recursos';render();const hV=document.getElementById('p-config').innerHTML;
+     page='ingmaq';render();const hV=document.getElementById('p-ingmaq').innerHTML;
      __check("IM22: una máquina «por revisar» cuya observación ya tiene regla (cargada antes de la regla) se avisa: «vuelve a cargar el inventario»; la que sigue sin regla no",revisarConReglaHoy(S.maquinas[0])&&!revisarConReglaHoy(S.maquinas[1])&&/1 por revisar ya tiene regla/.test(hV));
      {const bakI=JSON.stringify(S.params.maqInv===undefined?null:S.params.maqInv);S.params.maqInv=JSON.parse(JSON.stringify(MAQ_INV_DEF));
       const a=estadoInvMaq('PARADA EN BODEGA',''),b=estadoInvMaq('EN BODEGA',''),c=estadoInvMaq('NO FISICAMENTE',''),d=estadoInvMaq('TINTORERIA PARADA','');
@@ -3101,8 +3101,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     try{
      /* 1 · dar de baja SIEMPRE con motivo; el archivo o lo pegado no da de baja solo */
      S.maquinas=[{id:'ma1',cod:'7001',tipo:'Recta',rec:modN(1),centro:'modulos',estado:'operativa',serial:'S-7001'},{id:'ma2',cod:'7002',tipo:'Overlock',rec:modN(1),centro:'modulos',estado:'baja',baja:{ts:'2026-10-01T10:00:00Z',u:'prueba',motivo:'prueba',antes:'operativa'}}];
-     page='config';CONF.tab='recursos';render();
-     const selE=id=>{const s=[...document.querySelectorAll('#p-config select')].find(x=>(x.getAttribute('onchange')||'').includes("setMaq('"+id+"','estado'"));return s?[...s.options].map(o=>o.value):null};
+     page='ingmaq';render();
+     const selE=id=>{const s=[...document.querySelectorAll('#p-ingmaq select')].find(x=>(x.getAttribute('onchange')||'').includes("setMaq('"+id+"','estado'"));return s?[...s.options].map(o=>o.value):null};
      const o1=selE('ma1'),o2=selE('ma2');
      __check("MQA1: el desplegable de estado de una máquina en uso ya no ofrece «dada de baja» (eso lo hace el botón, que pide motivo); en una que ya está de baja sí sale",!!o1&&!o1.includes('baja')&&o1.includes('operativa')&&!!o2&&o2.includes('baja'),JSON.stringify({o1,o2}));
      window.alert=()=>{};window.prompt=()=>'';setMaq('ma1','estado','baja');const m1=S.maquinas[0];
@@ -3114,7 +3114,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const pp=INVMAQ,n4=pp.nuevas.find(x=>x.cod==='7004'),c3=pp.cambiadas.find(c=>c.x.cod==='7003');const hp=document.getElementById('invmaq-res').innerHTML;
      __check("MQA1: lo pegado con estado «baja» NO entra como baja: queda «por revisar» con el motivo «el archivo dice baja: confirmar con dar de baja» y la vista previa lo dice",!!n4&&n4.estado==='revisar'&&n4.motivoRevisar===MSG_BAJA_ARCHIVO&&MSG_BAJA_ARCHIVO==='el archivo dice baja: confirmar con dar de baja'&&!!c3&&c3.x.estado==='revisar'&&c3.cambios.some(d=>d.k==='estado'&&d.despues==='revisar')&&pp.bajaArchivo.length===2&&/dicen «baja» en el archivo/.test(hp)&&!pp.maquinas.some(x=>x.estado==='baja'),JSON.stringify(pp.maquinas.map(x=>[x.cod,x.estado])));
      aplicarInvMaq();const m3=S.maquinas.find(m=>m.cod==='7003'),m4=S.maquinas.find(m=>m.cod==='7004');
-     page='config';CONF.tab='recursos';render();const hc=document.getElementById('p-config').innerHTML;
+     page='ingmaq';render();const hc=document.getElementById('p-ingmaq').innerHTML;
      __check("MQA1: al aplicar quedan «por revisar» (no de baja) y el motivo se ve en la lista de máquinas",!!m3&&!!m4&&m3.estado==='revisar'&&m4.estado==='revisar'&&m4.motivoRevisar===MSG_BAJA_ARCHIVO&&!S.maquinas.some(m=>m.estado==='baja')&&/maq-motivo-rev/.test(hc)&&hc.includes(MSG_BAJA_ARCHIVO));
      maqInvEditable().estados.push({texto:'DADA DE BAJA',estado:'baja'});
      const pf=planMaquinas({MODULOS:[['NUMERO DE MAQUINA','TIPO DE MAQUINA','OBSERVACIONES','MODULO'],[7005,'OVERLOCK','DADA DE BAJA',1]]},'prueba_baja.xlsx');
@@ -3126,7 +3126,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      window.confirm=()=>true;apagarTipoMaq(iO);const rO=tiposMaq()[iO];
      __check("MQA2: apagar un tipo de máquina pide confirmación, NO lo borra (la tabla tiene las mismas filas), guarda quién y cuándo, y deja bitácora",iO>=0&&sigue&&S.params.tiposMaq.length===nT&&rO.activa===false&&!!rO.apagado&&!!rO.apagado.u&&!!rO.apagado.ts&&S.bitacora.length===nb+1&&/apagado \(no se borra\)/.test(S.bitacora[S.bitacora.length-1].t));
      __check("MQA2: con el tipo apagado sus nombres ya no se reconocen: normMaquina devuelve el nombre tal cual y queda «sin homologar» (antes un tipo inactivo seguía calzando si nadie más tenía ese nombre)",normMaquina('OVERLOK 4 HILOS')==='OVERLOK 4 HILOS'&&!maqHomologada('Overlock')&&!maqHomologada('OVERLOK 4 HILOS')&&!tiposMaqActivos().includes('Overlock')&&nombresSinHomologar().some(x=>x.nombre==='OVERLOK 4 HILOS'||x.nombre==='Overlock'));
-     page='config';CONF.tab='recursos';render();const ht=document.getElementById('p-config').innerHTML;
+     page='ingmaq';render();const ht=document.getElementById('p-ingmaq').innerHTML;
      __check("MQA2: la tabla ya no tiene «×» ni delTipoMaq: el botón dice «apagar» y el tipo apagado ofrece «encender»",!/delTipoMaq\(/.test(ht)&&/onclick="apagarTipoMaq\([0-9]+\)"[^>]*>apagar</.test(ht)&&ht.includes('onclick="encenderTipoMaq('+iO+')"')&&typeof window.delTipoMaq==='undefined');
      encenderTipoMaq(iO);
      __check("MQA2: encenderlo de nuevo vuelve a reconocer sus nombres, sin perder ni sumar filas",tiposMaq()[iO].activa===true&&!!tiposMaq()[iO].encendido&&normMaquina('OVERLOK 4 HILOS')==='Overlock'&&S.params.tiposMaq.length===nT);
@@ -3137,7 +3137,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      addTipoMaq();setTipoMaq(iR,'alias','ALIAS SIN PERMISO');setTipoMaq(iR,'activa',false);homologarNombreMaq('NOMBRE SIN PERMISO','Recta');homologarNombreMaq('OTRO SIN PERMISO','__nuevo');if(iTP>=0)confirmarAliasTP(iTP);apagarTipoMaq(iR);
      PERFIL=bakPerf;
      __check("MQA3: sin el permiso «config» (perfil de planificación) no se agrega, edita, homologa, confirma TP, apaga ni enciende ningún tipo de máquina: la tabla y la bitácora no cambian",sinP&&JSON.stringify(S.params.tiposMaq)===snap&&S.bitacora.length===nb3&&normMaquina('NOMBRE SIN PERMISO')==='NOMBRE SIN PERMISO');
-     __check("MQA3: las seis funciones de la tabla de tipos empiezan con if(!puede('config'))return, como setReglaInvMaq",[addTipoMaq,setTipoMaq,homologarNombreMaq,confirmarAliasTP,apagarTipoMaq,encenderTipoMaq].every(f=>/^function [A-Za-z]+\([^)]*\)\{if\(!puede\('config'\)\)return;/.test(String(f))));
+     __check("MQA3: las seis funciones de la tabla de tipos empiezan pidiendo el permiso de Ingeniería y que la sesión guarde la configuración general (ingNoEdita('params')), como setReglaInvMaq",[addTipoMaq,setTipoMaq,homologarNombreMaq,confirmarAliasTP,apagarTipoMaq,encenderTipoMaq,setReglaInvMaq].every(f=>/^function [A-Za-z]+\([^)]*\)\{if\(ingNoEdita\('params'\)\)(return;|\{render\(\);return\})/.test(String(f))));
      /* 6 · número y serial como se ven en la celda */
      const cabX=['NUMERO DE MAQUINA','SERIAL DE MAQUINA','TIPO DE MAQUINA','MODULO','FECHA MANTENIMIENTO'];
      const hx=hojaInvMaqConTexto([cabX,[7201,99123,'RECTA',1,45652],[7202,123456789012,'OVERLOCK',1,'']],[cabX,['7201','00099123','RECTA','1','26/12/2024'],['7202','1.23457E+11','OVERLOCK','1','']]);
@@ -5328,7 +5328,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const pc=(sin.ruta||[]).find(x=>x.centro==='modulos');return !!pc&&(+pc.t||0)===0})());
     // con minuto estimado sí carga
     const sin2=mk('WH/RT-3',sinHoja.id,[{centro:'tej',t:0},{centro:'bordado',t:2}]);
-    setMinEstConf(sinHoja.id,12.5);
+    {const bp=PERFIL;PERFIL=adminP0();setMinEstConf(sinHoja.id,12.5);PERFIL=bp}   /* 05-oct: el minuto estimado es de Ingeniería (planificación ya no lo cambia) */
     delete S.params.rutaDefectoAplicada;aplicarRutaDefecto();
     __check("RT2: con minuto estimado, el paso de confección sí trae minutos",(()=>{
       const pc=(sin2.ruta||[]).find(x=>x.centro==='modulos');return !!pc&&(+pc.t||0)===12.5})());
@@ -5635,8 +5635,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("SG6: la alerta de Short Cargo vs Pantalon Cargo se calcula sola, no está escrita a mano",
      String(alertasTiempos).includes('Short Cargo')&&String(alertasTiempos).includes('samPorCentro'));
     __check("SG6: y la de las categorías sin empaque también",String(alertasTiempos).includes('empaque'));
-    page='operaciones';render();
-    __check("SG6: el panel está en Configuración → Operaciones",/Tiempos por revisar/.test(document.getElementById('p-operaciones').innerHTML));}
+    page='ingrev';render();
+    __check("SG6: el panel está en Ingeniería → Por revisar",/Tiempos por revisar/.test(document.getElementById('p-ingrev').innerHTML));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("SG sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* GUARDIA DE CARTERA · un conteo de órdenes tiene que decir sobre qué base está hecho */
@@ -5673,8 +5673,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     if(p1.filas.length){
      __check("GC4: el panel dice sobre qué base está y ofrece las otras",/Base/.test(hp)&&/Total \u00b7 /.test(hp)&&/En las otras bases/.test(hp));
      __check("GC4: y avisa de que el número cambia mucho según la base",/cambia mucho seg\u00fan la base/.test(hp));}
-    page='operaciones';render();
-    __check("GC4: está en Configuración → Operaciones",!p1.filas.length||/Carga de los tiempos estimados/.test(document.getElementById('p-operaciones').innerHTML));}
+    page='ingtipos';render();
+    __check("GC4: está en Ingeniería → Tipos de producto",!p1.filas.length||/Carga de los tiempos estimados/.test(document.getElementById('p-ingtipos').innerHTML));}
    window.alert=a0;PERFIL=adminP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("GC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== NIVELACIÓN DE CARGA · PASO 1: el motor y el cuadrito ===== */
@@ -7341,7 +7341,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const p2=planOrdenOps(rows2,"OPS2.xlsx");__check("OO: una corrección de máquina y un número distinto se ven en la vista previa",p2.corrMaq.length===1&&p2.corrMaq[0].a==="MESA DE TENDIDO"&&p2.cambios===1,JSON.stringify({c:p2.corrMaq,k:p2.cambios}));
      window.confirm=()=>true;ORDOPS=p2;aplicarOrdenOps();window.confirm=cf;await __p(30);const op=S.operaciones.find(o=>/^camiseta/.test(normFase(o.catP||""))&&o.cod==="TENCAM");
      __check("OO: al aplicar, la máquina se reemplaza con rastro (antes) y el orden cambia",!!op&&op.maq==="MESA DE TENDIDO"&&op.maqCorr&&op.maqCorr.de==="MANUAL"&&op.orden===2&&S.bitacora.slice(-40).some(b=>/máquina MANUAL → MESA DE TENDIDO/.test(b.t)),JSON.stringify(op&&{m:op.maq,o:op.orden}));}
-    page="operaciones";OPV.q="tendido";render();__check("OO: la página Operaciones tiene el botón de carga y muestra el orden real en negrita y la máquina corregida",/mCargarOrdenOps\(/.test(document.getElementById("p-operaciones").innerHTML)&&/title="orden real dentro de la prenda/.test(document.getElementById("p-operaciones").innerHTML)&&/corregida/.test(document.getElementById("p-operaciones").innerHTML));
+    page="ingops";ING_V.ops="hoja";OPV.q="tendido";render();__check("OO: Ingeniería → Operaciones tiene el botón de carga y muestra el orden real en negrita y la máquina corregida",/mCargarOrdenOps\(/.test(document.getElementById("p-ingops").innerHTML)&&/title="orden real dentro de la prenda/.test(document.getElementById("p-ingops").innerHTML)&&/corregida/.test(document.getElementById("p-ingops").innerHTML));OPV.q="";
     /* segunda entrega de tiempos: Camiseta Tejida 4,57 se da por confirmada */
     {let k=S.categorias.find(x=>x.padre&&normFase(x.n)==="camisetatejida");let tmp=false;if(!k){const p=S.categorias.find(x=>!x.padre)||{id:null};k={id:"k_tj_tmp",padre:p.id,n:"Camiseta Tejida"};S.categorias.push(k);tmp=true}k.minEstConf=4.57;k.minEstConfMeta={fuente:TIEMPOS_SG_FUENTE,pendiente:true};delete S.params.tiemposSG2Sembrado;S.params.tiemposSGSembrado=S.params.tiemposSGSembrado||new Date().toISOString();sembrarTiemposSG2();
      __check("OO: la segunda entrega de tiempos (mismos 14 valores) confirma Camiseta Tejida 4,57 una sola vez",!!k&&k.minEstConfMeta&&k.minEstConfMeta.pendiente===false&&/segunda entrega/.test(k.minEstConfMeta.confirmado||"")&&!!S.params.tiemposSG2Sembrado,JSON.stringify(k&&k.minEstConfMeta));if(tmp)S.categorias=S.categorias.filter(x=>x.id!=="k_tj_tmp");}
@@ -7810,9 +7810,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      /* dos pestañas que ponen el mismo valor en el mismo campo no chocan */
      __check('T21: fusionarFila: el mismo valor puesto por dos sesiones en el mismo campo no es conflicto',(()=>{const f=fusionarFila(JSON.stringify({ruta:[{t:13.46}]}),{ruta:[{t:4.47}]},{ruta:[{t:4.47}]});return f.choques.length===0&&JSON.stringify(f.data.ruta)===JSON.stringify([{t:4.47}])})());}
     o.ruta[1].t=13.46;o.ruta[2].t=0;delete o.ruta[1].tAntes;delete o.ruta[2].estandar;o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
-    page='operaciones';render();const hh=document.getElementById('p-operaciones').innerHTML;
-    __check('T21: la página Operaciones muestra «Tiempos que mandan sobre la hoja» y, si alguna orden abierta quedó con otro tiempo, el aviso en llano («todavía no tienen los tiempos de hoy») con el botón al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/todavía no tienen? los tiempos de hoy/.test(hh)&&/<button class="btn sm" onclick="mAplicarTiempos\(\)">Ver y aplicar los tiempos de hoy/.test(hh));
-    __check('T21: todo lo que define un tiempo vive junto en Operaciones (usuaria, 21-sep): cabecera «Tiempos» con el orden de mando, lo que manda, minuto por centro (cordones/apliques/sublimado/lavado/plancha, mismo dato que Centros), ojales y botones (estándar y tabla), etiquetas y minuto estimado; el estándar ya no está en Calendario y parámetros',/<h3>Tiempos <span/.test(hh)&&/Minuto por prenda de los centros sin operaciones/.test(hh)&&/setCentro\('cordones','minEstandar'/.test(hh)&&/Ojales y botones: estándar/.test(hh)&&/setBotonesEstandar/.test(hh)&&/Tiempos de ojales y botones/.test(hh)&&/delTiempoOBRow|addTiempoOBRow/.test(hh)&&/reglasEtiqueta|Regla de etiqueta|etiqueta/i.test(hh)&&/Categorías sin hoja de operaciones/.test(hh)&&!/setBotonesEstandar/.test(String(typeof vParams==='function'?vParams:'')),'');
+    page='ingtipos';render();const hh=document.getElementById('p-ingtipos').innerHTML;
+    __check('T21: Ingeniería → Tipos de producto muestra «Tiempos que mandan sobre la hoja» y, si alguna orden abierta quedó con otro tiempo, el aviso en llano («todavía no tienen los tiempos de hoy») con el botón al antes/después',/Tiempos que mandan sobre la hoja/.test(hh)&&/todavía no tienen? los tiempos de hoy/.test(hh)&&/<button class="btn sm" data-ver="1" onclick="mAplicarTiempos\(\)">Ver y aplicar los tiempos de hoy/.test(hh));
+    __check('T21: todo lo que define un tiempo vive junto en Ingeniería → Tipos de producto (usuaria, 21-sep; mudado el 05-oct): cabecera «Tiempos» con el orden de mando, lo que manda, minuto por centro (cordones/apliques/sublimado/lavado/plancha, mismo dato que Centros), ojales y botones (estándar y tabla), etiquetas y minuto estimado; el estándar ya no está en Calendario y parámetros',/<h3>Tiempos <span/.test(hh)&&/Minuto por prenda de los centros sin operaciones/.test(hh)&&/setCentro\('cordones','minEstandar'/.test(hh)&&/Ojales y botones: estándar/.test(hh)&&/setBotonesEstandar/.test(hh)&&/Tiempos de ojales y botones/.test(hh)&&/delTiempoOBRow|addTiempoOBRow/.test(hh)&&/reglasEtiqueta|Regla de etiqueta|etiqueta/i.test(hh)&&/Categorías sin hoja de operaciones/.test(hh)&&!/setBotonesEstandar/.test(String(typeof vParams==='function'?vParams:'')),'');
     mAplicarTiempos();const m=document.getElementById('modal');__check('T21: el antes/después se ve por familia y por centro con motivo obligatorio',/Antes \/ después de aplicar/.test(m.innerHTML)&&/Por familia/.test(m.innerHTML)&&/Por centro/.test(m.innerHTML)&&!!document.getElementById('tiempos-motivo'));
     const n0=aplicarTiemposRutas('');__check('T21: sin motivo no aplica',n0===0&&o.ruta[1].t===13.46);
     const na=(S.params.tiemposAplicados||[]).length;const nb2=S.bitacora.length;const n1=aplicarTiemposRutas('prueba T21');
@@ -9055,7 +9055,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();FILT={};
    const pg=p=>document.getElementById('p-'+p);
    /* F1 · ningún párrafo explicativo suelto: todos viven en el «?» del título más cercano */
-   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','wip','balanceo','config','operaciones','categorias','usuarios','auditoria','imprimir'];
+   {const pags=['panorama','ordenes','liberacion','entregas','control','plan','tintoreria','produccion','gerencia','tejeduria','avancearea','salud','macro','stock','capacidad','wip','balanceo','config','operaciones','ingops','ingref','ingtipos','ingmaq','ingrev','categorias','usuarios','auditoria','imprimir'];
     const conLede=[],sinAyuda=[];pags.forEach(p=>{page=p;render();const el=pg(p);if(!el)return;if(el.querySelectorAll('.lede:not(.no-plegar)').length)conLede.push(p);if(!el.querySelector('.pagehead .ayuda-cab,h3 .ayuda-d,h4 .ayuda-d')&&/panorama|ordenes|liberacion|plan|tintoreria/.test(p))sinAyuda.push(p)});
     __check("F1: en ninguna pantalla queda un párrafo «lede» suelto (todos pasaron al «?» del título; el único que se queda a la vista es el estado del plan en Avance del mes, marcado no-plegar)",!conLede.length,conLede.join(', '));
     page='avance';render();__check("F1: Avance por área → Mes (antes Avance del mes) conserva a la vista el aviso «sin plan congelado» (es estado, no explicación; desde el 02-oct es un aviso con el botón para congelar)",(()=>{const e=pg('avancearea');AVA.vista='semana';return !!e.querySelector('.av-sincong,.lede.no-plegar')||/plan congelado v/.test(e.innerHTML)})());
@@ -9674,9 +9674,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check('UX-B9: la tabla 15 lleva UN selector de uso y un solo botón «Agregar motivo» (no un botón por uso), y «rechazo» la sigue encontrando en el buscador',!!el.querySelector('#mot-uso-nuevo')&&/addMotivoRow\(document\.getElementById\('mot-uso-nuevo'\)\.value\)/.test(ho)&&!/addMotivoRow\('fase'\)/.test(ho)&&cfgResultados('rechazo').some(x=>CONF_CATALOGO[x.i].titulo==='15 · Motivos'));
      {const t15=motivos();const n=t15.filter(r=>r.uso==='reproceso').length;CONF.motUso='reproceso';render();const filas=[...el.querySelectorAll('input[onchange^="setMotivoRow("]')].filter(x=>/'motivo'/.test(x.getAttribute('onchange')));CONF.motUso='';render();
       __check('UX-B9: «Ver» de la tabla 15 muestra solo los motivos de reproceso de tintorería (el panel suelto que los repetía salió) y no cambia nada guardado',filas.length===n&&motivos().length===t15.length,filas.length+' de '+n)}
-     CONF.tab='recursos';render();__check('UX-B9: Operarias lleva un selector de módulo y un solo botón «Agregar operaria»',!S.recursos.some(r=>r.centro==='modulos'&&r.activa)||(!!el.querySelector('#op-mod-nueva')&&!/onclick="addOperaria\('mod/.test(el.innerHTML)))
-     {const s=el.querySelector('#op-mod-nueva');__check('UX-V4: el selector dentro del título (operarias, motivos) va con letra chica, del alto del botón de al lado',!s||parseFloat(getComputedStyle(s).fontSize)<15,s?getComputedStyle(s).fontSize:'sin selector')}
-     CONF={tab:'inicio',q:''};render();{const card=[...el.querySelectorAll('.cfg-card')].map(c=>[(c.querySelector('h3')||{}).textContent||'',[...c.querySelectorAll('.cfg-card-nom b')].map(b=>b.textContent.trim())]);const pl=(card.find(c=>/La planta/.test(c[0]))||['',[]])[1],te=(card.find(c=>/^Telas/.test(c[0].trim()))||['',[]])[1];
+     page='ingmaq';render();const elM=document.getElementById('p-ingmaq');__check('UX-B9: Operarias (Ingeniería → Máquinas y operarias) lleva un selector de módulo y un solo botón «Agregar operaria»',!S.recursos.some(r=>r.centro==='modulos'&&r.activa)||(!!elM.querySelector('#op-mod-nueva')&&!/onclick="addOperaria\('mod/.test(elM.innerHTML)))
+     {const s=elM.querySelector('#op-mod-nueva');__check('UX-V4: el selector dentro del título (operarias, motivos) va con letra chica, del alto del botón de al lado',!s||parseFloat(getComputedStyle(s).fontSize)<15,s?getComputedStyle(s).fontSize:'sin selector')}
+     CONF={tab:'inicio',q:''};page='config';render();{const card=[...el.querySelectorAll('.cfg-card')].map(c=>[(c.querySelector('h3')||{}).textContent||'',[...c.querySelectorAll('.cfg-card-nom b')].map(b=>b.textContent.trim())]);const pl=(card.find(c=>/La planta/.test(c[0]))||['',[]])[1],te=(card.find(c=>/^Telas/.test(c[0].trim()))||['',[]])[1];
       __check('UX-V4: Inicio — cada tarjeta abre con su tabla principal: «Centros de trabajo» antes que los tramos paralelos y los descansos; en Telas, «Telas», los kilos y «Colores» antes que las tablas numeradas',pl[0]==='Centros de trabajo'&&pl.findIndex(x=>/tramos paralelos/.test(x))>0&&te[0]==='Telas: mezcla en el baño y merma'&&te.indexOf('Colores: Pantone y tono claro u oscuro')>=0&&te.indexOf('Colores: Pantone y tono claro u oscuro')<te.findIndex(x=>/tabla 8/.test(x)),JSON.stringify({planta:pl.slice(0,3),telas:te.slice(0,4)}))}}
    {const fs=cfgPorCompletar();__check('CFG11: cada cosa de «Falta completar» lleva a una tabla que existe (ninguna queda sin enlace)',fs.every(x=>x.i>=0&&CONF_CATALOGO[x.i]),JSON.stringify(fs.map(x=>[x.txt.slice(0,40),x.i])))}
    {const r=q=>cfgResultados(q).map(x=>CONF_CATALOGO[x.i].titulo);
@@ -9684,6 +9684,135 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    PERFIL={id:'u-fer',rol:'jefatura',nombre:'Fernando',modo:'editar'};CONF={tab:'inicio',q:''};page='config';render();{const el3=document.getElementById('p-config');const tx=el3.innerText;
     __check('CFG13: quien solo ve la configuración no ve en la portada lo que no puede abrir (Usuarios, respaldo y borrado)',!/Respaldo y borrado/.test(tx)&&![...el3.querySelectorAll('.cfg-card-it')].some(a=>/ir\('usuarios'\)/.test(a.getAttribute('onclick')||''))&&!cfgResultados('borrar').some(x=>CONF_CATALOGO[x.i].tab==='borrado'),'')}
    PERFIL=bak;CONF={tab:'inicio',q:''};CFG_ABIERTOS=new Set();page='ordenes';render()}
+  /* ===== INGENIERÍA · E1 (05-oct-2026, usuaria: «un módulo de ingeniería … las operaciones no van en configuración: pertenecen a ingeniería»):
+     el grupo del menú, el permiso y el perfil, la mudanza sin perder nada, quién edita y qué se guarda, las tablas ing_* (Supabase falso) y la
+     HUELLA del programa (fechas por paso y P.pro, nivelación, cargaUnica, rutas y tiempos p.t de todas las órdenes): idéntica antes y después ===== */
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;const al=[];window.alert=m=>al.push(String(m));window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
+   const huella=()=>{PLAN=null;if(typeof PLAN_ALL!=='undefined')PLAN_ALL=null;NIVC=null;CAPM=null;const P=programar();const f3=v=>v!=null&&v!==''&&!isNaN(+v)?(+v).toFixed(3):String(v==null?'':v);
+     const ords=S.ordenes.slice().sort((a,b)=>String(a.id)<String(b.id)?-1:1);
+     const rutas=ords.map(o=>o.id+'|'+(o.ruta||[]).map(p=>p.centro+':'+p.t).join(',')+'|'+(o.rutaCompleta||[]).map(p=>p.centro+':'+p.t).join(','));
+     const prog=Object.keys(P.ordenes).sort().map(id=>{const r=P.ordenes[id];return id+'|'+[r.finTej,r.finTin,r.finPro,r.telaLista,r.atraso,r.motor].join('|')+'|'+(r.pasos||[]).map(p=>[p.centro,p.ini,p.fin,p.rec,f3(p.min)].join(':')).join(',')});
+     const pro=(P.pro||[]).map(x=>[x.op,x.centro,x.rec,x.dia,f3(x.min),f3(x.pz)].join(':')).sort();
+     const cu=['abiertas','programadas'].map(b=>{const r=cargaUnica(b,{})||{};const cs=r.centros||r;return b+':'+Object.keys(cs).sort().map(k=>k+'='+['firme','proceso','reserva','pz','n'].map(f=>f3((cs[k]||{})[f])).join('/')).join(';')});
+     const bm=NIVUI.meses;const niv=[];try{NIVUI.meses=[hoy().slice(0,7),dsum(hoy().slice(0,7)+'-01',35).slice(0,7)];nivUIAreas().forEach(ar=>{try{const r=nivUICalcular(ar.id)||{};niv.push(ar.id+':'+[r.estado,r.saldo&&r.saldo.unid,r.saldo&&f3(r.saldo.min),r.fin,r.deficit!=null?f3(r.deficit):''].join('/'))}catch(e){niv.push(ar.id+':ERR '+e.message)}})}finally{NIVUI.meses=bm;NIVC=null}
+     return {rutas:rutas.join('\n'),prog:prog.join('\n'),pro:pro.join('\n'),cu:cu.join('\n'),niv:niv.join('\n'),n:{ordenes:ords.length,prog:prog.length,pro:pro.length,niv:niv.length}}};
+   const h0=huella();
+   try{
+   /* ING1 · el menú */
+   page='ordenes';render();
+   {const gs=[...document.querySelectorAll('nav .grp')].map(g=>g.dataset.g);const ingL=[...document.querySelectorAll('nav .gbody[data-g="ing"] a')].map(a=>a.dataset.p);
+    __check('ING1: el menú tiene el grupo «Ingeniería» justo antes de Configuración, con Operaciones · Por referencia · Tipos de producto · Máquinas y operarias · Por revisar, cada una con su ícono, su sección y su fila en el catálogo de páginas de los perfiles',gs.indexOf('ing')>=0&&gs.indexOf('ing')===gs.indexOf('conf')-1&&JSON.stringify(ingL)===JSON.stringify(PAGINAS_ING)&&PAGINAS_ING.every(p=>ICO_NAV[p]&&PAGINAS_DEF.some(x=>x[0]===p)&&!!document.getElementById('p-'+p))&&[...document.querySelectorAll('nav .gbody[data-g="ing"] a')].every(a=>!!a.querySelector('svg')),JSON.stringify({gs,ingL}));
+    __check('ING1: «Operaciones» ya no está en Configuración ni existe su página vieja (sección, vista, permiso ni catálogo)',!document.querySelector('nav a[data-p="operaciones"]')&&!document.getElementById('p-operaciones')&&typeof vOperaciones==='undefined'&&!('operaciones' in PERM_PAGINA)&&!PAGINAS_DEF.some(x=>x[0]==='operaciones'))}
+   /* ING2 · el enlace viejo y las pestañas viejas llevan a Ingeniería */
+   {page='operaciones';render();const r1=page;page='ordenes';render();ir('operaciones');const r2=page;
+    __check('ING2: el enlace viejo «operaciones» abre Ingeniería → Operaciones (render, ir y puedeAbrirPagina)',r1==='ingops'&&r2==='ingops'&&puedeAbrirPagina('operaciones')===puedeAbrirPagina('ingops'),r1+' / '+r2);
+    irOps('tiempos');const p1=page;irOps('revisar');const p2=page;irOps('hoja');const p3=page;
+    __check('ING2: irOps lleva cada pestaña vieja a su página nueva (Tiempos → Tipos de producto, Por revisar → Por revisar, Hoja → Operaciones)',p1==='ingtipos'&&p2==='ingrev'&&p3==='ingops'&&ING_V.ops==='hoja',[p1,p2,p3].join(' / '))}
+   /* ING3 · el permiso y el perfil «Ingeniería» */
+   {const pi=perfilesDef().find(x=>x.id==='ingenieria');
+    __check('ING3: permiso nuevo «ingenieria» y perfil «Ingeniería» sembrado: permisos solo «ingenieria», todas las páginas menos las de Configuración (Categorías, Configuración general, Usuarios, Salud), sin «Ver valores en $»',PERMISOS_DEF.some(p=>p[0]==='ingenieria')&&!!pi&&JSON.stringify(pi.permisos)===JSON.stringify(['ingenieria'])&&!perfilVeFacturacion(pi)&&!['config','usuarios','salud','categorias'].some(p=>pi.paginas.includes(p))&&PAGINAS_ING.every(p=>pi.paginas.includes(p))&&['panorama','ordenes','liberacion','centro','balanceo','costura','tablet','wip'].every(p=>pi.paginas.includes(p))&&!!S.params.perfilIngenieria05,JSON.stringify(pi));
+    const bakCat=JSON.stringify(S.params.perfilesDef),bakF=S.params.perfilIngenieria05;S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='ingenieria');delete S.params.perfilIngenieria05;const nb=(S.bitacora||[]).length;
+    perfilesDef();perfilesDef();const n2=S.params.perfilesDef.filter(x=>x.id==='ingenieria').length;
+    __check('ING3: la siembra corre UNA vez (bandera y una sola línea de bitácora) y no se repite',n2===1&&!!S.params.perfilIngenieria05&&(S.bitacora||[]).slice(nb).filter(b=>/Perfil «Ingeniería»/.test(b.t||'')).length===1);
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='ingenieria');delete S.params.perfilIngenieria05;
+    PERFIL={id:'u-t',rol:'tablet',nombre:'T',modo:'editar'};perfilesDef();const nPiso=S.params.perfilesDef.filter(x=>x.id==='ingenieria').length,fPiso=!!S.params.perfilIngenieria05;
+    PERFIL={id:'u-pl',rol:'planificacion',nombre:'P',modo:'editar'};perfilesDef();const nPl=S.params.perfilesDef.filter(x=>x.id==='ingenieria').length;
+    __check('ING3: nunca se siembra desde el piso ni desde una sesión que no edita los perfiles (Planificación)',nPiso===0&&!fPiso&&nPl===0&&!S.params.perfilIngenieria05);
+    PERFIL=adminP0();S.params.perfilesDef=JSON.parse(bakCat);S.params.perfilIngenieria05=bakF}
+   /* ING4 · el perfil Ingeniería: ve todo menos Configuración y $; edita solo Ingeniería y solo lo que su sesión guarda */
+   {PERFIL={id:'u-ing',rol:'ingenieria',nombre:'Ing',modo:'editar'};const estI=ING.estado;ING.estado='si';
+    const ve=PAGINAS_ING.filter(p=>{page=p;render();return page===p});const noVe=['config','usuarios','salud','categorias','gerencia'].filter(p=>{page=p;render();return page===p});
+    page='ordenes';render();aplicarNavPerfil();const gConf=document.querySelector('nav .grp[data-g="conf"]'),gIng=document.querySelector('nav .grp[data-g="ing"]');
+    __check('ING4: el perfil Ingeniería ve las cinco páginas de Ingeniería y ninguna de Configuración ni el Resumen gerencial ($); el grupo Configuración no le aparece en el menú',ve.length===5&&!noVe.length&&gConf.style.display==='none'&&gIng.style.display!=='none'&&!veFacturacion(),JSON.stringify({ve,noVe}));
+    __check('ING4: edita Ingeniería y nada más: no configura, no programa, no libera, no registra en piso ni cambia órdenes',puedeIng()&&!puede('config')&&!puede('programa')&&!puede('liberar')&&!puede('avance')&&!puede('ordenes')&&!sesionTocaOrdenes());
+    let el;const pan=k=>[...el.querySelectorAll('[data-ing-key]')].find(x=>x.getAttribute('data-ing-key')===cfgNorm(k));
+    const vivo=x=>!!x&&[...x.querySelectorAll('input,select,button')].some(c=>!c.disabled&&(!c.dataset||c.dataset.ver!=='1'));
+    const apagado=x=>!!x&&[...x.querySelectorAll('input,select,textarea,button')].filter(c=>!c.dataset||c.dataset.ver!=='1').every(c=>c.disabled)&&!!x.querySelector('.ing-noguarda');
+    page='ingtipos';render();el=document.getElementById('p-ingtipos');const sm=pan('Tiempos que mandan sobre la hoja'),ob=pan('Tiempos de ojales y botones'),pc=pan('Pasos que lleva siempre una categoría'),ins=pan('Insumos que agregan un paso a la ruta'),mc=pan('Minuto por prenda de los centros sin operaciones en la hoja');
+    __check('ING4: con SUPABASE_INGENIERIA.sql corrido, en Tipos de producto edita lo que vive en categorías (los tiempos que mandan) y apaga, con su porqué, lo que vive en la configuración general (ojales y botones, pasos por categoría, insumos) y en Centros (minuto del centro): eso hoy solo lo guarda Administración',vivo(sm)&&apagado(ob)&&apagado(pc)&&apagado(ins)&&(!mc||apagado(mc))&&/solo lo guarda Administración/.test(ob.querySelector('.ing-noguarda').textContent),JSON.stringify({sm:vivo(sm),ob:apagado(ob),pc:apagado(pc),ins:apagado(ins),mc:mc?apagado(mc):'sin panel'}));
+    __check('ING4: y le dice que los tiempos nuevos los aplica planificación a las órdenes (su perfil no cambia órdenes)',!!el.querySelector('.ing-nota-ord'));
+    page='ingmaq';render();el=document.getElementById('p-ingmaq');const tm=pan('Tipos de máquina'),mq=pan('Máquinas de confección'),opr=pan('Operarias y especialidades');
+    __check('ING4: en Máquinas y operarias edita el inventario de máquinas y apaga tipos de máquina, operarias y las reglas del inventario (configuración general)',vivo(mq)&&apagado(tm)&&apagado(opr)&&!!mq.querySelector('details.maq-reglas[data-ing-tabla="params"] .ing-noguarda'));
+    page='ingops';ING_V.ops='hoja';OPV.abierta=null;OPV.q='';render();el=document.getElementById('p-ingops');const cat=pan('catalogo');const xs=[...el.querySelectorAll('button[data-ing-tabla="operaciones:borra"]')];const lmo=el.querySelector('button[onclick="mCargarLMO()"]');
+    __check('ING4: en la hoja de operaciones cambia los tiempos pero no quita filas (borrar no se abre a Ingeniería) ni recarga la hoja de Odoo (también reescribe la configuración general)',vivo(cat)&&xs.length>0&&xs.every(b=>b.disabled&&/Administración/.test(b.title))&&!!lmo&&lmo.disabled);
+    al.length=0;const bE=prm('botonesEstandar',0);setBotonesEstandar('0.99');
+    __check('ING4: un setter de algo que vive en la configuración general avisa y no cambia nada',prm('botonesEstandar',0)===bE&&al.some(m=>/solo lo guarda Administración/.test(m)),al.join(' | '));
+    ING.estado='falta';page='ingtipos';render();el=document.getElementById('p-ingtipos');const sm2=pan('Tiempos que mandan sobre la hoja');page='ingops';ING_V.ops='base';render();const hBase=document.getElementById('p-ingops').innerHTML;
+    __check('ING4: sin SUPABASE_INGENIERIA.sql (tablas ing_* sin crear) el perfil Ingeniería no guarda nada: los tiempos que mandan quedan apagados con «se abre a Ingeniería cuando Administración corra SUPABASE_INGENIERIA.sql», y la base general lo dice arriba',apagado(sm2)&&/SUPABASE_INGENIERIA\.sql/.test(sm2.querySelector('.ing-noguarda').textContent)&&hBase.includes(ING_MSG_FALTA));
+    ING.estado=estI;ING_V.ops='hoja';PERFIL=adminP0()}
+   /* ING5 · Planificación y Jefatura la VEN sin poder cambiarla; Consulta igual */
+   for(const rol of ['planificacion','jefatura','consulta']){PERFIL={id:'u-'+rol,rol,nombre:rol,modo:'editar'};
+    const res=PAGINAS_ING.map(p=>{page=p;render();const el=document.getElementById('p-'+p);const ctl=[...el.querySelectorAll('input,select,textarea,button')].filter(c=>(!c.dataset||c.dataset.ver!=='1')&&!c.closest('.o-search'));return {p,ok:page===p,ro:!!el.querySelector('.ing-solover')&&ctl.every(c=>c.disabled)}});
+    __check('ING5: '+rol+' ve Ingeniería en solo lectura (las cinco páginas, aviso arriba y todo apagado salvo mirar y navegar)',res.every(x=>x.ok&&x.ro)&&!puedeIng(),JSON.stringify(res.filter(x=>!x.ok||!x.ro)))}
+   {PERFIL={id:'u-pl',rol:'planificacion',nombre:'P',modo:'editar'};const k=S.categorias.find(x=>x.padre);const ant=JSON.stringify(k.samManda||null);al.length=0;setSamManda(k.id,'modulos','7.77');
+    __check('ING5: Planificación ya no cambia los tiempos por tipo (pide el permiso «Ingeniería»)',JSON.stringify(k.samManda||null)===ant&&al.some(m=>/permiso «Ingeniería»/.test(m)),al.join(' | '));
+    page='ingtipos';render();__check('ING5: y ve que hay tiempos sin aplicar con su botón «Ver y aplicar» vivo (aplicar a las órdenes sigue siendo de planificación)',![...document.querySelectorAll('#p-ingtipos button[onclick="mAplicarTiempos()"]')].some(b=>b.disabled));PERFIL=adminP0()}
+   /* ING6 · Administración: la mudanza no perdió nada — cada tabla movida sigue editándose y guardando igual */
+   {PERFIL=adminP0();await save();while(guardando)await __p(20);let el;const pan=k=>[...el.querySelectorAll('[data-ing-key]')].find(x=>x.getAttribute('data-ing-key')===cfgNorm(k));const vivo=x=>!!x&&[...x.querySelectorAll('input,select,button')].some(c=>!c.disabled);
+    const vistas={ingtipos:['Tiempos que mandan sobre la hoja','Tiempos de ojales y botones','Etiqueta de serigrafía','Categorías sin hoja de operaciones','Pasos que lleva siempre una categoría','Insumos que agregan un paso a la ruta'],ingmaq:['Tipos de máquina','Máquinas de confección','Operarias y especialidades'],ingops:['catalogo','Técnicas de estampado'],ingrev:['Tiempos por revisar','Operaciones sin centro']};
+    const falta=[];Object.entries(vistas).forEach(([p,ks])=>{page=p;ING_V.ops='hoja';render();el=document.getElementById('p-'+p);ks.forEach(k=>{if(!pan(k))falta.push(p+': '+k)})});
+    __check('ING6: cada tabla mudada está en su página de Ingeniería',!falta.length,falta.join(' | '));
+    page='ingtipos';render();el=document.getElementById('p-ingtipos');
+    __check('ING6: Administración la edita: nada apagado por permiso y los editores de siempre presentes (tiempos que mandan, ojales y botones, etiqueta, minuto estimado, pasos por categoría, insumos)',!el.querySelector('.ing-off,.ing-noguarda,.ing-solover')&&['Tiempos que mandan sobre la hoja','Tiempos de ojales y botones','Etiqueta de serigrafía','Pasos que lleva siempre una categoría','Insumos que agregan un paso a la ruta'].every(k=>vivo(pan(k)))&&/setSamManda\(/.test(el.innerHTML)&&/setTiempoOBRow\(/.test(el.innerHTML)&&/setReglaEtiqueta\(/.test(el.innerHTML)&&/setPasoCategoriaRow\(|addPasoCategoriaRow\(/.test(el.innerHTML)&&/setInsumoRutaRow\(|addInsumoRutaRow\(/.test(el.innerHTML)&&insumoRutaEditable()===true);
+    const w0=__W.writes.length;const tipo=t=>__W.writes.slice(w0).some(w=>w.t===t&&w.op==='upsert');
+    /* tipos de máquina y operarias (params), máquinas (maquinas), técnicas (tecnicas) y una operación de la hoja (operaciones): se editan y se GUARDAN; después se devuelve todo como estaba */
+    const bTM=JSON.stringify(S.params.tiposMaq||null),bOP=JSON.stringify(S.params.operarias||null),bMaq=JSON.stringify(S.maquinas||[]),bTec=JSON.stringify(S.tecnicas||[]);
+    const iT=tiposMaq().findIndex(r=>r.activa!==false);setTipoMaq(iT,'alias',(tiposMaq()[iT].alias||'')+', PRUEBA ING6');const okTM=normMaquina('PRUEBA ING6')===tiposMaq()[iT].tipo;
+    const mod=(S.recursos.find(r=>r.centro==='modulos'&&r.activa)||{}).id||'';const nO=operarias().length;addOperaria(mod);const okOP=operarias().length===nO+1;
+    addMaq();const mq=S.maquinas[S.maquinas.length-1];setMaq(mq.id,'obs','prueba ING6');const okMQ=mq.obs==='prueba ING6';
+    const tc=S.tecnicas[0];if(tc)setRow('tecnicas',tc.id,'maq','prueba ING6');const okTC=!tc||tc.maq==='prueba ING6';
+    const op=S.operaciones[0];const maqOp=op?op.maq:null;if(op)setRow('operaciones',op.id,'maq','PRUEBA ING6');const okOp=!op||op.maq==='PRUEBA ING6';
+    await save();while(guardando)await __p(20);
+    __check('ING6: tipos de máquina, operarias, máquinas de confección, técnicas de estampado y la hoja de operaciones se editan desde Ingeniería y se guardan en sus tablas de siempre (params, maquinas, tecnicas, operaciones)',okTM&&okOP&&okMQ&&okTC&&okOp&&tipo('params')&&tipo('maquinas')&&(!tc||tipo('tecnicas'))&&(!op||tipo('operaciones')),JSON.stringify({okTM,okOP,okMQ,okTC,okOp,escritas:[...new Set(__W.writes.slice(w0).map(w=>w.t))]}));
+    S.params.tiposMaq=JSON.parse(bTM);if(S.params.tiposMaq===null)delete S.params.tiposMaq;S.params.operarias=JSON.parse(bOP);if(S.params.operarias===null)delete S.params.operarias;S.maquinas=JSON.parse(bMaq);S.tecnicas=JSON.parse(bTec);if(op)op.maq=maqOp;await save();while(guardando)await __p(20)}
+   /* ING7 · el piso no ve ni edita Ingeniería, aunque su perfil tuviera el permiso */
+   {PERFIL={id:'u-c',rol:'corte',nombre:'C',modo:'editar'};page='ordenes';render();aplicarNavPerfil();const g=document.querySelector('nav .grp[data-g="ing"]');const pags=PAGINAS_ING.filter(p=>{page=p;render();return page===p});
+    __check('ING7: el piso (corte) no ve Ingeniería ni la edita',g.style.display==='none'&&!pags.length&&!puedeIng(),pags.join(','));
+    S.params.perfilesDef.push({id:'tmp_ing_piso',n:'prueba',permisos:['ingenieria','avance'],centros:['*'],paginas:['*'],piso:'supervisor'});PERFIL={id:'u-x',rol:'tmp_ing_piso',nombre:'X',modo:'editar'};
+    __check('ING7: un perfil de piso con el permiso «Ingeniería» tampoco edita (desde el piso no se guarda la configuración)',!puedeIng()&&perfilSoloPiso());
+    S.params.perfilesDef=S.params.perfilesDef.filter(x=>x.id!=='tmp_ing_piso');PERFIL=adminP0()}
+   /* ING8 · Configuración: lo mudado salió de sus pestañas; el catálogo de ajustes lo marca «en Ingeniería» y el buscador e irAjuste llevan allá */
+   {PERFIL=adminP0();const movidas=['Tipos de máquina','Operarias y especialidades','Máquinas de confección','Técnicas de estampado','Pasos que lleva siempre una categoría','Insumos que agregan un paso a la ruta'];
+    const enCfg=[];CONF_TABS.filter(([k])=>k!=='inicio'&&k!=='borrado').forEach(([k])=>{CONF.tab=k;page='config';render();[...document.querySelectorAll('#p-config .cfg-unit')].forEach(u=>{const kk=u.getAttribute('data-cfg-key');if(movidas.some(t=>cfgNorm(t)===kk))enCfg.push(k+':'+kk)})});
+    __check('ING8: las seis tablas mudadas ya no están en ninguna pestaña de Configuración general',!enCfg.length,enCfg.join(' | '));
+    __check('ING8: en el catálogo de ajustes quedan marcadas «en Ingeniería» con la página donde viven ahora',movidas.every(t=>{const e=CONF_CATALOGO.find(x=>x.titulo===t);return !!e&&e.tab==='ing'&&PAGINAS_ING.includes(e.ing)&&e.grupo==='ingenieria'}));
+    const r=cfgResultados('tipos de máquina').map(x=>CONF_CATALOGO[x.i]);const i=CONF_CATALOGO.findIndex(e=>e.titulo==='Tipos de máquina');cfgIr(i);await __p(30);
+    const u=[...document.querySelectorAll('#p-ingmaq [data-ing-key]')].find(x=>x.getAttribute('data-ing-key')===cfgNorm('Tipos de máquina'));
+    __check('ING8: el buscador de ajustes encuentra «tipos de máquina» y lleva a Ingeniería → Máquinas y operarias, a esa tabla',r.some(e=>e.titulo==='Tipos de máquina')&&page==='ingmaq'&&!!u,page);
+    page='ordenes';render();irAjuste('Técnicas de estampado');await __p(30);
+    __check('ING8: irAjuste(«Técnicas de estampado») lleva a Ingeniería → Operaciones en su pestaña',page==='ingops'&&ING_V.ops==='tecnicas'&&document.querySelector('#p-ingops [data-ops-tab="tecnicas"]').style.display!=='none');
+    CONF={tab:'inicio',q:''};page='config';render();const card=[...document.querySelectorAll('#p-config .cfg-card')].find(c=>/En Ingeniería/.test((c.querySelector('h3')||{}).textContent||''));
+    __check('ING8: la portada de Configuración tiene la tarjeta «En Ingeniería» con cada tabla mudada y el enlace a Ingeniería; el resto de la portada no las repite',!!card&&movidas.every(t=>card.textContent.includes(CONF_CATALOGO.find(x=>x.titulo===t).nombre))&&/ir\('ingops'\)/.test(card.innerHTML)&&[...document.querySelectorAll('#p-config .cfg-card')].filter(c=>c!==card).every(c=>!movidas.some(t=>c.textContent.includes(CONF_CATALOGO.find(x=>x.titulo===t).nombre))));
+    __check('ING8: cada cosa de «Falta completar» sigue llevando a una tabla que existe',cfgPorCompletar().every(x=>x.i>=0&&CONF_CATALOGO[x.i]));
+    ING_V.ops='hoja';CONF={tab:'inicio',q:''};page='ordenes';render()}
+   /* ING9 · las tablas ing_* (Supabase falso): se leen al entrar o a demanda, se suben sin borrar, van al respaldo, Restaurar solo agrega, y sin el SQL nada se frena */
+   {const bakW=__W.faltaTabla;
+    __check('ING9: las tablas de Ingeniería se leen al entrar (subprocesos y base) y quedan fuera de TABLAS, del piso y del borrado de datos de prueba',ING.estado==='si'&&Array.isArray(S.ing_subprocesos)&&Array.isArray(S.ing_operaciones)&&!TABLAS_ING.some(t=>TABLAS.includes(t)||TABLAS_OPERATIVAS.includes(t)||TABLAS_PISO.includes(t))&&/ingTomarCarga\(await _ingP\)/.test(String(cargarTodo)),ING.estado);
+    const r1=await ingSubir('ing_subprocesos',[{id:'isp|modulos|CON-02',data:{centro:'modulos',cod:'CON-02',nombre:'Ensamble'}}]);const r2=await ingSubir('ing_referencias',[{id:'ir|k|4240',data:{cab:{estado:'porConfirmar'},ops:[]}},{id:'ir|k|4204',data:{cab:{estado:'porConfirmar'}}}]);
+    await leerIngAlEntrar();const lr=await leerIngReferencias(['ir|k|4240']);
+    __check('ING9: subir es solo upsert por lotes (nunca delete) y se lee de vuelta: los subprocesos al entrar, la referencia a demanda (solo la pedida)',r1.ok&&r2.ok&&S.ing_subprocesos.some(x=>x.id==='isp|modulos|CON-02'&&x.nombre==='Ensamble')&&lr.data.length===1&&lr.data[0].id==='ir|k|4240'&&!__W.writes.some(w=>/^ing_/.test(w.t)&&w.op==='delete'),JSON.stringify({r1,r2,n:lr.data.length}));
+    page='ingops';ING_V.ops='base';render();__check('ING9: la base general dibuja lo que hay en las tablas (un subproceso de Confección)',/Base general de operaciones/.test(document.getElementById('p-ingops').innerHTML)&&[...document.querySelectorAll('#p-ingops table.ing-arbol tr')].some(tr=>/Confecci/.test(tr.textContent)&&/\b1\b/.test(tr.children[1].textContent)));ING_V.ops='hoja';
+    const resp=await respaldoConIng();
+    __check('ING9: el respaldo lleva las tres tablas de Ingeniería (la de referencias, leída del servidor)',Array.isArray(resp.ing_subprocesos)&&Array.isArray(resp.ing_operaciones)&&Array.isArray(resp.ing_referencias)&&resp.ing_referencias.length===2);
+    const rr=await restaurarIng({ing_referencias:[{id:'ir|k|4240',cab:{estado:'confirmada'}}]});const lr2=await leerIngReferencias();
+    __check('ING9: Restaurar solo agrega o actualiza: la del archivo cambia y la que el archivo no trae se queda',!rr.error&&lr2.data.length===2&&lr2.data.find(x=>x.id==='ir|k|4240').cab.estado==='confirmada');
+    __W.faltaTabla=TABLAS_ING.slice();const e1=await leerIngAlEntrar();const lr3=await leerIngReferencias(['x']);const rs=await ingSubir('ing_operaciones',[{id:'iop|X',data:{}}]);
+    page='ingref';render();const hRef=document.getElementById('p-ingref').innerHTML;
+    __check('ING9: si las tablas no existen (falta correr el SQL) nada revienta: estado «falta», listas vacías, subir dice que falta y la pantalla lo dice',e1==='falta'&&S.ing_subprocesos.length===0&&lr3.falta&&!rs.ok&&rs.falta&&hRef.includes(ING_MSG_FALTA),JSON.stringify({e1,lr3:lr3.falta,rs}));
+    __check('ING9: «la tabla no existe» se distingue de un permiso negado',esFaltaTabla({code:'PGRST205',message:'x'},'ing_x')&&esFaltaTabla({message:'relation "public.ing_x" does not exist'},'ing_x')&&!esFaltaTabla({message:'permission denied for table ing_x'},'ing_x')&&!esFaltaTabla({message:'new row violates row-level security policy for table "ing_x"'},'ing_x'));
+    __W.faltaTabla=bakW;sb.__DB.ing_subprocesos=[];sb.__DB.ing_referencias=[];await leerIngAlEntrar();page='ordenes';render()}
+   /* ING10 · el perfil Ingeniería no toca órdenes: sus cambios de tiempos van al catálogo y a las órdenes los aplica planificación */
+   {PERFIL={id:'u-ing',rol:'ingenieria',nombre:'Ing',modo:'editar'};const foto=JSON.stringify(S.ordenes.filter(abiertaDe).map(o=>[o.id,(o.ruta||[]).map(p=>p.t),(o.rutaCompleta||[]).map(p=>p.t)]));const n=propagarTiempos('prueba ING10');
+    __check('ING10: propagarTiempos desde el perfil Ingeniería no cambia ninguna orden (no las guardaría)',n===0&&JSON.stringify(S.ordenes.filter(abiertaDe).map(o=>[o.id,(o.ruta||[]).map(p=>p.t),(o.rutaCompleta||[]).map(p=>p.t)]))===foto);
+    PERFIL=adminP0();page='ingtipos';render();__check('ING10: Administración no ve esa nota (sus cambios sí se aplican al momento)',!document.querySelector('#p-ingtipos .ing-nota-ord'))}
+   /* ING11 · Usuarios: el permiso y el perfil se ven y se editan */
+   {PERFIL=adminP0();page='usuarios';render();await __p(30);const hu=document.getElementById('p-usuarios').innerHTML;
+    __check('ING11: Configuración → Usuarios muestra el permiso «Ingeniería» en cada perfil y el perfil «Ingeniería» (editable como cualquiera)',hu.includes("togPermDef('planificacion','ingenieria'")&&hu.includes('title="id: ingenieria"')&&hu.includes("togPaginaDef('ingenieria','ingops'"));page='ordenes';render()}
+   }finally{window.alert=a0;window.confirm=c0;PERFIL=adminP0();aplicarNavPerfil()}
+   /* ING12 · la HUELLA: nada de esto cambió un minuto del programa */
+   {page='ordenes';render();const h1=huella();const dif=Object.keys(h0).filter(k=>k!=='n'&&h0[k]!==h1[k]);
+    __check('ING12: HUELLA idéntica antes y después de todo lo de Ingeniería: fechas por paso y P.pro del programa, nivelación, cargaUnica, rutas y tiempos p.t de todas las órdenes',!dif.length&&h0.n.prog>0&&h0.n.ordenes>100,JSON.stringify({dif,n:h0.n}))}
+   __check('ING: sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes)));PERFIL=bakP;page='ordenes';render()}
   /* 26-sep (usuaria: «la parte de la liberación la puedes mejorar, está igual de confusa»): una base partida en tres pestañas */
   {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;window.alert=()=>{};window.confirm=()=>true;const bakP=PERFIL;PERFIL=adminP0();
    const bak={ym:LIB.ym,vista:LIB.vista,freno:LIB.freno,mas:LIB.mas};GRP={};LIB.sel=new Set();LIB.q='';LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.hija=null;LIB.tela=null;LIB.mes=null;LIB.fases=null;LIB.freno=null;LIB.vista=null;LIB.mas=false;page='liberacion';LIB.et='tela';
@@ -9861,7 +9990,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    oc.ruta=[{centro:'corte',t:0.5},{centro:'modulos',t:5},{centro:'empaque',t:0.3}];oc.rutaCompleta=oc.ruta.map(p=>Object.assign({},p));oc.rutaConf={estado:'confirmada',origen:'persona',u:'U',ts:'2026-09-29T10:00:00Z'};delete oc.rutaEditada;S.ordenes.push(oc);
    delete S.params.correccionPasos01b;sembrarCorreccionPasosConfirmadas01b();
    __check("PB2: a la ruta CONFIRMADA de una Polo Basica 7907 se le agrega Bordado (sigue confirmada; sin puntadas queda sin tiempo, con aviso)",pasosProCompleta(oc).includes('bordado')&&rutaConfirmada(oc)&&!!S.params.correccionPasos01b&&S.params.correccionPasos01b.ordenes>=1,JSON.stringify(pasosProCompleta(oc)));
-   page='config';CONF.tab='ordenes2';render();__check("PB3: la tabla muestra la columna Referencia",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-config').innerHTML)&&/toda la categoría/.test(document.getElementById('p-config').innerHTML));
+   page='ingtipos';render();__check("PB3: la tabla muestra la columna Referencia (Ingeniería → Tipos de producto)",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-ingtipos').innerHTML)&&/toda la categoría/.test(document.getElementById('p-ingtipos').innerHTML));
    S.ordenes=S.ordenes.filter(o=>o!==oc);S.categorias=S.categorias.filter(k=>!nk.includes(k));
    [['pasosCategoria',bakT],['pasosPolo01',bakF],['correccionPasos01b',bakC]].forEach(([k,v])=>{const x=JSON.parse(v);if(x==null&&k==='pasosCategoria')delete S.params[k];else S.params[k]=x||S.params[k]});
    PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -9919,7 +10048,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("LV3: queda en auditoría y bitácora, y no se quitó ningún paso",auditoriaTodo().some(x=>x.oid===oC.id&&x.tipo==='ruta'&&/corrección del 01-oct/.test(x.motivo||''))&&S.bitacora.slice(-5).some(b=>/Rutas confirmadas corregidas \(01-oct\)/.test(b.t))&&['corte','modulos','empaque'].every(c=>cen(oC).includes(c)));
    const n1=JSON.stringify(oC.rutaCompleta);sembrarCorreccionPasosConfirmadas01();
    __check("LV4: corre una sola vez",JSON.stringify(oC.rutaCompleta)===n1&&!!S.params.correccionPasos01);
-   page='config';CONF.tab='ordenes2';render();__check("LV5: la tabla está en Configuración → Órdenes, fases y archivos",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-config').innerHTML));
+   page='ingtipos';render();__check("LV5: la tabla está en Ingeniería → Tipos de producto (05-oct; antes en Configuración → Órdenes, fases y archivos)",/Pasos que lleva siempre una categoría/.test(document.getElementById('p-ingtipos').innerHTML));
    S.ordenes=S.ordenes.filter(o=>o!==oC&&o!==oS);S.categorias=S.categorias.filter(k=>!nk.includes(k));S.params.correccionPasos01=JSON.parse(bakF)||S.params.correccionPasos01;S.params.reglasEtiqueta=JSON.parse(bakE);if(S.params.reglasEtiqueta==null)delete S.params.reglasEtiqueta;
    PERFIL=bakP;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("LV sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
@@ -9936,7 +10065,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const n1=reglasEtiqueta().length;sembrarEtiquetaRefs30();
    __check("ET5: la siembra corre una sola vez y queda en la bitácora",reglasEtiqueta().length===n1&&S.bitacora.slice(-30).some(b=>/Etiqueta estampada \(usuaria 30-sep\)/.test(b.t)));
    __check("ET7: la etiqueta estampada va en el tramo paralelo de Confección (antes o después, ninguno espera al otro)",mismoTramoParalelo('etiquetas','modulos')&&(()=>{const bk=JSON.stringify(S.params.tramosParalelos),bf=JSON.stringify(S.params.etiqTramo30||null);S.params.tramosParalelos.forEach(t=>t.cens=(t.cens||[]).filter(c=>c!=='etiquetas'));delete S.params.etiqTramo30;sembrarEtiquetasEnTramo30();const ok=mismoTramoParalelo('etiquetas','modulos')&&S.bitacora.slice(-3).some(x=>/se agrega Etiquetas/.test(x.t));S.params.tramosParalelos=JSON.parse(bk);S.params.etiqTramo30=JSON.parse(bf);return ok})());   /* una instalación que ya tenía la tabla (sin Etiquetas) la recibe una vez, con bitácora */
-   page='operaciones';render();__check("ET6: la tabla muestra la columna Referencia y el botón + referencia",/Referencia/.test(document.getElementById('p-operaciones').innerHTML)&&/addReglaEtiqueta\(true\)/.test(document.getElementById('p-operaciones').innerHTML));
+   page='ingtipos';render();__check("ET6: la tabla muestra la columna Referencia y el botón + referencia (Ingeniería → Tipos de producto)",/Referencia/.test(document.getElementById('p-ingtipos').innerHTML)&&/addReglaEtiqueta\(true\)/.test(document.getElementById('p-ingtipos').innerHTML));
    S.params.reglasEtiqueta=JSON.parse(bakR);if(S.params.reglasEtiqueta==null)delete S.params.reglasEtiqueta;const f=JSON.parse(bakF);if(f)S.params.etiqRefs30=f;else delete S.params.etiqRefs30;
    S.categorias=S.categorias.filter(k=>!nk.includes(k));PERFIL=bakP;page='ordenes';render();
    __check("ET sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
@@ -9978,9 +10107,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    TXLS=p;const n=aplicarTiemposXLSX();
    __check("TX3: aplicar pone los tiempos (propuestas «por confirmar», los de ella confirmados) y el minuto del centro para «(todos los tipos)»",n===3&&k.samManda.modulos.min===4.9&&k.samManda.modulos.pendiente===true&&k2.samManda.corte.min===0.8&&k2.samManda.corte.pendiente===false&&k2.samManda.empaque.min===0.55&&+CE('estampado').minEstandar===1.2,JSON.stringify({n,k:k.samManda,k2:k2.samManda,est:CE('estampado').minEstandar}));
    __check("TX4: queda en la bitácora y en el registro de cargas",S.bitacora.slice(-4).some(b=>/Tiempos cargados desde Excel \(prueba\.xlsx\)/.test(b.t))&&(S.cargas||[]).slice(-1)[0].tipo==='tiempos');
-   page='operaciones';render();__check("TX5: el botón «Cargar tiempos desde Excel» está en Operaciones → Tiempos que mandan",/mCargarTiemposXLSX\(\)/.test(document.getElementById('p-operaciones').innerHTML));
+   page='ingtipos';render();__check("TX5: el botón «Cargar tiempos desde Excel» está en Ingeniería → Tipos de producto → Tiempos que mandan",/mCargarTiemposXLSX\(\)/.test(document.getElementById('p-ingtipos').innerHTML));
    PERFIL={id:'u-c',rol:'consulta',nombre:'C',modo:'ver'};TXLS=planTiemposXLSX(rows,'x.xlsx');const a0=window.alert;let al='';window.alert=m=>al=String(m);const n2=aplicarTiemposXLSX();window.alert=a0;
-   __check("TX6: un perfil que no edita tiempos no puede aplicar",n2===0&&/no edita/.test(al),al);
+   __check("TX6: un perfil que no edita tiempos no puede aplicar",n2===0&&/no edita|permiso «Ingeniería»/.test(al),al);
    PERFIL=adminP0();const r1=JSON.parse(bak1),r2=JSON.parse(bak2);if(r1)k.samManda=r1;else delete k.samManda;if(r2)k2.samManda=r2;else delete k2.samManda;{const b=JSON.parse(bakCe);if(b.m!=null)ce.minEstandar=b.m;else delete ce.minEstandar;if(b.x)ce.minEstandarMeta=b.x;else delete ce.minEstandarMeta}propagarTiempos('restaurar prueba TX');
    window.confirm=c0;PERFIL=bakP;TXLS=null;page='ordenes';render();__check("TX sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 26-sep: los parámetros se guardan clave por clave (una pestaña vieja ya no borra lo que guardó otra sesión) */

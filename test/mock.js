@@ -7,12 +7,12 @@ window.print=()=>{__R.log.push('print bloqueado en '+(typeof page!=='undefined'?
 window.alert=m=>{__R.alerts.push({page:(typeof page!=='undefined'?page:''),msg:String(m)})};window.confirm=()=>true;window.prompt=()=>'';
 const DB={perfiles:[{id:'u1',email:'prueba@tempo.local',rol:'admin',nombre:'Usuario de prueba',area:null}]};
 const tabla=t=>DB[t]=DB[t]||[];
-window.__W={writes:[],deny:null,silencio:null,seq:0};window.__RPC={falta:false,error:null,ultimo:null,ultimoPri:null,n:0};window.__AUTH={reset:null,updated:null,cb:null,err:null}; // registro de escrituras y rechazo simulado de la base (RLS)
+window.__W={writes:[],deny:null,silencio:null,seq:0,faltaTabla:null};   /* faltaTabla (05-oct): tablas que «no existen» todavía (ing_* antes de correr SUPABASE_INGENIERIA.sql) */window.__RPC={falta:false,error:null,ultimo:null,ultimoPri:null,n:0};window.__AUTH={reset:null,updated:null,cb:null,err:null}; // registro de escrituras y rechazo simulado de la base (RLS)
 function builder(t){const st={t,op:'select',filters:[],single:false,payload:null,ids:null};
   const b={select(){return b},order(k,o){st.order=String(k||"");st.desc=!!(o&&o.ascending===false);return b},range(a,c){st.range=[a,c];return b},limit(n){st.limit=n;return b},eq(k,v){st.filters.push([k,v]);return b},single(){st.single=true;return b},
     upsert(rows){st.op='upsert';st.payload=rows;return b},delete(){st.op='delete';return b},in(k,ids){st.ids=ids;return b},update(obj){st.op='update';st.payload=obj;return b},
-    then(res,rej){let rows=tabla(t);try{
-      if(st.op==='select'){let out=rows.filter(r=>st.filters.every(([k,v])=>r[k]===v));if(st.order)out=out.slice().sort((x,y)=>(String(x[st.order]||"")<String(y[st.order]||"")?-1:1)*(st.desc?-1:1));if(st.single){return res(out.length?{data:out[0],error:null}:{data:null,error:{message:'no rows'}})}
+    then(res,rej){if(__W.faltaTabla&&__W.faltaTabla.includes(t))return res({data:null,error:{code:'PGRST205',message:"Could not find the table 'public."+t+"' in the schema cache"}});let rows=tabla(t);try{
+      if(st.op==='select'){let out=rows.filter(r=>st.filters.every(([k,v])=>r[k]===v));if(st.ids&&/^ing_/.test(t))out=out.filter(r=>st.ids.includes(r.id));   /* .in('id',…) en las tablas de Ingeniería (las demás, como siempre) */if(st.order)out=out.slice().sort((x,y)=>(String(x[st.order]||"")<String(y[st.order]||"")?-1:1)*(st.desc?-1:1));if(st.single){return res(out.length?{data:out[0],error:null}:{data:null,error:{message:'no rows'}})}
         /* como PostgREST: como máximo 1000 filas por consulta (o el range/limit pedido) */
         if(st.range)out=out.slice(st.range[0],st.range[1]+1);else if(st.limit!=null)out=out.slice(0,st.limit);else out=out.slice(0,1000);
         return res({data:JSON.parse(JSON.stringify(out)),error:null})}
