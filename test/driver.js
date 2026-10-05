@@ -884,8 +884,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    resolverDecisionCap(d.id);__check("capacidad: dar por resuelta guarda quién y cuándo",d.resuelto&&d.resueltoPor&&d.resueltoTs);
    {CAPD.sel=null;render();const h=html();
     __check('CAP5: una decisión dada por resuelta no cuenta como «sin decisión», y la fila dice que sigue sin alcanzar',/resuelta · sigue sin alcanzar/.test(h)&&(()=>{const esp=Object.values(matrizCapacidad().celdas).filter(z=>estadoCel(z)==='rojo'&&!(S.params.capDecisiones||[]).some(dd=>dd.c===z.c&&dd.m===z.m)).length;return h.includes('<div class="v">'+esp+'</div><div class="k">Sin decisión')})(),h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)&&h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)[0]);
-    {const kw=document.querySelector('#p-capacidad .kpis:not(.tarj-row)>.kpi.warn');const sib=kw&&[...kw.parentElement.children].find(z=>z!==kw&&!z.classList.contains('warn')&&!z.classList.contains('bad'));
-     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto y fondo que sus vecinas, sin margen debajo (el aviso es el número en ámbar y una franja arriba)",!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor),kw?kw.getBoundingClientRect().height+' / '+(sib?sib.getBoundingClientRect().height:'—'):'sin tarjeta de aviso')}
+    {const medirKW=()=>{const kw=document.querySelector('#p-capacidad .kpis:not(.tarj-row)>.kpi.warn');const sib=kw&&[...kw.parentElement.children].find(z=>z!==kw&&!z.classList.contains('warn')&&!z.classList.contains('bad'));
+      return {ok:!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&(aspectoVisual()==='tablero'?getComputedStyle(kw).backgroundColor!==getComputedStyle(sib).backgroundColor:getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor)),
+       det:aspectoVisual()+': '+(kw?kw.getBoundingClientRect().height+' / '+(sib?sib.getBoundingClientRect().height:'—')+' · '+getComputedStyle(kw).backgroundColor+' vs '+(sib?getComputedStyle(sib).backgroundColor:'—'):'sin tarjeta de aviso')}};
+     /* 05-oct (cierre del Tablero): se mide en el aspecto que sale por defecto (Tablero) Y en «Como Odoo»: así la rama de Odoo no queda sin correr */
+     const rT=medirKW();const bakTe=S.params.tema;S.params.tema='odoo';render();const rO=medirKW();if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();
+     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto que sus vecinas, sin margen debajo; el fondo es el de sus vecinas (aviso = número en ámbar y franja) salvo en el aspecto Tablero, donde se tiñe de ámbar suave (decisión de la usuaria del 04-oct); se mide en el Tablero y en «Como Odoo»",rT.ok&&rO.ok,rT.det+' | '+rO.det)}
      {const td=document.querySelector('#p-capacidad table.ajustada');__check("UX-B0a_sistemico_disposicion: «Dónde no alcanza» es una tabla ajustada a su contenido (el dato cerca de su nombre), no estirada a todo el ancho",!/Dónde no alcanza · qué hay que decidir/.test(html())||(!!td&&getComputedStyle(td).width!=='100%'))}
     CAPD.sel=x.c+'|'+x.m;render();const h2=html();const iDet=h2.indexOf('id="cap-detalle"'),iMat=h2.indexOf('Uso de capacidad por centro y mes');
     __check('CAP6: el detalle de la celda elegida sale ARRIBA (junto a «qué hay que decidir», antes de la tabla) y tiene «cerrar»',iDet>0&&iDet<iMat&&/CAPD.sel=null;render\(\)/.test(h2));
@@ -2232,10 +2236,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B0b_sistemico_contenido: DISEÑO — una fecha en pantalla es «vie, 02 oct» (el año solo si no es el año en curso) y la fecha con hora va en 24 h y sin segundos",(()=>{const y=+hoy().slice(0,4);const otro=(y+1)+'-01-22',este=y+'-03-04';const f1=fmtDia(otro),f2=fmtDia(este);const fh=fechaHoraLocal(tsDeLocal(y+'-10-02','16:54:33'));const fe=fmtFecha(este);
       return f1.endsWith(' '+(y+1))&&!/[0-9]{4}/.test(f2)&&/16:54/.test(fh)&&!/:33|p\. m\.|a\. m\./.test(fh)&&!new RegExp(String(y)).test(fh)&&/class="fecha"/.test(fe)&&fe.includes('title="'+este+'"')&&fmtFecha('')==='—'&&mesCortoTxt(y+'-06')===('jun '+y)&&mesesCortoTxt([y+'-06',y+'-07',y+'-08'])===('jun – ago '+y)})(),fmtDia((+hoy().slice(0,4)+1)+'-01-22')+' · '+fechaHoraLocal(Date.now()));
     __check("UX-V4: la fecha con hora sin día de la semana se escribe como fmtDia («02 oct, 20:08», no «02-oct»)",(()=>{const y=+hoy().slice(0,4);const s=fechaHoraLocal(new Date(y,9,2,20,8).toISOString(),false);return /^02 oct/.test(s)&&!/[0-9]-[a-z]/i.test(s)})(),fechaHoraLocal(Date.now(),false))}
-   {const malos=[];if(window.innerWidth>=1000)['capacidad','tintoreria','entregas','gerencia'].forEach(p=>{page=p;try{render()}catch(e){return}const el=document.getElementById('p-'+p);if(!el)return;
+   {const malos=[];const bakTe=S.params.tema;if(window.innerWidth>=1000)[undefined,'odoo'].forEach(te=>{if(te===undefined)delete S.params.tema;else S.params.tema=te;['capacidad','tintoreria','entregas','gerencia'].forEach(p=>{page=p;try{render()}catch(e){return}const el=document.getElementById('p-'+p);if(!el)return;
       el.querySelectorAll('.kpis:not(.tarj-row)').forEach(g=>{const ks=[...g.children].filter(x=>x.classList.contains('kpi')&&x.offsetParent!==null);if(ks.length<2)return;const r=ks.map(x=>x.getBoundingClientRect());if(!r.every(z=>Math.abs(z.top-r[0].top)<=1))return;
-        if(!r.every(z=>Math.abs(z.height-r[0].height)<=1))malos.push(p+': '+r.map(z=>Math.round(z.height)).join('/'))})});
-    __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja)",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
+        if(!r.every(z=>Math.abs(z.height-r[0].height)<=1))malos.push((te||'tablero')+' · '+p+': '+r.map(z=>Math.round(z.height)).join('/'))})})});if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;   /* 05-oct: también en «Como Odoo» */
+    __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja), en el Tablero y en «Como Odoo»",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* ZH · HORA DE ECUADOR (04-oct-2026, decisión de la usuaria): hoy() y el día de cada marca de tiempo salen de la zona de Configuración
@@ -2334,7 +2338,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("UX-B7: al abrir un grupo hasta sus órdenes vuelven las 12 columnas",!h.includes('class="wip-plegado"')&&h.includes('<th>OP · fase</th>'));
    __check("REP: la base se puede cambiar a lanzadas o liberadas y el número siempre dice su base",(()=>{WIP.base='lanzadas';render();const h3=document.getElementById('p-wip').innerHTML;const ok=/lanzadas<\/span>/.test(h3)&&h3.includes('$ ');WIP.base='abiertas';return ok})());
    __check("REP: la barra de reportes aparece en las pantallas de Reportería",(()=>{render();return document.getElementById('p-wip').innerHTML.includes('Reportería:')})()&&(()=>{page='avancearea';render();return document.getElementById('p-avancearea').innerHTML.includes('Reportería:')})());GRP={};
-   __check("UX-B0a_sistemico_disposicion: la barra de Reportería son pestañas en una línea dentro de la franja del título (no un renglón de chips de 420 px delante de la cabecera), con la pantalla actual marcada",(()=>{const bar=document.querySelector('#p-avancearea .pagehead .rep-barra.o-notebook');return !!bar&&!!bar.querySelector('a.on')&&/Avance por área/.test(bar.querySelector('a.on').textContent)&&!document.querySelector('#p-avancearea > .chips')})());
+   {const medirRB=()=>{const bar=document.querySelector('#p-avancearea .pagehead .rep-barra.o-notebook');return !!bar&&!!bar.querySelector('a.on')&&/Avance por área/.test(bar.querySelector('a.on').textContent)&&!document.querySelector('#p-avancearea > .chips')};
+    const rT=medirRB();const bakTe=S.params.tema;S.params.tema='odoo';render();const rO=medirRB();if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();   /* 05-oct: en el Tablero y en «Como Odoo» */
+    __check("UX-B0a_sistemico_disposicion: la barra de Reportería son pestañas en una línea dentro de la franja del título (no un renglón de chips de 420 px delante de la cabecera), con la pantalla actual marcada; en el Tablero y en «Como Odoo»",rT&&rO,'tablero '+rT+' · odoo '+rO)}
    const o=S.ordenes.find(abierta);if(o){mDetalleOrden(o.id);const m=document.body.innerHTML;__check("REP: el detalle de la orden trae ruta/pasos, dónde está, qué le falta, historial de fases y foto",m.includes('Historial de fases')&&m.includes('Qué le falta')&&m.includes('<th>Paso</th>')&&m.includes(esc(o.op)));try{cerrar()}catch(e){}}
    const dC=perfilesDef().find(x=>x.id==='corte'),dT=perfilesDef().find(x=>x.id==='tablet');__check("REP: los supervisores de centro ven Reportería (consulta) y la tablet no",!!dC&&['wip','avancearea'].every(p=>dC.paginas.includes(p))&&!dC.paginas.includes('vistaordenes')&&!!dT&&dT.paginas.length===1&&dT.paginas[0]==='tablet'&&!!S.params.migReporteria&&!!S.params.migReporteria2);
    __check("REP: supervisor de centro no tiene permiso de editar en esos reportes (solo consulta)",!(dC.permisos.includes('programa')||dC.permisos.includes('ordenes')||dC.permisos.includes('*')));
@@ -8164,7 +8170,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* OD · aspecto Odoo (usuaria, 24-sep: «como están acostumbrados a Odoo»): por defecto, con los menús en la barra de arriba; el clásico se elige en Configuración */
    {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;delete S.params.tema;page='ordenes';render();
     const nav=document.getElementById('nav'),hdr=document.querySelector('header');
-    __check('OD1: por defecto se ve como Odoo y los menús van dentro de la barra de arriba',document.documentElement.dataset.tema==='odoo'&&nav.parentElement===hdr&&temaVisual()==='odoo');
+    __check('OD1: por defecto: Tablero encima de Odoo (data-tema=odoo + data-estilo=tablero) y los menús van dentro de la barra de arriba',document.documentElement.dataset.tema==='odoo'&&document.documentElement.dataset.estilo==='tablero'&&aspectoVisual()==='tablero'&&nav.parentElement===hdr&&temaVisual()==='odoo');
     const cf=window.confirm;window.confirm=()=>true;const nB=S.bitacora.length;setTema('clasico');
     __check('OD2: en Configuración se vuelve al aspecto clásico (queda en la bitácora) y los menús regresan a su barra',document.documentElement.dataset.tema==='clasico'&&nav.parentElement!==hdr&&S.bitacora.length>nB&&/Aspecto de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''));
     setTema('odoo');window.confirm=cf;
@@ -9580,6 +9586,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    cand.forEach(o=>{const tr=tramosDe(o.id);for(let i=tr.length-1;i>=0;i--)if(!tr[i].fin)tr.splice(i,1)});OTR={area:'general',estado:'proceso',q:'',cen:null,rec:null};page='ordenes';render()}
   /* 25-sep · Reportería → Órdenes de producción (consulta): todas las órdenes, con o sin ruta lista, solo de lectura */
   {PERFIL=adminP0();const cf=window.confirm;window.confirm=()=>true;
+   if(document.fonts&&document.fonts.ready)await Promise.race([document.fonts.ready,__p(4000)]);   /* 05-oct: el ancho de la tabla se mide con la letra ya cargada (con Inter la tabla es ~18 px más ancha) */
    ORDC={estado:'abiertas',ruta:'todas',q:'',fases:null};page='ordconsulta';render();const el=document.getElementById('p-ordconsulta');
    __check('OC1: «Órdenes de producción» está en Reportería (menú, registro de reportes, ícono y catálogo de páginas de perfiles)',!!document.querySelector('nav .gbody[data-g="rep"] a[data-p="ordconsulta"]')&&REPORTES.some(r=>r.p==='ordconsulta')&&!!ICO_NAV.ordconsulta&&PAGINAS_DEF.some(p=>p[0]==='ordconsulta'));
    const abiertasC=S.ordenes.filter(o=>estadoOrdC(o)==='abiertas');const lista=abiertasC.find(o=>rutaLista(o));
@@ -9696,8 +9703,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("LBN2: la barra dice el % liberado en prendas (liberado ÷ liberado + pendiente)",h.includes(pct+' %</b> liberado · '+num(pzL)+' de '+num(tot)+' prendas'),pct+' % · '+pzL+' de '+tot)}
    __check("LBN3: sin elegir, se abre «Listas para liberar» (hay listas) y la lista está a la vista",/data-vista="listas"/.test(h)&&h.includes('id="lib-lista"')&&h.includes(esc(oL.op)));
    __check("LBN3: en Listas están los botones de liberar (liberar las marcadas y todas las listas) y la casilla del encabezado que marca todas",h.includes('Liberar las marcadas (')&&h.includes('Liberar todas las listas ('+p.listas.length+')')&&/marcarTodasLib\(/.test((document.querySelector('#lib-lista thead th')||{}).innerHTML||''));
-   {const lst=document.getElementById('lib-lista');const sl=lst?[...lst.querySelectorAll('td select.sel-falta')].find(s=>/setFaltaTela\(/.test(s.getAttribute('onchange')||'')):null;const bt=[...document.querySelectorAll('#p-liberacion button')].find(b=>/^Liberar las marcadas \(0\)/.test(b.textContent.trim()));
-    __check("UX-B0a_sistemico_disposicion: en la lista cada tela va en UNA línea con su desplegable («Fleece · 91 kg [tintura ▾]», sin «(propuesta)» suelto), la lista baja hasta el final de la pantalla (sin la caja de 520 px) y «Liberar las marcadas (0)» se ve apagado y dice por qué",!!lst&&lst.classList.contains('lista')&&!lst.style.maxHeight&&(!sl||getComputedStyle(sl.closest('.tl-l')).whiteSpace==='nowrap')&&!/\(propuesta\)/.test(lst.innerHTML)&&(!bt||(bt.disabled&&+getComputedStyle(bt).opacity<1&&bt.title==='marca al menos una orden')),sl?getComputedStyle(sl.closest('.tl-l')).whiteSpace:'sin telas en la lista')}
+   {const medirLB=()=>{const lst=document.getElementById('lib-lista');const sl=lst?[...lst.querySelectorAll('td select.sel-falta')].find(s=>/setFaltaTela\(/.test(s.getAttribute('onchange')||'')):null;const bt=[...document.querySelectorAll('#p-liberacion button')].find(b=>/^Liberar las marcadas \(0\)/.test(b.textContent.trim()));
+     return {ok:!!lst&&lst.classList.contains('lista')&&!lst.style.maxHeight&&(!sl||getComputedStyle(sl.closest('.tl-l')).whiteSpace==='nowrap')&&!/\(propuesta\)/.test(lst.innerHTML)&&(!bt||(bt.disabled&&(+getComputedStyle(bt).opacity<1||(()=>{const z=document.createElement('div');z.style.background='var(--tb-grey-soft)';document.body.appendChild(z);const g=getComputedStyle(z).backgroundColor;z.remove();return esTablero()&&getComputedStyle(bt).backgroundColor===g&&getComputedStyle(bt).cursor==='not-allowed'})())&&bt.title==='marca al menos una orden')),det:aspectoVisual()+': '+(sl?getComputedStyle(sl.closest('.tl-l')).whiteSpace:'sin telas en la lista')+(bt?' · botón '+getComputedStyle(bt).opacity+' '+getComputedStyle(bt).backgroundColor:'')}};
+    /* 05-oct (cierre del Tablero): se mide en el aspecto por defecto (Tablero) Y en «Como Odoo», así corre la rama de Odoo (botón transparente) */
+    const rT=medirLB();const bakTe=S.params.tema;S.params.tema='odoo';render();const rO=medirLB();if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();
+    __check("UX-B0a_sistemico_disposicion: en la lista cada tela va en UNA línea con su desplegable («Fleece · 91 kg [tintura ▾]», sin «(propuesta)» suelto), la lista baja hasta el final de la pantalla (sin la caja de 520 px) y «Liberar las marcadas (0)» se ve apagado (transparente; en el Tablero, gris claro) y dice por qué; se mide en el Tablero y en «Como Odoo»",rT.ok&&rO.ok,rT.det+' | '+rO.det)}
    /* UX-B2 (02-oct, captura de la usuaria): la fila de «Listas para liberar» en una o dos líneas; UNA acción principal; la casilla del encabezado */
    {const h0=document.getElementById('p-liberacion').innerHTML;const lst=document.getElementById('lib-lista');const tr=lst?[...lst.querySelectorAll('tbody tr')].find(t=>t.innerHTML.indexOf("togLib('"+oL.id+"'")>=0):null;const tds=tr?[...tr.querySelectorAll(':scope > td')]:[];
     __check("UX-B2: la página textil se llama «Liberación textil» y la tarjeta elegida ya no dice «▾ abajo» (ya se resalta)",/<h2>Liberación textil<\/h2>/.test(h0)&&!/▾ abajo/.test(h0));
@@ -9882,10 +9892,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* 01-oct (usuaria: sol y luna «para los dos modos»): modo claro / oscuro, preferencia de cada persona */
   {const antes=__R.errors.length;page='ordenes';render();const sw=document.getElementById('modo-sw');
    __check("MO1: la cabecera tiene el interruptor sol / luna con dos botones",!!sw&&sw.querySelectorAll('button').length===2);
+   for(const te of [undefined,'odoo']){const bakTe=S.params.tema;if(te===undefined)delete S.params.tema;else S.params.tema=te;render();   /* 05-oct: la barra se mide en el Tablero y en «Como Odoo» */
    {pintarQuien();const q=document.getElementById('quien'),ini=q&&q.querySelector('.q-ini'),ver=document.getElementById('version'),sal=document.getElementById('btn-salir'),st=document.getElementById('saved');const odoo=document.documentElement.dataset.tema==='odoo';
-    __check("UX-B0a_sistemico_disposicion: la barra de arriba no escribe la versión (va al pasar el mouse sobre quien entró y sobre «Salir»); en el aspecto Odoo quien entró es un círculo con sus iniciales; «Guardado» sin la hora pegada (la hora va al pasar el mouse)",!!ini&&/^\S{1,2}$/.test(ini.textContent)&&q.title.includes(APP_BUILD)&&!!sal&&sal.title.includes(APP_BUILD)&&sal.getAttribute('onclick')==='logout()'&&!!ver&&getComputedStyle(ver).display==='none'&&(!odoo||getComputedStyle(ini).display!=='none')&&!!st&&!/^Guardado [0-9]/.test(st.textContent)&&(st.textContent!=='✓ Guardado'||/^Guardado a las [0-9]{1,2}:[0-9]{2}/.test(st.title)),q?q.outerHTML.slice(0,160)+' · '+(st&&st.textContent):'sin #quien')
+    __check("UX-B0a_sistemico_disposicion: la barra de arriba no escribe la versión (va al pasar el mouse sobre quien entró y sobre «Salir»); en el aspecto Odoo quien entró es un círculo con sus iniciales; «Guardado» sin la hora pegada (la hora va al pasar el mouse) · "+(te?'Como Odoo':'Tablero'),!!ini&&/^\S{1,2}$/.test(ini.textContent)&&q.title.includes(APP_BUILD)&&!!sal&&sal.title.includes(APP_BUILD)&&sal.getAttribute('onclick')==='logout()'&&!!ver&&getComputedStyle(ver).display==='none'&&(!odoo||getComputedStyle(ini).display!=='none')&&!!st&&!/^Guardado [0-9]/.test(st.textContent)&&(st.textContent!=='✓ Guardado'||/^Guardado a las [0-9]{1,2}:[0-9]{2}/.test(st.title)),q?q.outerHTML.slice(0,160)+' · '+(st&&st.textContent):'sin #quien')
     const nv=document.querySelector('header nav'),bh=document.getElementById('busg-host');
-    __check("UX-B0a_sistemico_disposicion: en el aspecto Odoo el menú de arriba no se encoge (el buscador es lo único que cede, con un mínimo) y la página nunca es más ancha que la pantalla (medido desde 1.280 px)",(!odoo||(!!nv&&getComputedStyle(nv).flexShrink==='0'&&!!bh&&parseFloat(getComputedStyle(bh).minWidth)>=120))&&(innerWidth<1280||document.documentElement.scrollWidth<=innerWidth+1),innerWidth+' px · scrollWidth '+document.documentElement.scrollWidth)}
+    __check("UX-B0a_sistemico_disposicion: en el aspecto Odoo el menú de arriba no se encoge (el buscador es lo único que cede, con un mínimo) y la página nunca es más ancha que la pantalla (medido desde 1.280 px) · "+(te?'Como Odoo':'Tablero'),(!odoo||(!!nv&&getComputedStyle(nv).flexShrink==='0'&&!!bh&&parseFloat(getComputedStyle(bh).minWidth)>=120))&&(innerWidth<1280||document.documentElement.scrollWidth<=innerWidth+1),innerWidth+' px · scrollWidth '+document.documentElement.scrollWidth)}
+   if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render()}
    setModo('oscuro');const bgO=getComputedStyle(document.body).backgroundColor;const okO=document.documentElement.dataset.modo==='oscuro'&&sw.querySelector('button.on').dataset.m==='oscuro';
    let guardado=null;try{guardado=localStorage.getItem('tempo.modo.'+claveUsr())}catch(e){}
    __check("MO2: modo oscuro: el fondo se oscurece, el botón queda marcado y la preferencia se guarda para esa persona",okO&&(bgO.match(/\d+/g)||[]).slice(0,3).every(x=>+x<60)&&modoVisual()==='oscuro'&&(guardado==='oscuro'||guardado===null),bgO+' guardado:'+guardado);
@@ -10166,6 +10178,209 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     CONF.tab=ctab;
    }finally{S.bitacora=bitBak;repon();window.alert=a0;window.confirm=c0;window.perfilSoloPiso=sp0;PERFIL=bakP||adminP0();page='ordenes';render()}
    __check("MK sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+   /* ASP · aspecto «Tablero» (04-oct-2026, usuaria: «¿puedes cambiar así el tema, manteniendo la barra arriba?», eligió «Solo arriba»): es el aspecto
+      por defecto y va ENCIMA del aspecto Odoo (data-tema="odoo" + data-estilo="tablero"); Odoo y Clásico se ven como antes; las tarjetas de cifras
+      llevan ícono y se tiñen con la clase de estado que ya tenían; en modo oscuro todo se lee (contraste ≥ 4,5) y a 390 px nada se sale de la pantalla.
+      Las pruebas DIBUJAN las pantallas y miden con getComputedStyle. */
+   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema,bakC=S.params.temaColor;const bakM=modoVisual();const cf0=window.confirm;window.confirm=()=>true;
+    const de=document.documentElement;const pg=p=>document.getElementById('p-'+p);const cs=(e,p)=>e?getComputedStyle(e)[p]:'';
+    const ponTema=v=>{if(v===undefined)delete S.params.tema;else S.params.tema=v;render()};
+    const sonda=v=>{const d=document.createElement('div');d.style.background=v;document.body.appendChild(d);const c=getComputedStyle(d).backgroundColor;d.remove();return c};
+    /* las pantallas principales (las de la imagen de la usuaria y las que ella usa a diario) */
+    const PAGS=[['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Planta en vivo',()=>{page='envivo'}],['Órdenes',()=>{page='ordenes';ORDF.tab='ord'}],
+      ['Liberación',()=>{page='liberacion';LIB.et='tela'}],['Planificar el mes · 1',()=>{page='plan';PM.paso=1}],['Planificar el mes · 2',()=>{page='plan';PM.paso=2}],['Avance por área',()=>{page='avancearea'}],
+      ['Mi centro',()=>{page='tablet';TAB.centro='modulos'}],['Resumen del centro',()=>{const c=(S.centros.find(x=>x.id==='corte')||S.centros.find(x=>x.area==='pro')||{}).id;page='centro';CEN.id=c;CEN.solo='';CEN.tab='resumen';CEN.rec=''}]];
+    const dibuja=f=>{f();render();return document.querySelector('.page.on')};
+    try{
+     ponTema(undefined);setModo('claro');page='panorama';render();
+     const hdr=document.querySelector('header'),nav=document.getElementById('nav');
+     __check("ASP1: por defecto el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris claro y la letra es Inter",
+       aspectoVisual()==='tablero'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='tablero'&&nav.parentElement===hdr&&cs(document.body,'backgroundColor')==='rgb(244, 246, 250)'&&/^Inter/.test(cs(document.body,'fontFamily'))&&!document.querySelector('aside,.sidebar'),
+       cs(document.body,'backgroundColor')+' · '+cs(document.body,'fontFamily').slice(0,30));
+     /* tarjetas: ícono en un círculo de color, el «›» en las que se tocan y el fondo teñido según la clase de estado */
+     const tinte={vacia:sonda('var(--tb-grey-soft)'),bad:sonda('var(--tb-red-soft)'),warn:sonda('var(--tb-amber-soft)'),ok:sonda('var(--tb-green-soft)'),'':sonda('var(--paper)')};
+     const icoEsp={'Hoy':6,'Resumen gerencial':5,'Planta en vivo':5,'Liberación':3,'Planificar el mes · 2':5,'Resumen del centro':4};
+     const malT=[],malI=[];let nTarj=0,nTenidas=0;
+     PAGS.forEach(([n,f])=>{const el=dibuja(f);if(!el)return;
+       el.querySelectorAll('.kpis>.kpi').forEach(k=>{if(!k.offsetParent)return;nTarj++;const cl=k.classList.contains('bad')?'bad':k.classList.contains('warn')?'warn':k.classList.contains('ok')?'ok':'';if(cl)nTenidas++;
+         if(cs(k,'backgroundColor')!==(k.classList.contains('vacia')?tinte.vacia:tinte[cl]))malT.push(n+' «'+((k.querySelector('.k')||k).textContent||'').trim().slice(0,30)+'» '+cl+' '+cs(k,'backgroundColor'));
+         if(parseFloat(cs(k,'borderTopLeftRadius'))<10)malT.push(n+': esquina '+cs(k,'borderTopLeftRadius'))});
+       const nIco=el.querySelectorAll('.kpi-ico').length;if(icoEsp[n]!=null&&nIco<icoEsp[n])malI.push(n+': '+nIco+' íconos (se esperaban '+icoEsp[n]+')');
+       el.querySelectorAll('.kpi-ico').forEach(i=>{const r=i.getBoundingClientRect();if(i.offsetParent&&(Math.abs(r.width-r.height)>1||parseFloat(cs(i,'borderTopLeftRadius'))<r.width/2-1))malI.push(n+': ícono que no es un círculo')})});
+     __check("ASP2: en las pantallas principales cada tarjeta de cifras es una tarjeta redondeada con el fondo teñido por la clase de estado que ya tenía (rojo suave = bad, ámbar suave = warn, verde suave = ok, blanca la informativa, gris la de una pestaña vacía de Liberación)",nTarj>20&&nTenidas>0&&!malT.length,nTarj+' tarjetas · '+nTenidas+' teñidas · '+malT.slice(0,4).join(' | '));
+     __check("ASP3: las tarjetas de Hoy, Resumen gerencial, Planta en vivo, Liberación, Planificar el mes y el Resumen del centro llevan su ícono en un círculo (campo ico)",!malI.length,malI.slice(0,4).join(' | '));
+     {const el=dibuja(PAGS[0][1]);const k=el.querySelector('.kpi.tarj.clic');const m=k&&k.querySelector('.kpi-mas');const tv=k&&k.querySelector('.tarj-ver');
+      const h2=el.querySelector('.pagehead h2');
+      __check("ASP4: una tarjeta que se toca lleva el botoncito redondo «›» arriba a la derecha (el «ver lista» queda en el DOM, oculto) y el título de la pantalla es grande y en negrita",!!m&&cs(m,'position')==='absolute'&&parseFloat(cs(m,'borderTopLeftRadius'))>=12&&(!tv||cs(tv,'display')==='none')&&parseFloat(cs(h2,'fontSize'))>=26&&+cs(h2,'fontWeight')>=700,(m?cs(m,'position'):'sin «›»')+' · h2 '+cs(h2,'fontSize')+'/'+cs(h2,'fontWeight'))}
+     /* el selector en Configuración y la bitácora */
+     {const cfgH=(()=>{const ct=CONF.tab;CONF.tab='cal';page='config';render();const h=(pg('config')||{}).innerHTML||'';CONF.tab=ct;return h})();
+      const sel=[...(pg('config')||document).querySelectorAll('select')].find(s=>/setTema\(/.test(s.getAttribute('onchange')||''));
+      __check("ASP5: Configuración general → Calendario y reglas ofrece «Tablero (nuevo)» (por defecto, elegido), «Como Odoo» y «Clásico»",!!sel&&[...sel.options].map(o=>o.value).join(',')==='tablero,odoo,clasico'&&sel.value==='tablero'&&/Tablero \(nuevo\) · por defecto/.test(cfgH),sel?[...sel.options].map(o=>o.value+(o.selected?'*':'')).join(','):'sin selector')}
+     /* Odoo y Clásico: como antes (mismo HTML que antes de pasar por el Tablero, sin ícono ni «›» ni data-estilo, y los estilos de siempre) */
+     const nB=S.bitacora.length;setTema('odoo');
+     const okBit=S.bitacora.length>nB&&/^Aspecto de la pantalla: Tablero \(nuevo\) → Como Odoo/.test(S.bitacora[S.bitacora.length-1].t||'');
+     const htmlOdoo=PAGS.slice(0,2).map(([n,f])=>{const el=dibuja(f);return el.innerHTML});
+     const k0=pg('panorama')&&(()=>{dibuja(PAGS[0][1]);return pg('panorama').querySelector('.kpi.tarj')})();const ph=pg('panorama').querySelector('.pagehead');
+     const diag={radio:k0?cs(k0,'borderTopLeftRadius'):'-',ph:cs(ph,'backgroundColor'),body:cs(document.body,'backgroundColor'),barra:cs(hdr,'height'),ico:!!pg('panorama').querySelector('.kpi-ico,.kpi-mas,.tarj-ver')};
+     const odooOk=!de.hasAttribute('data-estilo')&&de.dataset.tema==='odoo'&&nav.parentElement===hdr&&!pg('panorama').querySelector('.kpi-ico,.kpi-mas,.tarj-ver')&&!!k0&&[...k0.children].map(c=>c.className).join(',')==='v,k'&&cs(k0,'borderTopLeftRadius')==='4px'&&cs(ph,'backgroundColor')==='rgb(255, 255, 255)'&&cs(document.body,'backgroundColor')==='rgb(248, 249, 250)'&&cs(hdr,'height')==='46px';
+     ponTema(undefined);PAGS.slice(0,2).forEach(([n,f])=>dibuja(f));S.params.tema='odoo';
+     const igual=PAGS.slice(0,2).every(([n,f],i)=>dibuja(f).innerHTML===htmlOdoo[i]);
+     __check("ASP6: con «Como Odoo» no queda nada del Tablero (sin data-estilo, sin íconos ni «›», tarjetas de 4 px, cabecera blanca, barra de 46 px) y el HTML de Hoy y del Resumen gerencial dibujado en Odoo es el mismo antes y después de pasar por el Tablero. Compara Odoo consigo mismo en ESTA versión, no contra la anterior al Tablero (c48e200): lo que cambió para los tres aspectos está declarado en CLAUDE.md (párrafo «Tablero · cierre»). El cambio de aspecto queda en la bitácora",odooOk&&igual&&okBit,JSON.stringify({odooOk,igual,okBit,diag}));
+     setTema('clasico');page='panorama';render();const kC=pg('panorama').querySelector('.kpi.tarj');
+     __check("ASP7: con «Clásico» vuelve el aspecto anterior: sin data-tema odoo ni data-estilo, el menú en su propia barra, tarjetas sin ícono",de.dataset.tema==='clasico'&&!de.hasAttribute('data-estilo')&&nav.parentElement!==hdr&&!pg('panorama').querySelector('.kpi-ico,.kpi-mas')&&!!kC&&[...kC.children].map(c=>c.className).join(',')==='v,k',de.dataset.tema+' · '+(kC?[...kC.children].map(c=>c.className).join(','):'-'));
+     ponTema(undefined);
+     /* la paleta de la barra (Configuración) sigue mandando en el Tablero */
+     {const bc=S.params.temaColor;S.params.temaColor='azul';render();const bgA=cs(hdr,'backgroundColor');delete S.params.temaColor;render();const bgM=cs(hdr,'backgroundColor');if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc;render();
+      __check("ASP8: en el Tablero la barra de arriba sigue la paleta de Configuración (azul → azul; por defecto el azul marino oscuro)",bgA==='rgb(21, 101, 192)'&&bgM==='rgb(19, 38, 74)',bgA+' · '+bgM)}
+     /* todo el CSS del Tablero va bajo [data-estilo="tablero"]: así Odoo y Clásico no pueden cambiar */
+     {const st=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');const a=st.indexOf('/* ux:tablero */');const css=a>=0?st.slice(a).replace(/\/\*[\s\S]*?\*\//g,''):'';const sels=[];
+      css.replace(/([^{}]+)\{/g,(m,x)=>{x=x.trim();if(!x.startsWith('@media'))x.split(',').forEach(y=>sels.push(y.trim()));return m});
+      const fuera=sels.filter(x=>x&&!x.includes('[data-estilo="tablero"]'));const aMano=[];css.replace(/url[(][^)]*[)]/g,'').replace(/([a-z-]+)[ ]*:[ ]*([^;{}]+)/g,(m,p,v)=>{if(!p.startsWith('--')&&/#[0-9a-fA-F]{3,8}(?![0-9a-zA-Z])|rgba?[(]/.test(v))aMano.push(p+':'+v.slice(0,30));return m});
+      __check("ASP9: cada regla del aspecto Tablero va bajo [data-estilo=\"tablero\"] y no escribe colores fuera de sus variables de tokens",a>=0&&sels.length>100&&!fuera.length&&!aMano.length,sels.length+' selectores · fuera: '+fuera.slice(0,3).join(' | ')+' · colores a mano: '+aMano.slice(0,3).join(' | '))}
+     /* Mi centro sigue cómodo: los botones grandes no quedan más chicos que en el aspecto Odoo */
+     {const alto=()=>{page='tablet';TAB.centro='modulos';render();const bs=[...pg('tablet').querySelectorAll('button')].filter(x=>x.offsetParent);return bs.length?Math.max(...bs.map(x=>x.getBoundingClientRect().height)):null};
+      const hT=alto();S.params.tema='odoo';const hO=alto();ponTema(undefined);
+      __check("ASP10: Mi centro (tablet) sigue cómodo: sus botones (INICIO, las pestañas) no quedan más bajos que en el aspecto Odoo",hT==null&&hO==null||(hT!=null&&hO!=null&&hT>=hO-0.5),hT+' vs '+hO)}
+     /* modo oscuro: los textos de tarjetas, pastillas y tablas se leen (contraste ≥ 4,5, medido con getComputedStyle) */
+     {const rgba=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+      const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
+      const lum=c=>{const t=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*t(c.r)+0.7152*t(c.g)+0.0722*t(c.b)};
+      const fondo=e=>{const capas=[];let p=e;while(p&&p.nodeType===1){const c=rgba(getComputedStyle(p).backgroundColor);if(c&&c.a>0)capas.push(c);if(c&&c.a>=1)break;p=p.parentElement}
+        let b={r:255,g:255,b:255,a:1};if(!capas.length||capas[capas.length-1].a<1){const hb=rgba(getComputedStyle(document.body).backgroundColor);if(hb&&hb.a>0)b=sobre(hb,b)}for(let i=capas.length-1;i>=0;i--)b=sobre(capas[i],b);return b};
+      const medir=root=>{const malos=[];let n=0;const vistos=new Set();
+        root.querySelectorAll('.kpi, .kpi *, .tag, table th, table td, table td *, .res-card *, .env-c *, .lib-frenos *').forEach(e=>{if(vistos.has(e))return;vistos.add(e);
+          if(e.closest('svg,select,input,textarea,button,.foto-mini,.ayuda-txt,.o-menu,.acc-m'))return;let dd=e.closest('details');while(dd){if(!dd.open&&!e.closest('summary'))return;dd=dd.parentElement&&dd.parentElement.closest('details')}
+          if(![...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))return;if(!e.offsetParent)return;const st=getComputedStyle(e);if(st.visibility==='hidden')return;
+          const f=rgba(st.color);if(!f||f.a===0)return;const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);const r=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);n++;
+          if(r<4.5)malos.push(Math.round(r*100)/100+' «'+(e.textContent||'').trim().slice(0,24)+'» '+st.color+' sobre rgb('+[b.r,b.g,b.b].map(Math.round).join(',')+')')});return {n,malos}};
+      setModo('oscuro');let n=0;const mal=[];
+      PAGS.forEach(([nm,f])=>{const el=dibuja(f);if(!el)return;const r=medir(el);n+=r.n;r.malos.forEach(x=>mal.push(nm+': '+x))});
+      const bgO=cs(document.body,'backgroundColor');setModo('claro');render();
+      __check("ASP11: modo oscuro con el Tablero: los textos de las tarjetas, las pastillas y las tablas de las pantallas principales tienen contraste ≥ 4,5 (medido con getComputedStyle)",n>200&&!mal.length&&(bgO.match(/[0-9]+/g)||[]).slice(0,3).every(x=>+x<40),n+' textos · '+mal.length+' bajo 4,5 · '+mal.slice(0,4).join(' | '))}
+     /* teléfono: a 390 px nada se sale de la pantalla (se dibuja una copia de la página en un marco de 390 px) */
+     {const mal=[];
+      for(const [nm,f] of PAGS){const el=dibuja(f);if(!el)continue;const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+       const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:390px;height:844px;border:0;visibility:hidden';document.body.appendChild(fr);
+       try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(60);const d=fr.contentDocument;const m=d.querySelector('main');
+        if(!m||d.documentElement.scrollWidth>391||m.scrollWidth>m.clientWidth+1)mal.push(nm+': página '+d.documentElement.scrollWidth+' · main '+(m?m.scrollWidth+'/'+m.clientWidth:'-'))}finally{fr.remove()}}
+      __check("ASP12: a 390 px de ancho (teléfono) las pantallas principales no se salen a los lados: tarjetas en columna y tablas con su propio desplazamiento",!mal.length,mal.slice(0,4).join(' | '))}
+     /* PUL · pulido del Tablero (05-oct-2026): lo que encontraron los revisores pantalla por pantalla. Se dibuja una copia de la página en marcos
+        de distinto ancho (como ASP12) y se mide; los colores se comprueban contra las reglas de lectura del 02-oct. */
+     {const marco=async(W,H,fn)=>{const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+        const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:'+W+'px;height:'+(H||900)+'px;border:0;visibility:hidden';document.body.appendChild(fr);
+        try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(80);return fn(fr.contentDocument)}finally{fr.remove()}};
+      const caja=(d,id)=>{const e=d.getElementById(id);return e?e.getBoundingClientRect():null};
+      /* 1 · la barra de arriba entra entera en los portátiles (1.366 y 1.280 px), en 1.024 y en el teléfono; «Salir» siempre a la vista */
+      dibuja(()=>{page='panorama'});const malB=[];
+      /* barrido continuo (05-oct, cierre del Tablero: la verificación encontró la barra rota entre 1.181 y 1.239 px y la lista fija de cinco anchos no lo veía):
+         UN marco que se ensancha de 861 a 1.920 px cada 5 px. Tres pasadas: sin error de guardado, con «No se guardó» y con el texto largo de una carga
+         fallida (#saved.err: la segunda vuelta del cierre encontró que con un error a la vista se cortaba «Salir»); el error tiene que verse ENTERO y dentro
+         de la pantalla. Los contadores del menú llevan 4 cifras como en producción («Órdenes 1157»): van dentro de los menús y no ensanchan la barra */
+      let nW=0;const largoErr='No se guarda: la carga falló en '+nTabla('ordenes')+' · recarga la página';
+      for(const [nmE,txtE,ttlE] of [['sin error','✓ Guardado',''],['«No se guardó»','No se guardó','No se guardó en Órdenes'],['texto largo',largoErr,largoErr]])
+      {const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());['n-ord','n-ban','n-atr'].forEach(i=>{const e=cl.querySelector('#'+i);if(e)e.textContent='1157'});
+       {const sv=cl.querySelector('#saved');if(sv){sv.textContent=txtE;sv.title=ttlE;sv.classList.toggle('err',!!ttlE)}}
+       const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:861px;height:700px;border:0;visibility:hidden';document.body.appendChild(fr);
+       try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;if(d.fonts&&d.fonts.ready)await Promise.race([d.fonts.ready,__p(4000)]);await __p(80);
+        for(let W=861;W<=1920;W+=5){fr.style.width=W+'px';const cw=d.documentElement.clientWidth,sw=d.documentElement.scrollWidth;const s=d.getElementById('btn-salir'),m=d.getElementById('modo-sw');
+         const rs=s?s.getBoundingClientRect():null,rm=m?m.getBoundingClientRect():null;nW++;if(fr.contentWindow.innerWidth!==W){malB.push(W+': el marco no cambió de ancho ('+fr.contentWindow.innerWidth+')');continue}
+         if(sw>W||!rs||rs.right>Math.min(W,cw)+0.5||rs.width<20||!rm||rm.width<50)malB.push(nmE+' '+W+': página '+sw+' · Salir '+(rs?Math.round(rs.right):'-')+' · sol/luna '+(rm?Math.round(rm.width):'-'));
+         if(ttlE){const sv=d.getElementById('saved'),rv=sv.getBoundingClientRect(),hb=d.querySelector('header').getBoundingClientRect();
+          if(!(rv.width>20&&rv.height>10&&rv.left>=-0.5&&rv.right<=Math.min(W,cw)+0.5&&rv.top>=hb.bottom-1&&sv.scrollWidth<=sv.clientWidth+1))malB.push(nmE+' '+W+': el aviso de error no se ve entero ('+Math.round(rv.left)+'–'+Math.round(rv.right)+' · arriba '+Math.round(rv.top)+' / barra '+Math.round(hb.bottom)+' · '+sv.scrollWidth+'/'+sv.clientWidth+')')}}}
+       finally{fr.remove()}}
+      const r390=await marco(390,844,d=>{const s=caja(d,'btn-salir'),b=caja(d,'navBtn'),h=d.querySelector('header').getBoundingClientRect();return {sw:d.documentElement.scrollWidth,mismaFila:!!s&&!!b&&Math.abs(s.top-b.top)<12,alto:Math.round(h.height)}});
+      if(r390.sw>391||!r390.mismaFila||r390.alto>140)malB.push('390: página '+r390.sw+' · Salir en la fila del menú '+r390.mismaFila+' · barra '+r390.alto+' px');
+      __check("PUL1: la barra de arriba del Tablero entra entera en TODO ancho de 861 a 1.920 px (barrido cada 5 px), sin error de guardado y con uno a la vista («No se guardó» y el texto largo de una carga fallida: cuelga debajo de la barra, entero y dentro de la pantalla): la página no se desplaza a los lados, «Salir» queda dentro de la pantalla y el sol/luna sin aplastar; y en el teléfono «Salir» va en la fila del menú",nW>=600&&!malB.length,nW+' anchos · '+malB.slice(0,6).join(' | '));
+      /* 2 · en angosto las tarjetas de cifras van de a dos y no miden 150 px de alto con media tarjeta vacía */
+      {const el=dibuja(()=>{page='envivo'});const r=await marco(390,844,d=>{const ks=[...d.querySelectorAll('.page.on .kpis:not(.tarj-row)>.kpi')].filter(k=>k.offsetParent);const hs=ks.map(k=>Math.round(k.getBoundingClientRect().height));const lefts=new Set(ks.map(k=>Math.round(k.getBoundingClientRect().left)));return {n:ks.length,hs,col:lefts.size}});
+       __check("PUL2: a 390 px las tarjetas de cifras de Planta en vivo van en dos columnas y miden lo que su contenido (antes 150 px fijos de alto, con media tarjeta vacía)",r.n>=2&&r.col>=2&&Math.min(...r.hs)<140,JSON.stringify(r))}
+      /* 3 · íconos en las cifras de Capacidad, Entregas, Tintorería y Ejecución del centro; «Falta configurar» con su clase de dato faltante */
+      {const cuenta=f=>{const el=dibuja(f);return el?el.querySelectorAll('.kpi .kpi-ico').length:0};const nCap=cuenta(()=>{page='capacidad'}),nEnt=cuenta(()=>{page='entregas'}),nTin=cuenta(()=>{page='tintoreria'}),nEje=cuenta(()=>{page='centro';CEN.id='corte';CEN.solo='';CEN.tab='ejec';CEN.rec=''});
+       const fc=dibuja(()=>{page='capacidad'}).querySelector('.kpis .kpi:last-child');const faltaOk=!fc||!/Falta configurar/.test(fc.textContent)||(/^[0]$/.test(fc.querySelector('.v').textContent.trim())?true:fc.classList.contains('falta'));
+       __check("PUL3: las cifras de Capacidad (4), Entregas (5), Tintorería (5) y Ejecución del centro (4) llevan su ícono como Hoy y Planificar el mes; «Falta configurar» lleva la clase de dato faltante",nCap>=4&&nEnt>=5&&nTin>=5&&nEje>=4&&faltaOk,'capacidad '+nCap+' · entregas '+nEnt+' · tintorería '+nTin+' · ejecución '+nEje+' · falta '+faltaOk)}
+      /* 4 · colores según las reglas de lectura (rojo solo lo grave): fecha pasada de un baño, en proceso, sin tela, por debajo del plan, sin liberar, sin capacidad */
+      {const src=[...document.querySelectorAll('script')].map(s=>s.textContent).filter(x=>x.includes('function aplicarTema(')&&!x.includes('__check(')).join('\n');
+       const reglas={fechaPasadaAmbar:!/tag t-alerta">fecha pasada/.test(src),otrProceso:(OTR_ESTADOS.find(e=>e[0]==='proceso')||[])[2]==='t-medio',otrRevisar:(OTR_ESTADOS.find(e=>e[0]==='revisar')||[])[2]==='t-aviso',
+         sinTela:!/tag t-alerta">sin tela<\/span>'\}<\/td>/.test(src),desv:!/tag t-alerta">\$\{num\(f\.desv\)\}/.test(src),sinLiberar:!/tag t-alerta" title="\$\{esc\(faltaLiberar/.test(src),sinCap:!/t-alerta" title="sin recursos activos/.test(src)};
+       const mal=Object.keys(reglas).filter(k=>!reglas[k]);
+       __check("PUL4: rojo solo para lo grave — «fecha pasada» de un baño, «sin liberar», «por debajo del plan» y «Revisar ruta» en ámbar; «En proceso» en azul; «sin tela» y «sin capacidad» como dato que falta",!mal.length,mal.join(', '))}
+      /* 5 · la pantalla de ingreso ya sale con el aspecto que manda (antes de entrar salía con el clásico y botón ilegible en oscuro) */
+      {const pag=await (await fetch(location.href.split('?')[0])).text();const src=[...document.querySelectorAll('script')].map(s=>s.textContent).filter(x=>x.includes('function aplicarTema(')&&!x.includes('__check(')).join('\n');
+       __check("PUL5: la pantalla de ingreso sale con el Tablero: el <html> trae data-tema/estilo/color por defecto e iniciar() aplica el aspecto antes de mostrar el ingreso",/<html lang="es" data-tema="odoo" data-estilo="tablero" data-color="marino">/.test(pag)&&/async function iniciar\(\)\{try\{aplicarTema\(\)\}/.test(src)&&de.dataset.estilo==='tablero')}
+      /* 6 · Planificar el mes, bloque 3: la meta del mes y sus vecinas miden lo mismo (extiende la prueba DISEÑO a .b3-franja) */
+      {const el=dibuja(()=>{page='plan';PM.paso=2});const f=el&&el.querySelector('.b3-franja');const hs=f?[...f.querySelectorAll('.kpi')].filter(k=>k.offsetParent).map(k=>Math.round(k.getBoundingClientRect().height)):[];
+       __check("PUL6: Planificar el mes · bloque 3 — «Meta del mes» y sus vecinas (Liberadas, Por liberar, Total del plan) tienen el mismo alto",!f||(hs.length>=2&&Math.max(...hs)-Math.min(...hs)<=2),hs.join('/'))}
+      /* 7 · Costura: los botoncitos de módulo ya no salen separados por comas */
+      {const el=dibuja(()=>{page='centro';CEN.id='modulos';CEN.solo='';CEN.tab='costura';COS.tab='secuencia'});const h=el?el.innerHTML:'';
+       __check("PUL7: Costura — los botoncitos de módulo van seguidos, sin comas sueltas entre ellos",!/<\/span><\/span>,<span class="chip/.test(h),'')}
+      /* 8 · modo oscuro: las celdas de Capacidad conservan su color (el rojo de «no alcanza» es el aviso principal) */
+      {setModo('oscuro');const el=dibuja(()=>{page='capacidad'});const bg=s=>{const e=el.querySelector(s);return e?getComputedStyle(e).backgroundColor:null};const ok=bg('td.cel.ok'),rojo=bg('td.cel.rojo');setModo('claro');render();
+       __check("PUL8: modo oscuro — en «Uso de capacidad» las celdas «alcanza» y «no alcanza» tienen fondos distintos (antes quedaban del mismo gris)",!ok||!rojo||ok!==rojo,ok+' · '+rojo)}
+      /* CIE · cierre del Tablero (05-oct-2026): lo que dejó la verificación. Se DIBUJA y se mide con getComputedStyle. */
+      {const bakLIB={q:LIB.q,et:LIB.et,vista:LIB.vista};const bakB=BUSQ['LIB.q'];const bakCEN={id:CEN.id,solo:CEN.solo,tab:CEN.tab,rec:CEN.rec,lista:CEN.lista};
+       const rgba=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+       const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
+       const lum=c=>{const t=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*t(c.r)+0.7152*t(c.g)+0.0722*t(c.b)};
+       const fondo=e=>{const capas=[];let p=e;while(p&&p.nodeType===1){const c=rgba(getComputedStyle(p).backgroundColor);if(c&&c.a>0)capas.push(c);if(c&&c.a>=1)break;p=p.parentElement}
+         let b={r:255,g:255,b:255,a:1};if(!capas.length||capas[capas.length-1].a<1){const hb=rgba(getComputedStyle(document.body).backgroundColor);if(hb&&hb.a>0)b=sobre(hb,b)}for(let i=capas.length-1;i>=0;i--)b=sobre(capas[i],b);return b};
+       const contraste=e=>{const f=rgba(getComputedStyle(e).color);const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);return (Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05)};
+       try{
+        /* 1 · Liberación: una pestaña vacía (0 órdenes) va en gris y sin transparencia, y su letra se lee (antes opacidad .6: 2,5 de contraste) */
+        {const res=[];
+         for(const md of ['claro','oscuro']){setModo(md);const el=dibuja(()=>{page='liberacion';LIB.et='corte';LIB.vista='listas';LIB.q='zzqx sin coincidencias';delete BUSQ['LIB.q']});
+          const ks=el?[...el.querySelectorAll('.lib-tarjetas .kpi.tarj.vacia')].filter(k=>k.offsetParent):[];let min=99,op=true;
+          ks.forEach(k=>{if(getComputedStyle(k).opacity!=='1')op=false;k.querySelectorAll('.v,.k,.k b,.k .mut').forEach(e=>{if(![...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))return;min=Math.min(min,contraste(e))})});
+          res.push({md,n:ks.length,op,min:Math.round(min*100)/100,bg:ks[0]?getComputedStyle(ks[0]).backgroundColor:'-',papel:ks[0]?getComputedStyle(ks[0]).backgroundColor===sonda('var(--paper)'):null})}
+         setModo('claro');LIB.q=bakLIB.q;LIB.vista=bakLIB.vista;if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;
+         __check("CIE1: Liberación — la tarjeta de una pestaña vacía (0 órdenes) va en gris (no blanca) y sin transparencia, y su letra se lee: contraste ≥ 3 en claro y en oscuro",res.every(r=>r.n>=1&&r.op&&r.min>=3&&r.papel===false),JSON.stringify(res))}
+        /* 2 · filas de 4, 5 y 6 tarjetas sin una sola en la última fila (Hoy: 6 en una fila o 3 + 3; Resumen gerencial, Entregas y Tintorería: 5);
+           cada pantalla se dibuja y se copia en UN marco que se ensancha de 861 a 1.920 px cada 10 px */
+        {const mal=[];let nW=0;const vistas={};
+         /* filas de prueba con la MISMA función de las pantallas (tarjetasResumenHTML): 3, 11, 12 y 13 tarjetas, así las reglas de 3 y de 11 o más se prueban
+            aunque los datos del simulador tengan otro número de módulos */
+         const prueba=()=>{page='panorama';render();const el=pg('panorama');const box=document.createElement('div');box.className='panel cie2-prueba';
+           box.innerHTML='<div class="body">'+[3,11,12,13].map(n=>tarjetasResumenHTML(Array.from({length:n},(_,i)=>({id:'cie2-'+n+'-'+i,ico:'check',v:num(1000+i),k:'<b>Módulo '+(i+1)+'</b> · '+num(1200+i)+' / 2.400 min'})))).join('')+'</div>';el.appendChild(box)};
+         for(const [nm,f] of [['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Entregas',()=>{page='entregas'}],['Tintorería',()=>{page='tintoreria'}],
+           ['Planificar el mes · paso 2',()=>{page='plan';PM.paso=2}],['Confección → Programación',()=>{page='centro';CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.rec=''}],['Balanceo',()=>{page='balanceo'}],['filas de prueba',null]]){
+          if(f)dibuja(f);else prueba();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());if(!f){const b=document.querySelector('.cie2-prueba');if(b)b.remove()}
+          const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:861px;height:900px;border:0;visibility:hidden';document.body.appendChild(fr);
+          try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;if(d.fonts&&d.fonts.ready)await Promise.race([d.fonts.ready,__p(4000)]);await __p(60);
+           for(let W=861;W<=1920;W+=10){fr.style.width=W+'px';d.querySelectorAll('.page.on .kpis.tarj-row').forEach(g=>{const ks=[...g.children].filter(k=>k.classList.contains('kpi')&&k.offsetParent);if(ks.length<3)return;nW++;vistas[nm]=vistas[nm]||new Set();vistas[nm].add(ks.length);
+             const filas={};ks.forEach(k=>{const t=Math.round(k.getBoundingClientRect().top);filas[t]=(filas[t]||0)+1});const n=Object.keys(filas).map(Number).sort((a,b)=>a-b).map(t=>filas[t]);
+             if(n.length>1&&(n[n.length-1]===1||(ks.length===6&&new Set(n).size>1)||ks.length===3)&&!(ks.length%4===1&&ks.length>=13&&W<960))mal.push(nm+' '+W+': '+n.join('+'));   /* trece (4n + 1) de 861 a 959 px queda 4 + 4 + 4 + 1 a propósito: cinco columnas no caben */
+             const fuera=ks.find(k=>k.scrollWidth>k.clientWidth+2);if(fuera)mal.push(nm+' '+W+': una tarjeta de '+ks.length+' se sale por dentro ('+fuera.scrollWidth+'/'+fuera.clientWidth+')')})}}finally{fr.remove()}}
+         const vt=Object.entries(vistas).map(([k,s])=>k+' '+[...s].sort((a,b)=>a-b).join('/')).join(' · ');const pr=vistas['filas de prueba']||new Set();
+         __check("CIE2: una fila de tarjetas no deja una sola abajo ni se sale por dentro, de 861 a 1.920 px: tres en una fila (Planificar el mes, paso 2: antes 2 + 1 hasta 951 px), cuatro, cinco y seis (Hoy: seis en una fila desde 1.400 px o tres y tres; Resumen gerencial, Entregas, Tintorería) y once o más (los módulos de Confección → Programación y de Balanceo: antes 5 + 5 + 1 entre ~1.130 y 1.380 px; y filas de prueba de 3, 11, 12 y 13 — trece, sin una sola abajo desde 960 px: más angosto cinco columnas no caben)",nW>=600&&!mal.length&&[3,11,12,13].every(n=>pr.has(n)),nW+' medidas · '+vt+' · '+mal.slice(0,6).join(' | '))}
+        /* 3 · el «?» de la cabecera va junto al título en el Tablero (dentro del h2, antes de la línea de contexto); en «Como Odoo» sigue al lado del h2 */
+        {const res={};for(const [nm,f] of [['Hoy',()=>{page='panorama'}],['Planificar el mes',()=>{page='plan';PM.paso=1}]]){const el=dibuja(f);const h2=el&&el.querySelector('.pagehead h2');
+           const ay=h2&&h2.querySelector(':scope>.ayuda-cab');const ctx=h2&&h2.querySelector(':scope>.ctx');const ra=ay&&ay.querySelector('.ayuda')?ay.querySelector('.ayuda').getBoundingClientRect():null,rc=ctx?ctx.getBoundingClientRect():null;
+           res[nm]={dentro:!!ay,antes:!!(ay&&ctx&&(ay.compareDocumentPosition(ctx)&Node.DOCUMENT_POSITION_FOLLOWING)),arriba:!!(ra&&rc&&ra.bottom<=rc.top+2)}}
+         S.params.tema='odoo';const elO=dibuja(()=>{page='panorama'});const h2O=elO&&elO.querySelector('.pagehead h2');const odooAlLado=!!h2O&&!h2O.querySelector('.ayuda-cab')&&!!(h2O.nextElementSibling&&h2O.nextElementSibling.classList.contains('ayuda-cab'));
+         delete S.params.tema;render();
+         __check("CIE3: en el Tablero el «?» de la cabecera va junto al título (dentro del h2, antes de la línea de contexto, en la línea del título) en Hoy y Planificar el mes; en «Como Odoo» sigue al lado del h2, como antes",Object.values(res).every(r=>r.dentro&&r.antes&&r.arriba)&&odooAlLado,JSON.stringify(res)+' · odoo al lado: '+odooAlLado)}
+        /* 4 · Hoy: el panel de la sección «Necesita decisión» se llama igual con tarjetas y sin ellas */
+        /* (se DIBUJA: con los datos del simulador el panel siempre trae tarjetas, así que el vacío se arma llamando a hoyDecisionHTML con un programa sin baños,
+            sin «no llegan» y sin decisiones de capacidad ni faltantes, y se inserta en la página de Hoy debajo de su cinta) */
+        {const el=dibuja(()=>{page='panorama'});const tit=x=>x&&x.firstChild&&x.firstChild.nodeType===3?x.firstChild.textContent.trim():(x?x.textContent.trim():'');
+         const conT=el?[...el.querySelectorAll('.panel>h3')].filter(x=>tit(x)==='Capacidad, programa y tintorería'):[];const cintaReal=el?[...el.querySelectorAll('span')].some(x=>x.textContent.trim()==='Necesita decisión'):false;
+         const bakR=window.revisarProblemasCap,bakF=window.faltantesTin;let hv='';
+         try{window.revisarProblemasCap=()=>[];window.faltantesTin=()=>[];hv=hoyDecisionHTML({banosPend:[],motor:'adelante',ordenes:{}},[],hoy())}finally{window.revisarProblemasCap=bakR;window.faltantesTin=bakF}
+         const box=document.createElement('div');box.className='cie4-prueba';box.innerHTML=seccionHoy('Necesita decisión','',hv);if(el)el.appendChild(box);
+         const h3=box.querySelector('.panel>h3');const cinta=box.querySelector('span');const vacio={h3:h3?tit(h3):null,cinta:cinta?cinta.textContent.trim():null,tarjetas:box.querySelectorAll('.kpi').length,nada:/Nada por decidir hoy/.test(box.textContent),visible:!!(h3&&h3.offsetParent)};box.remove();
+         __check("CIE4: Hoy — la cinta de la sección dice «Necesita decisión» y su panel se llama «Capacidad, programa y tintorería» con tarjetas (la pantalla del simulador) y sin ellas (el panel vacío, dibujado en la página: «Nada por decidir hoy»); antes, vacío, el panel repetía «Necesita decisión»",conT.length===1&&cintaReal&&vacio.h3==='Capacidad, programa y tintorería'&&vacio.cinta==='Necesita decisión'&&vacio.tarjetas===0&&vacio.nada&&vacio.visible,JSON.stringify({conTarjetas:conT.length,cintaReal,vacio}))}
+        /* 5 · lo nuevo de main toma el aspecto del Tablero: Liberación a producción en lote y la pestaña «Por liberar a producción» del Resumen del centro */
+        {const el=dibuja(()=>{page='liberacion';LIB.et='corte';LIB.vista='listas';LIB.q='';delete BUSQ['LIB.q']});
+         /* la barra de «Liberar las marcadas» sale solo con órdenes listas: se dibuja con una lista de ejemplo dentro de la misma página, con la misma función (accionesLibHTML) */
+         const tmp=document.createElement('div');tmp.className='lib-cuerpo-prueba';tmp.innerHTML=accionesLibHTML('corte',{listas:[{id:'__cie5'}]},'listas');if(el)el.appendChild(tmp);const bs=[...tmp.querySelectorAll('button')];
+         const b=bs.find(x=>/liberarMarcadasLib/.test(x.getAttribute('onclick')||'')),g=bs.find(x=>/marcarTodasLib/.test(x.getAttribute('onclick')||''));
+         const bot=x=>!!x&&parseFloat(cs(x,'borderTopLeftRadius'))>=7&&/^Inter/.test(cs(x,'fontFamily'));const okB=bot(b)&&bot(g);const radB=b?cs(b,'borderTopLeftRadius')+' · '+cs(b,'fontFamily').slice(0,12):'-';tmp.remove();   /* el radio se lee ANTES de quitar la barra de prueba (después, getComputedStyle da vacío) */const icoL=el?el.querySelectorAll('.lib-tarjetas .kpi-ico').length:0;
+         const ec=dibuja(()=>{page='centro';CEN.id='corte';CEN.solo='';CEN.tab='resumen';CEN.rec='';CEN.lista='porLib'});const tabs=ec?[...ec.querySelectorAll('.res-tabs .res-tab')]:[];
+         const pl=tabs.find(t=>/Por liberar a producción/.test(t.textContent)),otra=tabs.find(t=>t!==pl);const igual=!!pl&&!!otra&&['fontFamily','fontSize','borderTopLeftRadius','paddingTop','paddingLeft'].every(p=>cs(pl,p)===cs(otra,p));
+         __check("CIE5: lo nuevo de main toma el aspecto Tablero — en Liberación a producción «Liberar las marcadas» y «Marcar todas las listas» son botones del Tablero (esquina redondeada, Inter) y las tres tarjetas llevan su ícono; en el Resumen de Corte la pestaña «Por liberar a producción» se dibuja como las demás pestañas",okB&&icoL>=3&&igual,JSON.stringify({b:!!b,g:!!g,boton:radB,icoL,pl:!!pl,igual}))}
+       }finally{setModo('claro');Object.assign(LIB,bakLIB);if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;Object.assign(CEN,bakCEN)}}
+     }
+    }finally{if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);window.confirm=cf0;PERFIL=bakP;page='ordenes';render()}
+    __check("ASP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* LPL · Liberación a producción EN LOTE (04-oct-2026, usuaria: «debería permitir liberar en masivo»). Se DIBUJA la pantalla de producción
      con tres órdenes listas del simulador, se marcan en la lista, se abre la ventana, una deja de poderse liberar a esa hora, y se aplica. */
   try{localStorage.__fase="liberación a producción en lote"}catch(e){}

@@ -1414,7 +1414,7 @@ Recepción; falta decir quién toca INICIO y FIN). Pruebas MT1–MT14 y MB3 actu
 Solo cambia el aspecto; pantallas, botones y flujo son los mismos. Todo el CSS nuevo va bajo `html[data-tema="odoo"]` al final del `<style>`
 (tokens `--o-brand` #714B67, `--o-primary`, `--o-sec`; los tokens de siempre `--t-primary`/`--navy`/`--ink` se reasignan ahí), así el aspecto
 **clásico** queda intacto. `temaVisual()` / `aplicarTema()` (corre al inicio de `render()`) / `setTema(v)` (permiso `config`, bitácora):
-parámetro `S.params.tema` = `'odoo'` (por defecto) | `'clasico'`, en Configuración → Calendario y parámetros. Con Odoo, `aplicarTema` **mueve
+parámetro `S.params.tema` = `'odoo'` (por defecto hasta el 04-oct; desde entonces el valor vacío es el aspecto «Tablero», que va encima de este: ver «Aspecto Tablero» más abajo) | `'clasico'`, en Configuración → Calendario y parámetros. Con Odoo, `aplicarTema` **mueve
 `#nav` dentro del `<header>`** (los menús van en la barra de arriba, como Odoo; los desplegables son blancos) y lo devuelve al volver al
 clásico; la cabecera de cada pantalla (`.pagehead`) es el panel de control blanco; botones primario morado y secundario gris; listas, etiquetas
 (colores suaves de Bootstrap 5), bloques y ventanas al estilo Odoo. **Barra de fases con flechas** (`statusbarFasesHTML(o)`, vale en los dos
@@ -1850,6 +1850,59 @@ archivo diga que producción se libera «una por una», es historia.
 **Recurso y arranque del supervisor de piso (04-oct-2026, decisión de la usuaria: «el supervisor Y planificación cambian recurso y arranque»).** Las columnas Recurso y Arranca de la cola (`progCentro.<centro>.rec/.desde`, Centro → Programación) se perdían al recargar cuando las tocaba un perfil de piso (`_save` no sube `ordenes`). Ahora `setProgCen` desde el piso va por `setProgCenPiso`: recurso y arranque por `set_recurso_centro(p_orden,p_centro,p_rec,p_desde)` (`SUPABASE_RECURSO_CENTRO.sql`, **SIN EJECUTAR**; null = no tocar, '' = quitar, p_orden nulo = sonda; permiso `puede_programar_centro` = `puede_mover_fase()` + catálogo: planificación en todo centro, supervisor con «reprogramar» solo en sus centros o su área, operario no; toca solo rec/desde + una línea en bitácora) y el puesto por `set_prioridad_centro`. Nada cambia en memoria hasta que el servidor acepta y después manda lo que el servidor guardó (`leerProgCenServidor`/`ponerProgCenLeido`, también en BASE). Marca `RPC_REC` (sonda al entrar y al dibujar la cola; un «falta» se reprueba como mucho una vez por minuto). Sin la función, Recurso, Arranca y «quitar lo fijado» salen bloqueados con `TXT_REC_FALTA` («lo cambia planificación (falta un paso en Supabase)») y un intento avisa «Falta correr SUPABASE_RECURSO_CENTRO.sql en Supabase» sin cambiar nada. «Juntar colores» del supervisor va por `set_prioridad_centro` (solo el puesto; `guardarPrioridadesRPC` deshace solo lo que el servidor no guardó, `PRI_GUARDADAS`). El operario no cambia recurso, arranque, puesto ni colores (`MSG_OPERARIO_REC`). Planificación sigue igual. La regla «no antes de hoy» la valida la app (`fechaArranqueValida`) antes de llamar. Mock: `set_recurso_centro`, `__RPC.faltan`, `__RPC.ultimoRec`. Pruebas RA0–RA4. Límites conocidos: la advertencia de fecha que dispara un cambio del supervisor no se guarda (va a params; solo queda la línea de bitácora); «Juntar colores» del supervisor hace una llamada por orden. **`esFaltaFuncion(m,fn)` es la única regla de «la función del servidor falta»** (PGRST202, «Could not find the function» o «function X … does not exist»; nunca un «404» suelto): la usan también `setPrioridadServidor` y `moverFaseServidor`. El SQL arranca comprobando `puede_mover_fase()` y se detiene si falta. Pruebas RFF.
 
 **«Lista para empezar» solo si está liberada a producción (04-oct-2026, decisión de la usuaria).** En la ENTRADA a producción de su ruta (el primer centro de producción de la ruta completa, `esEntradaProduccion`; dentro de un tramo paralelo, también un compañero mientras ninguno haya empezado) una orden solo puede empezar si `liberada(o,'corte')`. **`puedeEmpezarEnCentro(o,c)` es la única puerta** (`porLiberarEn` / `sinLibProdEn` / `empezadaEnCentro`; lo que falta = `faltaLiberarA(o,'corte')`; aviso `MSG_POR_LIBERAR`). La usan la cola (`frenoProdCerc` en `cercaniaCentro` → grupo **«Por liberar a producción»** `porLiberar`, después de Disponible y antes de Por llegar, manda sobre el puesto manual en `grupoColaDe`), el Resumen del centro (pestaña propia en `listasYEspera`/`listaResumenCentroHTML`, sin visto), `listaParaEmpezar`/`tagListaEmpezar`, `llegadaACentroTxt`, la tablet (`visibleOperario`, `tabletFilas`, `tarjetaWHTabletHTML`, el buscador: «todavía no está liberada a producción · avisa a planificación», sin INICIO), `iniciarTramo`, `marcarHechoCentro`, `mCerrarCentro` y el ✓ de la cola. La fila dice qué la frena y «liberar →» = `irLibProdOrden(oid)` (Liberación a producción acotada a esa WH, solo si el perfil la abre). Una orden YA EMPEZADA aquí (tramo abierto, unidades, reabierta o fase del centro) no se esconde: etiqueta «sin liberar a producción» (`tagSinLibProdHTML`). **El motor no cambió**: `programar()` sigue dándoles fecha y capacidad (la prueba LP5 lo fija). Medido con el volcado: Corte Disponible 57 → 43 (14 por liberar), Listas en Corte 53 → 39, tablet de Corte 20 → 18. Si el motor NO las programara (solo medido): 16 órdenes fuera, 110 terminan unos 2 días antes por el espacio que queda en Bordado (lleno al 100 %), Corte libera 542 min de 16.320 (3,3 %). Pruebas LP1–LP7. En la cola el Pantone no se nombra como freno (`noFrenaLib`, igual que en Liberación) y una orden ya empezada sin liberar dice «en proceso aquí», no «lista para empezar» (pruebas LPF1–LPF2). Pendiente de decidir: Control de piso (`celdaPisoAvanceHTML`) y el semáforo siguen frenando o avisando «falta liberar» en CUALQUIER centro, no solo en la entrada a producción.
+
+**Aspecto «Tablero» (04-oct-2026, usuaria con la imagen de un tablero: «¿puedes cambiar así el tema, manteniendo la barra arriba?»; eligió «Solo
+arriba»).** Es el aspecto **por defecto** y va **encima del aspecto Odoo**: `<html>` lleva `data-tema="odoo"` (menú dentro de la barra, buscador de Odoo,
+barra de fases: todo lo que dependía de `temaVisual()==='odoo'` sigue igual) **y además** `data-estilo="tablero"`. `S.params.tema` = `tablero` | `odoo` |
+`clasico` (`ASPECTOS`, `nombreAspecto`; vacío o desconocido = tablero); `aspectoVisual()` es la elección completa, `temaVisual()` sigue diciendo `odoo` o
+`clasico` y `esTablero()` pregunta por el Tablero. `setTema` acepta los tres (permiso `config`, bitácora con los nombres); selector en Configuración general →
+Calendario y reglas. **Todo el CSS va al final del `<style>` bajo la marca `/* ux:tablero */` y cada selector lleva `[data-estilo="tablero"]`** (la prueba
+ASP9 falla si no, o si una regla escribe un color fuera de una variable): fondo gris claro, todo en tarjetas blancas de 12 px con sombra suave, título de
+27 px, botón principal azul sólido (#1F5BD8 en la paleta azul marino; las demás paletas de `temaColor` siguen mandando en la barra y el botón), secundarios
+blancos con borde, tablas con cabecera gris, etiquetas en pastilla, letra **Inter** (Google Fonts, el mismo enlace que IBM Plex). **Tarjetas de cifras**:
+campo opcional **`ico`** (una clave de `ICO`; se sumaron clock, alert, truck, cash, flag, bolt, play y pause) en Hoy, Resumen gerencial, Planta en vivo,
+Planificar el mes, Liberación, Avance por área (vista Mes y textil) y Resumen del centro; `kpiIcoHTML(k)` y `kpiMasHTML()` (el «›» redondo de las que se
+tocan) **solo dibujan en el Tablero**: con Odoo y Clásico el HTML es el mismo de antes (comparado con las 48 fotos del simulador: idéntico). El fondo de
+la tarjeta se **tiñe con la clase de estado que ya tenía** (`ok` verde suave, `warn` ámbar suave, `bad` rojo suave, sin clase blanca): en el Tablero esto
+reemplaza la regla del 02-oct «tarjetas con fondo blanco, el estado va en el número y en una franja», que sigue valiendo en Odoo y Clásico (la prueba
+UX-B0a de Capacidad distingue). Una fila de 7 u 8 tarjetas va en dos filas de cuatro (`:has`). **Avisos y bandejas** con la forma del panel «Requieren
+atención» del ejemplo pero en **ámbar** (es lo que alguien tiene que hacer; el rojo sigue siendo solo lo grave): Hoy → Pendientes / Advertencias / Otros,
+«Qué las frena» de Liberación, `.warn`, `details.avisos`. En el Tablero `--ok`, `--aviso` y `--alerta` son un tono más oscuros (contraste ≥ 4,5 sobre
+blanco). **Modo oscuro**: bloque `html[data-modo="oscuro"][data-estilo="tablero"]` con su versión de cada tono suave, tarjeta, pastilla, cabecera de tabla,
+pestaña y elemento elegido. **Teléfono** (≤ 860 px): una grilla escrita a mano con varias `fr` pasa a una columna, las tarjetas van en columna y (≤ 520 px)
+cada tabla lleva su propio desplazamiento. **Mi centro**: con Inter los botones grandes quedaban 3 px más bajos; `line-height` 1.4 los deja como antes o
+más altos. Pruebas ASP1–ASP12 (dibujan las pantallas: tinte por clase, íconos, «›», Odoo y Clásico como antes, paleta, CSS acotado, alto de INICIO,
+contraste ≥ 4,5 en oscuro medido con getComputedStyle y 390 px en un marco). **No se construyó** (es aspecto, no pantallas): los gráficos del ejemplo
+(barras por mes, dona), la campana, las flechas «vs semana anterior» y la línea de contexto con «|» y la pastilla «❄ Programa congelado» bajo el título
+como componente común (cada pantalla trae su propia línea).
+
+**Tablero · pulido (05-oct-2026, cinco revisores pantalla por pantalla en claro, oscuro y 390 px).** Sigue siendo solo aspecto; el CSS nuevo va en el
+mismo bloque `/* ux:tablero */` (bajo `[data-estilo="tablero"]`, colores solo con variables: ASP9). **Barra de arriba**: el menú del Tablero (Inter, peso
+500) es ~50 px más ancho que el de Odoo, así que **hasta 1.600 px queda solo el logo** (Odoo lo hace hasta 1.440), el menú se aprieta por tramos (≤1.440,
+≤1.180, 861–1.000 con peso 400), entre 861 y 940 px se ocultan las iniciales (como en el teléfono) y `#quien`, `#modo-sw` y `#btn-salir` no se encogen:
+entra entera de 861 a 1.920 px y en el teléfono «Salir» va en la fila del menú (la regla vieja `header h1{font-size:16px}` sin @media era la que
+desbordaba). **Ingreso**: el `<html>` trae `data-tema="odoo" data-estilo="tablero" data-color="marino"` y `iniciar()` llama a `aplicarTema()` antes de
+mostrar el ingreso (antes salía con el clásico y en oscuro el botón «Entrar» no se leía). **Tarjetas de cifras** a ≤860 px en grilla de dos (antes los
+150 px de base se volvían 150 px de ALTO); íconos también en Capacidad, Entregas, Tintorería (Hoy y Reportes), Centro → Ejecución y Carga que viene;
+`.kpi.falta` = dato de configuración que falta (borde punteado). **Colores según las reglas del 02-oct (en todos los aspectos)**: «fecha pasada» de un baño
+(Hoy y Armar baños), «sin liberar» (Control de piso), «por debajo del plan» (Ejecución) y «Revisar ruta» (Órdenes de trabajo) en ámbar; «En proceso» de
+Órdenes de trabajo en azul y «Lista» en `t-hoy`; «sin capacidad» (sin recursos) y «sin tela» con WH = `t-falta`, «sin tela» sin WH = gris; el faltante
+de la meta (`.b3-falta`) en ámbar; «Atrasadas en este centro» y «Días sin registrar» del Resumen del centro con `res-n aviso` (ámbar; la tarjeta se tiñe
+ámbar en el Tablero); `tagAtrasSem` parte el atraso (rojo solo la parte de meta vencida). **Componentes**: el contexto de una cabecera va en
+`<h2>… <span class="mut ctx">` (línea propia bajo el título en el Tablero, `.ctx-sep` se oculta; Hoy y Planificar el mes); un par etiqueta + desplegable
+de una fila de filtros (sin campos de texto en la fila) va como campo redondeado con la etiqueta adentro; las acciones de fila (`td .btn.sm`) tienen
+aspecto secundario (menos en Mi centro) y un botón desactivado es gris claro, no azul pálido; los botones verde y ámbar de la tablet usan `.btn-ok` /
+`.btn-aviso` (así el oscuro los alcanza); la franja de color de `.env-c` (variable `--env-col` en su style) y de `.niv-card` se dibuja con `::before`
+dentro de la esquina; `--aviso-graf` es el ámbar de RELLENOS (donas, barras) — `--aviso` del Tablero es oscuro porque es para TEXTO; los campos sin
+tipo, búsqueda, contraseña, correo y hora tienen el aspecto de los demás; `input[type=file]` con botón secundario; en oscuro las celdas de Capacidad,
+las pastillas de la Nivelación, `t-lavado/t-claro/t-oscuro/t-hoy`, el punto de color (`--tb-dot-ring`), el semáforo apagado, la barra de fases, la
+pestaña elegida de Mi centro y el «✓» de Terminar tienen su versión. «≡ Agrupar por» de una lista que no es la primera se pega a la esquina de su
+tarjeta; «Vienen después» va en su tarjeta; Costura ya no separa los módulos con comas (faltaba un `join`); Liberación no reserva el hueco de la foto si
+no hay ninguna foto en el sistema (`hayFotosOrdenes`, se repregunta cada 3 s). Pruebas PUL1–PUL8 (marcos de 1.520 a 900 y 390 px para la barra y las
+tarjetas, íconos, colores por regla, ingreso, bloque 3 parejo, Costura, celdas de Capacidad en oscuro). **No se hizo** (con el porqué en el reporte de esa
+fecha): la tarjeta de Facturación del Resumen gerencial sigue roja bajo el 80 % (es el semáforo de las metas que la usuaria aceptó el 04-oct), los huecos de
+la grilla de Planta en vivo (una grilla en columnas cambiaría el orden del proceso), la línea de contexto «Semana | fechas | congelado» bajo el título de
+cada centro y los pasos de Actualizar datos como barra de flechas.
 
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
