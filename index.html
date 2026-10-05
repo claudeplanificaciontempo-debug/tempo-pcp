@@ -587,6 +587,12 @@ html[data-tema="odoo"][data-color="blanco"]:not([data-modo="oscuro"]) #quien .q-
 html[data-tema="odoo"] header .saved{flex:0 0 auto;max-width:240px;overflow:hidden;text-overflow:ellipsis;margin-right:6px}
 html[data-tema="odoo"] #busg-host #busg-wrap{min-width:0!important}
 @media (min-width:861px) and (max-width:1180px){html[data-tema="odoo"] header .saved:not(.err){display:none}html[data-tema="odoo"] header nav .grp{padding:0 7px;font-size:13px}html[data-tema="odoo"] header nav .grp .car{display:none}}
+/* · el sol/luna no se encoge (05-oct, cierre del Tablero: en «Como Odoo» quedaba de 2 px entre 861 y 921 px). Para que «Salir» siga entrando, de 861 a
+     940 px salen las iniciales y el buscador baja a 72 px (lo mismo que ya hacía el Tablero), y «✓ Guardado» se esconde hasta 1.200 px (antes 1.180:
+     de 1.181 a 1.191 px la barra quedaba 11 px más ancha que la pantalla). Vale para Odoo y, por herencia, para el Tablero (que ya lo tenía así). */
+html[data-tema="odoo"] #modo-sw{flex:none}
+@media (min-width:861px) and (max-width:940px){html[data-tema="odoo"] #quien{display:none}html[data-tema="odoo"] #busg-host{min-width:72px!important}}
+@media (min-width:1181px) and (max-width:1200px){html[data-tema="odoo"] header .saved:not(.err){display:none}}
 /* · casillas con su texto en la MISMA línea dentro de las tablas (la regla global label{display:block} es para formularios) */
 td label:not(.chip):has(> input[type=checkbox]),td label:not(.chip):has(> input[type=radio]),.grp-row label{display:inline-flex;align-items:center;gap:4px;margin:0 10px 0 0;white-space:nowrap;font-size:inherit;color:inherit;font-weight:inherit}
 .grp-row .grp-chk{margin:0 6px 0 0;vertical-align:middle;cursor:pointer;width:auto}
@@ -1610,17 +1616,38 @@ html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .kpi-ico{bac
 html[data-modo="oscuro"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia{background:var(--tb-grey-soft)!important;border-color:var(--tb-line)!important}   /* en oscuro las tarjetas llevan el papel con !important */
 /* · filas de cuatro, cinco y seis tarjetas sin una sola en la última fila (antes, con auto-fit: Hoy 5 + 1 entre ~1.140 y 1.365 px, Resumen gerencial 4 + 1
      entre ~1.040 y 1.270, Entregas y Tintorería 4 + 1 entre ~920 y 1.150, Liberación → Más detalle 3 + 1 hasta ~990). Cuatro: dos y dos hasta 1.023 px;
-     cinco: tres y dos hasta que caben las cinco (1.160 px; el Resumen gerencial, de tarjetas más anchas, 1.280); seis: tres y tres hasta 1.366 px */
+     cinco: tres y dos hasta que caben las cinco (1.160 px; el Resumen gerencial, de tarjetas más anchas, 1.280); seis: tres y tres hasta 1.399 px
+     (desde el 05-oct, segunda vuelta del cierre: con el corte en 1.366 px, el ancho del portátil más común, «474 kg» se partía en dos renglones
+     entre 1.366 y 1.388 px) */
 @media (min-width:861px) and (max-width:1023px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(4)):not(:has(>.kpi:nth-child(5))){grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:1160px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (min-width:1160px) and (max-width:1279px){html[data-tema="odoo"][data-estilo="tablero"] .ger-tarjetas .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(6)):not(:has(>.kpi:nth-child(7))){grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (min-width:1366px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(6)):not(:has(>.kpi:nth-child(7))){grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (min-width:1400px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(6)):not(:has(>.kpi:nth-child(7))){grid-template-columns:repeat(6,minmax(0,1fr))}}
+/* · tres tarjetas: siempre en una fila (Planificar el mes, paso 2, bloque 3 iba 2 + 1 entre 861 y 951 px). Para que las tres quepan sin salirse por
+     dentro, hasta 1.100 px la «Meta del mes» del bloque 3 baja a su propia fila (las tres de la izquierda toman todo el ancho); el enlace de una tarjeta
+     («ver en Capacidad y decisiones →», en Hoy) puede pasar al renglón de abajo en vez de salirse de la tarjeta */
+@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(3)):not(:has(>.kpi:nth-child(4))){grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:861px) and (max-width:1100px){html[data-tema="odoo"][data-estilo="tablero"] .b3-franja{grid-template-columns:minmax(0,1fr)}}
+html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row>.kpi .k a{white-space:normal!important}
+/* · once o más (los módulos de Confección → Programación y de Balanceo iban 5 + 5 + 1 entre ~1.130 y 1.380 px): cuatro columnas hasta 1.399 px y seis
+     desde 1.400; si con esas columnas la última quedaría sola (4n + 1 o 6n + 1 tarjetas: 13, 17, 19…), cinco — con cuatro columnas, desde 960 px: más
+     angostas no caben (una tarjeta de cifra con su ícono pide ~144 px) y de 861 a 959 px trece tarjetas quedan 4 + 4 + 4 + 1 */
+@media (min-width:861px) and (max-width:1399px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(11)){grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:960px) and (max-width:1399px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(11)):has(>.kpi:last-child:nth-child(4n+1)){grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (min-width:1400px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(11)){grid-template-columns:repeat(6,minmax(0,1fr))}html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(11)):has(>.kpi:last-child:nth-child(6n+1)){grid-template-columns:repeat(5,minmax(0,1fr))}}
 /* · el «?» dentro del título (antes de la .ctx): mismo tamaño que el de siempre, sin la separación del hermano */
 html[data-tema="odoo"][data-estilo="tablero"] .pagehead h2>.ayuda-cab{margin:0 0 0 2px}
 /* · teléfono: las pestañas del Resumen del centro (cuatro desde el 04-oct, con «Por liberar a producción») van en una línea que se desplaza de lado, como las de Reportería */
 @media (max-width:520px){html[data-tema="odoo"][data-estilo="tablero"] .res-tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}html[data-tema="odoo"][data-estilo="tablero"] .res-tabs>.res-tab{white-space:nowrap;flex:none}}
+/* · Reportería → Órdenes de producción: celdas de 6 px a los lados (con Inter la tabla medía 1.442 px y una ventana de 1.520 deja 1.424: la Entrega
+     quedaba fuera y había que mover la tabla de lado; con 6 px mide ~1.410) */
+html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][data-estilo="tablero"] .ordc-t td{padding-left:6px;padding-right:6px}
+/* · un error de guardado (#saved.err) no ocupa lugar en la barra: cuelga debajo de ella, a la derecha, como una pestaña roja con el texto entero (el
+     title lo repite), en el hueco de 22 px que deja arriba cada página. Dentro de la barra cortaba «Salir»: «No se guardó» de 861 a 1.087 px y el
+     texto largo de una carga fallida («No se guarda: la carga falló en …») de 861 a 1.675 px. En el teléfono sigue en su fila, como antes. */
+@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] header .saved.err{position:absolute;top:100%;right:12px;z-index:2;pointer-events:none;margin:0;min-width:0;max-width:calc(100% - 24px);height:22px;line-height:20px;padding:0 12px;background:var(--tb-red-soft);color:var(--tb-red-ink);border:1px solid var(--tb-red-line);border-top:0;border-radius:0 0 8px 8px;font-size:12px;font-weight:600;box-shadow:var(--tb-shadow)}}
 /* · */
 </style>
 </head>
@@ -2304,7 +2331,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 16:21';
+const APP_BUILD='2026-10-05 17:44';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
