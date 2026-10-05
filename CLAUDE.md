@@ -1861,6 +1861,34 @@ contraste ≥ 4,5 en oscuro medido con getComputedStyle y 390 px en un marco). *
 (barras por mes, dona), la campana, las flechas «vs semana anterior» y la línea de contexto con «|» y la pastilla «❄ Programa congelado» bajo el título
 como componente común (cada pantalla trae su propia línea).
 
+**Tablero · pulido (05-oct-2026, cinco revisores pantalla por pantalla en claro, oscuro y 390 px).** Sigue siendo solo aspecto; el CSS nuevo va en el
+mismo bloque `/* ux:tablero */` (bajo `[data-estilo="tablero"]`, colores solo con variables: ASP9). **Barra de arriba**: el menú del Tablero (Inter, peso
+500) es ~50 px más ancho que el de Odoo, así que **hasta 1.600 px queda solo el logo** (Odoo lo hace hasta 1.440), el menú se aprieta por tramos (≤1.440,
+≤1.180, 861–1.000 con peso 400), entre 861 y 940 px se ocultan las iniciales (como en el teléfono) y `#quien`, `#modo-sw` y `#btn-salir` no se encogen:
+entra entera de 861 a 1.920 px y en el teléfono «Salir» va en la fila del menú (la regla vieja `header h1{font-size:16px}` sin @media era la que
+desbordaba). **Ingreso**: el `<html>` trae `data-tema="odoo" data-estilo="tablero" data-color="marino"` y `iniciar()` llama a `aplicarTema()` antes de
+mostrar el ingreso (antes salía con el clásico y en oscuro el botón «Entrar» no se leía). **Tarjetas de cifras** a ≤860 px en grilla de dos (antes los
+150 px de base se volvían 150 px de ALTO); íconos también en Capacidad, Entregas, Tintorería (Hoy y Reportes), Centro → Ejecución y Carga que viene;
+`.kpi.falta` = dato de configuración que falta (borde punteado). **Colores según las reglas del 02-oct (en todos los aspectos)**: «fecha pasada» de un baño
+(Hoy y Armar baños), «sin liberar» (Control de piso), «por debajo del plan» (Ejecución) y «Revisar ruta» (Órdenes de trabajo) en ámbar; «En proceso» de
+Órdenes de trabajo en azul y «Lista» en `t-hoy`; «sin capacidad» (sin recursos) y «sin tela» con WH = `t-falta`, «sin tela» sin WH = gris; el faltante
+de la meta (`.b3-falta`) en ámbar; «Atrasadas en este centro» y «Días sin registrar» del Resumen del centro con `res-n aviso` (ámbar; la tarjeta se tiñe
+ámbar en el Tablero); `tagAtrasSem` parte el atraso (rojo solo la parte de meta vencida). **Componentes**: el contexto de una cabecera va en
+`<h2>… <span class="mut ctx">` (línea propia bajo el título en el Tablero, `.ctx-sep` se oculta; Hoy y Planificar el mes); un par etiqueta + desplegable
+de una fila de filtros (sin campos de texto en la fila) va como campo redondeado con la etiqueta adentro; las acciones de fila (`td .btn.sm`) tienen
+aspecto secundario (menos en Mi centro) y un botón desactivado es gris claro, no azul pálido; los botones verde y ámbar de la tablet usan `.btn-ok` /
+`.btn-aviso` (así el oscuro los alcanza); la franja de color de `.env-c` (variable `--env-col` en su style) y de `.niv-card` se dibuja con `::before`
+dentro de la esquina; `--aviso-graf` es el ámbar de RELLENOS (donas, barras) — `--aviso` del Tablero es oscuro porque es para TEXTO; los campos sin
+tipo, búsqueda, contraseña, correo y hora tienen el aspecto de los demás; `input[type=file]` con botón secundario; en oscuro las celdas de Capacidad,
+las pastillas de la Nivelación, `t-lavado/t-claro/t-oscuro/t-hoy`, el punto de color (`--tb-dot-ring`), el semáforo apagado, la barra de fases, la
+pestaña elegida de Mi centro y el «✓» de Terminar tienen su versión. «≡ Agrupar por» de una lista que no es la primera se pega a la esquina de su
+tarjeta; «Vienen después» va en su tarjeta; Costura ya no separa los módulos con comas (faltaba un `join`); Liberación no reserva el hueco de la foto si
+no hay ninguna foto en el sistema (`hayFotosOrdenes`, se repregunta cada 3 s). Pruebas PUL1–PUL8 (marcos de 1.520 a 900 y 390 px para la barra y las
+tarjetas, íconos, colores por regla, ingreso, bloque 3 parejo, Costura, celdas de Capacidad en oscuro). **No se hizo** (con el porqué en el reporte de esa
+fecha): la tarjeta de Facturación del Resumen gerencial sigue roja bajo el 80 % (es el semáforo de las metas que la usuaria aceptó el 04-oct), los huecos de
+la grilla de Planta en vivo (una grilla en columnas cambiaría el orden del proceso), la línea de contexto «Semana | fechas | congelado» bajo el título de
+cada centro y los pasos de Actualizar datos como barra de flechas.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
