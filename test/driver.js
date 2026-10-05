@@ -5,6 +5,9 @@ async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>
 function __check(nombre,cond,detalle){__R.checks.push({nombre,ok:!!cond,detalle:detalle===undefined?'':String(detalle)})}
 const __p=ms=>new Promise(r=>setTimeout(r,ms));
 function adminP0(){return {id:"u-adm",rol:"admin",nombre:"Admin",modo:"editar"}}
+/* 04-oct-2026: en su PRIMER centro de producción una orden solo se puede empezar (INICIO, «Hecho», terminar) si está liberada a producción.
+   Las pruebas que arman una orden de planta para registrar en ese centro la liberan con esta firma de prueba (la misma marca que deja liberarA). */
+function __libProdPrueba(o){o.lib=Object.assign({},o.lib||{},{corte:{ok:true,u:'prueba',ts:'2026-09-01T12:00:00.000Z'}});return o}
 async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
@@ -1910,11 +1913,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('guardado: banos_conf',(db.banos_conf||[]).length>0,(db.banos_conf||[]).length);__check('guardado: avance',(db.avance||[]).length>0,(db.avance||[]).length);
   try{localStorage.__fase="fin"}catch(e){}
   {const antes=__R.errors.length;const adminP=PERFIL;
-   // producción: sin botón masivo, una por una con dos verificaciones
+   // producción (04-oct-2026): una por una en la fila con dos verificaciones, o varias a la vez con «Liberar las marcadas» (ventana con la verificación en bodega)
    page='liberacion';LIB.et='corte';LIB.q='';LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.verLista=true;LIB.ym=null;LIB.odc=null;LIB.fam2=null;render();
    const h=()=>document.getElementById('p-liberacion').innerHTML;
    LIB.vista='listas';render();const pcC=partesLib('corte',LIB.ym);
-   __check("C: producción no tiene botones masivos (ni «Liberar todas las listas» ni «Marcar todas»): una por una",!h().includes('Liberar todas las listas')&&!/Marcar todas/.test(h())&&(!pcC.listas.length||h().includes('marca en cada orden la materia prima y los insumos verificados en bodega')),pcC.listas.length+' listas');LIB.vista=null;
+   __check("C: producción no tiene «Liberar todas las listas» (nada se libera en masa sin la ventana de verificación): se libera una por una en la fila o varias con «Liberar las marcadas»",!h().includes('Liberar todas las listas')&&(!pcC.listas.length||(h().includes('Liberar las marcadas (')&&h().includes('Marcar todas las listas (')&&h().includes('lib-dos-formas'))),pcC.listas.length+' listas');LIB.vista=null;
    __check("UX-B2: en producción cada lista dice «☐ Materia prima ☐ Insumos [Liberar]» en una línea, bajo la cabecera «Verificado en bodega»",(()=>{LIB.vista='listas';render();const r=(()=>{if(!pcC.listas.length||!(puede('programa')||puede('liberar'))||grpSt('lib').niveles.length)return true;const v=document.querySelector('#lib-lista tbody .lib-verif');const ths=[...document.querySelectorAll('#lib-lista thead th')].map(t=>t.textContent.trim());return !!v&&/Materia prima/.test(v.textContent)&&/Insumos/.test(v.textContent)&&!!v.querySelector('button[onclick^="liberarProd("]')&&ths[ths.length-1]==='Verificado en bodega'})();LIB.vista=null;return r})());
    const o=S.ordenes.find(x=>abierta(x)&&puedeLiberarA(x,'corte')&&!liberada(x,'corte'));
    if(o){LIBV={};setLibV(o.id,'mp',true);const alertPrev=window.alert;let al='';window.alert=m=>al=m;liberarProd(o.id);window.alert=alertPrev;
@@ -2226,7 +2229,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       a mano lo que hay que sacar de un componente común (fmtFecha / fechaHoraLocal para fechas, clases tag t-* y variables para colores, --fs-xs para letra chica). */
    {const n9=(src.match(/font-size:(9|10)px/g)||[]).length,nIso=(src.match(/<td[^>]*>\$\{(esc\()?[a-zA-Z.]*\.fecha(Compromiso)?(\}|\|\|)/g)||[]).length,nHex=(src.match(/style="[^"]*#[0-9A-Fa-f]{3,6}/g)||[]).length;
     __check("UX-B0b_sistemico_contenido: DISEÑO — no suben las letras de 9 o 10 px escritas a mano (línea base 48), ninguna celda muestra la fecha ISO cruda (0) y no suben los colores hexadecimales escritos en un style (línea base 28)",n9<=48&&nIso===0&&nHex<=28,'9/10 px: '+n9+' · fecha cruda: '+nIso+' · hex en style: '+nHex);
-    __check("UX-B0b_sistemico_contenido: DISEÑO — una fecha en pantalla es «vie, 02 oct» (el año solo si no es el año en curso) y la fecha con hora va en 24 h y sin segundos",(()=>{const y=+hoy().slice(0,4);const otro=(y+1)+'-01-22',este=y+'-03-04';const f1=fmtDia(otro),f2=fmtDia(este);const fh=fechaHoraLocal(new Date(y,9,2,16,54,33).toISOString());const fe=fmtFecha(este);
+    __check("UX-B0b_sistemico_contenido: DISEÑO — una fecha en pantalla es «vie, 02 oct» (el año solo si no es el año en curso) y la fecha con hora va en 24 h y sin segundos",(()=>{const y=+hoy().slice(0,4);const otro=(y+1)+'-01-22',este=y+'-03-04';const f1=fmtDia(otro),f2=fmtDia(este);const fh=fechaHoraLocal(tsDeLocal(y+'-10-02','16:54:33'));const fe=fmtFecha(este);
       return f1.endsWith(' '+(y+1))&&!/[0-9]{4}/.test(f2)&&/16:54/.test(fh)&&!/:33|p\. m\.|a\. m\./.test(fh)&&!new RegExp(String(y)).test(fh)&&/class="fecha"/.test(fe)&&fe.includes('title="'+este+'"')&&fmtFecha('')==='—'&&mesCortoTxt(y+'-06')===('jun '+y)&&mesesCortoTxt([y+'-06',y+'-07',y+'-08'])===('jun – ago '+y)})(),fmtDia((+hoy().slice(0,4)+1)+'-01-22')+' · '+fechaHoraLocal(Date.now()));
     __check("UX-V4: la fecha con hora sin día de la semana se escribe como fmtDia («02 oct, 20:08», no «02-oct»)",(()=>{const y=+hoy().slice(0,4);const s=fechaHoraLocal(new Date(y,9,2,20,8).toISOString(),false);return /^02 oct/.test(s)&&!/[0-9]-[a-z]/i.test(s)})(),fechaHoraLocal(Date.now(),false))}
    {const malos=[];if(window.innerWidth>=1000)['capacidad','tintoreria','entregas','gerencia'].forEach(p=>{page=p;try{render()}catch(e){return}const el=document.getElementById('p-'+p);if(!el)return;
@@ -2235,6 +2238,84 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja)",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* ZH · HORA DE ECUADOR (04-oct-2026, decisión de la usuaria): hoy() y el día de cada marca de tiempo salen de la zona de Configuración
+     (S.params.zonaHoraria, sembrada America/Guayaquil), no de la hora UTC. Se prueba con el reloj de la página sobrescrito (Date) y se dibuja
+     la pantalla del centro, la de Configuración y Planta en vivo. */
+  {const antes=__R.errors.length;const R0=window.Date;let T=null;const reloj=iso=>{T=iso==null?null:R0.parse(iso)};
+   const bakP=PERFIL,a0=window.alert,bakZ=S.params.zonaHoraria,bakPage=page,bakCEN=Object.assign({},CEN),bakCONF=JSON.stringify(CONF),bakTAB=JSON.stringify(TAB),bakH=JSON.stringify(horarios()['corte']||null);
+   const al=[];const bitBak=S.bitacora.slice(),turBak=JSON.stringify(S.turnos||[]);let oT=null,avBak=null;
+   window.Date=new Proxy(R0,{construct(t,a){return a.length?new R0(...a):new R0(T!=null?T:R0.now())},apply(){return new R0(T!=null?T:R0.now()).toString()},
+     get(t,k){if(k==='now')return ()=>(T!=null?T:R0.now());const v=Reflect.get(t,k);return typeof v==='function'?v.bind(t):v}});
+   try{PERFIL=adminP0();window.alert=m=>al.push(String(m));S.params.zonaHoraria='America/Guayaquil';
+    const viejo=()=>new Date().toISOString().slice(0,10);   /* la regla de antes: el día de la hora UTC */
+    reloj('2026-10-05T01:30:00.000Z');const h2030=hoy(),v2030=viejo();
+    reloj('2026-10-05T04:59:00.000Z');const h2359=hoy(),v2359=viejo();
+    reloj('2026-10-05T05:00:30.000Z');const h0000=hoy();
+    reloj('2026-10-05T15:00:00.000Z');const h1000=hoy(),v1000=viejo();
+    __check("ZH1: a las 20:30 y a las 23:59 de Ecuador (domingo 04-oct) hoy() es el domingo, no el lunes de la hora UTC; a la medianoche ya es lunes; a las 10:00 las dos reglas coinciden",
+      h2030==='2026-10-04'&&v2030==='2026-10-05'&&h2359==='2026-10-04'&&v2359==='2026-10-05'&&h0000==='2026-10-05'&&h1000==='2026-10-05'&&v1000===h1000,JSON.stringify({h2030,v2030,h2359,h0000,h1000}));
+    __check("ZH2: diaLocalDeTs da el día de Ecuador de una marca de tiempo (20:30 y 23:59 → el mismo día, 00:00 → el siguiente); un día o una hora sin zona no se mueven; la hora en pantalla es la de Ecuador",
+      diaLocalDeTs('2026-10-06T01:30:00.000Z')==='2026-10-05'&&diaLocalDeTs('2026-10-06T04:59:59Z')==='2026-10-05'&&diaLocalDeTs('2026-10-06T05:00:00Z')==='2026-10-06'&&diaLocalDeTs('2026-10-05')==='2026-10-05'&&diaLocalDeTs('2026-10-05T23:30:00')==='2026-10-05'
+      &&diaLocalDeTs(R0.parse('2026-10-06T01:30:00Z'))==='2026-10-05'&&diaLocalDe('2026-10-06T01:30:00Z')==='2026-10-05'&&horaLocal('2026-10-06T01:30:00Z')==='20:30'&&horaLocalDeTs('2026-10-06T01:30:00Z')==='20:30'&&/20:30/.test(fechaHoraLocal('2026-10-06T01:30:00Z'))&&fmtDiaTs('2026-10-06T01:30:00Z')===fmtDia('2026-10-05'),
+      [diaLocalDeTs('2026-10-06T01:30:00.000Z'),diaLocalDeTs('2026-10-06T04:59:59Z'),horaLocal('2026-10-06T01:30:00Z'),fechaHoraLocal('2026-10-06T01:30:00Z')].join(' · '));
+    __check("ZH2: la hora escrita en un campo de fecha y hora es de Ecuador (ida y vuelta) y el día de la planta empieza a las 00:00 de Ecuador",
+      tsDeInputLocal('2026-10-05T20:30')==='2026-10-06T01:30:00.000Z'&&inputLocalDeTs('2026-10-06T01:30:00.000Z')==='2026-10-05T20:30'&&tsDeLocal('2026-10-05','00:00')==='2026-10-05T05:00:00.000Z',tsDeInputLocal('2026-10-05T20:30'));
+    /* un registro del piso a las 20:30 del lunes 05: tramo INICIO 18:00 → FIN 20:30 y un «Hecho» a las 20:31 */
+    /* una orden de prueba propia (se quita al final): Corte → Empaque, sin curva de tallas */
+    {const base=S.ordenes.find(o=>abiertaDe(o)&&!juegoDeOrden(o))||S.ordenes.find(o=>!juegoDeOrden(o));if(base){oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-ZH';oT.estado='plan';oT.fase='';oT.cant=100;
+      ['tallasPedido','tallasPedidoMeta','programa','lib','progCentro','recursoFijo','ot','fases','claveRepetida','tareaIdConflicto'].forEach(k=>{delete oT[k]});
+      oT.ruta=[{centro:'corte',t:1},{centro:'empaque',t:1}];oT.rutaCompleta=oT.ruta.map(p=>Object.assign({},p));
+      oT.lib={corte:{ok:true,u:'prueba ZH',ts:new Date().toISOString(),mpOk:true,insOk:true}};S.avance[oT.id]=Object.assign({},S.avance[oT.id],{lista:true});   /* 05-oct: liberada a producción, si no Corte no la deja empezar (puedeEmpezarEnCentro) */
+      S.ordenes.push(oT)}}
+    const rc=S.recursos.find(r=>r.activa!==false&&r.centro==='corte'&&tramosAbiertosDe('corte',r.id).length<maxTramosAbiertos())||null;
+    if(oT){avBak=JSON.stringify(S.avance[oT.id]||null);
+     const pzDe=d=>((hechasDelDia('corte',null,d).detalle||[]).find(x=>x.o===oT)||{pz:0}).pz;const lun0=pzDe('2026-10-05'),mar0=pzDe('2026-10-06');
+     reloj('2026-10-05T23:00:00.000Z');iniciarTramo(oT.id,'corte',rc?rc.id:null);const t=tramosDe(oT.id).filter(x=>!x.fin).slice(-1)[0]||{};
+     reloj('2026-10-06T01:30:00.000Z');terminarTramo(t.id,oT.id);setTallaTramo(t.id,oT.id,TALLA_TOTAL,7);guardarTramo(t.id,oT.id);
+     const lg=((S.avance[oT.id]||{}).tallasLog||[]).filter(x=>x.tramo===t.id);const ts=lg.length?lg[0].ts:'';
+     const lun1=pzDe('2026-10-05'),mar1=pzDe('2026-10-06');const tu=rc?(S.turnos||[]).find(x=>x.id===rc.id+'|2026-10-05'):null;
+     const k=rc?cuentasTablet('corte',rc.id,[]):null;const ef=eficienciaHoy(['corte'],'2026-10-05');
+     __check("ZH3: un tramo que termina a las 20:30 del lunes (la hora UTC ya era martes) queda en el LUNES: lo hecho del día, el turno del recurso, «Hechas hoy» de la tablet, la eficiencia del día y «sin registros» lo cuentan el lunes y no el martes",
+       String(ts).slice(0,10)==='2026-10-06'&&diaLocalDeTs(t.fin)==='2026-10-05'&&hoy()==='2026-10-05'&&lun1===lun0+7&&mar1===mar0&&hayRegistroEn('corte','2026-10-05')&&(!rc||(!!tu&&tu.d==='2026-10-05'&&k.hechasOrd>=1))&&ef.cerrados>=1,
+       JSON.stringify({ts,fin:t.fin,lun0,lun1,mar0,mar1,turno:tu?tu.d:null,hechasOrd:k&&k.hechasOrd,cerrados:ef.cerrados,alerts:al.slice(-2)}));
+     reloj('2026-10-06T01:31:00.000Z');marcarHechoCentro(oT.id,'corte');const inp=document.getElementById('hc-q');if(inp)inp.value='5';confirmarHechoCentro(oT.id,'corte');try{cerrar()}catch(e){}
+     const hc=((S.avance[oT.id]||{}).hechoC||{}).corte||{};const lun2=pzDe('2026-10-05'),mar2=pzDe('2026-10-06');
+     __check("ZH3: un «Hecho» a las 20:31 del lunes queda con el día lunes (hechoC.d) y suma en lo hecho del lunes, no del martes",!!inp&&hc.d==='2026-10-05'&&lun2===lun1+5&&mar2===mar0,JSON.stringify({hcD:hc.d,lun2,mar2,alerts:al.slice(-2)}));
+     /* Planta en vivo a esa hora: el reloj dice lunes 20:31 */
+     page='envivo';render();const rel=(document.getElementById('env-reloj')||{}).textContent||'';
+     __check("ZH3: Planta en vivo a las 20:31 del lunes muestra «Lunes … 05 … 20:31» (la fecha y la hora de Ecuador, no las de UTC)",/^Lunes/.test(rel)&&/05/.test(rel)&&/20:31/.test(rel),rel);
+     page='ordenes';render()}
+    else __check("ZH3: hay una orden con Corte en la ruta para registrar el tramo de prueba",false,'sin orden');
+    /* la semana del centro un domingo a las 20:30 sigue siendo la del domingo */
+    reloj('2026-10-05T01:30:00.000Z');NAVH.length=0;irCentro('corte',null,'resumen');CEN.sem=0;render();const hc0=(document.getElementById('p-centro')||{}).innerHTML||'';
+    const semOk=hc0.includes('Semana '+fmtDia('2026-09-28')+' – '+fmtDia('2026-10-04'))&&!hc0.includes('Semana '+fmtDia('2026-10-05')+' – ');const resSem=((document.querySelector('#p-centro .res-sem')||{}).textContent||'');
+    __check("ZH4: el domingo 04-oct a las 20:30 la pantalla del centro muestra la semana del lunes 28-sep al domingo 04-oct y «hoy dom, 04 oct» (antes: la del lunes 05)",lunesDe(hoy())==='2026-09-28'&&semOk&&(!resSem||resSem.includes('hoy '+fmtDia('2026-10-04'))),resSem||hc0.slice(0,200));
+    NAVH.length=0;page='ordenes';render();
+    /* el parámetro manda: otra zona, otro día */
+    reloj('2026-10-05T01:30:00.000Z');const eq=(()=>{const d=new R0(R0.parse('2026-10-05T01:30:00.000Z'));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+    S.params.zonaHoraria='Asia/Tokyo';const hT=hoy(),dT=diaLocalDeTs('2026-10-04T16:00:00Z'),hrT=horaLocal('2026-10-05T01:30:00Z');S.params.zonaHoraria='UTC';const hU=hoy();S.params.zonaHoraria='America/Guayaquil';const hG=hoy();S.params.zonaHoraria='';const hE=hoy();
+    __check("ZH5: la zona de Configuración manda: a la misma hora (01:30 UTC del 05-oct) Tokio y UTC dan lunes 05, Ecuador domingo 04, vacío = la hora del equipo",hT==='2026-10-05'&&dT==='2026-10-05'&&hrT==='10:30'&&hU==='2026-10-05'&&hG==='2026-10-04'&&hE===eq,JSON.stringify({hT,dT,hrT,hU,hG,hE,eq}));
+    S.params.zonaHoraria='Marte/Olimpo';const hMala=hoy();const falta=cfgPorCompletar().some(x=>/zona horaria/.test(x.t||''));S.params.zonaHoraria='America/Guayaquil';
+    const nB=S.bitacora.length,nA=al.length;setZonaHoraria('Marte/Olimpo');const rechazada=al.length===nA+1&&S.params.zonaHoraria==='America/Guayaquil'&&S.bitacora.length===nB;
+    setZonaHoraria('UTC');const bT=(S.bitacora[S.bitacora.length-1]||{}).t||'';const cambio=S.params.zonaHoraria==='UTC'&&hoy()==='2026-10-05'&&/Zona horaria/.test(bT)&&bT.includes('America/Guayaquil → UTC')&&bT.includes('2026-10-04 a 2026-10-05');
+    setZonaHoraria('America/Guayaquil');
+    __check("ZH5: una zona que no existe no se acepta (aviso, sin cambio ni bitácora); si quedara guardada, se usa la hora del equipo y Configuración lo pide en «Falta completar»; un cambio válido queda en la bitácora con el día de antes y el de después",
+      rechazada&&cambio&&hMala===eq&&falta&&S.params.zonaHoraria==='America/Guayaquil',JSON.stringify({rechazada,cambio,bT,hMala,falta}));
+    /* Configuración → Calendario y reglas: el campo a la vista, con el día que resulta */
+    reloj(null);CONF={tab:'cal',q:''};page='config';render();const inpZ=document.getElementById('cfg-zona');const hoyTxt=((document.getElementById('cfg-zona-hoy')||{}).textContent||'');
+    __check("ZH6: Configuración general → Calendario y reglas muestra la zona horaria (America/Guayaquil) con el día de hoy que resulta, y el buscador de ajustes la encuentra",!!inpZ&&inpZ.value==='America/Guayaquil'&&hoyTxt===fmtDia(hoy())&&cfgResultados('zona horaria').some(x=>x.e.titulo==='Días de trabajo por área'),(inpZ?inpZ.value:'sin campo')+' · '+hoyTxt);
+    /* descansos: la ventana 13:00–14:00 es de Ecuador, aunque el tramo cruce la medianoche */
+    horarios()['corte']={ventanas:[{ini:'13:00',fin:'14:00'}]};
+    const v1=minutosVentana(tsDeLocal('2026-10-05','12:30'),tsDeLocal('2026-10-05','14:30'),'corte').min,v2=minutosVentana(tsDeLocal('2026-10-05','13:30'),tsDeLocal('2026-10-06','13:30'),'corte').min,v3=minutosVentana(tsDeLocal('2026-10-05','20:00'),tsDeLocal('2026-10-05','23:59'),'corte').min;
+    S.params.zonaHoraria='Asia/Tokyo';const v4=minutosVentana(tsDeLocal('2026-10-05','12:30'),tsDeLocal('2026-10-05','14:30'),'corte').min;S.params.zonaHoraria='America/Guayaquil';
+    __check("ZH7: el descanso 13:00–14:00 se descuenta en la hora de la planta (60 min dentro de 12:30–14:30; 30 + 30 si el tramo cruza la medianoche; 0 de noche) y sigue la zona configurada",v1===60&&v2===60&&v3===0&&v4===60,[v1,v2,v3,v4].join(' / '));
+   }catch(e){__R.errors.push({page:'driver ZH',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.Date=R0;window.alert=a0;PERFIL=bakP;try{cerrar()}catch(e){}
+    if(bakZ===undefined)delete S.params.zonaHoraria;else S.params.zonaHoraria=bakZ;HOY_CACHE={z:null,ini:0,fin:-1,d:''};
+    if(oT){const idT=oT.id;S.ordenes=S.ordenes.filter(o=>o.id!==idT);delete S.avance[idT]}
+    S.turnos=JSON.parse(turBak);S.bitacora=bitBak;const hb=JSON.parse(bakH);if(hb)horarios()['corte']=hb;else delete horarios()['corte'];
+    TRAMO={paso:null,id:null,oid:null};TAB=Object.assign(TAB,JSON.parse(bakTAB));Object.assign(CEN,bakCEN);CONF=JSON.parse(bakCONF);NAVH.length=0;PLAN=null;PLAN_ALL=null;page=bakPage;render()}
+   __check("ZH sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* REPORTERÍA: pestaña propia, vista general de órdenes, detalle completo, quién la ve */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
@@ -3243,14 +3324,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TR: Mi centro también lo avisa y ofrece corregirlo",/inicios sin fin|inicio sin fin/i.test(document.getElementById('p-tablet').innerHTML)&&document.getElementById('p-tablet').innerHTML.includes('mCorregirTramo('));
     // el supervisor corrige con auditoría
     mCorregirTramo(t3.id,oT.id);const fin=new Date(new Date(t3.ini).getTime()+45*6e4);
-    document.getElementById('ct-fin').value=new Date(fin.getTime()-fin.getTimezoneOffset()*6e4).toISOString().slice(0,16);document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
+    document.getElementById('ct-fin').value=inputLocalDeTs(fin);   /* la hora escrita es la de la planta (04-oct), no la del equipo */document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
     const nA=auditoriaCambios().length;corregirTramo(t3.id,oT.id);
     __check("TR: el supervisor corrige el fin y queda en auditoría",!!t3.fin&&!!t3.corregido&&auditoriaCambios().length===nA+1);
     TRAMO={paso:null,id:null,oid:null}}
    // la pantalla del flujo
    TAB={centro:'modulos',rec,q:'',vista:'cola'};page='tablet';render();
    {const h=document.getElementById('p-tablet').innerHTML;TAB.vista='hechas';render();const h2=document.getElementById('p-tablet').innerHTML;TAB.vista=null;
-    __check("TR: Mi centro muestra el flujo: INICIO en la pestaña «En cola» y lo registrado hoy en «Hechas hoy» (24-sep)",(/INICIO<\/button>/.test(h)||/No hay órdenes/.test(h))&&(/Lo registrado hoy/.test(h2)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
+    __check("TR: Mi centro muestra el flujo: INICIO en la pestaña «En cola» y lo registrado hoy en «Hechas hoy» (24-sep)",(/INICIO<\/button>/.test(h)||/No hay órdenes/.test(h))&&(/Lo registrado hoy/.test(h2)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&diaLocalDeTs(x.t.fin)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
    if(rec&&bakPers!=null)R(rec).pers=bakPers;
    S.ordenes=S.ordenes.filter(o=>o!==oT);delete S.avance[oT.id];
    const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
@@ -3286,7 +3367,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const hoyD=hoy();
    const t1={centro:'modulos',rec,ini:hoyD+'T09:00:00',fin:hoyD+'T09:30:00',paros:[],tallas:{}};
    const t2={centro:'modulos',rec,ini:hoyD+'T12:00:00',fin:hoyD+'T14:00:00',paros:[],tallas:{}};
-   const mkFecha=(s)=>{const [f,h]=s.split('T');const [Y,M,D2]=f.split('-').map(Number);const [hh,mm]=h.split(':').map(Number);return new Date(Y,M-1,D2,hh,mm).toISOString()};
+   const mkFecha=(s)=>{const [f,h]=s.split('T');return tsDeLocal(f,h)};   /* 9:00 de la planta (04-oct: los descansos van en la hora de la planta, no en la del equipo) */
    t1.ini=mkFecha(t1.ini);t1.fin=mkFecha(t1.fin);t2.ini=mkFecha(t2.ini);t2.fin=mkFecha(t2.fin);
    const c1=calcTramo(t1,null),c2=calcTramo(t2,null);
    __check("DE: un tramo de 9:00 a 9:30 no descuenta el almuerzo de 12:30 a 13:30",Math.abs(c1.brutoMin-30)<0.1&&c1.descansos===0&&Math.abs(c1.trabajado-30)<0.1);
@@ -3703,7 +3784,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     window.confirm=()=>true;guardarTramo(tr2.id,oS.id);const t2=tramosDe(oS.id).find(x=>x.id===tr2.id);
     __check("MT2: al confirmar se guarda con 0 prendas y el tiempo trabajado",t2.pz===0&&t2.min>0&&t2.minPrenda===null);
     __check("MT2: el tramo guardado conserva QUIÉN trabajó (las unidades van en pz, ya no pisan la persona)",typeof t2.u==='string'&&t2.u.length>0&&tramosDelDiaHTML('modulos',rec).includes(t2.u));
-    {const hd=tramosDelDiaHTML('modulos',rec);const conSeg=todosTramos().some(x=>x.t.centro==='modulos'&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()&&calcTramo(x.t,x.o).seg);
+    {const hd=tramosDelDiaHTML('modulos',rec);const conSeg=todosTramos().some(x=>x.t.centro==='modulos'&&(x.t.rec||null)===(rec||null)&&x.t.fin&&diaLocalDeTs(x.t.fin)===hoy()&&calcTramo(x.t,x.o).seg);
      __check("UX-B8: el supervisor ve en «Hechas hoy» «N registros hoy» (no «tramos») y además SAM real, Personas y Quién; «Segundas» solo si alguna fila las tiene",/registros? hoy/.test(hd)&&!/tramos ·/.test(hd)&&/<th>Empezó<\/th><th>Terminó<\/th><th class="num">Tiempo<\/th>/.test(hd)&&/>SAM real<\/th>/.test(hd)&&/<th class="num">Personas<\/th>/.test(hd)&&/<th>Quién<\/th>/.test(hd)&&(/<th class="num">Segundas<\/th>/.test(hd)===conSeg));}
     window.confirm=cp}
    TRAMO={paso:null,id:null,oid:null};
@@ -3879,7 +3960,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
    const rec=(S.recursos.find(r=>r.centro==='modulos'&&r.activa&&r.id!=='maquila')||{}).id;
    const base=S.ordenes.find(o=>abierta(o))||S.ordenes[0];
-   const oO=JSON.parse(JSON.stringify(base));oO.id=uid();oO.op='WH/MO/28513';oO.estado='plan';oO.cant=100;delete oO.tallasPedido;delete oO.programa;oO.ruta=[{centro:'modulos',t:5}];S.ordenes.push(oO);delete S.avance[oO.id];
+   const oO=JSON.parse(JSON.stringify(base));oO.id=uid();oO.op='WH/MO/28513';oO.estado='plan';oO.cant=100;delete oO.tallasPedido;delete oO.programa;oO.ruta=[{centro:'modulos',t:5}];__libProdPrueba(oO);S.ordenes.push(oO);delete S.avance[oO.id];
    if(!Array.isArray(S.params.motivos))S.params.motivos=[];const hayM=motivosDe('cierre').length;if(!hayM)S.params.motivos.push({motivo:'Merma de confección',uso:'cierre'});
    S.params.tablets=S.params.tablets||{};S.params.tablets['u1']={centro:'modulos',rec};
    PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};TRAMO={paso:null,id:null,oid:null};TAB.centro='modulos';TAB.rec=rec;TAB.q='';PLAN=null;PLAN_ALL=null;
@@ -4032,6 +4113,113 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oX.id);
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("FU sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · RECURSO Y ARRANQUE del supervisor por set_recurso_centro (04-oct-2026, decisión de la usuaria: «el supervisor Y planificación cambian
+     recurso y arranque»). El piso no sube órdenes: va por la función del servidor; sin ella, nada cambia y los campos salen bloqueados. */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const bakCEN={id:CEN.id,tab:CEN.tab,solo:CEN.solo,todo:CEN.todo,q:CEN.q,fases:CEN.fases,sem:CEN.sem};
+   __W.deny=null;__RPC.falta=false;__RPC.error=null;__RPC.faltan=[];PERFIL=adminP;PLAN=null;PLAN_ALL=null;
+   const P0=programar();const lun0=lunesDe(hoy());const colaM=colaCentro('modulos',filasDeCentros(['modulos'],P0,lun0,dsum(lun0,6),''));
+   const fb=colaM.find(f=>['disponible','porLlegar'].includes((f.cerc||{}).grupo))||colaM[0];
+   const base=(fb&&fb.o)||S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
+   const oR=JSON.parse(JSON.stringify(base));oR.id=uid();oR.op='WH/REC-1';oR.cant=100;delete oR.progCentro;delete oR.recursoFijo;delete oR.programa;S.ordenes.push(oR);delete S.avance[oR.id];
+   if(!(oR.ruta||[]).some(x=>x.centro==='modulos'))oR.ruta=(oR.ruta||[]).concat([{centro:'modulos',t:5}]);
+   PLAN=null;PLAN_ALL=null;await save();await __p(90);
+   const fila=()=>(sb.__DB.ordenes||[]).find(r=>r.id===oR.id);
+   const pcSrv=()=>((((fila()||{}).data||{}).progCentro)||{}).modulos;
+   const pcLoc=()=>(oR.progCentro||{}).modulos;
+   const recs=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');const r1=(recs[0]||{}).id,r2=(recs[1]||recs[0]||{}).id;
+   const sup={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};
+   const soloPiso=()=>{__W.deny=t=>!['avance','bitacora','turnos','paros'].includes(t)};
+   const ponerCola=()=>{page='centro';CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.q=oR.op;CEN.todo=true;CEN.fases=null;CEN.sem=0;render()};
+   const leerCola=()=>{const el=document.getElementById('p-centro');const sel=el.querySelector('select[onchange*="'+oR.id+'"]');const fec=el.querySelector('input[type="date"][onchange*="'+oR.id+'"]');
+     const tr=sel&&sel.closest('tr');const quitar=tr?[...tr.querySelectorAll('button')].find(b=>/quitar lo fijado/.test(b.textContent)):null;return{h:el.innerHTML,sel,fec,quitar}};
+   const verCola=async()=>{ponerCola();await __p(60);return leerCola()};
+   __check("RA0: la orden de prueba está en la base y sale en la cola de Confección",!!fila()&&!!r1,JSON.stringify({fila:!!fila(),r1,cola:colaM.length}));
+   // 0 · planificación sigue guardando como hoy (sube la orden; no usa la función)
+   {__W.writes=[];__RPC.ultimoRec=null;const n0=__RPC.n;
+    const v=await verCola();
+    __check("RA0: planificación ve Recurso y Arranca habilitados y sin el aviso de Supabase",!!v.sel&&!v.sel.disabled&&!!v.fec&&!v.fec.disabled&&!v.h.includes(TXT_REC_FALTA),v.sel?'':'no se encontró la fila en la cola');
+    setProgCen(oR.id,'modulos','rec',r1);await save();await __p(90);
+    __check("RA0: planificación guarda el recurso subiendo la orden, sin llamar a set_recurso_centro",(pcLoc()||{}).rec===r1&&(pcSrv()||{}).rec===r1&&__W.writes.some(w=>w.t==='ordenes'&&w.op==='upsert')&&!__RPC.ultimoRec&&!__W.writes.some(w=>w.t==='rpc:set_recurso_centro'),JSON.stringify({loc:pcLoc(),srv:pcSrv()}));}
+   // 1 · supervisor de piso SIN la función: los campos salen bloqueados con el texto, y nada cambia
+   {PERFIL=sup;soloPiso();__RPC.faltan=['set_recurso_centro'];RPC_REC={estado:null,ts:0,probando:false};
+    ponerCola();const v0=leerCola();   /* justo al dibujar: la sonda todavía no contestó */
+    __check("RA1: mientras se pregunta al servidor, Recurso y Arranca no se pueden tocar",!!v0.sel&&v0.sel.disabled&&/comprobando con el servidor/.test(v0.sel.title||''),v0.sel?v0.sel.title:'sin fila');
+    await __p(120);const v=await verCola();
+    __check("RA1: la sonda (llamada inocua) recuerda que la función falta",RPC_REC.estado==='falta');
+    __check("RA1: el supervisor ve Recurso y Arranca bloqueados con «lo cambia planificación (falta un paso en Supabase)»",!!v.sel&&v.sel.disabled&&!!v.fec&&v.fec.disabled&&(v.sel.title||'').includes(TXT_REC_FALTA)&&(v.fec.title||'').includes(TXT_REC_FALTA)&&v.h.includes('Recurso y Arranca: '+esc(TXT_REC_FALTA)));
+    __check("RA1: «quitar lo fijado» también sale bloqueado (la orden tiene recurso fijado)",!!v.quitar&&v.quitar.disabled&&/falta un paso en Supabase/.test(v.quitar.title||''));
+    __check("RA1: el puesto (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/onchange="moverEnCola\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
+    const snap=JSON.stringify(fila().data),loc=JSON.stringify(oR.progCentro);__W.writes=[];const nA=alerts.length;
+    await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
+    __check("RA1: sin la función avisa «Falta correr SUPABASE_RECURSO_CENTRO.sql en Supabase» y NO cambia nada (ni pantalla ni base)",alerts.length>nA&&/Falta correr SUPABASE_RECURSO_CENTRO\.sql en Supabase/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap&&!__W.writes.some(w=>w.t==='ordenes'),alerts.slice(nA).join(' | '));
+    const nB=alerts.length;await setProgCen(oR.id,'modulos',null);await __p(60);
+    __check("RA1: «quitar lo fijado» sin la función tampoco cambia nada y avisa",alerts.length>nB&&/SUPABASE_RECURSO_CENTRO\.sql/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap);}
+   // 2 · supervisor de piso CON la función: va por rpc, queda en la base y se conserva al releer la fila
+   {__RPC.faltan=[];RPC_REC={estado:'falta',ts:0,probando:false};   /* «falta» viejo: se vuelve a preguntar (la usuaria ya corrió el SQL) */
+    await verCola();await __p(120);const v=await verCola();
+    __check("RA2: al volver a preguntar, la función existe y los campos se habilitan sin el aviso",RPC_REC.estado==='si'&&!!v.sel&&!v.sel.disabled&&!v.fec.disabled&&!v.h.includes(TXT_REC_FALTA));
+    const otros=JSON.stringify(Object.assign({},fila().data,{progCentro:null}));__W.writes=[];__RPC.ultimoRec=null;const nb=S.bitacora.length;
+    const ok=await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
+    __check("RA2: el supervisor cambia el recurso por set_recurso_centro, no subiendo la orden",ok===true&&!!__RPC.ultimoRec&&__RPC.ultimoRec.orden===oR.id&&__RPC.ultimoRec.rec===r2&&__RPC.ultimoRec.desde==null&&!__W.writes.some(w=>w.t==='ordenes'),JSON.stringify(__RPC.ultimoRec));
+    __check("RA2: el recurso queda en la base y en la pantalla",(pcSrv()||{}).rec===r2&&(pcLoc()||{}).rec===r2,JSON.stringify({srv:pcSrv(),loc:pcLoc()}));
+    __check("RA2: la función toca SOLO progCentro (lo demás de la orden queda igual)",JSON.stringify(Object.assign({},fila().data,{progCentro:null}))===otros);
+    await setProgCen(oR.id,'modulos','desde',dsum(hoy(),4));await __p(60);
+    __check("RA2: el arranque también va por la función y no pisa el recurso",(pcSrv()||{}).desde===dsum(hoy(),4)&&(pcSrv()||{}).rec===r2&&(pcLoc()||{}).desde===dsum(hoy(),4)&&__RPC.ultimoRec.rec==null);
+    await save();await __p(90);
+    __check("RA2: el guardado del piso no queda con «cambios de órdenes sin guardar» ni falla",!SAVE_ERR&&!(ULT_SALTADAS||[]).includes('ordenes'),JSON.stringify({saltadas:ULT_SALTADAS,err:SAVE_ERR&&SAVE_ERR.errs}));
+    __check("RA2: queda en la bitácora del servidor (la función) y en la de la app (quién, antes → después)",(sb.__DB.bitacora||[]).some(r=>/Recurso y arranque en la cola de modulos · WH\/REC-1/.test(((r.data||{}).t)||''))&&S.bitacora.slice(nb).some(b=>/Programación .*WH\/REC-1.*guardado por la función del servidor/.test(b.t))&&(sb.__DB.bitacora||[]).some(r=>/WH\/REC-1.*guardado por la función del servidor/.test(((r.data||{}).t)||'')));
+    // se conserva al recargar: se relee la fila del servidor como al entrar
+    {const leida=JSON.parse(JSON.stringify(fila().data));aplicarFilaLocal('ordenes',oR.id,leida);
+     __check("RA2: al releer la fila (recargar), el recurso y el arranque siguen ahí",(pcLoc()||{}).rec===r2&&(pcLoc()||{}).desde===dsum(hoy(),4)&&recFijadoDe(oR,'modulos')===r2);}
+    // la regla «no antes de hoy» se sigue validando en la app, antes de llamar
+    {__RPC.ultimoRec=null;const nA=alerts.length;await setProgCen(oR.id,'modulos','desde',dsum(hoy(),-3));await __p(40);
+     __check("RA2: una fecha pasada no llega al servidor (la valida la app)",alerts.length>nA&&!__RPC.ultimoRec&&(pcSrv()||{}).desde===dsum(hoy(),4));}
+    // «quitar lo fijado»: recurso y arranque por la función, el puesto por set_prioridad_centro; la entrada del centro desaparece
+    {await setProgCen(oR.id,'modulos','pri',3);await __p(60);
+     __check("RA2: el puesto desde setProgCen también va por set_prioridad_centro",(pcSrv()||{}).pri===3&&(pcLoc()||{}).pri===3&&!__W.writes.some(w=>w.t==='ordenes'));
+     const v2=await verCola();
+     __check("RA2: con la función, «quitar lo fijado» está habilitado",!!v2.quitar&&!v2.quitar.disabled);
+     await setProgCen(oR.id,'modulos',null);await __p(80);
+     __check("RA2: «quitar lo fijado» quita puesto, recurso y arranque en la base y en la pantalla",pcSrv()===undefined&&pcLoc()===undefined,JSON.stringify({srv:pcSrv(),loc:pcLoc()}));}
+    // recurso de otro centro: el servidor lo rechaza y nada cambia
+    {const ajeno=(S.recursos.find(r=>r.activa&&r.centro!=='modulos')||{}).id;
+     if(ajeno){const nA=alerts.length;const r=await setProgCen(oR.id,'modulos','rec',ajeno);await __p(40);
+      __check("RA2: un recurso de otro centro lo rechaza el servidor: avisa y no cambia nada",r===false&&alerts.length>nA&&/no aceptó/.test(alerts[alerts.length-1])&&pcSrv()===undefined&&pcLoc()===undefined,alerts.slice(nA).join(' | '))}
+     else __check("RA2: un recurso de otro centro lo rechaza el servidor: avisa y no cambia nada",true,'sin recursos de otro centro')}}
+   // 3 · un operario no puede (ni con «reprogramar» en su perfil)
+   {S.params.tablets=S.params.tablets||{};const bakTab=S.params.tablets.u1;S.params.tablets.u1={centro:'modulos',rec:r1};
+    PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};__RPC.ultimoRec=null;const n0=__RPC.n;const nA=alerts.length;
+    setProgCen(oR.id,'modulos','rec',r1);await __p(40);
+    __check("RA3: el operario no cambia el recurso: avisa, no llama al servidor y nada cambia",esVistaOperario()&&alerts.length>nA&&!__RPC.ultimoRec&&__RPC.n===n0&&pcSrv()===undefined&&pcLoc()===undefined);
+    const dT=perfilesDef().find(x=>x.id==='tablet');const bakP=JSON.stringify(dT.permisos);dT.permisos=dT.permisos.concat(['reprogramar']);
+    const nB=alerts.length;setProgCen(oR.id,'modulos','rec',r1);await __p(40);
+    __check("RA3: aunque su perfil tuviera «reprogramar», el operario no cambia recurso ni arranque",alerts.length>nB&&alerts[alerts.length-1]===MSG_OPERARIO_REC&&!__RPC.ultimoRec&&pcLoc()===undefined);
+    const nC=alerts.length;const rC=ordenarColaPorColor('modulos');
+    __check("RA3: ni junta colores en la cola",rC===undefined&&alerts.length>nC&&/operarios no reordenan/.test(alerts[alerts.length-1]));
+    dT.permisos=JSON.parse(bakP);if(bakTab===undefined)delete S.params.tablets.u1;else S.params.tablets.u1=bakTab}
+   // 4 · «Juntar colores» del supervisor: por set_prioridad_centro; sin esa función, se bloquea con el mismo aviso
+   {PERFIL=adminP;__W.deny=null;await save();await __p(90);
+    const snapPC=S.ordenes.map(o=>({o,pc:o.progCentro===undefined?undefined:JSON.stringify(o.progCentro)}));
+    PERFIL=sup;soloPiso();__RPC.faltan=[];__W.writes=[];const nb=S.bitacora.length;
+    const P1=programar();const cola=colaCentro('modulos',filasDeCentros(['modulos'],P1,hoy(),dsum(hoy(),60),'')).map(f=>f.o);
+    if(cola.length){const r=await ordenarColaPorColor('modulos');await __p(60);
+     const pris=cola.map(o=>((o.progCentro||{}).modulos||{}).pri);const srvPri=cola.map(o=>((((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||{}).modulos);
+     __check("RA4: el supervisor junta colores por set_prioridad_centro, sin subir órdenes",r===true&&__W.writes.some(w=>w.t==='rpc:set_prioridad_centro')&&!__W.writes.some(w=>w.t==='ordenes'));
+     __check("RA4: los puestos quedan en la base, iguales a la pantalla (sin marcas que no viajan)",pris.every((p,i)=>p>0&&(srvPri[i]||{}).pri===p)&&cola.every(o=>!((o.progCentro||{}).modulos||{}).porColor),JSON.stringify(pris.slice(0,5))+' / '+JSON.stringify(srvPri.slice(0,5)));
+     __check("RA4: queda en la bitácora",S.bitacora.slice(nb).some(b=>/juntando colores/.test(b.t)&&/función del servidor/.test(b.t)));
+     // vuelve todo como estaba (pantalla y base) para probar sin la función
+     snapPC.forEach(s=>{if(s.pc===undefined)delete s.o.progCentro;else s.o.progCentro=JSON.parse(s.pc)});PERFIL=adminP;__W.deny=null;await save();await __p(90);
+     PERFIL=sup;soloPiso();__RPC.faltan=['set_prioridad_centro'];const loc=JSON.stringify(cola.map(o=>o.progCentro||null));const srv=JSON.stringify(cola.map(o=>(((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||null));const nA=alerts.length;
+     const r2b=await ordenarColaPorColor('modulos');await __p(60);
+     __check("RA4: sin set_prioridad_centro avisa (el mismo aviso: falta SUPABASE_MOVER_FASE.sql) y la cola queda exactamente como estaba",r2b===false&&alerts.length>nA&&alerts.slice(nA).some(m=>/SUPABASE_MOVER_FASE\.sql/.test(m))&&JSON.stringify(cola.map(o=>o.progCentro||null))===loc&&JSON.stringify(cola.map(o=>(((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||null))===srv);}
+    else{__check("RA4: el supervisor junta colores por set_prioridad_centro, sin subir órdenes",true,'sin cola en confección');}
+    snapPC.forEach(s=>{if(s.pc===undefined)delete s.o.progCentro;else s.o.progCentro=JSON.parse(s.pc)});}
+   PERFIL=adminP;__W.deny=null;__RPC.falta=false;__RPC.error=null;__RPC.faltan=[];RPC_REC={estado:null,ts:0,probando:false};
+   S.ordenes=S.ordenes.filter(o=>o!==oR);delete S.avance[oR.id];await save();await __p(90);
+   if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oR.id);
+   Object.assign(CEN,bakCEN);window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("RA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* INGRESO · recuperar la contraseña */
   {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
    const q=id=>document.getElementById(id);
@@ -5874,7 +6062,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* ===== CF · cola por fase con corte de profundidad (17-sep) ===== */
    {const c="corte";PLAN=null;PLAN_ALL=null;const Pf=programar();const lun=lunesDe(hoy());
     const filas=filasDeCentros([c],Pf,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);const m=partirPorCercania(cola);
-    __check("CF: los grupos de pantalla son Con puesto manual · Disponible · Por llegar · Revisar ruta · Todo lo que viene · Ya salió de aquí",CERCANIA_GRUPOS.map(g=>g[0]).join()==="puesto,disponible,porLlegar,revisar,lejana,anomalia"&&"puesto" in m&&"anomalia" in m);
+    __check("CF: los grupos de pantalla son Con puesto manual · Disponible · Por liberar a producción (04-oct) · Por llegar · Revisar ruta · Todo lo que viene · Ya salió de aquí",CERCANIA_GRUPOS.map(g=>g[0]).join()==="puesto,disponible,porLiberar,porLlegar,revisar,lejana,anomalia"&&"puesto" in m&&"porLiberar" in m&&"anomalia" in m);
     /* el orden: grupo → posición de la fase en la lista → llegada; la fórmula no deja que una llave pise a la anterior */
     __check("CF: una orden de la primera fase sin programar va ANTES que una de la segunda fase que llega en 2 días",ordenCercania({grupo:"porLlegar",faseRank:0,orden:9e8})<ordenCercania({grupo:"porLlegar",faseRank:1,orden:2}));
     __check("CF: dentro de Por llegar la cola va por fase en el orden de la lista",(()=>{const l=m.porLlegar;for(let i=1;i<l.length;i++){if((l[i-1].cerc.faseRank||0)>(l[i].cerc.faseRank||0))return false}return true})(),m.porLlegar.map(f=>f.o.fase+"#"+f.cerc.faseRank).slice(0,8).join(" | "));
@@ -7731,7 +7919,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.ordenes=S.ordenes.filter(x=>![oT,oD,oSin].includes(x));[oT,oD,oSin].forEach(x=>delete S.avance[x.id]);}
    /* MH · tres decisiones de la usuaria (23-sep, noche): maquila en el tramo · reabrir = reprogramación con motivo · «Hecho» suma */
    {const bakCf=window.confirm,bakAl=window.alert;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
-    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.cant=224;delete x.otTs;delete x.terminadaF;Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};return x};
+    const mk=(op,fase,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fase;x.estado='plan';x.cant=224;delete x.otTs;delete x.terminadaF;Object.assign(x,extra||{});__libProdPrueba(x);S.ordenes.push(x);S.avance[x.id]={};return x};
     const creadas=[];
     /* (1) maquila: vuelve de maquila con el estampado pendiente en Odoo → el estampado NO está hecho */
     const fRec=fasesDisponibles().find(f=>/maquila/i.test(f)&&/recep/i.test(f))||fasesDisponibles().find(f=>{const g=grupoDe(f);return g&&/maquila/i.test(g.grupo)});
@@ -7773,7 +7961,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const bakCf=window.confirm,bakAl=window.alert,bakPr=window.prompt;window.confirm=()=>true;window.alert=()=>{};const base=S.ordenes.find(x=>abierta(x))||S.ordenes[0];const bakTD=window.tallasDeOrden;window.tallasDeOrden=()=>[];
     const fP=fasesDisponibles().find(f=>faseNum(f)>=1&&faseNum(f)<4)||fasesDisponibles()[0];
     const mk=(op,extra)=>{const x=JSON.parse(JSON.stringify(base));x.id=uid();x.op=op;x.fase=fP;x.estado='plan';x.cant=224;delete x.ot;delete x.otTs;delete x.rutaCompleta;delete x.tallasPedido;
-      x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];Object.assign(x,extra||{});S.ordenes.push(x);S.avance[x.id]={};
+      x.ruta=[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}];Object.assign(x,extra||{});__libProdPrueba(x);S.ordenes.push(x);S.avance[x.id]={};
       tramosDe(x.id).push({id:'t-'+uid(),centro:'corte',rec:null,ini:new Date(Date.now()-60*6e4).toISOString(),fin:new Date().toISOString(),u:'op',paros:[],tallas:{}});return x};
     const creadas=[];const reg=(o,q)=>{marcarHechoCentro(o.id,'corte');const el=document.getElementById('hc-q');if(el){el.value=String(q);confirmarHechoCentro(o.id,'corte')}};
     /* una sola cuenta: corrección en Control de piso + «Hecho» */
@@ -7937,7 +8125,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {if(R('maquila')&&esRecAfuera('maquila')){const adminP=PERFIL;PERFIL=adminP0();const cf=window.confirm;window.confirm=()=>true;const al=window.alert;const als=[];window.alert=m=>als.push(String(m));
      const base=S.ordenes.find(x=>abierta(x)&&liberada(x,'tela'))||S.ordenes[0];const mods=S.recursos.find(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
      __check('MT1: Maquila es un recurso «afuera» (sale de la tabla de Tramos paralelos); un módulo de planta no',esRecAfuera('maquila')&&!(mods&&esRecAfuera(mods.id)));
-     const ords=[];for(let k=0;k<6;k++){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MT-'+k;o.estado='plan';o.cant=50;o.fase=fasesDisponibles().find(f=>/planificaci/i.test(f))||o.fase;delete o.tallasPedido;delete o.programa;delete o.progCentro;delete o.ot;o.recursoFijo={modulos:'maquila'};o.ruta=[{centro:'modulos',t:5},{centro:'empaque',t:1}];o.rutaCompleta=o.ruta.map(x=>Object.assign({},x));S.ordenes.push(o);S.avance[o.id]={lista:true};ords.push(o)}
+     const ords=[];for(let k=0;k<6;k++){const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/MT-'+k;o.estado='plan';o.cant=50;o.fase=fasesDisponibles().find(f=>/planificaci/i.test(f))||o.fase;delete o.tallasPedido;delete o.programa;delete o.progCentro;delete o.ot;o.recursoFijo={modulos:'maquila'};o.ruta=[{centro:'modulos',t:5},{centro:'empaque',t:1}];o.rutaCompleta=o.ruta.map(x=>Object.assign({},x));__libProdPrueba(o);S.ordenes.push(o);S.avance[o.id]={lista:true};ords.push(o)}
      PLAN=null;PLAN_ALL=null;programar();
      ords.forEach(o=>iniciarTramo(o.id,'modulos','maquila'));
      __check('MT2: maquila se lleva muchas órdenes a la vez: 6 INICIO seguidos, sin tope ni aviso',ords.every(o=>tramosDe(o.id).some(x=>!x.fin&&x.rec==='maquila'&&x.afuera))&&!als.length,JSON.stringify(als));
@@ -8594,11 +8782,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("UX-B6: las pestañas de vista tienen nombres cortos (Resumen · Planificación · Programación · Ejecución) y el nombre largo va al pasar el mouse",(()=>{const cs=[...pc().querySelectorAll('.pagehead .chip')];const t=cs.map(x=>x.textContent);return ['Resumen','Planificación','Programación','Ejecución'].every(x=>t.includes(x))&&!t.some(x=>/Programación del centro|Ejecución y desviaciones/.test(x))&&cs.some(x=>/Programación del centro/.test(x.getAttribute('title')||''))})());
    /* RC2 · la semana con carga del volcado (la siguiente): las dos listas parten la cola entera y no repiten nada */
    {abrir('corte',1);const P=programar();const lun=lunesDe(dsum(h,7)),dom=dsum(lun,6);
-    const filas=filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o));const {cola,proceso,listas,espera}=listasYEspera('corte',filas);
+    const filas=filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o));const {cola,proceso,listas,porLib,espera}=listasYEspera('corte',filas);
     __check("RC2: En proceso = grupo Disponible cuya fase de Odoo ya es la del centro (o el piso registró aquí); no está en Listas",proceso.every(f=>f.cerc&&f.cerc.grupo==='disponible'&&enProcesoEnCentro(f.o,'corte',f.cerc))&&listas.every(f=>!enProcesoEnCentro(f.o,'corte',f.cerc))&&!proceso.some(f=>listas.includes(f)));
     __check("RC2: una orden en fase 4Corte Planta (se está cortando) sale En proceso y no en Listas",(()=>{const f=cola.find(x=>/corte planta/i.test(x.o.fase||''));return !f||(proceso.includes(f)&&!listas.includes(f))})());
     const ids=x=>x.map(f=>f.o.id).sort().join(',');
-    __check("RC2: En proceso + Listas + En espera = la cola del centro (colaCentro) acotada a órdenes de planta, sin repetir ni perder ninguna",proceso.length+listas.length+espera.length===cola.length&&ids(proceso.concat(listas,espera))===ids(cola)&&new Set(listas.map(f=>f.o.id)).size===listas.length);
+    __check("RC2: En proceso + Listas + Por liberar a producción + En espera = la cola del centro (colaCentro) acotada a órdenes de planta, sin repetir ni perder ninguna",proceso.length+listas.length+porLib.length+espera.length===cola.length&&ids(proceso.concat(listas,porLib,espera))===ids(cola)&&new Set(listas.map(f=>f.o.id)).size===listas.length);
+    __check("RC2: Por liberar a producción = SOLO el grupo de la cola del mismo nombre, y ninguna de Listas está sin liberar a producción (04-oct)",porLib.every(f=>f.cerc&&f.cerc.grupo==='porLiberar'&&!liberada(f.o,'corte'))&&listas.every(f=>puedeEmpezarEnCentro(f.o,'corte'))&&espera.every(f=>!(f.cerc&&f.cerc.grupo==='porLiberar')));
     __check("RC2: Listas = SOLO grupo Disponible (el puesto manual ordena, no promueve); En espera = todo lo demás",listas.every(f=>f.cerc&&f.cerc.grupo==='disponible')&&espera.every(f=>!(f.cerc&&f.cerc.grupo==='disponible')));
     __check("RC2: solo órdenes de planta: con WH y con la tela liberada; lo de diseño / sin WH no entra al Resumen",listas.concat(espera).every(f=>lanzada(f.o)&&liberada(f.o,'tela')));
     {const oD=S.ordenes.find(o=>abiertaDe(o)&&!lanzada(o)&&(o.ruta||[]).some(p=>p.centro==='corte'));if(oD){oD.progCentro=Object.assign({},oD.progCentro,{corte:{pri:1}});const r2=listasYEspera('corte',filasDeCentros(['corte'],P,lun,dom,'').filter(f=>faseOkCEN(f.o)));
@@ -8608,7 +8797,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RC2: Listas va por urgencia: puesto manual primero y luego atrasada → para hoy → futuro → sin programar (nunca al revés)",(()=>{let ok=true;for(let i=1;i<listas.length;i++){const a=listas[i-1],b=listas[i];const pa=puestoDe(a.o,'corte')||SIN_PUESTO,pb=puestoDe(b.o,'corte')||SIN_PUESTO;if(pa<pb)continue;if(pa>pb){ok=false;break}if(ordenUrgencia(a)>ordenUrgencia(b)){ok=false;break}}return ok})());
     __check("RC2: En espera conserva el orden de la cola (Por llegar → Todo lo que viene → Revisar → Ya salió)",(()=>{const enCola=cola.filter(f=>espera.includes(f));return enCola.map(f=>f.o.id).join(',')===espera.map(f=>f.o.id).join(',')})());
     const t=[...pc().querySelectorAll('.res-tab')].map(txt);
-    __check("RC2: los conteos de las tres pestañas son los de las listas",t.length===3&&t[0]==='En proceso '+num(proceso.length)&&t[1]==='Listas en Corte '+num(listas.length)&&t[2]==='En espera '+num(espera.length),JSON.stringify(t));
+    __check("RC2: los conteos de las pestañas son los de las listas («Por liberar a producción» solo aparece si hay alguna, entre Listas y En espera)",(porLib.length?t.length===4&&t[2]==='Por liberar a producción '+num(porLib.length)&&t[3]==='En espera '+num(espera.length):t.length===3&&t[2]==='En espera '+num(espera.length))&&t[0]==='En proceso '+num(proceso.length)&&t[1]==='Listas en Corte '+num(listas.length),JSON.stringify(t));
     const n=prm('filasResumenCentro',8);const filasDOM=pc().querySelectorAll('.res-tabla tbody tr.res-fila');
     __check("RC2: se muestran las primeras N (parámetro filasResumenCentro, 8) y «Ver las X restantes» completa",filasDOM.length===Math.min(n,listas.length)&&(listas.length<=n||txt(pc().querySelector('.res-mas'))==='Ver las '+num(listas.length-n)+' restantes'));
     __check("RC2: cada fila lleva foto/WH/fase (whCell), producto, color, prendas hechas de pedidas, debía salir, estado y el visto",[...filasDOM].every(tr=>tr.children.length===8&&tr.querySelector('.fase-mini')&&tr.querySelector('.bar')&&tr.querySelector('.visto')));
@@ -8689,6 +8878,104 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    window.alert=al;PERFIL=adminP0();CEN.sem=0;CEN.rec='';CEN.lista='listas';CEN.verTodo=false;CEN.dia=null;CEN.tab='plan';PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("RESUMEN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)));}
   /* ===== AUDITORÍA DEL SISTEMA (19-sep-2026): lo que se encontró y se corrigió, fijado en pruebas ===== */
+  /* LP · «LISTA PARA EMPEZAR» SOLO SI ESTÁ LIBERADA A PRODUCCIÓN (04-oct-2026, decisión de la usuaria). Con datos reales salían «lista para
+     empezar» en Corte (y con INICIO en la tablet) órdenes con la tela lista que todavía esperaban en «Liberación a producción → Listas para liberar».
+     El programa NO cambia; cambia lo que se muestra y lo que se puede hacer. Se DIBUJAN la cola, el Resumen, la tablet del operario y su buscador. */
+  try{localStorage.__fase="lista solo liberada a produccion"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;const bakP=PERFIL;const alerts=[];window.alert=m=>alerts.push(String(m));window.confirm=()=>true;
+   const temp=[];const bitBak=S.bitacora.slice();const bakGRP=GRP;const bakCEN=JSON.stringify({id:CEN.id,solo:CEN.solo,tab:CEN.tab,q:CEN.q,todo:CEN.todo,lista:CEN.lista,verTodo:CEN.verTodo,dia:CEN.dia,rec:CEN.rec,sem:CEN.sem,cercAbre:CEN.cercAbre});const bakFases=CEN.fases;
+   const bakTAB={centro:TAB.centro,rec:TAB.rec,q:TAB.q,vista:TAB.vista};const bakLIB={et:LIB.et,vista:LIB.vista,q:LIB.q,ym:LIB.ym,ymAuto:LIB.ymAuto,sel:LIB.sel,aviso:LIB.aviso,freno:LIB.freno};const bakB=BUSQ['LIB.q'];
+   const C='corte';const rec=(S.recursos.find(r=>r.activa&&r.centro===C)||{}).id||null;const uid0='op-lp-'+uid();
+   S.params.tablets=S.params.tablets||{};
+   const comoOperario=f=>{const g=PERFIL;PERFIL={id:uid0,rol:'tablet',modo:'editar',nombre:'Operario LP'};try{return f()}finally{PERFIL=g}};
+   const pc=()=>document.getElementById('p-centro');
+   try{
+    PERFIL=adminP0();S.params.tablets[uid0]={centro:C,rec};
+    const base=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length)||S.ordenes.find(abierta);
+    const mk=(op)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.estadoOP='confirmed';o.fase='2Planificacion';o.fecha=dsum(hoy(),5);o.cant=60;o.cliente='CLIENTE LP';
+      ['lib','programa','sinLanzar','sinFechaEntrega','rutaConf','ot','rutaRevisar','histLib','recursoFijo','urgente','progCentro','rutaEditada','compromiso','fechaCompromiso','excedente','tallasPedido'].forEach(k=>delete o[k]);
+      o.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};if(!(o.telas||[]).length)o.telas=[{tela:(S.telas[0]||{}).id,kg:50}];
+      o.ruta=[{centro:'corte',t:1},{centro:'modulos',t:1},{centro:'empaque',t:1}];o.rutaCompleta=JSON.parse(JSON.stringify(o.ruta));
+      S.ordenes.push(o);temp.push(o);S.avance[o.id]={calidadOk:true,tinturada:true};confirmarRuta(o,'persona','prueba LP');
+      if(rec)o.progCentro={[C]:{rec,desde:hoy()}};   /* fijada al puesto: candidata a la tablet aunque el motor la programe fuera de la ventana */
+      return o};
+    const oA=mk('WH/LP-001');   /* tela lista, sin liberar a producción, sin empezar */
+    const oE=mk('WH/LP-002');S.avance[oE.id].centros={[C]:10};   /* sin liberar, pero YA EMPEZADA (10 unidades registradas en Corte) */
+    PLAN=null;PLAN_ALL=null;const P0=programar();
+    /* --- 1 · la puerta única --- */
+    __check("LP1: puedeEmpezarEnCentro es la puerta única: tela lista y sin liberar a producción en su primer centro → no puede empezar, y lo que le falta sale de faltaLiberarA",
+      !liberada(oA,'corte')&&puedeLiberarA(oA,'corte')&&!puedeEmpezarEnCentro(oA,C)&&!!porLiberarEn(oA,C)&&JSON.stringify(porLiberarEn(oA,C).falta)===JSON.stringify(faltaLiberarA(oA,'corte').filter(x=>!noFrenaLib(x,'corte')))&&puedeEmpezarEnCentro(oA,'modulos'),JSON.stringify(porLiberarEn(oA,C)));
+    const cA=cercaniaCentro(oA,C,P0);
+    __check("LP1: en la cola de Corte va al grupo «Por liberar a producción», no a Disponible (la tela sí está lista)",cA.grupo==='porLiberar'&&(cA.llegada||{}).tipo==='lista'&&!!cA.porLiberar,JSON.stringify({g:cA.grupo,l:cA.llegada}));
+    __check("LP1: nunca dice «lista para empezar» y listaParaEmpezar no la da por lista",!/lista para empezar/.test(llegadaHTML(cA))&&/por liberar a producción/.test(llegadaHTML(cA))&&!listaParaEmpezar(oA,C)&&!tagListaEmpezar(oA,C));
+    {const fl0=window.faltaLiberarA;let soloPantone=null,conOtro=null;
+     try{window.faltaLiberarA=(o,et)=>['color sin Pantone'];soloPantone=sinLibProdEn(oA,C);window.faltaLiberarA=(o,et)=>['color sin Pantone','falta confirmar ruta'];conOtro=sinLibProdEn(oA,C)}finally{window.faltaLiberarA=fl0}
+     __check("LPF1: en la cola el Pantone NO es lo que frena la liberación a producción (misma regla que Liberación): si es lo único que falta, dice «nada: está lista para liberar»; si falta otra cosa, solo nombra esa",!!soloPantone&&soloPantone.falta.length===0&&/nada: está lista para liberar/.test(soloPantone.txt)&&!!conOtro&&conOtro.falta.length===1&&conOtro.falta[0]==='falta confirmar ruta',JSON.stringify({soloPantone,conOtro}))}
+    {const cE=cercaniaCentro(oE,C,P0);const hE=llegadaHTML(cE);
+     __check("LPF2: una orden YA empezada aquí y sin liberar a producción no dice «lista para empezar» sino «en proceso aquí»",!/lista para empezar/.test(hE)&&/en proceso aquí/.test(hE),JSON.stringify({g:cE.grupo,sin:!!cE.sinLibProd,h:hE.slice(0,200)}))}
+    __check("RFF: «la función del servidor falta» con UNA regla (esFaltaFuncion): sí con PGRST202 o «Could not find the function»; no con un 404 suelto ni con un permiso negado",
+      esFaltaFuncion('Could not find the function public.mover_fase in the schema cache','mover_fase')&&esFaltaFuncion('PGRST202','x')&&esFaltaFuncion('function public.set_recurso_centro(text, text, text, text) does not exist','set_recurso_centro')&&!esFaltaFuncion('la orden op_28404 no existe','mover_fase')&&!esFaltaFuncion('404','set_prioridad_centro')&&!esFaltaFuncion('permission denied for function mover_fase','mover_fase')&&!/\|not found\|404/.test(String(setPrioridadServidor)+String(moverFaseServidor)));
+    /* --- 2 · la cola DIBUJADA --- */
+    GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;CEN.cercAbre=null;render();
+    {const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='';let cabA=null,cabE=null;const orden=[];
+     trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim();orden.push(cab.split(/[0-9]/)[0].trim());return}
+       const ds=tr.getAttribute('ondragstart')||'';if(ds.includes("'"+oA.id+"'"))cabA=cab;if(ds.includes("'"+oE.id+"'"))cabE=cab});
+     const rA=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));const rE=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oE.id+"'"));
+     __check("LP2: la cola DIBUJADA pone la orden bajo «Por liberar a producción», después de Disponible y antes de Por llegar",!!rA&&/^Por liberar a producción/.test(cabA||'')&&(orden.indexOf('Disponible')<0||orden.indexOf('Disponible')<orden.indexOf('Por liberar a producción'))&&(orden.indexOf('Por llegar')<0||orden.indexOf('Por liberar a producción')<orden.indexOf('Por llegar')),JSON.stringify({cabA,orden}));
+     __check("LP2: su fila no ofrece ✓ hecho y dice qué le falta, con el enlace a Liberación a producción de esa orden",!!rA&&!/marcarHechoCentro\(/.test(rA.innerHTML)&&/por liberar a producción/.test(rA.textContent)&&/qué la frena:/.test(rA.textContent)&&faltaLiberarA(oA,'corte').filter(x=>!noFrenaLib(x,'corte')).every(x=>rA.textContent.includes(x))&&rA.innerHTML.includes("irLibProdOrden('"+oA.id+"')"),rA?rA.textContent.slice(0,200):'(sin fila)');
+     __check("LP2: la ya EMPEZADA sin liberar no se esconde: sigue en Disponible, con ✓ y la etiqueta «sin liberar a producción»",!!rE&&/^Disponible/.test(cabE||'')&&/sin liberar a producción/.test(rE.textContent)&&/marcarHechoCentro\(/.test(rE.innerHTML)&&cercaniaCentro(oE,C,P0).grupo==='disponible'&&!!cercaniaCentro(oE,C,P0).sinLibProd,JSON.stringify({cabE}));}
+    /* sin permiso para abrir Liberación: dice lo que falta, sin enlace */
+    {const pa=window.puedeAbrirPagina;window.puedeAbrirPagina=()=>false;const h=porLiberarHTML(porLiberarEn(oA,C));window.puedeAbrirPagina=pa;
+     __check("LP2: un perfil que no abre Liberación a producción ve lo que falta pero no el enlace",/qué la frena:/.test(h)&&!/irLibProdOrden/.test(h));}
+    /* las acciones también se niegan por código (no solo por pantalla) */
+    {alerts.length=0;const nT=tramosDe(oA.id).length;iniciarTramo(oA.id,C,rec);marcarHechoCentro(oA.id,C);mCerrarCentro(oA.id,C);
+     __check("LP2: INICIO, «Hecho» y Terminar se niegan con «todavía no está liberada a producción · avisa a planificación» y no registran nada",alerts.length===3&&alerts.every(a=>a.includes(MSG_POR_LIBERAR))&&tramosDe(oA.id).length===nT&&!((S.avance[oA.id]||{}).centros||{})[C]&&!document.getElementById('veil').classList.contains('on'),JSON.stringify(alerts));try{cerrar()}catch(e){}}
+    /* --- 3 · el Resumen del centro DIBUJADO --- */
+    NAVH.length=0;irCentro(C,null,'resumen');CEN.rec='';CEN.dia=null;CEN.sem=0;CEN.verTodo=true;CEN.lista='listas';render();
+    {const tabs=[...pc().querySelectorAll('.res-tab')].map(x=>x.textContent.replace(/\s+/g,' ').trim());const iL=tabs.findIndex(t=>/^Listas en/.test(t)),iP=tabs.findIndex(t=>/^Por liberar a producción/.test(t)),iE=tabs.findIndex(t=>/^En espera/.test(t));
+     const enListas=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].some(tr=>tr.textContent.includes(oA.op));
+     CEN.lista='porLib';render();const fr=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].find(tr=>tr.textContent.includes(oA.op));
+     __check("LP3: el Resumen tiene la pestaña «Por liberar a producción» entre Listas y En espera; la orden está ahí y no en Listas",iL>=0&&iP===iL+1&&iE===iP+1&&!enListas&&!!fr,JSON.stringify(tabs));
+     __check("LP3: su fila no tiene el visto de terminar y dice qué le falta, con el enlace",!!fr&&!fr.querySelector('.visto')&&/qué la frena:/.test(fr.textContent)&&/irLibProdOrden\(/.test(fr.innerHTML));
+     CEN.lista='proceso';render();const fe=[...pc().querySelectorAll('.res-tabla tbody tr.res-fila')].find(tr=>tr.textContent.includes(oE.op));
+     __check("LP3: la empezada sin liberar sigue En proceso, con la etiqueta «sin liberar a producción»",!!fe&&/sin liberar a producción/.test(fe.textContent));}
+    /* --- 4 · la tablet del operario de Corte --- */
+    if(rec){PLAN=null;PLAN_ALL=null;const P1=programar();
+     __check("LP4: la orden SÍ es candidata para el puesto (programada o fijada), pero el operario no la ve: visibleOperario usa la misma puerta",(programadoPara(oA,C,rec,P1)||fijadaPara(oA,C,rec))&&!visibleOperario(oA,C,rec,P1)&&visibleOperario(oE,C,rec,P1));
+     const cola=comoOperario(()=>tabletFilas(C,rec,programar()));
+     __check("LP4: la cola de la tablet no la trae; la empezada sí",!cola.some(f=>f.o.id===oA.id)&&cola.some(f=>f.o.id===oE.id)&&comoOperario(()=>!ordenesQueVe().some(o=>o.id===oA.id)));
+     page='tablet';TAB.centro=C;TAB.rec=rec;TAB.q='';const vistas=[];comoOperario(()=>{['cola','proceso'].forEach(v=>{TAB.vista=v;render();vistas.push(document.getElementById('p-tablet').innerHTML)})});
+     __check("LP4: Mi centro DIBUJADO como operario: ni en «En cola» ni en «En proceso», y sin INICIO para ella",vistas.every(h=>!h.includes(oA.op)&&!h.includes("iniciarTramo('"+oA.id+"'")),'');
+     __check("LP4: la empezada sin liberar sigue en su tablet con la etiqueta «sin liberar a producción»",vistas.some(h=>h.includes(oE.op)&&/sin liberar a producción/.test(h)));
+     TAB.q=oA.op;let hb='';comoOperario(()=>{TAB.vista='cola';render();hb=document.getElementById('p-tablet').innerHTML});
+     __check("LP4: si el operario la BUSCA por su WH, dice «todavía no está liberada a producción · avisa a planificación» y no ofrece INICIO (ni «no está programada»)",/[Tt]odavía no está liberada a producción · avisa a planificación/.test(hb)&&hb.includes(oA.op)&&!hb.includes("iniciarTramo('"+oA.id+"'")&&!/No está programada/.test(hb),hb.slice(0,300));
+     const hs=tabletBuscadorHTML(C,tabletFilas(C,rec,programar()),rec);
+     __check("LP4: el supervisor que la busca en Mi centro ve lo mismo y lo que le falta, sin INICIO ni «pedir reprogramación»",hs.includes(MSG_POR_LIBERAR)&&/Qué la frena:/.test(hs)&&!hs.includes("iniciarTramo('"+oA.id+"'")&&!/pedirReprogramacion\('/.test(hs.slice(hs.indexOf(oA.op))),'');
+     TAB.q='';}
+    else __check("LP4: (sin recurso activo en Corte en este momento de la prueba)",true);
+    /* --- 5 · el programa NO cambia --- */
+    {PLAN=null;PLAN_ALL=null;const Pa=programar();const k1=window.sinLibProdEn;window.sinLibProdEn=()=>null;PLAN=null;PLAN_ALL=null;const Pb=programar();const cB=cercaniaCentro(oA,C,Pb).grupo;window.sinLibProdEn=k1;PLAN=null;PLAN_ALL=null;
+     const fechas=P=>JSON.stringify(Object.keys(P.ordenes).sort().map(k=>{const r=P.ordenes[k]||{};return [k,r.finPro||null,r.bloqueo||null,(r.pasos||[]).map(p=>[p.centro,p.ini||null,p.fin||null,p.rec||null])]}));
+     const roA=Pa.ordenes[oA.id]||{};const pA=(roA.pasos||[]).find(p=>p.centro===C)||{};
+     __check("LP5: el programa (P.pro y todas las fechas) es IDÉNTICO con la puerta y sin ella; sin ella la orden vuelve a Disponible (la puerta solo cambia lo que se ve)",JSON.stringify(Pa.pro)===JSON.stringify(Pb.pro)&&fechas(Pa)===fechas(Pb)&&cB==='disponible',cB);
+     __check("LP5: y el programa le sigue dando fecha y capacidad a la orden sin liberar",!roA.bloqueo&&!!pA.ini,JSON.stringify({b:roA.bloqueo,ini:pA.ini}));
+     __check("LP5: GUARDIA — programar() no consulta la puerta (el motor no se tocó)",!/puedeEmpezarEnCentro|porLiberarEn|sinLibProdEn|frenoProdCerc|empezadaEnCentro/.test(String(programar)));}
+    /* --- 6 · el enlace lleva a Liberación a producción acotada a esa orden --- */
+    {LIB.et='tela';LIB.q='';LIB.ym=new Set(['1999-01']);LIB.ymAuto=true;irLibProdOrden(oA.id);const hL=(document.getElementById('p-liberacion')||{}).innerHTML||'';
+     __check("LP6: «liberar →» abre Liberación a producción buscando esa WH, aunque el mes elegido no la incluya",page==='liberacion'&&LIB.et==='corte'&&LIB.q===oA.op&&hL.includes(oA.op),JSON.stringify({page,et:LIB.et,q:LIB.q}));}
+    /* --- 7 · al liberarla pasa a Disponible (y vuelve a la tablet) --- */
+    {page='ordenes';liberarA([oA.id],'corte');PLAN=null;PLAN_ALL=null;const P2=programar();const c2=cercaniaCentro(oA,C,P2);
+     GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;render();
+     const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='',cabA=null;trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim();return}if((tr.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"))cabA=cab});
+     const rA=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));
+     __check("LP7: liberada a producción pasa a «Disponible», con ✓ hecho y sin el aviso",liberada(oA,'corte')&&puedeEmpezarEnCentro(oA,C)&&c2.grupo==='disponible'&&!c2.porLiberar&&/^Disponible/.test(cabA||'')&&!!rA&&/marcarHechoCentro\(/.test(rA.innerHTML)&&!/por liberar a producción/.test(rA.textContent),JSON.stringify({g:c2.grupo,cabA}));
+     if(rec)__check("LP7: y el operario de Corte ya la ve en su tablet",visibleOperario(oA,C,rec,P2)&&comoOperario(()=>tabletFilas(C,rec,programar())).some(f=>f.o.id===oA.id));}
+   }catch(e){__R.errors.push({page:'driver LP',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{try{cerrar()}catch(e){}window.alert=a0;window.confirm=c0;PERFIL=bakP;delete S.params.tablets[uid0];
+    const ids=new Set(temp.map(o=>o.id));S.ordenes=S.ordenes.filter(o=>!ids.has(o.id));ids.forEach(id=>delete S.avance[id]);S.bitacora=bitBak;GRP=bakGRP;
+    Object.assign(CEN,JSON.parse(bakCEN));CEN.fases=bakFases;Object.assign(TAB,bakTAB);Object.assign(LIB,bakLIB);if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;
+    PLAN=null;PLAN_ALL=null;page='ordenes';render()}
+   __check("LP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   try{localStorage.__fase="auditoria sistema"}catch(e){}
   {const antes=__R.errors.length;const al=window.alert;const alerts=[];window.alert=m=>{alerts.push(String(m))};PERFIL=adminP0();
    const recarga=()=>{const pr=window.prompt;window.prompt=()=>'APLICAR';TAREA=planTarea(window.__tareaRows,'Tarea__project_task__95_.xlsx');aplicarTarea();window.prompt=pr;PLAN=null;PLAN_ALL=null};
@@ -10006,6 +10293,109 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      }
     }finally{if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);window.confirm=cf0;PERFIL=bakP;page='ordenes';render()}
     __check("ASP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* LPL · Liberación a producción EN LOTE (04-oct-2026, usuaria: «debería permitir liberar en masivo»). Se DIBUJA la pantalla de producción
+     con tres órdenes listas del simulador, se marcan en la lista, se abre la ventana, una deja de poderse liberar a esa hora, y se aplica. */
+  try{localStorage.__fase="liberación a producción en lote"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm,sp0=window.perfilSoloPiso;const bakP=PERFIL;const bitBak=S.bitacora.slice();
+   const bakLIB={et:LIB.et,vista:LIB.vista,q:LIB.q,ym:LIB.ym,ymAuto:LIB.ymAuto,sel:LIB.sel,aviso:LIB.aviso,freno:LIB.freno};const bakGRP=GRP;const bakB=BUSQ['LIB.q'];const bakF=FOD['LIB.q'];const bakLIBV=LIBV;
+   const alerts=[];window.alert=m=>alerts.push(String(m));window.confirm=()=>true;const temp=[];
+   const P=()=>document.getElementById('p-liberacion');const M=()=>document.getElementById('modal');const veil=()=>document.getElementById('veil').classList.contains('on');
+   const btnTxt=re=>{const b=[...P().querySelectorAll('button')].find(x=>re.test(x.textContent));return b||null};
+   const chkDe=o=>P().querySelector('#lib-lista tbody input[onchange^="togLib(\''+o.id+'\'"]');
+   try{
+    const base=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length)||S.ordenes.find(abierta);
+    const mk=(op,cant)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.fase='2Planificacion';o.fecha=dsum(hoy(),30);o.cant=cant;o.cliente='CLIENTE LPL';
+      ['lib','programa','sinLanzar','sinFechaEntrega','rutaConf','ot','rutaRevisar','histLib','recursoFijo','urgente'].forEach(k=>delete o[k]);o.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};
+      if(!(o.telas||[]).length)o.telas=[{tela:(S.telas[0]||{}).id,kg:50}];
+      S.ordenes.push(o);temp.push(o);S.avance[o.id]={calidadOk:true,tinturada:true};confirmarRuta(o,'persona','prueba de liberación en lote');return o};
+    const o1=mk('WH/LPL-001',100),o2=mk('WH/LPL-002',120),o3=mk('WH/LPL-003',80);PLAN=null;PLAN_ALL=null;
+    GRP={};grpSt('lib').niveles=[];delete BUSQ['LIB.q'];delete FOD['LIB.q'];LIBV={};
+    page='liberacion';LIB.et='corte';LIB.ymAuto=true;LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.freno=null;LIB.aviso=null;LIB.q='WH/LPL-';LIB.vista='listas';LIB.sel=new Set();render();
+    const pc=partesLib('corte',LIB.ym);
+    __check("LPL0: las tres órdenes de prueba salen en «Listas para liberar» de producción (ruta confirmada, tela con calidad aprobada, sin liberar)",[o1,o2,o3].every(o=>pc.listas.includes(o)&&puedeLiberarA(o,'corte')&&!liberada(o,'corte'))&&P().querySelector('.lib-vista').dataset.vista==='listas',JSON.stringify([o1,o2,o3].map(o=>faltaLiberarA(o,'corte'))));
+    __check("LPL1: cada lista lleva su casilla, el encabezado la suya, y arriba «Liberar las marcadas (0)» (apagado), «Lavado de las marcadas (0)», «Marcar todas las listas (3)» y «Desmarcar»",[o1,o2,o3].every(o=>!!chkDe(o))&&!!P().querySelector('#lib-lista thead input[type=checkbox]')
+      &&!!btnTxt(/^Liberar las marcadas \(0\)$/)&&btnTxt(/^Liberar las marcadas/).disabled&&(!puedeEditarRuta()||!!btnTxt(/^Lavado de las marcadas \(0\)$/))&&!!btnTxt(/^Marcar todas las listas \(3\)$/)&&!!btnTxt(/^Desmarcar$/)&&!P().innerHTML.includes('Liberar todas las listas'));
+    const dos=(P().querySelector('.lib-dos-formas')||{}).textContent||'';
+    __check("LPL1: el texto de la pestaña dice las dos formas: una por una en la fila, o marcar varias (o un grupo con «Agrupar por») y «Liberar las marcadas»",/una por una/.test(dos)&&/«Liberar»/.test(dos)&&/varias a la vez/.test(dos)&&/Agrupar por/.test(dos)&&/«Liberar las marcadas»/.test(dos),dos.slice(0,300));
+    __check("LPL1: la fila de producción sigue con «☐ Materia prima ☐ Insumos [Liberar]»",[o1,o2,o3].every(o=>{const tr=chkDe(o).closest('tr');const v=tr&&tr.querySelector('.lib-verif');return !!v&&/Materia prima/.test(v.textContent)&&/Insumos/.test(v.textContent)&&!!v.querySelector('button[onclick="liberarProd(\''+o.id+'\')"]')}));
+    /* marcar en la pantalla: los botones se actualizan sin redibujar la página (la cabecera es el mismo nodo) */
+    const cab0=P().querySelector('.pagehead');
+    chkDe(o1).click();
+    __check("LPL2: al marcar una orden, «Liberar las marcadas (1)» se enciende sin redibujar toda la página (solo la lista)",LIB.sel.has(o1.id)&&LIB.sel.size===1&&!!btnTxt(/^Liberar las marcadas \(1\)$/)&&!btnTxt(/^Liberar las marcadas/).disabled&&P().querySelector('.pagehead')===cab0&&cab0.isConnected&&chkDe(o1).checked);
+    chkDe(o2).click();chkDe(o3).click();
+    __check("LPL2: marcadas las tres, los dos botones de lote cuentan la MISMA selección (Liberar 3 · Lavado 3)",LIB.sel.size===3&&!!btnTxt(/^Liberar las marcadas \(3\)$/)&&(!puedeEditarRuta()||!!btnTxt(/^Lavado de las marcadas \(3\)$/))&&marcadasLibAhora('corte').length===3);
+    if(puedeEditarRuta()){btnTxt(/^Lavado de las marcadas/).click();const hm=M().innerHTML;
+      __check("LPL3: «Lavado de las marcadas» abre el lavado con esas mismas tres órdenes",veil()&&/3 órdenes elegidas/.test(hm)&&[o1,o2,o3].every(o=>hm.includes(esc(o.op))),hm.slice(0,200));cerrar()}
+    else __check("LPL3: «Lavado de las marcadas» abre el lavado con esas mismas tres órdenes",true,'el perfil no pone lavado');
+    /* casilla por grupo, «Marcar todas» y «Desmarcar» */
+    btnTxt(/^Desmarcar$/).click();const desm=LIB.sel.size===0;
+    btnTxt(/^Marcar todas las listas/).click();const todas=LIB.sel.size===3&&[o1,o2,o3].every(o=>LIB.sel.has(o.id));
+    btnTxt(/^Desmarcar$/).click();
+    grpSt('lib').niveles=['cliente'];render();const gchk=P().querySelector('#lib-lista input.grp-chk');if(gchk)gchk.click();const porGrupo=[o1,o2,o3].every(o=>LIB.sel.has(o.id));
+    const gchk2=P().querySelector('#lib-lista input.grp-chk');const marcadoG=!!(gchk2&&gchk2.checked);if(gchk2)gchk2.click();const desG=LIB.sel.size===0;grpSt('lib').niveles=[];render();
+    __check("LPL4: «Desmarcar» vacía la selección, «Marcar todas las listas» marca las tres, y agrupando por cliente la casilla del grupo marca y desmarca el grupo entero",desm&&todas&&!!gchk&&porGrupo&&marcadoG&&desG,JSON.stringify({desm,todas,g:!!gchk,porGrupo,marcadoG,desG}));
+    /* la ventana de confirmación */
+    [o1,o2,o3].forEach(o=>chkDe(o).click());const nb=S.bitacora.length;
+    btnTxt(/^Liberar las marcadas \(3\)$/).click();const hm=M().innerHTML;const btn=()=>M().querySelector('#lpl-btn');const ok=()=>M().querySelector('#lpl-ok');
+    __check("LPL5: «Liberar las marcadas» abre una ventana con cuántas y cuántas prendas, la lista (OP, cliente, prendas) y la casilla «Verifiqué en bodega…» sin marcar; el botón de aplicar está apagado",veil()&&/3 órdenes · 300 prendas/.test(hm)&&M().querySelectorAll('tr[data-oid]').length===3&&[o1,o2,o3].every(o=>hm.includes(esc(o.op)))&&/CLIENTE LPL/.test(hm)
+      &&/Verifiqué en bodega la materia prima y los insumos de estas 3 órdenes/.test(M().textContent)&&!!ok()&&!ok().checked&&!!btn()&&btn().disabled&&!!M().querySelector('#lpl-nota'),hm.slice(0,300));
+    /* a esa hora, la tercera ya no se puede liberar (alguien le quitó la confirmación de la ruta) */
+    delete o3.rutaConf;PLAN=null;PLAN_ALL=null;
+    btn().click();const sinCasilla1=veil()&&![o1,o2,o3].some(o=>liberada(o,'corte'))&&S.bitacora.length===nb;
+    const nAl=alerts.length;const r0=aplicarLibProdLote([o1.id,o2.id,o3.id],false,'');
+    __check("LPL5: sin la casilla no se libera nada (el botón está apagado y aplicar sin la casilla avisa y no toca nada)",sinCasilla1&&r0===0&&alerts.length===nAl+1&&/Verifiqué en bodega/.test(alerts[alerts.length-1])&&![o1,o2,o3].some(o=>liberada(o,'corte'))&&S.bitacora.length===nb);
+    ok().click();M().querySelector('#lpl-nota').value='revisado con bodega (prueba)';
+    __check("LPL5: al marcar la casilla se enciende el botón «Liberar 3 a producción»",!btn().disabled&&/Liberar 3 a producción/.test(btn().textContent));
+    btn().click();
+    const c1=(o1.lib||{}).corte||{},c2=(o2.lib||{}).corte||{};const tB=(S.bitacora[S.bitacora.length-1]||{}).t||'';
+    __check("LPL6: con la casilla se liberan las que se pueden (2) y la que ya no se podía queda sin liberar, en Frenadas, con su motivo",liberada(o1,'corte')&&liberada(o2,'corte')&&!liberada(o3,'corte')&&!(o3.lib||{}).corte&&partesLib('corte',LIB.ym).frenadas.includes(o3)&&faltaLiberarA(o3,'corte').includes('falta confirmar ruta')&&!veil());
+    __check("LPL6: cada liberada tiene lo mismo que la fila (las dos verificaciones con quién y cuándo, «lista») y la marca del lote",[c1,c2].every(c=>c.ok===true&&c.mpOk===true&&c.insOk===true&&c.fechaVerif===hoy()&&c.u===quienFirma()&&typeof c.ts==='string'&&c.ts.length>=20&&/^LP-[0-9]{8}-/.test(c.lote||''))&&c1.lote===c2.lote&&c1.ts===c2.ts&&S.avance[o1.id].lista===true&&S.avance[o2.id].lista===true&&!LIBV[o1.id]&&!LIBV[o2.id]
+      &&JSON.stringify(Object.keys(c1))===JSON.stringify(['ok','u','ts','mpOk','insOk','fechaVerif','lote']),JSON.stringify(c1));
+    __check("LPL6: UNA sola línea de bitácora con el total, el lote, las OP, la nota y la que no se liberó con su motivo",S.bitacora.length===nb+1&&/^Liberadas a producción en lote LP-/.test(tB)&&tB.includes(c1.lote)&&/: 2 órdenes por /.test(tB)&&tB.includes(o1.op)&&tB.includes(o2.op)&&/revisado con bodega \(prueba\)/.test(tB)&&tB.includes(o3.op+' (falta confirmar ruta')&&/verificados en bodega/.test(tB),tB);
+    const av=P().querySelector('.lib-aviso');const avT=av?av.textContent:'';const sal=P().querySelector('.lib-saltadas');
+    __check("LPL7: la pantalla dice «Se liberaron 2 órdenes a producción · verlas en «Ya liberadas»», lista la que no se liberó con su motivo (los frenos de la fila: el Pantone no frena), y la selección quedó limpia",!!av&&/Se liberaron 2 órdenes a producción/.test(avT)&&/verlas en «Ya liberadas»/.test(avT)&&!!sal&&sal.textContent.includes(o3.op)&&/falta confirmar ruta/.test(sal.textContent)&&!/color sin Pantone/.test(sal.textContent)&&LIB.sel.size===0&&!!btnTxt(/^Liberar las marcadas \(0\)$/)&&P().querySelector('.lib-vista').dataset.vista==='listas',avT.slice(0,300));
+    LIB.vista='liberadas';render();const hL=P().innerHTML;
+    __check("LPL7: las liberadas en lote salen en «Ya liberadas» con quién y cuándo, y se deshacen por orden (desliberar), como siempre",hL.includes(esc(o1.op))&&hL.includes(esc(o2.op))&&(!puedeDesliberar()||(hL.includes("mDesliberar(['"+o1.id+"']")&&hL.includes("mDesliberar(['"+o2.id+"']"))));
+    /* permisos: perfil de piso y perfil sin permiso */
+    confirmarRuta(o3,'persona','prueba de liberación en lote');PLAN=null;PLAN_ALL=null;LIB.vista='listas';LIB.aviso=null;LIB.sel=new Set();render();
+    window.perfilSoloPiso=()=>true;render();const hP=P().innerHTML;const nAl2=alerts.length,nb2=S.bitacora.length;
+    mLiberarProdLote([o3.id]);const abrioP=veil();const rP=aplicarLibProdLote([o3.id],true,'');LIB.sel=new Set([o3.id]);liberarMarcadasLib('corte');const abrioP2=veil();
+    __check("LPL8: desde un perfil de piso no hay «Liberar las marcadas» ni se puede liberar en lote (la ventana no se abre y aplicar no hace nada)",!/Liberar las marcadas/.test(hP)&&!abrioP&&!abrioP2&&rP===0&&!liberada(o3,'corte')&&S.bitacora.length===nb2&&alerts.slice(nAl2).length===3&&alerts.slice(nAl2).every(a=>/perfil de piso/.test(a)),JSON.stringify(alerts.slice(nAl2)));
+    window.perfilSoloPiso=sp0;LIB.sel=new Set();
+    PERFIL={id:'u-lpl-corte',rol:'corte',modo:'editar',nombre:'Supervisor corte'};const pisoReal=perfilSoloPiso()&&!puedeLibProdLote();
+    PERFIL={id:'u-lpl-con',rol:'consulta',modo:'editar',nombre:'Consulta'};const sinPerm=!(puede('programa')||puede('liberar'))&&!puedeLibProdLote();
+    const hC=cuerpoLibHTML('corte');const nAl3=alerts.length;const rC=aplicarLibProdLote([o3.id],true,'');mLiberarProdLote([o3.id]);const abrioC=veil();
+    __check("LPL8: un perfil sin permiso de liberar no ve casillas ni botones de lote y no puede liberar en lote; un perfil de piso real (supervisor de corte) tampoco",pisoReal&&sinPerm&&!/liberarMarcadasLib\(/.test(hC)&&!/togLib\(/.test(hC)&&!abrioC&&rC===0&&!liberada(o3,'corte')&&alerts.length===nAl3+2&&/no libera a producción/.test(alerts[nAl3]),JSON.stringify({pisoReal,sinPerm}));
+    PERFIL=bakP;
+    /* la liberación por fila sigue igual: la de antes (copia literal) contra la de ahora, por la pantalla */
+    const liberarProdAntes=function(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(puede('programa')||puede('liberar'))){alert('Tu perfil no libera a producción.');return}
+      const v=LIBV[id]||{};if(!(v.mp&&v.ins)){alert('Marca las dos verificaciones (materia prima e insumos en bodega) antes de liberar. Es tu firma: el sistema no sabe si el material llegó.');return}
+      if(!puedeLiberarA(o,'corte')){alert('No se puede liberar: '+faltaLiberarA(o,'corte').join(', '));return}
+      const u=quienFirma(),ts=new Date().toISOString();o.lib=o.lib||{};o.lib.corte={ok:true,u,ts,mpOk:true,insOk:true,fechaVerif:hoy()};
+      if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;delete LIBV[id];
+      bitacora('Liberada a producción '+o.op+' por '+u+' · materia prima e insumos verificados en bodega el '+hoy());if(page==='liberacion'){LIB.aviso={n:1,et:'corte'};LIB.vista='listas'}PLAN=null;PLAN_ALL=null;save();render()};
+    const oA=mk('WH/LPL-A',60),oB=mk('WH/LPL-B',60);PLAN=null;PLAN_ALL=null;LIB.aviso=null;LIB.vista='listas';render();
+    const nAl4=alerts.length;LIBV={[oB.id]:{mp:true}};liberarProdAntes(oB.id);const alA=alerts[alerts.length-1];LIBV={[oB.id]:{mp:true}};liberarProd(oB.id);const alB=alerts[alerts.length-1];
+    const igualAlerta=alerts.length===nAl4+2&&alA===alB&&!liberada(oB,'corte');LIBV={};
+    LIBV[oA.id]={mp:true,ins:true};liberarProdAntes(oA.id);const tA=S.bitacora[S.bitacora.length-1].t;const avisoA=JSON.stringify(LIB.aviso),vistaA=LIB.vista;
+    LIB.aviso=null;LIB.vista='listas';render();
+    const filaB=()=>{const b=P().querySelector('#lib-lista button[onclick="liberarProd(\''+oB.id+'\')"]');return b&&b.closest('tr')};
+    filaB().querySelector('input[onchange^="setLibV(\''+oB.id+'\',\'mp\'"]').click();filaB().querySelector('input[onchange^="setLibV(\''+oB.id+'\',\'ins\'"]').click();
+    const bB=P().querySelector('#lib-lista button[onclick="liberarProd(\''+oB.id+'\')"]');const enc=!!bB&&!bB.disabled;if(bB)bB.click();
+    const tBf=S.bitacora[S.bitacora.length-1].t;const avisoB=JSON.stringify(LIB.aviso),vistaB=LIB.vista;
+    const sin=c=>{const x=Object.assign({},c);delete x.ts;return JSON.stringify(x)};const cA=(oA.lib||{}).corte||{},cB=(oB.lib||{}).corte||{};
+    __check("LPL9: la liberación por fila sigue igual que antes: misma alerta sin las dos casillas y, con ellas (marcadas en la pantalla), el mismo registro en la orden (sin lote), la misma «lista», la misma línea de bitácora y el mismo aviso",igualAlerta&&enc&&liberada(oA,'corte')&&liberada(oB,'corte')
+      &&JSON.stringify(Object.keys(cA))===JSON.stringify(Object.keys(cB))&&sin(cA)===sin(cB)&&!('lote' in cB)&&typeof cB.ts==='string'&&S.avance[oA.id].lista===true&&S.avance[oB.id].lista===true&&!LIBV[oA.id]&&!LIBV[oB.id]
+      &&tA.split(oA.op).join('OP')===tBf.split(oB.op).join('OP')&&avisoA===avisoB&&vistaA===vistaB,JSON.stringify({igualAlerta,enc,cA,cB,tA,tBf,avisoA,avisoB}));
+    /* la textil no cambia: sin casilla de grupo (sigue «seleccionar todo»), sin el bloque de producción */
+    LIB.et='tela';LIB.vista='listas';LIB.q='';LIB.aviso=null;grpSt('lib').niveles=['cliente'];render();const hT=P().innerHTML;
+    __check("LPL10: la liberación textil no cambia: sin «Marcar todas las listas»/«Desmarcar»/«Dos formas», y el grupo sigue con «seleccionar todo» (sin casilla de grupo)",!/Marcar todas las listas/.test(hT)&&!/lib-dos-formas/.test(hT)&&!/class="grp-chk"/.test(hT)&&grpSt('lib').selChk==null);
+    grpSt('lib').niveles=[];
+   }catch(e){__R.errors.push({page:'driver LPL',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{try{cerrar()}catch(e){}window.alert=a0;window.confirm=c0;window.perfilSoloPiso=sp0;PERFIL=bakP;
+    const ids=new Set(temp.map(o=>o.id));S.ordenes=S.ordenes.filter(o=>!ids.has(o.id));ids.forEach(id=>delete S.avance[id]);S.bitacora=bitBak;
+    Object.assign(LIB,bakLIB);GRP=bakGRP;if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;if(bakF===undefined)delete FOD['LIB.q'];else FOD['LIB.q']=bakF;LIBV=bakLIBV;PLAN=null;PLAN_ALL=null;page='ordenes';render()}
+   __check("LPL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
