@@ -30,7 +30,8 @@
 --      mete un ALTER TABLE dentro de la función y falla, como pasó el 16-sep).
 --      Los avisos de «destructive operation» por los REVOKE son esperables.
 --   3. Requisito: que ya exista public.puede_mover_fase() (SUPABASE_MOVER_FASE.sql
---      v2). Si no existe, el paso 2 falla y no queda nada a medias.
+--      v2). La primera instrucción del archivo lo comprueba: si no existe, se
+--      detiene con un error y no se crea nada.
 --   4. Los supervisores que ya tenían la app abierta: recargar la página (la app
 --      vuelve a comprobar la función como mucho una vez por minuto).
 --
@@ -96,6 +97,9 @@
 -- ---------------------------------------------------------------------------
 -- 1 · quién puede cambiar recurso y arranque en un centro (no se llama desde la app)
 -- ---------------------------------------------------------------------------
+-- 0 · si falta puede_mover_fase() (SUPABASE_MOVER_FASE.sql v2), parar aquí sin crear nada
+do $$ begin perform 'public.puede_mover_fase()'::regprocedure; end $$;
+
 create or replace function public.puede_programar_centro(p_centro text)
 returns boolean
 language plpgsql

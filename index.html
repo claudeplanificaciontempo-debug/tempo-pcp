@@ -1646,7 +1646,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 09:31';
+const APP_BUILD='2026-10-05 09:58';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -9555,7 +9555,8 @@ function anomaliasCola(){return memo('anomaliasCola',anomaliasColaCalc)}
 function anomaliasColaCalc(){let P=null;try{P=programar()}catch(e){return []}const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const out=[];
   S.centros.filter(c=>c.area==='pro'&&c.activo!==false).forEach(c=>{filasDeCentros([c.id],P,lun,dom,'').filter(f=>!f.hecho&&!f.bloq&&f.cerc&&(f.cerc.grupo==='anomalia'||f.cerc.rutaIncompleta)).forEach(f=>out.push({op:f.o.op,id:f.o.id,c:c.id,fase:f.o.fase,tipo:f.cerc.grupo==='anomalia'?'yaSalio':'rutaIncompleta',rutaIncompleta:!!f.cerc.rutaIncompleta||pasosProDe(f.o).length<=1}))});return out}
 /* la etiqueta para la fila, en negrita roja cuando toca */
-function llegadaHTML(x){if(x&&x.porLiberar)return porLiberarHTML(x.porLiberar);   /* 04-oct: tela lista pero sin liberar a producción: nunca «lista para empezar» */
+function llegadaHTML(x){if(x&&x.porLiberar)return porLiberarHTML(x.porLiberar);
+  if(x&&x.sinLibProd)return '<span class="t2" title="'+esc('ya empezó aquí sin estar liberada a producción: '+(x.sinLibProd.txt||''))+'">en proceso aquí</span>';   /* 05-oct: empezada y sin liberar: no es «lista para empezar» */   /* 04-oct: tela lista pero sin liberar a producción: nunca «lista para empezar» */
   const t=txtLlegada(x&&x.llegada);if(!t.txt)return '';
   if(x&&x.porQueTela)t.tip=(t.tip?t.tip+' · ':'')+x.porQueTela;
   const m=x&&x.marca;
@@ -9635,7 +9636,7 @@ async function setPrioridadServidor(o,c,pri){
   if(!sb||typeof sb.rpc!=='function')return{falta:true};
   try{const {error}=await sb.rpc('set_prioridad_centro',{p_orden:o.id,p_centro:c,p_pri:pri||null});
     if(error){const m=String(error.message||'');
-      if(/set_prioridad_centro|does not exist|could not find|schema cache|PGRST202|not found|404/i.test(m))return{falta:true,error:m};
+      if(esFaltaFuncion(m,'set_prioridad_centro'))return{falta:true,error:m};
       return{error:m}}
     return{ok:true}}catch(e){return{error:String((e&&e.message)||e)}}}
 /* cambios = [{o, pri}] ya aplicados en memoria; si el servidor no los acepta, se deshacen */
@@ -9882,7 +9883,7 @@ function esEntradaProduccion(o,c){const ru=rutaHechasDe(o);const i=ru.indexOf(c)
   return !antes.some(x=>pasoHecho(o,x)||empezadaEnCentro(o,x))}                      // compañeros de tramo: si uno ya empezó, la orden ya entró a producción
 /* null = la liberación no la frena aquí · {oid,falta,txt} = está en su entrada a producción sin liberar (empezada o no) */
 function sinLibProdEn(o,c){if(!o||!c||liberada(o,'corte')||!esEntradaProduccion(o,c))return null;
-  const f=faltaLiberarA(o,'corte');
+  const todo=faltaLiberarA(o,'corte');const f=todo.filter(x=>!noFrenaLib(x,'corte'));   /* el Pantone no frena la liberación a producción (noFrenaLib, como en Liberación) */
   return {oid:o.id,falta:f,txt:f.length?f.join(' · '):'nada: está lista para liberar, solo falta que planificación la libere'}}
 /* sin liberar y SIN empezar: no se puede empezar (null = sí puede) */
 function porLiberarEn(o,c){const s=sinLibProdEn(o,c);return (s&&!empezadaEnCentro(o,c))?s:null}
@@ -9918,7 +9919,7 @@ async function moverFaseServidor(o,f,motivo){
   if(!sb||typeof sb.rpc!=='function')return{falta:true};
   try{const {error}=await sb.rpc('mover_fase',{p_orden:o.id,p_fase:f,p_motivo:motivo||''});
     if(error){const m=String(error.message||'');
-      if(/mover_fase|does not exist|could not find|schema cache|PGRST202|not found|404/i.test(m))return{falta:true,error:m};
+      if(esFaltaFuncion(m,'mover_fase'))return{falta:true,error:m};
       return{error:m}}
     return{ok:true}}catch(e){return{error:String((e&&e.message)||e)}}}
 async function moverFasesRPC(ids,f,motivo){let n=0,err=null,falta=false;const movidas=[];
@@ -10163,7 +10164,7 @@ function colaVisible(cens,filas,hasta){return [].concat(...cens.map(c=>{const al
 /* acciones de la fila en un menú «⋯» (17-sep): ✓ hecho, quitar lo fijado, ruta (editar solo con permiso ruta; los demás la ven en la ficha) */
 function accionesColaHTML(f,pc){const acc=[];
   if(regHechoOk(f.c)&&puedeEmpezarEnCentro(f.o,f.c))acc.push(`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`);
-  if(pc.rec||pc.desde||pc.pri){const bq=((pc.rec||pc.desde)&&bloqueoRecPiso()===TXT_REC_FALTA)?TXT_REC_FALTA:'';   /* 04-oct: sin la función del servidor, el piso no quita recurso ni arranque */
+  if(pc.rec||pc.desde||pc.pri){const bq=(pc.rec||pc.desde)?bloqueoRecPiso():'';   /* 04-oct: sin la función del servidor, el piso no quita recurso ni arranque */
     acc.push(bq?`<button class="btn ghost sm" disabled title="${esc('quitar lo fijado: '+bq)}">quitar lo fijado</button>`:`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar lo fijado</button>`)}
   if(puedeEditarRuta())acc.push(`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros (permiso ruta)">ruta</button>`);
   else acc.push(`<button class="btn ghost sm" onclick="abrirFichaOrden('${f.o.id}')" title="ver la ruta y el paso actual de la orden (solo lectura: editar la ruta es de planificación)">ver ruta</button>`);
@@ -10447,7 +10448,8 @@ const TXT_REC_FALTA='lo cambia planificación (falta un paso en Supabase)';
 const MSG_OPERARIO_REC='Los operarios no cambian el recurso ni el arranque de la cola: lo hace el supervisor del centro o planificación.';
 let RPC_REC={estado:null,ts:0,probando:false};   /* estado: null = sin probar · 'si' · 'falta' · 'error' (la sonda falló por otra cosa: decide la llamada real) */
 function msgFaltaRec(){return 'Falta correr '+SQL_RECURSO+' en Supabase.\n\nTu perfil cambia el recurso y el arranque de la cola con la función set_recurso_centro del servidor, y todavía no existe. No se cambió nada: avisa a planificación.'}
-function esFaltaFuncion(m,fn){m=String(m||'');if(/permission denied/i.test(m))return false;return new RegExp(fn+'|does not exist|could not find|schema cache|PGRST202|not found|404','i').test(m)}
+/* «la función del servidor no existe»: solo el código PGRST202 o el texto de Postgres/PostgREST que nombra la función; nunca un «404» suelto (el id de una orden puede llevarlo) */
+function esFaltaFuncion(m,fn){m=String(m||'');if(/permission denied/i.test(m))return false;return /PGRST202|schema cache|could not find the function/i.test(m)||new RegExp('function\\s+(public\\.)?'+fn+'\\b[^\\n]*does not exist','i').test(m)}
 async function setRecursoServidor(o,c,rec,desde){
   if(!sb||typeof sb.rpc!=='function')return{falta:true};
   try{const {data,error}=await sb.rpc('set_recurso_centro',{p_orden:o?o.id:null,p_centro:c||null,p_rec:(rec===undefined?null:rec),p_desde:(desde===undefined?null:desde)});
