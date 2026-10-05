@@ -1910,11 +1910,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('guardado: banos_conf',(db.banos_conf||[]).length>0,(db.banos_conf||[]).length);__check('guardado: avance',(db.avance||[]).length>0,(db.avance||[]).length);
   try{localStorage.__fase="fin"}catch(e){}
   {const antes=__R.errors.length;const adminP=PERFIL;
-   // producción: sin botón masivo, una por una con dos verificaciones
+   // producción (04-oct-2026): una por una en la fila con dos verificaciones, o varias a la vez con «Liberar las marcadas» (ventana con la verificación en bodega)
    page='liberacion';LIB.et='corte';LIB.q='';LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.verLista=true;LIB.ym=null;LIB.odc=null;LIB.fam2=null;render();
    const h=()=>document.getElementById('p-liberacion').innerHTML;
    LIB.vista='listas';render();const pcC=partesLib('corte',LIB.ym);
-   __check("C: producción no tiene botones masivos (ni «Liberar todas las listas» ni «Marcar todas»): una por una",!h().includes('Liberar todas las listas')&&!/Marcar todas/.test(h())&&(!pcC.listas.length||h().includes('marca en cada orden la materia prima y los insumos verificados en bodega')),pcC.listas.length+' listas');LIB.vista=null;
+   __check("C: producción no tiene «Liberar todas las listas» (nada se libera en masa sin la ventana de verificación): se libera una por una en la fila o varias con «Liberar las marcadas»",!h().includes('Liberar todas las listas')&&(!pcC.listas.length||(h().includes('Liberar las marcadas (')&&h().includes('Marcar todas las listas (')&&h().includes('lib-dos-formas'))),pcC.listas.length+' listas');LIB.vista=null;
    __check("UX-B2: en producción cada lista dice «☐ Materia prima ☐ Insumos [Liberar]» en una línea, bajo la cabecera «Verificado en bodega»",(()=>{LIB.vista='listas';render();const r=(()=>{if(!pcC.listas.length||!(puede('programa')||puede('liberar'))||grpSt('lib').niveles.length)return true;const v=document.querySelector('#lib-lista tbody .lib-verif');const ths=[...document.querySelectorAll('#lib-lista thead th')].map(t=>t.textContent.trim());return !!v&&/Materia prima/.test(v.textContent)&&/Insumos/.test(v.textContent)&&!!v.querySelector('button[onclick^="liberarProd("]')&&ths[ths.length-1]==='Verificado en bodega'})();LIB.vista=null;return r})());
    const o=S.ordenes.find(x=>abierta(x)&&puedeLiberarA(x,'corte')&&!liberada(x,'corte'));
    if(o){LIBV={};setLibV(o.id,'mp',true);const alertPrev=window.alert;let al='';window.alert=m=>al=m;liberarProd(o.id);window.alert=alertPrev;
@@ -9879,6 +9879,109 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     CONF.tab=ctab;
    }finally{S.bitacora=bitBak;repon();window.alert=a0;window.confirm=c0;window.perfilSoloPiso=sp0;PERFIL=bakP||adminP0();page='ordenes';render()}
    __check("MK sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* LPL · Liberación a producción EN LOTE (04-oct-2026, usuaria: «debería permitir liberar en masivo»). Se DIBUJA la pantalla de producción
+     con tres órdenes listas del simulador, se marcan en la lista, se abre la ventana, una deja de poderse liberar a esa hora, y se aplica. */
+  try{localStorage.__fase="liberación a producción en lote"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm,sp0=window.perfilSoloPiso;const bakP=PERFIL;const bitBak=S.bitacora.slice();
+   const bakLIB={et:LIB.et,vista:LIB.vista,q:LIB.q,ym:LIB.ym,ymAuto:LIB.ymAuto,sel:LIB.sel,aviso:LIB.aviso,freno:LIB.freno};const bakGRP=GRP;const bakB=BUSQ['LIB.q'];const bakF=FOD['LIB.q'];const bakLIBV=LIBV;
+   const alerts=[];window.alert=m=>alerts.push(String(m));window.confirm=()=>true;const temp=[];
+   const P=()=>document.getElementById('p-liberacion');const M=()=>document.getElementById('modal');const veil=()=>document.getElementById('veil').classList.contains('on');
+   const btnTxt=re=>{const b=[...P().querySelectorAll('button')].find(x=>re.test(x.textContent));return b||null};
+   const chkDe=o=>P().querySelector('#lib-lista tbody input[onchange^="togLib(\''+o.id+'\'"]');
+   try{
+    const base=S.ordenes.find(x=>abierta(x)&&(x.telas||[]).length)||S.ordenes.find(abierta);
+    const mk=(op,cant)=>{const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op=op;o.estado='plan';o.fase='2Planificacion';o.fecha=dsum(hoy(),30);o.cant=cant;o.cliente='CLIENTE LPL';
+      ['lib','programa','sinLanzar','sinFechaEntrega','rutaConf','ot','rutaRevisar','histLib','recursoFijo','urgente'].forEach(k=>delete o[k]);o.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};
+      if(!(o.telas||[]).length)o.telas=[{tela:(S.telas[0]||{}).id,kg:50}];
+      S.ordenes.push(o);temp.push(o);S.avance[o.id]={calidadOk:true,tinturada:true};confirmarRuta(o,'persona','prueba de liberación en lote');return o};
+    const o1=mk('WH/LPL-001',100),o2=mk('WH/LPL-002',120),o3=mk('WH/LPL-003',80);PLAN=null;PLAN_ALL=null;
+    GRP={};grpSt('lib').niveles=[];delete BUSQ['LIB.q'];delete FOD['LIB.q'];LIBV={};
+    page='liberacion';LIB.et='corte';LIB.ymAuto=true;LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.hija=null;LIB.tela=null;LIB.cli=null;LIB.mes=null;LIB.fases=null;LIB.freno=null;LIB.aviso=null;LIB.q='WH/LPL-';LIB.vista='listas';LIB.sel=new Set();render();
+    const pc=partesLib('corte',LIB.ym);
+    __check("LPL0: las tres órdenes de prueba salen en «Listas para liberar» de producción (ruta confirmada, tela con calidad aprobada, sin liberar)",[o1,o2,o3].every(o=>pc.listas.includes(o)&&puedeLiberarA(o,'corte')&&!liberada(o,'corte'))&&P().querySelector('.lib-vista').dataset.vista==='listas',JSON.stringify([o1,o2,o3].map(o=>faltaLiberarA(o,'corte'))));
+    __check("LPL1: cada lista lleva su casilla, el encabezado la suya, y arriba «Liberar las marcadas (0)» (apagado), «Lavado de las marcadas (0)», «Marcar todas las listas (3)» y «Desmarcar»",[o1,o2,o3].every(o=>!!chkDe(o))&&!!P().querySelector('#lib-lista thead input[type=checkbox]')
+      &&!!btnTxt(/^Liberar las marcadas \(0\)$/)&&btnTxt(/^Liberar las marcadas/).disabled&&(!puedeEditarRuta()||!!btnTxt(/^Lavado de las marcadas \(0\)$/))&&!!btnTxt(/^Marcar todas las listas \(3\)$/)&&!!btnTxt(/^Desmarcar$/)&&!P().innerHTML.includes('Liberar todas las listas'));
+    const dos=(P().querySelector('.lib-dos-formas')||{}).textContent||'';
+    __check("LPL1: el texto de la pestaña dice las dos formas: una por una en la fila, o marcar varias (o un grupo con «Agrupar por») y «Liberar las marcadas»",/una por una/.test(dos)&&/«Liberar»/.test(dos)&&/varias a la vez/.test(dos)&&/Agrupar por/.test(dos)&&/«Liberar las marcadas»/.test(dos),dos.slice(0,300));
+    __check("LPL1: la fila de producción sigue con «☐ Materia prima ☐ Insumos [Liberar]»",[o1,o2,o3].every(o=>{const tr=chkDe(o).closest('tr');const v=tr&&tr.querySelector('.lib-verif');return !!v&&/Materia prima/.test(v.textContent)&&/Insumos/.test(v.textContent)&&!!v.querySelector('button[onclick="liberarProd(\''+o.id+'\')"]')}));
+    /* marcar en la pantalla: los botones se actualizan sin redibujar la página (la cabecera es el mismo nodo) */
+    const cab0=P().querySelector('.pagehead');
+    chkDe(o1).click();
+    __check("LPL2: al marcar una orden, «Liberar las marcadas (1)» se enciende sin redibujar toda la página (solo la lista)",LIB.sel.has(o1.id)&&LIB.sel.size===1&&!!btnTxt(/^Liberar las marcadas \(1\)$/)&&!btnTxt(/^Liberar las marcadas/).disabled&&P().querySelector('.pagehead')===cab0&&cab0.isConnected&&chkDe(o1).checked);
+    chkDe(o2).click();chkDe(o3).click();
+    __check("LPL2: marcadas las tres, los dos botones de lote cuentan la MISMA selección (Liberar 3 · Lavado 3)",LIB.sel.size===3&&!!btnTxt(/^Liberar las marcadas \(3\)$/)&&(!puedeEditarRuta()||!!btnTxt(/^Lavado de las marcadas \(3\)$/))&&marcadasLibAhora('corte').length===3);
+    if(puedeEditarRuta()){btnTxt(/^Lavado de las marcadas/).click();const hm=M().innerHTML;
+      __check("LPL3: «Lavado de las marcadas» abre el lavado con esas mismas tres órdenes",veil()&&/3 órdenes elegidas/.test(hm)&&[o1,o2,o3].every(o=>hm.includes(esc(o.op))),hm.slice(0,200));cerrar()}
+    else __check("LPL3: «Lavado de las marcadas» abre el lavado con esas mismas tres órdenes",true,'el perfil no pone lavado');
+    /* casilla por grupo, «Marcar todas» y «Desmarcar» */
+    btnTxt(/^Desmarcar$/).click();const desm=LIB.sel.size===0;
+    btnTxt(/^Marcar todas las listas/).click();const todas=LIB.sel.size===3&&[o1,o2,o3].every(o=>LIB.sel.has(o.id));
+    btnTxt(/^Desmarcar$/).click();
+    grpSt('lib').niveles=['cliente'];render();const gchk=P().querySelector('#lib-lista input.grp-chk');if(gchk)gchk.click();const porGrupo=[o1,o2,o3].every(o=>LIB.sel.has(o.id));
+    const gchk2=P().querySelector('#lib-lista input.grp-chk');const marcadoG=!!(gchk2&&gchk2.checked);if(gchk2)gchk2.click();const desG=LIB.sel.size===0;grpSt('lib').niveles=[];render();
+    __check("LPL4: «Desmarcar» vacía la selección, «Marcar todas las listas» marca las tres, y agrupando por cliente la casilla del grupo marca y desmarca el grupo entero",desm&&todas&&!!gchk&&porGrupo&&marcadoG&&desG,JSON.stringify({desm,todas,g:!!gchk,porGrupo,marcadoG,desG}));
+    /* la ventana de confirmación */
+    [o1,o2,o3].forEach(o=>chkDe(o).click());const nb=S.bitacora.length;
+    btnTxt(/^Liberar las marcadas \(3\)$/).click();const hm=M().innerHTML;const btn=()=>M().querySelector('#lpl-btn');const ok=()=>M().querySelector('#lpl-ok');
+    __check("LPL5: «Liberar las marcadas» abre una ventana con cuántas y cuántas prendas, la lista (OP, cliente, prendas) y la casilla «Verifiqué en bodega…» sin marcar; el botón de aplicar está apagado",veil()&&/3 órdenes · 300 prendas/.test(hm)&&M().querySelectorAll('tr[data-oid]').length===3&&[o1,o2,o3].every(o=>hm.includes(esc(o.op)))&&/CLIENTE LPL/.test(hm)
+      &&/Verifiqué en bodega la materia prima y los insumos de estas 3 órdenes/.test(M().textContent)&&!!ok()&&!ok().checked&&!!btn()&&btn().disabled&&!!M().querySelector('#lpl-nota'),hm.slice(0,300));
+    /* a esa hora, la tercera ya no se puede liberar (alguien le quitó la confirmación de la ruta) */
+    delete o3.rutaConf;PLAN=null;PLAN_ALL=null;
+    btn().click();const sinCasilla1=veil()&&![o1,o2,o3].some(o=>liberada(o,'corte'))&&S.bitacora.length===nb;
+    const nAl=alerts.length;const r0=aplicarLibProdLote([o1.id,o2.id,o3.id],false,'');
+    __check("LPL5: sin la casilla no se libera nada (el botón está apagado y aplicar sin la casilla avisa y no toca nada)",sinCasilla1&&r0===0&&alerts.length===nAl+1&&/Verifiqué en bodega/.test(alerts[alerts.length-1])&&![o1,o2,o3].some(o=>liberada(o,'corte'))&&S.bitacora.length===nb);
+    ok().click();M().querySelector('#lpl-nota').value='revisado con bodega (prueba)';
+    __check("LPL5: al marcar la casilla se enciende el botón «Liberar 3 a producción»",!btn().disabled&&/Liberar 3 a producción/.test(btn().textContent));
+    btn().click();
+    const c1=(o1.lib||{}).corte||{},c2=(o2.lib||{}).corte||{};const tB=(S.bitacora[S.bitacora.length-1]||{}).t||'';
+    __check("LPL6: con la casilla se liberan las que se pueden (2) y la que ya no se podía queda sin liberar, en Frenadas, con su motivo",liberada(o1,'corte')&&liberada(o2,'corte')&&!liberada(o3,'corte')&&!(o3.lib||{}).corte&&partesLib('corte',LIB.ym).frenadas.includes(o3)&&faltaLiberarA(o3,'corte').includes('falta confirmar ruta')&&!veil());
+    __check("LPL6: cada liberada tiene lo mismo que la fila (las dos verificaciones con quién y cuándo, «lista») y la marca del lote",[c1,c2].every(c=>c.ok===true&&c.mpOk===true&&c.insOk===true&&c.fechaVerif===hoy()&&c.u===quienFirma()&&typeof c.ts==='string'&&c.ts.length>=20&&/^LP-[0-9]{8}-/.test(c.lote||''))&&c1.lote===c2.lote&&c1.ts===c2.ts&&S.avance[o1.id].lista===true&&S.avance[o2.id].lista===true&&!LIBV[o1.id]&&!LIBV[o2.id]
+      &&JSON.stringify(Object.keys(c1))===JSON.stringify(['ok','u','ts','mpOk','insOk','fechaVerif','lote']),JSON.stringify(c1));
+    __check("LPL6: UNA sola línea de bitácora con el total, el lote, las OP, la nota y la que no se liberó con su motivo",S.bitacora.length===nb+1&&/^Liberadas a producción en lote LP-/.test(tB)&&tB.includes(c1.lote)&&/: 2 órdenes por /.test(tB)&&tB.includes(o1.op)&&tB.includes(o2.op)&&/revisado con bodega \(prueba\)/.test(tB)&&tB.includes(o3.op+' (falta confirmar ruta')&&/verificados en bodega/.test(tB),tB);
+    const av=P().querySelector('.lib-aviso');const avT=av?av.textContent:'';const sal=P().querySelector('.lib-saltadas');
+    __check("LPL7: la pantalla dice «Se liberaron 2 órdenes a producción · verlas en «Ya liberadas»», lista la que no se liberó con su motivo (los frenos de la fila: el Pantone no frena), y la selección quedó limpia",!!av&&/Se liberaron 2 órdenes a producción/.test(avT)&&/verlas en «Ya liberadas»/.test(avT)&&!!sal&&sal.textContent.includes(o3.op)&&/falta confirmar ruta/.test(sal.textContent)&&!/color sin Pantone/.test(sal.textContent)&&LIB.sel.size===0&&!!btnTxt(/^Liberar las marcadas \(0\)$/)&&P().querySelector('.lib-vista').dataset.vista==='listas',avT.slice(0,300));
+    LIB.vista='liberadas';render();const hL=P().innerHTML;
+    __check("LPL7: las liberadas en lote salen en «Ya liberadas» con quién y cuándo, y se deshacen por orden (desliberar), como siempre",hL.includes(esc(o1.op))&&hL.includes(esc(o2.op))&&(!puedeDesliberar()||(hL.includes("mDesliberar(['"+o1.id+"']")&&hL.includes("mDesliberar(['"+o2.id+"']"))));
+    /* permisos: perfil de piso y perfil sin permiso */
+    confirmarRuta(o3,'persona','prueba de liberación en lote');PLAN=null;PLAN_ALL=null;LIB.vista='listas';LIB.aviso=null;LIB.sel=new Set();render();
+    window.perfilSoloPiso=()=>true;render();const hP=P().innerHTML;const nAl2=alerts.length,nb2=S.bitacora.length;
+    mLiberarProdLote([o3.id]);const abrioP=veil();const rP=aplicarLibProdLote([o3.id],true,'');LIB.sel=new Set([o3.id]);liberarMarcadasLib('corte');const abrioP2=veil();
+    __check("LPL8: desde un perfil de piso no hay «Liberar las marcadas» ni se puede liberar en lote (la ventana no se abre y aplicar no hace nada)",!/Liberar las marcadas/.test(hP)&&!abrioP&&!abrioP2&&rP===0&&!liberada(o3,'corte')&&S.bitacora.length===nb2&&alerts.slice(nAl2).length===3&&alerts.slice(nAl2).every(a=>/perfil de piso/.test(a)),JSON.stringify(alerts.slice(nAl2)));
+    window.perfilSoloPiso=sp0;LIB.sel=new Set();
+    PERFIL={id:'u-lpl-corte',rol:'corte',modo:'editar',nombre:'Supervisor corte'};const pisoReal=perfilSoloPiso()&&!puedeLibProdLote();
+    PERFIL={id:'u-lpl-con',rol:'consulta',modo:'editar',nombre:'Consulta'};const sinPerm=!(puede('programa')||puede('liberar'))&&!puedeLibProdLote();
+    const hC=cuerpoLibHTML('corte');const nAl3=alerts.length;const rC=aplicarLibProdLote([o3.id],true,'');mLiberarProdLote([o3.id]);const abrioC=veil();
+    __check("LPL8: un perfil sin permiso de liberar no ve casillas ni botones de lote y no puede liberar en lote; un perfil de piso real (supervisor de corte) tampoco",pisoReal&&sinPerm&&!/liberarMarcadasLib\(/.test(hC)&&!/togLib\(/.test(hC)&&!abrioC&&rC===0&&!liberada(o3,'corte')&&alerts.length===nAl3+2&&/no libera a producción/.test(alerts[nAl3]),JSON.stringify({pisoReal,sinPerm}));
+    PERFIL=bakP;
+    /* la liberación por fila sigue igual: la de antes (copia literal) contra la de ahora, por la pantalla */
+    const liberarProdAntes=function(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(puede('programa')||puede('liberar'))){alert('Tu perfil no libera a producción.');return}
+      const v=LIBV[id]||{};if(!(v.mp&&v.ins)){alert('Marca las dos verificaciones (materia prima e insumos en bodega) antes de liberar. Es tu firma: el sistema no sabe si el material llegó.');return}
+      if(!puedeLiberarA(o,'corte')){alert('No se puede liberar: '+faltaLiberarA(o,'corte').join(', '));return}
+      const u=quienFirma(),ts=new Date().toISOString();o.lib=o.lib||{};o.lib.corte={ok:true,u,ts,mpOk:true,insOk:true,fechaVerif:hoy()};
+      if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;delete LIBV[id];
+      bitacora('Liberada a producción '+o.op+' por '+u+' · materia prima e insumos verificados en bodega el '+hoy());if(page==='liberacion'){LIB.aviso={n:1,et:'corte'};LIB.vista='listas'}PLAN=null;PLAN_ALL=null;save();render()};
+    const oA=mk('WH/LPL-A',60),oB=mk('WH/LPL-B',60);PLAN=null;PLAN_ALL=null;LIB.aviso=null;LIB.vista='listas';render();
+    const nAl4=alerts.length;LIBV={[oB.id]:{mp:true}};liberarProdAntes(oB.id);const alA=alerts[alerts.length-1];LIBV={[oB.id]:{mp:true}};liberarProd(oB.id);const alB=alerts[alerts.length-1];
+    const igualAlerta=alerts.length===nAl4+2&&alA===alB&&!liberada(oB,'corte');LIBV={};
+    LIBV[oA.id]={mp:true,ins:true};liberarProdAntes(oA.id);const tA=S.bitacora[S.bitacora.length-1].t;const avisoA=JSON.stringify(LIB.aviso),vistaA=LIB.vista;
+    LIB.aviso=null;LIB.vista='listas';render();
+    const filaB=()=>{const b=P().querySelector('#lib-lista button[onclick="liberarProd(\''+oB.id+'\')"]');return b&&b.closest('tr')};
+    filaB().querySelector('input[onchange^="setLibV(\''+oB.id+'\',\'mp\'"]').click();filaB().querySelector('input[onchange^="setLibV(\''+oB.id+'\',\'ins\'"]').click();
+    const bB=P().querySelector('#lib-lista button[onclick="liberarProd(\''+oB.id+'\')"]');const enc=!!bB&&!bB.disabled;if(bB)bB.click();
+    const tBf=S.bitacora[S.bitacora.length-1].t;const avisoB=JSON.stringify(LIB.aviso),vistaB=LIB.vista;
+    const sin=c=>{const x=Object.assign({},c);delete x.ts;return JSON.stringify(x)};const cA=(oA.lib||{}).corte||{},cB=(oB.lib||{}).corte||{};
+    __check("LPL9: la liberación por fila sigue igual que antes: misma alerta sin las dos casillas y, con ellas (marcadas en la pantalla), el mismo registro en la orden (sin lote), la misma «lista», la misma línea de bitácora y el mismo aviso",igualAlerta&&enc&&liberada(oA,'corte')&&liberada(oB,'corte')
+      &&JSON.stringify(Object.keys(cA))===JSON.stringify(Object.keys(cB))&&sin(cA)===sin(cB)&&!('lote' in cB)&&typeof cB.ts==='string'&&S.avance[oA.id].lista===true&&S.avance[oB.id].lista===true&&!LIBV[oA.id]&&!LIBV[oB.id]
+      &&tA.split(oA.op).join('OP')===tBf.split(oB.op).join('OP')&&avisoA===avisoB&&vistaA===vistaB,JSON.stringify({igualAlerta,enc,cA,cB,tA,tBf,avisoA,avisoB}));
+    /* la textil no cambia: sin casilla de grupo (sigue «seleccionar todo»), sin el bloque de producción */
+    LIB.et='tela';LIB.vista='listas';LIB.q='';LIB.aviso=null;grpSt('lib').niveles=['cliente'];render();const hT=P().innerHTML;
+    __check("LPL10: la liberación textil no cambia: sin «Marcar todas las listas»/«Desmarcar»/«Dos formas», y el grupo sigue con «seleccionar todo» (sin casilla de grupo)",!/Marcar todas las listas/.test(hT)&&!/lib-dos-formas/.test(hT)&&!/class="grp-chk"/.test(hT)&&grpSt('lib').selChk==null);
+    grpSt('lib').niveles=[];
+   }catch(e){__R.errors.push({page:'driver LPL',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{try{cerrar()}catch(e){}window.alert=a0;window.confirm=c0;window.perfilSoloPiso=sp0;PERFIL=bakP;
+    const ids=new Set(temp.map(o=>o.id));S.ordenes=S.ordenes.filter(o=>!ids.has(o.id));ids.forEach(id=>delete S.avance[id]);S.bitacora=bitBak;
+    Object.assign(LIB,bakLIB);GRP=bakGRP;if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;if(bakF===undefined)delete FOD['LIB.q'];else FOD['LIB.q']=bakF;LIBV=bakLIBV;PLAN=null;PLAN_ALL=null;page='ordenes';render()}
+   __check("LPL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});

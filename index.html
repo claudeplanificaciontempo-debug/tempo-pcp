@@ -1591,7 +1591,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-04 17:44';
+const APP_BUILD='2026-10-04 20:01';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5683,7 +5683,7 @@ function frenosFilaLibHTML(o,et,falta){let venc=false;try{venc=esMetaVencida(o,P
    /* pulido V2: la acción («✎ ruta») y la marca de ruta revisada (decisión LIB-3, se queda) van en su propia línea, separadas de los frenos */
    +((ed||rev)?'<div class="lib-sub">'+[ed,rev].filter(Boolean).join(' · ')+'</div>':'')}
 function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const lista=puedeLiberarA(o,et);const falta=lista?[]:faltaLiberarA(o,et);
-  return `<tr><td>${(et!=='corte'&&lista&&puedeF)?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td>
+  return `<tr><td>${(lista&&(et==='corte'?selLibProdOk():puedeF))?`<input type="checkbox" ${LIB.sel.has(o.id)?'checked':''} onchange="togLib('${o.id}',this.checked)">`:''}</td>
    <td class="lib-op">${opLibHTML(o)}</td>
    <td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td>
    <td class="num">${num(o.cant)}</td><td>${fmtFecha(o.fecha)}</td>
@@ -5730,12 +5730,17 @@ function marcadasLibAhora(et){const ok=new Set(listasLibAhora(et).map(o=>o.id));
 function redibujarLib(){if(page==='liberacion'&&redibujarLista('LIB.q')){restaurarScrollLib();return}render()}
 function marcarTodasLib(et){LIB.sel=new Set(listasLibAhora(et).map(o=>o.id));redibujarLib()}
 function ningunaLib(){LIB.sel=new Set();redibujarLib()}
-function liberarMarcadasLib(et){const ids=marcadasLibAhora(et);if(!ids.length){alert('No hay ninguna orden marcada en «Listas para liberar».');return}liberarA(ids,et)}
+function liberarMarcadasLib(et){const ids=marcadasLibAhora(et);if(!ids.length){alert('No hay ninguna orden marcada en «Listas para liberar».');return}if(et==='corte'){mLiberarProdLote(ids);return}liberarA(ids,et)}
 function liberarListasLib(et){const xs=listasLibAhora(et);if(!xs.length){alert('No hay órdenes listas para liberar con estos filtros.');return}
+  if(et==='corte'){mLiberarProdLote(xs.map(o=>o.id));return}   /* producción: la ventana con la verificación en bodega es la confirmación */
   if(!confirm('¿Liberar las '+xs.length+(xs.length===1?' orden lista':' órdenes listas')+' que ves ahora (con los filtros y la búsqueda puestos)?'+(et==='tela'?' Pasan a tejeduría y tintorería.':'')))return;liberarA(xs.map(o=>o.id),et)}
 function lavadoMarcadasLib(et){const ids=marcadasLibAhora(et);if(!ids.length){alert('Marca primero las órdenes (o un grupo entero con «Agrupar por»).');return}mLavado(ids)}
-function avisoLiberadasHTML(et){const a=LIB.aviso;if(!a||a.et!==et)return '';
-  return `<div class="lib-aviso" style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:var(--t-accent-soft);font-size:var(--fs-s)">✓ Se ${a.n===1?'liberó 1 orden':'liberaron '+num(a.n)+' órdenes'} ${et==='tela'?'a tejeduría y tintorería':'a producción'} · <a style="cursor:pointer;text-decoration:underline" onclick="setVistaLib('liberadas')">verlas en «Ya liberadas»</a> <a style="cursor:pointer;margin-left:8px" title="quitar este aviso" onclick="LIB.aviso=null;render()">✕</a></div>`}
+function avisoLiberadasHTML(et){const a=LIB.aviso;if(!a||a.et!==et)return '';const salt=a.saltadas||[];
+  const cab=a.n?`✓ Se ${a.n===1?'liberó 1 orden':'liberaron '+num(a.n)+' órdenes'} ${et==='tela'?'a tejeduría y tintorería':'a producción'} · <a style="cursor:pointer;text-decoration:underline" onclick="setVistaLib('liberadas')">verlas en «Ya liberadas»</a>`:'No se liberó ninguna de las marcadas';
+  /* liberación en lote: las marcadas que a esa hora ya no se podían liberar, con el motivo (faltaLiberarA) */
+  const sal=salt.length?`<div class="lib-saltadas" style="margin-top:6px">${salt.length===1?'1 marcada no se liberó':num(salt.length)+' marcadas no se liberaron'}: a esa hora ya no se podían liberar.<ul style="margin:4px 0 0 18px;padding:0">${salt.map(s=>{const o=S.ordenes.find(x=>x.id===s.id);return '<li data-oid="'+esc(s.id)+'">'+(o?whCell(o):esc(s.op))+' · <b>'+esc(s.motivo)+'</b></li>'}).join('')}</ul></div>`:'';
+  const lote=a.lote?` <span class="mut" style="font-size:var(--fs-xs)" title="número del lote: está en la bitácora y en cada orden liberada">· lote ${esc(a.lote)}</span>`:'';
+  return `<div class="lib-aviso" style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:var(--t-accent-soft);font-size:var(--fs-s)${salt.length?';border-left:3px solid var(--aviso)':''}">${cab}${lote} <a style="cursor:pointer;margin-left:8px" title="quitar este aviso" onclick="LIB.aviso=null;render()">✕</a>${sal}</div>`}
 /* qué frena a una orden y dónde se arregla (los textos salen de faltaLiberarA; aquí solo se dice a dónde ir) */
 const FRENO_LIB={
   'falta confirmar ruta':{donde:'Órdenes → Rutas: confirmar la ruta',ir:'irRutasFrenoLib()',p:'ordenes'},
@@ -5785,10 +5790,11 @@ function avanceLibHTML(p,et){const pzs=xs=>xs.reduce((a,o)=>a+(+o.cant||0),0);co
     <div class="bar" style="flex:1 1 260px;height:12px;background:var(--field);border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--ok)"></i></div>
     <span style="white-space:nowrap"><b>${pct} %</b> liberado · ${num(lib)} de ${num(tot)} prendas</span>
     <span class="mut" style="font-size:var(--fs-xs)">órdenes del Proyecto de ${esc(mesesLibTxt(LIB.ym))}${filtrosLibActivos()?' · con los filtros puestos':''}</span></div>`}
-/* cabecera de la lista. En «Listas para liberar» de la textil, la casilla del encabezado marca todas las que ves (como Odoo) y desmarcada no deja
-   ninguna; aparece marcada cuando todas las listas están marcadas (02-oct, lote B2). Producción va una por una: sin casilla. */
+/* cabecera de la lista. En «Listas para liberar», la casilla del encabezado marca todas las que ves (como Odoo) y desmarcada no deja
+   ninguna; aparece marcada cuando todas las listas están marcadas (02-oct, lote B2). Producción también (04-oct): se libera una por una en la
+   fila o varias a la vez con «Liberar las marcadas»; la casilla sale a quien libera en lote o pone el lavado (selLibProdOk). */
 function cabLib(et,vista,todas){const ult=vista==='listas'?(et==='corte'?'Verificado en bodega':'Ruta'):'Qué la frena';
-  const chk=(et!=='corte'&&vista==='listas'&&(puede('programa')||puede('liberar')))?`<input type="checkbox" title="marcar todas las que ves" ${todas?'checked':''} onchange="if(this.checked)marcarTodasLib('${et}');else ningunaLib()">`:'';
+  const chk=(vista==='listas'&&(et==='corte'?selLibProdOk():(puede('programa')||puede('liberar'))))?`<input type="checkbox" title="marcar todas las que ves" ${todas?'checked':''} onchange="if(this.checked)marcarTodasLib('${et}');else ningunaLib()">`:'';
   return `<thead><tr><th style="width:26px">${chk}</th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th title="propuesta del catálogo: confírmala tela por tela">Tela · qué le falta</th>':''}<th${et==='corte'&&vista==='listas'?' title="tu firma: la materia prima y los insumos están en bodega"':''}>${ult}</th></tr></thead>`}
 function filaLiberadaLib(o,et){const reg=libRegistroDe(o,et);const puedeF=puede('programa')||puede('liberar');
   const quitar=reg?(puedeDesliberar()?`<button class="btn ghost sm" onclick="mDesliberar(['${o.id}'],'${et}')" title="desliberar: vuelve a la lista de pendientes, pide motivo, queda en auditoría y avisa si ya tiene avance">desliberar</button> `
@@ -5818,6 +5824,13 @@ function accionesLibHTML(et,p,vista){const puedeF=puede('programa')||puede('libe
     const listas=p.listas;const sel=[...LIB.sel].filter(id=>listas.some(o=>o.id===id));
     const lav=puedeEditarRuta()?`<button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="lavadoMarcadasLib('${et}')" title="agregar o quitar el lavado (planta o Quito) a las órdenes marcadas">Lavado de las marcadas (${sel.length})</button>`:'';
     const ning=`<button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="ningunaLib()">Ninguna</button>`;
+    if(et==='corte'&&puedeLibProdLote()){const n=listas.length;const todas=n>0&&listas.every(o=>LIB.sel.has(o.id));
+      return `<div class="lib-acciones lib-acc-prod" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 4px">
+       <button class="btn sm" ${sel.length?'':'disabled title="marca al menos una orden"'} onclick="liberarMarcadasLib('corte')">Liberar las marcadas (${sel.length})</button>
+       ${lav}<span class="spacer"></span>
+       <button class="btn ghost sm" ${n&&!todas?'':'disabled'} onclick="marcarTodasLib('corte')" title="marca todas las listas que ves ahora (con los filtros y la búsqueda puestos)">Marcar todas las listas (${n})</button>
+       <button class="btn ghost sm" ${sel.length?'':'disabled'} onclick="ningunaLib()">Desmarcar</button></div>
+      <p class="mut lib-dos-formas" style="font-size:var(--fs-s);margin:0 0 8px">Dos formas: <b>una por una</b> en su fila (marca Materia prima e Insumos y pulsa «Liberar»), o <b>varias a la vez</b>: márcalas —o un grupo entero con «Agrupar por»— y pulsa «Liberar las marcadas».${ayudaTipHTML('«Liberar las marcadas» abre una ventana con la lista y una casilla obligatoria: «Verifiqué en bodega la materia prima y los insumos». Cada orden queda igual que si la liberaras en su fila (quién, cuándo, materia prima e insumos verificados) y con el número del lote. La que a esa hora ya no se pueda liberar se salta y se dice por qué. «Lavado de las marcadas» usa las mismas marcas. Si una se liberó por error, se deslibera en «Ya liberadas», una por una.')}</p>`}
     if(!puedeF||et==='corte'){const txt=!puedeF?'Tu perfil puede ver esta lista, pero no liberar.':'Una por una: marca en cada orden la materia prima y los insumos verificados en bodega y pulsa «Liberar».';
       return `<div class="lib-acciones" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><span class="mut" style="font-size:var(--fs-s)">${txt}</span>${lav?`<span class="mut" style="font-size:var(--fs-xs)">Lavado: marca un grupo entero con «Agrupar por» →</span>${ning}${lav}`:''}</div>`}
     /* 02-oct (lote B2): UNA acción principal, como Odoo. «Marcar todas» y «Ninguna» pasaron a la casilla del encabezado; la explicación, al «?».
@@ -5833,10 +5846,11 @@ function otrosMesesLibHTML(et){if(!LIB.ym||(LIB.ym.has&&!LIB.ym.size))return '';
   const n=libLiberacion(et,null).filter(o=>!mesEnFiltro(o,LIB.ym)&&okFiltrosB1(o)&&matchBusq(o,qn,'LIB.q')).length;if(!n)return '';
   return `<p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Además hay ${num(n)} ${n===1?'orden liberada':'órdenes liberadas'} de otros meses del Proyecto (o sin Proyecto) que aquí no se cuentan · <a style="cursor:pointer;text-decoration:underline" onclick="LIB.ym=null;LIB.vista='liberadas';render()">ver todos los meses</a></p>`}
 function cuerpoLibHTML(et){const p=partesLib(et,LIB.ym);const vista=vistaLib(p);
-  grpSt('lib').selFn=(vista==='listas'&&((et!=='corte'&&(puede('programa')||puede('liberar')))||puedeEditarRuta()))?'selGrupoLib':null;
+  grpSt('lib').selFn=(vista==='listas'&&(et==='corte'?selLibProdOk():((puede('programa')||puede('liberar'))||puedeEditarRuta())))?'selGrupoLib':null;
+  grpSt('lib').selChk=(et==='corte'&&grpSt('lib').selFn)?(ids=>!!(ids&&ids.length&&ids.every(id=>LIB.sel.has(id)))):null;   /* producción: casilla por grupo (marca y desmarca); la textil sigue con «seleccionar todo» */
   if(LIB.freno&&!frenosLib(p.frenadas,et).some(([x])=>x===LIB.freno))LIB.freno=null;
   const tit={listas:'Listas para liberar',frenadas:'Frenadas: qué les falta',liberadas:'Ya liberadas'}[vista];
-  const nota={listas:et==='tela'?'las más urgentes primero (por fecha de entrega)':'las más urgentes primero · una por una, con tu verificación en bodega',
+  const nota={listas:et==='tela'?'las más urgentes primero (por fecha de entrega)':'las más urgentes primero · una por una o varias a la vez, con tu verificación en bodega',
     frenadas:'no se pueden liberar todavía · las más urgentes primero',liberadas:'lo último liberado primero · desliberar o cambiar la fase si hace falta'}[vista];
   return `<div class="panel lib-resumen"><div class="body">${tarjetasLibHTML(p,et,vista)}${avanceLibHTML(p,et)}${otrosMesesLibHTML(et)}</div></div>
   <div class="panel lib-vista" data-vista="${vista}"><h3>${esc(tit)} <span class="note">${esc(nota)}</span></h3><div class="body">
@@ -5908,9 +5922,52 @@ function setLibV(id,k,on){LIBV[id]=LIBV[id]||{};LIBV[id][k]=on;render()}
 function liberarProd(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(puede('programa')||puede('liberar'))){alert('Tu perfil no libera a producción.');return}
   const v=LIBV[id]||{};if(!(v.mp&&v.ins)){alert('Marca las dos verificaciones (materia prima e insumos en bodega) antes de liberar. Es tu firma: el sistema no sabe si el material llegó.');return}
   if(!puedeLiberarA(o,'corte')){alert('No se puede liberar: '+faltaLiberarA(o,'corte').join(', '));return}
-  const u=quienFirma(),ts=new Date().toISOString();o.lib=o.lib||{};o.lib.corte={ok:true,u,ts,mpOk:true,insOk:true,fechaVerif:hoy()};
-  if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;delete LIBV[id];
+  const u=quienFirma(),ts=new Date().toISOString();registrarLibProd(o,u,ts);
   bitacora('Liberada a producción '+o.op+' por '+u+' · materia prima e insumos verificados en bodega el '+hoy());if(page==='liberacion'){LIB.aviso={n:1,et:'corte'};LIB.vista='listas'}PLAN=null;PLAN_ALL=null;save();render()}
+/* lo que queda en UNA orden al liberarla a producción, igual en la fila (liberarProd) y en lote (aplicarLibProdLote): las dos
+   verificaciones de bodega con quién y cuándo, y la marca «lista»; el lote agrega solo su número (o.lib.corte.lote) */
+function registrarLibProd(o,u,ts,lote){o.lib=o.lib||{};o.lib.corte={ok:true,u,ts,mpOk:true,insOk:true,fechaVerif:hoy()};if(lote)o.lib.corte.lote=lote;
+  if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true;delete LIBV[o.id]}
+/* ---------- Liberación a producción EN LOTE (04-oct-2026, usuaria: «debería permitir liberar en masivo») ----------
+   La MISMA liberación de la fila, para varias a la vez. Se marcan en «Listas para liberar» (casilla por orden, «seleccionar todo» por grupo
+   con «Agrupar por», o «Marcar todas las listas»): es la MISMA selección LIB.sel que usa «Lavado de las marcadas». «Liberar las marcadas»
+   abre una ventana con la lista y UNA casilla obligatoria «Verifiqué en bodega…» (la firma de las dos casillas de cada fila). Al aplicar,
+   cada orden pasa por las mismas comprobaciones de la fila (puedeLiberarA: ruta confirmada, tela con calidad…) y queda con lo mismo que
+   deja la fila (registrarLibProd) más el número del lote; la que a esa hora ya no se pueda liberar se salta y se dice por qué
+   (faltaLiberarA). UNA línea de bitácora con el total y las OP. Permiso: el de la fila y nunca desde un perfil de piso.
+   Nada se borra; deshacer sigue siendo por orden (desliberar en «Ya liberadas»). */
+function puedeLibProdLote(){return (puede('programa')||puede('liberar'))&&!perfilSoloPiso()}
+function noLibProdLoteTxt(){return perfilSoloPiso()?'Desde un perfil de piso no se libera a producción.':'Tu perfil no libera a producción.'}
+/* quién ve las casillas en «Listas para liberar» de producción: quien libera en lote o quien pone el lavado (las dos usan la misma selección) */
+function selLibProdOk(){return puedeLibProdLote()||puedeEditarRuta()}
+function motivoNoLibProd(o){if(!o)return 'la orden ya no existe';if(liberada(o,'corte'))return 'ya estaba liberada a producción';
+  if(!puedeLiberarA(o,'corte')){const f=faltaLiberarA(o,'corte');const fr=f.filter(x=>!noFrenaLib(x,'corte'));return (fr.length?fr:f).join(', ')||'no se puede liberar'}return ''}   /* los mismos frenos de la fila y de «Qué las frena»: el Pantone no frena a producción */
+function mLiberarProdLote(ids){if(!puedeLibProdLote()){alert(noLibProdLoteTxt());return}
+  const L=(ids||[]).map(id=>S.ordenes.find(o=>o.id===id)).filter(Boolean);
+  if(!L.length){alert('Marca primero las órdenes en «Listas para liberar» (o un grupo entero con «Agrupar por»).');return}
+  const n=L.length,pz=L.reduce((a,o)=>a+(+o.cant||0),0);const estas=n===1?'esta orden':'estas '+num(n)+' órdenes';
+  abrir(`<h3>Liberar a producción <span class="note">${num(n)} ${n===1?'orden':'órdenes'} · ${num(pz)} prendas</span></h3><div class="body lib-lote">
+   <p style="margin-top:0">Entran a corte y a los demás centros. Es la misma liberación de la fila: cada orden queda con la materia prima y los insumos verificados en bodega, quién y cuándo, y el número de este lote. La que a esta hora ya no se pueda liberar se salta y se dice por qué.</p>
+   <div class="scroll" style="max-height:280px"><table style="font-size:var(--fs-s)"><thead><tr><th>OP · fase</th><th>Cliente</th><th class="num">Prendas</th></tr></thead><tbody>
+    ${L.map(o=>`<tr data-oid="${o.id}"><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td class="num">${num(o.cant)}</td></tr>`).join('')}
+   </tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td class="num"><b>${num(pz)}</b></td></tr></tfoot></table></div>
+   <label class="lib-lote-ok" style="display:flex;gap:8px;align-items:flex-start;margin:12px 0 0;color:var(--ink);font-weight:600"><input type="checkbox" id="lpl-ok" onchange="document.getElementById('lpl-btn').disabled=!this.checked"> Verifiqué en bodega la materia prima y los insumos de ${estas}</label>
+   <label style="margin-top:10px">Nota (opcional, queda en la bitácora)</label><input id="lpl-nota" placeholder="p. ej.: revisado con bodega en la mañana">
+  </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button>
+   <button class="btn" id="lpl-btn" disabled title="marca primero la casilla de la verificación en bodega" onclick="aplicarLibProdLote(${JSON.stringify(L.map(o=>o.id)).replace(/"/g,'&quot;')},document.getElementById('lpl-ok').checked,document.getElementById('lpl-nota').value)">Liberar ${num(n)} a producción</button></div>`)}
+function aplicarLibProdLote(ids,ok,nota){if(!puedeLibProdLote()){alert(noLibProdLoteTxt());return 0}
+  if(ok!==true){alert('Marca la casilla «Verifiqué en bodega la materia prima y los insumos…». Es tu firma: el sistema no sabe si el material llegó.');return 0}
+  const lista=(ids||[]).filter((id,i,a)=>a.indexOf(id)===i);if(!lista.length)return 0;
+  const u=quienFirma(),ts=new Date().toISOString();const lote='LP-'+hoy().replace(/-/g,'')+'-'+uid().slice(1,6);
+  const hechas=[],saltadas=[];
+  lista.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);const m=motivoNoLibProd(o);
+    if(m){saltadas.push({id,op:o?o.op:id,motivo:m});return}
+    registrarLibProd(o,u,ts,lote);hechas.push(o)});
+  nota=String(nota||'').trim();
+  if(hechas.length)bitacora('Liberadas a producción en lote '+lote+': '+hechas.length+(hechas.length===1?' orden':' órdenes')+' por '+u+' · materia prima e insumos verificados en bodega el '+hoy()+' · '+hechas.map(o=>o.op).join(', ')
+    +(nota?' · nota: '+nota:'')+(saltadas.length?' · no se liberaron '+saltadas.length+': '+saltadas.map(s=>s.op+' ('+s.motivo+')').join('; '):''));
+  if(page==='liberacion'){LIB.aviso={n:hechas.length,et:'corte',lote,saltadas};LIB.vista='listas'}LIB.sel=new Set();
+  PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render();return hechas.length}
 function togRutaRev(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!(puede('programa')||puede('liberar')))return;
   if(o.rutaRevGeneral){delete o.rutaRevGeneral;bitacora('Ruta '+o.op+': quitada la marca de revisada en la liberación general')}else{o.rutaRevGeneral={u:quienFirma(),ts:new Date().toISOString()};bitacora('Ruta '+o.op+' marcada como revisada en la liberación general por '+quienFirma())}save();render()}
 /* la casilla «revisada» de la liberación textil (02-oct, lote B2): el botón «ruta» salió porque la ruta misma se toca para corregirla. La casilla se
