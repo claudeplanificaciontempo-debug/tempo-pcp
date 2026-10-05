@@ -23,8 +23,11 @@
 --          (id 'isp|<centro>|<código>', p. ej. 'isp|modulos|CON-02'). En la
 --          misma tabla van las equivalencias (nombre de subproceso de Kronos o
 --          familia de operación de la hoja de Odoo → subproceso: 'ieq|…'), las
---          familias de prenda con sus nombres en cada fuente ('ifam|…') y la
---          marca de la siembra ('imeta|siembra': se siembra UNA vez).
+--          familias de prenda con sus nombres en cada fuente ('ifam|…'), la
+--          marca de la siembra ('imeta|siembra': se siembra UNA vez) y los
+--          ajustes de Ingeniería que vivían solo en params ('icfg|<clave>':
+--          tipos de máquina, operarias, ojales y botones, etiqueta, pasos por
+--          categoría, insumos, reglas de la hoja y del inventario).
 --        · ing_operaciones — la base general: UNA fila por operación, con su
 --          SAM por familia de prenda dentro de data (Camisetas, Polos,
 --          Hoodies…) y sus fuentes (hoja de Odoo, Kronos o a mano)
@@ -61,10 +64,16 @@
 --      nuevas: las que ya existen (admin, planificación…) quedan igual.
 --      NO abre params (ahí está el catálogo de perfiles: abrirla dejaría a
 --      cualquiera cambiar los permisos), ni ordenes, ni centros, ni recursos.
---      Por eso lo que hoy vive en los parámetros (tipos de máquina,
+--      Lo de Ingeniería que vive en los parámetros (tipos de máquina,
 --      operarias, ojales y botones, etiqueta de serigrafía, pasos por
---      categoría, insumos que agregan un paso, reglas de la hoja) lo sigue
---      guardando solo Administración: la app lo muestra apagado con su porqué.
+--      categoría, insumos que agregan un paso, reglas de la hoja y del
+--      inventario) la app lo guarda TAMBIÉN en ing_subprocesos, una fila por
+--      ajuste (id 'icfg|<clave>'), y al leer esa fila manda sobre params: así
+--      Ingeniería lo edita sin que se abra params. Administración escribe las
+--      dos (params queda al día). El minuto por prenda de un centro sigue en
+--      la tabla de centros (es capacidad): lo guarda Administración.
+--      El perfil Ingeniería NO cambia órdenes: sus tiempos nuevos los aplica
+--      planificación (Hoy → «Órdenes abiertas sin los tiempos de hoy»).
 --      Ojo: en categorias el candado es de pantalla; la base no filtra por
 --      campo, así que quien tiene Ingeniería podría tocar por fuera de la app
 --      también los consumos de tela de una categoría.
