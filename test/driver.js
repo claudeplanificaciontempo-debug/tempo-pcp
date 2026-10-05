@@ -9586,6 +9586,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    cand.forEach(o=>{const tr=tramosDe(o.id);for(let i=tr.length-1;i>=0;i--)if(!tr[i].fin)tr.splice(i,1)});OTR={area:'general',estado:'proceso',q:'',cen:null,rec:null};page='ordenes';render()}
   /* 25-sep · Reportería → Órdenes de producción (consulta): todas las órdenes, con o sin ruta lista, solo de lectura */
   {PERFIL=adminP0();const cf=window.confirm;window.confirm=()=>true;
+   if(document.fonts&&document.fonts.ready)await Promise.race([document.fonts.ready,__p(4000)]);   /* 05-oct: el ancho de la tabla se mide con la letra ya cargada (con Inter la tabla es ~18 px más ancha) */
    ORDC={estado:'abiertas',ruta:'todas',q:'',fases:null};page='ordconsulta';render();const el=document.getElementById('p-ordconsulta');
    __check('OC1: «Órdenes de producción» está en Reportería (menú, registro de reportes, ícono y catálogo de páginas de perfiles)',!!document.querySelector('nav .gbody[data-g="rep"] a[data-p="ordconsulta"]')&&REPORTES.some(r=>r.p==='ordconsulta')&&!!ICO_NAV.ordconsulta&&PAGINAS_DEF.some(p=>p[0]==='ordconsulta'));
    const abiertasC=S.ordenes.filter(o=>estadoOrdC(o)==='abiertas');const lista=abiertasC.find(o=>rutaLista(o));
@@ -10272,18 +10273,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       /* 1 · la barra de arriba entra entera en los portátiles (1.366 y 1.280 px), en 1.024 y en el teléfono; «Salir» siempre a la vista */
       dibuja(()=>{page='panorama'});const malB=[];
       /* barrido continuo (05-oct, cierre del Tablero: la verificación encontró la barra rota entre 1.181 y 1.239 px y la lista fija de cinco anchos no lo veía):
-         UN marco que se ensancha de 861 a 1.920 px cada 5 px; el menú lleva contadores de 4 cifras como en producción («Órdenes 1157»), el peor caso */
-      let nW=0;
+         UN marco que se ensancha de 861 a 1.920 px cada 5 px. Tres pasadas: sin error de guardado, con «No se guardó» y con el texto largo de una carga
+         fallida (#saved.err: la segunda vuelta del cierre encontró que con un error a la vista se cortaba «Salir»); el error tiene que verse ENTERO y dentro
+         de la pantalla. Los contadores del menú llevan 4 cifras como en producción («Órdenes 1157»): van dentro de los menús y no ensanchan la barra */
+      let nW=0;const largoErr='No se guarda: la carga falló en '+nTabla('ordenes')+' · recarga la página';
+      for(const [nmE,txtE,ttlE] of [['sin error','✓ Guardado',''],['«No se guardó»','No se guardó','No se guardó en Órdenes'],['texto largo',largoErr,largoErr]])
       {const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());['n-ord','n-ban','n-atr'].forEach(i=>{const e=cl.querySelector('#'+i);if(e)e.textContent='1157'});
+       {const sv=cl.querySelector('#saved');if(sv){sv.textContent=txtE;sv.title=ttlE;sv.classList.toggle('err',!!ttlE)}}
        const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:861px;height:700px;border:0;visibility:hidden';document.body.appendChild(fr);
        try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;if(d.fonts&&d.fonts.ready)await Promise.race([d.fonts.ready,__p(4000)]);await __p(80);
         for(let W=861;W<=1920;W+=5){fr.style.width=W+'px';const cw=d.documentElement.clientWidth,sw=d.documentElement.scrollWidth;const s=d.getElementById('btn-salir'),m=d.getElementById('modo-sw');
          const rs=s?s.getBoundingClientRect():null,rm=m?m.getBoundingClientRect():null;nW++;if(fr.contentWindow.innerWidth!==W){malB.push(W+': el marco no cambió de ancho ('+fr.contentWindow.innerWidth+')');continue}
-         if(sw>W||!rs||rs.right>Math.min(W,cw)+0.5||rs.width<20||!rm||rm.width<50)malB.push(W+': página '+sw+' · Salir '+(rs?Math.round(rs.right):'-')+' · sol/luna '+(rm?Math.round(rm.width):'-'))}}
+         if(sw>W||!rs||rs.right>Math.min(W,cw)+0.5||rs.width<20||!rm||rm.width<50)malB.push(nmE+' '+W+': página '+sw+' · Salir '+(rs?Math.round(rs.right):'-')+' · sol/luna '+(rm?Math.round(rm.width):'-'));
+         if(ttlE){const sv=d.getElementById('saved'),rv=sv.getBoundingClientRect(),hb=d.querySelector('header').getBoundingClientRect();
+          if(!(rv.width>20&&rv.height>10&&rv.left>=-0.5&&rv.right<=Math.min(W,cw)+0.5&&rv.top>=hb.bottom-1&&sv.scrollWidth<=sv.clientWidth+1))malB.push(nmE+' '+W+': el aviso de error no se ve entero ('+Math.round(rv.left)+'–'+Math.round(rv.right)+' · arriba '+Math.round(rv.top)+' / barra '+Math.round(hb.bottom)+' · '+sv.scrollWidth+'/'+sv.clientWidth+')')}}}
        finally{fr.remove()}}
       const r390=await marco(390,844,d=>{const s=caja(d,'btn-salir'),b=caja(d,'navBtn'),h=d.querySelector('header').getBoundingClientRect();return {sw:d.documentElement.scrollWidth,mismaFila:!!s&&!!b&&Math.abs(s.top-b.top)<12,alto:Math.round(h.height)}});
       if(r390.sw>391||!r390.mismaFila||r390.alto>140)malB.push('390: página '+r390.sw+' · Salir en la fila del menú '+r390.mismaFila+' · barra '+r390.alto+' px');
-      __check("PUL1: la barra de arriba del Tablero entra entera en TODO ancho de 861 a 1.920 px (barrido cada 5 px, con contadores de 4 cifras en el menú): la página no se desplaza a los lados, «Salir» queda dentro de la pantalla y el sol/luna sin aplastar; y en el teléfono «Salir» va en la fila del menú",nW>=200&&!malB.length,nW+' anchos · '+malB.slice(0,6).join(' | '));
+      __check("PUL1: la barra de arriba del Tablero entra entera en TODO ancho de 861 a 1.920 px (barrido cada 5 px), sin error de guardado y con uno a la vista («No se guardó» y el texto largo de una carga fallida: cuelga debajo de la barra, entero y dentro de la pantalla): la página no se desplaza a los lados, «Salir» queda dentro de la pantalla y el sol/luna sin aplastar; y en el teléfono «Salir» va en la fila del menú",nW>=600&&!malB.length,nW+' anchos · '+malB.slice(0,6).join(' | '));
       /* 2 · en angosto las tarjetas de cifras van de a dos y no miden 150 px de alto con media tarjeta vacía */
       {const el=dibuja(()=>{page='envivo'});const r=await marco(390,844,d=>{const ks=[...d.querySelectorAll('.page.on .kpis:not(.tarj-row)>.kpi')].filter(k=>k.offsetParent);const hs=ks.map(k=>Math.round(k.getBoundingClientRect().height));const lefts=new Set(ks.map(k=>Math.round(k.getBoundingClientRect().left)));return {n:ks.length,hs,col:lefts.size}});
        __check("PUL2: a 390 px las tarjetas de cifras de Planta en vivo van en dos columnas y miden lo que su contenido (antes 150 px fijos de alto, con media tarjeta vacía)",r.n>=2&&r.col>=2&&Math.min(...r.hs)<140,JSON.stringify(r))}
@@ -10328,15 +10335,22 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
          __check("CIE1: Liberación — la tarjeta de una pestaña vacía (0 órdenes) va en gris (no blanca) y sin transparencia, y su letra se lee: contraste ≥ 3 en claro y en oscuro",res.every(r=>r.n>=1&&r.op&&r.min>=3&&r.papel===false),JSON.stringify(res))}
         /* 2 · filas de 4, 5 y 6 tarjetas sin una sola en la última fila (Hoy: 6 en una fila o 3 + 3; Resumen gerencial, Entregas y Tintorería: 5);
            cada pantalla se dibuja y se copia en UN marco que se ensancha de 861 a 1.920 px cada 10 px */
-        {const mal=[];let nW=0;
-         for(const [nm,f] of [['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Entregas',()=>{page='entregas'}],['Tintorería',()=>{page='tintoreria'}]]){
-          dibuja(f);const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+        {const mal=[];let nW=0;const vistas={};
+         /* filas de prueba con la MISMA función de las pantallas (tarjetasResumenHTML): 3, 11, 12 y 13 tarjetas, así las reglas de 3 y de 11 o más se prueban
+            aunque los datos del simulador tengan otro número de módulos */
+         const prueba=()=>{page='panorama';render();const el=pg('panorama');const box=document.createElement('div');box.className='panel cie2-prueba';
+           box.innerHTML='<div class="body">'+[3,11,12,13].map(n=>tarjetasResumenHTML(Array.from({length:n},(_,i)=>({id:'cie2-'+n+'-'+i,ico:'check',v:num(1000+i),k:'<b>Módulo '+(i+1)+'</b> · '+num(1200+i)+' / 2.400 min'})))).join('')+'</div>';el.appendChild(box)};
+         for(const [nm,f] of [['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Entregas',()=>{page='entregas'}],['Tintorería',()=>{page='tintoreria'}],
+           ['Planificar el mes · paso 2',()=>{page='plan';PM.paso=2}],['Confección → Programación',()=>{page='centro';CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.rec=''}],['Balanceo',()=>{page='balanceo'}],['filas de prueba',null]]){
+          if(f)dibuja(f);else prueba();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());if(!f){const b=document.querySelector('.cie2-prueba');if(b)b.remove()}
           const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:861px;height:900px;border:0;visibility:hidden';document.body.appendChild(fr);
           try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;if(d.fonts&&d.fonts.ready)await Promise.race([d.fonts.ready,__p(4000)]);await __p(60);
-           for(let W=861;W<=1920;W+=10){fr.style.width=W+'px';d.querySelectorAll('.page.on .kpis.tarj-row').forEach(g=>{const ks=[...g.children].filter(k=>k.classList.contains('kpi')&&k.offsetParent);if(ks.length<4||ks.length>6)return;nW++;
+           for(let W=861;W<=1920;W+=10){fr.style.width=W+'px';d.querySelectorAll('.page.on .kpis.tarj-row').forEach(g=>{const ks=[...g.children].filter(k=>k.classList.contains('kpi')&&k.offsetParent);if(ks.length<3)return;nW++;vistas[nm]=vistas[nm]||new Set();vistas[nm].add(ks.length);
              const filas={};ks.forEach(k=>{const t=Math.round(k.getBoundingClientRect().top);filas[t]=(filas[t]||0)+1});const n=Object.keys(filas).map(Number).sort((a,b)=>a-b).map(t=>filas[t]);
-             if(n.length>1&&(n[n.length-1]===1||(ks.length===6&&new Set(n).size>1)))mal.push(nm+' '+W+': '+n.join('+'))})}}finally{fr.remove()}}
-         __check("CIE2: una fila de cuatro, cinco o seis tarjetas no deja una sola abajo, de 861 a 1.920 px: Hoy (seis en una fila o tres y tres; antes 5 + 1 entre ~1.140 y 1.365 px), Resumen gerencial, Entregas y Tintorería (cinco en una fila o tres y dos; antes 4 + 1)",nW>=300&&!mal.length,nW+' medidas · '+mal.slice(0,6).join(' | '))}
+             if(n.length>1&&(n[n.length-1]===1||(ks.length===6&&new Set(n).size>1)||ks.length===3)&&!(ks.length%4===1&&ks.length>=13&&W<960))mal.push(nm+' '+W+': '+n.join('+'));   /* trece (4n + 1) de 861 a 959 px queda 4 + 4 + 4 + 1 a propósito: cinco columnas no caben */
+             const fuera=ks.find(k=>k.scrollWidth>k.clientWidth+2);if(fuera)mal.push(nm+' '+W+': una tarjeta de '+ks.length+' se sale por dentro ('+fuera.scrollWidth+'/'+fuera.clientWidth+')')})}}finally{fr.remove()}}
+         const vt=Object.entries(vistas).map(([k,s])=>k+' '+[...s].sort((a,b)=>a-b).join('/')).join(' · ');const pr=vistas['filas de prueba']||new Set();
+         __check("CIE2: una fila de tarjetas no deja una sola abajo ni se sale por dentro, de 861 a 1.920 px: tres en una fila (Planificar el mes, paso 2: antes 2 + 1 hasta 951 px), cuatro, cinco y seis (Hoy: seis en una fila desde 1.400 px o tres y tres; Resumen gerencial, Entregas, Tintorería) y once o más (los módulos de Confección → Programación y de Balanceo: antes 5 + 5 + 1 entre ~1.130 y 1.380 px; y filas de prueba de 3, 11, 12 y 13 — trece, sin una sola abajo desde 960 px: más angosto cinco columnas no caben)",nW>=600&&!mal.length&&[3,11,12,13].every(n=>pr.has(n)),nW+' medidas · '+vt+' · '+mal.slice(0,6).join(' | '))}
         /* 3 · el «?» de la cabecera va junto al título en el Tablero (dentro del h2, antes de la línea de contexto); en «Como Odoo» sigue al lado del h2 */
         {const res={};for(const [nm,f] of [['Hoy',()=>{page='panorama'}],['Planificar el mes',()=>{page='plan';PM.paso=1}]]){const el=dibuja(f);const h2=el&&el.querySelector('.pagehead h2');
            const ay=h2&&h2.querySelector(':scope>.ayuda-cab');const ctx=h2&&h2.querySelector(':scope>.ctx');const ra=ay&&ay.querySelector('.ayuda')?ay.querySelector('.ayuda').getBoundingClientRect():null,rc=ctx?ctx.getBoundingClientRect():null;
@@ -10345,8 +10359,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
          delete S.params.tema;render();
          __check("CIE3: en el Tablero el «?» de la cabecera va junto al título (dentro del h2, antes de la línea de contexto, en la línea del título) en Hoy y Planificar el mes; en «Como Odoo» sigue al lado del h2, como antes",Object.values(res).every(r=>r.dentro&&r.antes&&r.arriba)&&odooAlLado,JSON.stringify(res)+' · odoo al lado: '+odooAlLado)}
         /* 4 · Hoy: el panel de la sección «Necesita decisión» se llama igual con tarjetas y sin ellas */
-        {const s=String(hoyDecisionHTML);const el=dibuja(()=>{page='panorama'});const h=el?el.innerHTML:'';
-         __check("CIE4: Hoy — la cinta de la sección dice «Necesita decisión» y su panel se llama «Capacidad, programa y tintorería» con tarjetas y sin ellas (antes, vacío, el panel repetía «Necesita decisión»)",(s.match(/Capacidad, programa y tintorería/g)||[]).length===2&&!/<h3>Necesita decisión/.test(s)&&/Necesita decisión/.test(h)&&/Capacidad, programa y tintorería/.test(h))}
+        /* (se DIBUJA: con los datos del simulador el panel siempre trae tarjetas, así que el vacío se arma llamando a hoyDecisionHTML con un programa sin baños,
+            sin «no llegan» y sin decisiones de capacidad ni faltantes, y se inserta en la página de Hoy debajo de su cinta) */
+        {const el=dibuja(()=>{page='panorama'});const tit=x=>x&&x.firstChild&&x.firstChild.nodeType===3?x.firstChild.textContent.trim():(x?x.textContent.trim():'');
+         const conT=el?[...el.querySelectorAll('.panel>h3')].filter(x=>tit(x)==='Capacidad, programa y tintorería'):[];const cintaReal=el?[...el.querySelectorAll('span')].some(x=>x.textContent.trim()==='Necesita decisión'):false;
+         const bakR=window.revisarProblemasCap,bakF=window.faltantesTin;let hv='';
+         try{window.revisarProblemasCap=()=>[];window.faltantesTin=()=>[];hv=hoyDecisionHTML({banosPend:[],motor:'adelante',ordenes:{}},[],hoy())}finally{window.revisarProblemasCap=bakR;window.faltantesTin=bakF}
+         const box=document.createElement('div');box.className='cie4-prueba';box.innerHTML=seccionHoy('Necesita decisión','',hv);if(el)el.appendChild(box);
+         const h3=box.querySelector('.panel>h3');const cinta=box.querySelector('span');const vacio={h3:h3?tit(h3):null,cinta:cinta?cinta.textContent.trim():null,tarjetas:box.querySelectorAll('.kpi').length,nada:/Nada por decidir hoy/.test(box.textContent),visible:!!(h3&&h3.offsetParent)};box.remove();
+         __check("CIE4: Hoy — la cinta de la sección dice «Necesita decisión» y su panel se llama «Capacidad, programa y tintorería» con tarjetas (la pantalla del simulador) y sin ellas (el panel vacío, dibujado en la página: «Nada por decidir hoy»); antes, vacío, el panel repetía «Necesita decisión»",conT.length===1&&cintaReal&&vacio.h3==='Capacidad, programa y tintorería'&&vacio.cinta==='Necesita decisión'&&vacio.tarjetas===0&&vacio.nada&&vacio.visible,JSON.stringify({conTarjetas:conT.length,cintaReal,vacio}))}
         /* 5 · lo nuevo de main toma el aspecto del Tablero: Liberación a producción en lote y la pestaña «Por liberar a producción» del Resumen del centro */
         {const el=dibuja(()=>{page='liberacion';LIB.et='corte';LIB.vista='listas';LIB.q='';delete BUSQ['LIB.q']});
          /* la barra de «Liberar las marcadas» sale solo con órdenes listas: se dibuja con una lista de ejemplo dentro de la misma página, con la misma función (accionesLibHTML) */
