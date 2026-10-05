@@ -1577,7 +1577,7 @@ html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][
 /* · un error de guardado (#saved.err) no ocupa lugar en la barra: cuelga debajo de ella, a la derecha, como una pestaña roja con el texto entero (el
      title lo repite), en el hueco de 22 px que deja arriba cada página. Dentro de la barra cortaba «Salir»: «No se guardó» de 861 a 1.087 px y el
      texto largo de una carga fallida («No se guarda: la carga falló en …») de 861 a 1.675 px. En el teléfono sigue en su fila, como antes. */
-@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] header .saved.err{position:absolute;top:100%;right:12px;z-index:2;margin:0;min-width:0;max-width:calc(100% - 24px);height:22px;line-height:20px;padding:0 12px;background:var(--tb-red-soft);color:var(--tb-red-ink);border:1px solid var(--tb-red-line);border-top:0;border-radius:0 0 8px 8px;font-size:12px;font-weight:600;box-shadow:var(--tb-shadow)}}
+@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] header .saved.err{position:absolute;top:100%;right:12px;z-index:2;pointer-events:none;margin:0;min-width:0;max-width:calc(100% - 24px);height:22px;line-height:20px;padding:0 12px;background:var(--tb-red-soft);color:var(--tb-red-ink);border:1px solid var(--tb-red-line);border-top:0;border-radius:0 0 8px 8px;font-size:12px;font-weight:600;box-shadow:var(--tb-shadow)}}
 /* · */
 </style>
 </head>
@@ -2151,7 +2151,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 14:00';
+const APP_BUILD='2026-10-05 14:37';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
