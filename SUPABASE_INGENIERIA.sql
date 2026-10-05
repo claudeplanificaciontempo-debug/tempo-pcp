@@ -20,14 +20,21 @@
 --      (id text primary key, data jsonb, actualizado timestamptz,
 --       actualizado_por uuid):
 --        · ing_subprocesos — centro de producción → subproceso
---          (id 'isp|<centro>|<código>', p. ej. 'isp|modulos|CON-02').
+--          (id 'isp|<centro>|<código>', p. ej. 'isp|modulos|CON-02'). En la
+--          misma tabla van las equivalencias (nombre de subproceso de Kronos o
+--          familia de operación de la hoja de Odoo → subproceso: 'ieq|…'), las
+--          familias de prenda con sus nombres en cada fuente ('ifam|…') y la
+--          marca de la siembra ('imeta|siembra': se siembra UNA vez).
 --        · ing_operaciones — la base general: UNA fila por operación, con su
 --          SAM por familia de prenda dentro de data (Camisetas, Polos,
---          Hoodies…) (id 'iop|<código>').
+--          Hoodies…) y sus fuentes (hoja de Odoo, Kronos o a mano)
+--          (id 'iop|OP-0001': el código de la casa, consecutivo). Medido con
+--          la hoja de Odoo y la base de Kronos del 02-oct: 877 filas, ≈1 MB;
+--          por eso NO se lee al entrar: se lee al abrir Ingeniería.
 --        · ing_referencias — una fila por tipo de producto + referencia con
 --          sus operaciones elegidas (id 'ir|<tipo de producto>|<referencia>').
---      La app lee las dos primeras al entrar (son chicas) y la tercera solo
---      al buscar una referencia. NO cambian ningún minuto del programa.
+--      La app lee ing_subprocesos al entrar (≈17 KB), ing_operaciones al abrir
+--      Ingeniería y ing_referencias solo al buscar una referencia. NO cambian ningún minuto del programa.
 --   2. Un sello (trigger) pone «actualizado» y «actualizado_por» en cada
 --      inserción y actualización.
 --   3. public.puede_editar_ingenieria(): SÍ si el perfil del usuario

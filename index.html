@@ -1075,6 +1075,31 @@ table.ing-arbol{width:auto}
 .ing-lista{margin:0;padding-left:18px;line-height:1.7;font-size:var(--fs-s)}
 .ing-lista a{cursor:pointer;text-decoration:underline}
 .ing-sig{font-size:var(--fs-s);margin:0 0 10px}
+/* Ingeniería · base de operaciones (05-oct, E2): árbol centro → subproceso → operación, vista previa y edición; solo variables (claro y oscuro) */
+.ing-filtros{display:flex;gap:8px;margin:0 0 10px;align-items:center;flex-wrap:wrap}
+.ing-filtros .ing-q{width:320px;max-width:100%}
+.ing-filtros select{width:auto;max-width:100%}
+.ing-scroll{max-height:72vh}
+table.ing-tree{width:100%}
+table.ing-tree tr.ing-cen td{background:var(--o-brand-soft,var(--field));color:var(--ink);border-top:2px solid var(--o-brand-line,var(--rule2));cursor:pointer}
+table.ing-tree tr.ing-sub td{background:var(--field);font-weight:600;cursor:pointer;padding-left:18px}
+table.ing-tree tr.ing-op td:first-child{padding-left:30px}
+table.ing-tree tr.ing-tec td{padding-left:18px;font-size:var(--fs-s);color:var(--ink2)}
+table.ing-tree tr.ing-apagado td,table.ing-tree tr.ing-pd td{color:var(--ink2)}
+.ing-sub-acc{float:right;font-weight:400}
+.ing-acc{white-space:nowrap}
+.ing-acc .btn+.btn{margin-left:4px}
+.ing-usos{font-size:var(--fs-xs)}
+.ing-de{display:block;font-size:var(--fs-xs);color:var(--ink3);font-weight:400;white-space:normal;max-width:300px}
+tr.ing-pdec td{background:var(--field)}
+.ing-sinsembrar{margin:0 0 12px}
+.ib-lin{font-size:var(--fs-s);margin:6px 0}
+.ib-previa h4,.io-h{margin:12px 0 6px}
+table.ib-t{width:auto;font-size:var(--fs-s)}
+table.ib-t tr.ib-total td{font-weight:600}
+.io-fuentes{max-height:260px}
+table.io-sam{width:auto}
+.io-nota{font-size:var(--fs-xs);margin:10px 0 0}
 /* 05-oct: con el grupo Ingeniería son siete grupos; hasta 1.366 px los dos largos dicen «Textil» y «Producción» (el nombre entero va en el title) */
 nav .grp .grp-c{display:none}
 @media (min-width:861px) and (max-width:1366px){nav .grp .grp-l{display:none}nav .grp .grp-c{display:inline}}   /* en los tres aspectos */
@@ -2041,12 +2066,13 @@ const sinId=r=>{const {id,...d}=r;return d};
    ing_subprocesos (centro → subproceso), ing_operaciones (la base general: una fila por operación con su SAM por familia de prenda) e ing_referencias
    (tipo de producto + referencia → sus operaciones). Esquema de la casa (id, data, actualizado, actualizado_por). FUERA de TABLAS: _save() no las
    toca (las escribe solo su pantalla, por lotes y nunca con delete) y el borrado de datos de prueba tampoco (son catálogo de ingeniería). Al entrar se
-   leen las chicas (subprocesos y base); la ingeniería de cada referencia se lee al buscarla (leerIngReferencias). Respaldo las incluye; Restaurar solo
+   lee solo la chica (subprocesos, ≈17 KB); la base de operaciones (≈1 MB con la hoja de Odoo y Kronos del 02-oct) se lee al abrir Ingeniería → Operaciones o
+   Por revisar (ingAsegurarOps, 05-oct E2: así una tablet del piso no la baja); la ingeniería de cada referencia se lee al buscarla (leerIngReferencias). Respaldo las incluye; Restaurar solo
    agrega o actualiza. Si las tablas todavía no existen, la app sigue igual y la pantalla dice «Falta correr SUPABASE_INGENIERIA.sql». */
 const TABLAS_ING=['ing_subprocesos','ing_operaciones','ing_referencias'];
-const TABLAS_ING_ENTRAR=['ing_subprocesos','ing_operaciones'];
+const TABLAS_ING_ENTRAR=['ing_subprocesos'];   /* la base (ing_operaciones) se lee a demanda: leerIngOps / ingAsegurarOps */
 const ING_MSG_FALTA='Falta correr SUPABASE_INGENIERIA.sql en Supabase';
-let ING={estado:null,error:null,faltan:[],refs:{}};   /* estado: null (sin leer) | 'si' | 'falta' | 'error' */
+let ING={estado:null,error:null,faltan:[],refs:{},ver:0,firmas:{},ops:null};   /* ops: la base de operaciones leída a demanda: null | 'leyendo' | 'si' | 'falta' | 'error' */   /* estado: null (sin leer) | 'si' | 'falta' | 'error' */
 /* ¿el error es «la tabla no existe»? (un permiso negado NO lo es) */
 function esFaltaTabla(e,t){const m=String((e&&e.message)||e||''),c=String((e&&e.code)||'');if(/permission denied|row-level security/i.test(m))return false;
   if(c==='PGRST205'||c==='42P01')return true;
@@ -2057,9 +2083,16 @@ async function leerTablaIng(t,ids){let out=[];
   let from=0;while(true){const {data,error}=await sb.from(t).select('id,data,actualizado').order('id').range(from,from+999);if(error)return {error,falta:esFaltaTabla(error,t)};out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}
   return {data:out}}
 function ingTomarCarga(rs){ING.faltan=[];ING.error=null;let err=null;
-  TABLAS_ING_ENTRAR.forEach((t,i)=>{const r=rs[i]||{};if(r.error){S[t]=[];if(r.falta)ING.faltan.push(t);else err=err||String((r.error&&r.error.message)||r.error)}else S[t]=(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{}))});
-  ING.estado=ING.faltan.length?'falta':err?'error':'si';ING.error=err;ING.refs={};return ING.estado}
-async function leerIngAlEntrar(){const rs=await Promise.all(TABLAS_ING_ENTRAR.map(t=>leerTablaIng(t).catch(e=>({error:e,falta:false}))));return ingTomarCarga(rs)}
+  TABLAS_ING_ENTRAR.forEach((t,i)=>{const r=rs[i]||{};if(r.error){S[t]=[];if(r.falta)ING.faltan.push(t);else err=err||String((r.error&&r.error.message)||r.error)}else{S[t]=(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{}));ING.firmas=ING.firmas||{};ING.firmas[t]={};(r.data||[]).forEach(x=>{ING.firmas[t][x.id]=ingCanon(x.data||{})})}});
+  ING.estado=ING.faltan.length?'falta':err?'error':'si';ING.error=err;ING.refs={};ING.ver=(ING.ver||0)+1;ING.ops=null;ING.opsErr=null;S.ing_operaciones=[];return ING.estado}
+async function leerIngAlEntrar(){const habia=ING.ops==='si';const rs=await Promise.all(TABLAS_ING_ENTRAR.map(t=>leerTablaIng(t).catch(e=>({error:e,falta:false}))));const e=ingTomarCarga(rs);if(habia&&e==='si')await leerIngOps();return ING.estado}
+/* la base de operaciones, a demanda (la pide quien abre Ingeniería → Operaciones o Por revisar; al volver a leer, si ya estaba leída, se relee) */
+async function leerIngOps(){if(ING.estado!=='si')return ING.estado;ING.ops='leyendo';let r;try{r=await leerTablaIng('ing_operaciones')}catch(e){r={error:e,falta:false}}
+  if(r.error){S.ing_operaciones=[];if(r.falta){ING.ops='falta';ING.estado='falta';if(!ING.faltan.includes('ing_operaciones'))ING.faltan.push('ing_operaciones')}else{ING.ops='error';ING.opsErr=String((r.error&&r.error.message)||r.error)}ING.ver=(ING.ver||0)+1;return ING.ops}
+  S.ing_operaciones=(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{}));ING.firmas=ING.firmas||{};ING.firmas.ing_operaciones={};(r.data||[]).forEach(x=>{ING.firmas.ing_operaciones[x.id]=ingCanon(x.data||{})});ING.ops='si';ING.ver=(ING.ver||0)+1;return 'si'}
+/* ¿está leída? si no, la pide (una vez) y vuelve a dibujar la página de Ingeniería que la necesita cuando llega */
+function ingAsegurarOps(){if(ING.estado!=='si')return false;if(ING.ops==='si')return true;if(ING.ops!=='leyendo'&&ING.ops!=='error'){leerIngOps().then(()=>{if(['ingops','ingrev'].includes(page))render()})}return false}
+async function leerIngBase(){await leerIngAlEntrar();if(ING.estado==='si'&&ING.ops!=='si')await leerIngOps();return ING.estado}
 /* a demanda: la ingeniería de unas referencias (ids 'ir|…'); sin ids, todas. Queda en ING.refs mientras dure la sesión */
 async function leerIngReferencias(ids){if(ING.estado!=='si')return {error:ING.estado==='falta'?ING_MSG_FALTA:(ING.error||'las tablas de Ingeniería no se leyeron'),falta:ING.estado==='falta',data:[]};
   let r;try{r=await leerTablaIng('ing_referencias',ids)}catch(e){r={error:e,falta:false}}
@@ -2070,7 +2103,7 @@ async function ingSubir(t,filas,lote){if(!TABLAS_ING.includes(t))return {ok:fals
   for(let i=0;i<filas.length;i+=(lote||200)){const {error}=await sb.from(t).upsert(filas.slice(i,i+(lote||200)));if(error)return {ok:false,n,error:String(error.message||error),falta:esFaltaTabla(error,t)};n+=Math.min(lote||200,filas.length-i)}
   return {ok:true,n}}
 /* respaldo: S (con subprocesos y base, que se leen al entrar) + la ingeniería por referencia, leída del servidor */
-async function respaldoConIng(){const extra={};try{if(ING.estado==='si'){const r=await leerTablaIng('ing_referencias');if(!r.error)extra.ing_referencias=r.data.map(x=>Object.assign({id:x.id},x.data||{}))}}catch(e){}
+async function respaldoConIng(){const extra={};try{if(ING.estado==='si'){const r=await leerTablaIng('ing_referencias');if(!r.error)extra.ing_referencias=r.data.map(x=>Object.assign({id:x.id},x.data||{}));const o=await leerTablaIng('ing_operaciones');if(!o.error)extra.ing_operaciones=o.data.map(x=>Object.assign({id:x.id},x.data||{}))}}catch(e){}
   return Object.assign({},S,extra)}
 /* Restaurar: solo AGREGA o ACTUALIZA las filas de Ingeniería que trae el archivo (nunca borra lo que el archivo no traiga) */
 async function restaurarIng(nuevo){const out={n:{},error:null,falta:false};
@@ -2240,7 +2273,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 14:09';
+const APP_BUILD='2026-10-05 15:17';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -13928,7 +13961,8 @@ function opsCargarMenuHTML(){return `<details class="acc ops-cargar"><summary><s
       <button class="btn ghost sm" data-ing-tabla="operaciones" onclick="mCargarOrdenOps()" title="hoja «Operaciones — llenar ORDEN» devuelta por producción: paso de cada operación dentro de la prenda">Orden de las operaciones</button>
       <button class="btn ghost sm" data-ing-tabla="categorias" onclick="mCargarTiemposXLSX()" title="sube el Excel de tiempos: pone tus tiempos y las propuestas que aceptes, sin pisar lo que ya manda">Tiempos desde Excel</button>
       <button class="btn ghost sm" data-ing-tabla="operaciones" onclick="mPegarOps()">Pegar catálogo</button>
-      <button class="btn ghost sm" data-ing-tabla="categorias" onclick="mPegarFamOps()">Pegar familias</button></div></details>`}
+      <button class="btn ghost sm" data-ing-tabla="categorias" onclick="mPegarFamOps()">Pegar familias</button>
+      <button class="btn ghost sm" data-ing-tabla="ing_operaciones,ing_subprocesos" onclick="mArmarBase()" title="junta la hoja de Odoo y la base de Kronos en la base general (vista previa antes de guardar; no cambia ningún minuto del programa)">Base de operaciones (Kronos + hoja de Odoo)</button></div></details>`}
 /* Técnicas de estampado (05-oct: se mudó de Configuración general → Bordado y estampado; es un tiempo) */
 function tecnicasEstampadoHTML(){return `<div class="panel" data-ing-tabla="tecnicas" data-ing-key="${esc(cfgNorm('Técnicas de estampado'))}"><h3>Técnicas de estampado <span class="note">tiempo estándar por prenda de cada técnica; la orden indica cuál lleva</span><span class="spacer"></span><button class="btn ghost sm" onclick="addTec()">Agregar</button></h3>
    <div class="body"><table><thead><tr><th>Técnica</th><th class="num">SAM</th><th>Máquina / nota</th><th>Provisional</th><th></th></tr></thead><tbody>
@@ -13945,8 +13979,8 @@ function tecnicasEstampadoHTML(){return `<div class="panel" data-ing-tabla="tecn
    referencia (se arma en el siguiente paso) · Tipos de producto (los tiempos por tipo y los pasos que agrega un tipo o un insumo) · Máquinas y
    operarias · Por revisar. Se mudó SIN cambiar nada por dentro: las mismas funciones, los mismos datos y los mismos guardados; ningún minuto del
    programa cambia. Lo que pide cada panel para editar lo dice su data-ing-tabla y lo aplica blindarIng (nunca se deja editar algo que no se guarda). */
-let ING_V={ops:'hoja'};
-const ING_OPS_TABS=[['hoja','Hoja de operaciones'],['tecnicas','Técnicas de estampado'],['base','Base general']];
+let ING_V={ops:'base'};
+const ING_OPS_TABS=[['base','Base general'],['subprocesos','Subprocesos'],['repetidas','Posibles repetidas'],['hoja','Hoja de Odoo'],['tecnicas','Técnicas de estampado']];
 function ingCtx(){return '<span class="mut ctx" style="font-size:var(--fs-s);font-weight:400"><span class="ctx-sep">· </span>Ingeniería</span>'}
 /* marca el primer elemento de un panel con las tablas donde guarda y su clave (para irAjuste y para blindarIng) */
 function ingMarca(html,tablas,clave){if(!html)return '';return html.replace(/<([a-z]+)\b/,(m,tag)=>'<'+tag+(tablas?' data-ing-tabla="'+tablas+'"':'')+(clave?' data-ing-key="'+esc(cfgNorm(clave))+'"':''))}
@@ -13967,25 +14001,511 @@ function blindarIng(el){if(!el)return;
   el.querySelectorAll('[data-ing-tabla]').forEach(b=>{const m=porQueNoEditaIng(b.getAttribute('data-ing-tabla'));if(!m)return;
     if(b.matches('input,select,textarea,button')){if(!(b.dataset&&b.dataset.ver==='1')){b.disabled=true;b.setAttribute('aria-disabled','true');b.classList.add('ing-off');b.title=m}return}
     ingApagar(b,m);const av=document.createElement('div');av.className='warn ing-noguarda';av.textContent=m;const h=b.querySelector(':scope > h3, :scope > summary');if(h)h.insertAdjacentElement('afterend',av);else b.insertBefore(av,b.firstChild)})}
-/* Operaciones: la hoja de Odoo · las técnicas de estampado · la base general (siguiente paso) */
-function vIngOps(el){const tab=ING_OPS_TABS.some(t=>t[0]===ING_V.ops)?ING_V.ops:'hoja';
+/* Operaciones: la base general (centro → subproceso → operación) · sus subprocesos y equivalencias · las posibles repetidas · la hoja de Odoo (una
+   fuente) · las técnicas de estampado. La siembra de los subprocesos corre aquí, una sola vez, con la sesión que puede guardarlos (nunca el piso). */
+function vIngOps(el){const tab=ING_OPS_TABS.some(t=>t[0]===ING_V.ops)?ING_V.ops:'base';const listo=ingAsegurarOps()||ING.estado!=='si';
+  if(ingDebeSembrar())sembrarIngSubprocesos().then(ok=>{if(ok&&page==='ingops')render()});
   const pest=(k,html)=>`<div class="ops-pest" data-ops-tab="${k}"${tab===k?'':' style="display:none"'}>${html}</div>`;
+  const act=(S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn);const nPD=ingEquivs().filter(e=>!ingSubOk(e.sub)).length;const nRep=act.length?ingRepetidas().length:0;
+  const extra=k=>k==='base'?' <span class="mut">'+num(act.length)+'</span>':k==='subprocesos'&&nPD?' <span class="tag t-aviso" title="nombres de las fuentes sin subproceso (por decidir)">'+num(nPD)+'</span>':k==='repetidas'&&nRep?' <span class="tag t-aviso">'+num(nRep)+'</span>':k==='tecnicas'?' <span class="mut">'+num((S.tecnicas||[]).length)+'</span>':'';
   el.innerHTML=`<div class="pagehead"><h2>Operaciones ${ingCtx()}</h2><span class="spacer"></span>${opsCargarMenuHTML()}
     <button class="btn ghost" data-ing-tabla="params,categorias" onclick="mMapeoOps()" title="qué centro de la planta hace cada familia de operación y qué hoja usa cada tipo de producto">Reglas familia → centro</button></div>
-  <p class="lede">Cómo se hace cada prenda: la <b>hoja de operaciones</b> que viene de Odoo (por tipo de producto, con familia de operación, máquina, orden y tiempo), las <b>técnicas de estampado</b> y, en el siguiente paso, la <b>base general</b> (centro → subproceso → operación). Los tiempos de cada tipo de producto están en <b>Tipos de producto</b> y lo que no cuadra, en <b>Por revisar</b>. La orden suma los minutos por centro.</p>
-  <div class="chips cfg-tabs ops-tabs">${ING_OPS_TABS.map(([k,n])=>`<span class="chip ${tab===k?'on':''}" data-ver="1" onclick="ING_V.ops='${k}';render()">${esc(n)}${k==='tecnicas'?' <span class="mut">'+num((S.tecnicas||[]).length)+'</span>':''}${k==='base'?' <span class="tag t-mut">siguiente paso</span>':''}</span>`).join('')}<span class="ing-ir mut">Tiempos por tipo: <a href="#" onclick="ir('ingtipos');return false">Tipos de producto →</a> · <a href="#" onclick="ir('ingrev');return false">Por revisar →</a></span></div>
-  ${pest('hoja',hojaOperacionesHTML())}${pest('tecnicas',tecnicasEstampadoHTML())}${pest('base',ingBaseHTML())}`;
+  <p class="lede">Cómo se hace cada prenda. La <b>base general</b> tiene cada operación UNA vez, colgada de su centro y su subproceso, con su tipo de máquina y su SAM por familia de prenda; se arma juntando la <b>hoja de Odoo</b> (que sigue siendo la fuente del programa, como hoy) y la base de <b>Kronos</b>. Los tiempos de cada tipo de producto están en <b>Tipos de producto</b> y lo que no cuadra, en <b>Por revisar</b>. Nada de esta página cambia un minuto del programa.</p>
+  <div class="chips cfg-tabs ops-tabs">${ING_OPS_TABS.map(([k,n])=>`<span class="chip ${tab===k?'on':''}" data-ver="1" onclick="ING_V.ops='${k}';render()">${esc(n)}${extra(k)}</span>`).join('')}<span class="ing-ir mut">Tiempos por tipo: <a href="#" onclick="ir('ingtipos');return false">Tipos de producto →</a> · <a href="#" onclick="ir('ingrev');return false">Por revisar →</a></span></div>
+  ${pest('base',listo?ingBaseHTML():ingLeyendoHTML())}${pest('subprocesos',listo?ingSubprocesosHTML():ingLeyendoHTML())}${pest('repetidas',!listo?ingLeyendoHTML():tab==='repetidas'?ingRepetidasHTML():'<div class="mut">Se calcula al abrir esta pestaña.</div>')}${pest('hoja','<p class="ing-sig ing-hoja-fuente">La hoja de operaciones de Odoo es <b>una de las dos fuentes</b> de la base general (la otra es Kronos). Sigue igual que siempre: su carga, sus reglas y sus tiempos son los que lee hoy el programa.</p>'+hojaOperacionesHTML())}${pest('tecnicas',tecnicasEstampadoHTML())}`;
   blindarIng(el)}
-/* la base general: la estructura (centro → subproceso → operación) con lo que haya en las tablas de Ingeniería; se llena en el siguiente paso */
-function ingBaseHTML(){const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
-  const subs=S.ing_subprocesos||[],ops=S.ing_operaciones||[];const nHoja=c=>(S.operaciones||[]).filter(o=>o.centro===c).length;const cel=n=>n?num(n):'<span class="mut">—</span>';
-  return `${ingAvisoTablasHTML()}<div class="panel ing-base" data-ing-key="base general"><h3>Base general de operaciones <span class="note">centro → subproceso → operación · se arma en el siguiente paso</span></h3><div class="body">
-   <p class="lede" style="margin-top:0">Una sola base para toda la planta: cada operación una vez, con su tipo de máquina y su SAM por familia de prenda (Camisetas, Polos, Hoodies…). Los centros son los mismos de Configuración; Ingeniería solo les cuelga sus subprocesos (los subcentros de Odoo, Etiquetas, Perfilado y la Revisión de producto terminado dentro de Empaque). <b>Se arma en el siguiente paso</b>, juntando la hoja de Odoo y la base de Kronos; mientras tanto no cambia ningún minuto del programa.</p>
-   <p class="mut ing-sig"><span class="tag t-mut">se arma en el siguiente paso</span> la base se llena juntando la hoja de Odoo y la base de Kronos; mientras tanto no cambia ningún minuto del programa.</p>
-   <table class="ing-arbol"><thead><tr><th>Centro de producción</th><th class="num">Subprocesos</th><th class="num">Operaciones en la base</th><th class="num" title="las de la pestaña «Hoja de operaciones»: la fuente que usa hoy el programa">Hoy en la hoja de Odoo</th></tr></thead><tbody>
-   ${cens.map(c=>{const sc=subs.filter(s=>s.centro===c.id);const oc=ops.filter(o=>sc.some(s=>s.id===o.sub));
-     return `<tr><td><b>${esc(c.n)}</b>${c.id==='estampado'?' <span class="mut">· y las técnicas de estampado (pestaña de al lado)</span>':''}${c.id==='bordado'?' <span class="mut">· se programa por puntadas</span>':''}</td><td class="num">${cel(sc.length)}</td><td class="num">${cel(oc.length)}</td><td class="num">${cel(nHoja(c.id))}</td></tr>`}).join('')}</tbody></table>
-   <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">«—» = todavía nada. «Hoy en la hoja de Odoo» cuenta las operaciones de la pestaña «Hoja de operaciones»: es lo que usa hoy el programa y sigue igual hasta que se decida otra cosa.</p></div></div>`}
+/* ===================== INGENIERÍA · E2 · LA BASE DE OPERACIONES (05-oct-2026) =====================
+   Usuaria: «centros de producción, subprocesos y dentro de los subprocesos las operaciones, como una base de datos general». Decisiones del 05-oct:
+   el SAM de la base es POR OPERACIÓN Y POR FAMILIA DE PRENDA (cada operación una sola vez, con su SAM en cada familia: Camisetas, Polos, Hoodies…);
+   «Revisión de producto terminado» va en EMPAQUE (subproceso «Revisión»); Preparación de insumos y de materiales van a Subensamble (CON-01);
+   la receta de Confección es costura (Subensamble + Ensamble) + pulido + perfilado.
+   DÓNDE VIVE: dos tablas de SUPABASE_INGENIERIA.sql (esquema de la casa, fuera de TABLAS, solo upsert, nunca delete):
+     · ing_subprocesos: el catálogo de la estructura. Por el comienzo del id:
+         isp|<centro>|<código>  subproceso (cuelga de un centro de Configuración: los centros NO se copian) · {centro,cod,nombre,orden,parte,estado,activo}
+         ieq|kronos|<nombre>  ieq|odoo|<familia>|<prefijo>  equivalencia: nombre de la fuente → subproceso (sub vacío = «por decidir»)
+         ifam|<clave>  familia de prenda con sus nombres en cada fuente (alias) · imeta|siembra  la marca de la siembra (se siembra UNA vez)
+     · ing_operaciones: iop|OP-0001 … UNA fila por operación {cod,nombre,sub,tipoMaq,parte,samFam:{<familia>:{sam,fuente,…}},fuentes:[…],activa,
+       juntadaEn,noVino,mano:{campo:true},cambios:[…]}. El código OP-nnnn es de la casa: consecutivo y no cambia aunque cambie el nombre o el subproceso.
+   ARMAR LA BASE (planIngBase, puro: no escribe nada mientras se mira): junta la hoja de Odoo que ya está en el sistema (S.operaciones) y la base de
+   Kronos (base_operaciones.csv o el Excel del paquete, que se sube; sin archivo se usa lo de Kronos que ya está guardado en la base). Una operación es
+   la MISMA en las dos fuentes si coinciden subproceso + nombre (sin tildes, sin mayúsculas, sin espacios de más) + tipo de máquina (normMaquina). Lo
+   parecido pero no igual va a «Posibles repetidas» y lo junta una persona (juntarOpsIng), nunca solo. Recargar no pisa lo corregido a mano (op.mano y
+   samFam[f].fuente==='mano') y lo que no vino queda marcado «no vino» (nada se borra).
+   GARANTÍA (prueba INGB-H y la HUELLA ING12): nada de este bloque escribe S.operaciones, categorías, tiempos ni órdenes, ni llama a propagarTiempos:
+   el programa sigue leyendo los tiempos como hoy. */
+const ING_SUB_DEF=[
+  {centro:'corte',cod:'COR-03',nombre:'Corte',parte:''},
+  {centro:'modulos',cod:'CON-01',nombre:'Subensamble',parte:'costura'},
+  {centro:'modulos',cod:'CON-02',nombre:'Ensamble',parte:'costura'},
+  {centro:'modulos',cod:'CON-03',nombre:'Pulido',parte:'pulido'},
+  {centro:'modulos',cod:'',slug:'perfilado',nombre:'Perfilado',parte:'perfilado',nota:'sin código de Odoo; en Kronos «Terminado Confección» y «Perfilado» (casi todo es perfilado de bajos). Parte de la receta de Confección (decisión del 05-oct-2026)'},
+  {centro:'estampado',cod:'SER-01',nombre:'Serigrafía',parte:''},
+  {centro:'bordado',cod:'BOR-01',nombre:'Bordado',parte:''},
+  {centro:'etiquetas',cod:'ETI',nombre:'Etiquetas',parte:''},
+  {centro:'botones',cod:'TER-01',nombre:'Ojales y botones',parte:''},
+  {centro:'empaque',cod:'EMP-01',nombre:'Empaque',parte:''},
+  {centro:'empaque',cod:'',slug:'revision',nombre:'Revisión',parte:'',nota:'«Revisión de producto terminado» de Kronos: va en Empaque (decisión de la usuaria del 05-oct-2026)'}];
+/* subproceso de Kronos → subproceso (centro|código). '' = por decidir. Siembra de la homologación del paquete del 02-oct + las decisiones del 05-oct */
+const ING_EQ_KR_DEF=[['Subensamble','modulos|CON-01'],['Subensamble etiquetas','modulos|CON-01'],['Subensamble 1','modulos|CON-01'],
+  ['Preparacion de Insumos','modulos|CON-01','decisión del 05-oct-2026: va a Subensamble'],['Preparacion de Materiales','modulos|CON-01','decisión del 05-oct-2026: va a Subensamble'],
+  ['Ensamble','modulos|CON-02'],['Pulido','modulos|CON-03'],['Terminado Confeccion','modulos|perfilado','casi todo es perfilado de bajos'],['Perfilado','modulos|perfilado'],
+  ['Corte','corte|COR-03'],['Tendido','corte|COR-03'],['Paquetado','corte|COR-03'],['Estampado','estampado|SER-01'],['Etiquetado -Tampografia','etiquetas|ETI'],
+  ['Bordado','bordado|BOR-01'],['Botones','botones|TER-01'],['Ojales','botones|TER-01'],['Empaque','empaque|EMP-01'],['Empaque Terminado','empaque|EMP-01'],
+  ['Revision de Producto Terminado','empaque|revision','decisión de la usuaria del 05-oct-2026: va en Empaque'],
+  ['Terminado Servicios','','caso suelto: revisar una por una'],['Bordado Maquila','','maquila: 1 operación'],['Sublimar Maquila','','maquila: 1 operación'],['Terminados Jeans','','caso suelto: 1 operación']];
+/* familia de operación de la hoja de Odoo (+ «la operación empieza con…») → subproceso. Es la misma idea que «Reglas familia → centro»: el prefijo manda */
+const ING_EQ_ODOO_DEF=[['CORTE','','corte|COR-03'],['SUBENSAMBLE','','modulos|CON-01'],['ENSAMBLE','','modulos|CON-02'],['PULIDO','','modulos|CON-03'],
+  ['SERIGRAFIA','ETIQUETAR','etiquetas|ETI','la etiqueta tampográfica de la hoja (familia SERIGRAFIA) es del centro Etiquetas'],['SERIGRAFIA','','estampado|SER-01'],
+  ['BORDADO','','bordado|BOR-01'],['OJALES','','botones|TER-01'],['BOTONES','','botones|TER-01'],['EMPAQUE','','empaque|EMP-01']];
+const ING_PARTES=[['costura','Costura'],['pulido','Pulido'],['perfilado','Perfilado']];
+const ING_FUENTES=[['','Todas las fuentes'],['odoo','Hoja de Odoo'],['kronos','Kronos'],['ambas','En las dos'],['mano','A mano'],['novino','No vino']];
+/* ---------- utilidades ---------- */
+function ingNom(x){return normTxt(x).replace(/[^a-z0-9]+/g,' ').trim()}   /* sin tildes, sin mayúsculas, sin signos ni espacios de más */
+function ingStem(x){return ingNom(x).split(' ').filter(Boolean).map(w=>w.length>4&&/es$/.test(w)&&!/ees$/.test(w)?w.slice(0,-2):(w.length>3&&/s$/.test(w)?w.slice(0,-1):w)).join(' ')}
+function ingFamKey(x){return ingStem(String(x==null?'':x).replace(/\(.*?\)/g,' ')).replace(/ /g,'')}
+function ingIdKey(sub,nombre,tipoMaq){return (sub||'')+'|'+ingNom(nombre)+'|'+claveMaq(tipoMaq||'')}
+function ingCanon(v){if(Array.isArray(v))return '['+v.map(ingCanon).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).filter(k=>v[k]!==undefined&&k!=='id').sort().map(k=>JSON.stringify(k)+':'+ingCanon(v[k])).join(',')+'}';return JSON.stringify(v===undefined?null:v)}
+function ingHash(s){let x=2166136261;for(let i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619)>>>0}return x.toString(16)}
+function ingDist(a,b,max){if(Math.abs(a.length-b.length)>max)return max+1;let prev=Array.from({length:b.length+1},(_,j)=>j);
+  for(let i=1;i<=a.length;i++){const cur=[i];let mn=i;for(let j=1;j<=b.length;j++){const v=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));cur.push(v);if(v<mn)mn=v}if(mn>max)return max+1;prev=cur}return prev[b.length]}
+function ingTipoFila(r){const p=String((r&&r.id)||'').split('|')[0];return p==='isp'?'sub':p==='ieq'?'equiv':p==='ifam'?'familia':p==='imeta'?'meta':'otro'}
+function ingCodNum(c){const m=String(c||'').match(/^OP-([0-9]+)$/);return m?+m[1]:0}
+function ingCodigo(n){return 'OP-'+String(n).padStart(4,'0')}
+function ingClon(x){return JSON.parse(JSON.stringify(x))}
+/* las fuentes se guardan sin campos vacíos (la base se lee al entrar: menos peso) */
+function ingOrdFuentes(l){return (l||[]).slice().sort((a,b)=>{const x=a.k||'~'+(a.f||''),y=b.k||'~'+(b.f||'');return x<y?-1:x>y?1:0})}   /* un solo orden: por la clave de la fuente (comparar no depende del orden en que llegaron) */
+function ingSinVacios(o){const r={};Object.keys(o).forEach(k=>{const v=o[k];if(v!==''&&v!=null)r[k]=v});return r}
+function ingSubIdDe(clave){if(!clave)return '';const [c,k]=String(clave).split('|');return 'isp|'+c+'|'+k}
+/* ---------- el catálogo vigente: lo guardado o, sin sembrar, la siembra (para mirar; se guarda al sembrar o al armar la base) ---------- */
+function ingSembrado(){return (S.ing_subprocesos||[]).some(r=>r.id==='imeta|siembra')}
+function ingSiembraFilas(){const ts=new Date().toISOString(),u=quienFirma();const out=[],faltan=[];
+  ING_SUB_DEF.forEach((d,i)=>{if(!CE(d.centro)){faltan.push(d.nombre+' ('+d.centro+')');return}
+    out.push({id:'isp|'+d.centro+'|'+(d.cod||d.slug),centro:d.centro,cod:d.cod||'',nombre:d.nombre,orden:i+1,parte:d.parte||'',estado:'propuesto',activo:true,nota:d.nota||'',origen:'siembra 05-oct-2026',ts,u})});
+  const hay=new Set(out.map(r=>r.id));const sub=c=>{const id=ingSubIdDe(c);return hay.has(id)?id:''};
+  ING_EQ_KR_DEF.forEach(([n,c,nota])=>out.push({id:'ieq|kronos|'+ingNom(n),fuente:'kronos',nombre:n,prefijo:'',sub:sub(c),nota:nota||'',origen:'siembra 05-oct-2026',ts,u}));
+  ING_EQ_ODOO_DEF.forEach(([f,pre,c,nota])=>out.push({id:'ieq|odoo|'+ingNom(f)+'|'+ingNom(pre),fuente:'odoo',nombre:f,prefijo:pre,sub:sub(c),nota:nota||'',origen:'siembra 05-oct-2026',ts,u}));
+  out.push({id:'imeta|siembra',ts,u,subprocesos:out.filter(r=>ingTipoFila(r)==='sub').length,equivalencias:out.filter(r=>ingTipoFila(r)==='equiv').length,centrosQueFaltan:faltan});
+  return out}
+function ingCatalogo(){if(ingSembrado())return S.ing_subprocesos||[];
+  /* sin sembrar: la siembra (memo por versión, la siembra lleva hora) + lo que ya esté guardado (lo guardado manda) */
+  if(!ING._sem||ING._sem.v!==ING.ver){const g=new Map((S.ing_subprocesos||[]).map(r=>[r.id,r]));const l=ingSiembraFilas().filter(r=>!g.has(r.id)&&r.id!=='imeta|siembra');ING._sem={v:ING.ver,l:[...g.values()].concat(l)}}
+  return ING._sem.l}
+function ingSubsTodas(){return ingCatalogo().filter(r=>ingTipoFila(r)==='sub').sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro)||(+a.orden||0)-(+b.orden||0)||String(a.nombre).localeCompare(String(b.nombre),'es'))}
+function ingSubs(){return ingSubsTodas().filter(r=>r.activo!==false)}
+function ingSub(id){return ingCatalogo().find(r=>r.id===id)||null}
+function ingSubOk(id){const s=id&&ingSub(id);return s&&s.activo!==false&&ingTipoFila(s)==='sub'?s.id:''}
+function ingSubTxt(id){const s=id&&ingSub(id);return s?((s.cod?s.cod+' ':'')+s.nombre):'por decidir'}
+function ingEquivs(){return ingCatalogo().filter(r=>ingTipoFila(r)==='equiv')}
+function ingFamilias(){return ingCatalogo().filter(r=>ingTipoFila(r)==='familia').sort((a,b)=>(+a.orden||999)-(+b.orden||999)||String(a.nombre).localeCompare(String(b.nombre),'es'))}
+function ingFamNom(id){const f=ingCatalogo().find(r=>r.id===id);return f?f.nombre:(String(id||'').replace(/^ifam\|/,'')||'sin familia')}
+/* subproceso de una fila de cada fuente por la tabla de equivalencias (null = el nombre no está en la tabla) */
+function ingEquivKronos(sp,eqs){const k=ingNom(sp);const r=(eqs||ingEquivs()).find(e=>e.fuente==='kronos'&&ingNom(e.nombre)===k);return r?{sub:ingSubOk(r.sub),fila:r}:null}
+function ingEquivOdoo(fam,nombre,eqs){const f=ingNom(fam),n=ingNom(nombre);let best=null;
+  (eqs||ingEquivs()).forEach(e=>{if(e.fuente!=='odoo'||ingNom(e.nombre)!==f)return;const p=ingNom(e.prefijo||'');if(p&&!n.startsWith(p))return;if(!best||p.length>ingNom(best.prefijo||'').length)best=e});
+  return best?{sub:ingSubOk(best.sub),fila:best}:null}
+/* ---------- la familia de prenda (Camisetas, Polos…) de una fila: por sus nombres en las fuentes; si no calza, por la palabra en singular ---------- */
+function ingFamResolver(fams){const porAlias=new Map(),porClave=new Map();
+  const idx=f=>{[f.nombre].concat(f.alias||[]).forEach(a=>{const n=ingNom(a);if(n&&!porAlias.has(n))porAlias.set(n,f)});const k=ingFamKey(f.nombre);if(k&&!porClave.has(k))porClave.set(k,f);(f.alias||[]).forEach(a=>{const ka=ingFamKey(a);if(ka&&!porClave.has(ka))porClave.set(ka,f)})};
+  fams.forEach(idx);return {buscar(n){const a=porAlias.get(ingNom(n));if(a)return a;const k=porClave.get(ingFamKey(n));return k||null},idx}}
+/* ---------- SAM por familia, sacado de las fuentes: Kronos manda (el habitual = la mediana de sus referencias); si la operación solo está en la hoja, el de Odoo ---------- */
+function ingSamDeFuentes(fs){const out={},porFam={};
+  (fs||[]).forEach(f=>{if(f.noVino||(f.f!=='odoo'&&f.f!=='kronos'))return;const fam=f.fam||'ifam|';(porFam[fam]=porFam[fam]||[]).push(f)});
+  Object.keys(porFam).forEach(fam=>{const l=porFam[fam],kr=l.filter(f=>f.f==='kronos'),od=l.filter(f=>f.f==='odoo');
+    if(kr.length){const b=kr.slice().sort((a,c)=>(+c.veces||0)-(+a.veces||0)||(+c.refs||0)-(+a.refs||0))[0];const mins=kr.map(f=>f.min).filter(v=>v!=null&&v!==''),maxs=kr.map(f=>f.max).filter(v=>v!=null&&v!=='');
+      out[fam]={sam:+b.sam||0,fuente:'kronos',min:mins.length?Math.min(...mins.map(Number)):null,max:maxs.length?Math.max(...maxs.map(Number)):null,refs:kr.reduce((a,f)=>a+(+f.refs||0),0),n:kr.length};
+      if(od.length)out[fam].odoo=+od[0].sam||0}
+    else{const c={};od.forEach(f=>{const v=String(+f.sam||0);c[v]=(c[v]||0)+1});const vals=Object.keys(c).sort((a,b)=>c[b]-c[a]);out[fam]={sam:+vals[0],fuente:'odoo',n:od.length};if(vals.length>1)out[fam].varios=vals.map(Number)}});
+  return out}
+function ingSamFam(op){const d=ingSamDeFuentes(op.fuentes);Object.entries(op.samFam||{}).forEach(([f,e])=>{if(e&&e.fuente==='mano')d[f]=e});return d}
+/* lo que ya tenía SAM y esta vez no vino se queda a la vista, marcado «no vino» (nada se borra); si vuelve a venir, manda la fuente */
+function ingSamConservando(o,o0){const d=ingSamFam(o);Object.entries((o0&&o0.samFam)||{}).forEach(([f,e])=>{if(!d[f]&&e)d[f]=Object.assign({},e,{noVino:true})});return d}
+function ingFuentesDe(op){const fs=(op.fuentes||[]).filter(f=>!f.noVino);return {odoo:fs.some(f=>f.f==='odoo'),kronos:fs.some(f=>f.f==='kronos'),mano:!!(op.creada&&op.creada.origen==='a mano')||fs.some(f=>f.f==='mano')}}
+function ingRango(op,fam){const sf=op.samFam||{};if(fam){const e=sf[fam];return e?{min:+e.sam,max:+e.sam,n:1}:null}const v=Object.values(sf).map(e=>+e.sam).filter(x=>isFinite(x));if(!v.length)return null;return {min:Math.min(...v),max:Math.max(...v),n:v.length}}
+function ingRefs(op){return (op.fuentes||[]).filter(f=>f.f==='kronos'&&!f.noVino).reduce((a,f)=>a+(+f.refs||0),0)}
+function ingSamFuenteTxt(e){if(!e)return '';if(e.fuente==='mano')return 'a mano'+(e.u?' · '+e.u:'')+(e.ts?' · '+fmtDiaTs(e.ts):'')+(e.motivo?' · '+e.motivo:'');
+  if(e.fuente==='kronos')return 'Kronos: el habitual (mediana) en '+num(e.refs||0)+' '+((e.refs||0)===1?'referencia':'referencias')+(e.min!=null&&e.max!=null&&e.min!==e.max?' · de '+num(e.min,2)+' a '+num(e.max,2):'')+(e.odoo!=null&&Math.abs(e.odoo-e.sam)>0.0005?' · la hoja de Odoo dice '+num(e.odoo,2):'');
+  return 'hoja de Odoo'+(e.varios?' · la hoja trae '+e.varios.map(v=>num(v,2)).join(' / ')+' (se toma el más repetido)':'')}
+/* ---------- las filas de cada fuente, en una forma común ---------- */
+function ingMaqDe(...nombres){for(const n of nombres){const i=n&&infoMaquina(n);if(i)return {tipo:i.tipo,homol:!i.pendiente}}const raw=nombres.map(x=>String(x==null?'':x).trim()).find(Boolean)||'';return {tipo:raw,homol:false}}
+function ingFilasOdoo(eqs,ops){const vistos={};const out=[];   /* ops: la hoja de Odoo (sin pasarla, la del sistema: S.operaciones) */
+  (ops||S.operaciones||[]).forEach(o=>{const n=String(o.n||'').trim();if(!n)return;const cat=String(o.catP||'').trim()||'General';
+    let k='o|'+ingNom(cat)+'|'+(o.codGen?String(o.codGen).trim():'id:'+o.id);vistos[k]=(vistos[k]||0)+1;if(vistos[k]>1)k+='#'+vistos[k];
+    let eq=o.famOp?ingEquivOdoo(o.famOp,n,eqs):null;if(!eq&&o.subcenOp){const s=ingCatalogo().find(r=>ingTipoFila(r)==='sub'&&r.activo!==false&&r.cod&&r.cod===String(o.subcenOp).trim().toUpperCase());if(s)eq={sub:s.id,fila:null}}
+    const m=ingMaqDe(o.maq);out.push({src:'odoo',k,famSrc:cat,famAlias:[cat],n,maqRaw:String(o.maq||'').trim(),tipoMaq:m.tipo,homol:m.homol,sp:o.famOp||'',eq,sub:eq?eq.sub:'',
+      f:ingSinVacios({f:'odoo',k,cat,n,maq:String(o.maq||'').trim(),famOp:o.famOp||'',codGen:o.codGen||'',cod:o.cod||'',subcen:o.subcenOp||'',secc:o.seccOp||'',sam:+o.sam||0})})});
+  return out}
+/* las columnas de base_operaciones (el CSV, o la hoja «Base por familia» de CARGA_BALANCEO); la cabecera se compara sin tildes ni mayúsculas. La hoja de los
+   listados (clave_listado, un SAM por referencia) NO es la base: se salta (es de la etapa siguiente). El Excel «para revisar a mano» no es de carga. */
+const ING_KR_COLS=['linea_kronos','codigo','operacion','subproceso_kronos'];
+function ingClaveCol(h){return normTxt(String(h==null?'':h).replace(/^﻿/,'')).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')}
+function ingHojaKronos(rows){rows=Array.isArray(rows)?rows:[];for(let i=0;i<Math.min(rows.length,15);i++){const r=rows[i];if(!Array.isArray(r))continue;const cab=r.map(ingClaveCol);
+    if(ING_KR_COLS.every(c=>cab.includes(c))&&cab.includes('sam_habitual_min')&&!cab.includes('clave_listado'))return rows.slice(i+1).filter(x=>Array.isArray(x)&&x.some(v=>String(v==null?'':v).trim()!=='')).map(x=>{const o={};cab.forEach((k,j)=>{if(k)o[k]=x[j]==null?'':x[j]});return o})}
+  return null}
+function ingFilasKronos(objs,eqs){const vistos={};const out=[],nc={comodines:0,sinNombre:0};
+  (objs||[]).forEach(r=>{const t=v=>String(v==null?'':v).trim();const n=t(r.operacion);if(!n){nc.sinNombre++;return}
+    if(t(r.entra).toUpperCase()==='NO'){nc.comodines++;return}   /* comodines de Kronos (Void, Ticket por leer, Complemento): no son operaciones */
+    const linea=t(r.linea_kronos),fam=t(r.familia)||linea,cod=t(r.codigo);let k='k|'+linea+'|'+cod;vistos[k]=(vistos[k]||0)+1;if(vistos[k]>1)k+='#'+vistos[k];
+    const sp=t(r.subproceso_kronos),eq=ingEquivKronos(sp,eqs);const m=ingMaqDe(r.maquina_kronos,r.tipo_maquina);
+    const sam=numXLS(r.sam_habitual_min)!=null?numXLS(r.sam_habitual_min):numXLS(r.sam_min);
+    out.push({src:'kronos',k,famSrc:fam,famAlias:[fam,linea],n,maqRaw:t(r.maquina_kronos),tipoMaq:m.tipo,homol:m.homol,sp,eq,sub:eq?eq.sub:'',
+      f:ingSinVacios({f:'kronos',k,linea,familia:fam,cod,n,sp,maq:t(r.maquina_kronos),tipo:t(r.tipo_maquina),sam:sam==null?0:sam,min:numXLS(r.sam_min),max:numXLS(r.sam_max),refs:numXLS(r.referencias_que_la_usan)||0,veces:numXLS(r.veces_que_aparece)||0,parte:t(r.parte_prenda),aviso:t(r.aviso)})})});
+  out.nc=nc;return out}
+/* sin archivo: lo de Kronos que ya está guardado en la base (las fuentes de cada operación) vuelve a pasar por las equivalencias vigentes */
+function ingFilasKronosGuardadas(eqs){const out=[];
+  (S.ing_operaciones||[]).forEach(op=>(op.fuentes||[]).forEach(f=>{if(f.f!=='kronos'||f.noVino)return;const eq=ingEquivKronos(f.sp,eqs);const m=ingMaqDe(f.maq,f.tipo);
+    out.push({src:'kronos',k:f.k,famSrc:f.familia||f.linea,famAlias:[f.familia,f.linea].filter(Boolean),n:f.n,maqRaw:f.maq||'',tipoMaq:m.tipo,homol:m.homol,sp:f.sp,eq,sub:eq?eq.sub:'',f:Object.assign({},f)})}));
+  out.nc={comodines:0,sinNombre:0};return out}
+/* ---------- ARMAR LA BASE · el plan (PURO: no escribe nada en S) ----------
+   kr = null (sin archivo: Kronos sale de lo guardado) | {objs:[filas con las columnas de base_operaciones], archivo, fuente}
+   opts.odoo = otra hoja de Odoo en vez de S.operaciones (las pruebas pasan una sintética sin tocar la del sistema, que decide rutas y tiempos) */
+function planIngBase(kr,opts){opts=opts||{};const ts=opts.ts||new Date().toISOString(),u=quienFirma();
+  const p={archivo:kr?(kr.archivo||''):'',fuenteK:kr?(kr.fuente||''):'',conArchivo:!!kr,ts,error:null,avisos:[],
+    siembra:ingSembrado()?[]:ingSiembraFilas().filter(r=>!(S.ing_subprocesos||[]).some(x=>x.id===r.id)||r.id==='imeta|siembra'),
+    famNuevas:[],famCambian:[],eqNuevas:[],nuevas:[],cambiadas:[],iguales:[],conservadas:[],noVinieron:[],volvieron:[],resultado:[],tot:{},
+    odoo:{filas:0},kronos:{filas:0,comodines:0,deGuardado:!kr}};
+  const eqs=ingEquivs();
+  const rowsO=ingFilasOdoo(eqs,opts.odoo);const rowsK=kr?ingFilasKronos(kr.objs,eqs):ingFilasKronosGuardadas(eqs);
+  if(kr&&!rowsK.length){p.error='El archivo no trae operaciones de Kronos con las columnas de base_operaciones (linea_kronos, codigo, operacion, subproceso_kronos y sam_habitual_min).';return p}
+  p.odoo.filas=rowsO.length;p.kronos.filas=rowsK.length;p.kronos.comodines=rowsK.nc.comodines;
+  /* familias: primero Kronos (nombres más claros: «Camisetas»), después la hoja («CAMISETA» calza por la palabra en singular) */
+  const fams=ingFamilias().map(ingClon);const fz=ingFamResolver(fams);const famCambio=new Set();let ordF=fams.reduce((a,f)=>Math.max(a,+f.orden||0),0);
+  const famDe=row=>{let f=fz.buscar(row.famSrc);if(!f)for(const a of row.famAlias){f=fz.buscar(a);if(f)break}
+    if(!f){const key=ingFamKey(row.famSrc)||'sin';f={id:'ifam|'+key,nombre:row.src==='odoo'?titleCase(row.famSrc):row.famSrc,alias:[],orden:++ordF,ts,u,origen:'armar la base'};
+      if(fams.some(x=>x.id===f.id))f.id='ifam|'+key+'_'+ordF;fams.push(f);p.famNuevas.push(f)}
+    row.famAlias.forEach(a=>{const an=ingNom(a);if(an&&ingNom(f.nombre)!==an&&!(f.alias||[]).some(x=>ingNom(x)===an)){f.alias=(f.alias||[]).concat([a]);if(!p.famNuevas.includes(f))famCambio.add(f)}});
+    fz.idx(f);return f.id};
+  rowsK.concat(rowsO).forEach(r=>{r.fam=famDe(r);r.f.fam=r.fam});
+  p.famCambian=[...famCambio];
+  /* nombres de las fuentes que no están en la tabla de equivalencias: entran «por decidir» */
+  const eqN=new Map();rowsK.concat(rowsO).forEach(r=>{if(r.eq||(r.src==='odoo'&&!r.sp))return;const id=r.src==='kronos'?'ieq|kronos|'+ingNom(r.sp):'ieq|odoo|'+ingNom(r.sp)+'|';
+    if(!eqN.has(id))eqN.set(id,{id,fuente:r.src,nombre:r.sp,prefijo:'',sub:'',nota:'nuevo en '+(r.src==='kronos'?'Kronos':'la hoja de Odoo')+': por decidir',origen:'armar la base',ts,u,ops:0});eqN.get(id).ops++});
+  p.eqNuevas=[...eqN.values()];
+  /* agrupar: misma operación = mismo subproceso + nombre + tipo de máquina; cada fila va primero a la operación que ya la tenía (por su clave de fuente) */
+  const ex=(S.ing_operaciones||[]);const exById=new Map(ex.map(o=>[o.id,o]));
+  const raiz=id=>{let o=exById.get(id),g=0;while(o&&o.juntadaEn&&exById.get(o.juntadaEn)&&g++<20)o=exById.get(o.juntadaEn);return o||null};
+  const srcIdx=new Map();ex.forEach(o=>(o.fuentes||[]).forEach(f=>{if(f.k&&(f.f==='odoo'||f.f==='kronos')&&!srcIdx.has(f.k))srcIdx.set(f.k,o.id)}));
+  const idIdx=new Map();ex.forEach(o=>{if(o.activa===false||o.juntadaEn)return;const k=ingIdKey(o.sub,o.nombre,o.tipoMaq);if(!idIdx.has(k))idIdx.set(k,o.id)});
+  const grupos=new Map();rowsK.concat(rowsO).forEach(r=>{const k=ingIdKey(r.sub,r.n,r.tipoMaq);(grupos.get(k)||grupos.set(k,[]).get(k)).push(r)});
+  const aOp=new Map(),nuevos=[];
+  grupos.forEach((rows,key)=>{const por=new Map();rows.forEach(r=>{const t=srcIdx.has(r.k)?raiz(srcIdx.get(r.k)):null;const tid=t?t.id:'';(por.get(tid)||por.set(tid,[]).get(tid)).push(r)});
+    const sin=por.get('')||[];por.delete('');let destinos=[...por.keys()];
+    if(sin.length){let tid=destinos[0]||null;if(!tid&&idIdx.has(key)){const t=raiz(idIdx.get(key));tid=t?t.id:null}
+      if(tid){(por.get(tid)||por.set(tid,[]).get(tid)).push(...sin)}else nuevos.push({key,rows:sin})}
+    por.forEach((rs,tid)=>{const e=aOp.get(tid)||{rows:[],keys:new Map()};rs.forEach(r=>e.rows.push(r));e.keys.set(key,(e.keys.get(key)||0)+rs.length);aOp.set(tid,e)})});
+  const vistas=new Set(rowsK.concat(rowsO).map(r=>r.k));const kSrc=f=>f.f==='odoo'||(f.f==='kronos'&&!!kr);   /* ¿esta corrida trae esa fuente? (sin archivo, Kronos no puede «no venir») */
+  const parteDe=rows=>{const c={};rows.forEach(r=>{const v=r.src==='kronos'?r.f.parte:(r.f.secc?titleCase(r.f.secc):'');if(v)c[v]=(c[v]||0)+(r.src==='kronos'?2:1)});const l=Object.keys(c).sort((a,b)=>c[b]-c[a]);return l[0]||''};
+  const nombreDe=rows=>{const kr=rows.find(r=>r.src==='kronos');return (kr||rows[0]).n};
+  const ident=rows=>{const r0=rows[0];return {nombre:nombreDe(rows),sub:r0.sub,tipoMaq:r0.tipoMaq,homol:rows.every(r=>r.homol)}};
+  const cmpBase=o=>{const c=ingClon(o);delete c.cambios;return ingCanon(c)};
+  /* operaciones que ya estaban */
+  ex.forEach(o0=>{const e=aOp.get(o0.id);
+    if(!e){   /* no la trae ninguna fila de esta corrida */
+      if(o0.activa===false&&o0.juntadaEn)return;const fs=o0.fuentes||[];const deCorrida=fs.filter(f=>kSrc(f)&&!f.noVino);if(!deCorrida.length){p.iguales.push(o0.id);p.resultado.push(o0);return}
+      const o=ingClon(o0);o.fuentes=fs.map(f=>kSrc(f)&&!f.noVino?Object.assign({},f,{noVino:{ts,archivo:p.archivo||'hoja de Odoo'}}):f);o.samFam=ingSamConservando(o,o0);
+      const quedan=o.fuentes.filter(f=>!f.noVino&&(f.f==='odoo'||f.f==='kronos')).length;if(!quedan&&!ingFuentesDe(o0).mano)o.noVino={ts,archivo:p.archivo||'hoja de Odoo'};
+      p.noVinieron.push({id:o.id,data:o,antes:o0});p.resultado.push(o);return}
+    const o=ingClon(o0);const rows=e.rows;let mejor=null;e.keys.forEach((n,k)=>{if(!mejor||n>mejor[1]||(n===mejor[1]&&k===ingIdKey(o0.sub,o0.nombre,o0.tipoMaq)))mejor=[k,n]});
+    const rowsMejor=rows.filter(r=>ingIdKey(r.sub,r.n,r.tipoMaq)===mejor[0]);const id0=ident(rowsMejor.length?rowsMejor:rows);const mano=o0.mano||{};
+    const solo1=e.keys.size===1;const conserva=[];
+    ['nombre','sub','tipoMaq'].forEach(c=>{const v=id0[c];if(mano[c]){if(String(v)!==String(o0[c]))conserva.push(c);return}if(solo1||o0[c]==null)o[c]=v});
+    if(!mano.parte){const pt=parteDe(rows);if(pt)o.parte=pt}
+    const viejo=new Map((o0.fuentes||[]).map(f=>[f.k,f]));const nuevasF=rows.map(r=>{const f=Object.assign({},r.f);const v=viejo.get(f.k);if(v&&v.de)f.de=v.de;return f});const ks=new Set(nuevasF.map(f=>f.k));
+    o.fuentes=ingOrdFuentes(nuevasF.concat((o0.fuentes||[]).filter(f=>!ks.has(f.k)).map(f=>(f.f==='odoo'||f.f==='kronos')&&kSrc(f)&&!f.noVino&&!vistas.has(f.k)?Object.assign({},f,{noVino:{ts,archivo:p.archivo||'hoja de Odoo'}}):f)));
+    o.samFam=ingSamConservando(o,o0);Object.entries(o0.samFam||{}).forEach(([f,x])=>{if(x&&x.fuente==='mano'){const d=ingSamDeFuentes(o.fuentes)[f];if(d&&Math.abs((+d.sam||0)-(+x.sam||0))>0.0005)conserva.push('SAM de '+ingFamNom(f))}});
+    if(o.homol===undefined||!mano.tipoMaq)o.homol=id0.homol;delete o.noVino;
+    if(cmpBase(o)===cmpBase(o0)){p.iguales.push(o0.id);p.resultado.push(o0)}else{(o0.noVino?p.volvieron:p.cambiadas).push({id:o.id,data:o,antes:o0})}
+    if(conserva.length)p.conservadas.push({id:o.id,campos:conserva});if(cmpBase(o)!==cmpBase(o0))p.resultado.push(o)});
+  /* las nuevas: código de la casa consecutivo, en el orden del proceso */
+  let sig=ex.reduce((a,o)=>Math.max(a,ingCodNum(o.cod)),0);const subOrd=s=>{const x=ingSub(s)||(p.siembra||[]).find(r=>r.id===s);return x?[ordenPaso(x.centro),+x.orden||0]:[999,0]};
+  nuevos.map(g=>({g,id0:ident(g.rows)})).sort((a,b)=>{const x=subOrd(a.id0.sub),y=subOrd(b.id0.sub);return x[0]-y[0]||x[1]-y[1]||ingNom(a.id0.nombre).localeCompare(ingNom(b.id0.nombre))||String(a.id0.tipoMaq).localeCompare(String(b.id0.tipoMaq))}).forEach(({g,id0})=>{
+    const cod=ingCodigo(++sig);const o={id:'iop|'+cod,cod,nombre:id0.nombre,sub:id0.sub,tipoMaq:id0.tipoMaq,homol:id0.homol,parte:parteDe(g.rows),fuentes:ingOrdFuentes(g.rows.map(r=>Object.assign({},r.f))),activa:true,creada:{ts,u,origen:'armar la base',archivo:p.archivo||''}};
+    o.samFam=ingSamDeFuentes(o.fuentes);p.nuevas.push({id:o.id,data:o});p.resultado.push(o)});
+  /* totales: de la base que queda (activas, sin las juntadas) */
+  const act=p.resultado.filter(o=>o.activa!==false&&!o.juntadaEn);const fu=act.map(ingFuentesDe);
+  p.tot={ops:act.length,ambas:fu.filter(f=>f.odoo&&f.kronos).length,soloOdoo:fu.filter(f=>f.odoo&&!f.kronos).length,soloKronos:fu.filter(f=>f.kronos&&!f.odoo).length,
+    mano:fu.filter(f=>!f.odoo&&!f.kronos).length,porDecidir:act.filter(o=>!o.sub).length,sinHomol:act.filter(o=>o.homol===false).length,
+    familias:new Set(act.flatMap(o=>Object.keys(o.samFam||{}))).size,opsOdoo:new Set(rowsO.map(r=>ingIdKey(r.sub,r.n,r.tipoMaq))).size,opsKronos:new Set(rowsK.map(r=>ingIdKey(r.sub,r.n,r.tipoMaq))).size};
+  p.porDecidirNombres=(()=>{const m=new Map();rowsK.concat(rowsO).forEach(r=>{if(r.sub)return;const k=(r.src==='kronos'?'Kronos · ':'Hoja · ')+(r.sp||'(sin familia de operación)');m.set(k,(m.get(k)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1])})();
+  p.sinHomolNombres=(()=>{const m=new Map();rowsK.concat(rowsO).forEach(r=>{if(r.homol||!r.tipoMaq)return;m.set(r.tipoMaq,(m.get(r.tipoMaq)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1])})();
+  p.repetidas=ingRepetidasDe(act);
+  p.firma=ingFirmaBase();p.hayCambios=!!(p.siembra.length||p.famNuevas.length||p.famCambian.length||p.eqNuevas.length||p.nuevas.length||p.cambiadas.length||p.noVinieron.length||p.volvieron.length);
+  return p}
+/* firma de lo que hay en memoria de las dos tablas (al aplicar se compara con el servidor: si otra persona cambió algo, no se pisa) */
+function ingFirmaBase(filasS,filasO){const f=l=>(l||[]).slice().sort((a,b)=>a.id<b.id?-1:1).map(r=>r.id+'='+ingCanon(r)).join('\n');return ingHash(f(filasS||S.ing_subprocesos)+'\n#\n'+f(filasO||S.ing_operaciones))}
+/* ---------- posibles repetidas: lo parecido pero no igual (una persona decide: juntar o «son distintas») ---------- */
+const ING_REP_TIPOS=[['igual','Iguales (mismo subproceso, nombre y máquina)'],['plural','Singular y plural'],['tipeo','Faltas de tipeo'],['otroSub','El mismo nombre en otro subproceso']];
+function ingRepetidasDe(ops){const out=[],visto=new Set();const noRep=(a,b)=>(a.noRepetida||[]).includes(b.id)||(b.noRepetida||[]).includes(a.id);
+  const add=(t,a,b)=>{const k=[a.id,b.id].sort().join('~');if(visto.has(k)||noRep(a,b))return;visto.add(k);out.push({tipo:t,a,b})};
+  const grp=(l,f)=>{const m=new Map();l.forEach(o=>{const k=f(o);(m.get(k)||m.set(k,[]).get(k)).push(o)});return m};
+  grp(ops,o=>ingIdKey(o.sub,o.nombre,o.tipoMaq)).forEach(l=>{for(let i=1;i<l.length;i++)add('igual',l[0],l[i])});
+  grp(ops,o=>o.sub||'').forEach(l=>{grp(l,o=>ingStem(o.nombre)).forEach(g=>{for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)if(ingNom(g[i].nombre)!==ingNom(g[j].nombre))add('plural',g[i],g[j])});
+    const arr=l.map(o=>({o,n:ingNom(o.nombre),s:ingStem(o.nombre)})).sort((a,b)=>a.n.length-b.n.length);
+    for(let i=0;i<arr.length;i++){const a=arr[i];if(a.n.length<6)continue;for(let j=i+1;j<arr.length&&arr[j].n.length-a.n.length<=2;j++){const b=arr[j];if(a.n===b.n||a.s===b.s)continue;const lim=a.n.length<10?1:2;if(ingDist(a.n,b.n,lim)<=lim)add('tipeo',a.o,b.o)}}});
+  grp(ops.filter(o=>o.sub),o=>ingNom(o.nombre)).forEach(l=>{const subs=[...new Set(l.map(o=>o.sub))];if(subs.length<2)return;subs.slice(1).forEach(s=>{add('otroSub',l.find(o=>o.sub===subs[0]),l.find(o=>o.sub===s))})});
+  return out}
+function ingRepetidas(){if(ING._rep&&ING._rep.v===ING.ver)return ING._rep.l;const l=ingRepetidasDe((S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn));ING._rep={v:ING.ver,l};return l}
+/* ---------- guardar en las tablas de Ingeniería: no pisa lo que otra persona cambió mientras tanto (compara con lo que se leyó) ---------- */
+async function ingGuardar(t,filas){if(ING.estado!=='si')return {ok:false,n:0,error:ING_MSG_FALTA,conflictos:[]};
+  if(!puedeIngTabla(t))return {ok:false,n:0,error:porQueNoEditaIng(t),conflictos:[]};
+  const ids=filas.map(f=>f.id);const srv=await leerTablaIng(t,ids);if(srv.error)return {ok:false,n:0,error:String((srv.error&&srv.error.message)||srv.error),falta:!!srv.falta,conflictos:[]};
+  const sm=new Map(srv.data.map(r=>[r.id,ingCanon(r.data||{})]));const base=(ING.firmas||{})[t]||{};const conf=[],ok=[];
+  filas.forEach(f=>{const s=sm.get(f.id),b=base[f.id];if(s!==undefined&&s!==b)conf.push(f.id);else ok.push(f)});
+  const r=ok.length?await ingSubir(t,ok.map(x=>({id:x.id,data:sinId(x)})),200):{ok:true,n:0};
+  const hechas=r.ok?ok:ok.slice(0,r.n);ING.firmas=ING.firmas||{};ING.firmas[t]=ING.firmas[t]||{};
+  hechas.forEach(f=>{const l=S[t]=S[t]||[];const i=l.findIndex(x=>x.id===f.id);const c=ingClon(f);if(i<0)l.push(c);else l[i]=c;ING.firmas[t][f.id]=ingCanon(sinId(f))});
+  ING.ver=(ING.ver||0)+1;return {ok:r.ok&&!conf.length,n:r.n,error:r.ok?null:r.error,falta:!!r.falta,conflictos:conf}}
+function ingAvisoConflicto(r,que){if(r.conflictos&&r.conflictos.length){alert('Otra persona cambió '+(que||'esto')+' mientras lo mirabas ('+r.conflictos.join(', ')+'): no se pisó. Se vuelve a leer de la base; revisa y vuelve a intentar.');leerIngBase().then(()=>render());return true}
+  if(r.error){alert('No se guardó: '+r.error);return true}return false}
+/* ---------- la siembra (UNA vez: la marca imeta|siembra; lo que ya esté guardado no se pisa) ---------- */
+function ingDebeSembrar(){return ING.estado==='si'&&!ingSembrado()&&!ING.sembrando&&!ING.siembraFallo&&!CARGA_INCOMPLETA&&puedeIngTabla('ing_subprocesos')}
+async function sembrarIngSubprocesos(){if(!ingDebeSembrar())return false;ING.sembrando=true;
+  try{const filas=ingSiembraFilas().filter(r=>!(S.ing_subprocesos||[]).some(x=>x.id===r.id));const r=await ingGuardar('ing_subprocesos',filas);
+    if(!r.ok){ING.siembraFallo=r.error||'conflicto';return false}
+    const m=filas.find(x=>x.id==='imeta|siembra')||{};bitacora('Ingeniería · subprocesos sembrados (una sola vez): '+m.subprocesos+' subprocesos colgados de sus centros y '+m.equivalencias+' equivalencias (nombres de Kronos y familias de operación de la hoja de Odoo → subproceso)'+(m.centrosQueFaltan&&m.centrosQueFaltan.length?' · no se sembraron por falta de centro: '+m.centrosQueFaltan.join(', '):'')+' · no cambia ningún minuto del programa ('+quienFirma()+')');save();return true}
+  finally{ING.sembrando=false}}
+/* ---------- ARMAR LA BASE · la ventana: subir Kronos (o no) → vista previa → aplicar ---------- */
+let IBASE=null;
+function puedeArmarBase(){return puedeIngTabla('ing_operaciones,ing_subprocesos')}
+function mArmarBase(){if(ingNoEdita('ing_operaciones,ing_subprocesos'))return;IBASE=null;
+  abrir(`<h3>Armar la base de operaciones <span class="note">la hoja de Odoo + la base de Kronos · no cambia ningún minuto del programa</span></h3><div class="body ib-carga">
+   <p class="ib-lin">Junta las dos fuentes en UNA base: la <b>hoja de operaciones de Odoo</b> que ya está en el sistema (${num((S.operaciones||[]).length)} filas) y la <b>base de Kronos</b> (sube <b>base_operaciones.csv</b> o el Excel del paquete). Sin archivo se vuelve a armar con lo de Kronos que ya está guardado (sirve después de cambiar una equivalencia). ${ayudaTipHTML('La misma operación en las dos fuentes (mismo subproceso, nombre sin tildes ni mayúsculas y tipo de máquina) queda UNA vez, con sus dos orígenes y su SAM por familia de prenda. Lo parecido pero no igual va a «Posibles repetidas»: lo junta una persona. Lo corregido a mano no se pisa; lo que no vino queda marcado «no vino» (nada se borra). Antes de guardar ves la vista previa.')}</p>
+   <div class="row" style="align-items:flex-end"><div><label>Base de Kronos (opcional)</label><input type="file" id="ib-file" accept=".csv,.xlsx,.xls" onchange="leerArchivoBase(event)"></div>
+    <div style="flex:1;min-width:200px"><label>Fuente (qué lectura de Kronos es)</label><input type="text" id="ib-fuente" placeholder="p. ej. Kronos 02-oct-2026"></div>
+    <div><button class="btn ghost" onclick="planBaseSinArchivo()">Ver sin archivo</button></div></div>
+   <div id="ib-res" class="ib-res"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="IBASE=null;cerrar()">Cerrar</button><button class="btn" id="ib-ok" disabled onclick="aplicarIngBase()">Aplicar</button></div>`,true)}
+function ibMostrar(){const res=document.getElementById('ib-res');if(res)res.innerHTML=previaIngBaseHTML(IBASE);const b=document.getElementById('ib-ok');if(b)b.disabled=!(IBASE&&!IBASE.error&&IBASE.hayCambios&&puedeArmarBase())}
+async function planBaseSinArchivo(){const res=document.getElementById('ib-res');if(res)res.innerHTML='<span class="mut">Leyendo la base guardada…</span>';
+  await leerIngBase();IBASE=planIngBase(null);ibMostrar()}
+async function leerArchivoBase(ev){const f=((ev&&ev.target&&ev.target.files)||[])[0];if(!f)return;const res=document.getElementById('ib-res');if(res)res.innerHTML='<span class="mut">Leyendo…</span>';
+  const b0=document.getElementById('ib-ok');if(b0)b0.disabled=true;
+  try{let objs=null;
+    if(/\.csv$/i.test(f.name)){const h=hojasDeCSV(await f.text(),f.name);objs=ingHojaKronos(Object.values(h)[0])}
+    else{await cargarSheetJS();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});for(const n of wb.SheetNames){objs=ingHojaKronos(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:true}));if(objs)break}}
+    if(!objs){IBASE={error:'El archivo no tiene la tabla base_operaciones de Kronos (columnas linea_kronos, codigo, operacion, subproceso_kronos y sam_habitual_min). Sube base_operaciones.csv o el Excel CARGA_BALANCEO tal como viene (su hoja «Base por familia»); el Excel BASE_OPERACIONES «para revisar a mano» no es de carga.'};ibMostrar();return}
+    await leerIngBase();const fu=document.getElementById('ib-fuente');const fuente=(fu&&fu.value.trim())||krFuenteNombre(f.name);if(fu&&!fu.value.trim()&&fuente)fu.value=fuente;
+    IBASE=planIngBase({objs,archivo:f.name,fuente});ibMostrar()}
+  catch(e){IBASE={error:'No se pudo leer el archivo: '+((e&&e.message)||String(e))};ibMostrar()}}
+function krFuenteNombre(n){const m=String(n||'').match(/(^|[^0-9])([0-3]?[0-9])[\s._-]*(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)/i);return m?'Kronos '+String(m[2]).padStart(2,'0')+'-'+m[3].toLowerCase().replace('set','sep')+'-'+hoy().slice(0,4):''}
+function previaIngBaseHTML(p){if(!p)return '';if(p.error)return `<div class="warn">${esc(p.error)}</div>`;const t=p.tot;
+  const fila=(n,v,nota)=>`<tr><td>${n}</td><td class="num"><b>${num(v)}</b></td><td class="mut">${nota||''}</td></tr>`;
+  const repT=ING_REP_TIPOS.map(([k,n])=>[n,p.repetidas.filter(x=>x.tipo===k).length]).filter(x=>x[1]);
+  return `<div class="ib-previa">
+   ${!puedeArmarBase()?`<div class="warn">${esc(porQueNoEditaIng('ing_operaciones,ing_subprocesos'))}</div>`:''}
+   <h4>Lo que se leyó</h4><table class="ib-t"><tbody>
+    ${fila('Hoja de operaciones de Odoo (ya está en el sistema)',p.odoo.filas,'filas → '+num(t.opsOdoo)+' operaciones distintas')}
+    ${fila(p.conArchivo?'Base de Kronos · '+esc(p.archivo):'Base de Kronos (lo guardado en la base)',p.kronos.filas,'filas → '+num(t.opsKronos)+' operaciones distintas'+(p.kronos.comodines?' · sin '+num(p.kronos.comodines)+' comodines (tiempo sin operación: no entran)':''))}</tbody></table>
+   <h4>La base que queda</h4><table class="ib-t"><tbody>
+    <tr class="ib-total"><td>Operaciones</td><td class="num" data-ib-tot="ops"><b>${num(t.ops)}</b></td><td class="mut">cada una UNA vez, con su SAM por familia de prenda (${num(t.familias)} familias)</td></tr>
+    <tr><td>En las dos fuentes</td><td class="num" data-ib-tot="ambas"><b>${num(t.ambas)}</b></td><td class="mut">la misma operación en la hoja de Odoo y en Kronos</td></tr>
+    ${fila('Solo en la hoja de Odoo',t.soloOdoo)}${fila('Solo en Kronos',t.soloKronos)}${t.mano?fila('Agregadas a mano',t.mano):''}
+    <tr><td>Sin subproceso, por decidir</td><td class="num" data-ib-tot="pordecidir"><b>${num(t.porDecidir)}</b></td><td class="mut">${p.porDecidirNombres.length?p.porDecidirNombres.slice(0,8).map(([n,c])=>esc(n)+' ×'+num(c)).join(' · '):'ninguna'}</td></tr>
+    ${t.sinHomol?`<tr><td>Con máquina sin homologar</td><td class="num"><b>${num(t.sinHomol)}</b></td><td class="mut">${p.sinHomolNombres.slice(0,8).map(([n,c])=>esc(n)+' ×'+num(c)+' filas').join(' · ')} · se dice de qué tipo es en Máquinas y operarias → Tipos de máquina</td></tr>`:''}
+    <tr><td>Posibles repetidas</td><td class="num" data-ib-tot="repetidas"><b>${num(p.repetidas.length)}</b></td><td class="mut">${repT.length?repT.map(([n,c])=>esc(n)+' '+num(c)).join(' · ')+' · las junta una persona (pestaña «Posibles repetidas»)':'ninguna'}</td></tr></tbody></table>
+   <h4>Qué cambia en la base</h4><table class="ib-t ib-cambios"><thead><tr><th class="num">Nuevas</th><th class="num">Cambian</th><th class="num">Iguales</th><th class="num" title="estaban marcadas «no vino» y volvieron">Vuelven</th><th class="num" title="estaban y no vinieron: quedan marcadas, no se borran">No vinieron</th><th class="num" title="lo corregido a mano no se pisa">Corregidas a mano</th></tr></thead>
+    <tbody><tr><td class="num" data-ib-c="nuevas">${num(p.nuevas.length)}</td><td class="num" data-ib-c="cambian">${num(p.cambiadas.length)}</td><td class="num" data-ib-c="iguales">${num(p.iguales.length)}</td><td class="num">${num(p.volvieron.length)}</td><td class="num" data-ib-c="novinieron">${num(p.noVinieron.length)}</td><td class="num" data-ib-c="conservadas">${num(p.conservadas.length)}</td></tr></tbody></table>
+   ${p.siembra.length?`<p class="ib-lin"><span class="tag t-medio">siembra</span> Se siembran ${num(p.siembra.filter(r=>ingTipoFila(r)==='sub').length)} subprocesos y ${num(p.siembra.filter(r=>ingTipoFila(r)==='equiv').length)} equivalencias (todavía no estaban).</p>`:''}
+   ${p.famNuevas.length||p.famCambian.length?`<p class="ib-lin">Familias de prenda: ${num(p.famNuevas.length)} nuevas${p.famNuevas.length?' ('+p.famNuevas.slice(0,14).map(f=>esc(f.nombre)).join(', ')+(p.famNuevas.length>14?'…':'')+')':''}${p.famCambian.length?' · '+num(p.famCambian.length)+' con un nombre más en las fuentes':''}.</p>`:''}
+   ${p.eqNuevas.length?`<div class="warn">${num(p.eqNuevas.length)} ${p.eqNuevas.length===1?'nombre de las fuentes no está':'nombres de las fuentes no están'} en la tabla de equivalencias: entran <b>por decidir</b> y sus operaciones quedan sin subproceso hasta decidirlo (pestaña «Subprocesos»): ${p.eqNuevas.slice(0,10).map(e=>esc((e.fuente==='kronos'?'Kronos · ':'Hoja · ')+e.nombre)+' ×'+num(e.ops)).join(' · ')}</div>`:''}
+   ${p.conservadas.length?`<p class="ib-lin mut">${num(p.conservadas.length)} ${p.conservadas.length===1?'operación corregida':'operaciones corregidas'} a mano dicen distinto en las fuentes: se queda lo corregido (${p.conservadas.slice(0,6).map(c=>esc(c.id.replace('iop|',''))+': '+esc(c.campos.join(', '))).join(' · ')}).</p>`:''}
+   <p class="ib-lin"><b>No cambia ningún minuto del programa:</b> el programa sigue leyendo los tiempos de la hoja de Odoo y de «Tiempos que mandan sobre la hoja», como hoy.${p.hayCambios?'':' <span class="tag t-ok">igual</span> La base ya está así: no hay nada que aplicar.'}</p></div>`}
+async function aplicarIngBase(){const p=IBASE;if(!p||p.error)return 0;if(ingNoEdita('ing_operaciones,ing_subprocesos'))return 0;
+  if(!p.hayCambios){alert('La base ya está así: no hay nada que aplicar.');return 0}
+  /* ¿otra persona cambió la base mientras se miraba la vista previa? */
+  const a=await leerTablaIng('ing_subprocesos'),b=await leerTablaIng('ing_operaciones');if(a.error||b.error){alert('No se pudo leer la base del servidor: no se guarda nada para no pisarla.');return 0}
+  const enS=l=>l.data.map(x=>Object.assign({id:x.id},x.data||{}));if(ingFirmaBase(enS(a),enS(b))!==p.firma){alert('Otra persona cambió la base de operaciones mientras mirabas la vista previa: no se guardó nada. Vuelve a armarla para ver lo de ahora.');await leerIngBase();IBASE=null;try{cerrar()}catch(e){}render();return 0}
+  if(!confirm('Se guarda la base de operaciones: '+p.tot.ops+' operaciones ('+p.nuevas.length+' nuevas, '+p.cambiadas.length+' cambian'+(p.noVinieron.length?', '+p.noVinieron.length+' que no vinieron quedan marcadas «no vino» (no se borran)':'')+(p.conservadas.length?', '+p.conservadas.length+' corregidas a mano no se pisan':'')+'), '+p.tot.ambas+' en las dos fuentes, '+p.tot.porDecidir+' por decidir. No cambia ningún minuto del programa. ¿Aplicar?'))return 0;
+  const sub=p.siembra.concat(p.famNuevas,p.famCambian,p.eqNuevas.map(e=>{const c=Object.assign({},e);delete c.ops;return c}));
+  const ops=p.nuevas.concat(p.cambiadas,p.volvieron,p.noVinieron).map(x=>x.data);
+  const r1=sub.length?await ingGuardar('ing_subprocesos',sub):{ok:true,n:0,conflictos:[]};const r2=r1.ok?await ingGuardar('ing_operaciones',ops):{ok:false,n:0,error:'no se intentó (falló antes)',conflictos:[]};
+  const res={ops:p.tot.ops,ambas:p.tot.ambas,soloOdoo:p.tot.soloOdoo,soloKronos:p.tot.soloKronos,mano:p.tot.mano,porDecidir:p.tot.porDecidir,familias:p.tot.familias,nuevas:p.nuevas.length,cambian:p.cambiadas.length,iguales:p.iguales.length,
+    volvieron:p.volvieron.length,noVinieron:p.noVinieron.length,conservadas:p.conservadas.length,repetidas:p.repetidas.length,odooFilas:p.odoo.filas,kronosFilas:p.kronos.filas,comodines:p.kronos.comodines,fuente:p.fuenteK||'',conArchivo:p.conArchivo,
+    escritasSub:r1.n,escritasOps:r2.n};
+  if(!r1.ok||!r2.ok){res.incompleto=true;bitacora('Ingeniería · armar la base INCOMPLETO ('+(p.archivo||'sin archivo')+'): se guardaron '+r1.n+' filas de subprocesos/equivalencias/familias y '+r2.n+' de '+ops.length+' operaciones · '+(r1.error||r2.error||'otra persona cambió filas: '+(r1.conflictos.concat(r2.conflictos)).slice(0,6).join(', '))+' · volver a armar completa lo que falta ('+quienFirma()+')');
+    registrarCarga('ingBase',p.archivo||'(sin archivo)',res);save();await leerIngBase();IBASE=null;try{cerrar()}catch(e){}render();alert('No se terminó de guardar: '+(r1.error||r2.error||'otra persona cambió filas mientras tanto')+'. Vuelve a armar la base: lo que ya está igual no se reescribe.');return 0}
+  bitacora('Ingeniería · base de operaciones armada por '+quienFirma()+(p.conArchivo?' con '+p.archivo+(p.fuenteK?' («'+p.fuenteK+'»)':''):' sin archivo (Kronos: lo ya guardado)')+' + la hoja de Odoo ('+p.odoo.filas+' filas) · '+p.tot.ops+' operaciones, '+p.tot.ambas+' en las dos fuentes, '+p.tot.soloOdoo+' solo Odoo, '+p.tot.soloKronos+' solo Kronos, '+p.tot.porDecidir+' por decidir · '+p.nuevas.length+' nuevas, '+p.cambiadas.length+' cambian, '+p.iguales.length+' iguales'+(p.noVinieron.length?', '+p.noVinieron.length+' no vinieron (marcadas, no se borran)':'')+(p.conservadas.length?', '+p.conservadas.length+' corregidas a mano no se pisaron':'')+' · '+p.repetidas.length+' posibles repetidas para revisar · no cambia ningún minuto del programa');
+  registrarCarga('ingBase',p.archivo||'(sin archivo)',res);save();await leerIngBase();IBASE=null;try{cerrar()}catch(e){}ING_V.ops='base';render();return ops.length}
+/* ---------- MANTENER: agregar, editar (el SAM pide motivo), apagar/encender, juntar repetidas ---------- */
+function ingOp(id){return (S.ing_operaciones||[]).find(o=>o.id===id)||null}
+function ingSigCodigo(){return ingCodigo((S.ing_operaciones||[]).reduce((a,o)=>Math.max(a,ingCodNum(o.cod)),0)+1)}
+function ingSelSubHTML(id,sel,todas){const subs=todas?ingSubsTodas():ingSubs();return `<select id="${id}"><option value="">— por decidir —</option>${S.centros.filter(c=>c.area==='pro'&&subs.some(s=>s.centro===c.id)).sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id)).map(c=>`<optgroup label="${esc(c.n)}">${subs.filter(s=>s.centro===c.id).map(s=>`<option value="${esc(s.id)}" ${s.id===sel?'selected':''}>${esc((s.cod?s.cod+' ':'')+s.nombre)}${s.activo===false?' (apagado)':''}</option>`).join('')}</optgroup>`).join('')}</select>`}
+function mOpIng(id,subIni){const o=id?ingOp(id):null;if(id&&!o)return;const nuevo=!o;const x=o||{cod:ingSigCodigo(),nombre:'',sub:subIni||'',tipoMaq:'',parte:'',samFam:{},fuentes:[],cambios:[]};
+  const tipos=tiposMaqActivos();const famsAll=ingFamilias();const sf=x.samFam||{};const famsOp=Object.keys(sf);
+  abrir(`<h3>${nuevo?'Nueva operación':'Operación '+esc(x.cod)} <span class="note">${esc(ingSubTxt(x.sub))}${x.activa===false?' · apagada'+(x.juntadaEn?' (juntada en '+esc((ingOp(x.juntadaEn)||{}).cod||x.juntadaEn)+')':''):''}</span></h3><div class="body io-body">
+   <div class="row"><div style="flex:1;min-width:220px"><label>Nombre</label><input type="text" id="io-n" value="${esc(x.nombre)}"></div>
+    <div><label>Subproceso</label>${ingSelSubHTML('io-sub',x.sub)}</div>
+    <div><label>Tipo de máquina</label><select id="io-maq"><option value="">—</option>${tipos.map(t=>`<option ${t===x.tipoMaq?'selected':''}>${esc(t)}</option>`).join('')}${x.tipoMaq&&!tipos.includes(x.tipoMaq)?`<option selected value="${esc(x.tipoMaq)}">${esc(x.tipoMaq)} (sin homologar)</option>`:''}</select></div>
+    <div><label>Parte de la prenda</label><input type="text" id="io-parte" value="${esc(x.parte||'')}" style="width:140px"></div></div>
+   <h4 class="io-h">SAM por familia de prenda <span class="mut">minutos por prenda</span></h4>
+   <table class="io-sam"><thead><tr><th>Familia</th><th class="num">SAM</th><th>De dónde sale</th></tr></thead><tbody>
+    ${famsOp.map((f,i)=>`<tr><td>${esc(ingFamNom(f))}</td><td class="num"><input type="number" step="0.001" class="io-samv" data-fam="${esc(f)}" data-antes="${esc(String(sf[f].sam))}" value="${esc(String(sf[f].sam))}" style="width:90px"></td><td class="mut">${esc(ingSamFuenteTxt(sf[f]))}</td></tr>`).join('')||'<tr><td colspan="3" class="mut">Todavía sin SAM en ninguna familia.</td></tr>'}
+    <tr><td><select id="io-famnueva"><option value="">+ otra familia…</option>${famsAll.filter(f=>!famsOp.includes(f.id)).map(f=>`<option value="${esc(f.id)}">${esc(f.nombre)}</option>`).join('')}</select></td><td class="num"><input type="number" step="0.001" id="io-samnueva" style="width:90px" placeholder="SAM"></td><td class="mut">a mano</td></tr></tbody></table>
+   <div class="row"><div style="flex:1"><label>Motivo del cambio de SAM (obligatorio si cambias o agregas un SAM)</label><input type="text" id="io-motivo" placeholder="p. ej. tomado con cronómetro el 05-oct"></div></div>
+   ${(x.fuentes||[]).length?`<h4 class="io-h">De dónde sale</h4><div class="scroll io-fuentes"><table><thead><tr><th>Fuente</th><th>Familia</th><th>Código</th><th>Nombre en la fuente</th><th>Máquina</th><th class="num">SAM</th><th></th></tr></thead><tbody>${x.fuentes.map(f=>`<tr${f.noVino?' class="mut"':''}><td>${f.f==='kronos'?'Kronos':f.f==='odoo'?'Hoja de Odoo':'a mano'}</td><td>${esc(ingFamNom(f.fam))}</td><td><code>${esc(f.f==='kronos'?f.cod:(f.codGen||f.cod||''))}</code></td><td>${esc(f.n||'')}<span class="ing-de">${esc(f.f==='kronos'?(f.sp||''):(f.famOp||''))}</span></td><td>${esc(f.maq||f.tipo||'')}</td><td class="num">${num(+f.sam||0,2)}${f.f==='kronos'&&f.min!=null&&f.max!=null&&f.min!==f.max?'<span class="ing-de">'+num(f.min,2)+'–'+num(f.max,2)+' · '+num(f.refs||0)+' ref.</span>':''}</td><td>${f.noVino?'<span class="tag t-falta" title="no vino en la carga del '+esc(fmtDiaTs(f.noVino.ts))+'">no vino</span>':''}${f.de?' <span class="tag t-mut">de '+esc(f.de)+'</span>':''}</td></tr>`).join('')}</tbody></table></div>`:''}
+   ${(x.cambios||[]).length?`<h4 class="io-h">Historial</h4><ul class="ing-lista">${x.cambios.slice().reverse().slice(0,20).map(c=>`<li>${esc(fechaHoraLocal(c.ts))} · ${esc(c.u||'')} · ${esc(c.campo)}: ${esc(String(c.antes==null?'':c.antes))} → ${esc(String(c.despues==null?'':c.despues))}${c.motivo?' · '+esc(c.motivo):''}</li>`).join('')}</ul>`:''}
+   <p class="mut io-nota">No cambia ningún minuto del programa: la base de Ingeniería todavía no programa (el programa sigue con la hoja de Odoo y los tiempos por tipo de producto).</p></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" data-ing-tabla="ing_operaciones" onclick="guardarOpIng(${nuevo?'null':`'${x.id}'`})">Guardar</button></div>`,true);
+  if(!puedeIngTabla('ing_operaciones'))ingSoloVerModal('ing_operaciones')}
+async function guardarOpIng(id){if(ingNoEdita('ing_operaciones'))return;const o0=id?ingOp(id):null;if(id&&!o0)return;const g=k=>{const e=document.getElementById(k);return e?e.value:''};
+  const nombre=g('io-n').trim();if(!nombre){alert('Falta el nombre de la operación.');return}
+  const ts=new Date().toISOString(),u=quienFirma();const o=o0?ingClon(o0):{id:null,cod:null,nombre:'',sub:'',tipoMaq:'',parte:'',samFam:{},fuentes:[],activa:true,creada:{ts,u,origen:'a mano'},mano:{}};
+  o.mano=o.mano||{};o.cambios=o.cambios||[];o.samFam=o.samFam||{};const motivo=g('io-motivo').trim();const cam=[];
+  const set=(campo,v,etq)=>{const antes=o[campo]==null?'':o[campo];if(String(antes)===String(v))return;cam.push({ts,u,campo:etq,antes:etq==='subproceso'?ingSubTxt(antes):antes,despues:etq==='subproceso'?ingSubTxt(v):v});o[campo]=v;o.mano[campo]=true};
+  set('nombre',nombre,'nombre');set('sub',g('io-sub'),'subproceso');set('tipoMaq',g('io-maq'),'tipo de máquina');set('parte',g('io-parte').trim(),'parte de la prenda');
+  if(o.mano.tipoMaq)o.homol=maqHomologada(o.tipoMaq);
+  const samCam=[];document.querySelectorAll('#modal .io-samv').forEach(inp=>{const f=inp.dataset.fam,antes=+inp.dataset.antes,v=numXLS(inp.value);if(v==null||Math.abs(v-antes)<0.0005)return;samCam.push({f,antes,v})});
+  const fn=g('io-famnueva'),vn=numXLS(g('io-samnueva'));if(fn&&vn!=null)samCam.push({f:fn,antes:null,v:vn});
+  if(samCam.some(s=>s.v<0)){alert('El SAM no puede ser negativo.');return}
+  if(samCam.length&&!motivo){alert('Escribe el motivo del cambio de SAM: queda en el historial de la operación y en la bitácora.');return}
+  samCam.forEach(s=>{o.samFam[s.f]={sam:s.v,fuente:'mano',u,ts,motivo,antes:s.antes};cam.push({ts,u,campo:'SAM '+ingFamNom(s.f),antes:s.antes,despues:s.v,motivo})});
+  if(!cam.length&&o0){cerrar();return}
+  if(!o0){o.cod=ingSigCodigo();o.id='iop|'+o.cod;o.mano={nombre:true,sub:true,tipoMaq:true,parte:true};cam.unshift({ts,u,campo:'creada a mano',antes:'',despues:o.cod})}
+  o.cambios=o.cambios.concat(cam);
+  const r=await ingGuardar('ing_operaciones',[o]);if(ingAvisoConflicto(r,'esta operación'))return;
+  bitacora('Ingeniería · operación '+o.cod+' «'+o.nombre+'» '+(o0?'cambiada':'agregada a mano')+': '+cam.map(c=>c.campo+' '+(c.antes===''||c.antes==null?'':String(c.antes)+' → ')+c.despues).join(' · ')+(motivo?' · motivo: '+motivo:'')+' · no cambia ningún minuto del programa ('+u+')');save();cerrar();render()}
+async function apagarOpIng(id){const o0=ingOp(id);if(!o0||o0.activa===false)return;if(ingNoEdita('ing_operaciones'))return;
+  if(!confirm('¿Apagar la operación '+o0.cod+' «'+o0.nombre+'»? No se borra: deja de aparecer en la base (se ve con «Mostrar: apagadas») y se puede volver a encender.'))return;
+  const ts=new Date().toISOString(),u=quienFirma();const o=ingClon(o0);o.activa=false;o.cambios=(o.cambios||[]).concat([{ts,u,campo:'apagada',antes:'activa',despues:'apagada'}]);
+  const r=await ingGuardar('ing_operaciones',[o]);if(ingAvisoConflicto(r,'esta operación'))return;bitacora('Ingeniería · operación '+o.cod+' «'+o.nombre+'» apagada (no se borra) ('+u+')');save();render()}
+async function encenderOpIng(id){const o0=ingOp(id);if(!o0||o0.activa!==false)return;if(ingNoEdita('ing_operaciones'))return;
+  if(o0.juntadaEn){alert('Esta operación se juntó en '+((ingOp(o0.juntadaEn)||{}).cod||o0.juntadaEn)+': sus fuentes y su SAM están allá. No se vuelve a encender.');return}
+  if(!confirm('¿Volver a encender la operación '+o0.cod+' «'+o0.nombre+'»?'))return;const ts=new Date().toISOString(),u=quienFirma();const o=ingClon(o0);o.activa=true;o.cambios=(o.cambios||[]).concat([{ts,u,campo:'encendida',antes:'apagada',despues:'activa'}]);
+  const r=await ingGuardar('ing_operaciones',[o]);if(ingAvisoConflicto(r,'esta operación'))return;bitacora('Ingeniería · operación '+o.cod+' «'+o.nombre+'» encendida de nuevo ('+u+')');save();render()}
+/* juntar: la que se va queda APAGADA con «juntada en OP-…»; sus fuentes y sus SAM pasan a la que queda. Nada se borra */
+async function juntarOpsIng(idQueda,idSeVa){const A0=ingOp(idQueda),B0=ingOp(idSeVa);if(!A0||!B0||A0.id===B0.id)return;if(ingNoEdita('ing_operaciones'))return;
+  if(!confirm('¿Juntar '+B0.cod+' «'+B0.nombre+'» ('+ingSubTxt(B0.sub)+', '+(B0.tipoMaq||'sin máquina')+') en '+A0.cod+' «'+A0.nombre+'» ('+ingSubTxt(A0.sub)+', '+(A0.tipoMaq||'sin máquina')+')? '+B0.cod+' queda apagada con «juntada en '+A0.cod+'» (no se borra) y sus fuentes y sus SAM pasan a '+A0.cod+'. Si las dos tienen SAM en la misma familia, se queda el de '+A0.cod+'.'))return;
+  const ts=new Date().toISOString(),u=quienFirma();const A=ingClon(A0),B=ingClon(B0);
+  A.fuentes=ingOrdFuentes((A.fuentes||[]).concat((B.fuentes||[]).map(f=>Object.assign({},f,{de:B.cod}))));B.fuentesAntes=B.fuentes||[];B.fuentes=[];
+  const manoA=Object.fromEntries(Object.entries(A.samFam||{}).filter(([f,e])=>e&&e.fuente==='mano'));const manoB=Object.fromEntries(Object.entries(B.samFam||{}).filter(([f,e])=>e&&e.fuente==='mano'&&!manoA[f]));
+  A.samFam=Object.assign(ingSamDeFuentes(A.fuentes),manoB,manoA);A.juntadas=(A.juntadas||[]).concat([B.id]);A.noRepetida=(A.noRepetida||[]).filter(x=>x!==B.id);delete A.noVino;
+  B.activa=false;B.juntadaEn=A.id;A.cambios=(A.cambios||[]).concat([{ts,u,campo:'juntada',antes:'',despues:B.cod+' «'+B.nombre+'»'}]);B.cambios=(B.cambios||[]).concat([{ts,u,campo:'juntada en',antes:'',despues:A.cod}]);
+  const r=await ingGuardar('ing_operaciones',[A,B]);if(ingAvisoConflicto(r,'estas operaciones'))return;
+  bitacora('Ingeniería · '+B.cod+' «'+B.nombre+'» juntada en '+A.cod+' «'+A.nombre+'» (queda apagada, no se borra; sus '+B.fuentesAntes.length+' fuentes pasan a '+A.cod+') ('+u+')');save();render()}
+async function noSonRepetidasIng(a,b){const A0=ingOp(a),B0=ingOp(b);if(!A0||!B0)return;if(ingNoEdita('ing_operaciones'))return;const ts=new Date().toISOString(),u=quienFirma();
+  const A=ingClon(A0),B=ingClon(B0);A.noRepetida=[...new Set((A.noRepetida||[]).concat([B.id]))];B.noRepetida=[...new Set((B.noRepetida||[]).concat([A.id]))];
+  A.cambios=(A.cambios||[]).concat([{ts,u,campo:'no es repetida de',antes:'',despues:B.cod}]);B.cambios=(B.cambios||[]).concat([{ts,u,campo:'no es repetida de',antes:'',despues:A.cod}]);
+  const r=await ingGuardar('ing_operaciones',[A,B]);if(ingAvisoConflicto(r,'estas operaciones'))return;bitacora('Ingeniería · '+A.cod+' y '+B.cod+' marcadas como distintas (no son repetidas) ('+u+')');save();render()}
+/* ---------- subprocesos, equivalencias y familias: editar (nunca borrar: apagar) ---------- */
+async function ingGuardarCat(fila,txt){const r=await ingGuardar('ing_subprocesos',[fila]);if(ingAvisoConflicto(r,'esta fila'))return false;bitacora('Ingeniería · '+txt+' ('+quienFirma()+')');save();render();return true}
+function ingCatFila(id){const r=(S.ing_subprocesos||[]).find(x=>x.id===id);if(r)return ingClon(r);const d=ingCatalogo().find(x=>x.id===id);return d?ingClon(d):null}
+async function setSubIng(id,campo,v){if(ingNoEdita('ing_subprocesos')){render();return}if(!['nombre','parte','orden','nota'].includes(campo))return;const r=ingCatFila(id);if(!r)return;
+  const nv=campo==='orden'?(numXLS(v)==null?'':numXLS(v)):String(v==null?'':v).trim();if(campo==='nombre'&&!nv){alert('El subproceso necesita un nombre.');render();return}if(campo==='parte'&&nv&&!ING_PARTES.some(x=>x[0]===nv))return;
+  const antes=r[campo]==null?'':r[campo];if(String(antes)===String(nv))return;r[campo]=nv;r.estado=r.estado==='confirmado'&&campo!=='nota'?'propuesto':r.estado;r.cambios=(r.cambios||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),campo,antes,despues:nv}]);
+  await ingGuardarCat(r,'subproceso '+ingSubTxt(id)+' · '+campo+': '+(antes===''?'(vacío)':antes)+' → '+(nv===''?'(vacío)':nv)+(campo==='parte'?' (qué parte de la receta de Confección es; no cambia ningún minuto del programa)':''))}
+async function confirmarSubIng(id){if(ingNoEdita('ing_subprocesos'))return;const r=ingCatFila(id);if(!r||r.estado==='confirmado')return;r.estado='confirmado';r.confU=quienFirma();r.confTs=new Date().toISOString();await ingGuardarCat(r,'subproceso '+ingSubTxt(id)+' confirmado')}
+async function apagarSubIng(id){if(ingNoEdita('ing_subprocesos'))return;const r=ingCatFila(id);if(!r||r.activo===false)return;const n=(S.ing_operaciones||[]).filter(o=>o.sub===id&&o.activa!==false).length;
+  if(n){alert('El subproceso tiene '+n+' operaciones activas: muévelas antes a otro subproceso (o apágalas). No se apaga.');return}
+  if(!confirm('¿Apagar el subproceso '+ingSubTxt(id)+'? No se borra: se puede volver a encender. Las equivalencias que apuntan aquí quedan «por decidir» mientras esté apagado.'))return;r.activo=false;r.cambios=(r.cambios||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),campo:'apagado',antes:'activo',despues:'apagado'}]);await ingGuardarCat(r,'subproceso '+ingSubTxt(id)+' apagado (no se borra)')}
+async function encenderSubIng(id){if(ingNoEdita('ing_subprocesos'))return;const r=ingCatFila(id);if(!r||r.activo!==false)return;if(!confirm('¿Volver a encender el subproceso '+ingSubTxt(id)+'?'))return;r.activo=true;r.cambios=(r.cambios||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),campo:'encendido',antes:'apagado',despues:'activo'}]);await ingGuardarCat(r,'subproceso '+ingSubTxt(id)+' encendido')}
+function mNuevoSubIng(){if(ingNoEdita('ing_subprocesos'))return;const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));
+  abrir(`<h3>Nuevo subproceso</h3><div class="body"><p class="ib-lin">Un subproceso cuelga de un centro de Configuración (los centros no se copian). El código es el subcentro de Odoo si lo tiene (p. ej. CON-02); si no, se deja vacío.</p>
+   <div class="row"><div><label>Centro</label><select id="ns-c">${cens.map(c=>`<option value="${c.id}">${esc(c.n)}</option>`).join('')}</select></div><div><label>Código de Odoo</label><input type="text" id="ns-cod" style="width:110px" placeholder="(sin código)"></div>
+   <div style="flex:1"><label>Nombre</label><input type="text" id="ns-n"></div><div><label>Parte de la receta de Confección</label><select id="ns-p"><option value="">—</option>${ING_PARTES.map(([k,n])=>`<option value="${k}">${n}</option>`).join('')}</select></div></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" onclick="crearSubIng()">Agregar</button></div>`)}
+async function crearSubIng(){if(ingNoEdita('ing_subprocesos'))return;const g=k=>(document.getElementById(k)||{}).value||'';const c=g('ns-c'),cod=g('ns-cod').trim().toUpperCase(),n=g('ns-n').trim(),pt=g('ns-p');
+  if(!CE(c)||!n){alert('Falta el centro o el nombre.');return}const id='isp|'+c+'|'+(cod||ingNom(n).replace(/ /g,'_'));if(ingCatalogo().some(r=>r.id===id)){alert('Ese subproceso ya existe en '+nCen(c)+'.');return}
+  const orden=ingSubsTodas().filter(s=>s.centro===c).reduce((a,s)=>Math.max(a,+s.orden||0),0)+1;const ts=new Date().toISOString(),u=quienFirma();
+  if(await ingGuardarCat({id,centro:c,cod,nombre:n,orden,parte:pt,estado:'propuesto',activo:true,origen:'a mano',ts,u},'subproceso nuevo '+(cod?cod+' ':'')+n+' en '+nCen(c)))cerrar()}
+async function setEquivIng(id,sub){if(ingNoEdita('ing_subprocesos')){render();return}const r=ingCatFila(id);if(!r)return;const antes=r.sub||'';if(antes===sub)return;if(sub&&!ingSubOk(sub)){alert('Ese subproceso no existe o está apagado.');render();return}
+  const n=(S.ing_operaciones||[]).filter(o=>o.activa!==false&&(o.fuentes||[]).some(f=>!f.noVino&&f.f===r.fuente&&ingNom(r.fuente==='kronos'?f.sp:f.famOp)===ingNom(r.nombre))).length;
+  r.sub=sub;r.cambios=(r.cambios||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),campo:'subproceso',antes:ingSubTxt(antes),despues:ingSubTxt(sub)}]);
+  if(await ingGuardarCat(r,'equivalencia '+(r.fuente==='kronos'?'Kronos':'hoja de Odoo')+' «'+r.nombre+(r.prefijo?' · '+r.prefijo:'')+'»: '+ingSubTxt(antes)+' → '+ingSubTxt(sub)+(n?' · '+n+' operaciones de la base la usan: se mueven al volver a armar la base':'')))
+    if(n)alert(n+' operaciones de la base vienen de «'+r.nombre+'». Se mueven al nuevo subproceso cuando vuelvas a armar la base (Armar la base → «Ver sin archivo»: usa lo que ya está). Las corregidas a mano no se pisan.')}
+function mNuevaEquivIng(){if(ingNoEdita('ing_subprocesos'))return;abrir(`<h3>Nueva equivalencia</h3><div class="body"><p class="ib-lin">Un nombre de subproceso de Kronos, o una familia de operación de la hoja de Odoo (con «la operación empieza con…» si hace falta), y el subproceso donde cae.</p>
+   <div class="row"><div><label>Fuente</label><select id="ne-f"><option value="kronos">Kronos (subproceso)</option><option value="odoo">Hoja de Odoo (familia de operación)</option></select></div><div style="flex:1"><label>Nombre en la fuente</label><input type="text" id="ne-n"></div>
+   <div><label>La operación empieza con… (solo hoja)</label><input type="text" id="ne-p" style="width:140px"></div><div><label>Subproceso</label>${ingSelSubHTML('ne-s','')}</div></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" onclick="crearEquivIng()">Agregar</button></div>`)}
+async function crearEquivIng(){if(ingNoEdita('ing_subprocesos'))return;const g=k=>(document.getElementById(k)||{}).value||'';const f=g('ne-f'),n=g('ne-n').trim(),pre=f==='odoo'?g('ne-p').trim():'',s=g('ne-s');
+  if(!n){alert('Falta el nombre en la fuente.');return}const id=f==='kronos'?'ieq|kronos|'+ingNom(n):'ieq|odoo|'+ingNom(n)+'|'+ingNom(pre);if(ingCatalogo().some(r=>r.id===id)){alert('Esa equivalencia ya existe: cámbiala en la tabla.');return}
+  const ts=new Date().toISOString(),u=quienFirma();if(await ingGuardarCat({id,fuente:f,nombre:n,prefijo:pre,sub:s,nota:'',origen:'a mano',ts,u},'equivalencia nueva '+(f==='kronos'?'Kronos':'hoja de Odoo')+' «'+n+(pre?' · '+pre:'')+'» → '+ingSubTxt(s)))cerrar()}
+async function setFamiliaIng(id,campo,v){if(ingNoEdita('ing_subprocesos')){render();return}if(!['nombre','alias'].includes(campo))return;const r=ingCatFila(id);if(!r)return;
+  const nv=campo==='alias'?listaAlias(v):String(v==null?'':v).trim();if(campo==='nombre'&&!nv){alert('La familia necesita un nombre.');render();return}
+  const antes=campo==='alias'?(r.alias||[]).join(', '):(r.nombre||'');const despues=campo==='alias'?nv.join(', '):nv;if(antes===despues)return;
+  if(campo==='alias'){const otra=ingFamilias().find(f=>f.id!==id&&nv.some(a=>[f.nombre].concat(f.alias||[]).some(b=>ingNom(b)===ingNom(a))));if(otra){alert('«'+nv.find(a=>[otra.nombre].concat(otra.alias||[]).some(b=>ingNom(b)===ingNom(a)))+'» ya es un nombre de la familia «'+otra.nombre+'». Una fuente calza con una sola familia.');render();return}}
+  r[campo]=nv;r.cambios=(r.cambios||[]).concat([{ts:new Date().toISOString(),u:quienFirma(),campo,antes,despues}]);
+  await ingGuardarCat(r,'familia de prenda «'+(r.nombre||id)+'» · '+(campo==='alias'?'nombres en las fuentes':campo)+': '+(antes||'(vacío)')+' → '+(despues||'(vacío)')+(campo==='alias'?' · las operaciones cambian de familia al volver a armar la base':''))}
+/* ---------- PANTALLAS ---------- */
+function ingEstadoFiltro(){ING_V.q=ING_V.q||'';ING_V.fuente=ING_V.fuente||'';ING_V.fam=ING_V.fam||'';ING_V.mostrar=ING_V.mostrar||'activas';ING_V.ab=ING_V.ab||{};ING_V.todas=ING_V.todas||{}}
+function ingOpPasa(o){const m=ING_V.mostrar;if(m==='activas'&&(o.activa===false||o.juntadaEn))return false;if(m==='apagadas'&&o.activa!==false&&!o.juntadaEn)return false;
+  const fu=ingFuentesDe(o),fl=ING_V.fuente;if(fl==='odoo'&&!fu.odoo)return false;if(fl==='kronos'&&!fu.kronos)return false;if(fl==='ambas'&&!(fu.odoo&&fu.kronos))return false;if(fl==='mano'&&(fu.odoo||fu.kronos))return false;if(fl==='novino'&&!o.noVino&&!(o.fuentes||[]).some(f=>f.noVino))return false;
+  if(ING_V.fam&&!(o.samFam||{})[ING_V.fam])return false;
+  const q=ingNom(ING_V.q);if(q){const hay=[o.cod,o.nombre,o.tipoMaq,o.parte,ingSubTxt(o.sub)].concat(Object.keys(o.samFam||{}).map(ingFamNom),(o.fuentes||[]).map(f=>(f.cod||'')+' '+(f.codGen||'')+' '+(f.n||''))).map(ingNom).join(' | ');if(!hay.includes(q))return false}
+  return true}
+function ingFuenteTag(o){const fu=ingFuentesDe(o);const t=fu.odoo&&fu.kronos?'<span class="tag t-ok" title="la misma operación está en la hoja de Odoo y en Kronos">Odoo + Kronos</span>':fu.odoo?'<span class="tag t-medio">Odoo</span>':fu.kronos?'<span class="tag t-medio">Kronos</span>':'<span class="tag t-mut">a mano</span>';
+  return t+(o.noVino?' <span class="tag t-falta" title="no vino en la última carga ('+esc(fmtDiaTs(o.noVino.ts))+'): queda marcada, no se borra">no vino</span>':'')+(o.juntadaEn?' <span class="tag t-mut">juntada en '+esc((ingOp(o.juntadaEn)||{}).cod||'')+'</span>':o.activa===false?' <span class="tag t-mut">apagada</span>':'')}
+function ingSamCelda(o){const r=ingRango(o,ING_V.fam);if(!r)return '<span class="mut">—</span>';const sf=o.samFam||{};
+  const tip=Object.entries(sf).map(([f,e])=>ingFamNom(f)+' '+num(+e.sam,2)+' ('+ingSamFuenteTxt(e)+')').join('\n');
+  return `<span title="${esc(tip)}">${r.min===r.max?num(r.min,2):num(r.min,2)+' – '+num(r.max,2)}</span>`+(Object.values(sf).some(e=>e.fuente==='mano')?' <span class="tag t-aviso" title="hay SAM corregido a mano">a mano</span>':'')}
+function ingDis(tabla){const m=porQueNoEditaIng(tabla);return m?` disabled aria-disabled="true" class="btn ghost sm ing-off" title="${esc(m)}"`:' class="btn ghost sm"'}
+function ingOpFilaHTML(o){const nf=Object.keys(o.samFam||{}).length,nr=ingRefs(o);return `<tr class="ing-op" data-op="${esc(o.id)}"><td><code>${esc(o.cod)}</code></td>
+  <td><a href="#" data-ver="1" onclick="mOpIng('${o.id}');return false">${esc(o.nombre)}</a>${o.parte&&ingNom(o.parte)!=='general'?'<span class="ing-de">'+esc(o.parte)+'</span>':''}</td>
+  <td>${esc(o.tipoMaq||'—')}${o.homol===false&&o.tipoMaq?' <span class="tag t-falta" title="este nombre de máquina no calza con ningún tipo (Máquinas y operarias → Tipos de máquina)">sin homologar</span>':''}</td>
+  <td class="num">${ingSamCelda(o)}</td><td class="mut ing-usos">${num(nf)} ${nf===1?'familia':'familias'}${nr?' · '+num(nr)+' ref.':''}</td><td>${ingFuenteTag(o)}</td>
+  <td class="ing-acc">${o.activa===false?(o.juntadaEn?'':`<button${ingDis('ing_operaciones')} onclick="encenderOpIng('${o.id}')">Encender</button>`):`<button${ingDis('ing_operaciones')} onclick="apagarOpIng('${o.id}')">Apagar</button>`}</td></tr>`}
+function ingTogAb(k){ING_V.ab=ING_V.ab||{};ING_V.ab[k]=!ING_V.ab[k];if(!redibujarLista('ING_V.q'))render()}
+function ingArbolHTML(){ingEstadoFiltro();const busca=!!ING_V.q.trim();const ops=(S.ing_operaciones||[]).filter(ingOpPasa);const subs=ingSubsTodas();const MAX=300;
+  const cens=S.centros.filter(c=>c.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id));const tec=(S.tecnicas||[]);
+  const porSub=new Map();ops.forEach(o=>{const k=ingSubOk(o.sub)||(o.sub&&ingSub(o.sub)?o.sub:'');(porSub.get(k)||porSub.set(k,[]).get(k)).push(o)});
+  const ordOps=l=>l.slice().sort((a,b)=>ingCodNum(a.cod)-ingCodNum(b.cod));
+  const filasOps=(k,l)=>{const ab=busca||ING_V.ab['s:'+k];if(!ab)return '';const lo=ordOps(l);const ver=ING_V.todas[k]?lo:lo.slice(0,MAX);
+    return ver.map(ingOpFilaHTML).join('')+(lo.length>ver.length?`<tr><td colspan="7" class="mut">Se muestran ${num(MAX)} de ${num(lo.length)} · <a href="#" data-ver="1" onclick="ING_V.todas['${esc(k)}']=1;if(!redibujarLista('ING_V.q'))render();return false">ver todas</a> o busca para acotar</td></tr>`:'')};
+  let h=`<table class="ing-tree"><thead><tr><th>Código</th><th>Operación</th><th>Máquina</th><th class="num">SAM${ING_V.fam?' · '+esc(ingFamNom(ING_V.fam)):''} <span class="mut">min/prenda</span></th><th>Se usa en</th><th>Fuente</th><th></th></tr></thead><tbody>`;
+  cens.forEach(c=>{const sc=subs.filter(s=>s.centro===c.id);const nOps=sc.reduce((a,s)=>a+(porSub.get(s.id)||[]).length,0);const abC=busca?nOps>0:!!ING_V.ab['c:'+c.id];
+    let nota='';if(c.id==='bordado')nota='se programa por puntadas'+(sc.length?': sus operaciones solo informan':' (el tiempo de cada orden sale de sus puntadas)');
+    else if(!sc.length)nota=centroPorDias(c.id)?'sin operaciones · se mide por días':'sin operaciones · '+(+c.minEstandar>0?num(+c.minEstandar,2)+' min por prenda (el minuto del centro, en Tipos de producto)':'sin minuto por prenda configurado');
+    if(busca&&!nOps)return;
+    h+=`<tr class="ing-cen" data-cen="${c.id}"><td colspan="7"${sc.length?` data-ver="1" onclick="ingTogAb('c:${c.id}')"`:''}>${sc.length?(abC?'▾ ':'▸ '):'· '}<b>${esc(c.n)}</b> <span class="mut">${sc.length?num(sc.length)+' '+(sc.length===1?'subproceso':'subprocesos')+' · '+num(nOps)+' op.':''}${nota?(sc.length?' · ':'')+esc(nota):''}</span></td></tr>`;
+    if(abC){sc.forEach(s=>{const l=porSub.get(s.id)||[];if(busca&&!l.length)return;const abS=busca||ING_V.ab['s:'+s.id];
+        h+=`<tr class="ing-sub${s.activo===false?' ing-apagado':''}" data-sub="${esc(s.id)}"><td colspan="7" data-ver="1" onclick="ingTogAb('s:${s.id}')">${abS?'▾':'▸'} ${esc((s.cod?s.cod+' ':'')+s.nombre)} <span class="mut">${s.parte?'· '+esc((ING_PARTES.find(x=>x[0]===s.parte)||[0,s.parte])[1].toLowerCase())+' (receta de Confección) ':''}· ${num(l.length)} op.${s.activo===false?' · apagado':''}</span>
+          <span class="ing-sub-acc"><button${ingDis('ing_operaciones')} onclick="event.stopPropagation();mOpIng(null,'${s.id}')">+ Operación</button></span></td></tr>`+filasOps(s.id,l)});
+      if(c.id==='estampado')h+=`<tr class="ing-tec"><td colspan="7">Técnicas de estampado (tiempo por técnica): ${tec.length?tec.map(t=>esc(t.n)+' '+num(+t.t||0,2)).join(' · '):'ninguna'} · <a href="#" data-ver="1" onclick="ING_V.ops='tecnicas';render();return false">ver y cambiar →</a></td></tr>`}});
+  const pd=porSub.get('')||[];if(pd.length){const abP=busca||ING_V.ab['s:'];h+=`<tr class="ing-cen ing-pd"><td colspan="7" data-ver="1" onclick="ingTogAb('s:')">${abP?'▾':'▸'} <b>⚠ Sin subproceso, por decidir</b> <span class="mut">${num(pd.length)} op. · su nombre en la fuente no tiene equivalencia (pestaña «Subprocesos»)</span></td></tr>`+filasOps('',pd)}
+  if(!ops.length)h+=`<tr><td colspan="7" class="mut">${(S.ing_operaciones||[]).length?'Ninguna operación con estos filtros.':'La base todavía está vacía: «Armar la base» junta la hoja de Odoo y la base de Kronos.'}</td></tr>`;
+  return h+'</tbody></table>'}
+function ingBaseHTML(){ingEstadoFiltro();const all=(S.ing_operaciones||[]);const act=all.filter(o=>o.activa!==false&&!o.juntadaEn);const fu=act.map(ingFuentesDe);
+  const nAmbas=fu.filter(f=>f.odoo&&f.kronos).length,nPD=act.filter(o=>!ingSubOk(o.sub)).length,nRep=act.length?ingRepetidas().length:0;
+  listaRegistrar('ING_V.q',()=>ingArbolHTML());
+  const famOpts=ingFamilias().map(f=>`<option value="${esc(f.id)}" ${ING_V.fam===f.id?'selected':''}>${esc(f.nombre)}</option>`).join('');
+  return `${ingAvisoTablasHTML()}<div class="panel ing-base" data-ing-key="base general"><h3>Base general de operaciones <span class="note" data-ing-cuenta="ops">${num(act.length)} operaciones · ${num(nAmbas)} en la hoja de Odoo y en Kronos${nPD?' · '+num(nPD)+' por decidir':''}${nRep?' · '+num(nRep)+' posibles repetidas':''}</span>${ayudaTipHTML('Centro de producción → subproceso → operación. Cada operación está UNA vez, con su tipo de máquina y su SAM por familia de prenda (sin elegir familia se ve el rango). Los centros son los mismos de Configuración. No cambia ningún minuto del programa: el programa sigue con la hoja de Odoo y los tiempos por tipo de producto.')}<span class="spacer"></span>
+    <button${ingDis('ing_operaciones')} onclick="mOpIng(null)">+ Operación</button><button class="btn sm" data-ing-tabla="ing_operaciones,ing_subprocesos" onclick="mArmarBase()">Armar la base…</button></h3><div class="body">
+   ${!all.length?`<p class="ing-sig">La base todavía está vacía. <b>«Armar la base»</b> junta la hoja de operaciones de Odoo que ya está en el sistema (${num((S.operaciones||[]).length)} filas) y la base de Kronos (se sube base_operaciones.csv o el Excel del paquete). Antes de guardar se ve la vista previa.</p>`:''}
+   <div class="row ing-filtros" data-filtro-local="1"><input type="search" data-ver="1" class="ing-q" placeholder="buscar operación, código, máquina o familia" value="${esc(ING_V.q)}" data-q="ING_V.q" oninput="buscarQ(this,v=>ING_V.q=v)">
+    <select data-ver="1" title="fuente" onchange="ING_V.fuente=this.value;render()">${ING_FUENTES.map(([k,n])=>`<option value="${k}" ${ING_V.fuente===k?'selected':''}>${esc(n)}</option>`).join('')}</select>
+    <select data-ver="1" title="familia de prenda: el SAM de esa familia" onchange="ING_V.fam=this.value;render()"><option value="">Todas las familias (rango de SAM)</option>${famOpts}</select>
+    <select data-ver="1" title="mostrar" onchange="ING_V.mostrar=this.value;render()">${[['activas','Activas'],['apagadas','Apagadas y juntadas'],['todas','Todas']].map(([k,n])=>`<option value="${k}" ${ING_V.mostrar===k?'selected':''}>${n}</option>`).join('')}</select></div>
+   <div class="scroll ing-scroll" data-lista="ING_V.q">${ingArbolHTML()}</div></div></div>`}
+function ingSubprocesosHTML(){const sem=ingSembrado();const subs=ingSubsTodas();const eqs=ingEquivs();const fams=ingFamilias();const ops=(S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn);
+  const dis=ingDis('ing_subprocesos');const ro=!puedeIngTabla('ing_subprocesos');
+  const nOpsSub=id=>ops.filter(o=>o.sub===id).length;const nOpsEq=e=>ops.filter(o=>(o.fuentes||[]).some(f=>!f.noVino&&f.f===e.fuente&&ingNom(e.fuente==='kronos'?f.sp:f.famOp)===ingNom(e.nombre)&&(e.fuente==='kronos'||!e.prefijo||ingNom(f.n).startsWith(ingNom(e.prefijo))))).length;
+  const selParte=s=>ro?esc((ING_PARTES.find(x=>x[0]===s.parte)||[0,'—'])[1]):`<select onchange="setSubIng('${s.id}','parte',this.value)"><option value="">—</option>${ING_PARTES.map(([k,n])=>`<option value="${k}" ${s.parte===k?'selected':''}>${n}</option>`).join('')}</select>`;
+  const selEq=e=>ro?esc(ingSubTxt(e.sub)):ingSelSubHTML('eq-'+ingHash(e.id),e.sub).replace('<select ',`<select onchange="setEquivIng('${e.id}',this.value)" `);
+  return `${ingAvisoTablasHTML()}${sem?'':`<div class="warn ing-sinsembrar"><b>Sin sembrar todavía.</b> Lo de abajo es lo que se siembra: se guarda solo la primera vez que alguien con permiso «Ingeniería» abre esta pantalla (con SUPABASE_INGENIERIA.sql corrido), o al armar la base.</div>`}
+  <div class="panel ing-subs" data-ing-tabla="ing_subprocesos" data-ing-key="subprocesos"><h3>Subprocesos <span class="note">${num(subs.filter(s=>s.activo!==false).length)} · cuelgan de los centros de Configuración (no se copian)</span>${ayudaTipHTML('Un subproceso es el subcentro de Odoo (COR-03, CON-01…), más Etiquetas, Perfilado y la Revisión de producto terminado (en Empaque, decisión del 05-oct). La columna «Parte de la receta» dice qué parte del tiempo de Confección es: costura (Subensamble + Ensamble), pulido o perfilado. Nunca se borra: se apaga.')}<span class="spacer"></span><button${dis} onclick="mNuevoSubIng()">+ Subproceso</button></h3><div class="body">
+   <table class="ing-subs-t"><thead><tr><th>Centro</th><th>Código</th><th>Nombre</th><th>Parte de la receta de Confección</th><th class="num">Orden</th><th class="num">Operaciones</th><th>Estado</th><th></th></tr></thead><tbody>
+   ${subs.map(s=>`<tr${s.activo===false?' class="mut"':''} data-sub="${esc(s.id)}"><td>${esc(nCen(s.centro))}</td><td><code>${esc(s.cod||'—')}</code></td><td>${ro?esc(s.nombre):`<input type="text" value="${esc(s.nombre)}" onchange="setSubIng('${s.id}','nombre',this.value)">`}${s.nota?'<span class="ing-de">'+esc(s.nota)+'</span>':''}</td>
+     <td>${selParte(s)}</td><td class="num">${ro?esc(String(s.orden||'')):`<input type="number" style="width:60px" value="${esc(String(s.orden||''))}" onchange="setSubIng('${s.id}','orden',this.value)">`}</td><td class="num">${num(nOpsSub(s.id))}</td>
+     <td>${s.activo===false?'<span class="tag t-mut">apagado</span>':s.estado==='confirmado'?'<span class="tag t-ok" title="'+esc((s.confU||'')+' · '+(s.confTs?fmtDiaTs(s.confTs):''))+'">confirmado</span>':'<span class="tag t-aviso">propuesto</span>'}</td>
+     <td class="ing-acc">${s.activo===false?`<button${dis} onclick="encenderSubIng('${s.id}')">Encender</button>`:`${s.estado!=='confirmado'?`<button${dis} onclick="confirmarSubIng('${s.id}')">Confirmar</button>`:''}<button${dis} onclick="apagarSubIng('${s.id}')">Apagar</button>`}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="panel ing-eqs" data-ing-tabla="ing_subprocesos" data-ing-key="equivalencias"><h3>Equivalencias: nombre en la fuente → subproceso <span class="note">${num(eqs.filter(e=>!ingSubOk(e.sub)).length)} por decidir</span>${ayudaTipHTML('Cómo llega cada operación a su subproceso: por el nombre de subproceso de Kronos, o por la familia de operación de la hoja de Odoo (con «la operación empieza con…» cuando hace falta: SERIGRAFIA + ETIQUETAR va a Etiquetas). Sin subproceso = «por decidir»: sus operaciones quedan aparte hasta decidirlo. Cambiar una equivalencia mueve las operaciones al volver a armar la base.')}<span class="spacer"></span><button${dis} onclick="mNuevaEquivIng()">+ Equivalencia</button></h3><div class="body">
+   <table class="ing-eqs-t"><thead><tr><th>Fuente</th><th>Nombre en la fuente</th><th>Subproceso</th><th class="num">Operaciones en la base</th><th>Nota</th></tr></thead><tbody>
+   ${eqs.slice().sort((a,b)=>(a.fuente===b.fuente?0:a.fuente>b.fuente?1:-1)||(ingSubOk(a.sub)?1:0)-(ingSubOk(b.sub)?1:0)||String(a.nombre).localeCompare(String(b.nombre),'es')).map(e=>`<tr class="${ingSubOk(e.sub)?'':'ing-pdec'}" data-eq="${esc(e.id)}"><td>${e.fuente==='kronos'?'Kronos':'Hoja de Odoo'}</td><td>${esc(e.nombre)}${e.prefijo?' <span class="mut">· la operación empieza con «'+esc(e.prefijo)+'»</span>':''}</td><td>${selEq(e)}${ingSubOk(e.sub)?'':' <span class="tag t-aviso">por decidir</span>'}</td><td class="num">${num(nOpsEq(e))}</td><td class="mut">${esc(e.nota||'')}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="panel ing-fams" data-ing-tabla="ing_subprocesos" data-ing-key="familias de prenda"><h3>Familias de prenda <span class="note">${num(fams.length)} · el SAM de cada operación va por familia</span>${ayudaTipHTML('Cada familia (Camisetas, Polos, Hoodies…) con sus nombres en las fuentes: la línea y la familia de Kronos y la categoría de la hoja de Odoo. Se crean al armar la base; si una misma prenda quedó en dos familias (por ejemplo HODDIE en la hoja y Hoodies en Kronos), escribe el nombre en la familia que queda y vuelve a armar la base.')}</h3><div class="body">
+   ${fams.length?`<table class="ing-fams-t"><thead><tr><th>Familia</th><th>Nombres en las fuentes</th><th class="num">Operaciones con SAM</th></tr></thead><tbody>${fams.map(f=>`<tr data-fam="${esc(f.id)}"><td>${ro?esc(f.nombre):`<input type="text" value="${esc(f.nombre)}" onchange="setFamiliaIng('${f.id}','nombre',this.value)">`}</td><td>${ro?esc((f.alias||[]).join(', ')):`<input type="text" style="width:320px;max-width:100%" value="${esc((f.alias||[]).join(', '))}" onchange="setFamiliaIng('${f.id}','alias',this.value)">`}</td><td class="num">${num(ops.filter(o=>(o.samFam||{})[f.id]).length)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Se crean al armar la base.</div>'}</div></div>`}
+function ingRepetidasHTML(){const l=ingRepetidas();const dis=ingDis('ing_operaciones');
+  const cel=o=>`<td><code>${esc(o.cod)}</code> <a href="#" data-ver="1" onclick="mOpIng('${o.id}');return false">${esc(o.nombre)}</a><span class="ing-de">${esc(ingSubTxt(o.sub))} · ${esc(o.tipoMaq||'sin máquina')} · ${(n=>num(n)+' '+(n===1?'familia':'familias'))(Object.keys(o.samFam||{}).length)}</span></td>`;
+  return `${ingAvisoTablasHTML()}<div class="panel ing-rep" data-ing-key="posibles repetidas"><h3>Posibles repetidas <span class="note">${num(l.length)} · lo parecido pero no igual: lo decide una persona</span>${ayudaTipHTML('Juntar deja la otra operación APAGADA con «juntada en OP-…» (no se borra) y pasa sus fuentes y sus SAM a la que queda. «Son distintas» la saca de esta lista para siempre. Nada de esto cambia el programa.')}</h3><div class="body">
+   ${l.length?ING_REP_TIPOS.map(([k,n])=>{const g=l.filter(x=>x.tipo===k);if(!g.length)return '';return `<h4 class="io-h">${esc(n)} · ${num(g.length)}</h4><div class="scroll"><table class="ing-rep-t"><tbody>${g.slice(0,300).map(x=>`<tr data-rep="${esc(x.a.id+'~'+x.b.id)}">${cel(x.a)}${cel(x.b)}<td class="ing-acc"><button${dis} onclick="juntarOpsIng('${x.a.id}','${x.b.id}')">Juntar en ${esc(x.a.cod)}</button><button${dis} onclick="juntarOpsIng('${x.b.id}','${x.a.id}')">Juntar en ${esc(x.b.cod)}</button><button${dis} onclick="noSonRepetidasIng('${x.a.id}','${x.b.id}')">Son distintas</button></td></tr>`).join('')}</tbody></table></div>${g.length>300?'<p class="mut">Se muestran 300 de '+num(g.length)+'.</p>':''}`}).join(''):'<div class="empty">Ninguna: no hay operaciones parecidas sin decidir.</div>'}</div></div>`}
+/* Por revisar: lo de la base */
+function ingLeyendoHTML(){return ING.ops==='error'?`<div class="warn ing-falta"><b>No se pudo leer la base de operaciones:</b> ${esc(ING.opsErr||'')} <button class="btn ghost sm" data-ver="1" onclick="ING.ops=null;render()">Reintentar</button></div>`:'<p class="mut ing-leyendo">Leyendo la base de operaciones…</p>'}
+function ingRevBaseHTML(){if(!(ingAsegurarOps()||ING.estado!=='si'))return `<div class="panel ing-rev-base" data-ing-key="base de operaciones por revisar"><h3>Base de operaciones</h3><div class="body">${ingLeyendoHTML()}</div></div>`;const ops=(S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn);const opsPD=ops.filter(o=>!ingSubOk(o.sub)),pd=opsPD.length;const eqPD=[...new Set(opsPD.flatMap(o=>(o.fuentes||[]).filter(f=>!f.noVino).map(f=>f.f==='kronos'?f.sp:f.famOp)).filter(Boolean))].map(n=>({nombre:n}));
+  const rep=ops.length?ingRepetidas():[];const sh=ops.filter(o=>o.homol===false&&o.tipoMaq).length;const nv=ops.filter(o=>o.noVino).length;
+  const ir=(t,txt)=>`<a href="#" data-ver="1" onclick="ING_V.ops='${t}';ir('ingops');return false">${txt}</a>`;
+  return `<div class="panel ing-rev-base" data-ing-key="base de operaciones por revisar"><h3>Base de operaciones <span class="note">${num(pd)} por decidir · ${num(rep.length)} posibles repetidas</span></h3><div class="body">
+   ${!ops.length?'<div class="empty">La base todavía está vacía (Operaciones → Base general → «Armar la base»).</div>':`<ul class="ing-lista">
+    <li data-rev="pordecidir"><b>${num(pd)} ${pd===1?'operación sin subproceso':'operaciones sin subproceso'}</b> (por decidir)${eqPD.length?': vienen de '+eqPD.slice(0,6).map(e=>'«'+esc(e.nombre)+'»').join(', ')+(eqPD.length>6?'…':''):''} — ${ir('subprocesos','decidir a qué subproceso van →')}</li>
+    <li data-rev="repetidas"><b>${num(rep.length)} posibles repetidas</b>${rep.length?': '+ING_REP_TIPOS.map(([k,n])=>[n,rep.filter(x=>x.tipo===k).length]).filter(x=>x[1]).map(([n,c])=>num(c)+' '+n.toLowerCase()).join(' · '):''} — ${ir('repetidas','revisar →')}</li>
+    ${sh?`<li><b>${num(sh)} ${sh===1?'operación con máquina sin homologar':'operaciones con máquina sin homologar'}</b> — <a href="#" data-ver="1" onclick="irAjuste('Tipos de máquina');return false">decir de qué tipo es →</a></li>`:''}
+    ${nv?`<li><b>${num(nv)} ${nv===1?'operación que no vino':'operaciones que no vinieron'}</b> en la última carga (quedan marcadas, no se borran) — ${ir('base','ver en la base →')}</li>`:''}</ul>`}</div></div>`}
 /* Por referencia: la estructura; buscar, elegir el tipo y ver las operaciones se arma en el siguiente paso */
 function vIngRef(el){
   el.innerHTML=`<div class="pagehead"><h2>Por referencia ${ingCtx()}</h2></div>
@@ -14027,7 +14547,8 @@ function vIngRev(el){const sh=nombresSinHomologar();const rev=(S.maquinas||[]).f
   ${ingMarca(opsSinCentroHTML(),'operaciones','Operaciones sin centro')}
   <div class="panel ing-rev-maq" data-ing-key="maquinas por revisar"><h3>Máquinas <span class="note">${num(sh.length)} ${sh.length===1?'nombre':'nombres'} sin homologar · ${num(rev)} ${rev===1?'máquina':'máquinas'} por revisar</span></h3><div class="body">
    ${sh.length||rev?`<ul class="ing-lista">${sh.length?`<li><b>${num(sh.length)} ${sh.length===1?'nombre de máquina sin homologar':'nombres de máquina sin homologar'}</b>: llegan de la hoja de operaciones o del inventario y no calzan con ningún tipo (no se sabe de qué máquina son) — <a href="#" onclick="irAjuste('Tipos de máquina');return false">decir de qué tipo es →</a></li>`:''}${rev?`<li><b>${num(rev)} ${rev===1?'máquina por revisar':'máquinas por revisar'}</b>: su observación del inventario no tiene regla y no cuentan en el balanceo — <a href="#" onclick="irAjuste('Máquinas de confección');return false">revisar →</a></li>`:''}</ul>`:'<div class="empty">Nada: todos los nombres de máquina calzan con un tipo y ninguna máquina está por revisar.</div>'}</div></div>
-  <div class="panel" data-ing-key="se revisan cuando se arme la base"><h3>Se revisan cuando se arme la base <span class="note">siguiente paso</span></h3><div class="body"><ul class="ing-lista"><li>Subprocesos por decidir: los de Kronos que todavía no tienen centro.</li><li>Referencias sin ingeniería, con su motivo y sus prendas.</li><li>Posibles operaciones repetidas: singular y plural, faltas de tipeo, el mismo nombre en otro subproceso.</li></ul></div></div>`;
+  ${ingRevBaseHTML()}
+  <div class="panel" data-ing-key="referencias sin ingenieria por revisar"><h3>Referencias sin ingeniería <span class="note">siguiente paso</span></h3><div class="body"><p class="ing-sig">Cuando se carguen los listados por referencia, aquí van las referencias abiertas que no tienen, con su motivo y sus prendas.</p></div></div>`;
   blindarIng(el)}
 /* una ventana de edición abierta para mirar (sin permiso para guardar esa tabla): todo apagado salvo cerrar, con el porqué arriba */
 function ingSoloVerModal(tablas){const m=porQueNoEditaIng(tablas);if(!m)return;const md=document.getElementById('modal');if(!md)return;
@@ -16290,7 +16811,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración general → Órdenes, fases y archivos de Odoo → Registro de cargas. */
-const TIPOS_CARGA={tiempos:'Tiempos por tipo (Excel)',tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)',maquinas:'Inventario de máquinas'};
+const TIPOS_CARGA={tiempos:'Tiempos por tipo (Excel)',tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)',maquinas:'Inventario de máquinas',ingBase:'Base de operaciones (Ingeniería)'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
@@ -16300,6 +16821,7 @@ function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='maestro')return [num(r.filas)+' productos',num(r.nuevos)+' nuevos',num(r.actualizados)+' actualizados',num(r.tempo)+' TEMPO',num(r.conProv)+' con proveedor',num(r.sinProv)+' sin proveedor',r.conservaProv?num(r.conservaProv)+' conservan proveedor':'',r.cambiaProv?num(r.cambiaProv)+' cambian de proveedor':'',r.nuevosProv?num(r.nuevosProv)+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
   if(c.tipo==='rutas')return [num(r.aplicadas)+' rutas puestas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' WH que no existen aquí':''].filter(Boolean).join(' · ');
   if(c.tipo==='maquinas')return [num(r.nuevas)+' nuevas',num(r.cambiadas)+' cambiaron',num(r.iguales)+' iguales',r.conservadas?num(r.conservadas)+' con lo cambiado a mano conservado':'',r.noEntran?num(r.noEntran)+' no entraron':'',r.repetidas?num(r.repetidas)+' repetidas':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.porRevisar?num(r.porRevisar)+' por revisar':'',r.bajaRegla?num(r.bajaRegla)+' de baja por regla'+(r.bajaReglaMotivos?' ('+r.bajaReglaMotivos+')':''):'',r.bajaArchivo?num(r.bajaArchivo)+' decían «baja» (por revisar)':'',r.cambioNumero?num(r.cambioNumero)+' con posible cambio de número':'',r.sinHomologar?num(r.sinHomologar)+' con tipo sin homologar':'',r.parcial?'pegado (parcial)':''].filter(Boolean).join(' · ');
+  if(c.tipo==='ingBase')return [num(r.ops)+' operaciones',num(r.ambas)+' en las dos fuentes',r.nuevas?num(r.nuevas)+' nuevas':'',r.cambian?num(r.cambian)+' cambiaron':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.conservadas?num(r.conservadas)+' corregidas a mano conservadas':'',r.porDecidir?num(r.porDecidir)+' por decidir':'',r.repetidas?num(r.repetidas)+' posibles repetidas':'',r.conArchivo?'Kronos '+num(r.kronosFilas)+' filas'+(r.fuente?' ('+r.fuente+')':''):'sin archivo',r.incompleto?'INCOMPLETO':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [num(r.subidas)+' subidas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' sin orden':'',r.errores?num(r.errores)+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?num(c.nuevas)+' nuevas':'',c.act!=null?num(c.act)+' actualizadas':'',c.cerradas?num(c.cerradas)+' cerradas':''].filter(Boolean).join(' · ')}
 function registroCargasHTML(){const L=(S.cargas||[]).slice().sort((a,b)=>a.ts<b.ts?1:-1);const ult={};L.forEach(c=>{const t=c.tipo||'odoo';if(!ult[t])ult[t]=c});
