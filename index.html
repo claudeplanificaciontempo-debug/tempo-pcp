@@ -1326,14 +1326,18 @@ html[data-modo="oscuro"][data-estilo="tablero"][data-tema][data-color]{
   --tb-teal-soft:#123843;--tb-teal-ink:#9EDCEB;--tb-dot-ring:rgba(255,255,255,.45);--tb-bar-plan:#5A6470;--tb-st-hover:#3A434E;
   --tb-btn-ok:#1E7A47;--tb-btn-aviso:#9A5A0E}
 /* · barra de arriba: el menú del Tablero (Inter, peso 500) es ~50 px más ancho que el de Odoo; hasta 1.600 px queda solo el logo (como Odoo
-     hasta 1.440), así entra todo a 1.366, 1.280 y 1.024 px y el buscador gana ancho. Lo de la derecha no se encoge nunca: «Salir» siempre se ve */
+     hasta 1.440), así entra todo a 1.366, 1.280 y 1.024 px y el buscador gana ancho. Lo de la derecha no se encoge nunca: «Salir» siempre se ve.
+     Tramos del menú: ≤1.440 (9 px, 13,5 px) · ≤1.260 (7 px, 13 px, sin «✓ Guardado»; antes ≤1.180: entre 1.181 y 1.239 px la barra medía
+     1.240 px y se salía «Salir», visto en la verificación del 05-oct) · 861–1.040 (peso 400) · 861–940 (sin iniciales). La prueba PUL1 barre de
+     861 a 1.920 px cada 5 px con contadores de 4 cifras en el menú (como en producción). */
 @media (max-width:1600px){html[data-tema="odoo"][data-estilo="tablero"] header h1{font-size:0;margin-right:4px}html[data-tema="odoo"][data-estilo="tablero"] header h1 .logo{margin:0}}
 html[data-tema="odoo"][data-estilo="tablero"] #quien,html[data-tema="odoo"][data-estilo="tablero"] #modo-sw,html[data-tema="odoo"][data-estilo="tablero"] #btn-salir{flex:none}
 html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:180px!important}
-@media (max-width:1440px){html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 9px;font-size:13.5px}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:150px!important}}
-@media (max-width:1180px){html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 7px;font-size:13px}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:120px!important}}
-@media (min-width:861px) and (max-width:1000px){html[data-tema="odoo"][data-estilo="tablero"] header{gap:4px;padding:0 8px 0 10px}html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 6px;font-size:13px;font-weight:400}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:96px!important}html[data-tema="odoo"][data-estilo="tablero"] .modo-sw{margin:0 2px}html[data-tema="odoo"][data-estilo="tablero"] .modo-sw button{width:28px}html[data-tema="odoo"][data-estilo="tablero"] header #btn-salir{padding:0 8px}}
-@media (min-width:861px) and (max-width:940px){html[data-tema="odoo"][data-estilo="tablero"] #quien{display:none}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:80px!important}}   /* como en el teléfono: las iniciales salen; el menú, el buscador y «Salir» entran */
+@media (max-width:1440px){html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 9px;font-size:13.5px}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:130px!important}}
+@media (max-width:1260px){html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 7px;font-size:13px}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:120px!important}}
+@media (min-width:861px) and (max-width:1040px){html[data-tema="odoo"][data-estilo="tablero"] header{gap:4px;padding:0 8px 0 10px}html[data-tema="odoo"][data-estilo="tablero"] header nav .grp{padding:0 6px;font-size:13px;font-weight:400}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:96px!important}html[data-tema="odoo"][data-estilo="tablero"] .modo-sw{margin:0 2px}html[data-tema="odoo"][data-estilo="tablero"] .modo-sw button{width:28px}html[data-tema="odoo"][data-estilo="tablero"] header #btn-salir{padding:0 8px}}
+@media (min-width:861px) and (max-width:940px){html[data-tema="odoo"][data-estilo="tablero"] #quien{display:none}html[data-tema="odoo"][data-estilo="tablero"] #busg-host{min-width:72px!important}}   /* como en el teléfono: las iniciales salen; el menú, el buscador y «Salir» entran */
+@media (min-width:861px) and (max-width:1260px){html[data-tema="odoo"][data-estilo="tablero"] header .saved:not(.err){display:none}}   /* como el aspecto Odoo hasta 1.180 px: «✓ Guardado» se esconde para que entre «Salir»; un error de guardado (.err) sí se muestra */
 @media (max-width:860px){
   html[data-tema="odoo"][data-estilo="tablero"] header{padding-bottom:8px}
   html[data-tema="odoo"][data-estilo="tablero"] header h1 .logo{width:28px;height:28px}
@@ -1528,6 +1532,25 @@ html[data-tema="odoo"][data-estilo="tablero"] #p-control td select{max-width:170
   html[data-tema="odoo"][data-estilo="tablero"] .aud-grupo-l td{white-space:nowrap}
   html[data-tema="odoo"][data-estilo="tablero"] .o-statusbar:not(.pm-pasos) .st:not(.on):not(:has(+ .st.on)):not(.st.on + .st){display:none}
 }
+/* ux:tablero · cierre (05-oct-2026): lo que dejó la verificación. Solo aspecto y todo bajo [data-estilo="tablero"] (ASP9). */
+/* · Liberación: la tarjeta de una pestaña vacía (0 órdenes) va en gris, sin transparencia: la letra se lee (contraste ≥ 3; con opacidad .6 daba 2,5) */
+html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia{opacity:1;background:var(--tb-grey-soft);box-shadow:none;border-color:var(--tb-line)}
+html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .v,html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .k,html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .k b,html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .mut{color:var(--tb-ink3)!important}
+html[data-tema="odoo"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia .kpi-ico{background:var(--tb-line);color:var(--tb-ink3)}
+html[data-modo="oscuro"][data-estilo="tablero"] .kpis>.kpi.tarj.vacia{background:var(--tb-grey-soft)!important;border-color:var(--tb-line)!important}   /* en oscuro las tarjetas llevan el papel con !important */
+/* · filas de cuatro, cinco y seis tarjetas sin una sola en la última fila (antes, con auto-fit: Hoy 5 + 1 entre ~1.140 y 1.365 px, Resumen gerencial 4 + 1
+     entre ~1.040 y 1.270, Entregas y Tintorería 4 + 1 entre ~920 y 1.150, Liberación → Más detalle 3 + 1 hasta ~990). Cuatro: dos y dos hasta 1.023 px;
+     cinco: tres y dos hasta que caben las cinco (1.160 px; el Resumen gerencial, de tarjetas más anchas, 1.280); seis: tres y tres hasta 1.366 px */
+@media (min-width:861px) and (max-width:1023px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(4)):not(:has(>.kpi:nth-child(5))){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1160px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (min-width:1160px) and (max-width:1279px){html[data-tema="odoo"][data-estilo="tablero"] .ger-tarjetas .kpis.tarj-row:has(>.kpi:nth-child(5)):not(:has(>.kpi:nth-child(6))){grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:861px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(6)):not(:has(>.kpi:nth-child(7))){grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1366px){html[data-tema="odoo"][data-estilo="tablero"] .kpis.tarj-row:has(>.kpi:nth-child(6)):not(:has(>.kpi:nth-child(7))){grid-template-columns:repeat(6,minmax(0,1fr))}}
+/* · el «?» dentro del título (antes de la .ctx): mismo tamaño que el de siempre, sin la separación del hermano */
+html[data-tema="odoo"][data-estilo="tablero"] .pagehead h2>.ayuda-cab{margin:0 0 0 2px}
+/* · teléfono: las pestañas del Resumen del centro (cuatro desde el 04-oct, con «Por liberar a producción») van en una línea que se desplaza de lado, como las de Reportería */
+@media (max-width:520px){html[data-tema="odoo"][data-estilo="tablero"] .res-tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}html[data-tema="odoo"][data-estilo="tablero"] .res-tabs>.res-tab{white-space:nowrap;flex:none}}
 /* · */
 </style>
 </head>
@@ -2101,7 +2124,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 10:54';
+const APP_BUILD='2026-10-05 11:43';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5193,7 +5216,7 @@ function hoyDecisionHTML(P,ords,h){
   if(caps.length)cards.push({id:'hd-cap',ico:'scale',v:caps.length,k:(caps.length===1?'Vez que un centro no alcanza en un mes':'Veces que un centro no alcanza en un mes')+(caps.filter(p=>!p.visto).length?' · <b>'+num(caps.filter(p=>!p.visto).length)+' nuevos</b>':'')+' · <a style="cursor:pointer;white-space:nowrap" onclick="event.stopPropagation();ir(\'capacidad\')">ver en Capacidad y decisiones →</a>',cls:'bad'});
   if(noLl.length)cards.push({id:'hd-noll',ico:'alert',v:noLl.length,k:'Órdenes que el programa dice que no llegan',items:noLl,porFam:true,cls:'warn'});
   if(falt.length)cards.push({id:'hd-falt',ico:'drop',v:falt.length,k:'Faltantes de tintorería esperando baño · <a style="cursor:pointer;white-space:nowrap" onclick="event.stopPropagation();ir(\'tintoreria\')">ver en Tintorería →</a>',cls:'warn'});
-  if(!cards.length)return '<div class="panel"><h3>Necesita decisión</h3><div class="body"><span class="mut">Nada por decidir hoy.</span></div></div>';
+  if(!cards.length)return '<div class="panel"><h3>Capacidad, programa y tintorería</h3><div class="body"><span class="mut">Nada por decidir hoy.</span></div></div>';   /* 05-oct: el mismo título con y sin tarjetas; «Necesita decisión» es la cinta de la sección (seccionHoy) */
   return `<div class="panel"><h3>Capacidad, programa y tintorería <span class="lede">lo que hoy sale en Capacidad y decisiones, en el motor y en tintorería · el detalle vive en su pantalla, aquí no se repite la tabla</span></h3><div class="body">${tarjetasResumenHTML(cards)}${pend.length?`<div style="margin-top:10px"><b>Baños por armar</b> <span class="mut">· arma y confirma en Tintorería → Armar baños</span><div style="margin-top:6px">${listaDecisiones(P,8)}</div></div>`:''}</div></div>`}
 function seccionHoy(titulo,nota,cuerpo){return `<div style="margin:22px 0 8px"><span style="display:inline-block;background:var(--t-block);color:#fff;padding:4px 12px;border-radius:999px;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase">${esc(titulo)}</span>${nota?' '+ayudaTipHTML(textoPlano(nota)):''}</div>${cuerpo}`}   /* la nota de la cinta va al «?» (02-oct) */
 function vPanorama(el){
@@ -8382,7 +8405,8 @@ function ledesAAyuda(root){if(!root)return 0;let n=0;
     if(!h){return}   /* sin título antes: el párrafo se queda */
     const ya=h.querySelector(':scope > .ayuda-d')||[...h.children].find(c=>c.classList&&c.classList.contains('ayuda-d'))||((h.nextElementSibling&&h.nextElementSibling.classList.contains('ayuda-cab'))?h.nextElementSibling:null);
     if(ya){const d=document.createElement('div');d.innerHTML=p.innerHTML;ya.querySelector('.ayuda-txt').appendChild(d);const t=textoPlano(ya.querySelector('.ayuda-txt').innerHTML);ya.querySelector('.ayuda').title=t.slice(0,400)}
-    else{const sp=ayudaDesdeHTML(p.innerHTML);if(h.tagName==='H2'&&h.parentElement&&h.parentElement.classList.contains('pagehead')){sp.classList.add('ayuda-cab');h.insertAdjacentElement('afterend',sp)}else{const note=h.querySelector(':scope > .note');if(note)h.insertBefore(sp,note);else if(p.parentElement===h)h.insertBefore(sp,p);else h.appendChild(sp)}}
+    else{const sp=ayudaDesdeHTML(p.innerHTML);if(h.tagName==='H2'&&h.parentElement&&h.parentElement.classList.contains('pagehead')){sp.classList.add('ayuda-cab');const ctx=esTablero()?h.querySelector(':scope > .ctx'):null;   /* 05-oct: en el Tablero la .ctx va en su línea y ensancha el h2; el «?» se queda junto al título (dentro del h2, antes de la .ctx) */
+      if(ctx)h.insertBefore(sp,ctx);else h.insertAdjacentElement('afterend',sp)}else{const note=h.querySelector(':scope > .note');if(note)h.insertBefore(sp,note);else if(p.parentElement===h)h.insertBefore(sp,p);else h.appendChild(sp)}}
     p.remove();n++});return n}
 /* La nota larga de un título de panel deja a la vista solo los datos (02-oct, «para dummies»): se parte por « · »; se quedan los trozos con un
    número, una etiqueta o la BASE de la cifra (base, abiertas, lanzadas, liberadas, horizonte, semana, un mes, kg crudo, «solo…», «todo lo…»); lo demás va al «?» del título.
