@@ -1646,7 +1646,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 08:40';
+const APP_BUILD='2026-10-05 09:30';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -1724,6 +1724,7 @@ async function entrar(user){
   document.getElementById('login').classList.remove('on');
   {const ap=document.getElementById('app');if(ap)ap.classList.add('cargando')}   /* 30-sep: «Cargando…» mientras se leen los datos */
   await cargarTodo();
+  if(perfilSoloPiso()&&!esVistaOperario())sondearRecursoServidor();   /* 04-oct: ¿existe set_recurso_centro? (una llamada inocua; no espera) */
   pintarQuien();   /* después de leer: el nombre del perfil sale del catálogo (antes de leer salía el id, «admin») */
   aplicarNavPerfil();decorarNav();LISTO=true; // recién ahora se dibuja: nunca se ve el menú de otro perfil
   page=vePagina('ordenes')?'ordenes':primeraPagina();render();verVersion();revisarVersion();setInterval(revisarVersion,5*60*1000);setInterval(revisarDatos,3*60*1000);
@@ -9606,16 +9607,23 @@ async function setPrioridadServidor(o,c,pri){
       return{error:m}}
     return{ok:true}}catch(e){return{error:String((e&&e.message)||e)}}}
 /* cambios = [{o, pri}] ya aplicados en memoria; si el servidor no los acepta, se deshacen */
-async function guardarPrioridadesRPC(cambios,c,antes){let err=null,falta=false;
-  for(const x of cambios){const r=await setPrioridadServidor(x.o,c,x.pri);
+let PRI_GUARDADAS=new Set();   /* las que el último guardarPrioridadesRPC sí dejó en el servidor (Juntar colores las necesita si falla a medias) */
+async function guardarPrioridadesRPC(cambios,c,antes){let err=null,falta=false;const guardadas=new Set();PRI_GUARDADAS=guardadas;
+  const st=document.getElementById('saved');const largo=cambios.length>5;   /* 04-oct: «Juntar colores» manda un puesto por orden: se ve el avance */
+  for(const x of cambios){if(largo&&st)st.textContent='Guardando puestos '+(guardadas.size+1)+' de '+cambios.length+'…';
+    const r=await setPrioridadServidor(x.o,c,x.pri);
     if(r.falta){falta=true;break}
     if(r.error){err=r.error;break}
+    guardadas.add(x.o.id);
     if(BASE.ordenes&&BASE.ordenes[x.o.id]){try{const b=JSON.parse(BASE.ordenes[x.o.id]);b.progCentro=JSON.parse(JSON.stringify(x.o.progCentro||{}));BASE.ordenes[x.o.id]=JSON.stringify(b)}catch(e){}}}
-  if(falta||err){ // se deshace lo de la pantalla: el servidor manda
-    (antes||[]).forEach(x=>{x.o.progCentro=x.o.progCentro||{};x.o.progCentro[c]=x.o.progCentro[c]||{};if(x.pri)x.o.progCentro[c].pri=x.pri;else delete x.o.progCentro[c].pri});
+  if(falta||err){ // se deshace lo de la pantalla que el servidor NO guardó: el servidor manda (04-oct: antes se deshacía todo, también lo ya guardado)
+    (antes||[]).forEach(x=>{if(guardadas.has(x.o.id))return;x.o.progCentro=x.o.progCentro||{};x.o.progCentro[c]=x.o.progCentro[c]||{};if(x.pri)x.o.progCentro[c].pri=x.pri;else delete x.o.progCentro[c].pri});
+    if(guardadas.size)await refrescarTS('ordenes',[...guardadas]);
+    if(largo&&st)st.textContent=guardadas.size?'Puestos guardados a medias':'No se guardó el orden de la cola';
     PLAN=null;PLAN_ALL=null;render();
-    alert(falta?('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil reordena la cola con la función set_prioridad_centro del servidor, y todavía no existe. No se cambió nada: avisa a planificación.')
-               :('El servidor no aceptó el nuevo orden de la cola:\n'+err+'\n\nNo se cambió nada.'));
+    const parte=guardadas.size?('Se guardaron '+guardadas.size+' de '+cambios.length+' puestos; el resto quedó como estaba.'):'No se cambió nada.';
+    alert(falta?('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil reordena la cola con la función set_prioridad_centro del servidor, y todavía no existe. '+parte+' Avisa a planificación.')
+               :('El servidor no aceptó el nuevo orden de la cola:\n'+err+'\n\n'+parte));
     return false}
   await refrescarTS('ordenes',cambios.map(x=>x.o.id));
   return true}
@@ -10029,15 +10037,29 @@ function cruceFamFaseHTML(filas){if(!filas.length)return '';
    <tr style="background:var(--field);font-weight:700"><td>Total</td>${colsOrd.map(c=>`<td class="num">${num(cols[c])}</td>`).join('')}<td class="num">${num(filas.reduce((a,f)=>a+f.pz,0))}</td></tr>
    </tbody></table></div></div></div>`}
 /* 5 · agrupar por color: SOLO vista y reordenamiento manual de la cola (el motor no cambia) */
-function ordenarColaPorColor(c){if(!(puede('programa')||puede('reprogramar'))){alert('Tu perfil no reordena la cola.');return}
+function ordenarColaPorColor(c){if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no reordena la cola.');return}
+  if(esVistaOperario()){alert('Los operarios no reordenan la cola: lo hace el supervisor del centro o planificación.');return}
   const P=programar();const filas=filasDeCentros([c],P,hoy(),dsum(hoy(),60),'');const cola=colaCentro(c,filas);
   if(!cola.length){alert('No hay cola que reordenar en este centro.');return}
   /* Decisión 7: esto pone puesto manual a TODAS, y el puesto manda sobre la cercanía. Se avisa antes. */
   if(!confirm('¿Reordenar la cola de '+nCen(c)+' juntando los colores?\n\nEs solo el orden de los puestos: no cambia el programa ni las fechas del motor.\n\nOJO: le pone puesto manual a las '+cola.length+' órdenes de la cola, y el puesto manual manda sobre el orden de llegada.\nA partir de aquí la cola ya NO se ordena sola por cuánto le falta a cada orden para llegar: manda el color.\n\nPara volver al orden de llegada hay que quitar el puesto con el botón «quitar» de cada orden.'))return;
   const grupos={};cola.forEach(f=>{const k=(C(f.o.color)||{}).n||'Sin color';(grupos[k]=grupos[k]||[]).push(f)});
   const orden=Object.keys(grupos).sort((a,b)=>{const pa=Math.min(...grupos[a].map(f=>+((f.o.progCentro||{})[c]||{}).pri||9999)),pb=Math.min(...grupos[b].map(f=>+((f.o.progCentro||{})[c]||{}).pri||9999));return pa-pb||a.localeCompare(b,'es')});
-  let n=0;orden.forEach(k=>grupos[k].forEach(f=>{n++;f.o.progCentro=f.o.progCentro||{};f.o.progCentro[c]=Object.assign({},f.o.progCentro[c],{pri:n,u:quienFirma(),ts:new Date().toISOString(),porColor:true})}));
-  bitacora('Cola de '+nCen(c)+' reordenada juntando colores ('+orden.length+' colores, '+n+' órdenes) por '+quienFirma()+' · solo orden de puestos, el motor no cambia · las '+n+' quedan con puesto manual: el orden de llegada deja de aplicarles');
+  /* 04-oct (usuaria: el supervisor también reordena): una sesión de piso no sube la tabla de órdenes, así que el puesto va por la función del
+     servidor (set_prioridad_centro, la misma de arrastrar en la cola). Solo viaja el puesto: las marcas u/ts/porColor no las guarda esa función,
+     así que al piso no se le ponen (lo que se ve es lo que queda al recargar). Si la función falta, se avisa y la cola queda como estaba. */
+  const piso=perfilSoloPiso();const priAntes=cola.map(f=>({o:f.o,pri:((f.o.progCentro||{})[c]||{}).pri||0}));
+  const snap=cola.map(f=>({o:f.o,pc:f.o.progCentro===undefined?undefined:JSON.stringify(f.o.progCentro)}));const cambios=[];
+  let n=0;orden.forEach(k=>grupos[k].forEach(f=>{n++;f.o.progCentro=f.o.progCentro||{};f.o.progCentro[c]=Object.assign({},f.o.progCentro[c],piso?{pri:n}:{pri:n,u:quienFirma(),ts:new Date().toISOString(),porColor:true});
+    const a=priAntes.find(x=>x.o===f.o);if(!a||a.pri!==n)cambios.push({o:f.o,pri:n})}));
+  const txt='Cola de '+nCen(c)+' reordenada juntando colores ('+orden.length+' colores, '+n+' órdenes) por '+quienFirma()+' · solo orden de puestos, el motor no cambia · las '+n+' quedan con puesto manual: el orden de llegada deja de aplicarles';
+  if(piso)return guardarPrioridadesRPC(cambios,c,priAntes).then(ok=>{
+    if(ok){bitacora(txt+' · guardado por la función del servidor (supervisor de piso)');save();render();return true}
+    const guard=new Set(PRI_GUARDADAS);
+    snap.forEach(s=>{if(guard.has(s.o.id))return;if(s.pc===undefined)delete s.o.progCentro;else s.o.progCentro=JSON.parse(s.pc)});   /* lo no guardado vuelve exacto (sin objetos vacíos que parezcan cambios) */
+    if(guard.size)bitacora(txt.replace(' juntando colores',' juntando colores (A MEDIAS: '+guard.size+' de '+cambios.length+' puestos guardados)'));
+    PLAN=null;PLAN_ALL=null;save();render();return false});
+  bitacora(txt);
   save();render()}
 /* Deshace lo que hizo «Juntar colores» (o cualquier orden manual): quita el puesto de todas las
    órdenes de ESTE centro y la cola vuelve a ordenarse sola por cercanía. Solo planificación. */
@@ -10073,7 +10095,8 @@ function colaVisible(cens,filas,hasta){return [].concat(...cens.map(c=>{const al
 /* acciones de la fila en un menú «⋯» (17-sep): ✓ hecho, quitar lo fijado, ruta (editar solo con permiso ruta; los demás la ven en la ficha) */
 function accionesColaHTML(f,pc){const acc=[];
   if(regHechoOk(f.c))acc.push(`<button class="btn sm" onclick="marcarHechoCentro('${f.o.id}','${f.c}')" title="marcar la orden como hecha en ${esc(nCen(f.c))} y dejarla lista para el siguiente centro">✓ hecho</button>`);
-  if(pc.rec||pc.desde||pc.pri)acc.push(`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar lo fijado</button>`);
+  if(pc.rec||pc.desde||pc.pri){const bq=((pc.rec||pc.desde)&&bloqueoRecPiso()===TXT_REC_FALTA)?TXT_REC_FALTA:'';   /* 04-oct: sin la función del servidor, el piso no quita recurso ni arranque */
+    acc.push(bq?`<button class="btn ghost sm" disabled title="${esc('quitar lo fijado: '+bq)}">quitar lo fijado</button>`:`<button class="btn ghost sm" onclick="setProgCen('${f.o.id}','${f.c}',null)" title="quita puesto, recurso y fecha fijados por el centro">quitar lo fijado</button>`)}
   if(puedeEditarRuta())acc.push(`<button class="btn ghost sm" onclick="mRutaCentro('${f.o.id}')" title="agregar o quitar pasos de tus centros (permiso ruta)">ruta</button>`);
   else acc.push(`<button class="btn ghost sm" onclick="abrirFichaOrden('${f.o.id}')" title="ver la ruta y el paso actual de la orden (solo lectura: editar la ruta es de planificación)">ver ruta</button>`);
   if(!acc.length)return '<span class="mut">·</span>';
@@ -10089,6 +10112,7 @@ function ayudaColaTxt(cola,c,numerada){const t=ordenColaTip(cola);
 const LEDE_COLA='Aquí el centro programa sobre la planificación: ordena su cola arrastrando (o escribiendo el puesto), elige recurso y fija la fecha en que arranca cada orden. El puesto es el número de prioridad que ya usa el programa: subir una orden al puesto 1 le pone puesto manual SOLO a ella; bajarla numera también las que quedan por encima; lo demás sigue por orden de llegada. Si el nuevo orden deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada movimiento queda en bitácora con quién y cuándo. Acciones de cada fila en el menú «⋯»: ✓ hecho, quitar lo fijado y la ruta (editarla es de planificación; los demás la ven).';
 function colaCentroHTML(c,ctx){
   const filas=ctx.filas,hasta=ctx.hasta,okPiso=ctx.okPiso,P=ctx.P,h=ctx.h;
+  const recBloq=okPiso?bloqueoRecPiso():'';   /* 04-oct: el supervisor de piso guarda recurso y arranque por set_recurso_centro; sin esa función, bloqueados */
       const colaAll=colaCentro(c,filas);const cola=CEN.todo?colaAll:colaAll.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=hasta));
       const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const sinPuesto=colaAll.filter(f=>!puestoDe(f.o,c)).length;const numerada=sinPuesto<colaAll.length;
       /* 12 columnas (02-oct, «para dummies»): las etiquetas de la orden bajan a una segunda línea bajo la WH, el cliente va en gris
@@ -10097,11 +10121,11 @@ function colaCentroHTML(c,ctx){
       const fila=f=>{const pc=(f.o.progCentro||{})[f.c]||{};const mt=mandaColaTags(f.o,f.c,numerada);const sinT=mt.find(x=>x.k==='sinT');const m=mandaColaFilaHTML(mt.filter(x=>x.k!=='sinT'));return `<tr draggable="${okPiso?'true':'false'}" ondragstart="arrastrarCola(event,'${f.o.id}','${f.c}')" ondragend="finArrastreCola(event)" ondragover="overCola(event,'${f.c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${f.c}','${f.o.id}')">
        <td style="white-space:nowrap">${okPiso?'<span class="hand" title="arrastra para cambiar el puesto. Subirla al puesto 1 le pone puesto manual SOLO a ella; bajar una orden numera también las que quedan por encima (una orden con puesto siempre va delante de una sin puesto). Lo que quede por debajo sigue por orden de llegada.">⠿</span>':''}<input type="number" min="1" style="width:52px" value="${pc.pri||''}" placeholder="—" ${okPiso?'':'disabled'} onchange="moverEnCola('${f.o.id}','${f.c}',{pos:+this.value})" title="puesto en la cola de ${esc(nCen(f.c))}: es el número de prioridad que usa el programa. Arrastra para cambiar el puesto. Subirla al puesto 1 le pone puesto manual SOLO a ella; bajar una orden numera también las que quedan por encima (una orden con puesto siempre va delante de una sin puesto). Lo que quede por debajo sigue por orden de llegada."></td>
        <td class="cola-op">${whCell(f.o)}${m?'<div class="cola-etq">'+m+'</div>':''}</td><td><div class="cola-odc">${esc(String(f.o.odc||'')) ||'<span class="mut">—</span>'}</div></td><td><span class="t2" title="${esc(nombreCat(K(f.o.cat)))}">${esc(nombreCat(K(f.o.cat)))}</span><div class="mut cola-cli" title="${esc(f.o.cliente||'')}">${esc(f.o.cliente||'')}</div></td><td><span class="cola-color">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</span></td><td class="num">${num(f.o.cant-f.hechas)}<div class="mut cola-h" title="horas del paso en este centro (minutos estándar × prendas)">${f.paso.min>0?num(f.paso.min/60,1)+' h':(sinT?'<span class="tag t-falta" title="'+esc('sin tiempo estándar · '+sinT.title)+'">sin tiempo</span>':'—')}</div></td><td><div class="cola-llega">${llegadaHTML(f.cerc)}</div></td><td><div class="cola-plan">${(f.paso.ini&&f.paso.ini===f.paso.fin)?fmtFecha(f.paso.ini):fmtFecha(f.paso.ini)+' → '+fmtFecha(f.paso.fin)}</div></td><td style="white-space:nowrap">${marcaCentroUna(f.o,P,f.c)}</td>
-       <td><select style="width:auto" ${okPiso?'':'disabled'} title="recurso de esta orden en ${esc(nCen(f.c))}: «automático» es el que eligió el programa" onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">${f.paso.rec?esc(nRec(f.paso.rec)):'sin asignar'} · automático</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
-       <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td>
+       <td><select style="width:auto" ${okPiso&&!recBloq?'':'disabled'} title="${recBloq?esc(recBloq)+' · ':''}recurso de esta orden en ${esc(nCen(f.c))}: «automático» es el que eligió el programa" onchange="setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">${f.paso.rec?esc(nRec(f.paso.rec)):'sin asignar'} · automático</option>${S.recursos.filter(r=>r.activa&&r.centro===f.c).map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}</option>`).join('')}</select></td>
+       <td><input type="date" value="${pc.desde||''}" ${minArranque(f.o,f.c)?'min="'+minArranque(f.o,f.c)+'"':''} ${okPiso&&!recBloq?'':'disabled'} onchange="setProgCen('${f.o.id}','${f.c}','desde',this.value)" title="${recBloq?esc(recBloq)+' · ':''}${yaArranco(f.o,f.c)?'ya arrancó: conserva su fecha real':'no se puede fijar una fecha anterior a hoy'}"></td>
        <td style="white-space:nowrap">${accionesColaHTML(f,pc)}</td></tr>`};
       /* arriba de la tabla, UNA línea: los conteos por grupo y las marcas; el orden de la cola y su explicación van al «?» del título (02-oct) */
-      const linea=ordenColaNotaHTML(cola)+porQueTardeHTML(cola,P,c);
+      const linea=ordenColaNotaHTML(cola)+porQueTardeHTML(cola,P,c)+avisoRecPisoHTML(recBloq);
       return `<div class="panel cola"><h3>Cola de ${esc(nCen(c))}${ayudaTipHTML(ayudaColaTxt(cola,c,numerada))} <span class="note">${cola.length}${cola.length!==colaAll.length?' de '+colaAll.length:''} órdenes pendientes · ${num(pend)} prendas por hacer${(numerada&&sinPuesto)?' · <span class="tag t-aviso">'+sinPuesto+' sin puesto</span>':''}</span></h3>${linea?'<div class="body" style="padding-bottom:0"><div class="cola-linea">'+linea+'</div></div>':''}<div class="scroll lista"><table><thead><tr><th>Puesto</th><th>OP</th><th>ODC</th><th>Producto</th><th>Color</th><th class="num" title="prendas pendientes en este centro y, debajo, las horas del paso">Pendientes</th><th title="cuándo llega a este centro: sale del fin programado del paso anterior; hoy no cuenta, el siguiente día hábil es «mañana»">Llega</th><th title="inicio → fin del paso en este centro según el programa (una sola fecha si empieza y termina el mismo día)">Plan</th><th>Marca</th><th>Recurso</th><th>Arranca</th><th></th></tr></thead><tbody>
        ${(grpSt('cen').todoAbierto=true,(()=>{const m=partirPorCercania(cola);const pzDe=f=>Math.max(0,f.o.cant-f.hechas);const sec=CERCANIA_GRUPOS.map(([g])=>{const l=m[g]||[];if(!l.length&&g==='puesto'&&cola.length)return cabGrupoCercHTML(g,0,0,NC)+'<tr class="grp-row fase-row"><td colspan="'+NC+'" class="mut" style="padding:3px 10px 3px 24px;font-size:var(--fs-xs)">ninguna: nadie ha puesto puestos a mano · arrastra una orden aquí o escribe su número en Puesto</td></tr>';if(!l.length)return '';return cabGrupoCercHTML(g,l.length,l.reduce((a,f)=>a+pzDe(f),0),NC)+(cercAbierto(g)?((g==='porLlegar'||g==='disponible')&&!grpSt('cen').niveles.length?porFaseHTML(l,fila,pzDe,NC):filasGRP('cen',l,fila,NC,f=>f.o,pzDe)):'')}).join('');return sec||'<tr><td colspan="'+NC+'" class="mut">Nada por programar.</td></tr>'})())}
        ${okPiso&&cola.length?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="${NC}">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div></div>`+(()=>{const hd=hechasDelDia(c,null,h);const hh=hd.detalle.map(x=>x.o);const pzDe=o=>(hd.detalle.find(x=>x.o===o)||{}).pz||0;const tot=hd.pz;
@@ -10340,11 +10364,91 @@ function panelAdvertencias(enTarjeta){const av=(S.params.advertencias||[]).filte
   return `<div class="panel ${av.length?'':''}"><h3${enTarjeta?' class="tit-repetido"':''}>Advertencias de fecha <span class="note">${num(av.length)} pendientes${vistas?' · '+num(vistas)+' atendidas':''} · reprogramaciones y cambios de ruta de los centros que dejan la entrega fuera de fecha</span></h3><div class="body">
    ${av.length?`<table><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th class="num">Órdenes</th><th>Cuáles · meta → estimada ahora</th><th></th></tr></thead><tbody>
    ${gruposAdvertencias(av).slice(0,60).map(g=>`<tr><td style="white-space:nowrap">${fechaHoraLocal(g.ts,false)}</td><td>${esc(g.u)}</td><td>${esc(g.accion)}</td><td class="num"><b>${g.items.length}</b></td><td style="font-size:var(--fs-xs)">${g.items.slice(0,12).map(a=>esc(a.op)+' <span class="mut">'+fmtDia(a.meta)+' → </span><span class="tag t-alerta" style="font-size:10px;padding:0 4px">'+fmtDia(a.despues)+'</span>').join(' · ')}${g.items.length>12?' <span class="mut">… y '+(g.items.length-12)+' más</span>':''}</td><td style="white-space:nowrap"><button class="btn ghost sm" onclick="atenderGrupo(${JSON.stringify(g.items.map(a=>a.id)).replace(/"/g,'&quot;')})">atender ${g.items.length===1?'':'las '+g.items.length}</button></td></tr>`).join('')}</tbody></table>`:(enTarjeta?'':'<span class="mut">Ninguna pendiente.</span>')}${(()=>{const nl=noLleganHTML();return nl||(enTarjeta&&!av.length?'<p class="mut" style="margin:0">Ningún cambio de fecha por revisar.</p>':'')})()}</div></div>`}   /* pulido V1: en la tarjeta de Hoy el título interno está oculto (tit-repetido), así que sin cambios de fecha no se escribe «Ninguna pendiente.» suelto sobre la lista de vencidas */
+/* ---------- RECURSO Y ARRANQUE de la cola desde el piso (04-oct-2026, decisión de la usuaria: «el supervisor Y planificación cambian recurso y
+   arranque») ----------
+   En Centro → Programación la cola tiene las columnas Recurso y Arranca (progCentro.<centro>.rec / .desde). Una sesión de piso no sube la tabla
+   de órdenes (_save la salta: espejo de las políticas RLS), así que el cambio se veía y SE PERDÍA AL RECARGAR. Ahora, igual que el puesto
+   (set_prioridad_centro), la sesión de piso va por la función del servidor set_recurso_centro (SUPABASE_RECURSO_CENTRO.sql), que toca SOLO
+   progCentro.<centro>.rec / .desde y deja su línea en la bitácora. Planificación (no piso) sigue guardando como siempre.
+   RPC_REC es la marca de si la función existe: se prueba UNA vez con una llamada inocua (p_orden nulo = sonda: no lee ni escribe) y se recuerda
+   también el {falta:true} de una llamada real. Mientras falte, al piso le salen Recurso y Arranca bloqueados con TXT_REC_FALTA; si la usuaria ya
+   corrió el SQL, se vuelve a probar como mucho una vez por minuto. Si la función falta, NO se cambia nada en memoria y se avisa. */
+const SQL_RECURSO='SUPABASE_RECURSO_CENTRO.sql';
+const TXT_REC_FALTA='lo cambia planificación (falta un paso en Supabase)';
+const MSG_OPERARIO_REC='Los operarios no cambian el recurso ni el arranque de la cola: lo hace el supervisor del centro o planificación.';
+let RPC_REC={estado:null,ts:0,probando:false};   /* estado: null = sin probar · 'si' · 'falta' · 'error' (la sonda falló por otra cosa: decide la llamada real) */
+function msgFaltaRec(){return 'Falta correr '+SQL_RECURSO+' en Supabase.\n\nTu perfil cambia el recurso y el arranque de la cola con la función set_recurso_centro del servidor, y todavía no existe. No se cambió nada: avisa a planificación.'}
+function esFaltaFuncion(m,fn){m=String(m||'');if(/permission denied/i.test(m))return false;return new RegExp(fn+'|does not exist|could not find|schema cache|PGRST202|not found|404','i').test(m)}
+async function setRecursoServidor(o,c,rec,desde){
+  if(!sb||typeof sb.rpc!=='function')return{falta:true};
+  try{const {data,error}=await sb.rpc('set_recurso_centro',{p_orden:o?o.id:null,p_centro:c||null,p_rec:(rec===undefined?null:rec),p_desde:(desde===undefined?null:desde)});
+    if(error){const m=String(error.message||'');if(esFaltaFuncion(m,'set_recurso_centro'))return{falta:true,error:m};return{error:m}}
+    return{ok:true,data}}catch(e){return{error:String((e&&e.message)||e)}}}
+/* la sonda: una sola llamada inocua; al saber la respuesta se repinta la cola si está a la vista */
+function sondearRecursoServidor(){if(RPC_REC.probando)return Promise.resolve(RPC_REC.estado);RPC_REC.probando=true;const antes=RPC_REC.estado;
+  return setRecursoServidor(null,null,null,null).then(r=>{RPC_REC={estado:r.falta?'falta':(r.ok?'si':'error'),ts:Date.now(),probando:false,error:r.error||null};
+    if(RPC_REC.estado!==antes&&typeof page!=='undefined'&&page==='centro'&&CEN.tab==='prog'){try{redibujarLista('CEN.q')}catch(e){}}
+    return RPC_REC.estado})}
+/* '' = el piso puede cambiar recurso y arranque · si no, el texto de por qué no (también para planificación es siempre '') */
+function bloqueoRecPiso(){if(!perfilSoloPiso()||esVistaOperario())return '';
+  const viejo=RPC_REC.estado==='falta'&&Date.now()-RPC_REC.ts>60000;
+  if((RPC_REC.estado==null||viejo)&&!RPC_REC.probando)sondearRecursoServidor();
+  if(RPC_REC.estado==='falta')return TXT_REC_FALTA;
+  if(RPC_REC.estado==null)return 'comprobando con el servidor si se puede guardar…';
+  return ''}
+function avisoRecPisoHTML(b){return b===TXT_REC_FALTA?' <span class="tag t-falta" title="Falta correr '+esc(SQL_RECURSO)+' en Supabase: hasta entonces, el recurso y el arranque de esta cola los cambia planificación. Lo demás de la cola (puesto, hecho) sigue igual.">Recurso y Arranca: '+esc(TXT_REC_FALTA)+'</span>':''}
+/* lo que guardó el servidor en progCentro.<c> pasa a la pantalla y a lo leído (BASE): _save no lo cuenta como cambio de órdenes sin guardar y,
+   al recargar, se ve lo mismo */
+async function leerProgCenServidor(o,c){try{const {rows,error}=await filasServidor('ordenes',[o.id]);const r=!error&&rows&&rows[o.id];if(!r)return{ok:false};
+    const pc=((r.data||{}).progCentro||{})[c];return{ok:true,pc:(pc&&typeof pc==='object')?JSON.parse(JSON.stringify(pc)):null,ts:r.actualizado||null}}catch(e){return{ok:false}}}
+function ponerProgCen(obj,c,pc){if(pc==null){if(obj.progCentro&&obj.progCentro[c]!==undefined)delete obj.progCentro[c]}else{obj.progCentro=obj.progCentro||{};obj.progCentro[c]=JSON.parse(JSON.stringify(pc))}}
+function ponerProgCenLeido(o,c,pc,ts){ponerProgCen(o,c,pc);
+  if(BASE.ordenes&&BASE.ordenes[o.id]){try{const b=JSON.parse(BASE.ordenes[o.id]);ponerProgCen(b,c,pc);BASE.ordenes[o.id]=JSON.stringify(b)}catch(e){}}
+  if(ts){BASE_TS.ordenes=BASE_TS.ordenes||{};BASE_TS.ordenes[o.id]=ts}}
+/* si no se pudo releer la fila: lo que dejan los pasos que el servidor aceptó (mismo criterio que las dos funciones) */
+function progCenEsperado(pc0,pasos){const e=JSON.parse(JSON.stringify(pc0||{}));
+  pasos.forEach(p=>{if(p.t==='pri'){if(p.pri)e.pri=p.pri;else delete e.pri;return}
+    if(p.rec!=null){if(p.rec==='')delete e.rec;else e.rec=p.rec}
+    if(p.desde!=null){if(p.desde==='')delete e.desde;else e.desde=p.desde}});
+  return (e.pri||e.rec||e.desde)?e:null}
+function accionProgCen(c,k,v){return 'Reprogramación en '+nCen(c)+(k===null?' quitada':': '+k+' '+(k==='rec'?(v?nRec(v):'automático'):(v||'—')))}
+/* el supervisor de piso: recurso y arranque por set_recurso_centro; el puesto por set_prioridad_centro. Nada cambia en memoria hasta que el
+   servidor lo acepta; después manda lo que el servidor guardó. «quitar lo fijado» = recurso y arranque primero (si eso falla no se toca nada)
+   y después el puesto. */
+async function setProgCenPiso(o,c,k,v){
+  const pc0=JSON.parse(JSON.stringify(((o.progCentro||{})[c])||{}));const pcAntes=JSON.stringify(pc0);
+  const pasos=[];
+  if(k===null){if(pc0.rec!=null||pc0.desde!=null)pasos.push({t:'rec',rec:'',desde:''});if(pc0.pri)pasos.push({t:'pri',pri:null})}
+  else if(k==='rec')pasos.push({t:'rec',rec:(v==null?'':String(v)),desde:null});
+  else if(k==='desde')pasos.push({t:'rec',rec:null,desde:(v==null?'':String(v))});
+  else if(k==='pri')pasos.push({t:'pri',pri:(+v>0?Math.round(+v):null)});
+  if(!pasos.length){render();return false}
+  const hechos=[];let fallo=null;
+  for(const p of pasos){const r=p.t==='rec'?await setRecursoServidor(o,c,p.rec,p.desde):await setPrioridadServidor(o,c,p.pri);
+    if(r.falta||r.error){fallo=Object.assign({t:p.t},r);break}
+    if(p.t==='rec')RPC_REC={estado:'si',ts:Date.now(),probando:false};
+    hechos.push(p)}
+  if(fallo&&fallo.t==='rec'&&fallo.falta)RPC_REC={estado:'falta',ts:Date.now(),probando:false};
+  const msgFallo=f=>f.falta?(f.t==='rec'?msgFaltaRec():('Falta ejecutar '+SQL_FASE+' en la base de datos.\n\nTu perfil cambia el puesto de la cola con la función set_prioridad_centro del servidor, y todavía no existe.'))
+    :('El servidor no aceptó el cambio de '+(f.t==='rec'?'recurso o arranque':'puesto')+' en '+nCen(c)+':\n'+f.error);
+  if(!hechos.length){render();alert(msgFallo(fallo)+(fallo.falta&&fallo.t==='rec'?'':'\n\nNo se cambió nada.'));return false}
+  /* lo que guardó el servidor manda */
+  let lei=await leerProgCenServidor(o,c);
+  if(k===null&&!fallo&&lei.ok&&lei.pc&&!(lei.pc.pri||lei.pc.rec||lei.pc.desde)&&RPC_REC.estado==='si'){   /* quedó la entrada sin puesto, recurso ni arranque (marcas de «Juntar colores»): también se quita */
+    const r=await setRecursoServidor(o,c,'','');if(r.ok)lei=await leerProgCenServidor(o,c)}
+  const nuevo=lei.ok?lei.pc:progCenEsperado(pc0,hechos);
+  conAvisoFecha(o,accionProgCen(c,k,v),()=>ponerProgCenLeido(o,c,nuevo,lei.ok?lei.ts:null));
+  bitacora('Programación '+nCen(c)+' '+o.op+': '+pcAntes+' → '+JSON.stringify(nuevo||{})+' · guardado por la función del servidor (supervisor de piso)'+(fallo?' · A MEDIAS: el puesto no se quitó':''));
+  save();render();
+  if(fallo)alert('Se quitaron el recurso y el arranque, pero NO el puesto.\n\n'+msgFallo(fallo));
+  return !fallo}
 /* reprogramación del centro: permiso "reprogramar" (o programa), queda en bitácora con antes → después y avisa si mueve la fecha */
 function setProgCen(oid,c,k,v){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;if(!(puede('programa')||(puede('reprogramar')&&veCentro(c)))){alert('Tu perfil no puede reprogramar '+nCen(c)+'.');return}
+  if(esVistaOperario()){alert(MSG_OPERARIO_REC);render();return}   /* 04-oct: el operario no cambia recurso, arranque ni puesto (aunque su perfil tuviera «reprogramar») */
   if(k==='desde'){const val=fechaArranqueValida(o,c,v);if(!val.ok){alert(val.msg);render();return}}
+  if(perfilSoloPiso())return setProgCenPiso(o,c,k,v);   /* 04-oct: el piso no sube órdenes: va por la función del servidor */
   const pcAntes=JSON.stringify((o.progCentro||{})[c]||{});
-  conAvisoFecha(o,'Reprogramación en '+nCen(c)+(k===null?' quitada':': '+k+' '+(k==='rec'?nRec(v):v)),()=>{o.progCentro=o.progCentro||{};if(k===null){delete o.progCentro[c]}else{o.progCentro[c]=o.progCentro[c]||{};if(v===''||v==null)delete o.progCentro[c][k];else o.progCentro[c][k]=v;if(!Object.keys(o.progCentro[c]).length)delete o.progCentro[c]}});
+  conAvisoFecha(o,accionProgCen(c,k,v),()=>{o.progCentro=o.progCentro||{};if(k===null){delete o.progCentro[c]}else{o.progCentro[c]=o.progCentro[c]||{};if(v===''||v==null)delete o.progCentro[c][k];else o.progCentro[c][k]=v;if(!Object.keys(o.progCentro[c]).length)delete o.progCentro[c]}});
   bitacora('Programación '+nCen(c)+' '+o.op+': '+pcAntes+' → '+JSON.stringify((o.progCentro||{})[c]||{}));save();render()}
 /* ruta editable por el centro: solo los pasos de sus centros (y los opcionales que le tocan), con motivo obligatorio; sin tiempo = se reporta */
 const RUTA_EDITABLE_POR={corte:['estampado','bordado','sublimado','apliques','calandrado'],estampado:['estampado','bordado','sublimado','apliques','calandrado'],sublimado:['estampado','bordado','sublimado','apliques','calandrado'],apliques:['estampado','bordado','sublimado','apliques','calandrado'],calandrado:['estampado','bordado','sublimado','apliques','calandrado'],bordado:['estampado','bordado','sublimado','apliques','calandrado'],modulos:['modulos'],etiquetas:['etiquetas','lavado','plancha','botones','cordones'],botones:['etiquetas','lavado','plancha','botones','cordones'],lavado:['etiquetas','lavado','plancha','botones','cordones'],cordones:['etiquetas','lavado','plancha','botones','cordones'],plancha:['etiquetas','lavado','plancha','botones','cordones'],empaque:['empaque']};

@@ -4108,6 +4108,113 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oX.id);
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("FU sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
+  /* PISO · RECURSO Y ARRANQUE del supervisor por set_recurso_centro (04-oct-2026, decisión de la usuaria: «el supervisor Y planificación cambian
+     recurso y arranque»). El piso no sube órdenes: va por la función del servidor; sin ella, nada cambia y los campos salen bloqueados. */
+  {const antes=__R.errors.length;const adminP=PERFIL;window.confirm=()=>true;const a0=window.alert;const alerts=[];window.alert=m=>alerts.push(String(m));
+   const bakCEN={id:CEN.id,tab:CEN.tab,solo:CEN.solo,todo:CEN.todo,q:CEN.q,fases:CEN.fases,sem:CEN.sem};
+   __W.deny=null;__RPC.falta=false;__RPC.error=null;__RPC.faltan=[];PERFIL=adminP;PLAN=null;PLAN_ALL=null;
+   const P0=programar();const lun0=lunesDe(hoy());const colaM=colaCentro('modulos',filasDeCentros(['modulos'],P0,lun0,dsum(lun0,6),''));
+   const fb=colaM.find(f=>['disponible','porLlegar'].includes((f.cerc||{}).grupo))||colaM[0];
+   const base=(fb&&fb.o)||S.ordenes.find(o=>abierta(o)&&(o.ruta||[]).some(x=>x.centro==='modulos'))||S.ordenes.find(o=>abierta(o));
+   const oR=JSON.parse(JSON.stringify(base));oR.id=uid();oR.op='WH/REC-1';oR.cant=100;delete oR.progCentro;delete oR.recursoFijo;delete oR.programa;S.ordenes.push(oR);delete S.avance[oR.id];
+   if(!(oR.ruta||[]).some(x=>x.centro==='modulos'))oR.ruta=(oR.ruta||[]).concat([{centro:'modulos',t:5}]);
+   PLAN=null;PLAN_ALL=null;await save();await __p(90);
+   const fila=()=>(sb.__DB.ordenes||[]).find(r=>r.id===oR.id);
+   const pcSrv=()=>((((fila()||{}).data||{}).progCentro)||{}).modulos;
+   const pcLoc=()=>(oR.progCentro||{}).modulos;
+   const recs=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');const r1=(recs[0]||{}).id,r2=(recs[1]||recs[0]||{}).id;
+   const sup={id:'u1',rol:'modulos',nombre:'Supervisor de prueba'};
+   const soloPiso=()=>{__W.deny=t=>!['avance','bitacora','turnos','paros'].includes(t)};
+   const ponerCola=()=>{page='centro';CEN.id='modulos';CEN.solo='';CEN.tab='prog';CEN.q=oR.op;CEN.todo=true;CEN.fases=null;CEN.sem=0;render()};
+   const leerCola=()=>{const el=document.getElementById('p-centro');const sel=el.querySelector('select[onchange*="'+oR.id+'"]');const fec=el.querySelector('input[type="date"][onchange*="'+oR.id+'"]');
+     const tr=sel&&sel.closest('tr');const quitar=tr?[...tr.querySelectorAll('button')].find(b=>/quitar lo fijado/.test(b.textContent)):null;return{h:el.innerHTML,sel,fec,quitar}};
+   const verCola=async()=>{ponerCola();await __p(60);return leerCola()};
+   __check("RA0: la orden de prueba está en la base y sale en la cola de Confección",!!fila()&&!!r1,JSON.stringify({fila:!!fila(),r1,cola:colaM.length}));
+   // 0 · planificación sigue guardando como hoy (sube la orden; no usa la función)
+   {__W.writes=[];__RPC.ultimoRec=null;const n0=__RPC.n;
+    const v=await verCola();
+    __check("RA0: planificación ve Recurso y Arranca habilitados y sin el aviso de Supabase",!!v.sel&&!v.sel.disabled&&!!v.fec&&!v.fec.disabled&&!v.h.includes(TXT_REC_FALTA),v.sel?'':'no se encontró la fila en la cola');
+    setProgCen(oR.id,'modulos','rec',r1);await save();await __p(90);
+    __check("RA0: planificación guarda el recurso subiendo la orden, sin llamar a set_recurso_centro",(pcLoc()||{}).rec===r1&&(pcSrv()||{}).rec===r1&&__W.writes.some(w=>w.t==='ordenes'&&w.op==='upsert')&&!__RPC.ultimoRec&&!__W.writes.some(w=>w.t==='rpc:set_recurso_centro'),JSON.stringify({loc:pcLoc(),srv:pcSrv()}));}
+   // 1 · supervisor de piso SIN la función: los campos salen bloqueados con el texto, y nada cambia
+   {PERFIL=sup;soloPiso();__RPC.faltan=['set_recurso_centro'];RPC_REC={estado:null,ts:0,probando:false};
+    ponerCola();const v0=leerCola();   /* justo al dibujar: la sonda todavía no contestó */
+    __check("RA1: mientras se pregunta al servidor, Recurso y Arranca no se pueden tocar",!!v0.sel&&v0.sel.disabled&&/comprobando con el servidor/.test(v0.sel.title||''),v0.sel?v0.sel.title:'sin fila');
+    await __p(120);const v=await verCola();
+    __check("RA1: la sonda (llamada inocua) recuerda que la función falta",RPC_REC.estado==='falta');
+    __check("RA1: el supervisor ve Recurso y Arranca bloqueados con «lo cambia planificación (falta un paso en Supabase)»",!!v.sel&&v.sel.disabled&&!!v.fec&&v.fec.disabled&&(v.sel.title||'').includes(TXT_REC_FALTA)&&(v.fec.title||'').includes(TXT_REC_FALTA)&&v.h.includes('Recurso y Arranca: '+esc(TXT_REC_FALTA)));
+    __check("RA1: «quitar lo fijado» también sale bloqueado (la orden tiene recurso fijado)",!!v.quitar&&v.quitar.disabled&&/falta un paso en Supabase/.test(v.quitar.title||''));
+    __check("RA1: el puesto (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/onchange="moverEnCola\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
+    const snap=JSON.stringify(fila().data),loc=JSON.stringify(oR.progCentro);__W.writes=[];const nA=alerts.length;
+    await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
+    __check("RA1: sin la función avisa «Falta correr SUPABASE_RECURSO_CENTRO.sql en Supabase» y NO cambia nada (ni pantalla ni base)",alerts.length>nA&&/Falta correr SUPABASE_RECURSO_CENTRO\.sql en Supabase/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap&&!__W.writes.some(w=>w.t==='ordenes'),alerts.slice(nA).join(' | '));
+    const nB=alerts.length;await setProgCen(oR.id,'modulos',null);await __p(60);
+    __check("RA1: «quitar lo fijado» sin la función tampoco cambia nada y avisa",alerts.length>nB&&/SUPABASE_RECURSO_CENTRO\.sql/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap);}
+   // 2 · supervisor de piso CON la función: va por rpc, queda en la base y se conserva al releer la fila
+   {__RPC.faltan=[];RPC_REC={estado:'falta',ts:0,probando:false};   /* «falta» viejo: se vuelve a preguntar (la usuaria ya corrió el SQL) */
+    await verCola();await __p(120);const v=await verCola();
+    __check("RA2: al volver a preguntar, la función existe y los campos se habilitan sin el aviso",RPC_REC.estado==='si'&&!!v.sel&&!v.sel.disabled&&!v.fec.disabled&&!v.h.includes(TXT_REC_FALTA));
+    const otros=JSON.stringify(Object.assign({},fila().data,{progCentro:null}));__W.writes=[];__RPC.ultimoRec=null;const nb=S.bitacora.length;
+    const ok=await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
+    __check("RA2: el supervisor cambia el recurso por set_recurso_centro, no subiendo la orden",ok===true&&!!__RPC.ultimoRec&&__RPC.ultimoRec.orden===oR.id&&__RPC.ultimoRec.rec===r2&&__RPC.ultimoRec.desde==null&&!__W.writes.some(w=>w.t==='ordenes'),JSON.stringify(__RPC.ultimoRec));
+    __check("RA2: el recurso queda en la base y en la pantalla",(pcSrv()||{}).rec===r2&&(pcLoc()||{}).rec===r2,JSON.stringify({srv:pcSrv(),loc:pcLoc()}));
+    __check("RA2: la función toca SOLO progCentro (lo demás de la orden queda igual)",JSON.stringify(Object.assign({},fila().data,{progCentro:null}))===otros);
+    await setProgCen(oR.id,'modulos','desde',dsum(hoy(),4));await __p(60);
+    __check("RA2: el arranque también va por la función y no pisa el recurso",(pcSrv()||{}).desde===dsum(hoy(),4)&&(pcSrv()||{}).rec===r2&&(pcLoc()||{}).desde===dsum(hoy(),4)&&__RPC.ultimoRec.rec==null);
+    await save();await __p(90);
+    __check("RA2: el guardado del piso no queda con «cambios de órdenes sin guardar» ni falla",!SAVE_ERR&&!(ULT_SALTADAS||[]).includes('ordenes'),JSON.stringify({saltadas:ULT_SALTADAS,err:SAVE_ERR&&SAVE_ERR.errs}));
+    __check("RA2: queda en la bitácora del servidor (la función) y en la de la app (quién, antes → después)",(sb.__DB.bitacora||[]).some(r=>/Recurso y arranque en la cola de modulos · WH\/REC-1/.test(((r.data||{}).t)||''))&&S.bitacora.slice(nb).some(b=>/Programación .*WH\/REC-1.*guardado por la función del servidor/.test(b.t))&&(sb.__DB.bitacora||[]).some(r=>/WH\/REC-1.*guardado por la función del servidor/.test(((r.data||{}).t)||'')));
+    // se conserva al recargar: se relee la fila del servidor como al entrar
+    {const leida=JSON.parse(JSON.stringify(fila().data));aplicarFilaLocal('ordenes',oR.id,leida);
+     __check("RA2: al releer la fila (recargar), el recurso y el arranque siguen ahí",(pcLoc()||{}).rec===r2&&(pcLoc()||{}).desde===dsum(hoy(),4)&&recFijadoDe(oR,'modulos')===r2);}
+    // la regla «no antes de hoy» se sigue validando en la app, antes de llamar
+    {__RPC.ultimoRec=null;const nA=alerts.length;await setProgCen(oR.id,'modulos','desde',dsum(hoy(),-3));await __p(40);
+     __check("RA2: una fecha pasada no llega al servidor (la valida la app)",alerts.length>nA&&!__RPC.ultimoRec&&(pcSrv()||{}).desde===dsum(hoy(),4));}
+    // «quitar lo fijado»: recurso y arranque por la función, el puesto por set_prioridad_centro; la entrada del centro desaparece
+    {await setProgCen(oR.id,'modulos','pri',3);await __p(60);
+     __check("RA2: el puesto desde setProgCen también va por set_prioridad_centro",(pcSrv()||{}).pri===3&&(pcLoc()||{}).pri===3&&!__W.writes.some(w=>w.t==='ordenes'));
+     const v2=await verCola();
+     __check("RA2: con la función, «quitar lo fijado» está habilitado",!!v2.quitar&&!v2.quitar.disabled);
+     await setProgCen(oR.id,'modulos',null);await __p(80);
+     __check("RA2: «quitar lo fijado» quita puesto, recurso y arranque en la base y en la pantalla",pcSrv()===undefined&&pcLoc()===undefined,JSON.stringify({srv:pcSrv(),loc:pcLoc()}));}
+    // recurso de otro centro: el servidor lo rechaza y nada cambia
+    {const ajeno=(S.recursos.find(r=>r.activa&&r.centro!=='modulos')||{}).id;
+     if(ajeno){const nA=alerts.length;const r=await setProgCen(oR.id,'modulos','rec',ajeno);await __p(40);
+      __check("RA2: un recurso de otro centro lo rechaza el servidor: avisa y no cambia nada",r===false&&alerts.length>nA&&/no aceptó/.test(alerts[alerts.length-1])&&pcSrv()===undefined&&pcLoc()===undefined,alerts.slice(nA).join(' | '))}
+     else __check("RA2: un recurso de otro centro lo rechaza el servidor: avisa y no cambia nada",true,'sin recursos de otro centro')}}
+   // 3 · un operario no puede (ni con «reprogramar» en su perfil)
+   {S.params.tablets=S.params.tablets||{};const bakTab=S.params.tablets.u1;S.params.tablets.u1={centro:'modulos',rec:r1};
+    PERFIL={id:'u1',rol:'tablet',nombre:'Operaria de prueba'};__RPC.ultimoRec=null;const n0=__RPC.n;const nA=alerts.length;
+    setProgCen(oR.id,'modulos','rec',r1);await __p(40);
+    __check("RA3: el operario no cambia el recurso: avisa, no llama al servidor y nada cambia",esVistaOperario()&&alerts.length>nA&&!__RPC.ultimoRec&&__RPC.n===n0&&pcSrv()===undefined&&pcLoc()===undefined);
+    const dT=perfilesDef().find(x=>x.id==='tablet');const bakP=JSON.stringify(dT.permisos);dT.permisos=dT.permisos.concat(['reprogramar']);
+    const nB=alerts.length;setProgCen(oR.id,'modulos','rec',r1);await __p(40);
+    __check("RA3: aunque su perfil tuviera «reprogramar», el operario no cambia recurso ni arranque",alerts.length>nB&&alerts[alerts.length-1]===MSG_OPERARIO_REC&&!__RPC.ultimoRec&&pcLoc()===undefined);
+    const nC=alerts.length;const rC=ordenarColaPorColor('modulos');
+    __check("RA3: ni junta colores en la cola",rC===undefined&&alerts.length>nC&&/operarios no reordenan/.test(alerts[alerts.length-1]));
+    dT.permisos=JSON.parse(bakP);if(bakTab===undefined)delete S.params.tablets.u1;else S.params.tablets.u1=bakTab}
+   // 4 · «Juntar colores» del supervisor: por set_prioridad_centro; sin esa función, se bloquea con el mismo aviso
+   {PERFIL=adminP;__W.deny=null;await save();await __p(90);
+    const snapPC=S.ordenes.map(o=>({o,pc:o.progCentro===undefined?undefined:JSON.stringify(o.progCentro)}));
+    PERFIL=sup;soloPiso();__RPC.faltan=[];__W.writes=[];const nb=S.bitacora.length;
+    const P1=programar();const cola=colaCentro('modulos',filasDeCentros(['modulos'],P1,hoy(),dsum(hoy(),60),'')).map(f=>f.o);
+    if(cola.length){const r=await ordenarColaPorColor('modulos');await __p(60);
+     const pris=cola.map(o=>((o.progCentro||{}).modulos||{}).pri);const srvPri=cola.map(o=>((((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||{}).modulos);
+     __check("RA4: el supervisor junta colores por set_prioridad_centro, sin subir órdenes",r===true&&__W.writes.some(w=>w.t==='rpc:set_prioridad_centro')&&!__W.writes.some(w=>w.t==='ordenes'));
+     __check("RA4: los puestos quedan en la base, iguales a la pantalla (sin marcas que no viajan)",pris.every((p,i)=>p>0&&(srvPri[i]||{}).pri===p)&&cola.every(o=>!((o.progCentro||{}).modulos||{}).porColor),JSON.stringify(pris.slice(0,5))+' / '+JSON.stringify(srvPri.slice(0,5)));
+     __check("RA4: queda en la bitácora",S.bitacora.slice(nb).some(b=>/juntando colores/.test(b.t)&&/función del servidor/.test(b.t)));
+     // vuelve todo como estaba (pantalla y base) para probar sin la función
+     snapPC.forEach(s=>{if(s.pc===undefined)delete s.o.progCentro;else s.o.progCentro=JSON.parse(s.pc)});PERFIL=adminP;__W.deny=null;await save();await __p(90);
+     PERFIL=sup;soloPiso();__RPC.faltan=['set_prioridad_centro'];const loc=JSON.stringify(cola.map(o=>o.progCentro||null));const srv=JSON.stringify(cola.map(o=>(((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||null));const nA=alerts.length;
+     const r2b=await ordenarColaPorColor('modulos');await __p(60);
+     __check("RA4: sin set_prioridad_centro avisa (el mismo aviso: falta SUPABASE_MOVER_FASE.sql) y la cola queda exactamente como estaba",r2b===false&&alerts.length>nA&&alerts.slice(nA).some(m=>/SUPABASE_MOVER_FASE\.sql/.test(m))&&JSON.stringify(cola.map(o=>o.progCentro||null))===loc&&JSON.stringify(cola.map(o=>(((sb.__DB.ordenes||[]).find(x=>x.id===o.id)||{}).data||{}).progCentro||null))===srv);}
+    else{__check("RA4: el supervisor junta colores por set_prioridad_centro, sin subir órdenes",true,'sin cola en confección');}
+    snapPC.forEach(s=>{if(s.pc===undefined)delete s.o.progCentro;else s.o.progCentro=JSON.parse(s.pc)});}
+   PERFIL=adminP;__W.deny=null;__RPC.falta=false;__RPC.error=null;__RPC.faltan=[];RPC_REC={estado:null,ts:0,probando:false};
+   S.ordenes=S.ordenes.filter(o=>o!==oR);delete S.avance[oR.id];await save();await __p(90);
+   if(sb.__DB.ordenes)sb.__DB.ordenes=sb.__DB.ordenes.filter(r=>r.id!==oR.id);
+   Object.assign(CEN,bakCEN);window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
+   __check("RA sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* INGRESO · recuperar la contraseña */
   {const antes=__R.errors.length;const a0=window.alert;window.alert=()=>{};
    const q=id=>document.getElementById(id);
