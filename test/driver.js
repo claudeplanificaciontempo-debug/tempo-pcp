@@ -2235,6 +2235,82 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja)",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
+  /* ZH · HORA DE ECUADOR (04-oct-2026, decisión de la usuaria): hoy() y el día de cada marca de tiempo salen de la zona de Configuración
+     (S.params.zonaHoraria, sembrada America/Guayaquil), no de la hora UTC. Se prueba con el reloj de la página sobrescrito (Date) y se dibuja
+     la pantalla del centro, la de Configuración y Planta en vivo. */
+  {const antes=__R.errors.length;const R0=window.Date;let T=null;const reloj=iso=>{T=iso==null?null:R0.parse(iso)};
+   const bakP=PERFIL,a0=window.alert,bakZ=S.params.zonaHoraria,bakPage=page,bakCEN=Object.assign({},CEN),bakCONF=JSON.stringify(CONF),bakTAB=JSON.stringify(TAB),bakH=JSON.stringify(horarios()['corte']||null);
+   const al=[];const bitBak=S.bitacora.slice(),turBak=JSON.stringify(S.turnos||[]);let oT=null,avBak=null;
+   window.Date=new Proxy(R0,{construct(t,a){return a.length?new R0(...a):new R0(T!=null?T:R0.now())},apply(){return new R0(T!=null?T:R0.now()).toString()},
+     get(t,k){if(k==='now')return ()=>(T!=null?T:R0.now());const v=Reflect.get(t,k);return typeof v==='function'?v.bind(t):v}});
+   try{PERFIL=adminP0();window.alert=m=>al.push(String(m));S.params.zonaHoraria='America/Guayaquil';
+    const viejo=()=>new Date().toISOString().slice(0,10);   /* la regla de antes: el día de la hora UTC */
+    reloj('2026-10-05T01:30:00.000Z');const h2030=hoy(),v2030=viejo();
+    reloj('2026-10-05T04:59:00.000Z');const h2359=hoy(),v2359=viejo();
+    reloj('2026-10-05T05:00:30.000Z');const h0000=hoy();
+    reloj('2026-10-05T15:00:00.000Z');const h1000=hoy(),v1000=viejo();
+    __check("ZH1: a las 20:30 y a las 23:59 de Ecuador (domingo 04-oct) hoy() es el domingo, no el lunes de la hora UTC; a la medianoche ya es lunes; a las 10:00 las dos reglas coinciden",
+      h2030==='2026-10-04'&&v2030==='2026-10-05'&&h2359==='2026-10-04'&&v2359==='2026-10-05'&&h0000==='2026-10-05'&&h1000==='2026-10-05'&&v1000===h1000,JSON.stringify({h2030,v2030,h2359,h0000,h1000}));
+    __check("ZH2: diaLocalDeTs da el día de Ecuador de una marca de tiempo (20:30 y 23:59 → el mismo día, 00:00 → el siguiente); un día o una hora sin zona no se mueven; la hora en pantalla es la de Ecuador",
+      diaLocalDeTs('2026-10-06T01:30:00.000Z')==='2026-10-05'&&diaLocalDeTs('2026-10-06T04:59:59Z')==='2026-10-05'&&diaLocalDeTs('2026-10-06T05:00:00Z')==='2026-10-06'&&diaLocalDeTs('2026-10-05')==='2026-10-05'&&diaLocalDeTs('2026-10-05T23:30:00')==='2026-10-05'
+      &&diaLocalDeTs(R0.parse('2026-10-06T01:30:00Z'))==='2026-10-05'&&diaLocalDe('2026-10-06T01:30:00Z')==='2026-10-05'&&horaLocal('2026-10-06T01:30:00Z')==='20:30'&&horaLocalDeTs('2026-10-06T01:30:00Z')==='20:30'&&/20:30/.test(fechaHoraLocal('2026-10-06T01:30:00Z'))&&fmtDiaTs('2026-10-06T01:30:00Z')===fmtDia('2026-10-05'),
+      [diaLocalDeTs('2026-10-06T01:30:00.000Z'),diaLocalDeTs('2026-10-06T04:59:59Z'),horaLocal('2026-10-06T01:30:00Z'),fechaHoraLocal('2026-10-06T01:30:00Z')].join(' · '));
+    __check("ZH2: la hora escrita en un campo de fecha y hora es de Ecuador (ida y vuelta) y el día de la planta empieza a las 00:00 de Ecuador",
+      tsDeInputLocal('2026-10-05T20:30')==='2026-10-06T01:30:00.000Z'&&inputLocalDeTs('2026-10-06T01:30:00.000Z')==='2026-10-05T20:30'&&tsDeLocal('2026-10-05','00:00')==='2026-10-05T05:00:00.000Z',tsDeInputLocal('2026-10-05T20:30'));
+    /* un registro del piso a las 20:30 del lunes 05: tramo INICIO 18:00 → FIN 20:30 y un «Hecho» a las 20:31 */
+    /* una orden de prueba propia (se quita al final): Corte → Empaque, sin curva de tallas */
+    {const base=S.ordenes.find(o=>abiertaDe(o)&&!juegoDeOrden(o))||S.ordenes.find(o=>!juegoDeOrden(o));if(base){oT=JSON.parse(JSON.stringify(base));oT.id=uid();oT.op='WH/TEST-ZH';oT.estado='plan';oT.fase='';oT.cant=100;
+      ['tallasPedido','tallasPedidoMeta','programa','lib','progCentro','recursoFijo','ot','fases','claveRepetida','tareaIdConflicto'].forEach(k=>{delete oT[k]});
+      oT.ruta=[{centro:'corte',t:1},{centro:'empaque',t:1}];oT.rutaCompleta=oT.ruta.map(p=>Object.assign({},p));S.ordenes.push(oT)}}
+    const rc=S.recursos.find(r=>r.activa!==false&&r.centro==='corte'&&tramosAbiertosDe('corte',r.id).length<maxTramosAbiertos())||null;
+    if(oT){avBak=JSON.stringify(S.avance[oT.id]||null);
+     const pzDe=d=>((hechasDelDia('corte',null,d).detalle||[]).find(x=>x.o===oT)||{pz:0}).pz;const lun0=pzDe('2026-10-05'),mar0=pzDe('2026-10-06');
+     reloj('2026-10-05T23:00:00.000Z');iniciarTramo(oT.id,'corte',rc?rc.id:null);const t=tramosDe(oT.id).filter(x=>!x.fin).slice(-1)[0]||{};
+     reloj('2026-10-06T01:30:00.000Z');terminarTramo(t.id,oT.id);setTallaTramo(t.id,oT.id,TALLA_TOTAL,7);guardarTramo(t.id,oT.id);
+     const lg=((S.avance[oT.id]||{}).tallasLog||[]).filter(x=>x.tramo===t.id);const ts=lg.length?lg[0].ts:'';
+     const lun1=pzDe('2026-10-05'),mar1=pzDe('2026-10-06');const tu=rc?(S.turnos||[]).find(x=>x.id===rc.id+'|2026-10-05'):null;
+     const k=rc?cuentasTablet('corte',rc.id,[]):null;const ef=eficienciaHoy(['corte'],'2026-10-05');
+     __check("ZH3: un tramo que termina a las 20:30 del lunes (la hora UTC ya era martes) queda en el LUNES: lo hecho del día, el turno del recurso, «Hechas hoy» de la tablet, la eficiencia del día y «sin registros» lo cuentan el lunes y no el martes",
+       String(ts).slice(0,10)==='2026-10-06'&&diaLocalDeTs(t.fin)==='2026-10-05'&&hoy()==='2026-10-05'&&lun1===lun0+7&&mar1===mar0&&hayRegistroEn('corte','2026-10-05')&&(!rc||(!!tu&&tu.d==='2026-10-05'&&k.hechasOrd>=1))&&ef.cerrados>=1,
+       JSON.stringify({ts,fin:t.fin,lun0,lun1,mar0,mar1,turno:tu?tu.d:null,hechasOrd:k&&k.hechasOrd,cerrados:ef.cerrados,alerts:al.slice(-2)}));
+     reloj('2026-10-06T01:31:00.000Z');marcarHechoCentro(oT.id,'corte');const inp=document.getElementById('hc-q');if(inp)inp.value='5';confirmarHechoCentro(oT.id,'corte');try{cerrar()}catch(e){}
+     const hc=((S.avance[oT.id]||{}).hechoC||{}).corte||{};const lun2=pzDe('2026-10-05'),mar2=pzDe('2026-10-06');
+     __check("ZH3: un «Hecho» a las 20:31 del lunes queda con el día lunes (hechoC.d) y suma en lo hecho del lunes, no del martes",!!inp&&hc.d==='2026-10-05'&&lun2===lun1+5&&mar2===mar0,JSON.stringify({hcD:hc.d,lun2,mar2,alerts:al.slice(-2)}));
+     /* Planta en vivo a esa hora: el reloj dice lunes 20:31 */
+     page='envivo';render();const rel=(document.getElementById('env-reloj')||{}).textContent||'';
+     __check("ZH3: Planta en vivo a las 20:31 del lunes muestra «Lunes … 05 … 20:31» (la fecha y la hora de Ecuador, no las de UTC)",/^Lunes/.test(rel)&&/05/.test(rel)&&/20:31/.test(rel),rel);
+     page='ordenes';render()}
+    else __check("ZH3: hay una orden con Corte en la ruta para registrar el tramo de prueba",false,'sin orden');
+    /* la semana del centro un domingo a las 20:30 sigue siendo la del domingo */
+    reloj('2026-10-05T01:30:00.000Z');NAVH.length=0;irCentro('corte',null,'resumen');CEN.sem=0;render();const hc0=(document.getElementById('p-centro')||{}).innerHTML||'';
+    const semOk=hc0.includes('Semana '+fmtDia('2026-09-28')+' – '+fmtDia('2026-10-04'))&&!hc0.includes('Semana '+fmtDia('2026-10-05')+' – ');const resSem=((document.querySelector('#p-centro .res-sem')||{}).textContent||'');
+    __check("ZH4: el domingo 04-oct a las 20:30 la pantalla del centro muestra la semana del lunes 28-sep al domingo 04-oct y «hoy dom, 04 oct» (antes: la del lunes 05)",lunesDe(hoy())==='2026-09-28'&&semOk&&(!resSem||resSem.includes('hoy '+fmtDia('2026-10-04'))),resSem||hc0.slice(0,200));
+    NAVH.length=0;page='ordenes';render();
+    /* el parámetro manda: otra zona, otro día */
+    reloj('2026-10-05T01:30:00.000Z');const eq=(()=>{const d=new R0(R0.parse('2026-10-05T01:30:00.000Z'));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+    S.params.zonaHoraria='Asia/Tokyo';const hT=hoy(),dT=diaLocalDeTs('2026-10-04T16:00:00Z'),hrT=horaLocal('2026-10-05T01:30:00Z');S.params.zonaHoraria='UTC';const hU=hoy();S.params.zonaHoraria='America/Guayaquil';const hG=hoy();S.params.zonaHoraria='';const hE=hoy();
+    __check("ZH5: la zona de Configuración manda: a la misma hora (01:30 UTC del 05-oct) Tokio y UTC dan lunes 05, Ecuador domingo 04, vacío = la hora del equipo",hT==='2026-10-05'&&dT==='2026-10-05'&&hrT==='10:30'&&hU==='2026-10-05'&&hG==='2026-10-04'&&hE===eq,JSON.stringify({hT,dT,hrT,hU,hG,hE,eq}));
+    S.params.zonaHoraria='Marte/Olimpo';const hMala=hoy();const falta=cfgPorCompletar().some(x=>/zona horaria/.test(x.t||''));S.params.zonaHoraria='America/Guayaquil';
+    const nB=S.bitacora.length,nA=al.length;setZonaHoraria('Marte/Olimpo');const rechazada=al.length===nA+1&&S.params.zonaHoraria==='America/Guayaquil'&&S.bitacora.length===nB;
+    setZonaHoraria('UTC');const bT=(S.bitacora[S.bitacora.length-1]||{}).t||'';const cambio=S.params.zonaHoraria==='UTC'&&hoy()==='2026-10-05'&&/Zona horaria/.test(bT)&&bT.includes('America/Guayaquil → UTC')&&bT.includes('2026-10-04 a 2026-10-05');
+    setZonaHoraria('America/Guayaquil');
+    __check("ZH5: una zona que no existe no se acepta (aviso, sin cambio ni bitácora); si quedara guardada, se usa la hora del equipo y Configuración lo pide en «Falta completar»; un cambio válido queda en la bitácora con el día de antes y el de después",
+      rechazada&&cambio&&hMala===eq&&falta&&S.params.zonaHoraria==='America/Guayaquil',JSON.stringify({rechazada,cambio,bT,hMala,falta}));
+    /* Configuración → Calendario y reglas: el campo a la vista, con el día que resulta */
+    reloj(null);CONF={tab:'cal',q:''};page='config';render();const inpZ=document.getElementById('cfg-zona');const hoyTxt=((document.getElementById('cfg-zona-hoy')||{}).textContent||'');
+    __check("ZH6: Configuración general → Calendario y reglas muestra la zona horaria (America/Guayaquil) con el día de hoy que resulta, y el buscador de ajustes la encuentra",!!inpZ&&inpZ.value==='America/Guayaquil'&&hoyTxt===fmtDia(hoy())&&cfgResultados('zona horaria').some(x=>x.e.titulo==='Días de trabajo por área'),(inpZ?inpZ.value:'sin campo')+' · '+hoyTxt);
+    /* descansos: la ventana 13:00–14:00 es de Ecuador, aunque el tramo cruce la medianoche */
+    horarios()['corte']={ventanas:[{ini:'13:00',fin:'14:00'}]};
+    const v1=minutosVentana(tsDeLocal('2026-10-05','12:30'),tsDeLocal('2026-10-05','14:30'),'corte').min,v2=minutosVentana(tsDeLocal('2026-10-05','13:30'),tsDeLocal('2026-10-06','13:30'),'corte').min,v3=minutosVentana(tsDeLocal('2026-10-05','20:00'),tsDeLocal('2026-10-05','23:59'),'corte').min;
+    S.params.zonaHoraria='Asia/Tokyo';const v4=minutosVentana(tsDeLocal('2026-10-05','12:30'),tsDeLocal('2026-10-05','14:30'),'corte').min;S.params.zonaHoraria='America/Guayaquil';
+    __check("ZH7: el descanso 13:00–14:00 se descuenta en la hora de la planta (60 min dentro de 12:30–14:30; 30 + 30 si el tramo cruza la medianoche; 0 de noche) y sigue la zona configurada",v1===60&&v2===60&&v3===0&&v4===60,[v1,v2,v3,v4].join(' / '));
+   }catch(e){__R.errors.push({page:'driver ZH',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.Date=R0;window.alert=a0;PERFIL=bakP;try{cerrar()}catch(e){}
+    if(bakZ===undefined)delete S.params.zonaHoraria;else S.params.zonaHoraria=bakZ;HOY_CACHE={z:null,ini:0,fin:-1,d:''};
+    if(oT){const idT=oT.id;S.ordenes=S.ordenes.filter(o=>o.id!==idT);delete S.avance[idT]}
+    S.turnos=JSON.parse(turBak);S.bitacora=bitBak;const hb=JSON.parse(bakH);if(hb)horarios()['corte']=hb;else delete horarios()['corte'];
+    TRAMO={paso:null,id:null,oid:null};TAB=Object.assign(TAB,JSON.parse(bakTAB));Object.assign(CEN,bakCEN);CONF=JSON.parse(bakCONF);NAVH.length=0;PLAN=null;PLAN_ALL=null;page=bakPage;render()}
+   __check("ZH sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* REPORTERÍA: pestaña propia, vista general de órdenes, detalle completo, quién la ve */
   {const antes=__R.errors.length;const adminP=PERFIL;
    const g=document.querySelector('nav .gbody[data-g="rep"]');const links=g?[...g.querySelectorAll('a')].map(a=>a.dataset.p+(a.dataset.rep?':'+a.dataset.rep:'')):[];
@@ -3243,14 +3319,14 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("TR: Mi centro también lo avisa y ofrece corregirlo",/inicios sin fin|inicio sin fin/i.test(document.getElementById('p-tablet').innerHTML)&&document.getElementById('p-tablet').innerHTML.includes('mCorregirTramo('));
     // el supervisor corrige con auditoría
     mCorregirTramo(t3.id,oT.id);const fin=new Date(new Date(t3.ini).getTime()+45*6e4);
-    document.getElementById('ct-fin').value=new Date(fin.getTime()-fin.getTimezoneOffset()*6e4).toISOString().slice(0,16);document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
+    document.getElementById('ct-fin').value=inputLocalDeTs(fin);   /* la hora escrita es la de la planta (04-oct), no la del equipo */document.getElementById('ct-m').value=(motivosDe('piso')[0]||{}).motivo||'';
     const nA=auditoriaCambios().length;corregirTramo(t3.id,oT.id);
     __check("TR: el supervisor corrige el fin y queda en auditoría",!!t3.fin&&!!t3.corregido&&auditoriaCambios().length===nA+1);
     TRAMO={paso:null,id:null,oid:null}}
    // la pantalla del flujo
    TAB={centro:'modulos',rec,q:'',vista:'cola'};page='tablet';render();
    {const h=document.getElementById('p-tablet').innerHTML;TAB.vista='hechas';render();const h2=document.getElementById('p-tablet').innerHTML;TAB.vista=null;
-    __check("TR: Mi centro muestra el flujo: INICIO en la pestaña «En cola» y lo registrado hoy en «Hechas hoy» (24-sep)",(/INICIO<\/button>/.test(h)||/No hay órdenes/.test(h))&&(/Lo registrado hoy/.test(h2)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
+    __check("TR: Mi centro muestra el flujo: INICIO en la pestaña «En cola» y lo registrado hoy en «Hechas hoy» (24-sep)",(/INICIO<\/button>/.test(h)||/No hay órdenes/.test(h))&&(/Lo registrado hoy/.test(h2)||!todosTramos().some(x=>x.t.centro==='modulos'&&x.t.fin&&diaLocalDeTs(x.t.fin)===hoy()))&&!document.querySelector('nav a[data-p=\"linea\"]'));}
    if(rec&&bakPers!=null)R(rec).pers=bakPers;
    S.ordenes=S.ordenes.filter(o=>o!==oT);delete S.avance[oT.id];
    const bm=JSON.parse(bakM);if(bm)S.params.motivos=bm;else delete S.params.motivos;
@@ -3286,7 +3362,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const hoyD=hoy();
    const t1={centro:'modulos',rec,ini:hoyD+'T09:00:00',fin:hoyD+'T09:30:00',paros:[],tallas:{}};
    const t2={centro:'modulos',rec,ini:hoyD+'T12:00:00',fin:hoyD+'T14:00:00',paros:[],tallas:{}};
-   const mkFecha=(s)=>{const [f,h]=s.split('T');const [Y,M,D2]=f.split('-').map(Number);const [hh,mm]=h.split(':').map(Number);return new Date(Y,M-1,D2,hh,mm).toISOString()};
+   const mkFecha=(s)=>{const [f,h]=s.split('T');return tsDeLocal(f,h)};   /* 9:00 de la planta (04-oct: los descansos van en la hora de la planta, no en la del equipo) */
    t1.ini=mkFecha(t1.ini);t1.fin=mkFecha(t1.fin);t2.ini=mkFecha(t2.ini);t2.fin=mkFecha(t2.fin);
    const c1=calcTramo(t1,null),c2=calcTramo(t2,null);
    __check("DE: un tramo de 9:00 a 9:30 no descuenta el almuerzo de 12:30 a 13:30",Math.abs(c1.brutoMin-30)<0.1&&c1.descansos===0&&Math.abs(c1.trabajado-30)<0.1);
@@ -3703,7 +3779,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     window.confirm=()=>true;guardarTramo(tr2.id,oS.id);const t2=tramosDe(oS.id).find(x=>x.id===tr2.id);
     __check("MT2: al confirmar se guarda con 0 prendas y el tiempo trabajado",t2.pz===0&&t2.min>0&&t2.minPrenda===null);
     __check("MT2: el tramo guardado conserva QUIÉN trabajó (las unidades van en pz, ya no pisan la persona)",typeof t2.u==='string'&&t2.u.length>0&&tramosDelDiaHTML('modulos',rec).includes(t2.u));
-    {const hd=tramosDelDiaHTML('modulos',rec);const conSeg=todosTramos().some(x=>x.t.centro==='modulos'&&(x.t.rec||null)===(rec||null)&&x.t.fin&&String(x.t.fin).slice(0,10)===hoy()&&calcTramo(x.t,x.o).seg);
+    {const hd=tramosDelDiaHTML('modulos',rec);const conSeg=todosTramos().some(x=>x.t.centro==='modulos'&&(x.t.rec||null)===(rec||null)&&x.t.fin&&diaLocalDeTs(x.t.fin)===hoy()&&calcTramo(x.t,x.o).seg);
      __check("UX-B8: el supervisor ve en «Hechas hoy» «N registros hoy» (no «tramos») y además SAM real, Personas y Quién; «Segundas» solo si alguna fila las tiene",/registros? hoy/.test(hd)&&!/tramos ·/.test(hd)&&/<th>Empezó<\/th><th>Terminó<\/th><th class="num">Tiempo<\/th>/.test(hd)&&/>SAM real<\/th>/.test(hd)&&/<th class="num">Personas<\/th>/.test(hd)&&/<th>Quién<\/th>/.test(hd)&&(/<th class="num">Segundas<\/th>/.test(hd)===conSeg));}
     window.confirm=cp}
    TRAMO={paso:null,id:null,oid:null};
