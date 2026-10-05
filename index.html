@@ -1100,6 +1100,37 @@ table.ib-t tr.ib-total td{font-weight:600}
 .io-fuentes{max-height:260px}
 table.io-sam{width:auto}
 .io-nota{font-size:var(--fs-xs);margin:10px 0 0}
+/* Ingeniería · por referencia (05-oct, E3): la ingeniería de una referencia, el promedio de cada tipo y la carga de los listados; solo variables (claro y oscuro) */
+.ing-filtros .ing-rq{width:260px}
+.ing-ref-lin{font-size:var(--fs-s);margin:0 0 6px}
+.ing-ref-tipos{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.ing-ref-tipos .chip{cursor:pointer;white-space:nowrap}
+.ing-sin{color:var(--aviso);font-weight:600}
+.ing-ref-tit{margin:10px 0 4px;font-size:var(--fs-l)}
+.ing-ref-paso{font-size:var(--fs-s);margin:6px 0 10px;color:var(--ink2)}
+.ing-ref-h{margin:14px 0 6px}
+.warn.ing-ref-receta{margin:8px 0;font-size:var(--fs-s)}
+table.ing-ref-cifras{width:auto;margin:4px 0 6px}
+table.ing-ref-cifras td,table.ing-ref-cifras th,table.ing-prom-t td,table.ing-prom-t th{vertical-align:top}
+table.ing-ref-ops{width:100%}
+table.ing-ref-ops tr.ing-nocuenta td,table.ing-ref-sub tr.ing-nocuenta td{color:var(--ink3)}
+table.ing-ref-ops code{font-size:var(--fs-xs)}
+.ing-cuenta{color:var(--ok);font-weight:700}
+table.ing-ref-sub{width:auto;min-width:360px}
+table.ing-ref-sub tr.ing-cen td{background:var(--o-brand-soft,var(--field));color:var(--ink);font-weight:700;border-top:2px solid var(--o-brand-line,var(--rule2))}
+table.ing-ref-sub tr.ing-tot td{font-weight:700;border-top:1px solid var(--rule)}
+table.ing-ref-sub tr.ing-subt td:first-child{padding-left:18px}
+details.ing-ref-ords,details.ing-sining-det{margin:10px 0}
+details.ing-ref-ords>summary,details.ing-sining-det>summary{cursor:pointer;font-size:var(--fs-s)}
+.ing-ref-ficha{font-size:var(--fs-s);margin:8px 0 0}
+.ing-ref-ficha a{cursor:pointer;text-decoration:underline}
+table.ing-prom-t th.ing-prom-cen{text-align:center;border-bottom:1px solid var(--rule)}
+table.ing-prom-t .ing-prom-sost{min-width:150px}
+table.ing-prom-refs{width:auto;margin:4px 0 8px 12px;font-size:var(--fs-s)}
+table.ing-suf-t{width:auto;margin:0 0 8px}
+.ing-sining-res{margin:0 0 14px}
+table.ing-prom-t td:last-child,table.ing-suf-t td:first-child{white-space:nowrap}
+@media (max-width:520px){.ing-ref-tipos .chip{white-space:normal;text-align:left}table.ing-ref-sub{min-width:0;width:100%}}
 /* 05-oct: con el grupo Ingeniería son siete grupos; hasta 1.366 px los dos largos dicen «Textil» y «Producción» (el nombre entero va en el title) */
 nav .grp .grp-c{display:none}
 @media (min-width:861px) and (max-width:1366px){nav .grp .grp-l{display:none}nav .grp .grp-c{display:inline}}   /* en los tres aspectos */
@@ -2084,14 +2115,14 @@ async function leerTablaIng(t,ids){let out=[];
   return {data:out}}
 function ingTomarCarga(rs){ING.faltan=[];ING.error=null;let err=null;
   TABLAS_ING_ENTRAR.forEach((t,i)=>{const r=rs[i]||{};if(r.error){S[t]=[];if(r.falta)ING.faltan.push(t);else err=err||String((r.error&&r.error.message)||r.error)}else{S[t]=(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{}));ING.firmas=ING.firmas||{};ING.firmas[t]={};(r.data||[]).forEach(x=>{ING.firmas[t][x.id]=ingCanon(x.data||{})})}});
-  ING.estado=ING.faltan.length?'falta':err?'error':'si';ING.error=err;ING.refs={};ING.ver=(ING.ver||0)+1;ING.ops=null;ING.opsErr=null;S.ing_operaciones=[];return ING.estado}
+  ING.estado=ING.faltan.length?'falta':err?'error':'si';ING.error=err;ING.refs={};ING.refsTodas=null;ING.refsErr=null;ING.ver=(ING.ver||0)+1;ING.ops=null;ING.opsErr=null;S.ing_operaciones=[];return ING.estado}
 async function leerIngAlEntrar(){const habia=ING.ops==='si';const rs=await Promise.all(TABLAS_ING_ENTRAR.map(t=>leerTablaIng(t).catch(e=>({error:e,falta:false}))));const e=ingTomarCarga(rs);if(habia&&e==='si')await leerIngOps();return ING.estado}
 /* la base de operaciones, a demanda (la pide quien abre Ingeniería → Operaciones o Por revisar; al volver a leer, si ya estaba leída, se relee) */
 async function leerIngOps(){if(ING.estado!=='si')return ING.estado;ING.ops='leyendo';let r;try{r=await leerTablaIng('ing_operaciones')}catch(e){r={error:e,falta:false}}
   if(r.error){S.ing_operaciones=[];if(r.falta){ING.ops='falta';ING.estado='falta';if(!ING.faltan.includes('ing_operaciones'))ING.faltan.push('ing_operaciones')}else{ING.ops='error';ING.opsErr=String((r.error&&r.error.message)||r.error)}ING.ver=(ING.ver||0)+1;return ING.ops}
   S.ing_operaciones=(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{}));ING.firmas=ING.firmas||{};ING.firmas.ing_operaciones={};(r.data||[]).forEach(x=>{ING.firmas.ing_operaciones[x.id]=ingCanon(x.data||{})});ING.ops='si';ING.ver=(ING.ver||0)+1;return 'si'}
 /* ¿está leída? si no, la pide (una vez) y vuelve a dibujar la página de Ingeniería que la necesita cuando llega */
-function ingAsegurarOps(){if(ING.estado!=='si')return false;if(ING.ops==='si')return true;if(ING.ops!=='leyendo'&&ING.ops!=='error'){leerIngOps().then(()=>{if(['ingops','ingrev'].includes(page))render()})}return false}
+function ingAsegurarOps(){if(ING.estado!=='si')return false;if(ING.ops==='si')return true;if(ING.ops!=='leyendo'&&ING.ops!=='error'){leerIngOps().then(()=>{if(['ingops','ingrev'].includes(page))render();else if(typeof ingRefrescar==='function')ingRefrescar()})}return false}
 async function leerIngBase(){await leerIngAlEntrar();if(ING.estado==='si'&&ING.ops!=='si')await leerIngOps();return ING.estado}
 /* a demanda: la ingeniería de unas referencias (ids 'ir|…'); sin ids, todas. Queda en ING.refs mientras dure la sesión */
 async function leerIngReferencias(ids){if(ING.estado!=='si')return {error:ING.estado==='falta'?ING_MSG_FALTA:(ING.error||'las tablas de Ingeniería no se leyeron'),falta:ING.estado==='falta',data:[]};
@@ -2273,7 +2304,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-05 15:17';
+const APP_BUILD='2026-10-05 16:21';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3580,6 +3611,7 @@ function abrirFichaOrden(oid){const o=S.ordenes.find(x=>x.id===oid);if(!o)return
    ${(()=>{const vist=new Set(),l=[];((o.rutaCompleta&&o.rutaCompleta.length)?o.rutaCompleta:[]).concat(o.ruta||[]).forEach(p=>{if(p&&p.centro&&!vist.has(p.centro)){vist.add(p.centro);l.push(p)}});return l.sort((x,y)=>ordenPaso(x.centro)-ordenPaso(y.centro))})().map(p=>{const pp=pasos.find(x=>x.centro===p.centro)||{};const hechas=(a.centros||{})[p.centro]||0;const aqui=d.k===p.centro;const enPlanta=!!(CE(p.centro)&&CE(p.centro).area==='pro');const hechoP=(()=>{try{return pasoHecho(o,p.centro)}catch(e){return false}})()||(p.centro==='tej'&&!!ro.tejidaHecha)||(p.centro==='tin'&&!!ro.tinturadaHecha);const conF=pasos.some(x=>x.ini||x.fin);
      return `<tr ${aqui?'style="background:var(--field);font-weight:600"':''}><td>${aqui?'▶ ':''}${esc(nCen(p.centro))}</td>${conF?`<td>${pp.ini?fmtDia(pp.ini):'—'}</td><td>${pp.fin?fmtDia(pp.fin):'—'}</td>`:''}<td class="num">${enPlanta?num(hechas)+' / '+num(o.cant):'<span class="mut" title="tejeduría y tintorería se miden en kilos, no en prendas: si ya se hizo, lo dice la etiqueta «hecho»">—</span>'}</td><td>${hechoP?'<span class="tag t-ok">hecho</span>':(aqui?'<span class="tag t-aviso">aquí</span>':'')}${(typeof pasoReabierto==='function'&&pasoReabierto(o,p.centro))?' <span class="tag t-aviso">reabierto</span>':''}${pp.sinTiempo?' <span class="tag t-falta" title="falta el tiempo estándar: la fecha sale de sus pasos vecinos y no ocupa capacidad. Falta '+esc(faltaTiempoTxt(o,p.centro))+'.">sin tiempo estándar</span>':''}${(()=>{const af=avisoAfuera(o,p.centro);return af?' <span class="tag t-aviso" title="'+esc(af.tip)+'">'+esc(af.txt)+'</span>':''})()}</td></tr>`}).join('')||'<tr><td colspan="'+(pasos.some(x=>x.ini||x.fin)?5:3)+'" class="mut">Sin ruta cargada.</td></tr>'}
    </tbody></table>
+   ${ingFichaLinkHTML(o)}
    ${tallas.length?`<h4 style="margin:12px 0 6px">Avance por talla <span class="mut" style="font-weight:400;font-size:var(--fs-xs)">${curvaCorte(o)?'contra lo cortado':'contra lo pedido'}</span></h4>
     <div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Centro</th>${tallas.map(t=>`<th class="num">${esc(t)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
     <tr><td>${curvaCorte(o)?'Cortado':'Pedido'}</td>${tallas.map(t=>`<td class="num">${num(curva[t]||0)}</td>`).join('')}<td class="num">${num(sumaCurva(curva))}</td></tr>
@@ -13976,7 +14008,7 @@ function tecnicasEstampadoHTML(){return `<div class="panel" data-ing-tabla="tecn
    Usuaria: «un módulo de ingeniería: centros de producción, subprocesos y dentro de los subprocesos las operaciones, como una base de datos general;
    y por otro lado seleccionar las operaciones que corresponden por referencia … las operaciones no van en configuración: pertenecen a ingeniería».
    Cinco páginas (PAGINAS_ING): Operaciones (la hoja de Odoo, las técnicas de estampado y la base general, que se arma en el siguiente paso) · Por
-   referencia (se arma en el siguiente paso) · Tipos de producto (los tiempos por tipo y los pasos que agrega un tipo o un insumo) · Máquinas y
+   referencia (la ingeniería de cada referencia, E3: para mirar) · Tipos de producto (los tiempos por tipo y los pasos que agrega un tipo o un insumo) · Máquinas y
    operarias · Por revisar. Se mudó SIN cambiar nada por dentro: las mismas funciones, los mismos datos y los mismos guardados; ningún minuto del
    programa cambia. Lo que pide cada panel para editar lo dice su data-ing-tabla y lo aplica blindarIng (nunca se deja editar algo que no se guarda). */
 let ING_V={ops:'base'};
@@ -14068,7 +14100,7 @@ function ingCanon(v){if(Array.isArray(v))return '['+v.map(ingCanon).join(',')+']
 function ingHash(s){let x=2166136261;for(let i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619)>>>0}return x.toString(16)}
 function ingDist(a,b,max){if(Math.abs(a.length-b.length)>max)return max+1;let prev=Array.from({length:b.length+1},(_,j)=>j);
   for(let i=1;i<=a.length;i++){const cur=[i];let mn=i;for(let j=1;j<=b.length;j++){const v=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));cur.push(v);if(v<mn)mn=v}if(mn>max)return max+1;prev=cur}return prev[b.length]}
-function ingTipoFila(r){const p=String((r&&r.id)||'').split('|')[0];return p==='isp'?'sub':p==='ieq'?'equiv':p==='ifam'?'familia':p==='imeta'?'meta':'otro'}
+function ingTipoFila(r){const p=String((r&&r.id)||'').split('|')[0];return p==='isp'?'sub':p==='ieq'?'equiv':p==='ifam'?'familia':p==='imeta'?'meta':p==='isuf'?'sufijo':'otro'}
 function ingCodNum(c){const m=String(c||'').match(/^OP-([0-9]+)$/);return m?+m[1]:0}
 function ingCodigo(n){return 'OP-'+String(n).padStart(4,'0')}
 function ingClon(x){return JSON.parse(JSON.stringify(x))}
@@ -14157,6 +14189,7 @@ function ingFilasKronosGuardadas(eqs){const out=[];
   out.nc={comodines:0,sinNombre:0};return out}
 /* ---------- ARMAR LA BASE · el plan (PURO: no escribe nada en S) ----------
    kr = null (sin archivo: Kronos sale de lo guardado) | {objs:[filas con las columnas de base_operaciones], archivo, fuente}
+   kr.agregar = true (E3, los listados por referencia): esas filas de Kronos se SUMAN a las guardadas; lo que ya estaba no queda «no vino»
    opts.odoo = otra hoja de Odoo en vez de S.operaciones (las pruebas pasan una sintética sin tocar la del sistema, que decide rutas y tiempos) */
 function planIngBase(kr,opts){opts=opts||{};const ts=opts.ts||new Date().toISOString(),u=quienFirma();
   const p={archivo:kr?(kr.archivo||''):'',fuenteK:kr?(kr.fuente||''):'',conArchivo:!!kr,ts,error:null,avisos:[],
@@ -14164,7 +14197,7 @@ function planIngBase(kr,opts){opts=opts||{};const ts=opts.ts||new Date().toISOSt
     famNuevas:[],famCambian:[],eqNuevas:[],nuevas:[],cambiadas:[],iguales:[],conservadas:[],noVinieron:[],volvieron:[],resultado:[],tot:{},
     odoo:{filas:0},kronos:{filas:0,comodines:0,deGuardado:!kr}};
   const eqs=ingEquivs();
-  const rowsO=ingFilasOdoo(eqs,opts.odoo);const rowsK=kr?ingFilasKronos(kr.objs,eqs):ingFilasKronosGuardadas(eqs);
+  const rowsO=ingFilasOdoo(eqs,opts.odoo);const rowsK=kr&&kr.agregar?(()=>{const g=ingFilasKronosGuardadas(eqs),n=ingFilasKronos(kr.objs,eqs);const l=g.concat(n);l.nc=n.nc;return l})():kr?ingFilasKronos(kr.objs,eqs):ingFilasKronosGuardadas(eqs);
   if(kr&&!rowsK.length){p.error='El archivo no trae operaciones de Kronos con las columnas de base_operaciones (linea_kronos, codigo, operacion, subproceso_kronos y sam_habitual_min).';return p}
   p.odoo.filas=rowsO.length;p.kronos.filas=rowsK.length;p.kronos.comodines=rowsK.nc.comodines;
   /* familias: primero Kronos (nombres más claros: «Camisetas»), después la hoja («CAMISETA» calza por la palabra en singular) */
@@ -14192,7 +14225,7 @@ function planIngBase(kr,opts){opts=opts||{};const ts=opts.ts||new Date().toISOSt
     if(sin.length){let tid=destinos[0]||null;if(!tid&&idIdx.has(key)){const t=raiz(idIdx.get(key));tid=t?t.id:null}
       if(tid){(por.get(tid)||por.set(tid,[]).get(tid)).push(...sin)}else nuevos.push({key,rows:sin})}
     por.forEach((rs,tid)=>{const e=aOp.get(tid)||{rows:[],keys:new Map()};rs.forEach(r=>e.rows.push(r));e.keys.set(key,(e.keys.get(key)||0)+rs.length);aOp.set(tid,e)})});
-  const vistas=new Set(rowsK.concat(rowsO).map(r=>r.k));const kSrc=f=>f.f==='odoo'||(f.f==='kronos'&&!!kr);   /* ¿esta corrida trae esa fuente? (sin archivo, Kronos no puede «no venir») */
+  const vistas=new Set(rowsK.concat(rowsO).map(r=>r.k));const kSrc=f=>f.f==='odoo'||(f.f==='kronos'&&!!kr&&!kr.agregar);   /* ¿esta corrida trae esa fuente? (sin archivo, Kronos no puede «no venir») */
   const parteDe=rows=>{const c={};rows.forEach(r=>{const v=r.src==='kronos'?r.f.parte:(r.f.secc?titleCase(r.f.secc):'');if(v)c[v]=(c[v]||0)+(r.src==='kronos'?2:1)});const l=Object.keys(c).sort((a,b)=>c[b]-c[a]);return l[0]||''};
   const nombreDe=rows=>{const kr=rows.find(r=>r.src==='kronos');return (kr||rows[0]).n};
   const ident=rows=>{const r0=rows[0];return {nombre:nombreDe(rows),sub:r0.sub,tipoMaq:r0.tipoMaq,homol:rows.every(r=>r.homol)}};
@@ -14245,12 +14278,12 @@ function ingRepetidasDe(ops){const out=[],visto=new Set();const noRep=(a,b)=>(a.
   return out}
 function ingRepetidas(){if(ING._rep&&ING._rep.v===ING.ver)return ING._rep.l;const l=ingRepetidasDe((S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn));ING._rep={v:ING.ver,l};return l}
 /* ---------- guardar en las tablas de Ingeniería: no pisa lo que otra persona cambió mientras tanto (compara con lo que se leyó) ---------- */
-async function ingGuardar(t,filas){if(ING.estado!=='si')return {ok:false,n:0,error:ING_MSG_FALTA,conflictos:[]};
+async function ingGuardar(t,filas,lote){if(ING.estado!=='si')return {ok:false,n:0,error:ING_MSG_FALTA,conflictos:[]};
   if(!puedeIngTabla(t))return {ok:false,n:0,error:porQueNoEditaIng(t),conflictos:[]};
   const ids=filas.map(f=>f.id);const srv=await leerTablaIng(t,ids);if(srv.error)return {ok:false,n:0,error:String((srv.error&&srv.error.message)||srv.error),falta:!!srv.falta,conflictos:[]};
   const sm=new Map(srv.data.map(r=>[r.id,ingCanon(r.data||{})]));const base=(ING.firmas||{})[t]||{};const conf=[],ok=[];
   filas.forEach(f=>{const s=sm.get(f.id),b=base[f.id];if(s!==undefined&&s!==b)conf.push(f.id);else ok.push(f)});
-  const r=ok.length?await ingSubir(t,ok.map(x=>({id:x.id,data:sinId(x)})),200):{ok:true,n:0};
+  const r=ok.length?await ingSubir(t,ok.map(x=>({id:x.id,data:sinId(x)})),lote||200):{ok:true,n:0};
   const hechas=r.ok?ok:ok.slice(0,r.n);ING.firmas=ING.firmas||{};ING.firmas[t]=ING.firmas[t]||{};
   hechas.forEach(f=>{const l=S[t]=S[t]||[];const i=l.findIndex(x=>x.id===f.id);const c=ingClon(f);if(i<0)l.push(c);else l[i]=c;ING.firmas[t][f.id]=ingCanon(sinId(f))});
   ING.ver=(ING.ver||0)+1;return {ok:r.ok&&!conf.length,n:r.n,error:r.ok?null:r.error,falta:!!r.falta,conflictos:conf}}
@@ -14506,22 +14539,452 @@ function ingRevBaseHTML(){if(!(ingAsegurarOps()||ING.estado!=='si'))return `<div
     <li data-rev="repetidas"><b>${num(rep.length)} posibles repetidas</b>${rep.length?': '+ING_REP_TIPOS.map(([k,n])=>[n,rep.filter(x=>x.tipo===k).length]).filter(x=>x[1]).map(([n,c])=>num(c)+' '+n.toLowerCase()).join(' · '):''} — ${ir('repetidas','revisar →')}</li>
     ${sh?`<li><b>${num(sh)} ${sh===1?'operación con máquina sin homologar':'operaciones con máquina sin homologar'}</b> — <a href="#" data-ver="1" onclick="irAjuste('Tipos de máquina');return false">decir de qué tipo es →</a></li>`:''}
     ${nv?`<li><b>${num(nv)} ${nv===1?'operación que no vino':'operaciones que no vinieron'}</b> en la última carga (quedan marcadas, no se borran) — ${ir('base','ver en la base →')}</li>`:''}</ul>`}</div></div>`}
-/* Por referencia: la estructura; buscar, elegir el tipo y ver las operaciones se arma en el siguiente paso */
-function vIngRef(el){
-  el.innerHTML=`<div class="pagehead"><h2>Por referencia ${ingCtx()}</h2></div>
-  <p class="lede">La ingeniería de cada referencia: se escribe la referencia (por ejemplo 4240), se elige el tipo de producto (la misma referencia puede estar en varios) y se ven sus operaciones en orden, con su SAM y el tiempo por centro al lado del que usa hoy el programa. <b>Se arma en el siguiente paso.</b></p>
+/* ===================== INGENIERÍA · E3 · LA INGENIERÍA DE CADA REFERENCIA, PARA MIRAR (05-oct-2026) =====================
+   Usuaria: «… y por otro lado seleccionar las operaciones que corresponden por referencia; el promedio por tipo está bien como base».
+   QUÉ ES: la ingeniería de una referencia = qué operaciones de la base general lleva, en su orden, con su SAM. Arranca con los listados de Kronos del
+   paquete de balanceo, «por confirmar». En esta etapa SOLO SE MIRA: corregir y confirmar es el paso siguiente (E4); que la referencia mande en el
+   programa es otro paso aparte, con el visto bueno de la usuaria.
+   LLAVE: tipo de producto + referencia, NUNCA el número solo (la 4240 está en Camiseta CR, Jogger Moda y Pantalón Moda). La referencia se compara con
+   normFase (ingRefKey); los códigos de operación de Kronos van tal cual (Cami8 ≠ CAMI8). Los sufijos (-P, -SP, -JAS) son una tabla editable de Ingeniería
+   (filas isuf|… en ing_subprocesos; sin configurar = los de la lectura del 02-oct) y solo valen para una referencia que no está en el cruce de Kronos.
+   DÓNDE VIVE: ing_referencias (SUPABASE_INGENIERIA.sql), una fila por par tipo + referencia del cruce de Kronos, id 'ir|<tipo>|<referencia>':
+     · con ingeniería: cab {tipo,ref,estado:'porConfirmar',entra:true,clave,linea,refK,fam,fuente,…} + ops [{n,op,cod,sp,samK,sam?,maq?,aviso?,com?}]:
+       cada línea CUELGA de su operación de la base (op = iop|OP-…: el nombre, la máquina y el SAM de su familia salen de la base); sam solo si es
+       PROPIO de la referencia (distinto del SAM de su familia en la base); sp = el subproceso de Kronos de esa línea (decide su subproceso por la tabla
+       de equivalencias); com = tiempo sin operación de Kronos (comodín: se ve, no cuenta);
+     · la que usa el listado de otra referencia del mismo tipo (3780-SP → 3780): cab.usa = el id de la que tiene las operaciones;
+     · sin ingeniería: cab.entra=false con el motivo del cruce (mismo tipo sin listado, otra prenda con el mismo número, no está en Kronos…).
+     Se lee a demanda (Por referencia, Tipos de producto, Por revisar o «ver ingeniería» en la ficha de una orden), no al entrar.
+   UNA función: ingenieriaRef(tipo,ref) / ingenieriaDe(o). El tiempo de una referencia por centro ES la suma de sus operaciones que cuentan (ingTotRef):
+   Confección = la receta del 05-oct = costura (Subensamble + Ensamble) + pulido + perfilado; Empaque con su Revisión; Bordado solo informa (va por
+   puntadas). El promedio de un tipo (ingPromediosTipos) se calcula, no se guarda: ponderado por las prendas del pedido de sus órdenes abiertas.
+   GARANTÍA (prueba INGR-H y la HUELLA ING12): nada de este bloque escribe tiempos, rutas, categorías, órdenes ni la hoja de Odoo, ni llama a la
+   propagación de tiempos: el programa sigue leyendo los tiempos como hoy. Solo LEE el tiempo del programa para mostrarlo al lado. */
+const ING_SUF_DEF=['-P','-SP','-JAS'];   /* siembra: los tres sufijos del paquete del 02-oct; desde la primera carga manda la tabla */
+const ING_REF_MOTIVOS=[
+  ['mismoTipoSin','mismo tipo de producto, sin listado en Kronos','pedir el listado a Kronos y volver a cargar los listados (arriba, «Cargar listados de Kronos»)'],
+  ['otraLinea','otra prenda con el mismo número: en Kronos es de otra línea','el número es de otra prenda y su ingeniería no se copia: cargar su propio listado o armarla en el paso siguiente'],
+  ['otraLineaSin','otra prenda con el mismo número, y sin listado','el número es de otra prenda y su ingeniería no se copia: cargar su propio listado o armarla en el paso siguiente'],
+  ['otraPrenda','otra prenda con el mismo número: tiene ingeniería en otro tipo de producto','el número es de otra prenda y su ingeniería no se copia: cargar su propio listado o armarla en el paso siguiente'],
+  ['noKronos','no está en Kronos','cargar su listado cuando esté en Kronos'],
+  ['incompleto','el listado de Kronos está incompleto','completar el listado en Kronos y volver a cargar'],
+  ['sinCruce','no está en el cruce de la última lectura de Kronos (orden nueva desde entonces, o que ese día no estaba abierta)','volver a cargar los listados con una lectura nueva de Kronos'],
+  ['sinCarga','todavía no se cargan los listados de Kronos','Ingeniería → Por referencia → «Cargar listados de Kronos»'],
+  ['sinRef','la orden no tiene referencia','completar la referencia (estilo) de la orden en Órdenes'],
+  ['sinCat','la orden no tiene tipo de producto','completar el tipo de producto de la orden en Órdenes'],
+  ['otro','otro motivo','revisar la fila del cruce de Kronos']];
+function ingRefKey(x){return normFase(x==null?'':String(x))}
+function ingRefId(cat,ref){return 'ir|'+cat+'|'+ingRefKey(ref)}
+function ingTxt(v){return String(v==null?'':v).trim()}
+function ingRed(v){return Math.round((+v||0)*1e6)/1e6}
+function ingMotivoTxt(m){return (ING_REF_MOTIVOS.find(x=>x[0]===m)||[null,m||'otro motivo'])[1]}
+function ingMotivoArreglo(m){return (ING_REF_MOTIVOS.find(x=>x[0]===m)||[null,'',''])[2]}
+function ingMotivoDeCruce(t){const s=normTxt(t);if(!s)return 'otro';if(/incomplet/.test(s))return 'incompleto';if(/no esta en kronos/.test(s))return 'noKronos';
+  if(/otra categoria/.test(s))return /sin listado/.test(s)?'otraLineaSin':'otraLinea';if(/misma categoria/.test(s)||/sin listado/.test(s))return 'mismoTipoSin';return 'otro'}
+function ingNomTipo(cat,r){const k=K(cat);return k?nombreCat(k):((r&&r.cab&&r.cab.catNombre)||cat||'—')}
+/* ---------- mapas de una sola lectura (memo por versión: la base, el catálogo y las referencias cambian ING.ver / ING.refsVer) ---------- */
+function ingOpMap(){const v=ING.ver||0;if(ING._opm&&ING._opm.v===v&&ING._opm.n===(S.ing_operaciones||[]).length)return ING._opm.m;const m=new Map((S.ing_operaciones||[]).map(o=>[o.id,o]));ING._opm={v,n:(S.ing_operaciones||[]).length,m};return m}
+function ingSubMap(){const v=ING.ver||0;if(ING._sbm&&ING._sbm.v===v)return ING._sbm.m;const m=new Map(ingCatalogo().filter(r=>ingTipoFila(r)==='sub').map(r=>[r.id,r]));ING._sbm={v,m};return m}
+function ingEqKrMap(){const v=ING.ver||0;if(ING._eqm&&ING._eqm.v===v)return ING._eqm.m;const m=new Map();ingEquivs().forEach(e=>{if(e.fuente==='kronos'){const n=ingNom(e.nombre);if(!m.has(n))m.set(n,ingSubOk(e.sub))}});ING._eqm={v,m};return m}
+/* ---------- leer las referencias (a demanda; al llegar se vuelve a dibujar la página de Ingeniería o la ventana que las pidió) ---------- */
+async function leerIngRefsTodas(){if(ING.estado!=='si')return ING.estado;ING.refsTodas='leyendo';let r;try{r=await leerTablaIng('ing_referencias')}catch(e){r={error:e,falta:false}}
+  if(r.error){if(r.falta){ING.refsTodas='falta';ING.estado='falta';if(!ING.faltan.includes('ing_referencias'))ING.faltan.push('ing_referencias')}else{ING.refsTodas='error';ING.refsErr=String((r.error&&r.error.message)||r.error)}ING.ver=(ING.ver||0)+1;return ING.refsTodas}
+  ING.refs={};ING.firmas=ING.firmas||{};ING.firmas.ing_referencias={};(r.data||[]).forEach(x=>{ING.refs[x.id]=Object.assign({id:x.id},x.data||{});ING.firmas.ing_referencias[x.id]=ingCanon(x.data||{})});
+  ING.refsTodas='si';ING.refsErr=null;ING.refsVer=(ING.refsVer||0)+1;ING.ver=(ING.ver||0)+1;return 'si'}
+function ingRefrescar(){try{if(['ingref','ingtipos','ingrev'].includes(page))render();const v=document.getElementById('veil');if(ING_V.modal&&v&&v.classList.contains('on')&&document.getElementById('ing-ref-modal'))mIngRef(ING_V.modal,true)}catch(e){}}
+function ingAsegurarRefs(){if(ING.estado!=='si')return false;if(ING.refsTodas==='si')return true;if(ING.refsTodas!=='leyendo'&&ING.refsTodas!=='error')leerIngRefsTodas().then(()=>ingRefrescar());return false}
+/* ¿están la base y las referencias? (si no, las pide y avisa al llegar) */
+function ingListoRefs(){if(ING.estado!=='si')return false;const a=ingAsegurarOps(),b=ingAsegurarRefs();return a&&b}
+function ingLeyendoRefsHTML(){if(ING.refsTodas==='error')return `<div class="warn ing-falta"><b>No se pudo leer la ingeniería por referencia:</b> ${esc(ING.refsErr||'')} <button class="btn ghost sm" data-ver="1" onclick="ING.refsTodas=null;render()">Reintentar</button></div>`;
+  if(ING.ops==='error')return ingLeyendoHTML();return '<p class="mut ing-leyendo">Leyendo la ingeniería por referencia…</p>'}
+function ingRefIdx(){const v=(ING.refsVer||0)+'|'+(ING.ver||0);if(ING._ridx&&ING._ridx.v===v)return ING._ridx;const porNum=new Map(),porTipo=new Map();
+  Object.values(ING.refs||{}).forEach(r=>{if(!r||!r.cab)return;const x=ingRefKey(r.cab.ref),t=r.cab.tipo||'';(porNum.get(x)||porNum.set(x,[]).get(x)).push(r);(porTipo.get(t)||porTipo.set(t,[]).get(t)).push(r)});
+  ING._ridx={v,porNum,porTipo};return ING._ridx}
+function ingHayRefs(){if(ING.refsTodas!=='si')return false;const v=ING.refsVer||0;if(ING._hay&&ING._hay.v===v)return ING._hay.b;const b=Object.values(ING.refs||{}).some(r=>r&&r.cab&&(r.cab.clave||r.cab.entra!=null));ING._hay={v,b};return b}
+/* las líneas de las referencias cuyo subproceso de Kronos está por decidir (no suman a ningún centro hasta decidirlo) */
+function ingRevLineasHTML(){let n=0;const refs=new Set(),sps={};Object.values(ING.refs||{}).forEach(r=>{if(!ingTieneOps(r))return;ingTotRef(r).lineas.forEach(({l,x})=>{if(x.com||!x.activa||x.s)return;n++;refs.add(r.id);const k=l.sp||'(sin subproceso)';sps[k]=(sps[k]||0)+1})});
+  if(!n)return '';return `<ul class="ing-lista ing-rev-lineas"><li><b>${num(n)} ${n===1?'línea':'líneas'} de ${num(refs.size)} ${refs.size===1?'referencia':'referencias'} con el subproceso por decidir</b> (no suman a ningún centro): ${Object.entries(sps).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,c])=>'«'+esc(k)+'» ×'+num(c)).join(', ')} — <a href="#" data-ver="1" onclick="ING_V.ops='subprocesos';ir('ingops');return false">decidir a qué subproceso van →</a></li></ul>`}
+function ingTieneOps(r){return !!(r&&r.cab&&r.cab.entra!==false&&!r.cab.usa&&Array.isArray(r.ops)&&r.ops.some(l=>l&&!l.com))}
+/* ---------- los sufijos de referencia (tabla de Ingeniería: isuf|… en ing_subprocesos) ---------- */
+function ingSufijosFilas(){return ingCatalogo().filter(r=>ingTipoFila(r)==='sufijo').sort((a,b)=>String(a.suf).localeCompare(String(b.suf)))}
+function ingSufijosActivos(){const f=ingSufijosFilas();return (f.length?f.filter(r=>r.activo!==false).map(r=>r.suf):ING_SUF_DEF.slice()).filter(s=>!!ingRefKey(s))}
+function ingSufijoSiembra(ts,u){return ING_SUF_DEF.map(s=>({id:'isuf|'+ingRefKey(s),suf:s,activo:true,origen:'siembra: los sufijos de la lectura de Kronos del 02-oct-2026',ts,u}))}
+async function ingSetSufijo(suf,activo,nuevo){if(ingNoEdita('ing_subprocesos'))return false;const ts=new Date().toISOString(),u=quienFirma();const s0=String(suf||'').trim().toUpperCase();if(!ingRefKey(s0))return false;
+  let filas=ingSufijosFilas().map(ingClon);const sembrar=!filas.length;if(sembrar)filas=ingSufijoSiembra(ts,u);const cambian=sembrar?filas.slice():[];
+  const id='isuf|'+ingRefKey(s0);let f=filas.find(x=>x.id===id);
+  if(!f){if(!nuevo)return false;f={id,suf:s0,activo:true,origen:'a mano',ts,u};filas.push(f);cambian.push(f)}
+  else{if(nuevo&&f.activo!==false){alert('El sufijo «'+f.suf+'» ya está.');return false}if(f.activo===activo&&!sembrar)return false;f.activo=activo;f.ts=ts;f.u=u;if(!cambian.includes(f))cambian.push(f)}
+  const r=await ingGuardar('ing_subprocesos',cambian);if(ingAvisoConflicto(r,'los sufijos de referencia'))return false;
+  bitacora('Ingeniería · sufijo de referencia «'+f.suf+'»: '+(nuevo?'agregado':activo?'encendido':'apagado')+(sembrar?' (se guardaron también los de la siembra: '+ING_SUF_DEF.join(', ')+')':'')+' · solo cambia cómo se busca la ingeniería de una referencia que no está en el cruce de Kronos; no cambia ningún minuto del programa ('+u+')');
+  save();ING.refsVer=(ING.refsVer||0)+1;render();return true}
+function apagarSufijoIng(s){if(!confirm('¿Apagar el sufijo «'+s+'»? Las referencias que terminan así y no están en el cruce de Kronos dejan de usar la ingeniería de su número base. No se borra: se vuelve a encender.'))return false;return ingSetSufijo(s,false)}
+function encenderSufijoIng(s){return ingSetSufijo(s,true)}
+function nuevoSufijoIng(){const s=String(prompt('Sufijo nuevo (p. ej. -XL):')||'').trim().toUpperCase();if(!s)return false;if(!/^-?[A-Z0-9]+$/.test(s)){alert('Escribe solo letras o números, con o sin guion (p. ej. -SP).');return false}return ingSetSufijo(s,true,true)}
+function ingSufijosHTML(){const f=ingSufijosFilas();const sin=!f.length;const l=sin?ING_SUF_DEF.map(s=>({suf:s,activo:true,def:true})):f;const dis=ingDis('ing_subprocesos');
+  return `<div class="panel ing-sufijos" data-ing-key="sufijos de referencia" data-ing-tabla="ing_subprocesos"><h3>Sufijos de referencia <span class="note">${sin?'sin configurar: se usan los de la lectura de Kronos del 02-oct':num(l.filter(x=>x.activo!==false).length)+' en uso'}</span>${ayudaTipHTML('Una referencia que NO está en el cruce de Kronos y termina en uno de estos sufijos usa la ingeniería de su número base del MISMO tipo de producto (3780-SP → 3780). Las que sí están en el cruce ya vienen resueltas por Kronos y mandan. Apagar un sufijo no lo borra. Solo cambia cómo se busca la ingeniería: no cambia ningún minuto del programa.')}</h3><div class="body">
+   <table class="ing-suf-t"><tbody>${l.map(x=>`<tr data-suf="${esc(x.suf)}"><td><b>${esc(x.suf)}</b></td><td>${x.activo===false?'<span class="tag t-mut">apagado</span>':'<span class="tag t-ok">se usa</span>'}</td><td class="mut">${x.def?'siembra (se guarda con la primera carga o el primer cambio)':esc((x.origen||'')+(x.u?' · '+x.u:''))+(x.ts?' · '+fmtDiaTs(x.ts):'')}</td><td><button${dis} onclick="${x.activo===false?'encenderSufijoIng':'apagarSufijoIng'}('${esc(x.suf)}')">${x.activo===false?'Encender':'Apagar'}</button></td></tr>`).join('')}</tbody></table>
+   <button${dis} onclick="nuevoSufijoIng()">Agregar sufijo</button></div></div>`}
+/* ---------- LA función: la ingeniería de un tipo de producto + referencia ----------
+   {ok:true,row,via:'propia'|'cruce'|'sufijo',…} con la fila que tiene las operaciones; o {ok:false,motivo,txt} (pend:true = todavía no se puede saber) */
+function ingSinIng(m,fila,extra){return {ok:false,motivo:m,txt:ingMotivoTxt(m)+(extra?' ('+extra+')':''),extra:extra||'',arreglo:ingMotivoArreglo(m),fila:fila||null}}
+function ingenieriaRef(cat,ref){const x=ingRefKey(ref);if(!x)return ingSinIng('sinRef');if(!cat)return ingSinIng('sinCat');
+  if(ING.estado!=='si')return {ok:false,motivo:'sinTablas',txt:ING.estado==='falta'?ING_MSG_FALTA:'las tablas de Ingeniería no se leyeron',pend:true};
+  if(ING.refsTodas!=='si')return {ok:false,motivo:'leyendo',txt:'leyendo la ingeniería por referencia…',pend:true};
+  const id='ir|'+cat+'|'+x;const r=ING.refs[id];
+  if(r&&r.cab&&r.cab.usa){const t=ING.refs[r.cab.usa];if(ingTieneOps(t))return {ok:true,row:t,via:'cruce',par:r,id:t.id};return ingSinIng('otro',r,'el cruce de Kronos la manda al listado de '+(r.cab.refK||r.cab.usa)+', que no tiene operaciones')}
+  if(ingTieneOps(r))return {ok:true,row:r,via:'propia',id};
+  if(r&&r.cab&&r.cab.entra===false)return ingSinIng(r.cab.motivo||ingMotivoDeCruce(r.cab.motivoTxt),r,r.cab.lineasK?'en Kronos está en '+r.cab.lineasK:'');
+  for(const s of ingSufijosActivos()){const sk=ingRefKey(s);if(x.length>sk.length&&x.endsWith(sk)){const bx=x.slice(0,x.length-sk.length);const b=ING.refs['ir|'+cat+'|'+bx];const bt=b&&b.cab&&b.cab.usa?ING.refs[b.cab.usa]:b;
+    if(ingTieneOps(bt))return {ok:true,row:bt,via:'sufijo',suf:s,base:(b.cab&&b.cab.ref)||bx,id:bt.id}}}
+  const otros=(ingRefIdx().porNum.get(x)||[]).filter(o=>o.cab.tipo!==cat&&ingTieneOps(o));
+  if(otros.length)return ingSinIng('otraPrenda',null,'tiene ingeniería en '+[...new Set(otros.map(o=>ingNomTipo(o.cab.tipo,o)))].join(', '));
+  if(!ingHayRefs())return ingSinIng('sinCarga');
+  return ingSinIng('sinCruce')}
+function ingenieriaDe(o){return ingenieriaRef(o&&o.cat,o&&o.ref)}
+/* ---------- una línea de la referencia: su operación de la base, su subproceso, su SAM y si cuenta ---------- */
+function ingLinea(l,fam,opDe){if(!l)return {cuenta:false,sam:0,porque:'línea vacía'};
+  if(l.com)return {com:true,sam:+l.samK||0,cuenta:false,activa:true,porque:'tiempo sin operación de Kronos (comodín): se ve, no cuenta'};
+  const get=opDe||(id=>ingOpMap().get(id));let op=l.op?get(l.op):null,g=0;while(op&&op.juntadaEn&&get(op.juntadaEn)&&g++<20)op=get(op.juntadaEn);
+  let sub='';if(l.sp){const m=ingEqKrMap();sub=m.has(ingNom(l.sp))?m.get(ingNom(l.sp)):''}else if(op)sub=ingSubOk(op.sub);
+  const s=sub?ingSubMap().get(sub):null;const e=op&&op.samFam&&op.samFam[fam];const base=e&&e.sam!=null&&isFinite(+e.sam)?+e.sam:null;
+  const propio=l.sam!=null||base==null;const sam=l.sam!=null?+l.sam:(base!=null?base:(+l.samK||0));const activa=l.activa!==false;
+  return {op,sub,s,sam,base,propio,activa,cuenta:activa&&!!s,porque:!activa?'apagada en esta referencia':!s?'subproceso por decidir («'+(l.sp||'sin subproceso')+'»)':''}}
+/* ---------- el tiempo de una referencia por centro = la suma de sus operaciones que cuentan (Confección = costura + pulido + perfilado) ---------- */
+function ingTotRef(r,opDe){const k=r&&r.id;const v=(ING.ver||0)+'|'+(ING.refsVer||0);if(!opDe&&k){ING._tot=(ING._tot&&ING._tot.v===v)?ING._tot:{v,m:new Map()};if(ING._tot.m.has(k))return ING._tot.m.get(k)}
+  const fam=(r&&r.cab&&r.cab.fam)||'';const t={cen:{},sub:{},partes:{costura:0,pulido:0,perfilado:0},fuera:0,receta:0,sinDecidir:0,nocuenta:0,n:0,nCuentan:0,propios:0,lineas:[]};
+  ((r&&r.ops)||[]).slice().sort((a,b)=>(+a.n||0)-(+b.n||0)).forEach(l=>{const x=ingLinea(l,fam,opDe);t.lineas.push({l,x});t.n++;if(!x.com&&x.propio)t.propios++;
+    if(x.com||!x.activa){t.nocuenta+=x.sam;return}if(!x.s){t.sinDecidir+=x.sam;return}t.nCuentan++;const c=x.s.centro;t.sub[x.s.id]=(t.sub[x.s.id]||0)+x.sam;
+    if(c==='modulos'){if(x.s.parte&&t.partes[x.s.parte]!=null)t.partes[x.s.parte]+=x.sam;else t.fuera+=x.sam}else t.cen[c]=(t.cen[c]||0)+x.sam});
+  t.receta=t.partes.costura+t.partes.pulido+t.partes.perfilado;if(t.receta>0)t.cen.modulos=t.receta;
+  ['fuera','receta','sinDecidir','nocuenta'].forEach(x=>t[x]=ingRed(t[x]));Object.keys(t.partes).forEach(x=>t.partes[x]=ingRed(t.partes[x]));Object.keys(t.cen).forEach(x=>t.cen[x]=ingRed(t.cen[x]));Object.keys(t.sub).forEach(x=>t.sub[x]=ingRed(t.sub[x]));
+  if(!opDe&&k)ING._tot.m.set(k,t);return t}
+/* ---------- lo que usa HOY el programa (solo se LEE: spcOrden + tiempoPaso, lo mismo con que nace el paso de una orden nueva) y de dónde sale ---------- */
+function ingFuentePrograma(k,c,ref,tp){if(!k)return {k:'nada',corto:'sin tipo de producto',txt:'la orden no tiene tipo de producto'};const sm=(k.samManda||{})[c];
+  if(c==='bordado')return {k:'puntadas',corto:'por puntadas',txt:'el bordado se programa con las puntadas de cada orden, no con minutos por prenda'};
+  if(sm&&sm.min!=null&&sm.min!==''&&CE(c)){const f=String(sm.fuente||'');return {k:'manda',corto:(f.split(' · ').slice(0,2).join(' · ')||'puesto por tipo')+(sm.pendiente?' · por confirmar':''),txt:'el tiempo del tipo de producto en Ingeniería → Tipos de producto → «Tiempos que mandan sobre la hoja»'+(f?' · '+f:'')+(sm.ts?' · '+fmtDiaTs(sm.ts):'')+(sm.u?' · '+sm.u:'')+(sm.pendiente?' · por confirmar':' · confirmado'),pend:!!sm.pendiente}}
+  if(c==='botones'){const ob=ojalBotonDe(k);if(ob&&!ob.sinConfirmar&&opsDe(k).some(x=>x.centro==='botones'))return {k:'ojalboton',corto:'tabla de ojales y botones',txt:'la tabla de ojales y botones del tipo (Ingeniería → Tipos de producto → «Tiempos de ojales y botones»)'};if(tp&&tp.estandar)return {k:'estandar',corto:'estándar de botones',txt:'el estándar de botones de la casa (Ingeniería → Tipos de producto), porque el tipo no trae ojales ni botones en la hoja'}}
+  const et=etiquetaDe(k)||etiquetaRefDe(ref,k);if(et&&+et.min>0&&(et.centro||'etiquetas')===c)return {k:'etiqueta',corto:'regla de etiqueta',txt:'la regla de etiqueta de serigrafía '+(et.ref?'de la referencia '+et.ref:'del tipo')+' (Ingeniería → Tipos de producto → «Etiqueta de serigrafía»)'};
+  const hoja=opsDe(k).filter(x=>x.centro===c);if(hoja.length)return {k:'hoja',corto:'hoja de Odoo del tipo',txt:'la suma de la hoja de operaciones de Odoo de su familia ('+hoja.length+' operaciones; Ingeniería → Operaciones → Hoja de Odoo): es el menú de TODO lo que esa prenda podría llevar, no la receta de una referencia'};
+  if(c==='modulos'&&minEstimadoConf(k)!=null)return {k:'estimado',corto:'minuto estimado',txt:'el minuto estimado de confección del tipo (no tiene hoja de operaciones; Ingeniería → Tipos de producto)'};
+  const ce=CE(c);if(ce&&+ce.minEstandar>0)return {k:'centro',corto:'minuto del centro',txt:'el minuto por prenda del centro '+ce.n+' (Configuración general → Centros y máquinas)'};
+  return {k:'nada',corto:'sin tiempo',txt:'sin tiempo: el paso entra en 0'}}
+function ingProgramaTipo(k,ref,c){if(!k)return {t:null,fuente:ingFuentePrograma(null,c)};const spc=spcOrden({ref,cat:k.id},k)||{};const tp=tiempoPaso({centro:c,t:0},k,spc,0);
+  const v=(c!=='bordado'&&tp&&tp.t!=null&&isFinite(+tp.t))?+tp.t:null;return {t:v,fuente:ingFuentePrograma(k,c,ref,tp)}}
+/* ¿el programa usa solo la costura? (más cerca de la costura que de la receta, y a menos de un 5 % de ella: así se vio el 05-oct en las camisetas, 3,60 = la costura de la 4240) */
+function ingSoloCostura(P,cos,rec){return P>0&&cos>0&&rec>0&&Math.abs(P-cos)<Math.abs(P-rec)&&Math.abs(P-cos)<=0.05*cos}
+/* el tiempo que llevan HOY sus órdenes abiertas en un centro (el guardado en su ruta) y sus prendas pendientes ahí */
+function ingTiempoOrdenes(ords,c){const usan={};let pend=0,nOrd=0;ords.forEach(o=>{const p=(o.ruta||[]).find(x=>x.centro===c)||(o.rutaCompleta||[]).find(x=>x.centro===c);if(!p)return;nOrd++;
+  const mp=minPrenda(c,+p.t||0);const kk=num(mp,2)+(p.tManual?' a mano':'');usan[kk]=(usan[kk]||0)+1;let pz=0;try{pz=(centroPorDias(c)||pasoHecho(o,c))?0:pendCentroUnid(o,c)}catch(e){pz=0}pend+=pz});
+  return {usan,pend,nOrd}}
+/* ---------- el promedio de cada tipo de producto: sus referencias con ingeniería, ponderadas por las prendas del pedido de sus órdenes abiertas ---------- */
+function ingPromediosTipos(){return memo('ingProm|'+(ING.refsVer||0)+'|'+(ING.ver||0),()=>{const out=new Map();
+  carteraDe('abiertas').forEach(o=>{if(!o.cat)return;const T=out.get(o.cat)||out.set(o.cat,{cat:o.cat,refs:new Map(),nOrd:0,pz:0}).get(o.cat);T.nOrd++;T.pz+=+o.cant||0;
+    const x=ingRefKey(o.ref);const e=T.refs.get(x)||T.refs.set(x,{ref:ingTxt(o.ref),n:0,pz:0,ing:ingenieriaDe(o)}).get(x);e.n++;e.pz+=+o.cant||0});
+  out.forEach(T=>{const cen={};let pzCon=0,nCon=0,nConf=0;
+    T.refs.forEach(e=>{if(!e.ing.ok)return;nCon++;pzCon+=e.pz;if((e.ing.row.cab||{}).estado==='confirmada')nConf++;const t=ingTotRef(e.ing.row);e.tot=t;
+      Object.entries(t.cen).forEach(([c,v])=>{if(!(v>0))return;const z=cen[c]=cen[c]||{w:0,s:0,n:0,cos:0};z.n++;if(e.pz>0){z.w+=e.pz;z.s+=e.pz*v;if(c==='modulos')z.cos+=e.pz*t.partes.costura}})});
+    Object.values(cen).forEach(z=>{z.prom=z.w>0?ingRed(z.s/z.w):null;z.costura=z.w>0?ingRed(z.cos/z.w):null});Object.assign(T,{cen,pzCon,nCon,nConf,nRefs:T.refs.size})});
+  return out})}
+/* ---------- las referencias abiertas SIN ingeniería, por motivo (base: órdenes abiertas) ---------- */
+function ingRefsSinIng(){const porM={},refs=new Set();let nOrd=0,pz=0,pend=false;
+  carteraDe('abiertas').forEach(o=>{const r=ingenieriaDe(o);if(r.ok)return;if(r.pend){pend=true;return}const m=r.motivo||'otro';const key=(o.cat||'-')+'|'+ingRefKey(o.ref);
+    const g=porM[m]=porM[m]||{m,txt:ingMotivoTxt(m),arreglo:ingMotivoArreglo(m),refs:new Map(),nOrd:0,pz:0};let x=g.refs.get(key);if(!x){x={cat:o.cat||'',ref:ingTxt(o.ref),n:0,pz:0,det:r.extra||''};g.refs.set(key,x)}
+    x.n++;x.pz+=+o.cant||0;g.nOrd++;g.pz+=+o.cant||0;nOrd++;pz+=+o.cant||0;refs.add(key)});
+  const motivos=ING_REF_MOTIVOS.map(x=>porM[x[0]]).filter(Boolean).map(g=>Object.assign(g,{nRefs:g.refs.size,lista:[...g.refs.values()].sort((a,b)=>b.pz-a.pz)}));
+  return {base:'abiertas',pend,nRefs:refs.size,nOrd,pz,motivos}}
+function ingIrRef(ref,cat){ING_V.rq=String(ref==null?'':ref);ING_V.rcat=cat||null;ING_V.modal=null;try{const v=document.getElementById('veil');if(v&&v.classList.contains('on'))cerrar()}catch(e){}if(page!=='ingref')ir('ingref');else render()}
+function ingRefLink(ref,cat,txt){return `<a href="#" class="ing-ir-ref" data-ref="${esc(ref)}" data-cat="${esc(cat||'')}" onclick="ingIrRef(this.dataset.ref,this.dataset.cat);return false">${txt}</a>`}
+function ingRefsSinIngHTML(enRef){if(ING.estado!=='si')return '';if(!ingListoRefs())return `<div class="panel ing-sining" data-ing-key="referencias sin ingenieria"><h3>Referencias sin ingeniería</h3><div class="body">${ingLeyendoRefsHTML()}</div></div>`;
+  const r=ingRefsSinIng();const ir=puedeAbrirPagina('ingref');
+  return `<div class="panel ing-sining" data-ing-key="referencias sin ingenieria"><h3>Referencias sin ingeniería <span class="note">${num(r.nRefs)} ${r.nRefs===1?'referencia':'referencias'} · ${num(r.nOrd)} ${r.nOrd===1?'orden':'órdenes'} · ${num(r.pz)} prendas · base: órdenes abiertas</span>${ayudaTipHTML('Órdenes abiertas cuyo tipo de producto + referencia no tiene ingeniería, por motivo y con dónde se arregla. Mientras tanto se toma como base el promedio de su tipo de producto (Ingeniería → Tipos de producto) y el programa sigue con el tiempo de su tipo, como hoy. No cambia nada.')}</h3><div class="body">
+   ${r.nRefs?`<table class="ing-sining-t"><thead><tr><th>Motivo</th><th class="num">Referencias</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Dónde se arregla</th></tr></thead><tbody>${r.motivos.map(g=>`<tr data-motivo="${g.m}"><td>${esc(g.txt)}</td><td class="num">${num(g.nRefs)}</td><td class="num">${num(g.nOrd)}</td><td class="num">${num(g.pz)}</td><td class="mut">${esc(g.arreglo||'')}</td></tr>`).join('')}</tbody></table>
+   ${r.motivos.map(g=>`<details class="ing-sining-det" data-motivo="${g.m}"><summary>${esc(g.txt)} · ${num(g.nRefs)} ${g.nRefs===1?'referencia':'referencias'} · ${num(g.pz)} prendas</summary><div class="scroll"><table><thead><tr><th>Tipo de producto</th><th>Referencia</th><th class="num">Órdenes</th><th class="num">Prendas</th><th>Detalle</th></tr></thead><tbody>${g.lista.slice(0,300).map(x=>`<tr><td>${esc(ingNomTipo(x.cat))}</td><td>${ir&&x.ref?ingRefLink(x.ref,x.cat,esc(x.ref)):esc(x.ref||'—')}</td><td class="num">${num(x.n)}</td><td class="num">${num(x.pz)}</td><td class="mut">${esc(x.det||'—')}</td></tr>`).join('')}</tbody></table></div>${g.lista.length>300?'<p class="mut">Se muestran 300 de '+num(g.lista.length)+'.</p>':''}</details>`).join('')}`
+   :`<p class="ing-sig">${ingHayRefs()?'Todas las órdenes abiertas tienen ingeniería para su tipo y referencia.':'Todavía no se cargan los listados de Kronos: todas siguen con el tiempo de su tipo.'}</p>`}${ingRevLineasHTML()}</div></div>`}
+/* ---------- buscar una referencia: sus tipos de producto (órdenes abiertas + filas de la ingeniería) ---------- */
+function ingBuscarRef(q){const x=ingRefKey(q);const ab=carteraDe('abiertas');const I=ingRefIdx();const txt=new Map();
+  I.porNum.forEach((rs,k)=>{if(rs[0])txt.set(k,String(rs[0].cab.ref))});ab.forEach(o=>{const k=ingRefKey(o.ref);if(k&&!txt.has(k))txt.set(k,ingTxt(o.ref))});
+  const parecidas=x?[...txt.keys()].filter(k=>k!==x&&k.includes(x)).sort((a,b)=>a.length-b.length||a.localeCompare(b)).slice(0,12).map(k=>txt.get(k)):[];
+  if(!x||!txt.has(x))return {x,ref:ingTxt(q),tipos:[],parecidas,sinCat:0};
+  const filas=I.porNum.get(x)||[];const tipos=new Map();filas.forEach(r=>{const c=r.cab.tipo;if(c&&!tipos.has(c))tipos.set(c,{cat:c,ords:[]})});
+  let sinCat=0;ab.forEach(o=>{if(ingRefKey(o.ref)!==x)return;if(!o.cat){sinCat++;return}if(!tipos.has(o.cat))tipos.set(o.cat,{cat:o.cat,ords:[]});tipos.get(o.cat).ords.push(o)});
+  const ref=txt.get(x);const arr=[...tipos.values()].map(t=>Object.assign(t,{pz:t.ords.reduce((a,o)=>a+(+o.cant||0),0),ing:ingenieriaRef(t.cat,ref),nom:ingNomTipo(t.cat,filas.find(r=>r.cab.tipo===t.cat))})).sort((a,b)=>b.pz-a.pz||(b.ing.ok?1:0)-(a.ing.ok?1:0)||a.nom.localeCompare(b.nom));
+  return {x,ref,tipos:arr,parecidas,sinCat}}
+function ingRefEstadoHTML(){const all=Object.values(ING.refs||{}).filter(r=>r&&r.cab&&(r.cab.clave||r.cab.entra!=null));
+  if(!all.length)return `<p class="ing-ref-lin"><span class="tag t-falta">sin listados</span> Todavía no se cargan los listados de Kronos: botón <b>«Cargar listados de Kronos»</b> arriba, con el archivo CARGA_BALANCEO (o sus CSV).</p>`;
+  const conOps=all.filter(ingTieneOps),usa=all.filter(r=>r.cab.usa),sin=all.filter(r=>r.cab.entra===false),nv=all.filter(r=>r.cab.noVino),conf=conOps.filter(r=>r.cab.estado==='confirmada');
+  const ult=all.reduce((a,r)=>(r.cab.ts&&(!a||r.cab.ts>a.cab.ts))?r:a,null);
+  return `<p class="ing-ref-lin ing-ref-estado"><b>${num(conOps.length)}</b> ${conOps.length===1?'referencia con ingeniería':'referencias con ingeniería'}${usa.length?' · '+num(usa.length)+' usan la de otra del mismo tipo (3780-SP → 3780)':''} · ${num(sin.length)} sin ingeniería en el cruce${nv.length?' · '+num(nv.length)+' no vinieron en la última carga (quedan marcadas)':''} · ${conf.length?num(conf.length)+' confirmadas':'<span class="tag t-aviso" title="todo lo de Kronos entra por confirmar; corregir y confirmar es el paso siguiente">por confirmar</span>'}${ult?' · '+esc(ult.cab.fuente||'')+' · cargado el '+fmtDiaTs(ult.cab.ts)+(ult.cab.u?' por '+esc(ult.cab.u):''):''}</p>`}
+function ingRefResultadoHTML(){if(ING.estado!=='si')return '';if(!ingListoRefs())return ingLeyendoRefsHTML();const q=String(ING_V.rq||'').trim();
+  if(!q)return `<p class="ing-ref-lin mut">Escribe una referencia (el estilo de la orden), p. ej. <b>4240</b>. Si está en varios tipos de producto sale un botón por tipo: la ingeniería siempre es de un tipo de producto + referencia, nunca del número solo.</p>`;
+  const r=ingBuscarRef(q);
+  if(!r.tipos.length)return `<p class="ing-ref-lin">Ninguna orden abierta ni la ingeniería cargada tiene la referencia <b>${esc(q)}</b>.${r.parecidas.length?' ¿Quisiste decir '+r.parecidas.map(p=>ingRefLink(p,'',esc(p))).join(', ')+'?':''}</p>`;
+  const sel=r.tipos.find(t=>t.cat===ING_V.rcat)||r.tipos[0];
+  const chip=t=>`<button class="chip ing-ref-tipo ${t===sel?'on':''}" data-ver="1" data-cat="${esc(t.cat)}" onclick="ING_V.rcat=this.dataset.cat;if(!redibujarLista('ING_V.rq'))render()" title="${esc(t.ing.ok?'con ingeniería ('+((t.ing.row.cab||{}).clave||'')+')':'sin ingeniería: '+t.ing.txt)}">${esc(t.nom)} · ${num(t.ords.length)} ${t.ords.length===1?'orden':'órdenes'} · ${num(t.pz)} prendas · ${t.ing.ok?'con ingeniería':'<span class="ing-sin">sin ingeniería</span>'}</button>`;
+  return `${r.tipos.length>1?`<p class="ing-ref-lin">La <b>${esc(r.ref)}</b> está en <b>${num(r.tipos.length)}</b> tipos de producto: cada uno tiene su propia ingeniería.</p>`:''}<div class="ing-ref-tipos">${r.tipos.map(chip).join('')}</div>
+    ${r.parecidas.length?`<p class="ing-ref-lin mut">También: ${r.parecidas.map(p=>ingRefLink(p,'',esc(p))).join(', ')}</p>`:''}
+    ${r.sinCat?`<p class="ing-ref-lin mut">${num(r.sinCat)} ${r.sinCat===1?'orden abierta con esta referencia no tiene':'órdenes abiertas con esta referencia no tienen'} tipo de producto: no se pueden mirar.</p>`:''}
+    ${ingRefDetalleHTML(sel.cat,r.ref,{})}`}
+/* ---------- el detalle de UN tipo + referencia (la página y la ventana «ver ingeniería» de la ficha de la orden) ---------- */
+const ING_CEN_REF=['modulos','corte','empaque','etiquetas','estampado','botones','bordado'];
+function ingRefDetalleHTML(cat,ref,opts){opts=opts||{};const k=K(cat);const ing=ingenieriaRef(cat,ref);const row=ing.ok?ing.row:null;const nomT=ingNomTipo(cat,row||ing.fila);
+  const ords=carteraDe('abiertas',o=>o.cat===cat&&ingRefKey(o.ref)===ingRefKey(ref));const T=ingPromediosTipos().get(cat);const t=row?ingTotRef(row):null;const cab=(row&&row.cab)||{};
+  let h=`<div class="ing-ref-det" data-cat="${esc(cat)}" data-ref="${esc(ingRefKey(ref))}"><h4 class="ing-ref-tit">${esc(ref)} · ${esc(nomT)} ${row?(cab.estado==='confirmada'?'<span class="tag t-ok">confirmada</span>':'<span class="tag t-aviso" title="todo lo de Kronos entra por confirmar">por confirmar</span>'):'<span class="tag t-falta">sin ingeniería</span>'}</h4>`;
+  if(row){h+=`<p class="ing-ref-lin ing-ref-origen">${esc(cab.fuente||'Kronos')}${cab.clave?' · listado <b>'+esc(cab.clave)+'</b>':''} · ${num(t.n)} ${t.n===1?'línea':'líneas'}${ing.via==='cruce'?' · <span class="tag t-medio" title="el cruce de Kronos manda esta referencia al listado de su número base">usa la de la '+esc(cab.ref)+' (el cruce de Kronos)</span>':''}${ing.via==='sufijo'?' · <span class="tag t-medio" title="no está en el cruce: se usó la ingeniería del número base por la tabla de sufijos">usa la de la '+esc(ing.base)+' (sufijo '+esc(ing.suf)+')</span>':''}${cab.noVino?' · <span class="tag t-falta" title="no vino en la última carga: queda como estaba, nada se borra">no vino en la última carga</span>':''}${(cab.refsTempo||[]).length?' · <span class="mut">la usan también '+esc(cab.refsTempo.join(', '))+'</span>':''}</p>`}
+  else h+=`<p class="ing-ref-lin ing-ref-motivo"><b>Sin ingeniería:</b> ${esc(ing.txt)}.${ing.arreglo?' <span class="mut">Se arregla: '+esc(ing.arreglo)+'.</span>':''} ${T&&T.cen.modulos&&T.cen.modulos.prom!=null?'Mientras tanto se toma como base el <b>promedio de su tipo</b> ('+num(T.cen.modulos.prom,2)+' min en Confección).':'Su tipo todavía no tiene referencias con ingeniería para sacar un promedio.'}</p>`;
+  h+=`<p class="ing-ref-paso"><b>Solo para mirar:</b> corregir, agregar o quitar operaciones y confirmar la referencia se hace en el paso siguiente (todavía no). Nada de esto cambia el programa: el programa sigue con el tiempo de su tipo de producto.</p>`;
+  /* el programa sigue la receta? (Confección: costura + pulido + perfilado) */
+  const pM=ingProgramaTipo(k,ref,'modulos');
+  if(row&&ingSoloCostura(pM.t,t.partes.costura,t.receta))h+=`<div class="warn ing-ref-receta" data-receta="costura"><b>El programa usa ${num(pM.t,2)} en Confección para ${esc(nomT)}: es casi la costura sola (${num(t.partes.costura,2)}), no la receta (${num(t.receta,2)} = costura + pulido ${num(t.partes.pulido,2)} + perfilado ${num(t.partes.perfilado,2)}).</b> La receta de Confección es costura + pulido + perfilado para todos (decisión del 05-oct). ${ayudaTipHTML('De dónde sale el '+num(pM.t,2)+': '+pM.fuente.txt+'. Se cambia en Ingeniería → Tipos de producto. Esta pantalla no cambia nada.')}</div>`;
+  /* cifras por centro */
+  const cens=ING_CEN_REF.filter(c=>CE(c)&&((t&&(t.cen[c]>0||(c==='modulos'&&t.fuera>0)))||(T&&T.cen[c]&&T.cen[c].prom!=null)||ingTiempoOrdenes(ords,c).nOrd>0));
+  if(cens.length){const fila=c=>{const ce=CE(c);const nomC=c==='modulos'?'Confección':(ce?ce.n:nCen(c));const pr=ingProgramaTipo(k,ref,c);const ti=ingTiempoOrdenes(ords,c);const v=t?(t.cen[c]||0):null;const pz=T&&T.cen[c];
+      const usan=Object.entries(ti.usan).map(([x,n])=>x+(Object.keys(ti.usan).length>1?' ('+n+')':'')).join(' · ');
+      const progTxt=c==='bordado'?'<span class="mut">por puntadas</span>':pr.t>0?num(pr.t,2):'<span class="mut">no lleva</span>';
+      const dif=(c==='bordado'||!(v>0)||!(pr.t>0))?'—':(()=>{const d=v-pr.t,pc=d/pr.t*100;const hs=ti.pend*d/60;return (Math.abs(d)<0.005?'=':(d>0?'+':'−')+num(Math.abs(d),2)+' ('+(d>0?'+':'−')+num(Math.abs(pc),0)+' %)')+(ti.pend&&Math.abs(d)>=0.005?'<span class="ing-de">'+(hs>0?'+':'−')+num(Math.abs(hs),0)+' h sobre '+num(ti.pend)+' prendas pendientes</span>':'')})();
+      const refTxt=c==='bordado'&&v>0?'<span class="mut">'+num(v,2)+' · solo informa</span>':v>0?'<b>'+num(v,2)+'</b>'+(c==='modulos'?'<span class="ing-de">costura '+num(t.partes.costura,2)+' + pulido '+num(t.partes.pulido,2)+' + perfilado '+num(t.partes.perfilado,2)+(t.fuera>0?' · fuera de la receta '+num(t.fuera,2):'')+'</span>':''):(t?'<span class="mut">no lleva</span>':'—');
+      return `<tr data-centro="${c}"><td><b>${esc(nomC)}</b>${c==='bordado'?'<span class="ing-de">va por puntadas: solo informa</span>':c==='empaque'?'<span class="ing-de">con la Revisión de producto terminado</span>':''}</td><td class="num">${refTxt}</td>
+        <td class="num">${pz&&pz.prom!=null?num(pz.prom,2)+'<span class="ing-de">'+num(pz.n)+' de '+num(T.nRefs)+' ref. · '+(T.pz?num(pz.w/T.pz*100,0):'0')+' % de las prendas</span>':'—'}</td>
+        <td class="num">${progTxt}${c!=='bordado'?ayudaTipHTML('Lo que usa hoy el programa para este tipo de producto: '+pr.fuente.txt+'.'+(usan?' Sus órdenes abiertas llevan hoy: '+usan+' min/prenda (el tiempo guardado en su ruta).':'')):''}<span class="ing-de">${esc(pr.fuente.corto||'')}${usan&&c!=='bordado'?' · sus órdenes: '+esc(usan):''}</span></td>
+        <td class="num">${dif}</td></tr>`};
+    h+=`<div class="scroll"><table class="ing-ref-cifras"><thead><tr><th>Centro</th><th class="num">Esta referencia <span class="mut">min/prenda</span></th><th class="num" title="promedio de las referencias del tipo con ingeniería, ponderado por las prendas del pedido de sus órdenes abiertas">Promedio del tipo</th><th class="num">El programa hoy</th><th class="num" title="esta referencia menos el programa; horas = prendas pendientes de sus órdenes abiertas en ese centro × la diferencia">Diferencia</th></tr></thead><tbody>${cens.map(fila).join('')}</tbody></table></div>
+      <p class="ing-ref-lin mut">Base: ${num(ords.length)} ${ords.length===1?'orden abierta':'órdenes abiertas'} de este tipo y referencia (${num(ords.reduce((a,o)=>a+(+o.cant||0),0))} prendas); el promedio del tipo, ${T?num(T.nOrd)+' órdenes abiertas del tipo ('+num(T.pz)+' prendas)':'sin órdenes abiertas del tipo'}. Nada se aplica.</p>`}
+  /* órdenes abiertas */
+  if(ords.length)h+=`<details class="ing-ref-ords"${opts.ordAbiertas?' open':''}><summary><b>Órdenes abiertas de este tipo y referencia: ${num(ords.length)}</b> · ${num(ords.reduce((a,o)=>a+(+o.cant||0),0))} prendas</summary><div class="scroll"><table class="ing-ref-ords-t"><thead><tr><th>OP · fase</th><th>Cliente</th><th class="num">Prendas</th><th>Entrega</th></tr></thead><tbody>${ords.slice(0,200).map(o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td class="num">${num(o.cant)}</td><td>${fmtFecha(fechaMetaDe(o))}</td></tr>`).join('')}</tbody></table></div>${ords.length>200?'<p class="mut">Se muestran 200 de '+num(ords.length)+'.</p>':''}</details>`;
+  else h+=`<p class="ing-ref-lin mut">Ninguna orden abierta de este tipo tiene esta referencia ahora.</p>`;
+  if(!row)return h+'</div>';
+  /* las operaciones en su orden */
+  const fam=cab.fam||'';const linkOp=!opts.modal&&puedeAbrirPagina('ingops');
+  h+=`<h4 class="ing-ref-h">Operaciones en su orden <span class="mut">${num(t.n)} · ${num(t.nCuentan)} cuentan · ${t.propios?num(t.propios)+' con SAM propio de la referencia':'todas con el SAM de su familia en la base'}${fam?' ('+esc(ingFamNom(fam))+')':''}</span></h4>
+   <div class="scroll"><table class="ing-ref-ops"><thead><tr><th class="num" title="orden en Kronos">#</th><th title="código de Kronos, tal cual (distingue mayúsculas)">Código</th><th>Operación</th><th>Subproceso</th><th>Máquina</th><th class="num">SAM <span class="mut">min</span></th><th title="✓ = suma en el tiempo de su centro">Cuenta</th></tr></thead><tbody>
+   ${t.lineas.map(({l,x})=>{const nom=x.op?x.op.nombre:(l.nk||'');const maq=l.maq||(x.op?x.op.tipoMaq:(l.tipo||l.maq||''));
+     return `<tr class="${x.cuenta?'':'ing-nocuenta'}" data-n="${esc(String(l.n==null?'':l.n))}"><td class="num">${esc(String(l.n==null?'':l.n))}</td><td><code>${esc(l.cod||'')}</code></td><td>${x.op&&linkOp?`<a href="#" data-ver="1" onclick="mOpIng('${esc(x.op.id)}');return false" title="la operación en la base: ${esc(x.op.cod||'')}">${esc(nom)}</a>`:esc(nom)}${x.op?'<span class="ing-de">'+esc(x.op.cod||'')+'</span>':(l.com?'':' <span class="tag t-falta" title="esta línea no está colgada de ninguna operación de la base">no está en la base</span>')}${l.aviso?' <span class="tag t-aviso" title="aviso del archivo de Kronos">'+esc(l.aviso)+'</span>':''}</td>
+       <td>${x.s?esc((x.s.cod?x.s.cod+' ':'')+x.s.nombre)+'<span class="ing-de">'+esc(nCen(x.s.centro))+'</span>':(l.com?'<span class="mut">—</span>':'<span class="tag t-falta" title="el subproceso de Kronos de esta línea no tiene equivalencia: se decide en Ingeniería → Operaciones → Subprocesos">por decidir</span><span class="ing-de">'+esc(l.sp||'')+'</span>')}${x.s&&x.op&&x.op.sub&&ingSubOk(x.op.sub)&&ingSubOk(x.op.sub)!==x.s.id?'<span class="ing-de" title="la operación de la base va en '+esc(ingSubTxt(x.op.sub))+'; en esta referencia, Kronos la pone en otro subproceso">en la base: '+esc(ingSubTxt(x.op.sub))+'</span>':''}</td>
+       <td>${esc(maq||'—')}</td>
+       <td class="num">${num(x.sam,2)}${!x.com&&x.propio?' <span class="tag t-medio" title="'+esc(x.base!=null?'SAM propio de esta referencia; el de su familia en la base es '+num(x.base,2):'la base no tiene SAM para su familia: se usa el de esta referencia')+'">propio</span>':''}</td>
+       <td>${x.cuenta?'<span class="ing-cuenta" title="suma en el tiempo de su centro">✓</span>':'<span class="mut" title="'+esc(x.porque)+'">—</span>'}</td></tr>`}).join('')}</tbody></table></div>`;
+  /* subtotales por centro y subproceso */
+  const subs=[...ingSubMap().values()].sort((a,b)=>ordenPaso(a.centro)-ordenPaso(b.centro)||(+a.orden||0)-(+b.orden||0));const filaS=s=>t.sub[s.id]>0?`<tr class="ing-subt" data-sub="${esc(s.id)}"><td>${esc((s.cod?s.cod+' ':'')+s.nombre)}${s.parte?' <span class="mut">('+esc((ING_PARTES.find(p=>p[0]===s.parte)||[0,s.parte])[1].toLowerCase())+')</span>':''}</td><td class="num">${num(t.sub[s.id],2)}</td></tr>`:'';
+  let st='';const cenS=[...new Set(subs.map(s=>s.centro))].filter(c=>subs.some(s=>s.centro===c&&t.sub[s.id]>0));
+  cenS.forEach(c=>{const ss=subs.filter(s=>s.centro===c);const ce=CE(c);const nomC=c==='modulos'?'Confección':(ce?ce.n:nCen(c));st+=`<tr class="ing-cen" data-cen="${c}"><td colspan="2">${esc(nomC)}${c==='bordado'?' <span class="mut">· solo informa: va por puntadas</span>':''}</td></tr>`;
+    if(c==='modulos'){ss.filter(s=>s.parte==='costura').forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="costura"><td>= Costura (Subensamble + Ensamble)</td><td class="num">${num(t.partes.costura,2)}</td></tr>`;
+      ss.filter(s=>s.parte&&s.parte!=='costura').forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="modulos"><td>= Confección (la receta: costura + pulido + perfilado)</td><td class="num">${num(t.receta,2)}</td></tr>`;
+      ss.filter(s=>!s.parte).forEach(s=>{const f=filaS(s);if(f)st+=f.replace('</td><td class="num">',' <span class="tag t-medio" title="subproceso de Confección sin parte de la receta: no suma">fuera de la receta</span></td><td class="num">')})}
+    else{ss.forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="${c}"><td>= ${esc(nomC)}</td><td class="num">${num(t.cen[c]||0,2)}</td></tr>`}});
+  if(t.sinDecidir>0)st+=`<tr class="ing-cen ing-pd"><td>⚠ Sin subproceso, por decidir <span class="mut">(no suma a ningún centro)</span></td><td class="num">${num(t.sinDecidir,2)}</td></tr>`;
+  if(t.nocuenta>0)st+=`<tr class="ing-nocuenta"><td>No cuenta <span class="mut">(tiempo sin operación de Kronos o apagado)</span></td><td class="num">${num(t.nocuenta,2)}</td></tr>`;
+  h+=`<h4 class="ing-ref-h">Tiempo por centro y subproceso <span class="mut">= la suma de las operaciones que cuentan</span></h4><div class="scroll"><table class="ing-ref-sub"><tbody>${st}</tbody></table></div>`;
+  return h+'</div>'}
+/* la ventana «ver ingeniería» desde la ficha de la orden: solo lectura, para cualquier perfil que ve la orden */
+function ingFichaLinkHTML(o){if(!o||!o.ref||!o.cat)return '';return `<p class="ing-ref-ficha"><a href="#" onclick="mIngRef('${esc(o.id)}');return false">ver ingeniería de la referencia ${esc(o.ref)} →</a> <span class="mut">solo lectura</span></p>`}
+async function mIngRef(oid,refresco){const o=S.ordenes.find(x=>x.id===oid);if(!o)return;ING_V.modal=oid;
+  const cuerpo=()=>ING.estado!=='si'?(ingAvisoTablasHTML()||'<p class="mut">Las tablas de Ingeniería todavía no se leyeron.</p>'):(ING.ops==='si'&&ING.refsTodas==='si')?ingRefDetalleHTML(o.cat,o.ref,{modal:true}):ingLeyendoRefsHTML();
+  abrir(`<h3>Ingeniería de la referencia ${esc(o.ref||'—')} <span class="note">${esc(ingNomTipo(o.cat))} · solo lectura</span></h3><div class="body" id="ing-ref-modal">${cuerpo()}</div>
+   <div class="foot"><button class="btn ghost" data-ver="1" onclick="ING_V.modal=null;abrirFichaOrden('${esc(o.id)}')">← Volver a la ficha</button>${puedeAbrirPagina('ingref')?`<button class="btn ghost" data-ver="1" onclick="ingIrRef(${esc(JSON.stringify(String(o.ref||'')))},'${esc(o.cat||'')}')">Abrir en Ingeniería</button>`:''}<button class="btn" data-ver="1" onclick="ING_V.modal=null;cerrar()">Cerrar</button></div>`,true);
+  if(refresco||ING.estado!=='si')return;const pend=[];if(ING.ops!=='si'&&ING.ops!=='leyendo')pend.push(leerIngOps());if(ING.refsTodas!=='si'&&ING.refsTodas!=='leyendo')pend.push(leerIngRefsTodas());
+  if(pend.length){await Promise.all(pend);const v=document.getElementById('veil');if(ING_V.modal===oid&&v&&v.classList.contains('on')&&document.getElementById('ing-ref-modal'))mIngRef(oid,true)}}
+/* ---------- Tipos de producto: el promedio de sus referencias al lado del tiempo que programa hoy (solo se muestra) ---------- */
+function ingPromediosHTML(){const cab=`<h3>Promedio de sus referencias <span class="note">al lado de lo que programa hoy · solo se muestra, no se aplica</span>${ayudaTipHTML('Para cada tipo de producto: el tiempo de sus referencias con ingeniería (Ingeniería → Por referencia), ponderado por las prendas del pedido de sus órdenes abiertas, al lado del tiempo que usa HOY el programa. Confección = costura + pulido + perfilado (decisión del 05-oct). «Lo sostienen» dice cuántas referencias y prendas entran en el promedio. Pasar el promedio al programa es un paso aparte que decide la usuaria.')}</h3>`;
+  if(ING.estado!=='si')return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">${ingAvisoTablasHTML()}</div></div>`;
+  if(!ingListoRefs())return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">${ingLeyendoRefsHTML()}</div></div>`;
+  if(!ingHayRefs())return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body"><p class="ing-sig">Todavía no se cargan los listados de Kronos (Ingeniería → Por referencia → «Cargar listados de Kronos»): sin referencias con ingeniería no hay promedio.</p></div></div>`;
+  const P=ingPromediosTipos();const cenC=['modulos','corte','empaque'];ING_V.tipoAb=ING_V.tipoAb||{};
+  const filas=[...P.values()].filter(T=>K(T.cat)&&T.nCon>0).sort((a,b)=>{const ka=K(a.cat),kb=K(b.cat);return String(nombreCat(ka)).localeCompare(String(nombreCat(kb)),'es')});
+  const sinIng=[...P.values()].filter(T=>K(T.cat)&&!T.nCon);
+  const celda=(T,c)=>{const k=K(T.cat);const pr=ingProgramaTipo(k,'',c);const z=T.cen[c];const prom=z&&z.prom;const d=(prom!=null&&pr.t>0)?prom-pr.t:null;
+    const rec=c==='modulos'&&z&&ingSoloCostura(pr.t,z.costura,prom);
+    return `<td class="num" data-centro="${c}">${pr.t>0?num(pr.t,2):'<span class="mut">—</span>'}${ayudaTipHTML('Lo que usa hoy el programa: '+pr.fuente.txt+'.')}</td><td class="num">${prom!=null?'<b>'+num(prom,2)+'</b>'+(c==='modulos'&&z.costura!=null?'<span class="ing-de">costura '+num(z.costura,2)+'</span>':''):'<span class="mut">—</span>'}</td><td class="num">${d==null?'—':(Math.abs(d)<0.005?'=':(d>0?'+':'−')+num(Math.abs(d),2)+'<span class="ing-de">'+(d>0?'+':'−')+num(Math.abs(d/pr.t*100),0)+' %</span>')}${rec?'<span class="tag t-aviso" title="el programa usa casi la costura sola (a menos de un 5 %), no la receta (costura + pulido + perfilado)">solo costura</span>':''}</td>`};
+  const det=T=>{const l=[...T.refs.values()].sort((a,b)=>b.pz-a.pz);return `<tr class="ing-prom-det" data-cat="${esc(T.cat)}"><td colspan="12"><table class="ing-prom-refs"><thead><tr><th>Referencia</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">Confección</th><th class="num">Corte</th><th class="num">Empaque</th><th>Estado</th></tr></thead><tbody>${l.map(e=>`<tr><td>${ingRefLink(e.ref,T.cat,esc(e.ref||'(sin referencia)'))}</td><td class="num">${num(e.n)}</td><td class="num">${num(e.pz)}</td>${['modulos','corte','empaque'].map(c=>`<td class="num">${e.tot&&e.tot.cen[c]>0?num(e.tot.cen[c],2):'—'}</td>`).join('')}<td>${e.ing.ok?(e.ing.row.cab.estado==='confirmada'?'<span class="tag t-ok">confirmada</span>':'<span class="tag t-aviso">por confirmar</span>')+(e.ing.via!=='propia'?' <span class="mut">(usa la de '+esc(e.ing.row.cab.ref)+')</span>':''):'<span class="mut">sin ingeniería: '+esc(e.ing.txt)+'</span>'}</td></tr>`).join('')}</tbody></table></td></tr>`};
+  return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">
+   <p class="ing-sig">Base: órdenes abiertas · cada referencia pesa las prendas del pedido de sus órdenes. Programa = lo que usa hoy el programa para el tipo (el tiempo que manda, la hoja de Odoo, el minuto estimado o el del centro, en ese orden).</p>
+   <div class="scroll"><table class="ing-prom-t"><thead><tr><th rowspan="2">Tipo de producto</th>${cenC.map(c=>`<th colspan="3" class="ing-prom-cen">${c==='modulos'?'Confección':esc(nCen(c))}</th>`).join('')}<th rowspan="2">Lo sostienen</th><th rowspan="2"></th></tr>
+    <tr>${cenC.map(()=>'<th class="num">Programa</th><th class="num">Promedio</th><th class="num">Diferencia</th>').join('')}</tr></thead><tbody>
+   ${filas.map(T=>`<tr class="ing-prom-fila" data-cat="${esc(T.cat)}"><td><b>${esc(nombreCat(K(T.cat)))}</b></td>${cenC.map(c=>celda(T,c)).join('')}<td class="ing-prom-sost">${num(T.nCon)} de ${num(T.nRefs)} ref.<span class="ing-de">${num(T.pzCon)} de ${num(T.pz)} prendas (${T.pz?num(T.pzCon/T.pz*100,0):'0'} %)${T.nConf?' · '+num(T.nConf)+' confirmadas':' · ninguna confirmada'}</span></td><td><button class="btn ghost sm" data-ver="1" onclick="ING_V.tipoAb['${esc(T.cat)}']=!ING_V.tipoAb['${esc(T.cat)}'];render()">${ING_V.tipoAb[T.cat]?'ocultar':'ver referencias'}</button></td></tr>${ING_V.tipoAb[T.cat]?det(T):''}`).join('')}</tbody></table></div>
+   ${sinIng.length?`<p class="ing-sig mut">${num(sinIng.length)} ${sinIng.length===1?'tipo de producto con órdenes abiertas no tiene':'tipos de producto con órdenes abiertas no tienen'} ninguna referencia con ingeniería: ${sinIng.slice(0,12).map(T=>esc(nombreCat(K(T.cat)))).join(', ')}${sinIng.length>12?'…':''} (Ingeniería → Por revisar).</p>`:''}</div></div>`}
+/* ---------- CARGAR los listados de Kronos: leer → plan (puro) → vista previa → aplicar (confirmación, bitácora, registro de cargas) ---------- */
+const ING_LIS_HOJAS=[['listados',['clave_listado','total_kronos_min','min_confeccion_receta_sam_que_manda'],[]],['operaciones',['clave_listado','orden_kronos','codigo','subproceso_kronos','sam_min'],[]],['cruce',['categoria_id','referencia_tempo_pcp','clave_listado','entra'],[]]];
+const ING_LIS_NOM={listados:'listados',operaciones:'operaciones por referencia',cruce:'cruce de referencias'};
+function ingLisFilas(rows){rows=Array.isArray(rows)?rows:[];for(let i=0;i<Math.min(rows.length,15);i++){const r=rows[i];if(!Array.isArray(r))continue;const cab=r.map(ingClaveCol);
+    const t=ING_LIS_HOJAS.find(([k,req,no])=>req.every(x=>cab.includes(x))&&!no.some(x=>cab.includes(x)));
+    if(t)return {tipo:t[0],filas:rows.slice(i+1).filter(x=>Array.isArray(x)&&x.some(v=>String(v==null?'':v).trim()!=='')).map(x=>{const o={};cab.forEach((k,j)=>{if(k)o[k]=x[j]==null?'':x[j]});return o})}}
+  return null}
+/* el tipo de producto real del catálogo: el id del archivo ('h_'+padre+'__'+hija) o, si no existe, por el nombre (y el padre si hay dos) */
+function ingCatReal(padre,hija,nom){const id='h_'+padre+'__'+hija;if(K(id))return id;const nn=normFase(nom),pp=String(padre||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const cs=S.categorias.filter(k=>k.padre&&!k.unificadaEn&&normFase(k.n)===nn);if(cs.length===1)return cs[0].id;
+  const cp=cs.filter(k=>{const p=K(k.padre);return p&&normFase(p.n).replace(/[^a-z0-9]/g,'')===pp});return cp.length===1?cp[0].id:null}
+const ING_REF_VOLATIL=['ts','u','archivo','fuente','noVino','volvio','antes'];
+function ingFirmaRef(d){const c=Object.assign({},(d&&d.cab)||{});ING_REF_VOLATIL.forEach(k=>delete c[k]);return ingCanon({cab:c,ops:(d&&d.ops)||null})}
+function ingRefCorregida(s){return !!(s&&s.cab&&(s.cab.estado==='confirmada'||s.cab.origen==='a mano'))||!!(s&&Array.isArray(s.cambios)&&s.cambios.length)}
+/* PURO: no escribe nada en S. hojas = {nombre: filas[][]} (el Excel con sus hojas o los CSV). Necesita leídas la base (ING.ops) y las referencias (ING.refs). */
+function planListados(hojas,nombre,opts){opts=opts||{};const ts=opts.ts||new Date().toISOString(),u=quienFirma();
+  const p={archivo:nombre||'',fuente:ingTxt(opts.fuente)||krFuenteNombre(nombre)||'',ts,error:null,avisos:[],hojas:{},repetidos:{listados:0,cruce:0},opsSinListado:0,catNoEncontradas:{},cruceSinListado:[],
+    tot:{},nuevas:[],cambiadas:[],iguales:[],volvieron:[],conservadas:[],noVinieron:[],base:null,eqNuevas:[],sufSiembra:[],faltanBase:[],control:{n:0,difs:[]},porMotivo:{},res:{}};
+  if(ING.estado!=='si'){p.error=ING.estado==='falta'?ING_MSG_FALTA+': sin las tablas no se puede cargar.':'No se pudieron leer las tablas de Ingeniería.';return p}
+  if(ING.ops!=='si'){p.error='La base de operaciones todavía no se leyó: vuelve a intentar en un momento.';return p}
+  if(ING.refsTodas!=='si'){p.error='La ingeniería por referencia todavía no se leyó: vuelve a intentar en un momento.';return p}
+  const T={};Object.entries(hojas||{}).forEach(([n,rows])=>{const f=ingLisFilas(rows);if(!f)return;if(T[f.tipo]){p.avisos.push('Hay dos hojas de '+ING_LIS_NOM[f.tipo]+': se usa «'+p.hojas[f.tipo]+'»');return}T[f.tipo]=f.filas;p.hojas[f.tipo]=n});
+  const faltan=['listados','operaciones','cruce'].filter(t=>!T[t]);if(faltan.length){p.error='Falta '+faltan.map(t=>'la hoja (o el CSV) de '+ING_LIS_NOM[t]).join(', ')+'. Sube el Excel CARGA_BALANCEO tal como viene, o los CSV listados, operaciones_por_referencia y cruce_referencias juntos.';return p}
+  /* los listados y sus operaciones (en el orden de Kronos) */
+  const L={};T.listados.forEach(f=>{const cl=ingTxt(f.clave_listado);if(!cl)return;if(L[cl]){p.repetidos.listados++;return}
+    L[cl]={clave:cl,linea:ingTxt(f.linea_kronos),familia:ingTxt(f.familia),refK:ingTxt(f.referencia_kronos),tallas:ingTxt(f.tallas),entra:ingTxt(f.entra).toUpperCase()==='SI',
+      kronos:ingSinVacios({estado:ingTxt(f.estado),listo:ingTxt(f.listo_para_balanceo),avisos:ingTxt(f.avisos_en_confeccion),obs:ingTxt(f.observaciones)}),ctl:{costura:numXLS(f.sam_confeccion_balanceo),receta:numXLS(f.min_confeccion_receta_sam_que_manda)},ops:[]}});
+  let nOps=0;T.operaciones.forEach(f=>{const cl=ingTxt(f.clave_listado);if(!cl)return;nOps++;const l=L[cl];if(!l){p.opsSinListado++;return}
+    l.ops.push(ingSinVacios({n:numXLS(f.orden_kronos),cod:ingTxt(f.codigo),nk:ingTxt(f.operacion),sp:ingTxt(f.subproceso_kronos),maq:ingTxt(f.maquina_kronos),tipo:ingTxt(f.tipo_maquina),samK:numXLS(f.sam_min),aviso:ingTxt(f.aviso),com:/comod/i.test(ingTxt(f.motivo_no_entra))?1:null,linea:ingTxt(f.linea_kronos)||l.linea}))});
+  Object.values(L).forEach(l=>l.ops.sort((a,b)=>(+a.n||0)-(+b.n||0)));
+  /* el cruce tipo de producto + referencia */
+  const C=[];let nPares=0,nEntran=0;const vistos=new Set();
+  T.cruce.forEach(f=>{const padre=ingTxt(f.categoria_padre_id),hija=ingTxt(f.categoria_id),nom=ingTxt(f.categoria),ref=ingTxt(f.referencia_tempo_pcp);if(!ref&&!hija)return;nPares++;
+    const entra=ingTxt(f.entra).toUpperCase()==='SI';if(entra)nEntran++;
+    const sinCat=!hija||hija==='sin_categoria'||!padre||padre==='?';const catArchivo=sinCat?'sin_categoria':('h_'+padre+'__'+hija);const real=sinCat?null:ingCatReal(padre,hija,nom);
+    if(!sinCat&&!real){const g=p.catNoEncontradas[catArchivo]=p.catNoEncontradas[catArchivo]||{nom,n:0};g.n++}
+    const cat=real||catArchivo;const id=ingRefId(cat,ref);if(vistos.has(id)){p.repetidos.cruce++;return}vistos.add(id);
+    C.push({id,cat,real,catArchivo,catNombre:nom,ref,clave:ingTxt(f.clave_listado),refK:ingTxt(f.referencia_kronos),entra,motivoTxt:ingTxt(f.motivo_no_entra),lineasK:ingTxt(f.lineas_donde_esta_en_kronos),ordenes:numXLS(f.ordenes_abiertas),prendas:numXLS(f.prendas)})});
+  p.tot={listados:Object.keys(L).length,listadosEntran:Object.values(L).filter(l=>l.entra).length,ops:nOps,pares:nPares,paresEntran:nEntran};
+  C.filter(c=>c.entra&&(!c.clave||!L[c.clave])).forEach(c=>p.cruceSinListado.push(c.catNombre+' · '+c.ref+(c.clave?' → '+c.clave:'')));
+  const usados=new Set(C.filter(c=>c.entra&&c.clave&&L[c.clave]).map(c=>c.clave));
+  /* cada línea cuelga de su operación de la base: la fuente de Kronos «línea|código» (tal cual: Cami8 ≠ CAMI8) */
+  const opM=ingOpMap();const srcIdx=new Map();(S.ing_operaciones||[]).forEach(o=>(o.fuentes||[]).forEach(fu=>{if(fu.f==='kronos'&&fu.k&&!srcIdx.has(fu.k))srcIdx.set(fu.k,o.id)}));
+  const kDe=x=>'k|'+x.linea+'|'+x.cod;
+  /* lo que no está en la base entra como fuente de Kronos (con su mediana, mínimo y máximo y en cuántos listados), con el mismo criterio que «Armar la base» */
+  const falt=new Map();usados.forEach(cl=>{const l=L[cl];l.ops.forEach(x=>{if(x.com||!x.cod)return;const k=kDe(x);if(srcIdx.has(k))return;
+    const g=falt.get(k)||falt.set(k,{linea:x.linea,familia:l.familia||x.linea,cod:x.cod,ns:{},sps:{},maqs:{},tipos:{},sams:[],claves:new Set()}).get(k);
+    const c1=(o,v)=>{if(v)o[v]=(o[v]||0)+1};c1(g.ns,x.nk);c1(g.sps,x.sp);c1(g.maqs,x.maq);c1(g.tipos,x.tipo);if(x.samK!=null)g.sams.push(+x.samK);g.claves.add(cl)})});
+  const masUsado=o=>Object.keys(o).sort((a,b)=>o[b]-o[a])[0]||'';const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?(s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2):null};
+  const extra=[...falt.values()].map(g=>({linea_kronos:g.linea,familia:g.familia,codigo:g.cod,operacion:masUsado(g.ns),subproceso_kronos:masUsado(g.sps),maquina_kronos:masUsado(g.maqs),tipo_maquina:masUsado(g.tipos),
+    sam_habitual_min:med(g.sams),sam_min:g.sams.length?Math.min(...g.sams):null,sam_max:g.sams.length?Math.max(...g.sams):null,referencias_que_la_usan:g.claves.size,veces_que_aparece:g.sams.length,entra:'SI',parte_prenda:''}));
+  p.faltanBase=extra.map(x=>x.linea_kronos+' · '+x.codigo+' «'+x.operacion+'»');p.baseVacia=!(S.ing_operaciones||[]).length;
+  const opPlan=new Map();
+  if(extra.length){const bp=planIngBase({objs:extra,archivo:p.archivo,fuente:p.fuente,agregar:true},{ts});if(bp.error){p.error='No se pudieron agregar a la base: '+bp.error;return p}
+    const ek=new Set(extra.map(x=>'k|'+x.linea_kronos+'|'+x.codigo));const toca=x=>(x.data.fuentes||[]).some(fu=>ek.has(fu.k));
+    const ops=bp.nuevas.filter(toca).concat(bp.cambiadas.filter(toca),bp.volvieron.filter(toca));ops.forEach(x=>opPlan.set(x.id,x.data));
+    const famUsadas=new Set(ops.flatMap(x=>(x.data.fuentes||[]).filter(fu=>ek.has(fu.k)).map(fu=>fu.fam)));
+    p.base={siembra:bp.siembra||[],famNuevas:bp.famNuevas.filter(f=>famUsadas.has(f.id)),famCambian:bp.famCambian.filter(f=>famUsadas.has(f.id)),ops,nuevas:ops.filter(x=>!opM.has(x.id)).length,juntadas:ops.filter(x=>opM.has(x.id)).length,firma:bp.firma};
+    ops.forEach(x=>(x.data.fuentes||[]).forEach(fu=>{if(ek.has(fu.k)&&!srcIdx.has(fu.k))srcIdx.set(fu.k,x.id)}))}
+  const opDe=id=>opPlan.get(id)||opM.get(id)||null;
+  /* subprocesos de Kronos de las líneas que no están en la tabla de equivalencias: entran «por decidir» */
+  const eqM=ingEqKrMap();const eqN=new Map();usados.forEach(cl=>L[cl].ops.forEach(x=>{if(x.com||!x.sp)return;const n=ingNom(x.sp);if(eqM.has(n))return;const id='ieq|kronos|'+n;
+    const e=eqN.get(id)||eqN.set(id,{id,fuente:'kronos',nombre:x.sp,prefijo:'',sub:'',nota:'nuevo en los listados de Kronos: por decidir',origen:'listados por referencia',ts,u,ops:0}).get(id);e.ops++}));
+  p.eqNuevas=[...eqN.values()];p.sufSiembra=ingSufijosFilas().length?[]:ingSufijoSiembra(ts,u);
+  const fz=ingFamResolver(ingFamilias().concat(p.base?p.base.famNuevas:[]).map(ingClon));
+  /* las líneas de un listado, colgadas de la base (SAM propio solo si es distinto del de su familia en la base) */
+  const lineasDe=l=>{let fam='';const pre=l.ops.map(x=>{if(x.com||!x.cod)return {x};const k=kDe(x);let o=opDe(srcIdx.get(k)),g=0;while(o&&o.juntadaEn&&opDe(o.juntadaEn)&&g++<20)o=opDe(o.juntadaEn);const fu=o?(o.fuentes||[]).find(f=>f.k===k):null;if(!fam&&fu&&fu.fam)fam=fu.fam;return {x,o,fu}});
+    if(!fam){const f=fz.buscar(l.familia)||fz.buscar(l.linea);fam=f?f.id:''}
+    const ops=pre.map(({x,o,fu})=>{if(x.com||!o)return ingSinVacios({n:x.n,cod:x.cod,nk:x.nk,sp:x.sp,maq:x.maq,samK:x.samK,aviso:x.aviso,com:x.com?1:null});
+      const f=(fu&&fu.fam)||fam;const e=o.samFam&&o.samFam[f];const base=e&&e.sam!=null?+e.sam:null;const m=ingMaqDe(x.maq,x.tipo);
+      return ingSinVacios({n:x.n,op:o.id,cod:x.cod,sp:x.sp,samK:x.samK,sam:(x.samK!=null&&(base==null||Math.abs(+x.samK-base)>0.0005))?+x.samK:null,maq:(m.tipo&&claveMaq(m.tipo)!==claveMaq(o.tipoMaq||''))?m.tipo:null,aviso:x.aviso})});
+    return {fam,ops}};
+  const LIN={};const linDe=cl=>LIN[cl]||(LIN[cl]=lineasDe(L[cl]));
+  /* las filas: una por par tipo + referencia; la que usa el listado de otra del mismo tipo apunta a ella (cab.usa) */
+  const filas=new Map();const cabComun={fuente:p.fuente,archivo:p.archivo,ts,u};
+  const ingRow=(c,l,ref)=>{const ln=linDe(l.clave);return {cab:ingSinVacios(Object.assign({tipo:c.cat,ref,estado:'porConfirmar',entra:true,clave:l.clave,linea:l.linea,refK:l.refK,tallas:l.tallas,fam:ln.fam,familiaK:l.familia,catNombre:c.catNombre,catArchivo:c.real?'':c.catArchivo,kronos:Object.keys(l.kronos).length?l.kronos:null,nOps:ln.ops.length},cabComun)),ops:ln.ops}};
+  C.forEach(c=>{
+    if(!c.entra){const m=ingMotivoDeCruce(c.motivoTxt);p.porMotivo[m]=(p.porMotivo[m]||0)+1;filas.set(c.id,{cab:ingSinVacios(Object.assign({tipo:c.cat,ref:c.ref,entra:false,motivo:m,motivoTxt:c.motivoTxt,lineasK:c.lineasK,catNombre:c.catNombre,catArchivo:c.real?'':c.catArchivo,ordenesArchivo:c.ordenes,prendasArchivo:c.prendas},cabComun))});return}
+    const l=L[c.clave];if(!l)return;const propia=!l.refK||ingRefKey(c.ref)===ingRefKey(l.refK);const tid=propia?c.id:ingRefId(c.cat,l.refK);
+    let tr=filas.get(tid);if(!tr||tr.cab.usa||tr.cab.entra===false){tr=ingRow(c,l,propia?c.ref:l.refK);if(!propia)tr.cab.soloBase=true;filas.set(tid,tr)}
+    if(propia){delete tr.cab.soloBase;tr.cab.ref=c.ref;if(c.ordenes!=null)tr.cab.ordenesArchivo=c.ordenes;if(c.prendas!=null)tr.cab.prendasArchivo=c.prendas;tr.cab.catNombre=c.catNombre}
+    else{tr.cab.refsTempo=(tr.cab.refsTempo||[]).concat([c.ref]);filas.set(c.id,{cab:ingSinVacios(Object.assign({tipo:c.cat,ref:c.ref,entra:true,usa:tid,clave:l.clave,refK:l.refK,catNombre:c.catNombre,catArchivo:c.real?'':c.catArchivo,ordenesArchivo:c.ordenes,prendasArchivo:c.prendas},cabComun))})}});
+  /* control: la receta y la costura que calcula esta pantalla contra el resumen del archivo (no frena nada: lo dice) */
+  usados.forEach(cl=>{const l=L[cl];if(!l.entra)return;p.control.n++;const t=ingTotRef({id:null,cab:{fam:linDe(cl).fam},ops:linDe(cl).ops},id=>opDe(id));const c=l.ctl;
+    if((c.receta!=null&&Math.abs(t.receta-c.receta)>0.0011)||(c.costura!=null&&Math.abs(t.partes.costura-c.costura)>0.0011))p.control.difs.push({clave:cl,receta:[t.receta,c.receta],costura:[t.partes.costura,c.costura]})});
+  /* contra lo que hay en la base de datos: nuevas, cambian, iguales, vuelven, no vinieron (se marcan, no se borran) y corregidas (no se pisan) */
+  const srv=ING.refs||{};
+  filas.forEach((d,id)=>{const s=srv[id];if(!s){p.nuevas.push({id,data:d});return}if(ingRefCorregida(s)){p.conservadas.push({id,data:d,srv:s});return}
+    if(ingFirmaRef(s)===ingFirmaRef(d)){if(s.cab&&s.cab.noVino){const dd=ingClon(sinId(s));delete dd.cab.noVino;dd.cab.volvio={ts,archivo:p.archivo};p.volvieron.push({id,data:dd})}else p.iguales.push(id);return}
+    const dd=ingClon(d);dd.cab.antes=ingSinVacios({fuente:(s.cab||{}).fuente,archivo:(s.cab||{}).archivo,ts:(s.cab||{}).ts});if(Array.isArray(s.cambios))dd.cambios=s.cambios;p.cambiadas.push({id,data:dd})});
+  Object.values(srv).forEach(s=>{if(!s||filas.has(s.id))return;const c=s.cab||{};if(!(c.clave||c.entra!=null)||c.noVino||ingRefCorregida(s))return;const dd=ingClon(sinId(s));dd.cab.noVino={ts,archivo:p.archivo,fuente:p.fuente};p.noVinieron.push({id:s.id,data:dd})});
+  /* lo que queda, para la vista previa */
+  const todas=[...filas.values()];const conOps=todas.filter(d=>Array.isArray(d.ops));const lin=conOps.flatMap(d=>d.ops);
+  p.res={conIng:conOps.length,propias:conOps.filter(d=>!d.cab.soloBase).length,soloBase:conOps.filter(d=>d.cab.soloBase).length,usan:todas.filter(d=>d.cab.usa).length,sinIng:todas.filter(d=>d.cab.entra===false).length,
+    lineas:lin.length,colgadas:lin.filter(x=>x.op).length,comodines:lin.filter(x=>x.com).length,propios:lin.filter(x=>x.sam!=null&&x.op).length,maqPropia:lin.filter(x=>x.maq&&x.op).length,
+    porDecidir:lin.filter(x=>!x.com&&x.sp&&!eqM.get(ingNom(x.sp))).length};
+  p.hayCambios=!!(p.nuevas.length||p.cambiadas.length||p.volvieron.length||p.noVinieron.length||p.eqNuevas.length||p.sufSiembra.length||(p.base&&p.base.ops.length));
+  return p}
+function previaListadosHTML(p){if(!p)return '';if(p.error)return `<div class="warn">${esc(p.error)}</div>`;const r=p.res;
+  const fila=(n,v,nota,key)=>`<tr><td>${n}</td><td class="num"${key?' data-il-tot="'+key+'"':''}><b>${num(v)}</b></td><td class="mut">${nota||''}</td></tr>`;
+  const nc=Object.entries(p.catNoEncontradas);const tablas='ing_referencias'+(p.base||p.eqNuevas.length||p.sufSiembra.length?',ing_subprocesos':'')+(p.base?',ing_operaciones':'');const no=porQueNoEditaIng(tablas);
+  return `<div class="ib-previa il-previa">${no?`<div class="warn">${esc(no)}</div>`:''}
+   <h4>Totales de control del archivo</h4><table class="ib-t"><tbody>
+    ${fila('Listados',p.tot.listados,'entran '+num(p.tot.listadosEntran)+' (el que no entra está incompleto)','listados')}
+    ${fila('Operaciones',p.tot.ops,'en el orden de Kronos, dentro de cada listado','ops')}
+    ${fila('Pares tipo de producto + referencia (cruce)',p.tot.pares,'entran <b data-il-tot="entran">'+num(p.tot.paresEntran)+'</b>','pares')}</tbody></table>
+   <h4>La ingeniería que queda</h4><table class="ib-t"><tbody>
+    <tr class="ib-total"><td>Referencias con ingeniería</td><td class="num" data-il-tot="coning"><b>${num(r.conIng)}</b></td><td class="mut">${num(r.propias)} con su propio listado${r.soloBase?' · '+num(r.soloBase)+' números base que solo usan sus variantes (4571 para 4571-P y 4571-SP)':''} · todas <b>por confirmar</b></td></tr>
+    ${fila('Usan la ingeniería de otra del mismo tipo',r.usan,'el cruce de Kronos las manda al listado de su número base (3780-SP → 3780)','usan')}
+    ${fila('Sin ingeniería (con su motivo)',r.sinIng,Object.entries(p.porMotivo).map(([m,n])=>esc(ingMotivoTxt(m))+' '+num(n)).join(' · '),'sining')}
+    ${fila('Líneas de operación',r.lineas,num(r.colgadas)+' colgadas de su operación de la base · '+num(r.comodines)+' comodines de Kronos (se ven, no cuentan)','lineas')}
+    ${fila('Con SAM propio de la referencia',r.propios,'distinto del SAM de su familia en la base: queda a la vista en la referencia','propios')}
+    ${r.porDecidir?fila('Líneas con subproceso por decidir',r.porDecidir,'su subproceso de Kronos no tiene equivalencia: no suman hasta decidirlo (Operaciones → Subprocesos)','pordecidir'):''}</tbody></table>
+   ${p.base?`<div class="warn il-base">${p.baseVacia?'<b>La base de operaciones estaba vacía:</b> se arma solo con lo que traen los listados (para juntarla con la hoja de Odoo y la base de Kronos: Operaciones → «Armar la base»). ':''}<b>${num(p.faltanBase.length)} ${p.faltanBase.length===1?'operación de los listados no estaba':'operaciones de los listados no estaban'} en la base</b>: se ${p.faltanBase.length===1?'agrega':'agregan'} con fuente Kronos (${num(p.base.nuevas)} nuevas${p.base.juntadas?', '+num(p.base.juntadas)+' juntadas con una que ya estaba':''}): ${p.faltanBase.slice(0,8).map(esc).join(' · ')}${p.faltanBase.length>8?'…':''}</div>`:`<p class="ib-lin"><span class="tag t-ok">base</span> Todas las operaciones de los listados ya estaban en la base de operaciones.</p>`}
+   <p class="ib-lin">${p.control.difs.length?`<span class="tag t-medio">control</span> En ${num(p.control.difs.length)} de ${num(p.control.n)} listados la Confección que calcula esta pantalla (costura + pulido + perfilado, con los subprocesos de hoy) no da lo del resumen del archivo, p. ej. ${p.control.difs.slice(0,3).map(d=>esc(d.clave)+': '+num(d.receta[0],2)+' contra '+num(d.receta[1],2)).join(' · ')}. Es lo esperado donde hay operaciones que en la lectura de Kronos no tenían subproceso (Preparación de insumos y de materiales van a Subensamble desde el 05-oct) o líneas que Kronos pone en otro subproceso.`:`<span class="tag t-ok">control</span> La Confección de los ${num(p.control.n)} listados que entran da lo mismo que el resumen del archivo.`}</p>
+   <h4>Qué cambia en la base de datos</h4><table class="ib-t ib-cambios"><thead><tr><th class="num">Nuevas</th><th class="num">Cambian</th><th class="num">Iguales</th><th class="num" title="estaban marcadas «no vino» y volvieron">Vuelven</th><th class="num" title="estaban y no vinieron: quedan marcadas, no se borran">No vinieron</th><th class="num" title="confirmadas o corregidas: no se pisan">Corregidas</th></tr></thead>
+    <tbody><tr><td class="num" data-il-c="nuevas">${num(p.nuevas.length)}</td><td class="num" data-il-c="cambian">${num(p.cambiadas.length)}</td><td class="num" data-il-c="iguales">${num(p.iguales.length)}</td><td class="num">${num(p.volvieron.length)}</td><td class="num" data-il-c="novinieron">${num(p.noVinieron.length)}</td><td class="num" data-il-c="conservadas">${num(p.conservadas.length)}</td></tr></tbody></table>
+   ${p.eqNuevas.length?`<div class="warn">${num(p.eqNuevas.length)} ${p.eqNuevas.length===1?'subproceso de Kronos no está':'subprocesos de Kronos no están'} en la tabla de equivalencias: entran <b>por decidir</b> (Operaciones → Subprocesos): ${p.eqNuevas.map(e=>esc(e.nombre)+' ×'+num(e.ops)).join(' · ')}</div>`:''}
+   ${p.sufSiembra.length?`<p class="ib-lin"><span class="tag t-medio">siembra</span> Se guardan los sufijos de referencia ${ING_SUF_DEF.join(', ')} (la tabla manda desde ahora: Por referencia → «Sufijos de referencia»).</p>`:''}
+   ${nc.length?`<div class="warn">${num(nc.length)} ${nc.length===1?'tipo de producto del archivo no está':'tipos de producto del archivo no están'} en el catálogo: entran con el id del archivo y no calzarán con ninguna orden hasta que exista el tipo: ${nc.slice(0,12).map(([id,g])=>esc(g.nom)+' ('+esc(id)+', '+num(g.n)+')').join(' · ')}</div>`:''}
+   ${p.cruceSinListado.length?`<div class="warn">${num(p.cruceSinListado.length)} ${p.cruceSinListado.length===1?'fila del cruce dice':'filas del cruce dicen'} que entra pero su listado no está en el archivo: ${p.cruceSinListado.slice(0,8).map(esc).join(' · ')}</div>`:''}
+   ${p.opsSinListado?`<p class="mut ib-lin">${num(p.opsSinListado)} operaciones de listados que no están en la hoja de listados: no entran.</p>`:''}
+   ${p.repetidos.listados||p.repetidos.cruce?`<p class="mut ib-lin">Repetidos tomados una vez: ${num(p.repetidos.listados)} listados · ${num(p.repetidos.cruce)} filas del cruce.</p>`:''}
+   ${p.avisos.length?`<p class="mut ib-lin">${p.avisos.map(esc).join(' · ')}</p>`:''}
+   <p class="mut ib-lin">Hojas usadas: ${Object.entries(p.hojas).map(([t,n])=>esc(ING_LIS_NOM[t])+' = «'+esc(n)+'»').join(' · ')}</p>
+   <p class="ib-lin"><b>No cambia ningún minuto del programa:</b> la ingeniería de cada referencia es para mirar; el programa sigue con el tiempo de su tipo de producto, como hoy.${p.hayCambios?'':' <span class="tag t-ok">igual</span> Ya está así: no hay nada que aplicar.'}</p></div>`}
+let ILIS=null,ILIS_H=null;
+function mCargarListados(){if(ingNoEdita('ing_referencias'))return;ILIS=null;ILIS_H=null;
+  abrir(`<h3>Cargar listados por referencia (Kronos) <span class="note">la ingeniería de cada referencia · por confirmar · no cambia ningún minuto del programa</span></h3><div class="body il-carga">
+   <p class="ib-lin">Sube <b>CARGA_BALANCEO_….xlsx</b> tal como viene (con sus hojas) o los CSV del paquete juntos: <b>listados</b>, <b>operaciones_por_referencia</b> y <b>cruce_referencias</b>. ${ayudaTipHTML('Cada línea de un listado queda colgada de su operación de la base general (si no está en la base, se agrega con fuente Kronos y se avisa), con su orden y su SAM: si el SAM es distinto del de su familia en la base, queda como SAM propio de la referencia, a la vista. La llave es tipo de producto + referencia, nunca el número solo. Todo entra «por confirmar» con la fuente que escribas. Lo que ya estaba y no vino queda marcado «no vino» (nada se borra); lo confirmado o corregido no se pisa. Antes de guardar ves los totales de control y qué cambia.')}</p>
+   <div class="row" style="align-items:flex-end"><div><label>Archivo(s)</label><input type="file" id="il-file" accept=".xlsx,.xls,.csv" multiple onchange="leerListadosArchivos(event)"></div>
+    <div style="flex:1;min-width:200px"><label>Fuente (qué lectura de Kronos es)</label><input type="text" id="il-fuente" placeholder="p. ej. Kronos 02-oct-2026" onchange="replanListados()"></div></div>
+   <div id="il-res" class="ib-res"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="ILIS=null;ILIS_H=null;cerrar()">Cerrar</button><button class="btn" id="il-ok" disabled onclick="aplicarListados()">Aplicar</button></div>`,true)}
+function ilMostrar(){const res=document.getElementById('il-res');if(res)res.innerHTML=previaListadosHTML(ILIS);const b=document.getElementById('il-ok');
+  if(b)b.disabled=!(ILIS&&!ILIS.error&&ILIS.hayCambios&&!porQueNoEditaIng('ing_referencias'+(ILIS.base||ILIS.eqNuevas.length||ILIS.sufSiembra.length?',ing_subprocesos':'')+(ILIS.base?',ing_operaciones':'')))}
+async function replanListados(){if(!ILIS_H)return;const fu=document.getElementById('il-fuente');ILIS=planListados(ILIS_H.hojas,ILIS_H.nombre,{fuente:fu?fu.value:''});ilMostrar()}
+async function leerListadosArchivos(ev){const fs=[...(((ev&&ev.target&&ev.target.files))||[])];if(!fs.length)return;const res=document.getElementById('il-res');if(res)res.innerHTML='<span class="mut">Leyendo…</span>';
+  const b0=document.getElementById('il-ok');if(b0)b0.disabled=true;
+  try{const hojas={};for(const f of fs){if(/\.csv$/i.test(f.name))Object.assign(hojas,hojasDeCSV(await f.text(),f.name));
+      else{await cargarSheetJS();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});wb.SheetNames.forEach(n=>{hojas[f.name+' · '+n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:true})})}}
+    await leerIngBase();await leerIngRefsTodas();const fu=document.getElementById('il-fuente');const nombre=fs.map(f=>f.name).join(' + ');
+    ILIS_H={hojas,nombre};ILIS=planListados(hojas,nombre,{fuente:fu?fu.value:''});if(fu&&!fu.value.trim()&&ILIS.fuente)fu.value=ILIS.fuente;ilMostrar()}
+  catch(e){ILIS=null;if(res)res.innerHTML='<div class="warn">No se pudo leer el archivo: '+esc((e&&e.message)||String(e))+'</div>'}}
+async function aplicarListados(){const p=ILIS;if(!p||p.error)return 0;
+  const tablas='ing_referencias'+(p.base||p.eqNuevas.length||p.sufSiembra.length?',ing_subprocesos':'')+(p.base?',ing_operaciones':'');if(ingNoEdita(tablas))return 0;
+  if(!p.hayCambios){alert('Es igual a lo que ya está: no hay nada que aplicar.');return 0}
+  if(!p.fuente){alert('Escribe la fuente: qué lectura de Kronos es (p. ej. «Kronos 02-oct-2026»).');return 0}
+  if(p.base){const a=await leerTablaIng('ing_subprocesos'),b=await leerTablaIng('ing_operaciones');if(a.error||b.error){alert('No se pudo leer la base del servidor: no se guarda nada para no pisarla.');return 0}
+    const enS=l=>l.data.map(x=>Object.assign({id:x.id},x.data||{}));if(ingFirmaBase(enS(a),enS(b))!==p.base.firma){alert('Otra persona cambió la base de operaciones mientras mirabas la vista previa: no se guardó nada. Vuelve a cargar el archivo para ver lo de ahora.');await leerIngBase();await leerIngRefsTodas();ILIS=null;try{cerrar()}catch(e){}render();return 0}}
+  const r=p.res;if(!confirm('Se guarda la ingeniería de '+r.conIng+' referencias (todas por confirmar, fuente «'+p.fuente+'»): '+p.nuevas.length+' filas nuevas, '+p.cambiadas.length+' cambian'+(p.noVinieron.length?', '+p.noVinieron.length+' que no vinieron quedan marcadas «no vino» (no se borran)':'')+(p.conservadas.length?', '+p.conservadas.length+' confirmadas o corregidas no se tocan':'')+(p.base?'; además se agregan '+p.faltanBase.length+' operaciones a la base':'')+'. No cambia ningún minuto del programa. ¿Aplicar?'))return 0;
+  const vistos=new Set();const sub=[].concat(p.sufSiembra,p.base?p.base.siembra.concat(p.base.famNuevas,p.base.famCambian):[],p.eqNuevas.map(e=>{const c=Object.assign({},e);delete c.ops;return c})).filter(x=>{if(vistos.has(x.id))return false;vistos.add(x.id);return true});
+  const ops=p.base?p.base.ops.map(x=>x.data):[];const refs=p.nuevas.concat(p.cambiadas,p.volvieron,p.noVinieron).map(x=>Object.assign({id:x.id},x.data));
+  const r1=sub.length?await ingGuardar('ing_subprocesos',sub):{ok:true,n:0,conflictos:[]};
+  const r2=!r1.ok?{ok:false,n:0,error:'no se intentó (falló antes)',conflictos:[]}:ops.length?await ingGuardar('ing_operaciones',ops):{ok:true,n:0,conflictos:[]};
+  const r3=!(r1.ok&&r2.ok)?{ok:false,n:0,error:'no se intentó (falló antes)',conflictos:[]}:await ingGuardar('ing_referencias',refs,50);
+  const res={listados:p.tot.listados,listadosEntran:p.tot.listadosEntran,ops:p.tot.ops,pares:p.tot.pares,paresEntran:p.tot.paresEntran,fuente:p.fuente,conIng:r.conIng,usan:r.usan,sinIng:r.sinIng,lineas:r.lineas,propios:r.propios,
+    nuevas:p.nuevas.length,cambian:p.cambiadas.length,iguales:p.iguales.length,volvieron:p.volvieron.length,noVinieron:p.noVinieron.length,conservadas:p.conservadas.length,agregadasBase:p.base?p.faltanBase.length:0,escritasRefs:r3.n};
+  if(!r1.ok||!r2.ok||!r3.ok){res.incompleto=true;bitacora('Ingeniería · listados por referencia INCOMPLETO ('+p.archivo+'): se guardaron '+r1.n+' filas de subprocesos/equivalencias/sufijos, '+r2.n+' de '+ops.length+' operaciones de la base y '+r3.n+' de '+refs.length+' referencias · '+(r1.error||r2.error||r3.error||'otra persona cambió filas: '+(r1.conflictos.concat(r2.conflictos,r3.conflictos)).slice(0,6).join(', '))+' · volver a cargar el archivo completa lo que falta ('+quienFirma()+')');
+    registrarCarga('ingRefs',p.archivo,res);save();await leerIngBase();await leerIngRefsTodas();ILIS=null;try{cerrar()}catch(e){}render();alert('No se terminó de guardar: '+(r1.error||r2.error||r3.error||'otra persona cambió filas mientras tanto')+'. Vuelve a cargar el archivo: lo que ya está igual no se reescribe.');return 0}
+  bitacora('Ingeniería · listados por referencia cargados desde '+p.archivo+' por '+quienFirma()+' · fuente «'+p.fuente+'» · control: '+p.tot.listados+' listados ('+p.tot.listadosEntran+' entran), '+p.tot.ops+' operaciones, '+p.tot.pares+' pares tipo + referencia ('+p.tot.paresEntran+' entran) · '+r.conIng+' referencias con ingeniería, '+r.usan+' usan la de otra del mismo tipo, '+r.sinIng+' sin ingeniería · '+r.lineas+' líneas ('+r.propios+' con SAM propio) · '+p.nuevas.length+' nuevas, '+p.cambiadas.length+' cambian, '+p.iguales.length+' iguales'+(p.noVinieron.length?', '+p.noVinieron.length+' no vinieron (marcadas, no se borran)':'')+(p.base?' · '+p.faltanBase.length+' operaciones agregadas a la base':'')+' · todo por confirmar · solo para mirar: no cambia ningún minuto del programa');
+  registrarCarga('ingRefs',p.archivo,res);save();await leerIngBase();await leerIngRefsTodas();ILIS=null;ILIS_H=null;try{cerrar()}catch(e){}render();return refs.length}
+/* ---------- la página Por referencia ---------- */
+function vIngRef(el){ING_V.rq=ING_V.rq||'';const vivo=ING.estado==='si';const listo=vivo&&ingListoRefs();
+  listaRegistrar('ING_V.rq',()=>ingRefResultadoHTML());
+  el.innerHTML=`<div class="pagehead"><h2>Por referencia ${ingCtx()}</h2><span class="spacer"></span><button class="btn ghost" data-ing-tabla="ing_referencias" onclick="mCargarListados()" title="el archivo CARGA_BALANCEO de Kronos (o sus CSV): la ingeniería de cada referencia, por confirmar. No cambia ningún minuto del programa">Cargar listados de Kronos</button></div>
+  <p class="lede">La ingeniería de cada referencia: qué operaciones de la base lleva, en su orden, con su subproceso, su máquina y su SAM. Escribe la referencia (por ejemplo 4240) y elige el tipo de producto: la misma referencia puede estar en varios y cada uno tiene la suya. Al lado ves el promedio de su tipo y lo que usa hoy el programa. Es para mirar: corregir y confirmar es el paso siguiente, y nada de esto cambia el programa.</p>
   ${ingAvisoTablasHTML()}
-  <div class="panel ing-ref" data-ing-key="ingenieria de una referencia"><h3>Ingeniería de una referencia <span class="note">tipo de producto + referencia</span></h3><div class="body">
-   <div class="row"><input type="text" disabled placeholder="Referencia, p. ej. 4240" title="se arma en el siguiente paso" style="width:320px;max-width:100%"></div>
-   <div class="empty">Se arma en el siguiente paso: buscar la referencia, elegir su tipo de producto y ver sus operaciones (de la base general), con el tiempo por centro y el promedio de su tipo.</div></div></div>
-  <div class="panel" data-ing-key="referencias sin ingenieria"><h3>Referencias sin ingeniería <span class="note">se arma en el siguiente paso</span></h3><div class="body"><div class="empty">Cuando se carguen los listados por referencia, aquí van las referencias abiertas que no tienen, con el motivo y las prendas. Mientras tanto siguen con el tiempo de su tipo de producto.</div></div></div>`;
+  <div class="panel ing-ref" data-ing-key="ingenieria de una referencia"><h3>Ingeniería de una referencia <span class="note">tipo de producto + referencia · solo para mirar</span></h3><div class="body">
+   ${listo?ingRefEstadoHTML():vivo?ingLeyendoRefsHTML():''}
+   <div class="row ing-filtros" data-filtro-local="1"><input type="search" data-ver="1" class="ing-q ing-rq" placeholder="Referencia, p. ej. 4240" value="${esc(ING_V.rq)}" data-q="ING_V.rq" oninput="buscarQ(this,v=>{ING_V.rq=v;ING_V.rcat=null})"${vivo?'':' disabled'}></div>
+   <div data-lista="ING_V.rq">${listo?ingRefResultadoHTML():''}</div></div></div>
+  ${listo?ingRefsSinIngResumenHTML():''}
+  ${vivo?ingSufijosHTML():''}`;
   blindarIng(el)}
+function ingRefsSinIngResumenHTML(){const r=ingRefsSinIng();if(!r.nRefs)return '';
+  return `<p class="ing-sig ing-sining-res">${num(r.nRefs)} ${r.nRefs===1?'referencia abierta no tiene':'referencias abiertas no tienen'} ingeniería (${num(r.pz)} prendas): ${r.motivos.slice(0,4).map(g=>num(g.nRefs)+' '+esc(g.txt)).join(' · ')} — <a href="#" onclick="ir('ingrev');return false">ver en Por revisar →</a></p>`}
+/* ===================== fin de INGENIERÍA · E3 ===================== */
 /* Tipos de producto: el tiempo de cada tipo por centro, en su orden de mando, y lo que agrega pasos a la ruta */
 function vIngTipos(el){
   el.innerHTML=`<div class="pagehead"><h2>Tipos de producto ${ingCtx()}</h2></div>
-  <p class="lede">Cuántos minutos lleva cada tipo de producto en cada centro, en su orden de mando (lo que manda por tipo, la hoja de operaciones, el minuto del centro, ojales y botones, la etiqueta y el minuto estimado), y qué pasos lleva siempre un tipo o agrega un insumo de la receta. Cualquier cambio de tiempo se aplica al momento a las órdenes abiertas y queda en la bitácora.</p>
+  <p class="lede">Cuántos minutos lleva cada tipo de producto en cada centro, en su orden de mando (lo que manda por tipo, la hoja de operaciones, el minuto del centro, ojales y botones, la etiqueta y el minuto estimado), y qué pasos lleva siempre un tipo o agrega un insumo de la receta. Al lado de lo que programa hoy, el promedio de sus referencias con ingeniería (solo se muestra). Cualquier cambio de tiempo se aplica al momento a las órdenes abiertas y queda en la bitácora.</p>
   ${ingNotaOrdenesHTML()}
   ${tiemposHubHTML()}
+  ${ingPromediosHTML()}
   ${ingMarca(samMandaHTML(),'categorias','Tiempos que mandan sobre la hoja')}
   ${ingMarca(minutosCentrosHTML(),'centros','Minuto por prenda de los centros sin operaciones en la hoja')}
   ${ingMarca(tiemposOjalBotonHTML(),'params','Tiempos de ojales y botones')}
@@ -14548,7 +15011,7 @@ function vIngRev(el){const sh=nombresSinHomologar();const rev=(S.maquinas||[]).f
   <div class="panel ing-rev-maq" data-ing-key="maquinas por revisar"><h3>Máquinas <span class="note">${num(sh.length)} ${sh.length===1?'nombre':'nombres'} sin homologar · ${num(rev)} ${rev===1?'máquina':'máquinas'} por revisar</span></h3><div class="body">
    ${sh.length||rev?`<ul class="ing-lista">${sh.length?`<li><b>${num(sh.length)} ${sh.length===1?'nombre de máquina sin homologar':'nombres de máquina sin homologar'}</b>: llegan de la hoja de operaciones o del inventario y no calzan con ningún tipo (no se sabe de qué máquina son) — <a href="#" onclick="irAjuste('Tipos de máquina');return false">decir de qué tipo es →</a></li>`:''}${rev?`<li><b>${num(rev)} ${rev===1?'máquina por revisar':'máquinas por revisar'}</b>: su observación del inventario no tiene regla y no cuentan en el balanceo — <a href="#" onclick="irAjuste('Máquinas de confección');return false">revisar →</a></li>`:''}</ul>`:'<div class="empty">Nada: todos los nombres de máquina calzan con un tipo y ninguna máquina está por revisar.</div>'}</div></div>
   ${ingRevBaseHTML()}
-  <div class="panel" data-ing-key="referencias sin ingenieria por revisar"><h3>Referencias sin ingeniería <span class="note">siguiente paso</span></h3><div class="body"><p class="ing-sig">Cuando se carguen los listados por referencia, aquí van las referencias abiertas que no tienen, con su motivo y sus prendas.</p></div></div>`;
+  ${ingRefsSinIngHTML()}`;
   blindarIng(el)}
 /* una ventana de edición abierta para mirar (sin permiso para guardar esa tabla): todo apagado salvo cerrar, con el porqué arriba */
 function ingSoloVerModal(tablas){const m=porQueNoEditaIng(tablas);if(!m)return;const md=document.getElementById('modal');if(!md)return;
@@ -16811,7 +17274,7 @@ let TAREA=null;
 /* ---------- REGISTRO UNIFICADO DE CARGAS (17-sep-2026) ----------
    Toda carga (tareas de Odoo, órdenes de trabajo, fotos) deja UNA fila en S.cargas (tabla `cargas`) con tipo, hora, quién,
    archivo y un resumen con lo que pasó. Nunca se recorta. Se ve en Configuración general → Órdenes, fases y archivos de Odoo → Registro de cargas. */
-const TIPOS_CARGA={tiempos:'Tiempos por tipo (Excel)',tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)',maquinas:'Inventario de máquinas',ingBase:'Base de operaciones (Ingeniería)'};
+const TIPOS_CARGA={tiempos:'Tiempos por tipo (Excel)',tareas:'Tareas de Odoo',ot:'Órdenes de trabajo',fotos:'Fotos',fotosRef:'Fotos por referencia',maestro:'Maestro de productos',tallas:'Tallas del pedido',rutas:'Rutas por WH (archivo)',maquinas:'Inventario de máquinas',ingBase:'Base de operaciones (Ingeniería)',ingRefs:'Listados por referencia (Ingeniería)'};
 function registrarCarga(tipo,archivo,resumen){const fila={id:uid(),ts:new Date().toISOString(),usuario:(PERFIL&&(PERFIL.nombre||PERFIL.email))||(USER&&USER.email)||'',archivo:archivo||'',tipo,resumen:resumen||{}};
   S.cargas=S.cargas||[];S.cargas.push(fila);return fila}
 function resumenCargaTxt(c){const r=c.resumen||{};
@@ -16821,6 +17284,7 @@ function resumenCargaTxt(c){const r=c.resumen||{};
   if(c.tipo==='maestro')return [num(r.filas)+' productos',num(r.nuevos)+' nuevos',num(r.actualizados)+' actualizados',num(r.tempo)+' TEMPO',num(r.conProv)+' con proveedor',num(r.sinProv)+' sin proveedor',r.conservaProv?num(r.conservaProv)+' conservan proveedor':'',r.cambiaProv?num(r.cambiaProv)+' cambian de proveedor':'',r.nuevosProv?num(r.nuevosProv)+' proveedores nuevos (días estimados)':''].filter(Boolean).join(' · ');
   if(c.tipo==='rutas')return [num(r.aplicadas)+' rutas puestas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' WH que no existen aquí':''].filter(Boolean).join(' · ');
   if(c.tipo==='maquinas')return [num(r.nuevas)+' nuevas',num(r.cambiadas)+' cambiaron',num(r.iguales)+' iguales',r.conservadas?num(r.conservadas)+' con lo cambiado a mano conservado':'',r.noEntran?num(r.noEntran)+' no entraron':'',r.repetidas?num(r.repetidas)+' repetidas':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.porRevisar?num(r.porRevisar)+' por revisar':'',r.bajaRegla?num(r.bajaRegla)+' de baja por regla'+(r.bajaReglaMotivos?' ('+r.bajaReglaMotivos+')':''):'',r.bajaArchivo?num(r.bajaArchivo)+' decían «baja» (por revisar)':'',r.cambioNumero?num(r.cambioNumero)+' con posible cambio de número':'',r.sinHomologar?num(r.sinHomologar)+' con tipo sin homologar':'',r.parcial?'pegado (parcial)':''].filter(Boolean).join(' · ');
+  if(c.tipo==='ingRefs')return [num(r.listados)+' listados ('+num(r.listadosEntran)+' entran)',num(r.ops)+' operaciones',num(r.pares)+' pares tipo + referencia ('+num(r.paresEntran)+' entran)',num(r.conIng)+' referencias con ingeniería',r.nuevas?num(r.nuevas)+' nuevas':'',r.cambian?num(r.cambian)+' cambiaron':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.conservadas?num(r.conservadas)+' confirmadas o corregidas conservadas':'',r.agregadasBase?num(r.agregadasBase)+' operaciones agregadas a la base':'',r.fuente?'fuente '+r.fuente:'',r.incompleto?'INCOMPLETO':''].filter(Boolean).join(' · ');
   if(c.tipo==='ingBase')return [num(r.ops)+' operaciones',num(r.ambas)+' en las dos fuentes',r.nuevas?num(r.nuevas)+' nuevas':'',r.cambian?num(r.cambian)+' cambiaron':'',r.noVinieron?num(r.noVinieron)+' no vinieron':'',r.conservadas?num(r.conservadas)+' corregidas a mano conservadas':'',r.porDecidir?num(r.porDecidir)+' por decidir':'',r.repetidas?num(r.repetidas)+' posibles repetidas':'',r.conArchivo?'Kronos '+num(r.kronosFilas)+' filas'+(r.fuente?' ('+r.fuente+')':''):'sin archivo',r.incompleto?'INCOMPLETO':''].filter(Boolean).join(' · ');
   if(c.tipo==='fotos')return [num(r.subidas)+' subidas',r.reemplazadas?num(r.reemplazadas)+' reemplazadas':'',r.sinOrden?num(r.sinOrden)+' sin orden':'',r.errores?num(r.errores)+' errores':''].filter(Boolean).join(' · ');
   /* filas viejas (antes del registro unificado) */return [c.nuevas!=null?num(c.nuevas)+' nuevas':'',c.act!=null?num(c.act)+' actualizadas':'',c.cerradas?num(c.cerradas)+' cerradas':''].filter(Boolean).join(' · ')}

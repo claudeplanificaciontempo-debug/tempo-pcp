@@ -31,10 +31,16 @@
 --          (id 'iop|OP-0001': el código de la casa, consecutivo). Medido con
 --          la hoja de Odoo y la base de Kronos del 02-oct: 877 filas, ≈1 MB;
 --          por eso NO se lee al entrar: se lee al abrir Ingeniería.
---        · ing_referencias — una fila por tipo de producto + referencia con
---          sus operaciones elegidas (id 'ir|<tipo de producto>|<referencia>').
---      La app lee ing_subprocesos al entrar (≈17 KB), ing_operaciones al abrir
---      Ingeniería y ing_referencias solo al buscar una referencia. NO cambian ningún minuto del programa.
+--        · ing_referencias — una fila por tipo de producto + referencia del
+--          cruce de Kronos (id 'ir|<tipo de producto>|<referencia>'): con sus
+--          operaciones (cada línea cuelga de su operación de la base, con su
+--          orden y, si es distinto del de su familia, su SAM propio), o que usa
+--          la de otra referencia del mismo tipo (3780-SP → 3780), o sin
+--          ingeniería con el motivo del cruce. Medido con los listados de
+--          Kronos del 02-oct: 460 filas (301 con operaciones), ≈0,8 MB.
+--      La app lee ing_subprocesos al entrar (≈17 KB); ing_operaciones e
+--      ing_referencias, al abrir Ingeniería o «ver ingeniería» en la ficha de
+--      una orden. NO cambian ningún minuto del programa.
 --   2. Un sello (trigger) pone «actualizado» y «actualizado_por» en cada
 --      inserción y actualización.
 --   3. public.puede_editar_ingenieria(): SÍ si el perfil del usuario
