@@ -1310,7 +1310,7 @@ table.iom-tabla tr.iom-apagada td{color:var(--ink3)}
 table.iom-tabla tfoot td{font-weight:700;border-top:1px solid var(--ink3)}
 table.iom-tabla td.n{color:var(--ink3);width:34px}
 table.iom-tabla td.op{font-weight:500;min-width:140px}
-table.iom-tabla td.code{font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-xs);color:var(--ink2);word-break:break-all;min-width:120px;max-width:200px}
+table.iom-tabla td.code{font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-xs);color:var(--ink2);white-space:nowrap}
 table.iom-tabla input[type=text],table.iom-tabla select{width:100%;max-width:240px}
 table.iom-tabla input[type=text]{min-width:100px}
 table.iom-tabla select{min-width:130px}
@@ -1349,7 +1349,7 @@ table.iom-tabla tr.flash td{animation:iomFlash 1.8s ease-out}
 .iom-fmeta{font-size:var(--fs-s)}
 .iom-ed{margin-left:8px}
 .iom-tags{display:flex;gap:6px;flex-wrap:wrap}
-.iom-subcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.iom-subcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:10px}
 .iom-subcard{position:relative;text-align:left;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;display:block;width:100%}
 .iom-subcard:hover{border-color:var(--t-accent)}
 .iom-subcard.on{border-color:var(--t-accent);background:var(--t-accent-soft);box-shadow:0 0 0 1px var(--t-accent)}
@@ -1459,6 +1459,7 @@ table.iom-tabla tr.flash td{animation:iomFlash 1.8s ease-out}
 .iom-cod{width:80px;text-transform:uppercase}
 .iom-ancho{min-width:260px}
 .iom-add{gap:6px;flex-wrap:wrap;margin:8px 0 0;align-items:center}
+.iom-add>input,.iom-add>select{width:auto;flex:0 1 240px;min-width:0;margin:0}.iom-add>input.iom-cod{flex-basis:96px}.iom-add>.btn{flex:none}
 .iom-secs{display:inline-block;vertical-align:top;margin:0 30px 8px 0;font-size:var(--fs-s)}
 .iom-secs h5{margin:6px 0}
 .iom-secs ol{margin:0;padding-left:22px;line-height:1.9}
@@ -1474,7 +1475,8 @@ html[data-modo="oscuro"] .iom-pest.on,html[data-modo="oscuro"] .iom-modos button
 html[data-modo="oscuro"] .iom-it button:hover{color:var(--bg)}
 html[data-modo="oscuro"] .iom-combo-l{box-shadow:0 10px 30px rgba(0,0,0,.5)}
 @media (max-width:860px){.iom-ed2,.iom-grid3,.iom-fld2,.iom-picker,.iom-opts{grid-template-columns:minmax(0,1fr)}.iom-subcards{grid-template-columns:repeat(2,minmax(0,1fr))}.iom-crear-tit{position:static}.iom-bd-list{max-height:320px}.iom-sec2 .ing-ir{margin-left:0}.iom-newop-r{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:520px){.iom-pests{flex-wrap:nowrap;overflow-x:auto}.iom-pest{white-space:nowrap;padding:8px 12px}.iom-subcard .nm{font-size:var(--fs-m)}.iom-ancho{min-width:0}.iom-odoo{white-space:normal}}
+@media (max-width:520px){table.iom-tabla td.n{min-width:0!important}   /* la columna # no toma los 130 px que el Tablero le da a la primera columna (la WH) en el teléfono */
+  .iom-pests{flex-wrap:nowrap;overflow-x:auto}.iom-pest{white-space:nowrap;padding:8px 12px}.iom-subcard .nm{font-size:var(--fs-m)}.iom-ancho{min-width:0}.iom-odoo{white-space:normal}}
 /* 05-oct: con el grupo Ingeniería son siete grupos; hasta 1.366 px los dos largos dicen «Textil» y «Producción» (el nombre entero va en el title) */
 nav .grp .grp-c{display:none}
 @media (min-width:861px) and (max-width:1366px){nav .grp .grp-l{display:none}nav .grp .grp-c{display:inline}}   /* en los tres aspectos */
@@ -2744,7 +2746,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 16:43';
+const APP_BUILD='2026-10-06 17:38';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -15076,10 +15078,10 @@ function iomQuePasa(d){if(d.accion==='no')return {txt:'No se toca',cambia:false}
 let IOMC=null;   /* la ventana de la carga: {archivo, filas, plan, nuevas, acciones, accionTodas, res} */
 function iomMCargar(){if(ingNoEdita('ing_operaciones,ing_referencias'))return;IOMC={archivo:'',filas:null,plan:null,nuevas:{},acciones:{},accionTodas:null,res:null};
   abrir(`<h3>Cargar secuencias <span class="note">formato «Secuencia» de 21 columnas · CSV o Excel</span></h3>
-   <p class="ing-sig">Cada fila es una operación: <b>Familia</b>, <b>Subproceso</b>, <b>Operación</b>, <b>Máquina</b> y <b>Tiempo ref.</b> son obligatorias; con «Referencia» y «Cód. referencia» vacíos la fila va a la <b>base general</b> de su familia. Sirve el Excel que descarga esta misma pantalla (y el del prototipo). Antes de guardar ves qué cambia; cada secuencia que se reemplaza o se combina guarda su versión anterior.</p>
+   <div class="body"><p class="ing-sig">Cada fila es una operación: <b>Familia</b>, <b>Subproceso</b>, <b>Operación</b>, <b>Máquina</b> y <b>Tiempo ref.</b> son obligatorias; con «Referencia» y «Cód. referencia» vacíos la fila va a la <b>base general</b> de su familia. Sirve el Excel que descarga esta misma pantalla (y el del prototipo). Antes de guardar ves qué cambia; cada secuencia que se reemplaza o se combina guarda su versión anterior.</p>
    <input type="file" id="iom-carga-f" accept=".csv,.txt,.xlsx,.xls" onchange="iomLeerCargaArchivo(this)">
-   <div id="iom-carga-previa"></div>
-   <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="iom-carga-ok" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomAplicarCarga()" disabled>Aplicar</button></div>`,true)}
+   <div id="iom-carga-previa"></div></div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button><button class="btn" id="iom-carga-ok" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomAplicarCarga()" disabled>Aplicar</button></div>`,true)}
 async function iomLeerCargaArchivo(inp){const f=inp&&inp.files&&inp.files[0];if(!f)return;const box=document.getElementById('iom-carga-previa');if(box)box.innerHTML='<p class="mut">Leyendo «'+esc(f.name)+'»…</p>';
   try{IOMC.filas=await iomLeerArchivo(f)}catch(e){if(box)box.innerHTML='<div class="iom-aviso mal">No pude leer el archivo: '+esc(e.message||e)+'</div>';return}
   IOMC.archivo=f.name;IOMC.nuevas={};IOMC.acciones={};IOMC.accionTodas=null;IOMC.res=null;iomReplanCarga()}
@@ -15197,7 +15199,7 @@ function iomSecFilas(s,hasP){const q=normTxt(IOS.q).trim();let shown=0;let out='
   s.ops.forEach(o=>{if(q&&!normTxt(o.op+' '+o.code+' '+(o.maq||'')+' '+o.sec).includes(q))return;if(IOS.soloP&&hasP&&!o.p)return;shown++;
     out+=`<tr${o.p?' class="prin"':''}><td class="n">${o.n}</td><td class="op">${esc(o.op)}${o.nt?'<div class="iom-nota">'+esc(o.nt)+'</div>':''}</td><td class="code">${esc(o.code||'por asignar')}</td><td class="maq">${esc(o.maq||'')}</td><td class="num">${iomFmtT(o.t)}</td><td>${iomSecMarcas(o)}</td></tr>`});
   if(!shown)out='<tr><td colspan="6" class="mut iom-vacio">Ninguna operación coincide.</td></tr>';
-  else if(shown===s.ops.length)out+=`<tr class="samrow"><td></td><td colspan="3">SAM ${esc(s.sub.nombre)} · suma de ${iomPl(s.ops.length,'operación','operaciones')}</td><td class="num">${iomFsam(s.sam)}</td><td></td></tr>`;
+  else if(shown===s.ops.length)out+=`<tr class="samrow"><td class="n"></td><td colspan="3">SAM ${esc(s.sub.nombre)} · suma de ${iomPl(s.ops.length,'operación','operaciones')}</td><td class="num">${iomFsam(s.sam)}</td><td></td></tr>`;
   const cnt=(shown===s.ops.length?iomPl(s.ops.length,'operación','operaciones')+' en secuencia':shown+' de '+s.ops.length+' operaciones')+(s.sub.obligatorio?'':' · subproceso opcional según diseño');
   return {out,cnt}}
 function iomSecDetalleHTML(a){const v=a.vista;const idx=v.stages.findIndex(x=>x.k===IOS.sub);if(idx<0)return '<div class="iom-hint">Elige un subproceso para ver su secuencia de operaciones.</div>';const s=v.stages[idx];
@@ -15376,18 +15378,18 @@ function iomPorQueNoGuarda(){const ts=IOC.modo==='crear'&&!IOC.meta.famId?'ing_o
   const m=porQueNoEditaIng(ts);if(m)return m;if(ING.estado==='si'&&IOM.leido!=='si')return 'Todavía se está leyendo la ingeniería.';return ''}
 function iomPuedeGuardar(){if(!IOC.inicio||!iomTotal())return false;if(IOC.modo==='editar'&&!iomCambios().n)return false;return !iomPorQueNoGuarda()}
 function iomResumenHTML(){const on=iomOnStages(),t=iomTotal(),p=iomProblemas(),ed=IOC.modo==='editar',ch=iomCambios();
-  const rows=on.map((s,i)=>{const x=IOC.stages[s.k];return `<tr><td>${i+1}</td><td>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)}</span></td><td class="c">${x.ops.length}</td><td class="c">${iomFsam(iomSam(x.ops))}</td><td class="c">${x.ops.filter(o=>o.p).length}</td></tr>`}).join('');
+  const rows=on.map((s,i)=>{const x=IOC.stages[s.k];return `<tr><td class="n">${i+1}</td><td>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)}</span></td><td class="c">${x.ops.length}</td><td class="c">${iomFsam(iomSam(x.ops))}</td><td class="c">${x.ops.filter(o=>o.p).length}</td></tr>`}).join('');
   const warn=[];if(p.empty.length)warn.push('Subprocesos sin operaciones: '+p.empty.join(', ')+'.');if(p.noT)warn.push(iomPl(p.noT,'operación sin tiempo','operaciones sin tiempo')+'.');if(p.noM)warn.push(iomPl(p.noM,'operación sin máquina','operaciones sin máquina')+'.');
   const chh=!ed?'':ch.n?`<p class="mut iom-sub"><b>${iomPl(ch.n,'cambio','cambios')}</b> respecto a la versión cargada: ${ch.editadas} editadas, ${ch.nuevas} nuevas, ${ch.quitadas} quitadas${ch.movidas?', '+ch.movidas+' movidas':''}.</p><details class="iom-det" open><summary>Detalle de los cambios</summary><div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Subproceso</th><th>Operación</th><th>Cambio</th></tr></thead><tbody>${ch.lista.map(x=>`<tr><td>${esc(x.sub)}</td><td>${esc(x.op)} <span class="mut">· ${esc(x.sec)}</span></td><td>${esc(x.cambio)}${x.detalle?' <span class="mut">('+esc(x.detalle)+')</span>':''}</td></tr>`).join('')}</tbody></table></div></details>`:'<p class="mut iom-sub">Todavía no hay cambios respecto a la versión cargada (base o último guardado).</p>';
   const pq=iomPorQueNoGuarda();
   return `<h3><i class="iom-i">5</i> Resumen de «${esc(IOC.meta.nombre)}»</h3><p class="mut iom-sub">${ed?'Revisa lo que corregiste y descarga el Excel con la secuencia actualizada.':'Revisa y descarga el Excel con el mismo formato de la hoja Secuencia.'}</p>${chh}
-   <div class="iom-scroll"><table class="iom-tabla iom-sum"><thead><tr><th>#</th><th>Subproceso</th><th class="c">Operaciones</th><th class="c">SAM (min)</th><th class="c">Principales</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mut">Aún no hay subprocesos incluidos.</td></tr>'}</tbody><tfoot><tr><td></td><td>Total</td><td class="c">${t}</td><td class="c">${iomFsam(iomSamTotal())}</td><td class="c">${on.reduce((a,s)=>a+IOC.stages[s.k].ops.filter(o=>o.p).length,0)}</td></tr></tfoot></table></div>
+   <div class="iom-scroll"><table class="iom-tabla iom-sum"><thead><tr><th>#</th><th>Subproceso</th><th class="c">Operaciones</th><th class="c">SAM (min)</th><th class="c">Principales</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mut">Aún no hay subprocesos incluidos.</td></tr>'}</tbody><tfoot><tr><td class="n"></td><td>Total</td><td class="c">${t}</td><td class="c">${iomFsam(iomSamTotal())}</td><td class="c">${on.reduce((a,s)=>a+IOC.stages[s.k].ops.filter(o=>o.p).length,0)}</td></tr></tfoot></table></div>
    ${warn.length?'<p class="iom-warn">'+warn.map(esc).join(' ')+' Puedes descargarlo igual y completarlo después.</p>':''}
    <div class="iom-foot"><button type="button" class="btn ghost" onclick="iomEmpezarDeNuevo()">${ed?'Descartar cambios':'Empezar de nuevo'}</button><button type="button" class="btn ghost" ${t?'':'disabled'} onclick="iomExcelEditor()">Descargar Excel</button><button type="button" class="btn" ${iomPuedeGuardar()?'':'disabled'} title="${esc(pq)}" onclick="iomGuardar()">Guardar</button></div>
    ${IOC.guardadoTs?'<p class="mut iom-sub">Guardado: '+esc(fechaHoraLocal(IOC.guardadoTs))+'. Ya se ve en Secuencia de operaciones.</p>':''}`.replace(/>\s+</g,'><')}
 function iomSamBarHTML(){const parts=iomOnStages().map(s=>'<span>'+esc(s.nombre)+' <b>'+iomFsam(iomSam(IOC.stages[s.k].ops))+'</b></span>');return '<span class="iom-samtot">SAM total de la referencia <b>'+iomFsam(iomSamTotal())+'</b> min</span><span class="mut">por subproceso:</span>'+parts.join('<span class="mut">·</span>')}
 function iomTopHTML(){const pq=iomPorQueNoGuarda();return `<div class="iom-top-t">${IOC.inicio?iomSamBarHTML():''}</div><div class="iom-top-b">${IOC.modo==='editar'&&IOC.inicio?'<span class="mut iom-chg">'+(iomCambios().n?'<b>'+iomPl(iomCambios().n,'cambio','cambios')+'</b> sin guardar':'Sin cambios')+'</span>':''}<button type="button" class="btn ghost" ${iomTotal()?'':'disabled'} onclick="iomExcelEditor()">${ICO.doc} Descargar Excel</button><button type="button" class="btn" ${iomPuedeGuardar()?'':'disabled'} title="${esc(pq)}" onclick="iomGuardar()">Guardar</button></div>`}
-function iomRefrescarTotales(){const set=(id,h)=>{const e=document.getElementById(id);if(e)e.innerHTML=h};set('iom-c-top',iomTopHTML());set('iom-c3',iomTarjetasHTML());set('iom-c5',iomResumenHTML());
+function iomRefrescarTotales(){const set=(id,h)=>{const e=document.getElementById(id);if(e)e.innerHTML=h};set('iom-c-top',iomTopHTML());if(IOC.modo==='editar'&&IOC.inicio){const n=iomCambios().n;set('iom-chg2',n?'<b>'+iomPl(n,'cambio','cambios')+'</b> sin guardar':'Sin cambios')}set('iom-c3',iomTarjetasHTML());set('iom-c5',iomResumenHTML());
   const k=IOC.sub;if(k&&IOC.stages[k]){const ops=IOC.stages[k].ops;set('iom-cnt',esc(iomPl(ops.length,'operación','operaciones')+' en secuencia')+'<span class="iom-samtot">SAM '+esc(iomSub(k).nombre)+' <b>'+iomFsam(iomSam(ops))+'</b> min</span>')}}
 function iomEmpezarDeNuevo(){const ed=IOC.modo==='editar';const ch=iomCambios();if(ed?ch.n&&!confirm('Se pierden los cambios sin guardar. ¿Continuar?'):iomTotal()&&!confirm('Se borra todo lo que armaste. ¿Empezar de nuevo?'))return;
   iomBorradorQuitar();if(ed&&IOC.famId){iomCargarEditar(IOC.famId,IOC.cod);iomPintarCrear();return}const m=IOC.modo;IOC=iomIOCBlank(m);iomPintarCrear()}
@@ -15442,7 +15444,7 @@ function iomPaso1HTML(){const m=IOC.meta,ed=IOC.modo==='editar';const fams=iomFa
     return `<h3><i class="iom-i">1</i> Referencia a revisar</h3><p class="mut iom-sub">Elige la categoría y la referencia: su secuencia se despliega abajo para verificarla, corregir lo que esté mal cargado y guardarla. Con «Toda la categoría» revisas la base general. Puedes cambiar de referencia en cualquier momento.</p>${modos}
      <div class="iom-fld2"><div class="iom-fld"><label for="iom-e-fam">Categoría (familia)</label><select id="iom-e-fam" onchange="iomEditarFam()"><option value="">Elige la categoría…</option>${fams.map(x=>`<option value="${x.id}" ${IOC.famId===x.id?'selected':''}>${esc(x.nombre)} · ${esc(x.cod)} · ${iomNOps(iomBase(x.id))} operaciones</option>`).join('')}</select></div>
      <div class="iom-fld"><label for="iom-e-ref">Referencia</label><select id="iom-e-ref" ${f?'':'disabled'} onchange="iomEditarElegir()">${f?iomRefOpciones(f,IOC.cod):'<option value="">Primero elige la categoría</option>'}</select><div class="iom-refnota">${f?esc(iomRefNotaCrear(f).replace(/; se usa la base general de la categoría\. Cuando existan, aquí eliges la referencia\./,'.')):''}</div></div>
-     ${IOC.inicio?'<div class="mut iom-chg">'+(ch?'<b>'+iomPl(ch,'cambio','cambios')+'</b> sin guardar':'Sin cambios')+'</div>':''}</div>${IOC.sinFila&&IOC.inicio?'<p class="iom-warn">'+esc(f?f.nombre:'')+' todavía no tiene su secuencia: lo que armes aquí será su base general.</p>':''}`}
+     ${IOC.inicio?'<div class="mut iom-chg" id="iom-chg2">'+(ch?'<b>'+iomPl(ch,'cambio','cambios')+'</b> sin guardar':'Sin cambios')+'</div>':''}</div>${IOC.sinFila&&IOC.inicio?'<p class="iom-warn">'+esc(f?f.nombre:'')+' todavía no tiene su secuencia: lo que armes aquí será su base general.</p>':''}`}
   if(IOC.paso>1&&!IOC.editarDatos)return modos+`<div class="iom-done"><div class="t"><i class="iom-i">1</i><b>${esc(m.nombre)}</b><span class="chip">${esc(m.cod)}</span><span class="chip">Categoría: ${esc(m.famNombre)}${m.famId?'':' (nueva)'}</span></div><button type="button" class="iom-lnk" onclick="IOC.editarDatos=true;iomPintarCrear()">Editar datos</button></div>`;
   const nueva=!m.famId&&!!m.famNombre;
   return `<h3><i class="iom-i">1</i> Datos de la nueva referencia</h3><p class="mut iom-sub">La referencia es el modelo concreto (por ejemplo, camiseta cuello V manga larga) y pertenece a una categoría. Si la categoría no existe, créala aquí mismo.</p>${modos}
@@ -15495,13 +15497,13 @@ function encenderIomFam(id){const f=iomFam(id);if(!f)return;if(!confirm('¿Volve
 async function setIomRefsOdoo(cod,txt){if(ingNoEdita('ing_referencias')){render();return false}const prev=iomRef(cod);if(!prev)return false;const l=[...new Set(String(txt||'').split(',').map(x=>x.trim().toUpperCase()).filter(Boolean))];
   const fila=Object.assign({},sinId(prev),{id:prev.id,refsOdoo:l.length?l:[cod],ts:iomAhora(),u:quienFirma()});fila.hist=(prev.hist||[]).concat([{ts:fila.ts,u:fila.u,que:'en Odoo: '+(prev.refsOdoo||[]).join(', ')+' → '+fila.refsOdoo.join(', ')}]);
   const r=await iomGuardarFila('ing_referencias',fila,'en Odoo',{bitacora:'Ingeniería · Operaciones · '+cod+' en Odoo: '+(prev.refsOdoo||[]).join(', ')+' → '+fila.refsOdoo.join(', ')});if(!r.ok){if(r.choque)iomAvisoChoque(cod);else alert('No se guardó: '+r.error)}else save();if(page==='ingops')render();return r.ok}
-async function iomMVersiones(id){abrir('<h3>Versiones anteriores</h3><p class="mut">Leyendo…</p>');const r=await iomVersiones(id);const act=(id.startsWith('mref|')?IOM.refs:IOM.bases).find(x=>x.id===id);
+async function iomMVersiones(id){abrir('<h3>Versiones anteriores</h3><div class="body"><p class="mut">Leyendo…</p></div>');const r=await iomVersiones(id);const act=(id.startsWith('mref|')?IOM.refs:IOM.bases).find(x=>x.id===id);
   const nom=act?(act.cod?act.cod+' · '+act.nombre:((iomFam(act.fam)||{}).nombre||act.fam)+' · base general'):id;
-  if(r.error){abrir('<h3>Versiones anteriores · '+esc(nom)+'</h3><div class="iom-aviso mal">No se pudieron leer: '+esc(r.error)+'</div><div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>');return}
+  if(r.error){abrir('<h3>Versiones anteriores · '+esc(nom)+'</h3><div class="body"><div class="iom-aviso mal">No se pudieron leer: '+esc(r.error)+'</div></div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>');return}
   const puede=puedeIngTabla(id.startsWith('mref|')?'ing_referencias':'ing_operaciones');
-  abrir(`<h3>Versiones anteriores · ${esc(nom)}</h3><p class="ing-sig">Cada guardado deja aquí la versión que había antes. «Volver a esta versión» guarda la actual como versión nueva y repone la elegida (nada se borra).</p>
-   ${r.lista.length?`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué pasó después</th><th class="num">Operaciones</th><th class="num">SAM</th><th></th></tr></thead><tbody>${r.lista.map(v=>{const d=v.data||{};return `<tr><td>${esc(fechaHoraLocal(v.ts))}</td><td>${esc(v.u||'')}</td><td>${esc(v.que||'')}</td><td class="num">${iomNOps(d)}</td><td class="num">${iomFsam(d.sam!=null?d.sam:iomStagesLista(d.stages||[]).reduce((a,s)=>a+iomSam(s.ops),0))}</td><td>${puede?`<button class="btn ghost sm" onclick="volverIomVersion('${iomEsc1(id)}','${iomEsc1(v.id)}')">Volver a esta versión</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="mut">Todavía no hay versiones anteriores.</p>'}
-   <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`,true);IOM._vers={id,lista:r.lista}}
+  abrir(`<h3>Versiones anteriores · ${esc(nom)}</h3><div class="body"><p class="ing-sig">Cada guardado deja aquí la versión que había antes. «Volver a esta versión» guarda la actual como versión nueva y repone la elegida (nada se borra).</p>
+   ${r.lista.length?`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué pasó después</th><th class="num">Operaciones</th><th class="num">SAM</th><th></th></tr></thead><tbody>${r.lista.map(v=>{const d=v.data||{};return `<tr><td>${esc(fechaHoraLocal(v.ts))}</td><td>${esc(v.u||'')}</td><td>${esc(v.que||'')}</td><td class="num">${iomNOps(d)}</td><td class="num">${iomFsam(d.sam!=null?d.sam:iomStagesLista(d.stages||[]).reduce((a,s)=>a+iomSam(s.ops),0))}</td><td>${puede?`<button class="btn ghost sm" onclick="volverIomVersion('${iomEsc1(id)}','${iomEsc1(v.id)}')">Volver a esta versión</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="mut">Todavía no hay versiones anteriores.</p>'}</div>
+   <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`,true);IOM._vers={id,lista:r.lista}}
 async function volverIomVersion(id,verId){const t=id.startsWith('mref|')?'ing_referencias':'ing_operaciones';if(ingNoEdita(t))return false;const v=((IOM._vers&&IOM._vers.id===id&&IOM._vers.lista)||(await iomVersiones(id)).lista||[]).find(x=>x.id===verId);if(!v)return false;
   const prev=iomListaDe(t).find(x=>x.id===id);if(!prev)return false;if(!confirm('¿Volver a la versión del '+fechaHoraLocal(v.ts)+'? La actual queda guardada como versión anterior (nada se borra).'))return false;
   const ts=iomAhora(),u=quienFirma();const d=JSON.parse(JSON.stringify(v.data||{}));const fila=Object.assign({},d,{id,activa:prev.activa!==false,ver:(prev.ver||0)+1,ts,u,nextU:Math.max(iomMaxU(prev),iomMaxU(d))});iomResumenFila(fila);
@@ -15609,7 +15611,7 @@ function vIngOps(el){const viejas=['base','subprocesos','repetidas'];let tab=ING
   const cargar=puedeIngTabla('ing_operaciones,ing_referencias')?`<button class="btn" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomMCargar()" title="el archivo «Secuencia» (21 columnas, CSV o Excel): vista previa antes de guardar; no cambia ningún minuto del programa">${ICO.sync} Cargar secuencias</button>`:'';
   const big=ING_OPS_TABS.filter(t=>t[2]==='p').map(([k,n])=>`<button type="button" class="iom-pest${tab===k?' on':''}" data-ver="1" onclick="iomTab('${k}')">${esc(n)}</button>`).join('');
   const chip=(k,n)=>`<a href="#" class="${tab===k?'on':''}" data-ver="1" onclick="iomTab('${k}');return false">${esc(n)}</a>`;
-  const sec2=`<div class="iom-sec2"><span>Configurar: ${ING_OPS_TABS.filter(t=>t[2]==='c').map(t=>chip(t[0],t[1])).join(' · ')}</span><span>Lo que usa hoy el programa: ${ING_OPS_TABS.filter(t=>t[2]==='h').map(t=>chip(t[0],t[1])+(t[0]==='tecnicas'?' <span class="mut">'+num((S.tecnicas||[]).length)+'</span>':'')).join(' · ')}</span><span class="ing-ir mut">Tiempos por tipo: <a href="#" onclick="ir('ingtipos');return false">Tipos de producto →</a> · <a href="#" onclick="ir('ingrev');return false">Por revisar →</a></span></div>`;
+  const sec2=`<div class="iom-sec2"><span>Configurar: ${ING_OPS_TABS.filter(t=>t[2]==='c').map(t=>chip(t[0],t[1])).join(' · ')}</span><span>Lo que usa hoy el programa: ${ING_OPS_TABS.filter(t=>t[2]==='h').map(t=>chip(t[0],t[1])).join(' · ')}</span><span class="ing-ir mut">Tiempos por tipo: <a href="#" onclick="ir('ingtipos');return false">Tipos de producto →</a> · <a href="#" onclick="ir('ingrev');return false">Por revisar →</a></span></div>`;
   let cuerpo;
   if(tab==='hoja')cuerpo=`<div class="row iom-hoja-acc">${opsCargarMenuHTML()}<button class="btn ghost" data-ver="1" onclick="mMapeoOps()" title="qué centro de la planta hace cada familia de operación y qué hoja usa cada tipo de producto">Reglas familia → centro</button></div><p class="ing-sig ing-hoja-fuente"><b>Es lo que usa hoy el programa</b> para los tiempos: su carga, sus reglas y sus tiempos son los que lee hoy el programa. La secuencia de Ingeniería (pestañas de arriba) todavía no manda.</p>`+hojaOperacionesHTML();
   else if(tab==='tecnicas')cuerpo=tecnicasEstampadoHTML();
