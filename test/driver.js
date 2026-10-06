@@ -2909,7 +2909,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("CGU: la base «todas las abiertas» suma exactamente los minutos pendientes de las órdenes abiertas",Math.abs(sumaAb-(ab.centros[c0].firme+ab.centros[c0].proceso))<0.5||ab.centros[c0].reserva>0,JSON.stringify({c0,sumaAb,calc:ab.centros[c0]}));}
     else __check("CGU: la base «todas las abiertas» suma exactamente los minutos pendientes de las órdenes abiertas",true,'sin centros con carga');}
    // 2 · cada pantalla dice su base
-   page='produccion';CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:''};render();let h=document.getElementById('p-produccion').innerHTML;
+   page='produccion';CG={area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:'',tab:'centro'};render();let h=document.getElementById('p-produccion').innerHTML;   /* 06-oct: el mapa centro × semana está en la pestaña «Por centro» */
    __check("CG: Carga general dice su base y separa firme, en proceso y reserva",/base: <b>programadas<\/b>/.test(h)&&/firme, en proceso y reserva/.test(h)&&/todas las abiertas/.test(h));
    __check("CG: muestra 8 semanas por defecto (parámetro semCarga)",semanasCarga().length===8&&prm('semCarga',8)===8);
    __check("UX-B4: Carga general no nombra la clave interna «semCarga» ni dice que se cambia en Configuración (no hay ese campo); sin «consulta: carga contra capacidad»; cada celda dice % y horas, o «—» si no hay nada programado esa semana",!/semCarga/.test(h)&&!/consulta: carga contra capacidad/.test(h)&&!/min si se cuenta todo lo abierto/.test(h)&&(/ h de [0-9.,]+ h</.test(h)||/nada programado esa semana/.test(h)||/sin capacidad configurada/.test(h)));
@@ -2922,7 +2922,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const lav=CE('lavado');const bakM=lav.minEstandar,bakP=lav.pctEstimado;
     lav.minEstandar=0;lav.pctEstimado=0;
     const it=pendientesHoy().find(x=>x.k==='reservaSinDatos');
-    {const bakCG=CG;CG={area:'pro',centro:'corte',sem:null,det:null,cruce:'fam',fases:null,q:''};page='produccion';render();const h1=document.getElementById('p-produccion').innerHTML;
+    {const bakCG=CG;CG={area:'pro',centro:'corte',sem:null,det:null,cruce:'fam',fases:null,q:'',tab:'centro'};page='produccion';render();const h1=document.getElementById('p-produccion').innerHTML;
      CG.centro='';render();const w=[...document.querySelectorAll('#p-produccion .warn')].find(x=>/La reserva de/.test(x.textContent));const lavPro=(CE('lavado')||{}).area==='pro';
      __check("UX-V2: Carga general — el aviso de la reserva sale solo si se mira lavado o plancha (con Corte elegido, no), es corto y se lee entero (no se pliega en «sale cero: · ver detalle»)",!/La reserva de/.test(h1)&&(!lavPro||(!!w&&w.tagName==='DIV'&&w.textContent.replace(/\s+/g,' ').trim().length<=160&&/sale en 0/.test(w.textContent))),w?w.textContent:'sin aviso');
      const d=document.createElement('div');d.innerHTML='<div class="warn">La reserva de Lavado y Plancha sale cero: '+'falta un dato de prueba bastante largo para que se pliegue. '.repeat(4)+'</div>';plegarAvisos(d,'produccion');const sm=d.querySelector('summary');
@@ -8716,7 +8716,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const cab=hc.match(/Saldo por procesar en ([^<]+) <span class="note">([^<]*)<b>(\d+)<\/b> órdenes · <b>([^<]+)<\/b> u/);
        __check("N4→CG: abre Carga general en «Saldo por procesar en Corte» con la selección en el encabezado",page==="produccion"&&!!cab&&/Corte/.test(cab[1])&&new RegExp(sel.meses[0]).test(cab[2])&&new RegExp(esc(sel.hija)).test(cab[2]),cab?cab[0].slice(0,160):hc.slice(0,120));
        __check("N4→CG: el número de órdenes y unidades del detalle coincide EXACTO con la fila de la nivelación",!!cab&&+cab[3]===nFila&&+cab[4].replace(/\./g,"")===uFila,JSON.stringify({cg:cab&&[cab[3],cab[4]],fila:[nFila,uFila]}));
-       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a «Nivelación»/.test(hc)&&/whCell|WH\//.test(hc));
+       __check("N4→CG: sale de saldoAreaNiv/saldoProceso y lo dice: saldo por procesar, distinto del detalle por semana",/saldoAreaNiv\(/.test(String(vPro)+String(typeof saldoNivCGHTML==='function'?saldoNivCGHTML:''))&&/Es distinto del detalle por semana programada/.test(hc)&&/volver a «Nivelación»/.test(hc)&&/whCell|WH\//.test(hc));
        __check("N4→CG: al llegar desde la nivelación SOLO se ve el bloque de saldo; el resto queda colapsado con «ver el resto de Carga general»",!/Carga contra capacidad por semana/.test(hc)&&!/Familia por centro/.test(hc)&&!/Carga que viene · /.test(hc)&&/ver el resto de Carga general/.test(hc));
        CG.det.verResto=true;render();const hc2=document.getElementById("p-produccion").innerHTML;
        __check("N4→CG: «ver el resto» despliega la pantalla completa sin perder el bloque de saldo",/Carga contra capacidad por semana/.test(hc2)&&/Saldo por procesar en/.test(hc2));
@@ -10987,6 +10987,171 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const ids=new Set(temp.map(o=>o.id));S.ordenes=S.ordenes.filter(o=>!ids.has(o.id));ids.forEach(id=>delete S.avance[id]);S.bitacora=bitBak;
     Object.assign(LIB,bakLIB);GRP=bakGRP;if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;if(bakF===undefined)delete FOD['LIB.q'];else FOD['LIB.q']=bakF;LIBV=bakLIBV;PLAN=null;PLAN_ALL=null;page='ordenes';render()}
    __check("LPL sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* ===== CARGA GENERAL (06-oct-2026, usuaria con dos maquetas: «todo el sistema es para dummies: fácil de usar y sin dar mucha vuelta»):
+     tres pestañas sobre UNA cuenta (matrizCG); tarjetas, gráfico, semáforo y mapa cuadran para la misma semana y centro; colores por regla (rojo solo
+     más de 100 %, ámbar desde capAmbar, t-falta sin capacidad, gris por días); «—» en semana vacía; sin «vs. período anterior»; «Qué revisar» con datos
+     y enlaces que abren la pantalla correcta; detalle de celda y saldo de la Nivelación; oscuro y 390 px; HUELLA del programa ===== */
+  try{localStorage.__fase="cargageneral"}catch(e){}
+  {const antes=__R.errors.length;const a0=window.alert,c0=window.confirm;const al=[];window.alert=m=>al.push(String(m));window.confirm=()=>true;
+   const bakP=PERFIL;PERFIL=adminP0();const bakCG=CG;const bakT=S.params.tema;const bakSem=S.params.semCarga,bakAmb=S.params.capAmbar;const bakM=modoVisual();const bakNIV=NIVUI;
+   const bakGrp=grpSt('cg').niveles.slice();grpSt('cg').niveles=[];const capO=capSemCentro;const tmpC=[];const tmpR=[];
+   const pg=()=>document.getElementById('p-produccion');const txt=e=>(e&&e.textContent||'').replace(/\s+/g,' ').trim();
+   const ver=(tab,extra)=>{CG=Object.assign({area:'pro',centro:'',sem:null,det:null,cruce:'fam',fases:null,q:'',tab},extra||{});page='produccion';render();return pg()};
+   const huella=()=>{PLAN=null;PLAN_ALL=null;CAPM=null;const P=programar();const f3=v=>(+v||0).toFixed(3);
+     const pro=(P.pro||[]).map(x=>[x.op,x.centro,x.rec,x.dia,f3(x.min),f3(x.pz)].join(':')).sort().join('\n');
+     const ords=Object.keys(P.ordenes).sort().map(id=>{const r=P.ordenes[id];return id+'|'+[r.finPro,r.atraso,r.motor].join('|')+'|'+(r.pasos||[]).map(p=>[p.centro,p.ini,p.fin,p.rec,f3(p.min)].join(':')).join(',')}).join('\n');
+     const cu=['abiertas','programadas'].map(b=>{const r=cargaUnica(b,{});return b+':'+Object.keys(r.centros).sort().map(k=>k+'='+['firme','proceso','reserva','pz','n'].map(f=>f3(r.centros[k][f])).join('/')).join(';')}).join('\n');
+     const MC=matrizCapacidad();const cap=Object.keys(MC.celdas).sort().map(k=>k+'='+f3(MC.celdas[k].carga)+'/'+f3(MC.celdas[k].cap)).join(';');
+     return {pro,ords,cu,cap,n:(P.pro||[]).length}};
+   const rgba=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+   const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
+   const lum=c=>{const t=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*t(c.r)+0.7152*t(c.g)+0.0722*t(c.b)};
+   const fondo=e=>{const capas=[];let p=e;while(p&&p.nodeType===1){const c=rgba(getComputedStyle(p).backgroundColor);if(c&&c.a>0)capas.push(c);if(c&&c.a>=1)break;p=p.parentElement}
+     let b={r:255,g:255,b:255,a:1};if(!capas.length||capas[capas.length-1].a<1){const hb=rgba(getComputedStyle(document.body).backgroundColor);if(hb&&hb.a>0)b=sobre(hb,b)}for(let i=capas.length-1;i>=0;i--)b=sobre(capas[i],b);return b};
+   const medir=(root,min)=>{const malos=[];let n=0;root.querySelectorAll('.kpi *, .tag, table th, table td, table td *, .cgn-pct, .cgn-x, .cgn-x *, .cgn-eje span, .cgn-ley span, .cgn-rev li, .cgn-rev li *, .cgn-ctx, .cgn-ctx *, .cgn-nota, .cgn-nota *').forEach(e=>{
+       if(e.closest('svg,select,input,textarea,button,.foto-mini,.ayuda-txt,.o-menu,.acc-m,.o-search'))return;let dd=e.closest('details');while(dd){if(!dd.open&&!e.closest('summary'))return;dd=dd.parentElement&&dd.parentElement.closest('details')}
+       if(![...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))return;if(!e.offsetParent)return;const st=getComputedStyle(e);if(st.visibility==='hidden')return;
+       const f=rgba(st.color);if(!f||f.a===0)return;const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);const r=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);n++;
+       if(r<min)malos.push(Math.round(r*100)/100+' «'+(e.textContent||'').trim().slice(0,24)+'»')});return {n,malos}};
+   try{
+    PLAN=null;PLAN_ALL=null;const h0=huella();
+    /* 1 · pestañas */
+    let el=ver(undefined);const chips=[...el.querySelectorAll('.pagehead [data-cg-tab]')];
+    __check("CGN1: Carga general tiene tres pestañas (Resumen · Por centro · Por familia) y abre en Resumen con cinco tarjetas, el gráfico por semana y el semáforo de centros",chips.map(c=>c.getAttribute('data-cg-tab')).join(',')==='resumen,centro,familia'&&chips[0].classList.contains('on')&&!!el.querySelector('.cgn-grafico')&&!!el.querySelector('.cgn-semaforo')&&el.querySelectorAll('.kpi.tarj[data-t^="cg-"]').length===5,chips.map(c=>c.getAttribute('data-cg-tab')).join(','));
+    chips[1].click();el=pg();const enC=/Mapa de carga por centro y semana/.test(el.innerHTML)&&!el.querySelector('.cgn-grafico')&&CG.tab==='centro';
+    el.querySelector('[data-cg-tab="familia"]').click();el=pg();const enF=/Familia por centro|Centro por familia|Nada pendiente/.test(el.innerHTML)&&!/Mapa de carga/.test(el.innerHTML)&&!el.querySelector('.cgn-grafico')&&CG.tab==='familia';
+    el.querySelector('[data-cg-tab="resumen"]').click();el=pg();
+    __check("CGN1: tocar «Por centro» muestra el mapa centro × semana, «Por familia» la tabla familia × centro y «Resumen» vuelve; el buscador, el filtro de fases y el agrupador siguen en la pantalla",enC&&enF&&!!el.querySelector('.cgn-grafico')&&!!el.querySelector('input[data-q="CG.q"]')&&!!el.querySelector('details.ffases')&&/— sin agrupar —|grp-sel/.test(el.innerHTML),JSON.stringify({enC,enF}));
+    /* 2 · una sola cuenta: tarjetas, gráfico, semáforo y mapa cuadran */
+    el=ver('resumen');const M=matrizCG();const T=M.tot;
+    const card=id=>txt(el.querySelector('.kpi.tarj[data-t="'+id+'"] .v'));
+    const okCards=card('cg-nec')===horasCG(T.need)&&card('cg-disp')===horasCG(T.cap);
+    const sumMed=T.med.reduce((a,c)=>a+c.need,0),sumSem=T.sem.reduce((a,s)=>a+s.need,0),capMed=T.med.reduce((a,c)=>a+c.cap,0);
+    const famMasRes=Object.values(T.fam).reduce((a,b)=>a+b,0)+T.res;const difOk=Math.abs((T.cap-T.need)-(T.sobran-T.faltan))<1e-6;
+    const colsG=[...el.querySelectorAll('.cgn-col')];
+    const okG=colsG.length===M.sems.length&&colsG.every((c,i)=>{const s=T.sem[i];const t=c.getAttribute('title')||'';return s.need>0?t.includes(horasCG(s.need)+' de '+horasCG(s.cap)):/nada programado/.test(t)});
+    const filasS=[...el.querySelectorAll('.cgn-sem tbody tr[data-cen]')];
+    const okS=filasS.length>0&&filasS.every(tr=>{const c=M.porId[tr.getAttribute('data-cen')];const tds=tr.querySelectorAll('td');return !!c&&txt(tds[3])===(c.need>0?horasCG(c.need):'—')&&txt(tds[4])===(c.cap>0?horasCG(c.cap):c.dias?'—':'0 h')&&tr.getAttribute('data-est')===c.est&&c.est===(c.dias?'dias':!c.conRec?'falta':c.sem.some(s=>s.est==='rojo'||s.est==='cero')?(c.cap>0?'rojo':'cero'):c.sem.some(s=>s.est==='amb')?'amb':c.need>0?'ok':c.est)});
+    const pMax=T.sem.filter(s=>s.pct!=null).sort((a,b)=>b.pct-a.pct)[0];const okC5=pMax?card('cg-sem')===pctCGTxt(pMax.pct):card('cg-sem')==='—';
+    __check("CGN2: tarjetas, gráfico y semáforo salen de la MISMA cuenta: horas que se necesitan = Σ semanas del gráfico = Σ centros = Σ familias + reserva; disponibles = Σ capacidad; disponibles − necesitan = sobran − faltan; la semana más cargada es la del gráfico; cada fila del semáforo lleva el estado de su peor semana",T.need>0&&okCards&&Math.abs(sumMed-T.need)<1e-6&&Math.abs(sumSem-T.need)<1e-6&&Math.abs(capMed-T.cap)<1e-6&&Math.abs(famMasRes-T.need)<1e-6&&difOk&&okG&&okS&&okC5,JSON.stringify({okCards,okG,okS,okC5,difOk,need:T.need,sumMed,sumSem,famMasRes}));
+    {const P=programar();const byOp={};S.ordenes.forEach(o=>{if(o.op)byOp[o.op]=o});const lib=new Set(ordenesBase('programadas').map(o=>o.id));let ok=true;const det=[];let n=0;
+     M.cens.forEach(c=>c.sem.forEach(s=>{const fin=dsum(s.w,6);const dir=(P.pro||[]).filter(x=>x.centro===c.id&&x.dia>=s.w&&x.dia<=fin&&byOp[x.op]&&lib.has(byOp[x.op].id)).reduce((a,x)=>a+x.min,0);n++;if(Math.abs(dir-(s.firme+s.proceso))>1e-6){ok=false;det.push(c.id+' '+s.w+' '+dir+'/'+(s.firme+s.proceso))}}));
+     __check("CGN2: cada celda centro × semana es la suma directa de lo que el programa (programar) colocó ahí para las órdenes liberadas",ok&&n>0,det.slice(0,3).join(' | '))}
+    el=ver('centro');{let ok=true;const det=[];
+     M.vis.forEach(c=>{if(c.dias||!c.conRec)return;const tr=el.querySelector('tr[data-cen="'+c.id+'"]');if(!tr){ok=false;det.push('sin fila '+c.id);return}
+      c.sem.forEach((s,i)=>{const t=txt(tr.cells[i+1]);const esp=s.need>0?(s.cap>0?pctCGTxt(s.pct)+horasCG(s.need)+' de '+horasCG(s.cap):'capacidad 0'):'—';if(!t.startsWith(esp)){ok=false;det.push(c.id+' '+s.w+': '+t+' ≠ '+esp)}});
+      if(txt(tr.cells[M.sems.length+1])!==horasCG(c.need)){ok=false;det.push(c.id+' total '+txt(tr.cells[M.sems.length+1]))}});
+     __check("CGN2: la pestaña Por centro dice, para la misma semana y el mismo centro, el mismo % y las mismas horas que el Resumen, y su total es el «Se necesitan» del semáforo",ok,det.slice(0,3).join(' | '))}
+    /* 3 · colores por regla */
+    {S.params.capAmbar=85;const r1=[estadoPctCG(84.9),estadoPctCG(85),estadoPctCG(100),estadoPctCG(100.3),estadoPctCG(null)].join(',');S.params.capAmbar=0;const r0=estadoPctCG(0.1);if(bakAmb===undefined)delete S.params.capAmbar;else S.params.capAmbar=bakAmb;
+     __check("CGN3: la regla: bajo el umbral = alcanza (verde), desde el umbral = justo (ámbar), 100 % todavía es justo, más de 100 % = no alcanza (rojo); un umbral 0 se respeta; 100,3 % se escribe «100,3 %» y lo menor a medio % «<1 %»",r1==='ok,amb,amb,rojo,vacio'&&r0==='amb'&&pctCGTxt(100.3)==='100,3 %'&&pctCGTxt(0.2)==='<1 %',r1+' · '+r0)}
+    el=ver('centro');{const M2=matrizCG();const mal=[];let n=0;M2.vis.forEach(c=>{const tr=el.querySelector('tr[data-cen="'+c.id+'"]');if(!tr||c.dias||!c.conRec)return;c.sem.forEach((s,i)=>{const b=tr.cells[i+1].querySelector('.cg-pct');if(!(s.need>0)){if(b)mal.push(c.id+' '+s.w+' debería ser —');return}if(!(s.cap>0))return;n++;const esp=s.pct>100?'t-alerta':s.pct>=umbralCG()?'t-aviso':'t-ok';if(!b||!b.classList.contains(esp))mal.push(c.id+' '+s.w+' '+(b&&b.className)+' ≠ '+esp)})});
+     const colG=[...ver('resumen').querySelectorAll('.cgn-col')].every((c,i)=>{const s=matrizCG().tot.sem[i];const car=c.querySelector('.cgn-car');return !(s.need>0)?!car:(!!car&&car.classList.contains('est-'+s.est))});
+     __check("CGN3: en el mapa y en el gráfico cada semana lleva el color de su %: rojo solo por encima de 100 %, ámbar desde el umbral, verde el resto",n>0&&!mal.length&&colG,mal.slice(0,3).join(' | '))}
+    {const M2=matrizCG();const cR=M2.vis.find(c=>!c.dias&&!c.pt&&c.conRec&&c.sem.some(s=>s.need>0&&s.cap>0));
+     if(cR){window.capSemCentro=(c,w)=>c===cR.id?capO(c,w)*0.01:capO(c,w);
+      try{el=ver('resumen');const M3=matrizCG();const c3=M3.porId[cR.id];const fila=el.querySelector('.cgn-sem tr[data-cen="'+cR.id+'"]');const li=[...el.querySelectorAll('.cgn-rev li')].find(l=>/No alcanza/.test(txt(l.querySelector('.tag'))));
+       const kc=el.querySelector('.kpi.tarj[data-t="cg-cen"]'),kd=el.querySelector('.kpi.tarj[data-t="cg-dif"]');
+       const okR=c3.est==='rojo'&&!!fila&&/no alcanza/.test(txt(fila))&&!!fila.querySelector('.env-sem .sr.on')&&kc.classList.contains('bad')&&kd.classList.contains('bad')&&/Faltan/.test(txt(kd))&&!!li&&li.textContent.includes(cR.n)&&!!li.querySelector('button.cgn-ir');
+       el=ver('centro');const tr=el.querySelector('tr[data-cen="'+cR.id+'"]');const rojas=tr?tr.querySelectorAll('.cg-pct.t-alerta').length:-1;const nR=c3.sem.filter(s=>s.est==='rojo').length;
+       __check("CGN3: si un centro no alcanza (más de 100 %), sale en rojo en el mapa, en el semáforo («no alcanza» con la luz roja), en las tarjetas («Faltan» y «Centros que no alcanzan») y en «Qué revisar» con su enlace",okR&&rojas===nR&&nR>0,JSON.stringify({c:cR.id,okR,rojas,nR}))}
+      finally{window.capSemCentro=capO}}
+     else __check("CGN3: si un centro no alcanza (más de 100 %), sale en rojo en el mapa, en el semáforo, en las tarjetas y en «Qué revisar»",false,'sin centro con carga en el simulador')}
+    {const M2=matrizCG();let cF=M2.vis.find(c=>!c.dias&&!c.conRec);if(!cF){const t={id:'zz_cgn_f',n:'Centro de prueba CGN',area:'pro'};S.centros.push(t);tmpC.push(t)}
+     const idF=cF?cF.id:'zz_cgn_f';el=ver('centro');const tr=el.querySelector('tr[data-cen="'+idF+'"]');
+     const okF=!!tr&&!!tr.querySelector('.tag.t-falta')&&/sin capacidad configurada/.test(txt(tr))&&/Configuración general → Centros y máquinas/.test(txt(tr))&&!/[0-9] %/.test(txt(tr))&&!/normal/i.test(txt(tr));
+     const cD=M2.vis.find(c=>c.dias);const trD=cD?el.querySelector('tr[data-cen="'+cD.id+'"]'):null;const okD=!cD||(!!trD&&!!trD.querySelector('.tag.t-mut')&&/por días · no usa capacidad/.test(txt(trD))&&!/[0-9] %/.test(txt(trD)));
+     el=ver('resumen');const okFS=!!el.querySelector('.cgn-sem .tag.t-falta')||/sin capacidad configurada/.test(txt(el.querySelector('.cgn-semaforo')));
+     __check("CGN3: un centro sin recursos dice «sin capacidad configurada» (t-falta) y dónde se configura, nunca «0 %» ni «Normal»; uno «por días» dice «por días · no usa capacidad» en gris, sin %",okF&&okD&&okFS,JSON.stringify({idF,okF,okD,okFS,dias:cD&&cD.id}))}
+    /* 4 · «—» en semana vacía (un centro con capacidad y sin nada programado: todas sus semanas) */
+    {const t={id:'zz_cgn_v',n:'Centro vacío CGN',area:'pro'};S.centros.push(t);tmpC.push(t);const r={id:'zz_cgn_rv',n:'Recurso CGN',centro:'zz_cgn_v',activa:true,pers:1,min:480,efic:100};S.recursos.push(r);tmpR.push(r);
+     el=ver('centro');const M4=matrizCG();let vac=0;const mal=[];M4.vis.forEach(c=>{if(c.dias||!c.conRec)return;const tr=el.querySelector('tr[data-cen="'+c.id+'"]');c.sem.forEach((s,i)=>{if(s.need>0)return;vac++;const x=txt(tr.cells[i+1]);if(x!=='—')mal.push(c.id+' '+s.w+' «'+x+'»')})});
+     const cv=M4.porId['zz_cgn_v'];el=ver('resumen');const colV=[...el.querySelectorAll('.cgn-col')].filter((c,i)=>!(matrizCG().tot.sem[i].need>0));const okGV=colV.every(c=>txt(c.querySelector('.cgn-pct'))==='—'&&!c.querySelector('.cgn-car'));
+     const okRes=/Centro vacío CGN/.test(txt(el.querySelector('.cgn-semaforo .cgn-nota')))&&!el.querySelector('.cgn-sem tr[data-cen="zz_cgn_v"]');
+     __check("CGN4: una semana sin nada programado es «—» (no «0 %») en el mapa y en el gráfico; un centro con capacidad y sin carga va en la línea «Sin nada programado» del semáforo",!!cv&&cv.cap>0&&vac>=M4.sems.length&&!mal.length&&okGV&&okRes,vac+' semanas vacías · '+mal.slice(0,3).join(' | '))}
+    /* 5 · nada de «vs. período anterior» */
+    {const ok=['resumen','centro','familia'].every(t=>{const e=ver(t).cloneNode(true);e.querySelectorAll('.o-search').forEach(x=>x.remove());const tx=e.textContent;return !/per[ií]odo anterior|semana anterior|mes anterior|\bvs\.?\s/i.test(tx)&&!/[↑↓▲]/.test(tx)});
+     __check("CGN5: ninguna tarjeta ni gráfico compara contra un «período anterior» ni lleva flechas de tendencia (no hay foto guardada de la carga por semana: no se inventa)",ok)}
+    /* 6 · «Qué revisar»: frases con números y enlaces que abren la pantalla correcta */
+    {el=ver('resumen');const items=revisarCG(matrizCG(),fueraDeBaseCG(matrizCG()));const lis=[...el.querySelectorAll('.cgn-rev li')];
+     const okDato=items.length>0&&lis.length===items.length&&lis.every(l=>/[0-9]/.test(txt(l))&&!!l.querySelector(':scope > .tag'));
+     const bots=lis.flatMap(l=>[...l.querySelectorAll('button.cgn-ir')].map(b=>[b.getAttribute('onclick'),txt(b)]));const dest=[],mal=[];
+     for(const [oc,t] of bots){ver('resumen');const b=[...pg().querySelectorAll('button.cgn-ir')].find(x=>x.getAttribute('onclick')===oc&&txt(x)===t);if(!b){mal.push('no está: '+t);continue}
+      b.click();await __p(20);const cen=(oc.match(/irCentro\('([^']+)'/)||[])[1];
+      const ok=/Capacidad y decisiones/.test(t)?page==='capacidad':/^abrir /.test(t)?(page==='centro'&&(CEN.id===cen||CEN.solo===cen)):/Centros y máquinas|Configuración general/.test(t)?(page==='config'&&CONF.tab==='recursos'):/Ingeniería/.test(t)?page==='ingtipos':/Liberación a producción/.test(t)?(page==='liberacion'&&LIB.et==='corte'):/Planificar el mes/.test(t)?(page==='plan'&&PM.paso===1):false;
+      dest.push(t.replace(/ →$/,'')+' → '+page);if(!ok)mal.push(t+' abrió '+page)}
+     __check("CGN6: «Qué revisar» solo trae frases con números y su etiqueta, y cada enlace abre la pantalla donde se arregla (Capacidad y decisiones, el centro, Configuración, Ingeniería → Tipos de producto, Liberación a producción, Planificar el mes)",okDato&&bots.length>0&&!mal.length,dest.join(' · ')+(mal.length?' · MAL: '+mal.join(' | '):''))}
+    __check("CGN6: sin nada que revisar, «Qué revisar» no se dibuja",revisarCGHTML([])==='');
+    {const lav=CE('lavado'),pla=CE('plancha');const bk=[lav,pla].map(c=>c?[c.minEstandar,c.pctEstimado]:null);[lav,pla].forEach(c=>{if(c){c.minEstandar=c.minEstandar||2;c.pctEstimado=c.pctEstimado||10}});
+     try{el=ver('resumen',{q:'zzzz-no-existe-zzzz'});const its=revisarCG(matrizCG(),fueraDeBaseCG(matrizCG()));
+      __check("CGN6: con un buscador que no encuentra nada (y la reserva configurada), no hay nada que revisar y el recuadro no aparece",!its.length&&!pg().querySelector('.cgn-revisar'),JSON.stringify(its.map(x=>x.t)))}
+     finally{[lav,pla].forEach((c,i)=>{if(!c)return;const [m,p]=bk[i];if(m===undefined)delete c.minEstandar;else c.minEstandar=m;if(p===undefined)delete c.pctEstimado;else c.pctEstimado=p})}}
+    /* 7 · detalle de una semana: desde la barrita del semáforo y desde el mapa */
+    {el=ver('resumen');const M7=matrizCG();const c7=M7.vis.find(c=>c.sem.some(s=>s.n>0));
+     if(c7){const i7=c7.sem.findIndex(s=>s.n>0);const s7=c7.sem[i7];const tr=el.querySelector('.cgn-sem tr[data-cen="'+c7.id+'"]');const barra=tr&&tr.querySelectorAll('.cgn-mini i')[i7];if(barra)barra.click();await __p(10);
+      const d=pg().querySelector('#cg-detalle');const filas=d?[...d.querySelectorAll('tbody tr')].filter(r=>!r.classList.contains('grp-row')&&r.cells.length>1):[];
+      const sumH=filas.reduce((a,r)=>a+(+txt(r.cells[5]).replace(/\./g,'').replace(',','.')||0),0);
+      const okD=!!d&&filas.length===s7.n&&Math.abs(sumH-(s7.firme+s7.proceso)/60)<=0.05*filas.length+0.01&&!!d.querySelector('.fase-mini')&&!!CG.det&&CG.det.c===c7.id;
+      ver('centro');const td=pg().querySelector('tr[data-cen="'+c7.id+'"]').cells[i7+1];td.click();const d2=pg().querySelector('#cg-detalle');const okD2=!!d2&&/· /.test(txt(d2.querySelector('h3')))&&!!pg().querySelector('td.cg-cel.sel');
+      const cerrar=d2&&[...d2.querySelectorAll('button')].find(b=>/cerrar/.test(txt(b)));if(cerrar)cerrar.click();
+      __check("CGN7: clic en una barrita del semáforo o en una celda del mapa muestra las órdenes de esa semana con foto/WH/fase (tantas como dice la celda y sus horas suman la celda); la celda queda marcada y «cerrar» lo quita",okD&&okD2&&!pg().querySelector('#cg-detalle'),JSON.stringify({c:c7.id,n:filas.length,esp:s7.n,sumH,celda:(s7.firme+s7.proceso)/60,okD,okD2}))}
+     else __check("CGN7: clic en una barrita del semáforo o en una celda del mapa muestra las órdenes de esa semana",false,'sin semana con órdenes')}
+    /* 8 · el saldo por procesar que viene de la Nivelación */
+    {const bN=JSON.stringify(NIVUI);ver('centro');irSaldoCentro({area:'corte',meses:[hoy().slice(0,7)]});await __p(20);const h1=pg().innerHTML;
+     const ok1=page==='produccion'&&/Saldo por procesar en/.test(h1)&&!pg().querySelector('.cgn-grafico')&&/ver el resto de Carga general/.test(h1)&&CG.tab==='resumen';
+     CG.det.verResto=true;render();const ok2=!!pg().querySelector('#cg-saldo')&&!!pg().querySelector('.cgn-grafico')&&!!pg().querySelector('.cgn-semaforo');
+     pg().querySelector('[data-cg-tab="centro"]').click();const ok3=!!pg().querySelector('#cg-saldo')&&/Mapa de carga por centro y semana/.test(pg().innerHTML);
+     nivUIVolver();await __p(20);const ok4=CG.det===null&&page!=='produccion';NIVUI=JSON.parse(bN);
+     __check("CGN8: el saldo por procesar de la Nivelación sigue igual: llega solo con el saldo, «ver el resto» abre las pestañas sin perderlo (también en Por centro) y «← volver» regresa",ok1&&ok2&&ok3&&ok4,JSON.stringify({ok1,ok2,ok3,ok4,page}))}
+    /* 9 · oscuro y teléfono */
+    {setModo('oscuro');let n=0;const mal=[];for(const t of ['resumen','centro','familia']){const r=medir(ver(t),4.5);n+=r.n;r.malos.forEach(x=>mal.push(t+': '+x))}
+     setModo('claro');let nC=0;const malC=[];for(const t of ['resumen','centro','familia']){const r=medir(ver(t),3);nC+=r.n;r.malos.forEach(x=>malC.push(t+': '+x))}
+     __check("CGN9: en modo oscuro los textos de Carga general (tarjetas, gráfico, «Qué revisar», semáforo, mapa y familias) se leen (contraste ≥ 4,5) y en claro ninguno queda bajo 3",n>100&&!mal.length&&!malC.length,n+' textos · '+mal.slice(0,4).join(' | ')+' · claro: '+malC.slice(0,3).join(' | '))}
+    {const mal=[];for(const t of ['resumen','centro','familia']){ver(t);const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+      const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:390px;height:844px;border:0;visibility:hidden';document.body.appendChild(fr);
+      try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(60);const d=fr.contentDocument;const m=d.querySelector('main');
+       if(!m||d.documentElement.scrollWidth>391||m.scrollWidth>m.clientWidth+1)mal.push(t+': página '+d.documentElement.scrollWidth+' · main '+(m?m.scrollWidth+'/'+m.clientWidth:'-'))}finally{fr.remove()}}
+     __check("CGN9: a 390 px de ancho (teléfono) las tres pestañas no se salen a los lados (el gráfico y las tablas se desplazan dentro de su recuadro)",!mal.length,mal.join(' | '))}
+    /* 10 · Bordado (puntadas) va aparte */
+    {el=ver('resumen');const M11=matrizCG();const pts=M11.vis.filter(c=>c.pt&&c.need>0);
+     const okB=!pts.length||(pts.every(c=>!M11.tot.med.includes(c))&&/va aparte/.test(txt(el.querySelector('.cgn-grafico')))&&/sin /.test(txt(el.querySelector('.kpi.tarj[data-t="cg-nec"]'))));
+     el=ver('familia');const ths=[...el.querySelectorAll('thead th')];const fila=el.querySelector('tbody tr');let okT=true,det='';
+     if(fila){const f=txt(fila.cells[0]);let esp=0;M11.ords.filter(o=>famDeOrden(o)===f).forEach(o=>{const v={};(o.ruta||[]).forEach(p=>{const ce=CE(p.centro);if(!ce||ce.area!=='pro'||v[p.centro]||ce.medida==='puntadas')return;v[p.centro]=1;esp+=minPendCentro(o,p.centro)})});
+      const got=txt(fila.cells[fila.cells.length-1]);okT=esp>0?got.startsWith(num(esp/60,1)+' h'):got.startsWith('—');det=f+': '+got+' vs '+num(esp/60,1)}
+     __check("CGN10: Bordado se mide en puntadas: no entra en las horas de las tarjetas ni del gráfico (y se dice) y en «Por familia» va en millones de puntadas, sin sumarse a las horas del total",okB&&(!pts.length||/M puntadas/.test(el.innerHTML))&&txt(ths[ths.length-1])==='Total (horas)'&&okT,det)}
+    /* 11 · el buscador acota todo (la capacidad no cambia) */
+    {const M0=matrizCG();const c0=M0.vis.find(c=>c.sem.some(s=>s.n>0));const oid=c0?[...c0.sem.find(s=>s.n>0).ops][0]:null;const o=S.ordenes.find(x=>x.id===oid);
+     if(o){el=ver('resumen',{q:o.op});const M1=matrizCG();const P=programar();const byOp={};S.ordenes.forEach(x=>{if(x.op)byOp[x.op]=x});const med=new Set(M1.tot.med.map(c=>c.id));
+      const esp=(P.pro||[]).filter(x=>med.has(x.centro)&&x.dia>=M1.sems[0]&&x.dia<=M1.fin&&byOp[x.op]&&M1.ids.has(byOp[x.op].id)).reduce((a,x)=>a+x.min,0)+M1.tot.res;
+      const okQ=M1.ids.has(o.id)&&M1.ords.every(x=>matchBusq(x,normTxt(o.op),'CG.q'))&&Math.abs(M1.tot.need-esp)<1e-6&&Math.abs(M1.tot.cap-M0.tot.cap)<1e-6&&txt(el.querySelector('.kpi.tarj[data-t="cg-nec"] .v'))===horasCG(M1.tot.need)&&M1.tot.need<=M0.tot.need+1e-6;
+      __check("CGN11: el buscador de arriba acota tarjetas, gráfico y semáforo a lo que encuentra (la capacidad no cambia)",okQ,JSON.stringify({op:o.op,need:M1.tot.need,esp,cap:[M1.tot.cap,M0.tot.cap]}))}
+     else __check("CGN11: el buscador de arriba acota tarjetas, gráfico y semáforo a lo que encuentra",false,'sin orden programada')}
+    /* 12 · los tres aspectos */
+    {const res={};for(const tema of ['tablero','odoo','clasico']){if(tema==='tablero')delete S.params.tema;else S.params.tema=tema;const e0=__R.errors.length;el=ver('resumen');
+      const afuera=[...el.querySelectorAll('button')].filter(b=>/^Aplicar/.test(txt(b))&&!b.closest('.o-search,.o-menu'));
+      res[tema]={err:__R.errors.length-e0,tabs:el.querySelectorAll('[data-cg-tab]').length,graf:!!el.querySelector('.cgn-grafico'),ico:el.querySelectorAll('.kpi.tarj[data-t^="cg-"] .kpi-ico').length,odoo:!!el.querySelector('.pagehead .o-search input[data-q="CG.q"]'),filtrar:!!el.querySelector('.filt-btn'),aplicar:afuera.length}}
+     if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;render();
+     __check("CGN12: Carga general funciona en Tablero (tarjetas con ícono), Odoo (el buscador en la barra de Odoo de la cabecera) y Clásico («Filtrar»), sin botón «Aplicar»: los filtros se aplican al momento",['tablero','odoo','clasico'].every(t=>res[t].err===0&&res[t].tabs===3&&res[t].graf&&res[t].aplicar===0)&&res.tablero.ico===5&&res.odoo.ico===0&&res.tablero.odoo&&res.odoo.odoo&&res.clasico.filtrar,JSON.stringify(res))}
+    /* 13 · las semanas y el umbral se configuran (con bitácora); un valor que no sirve no se guarda */
+    {const nb=S.bitacora.length;setSemCarga(4);el=ver('resumen');const ok4=semanasCarga().length===4&&el.querySelectorAll('.cgn-col').length===4&&S.bitacora.length===nb+1&&/semanas que se muestran: .+ → 4/.test(S.bitacora[S.bitacora.length-1].t);
+     ver('centro');const okM=pg().querySelectorAll('table thead th').length===4+2;al.length=0;setSemCarga('0');setSemCarga('2.5');const okR=semanasCarga().length===4&&al.length===2&&S.bitacora.length===nb+1;
+     if(bakSem===undefined)delete S.params.semCarga;else S.params.semCarga=bakSem;
+     S.params.capAmbar=50;el=ver('resumen');const okU=/50 %/.test(txt(el.querySelector('.cgn-ley')))&&estadoPctCG(60)==='amb';if(bakAmb===undefined)delete S.params.capAmbar;else S.params.capAmbar=bakAmb;
+     page='config';CONF.tab='cal';render();const hc=document.getElementById('p-config').innerHTML;const okC=/Carga general: semanas que se muestran/.test(hc)&&/setSemCarga\(/.test(hc)&&/setCapAmbar\(/.test(hc)&&cfgResultados('carga general semanas').length>0;
+     __check("CGN13: las semanas de Carga general y el umbral «justo» se cambian en Configuración general → Calendario y reglas → Parámetros; cambiar las semanas queda en la bitácora y mueve gráfico y mapa; 0 o 2,5 semanas no se aceptan",ok4&&okM&&okR&&okU&&okC,JSON.stringify({ok4,okM,okR,okU,okC,al:al.slice(0,2)}))}
+    /* 14 · Tejeduría: su programa, en horas de máquina */
+    {el=ver('resumen',{area:'tej'});const M15=matrizCG();const PA=programarTodo();const byOp={};S.ordenes.forEach(o=>{if(o.op)byOp[o.op]=o});const recT=new Set(S.recursos.filter(r=>r.centro==='tej').map(r=>r.id));
+     const esp=(PA.tej||[]).filter(x=>recT.has(x.rec)&&x.dia>=M15.sems[0]&&x.dia<=M15.fin&&(x.cambio||(byOp[x.op]&&abierta(byOp[x.op])))).reduce((a,x)=>a+(+x.h||0)*60,0);
+     const e1=__R.errors.length;ver('resumen',{area:'tin'});ver('centro',{area:'tin'});ver('familia',{area:'tej'});
+     __check("CGN14: con Área Tejeduría las horas salen de su programa (horas de máquina) y la base lo dice; Tintorería y «Por familia» textil se dibujan sin errores",Math.abs(M15.tot.need-esp)<1e-6&&/el programa de tejeduría/.test(txt(el.querySelector('.cgn-ctx')))&&__R.errors.length===e1,JSON.stringify({need:M15.tot.need,esp}))}
+    /* 15 · HUELLA: nada de esto cambió el programa ni las cifras de otras pantallas */
+    {S.centros=S.centros.filter(c=>!tmpC.includes(c));S.recursos=S.recursos.filter(r=>!tmpR.includes(r));const h1=huella();const dif=['pro','ords','cu','cap'].filter(k=>h1[k]!==h0[k]);
+     __check("CGN15: HUELLA idéntica antes y después de todo Carga general: P.pro y fechas por paso del programa, cargaUnica (abiertas y programadas) y la matriz de Capacidad y decisiones",!dif.length&&h0.n>0,JSON.stringify({dif,n:h0.n}))}
+   }catch(e){__R.errors.push({page:'driver CGN',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.capSemCentro=capO;window.alert=a0;window.confirm=c0;PERFIL=bakP;CG=bakCG;NIVUI=bakNIV;grpSt('cg').niveles=bakGrp;setModo(bakM);
+    if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakSem===undefined)delete S.params.semCarga;else S.params.semCarga=bakSem;if(bakAmb===undefined)delete S.params.capAmbar;else S.params.capAmbar=bakAmb;
+    S.centros=S.centros.filter(c=>!tmpC.includes(c));S.recursos=S.recursos.filter(r=>!tmpR.includes(r));PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render()}
+   __check("CGN sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
