@@ -2652,7 +2652,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 20:27';
+const APP_BUILD='2026-10-06 21:20';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -11595,7 +11595,7 @@ const CEN_PLEG_SESION=['dias'];let CEN_PLEG_SES={};
 function cenPleg(k,def){if(CEN_PLEG_SESION.includes(k))return CEN_PLEG_SES[k]==null?def:!!CEN_PLEG_SES[k];try{const m=JSON.parse(localStorage['__cenpleg_'+claveUsr()]||'{}');return m[k]==null?def:!!m[k]}catch(e){return def}}
 function cenPlegGuardar(k,v){if(CEN_PLEG_SESION.includes(k)){CEN_PLEG_SES[k]=!!v;return}try{const key='__cenpleg_'+claveUsr();const m=JSON.parse(localStorage[key]||'{}');m[k]=!!v;localStorage[key]=JSON.stringify(m)}catch(e){}}
 function cenPlegAttrs(k,abierto,def){const pref=cenPleg(k,def);return (abierto?'open ':'')+((abierto&&!pref)?'data-auto="1" ':'')+'ontoggle="cenPlegTog(this,&#39;'+k+'&#39;)"'}
-function cenPlegTog(el,k){if(el.dataset&&el.dataset.auto){delete el.dataset.auto;return}cenPlegGuardar(k,el.open)}
+function cenPlegTog(el,k){if(!el||!el.isConnected)return;if(el.dataset&&el.dataset.auto){delete el.dataset.auto;return}cenPlegGuardar(k,el.open)}   /* un «toggle» que llega cuando ese dibujo ya se reemplazó no es de la persona */
 function cenSemana(d){CEN.sem=d===0?0:(CEN.sem||0)+d;CEN.dia=null;render()}
 function irCostura(tab){CEN.vista='costura';if(tab)COS.tab=tab;if(CEN.rec){const r=S.recursos.find(x=>x.id===CEN.rec&&x.centro==='modulos');if(r&&!ordenRecChip(r))COS.rec=r.id}render();cenArriba()}
 function irFilaCentro(op){CEN.q=op;BUSQ['CEN.q']='op';CEN.dia=null;CEN.sec='lista';render()}   /* «ir a la fila»: la lista acotada a esa orden */

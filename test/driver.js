@@ -811,7 +811,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       (/Hecho hoy en /.test(host.innerHTML))===(hd.detalle.length>0),hd.detalle.length);
     __R.colaDOM={ths,filas:filas.length,grupos:grp.length};
     CEN.cercAbre=null;CEN.verGrupo=null;render();}
-   __check("cola: la tabla es arrastrable y tiene el lugar numérico (#) y zona 'al final'",/draggable="true"/.test(html())&&/moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
+   __check("cola: la tabla es arrastrable y tiene el lugar numérico (#) y zona 'al final'",/draggable="true"/.test(html())&&/moverEnCola(Lugar)?\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));   /* 06-oct (segunda revisión): escribir el lugar va por moverEnColaLugar (traduce el lugar dentro de un puesto) */
    __check("cola: sin lugares fijados a mano la pantalla dice cómo se ordena (urgencia y orden de llegada)",html().includes("nadie ha fijado lugares a mano"));
    /* 06-oct (revisión): arrastrar y escribir el lugar siguen el orden QUE SE VE (ordenTrabajoCentro: las ordenadas a mano, En proceso y Listas
       por urgencia, lo demás como la cola); «la primera» es la primera de la lista */
@@ -4164,7 +4164,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RA1: la sonda (llamada inocua) recuerda que la función falta",RPC_REC.estado==='falta');
     __check("RA1: el supervisor ve Recurso y Arranca bloqueados con «lo cambia planificación (falta un paso en Supabase)»",!!v.sel&&v.sel.disabled&&!!v.fec&&v.fec.disabled&&(v.sel.title||'').includes(TXT_REC_FALTA)&&(v.fec.title||'').includes(TXT_REC_FALTA)&&v.h.includes('Puesto y Arranca: '+esc(TXT_REC_FALTA)));
     __check("RA1: «quitar lo fijado» también sale bloqueado (la orden tiene recurso fijado)",!!v.quitar&&v.quitar.disabled&&/falta un paso en Supabase/.test(v.quitar.title||''));
-    __check("RA1: el lugar en la cola (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/moverEnCola\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
+    __check("RA1: el lugar en la cola (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/moverEnCola(Lugar)?\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
     const snap=JSON.stringify(fila().data),loc=JSON.stringify(oR.progCentro);__W.writes=[];const nA=alerts.length;
     await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
     __check("RA1: sin la función avisa «Falta correr SUPABASE_RECURSO_CENTRO.sql en Supabase» y NO cambia nada (ni pantalla ni base)",alerts.length>nA&&/Falta correr SUPABASE_RECURSO_CENTRO\.sql en Supabase/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap&&!__W.writes.some(w=>w.t==='ordenes'),alerts.slice(nA).join(' | '));
@@ -6128,7 +6128,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const h=document.getElementById("p-centro").innerHTML;
     /* --- CF2 · correcciones del 17-sep sobre la cola construida --- */
     {const host=document.getElementById("p-centro");
-     __check("CF2: el texto explicativo de la pestaña ya no ocupa pantalla: va en un «?» junto al título de la cola",!/<p class="lede">/.test(h)&&!!host.querySelector(".panel.cola h3 .ayuda")&&/SOLO esa orden/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title"))&&!/renumera la cola completa/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title")));
+     __check("CF2: el texto explicativo de la pestaña ya no ocupa pantalla: va en un «?» junto al título de la cola",!/<p class="lede">/.test(h)&&!!host.querySelector(".panel.cola h3 .ayuda")&&/también se fijan las que van por encima que no tenían lugar/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title"))&&!/renumera la cola completa/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title")));
      const body=host.querySelector(".panel.cola");   /* 06-oct (revisión): la línea de marcas y avisos va pegada al título, sin recuadro aparte */
      __check("CF2 (06-oct, pantalla única): los conteos de cada grupo van solo en su cabecera («N órdenes · X prendas»); arriba de la tabla no se repiten",(()=>{const p=body&&body.querySelector(".cola-conteos");const t=p?p.textContent.replace(/\s+/g," "):"";const cabs=[...host.querySelectorAll(".panel.cola tbody tr.grp-row:not(.fase-row)")].map(x=>x.textContent.replace(/\s+/g," "));return (!p||/^\s*fases sin confirmar\s*$/.test(t))&&cabs.length>0&&cabs.every(x=>/[0-9]+ (orden|órdenes) · [0-9.]+ prendas/.test(x))})(),body&&(body.querySelector(".cola-conteos")||{}).textContent);
      __check("CF2: el orden de la cola y su explicación completa (incluida la convención de días) van en el «?» del título; arriba de la tabla ya no hay una línea «Orden de la cola» (UX-B6)",(()=>{const q=host.querySelector(".panel.cola h3 .ayuda");const tx=host.querySelector(".panel.cola h3 .ayuda-txt");return !!q&&/Orden de la lista:/.test(q.getAttribute("title"))&&/hoy no cuenta/.test(q.getAttribute("title"))&&!!tx&&/hoy no cuenta/.test(tx.textContent)&&![...body.querySelectorAll("p")].some(x=>/Orden de la lista:/.test(x.textContent))})());
@@ -6151,8 +6151,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CF2: las notas de los grupos dicen el corte a la vista, y Por llegar no promete fecha a lo que no la tiene",/dentro de 15 días hábiles, o sin fecha conocida/.test(notaGrupoCerc("porLlegar"))&&/más de 15 días hábiles/.test(notaGrupoCerc("lejana")));
      __check("CF2: Costura pinta las mismas marcas con los mismos nombres y colores (marcaCentro sale de MARCAS_CEN)",/marcasDe\(o,P,c\)/.test(String(marcaCentro))&&!/la orden va tarde|este paso va tarde/.test(String(marcaCentro)));}
     __check("CF (06-oct, revisión): sin lugares fijados a mano no sale el grupo «Ordenadas a mano»; en # el número escrito (valor) es solo el de las ordenadas a mano, las demás lo llevan en gris (placeholder)",[...document.querySelectorAll("#p-centro .panel.cola tbody tr[draggable]")].every(tr=>{const oid=((tr.getAttribute("ondragstart")||"").match(/arrastrarCola\(event,'([^']+)'/)||[])[1];const o=S.ordenes.find(x=>x.id===oid);const v=(tr.querySelector("td:nth-child(1) input")||{}).value||"";return !o||(puestoDe(o,"corte")>0)===(v!=="")})&&(ordenesConPuesto("corte").length>0||!/Ordenadas a mano/.test(h.slice(h.indexOf("<tbody",h.indexOf('class="panel cola"'))))));
-    __check("CC4b: el tooltip del arrastre dice que bajar una orden numera las de encima",
-      /si la bajas, tambi\u00e9n las que quedan por encima/.test(h));}
+    __check("CC4b: el tooltip del arrastre dice que dejar una orden en un lugar fija también las de encima que no tenían lugar (06-oct, segunda revisión: decía que solo al bajarla, y al subirla también pasa)",
+      /tambi\u00e9n se fijan las que van por encima que no ten\u00edan lugar/.test(h));}
    /* --- 5 · el orden de la cola --- */
    {const c=["botones","corte","modulos","empaque"].find(x=>CE(x))||"corte";
     const lun=lunesDe(hoy());const filas=filasDeCentros([c],P,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);
@@ -8857,13 +8857,15 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("RC5: tocar un día deja en la lista solo sus órdenes con prendas pendientes y lo dice encima de la lista",/filtro activo/.test(txt(pc().querySelector('#cen-lista')))&&vis.every(f=>filaEnDiaCEN(f,P,conCarga.d))&&pc().querySelectorAll('.panel.cola tbody tr[draggable]').length<=vis.length);
      cenSemana(1);__check("RC5 (06-oct): cambiar de semana borra el filtro del día (antes quedaba puesto para siempre)",CEN.dia===null);cenSemana(-1)}
     /* la rama «faltaron / sin registro»: se fuerza carga en los días pasados sin tocar datos reales (envoltura temporal de datosDiaCentro) */
+    /* sin foto congelada de esta semana en Corte: con la foto, el número grande sale de ella y no lleva ▲ ni rojo (segunda revisión del 06-oct; eso lo prueba CU10) */
+    const bakCgRC5=JSON.stringify(S.params.progCongelado||null);S.params.progCongelado=(S.params.progCongelado||[]).filter(x=>!(x.centro==='corte'&&x.lun===lunesDe(h)));
     const orig=datosDiaCentro;window.datosDiaCentro=function(cens,P,d,recs,rec){const x=orig(cens,P,d,recs,rec);if(d<h&&x.lab){x.pz=100;x.min=100;x.hechas=0;x.pend=100;x.reg=false;x.sinRegistro=true}return x};
     abrir('corte',0);const pas=dias.map(d=>dsum(d,-7)).filter(d=>d<h&&recs.some(r=>labR(d,r)));
     const c3=txt([...pc().querySelectorAll('.res-card')][2]);const d0=[...pc().querySelectorAll('.res-dia')].map(txt);
     __check("RC5: días pasados con carga y sin registro → la tarjeta los cuenta y los nombra, y el cuadro del día dice «Sin registro de avance»",c3.startsWith('Días sin registrar avance')&&txt([...pc().querySelectorAll('.res-card')][2].querySelector('.res-n'))===num(pas.length)&&pas.every(d=>c3.includes(fmtDia(d).split(',')[0]))&&d0.filter(t=>/Sin registro de avance/.test(t)).length===pas.length,c3.slice(0,100));
     __check("UX-B6: la barra de «¿Cómo voy?» va en rojo solo cuando lo hecho está por debajo de lo que se debía llevar al cierre de ayer",pas.length?!!pc().querySelector('.res-card-w .res-bar.atras'):!pc().querySelector('.res-card-w .res-bar.atras'),JSON.stringify({pas:pas.length}));
     __check("RC5: y «¿Cómo voy?» marca ▲ lo que debía llevar al cierre de ayer (la carga de los días pasados; un lunes no hay días pasados y no hay marca)",pas.length?txt(pc().querySelector('.res-card-w')).includes('debías llevar '+num(pas.length*100)):!/debías llevar [1-9]/.test(txt(pc().querySelector('.res-card-w'))),JSON.stringify({pas:pas.length}));
-    window.datosDiaCentro=orig;abrir('corte',0);
+    window.datosDiaCentro=orig;{const cg=JSON.parse(bakCgRC5);if(cg)S.params.progCongelado=cg;else delete S.params.progCongelado}abrir('corte',0);
     __check("RC5: con la semana sin carga, la tarjeta no inventa «sin registros»: dice que ningún día pasado tenía carga",/Ningún día pasado tenía carga programada|Todos los días pasados con carga tienen registro|La semana recién empieza/.test(txt([...pc().querySelectorAll('.res-card')][2])));
     __check("UX-B6: en la semana en curso la tarjeta «Eficiencia de hoy» lleva el semáforo de Planta en vivo (sin tramos dice «sin registros», nunca 0)",(()=>{const c=pc().querySelector('.res-card-ef');if(!c||!c.querySelector('.env-sem'))return false;const e=eficienciaHoy(['corte'],hoy(),null);const v=txt(c.querySelector('.env-semv'));return e.ef==null?v==='sin registros':v===e.ef+' %'})());}
    /* RC6 · Confección: botoncitos por módulo + Maquila; acotan toda la pantalla */
@@ -9098,7 +9100,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      m.scrollTop=1200;irItemPlan('terminados');await __p(90);const t2=document.querySelector('main').scrollTop;
      __check("CU9: entrar a un centro (irCentro, irItemPlan) abre la pantalla ARRIBA: lo que se desplaza es <main> (antes quedaba a mitad de la lista)",t1===0&&t2===0,JSON.stringify({t1,t2}))}
     /* 5 · un enlace viejo a Ejecución no cambia la preferencia guardada */
-    {cenPlegGuardar('desv',false);abrir('corte');CEN.tab='ejec';render();const d=pc().querySelector('.cen-desv');await __p(80);   /* segunda revisión: el «toggle» llega después del dibujo; se espera a que llegue */
+    {await __p(40);cenPlegGuardar('desv',false);abrir('corte');CEN.tab='ejec';render();const d=pc().querySelector('.cen-desv');await __p(80);   /* antes de fijar la preferencia se deja llegar los «toggle» de dibujos anteriores */   /* segunda revisión: el «toggle» llega después del dibujo; se espera a que llegue */
      __check("CU9: un enlace viejo a «Ejecución» abre «Van por debajo del plan» solo en ese dibujo, sin cambiar lo que la persona dejó guardado",!d||(d.open&&cenPleg('desv',false)===false))}
     /* 6 · sub-áreas: Órdenes y Total; el % de ocupación una vez */
     {const el=abrir('terminados');const t=el.querySelector('.cen-subs');const ths=t?[...t.querySelectorAll('thead th')].map(txt):[];const tot=t&&t.querySelector('tr.cen-subs-tot');
@@ -9182,7 +9184,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      else __check("CU10: «¿Cómo voy?» con la semana congelada",true,'nada programado en Corte esta semana en esta base');
      {const cg=JSON.parse(bakCg);if(cg)S.params.progCongelado=cg;else delete S.params.progCongelado}PLAN=null;PLAN_ALL=null}
     /* 6 · los plegados que se abren solos en un dibujo no cambian lo que la persona dejó; el día por día se recuerda solo en la sesión */
-    {const k='__cenpleg_'+claveUsr();cenPlegGuardar('desv',false);
+    {await __p(40);const k='__cenpleg_'+claveUsr();cenPlegGuardar('desv',false);
      abrir('corte');CEN.tab='ejec';render();const d=pc().querySelector('.cen-desv');await __p(80);const pref1=cenPleg('desv',false);
      abrir('corte');CEN.dia=hoy();render();await __p(80);const pref2=cenPleg('dias',false);CEN.dia=null;render();
      cenPlegGuardar('dias',true);let ls1='';try{ls1=localStorage[k]||''}catch(e){}const ses=cenPleg('dias',false);cenPlegGuardar('dias',false);
