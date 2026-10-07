@@ -2838,7 +2838,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 23:14';
+const APP_BUILD='2026-10-07 01:30';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -2905,12 +2905,13 @@ async function iniciar(){try{aplicarTema()}catch(e){try{pintarModo()}catch(e2){}
   RECUPERANDO=esVueltaDeRecuperacion();
   sb.auth.onAuthStateChange((ev)=>{ // se escucha ANTES de mirar la sesión: el enlace del correo avisa por aquí
     if(ev==='PASSWORD_RECOVERY'){RECUPERANDO=true;mostrarLogin();verLogin('nueva');return}
-    if(ev==='SIGNED_OUT'){USER=null;PERFIL=null;RECUPERANDO=false;mostrarLogin()}});
+    if(ev==='SIGNED_OUT'){try{iomSoltarSesion()}catch(e){}USER=null;PERFIL=null;RECUPERANDO=false;mostrarLogin()}});   /* 07-oct: el borrador queda bajo la llave de quien sale */
   const {data:{session}}=await sb.auth.getSession();
   if(RECUPERANDO){mostrarLogin();verLogin('nueva');return} // viene del enlace: primero la contraseña nueva
   if(session)await entrar(session.user);else mostrarLogin();
 }
 async function entrar(user){
+  if(USER&&user&&USER.id!==user.id){try{iomSoltarSesion()}catch(e){}}   /* otra persona entra sin recargar: lo de la anterior no queda en pantalla */
   USER=user;const {data}=await sb.from('perfiles').select('*').eq('id',user.id).single();
   PERFIL=data||{rol:'consulta'};
   document.getElementById('login').classList.remove('on');
@@ -12884,8 +12885,9 @@ function tiposMaqPanelHTML(){const t=tiposMaq();const usos={},maqs={};(S.operaci
    </tbody></table></div><p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Nada se agrupa solo: si dos nombres son la misma máquina, deja uno como tipo y escribe el otro en sus otros nombres. «Apagar» no borra: el tipo queda en la tabla y se vuelve a encender; mientras está apagado, sus nombres salen «sin homologar».</p></div></div>`}
 /* --- operarias por módulo y su especialidad por tipo de máquina (no obligatorio llenar) --- */
 const NIVELES_ESP=[[1,'1 · aprende'],[2,'2 · hace'],[3,'3 · referente']];
-function operarias(){if(!Array.isArray(S.params.operarias))S.params.operarias=[];return S.params.operarias}
-function addOperaria(rec){if(ingNoEdita('ingcfg'))return;operarias().push({id:uid(),n:'',rec:rec||'',esp:{},activa:true});save();render()}
+/* mirar la lista no la crea (07-oct): antes crear [] al leer hacía que el siguiente guardado de Administración subiera icfg|operarias sin que nadie la tocara; se crea al agregar */
+function operarias(){return Array.isArray(S.params.operarias)?S.params.operarias:[]}
+function addOperaria(rec){if(ingNoEdita('ingcfg'))return;if(!Array.isArray(S.params.operarias))S.params.operarias=[];S.params.operarias.push({id:uid(),n:'',rec:rec||'',esp:{},activa:true});save();render()}
 function setOperaria(i,k,v){if(ingNoEdita('ingcfg')){render();return}const r=operarias()[i];if(!r)return;const antes=r[k];r[k]=(k==='activa')?!!v:v;
   bitacora('Operarias · '+(r.n||'(sin nombre)')+' · '+k+': '+(antes===true?'sí':antes===false?'no':(antes||'—'))+' → '+(v===true?'sí':v===false?'no':(v||'—'))+' ('+quienFirma()+')');save();render()}
 function setEspOperaria(i,tipo,niv){if(ingNoEdita('ingcfg')){render();return}const r=operarias()[i];if(!r)return;r.esp=r.esp||{};const antes=r.esp[tipo]||'—';
@@ -15132,12 +15134,15 @@ function iomListaDe(t){return t==='ing_subprocesos'?IOM.cat:t==='ing_operaciones
 async function iomGuardarFila(t,fila,que,extra){extra=extra||{};const lista=iomListaDe(t);const prev=lista.find(x=>x.id===fila.id)||null;
   const firma=((ING.firmas||{})[t]||{})[fila.id];
   if(Object.prototype.hasOwnProperty.call(extra,'baseFirma')&&prev&&extra.baseFirma!==firma)return {ok:false,choque:true,error:'otra persona la cambió'};
+  /* la firma con la que se armó la fila se toma AQUÍ, antes del primer await: el servidor se compara contra ella aunque en el medio llegue una relectura
+     («Volver a leer», «Actualizar ahora», la que sigue a otro choque). Antes se comparaba contra la de después y se pisaba a la otra persona */
+  const esperada={[fila.id]:firma};
   /* la copia de la versión anterior se escribe ANTES del cambio: si no se puede guardar la copia, no se guarda el cambio (nada se borra; antes la copia
      iba después y, si fallaba, la persona veía «Guardado» y la versión anterior se perdía; revisión de guardado del 06-oct, segunda ronda) */
   let ver=null;
   if(prev&&extra.version!==false){const ts=iomAhora();ver={id:'mver|'+fila.id+'|'+ts,data:{de:fila.id,ver:prev.ver||0,data:sinId(prev),ts,u:quienFirma(),que:que||'guardado'}};const vr=await ingSubir(t,[ver],50);
     if(!vr.ok){IOM.ver++;return {ok:false,error:'no se pudo guardar antes la copia de la versión anterior ('+(vr.error||'sin detalle')+'): no se cambió nada',falta:!!vr.falta}}}
-  const r=await ingGuardar(t,[fila],50,{lista});
+  const r=await ingGuardar(t,[fila],50,{lista,esperada});
   /* si el cambio no entró, la copia que se dejó antes lo dice (no se borra; queda como la versión que había, «sin guardar») */
   const marcarVer=async porque=>{if(!ver)return;try{await ingSubir(t,[{id:ver.id,data:Object.assign({},ver.data,{que:(que||'guardado')+' · no se llegó a guardar ('+porque+')',sinCambio:true})}],50)}catch(e){}};
   if(r.conflictos&&r.conflictos.length){await marcarVer('otra persona la cambió');IOM.leido=null;IOM.ver++;return {ok:false,choque:true,error:'otra persona la cambió'}}
@@ -15145,7 +15150,7 @@ async function iomGuardarFila(t,fila,que,extra){extra=extra||{};const lista=iomL
   if(extra.bitacora)bitacora(extra.bitacora+' ('+quienFirma()+')');
   /* lo que esta misma sesión guarda en la fila que está abierta en Crear referencia («En Odoo», Apagar, una carga, volver a una versión) no se toma
      como un choque al guardar el editor: se pone al día su firma de partida (iomEditorAlDia) */
-  iomEditorAlDia(t,fila.id,que);
+  iomEditorAlDia(t,fila.id,que,firma);
   IOM.ver++;return {ok:true,verFallo:null}}
 /* el aviso de un choque en Apagar, «En Odoo» o Listas y reglas (el del editor es su propio panel: iomChoqueHTML) */
 function iomAvisoChoque(nombre){alert('Otra persona cambió «'+nombre+'» mientras la mirabas: no se pisó. Pulsa «Volver a leer» (arriba, junto a «Datos leídos»), revisa lo nuevo y vuelve a hacer tu cambio.')}
@@ -15156,10 +15161,14 @@ function iomAvisoChoque(nombre){alert('Otra persona cambió «'+nombre+'» mient
    cambios sin guardar, el editor trae lo nuevo solo; si hay cambios, sale el panel con «Traer lo nuevo y rehacer mis cambios encima». */
 function iomEditorT(){return IOC.cod?'ing_referencias':'ing_operaciones'}
 function iomNomEditor(){return IOC.cod?IOC.cod+' · '+IOC.meta.nombre:(IOC.meta.famNombre||'')+' · base general'}
-function iomEditorAlDia(t,id,que){if(IOC.modo!=='editar'||!IOC.inicio||IOC.filaId!==id||iomEditorT()!==t)return;const f=((ING.firmas||{})[t]||{})[id];
+function iomEditorAlDia(t,id,que,antes){if(IOC.modo!=='editar'||!IOC.inicio||IOC.filaId!==id||iomEditorT()!==t)return;const f=((ING.firmas||{})[t]||{})[id];
   if(que==='guardado')return;   /* el propio editor: iomGuardar lo vuelve a cargar */
   if(/^carga|^vuelta a versión/.test(String(que||''))){if(iomCambios().n)IOC.choque={ts:Date.now(),por:/^carga/.test(que)?'carga':'version'};else{IOC.baseFirma=f;IOC.recargar=true}return}
-  IOC.baseFirma=f}   /* «En Odoo», apagar o encender: la secuencia no cambió */
+  /* «En Odoo», apagar o encender: la secuencia no cambió, PERO solo se pone al día la versión de partida si el editor partía de la versión que se acaba de
+     guardar encima («antes»). Si en el medio se volvió a leer una versión de otra persona (sin pintar Crear), adelantar la firma escondía su cambio y el
+     siguiente Guardar lo pisaba: queda marcado el choque (sin cambios, el editor trae lo nuevo solo; revisión de guardado del 07-oct, tercera ronda) */
+  if(antes!==IOC.baseFirma){IOC.choque=IOC.choque||{ts:Date.now(),por:'otra'};return}
+  IOC.baseFirma=f}
 function iomBaseVieja(){if(IOC.modo!=='editar'||!IOC.inicio||!IOC.filaId)return false;if(IOC.choque)return true;if(IOM.leido!=='si')return false;return ((ING.firmas||{})[iomEditorT()]||{})[IOC.filaId]!==IOC.baseFirma}
 /* al pintar Crear: si la versión de partida quedó vieja y no hay cambios, se trae lo nuevo solo; con cambios, se marca el choque (el panel lo dice) */
 function iomRevisarBase(){if(IOC.modo!=='editar'||!IOC.inicio||!IOC.filaId)return;
@@ -15180,38 +15189,71 @@ function iomRehacer(orig,mios,nuevos,origOn){orig=orig||{};const ON=new Set(orig
     if(!uOn&&!oOn){res[k]=cl(N);return}
     const comU0=U.ops.filter(o=>o.u&&orig[o.u]).map(o=>o.u).join('|'),comO0=Ok.slice().sort((a,b)=>orig[a].pos-orig[b].pos).filter(u=>U.ops.some(x=>x.u===u)).join('|');
     const uCambio=U.ops.some(o=>!o.u||!orig[o.u]||!['t','maq','p'].every(f=>iguales(f,orig[o.u][f],o[f])))||Ok.some(u=>!U.ops.some(x=>x.u===u))||comU0!==comO0;
-    if(oOn&&!nOn){if(!uCambio){res[k]={on:false,ops:[]};return}res[k]={on:true,ops:cl(U.ops)};n++;choques.push({sub:nomK(k),op:'',txt:'la otra persona quitó el subproceso y tú lo cambiaste: queda incluido, con lo tuyo'});return}
+    /* la otra persona quitó el subproceso y yo lo cambié: vuelve entero, con lo mío. Sus operaciones de antes llevan «conservar» (lo que tenían en la
+       versión de partida): al guardar mantienen su u, su nota, su estado y su fila original (antes renacían como «Nueva», sin nota ni fila original;
+       revisión de guardado del 07-oct, tercera ronda) */
+    if(oOn&&!nOn){if(!uCambio){res[k]={on:false,ops:[]};return}res[k]={on:true,ops:cl(U.ops).map(o=>{if(o.u&&orig[o.u])o.conservar={t:orig[o.u].t,maq:orig[o.u].maq,p:!!orig[o.u].p};return o})};n++;
+      choques.push({sub:nomK(k),op:'',txt:'la otra persona quitó el subproceso y tú lo cambiaste: queda incluido, con lo tuyo (sus operaciones conservan su nota, su estado y su fila original)'});return}
     const r=nOn?cl(N.ops||[]):[];if(!oOn&&nOn)choques.push({sub:nomK(k),op:'',txt:'las dos personas incluyeron el subproceso: se juntaron las operaciones de las dos (revisa que no haya repetidas)'});
     if(!oOn)n++;
     const idx=u=>r.findIndex(x=>x.u&&x.u===u);
+    const deOtra=x=>!x.u||!orig[x.u];   /* no estaba en la versión de partida: la agregó la otra persona (o una carga le dio un u nuevo) */
     /* lo que esta persona quitó */
     Ok.forEach(u=>{if(U.ops.some(x=>x.u===u))return;const i=idx(u);if(i<0)return;const a=orig[u],b=r[i];n++;if(!['t','maq','p'].every(f=>iguales(f,a[f],b[f])))choques.push({sub:nomK(k),op:a.op,txt:'la quitaste y la otra persona la cambió: quedó quitada'});r.splice(i,1)});
-    /* lo que esta persona cambió (tiempo, máquina, principal) */
-    U.ops.forEach(o=>{if(!o.u||!orig[o.u])return;const a=orig[o.u];const fs=['t','maq','p'].filter(f=>!iguales(f,a[f],o[f]));if(!fs.length)return;const i=idx(o.u);
-      if(i<0){choques.push({sub:nomK(k),op:o.op,txt:'la otra persona la quitó: tu cambio ('+fs.map(f=>txt(f,o[f])).join(', ')+') no se aplicó'});return}
+    /* lo que esta persona cambió (tiempo, máquina, principal). Si su u ya no está pero la otra persona tiene UNA operación nueva con el mismo nombre en el
+       subproceso (una carga con «Reemplazar» que le cambió la sección le da otro u), el cambio va ahí y se dice (antes: «la otra persona la quitó») */
+    const tomadas=new Set();
+    U.ops.forEach(o=>{if(!o.u||!orig[o.u])return;const a=orig[o.u];const fs=['t','maq','p'].filter(f=>!iguales(f,a[f],o[f]));if(!fs.length)return;let i=idx(o.u);
+      if(i<0){const cand=[];r.forEach((x,j)=>{if(deOtra(x)&&!tomadas.has(x)&&normTxt(x.op)===normTxt(o.op))cand.push(j)});
+        if(cand.length!==1){choques.push({sub:nomK(k),op:o.op,txt:'la otra persona la quitó: tu cambio ('+fs.map(f=>txt(f,o[f])).join(', ')+') no se aplicó'});return}
+        i=cand[0];tomadas.add(r[i]);const s0=a.sec||'General',s1=r[i].sec||'General';
+        choques.push({sub:nomK(k),op:o.op,txt:(normTxt(s0)!==normTxt(s1)?'la otra persona la cambió de sección («'+s0+'» → «'+s1+'»)':'la otra persona la volvió a cargar')+': tu cambio ('+fs.map(f=>txt(f,o[f])).join(', ')+') quedó en esa'})}
       fs.forEach(f=>{n++;const b=r[i][f];if(!iguales(f,a[f],b)&&!iguales(f,b,o[f]))choques.push({sub:nomK(k),op:o.op,txt:'tú pusiste '+txt(f,o[f])+' y la otra persona '+txt(f,b)+': quedó lo tuyo'});r[i][f]=f==='t'?vT(o[f]):f==='p'?!!o[f]:o[f]})});
-    /* lo que esta persona agregó: después de la operación que en su secuencia va justo antes */
-    let last=-1;const mias=new Set();U.ops.forEach(o=>{const es=o.u&&orig[o.u];const i=es?idx(o.u):-1;if(es){if(i>=0){last=i;mias.add(r[i])}return}const c=cl(o);r.splice(last+1,0,c);last=last+1;mias.add(c);n++});
-    /* el orden: si esta persona movió operaciones, sus operaciones quedan en su orden (las que agregó la otra persona, en su lugar) */
+    /* lo que esta persona agregó: después de la operación que en su secuencia va justo antes. Si la otra persona agregó la MISMA (mismo nombre y sección),
+       queda UNA, con lo mío, y se dice (antes quedaba dos veces sin aviso y el SAM la contaba doble) */
+    let last=-1;const mias=new Set(),lugar=new Map();
+    U.ops.forEach(o=>{const es=o.u&&orig[o.u];if(es){const i=idx(o.u);if(i>=0){last=i;mias.add(r[i]);lugar.set(o,r[i])}return}
+      const j=r.findIndex(x=>deOtra(x)&&!mias.has(x)&&!tomadas.has(x)&&normTxt(x.op)===normTxt(o.op)&&normTxt(x.sec||'General')===normTxt(o.sec||'General'));
+      if(j>=0){const x=r[j];const fs=['t','maq','p'].filter(f=>!iguales(f,x[f],o[f]));fs.forEach(f=>{x[f]=f==='t'?vT(o[f]):f==='p'?!!o[f]:o[f]});
+        choques.push({sub:nomK(k),op:o.op,txt:'las dos personas la agregaron: quedó una'+(fs.length?', con lo tuyo ('+fs.map(f=>txt(f,o[f])).join(', ')+')':'')});last=j;mias.add(x);lugar.set(o,x);n++;return}
+      const c=cl(o);r.splice(last+1,0,c);last=last+1;mias.add(c);lugar.set(o,c);n++});
+    /* el orden: si esta persona movió operaciones, las suyas quedan en su orden y cada una de la otra persona vuelve detrás de la que tenía justo antes en
+       su versión (antes quedaba en su lugar de la lista y podía saltar delante). «Las dos movieron» solo si la otra persona cambió el orden de las que están
+       en las dos versiones (antes contaba como movida una que solo había borrado) */
     const comU=U.ops.filter(o=>o.u&&orig[o.u]).map(o=>o.u),comO=Ok.slice().sort((a,b)=>orig[a].pos-orig[b].pos).filter(u=>comU.includes(u));
-    if(comU.join('|')!==comO.join('|')){const pos=[],ord=[];r.forEach((x,i)=>{if(mias.has(x))pos.push(i)});U.ops.forEach(o=>{const x=r.find(y=>mias.has(y)&&(o.u&&orig[o.u]?y.u===o.u:y.op===o.op&&y.sec===o.sec&&!y.u))||null;if(x&&!ord.includes(x))ord.push(x)});
-      r.filter((x,i)=>pos.includes(i)&&!ord.includes(x)).forEach(x=>ord.push(x));const comN=(N.ops||[]).map(x=>x.u).filter(u=>comO.includes(u));if(comN.join('|')!==comO.join('|'))choques.push({sub:nomK(k),op:'',txt:'las dos personas movieron operaciones: quedó tu orden'});
-      const copia=r.slice();pos.forEach((p,j)=>{copia[p]=ord[j]});r.splice(0,r.length,...copia);n++}
+    if(comU.join('|')!==comO.join('|')){const ord=[];U.ops.forEach(o=>{const x=lugar.get(o);if(x&&!ord.includes(x))ord.push(x)});r.forEach(x=>{if(mias.has(x)&&!ord.includes(x))ord.push(x)});
+      const NN=N.ops||[];const enN=new Set(NN.map(x=>x.u).filter(Boolean));const comO2=comO.filter(u=>enN.has(u));const comN=NN.map(x=>x.u).filter(u=>comO2.includes(u));
+      if(comN.join('|')!==comO2.join('|'))choques.push({sub:nomK(k),op:'',txt:'las dos personas movieron operaciones: quedó tu orden'});
+      const fin=ord.slice();const porU=new Map();r.forEach(x=>{if(x.u&&!porU.has(x.u))porU.set(x.u,x)});
+      r.forEach((x,i)=>{if(mias.has(x))return;let j=-1;const ni=x.u?NN.findIndex(y=>y.u===x.u):-1;
+        if(ni>=0){for(let q=ni-1;q>=0&&j<0;q--){const y=NN[q].u?porU.get(NN[q].u):null;if(y)j=fin.indexOf(y)}}else if(i>0)j=fin.indexOf(r[i-1]);
+        fin.splice(j+1,0,x)});
+      r.splice(0,r.length,...fin);n++}
     res[k]={on:true,ops:r}});
   return {stages:res,choques,n}}
+/* la fila del editor quedó guardada con una forma que no se reconoce (escrita directo en la base): no se rehace encima ni se ofrece otra vez; lo dice y
+   manda a Por revisar (antes cada Guardar decía «otra persona cambió…» y el panel ofrecía rehacer en bucle; revisión de guardado del 07-oct, tercera ronda) */
+function iomFilaDescartada(id){return !!id&&(IOM.descartadas||[]).some(d=>d.id===String(id).slice(0,80))}
+function iomMsgFilaRara(){return '«'+iomNomEditor()+'» está guardada con un formato que no se reconoce (alguien la escribió directo en la base): no se puede guardar encima ni rehacer tus cambios. Pídele a Administración que la revise (Ingeniería → Por revisar → «Filas guardadas que no se reconocen»); mientras tanto puedes descargar tus cambios en Excel.'}
 async function iomRehacerChoque(){if(IOC.modo!=='editar'||!IOC.inicio)return null;const t=iomEditorT();const lr=await iomLeer(true);if(lr!=='si'){alert('No se pudo leer lo nuevo ('+(IOM.err||lr)+'). Prueba de nuevo en un momento.');return null}
+  if(iomFilaDescartada(IOC.filaId)){alert(iomMsgFilaRara());iomPintarCrear();return null}
   const fila=iomListaDe(t).find(x=>x.id===IOC.filaId)||null;const base=iomStagesEditor(fila);const m=iomRehacer(IOC.orig||{},IOC.stages,base,IOC.origOn);
   IOC.orig=iomOrigDe(base);IOC.origOn=IOM_K.filter(k=>base[k].on);IOC.baseFirma=((ING.firmas||{})[t]||{})[IOC.filaId];IOC.sinFila=!fila;IOC.stages=m.stages;IOC.choque=null;IOC.recargar=false;IOC.rehecho={ts:iomAhora(),choques:m.choques};
   if(!IOC.sub||!(IOC.stages[IOC.sub]&&IOC.stages[IOC.sub].on))iomPrimerSub();delete IOC._cc;iomSucio();iomPintarCrear();const e=document.getElementById('iom-crear');if(e&&e.scrollIntoView)try{e.scrollIntoView({block:'start'})}catch(x){}return m}
 async function iomDescartarChoque(){if(!confirm('Se descartan tus cambios sin guardar de «'+iomNomEditor()+'» y se abre lo que está guardado ahora. ¿Seguir?'))return false;await iomLeer(true);iomBorradorQuitar();const sub=IOC.sub;
   if(iomCargarEditar(IOC.famId,IOC.cod)&&sub&&IOC.stages[sub]&&IOC.stages[sub].on)IOC.sub=sub;iomPintarCrear();return true}
-function iomChoqueHTML(){if(!iomBaseVieja())return '';const n=iomCambios().n;const dr=iomBorradorLeer();const por=(IOC.choque&&IOC.choque.por)||'otra';
+function iomChoqueHTML(){const n=iomCambios().n;
+  if(IOC.modo==='editar'&&IOC.inicio&&iomFilaDescartada(IOC.filaId))return `<div class="iom-aviso mal iom-choque" id="iom-choque">${esc(iomMsgFilaRara())}<div class="iom-choque-acc"><button type="button" class="btn ghost sm" ${n?'':'disabled'} onclick="iomExcelEditor()">Descargar mis cambios en Excel</button></div></div>`;
+  if(!iomBaseVieja())return '';const dr=iomBorradorAlDia();const por=(IOC.choque&&IOC.choque.por)||'otra';
   const que=por==='carga'?'Esta secuencia cambió con «Cargar secuencias» (en esta misma pestaña)':por==='version'?'Esta secuencia volvió a otra versión':'Otra persona guardó «'+esc(iomNomEditor())+'» después de que la abriste';
-  const uno=n===1;const lo=n?'tus '+iomPl(n,'cambio','cambios')+' sin guardar':'lo tuyo';
-  return `<div class="iom-aviso mal iom-choque" id="iom-choque"><b>${que}:</b> ${lo} no ${uno||!n?'se guardó':'se guardaron'} (no se pisa lo nuevo)${dr?' y '+(uno||!n?'sigue':'siguen')+' en el borrador de este equipo':''}. Trae lo nuevo y rehace tus cambios encima: lo que cambiaron las dos personas en la misma operación se te muestra antes de guardar.
+  const uno=n===1;const lo=uno?'tu cambio sin guardar':n?'tus '+n+' cambios sin guardar':'lo tuyo';
+  /* «siguen en el borrador» solo si es cierto: el borrador quedó escrito y es el de ahora (antes bastaba con que hubiera uno, aunque el navegador no
+     hubiera dejado escribir los últimos cambios; revisión de guardado del 07-oct, tercera ronda) */
+  const enBorr=dr?' y '+(uno||!n?'sigue':'siguen')+' en el borrador de este equipo':n?'. Ojo: el navegador no dejó guardar el borrador de este equipo; si cierras la pestaña se '+(uno?'pierde':'pierden')+': descárga'+(uno?'lo':'los')+' en Excel':'';
+  return `<div class="iom-aviso mal iom-choque" id="iom-choque"><b>${que}:</b> ${lo} no ${uno||!n?'se guardó':'se guardaron'} (no se pisa lo nuevo)${enBorr}. Trae lo nuevo y rehace tus cambios encima: lo que cambiaron las dos personas en la misma operación se te muestra antes de guardar.
    <div class="iom-choque-acc"><button type="button" class="btn sm" onclick="iomRehacerChoque()">Traer lo nuevo y rehacer mis cambios encima</button><button type="button" class="btn ghost sm" ${n?'':'disabled'} onclick="iomExcelEditor()">Descargar mis cambios en Excel</button><button type="button" class="btn ghost sm" onclick="iomDescartarChoque()">Descartar mis cambios</button></div></div>`}
 function iomRehechoHTML(){const r=IOC.rehecho;if(!r||IOC.modo!=='editar')return '';const n=iomCambios().n;
-  return `<div class="iom-aviso ${r.choques.length?'':'ok'} iom-rehecho"><b>Se trajo lo nuevo y se rehicieron encima tus cambios</b>: ahora hay ${iomPl(n,'cambio','cambios')} sin guardar. Revísalos y pulsa Guardar.${r.choques.length?'<br><b>'+iomPl(r.choques.length,'cosa chocaba','cosas chocaban')+'</b> (las dos personas tocaron lo mismo):<ul class="ing-lista">'+r.choques.slice(0,40).map(c=>'<li>'+esc(c.sub)+(c.op?' · '+esc(c.op):'')+': '+esc(c.txt)+'</li>').join('')+'</ul>':''}</div>`}
+  return `<div class="iom-aviso ${r.choques.length?'':'ok'} iom-rehecho"><b>Se trajo lo nuevo y se rehicieron encima tus cambios</b>: ${n?'ahora hay '+iomPl(n,'cambio','cambios')+' sin guardar. Revísalos y pulsa Guardar.':'lo nuevo ya trae todo lo tuyo: no queda nada por guardar.'}${r.choques.length?'<br><b>'+iomPl(r.choques.length,'cosa chocaba','cosas chocaban')+'</b> (las dos personas tocaron lo mismo):<ul class="ing-lista">'+r.choques.slice(0,40).map(c=>'<li>'+esc(c.sub)+(c.op?' · '+esc(c.op):'')+': '+esc(c.txt)+'</li>').join('')+'</ul>':''}</div>`}
 /* una fila nueva de base o de referencia, con su resumen (n, SAM y SAM por subproceso) */
 function iomResumenFila(d){const samSub={};let n=0,sam=0;(d.stages||[]).forEach(s=>{const v=iomSam(s.ops);samSub[s.k]=+v.toFixed(3);sam+=v;n+=(s.ops||[]).length});d.n=n;d.sam=+sam.toFixed(3);d.samSub=samSub;return d}
 /* versiones anteriores de una fila (a demanda) y volver a una de ellas (la actual queda como versión nueva) */
@@ -15247,13 +15289,13 @@ function iomMismoContenido(a,b){const c=x=>ingCanon(iomOrdenarStages((x&&x.stage
 function iomReemplazar(vieja,nueva,cols){const libres=new Map();((vieja&&vieja.stages)||[]).forEach(s=>(s.ops||[]).forEach(o=>{const key=iomClaveOp(s.k,o.sec,o.op);if(!libres.has(key))libres.set(key,[]);libres.get(key).push(o)}));
   let next=iomMaxU(vieja);const trae=cols||{};
   const stages=iomOrdenarStages(nueva.stages).map(s=>({k:s.k,ops:s.ops.map(o=>{const key=iomClaveOp(s.k,o.sec,o.op);const l=libres.get(key);const ex=l&&l.length?l.shift():null;const n=iomSinMarcas(Object.assign({},o,{u:ex?ex.u:'o'+(++next)}));
-    if(ex){if(trae.codigo==null)n.tpl=ex.tpl||'';['p','alt','e','nt','row'].forEach(f=>{if(trae[f]==null&&ex[f]!==undefined)n[f]=ex[f]});
+    if(ex){if(trae.codigo==null)n.tpl=ex.tpl||'';['p','alt','e','nt','row'].forEach(f=>{if(trae[f]==null&&ex[f]!==undefined)n[f]=ex[f]});if(o._gen&&o._gen.nt&&ex.nt!==undefined)n.nt=ex.nt;   /* nota que escribió la app: queda la que había */
       /* de dónde salió (copiada de, agregada, tiempo cambiado) no va en el Excel: se conserva el de la que ya estaba (antes se perdía en TODA la
          referencia aunque cambiara un solo tiempo; revisión de guardado del 06-oct, segunda ronda) */
       if(ex.de){n.de=ex.de;n.deFam=ex.deFam||'';n.tDe=ex.tDe==null?null:ex.tDe}}return n})}));
   return {stages,nextU:next}}
 /* la marca interna del plan (qué celdas venían vacías) no se guarda nunca */
-function iomSinMarcas(o){const n=Object.assign({},o);delete n._vac;return n}
+function iomSinMarcas(o){const n=Object.assign({},o);delete n._vac;delete n._gen;return n}
 /* combinar: lo que ya estaba se queda; lo que calza se actualiza; lo nuevo entra en su lugar (sección + reglas de orden). No se quita nada */
 function iomCombinar(vieja,nueva,grupo,cols){const st=JSON.parse(JSON.stringify((vieja&&vieja.stages)||[]));let next=iomMaxU(vieja);const usados=new Set();const trae=cols||{};
   iomOrdenarStages(nueva.stages).forEach(s=>{let tg=st.find(x=>x.k===s.k);if(!tg){tg={k:s.k,ops:[]};st.push(tg)}
@@ -15261,7 +15303,7 @@ function iomCombinar(vieja,nueva,grupo,cols){const st=JSON.parse(JSON.stringify(
       /* combinar no borra: una celda VACÍA en el archivo deja lo que ya había, en TODAS las columnas (tiempo, máquina, código, principal, alternativa,
          estado, nota y fila original). Para quitar «Principal» se escribe «No». Antes solo tiempo y máquina estaban protegidos y un archivo «solo
          tiempos» de 21 columnas borraba notas, alternativas, estados y principales (revisión de guardado del 06-oct, segunda ronda) */
-      const vac=o._vac||{};
+      const vac=Object.assign({},o._vac||{},o._gen&&o._gen.nt?{nt:true}:{});   /* una nota que escribió la app cuenta como celda vacía */
       if(ex){usados.add(ex.u);if(!(o.t==null||o.t===''))ex.t=o.t;if(String(o.maq==null?'':o.maq).trim())ex.maq=o.maq;if(trae.codigo!=null&&o.tpl)ex.tpl=o.tpl;['p','alt','e','nt','row'].forEach(f=>{if(trae[f]!=null&&!vac[f])ex[f]=o[f]})}
       else{const n=iomSinMarcas(Object.assign({},o,{u:'o'+(++next)}));usados.add(n.u);iomInsertar(tg.ops,n,grupo,s.k)}})});
   return {stages:iomOrdenarStages(st),nextU:next}}
@@ -15274,7 +15316,7 @@ function iomSeccionPorNombre(fs,vieja,plan,clave){const porK={};fs.forEach(x=>{(
   Object.keys(porK).forEach(k=>{const ex=((vieja&&iomStagesLista(vieja.stages).find(s=>s.k===k))||{ops:[]}).ops;const porN=new Map();ex.forEach(o=>{const n=normTxt(o.op);if(!porN.has(n))porN.set(n,[]);porN.get(n).push(o)});
     const enArch=new Map();porK[k].forEach(x=>{const n=normTxt(x.o.op);enArch.set(n,(enArch.get(n)||0)+1)});const usados=new Map();const sub=iomSub(k);
     porK[k].forEach(x=>{const n=normTxt(x.o.op);const l=porN.get(n)||[];if(!l.length){x.o.sec='General';return}const secs=[...new Set(l.map(o=>o.sec||'General'))];
-      if(secs.length>1&&enArch.get(n)!==l.length){x.rech=true;plan.rechazadas.push({fila:x.fila,clave:clave||null,motivo:'«'+x.o.op+'» está '+l.length+' veces en '+(sub?sub.nombre:k)+' ('+secs.join(', ')+') y el archivo no trae la columna «Sección»: no se sabe cuál es. Agrega la columna «Sección»'});return}
+      if(secs.length>1&&enArch.get(n)!==l.length){x.rech=true;plan.rechazadas.push({fila:x.fila,clave:clave||null,op:String(x.o.op||'').slice(0,80),motivo:'«'+x.o.op+'» está '+l.length+' veces en '+(sub?sub.nombre:k)+' ('+secs.join(', ')+') y el archivo no trae la columna «Sección»: no se sabe cuál es. Agrega la columna «Sección»'});return}
       const i=usados.get(n)||0;usados.set(n,i+1);x.o.sec=l[Math.min(i,l.length-1)].sec||'General'})});
   return fs.filter(x=>!x.rech)}
 function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archivo||'',filas:0,cabFila:-1,hoja:'',destinos:[],rechazadas:[],familiasNuevas:[],maquinasFuera:[],fueraDeOrden:0,columnas:{},sinPlantilla:[],sinTiempo:0,repetidas:[],alternativas:[],fueraRango:[],sinSeccion:false,error:null};
@@ -15287,27 +15329,31 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
      archivo (revisión de guardado del 06-oct, segunda ronda: antes solo se rechazaba la fila si tenía más celdas CON ALGO que la cabecera) */
   if(rows.sep===','){const nC=(rows[ci]||[]).length;const j=rows.slice(ci+1).findIndex(r=>Array.isArray(r)&&r.length>nC&&r.some(x=>String(x==null?'':x).trim()!==''));
     if(j>=0){plan.error='El archivo está separado por comas y la fila '+(ci+2+j)+' tiene más columnas que la cabecera ('+rows[ci+1+j].length+' y '+nC+'): casi seguro un tiempo escrito con coma («0,1»), que en un archivo separado por comas parte la celda en dos y corre las demás. No se cargó nada. Guárdalo separado por punto y coma («;») —en Excel: «CSV (delimitado por punto y coma)»— o súbelo como Excel (.xlsx).';return plan}}
-  const D=new Map();const rech=(fila,motivo,clave)=>plan.rechazadas.push({fila,motivo,clave:clave||null});
+  /* cada rechazo lleva la operación (para que la vista previa la nombre) y a qué secuencia iba: «clave» si se sabe; si no, «fams» (cualquier secuencia de
+     esas familias) o «todas». Con Reemplazar, una secuencia que PODRÍA haber perdido esa fila también pide «reemplazar igual» (antes un rechazo sin clave
+     —una celda de más, un «Cód. familia» de otra familia— no pedía la casilla y la operación se quitaba; revisión de guardado del 07-oct, tercera ronda) */
+  const D=new Map();let opAct='';const rech=(fila,motivo,clave,donde)=>plan.rechazadas.push(Object.assign({fila,motivo,clave:clave||null},opAct?{op:opAct}:{},clave?{}:(donde||{})));
   rows.slice(ci+1).forEach((r,i)=>{const fila=ci+2+i;r=r||[];const v=k=>cm[k]==null?'':String(r[cm[k]]==null?'':r[cm[k]]).trim();
-    if(!r.some(x=>String(x==null?'':x).trim()!==''))return;plan.filas++;
+    if(!r.some(x=>String(x==null?'':x).trim()!==''))return;plan.filas++;opAct=v('op').slice(0,80);
+    const famsDeFila=()=>{const a=v('codFam')?iomFamPorCod(v('codFam')):null,b=v('fam')?iomFamPorNombre(v('fam')):null;const l=[...new Set([a,b].filter(Boolean).map(x=>x.id))];return l.length?{fams:l}:{todas:true}};
     /* más celdas con algo que la cabecera: casi siempre un tiempo con coma en un archivo separado por comas («0,1» se parte en dos columnas y el tiempo
        entraba como 0 sin aviso; revisión de fidelidad del 06-oct) */
-    const nfc=ultima(r);if(nfc>nCab){rech(fila,'la fila tiene más columnas que la cabecera ('+nfc+' y '+nCab+'): ¿escribiste el tiempo con coma en un archivo separado por comas? Guárdalo separado con punto y coma, o pon el número entre comillas');return}
+    const nfc=ultima(r);if(nfc>nCab){rech(fila,'la fila tiene más columnas que la cabecera ('+nfc+' y '+nCab+'): ¿escribiste el tiempo con coma en un archivo separado por comas? Guárdalo separado con punto y coma, o pon el número entre comillas',null,famsDeFila());return}
     /* la familia: por su código; si no, por su nombre (o el de la hoja de Odoo); si no existe, se ofrece crear (nunca a ciegas). Si el nombre y el código
        llevan a familias DISTINTAS (un «Cód. familia» arrastrado en Excel), la fila se rechaza: antes mandaba el código sin avisar y un archivo de Polo con
        CAM reemplazaba la base de Camiseta (revisión de guardado del 06-oct, segunda ronda) */
     const codF=v('codFam'),nomF=v('fam');const fC=codF?iomFamPorCod(codF):null,fN=nomF?iomFamPorNombre(nomF):null;
-    if(fC&&fN&&fC.id!==fN.id){rech(fila,'el nombre dice «'+nomF+'» y el código '+codF.toUpperCase()+' es de '+fC.nombre+': corrige una de las dos (no se adivina cuál es la buena)');return}
+    if(fC&&fN&&fC.id!==fN.id){rech(fila,'el nombre dice «'+nomF+'» y el código '+codF.toUpperCase()+' es de '+fC.nombre+': corrige una de las dos (no se adivina cuál es la buena)',null,{fams:[fC.id,fN.id]});return}
     let f=fC||fN;let famNueva=null;const nomDistinto=!!(fC&&nomF&&!fN);
     /* a qué secuencia iría la fila (para contar, en la vista previa, las filas rechazadas de cada una; no rechaza nada) */
     const claveTent=()=>{if(!f||f.nueva)return null;const cr=v('codRef').toUpperCase().replace(/\s+/g,'');if(cr)return 'ref|'+cr;const nr=v('ref');if(!nr)return 'base|'+f.id;
       const ya=[...D.values()].find(d=>d.tipo==='ref'&&d.famKey===f.id&&normTxt(d.nombre)===normTxt(nr));const ex=IOM.refs.find(x=>x.fam===f.id&&normTxt(x.nombre)===normTxt(nr));return ya?ya.clave:ex?'ref|'+ex.cod:null};
-    if(!f){const key=normTxt(nomF)||normTxt(codF);if(!key){rech(fila,'sin familia');return}let fn=plan.familiasNuevas.find(x=>x.key===key);
+    if(!f){const key=normTxt(nomF)||normTxt(codF);if(!key){rech(fila,'sin familia',null,{todas:true});return}let fn=plan.familiasNuevas.find(x=>x.key===key);
       if(!fn){const d=nuevasDec[key]||{};fn={key,nombre:nomF||codF,cod:d.cod!=null?String(d.cod).toUpperCase():(codF?codF.toUpperCase():iomCodigoFamNueva(nomF||codF)),grupo:d.grupo||null,crear:!!d.crear,filas:0};plan.familiasNuevas.push(fn)}fn.filas++;
       if(!fn.crear){rech(fila,'familia que no existe: «'+(nomF||codF)+'» (márcala para crearla)');return}if(!fn.grupo){rech(fila,'familia nueva «'+fn.nombre+'» sin parte (de arriba o de abajo)');return}
       if(!/^[A-Z0-9]{2,4}$/.test(fn.cod)){rech(fila,'código de la familia nueva «'+fn.nombre+'» inválido: 2 a 4 letras o números');return}
       if(usados[fn.cod]){rech(fila,'el código '+fn.cod+' de la familia nueva ya lo usa '+usados[fn.cod]);return}
-      famNueva=fn;f={id:'+'+iomSlug(fn.nombre),nombre:fn.nombre,cod:fn.cod,grupo:fn.grupo,nueva:true}}
+      famNueva=fn;f={id:'+'+fn.key,nombre:fn.nombre,cod:fn.cod,grupo:fn.grupo,nueva:true}}
     const sv=normTxt(v('sub')).replace(/\s+/g,'');const sub=cat.subs.find(s=>normTxt(s.nombre).replace(/\s+/g,'')===sv||normTxt(s.k)===sv);if(!sub){rech(fila,'subproceso desconocido: «'+v('sub')+'»',claveTent());return}
     const op=v('op');if(!op){rech(fila,'operación vacía',claveTent());return}
     const tRaw=cm.t==null?'':r[cm.t];let t=null;if(!(tRaw===''||tRaw==null)){t=numXLS(tRaw);if(t==null){rech(fila,'tiempo que no es un número: «'+tRaw+'»',claveTent());return}if(t<0){rech(fila,'tiempo negativo: '+iomFmtT(t),claveTent());return}}
@@ -15335,9 +15381,13 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
     const maq=v('maq');if(maq&&!maqsOk.has(normTxt(maq)))maqFuera[maq]=(maqFuera[maq]||0)+1;if(t==null)plan.sinTiempo++;
     const est=v('e');const rowN=parseInt(v('row'),10);const paso=numXLS(cm.paso==null?'':r[cm.paso]);
     /* qué columnas venían con la celda vacía (Combinar no las toca); la marca no se guarda nunca (iomSinMarcas) */
-    const vac={};['p','alt','e','nt','row'].forEach(k=>{if(cm[k]!=null&&v(k)==='')vac[k]=true});const o={sec,op,tpl,maq,t,p:iomEsSi(v('p')),alt:v('alt'),e:/^(original)?$/.test(normTxt(est))?'':est,nt:iomSinOrigen(v('nt')),row:isFinite(rowN)?rowN:null};if(Object.keys(vac).length)o._vac=vac;
+    const ntA=iomNotaDeArchivo(v('nt'),est);   /* una nota que escribió la propia app («Copia de …», «Tiempo: a → b») no es una nota: se toma como «no trae nota» */
+    const vac={};['p','alt','e','nt','row'].forEach(k=>{if(cm[k]!=null&&v(k)==='')vac[k]=true});const o={sec,op,tpl,maq,t,p:iomEsSi(v('p')),alt:v('alt'),e:/^(original)?$/.test(normTxt(est))?'':est,nt:ntA.nt,row:isFinite(rowN)?rowN:null};if(Object.keys(vac).length)o._vac=vac;if(ntA.gen)o._gen={nt:true};
     d.filas.push({fila,paso,k:sub.k,o})});
   plan.maquinasFuera=Object.keys(maqFuera).sort().map(m=>({maq:m,n:maqFuera[m]}));
+  /* dos familias nuevas cuyo nombre solo difiere en signos («Chompa Niño» y «Chompa-Niño»): cada una va a su destino (el id provisional es su clave, antes
+     el slug las juntaba en uno) y se avisa que se parecen (revisión de guardado del 07-oct, tercera ronda) */
+  plan.familiasNuevas.forEach(f=>{const o=plan.familiasNuevas.find(x=>x!==f&&iomSlug(x.nombre)===iomSlug(f.nombre));if(o)f.parecida=o.nombre});
   D.forEach(d=>{let fs=d.filas.slice();if(fs.length&&fs.every(x=>x.paso!=null))fs=fs.map((x,i)=>({x,i})).sort((a,b)=>a.x.paso-b.x.paso||a.i-b.i).map(z=>z.x);
     const vieja=d.famId?(d.tipo==='base'?iomBase(d.famId):iomRef(d.cod)):null;
     if(plan.sinSeccion)fs=iomSeccionPorNombre(fs,vieja,plan,d.clave);if(!fs.length)return;
@@ -15356,7 +15406,7 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
     /* el nombre de una referencia que el archivo trae distinto: se dice antes de aplicar (antes cambiaba en silencio) */
     if(vieja&&d.tipo==='ref'&&d.nombre&&normTxt(d.nombre)!==normTxt(vieja.nombre||'')){out.nombreAntes=vieja.nombre||'';out.avisos.push('nombre: «'+(vieja.nombre||'')+'» → «'+d.nombre+'»')}
     /* las filas rechazadas que iban a esta secuencia: con Reemplazar, lo que traían se QUITARÍA (un tiempo mal escrito no debe borrar una operación) */
-    out.rech=plan.rechazadas.filter(x=>x.clave===d.clave).length;out.aceptaRech=!!(opts.aceptaRech||{})[d.clave];
+    out.rech=plan.rechazadas.filter(x=>x.clave===d.clave).length;out.rechPos=plan.rechazadas.filter(x=>!x.clave&&(x.todas||(x.fams||[]).includes(d.famKey))).length;out.aceptaRech=!!(opts.aceptaRech||{})[d.clave];   /* rechPos: filas rechazadas que PODRÍAN ser de esta secuencia (no se sabe a cuál iban) */
     if(vieja){const R=iomReemplazar(vieja,nueva,cm),C=iomCombinar(vieja,nueva,d.grupo,cm);const o0=iomOrigDe(vieja.stages);out.R=R;out.C=C;out.diffR=iomDiff(o0,R.stages,d.cod);out.diffC=iomDiff(o0,C.stages,d.cod);out.igualR=iomMismoContenido(vieja,R);out.igualC=iomMismoContenido(vieja,C);
       out.samR=+iomSam(R.stages.flatMap(s=>s.ops)).toFixed(3);out.samC=+iomSam(C.stages.flatMap(s=>s.ops)).toFixed(3);   /* el SAM «después» según la acción elegida (combinar no quita nada) */
       out.accion=(opts.acciones||{})[d.clave]||opts.accionTodas||null}
@@ -15366,9 +15416,10 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
   return plan}
 function iomQuePasa(d){if(d.accion==='no')return {txt:'No se toca',cambia:false};if(!d.existe)return {txt:'Nueva',cambia:true};
   if(!d.accion)return {txt:'Elige reemplazar o combinar',cambia:false,falta:true};const r=d.accion==='reemplazar';const igual=r?d.igualR:d.igualC;const df=r?d.diffR:d.diffC;
-  if(r&&d.rech&&!d.aceptaRech&&!igual)return {txt:iomPl(d.rech,'fila de esta secuencia se rechazó','filas de esta secuencia se rechazaron')+': con Reemplazar, lo que traía'+(d.rech===1?'':'n')+' se quitaría. Corrige el archivo, elige Combinar o marca «reemplazar igual»',cambia:false,falta:true,rech:true};
+  const nR=(d.rech||0)+(d.rechPos||0);
+  if(r&&nR&&!d.aceptaRech&&!igual)return {txt:(d.rech?iomPl(d.rech,'fila de esta secuencia se rechazó','filas de esta secuencia se rechazaron'):iomPl(d.rechPos,'fila rechazada podría ser de esta secuencia (no se sabe a cuál iba)','filas rechazadas podrían ser de esta secuencia (no se sabe a cuál iban)'))+': con Reemplazar, lo que traía'+(nR===1?'':'n')+' se quitaría. Corrige el archivo, elige Combinar o marca «reemplazar igual»',cambia:false,falta:true,rech:true};
   if(igual&&d.nombreAntes!=null)return {txt:(r?'Reemplaza':'Combina')+': cambia el nombre',cambia:true};
-  if(igual)return {txt:'No cambia nada',cambia:false};const p=[];if(df.editadas)p.push(df.editadas+' editadas');if(df.nuevas)p.push(df.nuevas+' nuevas');if(df.quitadas)p.push(df.quitadas+' quitadas');if(df.movidas)p.push(df.movidas+' movidas');
+  if(igual)return {txt:'No cambia nada',cambia:false};const p=[];if(df.editadas)p.push(iomPl(df.editadas,'editada','editadas'));if(df.nuevas)p.push(iomPl(df.nuevas,'nueva','nuevas'));if(df.quitadas)p.push(iomPl(df.quitadas,'quitada','quitadas'));if(df.movidas)p.push(iomPl(df.movidas,'movida','movidas'));
   return {txt:(r?'Reemplaza':'Combina')+': '+(p.join(', ')||'cambian notas, códigos o marcas'),cambia:true}}
 let IOMC=null;   /* la ventana de la carga: {archivo, filas, plan, nuevas, acciones, accionTodas, res} */
 function iomMCargar(){if(ingNoEdita('ing_operaciones,ing_referencias'))return;IOMC={archivo:'',filas:null,plan:null,nuevas:{},acciones:{},accionTodas:null,aceptaRech:{},res:null};
@@ -15401,9 +15452,9 @@ function iomPreviaCargaHTML(p){if(p.error)return '<div class="iom-aviso mal">'+e
   /* el SAM «después» según lo elegido (reemplazar = como el archivo; combinar = lo de antes más lo nuevo); sin elegir, los dos */
   const samTxt=d=>{if(!d.existe)return iomFsam(d.sam);if(d.accion==='no')return iomFsam(d.samAntes)+' (no se toca)';const a=iomFsam(d.samAntes)+' → ';if(d.accion==='reemplazar')return a+iomFsam(d.samR);if(d.accion==='combinar')return a+iomFsam(d.samC);return a+iomFsam(d.samR)+' si reemplazas · '+iomFsam(d.samC)+' si combinas'};
   const filas=p.destinos.map(d=>{const q=iomQuePasa(d);const sel=d.existe?`<select data-ver="1" onchange="iomSetCargaAccion(${iomJs(d.clave)},this.value)"><option value="" ${!d.accion?'selected':''}>— elige —</option><option value="reemplazar" ${d.accion==='reemplazar'?'selected':''}>Reemplazar</option><option value="combinar" ${d.accion==='combinar'?'selected':''}>Combinar</option><option value="no" ${d.accion==='no'?'selected':''}>No tocar</option></select>`:`<select data-ver="1" onchange="iomSetCargaAccion(${iomJs(d.clave)},this.value)"><option value="crear" ${d.accion!=='no'?'selected':''}>Crear</option><option value="no" ${d.accion==='no'?'selected':''}>No tocar</option></select>`;
-    const acepta=d.existe&&d.accion==='reemplazar'&&d.rech&&!d.igualR?`<label class="iom-acepta"><input type="checkbox" data-ver="1" ${d.aceptaRech?'checked':''} onchange="iomSetCargaAceptaRech(${iomJs(d.clave)},this.checked)"> reemplazar igual</label>`:'';
-    return `<tr><td>${esc(d.famNombre)}${d.famNueva?' <span class="tag t-medio">familia nueva</span>':''}</td><td>${d.tipo==='base'?'<span class="mut">base general</span>':esc(d.cod)+' · '+esc(d.nombre)}</td><td class="num">${d.ops}</td><td class="num">${samTxt(d)}</td><td>${sel}${acepta}</td><td class="${q.falta?'iom-warn':''}">${esc(q.txt)}${d.rech&&!q.rech?' <span class="mut">· '+iomPl(d.rech,'fila rechazada','filas rechazadas')+'</span>':''}</td><td class="mut">${d.avisos.map(esc).join(' · ')}${d.fueraDeOrden?(d.avisos.length?' · ':'')+iomPl(d.fueraDeOrden,'operación fuera del orden de las secciones','operaciones fuera del orden de las secciones')+': se dejan como vienen':''}</td></tr>`}).join('');
-  const nuevas=p.familiasNuevas.length?`<h4 class="iom-h4">Familias que no existen (${p.familiasNuevas.length})</h4><p class="ing-sig">No se crean solas: marca «crear», elige si es de arriba o de abajo y revisa el código. Sin marcar, sus filas quedan fuera.</p><table class="iom-tabla"><thead><tr><th>Crear</th><th>Familia</th><th class="num">Filas</th><th>Parte</th><th>Código</th></tr></thead><tbody>${p.familiasNuevas.map(f=>`<tr><td><input type="checkbox" data-ver="1" ${f.crear?'checked':''} onchange="iomSetCargaNueva(${iomJs(f.key)},'crear',this.checked)"></td><td>${esc(f.nombre)}</td><td class="num">${f.filas}</td><td><select data-ver="1" onchange="iomSetCargaNueva(${iomJs(f.key)},'grupo',this.value)"><option value="" ${!f.grupo?'selected':''}>— elige —</option><option value="T" ${f.grupo==='T'?'selected':''}>Parte superior</option><option value="B" ${f.grupo==='B'?'selected':''}>Parte inferior</option></select></td><td><input type="text" data-ver="1" maxlength="4" class="iom-cod" value="${esc(f.cod)}" onchange="iomSetCargaNueva(${iomJs(f.key)},'cod',this.value.toUpperCase())"></td></tr>`).join('')}</tbody></table>`:'';
+    const acepta=d.existe&&d.accion==='reemplazar'&&(d.rech||d.rechPos)&&!d.igualR?`<label class="iom-acepta"><input type="checkbox" data-ver="1" ${d.aceptaRech?'checked':''} onchange="iomSetCargaAceptaRech(${iomJs(d.clave)},this.checked)"> reemplazar igual</label>`:'';
+    return `<tr><td>${esc(d.famNombre)}${d.famNueva?' <span class="tag t-medio">familia nueva</span>':''}</td><td>${d.tipo==='base'?'<span class="mut">base general</span>':esc(d.cod)+' · '+esc(d.nombre)}</td><td class="num">${d.ops}</td><td class="num">${samTxt(d)}</td><td>${sel}${acepta}</td><td class="${q.falta?'iom-warn':''}">${esc(q.txt)}${(d.rech||d.rechPos)&&!q.rech?' <span class="mut">· '+iomPl((d.rech||0)+(d.rechPos||0),'fila rechazada','filas rechazadas')+(d.rech?'':' que podría'+(d.rechPos===1?'':'n')+' ser de esta')+'</span>':''}</td><td class="mut">${d.avisos.map(esc).join(' · ')}${d.fueraDeOrden?(d.avisos.length?' · ':'')+iomPl(d.fueraDeOrden,'operación fuera del orden de las secciones','operaciones fuera del orden de las secciones')+': se dejan como vienen':''}</td></tr>`}).join('');
+  const nuevas=p.familiasNuevas.length?`<h4 class="iom-h4">Familias que no existen (${p.familiasNuevas.length})</h4><p class="ing-sig">No se crean solas: marca «crear», elige si es de arriba o de abajo y revisa el código. Sin marcar, sus filas quedan fuera.</p><table class="iom-tabla"><thead><tr><th>Crear</th><th>Familia</th><th class="num">Filas</th><th>Parte</th><th>Código</th></tr></thead><tbody>${p.familiasNuevas.map(f=>`<tr><td><input type="checkbox" data-ver="1" ${f.crear?'checked':''} onchange="iomSetCargaNueva(${iomJs(f.key)},'crear',this.checked)"></td><td>${esc(f.nombre)}${f.parecida?' <span class="iom-warn">se parece a «'+esc(f.parecida)+'», también nueva en este archivo: revisa que no sea la misma</span>':''}</td><td class="num">${f.filas}</td><td><select data-ver="1" onchange="iomSetCargaNueva(${iomJs(f.key)},'grupo',this.value)"><option value="" ${!f.grupo?'selected':''}>— elige —</option><option value="T" ${f.grupo==='T'?'selected':''}>Parte superior</option><option value="B" ${f.grupo==='B'?'selected':''}>Parte inferior</option></select></td><td><input type="text" data-ver="1" maxlength="4" class="iom-cod" value="${esc(f.cod)}" onchange="iomSetCargaNueva(${iomJs(f.key)},'cod',this.value.toUpperCase())"></td></tr>`).join('')}</tbody></table>`:'';
   const det=(t,l)=>l?`<details class="iom-det"><summary>${t}</summary>${l}</details>`:'';
   /* QUÉ cambia en cada secuencia, operación por operación (antes solo los conteos; revisión de guardado del 06-oct, segunda ronda) */
   const tablaDf=df=>df.lista.length?`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Subproceso</th><th>Operación</th><th>Cambio</th></tr></thead><tbody>${df.lista.slice(0,300).map(x=>`<tr><td>${esc(x.sub)}</td><td>${esc(x.op)} <span class="mut">· ${esc(x.sec)}</span></td><td>${esc(x.cambio)}${x.detalle?' <span class="mut">('+esc(x.detalle)+')</span>':''}</td></tr>`).join('')}${df.lista.length>300?`<tr><td colspan="3" class="mut">… y ${df.lista.length-300} más</td></tr>`:''}</tbody></table></div>`:'<p class="mut">Las operaciones no cambian.</p>';
@@ -15412,7 +15463,7 @@ function iomPreviaCargaHTML(p){if(p.error)return '<div class="iom-aviso mal">'+e
     return `<details class="iom-det iom-det-dest"><summary><b>${esc(nom)}</b> · ${esc(q.txt)}</summary>${d.nombreAntes!=null?'<p>Nombre: «'+esc(d.nombreAntes)+'» → «'+esc(d.nombre)+'»</p>':''}${ls.map(([t,df])=>(t?'<h5 class="iom-h5">'+t+'</h5>':'')+tablaDf(df)).join('')}</details>`}).join('');
   return linea+preg+(p.sinSeccion?'<p class="ing-sig iom-sinsec">El archivo no trae la columna «Sección»: cada operación toma la sección (y el código, la principal y la alternativa) que ya tenía, buscándola por su nombre; las que no estaban quedan en «General».</p>':'')+`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Familia</th><th>Referencia</th><th class="num">Operaciones</th><th class="num">SAM antes → después</th><th>Acción</th><th>Qué pasa</th><th>Avisos</th></tr></thead><tbody>${filas||'<tr><td colspan="7" class="mut">Ninguna fila entra.</td></tr>'}</tbody></table></div>`+(detDest?'<h4 class="iom-h4">Qué cambia en cada secuencia</h4><p class="ing-sig">Toca una para ver cada operación que se edita, se agrega, se quita o se mueve.</p>'+detDest:'')+nuevas+
    det(iomPl(p.fueraRango.length,'tiempo fuera del rango creíble','tiempos fuera del rango creíble')+' ('+esc(iomRangoTxt())+'): entran igual; revísalos',p.fueraRango.length?'<ul class="ing-lista">'+p.fueraRango.slice(0,200).map(x=>'<li>Fila '+x.fila+': '+esc(x.op)+' · '+iomFmtT(x.t)+' min</li>').join('')+'</ul><p class="mut">El rango se cambia en Listas y reglas → Avisos de la edición (ahí también se puede pedir que se rechacen).</p>':'')+
-   det(iomPl(p.rechazadas.length,'fila rechazada','filas rechazadas'),p.rechazadas.length?'<ul class="ing-lista">'+p.rechazadas.slice(0,300).map(r=>'<li>Fila '+r.fila+': '+esc(r.motivo)+'</li>').join('')+(p.rechazadas.length>300?'<li>… y '+(p.rechazadas.length-300)+' más</li>':'')+'</ul>':'')+
+   det(iomPl(p.rechazadas.length,'fila rechazada','filas rechazadas'),p.rechazadas.length?'<ul class="ing-lista">'+p.rechazadas.slice(0,300).map(r=>'<li>Fila '+r.fila+(r.op?' ('+esc(r.op)+')':'')+': '+esc(r.motivo)+'</li>').join('')+(p.rechazadas.length>300?'<li>… y '+(p.rechazadas.length-300)+' más</li>':'')+'</ul>':'')+
    det(iomPl(p.maquinasFuera.length,'máquina que no está en la lista','máquinas que no están en la lista')+' (entran igual)',p.maquinasFuera.length?'<ul class="ing-lista">'+p.maquinasFuera.map(m=>'<li>'+esc(m.maq)+' · '+iomPl(m.n,'fila','filas')+'</li>').join('')+'</ul>':'')+
    det(iomPl(p.sinPlantilla.length,'código que no se pudo leer (queda «por asignar»)','códigos que no se pudieron leer (quedan «por asignar»)'),p.sinPlantilla.length?'<ul class="ing-lista">'+p.sinPlantilla.slice(0,100).map(x=>'<li>Fila '+x.fila+': '+esc(x.codigo)+'</li>').join('')+'</ul>':'')+
    det(iomPl(p.repetidas.length,'operación repetida en su secuencia (entra igual)','operaciones repetidas en su secuencia (entran igual)'),p.repetidas.length?'<ul class="ing-lista">'+p.repetidas.map(x=>'<li>'+esc(x.destino)+': '+esc(x.op)+' · '+esc(x.sec)+' ('+x.n+' veces)</li>').join('')+'</ul>':'')+
@@ -15421,7 +15472,10 @@ function iomPreviaCargaHTML(p){if(p.error)return '<div class="iom-aviso mal">'+e
    ''}
 async function iomAplicarCarga(){const p=IOMC&&IOMC.plan;const pa=iomPuedeAplicarCarga(p);if(!pa.ok){alert(pa.porque);return}
   const ds=p.destinos.filter(d=>iomQuePasa(d).cambia);const nN=ds.filter(d=>!d.existe).length,nR=ds.filter(d=>d.existe&&d.accion==='reemplazar').length,nC=ds.filter(d=>d.existe&&d.accion==='combinar').length;
-  if(!confirm('Se van a guardar '+iomPl(ds.length,'secuencia','secuencias')+': '+nN+' nuevas, '+nR+' reemplazadas, '+nC+' combinadas.'+(nR+nC?' Las reemplazadas y las combinadas guardan su versión anterior.':'')+' ¿Seguir?'))return;
+  /* singulares y, con «reemplazar igual», cuántas operaciones se quitan (entre ellas las de las filas rechazadas: antes la confirmación no lo decía) */
+  const partes=[nN?iomPl(nN,'nueva','nuevas'):'',nR?iomPl(nR,'reemplazada','reemplazadas'):'',nC?iomPl(nC,'combinada','combinadas'):''].filter(Boolean);
+  const qRech=ds.filter(d=>d.existe&&d.accion==='reemplazar'&&d.aceptaRech&&((d.rech||0)+(d.rechPos||0))).reduce((a,d)=>a+((d.diffR&&d.diffR.quitadas)||0),0);
+  if(!confirm((ds.length===1?'Se va a guardar ':'Se van a guardar ')+iomPl(ds.length,'secuencia','secuencias')+': '+partes.join(', ')+'.'+(qRech?' Ojo: con «reemplazar igual» se '+(qRech===1?'quita 1 operación':'quitan '+qRech+' operaciones')+' que no vienen en el archivo (también las de las filas rechazadas).':'')+(nR+nC?' '+(nR+nC===1?'La que se reemplaza o se combina guarda':'Las reemplazadas y las combinadas guardan')+' su versión anterior.':'')+' ¿Seguir?'))return;
   const ts=iomAhora(),u=quienFirma();const fallos=[],hechas=[];const famIdDe={};
   for(const fn of p.familiasNuevas.filter(f=>f.crear&&f.grupo&&ds.some(d=>d.famNueva===f.key))){const id=iomIdFamNuevo(fn.nombre);
     const orden=Math.max(0,...iomCat().fams.map(x=>+x.orden||0))+1;const r=await iomGuardarFila('ing_subprocesos',{id:'mfam|'+id,nombre:fn.nombre,cod:fn.cod,grupo:fn.grupo,orden,activa:true,lmo:'',tipos:[],origen:'carga',archivo:p.archivo,ts,u,cambios:[]},'familia nueva',{version:false});
@@ -15456,7 +15510,10 @@ const IOM_XLS_CAMBIOS=[['Familia',18],['Referencia',24],['Subproceso',14],['Oper
 function iomFilasExcel(stages,ctx){const rows=[];let n=0;const df=ctx.diff||{porU:{}};
   iomOrdenarStages(stages).forEach(s=>{const sub=iomSub(s.k)||{nombre:s.k,centroTxt:'',cod:''};(s.ops||[]).forEach((o,i)=>{n++;const code=iomCodigo(o.tpl,ctx.codigo);const pc=iomPartesCodigo(o.tpl,ctx.codigo);let est,nota;
     if(ctx.modo==='crear'){est='Nueva';nota=(o.src||'')+(code?'':' · código por asignar')}
-    else if(ctx.modo==='editar'){const d=o.u?df.porU[o.u]:null;if(!o.u||!(ctx.orig||{})[o.u]){est='Nueva';nota='Agregada al editar'+(code?'':' · código por asignar')}else if(d&&d.length){est='Editada';nota=d.join(' · ')}else{est=o.e||'Original';nota=o.nt||''}}
+    /* al editar, Estado y Nota llevan LO GUARDADO (lo que cambió va en la hoja «Cambios»): así este Excel —el que ofrece el panel del choque— se puede volver
+       a cargar y solo cambia lo editado. Antes la Nota decía «Tiempo: 1,16 → 1,23» y el Estado «Editada», y al cargarlo pisaban la nota de verdad
+       (revisión de guardado del 07-oct, tercera ronda: D-XLS-ED) */
+    else if(ctx.modo==='editar'){const nueva=!o.u||(!(ctx.orig||{})[o.u]&&!o.conservar);est=nueva?'Nueva':(o.e||'Original');nota=[nueva?'':(o.nt||''),o.de?IOM_DE_PREF+iomOrigenTxt(o):''].filter(Boolean).join(' · ')}
     else{est=o.e||'Original';nota=[o.nt||'',o.de?IOM_DE_PREF+iomOrigenTxt(o):''].filter(Boolean).join(' · ')}   /* de dónde salió cada operación de una referencia creada aquí, como en la pantalla (D-DE-XLS, §18) */
     rows.push([ctx.famNombre||'',ctx.famCod||'',n,sub.nombre,sub.centroTxt,sub.cod,i+1,o.sec||'',o.op||'',pc.codOp,pc.variante,code,o.maq||'',o.t==null||o.t===''?null:+o.t,o.p?'Sí':'',o.alt||'',est,nota,ctx.modo==='crear'?'':(o.row==null?'':o.row),ctx.refNombre||'',ctx.refCod||''])})});
   return rows}
@@ -15468,6 +15525,14 @@ function iomOrigenTxt(o){const camb=o.tDe!=null&&o.t!=null&&Math.abs(+o.t-+o.tDe
   if(o.de==='basico')return camb?'Tiempo cambiado (lo básico traía '+iomFmtT(o.tDe)+' min)':'De lo básico';
   if(o.de==='agregada')return 'Agregada desde la Base disponible';if(o.de==='creada')return 'Creada aquí';return 'Nueva'}
 function iomSinOrigen(nt){const s=String(nt||'');const i=s.indexOf(IOM_DE_PREF);if(i<0)return s.trim();return s.slice(0,i).replace(/\s*·\s*$/,'').trim()}   /* la frase va siempre al final de la nota */
+/* las notas que escribe la PROPIA app en el Excel y no son notas de verdad: «Copia de Camiseta · código por asignar» (Estado «Nueva», el Excel de Crear) y
+   «Tiempo: 1,16 → 1,23 · …» (Estado «Editada», el Excel del editor de antes del 07-oct). Al volver a cargar no se guardan como nota: la celda cuenta como
+   «no trae nota» (Combinar y Reemplazar dejan la que había) (revisión de guardado del 07-oct, tercera ronda) */
+const IOM_NOTA_GEN_NUEVA=['Base','Base de otras referencias','Base · sin datos: carga primero las secuencias','Creada aquí','Agregada al editar'];
+const IOM_NOTA_GEN_ED=/^(?:Tiempo|Máquina|Principal|Código|Alternativa|Estado|Nota|Fila original|Se movió): [^·]*(?: · (?:Tiempo|Máquina|Principal|Código|Alternativa|Estado|Nota|Fila original|Se movió): [^·]*)*$/;
+function iomEsNotaGen(s,e){if(!s)return false;if(e==='editada')return IOM_NOTA_GEN_ED.test(s);if(e!=='nueva')return false;if(s==='código por asignar')return true;
+  const x=s.replace(/ · código por asignar$/,'');if(IOM_NOTA_GEN_NUEVA.includes(x))return true;const m=x.match(/^(?:Copia de |Base: )(.+)$/);return !!(m&&iomFamPorNombre(m[1]))}   /* «Copia de X» / «Base: X» solo si X es una familia */
+function iomNotaDeArchivo(nt,est){const s=iomSinOrigen(nt);return iomEsNotaGen(s,normTxt(est))?{nt:'',gen:true}:{nt:s,gen:false}}
 function iomNombreArchivo(t){return String(t||'').replace(/[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]+/g,'_')}
 async function iomLibro(hojas){await cargarExcelJS();const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';hojas.forEach(h=>xlsHojaPlana(wb,h.nombre,h.cols,h.rows,h.opts));return wb}
 /* «Descargar Excel» de lo que se está mirando en Secuencia de operaciones, y «Descargar todas» (respaldo legible y archivo de ida y vuelta) */
@@ -15608,18 +15673,29 @@ function iomBorradorPref(){return 'iom.borrador.'+claveUsr()}
 function iomBorradorClave(bid){const b=bid===undefined?IOC.bid:bid;return iomBorradorPref()+(b?'.'+b:'')}
 function iomSucio(){IOC.sucio=true;IOC._v=(IOC._v||0)+1;clearTimeout(IOC_T);IOC_T=setTimeout(iomBorradorGuardar,250)}
 /* devuelve si quedó escrito (se comprueba leyéndolo: nunca se dice «sigue guardado» sin saberlo) */
-function iomBorradorGuardar(){clearTimeout(IOC_T);IOC_T=null;if(!IOC.sucio)return IOC.borradorOk||false;IOC.sucio=false;if(!IOC.meta.nombre)return false;if(!IOC.bid)IOC.bid=iomNuevoBid();
-  try{const k=iomBorradorClave();localStorage.setItem(k,JSON.stringify({IOC,ts:iomAhora(),ver:2},(kk,v)=>kk==='_cc'?undefined:v));IOC.borradorOk=localStorage.getItem(k)!=null}catch(e){IOC.borradorOk=false}return IOC.borradorOk}
+function iomBorradorGuardar(){clearTimeout(IOC_T);IOC_T=null;if(!IOC.sucio)return IOC.borradorOk||false;if(!IOC.meta.nombre){IOC.sucio=false;return false}if(!IOC.bid)IOC.bid=iomNuevoBid();
+  try{const k=iomBorradorClave();localStorage.setItem(k,JSON.stringify({IOC:Object.assign({},IOC,{sucio:false}),ts:iomAhora(),ver:2},(kk,v)=>kk==='_cc'?undefined:v));IOC.borradorOk=localStorage.getItem(k)!=null}catch(e){IOC.borradorOk=false}
+  IOC.sucio=!IOC.borradorOk;return IOC.borradorOk}   /* si no se pudo escribir queda «pendiente»: el siguiente intento (o el cierre de la pestaña) lo vuelve a probar */
+/* ¿lo que se ve en el editor está de verdad en el borrador de este equipo? (escrito y el de ahora, o con una escritura pendiente después de una buena) */
+function iomBorradorAlDia(){if(!IOC.borradorOk)return false;if(IOC.sucio)return true;const d=iomBorradorLeer();return !!(d&&d.IOC&&(d.IOC._v||0)===(IOC._v||0))}
 function iomBorradorLeer(bid){try{const r=localStorage.getItem(iomBorradorClave(bid));if(!r)return null;const d=JSON.parse(r);return d&&d.IOC&&d.IOC.meta&&d.IOC.meta.nombre?d:null}catch(e){return null}}
 /* todos los borradores de la persona, el más reciente primero */
-function iomBorradores(){const out=[];try{const p=iomBorradorPref();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k!==p&&!String(k).startsWith(p+'.'))continue;const bid=k===p?'':k.slice(p.length+1);if(bid.includes('.'))continue;
+function iomBorradores(){const out=[];try{const p=iomBorradorPref();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k!==p&&!String(k).startsWith(p+'.'))continue;const bid=k===p?'':k.slice(p.length+1);if(bid&&!/^b[0-9a-z]+$/.test(bid))continue;   /* solo los de esta persona (un id de otra que empiece igual no se mezcla) */
     const d=iomBorradorLeer(bid);if(d)out.push({bid,d})}}catch(e){}return out.sort((a,b)=>String(b.d.ts||'').localeCompare(String(a.d.ts||'')))}
 function iomBorradorQuitar(bid){const b=bid===undefined?IOC.bid:bid;if(b===IOC.bid){IOC.sucio=false;clearTimeout(IOC_T);IOC.borradorOk=false}try{localStorage.removeItem(iomBorradorClave(b))}catch(e){}}
-if(typeof window!=='undefined'&&!window.__iomPh){window.__iomPh=true;window.addEventListener('pagehide',()=>{try{iomBorradorGuardar()}catch(e){}})}
+/* al cerrar la pestaña se escribe el borrador si hay trabajo sin guardar, aunque no haya un cambio pendiente: si otra pestaña continuó el MISMO borrador y
+   al guardar quitó su llave, esta lo vuelve a dejar (antes se quedaba sin borrador; revisión de guardado del 07-oct, tercera ronda) */
+if(typeof window!=='undefined'&&!window.__iomPh){window.__iomPh=true;window.addEventListener('pagehide',()=>{try{if(iomTrabajoSinGuardar())IOC.sucio=true;iomBorradorGuardar()}catch(e){}})}
 function iomBorradorContinuar(bid){const l=iomBorradores();const it=bid===undefined?l[0]:l.find(x=>x.bid===bid);if(!it)return;const d=it.d;
   IOC=Object.assign(iomIOCBlank(d.IOC.modo),d.IOC);IOC.sucio=false;IOC.aviso='';delete IOC._cc;IOC._v=(IOC._v||0)+1;
-  if(!it.bid){IOC.bid=iomNuevoBid();IOC.sucio=true;if(iomBorradorGuardar()){try{localStorage.removeItem(iomBorradorClave(''))}catch(e){}}}else IOC.bid=it.bid;   /* el de antes pasa a su propia llave (y solo entonces se quita la vieja) */
+  if(!it.bid){IOC.bid=iomNuevoBid();IOC.sucio=true;if(iomBorradorGuardar()){try{localStorage.removeItem(iomBorradorClave(''))}catch(e){}}}   /* el de antes pasa a su propia llave (y solo entonces se quita la vieja) */
+  else{IOC.bid=it.bid;IOC.sucio=true;iomBorradorGuardar()}   /* se vuelve a escribir: así «sigue en el borrador» se puede decir con certeza */
   iomPintarCrear()}
+/* al salir (o si entra otra persona sin recargar la página): lo que se estaba armando queda en el borrador de QUIEN lo hizo, bajo su llave, y el módulo se
+   limpia. Antes B veía en Crear el trabajo sin guardar de A y lo podía guardar a su nombre (revisión de guardado del 07-oct, tercera ronda) */
+function iomSoltarSesion(){try{if(iomTrabajoSinGuardar())IOC.sucio=true;iomBorradorGuardar()}catch(e){}try{clearTimeout(IOC_T)}catch(e){}IOC_T=null;
+  IOC=iomIOCBlank('crear');IOM.leido=null;IOM.cat=[];IOM.bases=[];IOM.refs=[];IOM.descartadas=[];IOM.ver++;IOS={fam:null,ref:null,sub:null,q:'',soloP:false};
+  try{IBL.P=null;IBL.M=null;IOM_FICHA=null;IOMC=null}catch(e){}}
 function iomBorradorDescartar(bid){const b=bid===undefined?IOC.bid:bid;const d=iomBorradorLeer(b);if(!confirm('Se descarta el borrador'+(d?' de «'+d.IOC.meta.nombre+'»':'')+' guardado en este equipo (lo armado y no guardado se pierde). ¿Seguir?'))return;iomBorradorQuitar(b);iomPintarCrear()}
 /* ---------- datos (paso 1): los siete mensajes del prototipo ---------- */
 function iomValidarDatos(d){const cat=iomCat();const cv=d.cat;let f=null,catName='';
@@ -15634,7 +15710,10 @@ function iomValidarDatos(d){const cat=iomCat();const cv=d.cat;let f=null,catName
   return {error:null,meta:{nombre:name,cod:code,grupo:f?f.grupo:(d.grupo||'T'),famId:f?f.id:'',famNombre:catName,famCod:f?f.cod:''}}}
 function iomPaso1Continuar(){const g=id=>document.getElementById(id);const r=iomValidarDatos({cat:g('iom-cat').value,catNombre:(g('iom-catn')||{}).value,nombre:g('iom-nm').value,cod:g('iom-cd').value,paso:IOC.paso,codActual:IOC.meta.cod,grupo:IOC.meta.grupo});
   const e=g('iom-c1-err');if(r.error){if(e)e.textContent=r.error;const c=g('iom-'+r.campo);if(c)c.focus();return false}
-  const cambioCod=IOC.meta.cod&&IOC.meta.cod!==r.meta.cod;IOC.meta=r.meta;IOC.editarDatos=false;if(IOC.paso<2)IOC.paso=2;iomSucio();iomPintarCrear();return !cambioCod||true}
+  /* la marca «a la categoría nueva le falta su base general» sobrevive a «Editar datos» si la categoría sigue siendo la misma (antes se perdía y la base no
+     se creaba nunca; revisión de guardado del 07-oct, tercera ronda) */
+  const pend=!!IOC.meta.basePendiente&&!!r.meta.famId&&r.meta.famId===IOC.meta.famId;
+  const cambioCod=IOC.meta.cod&&IOC.meta.cod!==r.meta.cod;IOC.meta=r.meta;if(pend)IOC.meta.basePendiente=true;IOC.editarDatos=false;if(IOC.paso<2)IOC.paso=2;iomSucio();iomPintarCrear();return !cambioCod||true}
 function iomCodTecla(el){IOC.codTocado=true;const v=el.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');if(v!==el.value)el.value=v}
 function iomNmTecla(el){if(!IOC.codTocado){const c=document.getElementById('iom-cd');if(c)c.value=iomSugerirCodigo(el.value)}}
 function iomCambiarModo(m){if(m===IOC.modo)return;
@@ -15678,7 +15757,8 @@ function iomElegirSub(k){if(!IOC.stages[k]||!IOC.stages[k].on)return;IOC.sub=k;I
 /* ---------- editor de la secuencia (paso 4) ---------- */
 function iomOpCelda(o,k){let h=esc(o.op);if(o.sinDatos)h+='<span class="iom-ref dif">sin datos: carga primero las secuencias</span>';
   if(IOC.modo==='editar'){const ch=iomCambios();
-    if(!o.u||!(IOC.orig||{})[o.u])h+=' <span class="tag t-ok iom-m">Nueva</span>';else if(ch.porU[o.u])h+=' <span class="tag t-medio iom-m" title="'+esc(ch.porU[o.u].join(' · '))+'">Editada</span>';
+    if(o.conservar&&o.u&&!(IOC.orig||{})[o.u])h+=' <span class="tag t-medio iom-m" title="la otra persona quitó este subproceso y tú lo habías cambiado: vuelve con lo tuyo y conserva su nota, su estado y su fila original">Vuelve</span>';
+    else if(!o.u||!(IOC.orig||{})[o.u])h+=' <span class="tag t-ok iom-m">Nueva</span>';else if(ch.porU[o.u])h+=' <span class="tag t-medio iom-m" title="'+esc(ch.porU[o.u].join(' · '))+'">Editada</span>';
     if(o.e==='Confirmar tiempo')h+=' <span class="tag t-aviso iom-m" title="En la base había la misma operación con otro tiempo; se dejó el primero. Verifícalo.">Confirmar tiempo</span>';
     else if(o.e==='Completada')h+=' <span class="tag t-aviso iom-m" title="Operación completada por el análisis con la mediana del grupo. Verifícala.">Tiempo estimado</span>'}
   /* el tiempo de la misma operación en las otras familias (la mediana del grupo), también al crear; «difiere mucho» con el % de Avisos de la edición */
@@ -15744,8 +15824,12 @@ function iomCrearOpNueva(){const n=document.getElementById('iom-nn'),s=document.
 /* ---------- resumen (paso 5), avisos y guardar ---------- */
 function iomProblemas(){const empty=[];let noT=0,noM=0;iomOnStages().forEach(s=>{const ops=IOC.stages[s.k].ops;if(!ops.length)empty.push(s.nombre);ops.forEach(o=>{if(o.t==null||o.t==='')noT++;if(!String(o.maq||'').trim())noM++})});return {empty,noT,noM}}
 function iomPorQueNoGuarda(){const ts=IOC.modo==='crear'&&!IOC.meta.famId?'ing_operaciones,ing_referencias,ing_subprocesos':IOC.modo==='editar'&&!IOC.cod?'ing_operaciones':'ing_operaciones,ing_referencias';
-  const m=porQueNoEditaIng(ts);if(m)return m;if(ING.estado==='si'&&IOM.leido!=='si')return 'Todavía se está leyendo la ingeniería.';
-  if(iomBaseVieja()){const por=(IOC.choque&&IOC.choque.por)||'otra',nom=iomNomEditor();return (por==='carga'?'«'+nom+'» cambió con «Cargar secuencias» mientras la editabas':por==='version'?'«'+nom+'» volvió a otra versión mientras la editabas':'Otra persona cambió «'+nom+'» mientras la editabas')+': no se pisa. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».'}return ''}
+  const m=porQueNoEditaIng(ts);if(m)return m;
+  /* el choque (y la fila que no se reconoce) se dicen ANTES que «leyendo»: después de un choque la lectura queda pendiente y el botón decía «Todavía se
+     está leyendo la ingeniería», que no era el porqué (revisión «para dummies» del 07-oct, tercera ronda) */
+  if(IOC.modo==='editar'&&IOC.inicio&&iomFilaDescartada(IOC.filaId))return iomMsgFilaRara();
+  if(iomBaseVieja()){const por=(IOC.choque&&IOC.choque.por)||'otra',nom=iomNomEditor();return (por==='carga'?'«'+nom+'» cambió con «Cargar secuencias» mientras la editabas':por==='version'?'«'+nom+'» volvió a otra versión mientras la editabas':'Otra persona cambió «'+nom+'» mientras la editabas')+': no se pisa. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».'}
+  if(ING.estado==='si'&&IOM.leido!=='si')return 'Todavía se está leyendo la ingeniería.';return ''}
 function iomPuedeGuardar(){if(!IOC.inicio||!iomTotal())return false;if(IOC.modo==='editar'&&!iomCambios().n)return false;return !iomPorQueNoGuarda()}
 function iomResumenHTML(){const on=iomOnStages(),t=iomTotal(),p=iomProblemas(),ed=IOC.modo==='editar',ch=iomCambios();
   const rows=on.map((s,i)=>{const x=IOC.stages[s.k];return `<tr><td class="n">${i+1}</td><td>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)}</span></td><td class="c">${x.ops.length}</td><td class="c">${iomFsam(iomSam(x.ops))}</td><td class="c">${x.ops.filter(o=>o.p).length}</td></tr>`}).join('');
@@ -15773,8 +15857,11 @@ function iomEmpezarDeNuevo(){const ed=IOC.modo==='editar';const ch=iomCambios();
   iomBorradorQuitar();if(ed&&IOC.famId){iomCargarEditar(IOC.famId,IOC.cod);iomPintarCrear();return}const m=IOC.modo;IOC=iomIOCBlank(m);iomPintarCrear()}
 /* la secuencia que se guarda: solo los subprocesos incluidos; u estable (las nuevas lo reciben aquí); Estado: Nueva / Editada / la que tenía */
 function iomStagesParaGuardar(nextU){const ch=iomCambios();let next=nextU;const crear=IOC.modo==='crear';const orig=IOC.orig||{};
-  const stages=iomOnStages().map(s=>({k:s.k,ops:IOC.stages[s.k].ops.map(o=>{const vieja=!crear&&!!o.u&&!!orig[o.u];const u=vieja?o.u:'o'+(++next);
-    const x={u,sec:o.sec||'General',op:o.op,tpl:o.tpl||'',maq:String(o.maq||'').trim(),t:o.t==null||o.t===''?null:+o.t,p:!!o.p,alt:o.alt||'',e:!vieja?'Nueva':(ch.porU[o.u]?'Editada':(o.e||'')),nt:vieja?(o.nt||''):'',row:vieja&&o.row!=null?o.row:null};
+  if(!crear)IOM_K.forEach(k=>((IOC.stages[k]||{}).ops||[]).forEach(o=>{const m=o.conservar&&String(o.u||'').match(/^o(\d+)$/);if(m)next=Math.max(next,+m[1])}));   /* las que vuelven conservan su u: las nuevas no lo repiten */
+  /* «conservar»: operaciones de un subproceso que la otra persona quitó y que volvieron con «rehacer» (iomRehacer): son las de antes, no nuevas */
+  const stages=iomOnStages().map(s=>({k:s.k,ops:IOC.stages[s.k].ops.map(o=>{const vieja=!crear&&!!o.u&&(!!orig[o.u]||!!o.conservar);const u=vieja?o.u:'o'+(++next);
+    const editada=vieja&&(ch.porU[o.u]||(o.conservar&&!orig[o.u]&&iomDifOp(o.conservar,o).length));
+    const x={u,sec:o.sec||'General',op:o.op,tpl:o.tpl||'',maq:String(o.maq||'').trim(),t:o.t==null||o.t===''?null:+o.t,p:!!o.p,alt:o.alt||'',e:!vieja?'Nueva':(editada?'Editada':(o.e||'')),nt:vieja?(o.nt||''):'',row:vieja&&o.row!=null?o.row:null};
     if(o.de){x.de=o.de;x.deFam=o.deFam||'';x.tDe=o.tDe==null?null:o.tDe}return x})}));   /* de dónde vino (copia, lo básico, agregada, creada aquí): solo para mostrarlo */
   return {stages,nextU:next}}
 async function iomGuardar(){if(!iomPuedeGuardar()){const m=iomPorQueNoGuarda();alert(m||(IOC.modo==='editar'?'No hay cambios que guardar.':'No hay operaciones que guardar.'));return false}
@@ -15787,7 +15874,7 @@ async function iomGuardar(){if(!iomPuedeGuardar()){const m=iomPorQueNoGuarda();a
     const nom=IOC.cod?IOC.cod+' · '+IOC.meta.nombre:IOC.meta.famNombre+' · base general';
     const r=await iomGuardarFila(t,fila,'guardado',{baseFirma:IOC.baseFirma,bitacora:'Ingeniería · Operaciones · guardado '+nom+': '+fila.n+' operaciones, SAM '+iomFsam(prev?prev.sam:0)+' → '+iomFsam(fila.sam)+' (editadas '+ch.editadas+', nuevas '+ch.nuevas+', quitadas '+ch.quitadas+', movidas '+ch.movidas+'); no cambia ningún minuto del programa'});
     /* un choque ya no traba el editor: queda marcado y arriba sale «Traer lo nuevo y rehacer mis cambios encima» (iomChoqueHTML) */
-    if(!r.ok){if(r.choque){IOC.choque={ts:Date.now(),por:'otra'};iomPintarCrear();alert('Otra persona cambió «'+nom+'» mientras la editabas: no se pisó'+(iomBorradorLeer()?' y tus cambios siguen en el borrador de este equipo':'')+'. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».');const c=document.getElementById('iom-choque');if(c&&c.scrollIntoView)try{c.scrollIntoView({block:'center'})}catch(e){}}else{alert('No se guardó: '+r.error);iomPintarCrear()}return false}
+    if(!r.ok){if(r.choque){IOC.choque={ts:Date.now(),por:'otra'};iomPintarCrear();alert('Otra persona cambió «'+nom+'» mientras la editabas: no se pisó'+(iomBorradorAlDia()?' y tus cambios siguen en el borrador de este equipo':'. Ojo: el navegador no dejó guardar el borrador de este equipo, así que si cierras la pestaña se pierden: descárgalos en Excel')+'. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».');const c=document.getElementById('iom-choque');if(c&&c.scrollIntoView)try{c.scrollIntoView({block:'center'})}catch(e){}}else{alert('No se guardó: '+r.error);iomPintarCrear()}return false}
     save();iomBorradorQuitar();iomCargarEditar(IOC.famId,IOC.cod);IOC.guardadoTs=ts;iomPintarCrear();iomToast('Guardado: ya se ve en Secuencia de operaciones y Balanceo de línea.');return true}
   /* crear: si la categoría es nueva, primero la familia (si choca se detiene), su base general (copia de esta referencia, como el prototipo) y la referencia */
   let famId=IOC.meta.famId;const cod=IOC.meta.cod;
@@ -15804,7 +15891,7 @@ async function iomGuardar(){if(!iomPuedeGuardar()){const m=iomPorQueNoGuarda();a
   IOC.meta.basePendiente=false;
   const fila=iomResumenFila({id:'mref|'+cod,fam:famId,cod,nombre:IOC.meta.nombre,refsOdoo:[cod],stages:g.stages,nextU:g.nextU,origen:{tipo:'creada',de:IOC.copiaDe||IOC.inicio,ts,u},activa:true,ver:1,creada:ts,ts,u,hist:[]});fila.hist=[{ts,u,que:'creada',nuevas:fila.n,samDespues:fila.sam}];
   const r=await iomGuardarFila('ing_referencias',fila,'creada',{bitacora:'Ingeniería · Operaciones · referencia nueva '+cod+' · '+IOC.meta.nombre+' ('+IOC.meta.famNombre+'): '+fila.n+' operaciones, SAM '+iomFsam(fila.sam)+' ('+(IOC.inicioTxt||'')+'); no cambia ningún minuto del programa'});
-  if(!r.ok){if(r.choque)alert('El código '+cod+' lo acaba de crear otra persona: no se pisó.'+(iomBorradorLeer()?' Tu borrador sigue guardado en este equipo.':'')+' Cambia el código en «Editar datos» y vuelve a guardar.');else alert('No se guardó: '+r.error);iomPintarCrear();return false}
+  if(!r.ok){if(r.choque)alert('El código '+cod+' lo acaba de crear otra persona: no se pisó.'+(iomBorradorAlDia()?' Tu borrador sigue guardado en este equipo.':' Ojo: el navegador no dejó guardar el borrador de este equipo; descarga tu referencia en Excel antes de cerrar la pestaña.')+' Cambia el código en «Editar datos» y vuelve a guardar.');else alert('No se guardó: '+r.error);iomPintarCrear();return false}
   save();iomBorradorQuitar();iomCargarEditar(famId,cod);IOC.guardadoTs=ts;iomPintarCrear();iomToast('Guardado: «'+cod+'» ya se ve en Secuencia de operaciones y Balanceo de línea.');return true}
 /* ---------- Excel de Crear referencia: hoja Secuencia (+ hoja Cambios al editar con cambios) ---------- */
 async function iomExcelEditor(){const ed=IOC.modo==='editar';const ch=iomCambios();const nuevaCat=IOC.modo==='crear'&&!IOC.meta.famId;
@@ -16085,6 +16172,11 @@ function iblMetricas(ops,st,P,CT){const act=iblActivas(ops,P);const byId=new Map
 /* sobre el takt (rojo) · dentro de la tolerancia (ámbar) · subcargado (< el % de Listas y reglas) · dentro del takt */
 function iblClase(per,takt,P){const tol=P.tol/100;if(per>takt*(1+tol)+1e-9)return 'sobre';if(per>takt+1e-9)return 'tol';const sc=iblCfgNum('subcargado');if(sc!=null&&per<takt*(sc/100))return 'sub';return 'dentro'}   /* sin el % de subcargado configurado no se marca ninguno (no se inventa) */
 const IBL_CLASE_N={sobre:'Sobre el takt',tol:'Dentro de la tolerancia',sub:'Subcargado',dentro:'Dentro del takt'};
+/* con operarios indicados las barras, los puestos y el Excel se miden contra el CICLO OBJETIVO (M.takt), no contra el takt de la meta (la línea roja): se
+   dice así (antes decían «takt» y un puesto de 1,95 min salía «dentro del takt» con la línea de la meta en 0,68; revisión «para dummies» del 07-oct,
+   tercera ronda: D-CICLO3). Sin operarios todo sigue como el prototipo. Las clases y los colores no cambian */
+function iblRefTxt(P){return P&&P.nops?'ciclo objetivo':'takt'}
+function iblClaseTxt(cl,P){if(!(P&&P.nops))return IBL_CLASE_N[cl];return {sobre:'Sobre el ciclo objetivo',tol:'Dentro de la tolerancia',sub:'Subcargado',dentro:'Dentro del ciclo objetivo'}[cl]}
 /* ---------- formatos (los del prototipo) ---------- */
 function iblF2(x){return iomFsam(x)}
 function iblF3(x){return String(+(+x).toFixed(3)).replace('.',',')}   /* coma decimal, como el resto de la app (revisión «para dummies»; el prototipo usaba punto) */
@@ -16151,9 +16243,14 @@ function iblKpis(M){const P=IBL.P,pl=iomPl;const need=IBL.NEED,empt=M.sts.length
      de fidelidad del 06-oct, segunda ronda). El ciclo que busca el cálculo queda como «ciclo objetivo» en la nota y en la línea del gráfico. Si no se
      arma con los operarios indicados, no se rotula como ciclo de N operarios */
   const tmeta=iblTp(P)/P.meta;
+  /* con operarios, el rótulo dice con cuántos se logra DE VERDAD (los de la propuesta: los ajustes a mano pueden sumar o quedar menos) y, con los puestos
+     vacíos, «—» en vez de 0,00 (revisión «para dummies» del 07-oct, tercera ronda). La nota nombra el puesto: es el mismo número del cuello de botella */
+  const cuelloTxt=M.bi>=0?'El puesto más cargado (puesto '+(M.bi+1)+', el cuello de botella)':'El puesto más cargado';
+  const nTxt=M.n===P.nops?'':M.n>P.nops?'indicaste '+P.nops+'; los ajustes a mano suman '+(M.n-P.nops)+' · ':'de los '+P.nops+' indicados la propuesta usa '+M.n+' · ';
   const kT=!P.nops?{id:'takt',ico:'clock',k:'Takt (tiempo de ciclo objetivo)',v:iblF2(M.takt)+' <small>min/unidad</small>',n:'Tiempo productivo '+Math.round(iblTp(P))+' min ÷ '+P.meta+' unidades',cls:''}
+    :!M.used?{id:'takt',ico:'clock',k:'Ciclo logrado',v:'—',n:'Todavía no hay operaciones en los puestos · ciclo objetivo '+iblF2(M.takt)+' min · takt de la meta '+iblF2(tmeta)+' min',cls:''}
     :IBL.imposible?{id:'takt',ico:'clock',k:'Ciclo logrado',v:iblF2(M.bn)+' <small>min/unidad</small>',n:'No se arma con '+pl(P.nops,'operario','operarios')+'; la propuesta usa '+M.n+' · takt de la meta '+iblF2(tmeta)+' min',cls:''}
-    :{id:'takt',ico:'clock',k:'Ciclo logrado (con '+pl(P.nops,'operario','operarios')+')',v:iblF2(M.bn)+' <small>min/unidad</small>',n:'El puesto más cargado · ciclo objetivo '+iblF2(M.takt)+' min · takt de la meta '+iblF2(tmeta)+' min',cls:''};
+    :{id:'takt',ico:'clock',k:'Ciclo logrado (con '+pl(M.n,'operario','operarios')+')',v:iblF2(M.bn)+' <small>min/unidad</small>',n:nTxt+cuelloTxt+' · ciclo objetivo '+iblF2(M.takt)+' min · takt de la meta '+iblF2(tmeta)+' min',cls:''};
   return [kT,
     {id:'sam',ico:'ops',k:'SAM de la línea (contenido de trabajo)',v:iblF2(M.sum)+' <small>min/unidad</small>',n:pl(M.act.length,'operación','operaciones')+' en '+pl(iblNSubs(M),'subproceso','subprocesos'),cls:''},
     {id:'oper',ico:'users',k:'Operarios en la propuesta',v:M.n+' <small>en '+pl(M.used,'puesto','puestos')+'</small>',n:'Mínimo teórico: '+M.min+' · necesarios para la meta: '+need+(empt?' · '+pl(empt,'puesto vacío','puestos vacíos'):'')+(P.nops&&M.n>P.nops?' · pide más operarios de los que tienes ('+P.nops+')':''),cls:short?'bad':(M.n<=M.min+1?'ok':'')},   /* en rojo también si usa más de los indicados: la nota lo dice (D-OPER, §18) */
@@ -16197,11 +16294,11 @@ function iblTopHTML(){const P=IBL.P,x=iblFuente(),f=x&&x.f;const tiene=iblSubsDe
 function iblGraficoHTML(M){const P=IBL.P;const tm=iblTp(P)/P.meta;const conMeta=!!P.nops&&isFinite(tm)&&Math.abs(tm-M.takt)>1e-9;const noLlega=!(M.cap>=P.meta-1e-6);
   const max=Math.max(M.takt*1.25,M.bn*1.12,conMeta?tm*1.15:0);if(!(max>0))return '';const tick=iblPaso(max/4);let ticks='';
   for(let v=0;v<=max+1e-9;v+=tick)ticks+='<span class="yt" style="bottom:'+(v/max*100)+'%">'+iblF2(v)+'</span>';
-  const bars=M.sts.map((s,i)=>{const h=s.per/max*100;return '<button type="button" class="ibl-bar '+(s.w?iblClase(s.per,M.takt,P):'sub')+'" data-ver="1" data-i="'+i+'" title="Puesto '+(i+1)+': '+iblF2(s.per)+' min por operario ('+iblPc(s.per/M.takt)+' del takt)" aria-label="Puesto '+(i+1)+', '+iblF2(s.per)+' minutos" onclick="iblIrPuesto('+i+')">'+(s.per>0?'<b style="bottom:calc('+h+'% + 1px)">'+iblF2(s.per)+'</b>':'')+'<i style="height:'+h+'%"></i></button>'}).join('');
+  const bars=M.sts.map((s,i)=>{const h=s.per/max*100;return '<button type="button" class="ibl-bar '+(s.w?iblClase(s.per,M.takt,P):'sub')+'" data-ver="1" data-i="'+i+'" title="Puesto '+(i+1)+': '+iblF2(s.per)+' min por operario ('+iblPc(s.per/M.takt)+' del '+iblRefTxt(P)+')" aria-label="Puesto '+(i+1)+', '+iblF2(s.per)+' minutos" onclick="iblIrPuesto('+i+')">'+(s.per>0?'<b style="bottom:calc('+h+'% + 1px)">'+iblF2(s.per)+'</b>':'')+'<i style="height:'+h+'%"></i></button>'}).join('');
   const eje=M.sts.map((s,i)=>'<span>P'+(i+1)+(s.w>1?'<br>×'+s.w:'')+'</span>').join('');
   const sc=iblCfgNum('subcargado');
   return '<div class="ibl-chart iom-scroll"><div class="ibl-plot">'+ticks+bars+'<div class="ibl-takt" style="bottom:'+(M.takt/max*100)+'%"><span>'+(P.nops?'Ciclo objetivo ':'Takt ')+iblF2(M.takt)+'</span></div>'+(conMeta?'<div class="ibl-takt meta'+(noLlega?' mal':'')+'" style="bottom:'+(tm/max*100)+'%"><span>Takt de la meta '+iblF2(tm)+'</span></div>':'')+'</div><div class="ibl-eje">'+eje+'</div></div>'+
-    '<div class="ibl-leyenda"><span><i class="dentro"></i>Dentro del takt</span><span><i class="sub"></i>Subcargado ('+(sc==null?'sin umbral configurado':'&lt; '+sc+'%')+')</span><span><i class="tol"></i>Dentro de la tolerancia</span><span><i class="sobre"></i>Sobre el takt</span>'+(conMeta?'<span><i class="lmeta'+(noLlega?' mal':'')+'"></i>Takt de la meta (con '+iomPl(P.nops,'operario','operarios')+' las barras se miden contra el ciclo objetivo)</span>':'')+'</div>'}
+    '<div class="ibl-leyenda"><span><i class="dentro"></i>'+iblClaseTxt('dentro',P)+'</span><span><i class="sub"></i>Subcargado ('+(sc==null?'sin umbral configurado':'&lt; '+sc+'%'+(P.nops?' del ciclo objetivo':''))+')</span><span><i class="tol"></i>Dentro de la tolerancia</span><span><i class="sobre"></i>'+iblClaseTxt('sobre',P)+'</span>'+(conMeta?'<span><i class="lmeta'+(noLlega?' mal':'')+'"></i>Takt de la meta (con '+iomPl(P.nops,'operario','operarios')+' las barras se miden contra el ciclo objetivo)</span>':'')+'</div>'}
 function iblSelHTML(M,id,cur){let o='';for(let i=0;i<M.sts.length;i++)o+='<option value="'+i+'"'+(cur===i?' selected':'')+'>P'+(i+1)+'</option>';
   o+='<option value="new">+ Nuevo</option><option value="un"'+(cur==='un'?' selected':'')+'>Sin puesto</option><option value="ex"'+(cur==='ex'?' selected':'')+'>Excluir</option>';
   return '<select class="ibl-mv" data-ver="1" aria-label="Mover a otro puesto" title="Mover a otro puesto" onchange="iblMover('+id+',this.value)">'+o+'</select>'}
@@ -16212,7 +16309,7 @@ function iblPuestoHTML(M,s,i){const P=IBL.P;const vacio=!s.ids.length,cl=vacio?'
   /* «op.» decía operaciones y operarios a la vez: ahora se escribe entero (revisión «para dummies») */
   return '<article class="ibl-puesto'+(IBL.fl===i?' flash':'')+(vacio?' vacio':'')+(s.maqs.length>1?' mixto':'')+'" data-i="'+i+'"><div class="ibl-ph"><div class="ibl-l1"><h4>Puesto '+(i+1)+' <small>'+(vacio?'vacío':iomPl(s.ids.length,'operación','operaciones'))+'</small></h4>'+
     (vacio?'<button type="button" class="btn ghost sm" data-ver="1" title="Quitar este puesto (está vacío: no se pierde nada)" onclick="iblSacarPuesto('+i+')">Quitar</button>':'<span class="ibl-w" title="Operarios en este puesto"><button type="button" data-ver="1" aria-label="Quitar operario"'+(s.w<=1?' disabled':'')+' onclick="iblOperarios('+i+',-1)">−</button><span>'+iomPl(s.w,'operario','operarios')+'</span><button type="button" data-ver="1" aria-label="Agregar operario" onclick="iblOperarios('+i+',1)">+</button></span>')+'</div>'+
-    (vacio?'':'<div class="ibl-chips">'+s.maqs.map(q=>'<span class="ibl-chip'+(q!==s.main?' otra':'')+'">'+esc(q)+'</span>').join('')+'</div><div class="ibl-meter '+cl+'"><i style="width:'+pct+'%"></i></div><div class="ibl-l2"><span>Carga <b>'+iblF2(s.load)+'</b> min'+(s.w>1?' ÷ '+s.w:'')+' = <b>'+iblF2(s.per)+'</b> min/operario</span><span><b>'+iblPc(s.per/M.takt)+'</b> del takt</span></div>')+'</div><ul class="ibl-ops">'+ops+'</ul></article>'}
+    (vacio?'':'<div class="ibl-chips">'+s.maqs.map(q=>'<span class="ibl-chip'+(q!==s.main?' otra':'')+'">'+esc(q)+'</span>').join('')+'</div><div class="ibl-meter '+cl+'"><i style="width:'+pct+'%"></i></div><div class="ibl-l2"><span>Carga <b>'+iblF2(s.load)+'</b> min'+(s.w>1?' ÷ '+s.w:'')+' = <b>'+iblF2(s.per)+'</b> min/operario</span><span><b>'+iblPc(s.per/M.takt)+'</b> del '+iblRefTxt(P)+'</span></div>')+'</div><ul class="ibl-ops">'+ops+'</ul></article>'}
 function iblMaquinasHTML(M){const ks=Object.keys(M.mach).sort((a,b)=>M.mach[b]-M.mach[a]),tot=ks.reduce((a,k)=>a+M.mach[k],0);
   return '<div class="ibl-zona mach"><h5>Máquinas requeridas <b>'+tot+'</b></h5>'+ks.map(k=>'<div class="ibl-exl"><span>'+esc(k)+'</span><b>'+M.mach[k]+'</b></div>').join('')+'<p class="mut">Una máquina por operario en cada puesto.</p></div>'}
 function iblPanelHTML(M){const P=IBL.P;const ex=IBL.ops.filter(o=>o.ex&&P.stg[o.k]),un=M.un.map(id=>M.byId.get(id));
@@ -16233,7 +16330,7 @@ function iblOutHTML(){const P=IBL.P;const x=iblFuente();IBL.M=null;
   const chips=iomSubs().filter(s=>P.stg[s.k]&&M.act.some(o=>o.k===s.k)).map(s=>{const os=M.act.filter(o=>o.k===s.k),sm=os.reduce((a,o)=>a+o.t,0);return '<span class="ibl-samchip"><b>'+esc(s.nombre)+'</b> '+iomPl(os.length,'operación','operaciones')+' · SAM <b>'+iblF2(sm)+'</b> min</span>'}).join('')+'<span class="ibl-samchip tot">SAM de la línea <b>'+iblF2(M.sum)+'</b> min</span>';
   const fl=IBL.fl;if(fl>=0){IBL.fl=-1;setTimeout(()=>{const el=document.querySelector('#ibl-root .ibl-puesto[data-i="'+fl+'"]');if(el)el.classList.remove('flash')},1400)}
   return ver+kp+
-   '<section class="panel ibl-card"><h3><i class="iom-i">3</i> Carga por puesto</h3><p class="ing-sig">Tiempo por operario en cada puesto frente al takt (línea punteada). Toca una barra para ir a su puesto.</p>'+iblGraficoHTML(M)+'</section>'+
+   '<section class="panel ibl-card"><h3><i class="iom-i">3</i> Carga por puesto</h3><p class="ing-sig">Tiempo por operario en cada puesto frente al '+(P.nops?'ciclo objetivo (línea punteada)':'takt (línea punteada)')+'. Toca una barra para ir a su puesto.</p>'+iblGraficoHTML(M)+'</section>'+
    '<div class="iom-step"><i>4</i> Puestos de trabajo</div><div class="ibl-sambar">'+chips+'</div><p class="ing-sig ibl-nota">Cada puesto es un módulo con una sola máquina. Arrastra una operación a otro puesto, o elige el puesto en su selector (P1, P2…). Los tiempos vienen de la referencia y aquí no se editan. Si cambias un parámetro arriba, la propuesta se recalcula. '+(IBL.manual?'<b>Tienes ajustes manuales.</b> ':'')+'<button type="button" class="btn ghost sm" data-ver="1" onclick="iblRecalcAuto()">Recalcular automático</button></p>'+
    '<div class="ibl-tools"><span>Agregar</span><input id="ibl-addn" type="number" data-ver="1" min="1" max="'+IBL_MAX_AGREGAR+'" value="'+esc(IBL.addn)+'" aria-label="Cantidad de puestos" onchange="iblSetAddn(this.value)"><span>puestos vacíos</span><button type="button" class="btn sm" data-ver="1" onclick="iblAgregarPuestos()">Agregar puestos</button><button type="button" class="btn ghost sm" data-ver="1" onclick="iblVaciarPuestos()">Vaciar puestos</button><button type="button" class="btn ghost sm" data-ver="1" onclick="iblSinVacios()">Quitar puestos vacíos</button></div>'+
    '<div class="ibl-lay'+(IBL.panel?'':' cerrado')+'"><div class="ibl-puestos" id="ibl-puestos">'+M.sts.map((s,i)=>iblPuestoHTML(M,s,i)).join('')+'</div>'+iblPanelHTML(M)+'</div>'}
@@ -16294,7 +16391,7 @@ function iblSoltar(e){const z=e.target&&e.target.closest&&e.target.closest('.ibl
 /* ---------- Excel: hoja Balanceo (12 columnas, fila 1 fija, autofiltro, Tiempo con 3 decimales: R24) y hoja Resumen (Dato · Valor con fila 1 fija y autofiltro: R25) ---------- */
 const IBL_XLS_COLS=[['Puesto',8],['Operarios en el puesto',12,'0'],['Orden en la línea',10,'0'],['Subproceso',14],['Sección',14],['Operación',38],['Máquina',22],['Tiempo (min)',12,'0.000'],['Carga del puesto (min)',14,'0.00'],['Tiempo por operario (min)',14,'0.00'],['% del takt',10,'0%'],['Estado',22]].map(([k,w,fmt])=>({k,w,fmt}));
 function iblFilasExcel(M){const rows=[];let n=0;const sn=k=>(iomSub(k)||{}).nombre||k;
-  M.sts.forEach((s,i)=>{if(!s.ids.length)return;const est=IBL_CLASE_N[iblClase(s.per,M.takt,IBL.P)];s.ids.forEach(id=>{const o=M.byId.get(id);n++;rows.push(['P'+(i+1),s.w,n,sn(o.k),o.sec,o.op,o.maq,+o.t,+s.load,+s.per,+(s.per/M.takt),est])})});
+  M.sts.forEach((s,i)=>{if(!s.ids.length)return;const est=iblClaseTxt(iblClase(s.per,M.takt,IBL.P),IBL.P);s.ids.forEach(id=>{const o=M.byId.get(id);n++;rows.push(['P'+(i+1),s.w,n,sn(o.k),o.sec,o.op,o.maq,+o.t,+s.load,+s.per,+(s.per/M.takt),est])})});
   M.un.forEach(id=>{const o=M.byId.get(id);n++;rows.push(['Sin asignar','',n,sn(o.k),o.sec,o.op,o.maq,+o.t,'','','','Sin asignar'])});return rows}
 function iblFilasResumen(M){const P=IBL.P,x=iblFuente();const f=x.f;const N=v=>({v:Math.round(v*1000)/1000,f:'0.00'}),PC=v=>({v:+v,f:'0%'}),I=v=>({v:+v,f:'0'});
   const subs=iomSubs().filter(s=>P.stg[s.k]&&M.act.some(o=>o.k===s.k)).map(s=>s.nombre).join(', ');
@@ -16312,12 +16409,12 @@ function iblHojaResumen(wb,rows){const ws=wb.addWorksheet('Resumen',{views:[{sta
   ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,rows.length+1),column:2}};return ws}
 function iblNombreArchivo(){const x=iblFuente();return 'Balanceo_'+iomNombreArchivo(x.f.nombre+(x.r?' · '+x.r.nombre:''))+'.xlsx'}   /* la misma regla que el Excel de Secuencia: conserva las tildes (Pantalón, Bóxer) */
 async function iblExcel(){const M=IBL.M;if(!M||!M.act.length)return null;try{await cargarExcelJS()}catch(e){alert('No se pudo cargar el generador de Excel (sin internet): '+e.message);return null}
-  const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';xlsHojaPlana(wb,'Balanceo',IBL_XLS_COLS,iblFilasExcel(M),{fijas:0});iblHojaResumen(wb,iblFilasResumen(M));
+  const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';const cols=IBL.P&&IBL.P.nops?IBL_XLS_COLS.map(c=>c.k==='% del takt'?Object.assign({},c,{k:'% del ciclo objetivo'}):c):IBL_XLS_COLS;xlsHojaPlana(wb,'Balanceo',cols,iblFilasExcel(M),{fijas:0});iblHojaResumen(wb,iblFilasResumen(M));
   const b=await iomDescargarWb(wb,iblNombreArchivo());iblToast('Excel descargado');return b}
 /* ---------- imprimir: una ventana A4 horizontal con el veredicto, las cifras, los puestos (3 por fila, sin cortarse) y las máquinas ---------- */
 function iblImprimir(){const M=IBL.M;if(!M||!M.act.length)return;const x=iblFuente();const P=IBL.P;const tit=x.f.nombre+(x.r?' · Ref. '+x.r.cod+' '+x.r.nombre:' · base general');
   const kp=iblKpis(M).map(k=>'<div class="k"><div class="t">'+k.k+'</div><div class="v">'+k.v+'</div><div class="n">'+k.n+'</div></div>').join('');
-  const ps=M.sts.map((s,i)=>s.ids.length?'<div class="p"><h3>Puesto '+(i+1)+' <small>'+iomPl(s.w,'operario','operarios')+' · '+esc(s.maqs.join(', '))+' · '+iblF2(s.per)+' min/operario ('+iblPc(s.per/M.takt)+' del takt)</small></h3><ol>'+s.ids.map(id=>{const o=M.byId.get(id);const otra=s.maqs.length>1&&o.maq!==s.main;return '<li value="'+(M.pos[id]+1)+'">'+esc(o.op)+' <small>'+esc((iomSub(o.k)||{}).nombre||o.k)+' · '+esc(o.maq)+' · '+iblF3(o.t)+' min'+(otra?' · OTRA MÁQUINA':'')+'</small></li>'}).join('')+'</ol></div>':'<div class="p"><h3>Puesto '+(i+1)+' <small>vacío</small></h3></div>').join('');
+  const ps=M.sts.map((s,i)=>s.ids.length?'<div class="p"><h3>Puesto '+(i+1)+' <small>'+iomPl(s.w,'operario','operarios')+' · '+esc(s.maqs.join(', '))+' · '+iblF2(s.per)+' min/operario ('+iblPc(s.per/M.takt)+' del '+iblRefTxt(P)+')</small></h3><ol>'+s.ids.map(id=>{const o=M.byId.get(id);const otra=s.maqs.length>1&&o.maq!==s.main;return '<li value="'+(M.pos[id]+1)+'">'+esc(o.op)+' <small>'+esc((iomSub(o.k)||{}).nombre||o.k)+' · '+esc(o.maq)+' · '+iblF3(o.t)+' min'+(otra?' · OTRA MÁQUINA':'')+'</small></li>'}).join('')+'</ol></div>':'<div class="p"><h3>Puesto '+(i+1)+' <small>vacío</small></h3></div>').join('');
   const mq=Object.keys(M.mach).sort((a,b)=>M.mach[b]-M.mach[a]).map(k=>'<tr><td>'+esc(k)+'</td><td class="n">'+M.mach[k]+'</td></tr>').join('');
   const html='<!doctype html><html><head><meta charset="utf-8"><title>Balanceo '+esc(tit)+'</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0}h1{font-size:17px;margin:0 0 4px}.ver{border:1px solid #999;border-radius:6px;padding:6px 8px;margin:6px 0}.ks{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:8px 0}.k{border:1px solid #bbb;border-radius:6px;padding:5px 7px;break-inside:avoid}.k .t{font-size:10.5px;color:#444}.k .v{font-size:15px;font-weight:700}.k .n{font-size:10.5px;color:#555}.ps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.p{border:1px solid #bbb;border-radius:6px;padding:6px 8px;break-inside:avoid}.p h3{font-size:12px;margin:0 0 4px}small{font-weight:400;color:#555}ol{margin:0;padding-left:22px}table{border-collapse:collapse;margin-top:8px}td{border:1px solid #999;padding:3px 6px}td.n{text-align:right}.sub{color:#555}</style></head><body>'+
     '<h1>Balanceo de línea · '+esc(tit)+'</h1><div class="sub">Meta '+P.meta+' unidades/día · '+(P.nops?P.nops+' operarios disponibles · ':'')+P.min+' min por turno · '+P.trn+' turno'+(P.trn>1?'s':'')+' · eficiencia '+P.eff+'% · tolerancia '+P.tol+'% · TEMPOCODECA · '+fechaHoraLocal(Date.now())+'</div>'+
@@ -16337,8 +16434,12 @@ function ingRefKey(x){return normFase(x==null?'':String(x))}   /* una referencia
 async function ingGuardar(t,filas,lote,opts){if(ING.estado!=='si')return {ok:false,n:0,error:ING_MSG_FALTA,conflictos:[]};
   if(!puedeIngTabla(t))return {ok:false,n:0,error:porQueNoEditaIng(t),conflictos:[]};
   const ids=filas.map(f=>f.id);const srv=await leerTablaIng(t,ids);if(srv.error)return {ok:false,n:0,error:String((srv.error&&srv.error.message)||srv.error),falta:!!srv.falta,conflictos:[]};
-  const sm=new Map(srv.data.map(r=>[r.id,{c:ingCanon(r.data||{}),ts:r.actualizado}]));const base=(ING.firmas||{})[t]||{};const conf=[],ok=[];
-  filas.forEach(f=>{const s=sm.get(f.id),b=base[f.id];if(s!==undefined&&s.c!==b)conf.push(f.id);else ok.push(f)});
+  /* contra QUÉ se compara: la firma con la que se armó la fila (opts.esperada, la toma quien la armó ANTES de su primer await) o, si no la trae, la que
+     hay ahora. Antes se tomaba siempre la de ahora y una relectura que llegaba mientras se escribía la copia la ponía al día: el servidor «coincidía» y
+     el guardado que salió de una lectura vieja pisaba a la otra persona sin aviso (revisión de guardado del 07-oct, tercera ronda) */
+  const sm=new Map(srv.data.map(r=>[r.id,{c:ingCanon(r.data||{}),ts:r.actualizado}]));const base0=(ING.firmas||{})[t]||{};const esp=(opts&&opts.esperada)||null;
+  const base=id=>esp&&Object.prototype.hasOwnProperty.call(esp,id)?esp[id]:base0[id];const conf=[],ok=[];
+  filas.forEach(f=>{const s=sm.get(f.id),b=base(f.id);if(s!==undefined&&s.c!==b)conf.push(f.id);else ok.push(f)});
   /* sin pisar a otra sesión ni en el mismo instante (revisión de código del 06-oct): una fila nueva se INSERTA (si otra la creó un momento antes, choca
      por la clave) y una que ya existe se ACTUALIZA solo si su «actualizado» sigue siendo el que se acaba de leer (si no, alguien la guardó en el medio).
      Sin SQL nuevo: la RLS de las tablas ing_* ya deja insertar y actualizar; el sello «actualizado» lo pone el servidor en cada cambio. */
@@ -16415,16 +16516,18 @@ function iomRevision(){const calc=()=>{const ab=typeof carteraDe==='function'?ca
   const sinFamilia=[...sinFam.values()].sort((a,b)=>b.ords-a.ords);const refsSinSecuencia=[...refs.values()].map(g=>({fam:g.fam,sinBase:g.sinBase,ords:g.ords,pz:g.pz,nRefs:g.refs.size,lista:[...g.refs.values()].sort((a,b)=>b.ords-a.ords)})).sort((a,b)=>b.ords-a.ords);
   const famSinBase=iomFamsActivas().filter(f=>!iomBaseActiva(f.id));
   const filas=[];iomFamsActivas().forEach(f=>{const b=iomBaseActiva(f.id);if(b)filas.push({fam:f,ref:null,fila:b});iomRefsDe(f.id).forEach(r=>filas.push({fam:f,ref:r,fila:r}))});
-  const maqs=new Set(iomCat().maqs.filter(m=>m.activa!==false).map(m=>normTxt(m.n)));const porConfirmar=[],sinTiempoMaq=[],maqF=new Map(),codRepetidos=[];
+  const maqs=new Set(iomCat().maqs.filter(m=>m.activa!==false).map(m=>normTxt(m.n)));const porConfirmar=[],sinTiempoMaq=[],maqF=new Map(),codRepetidos=[],tFuera=[];
   filas.forEach(x=>{const v=iomVista(x.fila,x.ref?x.ref.cod:x.fam.cod);const donde=x.fam.nombre+(x.ref?' · '+x.ref.cod:' · base general');const cods=new Map();
     v.stages.forEach(st=>st.ops.forEach(o=>{if(o.e==='Confirmar tiempo'||o.e==='Completada')porConfirmar.push({donde,fam:x.fam,ref:x.ref,sub:st.sub.nombre,op:o.op,e:o.e,t:o.t});
+      /* un tiempo negativo o fuera del rango creíble escrito directo en la base (o cargado cuando solo se avisaba): solo se lista, no bloquea (07-oct) */
+      if(o.t!=null&&o.t!==''&&isFinite(+o.t)&&(+o.t<0||iomFueraRango(o.t)))tFuera.push({donde,fam:x.fam,ref:x.ref,sub:st.sub.nombre,op:o.op,t:+o.t});
       if(o.t==null||o.t===''||!String(o.maq||'').trim())sinTiempoMaq.push({donde,fam:x.fam,ref:x.ref,sub:st.sub.nombre,op:o.op,falta:[o.t==null||o.t===''?'tiempo':'',!String(o.maq||'').trim()?'máquina':''].filter(Boolean).join(' y ')});
       const m=String(o.maq||'').trim();if(m&&!maqs.has(normTxt(m))){const e=maqF.get(normTxt(m))||maqF.set(normTxt(m),{maq:m,n:0,donde:new Set()}).get(normTxt(m));e.n++;e.donde.add(donde)}
       if(o.code){cods.set(o.code,(cods.get(o.code)||0)+1)}}));
     cods.forEach((n,c)=>{if(n>1)codRepetidos.push({donde,fam:x.fam,ref:x.ref,txt:'el código generado '+c+' sale '+n+' veces en la secuencia'})});
     if(x.ref&&iomFamPorCod(x.ref.cod))codRepetidos.push({donde,fam:x.fam,ref:x.ref,txt:'el código de la referencia '+x.ref.cod+' es también el de la familia '+iomFamPorCod(x.ref.cod).nombre})});
   const maqFuera=[...maqF.values()].map(e=>({maq:e.maq,n:e.n,donde:[...e.donde]})).sort((a,b)=>b.n-a.n);
-  return {listo:true,base:ab.length,sinFamilia,sinCat,refsSinSecuencia,famSinBase,porConfirmar,sinTiempoMaq,maqFuera,codRepetidos,
+  return {listo:true,base:ab.length,sinFamilia,sinCat,refsSinSecuencia,famSinBase,porConfirmar,sinTiempoMaq,tFuera,maqFuera,codRepetidos,
     n:{tiposSinFam:sinFamilia.length,ordsSinFam:sinFamilia.reduce((a,x)=>a+x.ords,0),pzSinFam:sinFamilia.reduce((a,x)=>a+x.pz,0),refsSinSec:refsSinSecuencia.reduce((a,g)=>a+g.nRefs,0),ordsSinSec:refsSinSecuencia.reduce((a,g)=>a+g.ords,0),pzSinSec:refsSinSecuencia.reduce((a,g)=>a+g.pz,0)}}};
   if(ING.estado!=='si'||IOM.leido!=='si')return {listo:false};return typeof memo==='function'?memo('iomRevision:'+IOM.ver,calc):calc()}
 function iomRevisionHTML(){if(ING.estado!=='si')return '';const listo=iomAsegurar();if(!listo)return `<div class="panel iom-rev" data-ing-key="secuencia de operaciones por revisar"><h3>Secuencia de operaciones</h3><div class="body"><p class="mut iom-leyendo">${IOM.leido==='error'?'No se pudo leer la secuencia de operaciones: '+esc(IOM.err||''):'Leyendo la secuencia de operaciones…'}</p></div></div>`;
@@ -16442,6 +16545,8 @@ function iomRevisionHTML(){if(ING.estado!=='si')return '';const listo=iomAsegura
     r.porConfirmar.length?tabla(['Dónde','Subproceso','Operación','Marca','T. ref.'],r.porConfirmar.slice(0,300).map(x=>`<tr><td>${esc(x.donde)}</td><td>${esc(x.sub)}</td><td>${esc(x.op)}</td><td><span class="tag t-aviso">${esc(x.e==='Completada'?'Tiempo estimado':x.e)}</span></td><td class="num">${iomFmtT(x.t)}</td></tr>`).join('')):'<p class="mut">No hay tiempos por confirmar.</p>',enOps('Crear referencia','Operaciones → Crear referencia (editar)'));
   h+=panel('Operaciones sin tiempo o sin máquina','Operaciones sin tiempo o sin máquina',r.sinTiempoMaq.length?pl(r.sinTiempoMaq.length,'operación','operaciones'):'ninguna',
     r.sinTiempoMaq.length?tabla(['Dónde','Subproceso','Operación','Le falta'],r.sinTiempoMaq.slice(0,300).map(x=>`<tr><td>${esc(x.donde)}</td><td>${esc(x.sub)}</td><td>${esc(x.op)}</td><td>${esc(x.falta)}</td></tr>`).join('')):'<p class="mut">Todas tienen tiempo y máquina.</p>',enOps('Crear referencia','Operaciones → Crear referencia (editar)'));
+  h+=panel('Tiempos fuera del rango creíble','Tiempos negativos o fuera del rango creíble',r.tFuera.length?pl(r.tFuera.length,'operación','operaciones')+(iomRangoTxt()?' · rango: '+esc(iomRangoTxt()):''):'ninguno',
+    r.tFuera.length?tabla(['Dónde','Subproceso','Operación','T. ref.'],r.tFuera.slice(0,300).map(x=>`<tr><td>${esc(x.donde)}</td><td>${esc(x.sub)}</td><td>${esc(x.op)}</td><td class="num">${iomFmtT(x.t)}</td></tr>`).join('')):'<p class="mut">Todos los tiempos están dentro del rango creíble.</p>',enOps('Crear referencia','Operaciones → Crear referencia (editar)')+'; el rango, en '+enOps('Avisos de la edición','Operaciones → Listas y reglas → Avisos de la edición'));
   h+=panel('Máquinas que no están en la lista','Máquinas que no están en la lista',r.maqFuera.length?pl(r.maqFuera.length,'máquina','máquinas'):'ninguna',
     r.maqFuera.length?tabla(['Máquina','Veces','Dónde'],r.maqFuera.map(x=>`<tr><td>${esc(x.maq)}</td><td class="num">${num(x.n)}</td><td class="mut">${esc(x.donde.slice(0,6).join(', '))}${x.donde.length>6?'…':''}</td></tr>`).join('')):'<p class="mut">Todas las máquinas de las secuencias están en la lista.</p>',enOps('Máquinas de la secuencia','Operaciones → Listas y reglas → Máquinas'));
   h+=panel('Códigos repetidos','Códigos repetidos',r.codRepetidos.length?pl(r.codRepetidos.length,'caso','casos'):'ninguno',
