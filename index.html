@@ -2652,7 +2652,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 20:26';
+const APP_BUILD='2026-10-06 20:27';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -15018,6 +15018,7 @@ function blindarIng0(el){
 function vIngOps(el){const tab=ING_OPS_TABS.some(t=>t[0]===ING_V.ops)?ING_V.ops:'base';const listo=ingAsegurarOps()||ING.estado!=='si';
   if(ingDebeSembrar())sembrarIngSubprocesos().then(ok=>{if(ok&&page==='ingops')render()});
   else if(ingNotasViejasPorLimpiar().length)actualizarNotasViejasIng().then(ok=>{if(ok&&page==='ingops')render()});
+  else if(ingOrdenConfPorCambiar())ordenConfeccionIng().then(ok=>{if(ok&&page==='ingops')render()});   /* 06-oct: Perfilado primero en Confección, una vez */
   const pest=(k,html)=>`<div class="ops-pest" data-ops-tab="${k}"${tab===k?'':' style="display:none"'}>${html}</div>`;
   const act=(S.ing_operaciones||[]).filter(o=>o.activa!==false&&!o.juntadaEn);const nPD=ingEquivs().filter(e=>!ingSubOk(e.sub)).length;const nRep=act.length?ingRepetidas().length:0;
   const extra=k=>k==='base'?' <span class="mut">'+num(act.length)+'</span>':k==='subprocesos'&&nPD?' <span class="tag t-aviso" title="nombres de las fuentes sin subproceso (por decidir)">'+num(nPD)+'</span>':k==='repetidas'&&nRep?' <span class="tag t-aviso">'+num(nRep)+'</span>':k==='tecnicas'?' <span class="mut">'+num((S.tecnicas||[]).length)+'</span>':'';
@@ -15031,7 +15032,7 @@ function vIngOps(el){const tab=ING_OPS_TABS.some(t=>t[0]===ING_V.ops)?ING_V.ops:
    Usuaria: «centros de producción, subprocesos y dentro de los subprocesos las operaciones, como una base de datos general». Decisiones del 05-oct:
    el SAM de la base es POR OPERACIÓN Y POR FAMILIA DE PRENDA (cada operación una sola vez, con su SAM en cada familia: Camisetas, Polos, Hoodies…);
    «Revisión de producto terminado» va en EMPAQUE (subproceso «Revisión»); Preparación de insumos y de materiales van a Subensamble (CON-01);
-   la receta de Confección es costura (Subensamble + Ensamble) + pulido + perfilado.
+   la receta de Confección es perfilado + costura (Subensamble + Ensamble) + pulido.
    DÓNDE VIVE: dos tablas de SUPABASE_INGENIERIA.sql (esquema de la casa, fuera de TABLAS, solo upsert, nunca delete):
      · ing_subprocesos: el catálogo de la estructura. Por el comienzo del id:
          isp|<centro>|<código>  subproceso (cuelga de un centro de Configuración: los centros NO se copian) · {centro,cod,nombre,orden,parte,estado,activo}
@@ -15048,10 +15049,10 @@ function vIngOps(el){const tab=ING_OPS_TABS.some(t=>t[0]===ING_V.ops)?ING_V.ops:
    el programa sigue leyendo los tiempos como hoy. */
 const ING_SUB_DEF=[
   {centro:'corte',cod:'COR-03',nombre:'Corte',parte:''},
+  {centro:'modulos',cod:'',slug:'perfilado',nombre:'Perfilado',parte:'perfilado',nota:'sin código de Odoo; en el estudio de tiempos anterior se llamaba «Terminado Confección» y «Perfilado» (casi todo es perfilado de bajos). Parte de la receta de Confección (decisión del 05-oct-2026); se hace ANTES de empezar a confeccionar (usuaria, 06-oct-2026)'},
   {centro:'modulos',cod:'CON-01',nombre:'Subensamble',parte:'costura'},
   {centro:'modulos',cod:'CON-02',nombre:'Ensamble',parte:'costura'},
   {centro:'modulos',cod:'CON-03',nombre:'Pulido',parte:'pulido'},
-  {centro:'modulos',cod:'',slug:'perfilado',nombre:'Perfilado',parte:'perfilado',nota:'sin código de Odoo; en el estudio de tiempos anterior se llamaba «Terminado Confección» y «Perfilado» (casi todo es perfilado de bajos). Parte de la receta de Confección (decisión del 05-oct-2026)'},
   {centro:'estampado',cod:'SER-01',nombre:'Serigrafía',parte:''},
   {centro:'bordado',cod:'BOR-01',nombre:'Bordado',parte:''},
   {centro:'etiquetas',cod:'ETI',nombre:'Etiquetas',parte:''},
@@ -15070,7 +15071,7 @@ const ING_EQ_KR_DEF=[['Subensamble','modulos|CON-01'],['Subensamble etiquetas','
 const ING_EQ_ODOO_DEF=[['CORTE','','corte|COR-03'],['SUBENSAMBLE','','modulos|CON-01'],['ENSAMBLE','','modulos|CON-02'],['PULIDO','','modulos|CON-03'],
   ['SERIGRAFIA','ETIQUETAR','etiquetas|ETI','la etiqueta tampográfica de la hoja (familia SERIGRAFIA) es del centro Etiquetas'],['SERIGRAFIA','','estampado|SER-01'],
   ['BORDADO','','bordado|BOR-01'],['OJALES','','botones|TER-01'],['BOTONES','','botones|TER-01'],['EMPAQUE','','empaque|EMP-01']];
-const ING_PARTES=[['costura','Costura'],['pulido','Pulido'],['perfilado','Perfilado']];
+const ING_PARTES=[['perfilado','Perfilado'],['costura','Costura'],['pulido','Pulido']];   /* en el orden de la planta: el perfilado es antes de empezar a confeccionar (usuaria, 06-oct-2026) */
 const ING_FUENTES=[['','Todas las fuentes'],['tempo','Formato TEMPO'],['unaref','Formato TEMPO · comprobado en 1 referencia'],['portomar','Para volver a cronometrar'],['odoo','Hoja de Odoo'],['kronos','Estudio de tiempos anterior'],['ambas','Hoja de Odoo y estudio anterior'],['mano','A mano'],['novino','No vino']];
 /* ---------- utilidades ---------- */
 function ingNom(x){return normTxt(x).replace(/[^a-z0-9]+/g,' ').trim()}   /* sin tildes, sin mayúsculas, sin signos ni espacios de más */
@@ -15314,6 +15315,21 @@ async function actualizarNotasViejasIng(){if(ING.limpiandoNotas||ING.notasLimpia
     const g=await ingGuardar('ing_subprocesos',filas);ING.notasLimpiadas=true;if(!g.ok)return false;
     bitacora('Ingeniería · la nota de '+filas.length+' '+(filas.length===1?'subproceso':'subprocesos')+' ('+filas.map(f=>f.nombre).join(', ')+') quedó como la siembra de hoy: ya no nombra al sistema del estudio de tiempos anterior (una sola vez) · no cambia ningún minuto del programa ('+u+')');save();return true}
   finally{ING.limpiandoNotas=false}}
+/* 06-oct (usuaria): «¿Dejo Perfilado antes que Pulido?» → «sí» y luego «el perfilado es antes de empezar a confeccionar». La siembra del 05-oct dejó
+   Confección Subensamble 2 · Ensamble 3 · Pulido 4 · Perfilado 5. Si las cuatro filas siguen IGUALES (nadie las cambió a mano), pasan UNA vez a
+   Perfilado 2 · Subensamble 3 · Ensamble 4 · Pulido 5, con bitácora y el cambio en cada fila, solo desde una sesión que guarda subprocesos (nunca el
+   piso). Lo que una persona cambió no se toca. No cambia ningún minuto del programa. */
+const ING_ORDEN_CONF06={antes:{'isp|modulos|CON-01':2,'isp|modulos|CON-02':3,'isp|modulos|CON-03':4,'isp|modulos|perfilado':5},
+  despues:{'isp|modulos|perfilado':2,'isp|modulos|CON-01':3,'isp|modulos|CON-02':4,'isp|modulos|CON-03':5}};
+function ingOrdenConfPorCambiar(){if(ING.estado!=='si')return null;const ids=Object.keys(ING_ORDEN_CONF06.antes);
+  const filas=ids.map(id=>(S.ing_subprocesos||[]).find(r=>r.id===id));if(filas.some(r=>!r))return null;
+  if(filas.some((r,i)=>+r.orden!==ING_ORDEN_CONF06.antes[ids[i]]))return null;return filas}
+async function ordenConfeccionIng(){if(ING.ordenandoConf||ING.ordenConfHecho||CARGA_INCOMPLETA||!puedeIngTabla('ing_subprocesos'))return false;const l=ingOrdenConfPorCambiar();if(!l)return false;ING.ordenandoConf=true;
+  try{const ts=new Date().toISOString(),u=quienFirma();const motivo='decisión de la usuaria del 06-oct-2026: el perfilado es antes de empezar a confeccionar';
+    const filas=l.map(r=>{const de=+r.orden,a=ING_ORDEN_CONF06.despues[r.id];return Object.assign(ingClon(r),{orden:a,cambios:(r.cambios||[]).concat([{ts,u,campo:'orden',antes:de,despues:a,motivo}])})});
+    const g=await ingGuardar('ing_subprocesos',filas);ING.ordenConfHecho=true;if(!g.ok)return false;
+    bitacora('Ingeniería · Confección queda Perfilado → Subensamble → Ensamble → Pulido (el perfilado es antes de empezar a confeccionar), una sola vez, por '+motivo+' · no cambia ningún minuto del programa ('+u+')');save();return true}
+  finally{ING.ordenandoConf=false}}
 /* ---------- ARMAR LA BASE · la ventana: subir Kronos (o no) → vista previa → aplicar ---------- */
 let IBASE=null,IBASE_H=null;
 /* la hoja de Odoo se junta por defecto salvo con el formato TEMPO o si la base ya no tiene nada de la hoja (no se mezcla sin querer) */
@@ -15619,7 +15635,7 @@ function ingFamsUnaFuente(ops){const fuentes={},tempo=new Set();(ops||[]).forEac
      · sin ingeniería: cab.entra=false con el motivo del cruce (mismo tipo sin listado, otra prenda con el mismo número, no está en Kronos…).
      Se lee a demanda (Por referencia, Tipos de producto, Por revisar o «ver ingeniería» en la ficha de una orden), no al entrar.
    UNA función: ingenieriaRef(tipo,ref) / ingenieriaDe(o). El tiempo de una referencia por centro ES la suma de sus operaciones que cuentan (ingTotRef):
-   Confección = la receta del 05-oct = costura (Subensamble + Ensamble) + pulido + perfilado; Empaque con su Revisión; Bordado solo informa (va por
+   Confección = la receta del 05-oct = perfilado + costura (Subensamble + Ensamble) + pulido; Empaque con su Revisión; Bordado solo informa (va por
    puntadas). El promedio de un tipo (ingPromediosTipos) se calcula, no se guarda: ponderado por las prendas del pedido de sus órdenes abiertas.
    GARANTÍA (prueba INGR-H y la HUELLA ING12): nada de este bloque escribe tiempos, rutas, categorías, órdenes ni la hoja de Odoo, ni llama a la
    propagación de tiempos: el programa sigue leyendo los tiempos como hoy. Solo LEE el tiempo del programa para mostrarlo al lado. */
@@ -15720,7 +15736,7 @@ function ingLinea(l,fam,opDe){if(!l)return {cuenta:false,sam:0,porque:'línea va
   const s=sub?ingSubMap().get(sub):null;const e=op&&op.samFam&&op.samFam[fam];const base=e&&e.sam!=null&&isFinite(+e.sam)?+e.sam:null;
   const propio=l.sam!=null||base==null;const veces=(l.veces!=null&&+l.veces>0)?+l.veces:1;const sam=(l.sam!=null?+l.sam:(base!=null?base:(+l.samK||0)))*veces;const activa=l.activa!==false;   /* 06-oct: «Veces por prenda» del formato TEMPO multiplica */
   return {op,sub,s,sam,base,propio,veces,activa,cuenta:activa&&!!s,porque:!activa?'apagada en esta referencia':!s?'subproceso por decidir («'+(l.sp||'sin subproceso')+'»)':''}}
-/* ---------- el tiempo de una referencia por centro = la suma de sus operaciones que cuentan (Confección = costura + pulido + perfilado) ---------- */
+/* ---------- el tiempo de una referencia por centro = la suma de sus operaciones que cuentan (Confección = perfilado + costura + pulido) ---------- */
 function ingTotRef(r,opDe){const k=r&&r.id;const v=(ING.ver||0)+'|'+(ING.refsVer||0);if(!opDe&&k){ING._tot=(ING._tot&&ING._tot.v===v)?ING._tot:{v,m:new Map()};if(ING._tot.m.has(k))return ING._tot.m.get(k)}
   const fam=(r&&r.cab&&r.cab.fam)||'';const t={cen:{},sub:{},partes:{costura:0,pulido:0,perfilado:0},fuera:0,receta:0,sinDecidir:0,nocuenta:0,n:0,nCuentan:0,propios:0,lineas:[]};
   ((r&&r.ops)||[]).slice().sort((a,b)=>(+a.n||0)-(+b.n||0)).forEach(l=>{const x=ingLinea(l,fam,opDe);t.lineas.push({l,x});t.n++;if(!x.com&&x.propio)t.propios++;
@@ -15805,16 +15821,16 @@ function ingRefDetalleHTML(cat,ref,opts){opts=opts||{};const k=K(cat);const ing=
   if(row){h+=`<p class="ing-ref-lin ing-ref-origen">${esc(ingTxtVisible(cab.fuente||'estudio de tiempos anterior'))}${cab.clave?' · listado <b>'+esc(cab.clave)+'</b>':''} · ${num(t.n)} ${t.n===1?'línea':'líneas'}${ing.via==='cruce'?' · <span class="tag t-medio" title="esta referencia usa las operaciones de otra del mismo tipo de producto («Usa la de» del archivo)">usa la de la '+esc(cab.ref)+'</span>':''}${ing.via==='sufijo'?' · <span class="tag t-medio" title="no está en el cruce: se usó la ingeniería del número base por la tabla de sufijos">usa la de la '+esc(ing.base)+' (sufijo '+esc(ing.suf)+')</span>':''}${cab.noVino?' · <span class="tag t-falta" title="no vino en la última carga: queda como estaba, nada se borra">no vino en la última carga</span>':''}${(cab.refsTempo||[]).length?' · <span class="mut">la usan también '+esc(cab.refsTempo.join(', '))+'</span>':''}</p>`}
   else h+=`<p class="ing-ref-lin ing-ref-motivo"><b>Sin ingeniería:</b> ${esc(ing.txt)}.${ing.arreglo?' <span class="mut">Se arregla: '+esc(ing.arreglo)+'.</span>':''} ${T&&T.cen.modulos&&T.cen.modulos.prom!=null?'Mientras tanto se toma como base el <b>promedio de su tipo</b> ('+num(T.cen.modulos.prom,2)+' min en Confección).':'Su tipo todavía no tiene referencias con ingeniería para sacar un promedio.'}</p>`;
   h+=`<p class="ing-ref-paso"><b>Solo para mirar:</b> corregir, agregar o quitar operaciones y confirmar la referencia se hace en el paso siguiente (todavía no). Nada de esto cambia el programa: el programa sigue con el tiempo de su tipo de producto.</p>`;
-  /* el programa sigue la receta? (Confección: costura + pulido + perfilado) */
+  /* el programa sigue la receta? (Confección: perfilado + costura + pulido) */
   const pM=ingProgramaTipo(k,ref,'modulos');
-  if(row&&ingSoloCostura(pM.t,t.partes.costura,t.receta))h+=`<div class="warn ing-ref-receta" data-receta="costura"><b>El programa usa ${num(pM.t,2)} en Confección para ${esc(nomT)}: es casi la costura sola (${num(t.partes.costura,2)}), no la receta (${num(t.receta,2)} = costura + pulido ${num(t.partes.pulido,2)} + perfilado ${num(t.partes.perfilado,2)}).</b> La receta de Confección es costura + pulido + perfilado para todos (decisión del 05-oct). ${ayudaTipHTML('De dónde sale el '+num(pM.t,2)+': '+pM.fuente.txt+'. Se cambia en Ingeniería → Tipos de producto. Esta pantalla no cambia nada.')}</div>`;
+  if(row&&ingSoloCostura(pM.t,t.partes.costura,t.receta))h+=`<div class="warn ing-ref-receta" data-receta="costura"><b>El programa usa ${num(pM.t,2)} en Confección para ${esc(nomT)}: es casi la costura sola (${num(t.partes.costura,2)}), no la receta (${num(t.receta,2)} = perfilado ${num(t.partes.perfilado,2)} + costura + pulido ${num(t.partes.pulido,2)}).</b> La receta de Confección es perfilado + costura + pulido para todos (decisión del 05-oct). ${ayudaTipHTML('De dónde sale el '+num(pM.t,2)+': '+pM.fuente.txt+'. Se cambia en Ingeniería → Tipos de producto. Esta pantalla no cambia nada.')}</div>`;
   /* cifras por centro */
   const cens=ING_CEN_REF.filter(c=>CE(c)&&((t&&(t.cen[c]>0||(c==='modulos'&&t.fuera>0)))||(T&&T.cen[c]&&T.cen[c].prom!=null)||ingTiempoOrdenes(ords,c).nOrd>0));
   if(cens.length){const fila=c=>{const ce=CE(c);const nomC=c==='modulos'?'Confección':(ce?ce.n:nCen(c));const pr=ingProgramaTipo(k,ref,c);const v=t?(t.cen[c]||0):null;const ti=ingTiempoOrdenes(ords,c,v>0?v:null);const pz=T&&T.cen[c];
       const usan=Object.entries(ti.usan).map(([x,n])=>x+(Object.keys(ti.usan).length>1?' ('+n+')':'')).join(' · ');
       const progTxt=c==='bordado'?'<span class="mut">por puntadas</span>':pr.t>0?num(pr.t,2):'<span class="mut">no lleva</span>';
       const dif=(c==='bordado'||!(v>0)||!(pr.t>0))?'—':(()=>{const d=v-pr.t,pc=d/pr.t*100;const hs=ti.dlt/60;return (Math.abs(d)<0.005?'=':(d>0?'+':'−')+num(Math.abs(d),2)+' ('+(d>0?'+':'−')+num(Math.abs(pc),0)+' %)')+(ti.pend&&Math.abs(hs)>=0.005?'<span class="ing-de" title="contra el minuto que lleva hoy cada orden en su ruta (no contra el del tipo): es lo que cambiaría el programa">'+(hs>0?'+':'−')+num(Math.abs(hs),0)+' h sobre '+num(ti.pend)+' prendas pendientes (con lo que lleva cada orden)</span>':'')})();
-      const refTxt=c==='bordado'&&v>0?'<span class="mut">'+num(v,2)+' · solo informa</span>':v>0?'<b>'+num(v,2)+'</b>'+(c==='modulos'?'<span class="ing-de">costura '+num(t.partes.costura,2)+' + pulido '+num(t.partes.pulido,2)+' + perfilado '+num(t.partes.perfilado,2)+(t.fuera>0?' · fuera de la receta '+num(t.fuera,2):'')+'</span>':''):(t?'<span class="mut">no lleva</span>':'—');
+      const refTxt=c==='bordado'&&v>0?'<span class="mut">'+num(v,2)+' · solo informa</span>':v>0?'<b>'+num(v,2)+'</b>'+(c==='modulos'?'<span class="ing-de">perfilado '+num(t.partes.perfilado,2)+' + costura '+num(t.partes.costura,2)+' + pulido '+num(t.partes.pulido,2)+(t.fuera>0?' · fuera de la receta '+num(t.fuera,2):'')+'</span>':''):(t?'<span class="mut">no lleva</span>':'—');
       return `<tr data-centro="${c}"><td><b>${esc(nomC)}</b>${c==='bordado'?'<span class="ing-de">va por puntadas: solo informa</span>':c==='empaque'?'<span class="ing-de">con la Revisión de producto terminado</span>':''}</td><td class="num">${refTxt}</td>
         <td class="num">${pz&&pz.prom!=null?num(pz.prom,2)+'<span class="ing-de">'+num(pz.n)+' de '+num(T.nRefs)+' ref. · '+(T.pz?num(pz.w/T.pz*100,0):'0')+' % de las prendas</span>':'—'}</td>
         <td class="num">${progTxt}${c!=='bordado'?ayudaTipHTML('Lo que usa hoy el programa para este tipo de producto: '+pr.fuente.txt+'.'+(usan?' Sus órdenes abiertas llevan hoy: '+usan+' min/prenda (el tiempo guardado en su ruta).':'')):''}<span class="ing-de">${esc(pr.fuente.corto||'')}${usan&&c!=='bordado'?' · sus órdenes: '+esc(usan):''}</span></td>
@@ -15840,7 +15856,7 @@ function ingRefDetalleHTML(cat,ref,opts){opts=opts||{};const k=K(cat);const ing=
   let st='';const cenS=[...new Set(subs.map(s=>s.centro))].filter(c=>subs.some(s=>s.centro===c&&t.sub[s.id]>0));
   cenS.forEach(c=>{const ss=subs.filter(s=>s.centro===c);const ce=CE(c);const nomC=c==='modulos'?'Confección':(ce?ce.n:nCen(c));st+=`<tr class="ing-cen" data-cen="${c}"><td colspan="2">${esc(nomC)}${c==='bordado'?' <span class="mut">· solo informa: va por puntadas</span>':''}</td></tr>`;
     if(c==='modulos'){ss.filter(s=>s.parte==='costura').forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="costura"><td>= Costura (Subensamble + Ensamble)</td><td class="num">${num(t.partes.costura,2)}</td></tr>`;
-      ss.filter(s=>s.parte&&s.parte!=='costura').forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="modulos"><td>= Confección (la receta: costura + pulido + perfilado)</td><td class="num">${num(t.receta,2)}</td></tr>`;
+      ss.filter(s=>s.parte&&s.parte!=='costura').forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="modulos"><td>= Confección (la receta: perfilado + costura + pulido)</td><td class="num">${num(t.receta,2)}</td></tr>`;
       ss.filter(s=>!s.parte).forEach(s=>{const f=filaS(s);if(f)st+=f.replace('</td><td class="num">',' <span class="tag t-medio" title="subproceso de Confección sin parte de la receta: no suma">fuera de la receta</span></td><td class="num">')})}
     else{ss.forEach(s=>st+=filaS(s));st+=`<tr class="ing-tot" data-tot="${c}"><td>= ${esc(nomC)}</td><td class="num">${num(t.cen[c]||0,2)}</td></tr>`}});
   if(t.sinDecidir>0)st+=`<tr class="ing-cen ing-pd"><td>⚠ Sin subproceso, por decidir <span class="mut">(no suma a ningún centro)</span></td><td class="num">${num(t.sinDecidir,2)}</td></tr>`;
@@ -15856,7 +15872,7 @@ async function mIngRef(oid,refresco){if(typeof esVistaOperario==='function'&&esV
   if(refresco||ING.estado!=='si')return;const pend=[];if(ING.ops!=='si'&&ING.ops!=='leyendo')pend.push(leerIngOps());if(ING.refsTodas!=='si'&&ING.refsTodas!=='leyendo')pend.push(leerIngRefsTodas());
   if(pend.length){await Promise.all(pend);const v=document.getElementById('veil');if(ING_V.modal===oid&&v&&v.classList.contains('on')&&document.getElementById('ing-ref-modal'))mIngRef(oid,true)}}
 /* ---------- Tipos de producto: el promedio de sus referencias al lado del tiempo que programa hoy (solo se muestra) ---------- */
-function ingPromediosHTML(){const cab=`<h3>Promedio de sus referencias <span class="note">al lado de lo que programa hoy · solo se muestra, no se aplica</span>${ayudaTipHTML('Para cada tipo de producto: el tiempo de sus referencias con ingeniería (Ingeniería → Por referencia), ponderado por las prendas del pedido de sus órdenes abiertas, al lado del tiempo que usa HOY el programa. Confección = costura + pulido + perfilado (decisión del 05-oct). «Lo sostienen» dice cuántas referencias y prendas entran en el promedio. Pasar el promedio al programa es un paso aparte que decide la usuaria.')}</h3>`;
+function ingPromediosHTML(){const cab=`<h3>Promedio de sus referencias <span class="note">al lado de lo que programa hoy · solo se muestra, no se aplica</span>${ayudaTipHTML('Para cada tipo de producto: el tiempo de sus referencias con ingeniería (Ingeniería → Por referencia), ponderado por las prendas del pedido de sus órdenes abiertas, al lado del tiempo que usa HOY el programa. Confección = perfilado + costura + pulido (decisión del 05-oct). «Lo sostienen» dice cuántas referencias y prendas entran en el promedio. Pasar el promedio al programa es un paso aparte que decide la usuaria.')}</h3>`;
   if(ING.estado!=='si')return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">${ingAvisoTablasHTML()}</div></div>`;
   if(!ingListoRefs())return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">${ingLeyendoRefsHTML()}</div></div>`;
   if(!ingHayRefs())return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body"><p class="ing-sig">Todavía no se cargan las referencias (Ingeniería → Por referencia → «Cargar referencias»): sin referencias con ingeniería no hay promedio.</p></div></div>`;
@@ -15865,7 +15881,7 @@ function ingPromediosHTML(){const cab=`<h3>Promedio de sus referencias <span cla
   const sinIng=[...P.values()].filter(T=>K(T.cat)&&!T.nCon);
   const celda=(T,c)=>{const k=K(T.cat);const pr=ingProgramaTipo(k,'',c);const z=T.cen[c];const prom=z&&z.prom;const d=(prom!=null&&pr.t>0)?prom-pr.t:null;
     const rec=c==='modulos'&&z&&ingSoloCostura(pr.t,z.costura,prom);
-    return `<td class="num" data-centro="${c}">${pr.t>0?num(pr.t,2):'<span class="mut">—</span>'}${ayudaTipHTML('Lo que usa hoy el programa: '+pr.fuente.txt+'.')}</td><td class="num">${prom!=null?'<b>'+num(prom,2)+'</b>'+(c==='modulos'&&z.costura!=null?'<span class="ing-de">costura '+num(z.costura,2)+'</span>':''):'<span class="mut">—</span>'}</td><td class="num">${d==null?'—':(Math.abs(d)<0.005?'=':(d>0?'+':'−')+num(Math.abs(d),2)+'<span class="ing-de">'+(d>0?'+':'−')+num(Math.abs(d/pr.t*100),0)+' %</span>')}${rec?'<span class="tag t-aviso" title="el programa usa casi la costura sola (a menos de un 5 %), no la receta (costura + pulido + perfilado)">solo costura</span>':''}</td>`};
+    return `<td class="num" data-centro="${c}">${pr.t>0?num(pr.t,2):'<span class="mut">—</span>'}${ayudaTipHTML('Lo que usa hoy el programa: '+pr.fuente.txt+'.')}</td><td class="num">${prom!=null?'<b>'+num(prom,2)+'</b>'+(c==='modulos'&&z.costura!=null?'<span class="ing-de">costura '+num(z.costura,2)+'</span>':''):'<span class="mut">—</span>'}</td><td class="num">${d==null?'—':(Math.abs(d)<0.005?'=':(d>0?'+':'−')+num(Math.abs(d),2)+'<span class="ing-de">'+(d>0?'+':'−')+num(Math.abs(d/pr.t*100),0)+' %</span>')}${rec?'<span class="tag t-aviso" title="el programa usa casi la costura sola (a menos de un 5 %), no la receta (perfilado + costura + pulido)">solo costura</span>':''}</td>`};
   const det=T=>{const l=[...T.refs.values()].sort((a,b)=>b.pz-a.pz);return `<tr class="ing-prom-det" data-cat="${esc(T.cat)}"><td colspan="12"><table class="ing-prom-refs"><thead><tr><th>Referencia</th><th class="num">Órdenes</th><th class="num">Prendas</th><th class="num">Confección</th><th class="num">Corte</th><th class="num">Empaque</th><th>Estado</th></tr></thead><tbody>${l.map(e=>`<tr><td>${ingRefLink(e.ref,T.cat,esc(e.ref||'(sin referencia)'))}</td><td class="num">${num(e.n)}</td><td class="num">${num(e.pz)}</td>${['modulos','corte','empaque'].map(c=>`<td class="num">${e.tot&&e.tot.cen[c]>0?num(e.tot.cen[c],2):'—'}</td>`).join('')}<td>${e.ing.ok?(e.ing.row.cab.estado==='confirmada'?'<span class="tag t-ok">confirmada</span>':'<span class="tag t-aviso">por confirmar</span>')+(e.ing.via!=='propia'?' <span class="mut">(usa la de '+esc(e.ing.row.cab.ref)+')</span>':''):'<span class="mut">sin ingeniería: '+esc(e.ing.txt)+'</span>'}</td></tr>`).join('')}</tbody></table></td></tr>`};
   return `<div class="panel ing-prom" data-ing-key="promedio de sus referencias">${cab}<div class="body">
    <p class="ing-sig">Base: órdenes abiertas · cada referencia pesa las prendas del pedido de sus órdenes. Programa = lo que usa hoy el programa para el tipo (el tiempo que manda, la hoja de Odoo, el minuto estimado o el del centro, en ese orden).</p>
@@ -15989,7 +16005,7 @@ function previaListadosHTML(p){if(!p)return '';if(p.error)return `<div class="wa
     ${fila('Con SAM propio de la referencia',r.propios,'distinto del SAM de su familia en la base: queda a la vista en la referencia','propios')}
     ${r.porDecidir?fila('Líneas con subproceso por decidir',r.porDecidir,'su subproceso en el archivo no tiene equivalencia: no suman hasta decidirlo (Operaciones → Subprocesos)','pordecidir'):''}</tbody></table>
    ${p.base?`<div class="warn il-base">${p.baseVacia?'<b>La base de operaciones estaba vacía:</b> se arma solo con lo que traen los listados (para juntarla con la hoja de Odoo: Operaciones → «Armar la base»). ':''}<b>${num(p.faltanBase.length)} ${p.faltanBase.length===1?'operación de los listados no estaba':'operaciones de los listados no estaban'} en la base</b>: se ${p.faltanBase.length===1?'agrega':'agregan'} con fuente «estudio de tiempos anterior» (${num(p.base.nuevas)} nuevas${p.base.juntadas?', '+num(p.base.juntadas)+' juntadas con una que ya estaba':''}): ${p.faltanBase.slice(0,8).map(esc).join(' · ')}${p.faltanBase.length>8?'…':''}</div>`:`<p class="ib-lin"><span class="tag t-ok">base</span> Todas las operaciones de los listados ya estaban en la base de operaciones.</p>`}
-   <p class="ib-lin">${p.control.difs.length?`<span class="tag t-medio">control</span> En ${num(p.control.difs.length)} de ${num(p.control.n)} listados la Confección que calcula esta pantalla (costura + pulido + perfilado, con los subprocesos de hoy) no da lo del resumen del archivo, p. ej. ${p.control.difs.slice(0,3).map(d=>esc(d.clave)+': '+num(d.receta[0],2)+' contra '+num(d.receta[1],2)).join(' · ')}. Es lo esperado donde hay operaciones que en el archivo no tenían subproceso (Preparación de insumos y de materiales van a Subensamble desde el 05-oct) o líneas que el archivo pone en otro subproceso.`:`<span class="tag t-ok">control</span> La Confección de los ${num(p.control.n)} listados que entran da lo mismo que el resumen del archivo.`}</p>
+   <p class="ib-lin">${p.control.difs.length?`<span class="tag t-medio">control</span> En ${num(p.control.difs.length)} de ${num(p.control.n)} listados la Confección que calcula esta pantalla (perfilado + costura + pulido, con los subprocesos de hoy) no da lo del resumen del archivo, p. ej. ${p.control.difs.slice(0,3).map(d=>esc(d.clave)+': '+num(d.receta[0],2)+' contra '+num(d.receta[1],2)).join(' · ')}. Es lo esperado donde hay operaciones que en el archivo no tenían subproceso (Preparación de insumos y de materiales van a Subensamble desde el 05-oct) o líneas que el archivo pone en otro subproceso.`:`<span class="tag t-ok">control</span> La Confección de los ${num(p.control.n)} listados que entran da lo mismo que el resumen del archivo.`}</p>
    <h4>Qué cambia en la base de datos</h4><table class="ib-t ib-cambios"><thead><tr><th class="num">Nuevas</th><th class="num">Cambian</th><th class="num">Iguales</th><th class="num" title="estaban marcadas «no vino» y volvieron">Vuelven</th><th class="num" title="estaban y no vinieron: quedan marcadas, no se borran">No vinieron</th><th class="num" title="confirmadas, corregidas o del formato TEMPO: no se pisan">Corregidas o del formato TEMPO</th></tr></thead>
     <tbody><tr><td class="num" data-il-c="nuevas">${num(p.nuevas.length)}</td><td class="num" data-il-c="cambian">${num(p.cambiadas.length)}</td><td class="num" data-il-c="iguales">${num(p.iguales.length)}</td><td class="num">${num(p.volvieron.length)}</td><td class="num" data-il-c="novinieron">${num(p.noVinieron.length)}</td><td class="num" data-il-c="conservadas">${num(p.conservadas.length)}</td></tr></tbody></table>
    ${p.eqNuevas.length?`<div class="warn">${num(p.eqNuevas.length)} ${p.eqNuevas.length===1?'subproceso del archivo no está':'subprocesos del archivo no están'} en la tabla de equivalencias: entran <b>por decidir</b> (Operaciones → Subprocesos): ${p.eqNuevas.map(e=>esc(e.nombre)+' ×'+num(e.ops)).join(' · ')}</div>`:''}
