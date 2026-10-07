@@ -2158,6 +2158,19 @@ Las 606 operaciones reales **no están en el código**: entran con `test/.out/ex
 
 **Pruebas:** IMO…, IMO-B…, IMO-I…, IMO-R0 a IMO-R65 y la GUARDIA del módulo (iom…/ibl…), todas con datos inventados. La FIDELIDAD contra el prototipo vive fuera del repositorio: `test/.out/exports/ing_modulo/fidelidad_e1.js` y `fidelidad_e2.js`, con 0 fallas. Las diferencias pedidas están como «D-…» en su `DISENO.md` §8.2, §16, §18, §19 y §20.
 
+**Base limpia de Ingeniería y hoja de Odoo borrada (07-oct-2026, usuaria: «te voy a enviar uno nuevo que es la base de operaciones y las referencias; si dice la palabra Kronos en algún lado lo borras»).** Reemplaza a la carga armada ese mismo día desde el estudio de tiempos anterior (CARGA_INGENIERIA_COMPLETA.xlsx, que nunca se cargó en producción).
+- **Lo que mandó:** OPERACIONES_LIMPIAS.csv (base de 19 familias, 1.140 operaciones) y OPERACIONES_POR_REFERENCIA_LIMPIAS.csv (252 referencias, 5.378 operaciones). Los convierte `test/.out/exports/ing_limpias/armar.js` (local: datos de planta) en CARGA_OPERACIONES_LIMPIAS.xlsx, formato «Secuencia» + «Código en Odoo».
+- **No se toca** ningún tiempo, máquina, orden, sección (vacía = «General», como hace el cargador) ni nombre. Una revisión independiente comparó las 6.518 filas una por una: idénticas.
+- **Familias (decisión de la usuaria: «acomodar a las del módulo»):** Vestido→Vestidos, Hoodie→Hoddie, Capucha Cierre→Chompa, Pantalón Jean→Jeans y Pantalón→Pantalón Plano (sus 12 referencias son Pantalón Plano en Odoo). Las referencias 1447, 4397 y 4882 (venían en Polo) van a Henley y la 9606 (venía en Short) a Short Cargo. Se crean Short (SHO), Short Jean (SHJ), Crew (CRW), Jogger (JOG), Enterizo (ENT) y Falda (FAL). La 4240 de Jogger va como JOG4240 con «Código en Odoo» 4240. Cada referencia lleva en «Código en Odoo» sus variantes de Odoo con -P, -SP o -JAS que no vienen como referencia propia (15).
+- **Medido:** en el simulador, 0 rechazos, 271 secuencias, recargar = «No cambia nada» y HUELLA igual. En producción (solo lectura), con 13 tipos de producto enlazados a mano en Listas y reglas → «Familias de la secuencia», 768 de 1.102 abiertas encuentran su referencia y 306 la base.
+- **Quedan para la usuaria:** en 80 secuencias puso Serigrafía antes que Bordado y el módulo los muestra en su orden fijo. ¿«Atracadora» = «Atracadora TP» y «Cerradora de Codos» = «Cerradora de Codo TP»? El Balanceo las cuenta como dos. Henley sin base. «Puños» en Jogger, que no está en la lista de las prendas de abajo.
+- **Arreglo en Balanceo:** `iblCargar` marca los subprocesos de la línea si, al elegir la referencia, no queda ninguno marcado. Pasaba en una familia con referencias y sin base (Henley): no salía nada. Prueba IMO-K28.
+- **Hoja de Odoo borrada en producción** (pedido de la usuaria, 07-oct): `SUPABASE_BORRAR_HOJA_OPERACIONES.sql`.
+  - La tabla `operaciones` quedó en 0. La copia está en `respaldo.operaciones_07oct2026` (esquema que la clave pública no ve). Se deshace con `insert into public.operaciones select * from respaldo.operaciones_07oct2026 on conflict (id) do nothing;`.
+  - Ella lo corrió, luego corrió también la línea de deshacer, y lo volvió a borrar con una versión que comprueba la copia. La bitácora tiene las dos líneas.
+  - Efecto: los tiempos que cada orden ya tiene en su ruta no cambian solos. Desde la próxima «Actualizar datos» o el próximo cambio de tiempos, 34 órdenes abiertas (9.658 prendas) quedan sin tiempo de confección y 65 sin corte o empaque: tipos sin «tiempo que manda», como Bombers, Boxer, Fit 6/61, Henley, Oversize, Pantalon Cargo y Yogga.
+- **Textos viejos en producción:** el nombre del estudio anterior sigue en valores guardados: `fuente` de `categorias.samManda` (la app lo muestra con `ingTxtVisible`), `motivo` en 15 órdenes y en params, y 5 líneas viejas de bitácora. Cambiarlos es SQL de la usuaria; se le ofreció.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
@@ -2188,9 +2201,10 @@ Las 606 operaciones reales **no están en el código**: entran con `test/.out/ex
 ## Pendientes conocidos
 - Cargar en producción el inventario de máquinas (el cargador existe desde el 03-oct; desde el 05-oct vive en Ingeniería →
   Máquinas y operarias → Máquinas de confección → «Cargar inventario»; antes debe entrar un administrador para que corran las siembras).
-- Ingeniería → Operaciones (07-oct): la usuaria carga sus 606 operaciones con «Crear referencia → Cargar secuencias» y el archivo
-  `SECUENCIA_BASE_PARA_CARGAR.xlsx` (local, en test/.out/exports/ing_modulo); asignar el perfil Ingeniería a quien corresponda. Los tiempos
-  del módulo todavía NO mandan en el programa: comparar antes/después y que la usuaria decida.
+- Ingeniería → Operaciones (07-oct): la usuaria carga su base limpia con «Crear referencia → Cargar secuencias» y
+  `CARGA_OPERACIONES_LIMPIAS.xlsx` (local, en test/.out/exports/ing_limpias), crea las 6 familias nuevas, agrega las 5 máquinas y enlaza 13 tipos
+  de producto; asignar el perfil Ingeniería a quien corresponda. Los tiempos del módulo todavía NO mandan en el programa: comparar antes/después
+  y que la usuaria decida. Con la hoja de Odoo borrada, decidir de dónde salen los tiempos de las 34 órdenes que quedan sin confección.
 - Maestros de operaciones: viven en Ingeniería → Operaciones (desde el 07-oct, el módulo del prototipo de la usuaria); ya no van en Configuración.
 - Confirmar que las capacidades reales de las máquinas de tintorería
   (DANITECH 1/2, STUART) estén siempre actualizadas en Configuración →

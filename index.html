@@ -2966,7 +2966,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-07 12:46';
+const APP_BUILD='2026-10-07 15:36';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -16909,7 +16909,10 @@ function iblSubsDe(x){const ks=new Set();if(!x)return ks;const b=iomBaseActiva(x
 function iblCargar(keepStg){const P=IBL.P;IBL.ops=[];IBL.st=[];IBL.manual=false;IBL.fl=-1;IBL.ver=IOM.ver;const x=iblFuente();
   if(x&&x.fila){const v=iomVista(x.fila,x.codigo);const una=!!iomCfg('avisos').altUnaVez;let id=1;
     v.stages.forEach(s=>s.ops.forEach(o=>{const sinT=o.t==null||o.t===''||!isFinite(+o.t);IBL.ops.push({id:id++,k:s.k,sec:o.sec||'',op:o.op,maq:o.maq||'',t:+o.t||0,sinT,ex:una&&!iomCuenta(o,true),alt:o.alt||''})}))}
-  if(!keepStg){P.stg={};const tiene=iblSubsDe(x);iomSubs().forEach(s=>{if(s.enLinea&&tiene.has(s.k))P.stg[s.k]=true})}}
+  /* 07-oct (carga de la base limpia): una familia con referencias y SIN base general (Henley) no tiene subprocesos al elegirla, y al elegir después su referencia
+     se conservaban esos subprocesos vacíos: no quedaba nada marcado y el balanceo salía en blanco. Si no queda ninguno de los que tiene la referencia, se
+     marcan los de la línea, como al elegir la familia */
+  {const tiene=iblSubsDe(x);if(!keepStg||!iomSubs().some(s=>(P.stg||{})[s.k]&&tiene.has(s.k))){P.stg={};iomSubs().forEach(s=>{if(s.enLinea&&tiene.has(s.k))P.stg[s.k]=true})}}}
 function iblRecalcular(){IBL.manual=false;if(iblFaltan().length){IBL.st=[];IBL.CT=0;IBL.NEED=0;IBL.imposible=false;return}
   const r=iblCalcular(IBL.ops,IBL.P);IBL.st=r.st;IBL.CT=r.CT;IBL.NEED=r.NEED;if(r.act.length)IBL.MACH=r.MACH;IBL.imposible=r.imposible}
 /* al abrir la pestaña: arranca una vez, y si la secuencia cambió (se guardó en Crear referencia o se cargó un archivo) se vuelve a leer y a calcular */
