@@ -769,24 +769,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* ===== 2a · FOTO del DOM de la cola ANTES de extraerla: nada de esto puede cambiar =====
       06-oct (pantalla única): la cola ES la lista del centro; pasó de 12 a 11 columnas (Producto lleva el color; Prendas = hechas de pedidas con las
       pendientes y las horas debajo; Estado = cómo llega o está, con las fechas del paso debajo; Terminar = el ✓ del Resumen). Se miran TODOS los grupos */
-   {CEN.cercAbre={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};render();
+   {CEN.cercAbre={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};CEN.verGrupo=new Proxy({},{get:()=>true});render();   /* 06-oct (revisión): cada grupo muestra sus primeras filas; aquí se miran todas */
     const host=document.getElementById("p-centro");
     const tabla=[...host.querySelectorAll(".panel.cola table")][0];
     __check("2a DOM: existe la tabla de la cola dentro de .panel.cola",!!tabla);
     const ths=tabla?[...tabla.querySelectorAll("thead th")].map(t=>t.textContent.trim()):[];
-    __check("2a DOM: las 11 columnas, en este orden (06-oct: Producto lleva el color y el cliente debajo; Prendas las pendientes y las horas; Estado las fechas del paso; Terminar el ✓)",ths.join("|")==="Puesto|Orden|ODC|Producto|Prendas|Estado|Marca|Recurso|Arranca|Terminar|",ths.join("|"));
+    __check("2a DOM: las 11 columnas, en este orden (06-oct: Producto lleva el color y el cliente debajo; Prendas las pendientes y las horas; Estado las fechas del paso; Terminar el ✓)",ths.join("|")==="#|Orden|ODC|Producto|Prendas|Estado|Marca|Puesto|Arranca|Terminar|",ths.join("|"));
     const filas=tabla?[...tabla.querySelectorAll("tbody tr[draggable]")]:[];
     const P1=programar();const lun1=lunesDe(hoy());
     const colaV=colaCentro("corte",filasDeCentros(["corte"],P1,lun1,dsum(lun1,6),CEN.q).filter(f=>faseOkCEN(f.o))).filter(f=>enListaCEN(f,dsum(lun1,13),P1));
     __check("2a DOM: hay tantas filas arrastrables como órdenes en la cola",filas.length===colaV.length,filas.length+" vs "+colaV.length);
     if(filas.length){const tr=filas[0];const tds=[...tr.querySelectorAll("td")];
      __check("2a DOM: cada fila tiene 11 celdas",tds.length===11,tds.length);
-     __check("2a DOM: celda 1 = asa de arrastre + puesto numérico",!!tr.querySelector("td:nth-child(1) .hand")&&!!tr.querySelector("td:nth-child(1) input[type=number]"));
+     __check("2a DOM: celda 1 = asa de arrastre + lugar en la cola (#, numérico)",!!tr.querySelector("td:nth-child(1) .hand")&&!!tr.querySelector("td:nth-child(1) input[type=number]"));
      __check("2a DOM: celda 2 = foto/WH/fase (whCell) con la marca de puesto",!!tr.querySelector("td:nth-child(2) .fase-mini")||/fase/.test(tds[1].innerHTML));
      __check("2a DOM: celda 8 = selector de recurso con opción auto",!!tr.querySelector("td:nth-child(8) select option[value=\"\"]"));
      __check("2a DOM: celda 9 = fecha de arranque",!!tr.querySelector("td:nth-child(9) input[type=date]"));
      __check("2a DOM: celda 10 = Terminar (el ✓ es mCerrarCentro, o «—» con el porqué) y celda 11 = acciones (registrar prendas / ruta)",(!!tr.querySelector("td:nth-child(10) .visto[onclick*=\"mCerrarCentro(\"]")||!!tr.querySelector("td:nth-child(10) .mut[title]"))&&/ruta|registrar prendas/.test(tds[10].innerHTML));
-     __check("UX-V3: el recurso automático dice primero el recurso («Maquila (externa) · automático» o «sin asignar · automático»): si el desplegable se corta se pierde «automático», no el nombre; nunca «auto (?)»",/ · automático$/.test((tr.querySelector("td:nth-child(8) select option[value=\"\"]")||{}).textContent||"")&&!/>auto \(/.test(tabla.innerHTML)&&!/>automático: /.test(tabla.innerHTML));
+     __check("UX-V3 (06-oct, revisión): el puesto que eligió el programa dice primero el puesto y después «· programa» (o «lo elige el programa» si todavía no tiene); nunca «sin asignar · automático»",/( · programa|^lo elige el programa)$/.test((tr.querySelector("td:nth-child(8) select option[value=\"\"]")||{}).textContent||"")&&!/automático/.test(tabla.innerHTML.replace(/title="[^"]*"/g,'')));
      __check("UX-B6: el cliente va en gris debajo del producto (una línea, entero al pasar el mouse) y las etiquetas de la orden bajan a una segunda línea bajo la WH",!!tr.querySelector("td:nth-child(4) .t2")&&!!tr.querySelector("td:nth-child(4) .cola-cli[title]")&&/cola-etq/.test(String(colaCentroHTML))&&!/whCell\(f\.o\)\} \$\{mandaCola/.test(String(colaCentroHTML)));
      __check("UX-V3: bajo la WH va como máximo UNA etiqueta (las demás en «+N»); «sin tiempo» va bajo Pendientes como dato que falta (t-falta), nunca en ámbar ni apilado bajo la WH",filas.every(r=>{const e=r.querySelector('.cola-etq');return !e||(e.querySelectorAll('.tag:not(.tag-mas)').length<=1&&!/sin tiempo/.test(e.textContent))})&&filas.every(r=>[...r.querySelectorAll('td:nth-child(5) .cola-h .tag')].every(t=>t.classList.contains('t-falta')))&&!/class="tag t-aviso"[^>]*>sin tiempo/.test(tabla.innerHTML));
      __check("2a DOM: los eventos de arrastre están en la fila",["ondragstart","ondragend","ondragover","ondragleave","ondrop"].every(a=>tr.hasAttribute(a)));}
@@ -796,8 +796,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("2a DOM: la fila «soltar al final» está y tiene colspan 11",!!(tabla&&tabla.querySelector("tr.dd-fin td[colspan=\"11\"]")));
     /* cabecera del panel: conteo y nota del orden */
     const h3=host.querySelector(".panel.cola h3");
-    __check("2a DOM: la cabecera dice cuántas órdenes pendientes y prendas por hacer",!!h3&&/órdenes pendientes/.test(h3.textContent)&&/prendas por hacer/.test(h3.textContent),h3&&h3.textContent.slice(0,80));
-    __check("2a DOM: el orden de la cola se explica en el «?» del título de la cola (06-oct: arriba de la tabla quedan las marcas y lo que falta; los conteos de cada grupo van solo en su cabecera, no se repiten)",/Orden de la cola:/.test((host.querySelector(".panel.cola h3 .ayuda")||{getAttribute:()=>""}).getAttribute("title")||"")&&!/Orden de la cola:/.test((host.querySelector(".panel.cola .body")||{innerHTML:""}).innerHTML)&&!/(En proceso aquí|Listas para empezar|Disponible|Por llegar) [0-9]/.test((host.querySelector(".panel.cola .cola-linea")||{textContent:""}).textContent));
+    __check("2a DOM: la cabecera dice cuántas órdenes hay en la lista y cuántas prendas por hacer",!!h3&&/órdenes? en la lista/.test(h3.textContent)&&/prendas por hacer/.test(h3.textContent),h3&&h3.textContent.slice(0,80));
+    __check("2a DOM: el orden de la lista se explica en el «?» del título de la cola (06-oct: arriba de la tabla quedan las marcas y lo que falta; los conteos de cada grupo van solo en su cabecera, no se repiten)",/Orden de la lista:/.test((host.querySelector(".panel.cola h3 .ayuda")||{getAttribute:()=>""}).getAttribute("title")||"")&&!/Orden de la lista:/.test((host.querySelector(".panel.cola .cola-linea")||{innerHTML:""}).innerHTML.replace(/title="[^"]*"/g,''))&&!/(En proceso aquí|Listas para empezar|Disponible|Por llegar) [0-9]/.test((host.querySelector(".panel.cola .cola-linea")||{textContent:""}).textContent));
     /* agrupación común: seleccionar cliente→categoría conserva las filas */
     GRP={};grpSt("cen").niveles=["cliente","cat"];render();
     const t2=[...document.querySelectorAll("#p-centro .panel.cola table")][0];
@@ -810,10 +810,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("2a DOM: el panel «Hecho hoy» aparece exactamente cuando hay hechas hoy",
       (/Hecho hoy en /.test(host.innerHTML))===(hd.detalle.length>0),hd.detalle.length);
     __R.colaDOM={ths,filas:filas.length,grupos:grp.length};
-    CEN.cercAbre=null;render();}
-   __check("cola: la tabla es arrastrable y tiene puesto numérico y zona 'al final'",/draggable="true"/.test(html())&&/onchange="moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
-   __check("cola: sin numerar la pantalla dice que se ordena por cercanía",html().includes("cola sin numerar: se ordena por orden de llegada a este centro"));
-   if(cola.length>=3){const oA=cola[cola.length-1].o,oB=cola[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
+    CEN.cercAbre=null;CEN.verGrupo=null;render();}
+   __check("cola: la tabla es arrastrable y tiene el lugar numérico (#) y zona 'al final'",/draggable="true"/.test(html())&&/moverEnCola\(/.test(html())&&html().includes('poner al final')&&html().includes('Agrupar por'));
+   __check("cola: sin lugares fijados a mano la pantalla dice cómo se ordena (urgencia y orden de llegada)",html().includes("nadie ha fijado lugares a mano"));
+   /* 06-oct (revisión): arrastrar y escribir el lugar siguen el orden QUE SE VE (ordenTrabajoCentro: las ordenadas a mano, En proceso y Listas
+      por urgencia, lo demás como la cola); «la primera» es la primera de la lista */
+   if(cola.length>=3){const ordT=ordenTrabajoCentro('corte',cola);const oA=ordT[ordT.length-1].o,oB=ordT[0].o;const nb=S.bitacora.length;const nAdv=(S.params.advertencias||[]).length;
      DRAGC={oid:oA.id,c:'corte'};const ev={preventDefault(){},currentTarget:{classList:{remove(){},add(){}}},dataTransfer:{}};soltarCola(ev,'corte',oB.id);
      const cola2=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
      __check("cola: soltar sobre la primera la pone en el puesto 1 y NO numera a las demás (decisión 6)",cola2[0].o.id===oA.id&&puestoDe(oA,'corte')===1&&cola2.slice(1).every(f=>puestoDe(f.o,'corte')===0),cola2.slice(0,3).map(f=>f.o.op+':'+puestoDe(f.o,'corte')).join(' '));
@@ -826,9 +828,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("cola: en pantalla ya no hay 'sin puesto' en Corte",!/sin puesto · por orden de llegada/.test(html()));
      // sin puesto va al final (decisión 14-sep): quitar el puesto de la primera la manda al final de la cola y el motor la toma como última
      {const oF=cola3[0].o;delete oF.progCentro.corte.pri;PLAN=null;PLAN_ALL=null;render();const c4=colaCentro('corte',filasDeCentros(['corte'],programar(),lun,dsum(lun,6),''));
-      __check("cola: una orden sin puesto va al final, no se cuela delante de las ordenadas",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&html().includes('sin puesto · por orden de llegada'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
+      __check("cola: una orden sin lugar fijado va al final, no se cuela delante de las ordenadas; y no lleva una etiqueta ámbar «sin puesto» (06-oct: lo normal no es un aviso)",c4[c4.length-1].o.id===oF.id&&prioCentro(oF)===SIN_PUESTO&&prioCentro(oF)>prioCentro(c4[0].o)&&!html().includes('sin puesto · por orden de llegada'));oF.progCentro.corte.pri=1;PLAN=null;PLAN_ALL=null;}
      // agrupar: reordena y suma, no esconde
-     CEN.cercAbre={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};   /* los grupos de cercanía nacen colapsados: aquí se miran TODAS las filas */
+     CEN.cercAbre={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};CEN.verGrupo=new Proxy({},{get:()=>true});   /* los grupos de cercanía nacen colapsados y muestran sus primeras filas: aquí se miran TODAS */
      GRP={};grpSt('cen').niveles=['cliente','cat'];render();const hc=html();const pend3=cola3.reduce((x,f)=>x+Math.max(0,f.o.cant-f.hechas),0);
      const sumaGrp=(hc.match(/ min de trabajo pendiente">[^<]*prendas · [\d.,]+ h<\/span>/g)||[]).length;   /* 02-oct: los minutos pasaron al «title» de las horas (la cabecera del grupo en una línea) */
      __check("cola: agrupar cliente→categoría conserva todas las órdenes y suma pendientes (agrupador común)",hc.includes('Cliente:')&&(hc.match(/draggable="true"/g)||[]).length===cola3.length&&sumaGrp>0&&hc.includes(num(pend3)+' prendas'));
@@ -837,7 +839,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const pr=oA.prio;oA.prio=1;render();__check("cola: si la orden tiene prio global, la pantalla dice que manda",html().includes('prio global 1 manda'),(cercaniaCentro(oA,'corte',programar())||{}).grupo);oA.prio=pr;
      // otro centro con menor puesto
      oA.progCentro.modulos={pri:1};render();__check("cola: si otro centro la tiene en menor puesto, la pantalla lo dice",html().includes('la tiene en 1: manda ese'),(cercaniaCentro(oA,'corte',programar())||{}).grupo);delete oA.progCentro.modulos;
-     CEN.cercAbre=null;
+     CEN.cercAbre=null;CEN.verGrupo=null;
      // perfil sin permiso no mueve
      PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};const antesP=puestoDe(oA,'corte');moverEnCola(oA.id,'corte',{pos:1});__check("cola: un perfil de otro centro no puede mover",puestoDe(oA,'corte')===antesP);PERFIL=adminP;
      // terminados: una cola por centro
@@ -2769,13 +2771,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("CP1: Confección muestra una sección por módulo y la maquila aparte",/Confección por módulo/.test(h)&&/Maquila \(aparte de los módulos\)/.test(h)&&/data-t="mod-/.test(h));
    {const hayP=(programar().pro||[]).some(x=>x.centro==='modulos'&&x.dia>=lunesDe(hoy())&&x.dia<=dsum(lunesDe(hoy()),6));if(!hayP)__check("CP3: sin nada programado esta semana en Confección no hay resumen por familia (el día por día ya lo dice)",!/Resumen de la semana por familia/.test(h));else
    __check("CP3: el resumen de la semana día × familia (unidades y horas) va plegado en «La semana, por partes», después de la lista, y sin la fila «Total» (el total de cada día es el planeado del día por día: no se repite)",/Resumen de la semana por familia/.test(h)&&h.indexOf('id="cen-semana"')>=0&&h.indexOf('id="cen-semana"')<h.indexOf('Resumen de la semana por familia')&&h.indexOf('class="panel cola"')<h.indexOf('Resumen de la semana por familia')&&!/<td>Total<\/td>/.test(h.slice(h.indexOf('Resumen de la semana por familia'))));}
-   __check("UX-V3 (06-oct, pantalla única): «Qué hacer» empieza por la barra de herramientas (con «toda la cola») y sigue la lista; la carga por módulo va en «La semana, por partes», debajo de la lista",h.indexOf('cen-barra')>=0&&h.indexOf('cen-barra')<h.indexOf('class="panel cola"')&&/class="cen-todo"/.test(h)&&h.indexOf('class="panel cola"')<h.indexOf('Confección por módulo')&&h.indexOf('id="cen-lista"')<h.indexOf('id="cen-semana"'));
+   __check("UX-V3 (06-oct, pantalla única): «Qué hacer» empieza por la barra de herramientas (con «toda la cola», en la línea del título) y sigue la lista; la carga por módulo va en «La semana, por partes», debajo de la lista",h.indexOf('cen-barra')>=0&&h.indexOf('cen-barra')<h.indexOf('class="panel cola')&&/class="cen-todo"/.test(h)&&h.indexOf('class="panel cola')<h.indexOf('Confección por módulo')&&h.indexOf('id="cen-lista"')<h.indexOf('id="cen-semana"'));
    {const sc=document.querySelector('#p-centro .panel.cola .scroll.lista');
-    __check("UX-V3: la cola de Programación baja como máximo al 65 % del alto de la pantalla: se ve que debajo viene el congelado",!sc||parseFloat(getComputedStyle(sc).maxHeight)<=window.innerHeight*0.66,sc&&getComputedStyle(sc).maxHeight);}
+    __check("UX-V3 (06-oct, revisión): la lista ya no vive en una caja con su propio desplazamiento: crece con la página (cada grupo muestra sus primeras filas y «ver las N restantes»)",!sc||getComputedStyle(sc).maxHeight==='none',sc&&getComputedStyle(sc).maxHeight);}
    {const pill=document.querySelector('#p-centro .cen-cong');const cg=congeladoDe('modulos',lunesDe(hoy()));__check("UX-B6 (06-oct): el congelado va en UNA línea arriba (no congelada: «Congelar la semana»; congelada: con fecha y quién) y el detalle contra la foto solo existe si hay foto",!!pill&&(cg?(/congelado/.test(pill.textContent)&&/Avance contra el programa congelado/.test(h)):(/no está congelado/.test(pill.textContent)&&/Congelar la semana/.test(pill.innerHTML)&&!/Avance contra el programa congelado/.test(h)&&!/Semana sin congelar/.test(h))));}
    __check("CP2: la programación del centro usa el filtro de fases común y el agrupador común",/class="ffases"/.test(h)&&/setNivelGRP\('cen'|onchange="setNivelGRP\('cen'/.test(h.replace(/&quot;/g,'"'))||/grpSelHTML/.test(h));
    __check("CP5: corte y confección tienen 'juntar colores en la cola' y dice que es solo vista y orden",/Juntar colores en la cola/.test(h)&&/el programa no ordena por color/.test(h));
-   __check("CP6: la cola ya no muestra la fecha de entrega: el estado con las fechas del paso debajo (inicio → fin) y la marca",/>Estado<\/th><th>Marca<\/th>/.test(h)&&(/class="mut cola-plan"/.test(h)||!document.querySelector('#p-centro .panel.cola tbody tr[draggable]')||!(programar().ordenes&&Object.values(programar().ordenes).some(r=>(r.pasos||[]).some(p=>p.centro==='modulos'&&p.ini))))&&!/<th>Entrega<\/th>/.test(h));
+   __check("CP6: la cola ya no muestra la fecha de entrega: el estado con las fechas del paso debajo (inicio → fin) y la marca",(!document.querySelector('#p-centro .panel.cola table')||/>Estado<\/th><th>Marca<\/th>/.test(h))&&(/class="mut cola-plan"/.test(h)||!document.querySelector('#p-centro .panel.cola tbody tr[draggable]')||!(programar().ordenes&&Object.values(programar().ordenes).some(r=>(r.pasos||[]).some(p=>p.centro==='modulos'&&p.ini))))&&!/<th>Entrega<\/th>/.test(h));
    __check("CP7 (06-oct): Costura se abre desde Confección con «Costura →» (otra herramienta, aparte de la pantalla única) y no está suelta en el menú",h.includes('irCostura(')&&!document.querySelector('nav a[data-p="costura"]'));
    CEN.tab='costura';render();h=document.getElementById('p-centro').innerHTML;
    __check("CP7: Costura trae secuencia, rebalanceo y andon dentro del centro",/Secuencia por módulo/.test(h)&&/Rebalanceo/.test(h)&&/Andon/.test(h));CEN.vista='';
@@ -2803,7 +2805,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     else __check("UX-V2: Carga general — el buscador de arriba acota también las listas de «Carga que viene»",true,'sin órdenes en camino a este centro en el simulador')}
    // el filtro de fases acota de verdad
    {page='centro';CEN.id='modulos';CEN.tab='plan';CEN.fases=new Set(['∅']);render();const hv=document.getElementById('p-centro').innerHTML;
-    __check("CP2 (06-oct): 'ninguna fase' deja la lista vacía (el filtro acota las órdenes de verdad; las cifras de «Cómo voy» son del centro entero)",/Nada por programar/.test(hv)&&!document.querySelector('#p-centro .panel.cola tbody tr[draggable]'));CEN.fases=null}
+    __check("CP2 (06-oct): 'ninguna fase' deja la lista vacía (el filtro acota las órdenes de verdad; las cifras de «Cómo voy» son del centro entero)",/nada en la lista/.test(hv)&&!document.querySelector('#p-centro .panel.cola tbody tr[draggable]'));CEN.fases=null}
    // reordenar por color: solo orden manual, con bitácora, sin tocar el motor
    {const P0=programar();const filas=filasDeCentros(['modulos'],P0,hoy(),dsum(hoy(),60),'');const cola=colaCentro('modulos',filas);
     if(cola.length){const nb=S.bitacora.length;const finAntes=JSON.stringify(Object.keys(P0.ordenes).map(id=>(P0.ordenes[id]||{}).finPro));
@@ -3547,7 +3549,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const h=document.getElementById('p-centro').innerHTML;
     /* 06-oct (pantalla única): «Órdenes de la semana» y «Vienen después» se fundieron en la lista del centro: cada fila dice sus prendas de esta
        semana y las fechas del paso; lo que viene después va en Por llegar / Todo lo que viene, con dónde está ahora */
-    __check("CL1 (06-oct): la lista del centro dice cuántas órdenes y prendas tiene, sin la entrega del cliente, y cada fila programada esta semana dice «esta semana N» y sus fechas",/órdenes pendientes · [0-9.]+ prendas por hacer/.test(h)&&!/<th>Entrega<\/th>/.test(h)&&!/Órdenes de la semana/.test(h)&&[...document.querySelectorAll('#p-centro .panel.cola tbody tr[draggable]')].every(tr=>!/esta semana/.test(tr.textContent)||!!tr.querySelector('.cola-plan')));
+    __check("CL1 (06-oct): la lista del centro dice cuántas órdenes y prendas tiene, sin la entrega del cliente, y cada fila programada esta semana dice «esta semana N» y sus fechas",/(órdenes? en la lista · [0-9.]+ prendas por hacer|Cola de [^<]*<\/b> <span class="mut">· nada en la lista)/.test(h)&&!/<th>Entrega<\/th>/.test(h)&&!/Órdenes de la semana/.test(h)&&[...document.querySelectorAll('#p-centro .panel.cola tbody tr[draggable]')].every(tr=>!/esta semana/.test(tr.textContent)||!!tr.querySelector('.cola-plan')));
     __check("CL1: ya no hay listas aparte de las mismas órdenes (Órdenes de la semana, Vienen después, Desviaciones por orden)",!/Órdenes de la semana|Vienen después|Desviaciones por orden/.test(h));
     __check("CL2: la pestaña «Carga que viene» ya no está en el centro",![...document.querySelectorAll('#p-centro .chips .chip')].some(c=>/Carga que viene/.test(c.innerText)));}
    // las que vienen después: mismo bloque, con Dónde está
@@ -4160,9 +4162,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("RA1: mientras se pregunta al servidor, Recurso y Arranca no se pueden tocar",!!v0.sel&&v0.sel.disabled&&/comprobando con el servidor/.test(v0.sel.title||''),v0.sel?v0.sel.title:'sin fila');
     await __p(120);const v=await verCola();
     __check("RA1: la sonda (llamada inocua) recuerda que la función falta",RPC_REC.estado==='falta');
-    __check("RA1: el supervisor ve Recurso y Arranca bloqueados con «lo cambia planificación (falta un paso en Supabase)»",!!v.sel&&v.sel.disabled&&!!v.fec&&v.fec.disabled&&(v.sel.title||'').includes(TXT_REC_FALTA)&&(v.fec.title||'').includes(TXT_REC_FALTA)&&v.h.includes('Recurso y Arranca: '+esc(TXT_REC_FALTA)));
+    __check("RA1: el supervisor ve Recurso y Arranca bloqueados con «lo cambia planificación (falta un paso en Supabase)»",!!v.sel&&v.sel.disabled&&!!v.fec&&v.fec.disabled&&(v.sel.title||'').includes(TXT_REC_FALTA)&&(v.fec.title||'').includes(TXT_REC_FALTA)&&v.h.includes('Puesto y Arranca: '+esc(TXT_REC_FALTA)));
     __check("RA1: «quitar lo fijado» también sale bloqueado (la orden tiene recurso fijado)",!!v.quitar&&v.quitar.disabled&&/falta un paso en Supabase/.test(v.quitar.title||''));
-    __check("RA1: el puesto (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/onchange="moverEnCola\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
+    __check("RA1: el lugar en la cola (arrastrar o escribirlo) sigue habilitado: va por set_prioridad_centro",/moverEnCola\(/.test(v.h)&&!!v.sel.closest('tr').querySelector('input[type="number"]:not([disabled])'));
     const snap=JSON.stringify(fila().data),loc=JSON.stringify(oR.progCentro);__W.writes=[];const nA=alerts.length;
     await setProgCen(oR.id,'modulos','rec',r2);await __p(60);
     __check("RA1: sin la función avisa «Falta correr SUPABASE_RECURSO_CENTRO.sql en Supabase» y NO cambia nada (ni pantalla ni base)",alerts.length>nA&&/Falta correr SUPABASE_RECURSO_CENTRO\.sql en Supabase/.test(alerts[alerts.length-1])&&JSON.stringify(oR.progCentro)===loc&&JSON.stringify(fila().data)===snap&&!__W.writes.some(w=>w.t==='ordenes'),alerts.slice(nA).join(' | '));
@@ -6095,7 +6097,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       /* se mide dentro de la tabla de la cola: la explicación del orden (que nombra los grupos) vive en el «?» del título (UX-B6) */
       const t0=h.indexOf("<tbody",h.indexOf('class="panel cola"'));const iP=h.indexOf("Con puesto manual",t0),iD=h.indexOf("Disponible",t0),iOp=h.indexOf(esc(oLej.op),t0);
       {CEN.todo=true;CEN.cercAbre={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};render();const f2=cola2.find(f=>f.o.id===oLej.id);const g2=f2?grupoListaCEN(f2):"";const tb=document.querySelector("#p-centro .panel.cola tbody");const cabs=[...tb.querySelectorAll("tr.grp-row:not(.fase-row)")];const cab=cabs.find(x=>x.textContent.includes(nGrupoCerc(g2)));let nx=cab?cab.nextElementSibling:null;while(nx&&!nx.hasAttribute("draggable"))nx=nx.nextElementSibling;
-       __check("CF (06-oct, pantalla única): una orden con puesto manual sigue en SU grupo (la de fase lejana, en «Todo lo que viene» o donde le toque) y va primera dentro de él; partirPorCercania (el motor, Hoy) la sigue contando como «puesto»",m2.puesto.length>=1&&m2.puesto[0].o.id===oLej.id&&!!cab&&!!nx&&(nx.getAttribute("ondragstart")||"").includes("'"+oLej.id+"'")&&(nx.querySelector("td:nth-child(1) input")||{}).value==="1",JSON.stringify({g2,cab:!!cab}));CEN.todo=false;CEN.cercAbre=null;render()}
+       __check("CF (06-oct, revisión): una orden con lugar fijado a mano va arriba, en el grupo «Ordenadas a mano» (la regla de la cola del 17-sep), primera y con su número en #, aunque su fase sea lejana; partirPorCercania (el motor, Hoy) la sigue contando como «puesto»",g2==="puesto"&&m2.puesto.length>=1&&m2.puesto[0].o.id===oLej.id&&!!cab&&!!nx&&(nx.getAttribute("ondragstart")||"").includes("'"+oLej.id+"'")&&(nx.querySelector("td:nth-child(1) input")||{}).value==="1",JSON.stringify({g2,cab:!!cab}));CEN.todo=false;CEN.cercAbre=null;render()}
       __check("CF: la cola muestra subcabeceras por fase dentro de Por llegar",/fase-row/.test(h));
       __check("UX-B6: la subcabecera de fase dice la fase sin el número de Odoo pegado (como la etiqueta de la fila: «CD CORTE», no «3CD CORTE»)",[...document.querySelectorAll("#p-centro tr.fase-row b")].every(b=>!/^[0-9]/.test(b.textContent.trim())));
       oLej.progCentro=bakPC==="null"?undefined:JSON.parse(bakPC);if(oLej.progCentro===undefined)delete oLej.progCentro;PLAN=null;PLAN_ALL=null;}}
@@ -6126,10 +6128,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const h=document.getElementById("p-centro").innerHTML;
     /* --- CF2 · correcciones del 17-sep sobre la cola construida --- */
     {const host=document.getElementById("p-centro");
-     __check("CF2: el texto explicativo de la pestaña ya no ocupa pantalla: va en un «?» junto al título de la cola",!/<p class="lede">/.test(h)&&!!host.querySelector(".panel.cola h3 .ayuda")&&/puesto manual SOLO a ella/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title"))&&!/renumera la cola completa/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title")));
-     const body=host.querySelector(".panel.cola .body");
+     __check("CF2: el texto explicativo de la pestaña ya no ocupa pantalla: va en un «?» junto al título de la cola",!/<p class="lede">/.test(h)&&!!host.querySelector(".panel.cola h3 .ayuda")&&/SOLO esa orden/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title"))&&!/renumera la cola completa/.test(host.querySelector(".panel.cola h3 .ayuda").getAttribute("title")));
+     const body=host.querySelector(".panel.cola");   /* 06-oct (revisión): la línea de marcas y avisos va pegada al título, sin recuadro aparte */
      __check("CF2 (06-oct, pantalla única): los conteos de cada grupo van solo en su cabecera («N órdenes · X prendas»); arriba de la tabla no se repiten",(()=>{const p=body&&body.querySelector(".cola-conteos");const t=p?p.textContent.replace(/\s+/g," "):"";const cabs=[...host.querySelectorAll(".panel.cola tbody tr.grp-row:not(.fase-row)")].map(x=>x.textContent.replace(/\s+/g," "));return (!p||/^\s*fases sin confirmar\s*$/.test(t))&&cabs.length>0&&cabs.every(x=>/[0-9]+ (orden|órdenes) · [0-9.]+ prendas/.test(x))})(),body&&(body.querySelector(".cola-conteos")||{}).textContent);
-     __check("CF2: el orden de la cola y su explicación completa (incluida la convención de días) van en el «?» del título; arriba de la tabla ya no hay una línea «Orden de la cola» (UX-B6)",(()=>{const q=host.querySelector(".panel.cola h3 .ayuda");const tx=host.querySelector(".panel.cola h3 .ayuda-txt");return !!q&&/Orden de la cola:/.test(q.getAttribute("title"))&&/hoy no cuenta/.test(q.getAttribute("title"))&&!!tx&&/hoy no cuenta/.test(tx.textContent)&&![...body.querySelectorAll("p")].some(x=>/Orden de la cola:/.test(x.textContent))})());
+     __check("CF2: el orden de la cola y su explicación completa (incluida la convención de días) van en el «?» del título; arriba de la tabla ya no hay una línea «Orden de la cola» (UX-B6)",(()=>{const q=host.querySelector(".panel.cola h3 .ayuda");const tx=host.querySelector(".panel.cola h3 .ayuda-txt");return !!q&&/Orden de la lista:/.test(q.getAttribute("title"))&&/hoy no cuenta/.test(q.getAttribute("title"))&&!!tx&&/hoy no cuenta/.test(tx.textContent)&&![...body.querySelectorAll("p")].some(x=>/Orden de la lista:/.test(x.textContent))})());
      __check("CF2: el «?» sirve en tablet: es un details que al abrirse muestra el mismo texto del tooltip debajo, y cerrado no ocupa espacio",(()=>{const d=host.querySelector(".panel.cola h3 .ayuda-d");if(!d)return false;const tx=d.querySelector(".ayuda-txt");const cerrado=tx.getBoundingClientRect().height;d.querySelector(".ayuda").click();const abierto=tx.getBoundingClientRect().height;d.querySelector(".ayuda").click();const cerrado2=tx.getBoundingClientRect().height;return cerrado===0&&abierto>10&&cerrado2===0&&tx.textContent===d.querySelector(".ayuda").getAttribute("title")&&![...host.querySelectorAll(".panel.cola .body p")].some(x=>!x.textContent.trim())})());
      __check("CF2: la línea de marcas existe exactamente cuando alguna fila lleva marca, dice cuántas rojas, ámbar y sin marca con porcentaje, y el porqué en el «?»",(()=>{const p=body.querySelector(".cola-marcas");const P4=programar();const lun4=lunesDe(hoy());const r=conteoColoresCola(colaCentro("corte",filasDeCentros(["corte"],P4,lun4,dsum(lun4,6),"")),P4,"corte");const hay=r.venc+r.noLlega+r.paso+r.sinMeta>0;if(!hay)return !p;if(!p)return false;const q=p.querySelector(".ayuda");return /rojas/.test(p.textContent)&&/ámbar/.test(p.textContent)&&/sin marca/.test(p.textContent)&&/%/.test(p.textContent)&&new RegExp(r.rojo+" rojas").test(p.textContent.replace(/\s+/g," "))&&!!q&&/Por qué aparecen/.test(q.getAttribute("title"))&&/fecha meta de la orden/.test(q.getAttribute("title"))&&/UNA sola vez/.test(q.getAttribute("title"))&&!/white-space:nowrap/.test(p.getAttribute("style")||"")})());
      const tr=host.querySelector(".panel.cola tbody tr[draggable]");
@@ -6148,9 +6150,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("CF2: 3 días se queda en Por llegar; Disponible no se toca; «sin programar» no se mueve (no se estima)",y.grupo==="porLlegar"&&!y.lejosPorFecha&&z.grupo==="disponible"&&w.grupo==="porLlegar");}
      __check("CF2: las notas de los grupos dicen el corte a la vista, y Por llegar no promete fecha a lo que no la tiene",/dentro de 15 días hábiles, o sin fecha conocida/.test(notaGrupoCerc("porLlegar"))&&/más de 15 días hábiles/.test(notaGrupoCerc("lejana")));
      __check("CF2: Costura pinta las mismas marcas con los mismos nombres y colores (marcaCentro sale de MARCAS_CEN)",/marcasDe\(o,P,c\)/.test(String(marcaCentro))&&!/la orden va tarde|este paso va tarde/.test(String(marcaCentro)));}
-    __check("CF (06-oct, pantalla única): ya no hay grupo «Con puesto manual»: el puesto ordena dentro del grupo de cada orden (regla del Resumen del 19-sep: no vuelve «lista» una orden que no llegó) y el número se ve en la columna Puesto",!/Con puesto manual/.test(h.slice(h.indexOf("<tbody",h.indexOf('class="panel cola"'))))&&[...document.querySelectorAll("#p-centro .panel.cola tbody tr[draggable]")].every(tr=>{const oid=((tr.getAttribute("ondragstart")||"").match(/arrastrarCola\(event,'([^']+)'/)||[])[1];const o=S.ordenes.find(x=>x.id===oid);const v=(tr.querySelector("td:nth-child(1) input")||{}).value||"";return !o||String(puestoDe(o,"corte")||"")===v}));
+    __check("CF (06-oct, revisión): sin lugares fijados a mano no sale el grupo «Ordenadas a mano»; en # el número escrito (valor) es solo el de las ordenadas a mano, las demás lo llevan en gris (placeholder)",[...document.querySelectorAll("#p-centro .panel.cola tbody tr[draggable]")].every(tr=>{const oid=((tr.getAttribute("ondragstart")||"").match(/arrastrarCola\(event,'([^']+)'/)||[])[1];const o=S.ordenes.find(x=>x.id===oid);const v=(tr.querySelector("td:nth-child(1) input")||{}).value||"";return !o||(puestoDe(o,"corte")>0)===(v!=="")})&&(ordenesConPuesto("corte").length>0||!/Ordenadas a mano/.test(h.slice(h.indexOf("<tbody",h.indexOf('class="panel cola"'))))));
     __check("CC4b: el tooltip del arrastre dice que bajar una orden numera las de encima",
-      /bajar una orden numera tambi\u00e9n las que quedan por encima/.test(h));}
+      /si la bajas, tambi\u00e9n las que quedan por encima/.test(h));}
    /* --- 5 · el orden de la cola --- */
    {const c=["botones","corte","modulos","empaque"].find(x=>CE(x))||"corte";
     const lun=lunesDe(hoy());const filas=filasDeCentros([c],P,lun,dsum(lun,6),"");const cola=colaCentro(c,filas);
@@ -6214,7 +6216,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const v=colaCentro(c,filasDeCentros([c],P2,lun,dsum(lun,6),"")).map(f=>f.o.id).join();
       return t===v})());
     __check("CC7: ordenarColaPorColor avisa de que el puesto manual apaga la cercanía",
-      /el puesto manual manda sobre el orden de llegada/.test(String(ordenarColaPorColor)));
+      /el lugar fijado manda sobre el orden de llegada/.test(String(ordenarColaPorColor)));   /* 06-oct: «puesto» quedó para la máquina o el módulo; la prioridad es el lugar (#) */
     __check("CC7: y lo deja escrito en la bitácora",/deja de aplicarles/.test(String(ordenarColaPorColor)));}
    /* --- 8 · la ODC va en columna propia; whCell NO se tocó --- */
    {__check("CC8: whCell sigue siendo foto + WH + fase + cierre, sin ODC",
@@ -6223,7 +6225,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const h=document.getElementById("p-centro").innerHTML;
     __check("CC8 (06-oct): la cola tiene columna ODC y columna Estado (cuándo llega o cómo está aquí, con las fechas del paso debajo)",/<th>ODC<\/th>/.test(h)&&/>Estado<\/th>/.test(h));
     __check("CC8: y la nota explica de dónde sale el orden y la convención de días",
-      /Orden de la cola/.test(h)&&/hoy no cuenta/.test(h));
+      /Orden de la lista/.test(h)&&/hoy no cuenta/.test(h));
     __check("CC8: los grupos de cercanía se ven en la cola",/En proceso aquí|Listas para empezar|Por llegar|Todo lo que viene|Revisar ruta/.test(h));}
    /* --- 9 · decisión 9: la hora de las OT en campos nuevos, sin tocar lo de antes --- */
    {__check("CC9: excelFecha sigue devolviendo solo la fecha",
@@ -6643,7 +6645,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("AB10: la cola se filtró con el texto (solo filas que calzan)",filas.every(tr=>/22918/.test(tr.textContent)),filas.length+" filas");
      /* y sigue siendo la misma cola: cabeceras y estructura intactas tras el repintado parcial */
      const ths=[...document.querySelectorAll('[data-lista="CEN.q"] thead th')].map(t=>t.textContent.trim());
-     __check("AB10: las 11 columnas siguen en su orden tras el repintado parcial (06-oct: la cola es la lista del centro)",ths.slice(0,11).join("|")==="Puesto|Orden|ODC|Producto|Prendas|Estado|Marca|Recurso|Arranca|Terminar|",ths.join("|"));
+     __check("AB10: las 11 columnas siguen en su orden tras el repintado parcial (06-oct: la cola es la lista del centro; si no queda ninguna, la cola va en una línea)",ths.slice(0,11).join("|")==="#|Orden|ODC|Producto|Prendas|Estado|Marca|Puesto|Arranca|Terminar|"||(!ths.length&&!!document.querySelector('[data-lista="CEN.q"] .panel.cola.cola-vacia')),ths.join("|"));
      CEN.q="";render()}}
    /* ---------- 3m · redibujo parcial en LIBERACIÓN (2b) ---------- */
    {page="liberacion";LIB.et="tela";LIB.ym=null;LIB.odc=null;LIB.fam=null;LIB.cli=null;LIB.fam2=null;LIB.q="";LIB.fases=null;LIB.verLista=true;LIB.sel=new Set();GRP={};FUERA["LIB.q"]=false;render();
@@ -6807,7 +6809,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const h=document.getElementById("p-centro").innerHTML;
      __check("TO5: «asignar a operario» se retiró de la cola (decisión 17-sep); el supervisor fija recurso y fecha en la propia fila",!/asignar a operario|mAsignarOperario/.test(h)&&typeof window.mAsignarOperario==="undefined"&&/setProgCen\('[^']+','[^']+','rec'/.test(h)&&/setProgCen\('[^']+','[^']+','desde'/.test(h));
      if(sinT){const tr=[...document.querySelectorAll("#p-centro .panel.cola tbody tr[draggable]")].find(t=>(t.getAttribute("ondragstart")||"").includes("'"+sinT.id+"'"));
-      __check("TO5: con «toda la cola» la orden del paso sin tiempo está en la cola y su recurso y fecha se pueden fijar desde la fila (habilitados)",!!tr&&!!tr.querySelector("td:nth-child(8) select:not([disabled])")&&!!tr.querySelector("td:nth-child(9) input[type=date]:not([disabled])")&&/sin tiempo estándar/.test(tr.innerHTML),sinT.op);
+      __check("TO5: con «toda la cola» la orden del paso sin tiempo está en la cola y su recurso y fecha se pueden fijar desde la fila (habilitados)",!!tr&&!!tr.querySelector("td:nth-child(8) select:not([disabled])")&&!!tr.querySelector("td:nth-child(9) input[type=date]:not([disabled])")&&/sin minutos por prenda \(tiempo estándar\)/.test(tr.innerHTML),sinT.op);
       __check("UX-V3: en la cola, «sin tiempo» va bajo Pendientes como dato que falta (t-falta, igual que en el Resumen y Planificación) y no se repite bajo la WH",!!tr&&!!tr.querySelector("td:nth-child(5) .cola-h .tag.t-falta")&&!/sin tiempo/.test((tr.querySelector(".cola-etq")||{}).textContent||""),sinT.op);}}}
    /* --- A6/A7 · cola vacía y buscador fuera del plan --- */
    {__check("TO6: la cola vacía dice «Sin programación cargada — avise al supervisor»",
@@ -8821,9 +8823,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check("RC2: una orden que aún no llegó, aunque le pongan puesto manual, sigue en En espera (no pasa a Listas)",!r3.listas.some(f=>f.o===oP.o)&&r3.espera.some(f=>f.o===oP.o));delete oP.o.progCentro[oP.c]}}
     CEN.todo=true;CEN.cercAbre=TODOS;render();const gd=gruposDOM();const sinFuera=x=>x.filter(f=>enPlantaParaCentro(f.o));
     __check("RC2 (06-oct): la lista muestra En proceso aquí, Listas para empezar y Por liberar a producción con las mismas órdenes que listasYEspera, y el resto de la cola en sus grupos (Por llegar, Todo lo que viene, Revisar, Ya salió) — ni una de más ni de menos",ids(proceso.map(f=>({o:{id:f.o.id}})))===((gd.proceso||[]).slice().sort().join(','))&&ids(listas.map(f=>({o:{id:f.o.id}})))===((gd.listas||[]).slice().sort().join(','))&&ids(porLib.map(f=>({o:{id:f.o.id}})))===((gd.porLiberar||[]).slice().sort().join(','))&&ids(espera.map(f=>({o:{id:f.o.id}})))===['porLlegar','revisar','lejana','anomalia'].flatMap(g=>gd[g]||[]).filter(id=>sinFuera(cola).some(f=>f.o.id===id)).sort().join(','),JSON.stringify(Object.fromEntries(Object.entries(gd).map(([k,v])=>[k,v.length]))));
-    __check("RC2 (06-oct): Listas va en el orden de la cola (colaCentro: puesto → orden de llegada → entrega), el mismo del arrastre; el estado de cada fila dice si está atrasada, es para hoy o cuándo le toca",(()=>{const enCola=colaCentro('corte',filas).filter(f=>listas.includes(f)).map(f=>f.o.id);return (gd.listas||[]).join(',')===enCola.join(',')})());
+    __check("RC2 (06-oct, revisión): Listas va por urgencia (atrasada → para hoy → después → sin programar: la regla del Resumen del centro, la misma de listasYEspera) y ese es también el orden del arrastre (ordenTrabajoCentro); las que tienen lugar fijado a mano van arriba, en «Ordenadas a mano»",(()=>{const esp=listas.filter(f=>!puestoDe(f.o,'corte')).map(f=>f.o.id);const ot=ordenTrabajoCentro('corte',colaCentro('corte',filas)).filter(f=>esp.includes(f.o.id)).map(f=>f.o.id);return (gd.listas||[]).join(',')===esp.join(',')&&ot.join(',')===esp.join(',')})());
     const filasDOM=[...pc().querySelectorAll('.panel.cola tbody tr[draggable]')];const deG=g=>filasDOM.filter(tr=>(gd[g]||[]).includes(oidDe(tr)));
-    __check("RC2: cada fila de Listas lleva foto/WH/fase (whCell), producto, prendas hechas de pedidas con su barra, el estado frente al programa de este centro y el ✓",deG('listas').every(tr=>tr.querySelector('.fase-mini')&&tr.querySelector('.cola-bar')&&tr.querySelector('td:nth-child(6) .tag')&&tr.querySelector('.visto')));
+    __check("RC2: cada fila de Listas lleva foto/WH/fase (whCell), producto, prendas hechas de pedidas con su barra, el estado frente al programa de este centro y «terminar aquí» en el menú ⋯ (06-oct, revisión: el ✓ verde solo en lo que ya está en proceso)",deG('listas').every(tr=>tr.querySelector('.fase-mini')&&tr.querySelector('.cola-bar')&&tr.querySelector('td:nth-child(6) .tag')&&!tr.querySelector('.visto')&&/terminar aquí/.test(tr.querySelector('td:last-child').innerHTML)));
     __check("RC2: lo que todavía no llega (Por llegar, Todo lo que viene) y lo que espera la liberación NO tiene ✓",['porLlegar','lejana','porLiberar','fuera'].every(g=>deG(g).every(tr=>!tr.querySelector('.visto'))));
     CEN.todo=false;CEN.cercAbre=null;
     __R.rc={listas:listas.length,espera:espera.length,cola:cola.length};}
@@ -8898,7 +8900,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B6: en «Todo Terminados» no salen los botoncitos de puesto (ya filtran las pestañas de sub-área)",!pc().querySelector('.res-chips'));
     abrir('corte',0);const lun=lunesDe(h);__check("RC8: la cabecera dice la semana ISO, el rango laborable y hoy",new RegExp('Semana '+semanaISO(lun).split('-S')[1]+' · ').test(txt(pc().querySelector('.res-sem')))&&txt(pc().querySelector('.res-sem')).includes('hoy '+fmtDia(h)));}
    __check("RC: GUARDIA — la pantalla no calcula la cola ni el avance por su cuenta: usa colaCentro, cercanía (grupo), enProcesoEnCentro, datosDiaCentro, habilesDesde/Hasta, mCerrarCentro, congeladoDe, avanceSemanaCentro y resumenSubCentros",
-    /colaCentro\(/.test(String(listasYEspera))&&/!=='disponible'|==='disponible'/.test(String(listasYEspera))&&/colaCentro\(/.test(String(colaCentroHTML))&&/grupoListaCEN\(/.test(String(colaCentroHTML))&&/enProcesoEnCentro\(/.test(String(grupoListaCEN))&&/disponible/.test(String(grupoListaCEN))
+    /colaCentro\(/.test(String(listasYEspera))&&/!=='disponible'|==='disponible'/.test(String(listasYEspera))&&/colaCentro\(/.test(String(colaCentroHTML))&&/grupoListaCEN\(/.test(String(colaCentroHTML))&&/enProcesoEnCentro\(/.test(String(grupoBaseCEN))&&/disponible/.test(String(grupoBaseCEN))&&/grupoBaseCEN\(/.test(String(grupoListaCEN))&&/cmpUrgenciaCentro\(/.test(String(listasYEspera))&&/cmpUrgenciaCentro\(/.test(String(ordenTrabajoCentro))&&/ordenTrabajoCentro\(/.test(String(colaCentroHTML))&&/ordenTrabajoCentro\(/.test(String(moverEnCola))
     &&/datosDiaCentro\(/.test(String(tarjetasResumenCentroHTML))&&/datosDiaCentro\(/.test(String(diaPorDiaHTML))&&/habilesDesde\(/.test(String(estadoListaCentro))&&/habilesHasta\(/.test(String(estadoListaCentro))&&/mCerrarCentro\(/.test(String(colaCentroHTML))&&/congeladoDe\(/.test(String(congeladoPillHTML))
     &&/avanceSemanaCentro\(/.test(String(subAreasSemanaHTML))&&/resumenSubCentros\(/.test(String(subAreasSemanaHTML))&&/sinRegistroSemana\(/.test(String(tarjetasResumenCentroHTML))&&/sinRegistroSemana\(/.test(String(subAreasSemanaHTML)));
    window.alert=al;PERFIL=adminP0();CEN.sem=0;CEN.rec='';CEN.dia=null;CEN.tab='';CEN.vista='';CEN.todo=false;CEN.cercAbre=null;PLAN=null;PLAN_ALL=null;page='ordenes';render();
@@ -8914,7 +8916,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const TODOS={proceso:true,listas:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};
    const oidDe=tr=>((tr.getAttribute('ondragstart')||'').match(/arrastrarCola\(event,'([^']+)'/)||[])[1];
    const ITEMS=[...new Set(S.centros.filter(c=>c.area==='pro').map(c=>grupoPlanDe(c.id)))].filter(g=>censDeGrupo(g).length);
-   const abrir=(g,extra)=>{NAVH.length=0;CEN.auto=true;CEN.rec='';CEN.dia=null;CEN.q='';CEN.fases=null;CEN.todo=false;CEN.cercAbre=null;CEN.vista='';delete BUSQ['CEN.q'];grpSt('cen').niveles=[];irItemPlan(g);Object.assign(CEN,extra||{});render();return pc()};
+   const VER_TODO=new Proxy({},{get:()=>true});   /* 06-oct (revisión): cada grupo de la lista muestra sus primeras filas; con esto, todas */
+   const abrir=(g,extra)=>{NAVH.length=0;CEN.auto=true;CEN.verGrupo=null;CEN.resaltar=null;CEN.rec='';CEN.dia=null;CEN.q='';CEN.fases=null;CEN.todo=false;CEN.cercAbre=null;CEN.vista='';delete BUSQ['CEN.q'];grpSt('cen').niveles=[];irItemPlan(g);Object.assign(CEN,extra||{});render();return pc()};
    const huella=()=>{PLAN=null;if(typeof PLAN_ALL!=='undefined')PLAN_ALL=null;const P=programar();const f3=v=>v!=null&&v!==''&&!isNaN(+v)?(+v).toFixed(3):String(v==null?'':v);
      const prog=Object.keys(P.ordenes).sort().map(id=>{const r=P.ordenes[id];return id+'|'+[r.finPro,r.telaLista,r.atraso].join('|')+'|'+(r.pasos||[]).map(p=>[p.centro,p.ini,p.fin,p.rec,f3(p.min)].join(':')).join(',')});
      return prog.join('\n')+'\n#\n'+(P.pro||[]).map(x=>[x.op,x.centro,x.rec,x.dia,f3(x.min),f3(x.pz)].join(':')).sort().join('\n')};
@@ -8987,7 +8990,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     for(const g of ITEMS){PERFIL=adminP0();const el=abrir(g);const cens=censDeGrupo(g);const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
       const L=dias.map(d=>datosDiaCentro(cens,P,d,recs));const pz=L.reduce((a,x)=>a+x.pz,0);const cap=L.reduce((a,x)=>a+x.cap,0);
       const porSub=cens.length>1?cens.map(c=>dias.reduce((a,d)=>a+datosDiaCentro([c],P,d,S.recursos.filter(r=>r.activa&&r.centro===c)).pz,0)):[];const porSubCap=cens.length>1?cens.map(c=>dias.reduce((a,d)=>a+datosDiaCentro([c],P,d,S.recursos.filter(r=>r.activa&&r.centro===c)).cap,0)):[];
-      const t=txt(el).replace(txt(el.querySelector('.res-cong')),'');const cuenta=v=>(t.match(rx(v))||[]).length;   /* «contra lo congelado: de N prendas de la foto» es la foto, no lo programado: si nada cambió desde que se congeló, coinciden */
+      const t=(()=>{const cl=el.cloneNode(true);cl.querySelectorAll('.res-cong,.ayuda-txt').forEach(x=>x.remove());return txt(cl)})();   /* los textos del «?» no están en pantalla (06-oct, revisión: con la semana congelada, lo programado ahora va al «?») */const cuenta=v=>(t.match(rx(v))||[]).length;   /* «contra lo congelado: de N prendas de la foto» es la foto, no lo programado: si nada cambió desde que se congeló, coinciden */
       if(pz>=1000&&!porSub.includes(pz)&&!L.some(x=>x.pz===pz)&&cuenta(num(pz))!==1)mal.push(g+': programadas '+num(pz)+' ×'+cuenta(num(pz)));
       if(cap>=1000&&!L.some(x=>x.cap===cap)&&!porSubCap.includes(cap)&&cuenta(num(cap))!==1)mal.push(g+': capacidad '+num(cap)+' ×'+cuenta(num(cap)));
       ['Avance de la semana','Órdenes de la semana','Vienen después','Desviaciones por orden','Día a día','Órdenes con atraso','Prendas reales / plan','Detalle por sub-área','Semana sin congelar'].forEach(x=>{if(t.includes(x))mal.push(g+': sigue «'+x+'»')});
@@ -9002,9 +9005,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.params.progCongelado=JSON.parse(bakCong);}
    /* CU4 · las cifras son las de siempre: salen de las mismas funciones (misma semana, centro y recurso) */
    {const P=programar();const h=hoy();const lun=lunesDe(h),dom=dsum(lun,6);const dias=[];for(let d=lun;d<=dom;d=dsum(d,1))dias.push(d);const mal=[];
-    for(const g of ['corte','modulos']){PERFIL=adminP0();const el=abrir(g,{todo:true,cercAbre:TODOS});const cens=censDeGrupo(g);const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
+    for(const g of ['corte','modulos']){PERFIL=adminP0();const el=abrir(g,{todo:true,cercAbre:TODOS,verGrupo:VER_TODO});const cens=censDeGrupo(g);const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));
       const L=dias.map(d=>datosDiaCentro(cens,P,d,recs));const pz=L.reduce((a,x)=>a+x.pz,0),hechas=L.reduce((a,x)=>a+x.hechas,0);
-      if(!txt(el.querySelector('.res-card-w')).includes(num(hechas)+' de '+num(pz)+' prendas programadas'))mal.push(g+': ¿Cómo voy?');
+      {const aC=avanceSemanaCentro(cens,P,dias,recs);const fotoM=cens.every(c=>congeladoDe(c,lun))&&aC.congPct!==null&&aC.cong&&aC.cong.pzProg>0;   /* congelada: el número grande es el de la foto (avanceSemanaCentro) */
+       if(!txt(el.querySelector('.res-card-w')).includes(fotoM?num(aC.cong.hechas)+' de '+num(aC.cong.pzProg)+' prendas de la foto congelada':num(hechas)+' de '+num(pz)+' prendas programadas'))mal.push(g+': ¿Cómo voy?')}
       const fc=filasDeCentros(cens,P,lun,dom,'',true);const at=[].concat(...cens.map(c=>{const r=listasYEspera(c,fc);return r.proceso.concat(r.listas)})).filter(f=>estadoListaCentro(f).k==='atrasada').length;
       if(txt([...el.querySelectorAll('.res-card')][1].querySelector('.res-n'))!==num(at))mal.push(g+': atrasadas');
       const sr=sinRegistroSemana(L,h);if(txt([...el.querySelectorAll('.res-card')][2].querySelector('.res-n'))!==num(sr.sinReg.length))mal.push(g+': días sin registrar');
@@ -9015,8 +9019,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const sd=txt(el.querySelector('#cen-detalle .cen-desv summary'));if(nd?!sd.includes(num(nd)+' '+(nd===1?'orden':'órdenes')):!!el.querySelector('#cen-detalle .cen-desv'))mal.push(g+': por debajo del plan '+nd+' vs «'+sd.slice(0,60)+'»');
       const paros=dias.reduce((a,d)=>a+(S.paros||[]).filter(p=>p.d===d&&recs.some(x=>x.id===p.rec)).reduce((b,p)=>b+(+p.min||0),0),0);if(paros&&!txt(el).includes('paros de la semana: '+num(paros)+' min'))mal.push(g+': paros')}
     {const g='terminados';PERFIL=adminP0();const el=abrir(g);const cens=censDeGrupo(g);const rs=resumenSubCentros(g,P,lun,dom);const g3=subAreasResumen(cens,P,dias);
-     [...el.querySelectorAll('.cen-subs tbody tr')].forEach((tr,i)=>{const c=cens[i];const a=avanceSemanaCentro([c],P,dias,S.recursos.filter(r=>r.activa&&r.centro===c));const f=rs.filas.find(x=>x.c===c);const s=g3.find(x=>x.c===c);
-       if(txt(tr.cells[1])!==num(a.pz))mal.push(c+': programadas '+txt(tr.cells[1])+' vs '+num(a.pz));if(f&&f.pct!=null&&!f.porDias&&!txt(tr.cells[4]).includes(Math.round(f.pct)+' %'))mal.push(c+': ocupación');if(s&&!txt(tr.cells[6]).startsWith(num(s.pz)))mal.push(c+': pendiente cartera')})}
+     [...el.querySelectorAll('.cen-subs tbody tr:not(.cen-subs-tot)')].forEach((tr,i)=>{const c=cens[i];const a=avanceSemanaCentro([c],P,dias,S.recursos.filter(r=>r.activa&&r.centro===c));const f=rs.filas.find(x=>x.c===c);const s=g3.find(x=>x.c===c);
+       if(txt(tr.cells[1])!==num(a.pz))mal.push(c+': programadas '+txt(tr.cells[1])+' vs '+num(a.pz));if(f&&f.pct!=null&&!f.porDias&&!(txt(tr.cells[4]).startsWith(String(Math.round(f.pct)))&&(tr.cells[4].querySelector('[title]')||{getAttribute:()=>''}).getAttribute('title').startsWith(Math.round(f.pct)+' %')))mal.push(c+': ocupación');if(f&&txt(tr.cells[5])!==num(f.ops))mal.push(c+': órdenes de la semana');if(s&&!txt(tr.cells[7]).startsWith(num(s.pz)))mal.push(c+': pendiente cartera')})}
     __check("CU4: las cifras son las de siempre, de las mismas funciones: «¿Cómo voy?» = datosDiaCentro; atrasadas = estadoListaCentro sobre listasYEspera; días sin registrar = la regla de la tarjeta; la lista = colaCentro; marcas = conteoColoresCola; por debajo del plan = la cuenta de Ejecución; paros = S.paros; sub-áreas = avanceSemanaCentro, resumenSubCentros y subAreasResumen",!mal.length,mal.slice(0,6).join(' | '));}
    /* CU5 · las entradas caen en la pantalla única, en el centro y la sección que les toca */
    {PERFIL=adminP0();const res={};
@@ -9039,7 +9043,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    /* CU6 · Tablero, Odoo y Clásico; oscuro; 390 px */
    {const mal=[];
     for(const tema of ['tablero','odoo','clasico']){S.params.tema=tema;for(const g of ['corte','modulos','terminados']){const e0=__R.errors.length;let el;try{el=abrir(g)}catch(e){mal.push(tema+'/'+g+': '+e.message);continue}
-      const ths=[...el.querySelectorAll('.panel.cola thead th')].map(txt);if(__R.errors.length>e0)mal.push(tema+'/'+g+': error');if(ths.slice(0,11).join('|')!=='Puesto|Orden|ODC|Producto|Prendas|Estado|Marca|Recurso|Arranca|Terminar|')mal.push(tema+'/'+g+': columnas '+ths.join('|'));if(!el.querySelector('#cen-hoy .res-cards'))mal.push(tema+'/'+g+': tarjetas')}}
+      const ths=[...el.querySelectorAll('.panel.cola thead th')].map(txt);if(__R.errors.length>e0)mal.push(tema+'/'+g+': error');if(ths.slice(0,11).join('|')!=='#|Orden|ODC|Producto|Prendas|Estado|Marca|Puesto|Arranca|Terminar|')mal.push(tema+'/'+g+': columnas '+ths.join('|'));if(!el.querySelector('#cen-hoy .res-cards'))mal.push(tema+'/'+g+': tarjetas')}}
     S.params.tema=bakT;if(bakT===undefined)delete S.params.tema;
     __check("CU6: la pantalla del centro se dibuja igual en Tablero, Odoo y Clásico (11 columnas, «Cómo voy» con sus tarjetas, sin errores)",!mal.length,mal.slice(0,4).join(' | '))}
    {const rgba=s=>{const m=String(s||'').match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(',').map(x=>+x);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
@@ -9056,6 +9060,85 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
         if(!m||d.documentElement.scrollWidth>391||m.scrollWidth>m.clientWidth+1)mal.push(g+': página '+d.documentElement.scrollWidth+' · main '+(m?m.scrollWidth+'/'+m.clientWidth:'-'));
         const tr=d.querySelector('#p-centro .panel.cola tbody tr[draggable]');if(tr&&fr.contentWindow.getComputedStyle(tr).display!=='grid')mal.push(g+': la fila no va en tarjeta');}finally{fr.remove()}}
     __check("CU6: a 390 px (teléfono) la pantalla del centro no se sale a los lados y cada orden de la lista va en una tarjeta",!mal.length,mal.slice(0,4).join(' | '))}
+   /* CU9 · revisión del 06-oct (dos revisiones: «para dummies» y «nada se perdió») */
+   {PERFIL=adminP0();const P=programar();const lun=lunesDe(hoy()),dom=dsum(lun,6);
+    /* 1 · ¿cuál empiezo primero?: numeración y orden por urgencia */
+    {const el=abrir('corte',{verGrupo:VER_TODO});let grupo='';const porG={};
+     el.querySelectorAll('.panel.cola tbody tr').forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){grupo=txt(tr).replace(/[0-9.]+ (orden|órdenes) ·.*$/,'').replace(/^[▾▸]/,'').trim();return}if(!tr.hasAttribute('draggable'))return;const i=tr.querySelector('td:nth-child(1) input');(porG[grupo]=porG[grupo]||[]).push({oid:oidDe(tr),n:+(i.value||i.placeholder)||null,fijo:!!i.value})});
+     const trab=['Ordenadas a mano','En proceso aquí','Listas para empezar'].flatMap(g=>porG[g]||[]);
+     const ok1=trab.length>0&&trab.every((x,i)=>x.n!=null&&(i===0||x.n>trab[i-1].n));
+     const fc=filasDeCentros(['corte'],P,lun,dom,'',true);const r=listasYEspera('corte',fc);const urg=(porG['Listas para empezar']||[]).map(x=>{const f=r.listas.find(y=>y.o.id===x.oid);return f?ordenUrgencia(f):9});
+     const ok2=urg.every((u,i)=>i===0||u>=urg[i-1]);
+     const ok3=[...el.querySelectorAll('.panel.cola tbody tr.fase-row')].every(fr=>{let p=fr.previousElementSibling;while(p&&!(p.classList.contains('grp-row')&&!p.classList.contains('fase-row')))p=p.previousElementSibling;return !!p&&/Por llegar/.test(txt(p))});
+     __check("CU9: «¿cuál empiezo primero?»: la columna # numera 1, 2, 3… lo que se trabaja (ordenadas a mano, en proceso, listas), «Listas para empezar» va por urgencia (atrasada → para hoy → después → sin programar: la regla del Resumen del centro) y sin subcabeceras por fase (solo «Por llegar» las tiene)",ok1&&ok2&&ok3,JSON.stringify({ok1,ok2,ok3,trab:trab.length,urg:urg.slice(0,12)}));
+     const lis=porG['Listas para empezar']||[];
+     if(lis.length>=3){const x=lis[lis.length-1];const o=S.ordenes.find(y=>y.id===x.oid);const bakPC=new Map(S.ordenes.map(y=>[y,JSON.stringify(y.progCentro||null)]));const objetivo=lis[0].n;
+       moverEnCola(o.id,'corte',{pos:objetivo});const el2=abrir('corte');const i2=[...el2.querySelectorAll('.panel.cola tbody tr[draggable]')].find(tr=>oidDe(tr)===o.id);const cab=el2.querySelector('.panel.cola tbody tr.grp-row:not(.fase-row)');
+       __check("CU9: escribir el lugar n en # deja la orden en ese lugar de lo que se ve, arriba, en «Ordenadas a mano» (arrastrar y escribir siguen el orden de la pantalla)",!!i2&&(i2.querySelector('td:nth-child(1) input')||{}).value===String(objetivo)&&!!cab&&/Ordenadas a mano/.test(txt(cab)),JSON.stringify({objetivo,v:i2&&(i2.querySelector('td:nth-child(1) input')||{}).value,cab:cab&&txt(cab).slice(0,40)}));
+       __check("CU9: con un lugar fijado, las demás no llevan la etiqueta ámbar «sin puesto» ni la cabecera dice «N sin puesto» (lo normal no es un aviso)",!/sin puesto/.test(el2.querySelector('.panel.cola').textContent));
+       {const el3=abrir('corte',{verGrupo:VER_TODO,todo:true});const subs=[...el3.querySelectorAll('.panel.cola tr.fase-row')];const vistas=new Set();let rep=false,cuenta=true;
+        subs.forEach(fr=>{const k=txt(fr.querySelector('b'));const n=+((txt(fr).match(/([0-9.]+) (orden|órdenes)/)||[])[1]||'0').replace(/\./g,'');let c=0,s=fr.nextElementSibling;while(s&&s.hasAttribute('draggable')){c++;s=s.nextElementSibling}if(n!==c)cuenta=false;if(vistas.has(k))rep=true;vistas.add(k)});
+        __check("CU9: con un lugar fijado, cada subcabecera de fase de «Por llegar» cuenta solo las filas que tiene debajo (antes, si la fase volvía a salir, repetía el total entero)",cuenta,subs.length+' subcabeceras · repetidas: '+rep)}
+       bakPC.forEach((v,y)=>{const pcv=JSON.parse(v);if(pcv)y.progCentro=pcv;else delete y.progCentro});PLAN=null;PLAN_ALL=null}   /* escribir el lugar numera también las de encima: se devuelven todas */
+     else __check("CU9: escribir el lugar n en # deja la orden en ese lugar de lo que se ve",true,'menos de 3 listas en esta base')}
+    /* 2 · lo anotado en Control de piso se ve en la pantalla del centro (aparte, sin sumarlo a «hecho») */
+    {const o=S.ordenes.find(x=>abiertaDe(x)&&!pasoHecho(x,'corte')&&((P.ordenes[x.id]||{}).pasos||[]).some(p=>p.centro==='corte'&&p.rec));
+     if(o){const bakA=JSON.stringify(S.avance[o.id]||null),bakT=JSON.stringify(S.turnos||[]),bakCg=JSON.stringify(S.params.progCongelado||null);const ac=(((S.avance[o.id]||{}).centros)||{}).corte||0;
+       S.params.progCongelado=(S.params.progCongelado||[]).filter(x=>x.k!==claveCong('corte',lunesDe(hoy())));   /* sin congelar: con la semana congelada el número grande es el de la foto, que ya incluye lo de Control de piso */
+       setAvance(o.id,'corte',Math.min(+o.cant||0,ac+50));const sube=(((S.avance[o.id]||{}).centros)||{}).corte-ac;const el=abrir('corte');const dHoy=[...el.querySelectorAll('.cen-dias .res-dia')].find(x=>x.classList.contains('hoy'));
+       __check("CU9: lo anotado en Control de piso (que no deja línea del día) se ve en el día de hoy («+N en Control de piso») y en «¿Cómo voy?» aparte, sin sumarlo a «hecho» (antes no se veía en ninguna parte del centro)",sube>0&&!!dHoy&&new RegExp('\\+'+num(sube)+' en Control de piso').test(txt(dHoy))&&new RegExp('Además, '+num(sube)+' prendas anotadas en Control de piso').test(txt(el.querySelector('.res-card-w'))),JSON.stringify({sube,dia:dHoy&&txt(dHoy).slice(0,90)}));
+       S.avance[o.id]=JSON.parse(bakA);if(!S.avance[o.id])delete S.avance[o.id];S.turnos=JSON.parse(bakT);{const cg=JSON.parse(bakCg);if(cg)S.params.progCongelado=cg;else delete S.params.progCongelado}}
+     else __check("CU9: lo anotado en Control de piso se ve en la pantalla del centro",true,'sin orden programada en Corte en esta base')}
+    /* 3 · pedir congelamiento: solo quien trabaja el centro */
+    {PERFIL={id:'u-con',rol:'consulta',nombre:'Consulta'};const el=abrir('corte');const nb=S.bitacora.length,na=alerts.length;pedirCongelamiento('corte',lunesDe(hoy()));
+     __check("CU9: el perfil «Consulta» del catálogo (sin permisos y sin modo) no ve «Pedir congelamiento» y la función lo rechaza (antes solo se cubría el modo «ver»)",!/pedirCongelamiento\(/.test(el.innerHTML)&&S.bitacora.length===nb&&alerts.length>na);
+     PERFIL={id:'u-mo',rol:'modulos',nombre:'Sup Conf',modo:'editar'};__check("CU9: el supervisor de otro centro tampoco lo pide para Corte",!puedePedirCongelar('corte')&&puedePedirCongelar('modulos'));PERFIL=adminP0()}
+    /* 4 · entrar a un centro abre la pantalla arriba */
+    {page='panorama';render();const m=document.querySelector('main');m.scrollTop=1200;irCentro('modulos');await __p(90);const t1=document.querySelector('main').scrollTop;
+     m.scrollTop=1200;irItemPlan('terminados');await __p(90);const t2=document.querySelector('main').scrollTop;
+     __check("CU9: entrar a un centro (irCentro, irItemPlan) abre la pantalla ARRIBA: lo que se desplaza es <main> (antes quedaba a mitad de la lista)",t1===0&&t2===0,JSON.stringify({t1,t2}))}
+    /* 5 · un enlace viejo a Ejecución no cambia la preferencia guardada */
+    {cenPlegGuardar('desv',false);abrir('corte');CEN.tab='ejec';render();const d=pc().querySelector('.cen-desv');
+     __check("CU9: un enlace viejo a «Ejecución» abre «Van por debajo del plan» solo en ese dibujo, sin cambiar lo que la persona dejó guardado",!d||(d.open&&cenPleg('desv',false)===false))}
+    /* 6 · sub-áreas: Órdenes y Total; el % de ocupación una vez */
+    {const el=abrir('terminados');const t=el.querySelector('.cen-subs');const ths=t?[...t.querySelectorAll('thead th')].map(txt):[];const tot=t&&t.querySelector('tr.cen-subs-tot');
+     __check("CU9: la tabla de sub-áreas vuelve a decir cuántas órdenes tiene cada sub-área esta semana (Órdenes) y lleva la fila Total (ocupación, órdenes y lo pendiente del ítem), sin repetir las programadas y hechas de «¿Cómo voy?»; el % de ocupación va una vez (en el círculo)",ths.includes('Órdenes')&&!!tot&&/Total/.test(txt(tot))&&[...t.querySelectorAll('tbody tr td:nth-child(5)')].every(td=>!/[0-9] ?%/.test(txt(td))),ths.join('|'))}
+    /* 7 · el día por día plegado, con su resumen */
+    {cenPlegGuardar('dias',false);const el=abrir('corte');const d=el.querySelector('.cen-dias');const s=txt(d&&d.querySelector('summary'));
+     __check("CU9: el día por día viene plegado en una línea: hoy, las órdenes con trabajo esta semana (y cuántas sin liberar), los paros (o «sin paros registrados») y el enlace para registrarlos en Control de piso",!!d&&!d.open&&/con trabajo esta semana/.test(s)&&/paros/.test(s)&&/registrar o ver paros/.test(s),s.slice(0,160));
+     CEN.dia=hoy();render();__check("CU9: con un día elegido (filtro) el día por día viene abierto",!!pc().querySelector('.cen-dias[open]'));CEN.dia=null}
+    /* 8 · el ✓ solo en lo que está en proceso; «terminar aquí» en el ⋯ de las listas */
+    {const el=abrir('corte',{verGrupo:VER_TODO});let grupo='';const malV=[];let nL=0,conT=0;
+     el.querySelectorAll('.panel.cola tbody tr').forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){grupo=txt(tr);return}if(!tr.hasAttribute('draggable'))return;
+       if(tr.querySelector('td:nth-child(10) .visto')&&!/En proceso aquí|Ya salió de aquí|Ordenadas a mano/.test(grupo))malV.push(grupo.slice(0,24));
+       if(/Listas para empezar/.test(grupo)){nL++;if(/terminar aquí/.test(tr.querySelector('td:last-child').innerHTML))conT++}});
+     __check("CU9: el ✓ verde de «Terminar» sale solo en lo que ya está en proceso (o ya salió); en «Listas para empezar», «terminar aquí» va en el menú ⋯ (un ✓ en una orden que ni empezó se leía como «está bien»)",!malV.length&&(!nL||conT===nL),JSON.stringify({malV:malV.slice(0,3),nL,conT}))}
+    /* 9 · colas vacías en una línea; «también en» */
+    {const el=abrir('terminados',{verGrupo:VER_TODO});const vac=[...el.querySelectorAll('.panel.cola.cola-vacia')];
+     __check("CU9: una cola vacía (p. ej. en «Todo Terminados») va en UNA línea, sin tabla ni cabeceras",vac.every(v=>!v.querySelector('table')&&/Cola de /.test(txt(v))),vac.length+' vacías');
+     const fc=filasDeCentros(censDeGrupo('terminados'),P,lun,dom,'',true);const m=new Map();fc.forEach(f=>{if(f.hecho||f.bloq)return;m.set(f.o.id,(m.get(f.o.id)||0)+1)});const dos=new Set([...m].filter(x=>x[1]>1).map(x=>x[0]));
+     const filasD=[...el.querySelectorAll('.panel.cola tbody tr[draggable]')].filter(tr=>dos.has(oidDe(tr)));
+     __check("CU9: en «Todo Terminados» una orden pendiente en dos sub-áreas lo dice en cada fila («también en …»)",filasD.every(tr=>/también en /.test(tr.innerHTML)),filasD.length+' filas')}
+    /* 10 · la cabecera dice cuántas quedan fuera y las trae */
+    {const el=abrir('corte');const a=el.querySelector('.panel.cola h3 a.cola-vertodo');
+     if(a){a.click();__check("CU9: la cabecera de la cola dice cuántas no se muestran (las que todavía no llegan a planta y las que llegan más adelante) y «ver toda la cola» las trae",CEN.todo===true&&/\+ [0-9.]+ que /.test(a.textContent),a.textContent);CEN.todo=false;render()}
+     else __check("CU9: la cabecera de la cola dice cuántas no se muestran",true,'todo cabe en la lista en esta base')}
+    /* 11 · ver las restantes de un grupo, sin redibujar la pantalla */
+    {const el=abrir('modulos');const mas=el.querySelector('.panel.cola tr.cola-mas a');
+     if(mas){const n0=el.querySelectorAll('.panel.cola tbody tr[draggable]').length;let rr=0;const r0=window.render;window.render=function(){rr++;return r0.apply(this,arguments)};try{mas.click()}finally{window.render=r0}const n1=pc().querySelectorAll('.panel.cola tbody tr[draggable]').length;
+       __check("CU9: cada grupo muestra sus primeras filas y «Ver las N restantes» trae las demás repintando solo la lista (no toda la pantalla)",n1>n0&&rr===0,JSON.stringify({n0,n1,rr}))}
+     else __check("CU9: «Ver las N restantes» trae las demás",true,'ningún grupo pasa del tope en esta base')}
+    /* 12 · palabras */
+    {const el=abrir('modulos');const h=el.innerHTML;
+     __check("CU9: palabras para el supervisor: «Sacar una máquina del programa» (antes «Reportar novedad»), «Secuencia por módulo →» (antes «Costura →»), «Debía llevar hoy» / «Le faltan» (antes «Plan a hoy» / «Desv.»), «lo elige el programa» / «· programa» (antes «sin asignar · automático»), «puede ir antes o después» (antes «ojo»), «Puesto» = máquina o módulo y # = el lugar en la cola",/Sacar una máquina del programa/.test(h)&&!/Reportar novedad/.test(h)&&/Secuencia por módulo/.test(h)&&!/>Costura →</.test(h)&&!/>Desv\.</.test(h)&&!/>Plan a hoy</.test(h)&&!/sin asignar · automático/.test(h)&&!/>ojo</.test(h)&&/<th[^>]*>Puesto<\/th>/.test(h)&&/<th[^>]*>#<\/th>/.test(h))}
+    /* 13 · la fila que se acaba de cambiar se marca */
+    {const el=abrir('corte');const tr=el.querySelector('.panel.cola tbody tr[draggable]');if(tr){const oid=oidDe(tr);CEN.resaltar=oid+'|corte';CEN.resaltarHasta=0;render();await __p(160);const t2=document.getElementById('cola-corte-'+oid);
+      __check("CU9: después de cambiar el lugar, el puesto o el arranque, la fila de esa orden se marca un momento y se trae a la vista",!!t2&&t2.classList.contains('cola-resaltada'));CEN.resaltar=null;CEN.resaltarHasta=0}}
+    /* 14 · eficiencia con Maquila */
+    {const mq=S.recursos.find(r=>r.activa&&r.centro==='modulos'&&ordenRecChip(r));if(mq){abrir('modulos');setRecResumen(mq.id);__check("CU9: con Maquila elegida, la eficiencia dice «No aplica» (lo de afuera no mide eficiencia)",/No aplica/.test(txt(pc().querySelector('.res-card-ef'))));CEN.rec='';render()}}
+    /* 15 · al entrar, el perfil cae en un centro con trabajo esta semana */
+    {const src=String(centroDePerfil);__check("CU9: al entrar, un perfil de centros cae en el primero (en el orden del proceso) con trabajo esta semana, no en uno vacío",/P\.pro/.test(src)&&/lunesDe\(hoy\(\)\)/.test(src))}
+   }
    /* CU7 · FAC: ningún $ en la pantalla del centro */
    {PERFIL={id:'u-co',rol:'corte',nombre:'Sup',modo:'editar'};const el=abrir('corte');__check("CU7: la pantalla del centro no muestra montos en $ (FAC)",!/\$\s?[0-9]|USD/.test(txt(el)));PERFIL=adminP0()}
    }catch(e){__R.errors.push({page:'driver CU',msg:e.message,stack:(e.stack||'').slice(0,300)})}
@@ -9119,7 +9202,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {alerts.length=0;const nT=tramosDe(oA.id).length;iniciarTramo(oA.id,C,rec);marcarHechoCentro(oA.id,C);mCerrarCentro(oA.id,C);
      __check("LP2: INICIO, «Hecho» y Terminar se niegan con «todavía no está liberada a producción · avisa a planificación» y no registran nada",alerts.length===3&&alerts.every(a=>a.includes(MSG_POR_LIBERAR))&&tramosDe(oA.id).length===nT&&!((S.avance[oA.id]||{}).centros||{})[C]&&!document.getElementById('veil').classList.contains('on'),JSON.stringify(alerts));try{cerrar()}catch(e){}}
     /* --- 3 · la pantalla del centro como abre (06-oct: la lista del Resumen se fundió en la cola; «Por liberar a producción» es un grupo de la lista) --- */
-    NAVH.length=0;irCentro(C,null,'hoy');CEN.rec='';CEN.dia=null;CEN.sem=0;CEN.todo=false;CEN.cercAbre=null;render();
+    NAVH.length=0;irCentro(C,null,'hoy');CEN.rec='';CEN.dia=null;CEN.sem=0;CEN.todo=false;CEN.cercAbre=null;CEN.verGrupo=new Proxy({},{get:()=>true});render();   /* 06-oct (revisión): cada grupo muestra sus primeras filas; aquí, todas */
     {const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='';const orden=[];const cabDe={};
      trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim().split(/[0-9]/)[0].trim();orden.push(cab);return}const m=(tr.getAttribute('ondragstart')||'').match(/arrastrarCola\(event,'([^']+)'/);if(m)cabDe[m[1]]=cab});
      const fr=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));const fe=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oE.id+"'"));
@@ -9152,7 +9235,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("LP6: «liberar →» abre Liberación a producción buscando esa WH, aunque el mes elegido no la incluya",page==='liberacion'&&LIB.et==='corte'&&LIB.q===oA.op&&hL.includes(oA.op),JSON.stringify({page,et:LIB.et,q:LIB.q}));}
     /* --- 7 · al liberarla pasa a Disponible (y vuelve a la tablet) --- */
     {page='ordenes';liberarA([oA.id],'corte');PLAN=null;PLAN_ALL=null;const P2=programar();const c2=cercaniaCentro(oA,C,P2);
-     GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;render();
+     GRP={};grpSt('cen').niveles=[];page='centro';CEN.id=C;CEN.solo=null;CEN.tab='prog';CEN.q='';CEN.todo=true;CEN.fases=null;CEN.dia=null;CEN.verGrupo=null;render();
      const trs=[...pc().querySelectorAll('.panel.cola tbody tr')];let cab='',cabA=null;trs.forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){cab=tr.textContent.replace(/[▾▸]/g,'').trim();return}if((tr.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"))cabA=cab});
      const rA=trs.find(t=>(t.getAttribute('ondragstart')||'').includes("'"+oA.id+"'"));
      __check("LP7: liberada a producción pasa a «Disponible» (06-oct: en la lista, «Listas para empezar» o «En proceso aquí»), con «registrar prendas» y sin el aviso",liberada(oA,'corte')&&puedeEmpezarEnCentro(oA,C)&&c2.grupo==='disponible'&&!c2.porLiberar&&/^(Listas para empezar|En proceso aquí)/.test(cabA||'')&&!!rA&&/marcarHechoCentro\(/.test(rA.innerHTML)&&!/por liberar a producción/.test(rA.textContent),JSON.stringify({g:c2.grupo,cabA}));
