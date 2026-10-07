@@ -2657,7 +2657,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 23:19';
+const APP_BUILD='2026-10-07 01:36';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -10728,7 +10728,7 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
      módulo por prioridad y, al subir una orden, la pasaba a otro (escribir 2 en Módulo 5 dejaba la orden sola, primera). Así queda lo que se ve. No en
      la maquila (fijarla allá es «mandar a maquila», que tiene su propia ventana). El supervisor de piso lo guarda por la función del servidor si existe */
   const rObj=er?S.recursos.find(r=>r.id===er.rec):null;const pinOk=!!(er&&rObj&&!esMaquilaRec(rObj));
-  const pinL=pinOk?[...pl.pri.keys()].filter(x=>!(((x.progCentro||{})[c]||{}).rec)&&pl.pri.get(x)!==pri0(x)):[];   /* solo las que cambian de lugar (o lo estrenan) */
+  const pinL=pinOk?[...pl.pri.keys()].filter(x=>!(((x.progCentro||{})[c]||{}).rec)&&recFijadoDe(x,c)!==er.rec&&pl.pri.get(x)!==pri0(x)):[];   /* 06-oct (cuarta revisión): si la OT de Odoo (o la fase) ya la deja en ese puesto, no se fija «a mano»: así una carga de OT que la pase a otro módulo sigue mandando */   /* solo las que cambian de lugar (o lo estrenan) */
   const pinPiso=perfilSoloPiso()?(bloqueoRecPiso()?[]:pinL):[];
   if(!perfilSoloPiso())pinL.forEach(x=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].rec=er.rec});
   const pinTxt=pinL.length?(perfilSoloPiso()?(pinPiso.length?' · puesto pedido al servidor (fijar en '+nRec(er.rec)+'): '+pinPiso.map(x=>x.op).join(', '):' · el puesto no se fijó (lo fija planificación)'):' · puesto fijado en '+nRec(er.rec)+': '+pinL.map(x=>x.op).join(', ')):'';
@@ -10738,9 +10738,14 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
     .filter(x=>{const p=priAntesM.get(x.o);return p==null||p!==x.pri});
   const sinTocar=cola.length-numeradas.length;   // estas conservan su orden por cercanía
   PLAN=null;PLAN_ALL=null;const P2=programar();const lD=lateDe(P2);
+  /* 06-oct (cuarta revisión): el programa elige el puesto y las fechas por la prioridad de TODA la planta, así que mover una orden puede pasar OTRAS a
+     otro puesto y mover fechas de órdenes que nadie tocó (Módulo 1: escribir 1 en su última pasaba la otra a Módulo 2; bajar una orden un lugar movía
+     la fecha de fin de 111). No se impide (es la regla del programa, que no se cambió): la pantalla y la bitácora lo dicen */
+  const efP=efectoMoverCEN(P,P2,c,filasOT,o,er?er.rec:'');
+  if(efP.txt){if(!CEN.avisoFij)CEN.avisoFij={c,op:o.op,oid:o.id,pos:j+1,ops:[],ts:Date.now(),rec:er?er.rec:'',posR:pl?pl.m:null,pin:[],sinPin:false};CEN.avisoFij.prog=efP.txt}
   const nuevas=Object.keys(lD).filter(id=>!lA[id]).map(id=>S.ordenes.find(x=>x.id===id)).filter(Boolean);
   const igual=cola.map(x=>x.id).join()===antes;
-  bitacora('Cola de '+nCen(c)+': '+o.op+' del puesto '+(i+1)+' al '+(j+1)+(igual?' (mismo orden)':'')+(pl?' (lugar '+pl.m+' de '+pl.n+' en '+nRec(er.rec)+') · solo se tocaron órdenes de '+nRec(er.rec)+': '+priCambios.length+' con otro lugar'+(nuevasNum?' ('+nuevasNum+' nuevas con lugar fijado)':'')+pinTxt:' · '+numeradas.length+' con puesto manual (1..'+numeradas.length+(nuevasNum?', '+nuevasNum+' nuevas para poder dejarla en ese puesto':'')+'), '+sinTocar+' siguen por orden de llegada')+(nuevas.length?' · ya no llegan a su fecha: '+nuevas.map(x=>x.op).join(', '):''));
+  bitacora('Cola de '+nCen(c)+': '+o.op+' del puesto '+(i+1)+' al '+(j+1)+(igual?' (mismo orden)':'')+(pl?' (lugar '+pl.m+' de '+pl.n+' en '+nRec(er.rec)+') · solo se tocaron órdenes de '+nRec(er.rec)+': '+priCambios.length+' con otro lugar'+(nuevasNum?' ('+nuevasNum+' nuevas con lugar fijado)':'')+pinTxt:' · '+numeradas.length+' con puesto manual (1..'+numeradas.length+(nuevasNum?', '+nuevasNum+' nuevas para poder dejarla en ese puesto':'')+'), '+sinTocar+' siguen por orden de llegada')+(nuevas.length?' · ya no llegan a su fecha: '+nuevas.map(x=>x.op).join(', '):'')+(efP.txt?' · '+efP.txt:''));
   const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';S.params.advertencias=S.params.advertencias||[];
   nuevas.forEach(x=>S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:x.id,op:x.op,accion:'Cola de '+nCen(c)+': '+o.op+' al puesto '+(j+1),meta:fechaMetaDe(x),metaTipo:x.fechaCompromiso?'compromiso':'pedida',antes:(P.ordenes[x.id]||{}).finPro||null,despues:lD[x.id],atendida:false}));
   if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300);
@@ -10760,6 +10765,24 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
    Confección para dejar una orden «segunda en Módulo 4») y el programa les cambiaba el módulo a varias.
    er = {rec, n} (escribir el número) o {rec, antes} (soltar la fila arrastrada antes de esa orden; '' = al final de las de ese puesto).
    Devuelve null si el número no sirve, {nada:true} si ya está en ese lugar o {m, n, pri: Map(orden → lugar fijado)} */
+/* qué cambió el programa por mover una orden en la cola (06-oct, cuarta revisión). Solo lee el programa de antes (P) y el de después (P2):
+   - con un puesto elegido, las órdenes que ya se trabajan aquí y salieron de ese puesto (y a cuál fueron) o entraron a él;
+   - sin puesto elegido, las que ya se trabajan aquí y el programa pasó a otro puesto;
+   - cuántas órdenes abiertas más cambiaron su fecha de fin (y cuántas más tarde, hasta cuántos días).
+   Devuelve {txt,n,tarde,max,sal,ent,mv}; txt vacío si no cambió nada */
+function efectoMoverCEN(P,P2,c,filasOT,o,rec){
+  const recEn=(PP,x)=>{const p=(((PP.ordenes||{})[x.id]||{}).pasos||[]).find(q=>q.centro===c);return (p&&p.rec)||''};
+  const trab=filasOT.filter(f=>f.o!==o&&GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f))).map(f=>f.o);
+  const lista=a=>a.slice(0,3).map(x=>x.op+(x.a?' (ahora en '+nRec(x.a)+')':'')).join(', ')+(a.length>3?' y '+num(a.length-3)+' más':'');
+  const partes=[];const sal=[],ent=[],mv=[];
+  trab.forEach(x=>{const r0=recEn(P,x),r1=recEn(P2,x);if(rec){if(r0===rec&&r1!==rec)sal.push({op:x.op,a:r1});else if(r0!==rec&&r1===rec)ent.push({op:x.op})}else if(r0&&r1&&r0!==r1)mv.push({op:x.op,a:r1})});
+  if(sal.length)partes.push('el programa sacó de '+nRec(rec)+': '+lista(sal));
+  if(ent.length)partes.push('entraron a '+nRec(rec)+': '+lista(ent));
+  if(mv.length)partes.push('el programa cambió de puesto '+(mv.length===1?'1 orden':num(mv.length)+' órdenes')+': '+lista(mv));
+  let n=0,tarde=0,max=0;S.ordenes.forEach(x=>{if(x===o||!abierta(x))return;const a=((P.ordenes||{})[x.id]||{}).finPro,b=((P2.ordenes||{})[x.id]||{}).finPro;if(!a||!b||a===b)return;n++;
+    if(b>a){tarde++;const d=Math.round((new Date(b)-new Date(a))/864e5);if(d>max)max=d}});
+  if(n)partes.push((n===1?'1 orden más cambió':num(n)+' órdenes más cambiaron')+' su fecha de fin en el programa'+(tarde?' ('+num(tarde)+' más tarde'+(max?', hasta '+num(max)+(max===1?' día':' días'):'')+')':''));
+  return {txt:partes.join(' · '),n,tarde,max,sal,ent,mv}}
 function planLugarEnPuestoCEN(c,filasOT,o,er){const rec=er.rec;const pri=x=>(((x.progCentro||{})[c]||{}).pri)||0;
   const esTrab=f=>recDeFila(f)===rec&&GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f));
   const trab=filasOT.filter(esTrab);const S0=trab.filter(f=>f.o!==o).map(f=>f.o);const n=S0.length+1;
@@ -11472,7 +11495,7 @@ function colaCentroHTML(c,ctx){
       const lugAhora=(afOk&&!af.nada&&af.rec&&af.rec===recSel&&lugarR&&af.oid)?lugarR.get(af.oid):null;const difAf=(lugAhora&&af.posR&&lugAhora!==af.posR)?' · con el programa de ahora va en el lugar '+num(lugAhora)+': el programa pasó otras órdenes a '+nRec(af.rec):'';
       const cerrarAf=` <a class="cola-avisofij-x" onclick="CEN.avisoFij=null;if(!redibujarLista('CEN.q'))render()" title="cerrar este aviso">✕</a>`;
       const avisoFij=!afOk?'':af.nada?`<span class="cola-avisofij tag t-medio" title="${esc('Con un puesto elegido, # es el lugar entre las órdenes de '+nRec(af.rec)+' que ya se trabajan (ordenadas a mano, en proceso, listas o afuera); las que todavía no llegan no llevan número.')}">${esc(af.op)} ${af.n<=1?'es la única de '+esc(nRec(af.rec))+' que ya se trabaja: no hay otro lugar donde ponerla · no se cambió nada':'ya está en el lugar '+num(af.posR)+' de '+num(af.n)+' en '+esc(nRec(af.rec))+' · no se cambió nada'}</span>${cerrarAf}`
-        :(af.ops.length||(af.pin&&af.pin.length)||af.sinPin)?`<span class="cola-avisofij tag t-medio" title="${esc(af.rec?'Para dejar '+af.op+' en ese lugar de '+nRec(af.rec)+' se fijaron también las de '+nRec(af.rec)+' que van por encima; las de otros puestos no se tocaron. '+(af.sinPin?'El puesto no quedó fijado (lo fija planificación): el programa puede pasarlas a otro módulo. ':'También quedan fijas en '+nRec(af.rec)+', para que el programa no les cambie el puesto. ')+'Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.':'Una orden con lugar fijado va siempre antes que una sin lugar: para dejar '+af.op+' en el lugar '+af.pos+' hubo que fijar también las que van por encima. Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.')}">${af.ops.length?'Para dejar '+esc(af.op)+' en '+esc(lugAf)+' también '+(af.ops.length===1?'quedó fijada':'quedaron fijadas')+': '+esc(af.ops.slice(0,4).join(', '))+(af.ops.length>4?' y '+num(af.ops.length-4)+' más':''):esc(af.op)+' quedó en '+esc(lugAf)}${(af.pin&&af.pin.length&&!af.sinPin)?' · '+(af.pin.length===1&&!af.ops.length?'queda fija':'quedan fijas')+' en '+esc(nRec(af.rec)):af.sinPin?' · el programa puede pasarlas a otro módulo (fijar el puesto lo hace planificación)':''}${esc(difAf)}</span>${cerrarAf}`:'';
+        :(af.ops.length||(af.pin&&af.pin.length)||af.sinPin||af.prog)?`<span class="cola-avisofij tag t-medio" title="${esc(af.rec?'Para dejar '+af.op+' en ese lugar de '+nRec(af.rec)+' se fijaron también las de '+nRec(af.rec)+' que van por encima; las de otros puestos no se tocaron. '+(af.sinPin?'El puesto no quedó fijado (lo fija planificación): el programa puede pasarlas a otro módulo. ':'También quedan fijas en '+nRec(af.rec)+', para que el programa no les cambie el puesto. ')+'Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.':'Una orden con lugar fijado va siempre antes que una sin lugar: para dejar '+af.op+' en el lugar '+af.pos+' hubo que fijar también las que van por encima. Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.')}">${af.ops.length?'Para dejar '+esc(af.op)+' en '+esc(lugAf)+' también '+(af.ops.length===1?'quedó fijada':'quedaron fijadas')+': '+esc(af.ops.slice(0,4).join(', '))+(af.ops.length>4?' y '+num(af.ops.length-4)+' más':''):esc(af.op)+' quedó en '+esc(lugAf)}${(af.pin&&af.pin.length&&!af.sinPin)?' · '+(af.pin.length===1&&!af.ops.length?'queda fija':'quedan fijas')+' en '+esc(nRec(af.rec)):af.sinPin?' · el programa puede pasarlas a otro módulo (fijar el puesto lo hace planificación)':''}${esc(difAf)}${af.prog?' · '+esc(af.prog):''}</span>${cerrarAf}`:'';
       /* la fila cambiada que no se ve: con un puesto elegido, su lugar en ese puesto o, si ahora es de otro puesto, cuál; «verla» quita lo que la esconde
          (el puesto elegido, las fases, los filtros y la ventana de dos semanas) */
       const recRes=fRes?recDeFila(fRes):'';const otroRec=!!(recSel&&fRes&&recRes!==recSel);

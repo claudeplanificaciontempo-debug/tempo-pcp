@@ -9261,7 +9261,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      if(rec){const back=bakPC();const x=trabDe('modulos',rec)[0];const recAnt=new Map(ordC('modulos').map(f=>[f.o.id,recDeFila(f)]));const s0=snapPC('modulos');
        abrir('modulos',{rec});moverEnColaLugar(x.o.id,'modulos',2);
        const lugar=trabDe('modulos',rec).findIndex(f=>f.o.id===x.o.id)+1;const ch=cambio(s0,'modulos');const otros=ch.filter(o=>recAnt.get(o.id)!==rec);const av=txt(pc().querySelector('.cola-avisofij'));
-       __check("CU11: con un módulo elegido, escribir 2 en su primera orden la deja segunda EN ESE MÓDULO y solo toca órdenes de ese módulo, que quedan fijas en él (antes se fijaban las de encima de toda la cola —139 en Confección— y el programa les cambiaba el módulo); el aviso dice el lugar en el módulo",lugar===2&&ch.length<=2&&!otros.length&&ch.every(o=>((o.progCentro||{}).modulos||{}).rec===rec)&&(!av||av.includes('lugar 2 de '+nRec(rec))),JSON.stringify({rec,lugar,ch:ch.map(o=>o.op),otros:otros.map(o=>o.op),av:av.slice(0,140)}));
+       __check("CU11: con un módulo elegido, escribir 2 en su primera orden la deja segunda EN ESE MÓDULO y solo toca órdenes de ese módulo, que quedan fijas en él (antes se fijaban las de encima de toda la cola —139 en Confección— y el programa les cambiaba el módulo); el aviso dice el lugar en el módulo",lugar===2&&ch.length<=2&&!otros.length&&ch.every(o=>recFijadoDe(o,'modulos')===rec)&&(!av||av.includes('lugar 2 de '+nRec(rec))),JSON.stringify({rec,lugar,ch:ch.map(o=>o.op),otros:otros.map(o=>o.op),av:av.slice(0,140)}));
        back()}
      else __check("CU11: el lugar dentro del módulo",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
     /* 2 · la única orden de su módulo que ya se trabaja: escribir 2 no fija nada y lo dice */
@@ -9286,6 +9286,29 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        const lugar=trabDe('modulos',rec).findIndex(f=>f.o.id===a.o.id)+1;const otros=cambio(s0,'modulos').filter(o=>recAnt.get(o.id)!==rec);
        __check("CU11: con un módulo elegido, soltar su última orden sobre la primera la deja primera en ese módulo sin tocar órdenes de otros módulos",lugar===1&&!otros.length,JSON.stringify({lugar,otros:otros.map(o=>o.op)}));back()}
      else __check("CU11: arrastrar en el módulo",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
+    /* CU12 · cuarta revisión del 06-oct: (a) el puesto que ya da la OT de Odoo no se fija a mano al reordenar; (b) lo que el programa cambió por
+       mover una orden (otras órdenes que cambian de puesto, fechas de fin que se mueven) se dice en la pantalla y en la bitácora */
+    {const rec=recsMod.find(r=>trabDe('modulos',r).length>=2);
+     if(rec){const back=bakPC();const t0=trabDe('modulos',rec);const x=t0[t0.length-1].o;const bakRF=JSON.stringify(x.recursoFijo||null);
+       x.recursoFijo=Object.assign({},x.recursoFijo||{},{modulos:rec});PLAN=null;PLAN_ALL=null;
+       abrir('modulos',{rec});moverEnColaLugar(x.id,'modulos',1);
+       const pcx=((x.progCentro||{}).modulos)||{};
+       __check("CU12: con un módulo elegido, reordenar una orden que la OT de Odoo ya deja en ese módulo le da el lugar pero NO le fija el puesto a mano (así una carga de OT que la pase a otro módulo sigue mandando)",pcx.pri>0&&!pcx.rec,JSON.stringify({op:x.op,pc:pcx}));
+       if(bakRF==='null')delete x.recursoFijo;else x.recursoFijo=JSON.parse(bakRF);back()}
+     else __check("CU12: la OT manda sobre el puesto",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
+    {const cands=ordC('modulos').filter(f=>GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f)));
+     if(cands.length>=3){const back=bakPC();const x=cands[cands.length-1].o;const P0=programar();const fin0=new Map(S.ordenes.map(o=>[o.id,((P0.ordenes[o.id]||{}).finPro)||'']));const nb=S.bitacora.length;
+       abrir('modulos',{});moverEnColaLugar(x.id,'modulos',1);
+       const P1=programar();const n=S.ordenes.filter(o=>o!==x&&abierta(o)&&fin0.get(o.id)&&((P1.ordenes[o.id]||{}).finPro)&&fin0.get(o.id)!==((P1.ordenes[o.id]||{}).finPro)).length;
+       const av=txt(pc().querySelector('.cola-avisofij'));const bt=S.bitacora.slice(nb).map(b=>b.t).join(' | ');
+       __check("CU12: si mover una orden cambia la fecha de fin de otras, la pantalla y la bitácora lo dicen con el número (antes no salía ningún aviso)",n===0?!/su fecha de fin/.test(av):(av.includes(num(n)+(n===1?' orden más cambió':' órdenes más cambiaron'))&&/su fecha de fin/.test(bt)),JSON.stringify({op:x.op,n,av:av.slice(0,240)}));
+       back()}
+     else __check("CU12: el aviso de lo que cambió el programa",true,'menos de tres órdenes que se trabajen en Confección en esta base')}
+    {const P={ordenes:{a:{pasos:[{centro:'modulos',rec:'m1'}],finPro:'2026-10-10'},b:{pasos:[{centro:'modulos',rec:'m2'}],finPro:'2026-10-12'}}};
+     const P2={ordenes:{a:{pasos:[{centro:'modulos',rec:'m2'}],finPro:'2026-10-14'},b:{pasos:[{centro:'modulos',rec:'m1'}],finPro:'2026-10-12'}}};
+     const oa={id:'a',op:'OP-A'},ob={id:'b',op:'OP-B'},om={id:'z',op:'OP-Z'};const g0=grupoListaCEN;grupoListaCEN=()=>GRUPOS_TRABAJO_CEN[0];const ab=abierta;
+     let e;try{const keep=S.ordenes;S.ordenes=[oa,ob,om];abierta=()=>true;try{e=efectoMoverCEN(P,P2,'modulos',[{o:oa},{o:ob},{o:om}],om,'m1')}finally{S.ordenes=keep;abierta=ab}}finally{grupoListaCEN=g0}
+     __check("CU12: efectoMoverCEN dice qué salió del puesto (y a dónde fue), qué entró y cuántas fechas de fin cambiaron (más tarde, hasta cuántos días)",e.sal.length===1&&e.sal[0].op==='OP-A'&&e.ent.length===1&&e.ent[0].op==='OP-B'&&e.n===1&&e.tarde===1&&e.max===4&&/sacó de .*OP-A \(ahora en/.test(e.txt)&&/entraron a .*OP-B/.test(e.txt),JSON.stringify(e))}
     /* 5 · con la semana congelada, «la foto incluye» solo lo de Control de piso que está en la foto; lo de afuera, aparte */
     {const bakCg=JSON.stringify(S.params.progCongelado||null);let hecho=false;
      for(const c of ['corte','bordado','modulos']){if(hecho)break;congelarPrograma([c],lun,dom);const f=congeladoDe(c,lun);if(!f||!(f.ords||[]).length)continue;
