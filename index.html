@@ -428,6 +428,11 @@ tbody tr:hover td{background:var(--field)}
 .panel.cola.cola-plegada>.body a.cola-abrir{text-decoration:none;color:var(--ink)}
 #p-centro .cen-hecho .scroll,#p-centro .cen-congdet .scroll{max-height:none!important}
 #p-centro .cen-libres>summary .tag{font-weight:600}
+/* ux:centrounico · tercera revisión (06-oct): el menú ⋯ de cada fila se abre flotando, debajo y hacia la izquierda: no ensancha la última columna (a
+   1.520 px abrirlo sacaba toda la pantalla de lado) */
+#p-centro .panel.cola details.acc{position:relative}
+#p-centro .panel.cola details.acc>.acc-m{position:absolute;right:0;top:calc(100% + 4px);z-index:40;display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:0;padding:6px;min-width:170px;background:var(--paper);border:1px solid var(--rule);border-radius:8px;box-shadow:0 6px 18px rgba(20,40,80,.18);white-space:nowrap}
+#p-centro .panel.cola details.acc>.acc-m>.btn{text-align:left;justify-content:flex-start}
 @media (max-width:860px){
  .cen-ir-lista{display:block;margin:0 0 10px;font-weight:600;cursor:pointer}
  #p-centro .panel.cola .tag{white-space:normal;max-width:100%}
@@ -2652,7 +2657,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 21:20';
+const APP_BUILD='2026-10-06 23:19';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5046,12 +5051,23 @@ function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CE
   /* 06-oct (segunda revisión): la hoja va en el MISMO orden y con el MISMO número (#) que la lista de la pantalla (ordenTrabajoCentro sobre la cola
      entera del centro, el lugar que reordena moverEnCola); antes iba por orden de llegada y llamaba «Puesto» al número de la cola. «Puesto» es la
      máquina o el módulo. Con un puesto elegido en la pantalla, la hoja es solo de ese puesto y # es su lugar dentro de él */
-  const filas=filasDeCentros(cens,P,lun,dom,'',true);const recSel=CEN.rec||'';const secs=cens.map(c=>{const ordT=ordenTrabajoCentro(c,colaCentro(c,filas));
-    const base=recSel?ordT.filter(f=>recDeFila(f)===recSel):ordT;const lugar=new Map(base.map((f,i)=>[f.o.id,i+1]));
-    const cola=(CEN.todo?base:base.filter(f=>f.pzSem>0||(f.paso.ini&&f.paso.ini<=dom))).filter(f=>enPlantaParaCentro(f.o));
-    return `<h2>${esc(nCen(c))}${recSel?' · '+esc(nRec(recSel)):''} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)} · ${cola.length} órdenes · se trabaja en el orden de #</small></h2><table><thead><tr><th class="n">#</th><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">Unidades</th><th class="n">Min. totales</th></tr></thead><tbody>
-    ${cola.map(f=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);const rp=recDeFila(f);return `<tr><td class="n"><b>${lugar.get(o.id)||'—'}</b></td><td>${rp?esc(nRec(rp)):'—'}</td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${mp>0?num(mp,1):'sin minutos por prenda'}</td><td class="n">${num(u)}</td><td class="n">${mp>0?num(mp*u):'—'}</td></tr>`}).join('')||'<tr><td colspan="10">Sin órdenes.</td></tr>'}</tbody></table>`}).join('');
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Programa ${esc(nombre)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:14px 0 6px}small{font-weight:400;color:#555}table{width:100%;border-collapse:collapse}tr{page-break-inside:avoid}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:middle}th{background:#eee}td.n,th.n{text-align:right}img{width:70px;height:70px;object-fit:cover;border-radius:4px}</style></head><body><h1>${esc(nombre)} · programa</h1><div style="color:#555">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div>${secs}<script>window.onload=function(){window.print()}<\/script></body></html>`;
+  /* 06-oct (tercera revisión): la hoja trae lo MISMO que la lista de la pantalla (enVentanaCEN: lo que se trabaja ya —ordenadas a mano, en proceso,
+     listas, afuera— y lo que llega esta semana y la siguiente; con «toda la cola», todo), sin lo que no se puede empezar (por liberar a producción) ni
+     lo que ya salió de aquí, que se cuentan al pie. Antes dejaba fuera órdenes «en proceso aquí» con inicio después del domingo. # es el de la pantalla
+     («—» en lo que todavía no se trabaja) y no se imprimen las sub-áreas sin órdenes */
+  const filas=filasDeCentros(cens,P,lun,dom,'',true);const recSel=CEN.rec||'';const hastaV=dsum(dom,7);const fueraHoja={porLiberar:0,anomalia:0};
+  const cabT=`<thead><tr><th class="n">#</th><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">Unidades</th><th class="n">Min. totales</th></tr></thead>`;
+  const secsL=cens.map(c=>{const ordT=ordenTrabajoCentro(c,colaCentro(c,filas));const gDe=new Map(ordT.map(f=>[f,grupoListaCEN(f)]));
+    const lugarG=new Map(ordT.map((f,i)=>[f.o.id,i+1]));const lugarR=recSel?new Map(ordT.filter(f=>recDeFila(f)===recSel&&GRUPOS_TRABAJO_CEN.includes(gDe.get(f))).map((f,i)=>[f.o.id,i+1])):null;
+    const enV=ordT.filter(f=>(!recSel||recDeFila(f)===recSel)&&enPlantaParaCentro(f.o)&&enVentanaCEN(f,hastaV,gDe.get(f)));
+    const cola=enV.filter(f=>{const g=gDe.get(f);if(g==='porLiberar'||g==='anomalia'){fueraHoja[g]++;return false}return true});
+    if(!cola.length)return '';
+    return `<h2>${esc(nCen(c))}${recSel?' · '+esc(nRec(recSel)):''} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)} · ${cola.length} ${cola.length===1?'orden':'órdenes'}: ${CEN.todo?'toda la cola':'lo que se trabaja ya y lo que llega esta semana y la siguiente'} · se trabaja en el orden de #</small></h2><table>${cabT}<tbody>
+    ${cola.map(f=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);const rp=recDeFila(f);const g=gDe.get(f);const lug=lugarR?lugarR.get(o.id):lugarG.get(o.id);const conNum=!!lug&&(puestoDe(o,c)>0||GRUPOS_TRABAJO_CEN.includes(g));return `<tr><td class="n"><b>${conNum?lug:'—'}</b></td><td>${rp?esc(nRec(rp)):'—'}</td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${mp>0?num(mp,1):'sin minutos por prenda'}</td><td class="n">${num(u)}</td><td class="n">${mp>0?num(mp*u):'—'}</td></tr>`}).join('')}</tbody></table>`});
+  const secsV=secsL.filter(Boolean);
+  const noVan=[fueraHoja.porLiberar?num(fueraHoja.porLiberar)+' por liberar a producción (no se pueden empezar)':'',fueraHoja.anomalia?num(fueraHoja.anomalia)+' que ya salieron de aquí':''].filter(Boolean).join(' y ');
+  const secs=(secsV.length?secsV.join(''):`<h2>${esc(nombre)}${recSel?' · '+esc(nRec(recSel)):''} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)}</small></h2><table>${cabT}<tbody><tr><td colspan="10">Sin órdenes para trabajar.</td></tr></tbody></table>`)+(noVan?`<p class="nota">No van en la hoja: ${noVan}.</p>`:'');
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Programa ${esc(nombre)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:14px 0 6px}small{font-weight:400;color:#555}table{width:100%;border-collapse:collapse}tr{page-break-inside:avoid}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:middle}th{background:#eee}td.n,th.n{text-align:right}img{width:70px;height:70px;object-fit:cover;border-radius:4px}p.nota{color:#555;margin:10px 0 0}</style></head><body><h1>${esc(nombre)} · programa</h1><div style="color:#555">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div>${secs}<script>window.onload=function(){window.print()}<\/script></body></html>`;
   const w=window.open('','_blank');if(!w){alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');return}
   w.document.write(html);w.document.close()}
 /* ---------- C · Cambio de fases centralizado (Control de piso → Fases) y desde cualquier etiqueta de fase ---------- */
@@ -5514,7 +5530,7 @@ function motivoValido(uso,m){m=String(m||'').trim();return !!m&&motivosDe(uso).s
 function addMotivoRow(uso){motivos().push({motivo:'',uso:uso||'fase',pendiente:true});save();render()}
 function setMotivoRow(i,k,v){const r=motivos()[i];if(!r)return;const antes=r[k];r[k]=['tejeduria','activo','esAlmuerzo','cierreDia'].includes(k)?!!v:v;if(k==='motivo')r.pendiente=!String(v).trim();bitacora('Motivos (tabla 15) fila '+(i+1)+' · '+k+': '+(antes||'—')+' → '+(v||'—')+' ('+quienFirma()+')');save()}
 function delMotivoRow(i){const r=motivos()[i];if(!r)return;if(!confirm('¿Quitar el motivo «'+(r.motivo||'')+'»? Los registros anteriores lo conservan.'))return;motivos().splice(i,1);bitacora('Motivo quitado: '+(r.motivo||'')+' ('+quienFirma()+')');save();render()}
-function selMotivoHTML(id,uso){const ms=motivosDe(uso);const nom=(USOS_MOTIVO.find(u=>u[0]===uso)||[])[1]||uso;if(!ms.length)return `<div class="warn" style="font-size:var(--fs-s)">No hay motivos configurados para «${esc(nom)}». Configúralos en Configuración general → Órdenes, fases y archivos de Odoo → <b>15 · Motivos</b>. Sin ellos ${esc((typeof SIN_MOTIVO_EFECTO!=='undefined'&&SIN_MOTIVO_EFECTO[uso])||'no se puede devolver una fase ni revertir una liberación (avanzar sí)')}.</div><input type="hidden" id="${id}" value="">`;
+function selMotivoHTML(id,uso){const ms=motivosDe(uso);const nom=(USOS_MOTIVO.find(u=>u[0]===uso)||[])[1]||uso;if(!ms.length)return `<div class="warn" style="font-size:var(--fs-s)">No hay motivos configurados para «${esc(nom)}». ${puede('config')?'Configúralos':'Los carga planificación'} en Configuración general → Órdenes, fases y archivos de Odoo → <b>15 · Motivos</b>. Sin ellos ${esc((typeof SIN_MOTIVO_EFECTO!=='undefined'&&SIN_MOTIVO_EFECTO[uso])||'no se puede devolver una fase ni revertir una liberación (avanzar sí)')}.</div><input type="hidden" id="${id}" value="">`;
   return `<select id="${id}"><option value="">— elige el motivo —</option>${ms.map(m=>`<option value="${esc(m.motivo)}">${esc(m.motivo)}</option>`).join('')}</select>`}
 function auditoriaCambios(){if(!Array.isArray(S.params.auditoriaCambios))S.params.auditoriaCambios=[];return S.params.auditoriaCambios}
 function registrarAuditoria(tipo,o,antes,despues,motivo,dev){const e={id:uid(),ts:new Date().toISOString(),u:quienFirma(),tipo,dev:dev===undefined?true:!!dev,oid:o.id,op:o.op,antes:antes||'—',despues:despues||'—',motivo:motivo||''};
@@ -10684,35 +10700,97 @@ function moverEnCola(oid,c,destino){const o=S.ordenes.find(x=>x.id===oid);if(!o)
      demás como la cola): arrastrar o escribir el lugar hace lo que se ve */
   /* 06-oct (segunda revisión): la cola ENTERA del centro (sin buscador ni filtros listos: filasDeCentros(…,'',true)), la misma que numera la
      columna # de la pantalla; antes, con un filtro listo puesto, el lugar se contaba sobre otra lista */
-  const P=programar();const lun=lunesDe(hoy());const cola=ordenTrabajoCentro(c,colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),'',true))).map(f=>f.o);
+  const P=programar();const lun=lunesDe(hoy());const filasOT=ordenTrabajoCentro(c,colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),'',true)));let cola=filasOT.map(f=>f.o);
   const i=cola.indexOf(o);if(i<0)return;const antes=cola.map(x=>x.id).join();
-  cola.splice(i,1);let j;if(destino&&destino.antes){j=cola.findIndex(x=>x.id===destino.antes);if(j<0)j=cola.length}else if(destino&&destino.pos!=null){if(!(destino.pos>=1)){render();return}j=Math.min(cola.length,Math.round(destino.pos)-1)}else j=cola.length;
-  cola.splice(j,0,o);
-  const lA=lateDe(P);
-  const priAntes=cola.map(x=>({o:x,pri:((x.progCentro||{})[c]||{}).pri||0}));
+  const pri0=x=>(((x.progCentro||{})[c]||{}).pri)||0;
+  const priAntes=cola.map(x=>({o:x,pri:pri0(x)}));const priAntesM=new Map(priAntes.map(x=>[x.o,x.pri]));
   /* Decisión 6: se renumeran SOLO las que ya tenían puesto manual más la que se movió.
      Las demás se quedan sin puesto y siguen ordenándose por cercanía. */
-  const yaNum=new Set(cola.filter(x=>(((x.progCentro||{})[c]||{}).pri||0)>0).map(x=>x.id));
-  /* para que la movida quede en el puesto j+1 hay que numerar lo que va por encima de ella:
-     una orden CON puesto siempre va delante de una SIN puesto, así que el destino no se puede
-     expresar de otra forma. Todo lo que queda por debajo sigue ordenándose por cercanía. */
-  const numeradas=cola.filter((x,k)=>k<=j||yaNum.has(x.id));
+  const yaNum=new Set(cola.filter(x=>pri0(x)>0).map(x=>x.id));
+  /* 06-oct (tercera revisión): con un puesto (módulo o máquina) elegido, el número es el lugar ENTRE LAS DE ESE PUESTO que ya se trabajan (las que
+     llevan número en la pantalla) y solo se tocan órdenes de ese puesto (planLugarEnPuestoCEN). Antes se traducía al lugar de la cola entera y,
+     para dejar una orden «segunda en Módulo 4», se fijaban las 139 de encima de todos los módulos (y el programa les cambiaba el módulo a varias) */
+  const er=(destino&&destino.enRec&&destino.enRec.rec)?destino.enRec:null;let j,numeradas,priDe,pl=null;
+  if(er){pl=planLugarEnPuestoCEN(c,filasOT,o,er);if(!pl){render();return}
+    if(pl.nada){CEN.avisoFij={c,op:o.op,oid:o.id,rec:er.rec,posR:pl.m,n:pl.n,nada:true,ops:[],ts:Date.now()};render();return}
+    const nueva=x=>pl.pri.has(x)?pl.pri.get(x):pri0(x);priDe=x=>nueva(x);
+    numeradas=cola.filter(x=>nueva(x)>0).sort((a,b)=>nueva(a)-nueva(b));const fij=new Set(numeradas);
+    cola=numeradas.concat(cola.filter(x=>!fij.has(x)));j=cola.indexOf(o)}
+  else{cola.splice(i,1);if(destino&&destino.antes){j=cola.findIndex(x=>x.id===destino.antes);if(j<0)j=cola.length}else if(destino&&destino.pos!=null){if(!(destino.pos>=1)){render();return}j=Math.min(cola.length,Math.round(destino.pos)-1)}else j=cola.length;
+    cola.splice(j,0,o);
+    /* para que la movida quede en el puesto j+1 hay que numerar lo que va por encima de ella:
+       una orden CON puesto siempre va delante de una SIN puesto, así que el destino no se puede
+       expresar de otra forma. Todo lo que queda por debajo sigue ordenándose por cercanía. */
+    numeradas=cola.filter((x,k)=>k<=j||yaNum.has(x.id));priDe=(x,k)=>k+1}
+  const lA=lateDe(P);
   const nuevasNumL=numeradas.filter(x=>x!==o&&!yaNum.has(x.id));const nuevasNum=nuevasNumL.length;
-  CEN.avisoFij=nuevasNum?{c,op:o.op,pos:j+1,ops:nuevasNumL.map(x=>x.op),ts:Date.now()}:null;   /* la pantalla dice cuáles quedaron fijadas además de la movida */
-  numeradas.forEach((x,k)=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].pri=k+1});
-  const priCambios=numeradas.map((x,k)=>({o:x,pri:k+1}))
-    .filter(x=>{const p=priAntes.find(y=>y.o===x.o);return !p||p.pri!==x.pri});
+  /* con un puesto elegido, las que se ordenan dentro de ese puesto quedan también FIJAS en ese puesto (06-oct, tercera revisión): el programa elige el
+     módulo por prioridad y, al subir una orden, la pasaba a otro (escribir 2 en Módulo 5 dejaba la orden sola, primera). Así queda lo que se ve. No en
+     la maquila (fijarla allá es «mandar a maquila», que tiene su propia ventana). El supervisor de piso lo guarda por la función del servidor si existe */
+  const rObj=er?S.recursos.find(r=>r.id===er.rec):null;const pinOk=!!(er&&rObj&&!esMaquilaRec(rObj));
+  const pinL=pinOk?[...pl.pri.keys()].filter(x=>!(((x.progCentro||{})[c]||{}).rec)&&pl.pri.get(x)!==pri0(x)):[];   /* solo las que cambian de lugar (o lo estrenan) */
+  const pinPiso=perfilSoloPiso()?(bloqueoRecPiso()?[]:pinL):[];
+  if(!perfilSoloPiso())pinL.forEach(x=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].rec=er.rec});
+  const pinTxt=pinL.length?(perfilSoloPiso()?(pinPiso.length?' · puesto pedido al servidor (fijar en '+nRec(er.rec)+'): '+pinPiso.map(x=>x.op).join(', '):' · el puesto no se fijó (lo fija planificación)'):' · puesto fijado en '+nRec(er.rec)+': '+pinL.map(x=>x.op).join(', ')):'';
+  CEN.avisoFij=(nuevasNum||pinL.length)?{c,op:o.op,oid:o.id,pos:j+1,ops:nuevasNumL.map(x=>x.op),ts:Date.now(),rec:er?er.rec:'',posR:pl?pl.m:null,pin:(perfilSoloPiso()?pinPiso:pinL).map(x=>x.op),sinPin:perfilSoloPiso()&&!pinPiso.length&&pinL.length>0}:null;   /* la pantalla dice cuáles quedaron fijadas además de la movida */
+  numeradas.forEach((x,k)=>{x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].pri=priDe(x,k)});
+  const priCambios=numeradas.map((x,k)=>({o:x,pri:priDe(x,k)}))
+    .filter(x=>{const p=priAntesM.get(x.o);return p==null||p!==x.pri});
   const sinTocar=cola.length-numeradas.length;   // estas conservan su orden por cercanía
   PLAN=null;PLAN_ALL=null;const P2=programar();const lD=lateDe(P2);
   const nuevas=Object.keys(lD).filter(id=>!lA[id]).map(id=>S.ordenes.find(x=>x.id===id)).filter(Boolean);
   const igual=cola.map(x=>x.id).join()===antes;
-  bitacora('Cola de '+nCen(c)+': '+o.op+' del puesto '+(i+1)+' al '+(j+1)+(igual?' (mismo orden)':'')+' · '+numeradas.length+' con puesto manual (1..'+numeradas.length+(nuevasNum?', '+nuevasNum+' nuevas para poder dejarla en ese puesto':'')+'), '+sinTocar+' siguen por orden de llegada'+(nuevas.length?' · ya no llegan a su fecha: '+nuevas.map(x=>x.op).join(', '):''));
+  bitacora('Cola de '+nCen(c)+': '+o.op+' del puesto '+(i+1)+' al '+(j+1)+(igual?' (mismo orden)':'')+(pl?' (lugar '+pl.m+' de '+pl.n+' en '+nRec(er.rec)+') · solo se tocaron órdenes de '+nRec(er.rec)+': '+priCambios.length+' con otro lugar'+(nuevasNum?' ('+nuevasNum+' nuevas con lugar fijado)':'')+pinTxt:' · '+numeradas.length+' con puesto manual (1..'+numeradas.length+(nuevasNum?', '+nuevasNum+' nuevas para poder dejarla en ese puesto':'')+'), '+sinTocar+' siguen por orden de llegada')+(nuevas.length?' · ya no llegan a su fecha: '+nuevas.map(x=>x.op).join(', '):''));
   const u=(PERFIL&&(PERFIL.nombre||PERFIL.email))||'';S.params.advertencias=S.params.advertencias||[];
   nuevas.forEach(x=>S.params.advertencias.push({id:uid(),ts:new Date().toISOString(),u,oid:x.id,op:x.op,accion:'Cola de '+nCen(c)+': '+o.op+' al puesto '+(j+1),meta:fechaMetaDe(x),metaTipo:x.fechaCompromiso?'compromiso':'pedida',antes:(P.ordenes[x.id]||{}).finPro||null,despues:lD[x.id],atendida:false}));
   if(S.params.advertencias.length>300)S.params.advertencias=S.params.advertencias.slice(-300);
-  if(esSupervisorPiso()){guardarPrioridadesRPC(priCambios,c,priAntes).then(ok=>{if(ok){save();render()}});return}
+  if(esSupervisorPiso()){guardarPrioridadesRPC(priCambios,c,priAntes).then(async ok=>{if(ok&&pinPiso.length){let fallo=null;
+      for(const x of pinPiso){const r=await setRecursoServidor(x,c,er.rec,null);if(r.falta||r.error){fallo=r;if(r.falta)RPC_REC={estado:'falta',ts:Date.now(),probando:false};break}
+        x.progCentro=x.progCentro||{};x.progCentro[c]=x.progCentro[c]||{};x.progCentro[c].rec=er.rec;
+        if(BASE.ordenes&&BASE.ordenes[x.id]){try{const b=JSON.parse(BASE.ordenes[x.id]);b.progCentro=JSON.parse(JSON.stringify(x.progCentro||{}));BASE.ordenes[x.id]=JSON.stringify(b)}catch(e){}}}
+      PLAN=null;PLAN_ALL=null;
+      if(fallo){if(CEN.avisoFij)CEN.avisoFij.sinPin=true;alert('El lugar quedó guardado, pero el puesto no se pudo fijar en '+nRec(er.rec)+(fallo.falta?' (falta correr '+SQL_RECURSO+' en Supabase).':':\n'+fallo.error)+'\n\nEl programa puede pasar estas órdenes a otro módulo: fijar el puesto lo hace planificación.')}}
+    if(ok){save();render()}});return}
   save();render();
   if(nuevas.length)alert('Con este orden, '+nuevas.length+(nuevas.length===1?' orden ya no llega':' órdenes ya no llegan')+' a su fecha:\n'+nuevas.slice(0,15).map(x=>x.op+' · meta '+fmtDia(fechaMetaDe(x))+' · estimada '+fmtDia(lD[x.id])).join('\n')+(nuevas.length>15?'\n…':'')+'\nNo se impidió el cambio; quedó en Advertencias de fecha.')}
+/* el lugar dentro de un puesto (06-oct, tercera revisión). Con un módulo o una máquina elegidos, # cuenta solo las órdenes de ESE puesto que ya se
+   trabajan (Ordenadas a mano, En proceso aquí, Listas para empezar y Afuera: las que llevan número en la pantalla). Para dejar la orden en el lugar m
+   de ese puesto se fijan solo órdenes de ese puesto —ella y las que quedan por encima de ella— (y las fijadas de ese puesto que van debajo se acomodan
+   si hace falta); las de otros puestos no se tocan. Antes se fijaban todas las de encima en la cola entera del centro (139 en
+   Confección para dejar una orden «segunda en Módulo 4») y el programa les cambiaba el módulo a varias.
+   er = {rec, n} (escribir el número) o {rec, antes} (soltar la fila arrastrada antes de esa orden; '' = al final de las de ese puesto).
+   Devuelve null si el número no sirve, {nada:true} si ya está en ese lugar o {m, n, pri: Map(orden → lugar fijado)} */
+function planLugarEnPuestoCEN(c,filasOT,o,er){const rec=er.rec;const pri=x=>(((x.progCentro||{})[c]||{}).pri)||0;
+  const esTrab=f=>recDeFila(f)===rec&&GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f));
+  const trab=filasOT.filter(esTrab);const S0=trab.filter(f=>f.o!==o).map(f=>f.o);const n=S0.length+1;
+  let m;if(er.antes!==undefined){const k=er.antes?S0.findIndex(x=>x.id===er.antes):-1;m=k>=0?k+1:n}
+  else{m=Math.round(+er.n);if(!(m>=1))return null}
+  m=Math.min(m,n);
+  const iO=trab.findIndex(f=>f.o===o);if(iO>=0&&iO===m-1)return {nada:true,m,n};
+  const Sp=S0.slice();Sp.splice(m-1,0,o);
+  const M=new Set(Sp.slice(0,m));Sp.slice(m).forEach(x=>{if(pri(x)>0)M.add(x)});
+  const Mord=Sp.filter(x=>M.has(x));
+  /* los números, con el menor número de cambios y cerca de sus vecinas: se conservan los lugares fijados de ese puesto que ya van en ese orden (la
+     subsecuencia creciente más larga) y las demás toman un número justo después de la anterior del puesto (o justo antes de la siguiente, si van
+     primero), aunque ese número lo tenga una orden de OTRO puesto: entre puestos distintos el número igual no cambia nada del puesto. Si no hay
+     ningún número entre dos fijadas seguidas, la de abajo también se mueve. Sin ninguna fijada en el puesto, van al final de las fijadas del centro.
+     Antes, después de «Juntar colores» (todos los números ocupados), bajar una orden un lugar la mandaba detrás de las 658 fijadas del centro y el
+     programa le cambiaba el módulo a otras cuatro */
+  const cur=Mord.map(pri);const fx=cur.map((v,i)=>v>0?i:-1).filter(i=>i>=0);const len=new Map(),ant=new Map();let mejor=-1;
+  fx.forEach((i,a)=>{len.set(i,1);ant.set(i,-1);for(let b=0;b<a;b++){const k=fx[b];if(cur[k]<cur[i]&&len.get(k)+1>len.get(i)){len.set(i,len.get(k)+1);ant.set(i,k)}}if(mejor<0||len.get(i)>len.get(mejor))mejor=i});
+  const queda=new Set();for(let k=mejor;k>=0;k=ant.get(k))queda.add(k);
+  const nuevo=new Map();
+  const asignar=()=>{nuevo.clear();const ks=[...queda].sort((x,y)=>x-y);let ini=0,a=0;
+    for(let t=0;t<=ks.length;t++){const kI=t<ks.length?ks[t]:Mord.length;const b=t<ks.length?cur[kI]:Infinity;const run=[];for(let i=ini;i<kI;i++)run.push(i);
+      if(run.length){if(b!==Infinity&&b-a-1<run.length)return kI;   /* no caben entre las dos: la fijada de abajo también se mueve */
+        if(a===0&&b!==Infinity)run.forEach((i,k)=>nuevo.set(Mord[i],b-run.length+k));else run.forEach((i,k)=>nuevo.set(Mord[i],a+1+k))}
+      if(t<ks.length){nuevo.set(Mord[kI],b);a=b;ini=kI+1}}
+    return -1};
+  if(queda.size){let r;while((r=asignar())>=0)queda.delete(r)}
+  if(!queda.size){nuevo.clear();const enM=new Set(Mord);let tope=0;S.ordenes.forEach(x=>{if(!enM.has(x))tope=Math.max(tope,pri(x))});Mord.forEach((x,k)=>nuevo.set(x,tope+1+k))}   /* ninguna fijada en el puesto: al final de las fijadas */
+  return {m,n,pri:nuevo}}
+/* el puesto elegido con los botoncitos de la pantalla del centro, si es de este centro (si no, '') */
+function recElegidoCEN(c){return (page==='centro'&&CEN.rec&&S.recursos.some(r=>r.id===CEN.rec&&r.centro===c))?CEN.rec:''}
 /* ---------- registrar lo hecho desde la cola del centro (sin ir a Control de piso) ----------
    Marcar hecho NO reprograma: solo avisa que la orden queda libre para el centro siguiente. Va al mismo avance de piso (turnos) y a la bitácora.
    Por ahora COMPLETO (todo el paso). Los módulos podrían registrar parcial cuando tengan tablet: preparado pero apagado (S.params.modulosParcial). */
@@ -10999,12 +11077,21 @@ function marcarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o)re
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" onclick="confirmarHechoCentro('${oid}','${c}')">Registrar prendas</button></div></div>`)}
 /* «registrar prendas» sin tiempo corrido: qué falta y dónde se anotan mientras tanto (Control de piso), sin pedir la cantidad para después rechazarla */
 function mSinTiempoRegistro(o,c,t){const sup=puede('programa')||puede('reprogramar');const verCtl=(typeof puedeAbrirPagina!=='function'||puedeAbrirPagina('control'));
+  /* 06-oct (tercera revisión): (1) sin motivos de «cierre sin tiempo» en la tabla 15 no se ofrece cerrar (en «Cerrar sin tiempo» el botón quedaba
+     apagado): se dice quién los carga. (2) Control de piso suma lo anotado al turno del puesto de la orden (setAvance); sin puesto, queda en la orden
+     pero no sale en el día de esta pantalla: se avisa antes de ir */
+  const hayMot=motivosDe('cierreSinTiempo').length>0;
+  let recO=(o.recursoFijo||{})[c]||'';if(!recO){try{recO=((programar().ordenes[o.id]||{}).pasos||[]).filter(p=>p.centro===c).map(p=>p.rec)[0]||''}catch(e){}}
+  const puedeFijar=(puede('programa')||(puede('reprogramar')&&veCentro(c)))&&!bloqueoRecPiso();
+  const cierreTxt=!hayMot?' Para cerrarla sin tiempo corrido hace falta un motivo y la lista está vacía: '+(puede('config')?'cárgalos en Configuración general → Órdenes, fases y archivos de Odoo → <b>15 · Motivos</b> (uso «cierre sin tiempo»).':'planificación tiene que cargar los motivos de «cierre sin tiempo» en la tabla 15 (Configuración general → Órdenes, fases y archivos de Odoo → 15 · Motivos).')
+    :(sup?' Si la orden ya está terminada aquí, ciérrala con ✓ «Terminar» (o «terminar aquí» en el menú ⋯): pide el motivo de cerrar sin tiempo.':' Si ya está terminada aquí, avisa al supervisor: él la cierra con motivo.');
+  const sinRecTxt=recO?'':`<div class="warn" style="font-size:var(--fs-s)"><b>Esta orden no tiene puesto en ${esc(nCen(c))}.</b> Lo que anotes en Control de piso queda en la orden (columna Prendas de la lista), pero no sale en el día de esta pantalla («hoy: …» ni «+N en Control de piso»). ${puedeFijar?'Fíjale el puesto en su fila (columna Puesto) antes de anotar.':'Pide a planificación que le fije el puesto.'}</div>`;
   abrir(`<h3>Registrar prendas en ${esc(nCen(c))}</h3><div class="body"><p style="font-size:var(--fs-s)">${whCell(o)} · ${esc(nombreCat(K(o.cat)))}</p>
    <div class="warn"><b>Para anotar prendas aquí, el operario tiene que haber hecho INICIO y FIN en la tablet (Mi centro).</b> ${t&&t.sinTramo?'Esta orden no tiene ningún INICIO en '+esc(nCen(c))+'.':'Hay '+num((t&&t.minutos)||0,1)+' minutos registrados y el mínimo es '+num((t&&t.minimo)||0)+'.'}</div>
-   <p style="font-size:var(--fs-s)">Mientras tanto, las prendas que salieron se anotan en <b>Control de piso</b> (por orden y centro).${sup?' Si la orden ya está terminada aquí, ciérrala con ✓ «Terminar» (o «terminar aquí» en el menú ⋯): pide el motivo de cerrar sin tiempo.':' Si ya está terminada aquí, avisa al supervisor: él la cierra con motivo.'}</p></div>
+   <p style="font-size:var(--fs-s)">Mientras tanto, las prendas que salieron se anotan en <b>Control de piso</b> (por orden y centro).${cierreTxt}</p>${sinRecTxt}</div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button>${verCtl?`<button class="btn" onclick="cerrar();CTL.area='pro';CTL.centro='${c}';ir('control')">Anotar en Control de piso →</button>`:''}</div>`)}
 function confirmarHechoCentro(oid,c){const o=S.ordenes.find(x=>x.id===oid);if(!o||!regHechoOk(c))return;const el=document.getElementById('hc-q');const q=Math.max(0,Math.round(+((el&&el.value)||0)));
-  {const t=puedeCerrarPaso(oid,c);if(!t.ok){alert('Para anotar prendas aquí, el operario tiene que haber hecho INICIO y FIN en la tablet ('+txtCierreBloqueado(t).toLowerCase()+').'+String.fromCharCode(10)+String.fromCharCode(10)+'Mientras tanto, anótalas en Control de piso. Si la orden ya está terminada aquí, ciérrala con ✓ «Terminar» (o «terminar aquí» en el menú ⋯) y deja el motivo.');return}}
+  {const t=puedeCerrarPaso(oid,c);if(!t.ok){alert('Para anotar prendas aquí, el operario tiene que haber hecho INICIO y FIN en la tablet ('+txtCierreBloqueado(t).toLowerCase()+').'+String.fromCharCode(10)+String.fromCharCode(10)+'Mientras tanto, anótalas en Control de piso. '+(motivosDe('cierreSinTiempo').length?'Si la orden ya está terminada aquí, ciérrala con ✓ «Terminar» (o «terminar aquí» en el menú ⋯) y deja el motivo.':'Para cerrarla sin tiempo corrido, planificación tiene que cargar los motivos de «cierre sin tiempo» en la tabla 15.'));return}}
   if(!(q>0)){const ya=((S.avance[oid]||{}).centros||{})[c]||0;
     if(pasoReabierto(o,c)&&ya>=cantCentro(o,c)&&ya>0){if(confirm('No sumas prendas: se vuelve a CERRAR '+nCen(c)+' con las '+num(ya)+' ya registradas. ¿Cerrar?')&&cerrarCentro(oid,c,'')){try{cerrar()}catch(e){}render()}return}
     alert('Escribe cuántas prendas salieron.');return}
@@ -11048,7 +11135,9 @@ function arrastrarCola(ev,oid,c){DRAGC={oid,c};try{ev.dataTransfer.setData('text
 function overCola(ev,c){if(!DRAGC||DRAGC.c!==c)return;ev.preventDefault();try{ev.dataTransfer.dropEffect='move'}catch(e){}ev.currentTarget.classList.add('dd-over')}
 function outCola(ev){ev.currentTarget.classList.remove('dd-over')}
 function finArrastreCola(ev){ev.currentTarget.style.opacity='';DRAGC=null}
-function soltarCola(ev,c,antesOid){ev.preventDefault();ev.currentTarget.classList.remove('dd-over');if(!DRAGC||DRAGC.c!==c)return;const d=DRAGC;DRAGC=null;if(d.oid===antesOid)return;moverEnCola(d.oid,c,antesOid?{antes:antesOid}:{final:true})}
+function soltarCola(ev,c,antesOid){ev.preventDefault();ev.currentTarget.classList.remove('dd-over');if(!DRAGC||DRAGC.c!==c)return;const d=DRAGC;DRAGC=null;if(d.oid===antesOid)return;
+  const rec=recElegidoCEN(c);if(rec){moverEnCola(d.oid,c,{enRec:{rec,antes:antesOid||''}});return}   /* con un puesto elegido: ese lugar entre las de ese puesto (06-oct, tercera revisión) */
+  moverEnCola(d.oid,c,antesOid?{antes:antesOid}:{final:true})}
 /* qué manda sobre esta orden además del puesto del centro (la pantalla lo dice) */
 /* ¿alguien está trabajando esta orden aquí sin que esté programada para su puesto? */
 function enProcesoFueraDelPlan(o,c){const ts=(((S.avance[o.id]||{}).tramos)||[]).filter(t=>t.centro===c&&!t.fin);
@@ -11231,7 +11320,7 @@ function accionesColaHTML(f,pc,terminarAqui){const acc=[];
 function ayudaColaTxt(cola,c,numerada){const t=ordenColaTip(cola);
   return LEDE_COLA+(t?' '+t:'')+' Las prendas de cada grupo son las pendientes en el centro.'
    +(numerada?'':' Hoy nadie ha fijado lugares a mano en '+nCen(c)+': lo que está en proceso y lo listo va por urgencia, y lo que viene, por orden de llegada. Arrastrar una orden o escribir su número en # le fija el lugar a ella y a las que queden por encima sin lugar (la pantalla dice cuáles); lo de abajo sigue como está.')}
-const LEDE_COLA='Esta es la lista de trabajo del centro y se trabaja de arriba hacia abajo. La columna # es el lugar de cada orden en la cola: en gris, el que le dan la urgencia y el orden de llegada; en negrita, el fijado a mano. Primero van las ordenadas a mano, después lo que ya se está haciendo aquí y lo que está listo para empezar (por urgencia: atrasadas aquí, para hoy, después), lo que está afuera (maquila) y al final lo que espera la liberación a producción y lo que viene. El número es el lugar en la cola ENTERA del centro, también con el buscador o un filtro puesto; con un puesto elegido, es el lugar dentro de ese puesto. Para cambiar el orden, arrastra la fila (⠿) o escribe otro número en #: la orden queda «ordenada a mano» en ese lugar y, como una orden con lugar va siempre antes que una sin lugar, también se fijan las que van por encima que no tenían lugar (la pantalla dice cuáles); lo de abajo sigue como está. Puesto es la máquina o el módulo: «· programa» es el que eligió el programa y elegir otro lo deja fijo. Arranca fija el día en que empieza. Si un cambio deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada cambio queda en la bitácora con quién y cuándo. El ✓ de «Terminar» (en lo que está en proceso) deja la orden terminada aquí y lista para el siguiente centro; en el menú «⋯» van «registrar prendas» (anotar las que salieron: se suman), «terminar aquí» (en las listas para empezar), quitar lo fijado y la ruta (editarla es de planificación; los demás la ven). Tocar la orden abre su ficha.';
+const LEDE_COLA='Esta es la lista de trabajo del centro y se trabaja de arriba hacia abajo. La columna # es el lugar de cada orden en la cola: en gris, el que le dan la urgencia y el orden de llegada; en negrita, el fijado a mano. Primero van las ordenadas a mano, después lo que ya se está haciendo aquí y lo que está listo para empezar (por urgencia: atrasadas aquí, para hoy, después), lo que está afuera (maquila) y al final lo que espera la liberación a producción y lo que viene. El número es el lugar en la cola ENTERA del centro, también con el buscador o un filtro puesto; con un puesto (módulo o máquina) elegido, es el lugar entre las de ese puesto que ya se trabajan, y cambiarlo solo toca órdenes de ese puesto y las deja fijas en él (así el programa no les cambia el módulo). Para cambiar el orden, arrastra la fila (⠿) o escribe otro número en #: la orden queda «ordenada a mano» en ese lugar y, como una orden con lugar va siempre antes que una sin lugar, también se fijan las que van por encima que no tenían lugar (la pantalla dice cuáles); lo de abajo sigue como está. Puesto es la máquina o el módulo: «· programa» es el que eligió el programa y elegir otro lo deja fijo. Arranca fija el día en que empieza. Si un cambio deja alguna orden fuera de fecha, se avisa y queda en Advertencias de fecha; no se impide. Cada cambio queda en la bitácora con quién y cuándo. El ✓ de «Terminar» (en lo que está en proceso) deja la orden terminada aquí y lista para el siguiente centro; en el menú «⋯» van «registrar prendas» (anotar las que salieron: se suman), «terminar aquí» (en las listas para empezar), quitar lo fijado y la ruta (editarla es de planificación; los demás la ven). Tocar la orden abre su ficha.';
 /* los grupos de la lista (06-oct): los de la cola (CERCANIA_GRUPOS) con «Disponible» partida en «En proceso aquí» y «Listas para empezar» —
    la misma regla de listasYEspera—. Revisión del 06-oct: vuelve el grupo de la cola del 17-sep «Ordenadas a mano» (antes «Con puesto
    manual»), arriba y siempre a la vista, salvo las que esperan la liberación a producción (04-oct: esa manda); En proceso y Listas van por
@@ -11301,21 +11390,25 @@ function puestoCeldaCEN(f,pc,recsC,okPiso,recBloq,k,sinT){
   const tit=(recBloq?recBloq+' · ':'')+'puesto (máquina o módulo) de esta orden en '+nCen(f.c)+': «· programa» es el que eligió el programa; elegir '+(solo?'«'+solo.n+' · fijado a mano»':'otro')+' lo deja fijo'+(sinPuesto?'. '+tSin:'');
   /* la indicación va solo en lo que se trabaja ya (ordenadas a mano, en proceso, listas): en lo que todavía no llega o espera la liberación no hay
      nada que hacer; y en gris, no en ámbar: en Corte eran casi todas las filas (el número total está arriba, en «N sin minutos por prenda») */
-  return `<select class="cola-rec" ${okPiso&&!recBloq?'':'disabled'} title="${esc(tit)}" onchange="CEN.resaltar='${k}';CEN.resaltarHasta=0;setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">${auto}</option>${recsC.map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}${solo?' · fijado a mano':''}</option>`).join('')}</select>${(sinPuesto&&f.trabajo)?'<div class="cola-sinp mut" title="'+esc(tSin)+'">fíjale puesto y arranque para que la vea la tablet</div>':''}`}
+  return `<select class="cola-rec" ${okPiso&&!recBloq?'':'disabled'} title="${esc(tit)}" onchange="CEN.resaltar='${k}';CEN.resaltarHasta=0;setProgCen('${f.o.id}','${f.c}','rec',this.value)"><option value="">${auto}</option>${recsC.map(r=>`<option value="${r.id}" ${pc.rec===r.id?'selected':''}>${esc(r.n)}${solo?' · fijado a mano':''}</option>`).join('')}</select>${(sinT&&f.trabajo&&hintTabletCEN(f,pc))?'<div class="cola-sinp mut" title="'+esc(tSin)+'">'+hintTabletCEN(f,pc)+'</div>':''}`}
+/* qué le falta a una orden sin minutos por prenda para que la vea la tablet del operario (regla del 17-sep, fijadaPara: puesto Y arranque fijados en
+   la fila). 06-oct (tercera revisión): antes la indicación se iba al fijar solo el puesto, y la tablet todavía no la veía */
+function hintTabletCEN(f,pc){if(fijadaPara(f.o,f.c,pc.rec||null))return '';if(!pc.rec&&!pc.desde)return 'fíjale puesto y arranque para que la vea la tablet';
+  if(!pc.desde)return 'falta el arranque para que la vea la tablet';if(!pc.rec)return 'falta el puesto para que la vea la tablet';return 'la tablet la ve cuando se acerque el arranque'}
+/* «1–9, 12» (los lugares de la cola, en tramos) */
+function rangosTxt(ns,max){max=max||4;const v=[...new Set((ns||[]).filter(x=>x>0))].sort((a,b)=>a-b);const r=[];v.forEach(x=>{const u=r[r.length-1];if(u&&x===u[1]+1)u[1]=x;else r.push([x,x])});
+  const t=r.map(([a,b])=>a===b?num(a):num(a)+'–'+num(b));return t.length>max?t.slice(0,max).join(', ')+'…':t.join(', ')}
 /* la orden está en OTRO centro de su tramo paralelo (la fase de Odoo es la de ese centro): se puede hacer aquí antes o después, pero ahora la
    tiene el otro (p. ej. en Estampado, una orden en fase Confección: «está en Confección · aquí, cuando vuelva»). Solo lectura de la fase */
 function enOtroCentroTramoCEN(f){try{if(posicionFaseCentro(f.o,f.c)==='enProceso')return null;
   for(const p of (f.o.rutaCompleta||f.o.ruta||[])){const d=p.centro;if(!d||d===f.c||!mismoTramoParalelo(f.c,d)||pasoHecho(f.o,d))continue;
     if(posicionFaseCentro(f.o,d)==='enProceso'){const af=avisoAfuera(f.o,d);return {c:d,afuera:af&&!af.conflicto?af.rec:null}}}}catch(e){}return null}
 /* escribir un número en #: sin puesto elegido, es el lugar en la cola entera del centro (moverEnCola); con un puesto elegido (CEN.rec), es el lugar
-   dentro de ese puesto y se traduce al lugar de la cola entera que hoy ocupa la orden de ese número (06-oct, segunda revisión) */
+   entre las de ese puesto que ya se trabajan y solo se tocan órdenes de ese puesto (planLugarEnPuestoCEN; 06-oct, tercera revisión: antes se traducía
+   al lugar de la cola entera y se fijaba media cola de Confección) */
 function moverEnColaLugar(oid,c,n){n=Math.round(+n);if(!(n>=1)){render();return}
-  if(!CEN.rec){moverEnCola(oid,c,{pos:n});return}
-  const P=programar();const lun=lunesDe(hoy());const lista=ordenTrabajoCentro(c,colaCentro(c,filasDeCentros([c],P,lun,dsum(lun,6),'',true)));
-  const sub=lista.filter(f=>recDeFila(f)===CEN.rec);const i=sub.findIndex(f=>f.o.id===oid);
-  if(i<0){moverEnCola(oid,c,{pos:n});return}
-  const m=Math.min(n,sub.length);if(m-1===i){render();return}
-  moverEnCola(oid,c,{pos:lista.indexOf(sub[m-1])+1})}
+  const rec=recElegidoCEN(c);if(rec){moverEnCola(oid,c,{enRec:{rec,n}});return}
+  moverEnCola(oid,c,{pos:n})}
 /* «Todo <ítem>» con varias sub-áreas: cada cola se pliega en su línea; abierta viene la que tiene más trabajo (06-oct, segunda revisión: «Todo
    Estampado» medía 5.700 px). Abrir o cerrar repinta solo la lista; con un filtro puesto todas vienen abiertas */
 function togColaCEN(c,v){CEN.colaAbre=CEN.colaAbre||{};CEN.colaAbre[c]=!!v;if(page==='centro'&&redibujarLista('CEN.q'))return;render()}
@@ -11331,7 +11424,7 @@ function colaCentroHTML(c,ctx){
       const gDe=new Map(ordTodo.map(f=>[f,grupoListaCEN(f)]));
       const ordT=ordTodo.filter(f=>enCola.has(f.o.id));
       const lugarG=new Map(ordTodo.map((f,i)=>[f.o.id,i+1]));
-      const recSel=CEN.rec||'';const lugarR=recSel?new Map(ordTodo.filter(f=>recDeFila(f)===recSel).map((f,i)=>[f.o.id,i+1])):null;
+      const recSel=CEN.rec||'';const lugarR=recSel?new Map(ordTodo.filter(f=>recDeFila(f)===recSel&&GRUPOS_TRABAJO_CEN.includes(gDe.get(f))).map((f,i)=>[f.o.id,i+1])):null;   /* con un puesto elegido, # cuenta solo las de ese puesto que ya se trabajan (las que llevan número); las demás dicen «—» (06-oct, tercera revisión) */
       const cola=ordT.filter(f=>enListaCEN(f,hasta,P,gDe.get(f)));
       const pend=cola.reduce((a,f)=>a+Math.max(0,f.o.cant-f.hechas),0);const numerada=ordTodo.some(f=>puestoDe(f.o,c)>0);
       const puedeReg=regHechoOk(c);const recsC=S.recursos.filter(r=>r.activa&&r.centro===c);
@@ -11355,12 +11448,12 @@ function colaCentroHTML(c,ctx){
        const m=mandaColaFilaHTML(mt.filter(x=>x.k!=='sinT').concat(otros.length?[{k:'tambien',cls:'t-mut',txt:'también en '+otros.map(nCen).join(', '),title:'esta orden también está pendiente en '+otros.map(nCen).join(', ')+', otra sub-área de esta pantalla'}]:[]));
        const bAf=b==='afuera'?(enProcesoEnCentro(f.o,f.c,f.cerc)?'proceso':'listas'):b;   /* afuera: en maquila (como en proceso) o por salir (como lista) */
        const falta=Math.max(0,f.o.cant-f.hechas);const pct=f.o.cant?Math.min(100,Math.round((f.hechas||0)/f.o.cant*100)):0;const termina=bAf==='proceso'||bAf==='anomalia';
-       const lugG=lugarG.get(f.o.id);const lug=lugarR?(lugarR.get(f.o.id)||lugG):lugG;const fijo=puestoDe(f.o,f.c)>0;const numVis=fijo||GRUPOS_TRABAJO_CEN.includes(g);const k=f.o.id+'|'+f.c;
-       const tLug=(lugarR?'lugar '+(lugarR.get(f.o.id)||'—')+' en '+nRec(recSel)+' (lugar '+lugG+' en la cola de '+nCen(f.c)+')':'lugar '+lugG+' en la cola de '+nCen(f.c))+': '+(fijo?'fijado a mano':numVis?'el que le dan la urgencia y el orden de llegada (en gris)':'todavía no se trabaja: no lleva número')+'. Es la prioridad que usa el programa; se trabaja de arriba hacia abajo.'+(okPiso?' Escribe otro número o arrastra la fila (⠿) para cambiarlo: queda «ordenada a mano» en ese lugar y, para que quede ahí, también se fijan las que van por encima que no tenían lugar (la pantalla dice cuáles).':'');
+       const lugG=lugarG.get(f.o.id);const lugR=lugarR?(lugarR.get(f.o.id)||null):null;const lug=lugarR?lugR:lugG;const fijo=puestoDe(f.o,f.c)>0;const numVis=!!lug&&(fijo||GRUPOS_TRABAJO_CEN.includes(g));const k=f.o.id+'|'+f.c;
+       const tLug=(lugarR?(lugR?'lugar '+lugR+' en '+nRec(recSel):'sin número en '+nRec(recSel))+' (lugar '+lugG+' en la cola de '+nCen(f.c)+')':'lugar '+lugG+' en la cola de '+nCen(f.c))+': '+(fijo?'fijado a mano':numVis?'el que le dan la urgencia y el orden de llegada (en gris)':'todavía no se trabaja: no lleva número')+'. Es la prioridad que usa el programa; se trabaja de arriba hacia abajo.'+(okPiso?(lugarR?' Escribe otro número o arrastra la fila (⠿): queda en ese lugar entre las de '+nRec(recSel)+' que ya se trabajan; si hace falta, también se fijan las de '+nRec(recSel)+' que van por encima (la pantalla dice cuáles). Las de otros puestos no se tocan.':' Escribe otro número o arrastra la fila (⠿) para cambiarlo: queda «ordenada a mano» en ese lugar y, para que quede ahí, también se fijan las que van por encima que no tenían lugar (la pantalla dice cuáles).'):'');
        const enOtro=bAf==='listas'?enOtroCentroTramoCEN(f):null;
        const otroTxt=enOtro?'<div class="cola-donde" title="'+esc('la fase de Odoo («'+(f.o.fase||'')+'») es la de '+nCen(enOtro.c)+(enOtro.afuera?', afuera en '+nRec(enOtro.afuera):'')+': '+nCen(f.c)+' y '+nCen(enOtro.c)+' van en el mismo tramo (pueden ir antes o después, Configuración general → Tramos paralelos), así que aquí se hace cuando vuelva')+'"><span class="tag t-medio">está en '+esc(nCen(enOtro.c))+(enOtro.afuera?' (afuera)':'')+' · aquí, cuando vuelva</span></div>':'';
        return `<tr id="cola-${f.c}-${f.o.id}" draggable="${okPiso?'true':'false'}" ondragstart="arrastrarCola(event,'${f.o.id}','${f.c}')" ondragend="finArrastreCola(event)" ondragover="overCola(event,'${f.c}')" ondragleave="outCola(event)" ondrop="CEN.resaltar=DRAGC?DRAGC.oid+'|${f.c}':null;CEN.resaltarHasta=0;soltarCola(event,'${f.c}','${f.o.id}')">
-       <td class="cola-num" style="white-space:nowrap">${okPiso?'<span class="hand" title="arrastra para cambiar el lugar en la cola">⠿</span>':''}<input type="number" min="1" class="cola-lugar${fijo?' fijo':''}" value="${fijo?lug:''}" placeholder="${numVis?lug:'—'}" ${okPiso?'':'disabled'} onchange="CEN.resaltar='${k}';CEN.resaltarHasta=0;moverEnColaLugar('${f.o.id}','${f.c}',+this.value)" title="${esc(tLug)}"></td>
+       <td class="cola-num" style="white-space:nowrap">${okPiso?'<span class="hand" title="arrastra para cambiar el lugar en la cola">⠿</span>':''}<input type="number" min="1" class="cola-lugar${fijo?' fijo':''}" value="${fijo&&lug?lug:''}" placeholder="${numVis?lug:'—'}" ${okPiso?'':'disabled'} onchange="CEN.resaltar='${k}';CEN.resaltarHasta=0;moverEnColaLugar('${f.o.id}','${f.c}',+this.value)" title="${esc(tLug)}"></td>
        <td class="cola-op" onclick="if(!event.target.closest('button,img,input,select,a,details,.fase-mini,.tag'))abrirFichaOrden('${f.o.id}')" title="tocar para abrir la ficha de la orden">${whCell(f.o)}${m?'<div class="cola-etq">'+m+'</div>':''}</td><td data-l="ODC"><div class="cola-odc">${esc(String(f.o.odc||'')) ||'<span class="mut">—</span>'}</div></td><td><span class="t2" title="${esc(nombreCat(K(f.o.cat)))}">${esc(nombreCat(K(f.o.cat)))}</span><div class="cola-color">${dotColor(f.o.color)}${esc((C(f.o.color)||{}).n||'')}</div><div class="mut cola-cli" title="${esc(f.o.cliente||'')}">${esc(f.o.cliente||'')}</div></td>
        <td class="num cola-pz"><b>${num(f.hechas||0)}</b> <span class="mut">de ${num(f.o.cant)}</span><div class="bar cola-bar"><i style="width:${pct}%"></i></div><div class="mut cola-h" title="prendas que faltan aquí · horas del paso en este centro (minutos por prenda × prendas) · prendas que el programa puso esta semana">faltan ${num(falta)} · ${f.paso.min>0?num(f.paso.min/60,1)+' h':(sinT?'<span class="tag t-falta" title="'+esc('sin minutos por prenda (tiempo estándar) · '+sinT.title)+'">sin minutos</span>':'—')}${f.pzSem>0?' · '+(CEN.sem?'esa semana ':'esta semana ')+num(f.pzSem):''}</div></td>
        <td><div class="cola-llega">${estadoFilaCEN(f,g,P)}</div>${otroTxt}${f.paso.ini?'<div class="mut cola-plan" title="inicio → fin del paso en este centro según el programa (una sola fecha si empieza y termina el mismo día)">'+((f.paso.ini===f.paso.fin||!f.paso.fin)?fmtFecha(f.paso.ini):fmtFecha(f.paso.ini)+' → '+fmtFecha(f.paso.fin))+'</div>':''}</td><td style="white-space:nowrap">${marcaCentroUna(f.o,P,f.c)}</td>
@@ -11372,8 +11465,19 @@ function colaCentroHTML(c,ctx){
       const pzDe=f=>Math.max(0,f.o.cant-f.hechas);
       /* después de escribir un lugar, la pantalla dice qué otras órdenes quedaron fijadas para poder dejarla ahí (06-oct, segunda revisión: la
          persona veía pasar a «Ordenadas a mano» órdenes que no tocó) */
-      const af=CEN.avisoFij;const avisoFij=(af&&af.c===c&&Date.now()-af.ts<180000&&af.ops.length)?`<span class="cola-avisofij tag t-medio" title="${esc('Una orden con lugar fijado va siempre antes que una sin lugar: para dejar '+af.op+' en el lugar '+af.pos+' hubo que fijar también las que van por encima. Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.')}">Para dejar ${esc(af.op)} en el lugar ${num(af.pos)} también quedaron fijadas: ${esc(af.ops.slice(0,4).join(', '))}${af.ops.length>4?' y '+num(af.ops.length-4)+' más':''}</span> <a class="cola-avisofij-x" onclick="CEN.avisoFij=null;if(!redibujarLista('CEN.q'))render()" title="cerrar este aviso">✕</a>`:'';
-      const avisoRes=(fRes&&!visRes)?`<span class="tag t-medio cola-avisores">${esc(fRes.o.op)} quedó en el lugar ${num(lugarG.get(fRes.o.id))}${(fRes.o.progCentro||{})[c]&&(fRes.o.progCentro||{})[c].desde?' (arranca '+esc(fmtDia((fRes.o.progCentro||{})[c].desde))+')':''} y no se ve con lo que está puesto · <a onclick="irFilaCentro('${jsq(fRes.o.op)}')">verla</a></span>`:'';
+      /* 06-oct (tercera revisión): con un puesto elegido, el aviso dice el lugar EN ESE PUESTO (antes, el de la cola entera: «lugar 139» para quien
+         escribió 2); y si el número no cambia nada (p. ej. es la única de ese puesto que ya se trabaja), lo dice en vez de callar */
+      const af=CEN.avisoFij;const afOk=!!(af&&af.c===c&&Date.now()-af.ts<180000);const lugAf=afOk?(af.rec?'el lugar '+num(af.posR)+' de '+nRec(af.rec):'el lugar '+num(af.pos)):'';
+      /* si al reprogramar el programa pasó a ese puesto otra orden fijada, el lugar de ahora puede no ser el pedido: se dice */
+      const lugAhora=(afOk&&!af.nada&&af.rec&&af.rec===recSel&&lugarR&&af.oid)?lugarR.get(af.oid):null;const difAf=(lugAhora&&af.posR&&lugAhora!==af.posR)?' · con el programa de ahora va en el lugar '+num(lugAhora)+': el programa pasó otras órdenes a '+nRec(af.rec):'';
+      const cerrarAf=` <a class="cola-avisofij-x" onclick="CEN.avisoFij=null;if(!redibujarLista('CEN.q'))render()" title="cerrar este aviso">✕</a>`;
+      const avisoFij=!afOk?'':af.nada?`<span class="cola-avisofij tag t-medio" title="${esc('Con un puesto elegido, # es el lugar entre las órdenes de '+nRec(af.rec)+' que ya se trabajan (ordenadas a mano, en proceso, listas o afuera); las que todavía no llegan no llevan número.')}">${esc(af.op)} ${af.n<=1?'es la única de '+esc(nRec(af.rec))+' que ya se trabaja: no hay otro lugar donde ponerla · no se cambió nada':'ya está en el lugar '+num(af.posR)+' de '+num(af.n)+' en '+esc(nRec(af.rec))+' · no se cambió nada'}</span>${cerrarAf}`
+        :(af.ops.length||(af.pin&&af.pin.length)||af.sinPin)?`<span class="cola-avisofij tag t-medio" title="${esc(af.rec?'Para dejar '+af.op+' en ese lugar de '+nRec(af.rec)+' se fijaron también las de '+nRec(af.rec)+' que van por encima; las de otros puestos no se tocaron. '+(af.sinPin?'El puesto no quedó fijado (lo fija planificación): el programa puede pasarlas a otro módulo. ':'También quedan fijas en '+nRec(af.rec)+', para que el programa no les cambie el puesto. ')+'Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.':'Una orden con lugar fijado va siempre antes que una sin lugar: para dejar '+af.op+' en el lugar '+af.pos+' hubo que fijar también las que van por encima. Se quitan con «quitar lo fijado» en el menú ⋯ de cada una.')}">${af.ops.length?'Para dejar '+esc(af.op)+' en '+esc(lugAf)+' también '+(af.ops.length===1?'quedó fijada':'quedaron fijadas')+': '+esc(af.ops.slice(0,4).join(', '))+(af.ops.length>4?' y '+num(af.ops.length-4)+' más':''):esc(af.op)+' quedó en '+esc(lugAf)}${(af.pin&&af.pin.length&&!af.sinPin)?' · '+(af.pin.length===1&&!af.ops.length?'queda fija':'quedan fijas')+' en '+esc(nRec(af.rec)):af.sinPin?' · el programa puede pasarlas a otro módulo (fijar el puesto lo hace planificación)':''}${esc(difAf)}</span>${cerrarAf}`:'';
+      /* la fila cambiada que no se ve: con un puesto elegido, su lugar en ese puesto o, si ahora es de otro puesto, cuál; «verla» quita lo que la esconde
+         (el puesto elegido, las fases, los filtros y la ventana de dos semanas) */
+      const recRes=fRes?recDeFila(fRes):'';const otroRec=!!(recSel&&fRes&&recRes!==recSel);
+      const lugResTxt=!fRes?'':(recSel&&!otroRec&&lugarR.get(fRes.o.id))?'quedó en el lugar '+num(lugarR.get(fRes.o.id))+' de '+esc(nRec(recSel)):otroRec?'quedó '+(recRes?'en '+esc(nRec(recRes)):'sin puesto')+' (lugar '+num(lugarG.get(fRes.o.id))+' en la cola de '+esc(nCen(c))+')'+((recRes&&!((fRes.o.progCentro||{})[c]||{}).rec)?' — el programa le cambió el puesto; para dejarla en '+esc(nRec(recSel))+', fíjale el puesto':''):'quedó en el lugar '+num(lugarG.get(fRes.o.id));
+      const avisoRes=(fRes&&!visRes)?`<span class="tag t-medio cola-avisores">${esc(fRes.o.op)} ${lugResTxt}${(fRes.o.progCentro||{})[c]&&(fRes.o.progCentro||{})[c].desde?' (arranca '+esc(fmtDia((fRes.o.progCentro||{})[c].desde))+')':''} y no se ve con lo que está puesto · <a onclick="irFilaCentro('${jsq(fRes.o.op)}','${jsq(fRes.o.id)}')">verla</a></span>`:'';
       /* debajo del título, UNA línea corta: las marcas (riesgo de entrega), lo que falta (sin minutos por prenda) y los avisos; el porqué de cada
          una va al «?» o al pasar el mouse (06-oct, revisión: antes eran dos líneas largas entre el título y la primera orden) */
       const linea=[avisoFij,avisoRes,fasesSinConfirmarHTML(c),porQueTardeHTML(cola,P,c),avisoRecPisoHTML(recBloq),sinTiempoListaHTML(cola,P)].filter(Boolean).join('');
@@ -11386,13 +11490,18 @@ function colaCentroHTML(c,ctx){
       if(!abierta)return `<div class="panel cola cola-vacia cola-plegada"><div class="body"><a class="cola-abrir" onclick="togColaCEN('${c}',true)" title="abrir la cola de ${esc(nCen(c))}">▸ <b>Cola de ${esc(nCen(c))}</b></a> <span class="mut">· ${resumenTxt}</span>${masHTML}${linea?' '+linea:''}</div></div>`;
       /* cada grupo muestra sus primeras filas y «ver las N restantes» (lo del Resumen del centro); con un filtro puesto o agrupando, todas */
       const tope=Math.max(1,+prm('filasResumenCentro',8)||8);const sinTope=filtroActivoCEN()||grpSt('cen').niveles.length>0;const verG=CEN.verGrupo||{};
-      const nFijFuera=ordTodo.filter(f=>gDe.get(f)==='fuera'&&puestoDe(f.o,c)>0).length;
+      /* las que tienen lugar fijado pero van en «Por liberar» o «Todavía no llegan a planta» (más abajo): su número no está arriba. 06-oct (tercera
+         revisión): la cabecera de «Ordenadas a mano» dice qué lugares son (después de «Juntar colores» la lista empezaba en #10 y los 1–9 iban al final) */
+      const fijAbajo=ordTodo.filter(f=>puestoDe(f.o,c)>0&&(gDe.get(f)==='fuera'||gDe.get(f)==='porLiberar')&&(!recSel||recDeFila(f)===recSel));
+      const nFijFuera=fijAbajo.filter(f=>gDe.get(f)==='fuera').length,nFijLib=fijAbajo.length-nFijFuera;
+      const notaFijAbajo=!fijAbajo.length?'':recSel?num(fijAbajo.length)+' más de '+nRec(recSel)+' con lugar fijado '+(nFijLib?'esperan la liberación o todavía no llegan a planta':'todavía no llegan a planta')+' (van más abajo)'
+        :'los números que faltan arriba ('+rangosTxt(fijAbajo.map(f=>lugarG.get(f.o.id)),2)+') son de '+num(fijAbajo.length)+' '+(fijAbajo.length===1?'orden que va':'órdenes que van')+' más abajo: '+[nFijFuera?num(nFijFuera)+' todavía no '+(nFijFuera===1?'llega':'llegan')+' a planta':'',nFijLib?num(nFijLib)+' por liberar a producción':''].filter(Boolean).join(' y ');
       const sec=(grpSt('cen').todoAbierto=true,ORDEN_LISTA_CEN.map(g=>{const l=gr[g];if(!l.length)return '';
         /* con un puesto o módulo elegido, un grupo de los que vienen plegados que tiene órdenes programadas esta semana en ese puesto viene abierto
            (antes su trabajo de mañana quedaba escondido en «Todo lo que viene»); lo que la persona abrió o cerró manda */
         const elegido=(CEN.cercAbre||{})[g];const auto=!!CEN.rec&&!CERC_ABIERTO[g]&&(g==='afuera'||l.some(f=>f.pzSem>0));const porRes=visRes&&gRes===g;
         const ab=filtroActivoCEN()||porRes||(elegido!=null?!!elegido:(!!CERC_ABIERTO[g]||auto));
-        const nota=(porRes&&elegido===false)?'abierto: aquí está la orden que acabas de cambiar':(auto&&ab&&elegido==null&&!filtroActivoCEN())?(g==='afuera'?'abierto: viendo solo '+nRec(CEN.rec):'abierto: tiene órdenes programadas esta semana en '+nRec(CEN.rec)):(g==='puesto'&&nFijFuera?num(nFijFuera)+' más con lugar fijado todavía no llegan a planta (van al final)':'');
+        const nota=(porRes&&elegido===false)?'abierto: aquí está la orden que acabas de cambiar':(auto&&ab&&elegido==null&&!filtroActivoCEN())?(g==='afuera'?'abierto: viendo solo '+nRec(CEN.rec):'abierto: tiene órdenes programadas esta semana en '+nRec(CEN.rec)):((notaFijAbajo&&g===GRUPOS_TRABAJO_CEN.find(x=>gr[x]&&gr[x].length))?notaFijAbajo:'');
         const iRes=porRes?l.indexOf(fRes):-1;
         const todoG=sinTope||CEN.todo||verG[c+'|'+g]||l.length<=tope+2;const lv=todoG?l:l.slice(0,Math.max(tope,iRes+1));
         const mas=!ab?'':(l.length>lv.length?'<tr class="cola-mas"><td colspan="'+NC+'"><a onclick="verGrupoCEN(\''+c+'\',\''+g+'\',true)">Ver las '+num(l.length-lv.length)+' restantes de «'+esc(nGrupoCerc(g))+'»</a></td></tr>'
@@ -11403,7 +11512,7 @@ function colaCentroHTML(c,ctx){
       const notaFuera=(gr.fuera.length||ocF)?`<p class="mut res-fuera">Las que todavía no llegan a planta (sin WH o con la tela sin liberar) van al final${gr.fuera.length?', plegadas':' («ver toda la cola» las trae)'}: no se pueden empezar${(typeof puedeAbrirPagina!=='function'||puedeAbrirPagina('ordenes'))?' · <a onclick="ir(\'ordenes\')">verlas en Órdenes →</a>':''}</p>`:'';
       return `<div class="panel cola"><h3>${plegable?`<a class="cola-abrir" onclick="togColaCEN('${c}',false)" title="plegar la cola de ${esc(nCen(c))}">▾</a> `:''}Cola de ${esc(nCen(c))}${ayudaTipHTML(ayudaColaTxt(cola,c,numerada))} <span class="note">${resumenTxt}${masHTML}${CEN.rec?' · solo '+esc(nRec(CEN.rec)):''}</span></h3>${linea?'<div class="cola-linea">'+linea+'</div>':''}<div class="scroll lista"><table><thead><tr><th title="${esc(recSel?'lugar en '+nRec(recSel)+': se trabaja de arriba hacia abajo (en negrita, fijado a mano); el lugar en la cola de '+nCen(c)+' va al pasar el mouse por cada número':'lugar en la cola: se trabaja de arriba hacia abajo (en negrita, fijado a mano)')}">#</th><th>Orden</th><th>ODC</th><th>Producto</th><th class="num" title="prendas hechas aquí de las pedidas; debajo, las que faltan, las horas del paso y las que el programa puso esta semana">Prendas</th><th title="cómo está frente a este centro (cuándo llega, si está atrasada aquí, qué la frena) y, debajo, las fechas del paso según el programa; hoy no cuenta: el siguiente día hábil es «mañana»">Estado</th><th>Marca</th><th title="la máquina o el módulo de cada orden («· programa» = el que eligió el programa)">Puesto</th><th>Arranca</th><th class="num" title="terminar la orden en este centro: queda lista para el siguiente">Terminar</th><th></th></tr></thead><tbody>
        ${sec}
-       ${okPiso?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="${NC}">⤓ soltar aquí para poner al final de la cola de ${esc(nCen(c))}</td></tr>`:''}</tbody></table></div>${notaFuera}</div>`
+       ${okPiso?`<tr class="dd-fin" ondragover="overCola(event,'${c}')" ondragleave="outCola(event)" ondrop="soltarCola(event,'${c}','')"><td colspan="${NC}">${recSel?'⤓ soltar aquí para poner al final de las de '+esc(nRec(recSel))+' que ya se trabajan':'⤓ soltar aquí para poner al final de la cola de '+esc(nCen(c))}</td></tr>`:''}</tbody></table></div>${notaFuera}</div>`
 }
 /* «Hecho hoy en X» (06-oct: salió de debajo de la cola a «Cómo voy», plegado; es la MISMA tabla, con «deshacer»). El total de prendas de hoy no
    se repite aquí: es el «hecho» del día de hoy en el día por día */
@@ -11489,7 +11598,11 @@ function tarjetasResumenCentroHTML(cens,P,dias,recs,listas,nombre){const h=hoy()
      salían del programa de ahora—; la foto guarda cuántas prendas de cada orden iban en la semana, no en qué día, así que contra ella no hay ▲ ni color
      de «vas atrasado». «sin registros» vale igual que sin foto. Una línea dice qué separa este número del «hecho» del día por día */
   const fotoSinReg=foto&&ningunReg&&!aC.cong.hechas;const fueraFoto=foto?hechoFueraDeFotoCEN(cens,dias[0],dias[dias.length-1]):0;
-  const fotoLinea=(foto&&(fueraFoto||cp))?'<div class="res-cong" title="el día por día (abajo) cuenta lo registrado cada día con el programa de ahora; la foto, lo hecho desde que se congeló en sus órdenes">'+[fueraFoto?'Además, <b>'+num(fueraFoto)+'</b> de órdenes que entraron después de congelar':'',cp?'incluye lo anotado en Control de piso ('+num(cp)+')':''].filter(Boolean).join(' · ')+'</div>':'';
+  /* 06-oct (tercera revisión): «incluye lo anotado en Control de piso» solo con lo que de verdad está en la foto (cpEnFotoCEN: en sus órdenes, después
+     de congelar); lo de Control de piso que no entra (antes de congelar, o en órdenes que no están en la foto) se dice aparte. Antes se afirmaba
+     «incluye (65)» con 25 de una orden que no estaba en la foto */
+  const cpF=foto?cpEnFotoCEN(cens,dias[0]):0;const cpNo=foto?Math.max(0,cp-cpF):0;
+  const fotoLinea=(foto&&(fueraFoto||cpF||cpNo))?'<div class="res-cong" title="el día por día (abajo) cuenta lo registrado cada día con el programa de ahora; la foto, lo hecho desde que se congeló en sus órdenes. Control de piso guarda el total de la orden y no deja línea del día">'+[fueraFoto?'Además, <b>'+num(fueraFoto)+'</b> de órdenes que entraron después de congelar':'',cpF?'la foto incluye '+num(cpF)+' anotadas en Control de piso':'',cpNo?'<span title="anotadas en Control de piso esta semana antes de congelar, o en órdenes que no están en la foto">'+num(cpNo)+' anotadas en Control de piso no entran en la foto</span>':''].filter(Boolean).join(' · ')+'</div>':'';
   const cpTxt=(!foto&&cp)?'<div class="res-cong" title="Control de piso guarda el total de la orden, no una línea del día: por eso esas prendas no entran en «hecho» de cada día. La producción del turno las tiene.">Además, <b>'+num(cp)+'</b> prendas anotadas en Control de piso esta semana (no entran en el «hecho» de cada día)</div>':'';
   /* eficiencia de hoy: la misma cuenta de Planta en vivo (eficienciaHoy + semaforoEfHTML); solo tiene sentido en la semana en curso */
   const recObj=rec?S.recursos.find(r=>r.id===rec):null;const afuera=!!(recObj&&(esMaquilaRec(recObj)||esRecAfuera(rec)));
@@ -11527,6 +11640,13 @@ function prodTurnoFueraDia(recs,d){const ids=new Set((recs||[]).map(r=>r.id));if
    la foto del «hecho» del día por día (06-oct, segunda revisión: «476 de la foto» y «hoy: 650» no cuadraban sin decirlo) */
 function hechoFueraDeFotoCEN(cens,lun,dom){let n=0;cens.forEach(c=>{const f=congeladoDe(c,lun);if(!f)return;const en=new Set((f.ords||[]).map(e=>e.oid));
   S.ordenes.forEach(o=>{if(en.has(o.id))return;((S.avance[o.id]||{}).tallasLog||[]).forEach(x=>{if(x.centro===c&&!x.deshecho&&!x.ajusteReapertura&&String(x.ts||'')>String(f.ts||'')&&diaLocalDeTs(x.ts)<=dom)n+=(+x.pz||0)})})});return n}
+/* con la semana congelada: cuánto del número de la foto se anotó en Control de piso (06-oct, tercera revisión). La foto cuenta, en SUS órdenes, lo que
+   subió el avance desde que se congeló (avanceCongelado); Control de piso no deja línea del día. Por orden de la foto: lo que subió − sus líneas del día
+   posteriores a congelar (tablet, «registrar prendas», reaperturas). No cuenta lo que la fase o la orden de trabajo de Odoo dan por hecho */
+function cpEnFotoCEN(cens,lun){let n=0;const idx=new Map(S.ordenes.map(o=>[o.id,o]));cens.forEach(c=>{const f=congeladoDe(c,lun);if(!f)return;
+  (f.ords||[]).forEach(e=>{const o=idx.get(e.oid);if(!o)return;const a=S.avance[e.oid]||{};if((a.centrosOT||{})[c])return;
+    const sube=(((a.centros||{})[c])||0)-(+((f.hechasAl||{})[e.oid])||0);if(sube<=0)return;if(pasoHecho(o,c)&&sube<(+e.pz||0))return;
+    const lin=(a.tallasLog||[]).filter(x=>x.centro===c&&!x.deshecho&&String(x.ts||'')>String(f.ts||'')).reduce((s,x)=>s+(+x.pz||0),0);n+=Math.max(0,sube-lin)})});return n}
 /* la semana que se trabaja (06-oct, revisión: una sola forma de nombrarla en toda la pantalla): del primer al último día con turno */
 function semanaLabTxtCEN(cens,lun,dom){const recs=S.recursos.filter(r=>r.activa&&cens.includes(r.centro));const ds=[];for(let d=lun;d<=dom;d=dsum(d,1))ds.push(d);
   const lab=ds.filter(d=>recs.some(r=>labR(d,r)));return fmtDia(lab[0]||lun)+' – '+fmtDia(lab[lab.length-1]||dom)}
@@ -11598,7 +11718,18 @@ function cenPlegAttrs(k,abierto,def){const pref=cenPleg(k,def);return (abierto?'
 function cenPlegTog(el,k){if(!el||!el.isConnected)return;if(el.dataset&&el.dataset.auto){delete el.dataset.auto;return}cenPlegGuardar(k,el.open)}   /* un «toggle» que llega cuando ese dibujo ya se reemplazó no es de la persona */
 function cenSemana(d){CEN.sem=d===0?0:(CEN.sem||0)+d;CEN.dia=null;render()}
 function irCostura(tab){CEN.vista='costura';if(tab)COS.tab=tab;if(CEN.rec){const r=S.recursos.find(x=>x.id===CEN.rec&&x.centro==='modulos');if(r&&!ordenRecChip(r))COS.rec=r.id}render();cenArriba()}
-function irFilaCentro(op){CEN.q=op;BUSQ['CEN.q']='op';CEN.dia=null;CEN.sec='lista';render()}   /* «ir a la fila»: la lista acotada a esa orden */
+/* «ir a la fila» / «verla»: la lista acotada a esa orden. 06-oct (tercera revisión): si la orden no es del puesto elegido, no pasa el filtro de fases o los
+   filtros, o el programa la trae después de la semana siguiente, se quita lo que la esconde (antes «verla» dejaba el módulo elegido y la pantalla decía
+   «nada en Módulo 1») */
+function irFilaCentro(op,oid){CEN.q=op;BUSQ['CEN.q']='op';CEN.dia=null;CEN.sec='lista';
+  const o=oid?S.ordenes.find(x=>x.id===oid):S.ordenes.find(x=>x.op===op);
+  if(o&&page==='centro'){try{const todos=censDeGrupo(CEN.id);const cs=(CEN.solo&&todos.includes(CEN.solo))?[CEN.solo]:todos;const P=programar();const lun=lunesDe(dsum(hoy(),(CEN.sem||0)*7)),dom=dsum(lun,6);
+    const fs=filasDeCentros(cs,P,lun,dom,'',true).filter(f=>f.o===o);
+    if(CEN.rec&&!fs.some(f=>recDeFila(f)===CEN.rec))CEN.rec='';
+    if(CEN.fases&&CEN.fases.size&&!faseOkCEN(o))CEN.fases=null;
+    if(FOD['CEN.q']&&!okFiltrosOdoo(o,'CEN.q'))delete FOD['CEN.q'];
+    if(!CEN.todo&&fs.length&&!fs.some(f=>enVentanaCEN(f,dsum(dom,7))))CEN.todo=true}catch(e){}}
+  render()}
 /* «ver sola» (tabla de sub-áreas) y las pestañas de sub-área: esa sub-área sola, arriba de la pantalla */
 function verSubAreaCEN(c){CEN.solo=c||'';CEN.rec='';CEN.dia=null;CEN.sec='hoy';render()}
 /* «carga por módulo ↓» (junto a los botoncitos de Confección): lleva a las tarjetas de cada módulo, en «La semana, por partes» */
@@ -11756,10 +11887,12 @@ function vCentro(el){
   const filtroDia=()=>CEN.dia?`<p class="cen-filtro mut"><span class="tag t-ok">filtro activo</span> solo las órdenes del <b>${fmtDia(CEN.dia)}</b> con prendas pendientes · <a href="#" onclick="CEN.dia=null;render();return false">quitar el filtro</a></p>`:'';
   /* «también en X»: con varias sub-áreas en la pantalla, una orden que está pendiente en dos de ellas lo dice en cada fila */
   const tambienDe=fs=>{if(cens.length<2)return null;const m=new Map();fs.forEach(f=>{if(f.hecho||f.bloq)return;const l=m.get(f.o.id)||[];l.push(f.c);m.set(f.o.id,l)});return m};
-  /* «Todo <ítem>» (06-oct, segunda revisión): las colas abiertas van primero y las plegadas o vacías (una línea cada una) después, cada parte en el
-     orden del proceso; así lo que hay que hacer queda arriba */
+  /* «Todo <ítem>» (06-oct, segunda revisión): las colas abiertas van primero, después las plegadas con órdenes y al final las vacías (una línea cada
+     una), cada parte en el orden del proceso; así lo que hay que hacer queda arriba (tercera revisión: antes una cola plegada con 33 órdenes quedaba
+     detrás de tres vacías) */
   const colasHTML=(fs,tb)=>{const l=cens.map(c=>colaCentroHTML(c,{filas:fs,filasTodas:filasCentro,hasta,okPiso,P,h,tambien:tb,plegable:cens.length>1,abreDefecto}));
-    if(cens.length<2)return l.join('');const linea=x=>/^<div class="panel cola cola-vacia/.test(x);return l.filter(x=>!linea(x)).concat(l.filter(linea)).join('')};
+    if(cens.length<2)return l.join('');const linea=x=>/^<div class="panel cola cola-vacia/.test(x);const pleg=x=>/^<div class="panel cola cola-vacia cola-plegada/.test(x);
+    return l.filter(x=>!linea(x)).concat(l.filter(pleg),l.filter(x=>linea(x)&&!pleg(x))).join('')};
   const listaHTML=fs=>{const tb=tambienDe(fs);return filtroDia()+colasHTML(fs,tb)+avisoFueraDeBaseHTML('CEN.q',colaVisible(cens,fs,hasta,P),'este centro (lo que se puede trabajar y lo que viene esta semana y la siguiente)')+hechoHoyHTML+masDetalleCentroHTML(cid,cens,P,fs,h,abreDesv)};
   const semTxt=semanaLabTxtCEN(cens,lun,dom);
   const semanaHTML=subAreasSemanaHTML(cid,cens,P,dias,semTxt)+(sec?'<div id="cen-mods">'+modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')+'</div>':'')+avanceCongeladoHTML(cens,P,lun,dom,{enTarjeta:!CEN.rec,sinFotoVacio:true,plegado:true,semTxt})+resumenDiaFamiliaHTML(cens,P,dias,nombre,recs);

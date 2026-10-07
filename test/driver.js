@@ -9149,7 +9149,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const ot=ordC('corte');const f=ot[Math.min(ot.length-1,9)];
      if(f&&ot.length>=4){const back=bakPC();abrir('corte');irFilaCentro(f.o.op);const real=ot.indexOf(f)+1;const tr=document.getElementById('cola-corte-'+f.o.id);const inp=tr&&tr.querySelector('input.cola-lugar');const muestra=inp?(inp.value||inp.placeholder):null;
        moverEnColaLugar(f.o.id,'corte',2);const desp=ordC('corte').findIndex(x=>x.o.id===f.o.id)+1;const af=CEN.avisoFij;const av=pc().querySelector('.cola-avisofij');
-       __check("CU10: con el buscador puesto, # dice el lugar REAL en la cola entera (no el lugar dentro de lo filtrado) y escribir 2 la deja en el 2; la pantalla dice qué otras quedaron fijadas para poder dejarla ahí",String(muestra)===String(real)&&desp===2&&(!af||(!!av&&/también quedaron fijadas/.test(txt(av)))),JSON.stringify({real,muestra,desp,af:!!af,av:txt(av).slice(0,80)}));
+       __check("CU10: con el buscador puesto, # dice el lugar REAL en la cola entera (no el lugar dentro de lo filtrado) y escribir 2 la deja en el 2; la pantalla dice qué otras quedaron fijadas para poder dejarla ahí",String(muestra)===String(real)&&desp===2&&(!af||(!!av&&/también (quedaron fijadas|quedó fijada)/.test(txt(av)))),JSON.stringify({real,muestra,desp,af:!!af,av:txt(av).slice(0,80)}));
        back()}
      else __check("CU10: # con el buscador = lugar real",true,'cola corta en esta base')}
     /* 2 · «Juntar colores»: lo que todavía no llega a planta no se muda a «Ordenadas a mano» */
@@ -9159,9 +9159,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("CU10: después de «Juntar colores en la cola» (numera la cola entera, como siempre) «Ordenadas a mano» no trae órdenes que todavía no llegan a planta (SIN WH o tela sin liberar): van a su grupo, al final; la primera fila es de planta",!malos.length&&(!o1||enPlantaParaCentro(o1)),JSON.stringify({malos:malos.slice(0,3),primera:o1&&o1.op}));
      back()}
     /* 3 · con un puesto elegido, # numera dentro de ese puesto y escribir n la deja n-ésima en ese puesto */
-    {const ot=ordC('modulos');const por={};ot.forEach(f=>{const r=recDeFila(f);if(r)(por[r]=por[r]||[]).push(f)});const rec=Object.keys(por).find(r=>por[r].length>=3);
+    /* 06-oct (tercera revisión): el número del puesto cuenta solo las de ese puesto que ya se trabajan (las que llevan número en la pantalla) */
+    {const ot=ordC('modulos');const trabP=f=>GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f));const por={};ot.forEach(f=>{const r=recDeFila(f);if(r&&trabP(f)&&!esMaquilaRec(S.recursos.find(x=>x.id===r)||{}))(por[r]=por[r]||[]).push(f)});const rec=Object.keys(por).find(r=>por[r].length>=3);
      if(rec){const back=bakPC();const el=abrir('modulos',{rec});const nums=[...el.querySelectorAll('.panel.cola tbody tr[draggable] input.cola-lugar')].map(i=>+(i.value||i.placeholder)).filter(n=>n>0);
-       const f3=por[rec][2];moverEnColaLugar(f3.o.id,'modulos',1);const sub=ordC('modulos').filter(f=>recDeFila(f)===rec);
+       const f3=por[rec][2];moverEnColaLugar(f3.o.id,'modulos',1);const sub=ordC('modulos').filter(f=>recDeFila(f)===rec&&trabP(f));
        __check("CU10: con un módulo elegido, # numera 1, 2, 3… dentro de ese módulo (antes, el lugar en todo el centro: «#40» para su única orden) y escribir 1 la deja primera en ese módulo",(!nums.length||nums[0]===1)&&!!sub[0]&&sub[0].o.id===f3.o.id,JSON.stringify({nums:nums.slice(0,5),primera:sub[0]&&sub[0].o.op,movida:f3.o.op}));
        back();CEN.rec='';render()}
      else __check("CU10: # dentro del módulo",true,'ningún módulo con 3 órdenes en esta base')}
@@ -9247,6 +9248,96 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const el=abrir('corte',{sem:1});const s=txt(el.querySelector('.cen-dias>summary'));
      __check("CU10: mirando otra semana, el día por día dice «esa semana» (antes «esta semana»)",!/esta semana/.test(s)&&/esa semana/.test(s),s.slice(0,140));CEN.sem=0;render()}
     __check("CU10: «Hecho hoy» pregunta «¿Pasa de lo que llegó?» y, mientras el paso sigue abierto, dice «—» (antes «¿Cuadra? cuadra» junto a «a medias»)",/¿Pasa de lo que llegó\?/.test(String(hechoHoyCentroHTML))&&!/¿Cuadra\?/.test(String(hechoHoyCentroHTML))&&/!pasoHecho\(o,c\)\?'<span class="mut"/.test(String(hechoHoyCentroHTML)));
+   }
+   /* CU11 · tercera revisión del 06-oct: el lugar dentro de un puesto, la foto y Control de piso, el menú ⋯, el PDF, «verla», la tablet y los avisos */
+   {PERFIL=adminP0();const lun=lunesDe(hoy()),dom=dsum(lun,6);
+    const ordC=c=>ordenTrabajoCentro(c,colaCentro(c,filasDeCentros([c],programar(),lun,dom,'',true)));
+    const trabDe=(c,rec)=>ordC(c).filter(f=>recDeFila(f)===rec&&GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f)));
+    const bakPC=()=>{const m=new Map(S.ordenes.map(o=>[o.id,JSON.stringify(o.progCentro||null)]));return ()=>{S.ordenes.forEach(o=>{if(!m.has(o.id))return;const p=JSON.parse(m.get(o.id));if(p==null)delete o.progCentro;else o.progCentro=p});PLAN=null;PLAN_ALL=null;CEN.avisoFij=null;CEN.resaltar=null;CEN.resaltarHasta=0}};
+    const snapPC=c=>new Map(S.ordenes.map(o=>[o.id,JSON.stringify(((o.progCentro||{})[c])||null)]));const cambio=(s0,c)=>S.ordenes.filter(o=>s0.get(o.id)!==JSON.stringify(((o.progCentro||{})[c])||null));
+    const recsMod=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&!esMaquilaRec(r)).map(r=>r.id);
+    /* 1 · con un módulo elegido, escribir 2 en su primera orden: queda segunda EN ESE MÓDULO y solo se tocan órdenes de ese módulo */
+    {const rec=recsMod.find(r=>trabDe('modulos',r).length>=2);
+     if(rec){const back=bakPC();const x=trabDe('modulos',rec)[0];const recAnt=new Map(ordC('modulos').map(f=>[f.o.id,recDeFila(f)]));const s0=snapPC('modulos');
+       abrir('modulos',{rec});moverEnColaLugar(x.o.id,'modulos',2);
+       const lugar=trabDe('modulos',rec).findIndex(f=>f.o.id===x.o.id)+1;const ch=cambio(s0,'modulos');const otros=ch.filter(o=>recAnt.get(o.id)!==rec);const av=txt(pc().querySelector('.cola-avisofij'));
+       __check("CU11: con un módulo elegido, escribir 2 en su primera orden la deja segunda EN ESE MÓDULO y solo toca órdenes de ese módulo, que quedan fijas en él (antes se fijaban las de encima de toda la cola —139 en Confección— y el programa les cambiaba el módulo); el aviso dice el lugar en el módulo",lugar===2&&ch.length<=2&&!otros.length&&ch.every(o=>((o.progCentro||{}).modulos||{}).rec===rec)&&(!av||av.includes('lugar 2 de '+nRec(rec))),JSON.stringify({rec,lugar,ch:ch.map(o=>o.op),otros:otros.map(o=>o.op),av:av.slice(0,140)}));
+       back()}
+     else __check("CU11: el lugar dentro del módulo",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
+    /* 2 · la única orden de su módulo que ya se trabaja: escribir 2 no fija nada y lo dice */
+    {const rec=recsMod.find(r=>trabDe('modulos',r).length===1);
+     if(rec){const back=bakPC();const x=trabDe('modulos',rec)[0];const s0=snapPC('modulos');abrir('modulos',{rec});moverEnColaLugar(x.o.id,'modulos',2);
+       const n=cambio(s0,'modulos').length;const av=txt(pc().querySelector('.cola-avisofij'));
+       __check("CU11: si es la única de su módulo que ya se trabaja, escribir 2 no fija nada (las que todavía no llegan no llevan número) y la pantalla lo dice",n===0&&/es la única de .* que ya se trabaja/.test(av),JSON.stringify({rec,n,av}));back()}
+     else __check("CU11: la única del módulo",true,'ningún módulo con una sola orden que se trabaje en esta base')}
+    /* 3 · la supervisora de piso hace lo mismo con pocas llamadas al servidor */
+    {const rec=recsMod.find(r=>trabDe('modulos',r).length>=2);
+     if(rec){const back=bakPC();const g=PERFIL;PERFIL={id:'u-mar-cu11',rol:'modulos',nombre:'Supervisora',modo:'editar'};const sup=esSupervisorPiso()&&perfilSoloPiso();
+       try{await sondearRecursoServidor()}catch(e){}const x=trabDe('modulos',rec)[0];let n=0;const r0=sb.rpc;sb.rpc=function(){n++;return r0.apply(this,arguments)};
+       try{abrir('modulos',{rec});moverEnColaLugar(x.o.id,'modulos',2);await __p(500)}finally{sb.rpc=r0}
+       const lugar=trabDe('modulos',rec).findIndex(f=>f.o.id===x.o.id)+1;
+       __check("CU11: la supervisora de piso deja la orden segunda en su módulo con pocas llamadas al servidor (el lugar y el puesto de las dos; antes eran 139)",!sup||(lugar===2&&n>0&&n<=4),JSON.stringify({sup,lugar,n}));
+       PERFIL=g;back()}
+     else __check("CU11: la supervisora",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
+    /* 4 · arrastrar con un módulo elegido */
+    {const rec=recsMod.find(r=>trabDe('modulos',r).length>=2);
+     if(rec){const back=bakPC();const t0=trabDe('modulos',rec);const a=t0[t0.length-1],b=t0[0];const recAnt=new Map(ordC('modulos').map(f=>[f.o.id,recDeFila(f)]));const s0=snapPC('modulos');abrir('modulos',{rec});
+       DRAGC={oid:a.o.id,c:'modulos'};soltarCola({preventDefault(){},currentTarget:{classList:{remove(){}}}},'modulos',b.o.id);
+       const lugar=trabDe('modulos',rec).findIndex(f=>f.o.id===a.o.id)+1;const otros=cambio(s0,'modulos').filter(o=>recAnt.get(o.id)!==rec);
+       __check("CU11: con un módulo elegido, soltar su última orden sobre la primera la deja primera en ese módulo sin tocar órdenes de otros módulos",lugar===1&&!otros.length,JSON.stringify({lugar,otros:otros.map(o=>o.op)}));back()}
+     else __check("CU11: arrastrar en el módulo",true,'ningún módulo con dos órdenes que se trabajen en esta base')}
+    /* 5 · con la semana congelada, «la foto incluye» solo lo de Control de piso que está en la foto; lo de afuera, aparte */
+    {const bakCg=JSON.stringify(S.params.progCongelado||null);let hecho=false;
+     for(const c of ['corte','bordado','modulos']){if(hecho)break;congelarPrograma([c],lun,dom);const f=congeladoDe(c,lun);if(!f||!(f.ords||[]).length)continue;
+       const en=new Set(f.ords.map(e=>e.oid));const conRec=x=>!x.hecho&&!x.bloq&&x.paso&&x.paso.rec&&!((S.avance[x.o.id]||{}).centrosOT||{})[c]&&(+x.o.cant||0)>=((((S.avance[x.o.id]||{}).centros)||{})[c]||0)+20;
+       const fl=filasDeCentros([c],programar(),lun,dom,'',true).filter(conRec);const dentro=fl.find(x=>en.has(x.o.id)&&!pasoHecho(x.o,c)),fuera=fl.find(x=>!en.has(x.o.id));
+       if(!dentro||!fuera)continue;hecho=true;
+       const bak=JSON.stringify({a:S.avance[dentro.o.id]||null,b:S.avance[fuera.o.id]||null,t:S.turnos||[]});const ac=o=>(((S.avance[o.id]||{}).centros)||{})[c]||0;
+       setAvance(dentro.o.id,c,ac(dentro.o)+12,dentro.o.cant);setAvance(fuera.o.id,c,ac(fuera.o)+7,fuera.o.cant);
+       const el=abrir(grupoPlanDe(c),{solo:censDeGrupo(grupoPlanDe(c)).length>1?c:''});const l=txt(el.querySelector('.res-card-w .res-cong'));const mNo=l.match(/([0-9.]+) anotadas en Control de piso no entran en la foto/);
+       __check("CU11: con la semana congelada, «la foto incluye N anotadas en Control de piso» cuenta solo lo de las órdenes de la foto después de congelar; lo de una orden que no está en la foto va aparte, «no entran en la foto» (antes decía «incluye (65)» con 25 de afuera)",/la foto incluye 12 anotadas en Control de piso/.test(l)&&!!mNo&&+mNo[1].replace(/\./g,'')>=7,c+': '+l);
+       const b=JSON.parse(bak);if(b.a)S.avance[dentro.o.id]=b.a;else delete S.avance[dentro.o.id];if(b.b)S.avance[fuera.o.id]=b.b;else delete S.avance[fuera.o.id];S.turnos=b.t}
+     if(!hecho)__check("CU11: la foto y Control de piso",true,'sin órdenes con puesto dentro y fuera de la foto en esta base');
+     {const cg=JSON.parse(bakCg);if(cg)S.params.progCongelado=cg;else delete S.params.progCongelado}PLAN=null;PLAN_ALL=null}
+    /* 6 · abrir el menú ⋯ no ensancha la tabla ni saca la pantalla de lado */
+    {const el=abrir('corte');const m=document.querySelector('main');const d=el.querySelector('.panel.cola tbody tr[draggable] details.acc');
+     if(d){const t=el.querySelector('.panel.cola .scroll.lista table');const w0=t.scrollWidth,ov0=m.scrollWidth-m.clientWidth;d.open=true;const w1=t.scrollWidth,ov1=m.scrollWidth-m.clientWidth;const pos=getComputedStyle(d.querySelector('.acc-m')).position;d.open=false;
+       __check("CU11: abrir el menú ⋯ de una fila no ensancha la tabla ni saca la pantalla de lado: se abre flotando (antes, a 1.520 px, la pantalla se movía 55 px)",w1<=w0+1&&ov1<=Math.max(0,ov0)&&pos==='absolute',JSON.stringify({w0,w1,ov0,ov1,pos}))}
+     else __check("CU11: el menú ⋯",true,'sin filas')}
+    /* 7 · el PDF trae lo mismo que la lista y no imprime sub-áreas vacías */
+    {const cap=cid=>{let s='';const w0=window.open;window.open=()=>({document:{write:x=>{s+=x},close(){}}});try{imprimirProgramaCentro(cid)}finally{window.open=w0}return s};
+     const el=abrir('corte',{cercAbre:TODOS,verGrupo:VER_TODO});let g='';const proc=[];el.querySelectorAll('.panel.cola tbody tr').forEach(tr=>{if(tr.classList.contains('grp-row')&&!tr.classList.contains('fase-row')){g=txt(tr);return}if(!tr.hasAttribute('draggable'))return;if(/^[▾▸]?\s*(En proceso aquí|Listas para empezar)/.test(g)){const o=S.ordenes.find(x=>x.id===oidDe(tr));if(o&&enPlantaParaCentro(o))proc.push(o.op)}});
+     const hc=cap('corte');const falta=proc.filter(op=>!hc.includes('<b>'+esc(op)+'</b>'));abrir('terminados');const ht=cap('terminados');
+     __check("CU11: el PDF trae lo mismo que la lista: todas las «En proceso aquí» y «Listas para empezar» (antes dejaba fuera las que empiezan después del domingo) y no imprime sub-áreas sin órdenes",!falta.length&&!/· 0 órdenes/.test(ht)&&!/Sin órdenes\.</.test(ht),JSON.stringify({proc:proc.length,falta:falta.slice(0,4)}))}
+    /* 8 · con un módulo elegido, «verla» quita el módulo cuando la orden pasó a otro */
+    {const rs=recsMod.filter(r=>trabDe('modulos',r).length>=1);
+     if(rs.length>=2){const back=bakPC();const x=trabDe('modulos',rs[0])[0];abrir('modulos',{rec:rs[0]});setProgCen(x.o.id,'modulos','rec',rs[1]);CEN.resaltar=x.o.id+'|modulos';CEN.resaltarHasta=0;render();
+       const av=pc().querySelector('.cola-avisores');const t=txt(av);const a=av&&av.querySelector('a');if(a)a.click();const tr=document.getElementById('cola-modulos-'+x.o.id);
+       __check("CU11: con un módulo elegido, si la orden cambiada pasa a otro módulo el aviso dice a cuál y «verla» quita el módulo elegido y la muestra (antes la pantalla decía «nada en Módulo 1» y repetía el aviso)",t.includes('quedó en '+nRec(rs[1]))&&!CEN.rec&&!!tr,JSON.stringify({t:t.slice(0,160),rec:CEN.rec,vis:!!tr}));
+       back();CEN.q='';delete BUSQ['CEN.q']}
+     else __check("CU11: «verla» con un módulo elegido",true,'menos de dos módulos con órdenes en esta base')}
+    /* 9 · sin minutos por prenda: con el puesto fijado y sin arranque sigue diciendo qué le falta para la tablet */
+    {const P=programar();const f=filasDeCentros(['corte'],P,lun,dom,'',true).find(f=>!f.hecho&&!f.bloq&&pasoSinTiempo(f.o,'corte')&&!((f.o.progCentro||{}).corte||{}).rec&&['proceso','listas','puesto'].includes(grupoListaCEN(f)));
+     const r=S.recursos.find(x=>x.activa&&x.centro==='corte');
+     if(f&&r){const back=bakPC();f.o.progCentro=f.o.progCentro||{};f.o.progCentro.corte=Object.assign({},f.o.progCentro.corte||{},{rec:r.id});delete f.o.progCentro.corte.desde;PLAN=null;PLAN_ALL=null;
+       abrir('corte',{q:f.o.op});BUSQ['CEN.q']='op';render();const tr=document.getElementById('cola-corte-'+f.o.id);const h1=txt(tr&&tr.querySelector('.cola-sinp'));
+       __check("CU11: una orden sin minutos por prenda con el puesto fijado pero sin arranque sigue diciendo qué le falta para que la vea la tablet («falta el arranque…»; antes la indicación se iba y la tablet todavía no la veía)",/falta el arranque/.test(h1)&&!fijadaPara(f.o,'corte',r.id),h1);back();CEN.q='';delete BUSQ['CEN.q']}
+     else __check("CU11: la indicación de la tablet",true,'sin orden sin minutos en Corte en esta base')}
+    /* 10 · después de «Juntar colores», la cabecera dice qué números faltan arriba */
+    {const back=bakPC();ordenarColaPorColor('corte');const el=abrir('corte');const ot=ordC('corte');const fij=ot.filter(f=>puestoDe(f.o,'corte')>0&&['fuera','porLiberar'].includes(grupoListaCEN(f)));const hayTrab=ot.some(f=>GRUPOS_TRABAJO_CEN.includes(grupoListaCEN(f)));
+     const cabs=[...el.querySelectorAll('.panel.cola tr.grp-row:not(.fase-row)')].map(txt);
+     __check("CU11: después de «Juntar colores», la cabecera del primer grupo dice qué números faltan arriba y por qué (antes la lista empezaba en #10 sin decirlo)",!fij.length||!hayTrab||cabs.some(t=>/los números que faltan arriba \(/.test(t)),(cabs[0]||'').slice(0,200));back()}
+    /* 11 · «Todo <ítem>»: abiertas, después plegadas con órdenes y al final las vacías */
+    {let ok=true;const det=[];ITEMS.filter(g=>censDeGrupo(g).length>1).forEach(g=>{const el=abrir(g);const cl=[...el.querySelectorAll('#cen-lista .panel.cola')].map(p=>p.classList.contains('cola-plegada')?'P':p.classList.contains('cola-vacia')?'V':'A').join('');det.push(g+':'+cl);if(!/^A*P*V*$/.test(cl))ok=false});
+     __check("CU11: en «Todo <ítem>» van primero las colas abiertas, después las plegadas con órdenes y al final las vacías (antes una plegada con 33 órdenes iba detrás de tres vacías)",ok,det.join(' | '))}
+    /* 12 · «registrar prendas» sin tablet: sin motivos de «cierre sin tiempo» no manda a cerrar; sin puesto, avisa que no saldrá en el día */
+    {const bakMo=JSON.stringify(S.params.motivos||null);S.params.motivos=motivos().filter(m=>m.uso!=='cierreSinTiempo');const P=programar();
+     const recDe=o=>(o.recursoFijo||{}).corte||((((P.ordenes[o.id]||{}).pasos)||[]).find(p=>p.centro==='corte')||{}).rec||'';
+     const fl=filasDeCentros(['corte'],P,lun,dom,'',true).filter(f=>!f.hecho&&!f.bloq);const oC=(fl.find(f=>recDe(f.o))||{}).o,oS=(fl.find(f=>!recDe(f.o))||{}).o;
+     const leer=o=>{mSinTiempoRegistro(o,'corte',{sinTramo:true});const t=txt(document.getElementById('modal'));try{cerrar()}catch(e){}return t};
+     const tC=oC?leer(oC):'',tS=oS?leer(oS):'';
+     __check("CU11: «registrar prendas» sin tablet y sin motivos de «cierre sin tiempo» no manda a cerrar con motivo (el botón de cerrar quedaba apagado): dice quién los carga; y si la orden no tiene puesto, avisa que lo anotado en Control de piso no saldrá en el día de la pantalla",(!oC||(/(planificación tiene que cargar|cárgalos en) .*motivos|motivos .*tabla 15|15 · Motivos/.test(tC)&&!/ciérrala con ✓/.test(tC)&&!/no tiene puesto en/.test(tC)))&&(!oS||/no tiene puesto en Corte/.test(tS)),JSON.stringify({c:tC.slice(0,160),s:tS.slice(0,200)}));
+     {const b=JSON.parse(bakMo);if(b)S.params.motivos=b;else delete S.params.motivos}}
    }
    /* CU7 · FAC: ningún $ en la pantalla del centro */
    {PERFIL={id:'u-co',rol:'corte',nombre:'Sup',modo:'editar'};const el=abrir('corte');__check("CU7: la pantalla del centro no muestra montos en $ (FAC)",!/\$\s?[0-9]|USD/.test(txt(el)));PERFIL=adminP0()}
