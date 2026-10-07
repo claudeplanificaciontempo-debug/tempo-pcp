@@ -1215,6 +1215,10 @@ html[data-modo="oscuro"] .btn:disabled,html[data-modo="oscuro"] .btn[disabled],h
 /* ux:ingmodulo */
 /* Ingeniería → Operaciones, el módulo (06-oct-2026): pestañas grandes, Secuencia de operaciones, Crear referencia, carga y Listas y reglas. Solo
    variables (claro y oscuro, Tablero, Odoo y Clásico); en el teléfono todo baja a una columna y las tablas llevan su propio desplazamiento. */
+/* las sombras del menú del buscador y del aviso flotante, como variables con su versión oscura (revisión de seguridad y código, segunda ronda: eran
+   colores escritos a mano en cada regla) */
+:root{--iom-sombra-menu:0 10px 30px rgba(0,0,0,.16);--iom-sombra-aviso:0 4px 14px rgba(0,0,0,.18)}
+html[data-modo="oscuro"]{--iom-sombra-menu:0 10px 30px rgba(0,0,0,.5);--iom-sombra-aviso:0 4px 14px rgba(0,0,0,.5)}
 .iom-pests{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
 .iom-pest{border:1px solid var(--rule);background:var(--paper);color:var(--ink2);border-radius:10px;padding:9px 18px;font-weight:600;font-size:var(--fs-m);cursor:pointer}
 .iom-pest:hover{border-color:var(--t-accent);color:var(--ink)}
@@ -1224,6 +1228,15 @@ html[data-modo="oscuro"] .btn:disabled,html[data-modo="oscuro"] .btn[disabled],h
 .iom-pest.on small{color:inherit;opacity:.85}
 .iom-h4{margin:14px 0 6px;font-size:var(--fs-m)}
 /* en el teléfono el código va debajo del nombre (::after con data-code: no cambia el texto de la celda) */
+/* segunda ronda de revisiones: el choque del editor y sus botones, lo rehecho, la base vacía, la casilla de la carga y la ayuda del código en Odoo */
+.iom-choque-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.iom-rehecho .ing-lista{margin:4px 0 0}
+.iom-vacia{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.iom-vacia .btn{margin-left:auto}
+.iom-acepta{display:block;font-size:var(--fs-xs);margin-top:4px;white-space:nowrap}
+.iom-h5{margin:8px 0 4px;font-size:var(--fs-s)}
+.iom-det-dest>summary{cursor:pointer}
+.iom-odoo-ayuda{display:block;font-size:var(--fs-xs);color:var(--ink3);font-weight:400;margin-top:2px;white-space:normal}
 .iom-cargar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
 .iom-cargar .mut{font-size:var(--fs-s)}
 .iom-it.otrasec .mt b{color:var(--aviso)}
@@ -1278,7 +1291,7 @@ table.iom-tabla tr.flash td{animation:iomFlash 1.8s ease-out}
 .iom-combo input{width:100%;padding:9px 40px 9px 12px;font-weight:600}
 .iom-combo .caret{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;width:32px;height:32px;border-radius:8px;color:var(--ink2)}
 .iom-combo .caret:hover{background:var(--field)}
-.iom-combo-l{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);margin:0;padding:6px;list-style:none;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.16);max-height:340px;overflow:auto}
+.iom-combo-l{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);margin:0;padding:6px;list-style:none;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--iom-sombra-menu);max-height:340px;overflow:auto}
 .iom-combo-l li{padding:8px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
 .iom-combo-l li small{color:var(--ink3);font-size:var(--fs-xs)}
 .iom-combo-l li.act,.iom-combo-l li:hover{background:var(--t-accent-soft);color:var(--ink)}
@@ -1417,7 +1430,6 @@ table.iom-tabla tr.flash td{animation:iomFlash 1.8s ease-out}
 .iom-hoja-acc{gap:8px;margin:0 0 8px;flex-wrap:wrap}
 html[data-modo="oscuro"] .iom-pest.on,html[data-modo="oscuro"] .iom-modos button.on{color:var(--bg)}
 html[data-modo="oscuro"] .iom-it button:hover{color:var(--bg)}
-html[data-modo="oscuro"] .iom-combo-l{box-shadow:0 10px 30px rgba(0,0,0,.5)}
 @media (max-width:860px){.iom-ed2,.iom-grid3,.iom-fld2,.iom-picker,.iom-opts{grid-template-columns:minmax(0,1fr)}.iom-subcards{grid-template-columns:repeat(2,minmax(0,1fr))}.iom-crear-tit{position:static}.iom-bd-list{max-height:320px}.iom-sec2 .ing-ir{margin-left:0}.iom-newop-r{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){table.iom-tabla td.n{min-width:0!important}   /* la columna # no toma los 130 px que el Tablero le da a la primera columna (la WH) en el teléfono */
   /* revisión «para dummies» (teléfono): las pestañas bajan de línea en vez de cortarse; el código va debajo del nombre y quedan a la vista máquina y tiempo */
@@ -1425,6 +1437,21 @@ html[data-modo="oscuro"] .iom-combo-l{box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .iom-subcard .nm{font-size:var(--fs-m)}.iom-ancho{min-width:0}.iom-odoo{white-space:normal}
   table.iom-tabla th.code,table.iom-tabla td.code{display:none}table.iom-tabla td.op[data-code]::after{content:attr(data-code);display:block;font-family:ui-monospace,Consolas,monospace;font-size:var(--fs-xs);color:var(--ink3);font-weight:400;margin-top:2px;word-break:break-all}
   table.iom-tabla th,table.iom-tabla td{padding:6px 5px}table.iom-tabla td.op{min-width:104px}.iom-editor input.iom-ed.maq{min-width:100px}.iom-editor input.iom-ed.t{width:60px;min-width:0}}
+/* revisión «para dummies», segunda ronda (teléfono): cada operación del editor y de Secuencia es una ficha en dos o tres renglones, así nada queda fuera
+   de la pantalla: el nombre (con el código debajo); máquina (entera), tiempo y principal; y abajo ↑ ↓ ✕. En Secuencia las marcas van debajo del nombre */
+@media (max-width:520px){
+  table.iom-route,table.iom-route tbody{display:block;width:100%;overflow:visible}table.iom-route thead{display:none}
+  table.iom-route tr{display:grid;column-gap:6px;row-gap:3px;padding:7px 2px;border-bottom:1px solid var(--rule2)}
+  table.iom-route tr td{border:0;padding:0 2px;min-width:0}table.iom-route td.code{display:none}table.iom-route td.iom-vacio{grid-column:1/-1}
+  table.iom-editor tr{grid-template-columns:22px minmax(0,1fr) 62px 62px;grid-template-areas:"n op op op" ". maq t p" ". acts acts acts"}
+  table.iom-editor td.n{grid-area:n}table.iom-editor td.op{grid-area:op;min-width:0}table.iom-editor td:nth-child(4){grid-area:maq}table.iom-editor td:nth-child(5){grid-area:t}table.iom-editor td:nth-child(6){grid-area:p;display:flex;align-items:center;gap:4px}table.iom-editor td:nth-child(7){grid-area:acts}
+  table.iom-editor td:nth-child(6)::before{content:'Princ.';font-size:var(--fs-xs);color:var(--ink3)}
+  .iom-editor input.iom-ed.maq{min-width:0;width:100%}.iom-editor input.iom-ed.t{width:100%}
+  table.iom-route:not(.iom-editor) tr{grid-template-columns:22px minmax(0,1fr) auto;grid-template-areas:"n op t" ". maq maq" ". mk mk"}
+  table.iom-route:not(.iom-editor) tr td:nth-child(1){grid-area:n}table.iom-route:not(.iom-editor) tr td.op{grid-area:op}table.iom-route:not(.iom-editor) tr td:nth-child(4){grid-area:maq;color:var(--ink2);font-size:var(--fs-xs)}table.iom-route:not(.iom-editor) tr td:nth-child(5){grid-area:t}table.iom-route:not(.iom-editor) tr td:nth-child(6){grid-area:mk}
+  table.iom-route:not(.iom-editor) tr td:nth-child(6) .tag{white-space:normal;max-width:100%}
+  table.iom-route tr.prin{background:color-mix(in srgb,var(--ok) 9%,var(--paper))}table.iom-route tr.samrow{background:var(--field)}
+  table.iom-route tr.samrow{grid-template-columns:22px minmax(0,1fr) auto;grid-template-areas:"n op t"}table.iom-route tr.samrow td:nth-child(2){grid-area:op}table.iom-route tr.samrow td:nth-child(3){grid-area:t}table.iom-route tr.samrow td:nth-child(4){display:none}}
 /* Balanceo de línea (06-oct-2026, entrega 2): veredicto, cifras, gráfico de carga por puesto, puestos con su selector y el panel de lo que está
    fuera de puestos. Solo variables (claro y oscuro, Tablero, Odoo y Clásico). Rojo solo para «sobre el takt», OTRA MÁQUINA y el veredicto que no
    cumple; ámbar para la tolerancia. En el teléfono el panel baja debajo y los puestos van en una columna (sin arrastrar: el selector es el camino). */
@@ -1552,7 +1579,7 @@ html[data-modo="oscuro"] .iom-combo-l{box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .ibl-acomodar{margin-top:8px}
 .ibl-exl{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:var(--fs-s)}
 .ibl-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
-.ibl-toast div{background:var(--ink);color:var(--paper);border-radius:999px;padding:7px 14px;font-size:var(--fs-s);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.ibl-toast div{background:var(--ink);color:var(--paper);border-radius:999px;padding:7px 14px;font-size:var(--fs-s);box-shadow:var(--iom-sombra-aviso)}
 .iom-ficha-wh{margin:0 0 8px}
 .iom-rev-tit{margin:18px 0 8px}
 .iom-rev-t{max-height:320px}
@@ -1560,7 +1587,6 @@ html[data-modo="oscuro"] .iom-combo-l{box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .iom-rev-donde a{cursor:pointer;text-decoration:underline}
 .bal-dif{margin:0 0 10px}
 html[data-modo="oscuro"] .ibl-pill[aria-pressed=true],html[data-modo="oscuro"] .ibl-pill[aria-pressed=true] small{color:var(--bg)}
-html[data-modo="oscuro"] .ibl-toast div{box-shadow:0 4px 14px rgba(0,0,0,.5)}
 @media (max-width:1100px){.ibl-r5{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:860px){.ibl-r2,.ibl-orden{grid-template-columns:minmax(0,1fr)}.ibl-r5{grid-template-columns:repeat(2,minmax(0,1fr))}.ibl-lay,.ibl-lay.cerrado{grid-template-columns:minmax(0,1fr)}.ibl-side{position:static;max-height:none}.ibl-side.cerrado .vt{writing-mode:horizontal-tb;margin:4px 0 0}}
 @media (max-width:520px){.ibl-puestos{grid-template-columns:minmax(0,1fr)}.ibl-plot{padding-left:36px}.ibl-plot .yt{width:32px}.ibl-takt{left:36px}.ibl-eje{padding-left:36px}.ibl-bar,.ibl-eje span{flex-basis:12px}
@@ -2812,7 +2838,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-06 20:51';
+const APP_BUILD='2026-10-06 23:14';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -14885,6 +14911,11 @@ function iomRangoTxt(){const r=iomRangoT();return r.lo!=null&&r.hi!=null?iomFmtT
 const IOM_VERSION_SIEMBRA='06-oct-2026';
 /* ---------- utilidades (los formatos del prototipo: SAM con coma y 2 decimales, tiempos con punto y hasta 3) ---------- */
 function iomSlug(s){return normTxt(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+/* el id de una familia nueva: el nombre en minúsculas y con guiones, recortado para que siempre tenga la forma que se lee (hasta 60; antes un nombre de
+   más de 60 letras se guardaba y desaparecía al volver a leer) y sin repetir uno que ya existe (ni uno guardado que no se reconoce) */
+function iomIdFamNuevo(nombre,def){let b=(iomSlug(nombre)||def||'familia').slice(0,54).replace(/-+$/,'');if(!/^[a-z0-9]/.test(b))b='f'+b;b=b.slice(0,54);
+  const usado=x=>iomCat().fams.some(f=>f.id===x)||(IOM.cat||[]).some(r=>r.id==='mfam|'+x)||(IOM.descartadas||[]).some(d=>d.id==='mfam|'+x)||(((ING.firmas||{}).ing_subprocesos)||{})['mfam|'+x]!==undefined;
+  let id=b,i=2;while(usado(id)&&i<1000)id=b+'-'+(i++);return id}
 function iomFsam(x){return (Math.round((+x||0)*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function iomFmtT(t){return t==null||t===''?'—':String(+(+t).toFixed(3)).replace('.',',')}   /* revisión 06-oct («para dummies»): coma decimal, como el resto de la app */
 function iomPl(n,a,b){return n+' '+(n===1?a:b)}
@@ -14920,7 +14951,7 @@ function iomRef(cod){return IOM.refs.find(r=>r.id==='mref|'+cod)||null}
 function iomRefsDe(famId,conApagadas){return IOM.refs.filter(r=>r.fam===famId&&(conApagadas||r.activa!==false)).sort((a,b)=>String(a.creada||a.ts||'').localeCompare(String(b.creada||b.ts||''))||String(a.cod).localeCompare(String(b.cod)))}
 function iomRefsActivas(){const act=new Set(iomFamsActivas().map(f=>f.id));return IOM.refs.filter(r=>r.activa!==false&&act.has(r.fam))}
 function iomBaseActiva(famId){const b=iomBase(famId);return b&&b.activa!==false?b:null}
-function iomNOps(fila){return ((fila&&fila.stages)||[]).reduce((a,s)=>a+((s.ops||[]).length),0)}
+function iomNOps(fila){const st=fila&&fila.stages;return Array.isArray(st)?st.reduce((a,s)=>a+(s&&Array.isArray(s.ops)?s.ops.length:0),0):0}   /* también con una versión vieja mal formada (Versiones la cuenta sin pasar por iomFilaRara) */
 /* ---------- códigos: la plantilla de cada operación lleva {C} donde va el código de la familia o de la referencia ---------- */
 function iomCodigo(tpl,cod){return tpl?String(tpl).replace(/\{C\}/g,cod):''}
 /* «Cód. operación» y «Variante (SEC OP)» salen de la PLANTILLA (corrige el prototipo, que partía el código y se corría con un guion en el código de la referencia) */
@@ -14946,6 +14977,10 @@ function iomAltOpcion(alt){const m=String(alt||'').trim().match(/([A-Za-z])$/);r
 function iomCuenta(o,unaVez){if(!unaVez||!o.alt)return true;const l=iomAltOpcion(o.alt);return !l||l==='A'}
 function iomSam(ops,unaVez){if(unaVez===undefined)unaVez=!!iomCfg('avisos').altUnaVez;return (ops||[]).reduce((a,o)=>a+(iomCuenta(o,unaVez)?(+o.t||0):0),0)}
 function iomAltCorto(alt){return String(alt||'').replace(/^.*-/,'')}
+/* con «Contar una sola opción de cada alternativa» (Listas y reglas → Avisos de la edición): cuántas no suman, y cómo se dice el total (revisión de
+   fidelidad del 06-oct, segunda ronda: la fila de total no era la suma de las filas y nada decía por qué) */
+function iomNoSuman(ops){const una=!!iomCfg('avisos').altUnaVez;return una?(ops||[]).filter(o=>!iomCuenta(o,true)).length:0}
+function iomCuentaTxt(ops){const n=(ops||[]).length,ns=iomNoSuman(ops);return ns?'suma de '+(n-ns)+' de '+iomPl(n,'operación','operaciones')+' (las opciones B, C… no suman: se cuenta la opción A)':'suma de '+iomPl(n,'operación','operaciones')}
 /* ---------- la secuencia lista para mostrar: subprocesos en el orden fijo, pasos numerados y el código armado ---------- */
 function iomVista(fila,codigo){const subs=iomSubs();const st=(fila&&fila.stages)||[];let seq=0,sam=0,nOps=0;
   const stages=subs.filter(s=>st.some(x=>x.k===s.k)).map(s=>{const x=st.find(y=>y.k===s.k);const ops=(x.ops||[]).map((o,i)=>{seq++;return Object.assign({},o,{seq,n:i+1,code:iomCodigo(o.tpl,codigo)})});const sm=iomSam(ops);sam+=sm;nOps+=ops.length;return {k:s.k,sub:s,ops,sam:sm}});
@@ -14997,18 +15032,26 @@ function iomFueraDeOrden(ops,grupo,k){const N=s=>normTxt(s);const regs=iomCat().
   regs.forEach(r=>{if(r.tipo==='lista'||(r.sub&&r.sub!==k))return;const a=N(r.a),b=N(r.b);const ia=ops.findIndex(x=>N(x.op)===a),ib=ops.findIndex(x=>N(x.op)===b);
     if(r.tipo==='primero'&&ia>0)n++;if(r.tipo==='antes'&&ia>=0&&ib>=0&&ia>ib)n++;if(r.tipo==='despues'&&ia>=0&&ib>=0&&ia<ib)n++});return n}
 /* ---------- diferencias contra lo guardado (por u: el id estable de la fila). Reordenar SÍ cuenta («movidas»: decisión D3) ---------- */
-function iomDifOp(a,o){const d=[];if((a.t==null||a.t===''?null:+a.t)!==(o.t==null||o.t===''?null:+o.t))d.push('Tiempo: '+iomFmtT(a.t)+' → '+iomFmtT(o.t));
+function iomDifOp(a,o,cod){const d=[];if((a.t==null||a.t===''?null:+a.t)!==(o.t==null||o.t===''?null:+o.t))d.push('Tiempo: '+iomFmtT(a.t)+' → '+iomFmtT(o.t));
   if(String(a.maq==null?'':a.maq).trim()!==String(o.maq==null?'':o.maq).trim())d.push('Máquina: '+(a.maq||'—')+' → '+(String(o.maq==null?'':o.maq).trim()||'—'));
-  if(!!a.p!==!!o.p)d.push('Principal: '+(a.p?'sí':'no')+' → '+(o.p?'sí':'no'));return d}
-/* orig = {u:{k,op,sec,t,maq,p,pos}} · stages = [{k,ops}] (o el objeto {K:{on,ops}} del editor) */
-function iomOrigDe(stages){const o={};iomStagesLista(stages).forEach(s=>s.ops.forEach((x,i)=>{if(x.u)o[x.u]={k:s.k,op:x.op,sec:x.sec,t:x.t==null?null:x.t,maq:x.maq||'',p:!!x.p,pos:i}}));return o}
+  if(!!a.p!==!!o.p)d.push('Principal: '+(a.p?'sí':'no')+' → '+(o.p?'sí':'no'));
+  /* también lo que cambia sin tocar tiempo, máquina ni principal (antes la vista previa de una carga solo decía «cambian notas, códigos o marcas»; revisión
+     de guardado del 06-oct, segunda ronda). Solo si la fila de partida los trae (las de antes de esta revisión no los guardaban en orig) */
+  const S=v=>String(v==null?'':v).trim(),corto=v=>{const x=S(v);return x.length>60?x.slice(0,57)+'…':x};
+  if('tpl' in a&&S(a.tpl)!==S(o.tpl))d.push('Código: '+(cod!=null?(iomCodigo(a.tpl,cod)||'por asignar')+' → '+(iomCodigo(o.tpl,cod)||'por asignar'):'cambia'));
+  if('alt' in a&&S(a.alt)!==S(o.alt))d.push('Alternativa: '+(S(a.alt)||'—')+' → '+(S(o.alt)||'—'));
+  if('e' in a&&S(a.e)!==S(o.e))d.push('Estado: '+(S(a.e)||'Original')+' → '+(S(o.e)||'Original'));
+  if('nt' in a&&S(a.nt)!==S(o.nt))d.push('Nota: '+(S(a.nt)?'«'+corto(a.nt)+'»':'—')+' → '+(S(o.nt)?'«'+corto(o.nt)+'»':'—'));
+  if('row' in a&&iomNum(a.row)!==iomNum(o.row))d.push('Fila original: '+(iomNum(a.row)==null?'—':iomNum(a.row))+' → '+(iomNum(o.row)==null?'—':iomNum(o.row)));return d}
+/* orig = {u:{k,op,sec,t,maq,p,tpl,alt,e,nt,row,pos}} · stages = [{k,ops}] (o el objeto {K:{on,ops}} del editor) */
+function iomOrigDe(stages){const o={};iomStagesLista(stages).forEach(s=>s.ops.forEach((x,i)=>{if(x.u)o[x.u]={k:s.k,op:x.op,sec:x.sec,t:x.t==null?null:x.t,maq:x.maq||'',p:!!x.p,tpl:x.tpl||'',alt:x.alt||'',e:x.e||'',nt:x.nt||'',row:x.row==null?null:x.row,pos:i}}));return o}
 function iomStagesLista(st){if(Array.isArray(st))return st.map(s=>({k:s.k,ops:s.ops||[]}));return IOM_K.filter(k=>st&&st[k]&&st[k].on).map(k=>({k,ops:st[k].ops||[]}))}
-function iomDiff(orig,stages){const r={editadas:0,nuevas:0,quitadas:0,movidas:0,n:0,lista:[],porU:{}};if(!orig)return r;const vistos=new Set();
+function iomDiff(orig,stages,cod){const r={editadas:0,nuevas:0,quitadas:0,movidas:0,n:0,lista:[],porU:{}};if(!orig)return r;const vistos=new Set();
   const L=iomStagesLista(stages);
   L.forEach(s=>{const sub=iomSub(s.k);const nom=sub?sub.nombre:s.k;
     const comunesO=Object.keys(orig).filter(u=>orig[u].k===s.k&&s.ops.some(x=>x.u===u)).sort((a,b)=>orig[a].pos-orig[b].pos);const comunesN=s.ops.filter(x=>x.u&&orig[x.u]&&orig[x.u].k===s.k).map(x=>x.u);
     s.ops.forEach((o,i)=>{if(!o.u||!orig[o.u]){r.nuevas++;r.lista.push({k:s.k,sub:nom,op:o.op,sec:o.sec,cambio:'Operación nueva',detalle:(o.maq||'—')+' · '+iomFmtT(o.t)+' min'});r.porU['#'+i+s.k]='nueva';return}
-      vistos.add(o.u);const a=orig[o.u];const d=iomDifOp(a,o);const mov=comunesO.indexOf(o.u)!==comunesN.indexOf(o.u);if(mov)d.push('Se movió: '+(a.pos+1)+' → '+(i+1));
+      vistos.add(o.u);const a=orig[o.u];const d=iomDifOp(a,o,cod);const mov=comunesO.indexOf(o.u)!==comunesN.indexOf(o.u);if(mov)d.push('Se movió: '+(a.pos+1)+' → '+(i+1));
       if(d.length){const soloMov=d.length===1&&mov;if(soloMov)r.movidas++;else r.editadas++;r.lista.push({k:s.k,sub:nom,op:o.op,sec:o.sec,cambio:d.join(' · '),detalle:'',u:o.u,mov});r.porU[o.u]=d}})});
   Object.keys(orig).forEach(u=>{if(vistos.has(u))return;const a=orig[u];const sub=iomSub(a.k);r.quitadas++;r.lista.push({k:a.k,sub:sub?sub.nombre:a.k,op:a.op,sec:a.sec,cambio:'Operación quitada',detalle:iomFmtT(a.t)+' min'})});
   r.n=r.editadas+r.nuevas+r.quitadas+r.movidas;return r}
@@ -15021,18 +15064,45 @@ async function iomLeer(forzar){if(ING.estado!=='si'){IOM.leido=null;return ING.e
   const err=[c,b,r].find(x=>x&&x.error);if(err){IOM.leido=err.falta?'falta':'error';IOM.err=String((err.error&&err.error.message)||err.error);IOM.ver++;return IOM.leido}
   /* una fila con un id, un código o una familia que no tienen su forma no se muestra ni se usa (así un texto raro escrito directo en la base nunca llega a
      un botón); queda en Por revisar → «Filas guardadas que no se reconocen» (revisión de código del 06-oct) */
-  const malas=[];ING.firmas=ING.firmas||{};const filas=(t,res)=>{ING.firmas[t]=ING.firmas[t]||{};const out=[];(res.data||[]).forEach(x=>{ING.firmas[t][x.id]=ingCanon(x.data||{});const f=Object.assign({id:x.id},x.data||{});if(t==='ing_subprocesos'&&!String(x.id).startsWith('m'))return;const mal=iomFilaRara(t,f);if(mal){malas.push({t,id:String(x.id).slice(0,80),motivo:mal});return}out.push(f)});return out};
+  /* la firma se guarda SOLO de las filas que se usan: una fila rara que existe en el servidor no tiene firma, así que volver a crearla (una familia
+     de nombre larguísimo, un código que no se reconoce) choca en vez de pisarla a ciegas (revisión de guardado del 06-oct, segunda ronda) */
+  const malas=[];ING.firmas=ING.firmas||{};const filas=(t,res)=>{ING.firmas[t]=ING.firmas[t]||{};const out=[];(res.data||[]).forEach(x=>{const f=Object.assign({id:x.id},(x.data&&typeof x.data==='object'&&!Array.isArray(x.data))?x.data:{});if(t==='ing_subprocesos'&&!String(x.id).startsWith('m'))return;const mal=(x.data&&typeof x.data==='object'&&!Array.isArray(x.data))?iomFilaRara(t,f):'los datos no son un registro';if(mal){delete ING.firmas[t][x.id];malas.push({t,id:String(x.id).slice(0,80),motivo:mal});return}ING.firmas[t][x.id]=ingCanon(x.data||{});out.push(f)});return out};
   IOM.cat=filas('ing_subprocesos',c);IOM.bases=filas('ing_operaciones',b);IOM.refs=filas('ing_referencias',r);IOM.descartadas=malas;
   IOM.leido='si';IOM.ts=Date.now();IOM.ver++;return 'si'}
 const IOM_FMT={fam:/^[a-z0-9][a-z0-9-]{0,59}$/,cod:/^[A-Z0-9-]{2,10}$/,codFam:/^[A-Z0-9]{2,4}$/};
-function iomFilaRara(t,x){const id=String(x.id||'');
+/* la FORMA de cada campo, no solo el id (revisión de seguridad del 06-oct, segunda ronda): un número guardado como texto («t», «n») iba crudo a la
+   pantalla y corría como código en la sesión de Administración; una lista guardada como texto («refsOdoo») o una operación nula tumbaban Crear, Por
+   revisar y Salud. Una fila así no se usa: queda en Por revisar → «Filas guardadas que no se reconocen» */
+function iomNumOk(v){return v==null||v===''||(typeof v==='number'&&isFinite(v))}
+function iomTxtOk(v){return v==null||typeof v==='string'}
+function iomObjOk(v){return !!v&&typeof v==='object'&&!Array.isArray(v)}
+function iomLTxtOk(v){return v==null||(Array.isArray(v)&&v.every(x=>typeof x==='string'))}
+function iomLObjOk(v){return v==null||(Array.isArray(v)&&v.every(iomObjOk))}
+function iomComunRaro(x){for(const k of ['n','sam','ver','nextU','orden'])if(!iomNumOk(x[k]))return 'un número guardado que no es un número («'+k+'»)';
+  if(!iomLObjOk(x.hist)||!iomLObjOk(x.cambios))return 'el historial no es una lista';for(const k of ['nombre','ts','u','creada','apagadaMotivo'])if(!iomTxtOk(x[k]))return 'un texto guardado que no es un texto («'+k+'»)';return ''}
+function iomFilaRara(t,x){const id=String(x.id||'');const c0=/^mmeta\|/.test(id)?'':iomComunRaro(x);if(c0)return c0;   /* la marca de la siembra lleva sus conteos en «n» (un registro): solo cuenta que exista */
   if(t==='ing_subprocesos'){const m=id.match(/^(mfam|msub|msec|mlis|mcfg|mmeta)\|(.+)$/);if(!m)return 'id que no se reconoce';const k=m[2];
-    if(m[1]==='mfam'){if(!IOM_FMT.fam.test(k))return 'familia con un id que no se reconoce';if(x.cod!=null&&x.cod!==''&&!IOM_FMT.codFam.test(String(x.cod)))return 'código de familia que no tiene la forma (2 a 4 letras o números)';if(x.grupo!=null&&!['T','B'].includes(x.grupo))return 'parte que no es de arriba ni de abajo';return ''}
-    if(m[1]==='msub')return IOM_K.includes(k)?'':'subproceso que no existe';if(m[1]==='msec')return ['T','B'].includes(k)?'':'parte que no existe';
-    if(m[1]==='mlis')return ['maquinas','reglas','basico'].includes(k)?'':'lista que no existe';if(m[1]==='mcfg')return Object.keys(IOM_CFG_DEF).includes(k)?'':'grupo de valores que no existe';return k==='siembra'?'':'marca que no se reconoce'}
-  if(t==='ing_operaciones'){const m=id.match(/^mbase\|(.+)$/);if(!m||!IOM_FMT.fam.test(m[1]))return 'base general con un id que no se reconoce';if(x.fam!==m[1])return 'la base dice ser de otra familia';return iomStagesRaros(x)}
-  const m=id.match(/^mref\|(.+)$/);if(!m||!IOM_FMT.cod.test(m[1]))return 'código de referencia que no tiene la forma (2 a 10 letras, números o guiones)';if(x.cod!==m[1])return 'el código no coincide con el de la fila';if(!IOM_FMT.fam.test(String(x.fam||'')))return 'familia que no se reconoce';return iomStagesRaros(x)}
-function iomStagesRaros(x){const st=x.stages;if(st!=null&&!Array.isArray(st))return 'la secuencia no es una lista';return (st||[]).every(s=>s&&IOM_K.includes(s.k)&&(s.ops==null||Array.isArray(s.ops)))?'':'un subproceso de la secuencia no existe'}
+    if(m[1]==='mfam'){if(!IOM_FMT.fam.test(k))return 'familia con un id que no se reconoce';if(x.cod!=null&&x.cod!==''&&!IOM_FMT.codFam.test(String(x.cod)))return 'código de familia que no tiene la forma (2 a 4 letras o números)';if(x.grupo!=null&&!['T','B'].includes(x.grupo))return 'parte que no es de arriba ni de abajo';
+      if(!iomLTxtOk(x.tipos))return 'los tipos de producto no son una lista';if(!iomTxtOk(x.lmo)||!iomTxtOk(x.origen))return 'un texto guardado que no es un texto';return ''}
+    if(m[1]==='msub'){if(!IOM_K.includes(k))return 'subproceso que no existe';return ['nombre','centro','centroTxt','cod'].every(f=>iomTxtOk(x[f]))?'':'un texto guardado que no es un texto'}
+    if(m[1]==='msec'){if(!['T','B'].includes(k))return 'parte que no existe';return iomLTxtOk(x.secciones)?'':'las secciones no son una lista de textos'}
+    if(m[1]==='mlis'){if(!['maquinas','reglas','basico'].includes(k))return 'lista que no existe';if(!iomLObjOk(x.lista))return 'la lista no es una lista';const l=x.lista||[];
+      if(k==='maquinas')return l.every(e=>typeof e.n==='string')?'':'una máquina sin nombre de texto';
+      if(k==='reglas')return l.every(e=>typeof e.tipo==='string'&&['sub','a','b','nota','id'].every(f=>iomTxtOk(e[f]))&&iomLTxtOk(e.ops))?'':'una regla que no tiene su forma';
+      return l.every(e=>typeof e.sub==='string'&&typeof e.op==='string')?'':'una operación de «lo básico» que no tiene su forma'}
+    if(m[1]==='mcfg'){if(!Object.keys(IOM_CFG_DEF).includes(k))return 'grupo de valores que no existe';return Object.keys(IOM_CFG_DEF[k]).every(f=>x[f]==null||x[f]===''||typeof x[f]==='boolean'||(typeof x[f]==='number'&&isFinite(x[f])))?'':'un valor que no es un número ni un sí/no'}
+    return k==='siembra'?'':'marca que no se reconoce'}
+  if(t==='ing_operaciones'){const m=id.match(/^mbase\|(.+)$/);if(!m||!IOM_FMT.fam.test(m[1]))return 'base general con un id que no se reconoce';if(x.fam!==m[1])return 'la base dice ser de otra familia';if(x.origen!=null&&!iomObjOk(x.origen))return 'el origen no tiene su forma';return iomStagesRaros(x)}
+  const m=id.match(/^mref\|(.+)$/);if(!m||!IOM_FMT.cod.test(m[1]))return 'código de referencia que no tiene la forma (2 a 10 letras, números o guiones)';if(x.cod!==m[1])return 'el código no coincide con el de la fila';if(!IOM_FMT.fam.test(String(x.fam||'')))return 'familia que no se reconoce';
+  if(!iomLTxtOk(x.refsOdoo))return 'el «Código en Odoo» no es una lista de textos';if(x.origen!=null&&!iomObjOk(x.origen))return 'el origen no tiene su forma';return iomStagesRaros(x)}
+/* cada operación: un registro con su nombre de texto, sus textos como textos y sus números como números (o vacíos) */
+function iomOpRara(o){if(!iomObjOk(o))return 'una operación vacía o que no es un registro';if(typeof o.op!=='string'||!o.op.trim())return 'una operación sin nombre de texto';
+  for(const k of ['u','sec','tpl','maq','alt','e','nt','de','deFam'])if(!iomTxtOk(o[k]))return 'un texto de la operación «'+o.op.slice(0,40)+'» que no es un texto';
+  for(const k of ['t','tDe','row'])if(!iomNumOk(o[k]))return 'el '+(k==='row'?'número de fila':'tiempo')+' de «'+o.op.slice(0,40)+'» no es un número';return ''}
+function iomStagesRaros(x){const st=x.stages;if(st!=null&&!Array.isArray(st))return 'la secuencia no es una lista';if(!(st||[]).every(s=>s&&IOM_K.includes(s.k)&&(s.ops==null||Array.isArray(s.ops))))return 'un subproceso de la secuencia no existe';
+  for(const s of st||[])for(const o of s.ops||[]){const r=iomOpRara(o);if(r)return r}return ''}
+/* un número leído o copiado: null si está vacío o no es un número (nunca el texto crudo) */
+function iomNum(v){return v==null||v===''||!isFinite(+v)||typeof v==='boolean'||Array.isArray(v)?null:+v}
 function iomAsegurar(){if(ING.estado!=='si')return false;if(IOM.leido==='si')return true;
   if(IOM.leido!=='leyendo'&&IOM.leido!=='error'&&IOM.leido!=='falta')iomLeer().then(iomAlLlegar);return false}
 /* cuando llega la lectura: se vuelve a dibujar la pantalla que la pidió (Operaciones, Por revisar, Salud) o la ventana de la ficha */
@@ -15062,15 +15132,86 @@ function iomListaDe(t){return t==='ing_subprocesos'?IOM.cat:t==='ing_operaciones
 async function iomGuardarFila(t,fila,que,extra){extra=extra||{};const lista=iomListaDe(t);const prev=lista.find(x=>x.id===fila.id)||null;
   const firma=((ING.firmas||{})[t]||{})[fila.id];
   if(Object.prototype.hasOwnProperty.call(extra,'baseFirma')&&prev&&extra.baseFirma!==firma)return {ok:false,choque:true,error:'otra persona la cambió'};
+  /* la copia de la versión anterior se escribe ANTES del cambio: si no se puede guardar la copia, no se guarda el cambio (nada se borra; antes la copia
+     iba después y, si fallaba, la persona veía «Guardado» y la versión anterior se perdía; revisión de guardado del 06-oct, segunda ronda) */
+  let ver=null;
+  if(prev&&extra.version!==false){const ts=iomAhora();ver={id:'mver|'+fila.id+'|'+ts,data:{de:fila.id,ver:prev.ver||0,data:sinId(prev),ts,u:quienFirma(),que:que||'guardado'}};const vr=await ingSubir(t,[ver],50);
+    if(!vr.ok){IOM.ver++;return {ok:false,error:'no se pudo guardar antes la copia de la versión anterior ('+(vr.error||'sin detalle')+'): no se cambió nada',falta:!!vr.falta}}}
   const r=await ingGuardar(t,[fila],50,{lista});
-  if(r.conflictos&&r.conflictos.length){IOM.leido=null;IOM.ver++;return {ok:false,choque:true,error:'otra persona la cambió'}}
-  if(!r.ok){IOM.ver++;return {ok:false,error:r.error||'no se pudo guardar',falta:!!r.falta}}
-  let verFallo=null;
-  if(prev&&extra.version!==false){const ts=iomAhora();const vr=await ingSubir(t,[{id:'mver|'+fila.id+'|'+ts,data:{de:fila.id,ver:prev.ver||0,data:sinId(prev),ts,u:quienFirma(),que:que||'guardado'}}],50);
-    if(!vr.ok){verFallo=vr.error||'sin detalle';bitacora('Ingeniería · Operaciones: no se guardó la copia de la versión anterior de «'+fila.id+'» ('+verFallo+'); lo nuevo sí quedó guardado')}}
+  /* si el cambio no entró, la copia que se dejó antes lo dice (no se borra; queda como la versión que había, «sin guardar») */
+  const marcarVer=async porque=>{if(!ver)return;try{await ingSubir(t,[{id:ver.id,data:Object.assign({},ver.data,{que:(que||'guardado')+' · no se llegó a guardar ('+porque+')',sinCambio:true})}],50)}catch(e){}};
+  if(r.conflictos&&r.conflictos.length){await marcarVer('otra persona la cambió');IOM.leido=null;IOM.ver++;return {ok:false,choque:true,error:'otra persona la cambió'}}
+  if(!r.ok){await marcarVer(r.error||'no se pudo guardar');IOM.ver++;return {ok:false,error:r.error||'no se pudo guardar',falta:!!r.falta,permiso:!!r.permiso}}
   if(extra.bitacora)bitacora(extra.bitacora+' ('+quienFirma()+')');
-  IOM.ver++;return {ok:true,verFallo}}
-function iomAvisoChoque(nombre){alert('Otra persona cambió «'+nombre+'» mientras la editabas: no se pisó. Tu borrador sigue guardado en este equipo. Pulsa «Volver a leer», revisa lo nuevo y vuelve a aplicar tus cambios.')}
+  /* lo que esta misma sesión guarda en la fila que está abierta en Crear referencia («En Odoo», Apagar, una carga, volver a una versión) no se toma
+     como un choque al guardar el editor: se pone al día su firma de partida (iomEditorAlDia) */
+  iomEditorAlDia(t,fila.id,que);
+  IOM.ver++;return {ok:true,verFallo:null}}
+/* el aviso de un choque en Apagar, «En Odoo» o Listas y reglas (el del editor es su propio panel: iomChoqueHTML) */
+function iomAvisoChoque(nombre){alert('Otra persona cambió «'+nombre+'» mientras la mirabas: no se pisó. Pulsa «Volver a leer» (arriba, junto a «Datos leídos»), revisa lo nuevo y vuelve a hacer tu cambio.')}
+/* ---------- el editor y la versión de la que partió (revisión de guardado del 06-oct, segunda ronda) ----------
+   Antes, después de un choque el editor quedaba trabado: «Volver a leer» traía lo nuevo pero el editor seguía partiendo de la versión vieja y Guardar
+   volvía a chocar; y cambiar «En Odoo» o Apagar en la misma pestaña también lo trababa. Ahora: lo que guarda ESTA sesión en esa fila sin tocar su
+   secuencia pone al día la firma de partida; si la secuencia cambió (otra persona, o una carga o «volver a una versión» de esta misma sesión) y no hay
+   cambios sin guardar, el editor trae lo nuevo solo; si hay cambios, sale el panel con «Traer lo nuevo y rehacer mis cambios encima». */
+function iomEditorT(){return IOC.cod?'ing_referencias':'ing_operaciones'}
+function iomNomEditor(){return IOC.cod?IOC.cod+' · '+IOC.meta.nombre:(IOC.meta.famNombre||'')+' · base general'}
+function iomEditorAlDia(t,id,que){if(IOC.modo!=='editar'||!IOC.inicio||IOC.filaId!==id||iomEditorT()!==t)return;const f=((ING.firmas||{})[t]||{})[id];
+  if(que==='guardado')return;   /* el propio editor: iomGuardar lo vuelve a cargar */
+  if(/^carga|^vuelta a versión/.test(String(que||''))){if(iomCambios().n)IOC.choque={ts:Date.now(),por:/^carga/.test(que)?'carga':'version'};else{IOC.baseFirma=f;IOC.recargar=true}return}
+  IOC.baseFirma=f}   /* «En Odoo», apagar o encender: la secuencia no cambió */
+function iomBaseVieja(){if(IOC.modo!=='editar'||!IOC.inicio||!IOC.filaId)return false;if(IOC.choque)return true;if(IOM.leido!=='si')return false;return ((ING.firmas||{})[iomEditorT()]||{})[IOC.filaId]!==IOC.baseFirma}
+/* al pintar Crear: si la versión de partida quedó vieja y no hay cambios, se trae lo nuevo solo; con cambios, se marca el choque (el panel lo dice) */
+function iomRevisarBase(){if(IOC.modo!=='editar'||!IOC.inicio||!IOC.filaId)return;
+  if(IOC.choque&&IOM.leido==='si'&&IOM.ts>IOC.choque.ts&&((ING.firmas||{})[iomEditorT()]||{})[IOC.filaId]===IOC.baseFirma&&IOC.choque.por==='otra')IOC.choque=null;   /* el choque era de una lectura que ya pasó y la base no cambió */
+  if(!IOC.recargar&&!iomBaseVieja())return;
+  if(IOC.recargar||!iomCambios().n){const sub=IOC.sub;IOC.recargar=false;try{if(!iomCambios().n)localStorage.removeItem(iomBorradorClave())}catch(e){}   /* un borrador sin cambios no guarda nada que se pierda */if(!iomCargarEditar(IOC.famId,IOC.cod))return;if(sub&&IOC.stages[sub]&&IOC.stages[sub].on)IOC.sub=sub;IOC.aviso='Se trajo la versión nueva de esta secuencia (alguien la guardó después de que la abriste).';return}
+  IOC.choque=IOC.choque||{ts:Date.now(),por:'otra'}}
+/* las operaciones de una fila tal como las usa el editor ({K:{on,ops}}; los números siempre como números) */
+function iomStagesEditor(fila){const st={};IOM_K.forEach(k=>st[k]={on:false,ops:[]});iomStagesLista((fila&&fila.stages)||[]).forEach(s=>{if(!st[s.k])return;st[s.k].on=true;st[s.k].ops=(s.ops||[]).map(o=>Object.assign({u:o.u,op:o.op,sec:o.sec,tpl:o.tpl||'',maq:o.maq||'',t:iomNum(o.t),p:!!o.p,alt:o.alt||'',e:o.e||'',nt:o.nt||'',row:iomNum(o.row),src:'Base original'},o.de?{de:o.de,deFam:o.deFam||'',tDe:iomNum(o.tDe)}:{}))});return st}
+/* REHACER (puro): los cambios de la persona (lo que va de orig a mios) encima de la versión nueva (nuevos). Lo que solo cambió la otra persona se queda;
+   lo que cambiaron las dos en el mismo dato queda con lo de esta persona y se lista como choque para que lo revise antes de guardar. Nada se guarda aquí. */
+function iomRehacer(orig,mios,nuevos,origOn){orig=orig||{};const ON=new Set(origOn&&origOn.length?origOn:Object.values(orig).map(x=>x.k));const res={},choques=[],cl=o=>JSON.parse(JSON.stringify(o));let n=0;
+  const nomK=k=>(iomSub(k)||{}).nombre||k;const vT=v=>v==null||v===''?null:+v;const vM=v=>String(v==null?'':v).trim();const iguales=(f,a,b)=>f==='t'?vT(a)===vT(b):f==='maq'?vM(a)===vM(b):!!a===!!b;
+  const txt=(f,v)=>f==='t'?iomFmtT(v)+' min':f==='maq'?(vM(v)||'sin máquina'):(v?'principal':'no principal');
+  IOM_K.forEach(k=>{const U=(mios[k]||{ops:[]}),N=(nuevos[k]||{on:false,ops:[]});const uOn=!!U.on,oOn=ON.has(k),nOn=!!N.on;
+    const Ok=Object.keys(orig).filter(u=>orig[u].k===k);const difN=JSON.stringify((N.ops||[]).map(o=>[o.u,o.t,o.maq,!!o.p]))!==JSON.stringify(Ok.sort((a,b)=>orig[a].pos-orig[b].pos).map(u=>[u,orig[u].t,orig[u].maq,!!orig[u].p]));
+    if(oOn&&!uOn){res[k]={on:false,ops:[]};if(nOn){n++;if(difN)choques.push({sub:nomK(k),op:'',txt:'quitaste el subproceso y la otra persona le cambió operaciones: quedó quitado'})}return}
+    if(!uOn&&!oOn){res[k]=cl(N);return}
+    const comU0=U.ops.filter(o=>o.u&&orig[o.u]).map(o=>o.u).join('|'),comO0=Ok.slice().sort((a,b)=>orig[a].pos-orig[b].pos).filter(u=>U.ops.some(x=>x.u===u)).join('|');
+    const uCambio=U.ops.some(o=>!o.u||!orig[o.u]||!['t','maq','p'].every(f=>iguales(f,orig[o.u][f],o[f])))||Ok.some(u=>!U.ops.some(x=>x.u===u))||comU0!==comO0;
+    if(oOn&&!nOn){if(!uCambio){res[k]={on:false,ops:[]};return}res[k]={on:true,ops:cl(U.ops)};n++;choques.push({sub:nomK(k),op:'',txt:'la otra persona quitó el subproceso y tú lo cambiaste: queda incluido, con lo tuyo'});return}
+    const r=nOn?cl(N.ops||[]):[];if(!oOn&&nOn)choques.push({sub:nomK(k),op:'',txt:'las dos personas incluyeron el subproceso: se juntaron las operaciones de las dos (revisa que no haya repetidas)'});
+    if(!oOn)n++;
+    const idx=u=>r.findIndex(x=>x.u&&x.u===u);
+    /* lo que esta persona quitó */
+    Ok.forEach(u=>{if(U.ops.some(x=>x.u===u))return;const i=idx(u);if(i<0)return;const a=orig[u],b=r[i];n++;if(!['t','maq','p'].every(f=>iguales(f,a[f],b[f])))choques.push({sub:nomK(k),op:a.op,txt:'la quitaste y la otra persona la cambió: quedó quitada'});r.splice(i,1)});
+    /* lo que esta persona cambió (tiempo, máquina, principal) */
+    U.ops.forEach(o=>{if(!o.u||!orig[o.u])return;const a=orig[o.u];const fs=['t','maq','p'].filter(f=>!iguales(f,a[f],o[f]));if(!fs.length)return;const i=idx(o.u);
+      if(i<0){choques.push({sub:nomK(k),op:o.op,txt:'la otra persona la quitó: tu cambio ('+fs.map(f=>txt(f,o[f])).join(', ')+') no se aplicó'});return}
+      fs.forEach(f=>{n++;const b=r[i][f];if(!iguales(f,a[f],b)&&!iguales(f,b,o[f]))choques.push({sub:nomK(k),op:o.op,txt:'tú pusiste '+txt(f,o[f])+' y la otra persona '+txt(f,b)+': quedó lo tuyo'});r[i][f]=f==='t'?vT(o[f]):f==='p'?!!o[f]:o[f]})});
+    /* lo que esta persona agregó: después de la operación que en su secuencia va justo antes */
+    let last=-1;const mias=new Set();U.ops.forEach(o=>{const es=o.u&&orig[o.u];const i=es?idx(o.u):-1;if(es){if(i>=0){last=i;mias.add(r[i])}return}const c=cl(o);r.splice(last+1,0,c);last=last+1;mias.add(c);n++});
+    /* el orden: si esta persona movió operaciones, sus operaciones quedan en su orden (las que agregó la otra persona, en su lugar) */
+    const comU=U.ops.filter(o=>o.u&&orig[o.u]).map(o=>o.u),comO=Ok.slice().sort((a,b)=>orig[a].pos-orig[b].pos).filter(u=>comU.includes(u));
+    if(comU.join('|')!==comO.join('|')){const pos=[],ord=[];r.forEach((x,i)=>{if(mias.has(x))pos.push(i)});U.ops.forEach(o=>{const x=r.find(y=>mias.has(y)&&(o.u&&orig[o.u]?y.u===o.u:y.op===o.op&&y.sec===o.sec&&!y.u))||null;if(x&&!ord.includes(x))ord.push(x)});
+      r.filter((x,i)=>pos.includes(i)&&!ord.includes(x)).forEach(x=>ord.push(x));const comN=(N.ops||[]).map(x=>x.u).filter(u=>comO.includes(u));if(comN.join('|')!==comO.join('|'))choques.push({sub:nomK(k),op:'',txt:'las dos personas movieron operaciones: quedó tu orden'});
+      const copia=r.slice();pos.forEach((p,j)=>{copia[p]=ord[j]});r.splice(0,r.length,...copia);n++}
+    res[k]={on:true,ops:r}});
+  return {stages:res,choques,n}}
+async function iomRehacerChoque(){if(IOC.modo!=='editar'||!IOC.inicio)return null;const t=iomEditorT();const lr=await iomLeer(true);if(lr!=='si'){alert('No se pudo leer lo nuevo ('+(IOM.err||lr)+'). Prueba de nuevo en un momento.');return null}
+  const fila=iomListaDe(t).find(x=>x.id===IOC.filaId)||null;const base=iomStagesEditor(fila);const m=iomRehacer(IOC.orig||{},IOC.stages,base,IOC.origOn);
+  IOC.orig=iomOrigDe(base);IOC.origOn=IOM_K.filter(k=>base[k].on);IOC.baseFirma=((ING.firmas||{})[t]||{})[IOC.filaId];IOC.sinFila=!fila;IOC.stages=m.stages;IOC.choque=null;IOC.recargar=false;IOC.rehecho={ts:iomAhora(),choques:m.choques};
+  if(!IOC.sub||!(IOC.stages[IOC.sub]&&IOC.stages[IOC.sub].on))iomPrimerSub();delete IOC._cc;iomSucio();iomPintarCrear();const e=document.getElementById('iom-crear');if(e&&e.scrollIntoView)try{e.scrollIntoView({block:'start'})}catch(x){}return m}
+async function iomDescartarChoque(){if(!confirm('Se descartan tus cambios sin guardar de «'+iomNomEditor()+'» y se abre lo que está guardado ahora. ¿Seguir?'))return false;await iomLeer(true);iomBorradorQuitar();const sub=IOC.sub;
+  if(iomCargarEditar(IOC.famId,IOC.cod)&&sub&&IOC.stages[sub]&&IOC.stages[sub].on)IOC.sub=sub;iomPintarCrear();return true}
+function iomChoqueHTML(){if(!iomBaseVieja())return '';const n=iomCambios().n;const dr=iomBorradorLeer();const por=(IOC.choque&&IOC.choque.por)||'otra';
+  const que=por==='carga'?'Esta secuencia cambió con «Cargar secuencias» (en esta misma pestaña)':por==='version'?'Esta secuencia volvió a otra versión':'Otra persona guardó «'+esc(iomNomEditor())+'» después de que la abriste';
+  const uno=n===1;const lo=n?'tus '+iomPl(n,'cambio','cambios')+' sin guardar':'lo tuyo';
+  return `<div class="iom-aviso mal iom-choque" id="iom-choque"><b>${que}:</b> ${lo} no ${uno||!n?'se guardó':'se guardaron'} (no se pisa lo nuevo)${dr?' y '+(uno||!n?'sigue':'siguen')+' en el borrador de este equipo':''}. Trae lo nuevo y rehace tus cambios encima: lo que cambiaron las dos personas en la misma operación se te muestra antes de guardar.
+   <div class="iom-choque-acc"><button type="button" class="btn sm" onclick="iomRehacerChoque()">Traer lo nuevo y rehacer mis cambios encima</button><button type="button" class="btn ghost sm" ${n?'':'disabled'} onclick="iomExcelEditor()">Descargar mis cambios en Excel</button><button type="button" class="btn ghost sm" onclick="iomDescartarChoque()">Descartar mis cambios</button></div></div>`}
+function iomRehechoHTML(){const r=IOC.rehecho;if(!r||IOC.modo!=='editar')return '';const n=iomCambios().n;
+  return `<div class="iom-aviso ${r.choques.length?'':'ok'} iom-rehecho"><b>Se trajo lo nuevo y se rehicieron encima tus cambios</b>: ahora hay ${iomPl(n,'cambio','cambios')} sin guardar. Revísalos y pulsa Guardar.${r.choques.length?'<br><b>'+iomPl(r.choques.length,'cosa chocaba','cosas chocaban')+'</b> (las dos personas tocaron lo mismo):<ul class="ing-lista">'+r.choques.slice(0,40).map(c=>'<li>'+esc(c.sub)+(c.op?' · '+esc(c.op):'')+': '+esc(c.txt)+'</li>').join('')+'</ul>':''}</div>`}
 /* una fila nueva de base o de referencia, con su resumen (n, SAM y SAM por subproceso) */
 function iomResumenFila(d){const samSub={};let n=0,sam=0;(d.stages||[]).forEach(s=>{const v=iomSam(s.ops);samSub[s.k]=+v.toFixed(3);sam+=v;n+=(s.ops||[]).length});d.n=n;d.sam=+sam.toFixed(3);d.samSub=samSub;return d}
 /* versiones anteriores de una fila (a demanda) y volver a una de ellas (la actual queda como versión nueva) */
@@ -15078,7 +15219,8 @@ async function iomVersiones(id){const t=id.startsWith('mref|')?'ing_referencias'
   return {lista:(r.data||[]).map(x=>Object.assign({id:x.id},x.data||{})).sort((a,b)=>String(b.ts).localeCompare(String(a.ts)))}}
 
 /* ---------- códigos sugeridos (el suggestCode del prototipo): 4 letras o números sin tildes; si están usadas, 3 + 1…99 ---------- */
-function iomCodigosUsados(){const u={};iomCat().fams.forEach(f=>{if(f.cod)u[String(f.cod).toUpperCase()]=f.nombre});IOM.refs.forEach(r=>{if(r.cod)u[String(r.cod).toUpperCase()]=r.nombre});return u}   /* también las apagadas: un código apagado no se reusa, se enciende */
+function iomCodigosUsados(){const u={};iomCat().fams.forEach(f=>{if(f.cod)u[String(f.cod).toUpperCase()]=f.nombre});IOM.refs.forEach(r=>{if(r.cod)u[String(r.cod).toUpperCase()]=r.nombre});
+  (IOM.descartadas||[]).forEach(d=>{const m=String(d.id).match(/^mref\|(.+)$/);if(m&&!u[m[1].toUpperCase()])u[m[1].toUpperCase()]='una fila guardada que no se reconoce (está en Por revisar)'});return u}   /* tampoco el de una fila guardada que no se reconoce: crearla de nuevo chocaría con ella */   /* también las apagadas: un código apagado no se reusa, se enciende */
 function iomSugerirCodigo(nombre,extra){const base=normTxt(nombre).replace(/[^a-z0-9]/g,'').toUpperCase().slice(0,4);if(base.length<2)return base;const used=Object.assign({},iomCodigosUsados(),extra||{});
   if(!used[base])return base;for(let i=1;i<100;i++){const c=base.slice(0,3)+i;if(!used[c])return c}return base}
 /* código de una categoría nueva: 3 letras; si está usado, 2 letras + 1, 2… (como el prototipo) */
@@ -15091,7 +15233,7 @@ function iomNormCab(s){return normTxt(String(s==null?'':s)).replace(/[^a-z0-9]+/
 function iomCabecera(rows){for(let i=0;i<Math.min(15,rows.length);i++){const c=(rows[i]||[]).map(iomNormCab);if(c.includes('familia')&&c.includes('subproceso')&&c.includes('operacion'))return i}return -1}
 function iomColumnas(cab){const n=(cab||[]).map(iomNormCab);const m={};IOM_COLS.forEach(([k,al])=>{const i=n.findIndex(x=>al.includes(x));if(i>=0)m[k]=i});return m}
 async function iomLeerArchivo(f){const nom=String(f.name||'').toLowerCase();
-  if(nom.endsWith('.csv')||nom.endsWith('.txt')){const txt=(await f.text()).replace(/^\uFEFF/,'');const ini=txt.split('\n').slice(0,6).join('\n');const n=ch=>(ini.split(ch).length-1);const sep=n(';')>n(',')&&n(';')>=n('\t')?';':n('\t')>n(',')?'\t':',';return parseCSV(txt,sep)}
+  if(nom.endsWith('.csv')||nom.endsWith('.txt')){const txt=(await f.text()).replace(/^\uFEFF/,'');const ini=txt.split('\n').slice(0,6).join('\n');const n=ch=>(ini.split(ch).length-1);const sep=n(';')>n(',')&&n(';')>=n('\t')?';':n('\t')>n(',')?'\t':',';const rows=parseCSV(txt,sep);try{Object.defineProperty(rows,'sep',{value:sep,enumerable:false})}catch(e){}return rows}   /* el separador viaja con las filas: con \u00AB,\u00BB una fila m\u00E1s larga que la cabecera rechaza el archivo entero (iomPlanCarga) */
   await cargarSheetJS();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const hoja=n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''});
   if(wb.Sheets['Secuencia'])return hoja('Secuencia');for(const n of wb.SheetNames){const r=hoja(n);if(iomCabecera(r)>=0)return r}return hoja(wb.SheetNames[0])}
 function iomEsSi(v){return /^(si|x|1|true|verdadero|yes)$/.test(normTxt(v))}
@@ -15104,27 +15246,35 @@ function iomMismoContenido(a,b){const c=x=>ingCanon(iomOrdenarStages((x&&x.stage
    (el historial dice «editada», no «quitada + nueva»); las columnas que el archivo no trae se toman de la que ya estaba */
 function iomReemplazar(vieja,nueva,cols){const libres=new Map();((vieja&&vieja.stages)||[]).forEach(s=>(s.ops||[]).forEach(o=>{const key=iomClaveOp(s.k,o.sec,o.op);if(!libres.has(key))libres.set(key,[]);libres.get(key).push(o)}));
   let next=iomMaxU(vieja);const trae=cols||{};
-  const stages=iomOrdenarStages(nueva.stages).map(s=>({k:s.k,ops:s.ops.map(o=>{const key=iomClaveOp(s.k,o.sec,o.op);const l=libres.get(key);const ex=l&&l.length?l.shift():null;const n=Object.assign({},o,{u:ex?ex.u:'o'+(++next)});
-    if(ex){if(trae.codigo==null)n.tpl=ex.tpl||'';['p','alt','e','nt','row'].forEach(f=>{if(trae[f]==null&&ex[f]!==undefined)n[f]=ex[f]})}return n})}));
+  const stages=iomOrdenarStages(nueva.stages).map(s=>({k:s.k,ops:s.ops.map(o=>{const key=iomClaveOp(s.k,o.sec,o.op);const l=libres.get(key);const ex=l&&l.length?l.shift():null;const n=iomSinMarcas(Object.assign({},o,{u:ex?ex.u:'o'+(++next)}));
+    if(ex){if(trae.codigo==null)n.tpl=ex.tpl||'';['p','alt','e','nt','row'].forEach(f=>{if(trae[f]==null&&ex[f]!==undefined)n[f]=ex[f]});
+      /* de dónde salió (copiada de, agregada, tiempo cambiado) no va en el Excel: se conserva el de la que ya estaba (antes se perdía en TODA la
+         referencia aunque cambiara un solo tiempo; revisión de guardado del 06-oct, segunda ronda) */
+      if(ex.de){n.de=ex.de;n.deFam=ex.deFam||'';n.tDe=ex.tDe==null?null:ex.tDe}}return n})}));
   return {stages,nextU:next}}
+/* la marca interna del plan (qué celdas venían vacías) no se guarda nunca */
+function iomSinMarcas(o){const n=Object.assign({},o);delete n._vac;return n}
 /* combinar: lo que ya estaba se queda; lo que calza se actualiza; lo nuevo entra en su lugar (sección + reglas de orden). No se quita nada */
 function iomCombinar(vieja,nueva,grupo,cols){const st=JSON.parse(JSON.stringify((vieja&&vieja.stages)||[]));let next=iomMaxU(vieja);const usados=new Set();const trae=cols||{};
   iomOrdenarStages(nueva.stages).forEach(s=>{let tg=st.find(x=>x.k===s.k);if(!tg){tg={k:s.k,ops:[]};st.push(tg)}
     s.ops.forEach(o=>{const key=iomClaveOp(s.k,o.sec,o.op);const ex=tg.ops.find(x=>!usados.has(x.u)&&iomClaveOp(s.k,x.sec,x.op)===key);
-      /* combinar no borra: una celda de tiempo o de máquina VACÍA en el archivo deja lo que ya había (revisión de fidelidad del 06-oct) */
-      if(ex){usados.add(ex.u);if(!(o.t==null||o.t===''))ex.t=o.t;if(String(o.maq==null?'':o.maq).trim())ex.maq=o.maq;if(trae.codigo!=null&&o.tpl)ex.tpl=o.tpl;['p','alt','e','nt','row'].forEach(f=>{if(trae[f]!=null)ex[f]=o[f]})}
-      else{const n=Object.assign({},o,{u:'o'+(++next)});usados.add(n.u);iomInsertar(tg.ops,n,grupo,s.k)}})});
+      /* combinar no borra: una celda VACÍA en el archivo deja lo que ya había, en TODAS las columnas (tiempo, máquina, código, principal, alternativa,
+         estado, nota y fila original). Para quitar «Principal» se escribe «No». Antes solo tiempo y máquina estaban protegidos y un archivo «solo
+         tiempos» de 21 columnas borraba notas, alternativas, estados y principales (revisión de guardado del 06-oct, segunda ronda) */
+      const vac=o._vac||{};
+      if(ex){usados.add(ex.u);if(!(o.t==null||o.t===''))ex.t=o.t;if(String(o.maq==null?'':o.maq).trim())ex.maq=o.maq;if(trae.codigo!=null&&o.tpl)ex.tpl=o.tpl;['p','alt','e','nt','row'].forEach(f=>{if(trae[f]!=null&&!vac[f])ex[f]=o[f]})}
+      else{const n=iomSinMarcas(Object.assign({},o,{u:'o'+(++next)}));usados.add(n.u);iomInsertar(tg.ops,n,grupo,s.k)}})});
   return {stages:iomOrdenarStages(st),nextU:next}}
 /* el plan: puro (no escribe nada, ni en S ni en IOM). opts: {nuevas:{clave:{crear,grupo,cod}}, acciones:{clave:'reemplazar'|'combinar'|'no'}, accionTodas} */
 /* el archivo no trae «Sección» (es opcional en la especificación): cada operación toma la sección de la que ya estaba, cruzando por subproceso + nombre
    (la primera libre, en orden); así conserva también su código, principal, alternativa, estado y nota. Si el nombre está varias veces en ese subproceso
    con secciones distintas y el archivo no lo trae las mismas veces, no se sabe cuál es: esas filas se rechazan con su motivo. Lo que no estaba queda en
    «General». Antes un archivo de solo tiempos dejaba toda la secuencia en «General» y por asignar (revisión de fidelidad del 06-oct) */
-function iomSeccionPorNombre(fs,vieja,plan){const porK={};fs.forEach(x=>{(porK[x.k]=porK[x.k]||[]).push(x)});
+function iomSeccionPorNombre(fs,vieja,plan,clave){const porK={};fs.forEach(x=>{(porK[x.k]=porK[x.k]||[]).push(x)});
   Object.keys(porK).forEach(k=>{const ex=((vieja&&iomStagesLista(vieja.stages).find(s=>s.k===k))||{ops:[]}).ops;const porN=new Map();ex.forEach(o=>{const n=normTxt(o.op);if(!porN.has(n))porN.set(n,[]);porN.get(n).push(o)});
     const enArch=new Map();porK[k].forEach(x=>{const n=normTxt(x.o.op);enArch.set(n,(enArch.get(n)||0)+1)});const usados=new Map();const sub=iomSub(k);
     porK[k].forEach(x=>{const n=normTxt(x.o.op);const l=porN.get(n)||[];if(!l.length){x.o.sec='General';return}const secs=[...new Set(l.map(o=>o.sec||'General'))];
-      if(secs.length>1&&enArch.get(n)!==l.length){x.rech=true;plan.rechazadas.push({fila:x.fila,motivo:'«'+x.o.op+'» está '+l.length+' veces en '+(sub?sub.nombre:k)+' ('+secs.join(', ')+') y el archivo no trae la columna «Sección»: no se sabe cuál es. Agrega la columna «Sección»'});return}
+      if(secs.length>1&&enArch.get(n)!==l.length){x.rech=true;plan.rechazadas.push({fila:x.fila,clave:clave||null,motivo:'«'+x.o.op+'» está '+l.length+' veces en '+(sub?sub.nombre:k)+' ('+secs.join(', ')+') y el archivo no trae la columna «Sección»: no se sabe cuál es. Agrega la columna «Sección»'});return}
       const i=usados.get(n)||0;usados.set(n,i+1);x.o.sec=l[Math.min(i,l.length-1)].sec||'General'})});
   return fs.filter(x=>!x.rech)}
 function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archivo||'',filas:0,cabFila:-1,hoja:'',destinos:[],rechazadas:[],familiasNuevas:[],maquinasFuera:[],fueraDeOrden:0,columnas:{},sinPlantilla:[],sinTiempo:0,repetidas:[],alternativas:[],fueraRango:[],sinSeccion:false,error:null};
@@ -15132,48 +15282,65 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
   const cm=iomColumnas(rows[ci]);plan.columnas=cm;const falta=IOM_COLS_OBLIG.filter(k=>cm[k]==null);if(falta.length){plan.error='Falta la columna «'+IOM_COLS_N[falta[0]]+'»'+(falta.length>1?' (y '+falta.slice(1).map(k=>'«'+IOM_COLS_N[k]+'»').join(', ')+')':'')+'.';return plan}
   plan.sinSeccion=cm.sec==null;const ultima=r=>{let u=0;(r||[]).forEach((x,i)=>{if(String(x==null?'':x).trim()!=='')u=i+1});return u};const nCab=ultima(rows[ci]);const rechRango=!!iomCfg('avisos').tFueraRechazar;
   const cat=iomCat();const maqsOk=new Set(cat.maqs.map(m=>normTxt(m.n)));const maqFuera={};const nuevasDec=opts.nuevas||{};const usados=iomCodigosUsados();const enPlan={};   /* código de referencia → familia (dentro del archivo) */
-  const D=new Map();const rech=(fila,motivo)=>plan.rechazadas.push({fila,motivo});
+  /* un CSV separado por COMAS con una fila más larga que la cabecera (contando las celdas vacías): casi seguro un tiempo escrito con coma («0,1») que
+     partió la celda en dos y corrió todas las demás (la Fila original terminaba en «Referencia» y nacían cientos de referencias). No se carga NADA del
+     archivo (revisión de guardado del 06-oct, segunda ronda: antes solo se rechazaba la fila si tenía más celdas CON ALGO que la cabecera) */
+  if(rows.sep===','){const nC=(rows[ci]||[]).length;const j=rows.slice(ci+1).findIndex(r=>Array.isArray(r)&&r.length>nC&&r.some(x=>String(x==null?'':x).trim()!==''));
+    if(j>=0){plan.error='El archivo está separado por comas y la fila '+(ci+2+j)+' tiene más columnas que la cabecera ('+rows[ci+1+j].length+' y '+nC+'): casi seguro un tiempo escrito con coma («0,1»), que en un archivo separado por comas parte la celda en dos y corre las demás. No se cargó nada. Guárdalo separado por punto y coma («;») —en Excel: «CSV (delimitado por punto y coma)»— o súbelo como Excel (.xlsx).';return plan}}
+  const D=new Map();const rech=(fila,motivo,clave)=>plan.rechazadas.push({fila,motivo,clave:clave||null});
   rows.slice(ci+1).forEach((r,i)=>{const fila=ci+2+i;r=r||[];const v=k=>cm[k]==null?'':String(r[cm[k]]==null?'':r[cm[k]]).trim();
     if(!r.some(x=>String(x==null?'':x).trim()!==''))return;plan.filas++;
     /* más celdas con algo que la cabecera: casi siempre un tiempo con coma en un archivo separado por comas («0,1» se parte en dos columnas y el tiempo
        entraba como 0 sin aviso; revisión de fidelidad del 06-oct) */
     const nfc=ultima(r);if(nfc>nCab){rech(fila,'la fila tiene más columnas que la cabecera ('+nfc+' y '+nCab+'): ¿escribiste el tiempo con coma en un archivo separado por comas? Guárdalo separado con punto y coma, o pon el número entre comillas');return}
-    /* la familia: por su código; si no, por su nombre (o el de la hoja de Odoo); si no existe, se ofrece crear (nunca a ciegas) */
-    const codF=v('codFam'),nomF=v('fam');let f=(codF&&iomFamPorCod(codF))||iomFamPorNombre(nomF);let famNueva=null;
+    /* la familia: por su código; si no, por su nombre (o el de la hoja de Odoo); si no existe, se ofrece crear (nunca a ciegas). Si el nombre y el código
+       llevan a familias DISTINTAS (un «Cód. familia» arrastrado en Excel), la fila se rechaza: antes mandaba el código sin avisar y un archivo de Polo con
+       CAM reemplazaba la base de Camiseta (revisión de guardado del 06-oct, segunda ronda) */
+    const codF=v('codFam'),nomF=v('fam');const fC=codF?iomFamPorCod(codF):null,fN=nomF?iomFamPorNombre(nomF):null;
+    if(fC&&fN&&fC.id!==fN.id){rech(fila,'el nombre dice «'+nomF+'» y el código '+codF.toUpperCase()+' es de '+fC.nombre+': corrige una de las dos (no se adivina cuál es la buena)');return}
+    let f=fC||fN;let famNueva=null;const nomDistinto=!!(fC&&nomF&&!fN);
+    /* a qué secuencia iría la fila (para contar, en la vista previa, las filas rechazadas de cada una; no rechaza nada) */
+    const claveTent=()=>{if(!f||f.nueva)return null;const cr=v('codRef').toUpperCase().replace(/\s+/g,'');if(cr)return 'ref|'+cr;const nr=v('ref');if(!nr)return 'base|'+f.id;
+      const ya=[...D.values()].find(d=>d.tipo==='ref'&&d.famKey===f.id&&normTxt(d.nombre)===normTxt(nr));const ex=IOM.refs.find(x=>x.fam===f.id&&normTxt(x.nombre)===normTxt(nr));return ya?ya.clave:ex?'ref|'+ex.cod:null};
     if(!f){const key=normTxt(nomF)||normTxt(codF);if(!key){rech(fila,'sin familia');return}let fn=plan.familiasNuevas.find(x=>x.key===key);
       if(!fn){const d=nuevasDec[key]||{};fn={key,nombre:nomF||codF,cod:d.cod!=null?String(d.cod).toUpperCase():(codF?codF.toUpperCase():iomCodigoFamNueva(nomF||codF)),grupo:d.grupo||null,crear:!!d.crear,filas:0};plan.familiasNuevas.push(fn)}fn.filas++;
       if(!fn.crear){rech(fila,'familia que no existe: «'+(nomF||codF)+'» (márcala para crearla)');return}if(!fn.grupo){rech(fila,'familia nueva «'+fn.nombre+'» sin parte (de arriba o de abajo)');return}
       if(!/^[A-Z0-9]{2,4}$/.test(fn.cod)){rech(fila,'código de la familia nueva «'+fn.nombre+'» inválido: 2 a 4 letras o números');return}
       if(usados[fn.cod]){rech(fila,'el código '+fn.cod+' de la familia nueva ya lo usa '+usados[fn.cod]);return}
       famNueva=fn;f={id:'+'+iomSlug(fn.nombre),nombre:fn.nombre,cod:fn.cod,grupo:fn.grupo,nueva:true}}
-    const sv=normTxt(v('sub')).replace(/\s+/g,'');const sub=cat.subs.find(s=>normTxt(s.nombre).replace(/\s+/g,'')===sv||normTxt(s.k)===sv);if(!sub){rech(fila,'subproceso desconocido: «'+v('sub')+'»');return}
-    const op=v('op');if(!op){rech(fila,'operación vacía');return}
-    const tRaw=cm.t==null?'':r[cm.t];let t=null;if(!(tRaw===''||tRaw==null)){t=numXLS(tRaw);if(t==null){rech(fila,'tiempo que no es un número: «'+tRaw+'»');return}if(t<0){rech(fila,'tiempo negativo: '+iomFmtT(t));return}}
+    const sv=normTxt(v('sub')).replace(/\s+/g,'');const sub=cat.subs.find(s=>normTxt(s.nombre).replace(/\s+/g,'')===sv||normTxt(s.k)===sv);if(!sub){rech(fila,'subproceso desconocido: «'+v('sub')+'»',claveTent());return}
+    const op=v('op');if(!op){rech(fila,'operación vacía',claveTent());return}
+    const tRaw=cm.t==null?'':r[cm.t];let t=null;if(!(tRaw===''||tRaw==null)){t=numXLS(tRaw);if(t==null){rech(fila,'tiempo que no es un número: «'+tRaw+'»',claveTent());return}if(t<0){rech(fila,'tiempo negativo: '+iomFmtT(t),claveTent());return}}
     /* un tiempo fuera del rango creíble de «Avisos de la edición» (un «35» por «0,35», un «1e3»): se avisa en la vista previa o, si así se decidió, se rechaza */
-    if(t!=null&&iomFueraRango(t)){if(rechRango){rech(fila,'tiempo fuera del rango creíble ('+iomRangoTxt()+'): '+iomFmtT(t)+' min en «'+op+'»');return}plan.fueraRango.push({fila,op,t})}
+    if(t!=null&&iomFueraRango(t)){if(rechRango){rech(fila,'tiempo fuera del rango creíble ('+iomRangoTxt()+'): '+iomFmtT(t)+' min en «'+op+'»',claveTent());return}plan.fueraRango.push({fila,op,t})}
     let codR=v('codRef').toUpperCase().replace(/\s+/g,'');const nomR=v('ref');let sugerido=false;
-    if(codR&&!/^[A-Z0-9-]{2,10}$/.test(codR)){rech(fila,'código de referencia inválido: «'+codR+'» (2 a 10 letras, números o guiones)');return}
+    if(codR&&!/^[A-Z0-9-]{2,10}$/.test(codR)){rech(fila,'código de referencia inválido: «'+codR+'» (2 a 10 letras, números o guiones)',claveTent());return}
     if(!codR&&nomR){const ya=[...D.values()].find(d=>d.tipo==='ref'&&d.famKey===f.id&&normTxt(d.nombre)===normTxt(nomR));const ex=IOM.refs.find(x=>x.fam===f.id&&normTxt(x.nombre)===normTxt(nomR));
-      codR=ya?ya.cod:ex?ex.cod:iomSugerirCodigo(nomR,enPlan);sugerido=!ya&&!ex}
+      codR=ya?ya.cod:ex?ex.cod:iomSugerirCodigo(nomR,enPlan);sugerido=!ya&&!ex;
+      /* un nombre con menos de 2 letras o números no da un código válido: se rechaza (antes se guardaba y desaparecía al volver a leer) */
+      if(sugerido&&!/^[A-Z0-9-]{2,10}$/.test(codR)){rech(fila,'no se pudo sugerir un código para la referencia «'+nomR+'» (hacen falta al menos 2 letras o números): escribe su «Cód. referencia»');return}}
     const tipo=codR?'ref':'base';
-    if(tipo==='ref'){const fc=cat.fams.find(x=>String(x.cod).toUpperCase()===codR)||(plan.familiasNuevas.find(x=>x.crear&&x.cod===codR));if(fc){rech(fila,'el código '+codR+' ya lo usa la familia '+fc.nombre);return}
-      const exR=iomRef(codR);if(exR&&exR.fam!==f.id){rech(fila,'el código '+codR+' ya lo usa la referencia «'+exR.nombre+'» de '+((iomFam(exR.fam)||{}).nombre||exR.fam));return}
-      if(enPlan[codR]&&enPlan[codR]!==f.id){rech(fila,'el código '+codR+' viene en el archivo para dos familias');return}
-      const otra=IOM.refs.find(x=>x.fam===f.id&&x.cod!==codR&&nomR&&normTxt(x.nombre)===normTxt(nomR));if(otra){rech(fila,'ya existe la referencia «'+otra.nombre+'» en '+f.nombre+' con el código '+otra.cod);return}
-      const otraP=[...D.values()].find(d=>d.tipo==='ref'&&d.famKey===f.id&&d.cod!==codR&&nomR&&normTxt(d.nombre)===normTxt(nomR));if(otraP){rech(fila,'la referencia «'+nomR+'» viene con dos códigos ('+otraP.cod+' y '+codR+')');return}
+    if(tipo==='ref'){const fc=cat.fams.find(x=>String(x.cod).toUpperCase()===codR)||(plan.familiasNuevas.find(x=>x.crear&&x.cod===codR));if(fc){rech(fila,'el código '+codR+' ya lo usa la familia '+fc.nombre,claveTent());return}
+      if((IOM.descartadas||[]).some(x=>x.id==='mref|'+codR)){rech(fila,'el código '+codR+' ya está guardado con un formato que no se reconoce (está en Por revisar → «Filas guardadas que no se reconocen»): pídele a Administración que lo revise',claveTent());return}
+      const exR=iomRef(codR);if(exR&&exR.fam!==f.id){rech(fila,'el código '+codR+' ya lo usa la referencia «'+exR.nombre+'» de '+((iomFam(exR.fam)||{}).nombre||exR.fam),claveTent());return}
+      if(enPlan[codR]&&enPlan[codR]!==f.id){rech(fila,'el código '+codR+' viene en el archivo para dos familias',claveTent());return}
+      const otra=IOM.refs.find(x=>x.fam===f.id&&x.cod!==codR&&nomR&&normTxt(x.nombre)===normTxt(nomR));if(otra){rech(fila,'ya existe la referencia «'+otra.nombre+'» en '+f.nombre+' con el código '+otra.cod,claveTent());return}
+      const otraP=[...D.values()].find(d=>d.tipo==='ref'&&d.famKey===f.id&&d.cod!==codR&&nomR&&normTxt(d.nombre)===normTxt(nomR));if(otraP){rech(fila,'la referencia «'+nomR+'» viene con dos códigos ('+otraP.cod+' y '+codR+')',claveTent());return}
       enPlan[codR]=f.id}
     const clave=tipo==='base'?'base|'+f.id:'ref|'+codR;
-    if(!D.has(clave))D.set(clave,{clave,tipo,famKey:f.id,famId:f.nueva?null:f.id,famNueva:famNueva?famNueva.key:null,famNombre:f.nombre,famCod:f.cod,grupo:f.grupo,cod:tipo==='base'?f.cod:codR,nombre:tipo==='ref'?(nomR||(iomRef(codR)||{}).nombre||codR):'',codSugerido:sugerido,filas:[]});
-    const d=D.get(clave);if(tipo==='ref'&&nomR&&!d.nombre)d.nombre=nomR;
+    if(!D.has(clave))D.set(clave,{clave,tipo,famKey:f.id,famId:f.nueva?null:f.id,famNueva:famNueva?famNueva.key:null,famNombre:f.nombre,famCod:f.cod,grupo:f.grupo,cod:tipo==='base'?f.cod:codR,nombre:tipo==='ref'?(nomR||(iomRef(codR)||{}).nombre||codR):'',codSugerido:sugerido,filas:[],nomArchivo:new Set()});
+    const d=D.get(clave);if(tipo==='ref'&&nomR&&!d.nombre)d.nombre=nomR;if(nomDistinto)d.nomArchivo.add(nomF);
     const sec=cm.sec==null?null:(v('sec')||'General');
     const codigo=v('codigo');const tpl=codigo?iomTplDeCodigo(codigo,d.cod,v('codCentro')||sub.cod,iomTplModelo(d.famId,d.tipo==='ref'?d.cod:null,sub.k,sec,op)):'';if(codigo&&!tpl)plan.sinPlantilla.push({fila,codigo});
     const maq=v('maq');if(maq&&!maqsOk.has(normTxt(maq)))maqFuera[maq]=(maqFuera[maq]||0)+1;if(t==null)plan.sinTiempo++;
     const est=v('e');const rowN=parseInt(v('row'),10);const paso=numXLS(cm.paso==null?'':r[cm.paso]);
-    d.filas.push({fila,paso,k:sub.k,o:{sec,op,tpl,maq,t,p:iomEsSi(v('p')),alt:v('alt'),e:/^(original)?$/.test(normTxt(est))?'':est,nt:v('nt'),row:isFinite(rowN)?rowN:null}})});
+    /* qué columnas venían con la celda vacía (Combinar no las toca); la marca no se guarda nunca (iomSinMarcas) */
+    const vac={};['p','alt','e','nt','row'].forEach(k=>{if(cm[k]!=null&&v(k)==='')vac[k]=true});const o={sec,op,tpl,maq,t,p:iomEsSi(v('p')),alt:v('alt'),e:/^(original)?$/.test(normTxt(est))?'':est,nt:iomSinOrigen(v('nt')),row:isFinite(rowN)?rowN:null};if(Object.keys(vac).length)o._vac=vac;
+    d.filas.push({fila,paso,k:sub.k,o})});
   plan.maquinasFuera=Object.keys(maqFuera).sort().map(m=>({maq:m,n:maqFuera[m]}));
   D.forEach(d=>{let fs=d.filas.slice();if(fs.length&&fs.every(x=>x.paso!=null))fs=fs.map((x,i)=>({x,i})).sort((a,b)=>a.x.paso-b.x.paso||a.i-b.i).map(z=>z.x);
     const vieja=d.famId?(d.tipo==='base'?iomBase(d.famId):iomRef(d.cod)):null;
-    if(plan.sinSeccion)fs=iomSeccionPorNombre(fs,vieja,plan);if(!fs.length)return;
+    if(plan.sinSeccion)fs=iomSeccionPorNombre(fs,vieja,plan,d.clave);if(!fs.length)return;
     const st=[];IOM_K.forEach(k=>{const ops=fs.filter(x=>x.k===k).map(x=>x.o);if(ops.length)st.push({k,ops})});
     /* la misma operación dos veces: si cada una lleva su alternativa (CAM-2A / CAM-2B) son opciones a propósito, no repetidas (revisión «para dummies») */
     const porKey=new Map();st.forEach(s=>s.ops.forEach(o=>{const key=iomClaveOp(s.k,o.sec,o.op);if(!porKey.has(key))porKey.set(key,[]);porKey.get(key).push(o)}));
@@ -15185,21 +15352,28 @@ function iomPlanCarga(rows,archivo,opts){opts=opts||{};const plan={archivo:archi
     const out={clave:d.clave,tipo:d.tipo,famId:d.famId,famNueva:d.famNueva,famNombre:d.famNombre,famCod:d.famCod,grupo:d.grupo,cod:d.cod,nombre:d.nombre,codSugerido:d.codSugerido,ops:fs.length,sam:+iomSam(fs.map(x=>x.o)).toFixed(3),existe:!!vieja,samAntes:vieja?+iomSam(iomStagesLista(vieja.stages).flatMap(s=>s.ops)).toFixed(3):null,fueraDeOrden:fo,avisos:[],nueva,
       firma:vieja?(((ING.firmas||{})[d.tipo==='base'?'ing_operaciones':'ing_referencias'])||{})[vieja.id]:null};
     if(d.codSugerido)out.avisos.push('código sugerido '+d.cod);if(vieja&&vieja.activa===false)out.avisos.push('está apagada: se guarda igual y sigue apagada');
-    if(vieja){const R=iomReemplazar(vieja,nueva,cm),C=iomCombinar(vieja,nueva,d.grupo,cm);const o0=iomOrigDe(vieja.stages);out.R=R;out.C=C;out.diffR=iomDiff(o0,R.stages);out.diffC=iomDiff(o0,C.stages);out.igualR=iomMismoContenido(vieja,R);out.igualC=iomMismoContenido(vieja,C);
+    if(d.nomArchivo&&d.nomArchivo.size)out.avisos.push('el archivo dice «'+[...d.nomArchivo].join('», «')+'» (no es el nombre de ninguna familia): se tomó por su código '+d.famCod+' → '+d.famNombre);
+    /* el nombre de una referencia que el archivo trae distinto: se dice antes de aplicar (antes cambiaba en silencio) */
+    if(vieja&&d.tipo==='ref'&&d.nombre&&normTxt(d.nombre)!==normTxt(vieja.nombre||'')){out.nombreAntes=vieja.nombre||'';out.avisos.push('nombre: «'+(vieja.nombre||'')+'» → «'+d.nombre+'»')}
+    /* las filas rechazadas que iban a esta secuencia: con Reemplazar, lo que traían se QUITARÍA (un tiempo mal escrito no debe borrar una operación) */
+    out.rech=plan.rechazadas.filter(x=>x.clave===d.clave).length;out.aceptaRech=!!(opts.aceptaRech||{})[d.clave];
+    if(vieja){const R=iomReemplazar(vieja,nueva,cm),C=iomCombinar(vieja,nueva,d.grupo,cm);const o0=iomOrigDe(vieja.stages);out.R=R;out.C=C;out.diffR=iomDiff(o0,R.stages,d.cod);out.diffC=iomDiff(o0,C.stages,d.cod);out.igualR=iomMismoContenido(vieja,R);out.igualC=iomMismoContenido(vieja,C);
       out.samR=+iomSam(R.stages.flatMap(s=>s.ops)).toFixed(3);out.samC=+iomSam(C.stages.flatMap(s=>s.ops)).toFixed(3);   /* el SAM «después» según la acción elegida (combinar no quita nada) */
       out.accion=(opts.acciones||{})[d.clave]||opts.accionTodas||null}
-    else{let n=0;out.F={stages:iomOrdenarStages(st).map(s=>({k:s.k,ops:s.ops.map(o=>Object.assign({},o,{u:'o'+(++n)}))})),nextU:n};out.accion=(opts.acciones||{})[d.clave]==='no'?'no':'crear'}
+    else{let n=0;out.F={stages:iomOrdenarStages(st).map(s=>({k:s.k,ops:s.ops.map(o=>iomSinMarcas(Object.assign({},o,{u:'o'+(++n)})))})),nextU:n};out.accion=(opts.acciones||{})[d.clave]==='no'?'no':'crear'}
     plan.destinos.push(out)});
   const ordF=f=>{const i=iomCat().fams.findIndex(x=>x.id===f);return i<0?999:i};plan.destinos.sort((a,b)=>ordF(a.famId)-ordF(b.famId)||String(a.famNombre).localeCompare(String(b.famNombre))||(a.tipo==='base'?-1:1)-(b.tipo==='base'?-1:1)||String(a.cod).localeCompare(String(b.cod)));
   return plan}
 function iomQuePasa(d){if(d.accion==='no')return {txt:'No se toca',cambia:false};if(!d.existe)return {txt:'Nueva',cambia:true};
   if(!d.accion)return {txt:'Elige reemplazar o combinar',cambia:false,falta:true};const r=d.accion==='reemplazar';const igual=r?d.igualR:d.igualC;const df=r?d.diffR:d.diffC;
+  if(r&&d.rech&&!d.aceptaRech&&!igual)return {txt:iomPl(d.rech,'fila de esta secuencia se rechazó','filas de esta secuencia se rechazaron')+': con Reemplazar, lo que traía'+(d.rech===1?'':'n')+' se quitaría. Corrige el archivo, elige Combinar o marca «reemplazar igual»',cambia:false,falta:true,rech:true};
+  if(igual&&d.nombreAntes!=null)return {txt:(r?'Reemplaza':'Combina')+': cambia el nombre',cambia:true};
   if(igual)return {txt:'No cambia nada',cambia:false};const p=[];if(df.editadas)p.push(df.editadas+' editadas');if(df.nuevas)p.push(df.nuevas+' nuevas');if(df.quitadas)p.push(df.quitadas+' quitadas');if(df.movidas)p.push(df.movidas+' movidas');
   return {txt:(r?'Reemplaza':'Combina')+': '+(p.join(', ')||'cambian notas, códigos o marcas'),cambia:true}}
 let IOMC=null;   /* la ventana de la carga: {archivo, filas, plan, nuevas, acciones, accionTodas, res} */
-function iomMCargar(){if(ingNoEdita('ing_operaciones,ing_referencias'))return;IOMC={archivo:'',filas:null,plan:null,nuevas:{},acciones:{},accionTodas:null,res:null};
+function iomMCargar(){if(ingNoEdita('ing_operaciones,ing_referencias'))return;IOMC={archivo:'',filas:null,plan:null,nuevas:{},acciones:{},accionTodas:null,aceptaRech:{},res:null};
   abrir(`<h3>Cargar secuencias <span class="note">formato «Secuencia» de 21 columnas · CSV o Excel</span></h3>
-   <div class="body"><p class="ing-sig" id="iom-carga-exp">Cada fila es una operación: <b>Familia</b>, <b>Subproceso</b>, <b>Operación</b>, <b>Máquina</b> y <b>Tiempo ref.</b> son obligatorias; con «Referencia» y «Cód. referencia» vacíos la fila va a la <b>base general</b> de su familia. Sirve el Excel que descarga esta misma pantalla (y el del prototipo). Antes de guardar ves qué cambia; cada secuencia que se reemplaza o se combina guarda su versión anterior.</p>
+   <div class="body"><p class="ing-sig" id="iom-carga-exp">Cada fila es una operación: <b>Familia</b>, <b>Subproceso</b>, <b>Operación</b>, <b>Máquina</b> y <b>Tiempo ref.</b> son obligatorias; con «Referencia» y «Cód. referencia» vacíos la fila va a la <b>base general</b> de su familia. Sirve el Excel que descarga esta misma pantalla. Antes de guardar ves qué cambia en cada secuencia, operación por operación; las que se reemplazan o se combinan guardan su versión anterior.</p>
    <input type="file" id="iom-carga-f" accept=".csv,.txt,.xlsx,.xls" onchange="iomLeerCargaArchivo(this)">
    <div id="iom-carga-previa"></div></div>
    <div class="foot"><button class="btn ghost" id="iom-carga-x" onclick="cerrar()">Cerrar</button><button class="btn" id="iom-carga-ok" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomAplicarCarga()" disabled>Aplicar</button></div>`,true)}
@@ -15209,26 +15383,34 @@ function iomCargaHecha(){if(!IOMC||!IOMC.res)return;const box=document.getElemen
   ['iom-carga-f','iom-carga-ok','iom-carga-exp'].forEach(id=>{const e=document.getElementById(id);if(e){e.hidden=true;e.style.display='none'}});   /* style: el .btn de la casa pisa el atributo hidden */const x=document.getElementById('iom-carga-x');if(x){x.textContent='Listo';x.className='btn'}}
 async function iomLeerCargaArchivo(inp){const f=inp&&inp.files&&inp.files[0];if(!f)return;const box=document.getElementById('iom-carga-previa');if(box)box.innerHTML='<p class="mut">Leyendo «'+esc(f.name)+'»…</p>';
   try{IOMC.filas=await iomLeerArchivo(f)}catch(e){if(box)box.innerHTML='<div class="iom-aviso mal">No pude leer el archivo: '+esc(e.message||e)+'</div>';return}
-  IOMC.archivo=f.name;IOMC.nuevas={};IOMC.acciones={};IOMC.accionTodas=null;IOMC.res=null;iomReplanCarga()}
-function iomReplanCarga(){if(!IOMC||!IOMC.filas)return;IOMC.plan=iomPlanCarga(IOMC.filas,IOMC.archivo,{nuevas:IOMC.nuevas,acciones:IOMC.acciones,accionTodas:IOMC.accionTodas});
+  IOMC.archivo=f.name;IOMC.nuevas={};IOMC.acciones={};IOMC.accionTodas=null;IOMC.aceptaRech={};IOMC.res=null;iomReplanCarga()}
+function iomReplanCarga(){if(!IOMC||!IOMC.filas)return;IOMC.plan=iomPlanCarga(IOMC.filas,IOMC.archivo,{nuevas:IOMC.nuevas,acciones:IOMC.acciones,accionTodas:IOMC.accionTodas,aceptaRech:IOMC.aceptaRech||{}});
   const box=document.getElementById('iom-carga-previa');if(box)box.innerHTML=iomPreviaCargaHTML(IOMC.plan);const ok=document.getElementById('iom-carga-ok');if(ok){const p=iomPuedeAplicarCarga(IOMC.plan);ok.disabled=!p.ok;ok.title=p.porque||''}}
 function iomPuedeAplicarCarga(p){if(!p||p.error)return {ok:false,porque:p&&p.error||'falta el archivo'};const m=porQueNoEditaIng('ing_operaciones,ing_referencias');if(m)return {ok:false,porque:m};
   if(p.familiasNuevas.some(f=>f.crear)&&!puedeIngTabla('ing_subprocesos'))return {ok:false,porque:porQueNoEditaIng('ing_subprocesos')};
   if(p.destinos.some(d=>d.existe&&!d.accion))return {ok:false,porque:'Elige si las secuencias que ya existen se reemplazan o se combinan.'};
+  if(p.destinos.some(d=>iomQuePasa(d).rech))return {ok:false,porque:'Hay secuencias con filas rechazadas que se reemplazarían (lo de esas filas se quitaría): corrige el archivo, elige Combinar o «No tocar», o marca «reemplazar igual».'};
   if(!p.destinos.some(d=>iomQuePasa(d).cambia))return {ok:false,porque:'El archivo no cambia nada de lo guardado.'};return {ok:true}}
 function iomSetCargaNueva(key,campo,v){IOMC.nuevas[key]=Object.assign({},IOMC.nuevas[key]||{},{[campo]:campo==='crear'?!!v:v});if(campo==='crear'&&v&&IOMC.plan){const f=IOMC.plan.familiasNuevas.find(x=>x.key===key);if(f&&IOMC.nuevas[key].cod==null)IOMC.nuevas[key].cod=f.cod}iomReplanCarga()}
 function iomSetCargaAccion(clave,v){if(clave==='*'){IOMC.accionTodas=v;IOMC.acciones={}}else IOMC.acciones[clave]=v;iomReplanCarga()}
+function iomSetCargaAceptaRech(clave,v){IOMC.aceptaRech=IOMC.aceptaRech||{};IOMC.aceptaRech[clave]=!!v;iomReplanCarga()}
 function iomPreviaCargaHTML(p){if(p.error)return '<div class="iom-aviso mal">'+esc(p.error)+'</div>';
   const nb=p.destinos.filter(d=>d.tipo==='base').length,nr=p.destinos.length-nb,ex=p.destinos.filter(d=>d.existe);
   const linea=`<p class="iom-linea"><b>${esc(p.archivo)}</b>: ${num(p.destinos.reduce((a,d)=>a+d.ops,0))} operaciones en ${iomPl(p.destinos.length,'secuencia','secuencias')} (${iomPl(nb,'base general','bases generales')}, ${iomPl(nr,'referencia','referencias')}) · ${iomPl(p.rechazadas.length,'fila rechazada','filas rechazadas')}</p>`;
-  const preg=ex.length?`<div class="iom-aviso"><b>Para ${ex.length===1?'la secuencia que ya existe':'las '+ex.length+' secuencias que ya existen'}:</b> <label><input type="radio" name="iom-acc" data-ver="1" ${p.destinos.every(d=>!d.existe||d.accion==='reemplazar')?'checked':''} onchange="iomSetCargaAccion('*','reemplazar')"> Reemplazar (queda como el archivo)</label> <label><input type="radio" name="iom-acc" data-ver="1" ${p.destinos.every(d=>!d.existe||d.accion==='combinar')?'checked':''} onchange="iomSetCargaAccion('*','combinar')"> Combinar (agrega y actualiza, no quita; una celda vacía no borra lo que ya había)</label></div>`:'';
+  const preg=ex.length?`<div class="iom-aviso"><b>Para ${ex.length===1?'la secuencia que ya existe':'las '+ex.length+' secuencias que ya existen'}:</b> <label><input type="radio" name="iom-acc" data-ver="1" ${p.destinos.every(d=>!d.existe||d.accion==='reemplazar')?'checked':''} onchange="iomSetCargaAccion('*','reemplazar')"> Reemplazar (queda como el archivo)</label> <label><input type="radio" name="iom-acc" data-ver="1" ${p.destinos.every(d=>!d.existe||d.accion==='combinar')?'checked':''} onchange="iomSetCargaAccion('*','combinar')"> Combinar (agrega y actualiza, no quita; una celda vacía no borra lo que ya había: para quitar «Principal» escribe «No»)</label></div>`:'';
   /* el SAM «después» según lo elegido (reemplazar = como el archivo; combinar = lo de antes más lo nuevo); sin elegir, los dos */
   const samTxt=d=>{if(!d.existe)return iomFsam(d.sam);if(d.accion==='no')return iomFsam(d.samAntes)+' (no se toca)';const a=iomFsam(d.samAntes)+' → ';if(d.accion==='reemplazar')return a+iomFsam(d.samR);if(d.accion==='combinar')return a+iomFsam(d.samC);return a+iomFsam(d.samR)+' si reemplazas · '+iomFsam(d.samC)+' si combinas'};
   const filas=p.destinos.map(d=>{const q=iomQuePasa(d);const sel=d.existe?`<select data-ver="1" onchange="iomSetCargaAccion(${iomJs(d.clave)},this.value)"><option value="" ${!d.accion?'selected':''}>— elige —</option><option value="reemplazar" ${d.accion==='reemplazar'?'selected':''}>Reemplazar</option><option value="combinar" ${d.accion==='combinar'?'selected':''}>Combinar</option><option value="no" ${d.accion==='no'?'selected':''}>No tocar</option></select>`:`<select data-ver="1" onchange="iomSetCargaAccion(${iomJs(d.clave)},this.value)"><option value="crear" ${d.accion!=='no'?'selected':''}>Crear</option><option value="no" ${d.accion==='no'?'selected':''}>No tocar</option></select>`;
-    return `<tr><td>${esc(d.famNombre)}${d.famNueva?' <span class="tag t-medio">familia nueva</span>':''}</td><td>${d.tipo==='base'?'<span class="mut">base general</span>':esc(d.cod)+' · '+esc(d.nombre)}</td><td class="num">${d.ops}</td><td class="num">${samTxt(d)}</td><td>${sel}</td><td class="${q.falta?'iom-warn':''}">${esc(q.txt)}</td><td class="mut">${d.avisos.map(esc).join(' · ')}${d.fueraDeOrden?(d.avisos.length?' · ':'')+iomPl(d.fueraDeOrden,'operación fuera del orden de las secciones','operaciones fuera del orden de las secciones')+': se dejan como vienen':''}</td></tr>`}).join('');
+    const acepta=d.existe&&d.accion==='reemplazar'&&d.rech&&!d.igualR?`<label class="iom-acepta"><input type="checkbox" data-ver="1" ${d.aceptaRech?'checked':''} onchange="iomSetCargaAceptaRech(${iomJs(d.clave)},this.checked)"> reemplazar igual</label>`:'';
+    return `<tr><td>${esc(d.famNombre)}${d.famNueva?' <span class="tag t-medio">familia nueva</span>':''}</td><td>${d.tipo==='base'?'<span class="mut">base general</span>':esc(d.cod)+' · '+esc(d.nombre)}</td><td class="num">${d.ops}</td><td class="num">${samTxt(d)}</td><td>${sel}${acepta}</td><td class="${q.falta?'iom-warn':''}">${esc(q.txt)}${d.rech&&!q.rech?' <span class="mut">· '+iomPl(d.rech,'fila rechazada','filas rechazadas')+'</span>':''}</td><td class="mut">${d.avisos.map(esc).join(' · ')}${d.fueraDeOrden?(d.avisos.length?' · ':'')+iomPl(d.fueraDeOrden,'operación fuera del orden de las secciones','operaciones fuera del orden de las secciones')+': se dejan como vienen':''}</td></tr>`}).join('');
   const nuevas=p.familiasNuevas.length?`<h4 class="iom-h4">Familias que no existen (${p.familiasNuevas.length})</h4><p class="ing-sig">No se crean solas: marca «crear», elige si es de arriba o de abajo y revisa el código. Sin marcar, sus filas quedan fuera.</p><table class="iom-tabla"><thead><tr><th>Crear</th><th>Familia</th><th class="num">Filas</th><th>Parte</th><th>Código</th></tr></thead><tbody>${p.familiasNuevas.map(f=>`<tr><td><input type="checkbox" data-ver="1" ${f.crear?'checked':''} onchange="iomSetCargaNueva(${iomJs(f.key)},'crear',this.checked)"></td><td>${esc(f.nombre)}</td><td class="num">${f.filas}</td><td><select data-ver="1" onchange="iomSetCargaNueva(${iomJs(f.key)},'grupo',this.value)"><option value="" ${!f.grupo?'selected':''}>— elige —</option><option value="T" ${f.grupo==='T'?'selected':''}>Parte superior</option><option value="B" ${f.grupo==='B'?'selected':''}>Parte inferior</option></select></td><td><input type="text" data-ver="1" maxlength="4" class="iom-cod" value="${esc(f.cod)}" onchange="iomSetCargaNueva(${iomJs(f.key)},'cod',this.value.toUpperCase())"></td></tr>`).join('')}</tbody></table>`:'';
   const det=(t,l)=>l?`<details class="iom-det"><summary>${t}</summary>${l}</details>`:'';
-  return linea+preg+(p.sinSeccion?'<p class="ing-sig iom-sinsec">El archivo no trae la columna «Sección»: cada operación toma la sección (y el código, la principal y la alternativa) que ya tenía, buscándola por su nombre; las que no estaban quedan en «General».</p>':'')+`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Familia</th><th>Referencia</th><th class="num">Operaciones</th><th class="num">SAM antes → después</th><th>Acción</th><th>Qué pasa</th><th>Avisos</th></tr></thead><tbody>${filas||'<tr><td colspan="7" class="mut">Ninguna fila entra.</td></tr>'}</tbody></table></div>`+nuevas+
+  /* QUÉ cambia en cada secuencia, operación por operación (antes solo los conteos; revisión de guardado del 06-oct, segunda ronda) */
+  const tablaDf=df=>df.lista.length?`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Subproceso</th><th>Operación</th><th>Cambio</th></tr></thead><tbody>${df.lista.slice(0,300).map(x=>`<tr><td>${esc(x.sub)}</td><td>${esc(x.op)} <span class="mut">· ${esc(x.sec)}</span></td><td>${esc(x.cambio)}${x.detalle?' <span class="mut">('+esc(x.detalle)+')</span>':''}</td></tr>`).join('')}${df.lista.length>300?`<tr><td colspan="3" class="mut">… y ${df.lista.length-300} más</td></tr>`:''}</tbody></table></div>`:'<p class="mut">Las operaciones no cambian.</p>';
+  const detDest=p.destinos.filter(d=>d.existe&&d.accion!=='no').map(d=>{const nom=d.tipo==='base'?d.famNombre+' · base general':d.cod+' · '+d.nombre;const q=iomQuePasa(d);
+    const ls=d.accion==='reemplazar'?[['',d.diffR]]:d.accion==='combinar'?[['',d.diffC]]:[['Si reemplazas',d.diffR],['Si combinas',d.diffC]];if(!ls.some(([,df])=>df.lista.length)&&d.nombreAntes==null)return '';
+    return `<details class="iom-det iom-det-dest"><summary><b>${esc(nom)}</b> · ${esc(q.txt)}</summary>${d.nombreAntes!=null?'<p>Nombre: «'+esc(d.nombreAntes)+'» → «'+esc(d.nombre)+'»</p>':''}${ls.map(([t,df])=>(t?'<h5 class="iom-h5">'+t+'</h5>':'')+tablaDf(df)).join('')}</details>`}).join('');
+  return linea+preg+(p.sinSeccion?'<p class="ing-sig iom-sinsec">El archivo no trae la columna «Sección»: cada operación toma la sección (y el código, la principal y la alternativa) que ya tenía, buscándola por su nombre; las que no estaban quedan en «General».</p>':'')+`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Familia</th><th>Referencia</th><th class="num">Operaciones</th><th class="num">SAM antes → después</th><th>Acción</th><th>Qué pasa</th><th>Avisos</th></tr></thead><tbody>${filas||'<tr><td colspan="7" class="mut">Ninguna fila entra.</td></tr>'}</tbody></table></div>`+(detDest?'<h4 class="iom-h4">Qué cambia en cada secuencia</h4><p class="ing-sig">Toca una para ver cada operación que se edita, se agrega, se quita o se mueve.</p>'+detDest:'')+nuevas+
    det(iomPl(p.fueraRango.length,'tiempo fuera del rango creíble','tiempos fuera del rango creíble')+' ('+esc(iomRangoTxt())+'): entran igual; revísalos',p.fueraRango.length?'<ul class="ing-lista">'+p.fueraRango.slice(0,200).map(x=>'<li>Fila '+x.fila+': '+esc(x.op)+' · '+iomFmtT(x.t)+' min</li>').join('')+'</ul><p class="mut">El rango se cambia en Listas y reglas → Avisos de la edición (ahí también se puede pedir que se rechacen).</p>':'')+
    det(iomPl(p.rechazadas.length,'fila rechazada','filas rechazadas'),p.rechazadas.length?'<ul class="ing-lista">'+p.rechazadas.slice(0,300).map(r=>'<li>Fila '+r.fila+': '+esc(r.motivo)+'</li>').join('')+(p.rechazadas.length>300?'<li>… y '+(p.rechazadas.length-300)+' más</li>':'')+'</ul>':'')+
    det(iomPl(p.maquinasFuera.length,'máquina que no está en la lista','máquinas que no están en la lista')+' (entran igual)',p.maquinasFuera.length?'<ul class="ing-lista">'+p.maquinasFuera.map(m=>'<li>'+esc(m.maq)+' · '+iomPl(m.n,'fila','filas')+'</li>').join('')+'</ul>':'')+
@@ -15239,9 +15421,9 @@ function iomPreviaCargaHTML(p){if(p.error)return '<div class="iom-aviso mal">'+e
    ''}
 async function iomAplicarCarga(){const p=IOMC&&IOMC.plan;const pa=iomPuedeAplicarCarga(p);if(!pa.ok){alert(pa.porque);return}
   const ds=p.destinos.filter(d=>iomQuePasa(d).cambia);const nN=ds.filter(d=>!d.existe).length,nR=ds.filter(d=>d.existe&&d.accion==='reemplazar').length,nC=ds.filter(d=>d.existe&&d.accion==='combinar').length;
-  if(!confirm('Se van a guardar '+iomPl(ds.length,'secuencia','secuencias')+': '+nN+' nuevas, '+nR+' reemplazadas, '+nC+' combinadas. Cada una guarda su versión anterior. ¿Seguir?'))return;
+  if(!confirm('Se van a guardar '+iomPl(ds.length,'secuencia','secuencias')+': '+nN+' nuevas, '+nR+' reemplazadas, '+nC+' combinadas.'+(nR+nC?' Las reemplazadas y las combinadas guardan su versión anterior.':'')+' ¿Seguir?'))return;
   const ts=iomAhora(),u=quienFirma();const fallos=[],hechas=[];const famIdDe={};
-  for(const fn of p.familiasNuevas.filter(f=>f.crear&&f.grupo&&ds.some(d=>d.famNueva===f.key))){let id=iomSlug(fn.nombre)||'familia';const base=id;let i=2;while(iomCat().fams.some(x=>x.id===id))id=base+'-'+(i++);
+  for(const fn of p.familiasNuevas.filter(f=>f.crear&&f.grupo&&ds.some(d=>d.famNueva===f.key))){const id=iomIdFamNuevo(fn.nombre);
     const orden=Math.max(0,...iomCat().fams.map(x=>+x.orden||0))+1;const r=await iomGuardarFila('ing_subprocesos',{id:'mfam|'+id,nombre:fn.nombre,cod:fn.cod,grupo:fn.grupo,orden,activa:true,lmo:'',tipos:[],origen:'carga',archivo:p.archivo,ts,u,cambios:[]},'familia nueva',{version:false});
     if(r.ok)famIdDe[fn.key]=id;else fallos.push({que:'familia '+fn.nombre,porque:r.choque?'otra persona la creó o la cambió':r.error})}
   for(const d of ds){const famId=d.famId||famIdDe[d.famNueva];if(!famId){fallos.push({que:(d.tipo==='base'?'base de ':d.cod+' de ')+d.famNombre,porque:'su familia nueva no se guardó'});continue}
@@ -15275,9 +15457,17 @@ function iomFilasExcel(stages,ctx){const rows=[];let n=0;const df=ctx.diff||{por
   iomOrdenarStages(stages).forEach(s=>{const sub=iomSub(s.k)||{nombre:s.k,centroTxt:'',cod:''};(s.ops||[]).forEach((o,i)=>{n++;const code=iomCodigo(o.tpl,ctx.codigo);const pc=iomPartesCodigo(o.tpl,ctx.codigo);let est,nota;
     if(ctx.modo==='crear'){est='Nueva';nota=(o.src||'')+(code?'':' · código por asignar')}
     else if(ctx.modo==='editar'){const d=o.u?df.porU[o.u]:null;if(!o.u||!(ctx.orig||{})[o.u]){est='Nueva';nota='Agregada al editar'+(code?'':' · código por asignar')}else if(d&&d.length){est='Editada';nota=d.join(' · ')}else{est=o.e||'Original';nota=o.nt||''}}
-    else{est=o.e||'Original';nota=o.nt||''}
+    else{est=o.e||'Original';nota=[o.nt||'',o.de?IOM_DE_PREF+iomOrigenTxt(o):''].filter(Boolean).join(' · ')}   /* de dónde salió cada operación de una referencia creada aquí, como en la pantalla (D-DE-XLS, §18) */
     rows.push([ctx.famNombre||'',ctx.famCod||'',n,sub.nombre,sub.centroTxt,sub.cod,i+1,o.sec||'',o.op||'',pc.codOp,pc.variante,code,o.maq||'',o.t==null||o.t===''?null:+o.t,o.p?'Sí':'',o.alt||'',est,nota,ctx.modo==='crear'?'':(o.row==null?'':o.row),ctx.refNombre||'',ctx.refCod||''])})});
   return rows}
+/* «De dónde salió: …» en la Nota del Excel de una referencia creada aquí (lo mismo que dice la pantalla). Al volver a cargar ese Excel la frase se quita
+   de la nota, así la ida y vuelta no cambia nada (revisión de fidelidad del 06-oct, segunda ronda) */
+const IOM_DE_PREF='De dónde salió: ';
+function iomOrigenTxt(o){const camb=o.tDe!=null&&o.t!=null&&Math.abs(+o.t-+o.tDe)>1e-9;
+  if(o.de==='copia')return camb?'Tiempo cambiado (copiada de '+(o.deFam||'otra')+' con '+iomFmtT(o.tDe)+' min)':'Copiada de '+(o.deFam||'otra');
+  if(o.de==='basico')return camb?'Tiempo cambiado (lo básico traía '+iomFmtT(o.tDe)+' min)':'De lo básico';
+  if(o.de==='agregada')return 'Agregada desde la Base disponible';if(o.de==='creada')return 'Creada aquí';return 'Nueva'}
+function iomSinOrigen(nt){const s=String(nt||'');const i=s.indexOf(IOM_DE_PREF);if(i<0)return s.trim();return s.slice(0,i).replace(/\s*·\s*$/,'').trim()}   /* la frase va siempre al final de la nota */
 function iomNombreArchivo(t){return String(t||'').replace(/[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]+/g,'_')}
 async function iomLibro(hojas){await cargarExcelJS();const wb=new ExcelJS.Workbook();wb.creator='TEMPO PCP';hojas.forEach(h=>xlsHojaPlana(wb,h.nombre,h.cols,h.rows,h.opts));return wb}
 /* «Descargar Excel» de lo que se está mirando en Secuencia de operaciones, y «Descargar todas» (respaldo legible y archivo de ida y vuelta) */
@@ -15327,7 +15517,7 @@ function iomSecActual(){const f=IOS.fam?iomFam(IOS.fam):null;if(!f)return null;c
   return {f,r,fila,vista:fila?iomVista(fila,r&&fila===r?r.cod:f.cod):null,sinPropias:!!r&&fila!==r}}
 /* las marcas de cada fila. Para dummies (revisión del 06-oct): «Tiempo estimado» (antes «Completada»), y en una referencia creada aquí, de dónde vino
    cada operación («Copiada de Camiseta», «Agregada», «Creada aquí», «Tiempo cambiado») en vez de «Nueva» en todas */
-function iomSecMarcas(o){let m='';if(o.p)m+='<span class="tag t-ok iom-m" title="operación clave de la prenda">Principal</span>';if(o.alt){const c=iomAltCorto(o.alt);m+='<span class="tag t-mut iom-m" title="Opciones excluyentes: se elige una de las alternativas del grupo '+esc(c.charAt(0))+'">Alt. '+esc(c)+'</span>'}
+function iomSecMarcas(o){let m='';if(o.p)m+='<span class="tag t-ok iom-m" title="operación clave de la prenda">Principal</span>';if(o.alt){const c=iomAltCorto(o.alt);m+='<span class="tag t-mut iom-m" title="Opciones excluyentes: se elige una de las alternativas del grupo '+esc(c.charAt(0))+'">Alt. '+esc(c)+'</span>';if(iomCfg('avisos').altUnaVez&&!iomCuenta(o,true))m+='<span class="tag t-mut iom-m" title="con «Contar una sola opción de cada alternativa» solo suma la opción A">no suma (se cuenta la opción A)</span>'}
   if(o.e==='Completada')m+='<span class="tag t-aviso iom-m" title="no venía en la base: se puso el tiempo típico (la mediana del grupo); verifícalo">Tiempo estimado</span>';if(o.e==='Confirmar tiempo')m+='<span class="tag t-aviso iom-m" title="venía repetida con dos tiempos distintos: se dejó el primero; verifícalo">Confirmar tiempo</span>';
   if(o.e==='Nueva'&&o.de)m+=iomMarcaDe(o);else if(o.e==='Nueva'||o.e==='Editada')m+='<span class="tag '+(o.e==='Nueva'?'t-ok':'t-medio')+' iom-m">'+o.e+'</span>';return m}
 function iomMarcaDe(o){const camb=o.tDe!=null&&o.t!=null&&Math.abs(+o.t-+o.tDe)>1e-9;
@@ -15338,7 +15528,7 @@ function iomSecFilas(s,hasP){const q=normTxt(IOS.q).trim();let shown=0;let out='
   s.ops.forEach(o=>{if(q&&!normTxt(o.op+' '+o.code+' '+(o.maq||'')+' '+o.sec).includes(q))return;if(IOS.soloP&&hasP&&!o.p)return;shown++;
     out+=`<tr${o.p?' class="prin"':''}><td class="n">${o.n}</td><td class="op" data-code="${esc(o.code||'código por asignar')}">${esc(o.op)}${o.nt?'<div class="iom-nota">'+esc(o.nt)+'</div>':''}</td><td class="code">${esc(o.code||'por asignar')}</td><td class="maq">${esc(o.maq||'')}</td><td class="num">${iomFmtT(o.t)}</td><td>${iomSecMarcas(o)}</td></tr>`});
   if(!shown)out='<tr><td colspan="6" class="mut iom-vacio">Ninguna operación coincide.</td></tr>';
-  else if(shown===s.ops.length)out+=`<tr class="samrow"><td class="n"></td><td colspan="3">SAM ${esc(s.sub.nombre)} · suma de ${iomPl(s.ops.length,'operación','operaciones')}</td><td class="num">${iomFsam(s.sam)}</td><td></td></tr>`;
+  else if(shown===s.ops.length)out+=`<tr class="samrow"><td class="n"></td><td colspan="3">SAM ${esc(s.sub.nombre)} · ${esc(iomCuentaTxt(s.ops))}</td><td class="num">${iomFsam(s.sam)}</td><td></td></tr>`;
   const cnt=(shown===s.ops.length?iomPl(s.ops.length,'operación','operaciones')+' en secuencia':shown+' de '+s.ops.length+' operaciones')+(s.sub.obligatorio?'':' · subproceso opcional según diseño');
   return {out,cnt}}
 function iomSecDetalleHTML(a){const v=a.vista;const idx=v.stages.findIndex(x=>x.k===IOS.sub);if(idx<0)return '<div class="iom-hint">Elige un subproceso para ver su secuencia de operaciones.</div>';const s=v.stages[idx];
@@ -15393,11 +15583,13 @@ function iomLeerEnlace(){const h=String(location.hash||'');if(h.length<2||/acces
   const fx=iomFamEnlace(p[0]);const fam=fx?fx.id:(p[0]||null);let sub=null,ref=null;
   p.slice(1).forEach(x=>{if(/^r:/i.test(x))ref=x.slice(2).trim().toUpperCase();else if(x&&!sub){const k=String(x).toUpperCase();sub=IOM_K.includes(k)?k:((iomSubs().find(s=>normTxt(s.nombre)===normTxt(x))||{}).k||null)}});
   ING_V.ops='secuencia';IOS={fam,ref:ref||null,sub,q:'',soloP:false};try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}ir('ingops');return true}
+/* pegar el enlace en la MISMA pestaña (solo cambia el #) también lo abre; solo un # con «/» (los anclajes de la casa no llevan) y con la app ya cargada */
+if(typeof window!=='undefined'&&!window.__iomHash){window.__iomHash=true;window.addEventListener('hashchange',()=>{try{const h=String(location.hash||'');if(h.length>1&&h.indexOf('/')>0&&typeof LISTO!=='undefined'&&LISTO&&typeof S!=='undefined'&&S)iomLeerEnlace()}catch(e){}})}
 
 /* ===================== CREAR REFERENCIA (la única pestaña donde se edita; solo con el permiso «Ingeniería») =====================
    El estado IOC es el del prototipo con nombres de la casa. Se repinta solo #iom-crear (sin render()); escribir un tiempo o una máquina no
    repinta la tabla (solo los totales). El borrador vive en el navegador de cada persona y se escribe SOLO cuando algo cambió. */
-function iomIOCBlank(modo){const st={};IOM_K.forEach(k=>st[k]={on:false,ops:[]});return {modo:modo||'crear',famId:'',cod:null,orig:null,baseFirma:undefined,filaId:null,paso:1,editarDatos:false,
+function iomIOCBlank(modo){const st={};IOM_K.forEach(k=>st[k]={on:false,ops:[]});return {bid:iomNuevoBid(),modo:modo||'crear',famId:'',cod:null,orig:null,baseFirma:undefined,filaId:null,paso:1,editarDatos:false,
   meta:{nombre:'',cod:'',grupo:'T',famId:'',famNombre:'',famCod:''},codTocado:false,inicio:'',inicioTxt:'',stages:st,sub:null,flt:{q:'',fam:''},mas:null,sucio:false,guardadoTs:null,aviso:''}}
 let IOC=iomIOCBlank('crear');let IOC_T=null;
 function iomTotal(){return IOM_K.reduce((a,k)=>a+IOC.stages[k].ops.length,0)}
@@ -15405,16 +15597,30 @@ function iomOnStages(){return iomSubs().filter(s=>IOC.stages[s.k]&&IOC.stages[s.
 function iomSamTotal(){return iomOnStages().reduce((a,s)=>a+iomSam(IOC.stages[s.k].ops),0)}
 function iomMas(){return IOC.mas==null?(+iomCfg('avisos').baseMostrar||25):IOC.mas}
 function iomCambios(){if(IOC.modo!=='editar'||!IOC.inicio)return {editadas:0,nuevas:0,quitadas:0,movidas:0,n:0,lista:[],porU:{}};
-  if(IOC._cc&&IOC._cv===(IOC._v||0))return IOC._cc;const r=iomDiff(IOC.orig||{},IOC.stages);IOC._cc=r;IOC._cv=IOC._v||0;return r}   /* se recalcula solo cuando algo cambió (iomSucio sube IOC._v) */
+  if(IOC._cc&&IOC._cv===(IOC._v||0))return IOC._cc;const r=iomDiff(IOC.orig||{},IOC.stages,IOC.meta.cod);IOC._cc=r;IOC._cv=IOC._v||0;return r}   /* se recalcula solo cuando algo cambió (iomSucio sube IOC._v) */
 /* ---------- borrador: en el navegador, por persona (iom.borrador.<usuario>), solo cuando algo cambió ---------- */
-function iomBorradorClave(){return 'iom.borrador.'+claveUsr()}
+/* UN borrador por trabajo, no uno por persona (revisión de guardado del 06-oct, segunda ronda): cada armado o edición lleva su id (IOC.bid) y su propia
+   llave iom.borrador.<usuario>.<id>. Antes había una sola casilla por persona: dos pestañas se pisaban y guardar en una borraba el borrador sin guardar
+   de la otra. Guardar o descartar quita SOLO la llave de lo que se guardó o descartó. La franja de Crear ofrece todos los borradores de la persona.
+   La llave de antes (iom.borrador.<usuario>, sin id) se sigue ofreciendo; al continuarla pasa a una llave propia. */
+function iomNuevoBid(){return 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function iomBorradorPref(){return 'iom.borrador.'+claveUsr()}
+function iomBorradorClave(bid){const b=bid===undefined?IOC.bid:bid;return iomBorradorPref()+(b?'.'+b:'')}
 function iomSucio(){IOC.sucio=true;IOC._v=(IOC._v||0)+1;clearTimeout(IOC_T);IOC_T=setTimeout(iomBorradorGuardar,250)}
-function iomBorradorGuardar(){clearTimeout(IOC_T);IOC_T=null;if(!IOC.sucio)return;IOC.sucio=false;if(!IOC.meta.nombre)return;try{localStorage.setItem(iomBorradorClave(),JSON.stringify({IOC,ts:iomAhora(),ver:1},(k,v)=>k==='_cc'?undefined:v))}catch(e){}}
-function iomBorradorLeer(){try{const r=localStorage.getItem(iomBorradorClave());if(!r)return null;const d=JSON.parse(r);return d&&d.IOC&&d.IOC.meta&&d.IOC.meta.nombre?d:null}catch(e){return null}}
-function iomBorradorQuitar(){IOC.sucio=false;clearTimeout(IOC_T);try{localStorage.removeItem(iomBorradorClave())}catch(e){}}
+/* devuelve si quedó escrito (se comprueba leyéndolo: nunca se dice «sigue guardado» sin saberlo) */
+function iomBorradorGuardar(){clearTimeout(IOC_T);IOC_T=null;if(!IOC.sucio)return IOC.borradorOk||false;IOC.sucio=false;if(!IOC.meta.nombre)return false;if(!IOC.bid)IOC.bid=iomNuevoBid();
+  try{const k=iomBorradorClave();localStorage.setItem(k,JSON.stringify({IOC,ts:iomAhora(),ver:2},(kk,v)=>kk==='_cc'?undefined:v));IOC.borradorOk=localStorage.getItem(k)!=null}catch(e){IOC.borradorOk=false}return IOC.borradorOk}
+function iomBorradorLeer(bid){try{const r=localStorage.getItem(iomBorradorClave(bid));if(!r)return null;const d=JSON.parse(r);return d&&d.IOC&&d.IOC.meta&&d.IOC.meta.nombre?d:null}catch(e){return null}}
+/* todos los borradores de la persona, el más reciente primero */
+function iomBorradores(){const out=[];try{const p=iomBorradorPref();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k!==p&&!String(k).startsWith(p+'.'))continue;const bid=k===p?'':k.slice(p.length+1);if(bid.includes('.'))continue;
+    const d=iomBorradorLeer(bid);if(d)out.push({bid,d})}}catch(e){}return out.sort((a,b)=>String(b.d.ts||'').localeCompare(String(a.d.ts||'')))}
+function iomBorradorQuitar(bid){const b=bid===undefined?IOC.bid:bid;if(b===IOC.bid){IOC.sucio=false;clearTimeout(IOC_T);IOC.borradorOk=false}try{localStorage.removeItem(iomBorradorClave(b))}catch(e){}}
 if(typeof window!=='undefined'&&!window.__iomPh){window.__iomPh=true;window.addEventListener('pagehide',()=>{try{iomBorradorGuardar()}catch(e){}})}
-function iomBorradorContinuar(){const d=iomBorradorLeer();if(!d)return;IOC=Object.assign(iomIOCBlank(d.IOC.modo),d.IOC);IOC.sucio=false;IOC.aviso='';delete IOC._cc;IOC._v=(IOC._v||0)+1;iomPintarCrear()}
-function iomBorradorDescartar(){if(!confirm('Se descarta el borrador guardado en este equipo (lo armado y no guardado se pierde). ¿Seguir?'))return;iomBorradorQuitar();iomPintarCrear()}
+function iomBorradorContinuar(bid){const l=iomBorradores();const it=bid===undefined?l[0]:l.find(x=>x.bid===bid);if(!it)return;const d=it.d;
+  IOC=Object.assign(iomIOCBlank(d.IOC.modo),d.IOC);IOC.sucio=false;IOC.aviso='';delete IOC._cc;IOC._v=(IOC._v||0)+1;
+  if(!it.bid){IOC.bid=iomNuevoBid();IOC.sucio=true;if(iomBorradorGuardar()){try{localStorage.removeItem(iomBorradorClave(''))}catch(e){}}}else IOC.bid=it.bid;   /* el de antes pasa a su propia llave (y solo entonces se quita la vieja) */
+  iomPintarCrear()}
+function iomBorradorDescartar(bid){const b=bid===undefined?IOC.bid:bid;const d=iomBorradorLeer(b);if(!confirm('Se descarta el borrador'+(d?' de «'+d.IOC.meta.nombre+'»':'')+' guardado en este equipo (lo armado y no guardado se pierde). ¿Seguir?'))return;iomBorradorQuitar(b);iomPintarCrear()}
 /* ---------- datos (paso 1): los siete mensajes del prototipo ---------- */
 function iomValidarDatos(d){const cat=iomCat();const cv=d.cat;let f=null,catName='';
   if(!cv)return {error:'Elige la categoría o crea una nueva.',campo:'cat'};
@@ -15442,7 +15648,7 @@ function iomPartirDe(tipo){const g=IOC.meta.grupo;const st={};IOM_K.forEach(k=>s
   if(tipo==='copiar'){const fid=(document.getElementById('iom-cp-fam')||{}).value,cod=(document.getElementById('iom-cp-ref')||{}).value||null;const f=iomFam(fid);if(!f)return;const src=iomFuenteDe(f.id,cod);const rr=cod?iomRef(cod):null;
     if(!src){const n=document.getElementById('iom-cp-nota');if(n)n.textContent=f.nombre+' todavía no tiene su secuencia cargada; elige otra o empieza con lo básico.';return}
     if(iomTotal()&&!confirm('Si eliges otro punto de partida se reemplaza lo que ya armaste. ¿Continuar?'))return;
-    iomStagesLista(src.stages).forEach(s=>{if(!st[s.k])return;st[s.k].on=true;st[s.k].ops=s.ops.map(o=>({op:o.op,sec:o.sec,tpl:o.tpl||'',maq:o.maq||'',t:o.t==null?null:o.t,p:!!o.p,alt:o.alt||'',src:'Copia de '+f.nombre,de:'copia',deFam:f.nombre+(rr&&src===rr?' · '+rr.cod:''),tDe:o.t==null?null:o.t}))});
+    iomStagesLista(src.stages).forEach(s=>{if(!st[s.k])return;st[s.k].on=true;st[s.k].ops=s.ops.map(o=>({op:o.op,sec:o.sec,tpl:o.tpl||'',maq:o.maq||'',t:iomNum(o.t),p:!!o.p,alt:o.alt||'',src:'Copia de '+f.nombre,de:'copia',deFam:f.nombre+(rr&&src===rr?' · '+rr.cod:''),tDe:iomNum(o.t)}))});
     if(!IOC.meta.famId)IOC.meta.grupo=f.grupo;IOC.stages=st;IOC.inicio='copiar';IOC.inicioTxt='Copia de '+f.nombre+(rr&&src===rr?' · ref. '+rr.nombre:' · base general');IOC.copiaDe=rr&&src===rr?'mref|'+rr.cod:'mbase|'+f.id}
   else if(tipo==='basico'){iomSubs().forEach(s=>{if(s.obligatorio)st[s.k].on=true});const cat=iomCatalogo();
     iomCat().basico.filter(b=>b.activa!==false&&st[b.sub]).forEach(b=>{st[b.sub].on=true;const c=cat.find(x=>x.k===b.sub&&normTxt(x.op)===normTxt(b.op));
@@ -15457,10 +15663,10 @@ function iomRefOpciones(f,sel,txt0){return '<option value="">'+esc(txt0||'Toda l
 function iomRefNotaCrear(f){const n=iomRefsDe(f.id).length;return n?iomPl(n,'referencia cargada','referencias cargadas')+' en '+f.nombre+'.':'Aún no hay referencias cargadas en '+f.nombre+'; se usa la base general de la categoría. Cuando existan, aquí eliges la referencia.'}
 /* ---------- editar una referencia existente (o la base general de su familia) ---------- */
 function iomCargarEditar(famId,cod){const f=iomFam(famId);if(!f)return false;const r=cod?iomRef(cod):null;const t=r?'ing_referencias':'ing_operaciones';const fila=r||iomBase(f.id);
-  const st={};IOM_K.forEach(k=>st[k]={on:false,ops:[]});iomStagesLista((fila&&fila.stages)||[]).forEach(s=>{if(!st[s.k])return;st[s.k].on=true;st[s.k].ops=s.ops.map(o=>Object.assign({u:o.u,op:o.op,sec:o.sec,tpl:o.tpl||'',maq:o.maq||'',t:o.t==null?null:o.t,p:!!o.p,alt:o.alt||'',e:o.e||'',nt:o.nt||'',row:o.row==null?null:o.row,src:'Base original'},o.de?{de:o.de,deFam:o.deFam||'',tDe:o.tDe==null?null:o.tDe}:{}))});
+  const st=iomStagesEditor(fila);   /* los números siempre como números (revisión de seguridad) */
   IOC=iomIOCBlank('editar');IOC.famId=f.id;IOC.cod=r?r.cod:null;IOC.filaId=fila?fila.id:(r?'mref|'+r.cod:'mbase|'+f.id);IOC.baseFirma=fila?((ING.firmas||{})[t]||{})[fila.id]:undefined;
   IOC.meta={nombre:r?r.nombre:f.nombre,cod:r?r.cod:f.cod,grupo:f.grupo,famId:f.id,famNombre:f.nombre,famCod:f.cod,ref:r?r.nombre:''};IOC.codTocado=true;
-  IOC.stages=st;IOC.orig=iomOrigDe(st);IOC.inicio='editar';IOC.inicioTxt='Editando '+f.nombre+(r?' · ref. '+r.nombre:'');IOC.paso=3;IOC.sinFila=!fila;iomPrimerSub();return true}
+  IOC.stages=st;IOC.orig=iomOrigDe(st);IOC.origOn=IOM_K.filter(k=>st[k].on);IOC.inicio='editar';IOC.inicioTxt='Editando '+f.nombre+(r?' · ref. '+r.nombre:'');IOC.paso=3;IOC.sinFila=!fila;iomPrimerSub();return true}
 function iomEditarElegir(){const fid=(document.getElementById('iom-e-fam')||{}).value,codSel=document.getElementById('iom-e-ref');const cod=codSel&&!codSel.disabled?(codSel.value||null):null;
   if(!iomPuedeDescartar('cambias de referencia')){iomPintarCrear();return}
   iomBorradorQuitar();if(!fid){IOC=iomIOCBlank('editar');iomPintarCrear();return}iomCargarEditar(fid,cod);iomPintarCrear()}   /* mirar no escribe el borrador (corrige R8): se escribe al primer cambio */
@@ -15477,13 +15683,13 @@ function iomOpCelda(o,k){let h=esc(o.op);if(o.sinDatos)h+='<span class="iom-ref 
     else if(o.e==='Completada')h+=' <span class="tag t-aviso iom-m" title="Operación completada por el análisis con la mediana del grupo. Verifícala.">Tiempo estimado</span>'}
   /* el tiempo de la misma operación en las otras familias (la mediana del grupo), también al crear; «difiere mucho» con el % de Avisos de la edición */
   const c=iomCatalogo().find(x=>x.key===iomClaveOp(k,o.sec,o.op));
-  if(c&&c.nFams>1){const ref=iomTiempoGrupo(c,IOC.meta.grupo);const lim=(+iomCfg('avisos').difiereMucho)/100;const dif=o.t!=null&&o.t!==''&&ref>0&&Math.abs(o.t-ref)/ref>lim;h+='<span class="iom-ref'+(dif?' dif':'')+'" title="la mediana del tiempo de esta operación en las familias que la usan">En otras familias: '+iomFmtT(ref)+' min (mediana)'+(dif?' · difiere mucho':'')+'</span>'}
-  if(o.alt)h+='<span class="iom-ref">Alternativa '+esc(o.alt)+'</span>';return h}
+  if(c&&c.nFams>1){const ref=iomTiempoGrupo(c,IOC.meta.grupo);const lim=(+iomCfg('avisos').difiereMucho)/100;const dif=o.t!=null&&o.t!==''&&ref>0&&Math.abs(o.t-ref)/ref>lim;h+='<span class="iom-ref'+(dif?' dif':'')+'" title="la mediana del tiempo de esta operación en las familias que la usan (esta incluida)">En las familias que la usan: '+iomFmtT(ref)+' min (mediana)'+(dif?' · difiere mucho':'')+'</span>'}
+  if(o.alt)h+='<span class="iom-ref">Alternativa '+esc(o.alt)+(iomCfg('avisos').altUnaVez&&!iomCuenta(o,true)?' · no suma (se cuenta la opción A)':'')+'</span>';return h}
 function iomFilasEditorHTML(flash){const k=IOC.sub,ops=IOC.stages[k].ops,cod=IOC.meta.cod;
   if(!ops.length)return '<tr><td colspan="7" class="iom-vacio">Aún no hay operaciones en este subproceso.<br>Agrégalas desde la base de la derecha.</td></tr>';
   return ops.map((o,i)=>`<tr class="${o.p?'prin ':''}${i===flash?'flash':''}" data-i="${i}"><td class="n">${i+1}</td><td class="op" id="iom-op-${i}" data-code="${esc(iomCodigo(o.tpl,cod)||'código por asignar')}">${iomOpCelda(o,k)}</td><td class="code">${esc(iomCodigo(o.tpl,cod)||'por asignar')}</td>
-    <td><input class="iom-ed maq${String(o.maq||'').trim()?'':' falta'}" list="iom-maqs" value="${esc(o.maq||'')}" aria-label="Máquina" oninput="iomEdit(${i},'maq',this)"></td>
-    <td class="num"><input class="iom-ed t${o.t==null||o.t===''?' falta':''}" type="number" step="0.01" min="0" value="${o.t==null?'':o.t}" aria-label="Tiempo de referencia" oninput="iomEdit(${i},'t',this)"></td>
+    <td><input class="iom-ed maq${String(o.maq||'').trim()?'':' falta'}" list="iom-maqs" value="${esc(o.maq||'')}" placeholder="máquina" aria-label="Máquina" oninput="iomEdit(${i},'maq',this)"></td>
+    <td class="num"><input class="iom-ed t${o.t==null||o.t===''?' falta':''}" type="number" step="0.01" min="0" value="${o.t==null?'':esc(o.t)}" placeholder="min" aria-label="Tiempo de referencia" oninput="iomEdit(${i},'t',this)"></td>
     <td><input type="checkbox" class="iom-pc" ${o.p?'checked':''} aria-label="Principal" onchange="iomEdit(${i},'p',this)"></td>
     <td><span class="iom-acts"><button type="button" title="Subir" aria-label="Subir" onclick="iomMoverOp(${i},-1)">↑</button><button type="button" title="Bajar" aria-label="Bajar" onclick="iomMoverOp(${i},1)">↓</button><button type="button" class="x" title="Quitar" aria-label="Quitar" onclick="iomSacarOp(${i})">✕</button></span></td></tr>`).join('')}
 function iomEdit(i,f,el){const o=IOC.stages[IOC.sub]&&IOC.stages[IOC.sub].ops[i];if(!o)return;const tr=el.closest('tr');
@@ -15503,7 +15709,8 @@ function iomCandidatos(){const k=IOC.sub,g=IOC.meta.grupo,fam=IOC.flt.fam;const 
   /* otraSec: la referencia ya tiene una operación con ese nombre en este subproceso, en OTRA sección (agregarla la repetiría; revisión «para dummies») */
   const otra=(op,sec)=>[...new Set(IOC.stages[k].ops.filter(o=>normTxt(o.op)===normTxt(op)&&normTxt(o.sec)!==normTxt(sec)).map(o=>o.sec||'General'))];
   const l=iomCatalogo().filter(c=>c.k===k&&(!fam||c.famIds.includes(fam))&&q.every(w=>normTxt(c.op+' '+c.sec).includes(w))).map(c=>{const have=iomPresente(k,c.op,c.sec);return {c,have,otraSec:have?[]:otra(c.op,c.sec),same:c.famIds.filter(id=>(iomFam(id)||{}).grupo===g).length}});
-  l.sort((a,b)=>(a.have-b.have)||(b.same-a.same)||(b.c.nFams-a.c.nFams)||a.c.op.localeCompare(b.c.op));return l}
+  /* las que «ya la tienes en …» (agregarlas repetiría un nombre) van debajo de las que de verdad faltan (revisión «para dummies», segunda ronda) */
+  l.sort((a,b)=>(a.have-b.have)||((a.otraSec.length>0)-(b.otraSec.length>0))||(b.same-a.same)||(b.c.nFams-a.c.nFams)||a.c.op.localeCompare(b.c.op));return l}
 /* de dónde vino cada operación de una referencia nueva (se ve en Secuencia de operaciones: «copiada de Camiseta», «agregada», «tiempo cambiado») */
 function iomNuevaOpDe(c,src){return {op:c.op,sec:c.sec,tpl:c.tpl||'',maq:c.maq||'',t:iomTiempoGrupo(c,IOC.meta.grupo),p:false,src:src||'Base de otras referencias',de:'agregada'}}
 let IOM_BD=[];   /* la lista visible de la Base disponible: el «+» pasa la posición, nunca el texto guardado (revisión de código) */
@@ -15512,7 +15719,7 @@ function iomBDListaHTML(){const list=iomCandidatos(),mas=iomMas(),shown=list.sli
   return shown.map((x,i)=>{const c=x.c;return `<div class="iom-it${x.have?' have':''}${x.otraSec.length?' otrasec':''}"><div><div class="nm">${esc(c.op)}</div><div class="mt">${esc(c.sec)} · ${esc(c.maq||'sin máquina')} · ${iomFmtT(iomTiempoGrupo(c,IOC.meta.grupo))} · usada en ${iomPl(c.nFams,'categoría','categorías')}${c.soloRefs?' · solo en referencias':''}${x.have?' · ya agregada':''}${x.otraSec.length?' · <b>ya la tienes en '+esc(x.otraSec.join(', '))+'</b>':''}</div></div><button type="button" ${x.have?'disabled aria-label="Ya agregada">✓':`aria-label="Agregar" title="${x.otraSec.length?'Ya la tienes en '+esc(x.otraSec.join(', '))+': quedaría repetida':'Agregar a la secuencia'}" onclick="iomAgregarCand(${i})">+`}</button></div>`}).join('')+
     (list.length>shown.length?`<button type="button" class="iom-mas" onclick="IOC.mas=iomMas()+(+iomCfg('avisos').baseMostrar||25);iomPintarBDLista()">Mostrar más (${list.length-shown.length})</button>`:'')}
 function iomBDBulkHTML(){const f=IOC.flt.fam&&iomFam(IOC.flt.fam);if(!f)return '';const c=iomCandidatos();const miss=c.filter(x=>!x.have&&!x.otraSec.length).length,rep=c.filter(x=>!x.have&&x.otraSec.length).length;
-  return (miss?`<button type="button" class="btn iom-bulk" onclick="iomAgregarFaltantes()">Agregar las ${miss} que faltan de ${esc(f.nombre)}</button>`:'')+(rep?`<p class="mut iom-bulk-n">${iomPl(rep,'operación ya la tienes','operaciones ya las tienes')} con el mismo nombre en otra sección: no ${rep===1?'entra':'entran'} con «Agregar las que faltan»; si hace falta, usa su «+».</p>`:'')}
+  return (miss?`<button type="button" class="btn iom-bulk" onclick="iomAgregarFaltantes()">${miss===1?'Agregar la que falta':'Agregar las '+miss+' que faltan'} de ${esc(f.nombre)}</button>`:'')+(rep?`<p class="mut iom-bulk-n">${iomPl(rep,'operación ya la tienes','operaciones ya las tienes')} con el mismo nombre en otra sección: no ${rep===1?'entra':'entran'} con «Agregar las que faltan»; si hace falta, usa su «+».</p>`:'')}
 function iomPintarBDLista(){const l=document.getElementById('iom-bd-list');if(l)l.innerHTML=iomBDListaHTML();const b=document.getElementById('iom-bd-bulk');if(b)b.innerHTML=iomBDBulkHTML()}
 function iomSecOpciones(k){const rank=iomSecRank(IOC.meta.grupo);const secs=[];iomCatalogo().forEach(c=>{if(c.k===k&&!secs.includes(c.sec))secs.push(c.sec)});IOC.stages[k].ops.forEach(o=>{if(!secs.includes(o.sec))secs.push(o.sec)});if(!secs.length)secs.push('General');
   secs.sort((a,b)=>rank(a)-rank(b)||String(a).localeCompare(String(b)));return secs}
@@ -15529,7 +15736,7 @@ function iomAgregarFaltantes(){const f=iomFam(IOC.flt.fam);if(!f)return 0;const 
   if(!confirm('Se agregan '+iomPl(miss.length,'operación','operaciones')+' de '+f.nombre+' a '+((iomSub(k)||{}).nombre||k)+':\n'+lis(miss)+(rep.length?'\n\nNo se agregan '+iomPl(rep.length,'que ya tienes','que ya tienes')+' con el mismo nombre en otra sección (quedarían repetidas):\n'+rep.slice(0,10).map(x=>'• '+x.c.op+' (la tienes en '+x.otraSec.join(', ')+')').join('\n')+'\nSi alguna hace falta, agrégala con su «+».':'')+'\n\n¿Agregar?'))return 0;
   const fx=iomBaseActiva(f.id);const ordX=new Map();if(fx){const st=iomStagesLista(fx.stages).find(s=>s.k===k);(st?st.ops:[]).forEach((o,i)=>{const key=iomClaveOp(k,o.sec,o.op);if(!ordX.has(key))ordX.set(key,i)})}
   miss.sort((a,b)=>(ordX.has(a.c.key)?ordX.get(a.c.key):9999)-(ordX.has(b.c.key)?ordX.get(b.c.key):9999));
-  miss.forEach(x=>iomInsertar(IOC.stages[k].ops,iomNuevaOpDe(x.c,'Base: '+f.nombre),IOC.meta.grupo,k));iomSucio();iomPintarTabla();iomPintarBDLista();IOC.aviso='Se agregaron '+miss.length+' operaciones';iomAvisoEditor(IOC.aviso);return miss.length}
+  miss.forEach(x=>iomInsertar(IOC.stages[k].ops,iomNuevaOpDe(x.c,'Base: '+f.nombre),IOC.meta.grupo,k));iomSucio();iomPintarTabla();iomPintarBDLista();IOC.aviso=miss.length===1?'Se agregó 1 operación':'Se agregaron '+miss.length+' operaciones';iomAvisoEditor(IOC.aviso);return miss.length}
 function iomCrearOpNueva(){const n=document.getElementById('iom-nn'),s=document.getElementById('iom-ns'),err=document.getElementById('iom-nerr');const name=String(n&&n.value||'').trim().toUpperCase(),sec=s?s.value:'General';
   if(!name){if(err)err.textContent='Escribe el nombre de la operación.';return -1}if(iomPresente(IOC.sub,name,sec)){if(err)err.textContent='Esa operación ya está en '+sec+'.';return -1}if(err)err.textContent='';
   const pos=iomInsertar(IOC.stages[IOC.sub].ops,{op:name,sec,tpl:'',maq:'',t:null,p:false,src:'Creada aquí',de:'creada'},IOC.meta.grupo,IOC.sub);if(n)n.value='';iomSucio();iomPintarTabla(pos);iomPintarBDLista();
@@ -15537,7 +15744,8 @@ function iomCrearOpNueva(){const n=document.getElementById('iom-nn'),s=document.
 /* ---------- resumen (paso 5), avisos y guardar ---------- */
 function iomProblemas(){const empty=[];let noT=0,noM=0;iomOnStages().forEach(s=>{const ops=IOC.stages[s.k].ops;if(!ops.length)empty.push(s.nombre);ops.forEach(o=>{if(o.t==null||o.t==='')noT++;if(!String(o.maq||'').trim())noM++})});return {empty,noT,noM}}
 function iomPorQueNoGuarda(){const ts=IOC.modo==='crear'&&!IOC.meta.famId?'ing_operaciones,ing_referencias,ing_subprocesos':IOC.modo==='editar'&&!IOC.cod?'ing_operaciones':'ing_operaciones,ing_referencias';
-  const m=porQueNoEditaIng(ts);if(m)return m;if(ING.estado==='si'&&IOM.leido!=='si')return 'Todavía se está leyendo la ingeniería.';return ''}
+  const m=porQueNoEditaIng(ts);if(m)return m;if(ING.estado==='si'&&IOM.leido!=='si')return 'Todavía se está leyendo la ingeniería.';
+  if(iomBaseVieja()){const por=(IOC.choque&&IOC.choque.por)||'otra',nom=iomNomEditor();return (por==='carga'?'«'+nom+'» cambió con «Cargar secuencias» mientras la editabas':por==='version'?'«'+nom+'» volvió a otra versión mientras la editabas':'Otra persona cambió «'+nom+'» mientras la editabas')+': no se pisa. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».'}return ''}
 function iomPuedeGuardar(){if(!IOC.inicio||!iomTotal())return false;if(IOC.modo==='editar'&&!iomCambios().n)return false;return !iomPorQueNoGuarda()}
 function iomResumenHTML(){const on=iomOnStages(),t=iomTotal(),p=iomProblemas(),ed=IOC.modo==='editar',ch=iomCambios();
   const rows=on.map((s,i)=>{const x=IOC.stages[s.k];return `<tr><td class="n">${i+1}</td><td>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)}</span></td><td class="c">${x.ops.length}</td><td class="c">${iomFsam(iomSam(x.ops))}</td><td class="c">${x.ops.filter(o=>o.p).length}</td></tr>`}).join('');
@@ -15552,12 +15760,12 @@ function iomResumenHTML(){const on=iomOnStages(),t=iomTotal(),p=iomProblemas(),e
 function iomSamBarHTML(){const parts=iomOnStages().map(s=>'<span>'+esc(s.nombre)+' <b>'+iomFsam(iomSam(IOC.stages[s.k].ops))+'</b></span>');return '<span class="iom-samtot">SAM total de la referencia <b>'+iomFsam(iomSamTotal())+'</b> min</span><span class="mut">por subproceso:</span>'+parts.join('<span class="mut">·</span>')}
 function iomTopHTML(){const pq=iomPorQueNoGuarda();return `<div class="iom-top-t">${IOC.inicio?iomSamBarHTML():''}</div><div class="iom-top-b">${IOC.modo==='editar'&&IOC.inicio?'<span class="mut iom-chg">'+(iomCambios().n?'<b>'+iomPl(iomCambios().n,'cambio','cambios')+'</b> sin guardar':'Sin cambios')+'</span>':''}<button type="button" class="btn ghost" ${iomTotal()?'':'disabled'} onclick="iomExcelEditor()">${ICO.doc} Descargar Excel</button><button type="button" class="btn" ${iomPuedeGuardar()?'':'disabled'} title="${esc(pq)}" onclick="iomGuardar()">Guardar</button></div>`}
 function iomRefrescarTotales(){const set=(id,h)=>{const e=document.getElementById(id);if(e)e.innerHTML=h};set('iom-c-top',iomTopHTML());if(IOC.modo==='editar'&&IOC.inicio){const n=iomCambios().n;set('iom-chg2',n?'<b>'+iomPl(n,'cambio','cambios')+'</b> sin guardar':'Sin cambios')}set('iom-c3',iomTarjetasHTML());set('iom-c5',iomResumenHTML());
-  const k=IOC.sub;if(k&&IOC.stages[k]){const ops=IOC.stages[k].ops;set('iom-cnt',esc(iomPl(ops.length,'operación','operaciones')+' en secuencia')+'<span class="iom-samtot">SAM '+esc(iomSub(k).nombre)+' <b>'+iomFsam(iomSam(ops))+'</b> min</span>')}}
+  const k=IOC.sub;if(k&&IOC.stages[k]){const ops=IOC.stages[k].ops;set('iom-cnt',esc(iomPl(ops.length,'operación','operaciones')+' en secuencia'+(iomNoSuman(ops)?' · '+iomNoSuman(ops)+' no '+(iomNoSuman(ops)===1?'suma':'suman')+' (opción B…)':''))+'<span class="iom-samtot">SAM '+esc(iomSub(k).nombre)+' <b>'+iomFsam(iomSam(ops))+'</b> min</span>')}}
 /* lo que se perdería al cambiar de referencia o de modo: lo armado o cambiado sin guardar, o el borrador que se está ofreciendo (antes se descartaba sin
    preguntar al tocar «Editar» en Lo guardado o al elegir otra referencia; revisión de código del 06-oct) */
 function iomTrabajoSinGuardar(){if(IOC.modo==='editar'&&IOC.inicio){const n=iomCambios().n;return n?'Hay '+iomPl(n,'cambio','cambios')+' sin guardar en «'+IOC.meta.nombre+'»':''}
   if(IOC.modo==='crear'&&(iomTotal()||IOC.meta.nombre))return 'La referencia «'+(IOC.meta.nombre||'sin nombre')+'» que estás armando'+(iomTotal()?' ('+iomPl(iomTotal(),'operación','operaciones')+')':'')+' no está guardada';
-  const dr=!IOC.inicio&&IOC.paso<=1?iomBorradorLeer():null;return dr?'Hay un borrador guardado en este equipo de «'+dr.IOC.meta.nombre+'»':''}
+  return ''}   /* los borradores que ofrece la franja no se pierden al elegir otra cosa: cada uno tiene su llave (revisión de guardado, segunda ronda) */
 function iomPuedeDescartar(que){const t=iomTrabajoSinGuardar();if(!t)return true;return confirm(t+'. Si '+que+', se pierde (descárgalo antes si lo necesitas). ¿Continuar?')}
 /* el aviso flotante de Crear referencia (el del balanceo se llama iblToast) */
 function iomToast(m){let t=document.getElementById('iom-toast');if(!t){t=document.createElement('div');t.id='iom-toast';t.className='ibl-toast';t.setAttribute('role','status');t.setAttribute('aria-live','polite');document.body.appendChild(t)}const d=document.createElement('div');d.textContent=m;t.appendChild(d);setTimeout(()=>{d.remove()},3200)}
@@ -15578,21 +15786,25 @@ async function iomGuardar(){if(!iomPuedeGuardar()){const m=iomPorQueNoGuarda();a
     iomResumenFila(fila);fila.hist=((prev&&prev.hist)||[]).concat([{ts,u,que:'guardado',editadas:ch.editadas,nuevas:ch.nuevas,quitadas:ch.quitadas,movidas:ch.movidas,samAntes:prev?prev.sam:null,samDespues:fila.sam}]);
     const nom=IOC.cod?IOC.cod+' · '+IOC.meta.nombre:IOC.meta.famNombre+' · base general';
     const r=await iomGuardarFila(t,fila,'guardado',{baseFirma:IOC.baseFirma,bitacora:'Ingeniería · Operaciones · guardado '+nom+': '+fila.n+' operaciones, SAM '+iomFsam(prev?prev.sam:0)+' → '+iomFsam(fila.sam)+' (editadas '+ch.editadas+', nuevas '+ch.nuevas+', quitadas '+ch.quitadas+', movidas '+ch.movidas+'); no cambia ningún minuto del programa'});
-    if(!r.ok){if(r.choque)iomAvisoChoque(nom);else alert('No se guardó: '+r.error);iomPintarCrear();return false}
+    /* un choque ya no traba el editor: queda marcado y arriba sale «Traer lo nuevo y rehacer mis cambios encima» (iomChoqueHTML) */
+    if(!r.ok){if(r.choque){IOC.choque={ts:Date.now(),por:'otra'};iomPintarCrear();alert('Otra persona cambió «'+nom+'» mientras la editabas: no se pisó'+(iomBorradorLeer()?' y tus cambios siguen en el borrador de este equipo':'')+'. Arriba tienes «Traer lo nuevo y rehacer mis cambios encima».');const c=document.getElementById('iom-choque');if(c&&c.scrollIntoView)try{c.scrollIntoView({block:'center'})}catch(e){}}else{alert('No se guardó: '+r.error);iomPintarCrear()}return false}
     save();iomBorradorQuitar();iomCargarEditar(IOC.famId,IOC.cod);IOC.guardadoTs=ts;iomPintarCrear();iomToast('Guardado: ya se ve en Secuencia de operaciones y Balanceo de línea.');return true}
   /* crear: si la categoría es nueva, primero la familia (si choca se detiene), su base general (copia de esta referencia, como el prototipo) y la referencia */
   let famId=IOC.meta.famId;const cod=IOC.meta.cod;
   if(iomRef(cod)||iomCat().fams.some(f=>String(f.cod).toUpperCase()===cod)){alert('El código '+cod+' ya lo usa '+(iomCodigosUsados()[cod]||'otra')+'. Cámbialo en «Editar datos».');return false}
   const g=iomStagesParaGuardar(0);
-  if(!famId){famId=iomSlug(IOC.meta.famNombre)||'categoria';const b0=famId;let i=2;while(iomCat().fams.some(x=>x.id===famId))famId=b0+'-'+(i++);const fcod=iomCodigoFamNueva(IOC.meta.famNombre,cod);
+  if(!famId){famId=iomIdFamNuevo(IOC.meta.famNombre,'categoria');const fcod=iomCodigoFamNueva(IOC.meta.famNombre,cod);
     const rf=await iomGuardarFila('ing_subprocesos',{id:'mfam|'+famId,nombre:IOC.meta.famNombre,cod:fcod,grupo:IOC.meta.grupo||'T',orden:Math.max(0,...iomCat().fams.map(x=>+x.orden||0))+1,activa:true,lmo:'',tipos:[],origen:'nueva',ts,u,cambios:[]},'familia nueva',{version:false,bitacora:'Ingeniería · Operaciones · categoría nueva «'+IOC.meta.famNombre+'» ('+fcod+', '+iomGrupoTxt(IOC.meta.grupo)+')'});
     if(!rf.ok){if(rf.choque)iomAvisoChoque(IOC.meta.famNombre);else alert('No se guardó la categoría nueva: '+rf.error);return false}
-    const fb=iomResumenFila({id:'mbase|'+famId,fam:famId,stages:JSON.parse(JSON.stringify(g.stages)),nextU:g.nextU,origen:{tipo:'creada',de:'mref|'+cod,ts,u},activa:true,ver:1,ts,u,hist:[]});fb.hist=[{ts,u,que:'creada',nuevas:fb.n,samDespues:fb.sam}];
-    const rb=await iomGuardarFila('ing_operaciones',fb,'creada',{});if(!rb.ok){alert('Se creó la categoría pero no su base general: '+(rb.choque?'otra persona la cambió':rb.error)+'. Vuelve a guardar.');IOC.meta.famId=famId;IOC.meta.famCod=fcod;iomPintarCrear();return false}
-    IOC.meta.famId=famId;IOC.meta.famCod=fcod}
+    IOC.meta.famId=famId;IOC.meta.famCod=fcod;IOC.meta.basePendiente=true;iomSucio()}
+  /* la base general de la categoría nueva (copia de esta referencia, como el prototipo). Si no se guardó la primera vez, «Vuelve a guardar» la vuelve a
+     intentar ANTES de la referencia (antes se creaba la referencia y la base no llegaba nunca; revisión de guardado del 06-oct, segunda ronda) */
+  if(IOC.meta.basePendiente&&!iomBase(famId)){const fb=iomResumenFila({id:'mbase|'+famId,fam:famId,stages:JSON.parse(JSON.stringify(g.stages)),nextU:g.nextU,origen:{tipo:'creada',de:'mref|'+cod,ts,u},activa:true,ver:1,ts,u,hist:[]});fb.hist=[{ts,u,que:'creada',nuevas:fb.n,samDespues:fb.sam}];
+    const rb=await iomGuardarFila('ing_operaciones',fb,'creada',{});if(!rb.ok){alert('Se creó la categoría «'+IOC.meta.famNombre+'» pero todavía no su base general: '+(rb.choque?'otra persona la creó o la cambió':rb.error)+'. Vuelve a guardar: primero se intenta la base y después la referencia.');iomPintarCrear();return false}}
+  IOC.meta.basePendiente=false;
   const fila=iomResumenFila({id:'mref|'+cod,fam:famId,cod,nombre:IOC.meta.nombre,refsOdoo:[cod],stages:g.stages,nextU:g.nextU,origen:{tipo:'creada',de:IOC.copiaDe||IOC.inicio,ts,u},activa:true,ver:1,creada:ts,ts,u,hist:[]});fila.hist=[{ts,u,que:'creada',nuevas:fila.n,samDespues:fila.sam}];
   const r=await iomGuardarFila('ing_referencias',fila,'creada',{bitacora:'Ingeniería · Operaciones · referencia nueva '+cod+' · '+IOC.meta.nombre+' ('+IOC.meta.famNombre+'): '+fila.n+' operaciones, SAM '+iomFsam(fila.sam)+' ('+(IOC.inicioTxt||'')+'); no cambia ningún minuto del programa'});
-  if(!r.ok){if(r.choque)alert('El código '+cod+' lo acaba de crear otra persona: no se pisó. Tu borrador sigue guardado en este equipo. Cambia el código en «Editar datos» y vuelve a guardar.');else alert('No se guardó: '+r.error);iomPintarCrear();return false}
+  if(!r.ok){if(r.choque)alert('El código '+cod+' lo acaba de crear otra persona: no se pisó.'+(iomBorradorLeer()?' Tu borrador sigue guardado en este equipo.':'')+' Cambia el código en «Editar datos» y vuelve a guardar.');else alert('No se guardó: '+r.error);iomPintarCrear();return false}
   save();iomBorradorQuitar();iomCargarEditar(famId,cod);IOC.guardadoTs=ts;iomPintarCrear();iomToast('Guardado: «'+cod+'» ya se ve en Secuencia de operaciones y Balanceo de línea.');return true}
 /* ---------- Excel de Crear referencia: hoja Secuencia (+ hoja Cambios al editar con cambios) ---------- */
 async function iomExcelEditor(){const ed=IOC.modo==='editar';const ch=iomCambios();const nuevaCat=IOC.modo==='crear'&&!IOC.meta.famId;
@@ -15606,7 +15818,7 @@ function iomTarjetasHTML(){let n=0;return iomSubs().map(s=>{const x=IOC.stages[s
   return `<div class="iom-subcard off" data-k="${s.k}"><span class="no">${s.obligatorio?'':'<span class="opt">opcional</span>'}&nbsp;</span><span class="nm">${esc(s.nombre)}</span><span class="cd">${esc(s.centroTxt)} · ${esc(s.cod)}</span><span class="ct"><span class="mut">No incluido</span><button type="button" class="iom-tg" onclick="iomIncluirSub('${s.k}')">Incluir</button></span></div>`}).join('')}
 function iomEditorHTML(){if(!IOC.sub||!IOC.stages[IOC.sub]||!IOC.stages[IOC.sub].on)return '<div class="iom-hint">'+(iomOnStages().length?'Elige un subproceso para armar su secuencia.':'Incluye al menos un subproceso para empezar.')+'</div>';
   const k=IOC.sub,s=iomSub(k),ord=iomOnStages().map(x=>x.k),idx=ord.indexOf(k);const ops=IOC.stages[k].ops;
-  return `<div class="iom-ed2"><div class="panel iom-panel"><div class="iom-phead"><div><h3>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)} · paso ${idx+1} de ${ord.length}</span></h3><div class="mut" id="iom-cnt">${esc(iomPl(ops.length,'operación','operaciones')+' en secuencia')}<span class="iom-samtot">SAM ${esc(s.nombre)} <b>${iomFsam(iomSam(ops))}</b> min</span></div></div><div class="iom-err" id="iom-ed-err">${esc(IOC.aviso||'')}</div></div>
+  return `<div class="iom-ed2"><div class="panel iom-panel"><div class="iom-phead"><div><h3>${esc(s.nombre)} <span class="mut">· ${esc(s.cod)} · paso ${idx+1} de ${ord.length}</span></h3><div class="mut" id="iom-cnt">${esc(iomPl(ops.length,'operación','operaciones')+' en secuencia'+(iomNoSuman(ops)?' · '+iomNoSuman(ops)+' no '+(iomNoSuman(ops)===1?'suma':'suman')+' (opción B…)':''))}<span class="iom-samtot">SAM ${esc(s.nombre)} <b>${iomFsam(iomSam(ops))}</b> min</span></div></div><div class="iom-err" id="iom-ed-err">${esc(IOC.aviso||'')}</div></div>
    <div class="iom-scroll"><table class="iom-tabla iom-route iom-editor"><thead><tr><th>#</th><th>Operación</th><th class="code">Código</th><th>Máquina</th><th class="num">T. ref.</th><th title="Operación principal">Princ.</th><th></th></tr></thead><tbody id="iom-rows">${iomFilasEditorHTML()}</tbody></table></div></div>
    <div class="panel iom-bd" id="iom-bd">${iomBDHTML()}</div></div>`}
 function iomPaso1HTML(){const m=IOC.meta,ed=IOC.modo==='editar';const fams=iomFamsActivas().slice().sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
@@ -15632,11 +15844,16 @@ function iomPaso2HTML(){if(IOC.modo==='editar'||IOC.paso<2)return '';
    <div class="iom-opt"><h4>Empezar en blanco</h4><p>Sin subprocesos ni operaciones. Eliges cuáles incluir y qué operaciones agregar.</p><button type="button" class="btn ghost" onclick="iomPartirDe('blanco')">Empezar en blanco</button></div></div>`}
 function iomTituloCrear(){const ed=IOC.modo==='editar',loaded=ed&&IOC.inicio;return loaded?'Revisar y editar: '+(IOC.cod?IOC.meta.nombre+' ('+IOC.meta.famNombre+')':IOC.meta.famNombre+' · base general'):(ed?'Editar una referencia existente':(IOC.paso>1?'Crear la referencia «'+IOC.meta.nombre+'»':'Crear o editar una referencia'))}
 function iomCrearHTML(){if(!puedeIng())return `<p class="ing-sig iom-nopuede">Crear y editar referencias es de Ingeniería; con tu perfil solo se mira. Para ver cada secuencia usa <a href="#" data-ver="1" onclick="iomTab('secuencia');return false">Secuencia de operaciones →</a></p>`;
-  const dr=!IOC.inicio&&IOC.paso<=1?iomBorradorLeer():null;const nDr=dr?Object.keys(dr.IOC.stages||{}).reduce((a,k)=>a+((dr.IOC.stages[k]||{}).ops||[]).length,0):0;
-  const banner=dr?`<div class="iom-aviso iom-banner"><span>Hay un borrador guardado de <b>${esc(dr.IOC.meta.nombre)}</b>${dr.IOC.modo==='editar'?' (edición)':''} (${iomPl(nDr,'operación','operaciones')}), de ${esc(horaLocal(dr.ts))}.</span><span><button type="button" class="btn sm" onclick="iomBorradorContinuar()">Continuar</button> <button type="button" class="btn ghost sm" onclick="iomBorradorDescartar()">Descartar</button></span></div>`:'';
+  const drs=!IOC.inicio&&IOC.paso<=1?iomBorradores().filter(x=>x.bid!==IOC.bid):[];const nOpsDr=d=>Object.keys(d.IOC.stages||{}).reduce((a,k)=>a+((d.IOC.stages[k]||{}).ops||[]).length,0);
+  const banner=drs.slice(0,8).map(({bid,d})=>`<div class="iom-aviso iom-banner"><span>Hay un borrador guardado de <b>${esc(d.IOC.meta.nombre)}</b>${d.IOC.modo==='editar'?' (edición)':''} (${iomPl(nOpsDr(d),'operación','operaciones')}), de ${esc(fechaHoraLocal(d.ts,false))}.</span><span><button type="button" class="btn sm" onclick="iomBorradorContinuar(${iomJs(bid)})">Continuar</button> <button type="button" class="btn ghost sm" onclick="iomBorradorDescartar(${iomJs(bid)})">Descartar</button></span></div>`).join('')+(drs.length>8?`<p class="mut">… y ${drs.length-8} borradores más en este equipo.</p>`:'');
   /* «Cargar secuencias» vive aquí, en la única pestaña que edita (antes estaba arriba en las tres; revisión de código del 06-oct) */
-  const cargar=puedeIngTabla('ing_operaciones,ing_referencias')?`<div class="iom-cargar"><button type="button" class="btn ghost" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomMCargar()" title="el archivo «Secuencia» (21 columnas, CSV o Excel): vista previa antes de guardar; no cambia ningún minuto del programa">${ICO.sync} Cargar secuencias</button><span class="mut">para cargar o actualizar muchas secuencias de una vez desde un Excel</span></div>`:'';
-  return `${cargar}<div class="iom-crear-tit"><h3 class="iom-h">${esc(iomTituloCrear())}</h3><div class="iom-ctop" id="iom-c-top">${iomTopHTML()}</div></div>${banner}
+  const puedeCargar=puedeIngTabla('ing_operaciones,ing_referencias');
+  /* con la base vacía (la primera vez en producción) lo primero es cargar las secuencias: se dice arriba, con su botón (revisión «para dummies») */
+  const vacia=puedeCargar&&IOM.leido==='si'&&!IOM.bases.length&&!IOM.refs.length;
+  const cargar=vacia?`<div class="iom-aviso iom-vacia"><b>Todavía no hay secuencias cargadas.</b> Empieza con «Cargar secuencias»: elige el Excel con las secuencias de las familias (por ejemplo SECUENCIA_BASE_PARA_CARGAR.xlsx). Después ya puedes copiar, crear y editar referencias aquí. <button type="button" class="btn sm" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomMCargar()">${ICO.sync} Cargar secuencias</button></div>`
+    :puedeCargar?`<div class="iom-cargar"><button type="button" class="btn ghost" data-ing-tabla="ing_operaciones,ing_referencias" onclick="iomMCargar()" title="el archivo «Secuencia» (21 columnas, CSV o Excel): vista previa antes de guardar; no cambia ningún minuto del programa">${ICO.sync} Cargar secuencias</button><span class="mut">para cargar o actualizar muchas secuencias de una vez desde un Excel</span></div>`:'';
+  iomRevisarBase();   /* la versión de la que partió el editor: si quedó vieja, se trae lo nuevo o se marca el choque */
+  return `${cargar}<div class="iom-crear-tit"><h3 class="iom-h">${esc(iomTituloCrear())}</h3><div class="iom-ctop" id="iom-c-top">${iomTopHTML()}</div></div>${banner}${iomChoqueHTML()}${iomRehechoHTML()}
    <section class="panel iom-card" id="iom-c1">${iomPaso1HTML()}</section>
    ${IOC.modo==='crear'&&IOC.paso>=2?'<section class="panel iom-card" id="iom-c2">'+iomPaso2HTML()+'</section>':''}
    ${IOC.inicio?`<div class="iom-step"><i>3</i> Subprocesos de la referencia, en orden</div><div class="iom-subcards" id="iom-c3">${iomTarjetasHTML()}</div><div class="iom-step"><i>4</i> Secuencia de operaciones del subproceso</div><div id="iom-c4">${iomEditorHTML()}</div><section class="panel iom-card" id="iom-c5">${iomResumenHTML()}</section>`:''}
@@ -15649,10 +15866,10 @@ function iomUlt(fila){const h=(fila&&fila.hist)||[];const x=h[h.length-1];return
 function iomGuardadoHTML(){const q=normTxt(IOM_G.q);const items=[];
   /* primero las referencias (lo que la persona creó), después las categorías nuevas y al final las bases generales (revisión «para dummies»). Todo texto
      guardado va a los botones por iomJs (nunca entre comillas a mano: revisión de código) */
-  IOM.refs.slice().sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||''))).forEach(r=>{const f=iomFam(r.fam);items.push({t:'ref',txt:r.cod+' '+r.nombre+' '+(f?f.nombre:'')+' '+(r.refsOdoo||[]).join(' '),fila:r,html:`<b>${esc(r.cod)} · ${esc(r.nombre)}</b> <span class="mut">(referencia de ${esc(f?f.nombre:r.fam)}) · SAM ${iomFsam(r.sam||0)} · ${esc(iomUlt(r))}</span> <label class="iom-odoo" title="con qué código está esta referencia en Odoo (p. ej. 4240), para que las órdenes la encuentren; varias, separadas por comas; por defecto, su código">Código en Odoo: <input type="text" value="${esc((r.refsOdoo||[]).join(', '))}" placeholder="p. ej. 4240" onchange="setIomRefsOdoo(${iomJs(r.cod)},this.value)"></label>${r.activa===false?' <span class="tag t-mut">apagada'+(r.apagadaMotivo?' · '+esc(r.apagadaMotivo):'')+'</span>':''}`,
+  IOM.refs.slice().sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||''))).forEach(r=>{const f=iomFam(r.fam);items.push({t:'ref',txt:r.cod+' '+r.nombre+' '+(f?f.nombre:'')+' '+(r.refsOdoo||[]).join(' '),fila:r,html:`<b>${esc(r.cod)} · ${esc(r.nombre)}</b> <span class="mut">(referencia de ${esc(f?f.nombre:r.fam)}) · SAM ${iomFsam(r.sam||0)} · ${esc(iomUlt(r))}</span> <label class="iom-odoo" title="con qué código está esta referencia en Odoo (p. ej. 4240), para que las órdenes la encuentren; varias, separadas por comas; por defecto, su código">Código en Odoo: <input type="text" value="${esc((r.refsOdoo||[]).join(', '))}" placeholder="p. ej. 4240" onchange="setIomRefsOdoo(${iomJs(r.cod)},this.value)"><small class="iom-odoo-ayuda">el de Odoo (p. ej. 4240), para que las órdenes la encuentren; varios, con comas</small></label>${r.activa===false?' <span class="tag t-mut">apagada'+(r.apagadaMotivo?' · '+esc(r.apagadaMotivo):'')+'</span>':''}`,
     acc:`<button type="button" class="btn ghost sm" data-ver="1" onclick="iomIrEditar(${iomJs(r.fam)},${iomJs(r.cod)})">Editar</button><button type="button" class="btn ghost sm" data-ver="1" onclick="iomMVersiones(${iomJs('mref|'+r.cod)})">Versiones</button>${r.activa===false?`<button type="button" class="btn ghost sm" onclick="encenderIomRef(${iomJs(r.cod)})">Encender</button>`:`<button type="button" class="btn ghost sm" onclick="apagarIomRef(${iomJs(r.cod)})">Apagar</button>`}`,apagada:r.activa===false})});
   iomCat().fams.filter(f=>f.origen==='nueva'||f.origen==='carga').forEach(f=>items.push({t:'fam',txt:f.nombre+' '+f.cod,html:`<b>${esc(f.nombre)}</b> · categoría ${f.origen==='nueva'?'nueva':'de una carga'} (${esc(f.cod)}, ${esc(iomGrupoTxt(f.grupo))}) <span class="mut">· ${iomPl(iomRefsDe(f.id,true).length,'referencia','referencias')}</span>${f.activa===false?' <span class="tag t-mut">apagada'+(f.apagadaMotivo?' · '+esc(f.apagadaMotivo):'')+'</span>':''}`,acc:f.activa===false?`<button type="button" class="btn ghost sm" onclick="encenderIomFam(${iomJs(f.id)})">Encender</button>`:`<button type="button" class="btn ghost sm" onclick="apagarIomFam(${iomJs(f.id)})">Apagar</button>`,apagada:f.activa===false}));
-  IOM.bases.forEach(b=>{const f=iomFam(b.fam);items.push({t:'base',txt:(f?f.nombre:b.fam)+' · base general',fila:b,html:`<b>${esc(f?f.nombre:b.fam)}</b> · base general <span class="mut">· ${iomPl(b.n||iomNOps(b),'operación','operaciones')} · SAM ${iomFsam(b.sam||0)} · ${b.origen&&b.origen.editada?'editada':'cargada'} · ${esc(iomUlt(b))}</span>`,acc:`<button type="button" class="btn ghost sm" data-ver="1" onclick="iomIrEditar(${iomJs(b.fam)},null)">Editar</button><button type="button" class="btn ghost sm" data-ver="1" onclick="iomMVersiones(${iomJs(b.id)})">Versiones</button>`,apagada:b.activa===false})});
+  IOM.bases.forEach(b=>{const f=iomFam(b.fam);items.push({t:'base',txt:(f?f.nombre:b.fam)+' · base general',fila:b,html:`<b>${esc(f?f.nombre:b.fam)}</b> · base general <span class="mut">· ${iomPl(iomNOps(b),'operación','operaciones')} · SAM ${iomFsam(b.sam||0)} · ${b.origen&&b.origen.editada?'editada':'cargada'} · ${esc(iomUlt(b))}</span>`,acc:`<button type="button" class="btn ghost sm" data-ver="1" onclick="iomIrEditar(${iomJs(b.fam)},null)">Editar</button><button type="button" class="btn ghost sm" data-ver="1" onclick="iomMVersiones(${iomJs(b.id)})">Versiones</button>`,apagada:b.activa===false})});
   if(!items.length)return '<h3>Lo guardado</h3><p class="mut iom-sub">Todavía no hay nada guardado. Lo que guardes aquí (y lo que entre con «Cargar secuencias») se ve al instante en Secuencia de operaciones.</p>';
   const l=items.filter(x=>!q||normTxt(x.txt).includes(q));const sh=l.slice(0,IOM_G.mas);
   return `<h3>Lo guardado <span class="note">${items.length} · bases generales, categorías nuevas y referencias; nada se borra: se apaga o se vuelve a una versión anterior</span></h3>
@@ -15680,11 +15897,18 @@ async function iomMVersiones(id){abrir('<h3>Versiones anteriores</h3><div class=
    ${r.lista.length?`<div class="iom-scroll"><table class="iom-tabla"><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué pasó después</th><th class="num">Operaciones</th><th class="num">SAM</th><th></th></tr></thead><tbody>${r.lista.map(v=>{const d=v.data||{};return `<tr><td>${esc(fechaHoraLocal(v.ts))}</td><td>${esc(v.u||'')}</td><td>${esc(v.que||'')}</td><td class="num">${iomNOps(d)}</td><td class="num">${iomFsam(d.sam!=null?d.sam:iomStagesLista(d.stages||[]).reduce((a,s)=>a+iomSam(s.ops),0))}</td><td>${puede?`<button class="btn ghost sm" onclick="volverIomVersion(${iomJs(id)},${iomJs(v.id)})">Volver a esta versión</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`:'<p class="mut">Todavía no hay versiones anteriores.</p>'}</div>
    <div class="foot"><button class="btn ghost" onclick="cerrar()">Cerrar</button></div>`,true);IOM._vers={id,lista:r.lista}}
 async function volverIomVersion(id,verId){const t=id.startsWith('mref|')?'ing_referencias':'ing_operaciones';if(ingNoEdita(t))return false;const v=((IOM._vers&&IOM._vers.id===id&&IOM._vers.lista)||(await iomVersiones(id)).lista||[]).find(x=>x.id===verId);if(!v)return false;
-  const prev=iomListaDe(t).find(x=>x.id===id);if(!prev)return false;if(!confirm('¿Volver a la versión del '+fechaHoraLocal(v.ts)+'? La actual queda guardada como versión anterior (nada se borra).'))return false;
-  const ts=iomAhora(),u=quienFirma();const d=JSON.parse(JSON.stringify(v.data||{}));const fila=Object.assign({},d,{id,activa:prev.activa!==false,ver:(prev.ver||0)+1,ts,u,nextU:Math.max(iomMaxU(prev),iomMaxU(d))});iomResumenFila(fila);
+  const prev=iomListaDe(t).find(x=>x.id===id);if(!prev)return false;
+  /* volver a una versión repone SOLO la secuencia (subprocesos y operaciones): el nombre, el «Código en Odoo», si está apagada y de dónde salió son los
+     de AHORA (antes se reponía la fila vieja entera y se perdía en silencio un «En Odoo» puesto después; revisión de guardado del 06-oct) */
+  const d=JSON.parse(JSON.stringify(v.data||{}));const st=Array.isArray(d.stages)?d.stages:[];
+  const raro=iomStagesRaros({stages:st});if(raro){alert('Esa versión tiene un formato que no se reconoce ('+raro+'): no se repone. Pídele a Administración que la revise.');return false}
+  const editando=IOC.modo==='editar'&&IOC.filaId===id&&IOC.inicio;const nCh=editando?iomCambios().n:0;
+  if(!confirm('¿Volver a la versión del '+fechaHoraLocal(v.ts)+'? Vuelven sus subprocesos y operaciones; el nombre, el «Código en Odoo» y si está apagada se quedan como están ahora. La actual queda guardada como versión anterior (nada se borra).'+(nCh?'\n\nOjo: tienes '+iomPl(nCh,'cambio','cambios')+' sin guardar en esta misma secuencia en Crear referencia: se pierden.':'')))return false;
+  const ts=iomAhora(),u=quienFirma();
+  const fila=Object.assign({},sinId(prev),{id,stages:st.map(s=>({k:s.k,ops:(s.ops||[]).map(o=>Object.assign({},o,{t:iomNum(o.t),row:iomNum(o.row)},o.tDe!==undefined?{tDe:iomNum(o.tDe)}:{}))})),ver:(prev.ver||0)+1,ts,u,nextU:Math.max(iomMaxU(prev),iomMaxU(d))});iomResumenFila(fila);
   fila.hist=(prev.hist||[]).concat([{ts,u,que:'vuelta a versión',verId,samAntes:prev.sam,samDespues:fila.sam}]);const nom=prev.cod?prev.cod+' · '+prev.nombre:((iomFam(prev.fam)||{}).nombre||prev.fam)+' · base general';
-  const r=await iomGuardarFila(t,fila,'vuelta a versión',{bitacora:'Ingeniería · Operaciones · '+nom+': volvió a la versión del '+fechaHoraLocal(v.ts)+' (SAM '+iomFsam(prev.sam||0)+' → '+iomFsam(fila.sam)+'; la actual quedó como versión anterior)'});
-  if(!r.ok){if(r.choque)iomAvisoChoque(nom);else alert('No se guardó: '+r.error);return false}save();cerrar();if(IOC.modo==='editar'&&IOC.famId===prev.fam&&(IOC.cod||null)===(prev.cod||null)){iomCargarEditar(prev.fam,prev.cod||null)}if(page==='ingops')render();return true}
+  const r=await iomGuardarFila(t,fila,'vuelta a versión',{bitacora:'Ingeniería · Operaciones · '+nom+': volvió a la versión del '+fechaHoraLocal(v.ts)+' (SAM '+iomFsam(prev.sam||0)+' → '+iomFsam(fila.sam)+'; la actual quedó como versión anterior; nombre, «En Odoo» y encendida/apagada sin cambio)'});
+  if(!r.ok){if(r.choque)iomAvisoChoque(nom);else alert('No se guardó: '+r.error);return false}save();cerrar();if(editando){iomBorradorQuitar();iomCargarEditar(prev.fam,prev.cod||null)}if(page==='ingops')render();return true}
 
 /* ===================== LISTAS Y REGLAS (lo configurado manda; cada cambio queda en la fila y en la bitácora; nada se quita: se apaga) ===================== */
 let IOM_LAB=new Set();   /* paneles abiertos mientras dure la sesión */
@@ -15710,7 +15934,7 @@ function setIomFamTipo(id,catId,on){const f=iomFam(id);const k=K(catId);if(!f||!
 function addIomFam(){const g=id=>document.getElementById(id);const nom=String((g('iom-nf-n')||{}).value||'').trim(),cod=String((g('iom-nf-c')||{}).value||'').trim().toUpperCase(),grupo=(g('iom-nf-g')||{}).value||'';
   if(nom.length<2){alert('Escribe el nombre de la familia.');return}if(iomCat().fams.some(x=>normTxt(x.nombre)===normTxt(nom))){alert('Ya hay una familia «'+nom+'».');return}
   if(!/^[A-Z0-9]{2,4}$/.test(cod)){alert('El código de la familia lleva de 2 a 4 letras o números.');return}const us=iomCodigosUsados();if(us[cod]){alert('El código '+cod+' ya lo usa '+us[cod]+'.');return}if(!['T','B'].includes(grupo)){alert('Elige si es una prenda de arriba o de abajo.');return}
-  let id=iomSlug(nom)||'familia';const b0=id;let i=2;while(iomCat().fams.some(x=>x.id===id))id=b0+'-'+(i++);const orden=Math.max(0,...iomCat().fams.map(x=>+x.orden||0))+1;
+  const id=iomIdFamNuevo(nom);const orden=Math.max(0,...iomCat().fams.map(x=>+x.orden||0))+1;
   if(ingNoEdita('ing_subprocesos'))return;const ts=iomAhora(),u=quienFirma();
   return iomGuardarFila('ing_subprocesos',{id:'mfam|'+id,nombre:nom,cod,grupo,orden,activa:true,lmo:'',tipos:[],origen:'nueva',ts,u,cambios:[]},'familia nueva',{version:false,bitacora:'Ingeniería · Operaciones · familia nueva «'+nom+'» ('+cod+', '+iomGrupoTxt(grupo)+')'}).then(r=>{if(!r.ok){if(r.choque)iomAvisoChoque(nom);else alert('No se guardó: '+r.error)}else save();render();return r.ok})}
 const IOM_SUB_CAMPOS={nombre:'nombre',centro:'centro de la app',centroTxt:'centro en el Excel',cod:'código del centro',obligatorio:'obligatorio',enLinea:'entra en la línea'};
@@ -15899,7 +16123,7 @@ function iblAsegurarEstado(){if(!IBL.P){iblIniciar();return}if(IBL.ver!==IOM.ver
 function iblVeredictos(M){const P=IBL.P,pl=iomPl,out=[];const need=IBL.NEED,ok=M.cap>=P.meta-1e-6;
   if(!M.used)out.push({cls:'mal',r19:true,html:'<b>Todavía no hay operaciones en los puestos:</b> asígnalas o pulsa «Calcular el mejor balanceo».'});   /* R19: antes «Revisa el puesto 0» */
   else if(M.bi<0)out.push({cls:'mal',html:'<b>Las operaciones de los puestos no tienen tiempo:</b> no se puede calcular la capacidad. Ponles tiempo en Crear referencia.'});
-  else if(P.nops&&IBL.imposible)out.push({cls:'mal',html:'<b>Con '+P.nops+' operarios no se puede armar la línea:</b> hay '+pl(IBL.MACH,'tipo de máquina','tipos de máquina')+' y cada puesto usa una sola, así que se necesitan al menos '+IBL.MACH+' operarios. La propuesta usa '+M.n+'.'});
+  else if(P.nops&&IBL.imposible)out.push({cls:'mal',html:'<b>Con '+pl(P.nops,'operario','operarios')+' no se puede armar la línea:</b> hay '+pl(IBL.MACH,'tipo de máquina','tipos de máquina')+' y cada puesto usa una sola, así que se necesitan al menos '+IBL.MACH+' operarios. La propuesta usa '+M.n+'.'});
   else if(P.nops){if(ok)out.push({cls:'ok',html:'<b>Con '+pl(P.nops,'operario','operarios')+' la línea cumple la meta de '+P.meta+' unidades/día:</b> capacidad <b>'+Math.floor(M.cap)+'</b> unidades/día, ciclo '+iblF2(M.bn)+' min.'+(need<P.nops?' La meta se lograba desde '+pl(need,'operario','operarios')+'; con los '+P.nops+' la carga queda más repartida.':'')+(M.sts.length-M.used>0?' Quedan '+pl(M.sts.length-M.used,'puesto vacío','puestos vacíos')+': con una máquina por puesto no se puede dividir más el trabajo; puedes mover operaciones a mano.':'')});
     /* el texto del prototipo («Para N se necesitan X operarios; faltan Y, o baja la meta a Z») y, como segunda frase, el porqué cuando una operación es
        más larga que el takt (revisión «para dummies» del 06-oct: antes decía «ni con más operarios» y la misma pantalla mostraba que con 33 se llega).
@@ -15907,7 +16131,10 @@ function iblVeredictos(M){const P=IBL.P,pl=iomPl,out=[];const need=IBL.NEED,ok=M
     else{const tm=iblTp(P)/P.meta,cap=Math.floor(M.cap),lim=tm*(1+P.tol/100);const larga=M.act.reduce((a,o)=>!a||o.t>a.t?o:a,null);const pasa=!!larga&&larga.t>tm+1e-9;let h='<b>Con '+pl(P.nops,'operario','operarios')+' no se alcanza la meta:</b> el mejor balanceo llega a <b>'+cap+'</b> unidades/día (ciclo '+iblF2(M.bn)+' min). ';
       if(need>P.nops)h+='Para '+P.meta+' se necesitan '+pl(need,'operario','operarios')+'; faltan '+(need-P.nops)+', o baja la meta a '+cap+'.';
       else if(!pasa)h+='Los '+need+' «necesarios» se cuentan dejando pasar la tolerancia del '+P.tol+'% sobre el takt; con un operario por puesto el ciclo no baja de '+iblF2(M.bn)+' min. Prueba con más operarios o con menos tolerancia, o baja la meta a '+cap+'.';
-      if(pasa){const w=Math.ceil(larga.t/lim-1e-9);h+=(need>P.nops?' ':'')+'Con un operario por puesto no se llega: «'+esc(larga.op)+'» ('+iblF2(larga.t)+' min) es más larga que el takt de la meta ('+iblF2(tm)+' min)'+(w>1?', así que ese puesto necesita '+w+' personas':'')+'; deja vacío «Operarios disponibles» para ver cómo quedaría'+(need>P.nops?'':', o baja la meta a '+cap)+'.'}
+      /* el porqué nombra la más larga y dice cuántas más pasan el takt (antes nombraba una sola y parecía un solo puesto con problema; revisión de
+         fidelidad del 06-oct, segunda ronda) */
+      if(pasa){const w=Math.ceil(larga.t/lim-1e-9);const otras=M.act.filter(o=>o!==larga&&o.t>tm+1e-9);const varias=otras.length>0;const masUna=varias?otras.some(o=>Math.ceil(o.t/lim-1e-9)>1)||w>1:w>1;
+        h+=(need>P.nops?' ':'')+'Con un operario por puesto no se llega: «'+esc(larga.op)+'» ('+iblF2(larga.t)+' min)'+(varias?' y '+(otras.length===1?'otra operación son más largas':'otras '+otras.length+' operaciones son más largas'):' es más larga')+' que el takt de la meta ('+iblF2(tm)+' min)'+(varias?(masUna?', así que esos puestos necesitan más de una persona':''):(w>1?', así que ese puesto necesita '+w+' personas':''))+'; deja vacío «Operarios disponibles» para ver cómo quedaría'+(need>P.nops?'':', o baja la meta a '+cap)+'.'}
       out.push({cls:'mal',r15:pasa,html:h})}}
   else out.push(ok?{cls:'ok',html:'<b>La línea cumple la meta de '+P.meta+' unidades/día</b> con '+pl(M.n,'operario','operarios')+' en '+pl(M.used,'puesto','puestos')+'; capacidad <b>'+Math.floor(M.cap)+'</b> unidades/día.'}:{cls:'mal',html:'<b>Con los ajustes actuales la línea no alcanza la meta.</b> El cuello de botella limita la producción a <b>'+Math.floor(M.cap)+'</b> unidades/día (meta '+P.meta+'). Revisa el puesto '+(M.bi+1)+' o pulsa «Calcular el mejor balanceo».'});
   if(M.un.length)out.push({cls:'mal',html:'<b>'+pl(M.un.length,'operación sin asignar','operaciones sin asignar')+'.</b> Los resultados solo cuentan lo que ya está en un puesto. Asígnalas desde el panel de la derecha.'});
@@ -15919,10 +16146,17 @@ function iblNSubs(M){const P=IBL.P;return IOM_K.filter(k=>P.stg[k]&&M.act.some(o
 function iblOpCuello(M){const s=M.sts[M.bi];if(!s)return '';const id=s.ids.slice().sort((a,b)=>M.byId.get(b).t-M.byId.get(a).t)[0];return id==null?'':M.byId.get(id).op}
 function iblKpis(M){const P=IBL.P,pl=iomPl;const need=IBL.NEED,empt=M.sts.length-M.used;const short=P.nops&&(!(M.cap>=P.meta-1e-6)||M.n>P.nops);
   const ev=iblCfgNum('efVerde'),ea=iblCfgNum('efAmbar');const effCls=ev!=null&&M.effBal>=ev/100?'ok':(ea!=null&&M.effBal>=ea/100?'warn':(ev==null&&ea==null?'':'bad'));   /* sin los % configurados, sin color (no se inventa) */
-  /* con operarios indicados, lo que se muestra es el CICLO LOGRADO, no el takt de la meta (revisión «para dummies»): se dice así y la nota da el takt */
-  return [{id:'takt',ico:'clock',k:P.nops?'Ciclo logrado (con '+P.nops+' operarios)':'Takt (tiempo de ciclo objetivo)',v:iblF2(M.takt)+' <small>min/unidad</small>',n:P.nops?'El menor ciclo que se logra con '+P.nops+' operarios · takt de la meta '+iblF2(iblTp(P)/P.meta)+' min':'Tiempo productivo '+Math.round(iblTp(P))+' min ÷ '+P.meta+' unidades',cls:''},
+  /* con operarios indicados, la cifra es el CICLO QUE SE LOGRA: el puesto más cargado (el mismo número del veredicto y del cuello de botella). Antes se
+     rotulaba «Ciclo logrado» el ciclo que BUSCA el cálculo (M.takt) y en el 27 % de los casos no coincidía con lo que la misma pantalla decía (revisión
+     de fidelidad del 06-oct, segunda ronda). El ciclo que busca el cálculo queda como «ciclo objetivo» en la nota y en la línea del gráfico. Si no se
+     arma con los operarios indicados, no se rotula como ciclo de N operarios */
+  const tmeta=iblTp(P)/P.meta;
+  const kT=!P.nops?{id:'takt',ico:'clock',k:'Takt (tiempo de ciclo objetivo)',v:iblF2(M.takt)+' <small>min/unidad</small>',n:'Tiempo productivo '+Math.round(iblTp(P))+' min ÷ '+P.meta+' unidades',cls:''}
+    :IBL.imposible?{id:'takt',ico:'clock',k:'Ciclo logrado',v:iblF2(M.bn)+' <small>min/unidad</small>',n:'No se arma con '+pl(P.nops,'operario','operarios')+'; la propuesta usa '+M.n+' · takt de la meta '+iblF2(tmeta)+' min',cls:''}
+    :{id:'takt',ico:'clock',k:'Ciclo logrado (con '+pl(P.nops,'operario','operarios')+')',v:iblF2(M.bn)+' <small>min/unidad</small>',n:'El puesto más cargado · ciclo objetivo '+iblF2(M.takt)+' min · takt de la meta '+iblF2(tmeta)+' min',cls:''};
+  return [kT,
     {id:'sam',ico:'ops',k:'SAM de la línea (contenido de trabajo)',v:iblF2(M.sum)+' <small>min/unidad</small>',n:pl(M.act.length,'operación','operaciones')+' en '+pl(iblNSubs(M),'subproceso','subprocesos'),cls:''},
-    {id:'oper',ico:'users',k:'Operarios en la propuesta',v:M.n+' <small>en '+pl(M.used,'puesto','puestos')+'</small>',n:'Mínimo teórico: '+M.min+' · necesarios para la meta: '+need+(empt?' · '+pl(empt,'puesto vacío','puestos vacíos'):''),cls:short?'bad':(M.n<=M.min+1?'ok':'')},
+    {id:'oper',ico:'users',k:'Operarios en la propuesta',v:M.n+' <small>en '+pl(M.used,'puesto','puestos')+'</small>',n:'Mínimo teórico: '+M.min+' · necesarios para la meta: '+need+(empt?' · '+pl(empt,'puesto vacío','puestos vacíos'):'')+(P.nops&&M.n>P.nops?' · pide más operarios de los que tienes ('+P.nops+')':''),cls:short?'bad':(M.n<=M.min+1?'ok':'')},   /* en rojo también si usa más de los indicados: la nota lo dice (D-OPER, §18) */
     {id:'efic',ico:'chart',k:'Eficiencia del balance',v:iblPc(M.effBal),n:'Trabajo total ÷ (operarios × puesto más cargado)',cls:effCls},
     {id:'cuello',ico:'alert',k:'Cuello de botella',v:iblF2(M.bn)+' <small>min</small>',n:M.bi>=0?'Puesto '+(M.bi+1)+' · '+esc(iblOpCuello(M).toLowerCase()):'—',cls:''},
     {id:'cap',ico:'factory',k:'Capacidad',v:Math.floor(M.cap)+' <small>unidades/día</small>',n:'Meta: '+P.meta,cls:M.cap>=P.meta-1e-6?'ok':'bad'}]}
@@ -15966,8 +16200,8 @@ function iblGraficoHTML(M){const P=IBL.P;const tm=iblTp(P)/P.meta;const conMeta=
   const bars=M.sts.map((s,i)=>{const h=s.per/max*100;return '<button type="button" class="ibl-bar '+(s.w?iblClase(s.per,M.takt,P):'sub')+'" data-ver="1" data-i="'+i+'" title="Puesto '+(i+1)+': '+iblF2(s.per)+' min por operario ('+iblPc(s.per/M.takt)+' del takt)" aria-label="Puesto '+(i+1)+', '+iblF2(s.per)+' minutos" onclick="iblIrPuesto('+i+')">'+(s.per>0?'<b style="bottom:calc('+h+'% + 1px)">'+iblF2(s.per)+'</b>':'')+'<i style="height:'+h+'%"></i></button>'}).join('');
   const eje=M.sts.map((s,i)=>'<span>P'+(i+1)+(s.w>1?'<br>×'+s.w:'')+'</span>').join('');
   const sc=iblCfgNum('subcargado');
-  return '<div class="ibl-chart iom-scroll"><div class="ibl-plot">'+ticks+bars+'<div class="ibl-takt" style="bottom:'+(M.takt/max*100)+'%"><span>'+(P.nops?'Ciclo logrado ':'Takt ')+iblF2(M.takt)+'</span></div>'+(conMeta?'<div class="ibl-takt meta'+(noLlega?' mal':'')+'" style="bottom:'+(tm/max*100)+'%"><span>Takt de la meta '+iblF2(tm)+'</span></div>':'')+'</div><div class="ibl-eje">'+eje+'</div></div>'+
-    '<div class="ibl-leyenda"><span><i class="dentro"></i>Dentro del takt</span><span><i class="sub"></i>Subcargado ('+(sc==null?'sin umbral configurado':'&lt; '+sc+'%')+')</span><span><i class="tol"></i>Dentro de la tolerancia</span><span><i class="sobre"></i>Sobre el takt</span>'+(conMeta?'<span><i class="lmeta'+(noLlega?' mal':'')+'"></i>Takt de la meta (con '+P.nops+' operarios las barras se miden contra el ciclo logrado)</span>':'')+'</div>'}
+  return '<div class="ibl-chart iom-scroll"><div class="ibl-plot">'+ticks+bars+'<div class="ibl-takt" style="bottom:'+(M.takt/max*100)+'%"><span>'+(P.nops?'Ciclo objetivo ':'Takt ')+iblF2(M.takt)+'</span></div>'+(conMeta?'<div class="ibl-takt meta'+(noLlega?' mal':'')+'" style="bottom:'+(tm/max*100)+'%"><span>Takt de la meta '+iblF2(tm)+'</span></div>':'')+'</div><div class="ibl-eje">'+eje+'</div></div>'+
+    '<div class="ibl-leyenda"><span><i class="dentro"></i>Dentro del takt</span><span><i class="sub"></i>Subcargado ('+(sc==null?'sin umbral configurado':'&lt; '+sc+'%')+')</span><span><i class="tol"></i>Dentro de la tolerancia</span><span><i class="sobre"></i>Sobre el takt</span>'+(conMeta?'<span><i class="lmeta'+(noLlega?' mal':'')+'"></i>Takt de la meta (con '+iomPl(P.nops,'operario','operarios')+' las barras se miden contra el ciclo objetivo)</span>':'')+'</div>'}
 function iblSelHTML(M,id,cur){let o='';for(let i=0;i<M.sts.length;i++)o+='<option value="'+i+'"'+(cur===i?' selected':'')+'>P'+(i+1)+'</option>';
   o+='<option value="new">+ Nuevo</option><option value="un"'+(cur==='un'?' selected':'')+'>Sin puesto</option><option value="ex"'+(cur==='ex'?' selected':'')+'>Excluir</option>';
   return '<select class="ibl-mv" data-ver="1" aria-label="Mover a otro puesto" title="Mover a otro puesto" onchange="iblMover('+id+',this.value)">'+o+'</select>'}
@@ -16005,7 +16239,7 @@ function iblOutHTML(){const P=IBL.P;const x=iblFuente();IBL.M=null;
    '<div class="ibl-lay'+(IBL.panel?'':' cerrado')+'"><div class="ibl-puestos" id="ibl-puestos">'+M.sts.map((s,i)=>iblPuestoHTML(M,s,i)).join('')+'</div>'+iblPanelHTML(M)+'</div>'}
 function iblAyudaTxt(){return 'Cómo calcula: takt = minutos por turno × turnos × eficiencia ÷ meta. Un puesto = una máquina: las operaciones se juntan por máquina, en el orden de la secuencia, hasta llenar el takt (más la tolerancia); una operación más larga que eso va sola con varios operarios. Después se busca el menor ciclo con la misma gente para repartir la carga. '+
   'Con tolerancia, la línea puede no llegar a la meta aunque no indiques operarios: los puestos se llenan hasta el takt más la tolerancia. Con operarios indicados, el ciclo nunca baja de la operación más larga (así no hay dos operarios en un puesto) y, con tolerancia, un puesto puede pasar el ciclo mostrado. '+
-  'El «mínimo teórico» se calcula con el takt que se muestra (con operarios indicados, el ciclo logrado). «Necesarios para la meta» permite puestos con varios operarios. «OTRA MÁQUINA» marca la operación cuya máquina no es la que más minutos suma en el puesto (puede ser la que ya estaba). '+
+  'El «mínimo teórico» se calcula con el takt (con operarios indicados, con el ciclo objetivo). Con operarios indicados, «Ciclo logrado» es el puesto más cargado: el mismo número del cuello de botella. «Necesarios para la meta» permite puestos con varios operarios. «OTRA MÁQUINA» marca la operación cuya máquina no es la que más minutos suma en el puesto (puede ser la que ya estaba). '+
   'Las unidades por hora de línea y lo que queda del turno siguiente usan los minutos del turno sin la eficiencia; días y turnos de la orden usan los minutos productivos.'}
 function iblHTML(){iblAsegurarEstado();const lnk=puedeAbrirPagina('balanceo')?'<a href="#" data-ver="1" onclick="ir(\'balanceo\');return false">Planificación de producción → Balanceo</a>':'<b>Planificación de producción → Balanceo</b>';
   const out=iblOutHTML();const hay=!!(IBL.M&&IBL.M.act.length);
@@ -16068,7 +16302,7 @@ function iblFilasResumen(M){const P=IBL.P,x=iblFuente();const f=x.f;const N=v=>(
   const rs=[['Balanceo de línea · '+f.nombre,''],['',''],['Familia',f.nombre],['Referencia',x.r?x.r.nombre:'Toda la familia'],['Cód. familia',f.cod]].concat(x.r?[['Cód. referencia',x.r.cod]]:[]).concat([['Subprocesos',subs],
     ['Minutos por turno',I(P.min)],['Turnos',I(P.trn)],['Eficiencia esperada',PC(P.eff/100)],['Tolerancia sobre el takt',PC(P.tol/100)],['Un puesto = una máquina','Sí'],
     ['Meta (unidades/día)',I(P.meta)],['Operarios disponibles',P.nops?I(P.nops):'Sin límite'],['Operarios necesarios para la meta',I(IBL.NEED)],['',''],
-    ['Resultados',''],['Tiempo productivo por día (min)',N(iblTp(P))],[P.nops?'Ciclo logrado (min/unidad)':'Takt (min/unidad)',N(M.takt)]]).concat(P.nops?[['Takt de la meta (min/unidad)',N(iblTp(P)/P.meta)]]:[]).concat([['SAM de la línea (min/unidad)',N(M.sum)],['Puestos',I(M.used)],['Operaciones sin asignar',I(M.un.length)],['Operarios en la propuesta',I(M.n)]]).concat(P.nops&&M.n>P.nops?[['Ojo','la propuesta usa '+M.n+' operarios y tienes '+P.nops]]:[]).concat([['Mínimo teórico de operarios',I(M.min)],['Cuello de botella (min)',N(M.bn)],['Eficiencia del balance',PC(M.effBal)],['Capacidad (unidades/día)',I(Math.floor(M.cap))]])
+    ['Resultados',''],['Tiempo productivo por día (min)',N(iblTp(P))],[P.nops?'Ciclo objetivo con '+iomPl(P.nops,'operario','operarios')+' (min/unidad)':'Takt (min/unidad)',N(M.takt)]]).concat(P.nops?[['Ciclo logrado (min/unidad)',N(M.bn)],['Takt de la meta (min/unidad)',N(iblTp(P)/P.meta)]]:[]).concat([['SAM de la línea (min/unidad)',N(M.sum)],['Puestos',I(M.used)],['Operaciones sin asignar',I(M.un.length)],['Operarios en la propuesta',I(M.n)]]).concat(P.nops&&M.n>P.nops?[['Ojo','la propuesta usa '+M.n+' operarios y tienes '+P.nops]]:[]).concat([['Mínimo teórico de operarios',I(M.min)],['Cuello de botella (min)',N(M.bn)],['Eficiencia del balance',PC(M.effBal)],['Capacidad (unidades/día)',I(Math.floor(M.cap))]])
     .concat(P.orden&&M.bn?[['',''],['Orden de producción (unidades)',I(P.orden)],['Días de trabajo para la orden',N(P.orden/(P.min*P.eff/100*P.trn/M.bn))],['Turnos para la orden',N(P.orden/(P.min*P.eff/100/M.bn))],['Minutos de línea para la orden',N(P.orden*M.bn/(P.eff/100))]]:[])
     .concat([['',''],['Máquinas requeridas','']]);
   Object.keys(M.mach).sort((a,b)=>M.mach[b]-M.mach[a]).forEach(k=>{rs.push([k,I(M.mach[k])])});return rs}
@@ -16113,11 +16347,18 @@ async function ingGuardar(t,filas,lote,opts){if(ING.estado!=='si')return {ok:fal
   for(let i=0;i<nuevas.length&&!err;i+=L){const l=nuevas.slice(i,i+L);const e=await insertar(l);if(!e){hechas.push(...l);continue}
     if(!ingEsDuplicado(e)){err=String(e.message||e);falta=esFaltaTabla(e,t);break}
     for(const f of l){const e1=await insertar([f]);if(!e1)hechas.push(f);else if(ingEsDuplicado(e1))conf.push(f.id);else{err=String(e1.message||e1);falta=esFaltaTabla(e1,t);break}}}
+  let permiso=false;
   for(const f of viejas){if(err)break;const {data,error}=await sb.from(t).update({data:sinId(f)}).eq('id',f.id).eq('actualizado',sm.get(f.id).ts).select('id');
-    if(error){err=String(error.message||error);falta=esFaltaTabla(error,t);break}if(!data||!data.length)conf.push(f.id);else hechas.push(f)}
+    if(error){err=String(error.message||error);falta=esFaltaTabla(error,t);break}
+    /* 0 filas sin error: o alguien la guardó en el medio (su sello cambió) o la RLS no deja escribirla (el sello sigue igual: p. ej. a este perfil le
+       quitaron «Ingeniería» con la pestaña abierta). Se vuelve a leer para decir lo cierto (antes siempre «otra persona la cambió»; revisión de
+       guardado del 06-oct, segunda ronda) */
+    if(!data||!data.length){let re=null;try{re=await leerTablaIng(t,[f.id])}catch(e){re=null}const x=re&&!re.error&&(re.data||[]).find(r=>r.id===f.id);
+      if(x&&String(x.actualizado)===String(sm.get(f.id).ts)){err=porQueNoEditaIng(t)||'la base no dejó guardar: tu perfil ya no tiene el permiso «Ingeniería» en Supabase. Pídele a Administración que lo revise.';permiso=true;break}
+      conf.push(f.id)}else hechas.push(f)}
   ING.firmas=ING.firmas||{};ING.firmas[t]=ING.firmas[t]||{};
   hechas.forEach(f=>{const l=(opts&&opts.lista)||(S[t]=S[t]||[]);const i=l.findIndex(x=>x.id===f.id);const c=ingClon(f);if(i<0)l.push(c);else l[i]=c;ING.firmas[t][f.id]=ingCanon(sinId(f))});
-  ING.ver=(ING.ver||0)+1;return {ok:!err&&!conf.length,n:hechas.length,error:err,falta,conflictos:conf}}
+  ING.ver=(ING.ver||0)+1;return {ok:!err&&!conf.length,n:hechas.length,error:err,falta,permiso,conflictos:conf}}
 function ingEsDuplicado(e){return String((e&&e.code)||'')==='23505'||/duplicate key|already exists/i.test(String((e&&e.message)||e||''))}
 /* lo que se muestra de un dato guardado que nombra la fuente vieja (fuentes de tiempos, notas, motivos): la pantalla nunca la nombra (06-oct, usuaria) */
 function ingTxtVisible(s){return String(s==null?'':s).replace(/\bde kronos\b/gi,'del estudio de tiempos anterior').replace(/\ben kronos\b/gi,'en el estudio de tiempos anterior')
