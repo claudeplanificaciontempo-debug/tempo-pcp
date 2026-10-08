@@ -7418,7 +7418,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       cerrar();}
      ORDF.edicion="porEditar";}
     /* foto: tamaño y zoom */
-    {const oF=S.ordenes.find(o=>fotoDe(o));__check("UI19: la foto chica es un poco más grande (44 px, parámetro) y lleva data-zoom",!!oF&&/width="44" height="44"/.test(fotoMini(oF))&&/data-zoom="/.test(fotoMini(oF))&&/width="60"/.test(fotoMini(oF,60)));
+    {const oF=S.ordenes.find(o=>fotoDe(o));__check("UI19: la foto chica es más grande (60 px desde el 08-oct, parámetro) y lleva data-zoom",!!oF&&/width="60" height="60"/.test(fotoMini(oF))&&/data-zoom="/.test(fotoMini(oF))&&/width="60"/.test(fotoMini(oF,60)));
      fotoZoomInit();const z=document.getElementById("foto-zoom");page="ordenes";ORDF.edicion="todas";ORDF.estado="plan";GRP={};grpSt("ord").niveles=[];render();let im=document.getElementById("p-ordenes").querySelector("img[data-zoom]");if(!im&&oF){mOrden(oF.id);im=document.getElementById("modal").querySelector("img[data-zoom]")}
      if(im){im.dispatchEvent(new MouseEvent("mouseover",{bubbles:true,clientX:100,clientY:100}));const on=z.style.display==="block"&&z.querySelector("img").src===im.getAttribute("data-zoom");im.dispatchEvent(new MouseEvent("mouseout",{bubbles:true}));
       __check("UI19: al pasar el mouse por una foto se abre el zoom con esa imagen y al salir se cierra",on&&z.style.display==="none");cerrar();}else __check("UI19: hay una foto para probar el zoom",false);
@@ -8537,9 +8537,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     S.ordenes=S.ordenes.filter(x=>x.id!==oAntes.id&&x.id!==oDespues.id);delete S.avance[oAntes.id];delete S.avance[oDespues.id];
     t.forEach((r,i)=>r.montado=prevMont[i]);S.params.reqAntesPlan=prevFlag;FASE_CACHE.ver=(FASE_CACHE.ver||0)+1;}
    /* TM · Estado de tintorería: «Antes de tintorería» con el botón → Tintorería (usuaria, 21-sep: los baños se arman en otro sistema, pero la fase se mueve aquí) */
-   {PERFIL=adminP0();const ft=faseTintoreria();const base=S.ordenes.find(o=>abierta(o)&&etapas(o).tin)||S.ordenes.find(abierta);const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TM';o.fase='0Macro';delete o.programa;delete o.avance;S.ordenes.push(o);delete S.avance[o.id];
+   {PERFIL=adminP0();const ft=faseTintoreria();const base=S.ordenes.find(o=>abierta(o)&&etapas(o).tin)||S.ordenes.find(abierta);const o=JSON.parse(JSON.stringify(base));o.id=uid();o.op='WH/TEST-TM';o.fase=faseTejeduria()||'1Tejeduria';delete o.programa;delete o.avance;S.ordenes.push(o);delete S.avance[o.id];
     const okFase=!!ft&&/tintoreria/.test(normFase(ft))&&!/cd|calidad/.test(normFase(ft));const antes=antesDeTintoreria();
-    __check('TM: la fase Tintorería sale de la tabla de fases (no de una constante) y una orden en Macro con tela propia por tinturar aparece en «Antes de tintorería»',okFase&&antes.some(x=>x.id===o.id)&&cmpFases('0Macro',ft)<0,JSON.stringify({ft,n:antes.length,tin:etapas(o).tin}));
+    __check('TM: la fase Tintorería sale de la tabla de fases (no de una constante) y una orden en Tejeduría con tela propia por tinturar aparece en «Antes de tintorería»',okFase&&antes.some(x=>x.id===o.id),JSON.stringify({ft,n:antes.length,tin:etapas(o).tin}));
+    {const o0=JSON.parse(JSON.stringify(o));o0.id=uid();o0.op='WH/TEST-TM0';o0.fase='0Macro';S.ordenes.push(o0);delete S.avance[o0.id];const a2=antesDeTintoreria();const todas=antesDeTintoreriaTodas();S.ordenes=S.ordenes.filter(x=>x.id!==o0.id);
+     __check('TM0: «Antes de tintorería» empieza en Tejeduría (usuaria, 08-oct): una orden en Macro no sale ahí (sigue contada como «fases anteriores»)',!!faseTejeduria()&&!a2.some(x=>x.id===o0.id)&&todas.some(x=>x.id===o0.id)&&a2.some(x=>x.id===o.id),JSON.stringify({fj:faseTejeduria(),n:a2.length,t:todas.length}))}
     page='tintoreria';render();const h=document.getElementById('p-tintoreria').innerHTML;
     __check('TM: el bloque «Antes de tintorería» lista la orden con el botón «→ Tintorería» y explica el flujo (después «Hecho → calidad»)',/Antes de tintorería/.test(h)&&h.includes(esc(o.op))&&new RegExp("pasarATintoreria\\('"+o.id+"'\\)").test(h)&&/Hecho → calidad/.test(h));
     const nb=S.bitacora.length;const cf=window.confirm;window.confirm=()=>true;pasarATintoreria(o.id);window.confirm=cf;
