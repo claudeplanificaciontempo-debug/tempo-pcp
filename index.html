@@ -2887,7 +2887,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:19';
+const APP_BUILD='2026-10-12 08:26';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5213,7 +5213,9 @@ function flujoTramoHTML(c,rec,cola,vista){const ab=tramoAbiertoDe(c,rec||null);
    así «En proceso» y «para empezar» dicen lo mismo en la tablet y en la lista del supervisor (antes la tablet usaba estadoOrdenCentro y no miraba la
    fase de Odoo). Un INICIO abierto o unidades registradas aquí también es «en proceso». estadoOrdenCentro queda para lo que pide INICIO */
 function estadoTabletFila(f,c){if(tramoAbiertoOrden(f.o.id,c,null)||((((S.avance[f.o.id]||{}).centros)||{})[c]||0)>0)return 'proceso';
-  const g=grupoBaseCEN(f);if(g==='proceso')return 'proceso';if(g==='listas'||g==='afuera')return 'disponible';if(g==='revisar'||g==='anomalia')return 'sinSecuencia';return 'proxima'}
+  /* una fila armada sin la cercanía (cerc ausente: no viene de filasDeCentros) se clasifica con la regla de la secuencia de la ruta, como antes */
+  if(f.cerc===undefined)return estadoOrdenCentro(f.o,c,null);
+  const g=grupoBaseCEN(Object.assign({c},f));if(g==='proceso')return 'proceso';if(g==='listas'||g==='afuera')return 'disponible';if(g==='revisar'||g==='anomalia')return 'sinSecuencia';return 'proxima'}
 function cuentasTablet(c,rec,cola){const abiertos=tramosAbiertosDe(c,rec||null);const est={proceso:[],disponible:[],proxima:[],sinSecuencia:[]};
   cola.forEach(f=>{const e=estadoTabletFila(f,c);if(est[e])est[e].push(f)});
   const enProc=new Set(abiertos.map(x=>x.o.id).concat(est.proceso.map(f=>f.o.id)));

@@ -775,7 +775,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const tabla=[...host.querySelectorAll(".panel.cola table")][0];
     __check("2a DOM: existe la tabla de la cola dentro de .panel.cola",!!tabla);
     const ths=tabla?[...tabla.querySelectorAll("thead th")].map(t=>t.textContent.trim()):[];
-    __check("2a DOM: las 11 columnas, en este orden (06-oct: Producto lleva el color y el cliente debajo; Prendas las pendientes y las horas; Estado las fechas del paso; Terminar el ✓)",ths.join("|")==="#|Orden|ODC|Producto|Prendas|Estado|Marca|Puesto|Arranca|Terminar|",ths.join("|"));
+    __check("2a DOM: las 11 columnas, en este orden (06-oct: Producto lleva el color y el cliente debajo; Prendas las pendientes y las horas; Terminar el ✓ · 08-oct: «Estado» pasó a «Disponibilidad», con cómo llega y las fechas del paso debajo)",ths.join("|")==="#|Orden|ODC|Producto|Prendas|Disponibilidad|Marca|Puesto|Arranca|Terminar|",ths.join("|"));
     const filas=tabla?[...tabla.querySelectorAll("tbody tr[draggable]")]:[];
     const P1=programar();const lun1=lunesDe(hoy());
     const colaV=colaCentro("corte",filasDeCentros(["corte"],P1,lun1,dsum(lun1,6),CEN.q).filter(f=>faseOkCEN(f.o))).filter(f=>enListaCEN(f,dsum(lun1,13),P1));
@@ -845,7 +845,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      PERFIL={rol:'modulos',modo:'editar',nombre:'Mod'};const antesP=puestoDe(oA,'corte');moverEnCola(oA.id,'corte',{pos:1});__check("cola: un perfil de otro centro no puede mover",puestoDe(oA,'corte')===antesP);PERFIL=adminP;
      // terminados: una cola por centro
      CEN.id='terminados';CEN.niveles=[];render();__check("cola: Terminados muestra una cola por cada sub-área",(html().match(/Cola de /g)||[]).length===censDeGrupo('terminados').length&&censDeGrupo('terminados').length>=4);
-     __check("cola: Terminados abre con el consolidado de sus sub-áreas",/Terminados · las sub-áreas/.test(html())&&/Ocupación/.test(html()));
+     {const pb=CEN.pest;CEN.pest='plan';render();const hT=html();CEN.pest=pb;render();__check("cola: Terminados abre con el consolidado de sus sub-áreas (08-oct: en la vista «Plan», en «La semana, por partes»)",/Terminados · las sub-áreas/.test(hT)&&/Ocupación/.test(hT))}
      cola3.forEach(f=>{const pc=f.o.progCentro;if(!pc||!pc.corte)return;delete pc.corte.pri;if(!Object.keys(pc.corte).length)delete pc.corte;if(!Object.keys(pc).length)delete f.o.progCentro});PLAN=null;PLAN_ALL=null;}
    CEN.id='corte';CEN.todo=false;CEN.niveles=[];render();__check("cola sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));}
   /* buscadores sin perder el foco; borrado fuera de Órdenes */
@@ -2473,7 +2473,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bakMetas=JSON.stringify(S.params.metas||null);
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
    const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
-   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=ym+'-28';o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
    const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
    {const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);oCand.fecha=sig+'-10';oNoCand.fecha=ym+'-28';}   /* candidata = entrega el mes siguiente (excepción); no candidata = entrega en el mes (ya en la base) */
    PLAN=null;PLAN_ALL=null;const P=programar();
@@ -5439,7 +5439,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    S.turnos=bakT;S.paros=bakP;
    /* 7 · «Vienen después» no repite la lista de arriba — 06-oct (pantalla única): «Órdenes de la semana» y «Vienen después» se fundieron en la
       lista del centro: cada orden sale UNA vez */
-   {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='';CEN.dia=null;CEN.todo=true;CEN.cercAbre={proceso:true,listas:true,afuera:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};render();
+   {page='centro';CEN.id='corte';CEN.solo='';CEN.tab='';CEN.pest='prog';CEN.dia=null;CEN.todo=true;CEN.cercAbre={proceso:true,listas:true,afuera:true,porLiberar:true,porLlegar:true,revisar:true,lejana:true,anomalia:true,fuera:true};render();   /* 08-oct: la lista vive en la vista «Programación» */
     const P=S.ordenes.length?programar():{pro:[],ordenes:{}};
     const dom=dsum(lun,6);
     const filas=filasDeCentros(['corte'],P,lun,dom,'');
@@ -6233,7 +6233,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       !/odc/i.test(String(whCell)),String(whCell).slice(0,140));
     page="centro";CEN.id="corte";CEN.solo=null;CEN.tab="prog";CEN.todo=true;render();
     const h=document.getElementById("p-centro").innerHTML;
-    __check("CC8 (06-oct): la cola tiene columna ODC y columna Estado (cuándo llega o cómo está aquí, con las fechas del paso debajo)",/<th>ODC<\/th>/.test(h)&&/>Estado<\/th>/.test(h));
+    __check("CC8 (06-oct): la cola tiene columna ODC y columna Disponibilidad (08-oct, antes «Estado»: lista para iniciar · en proceso · parcial · sin disponibilidad, con cuándo llega o cómo está aquí y las fechas del paso debajo)",/<th>ODC<\/th>/.test(h)&&/>Disponibilidad<\/th>/.test(h));
     __check("CC8: y la nota explica de dónde sale el orden y la convención de días",
       /Orden de la lista/.test(h)&&/hoy no cuenta/.test(h));
     __check("CC8: los grupos de cercanía se ven en la cola",/En proceso aquí|Listas para empezar|Por llegar|Todo lo que viene|Revisar ruta/.test(h));}
@@ -6267,7 +6267,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const src=document.documentElement.innerHTML;
     const ids=[...new Set([...src.matchAll(/busqHTML\('([^']+)'/g)].map(x=>x[1]))];
     __R.bus.idsBusq=ids;
-    __check("AB0: hay un solo componente de buscador (busqHTML) y N pantallas lo usan",ids.length>=15,ids.join(", "));
+    __check("AB0: hay un solo componente de buscador (busqHTML) y N pantallas lo usan (08-oct: Carga general salió, una menos)",ids.length>=14,ids.join(", "));
     const sueltos=[...src.matchAll(/oninput="(?!buscarQ)/g)].length;
     __R.bus.buscadoresSueltos=sueltos;
     __check("AB0: cuántos inputs con oninput NO pasan por buscarQ (buscadores propios)",true,sueltos);
@@ -6892,7 +6892,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const enTarjeta=h=>h.includes("mFasePiso('"+oC.id+"'");
       const btnHecho=(h,id)=>new RegExp("(marcarHechoCentro|mRegistroTallas)\\('"+id+"'").test(h);
       __check("TA4: sin ningún tramo, la tarjeta no ofrece «Hecho»: dice qué falta",enTarjeta(h0)?(!btnHecho(h0,oC.id)&&/Hecho aparece con tiempo corrido/.test(h0)):true,enTarjeta(h0)?"":"no está en la cola (se acepta)");
-      __check("TA4: la función que decide es la misma puerta (puedeCerrarPaso) — no hay un segundo criterio en la vista",/puedeCerrarPaso\(o\.id,c\)\.ok\?/.test(String(vTablet))&&/puedeCerrarPaso\(o\.id,c\)\.ok\?/.test(String(filaColaTabletHTML))&&/puedeCerrarPaso\(oid,c\)/.test(String(hintCierreHTML)));
+      __check("TA4: la función que decide es la misma puerta (puedeCerrarPaso) — no hay un segundo criterio en la vista (08-oct: el registro rápido del supervisor salió de la tablet)",!/marcarHechoCentro|mRegistroTallas/.test(String(vTablet))&&/puedeCerrarPaso\(o\.id,c\)\.ok\?/.test(String(filaColaTabletHTML))&&/puedeCerrarPaso\(oid,c\)/.test(String(hintCierreHTML)));
       /* con tiempo suficiente, aparece */
       tramosDe(oC.id).push({id:"t4",centro:C,rec:rec||null,ini:new Date(Date.now()-9*6e4).toISOString(),fin:new Date().toISOString(),u:"op",paros:[],tallas:{}});
       const h1=comoOperario(()=>{page="tablet";render();return document.getElementById("p-tablet").innerHTML});
