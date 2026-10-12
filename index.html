@@ -560,8 +560,8 @@ html[data-tema="odoo"][data-color="verde"]{--o-brand:#1E6B4F;--o-brand-2:#17553F
 html[data-tema="odoo"][data-color="grafito"]{--o-brand:#343A40;--o-brand-2:#23272B;--o-primary:#3D4B59;--o-primary-2:#2C3844;--o-brand-soft:#ECEFF2;--o-brand-line:#CED4DA;--o-ring:rgba(61,75,89,.22);--navy:#343A40;--navy2:#23272B;--t-primary:#343A40;--t-block:#343A40}
 html[data-tema="odoo"][data-color="blanco"]{--o-brand:#FFFFFF;--o-brand-2:#F2F3F4;--o-primary:#017E84;--o-primary-2:#01666B;--o-brand-soft:#E3F3F3;--o-brand-line:#B8DEDF;--o-ring:rgba(1,126,132,.22);--navy:#017E84;--navy2:#01666B;--t-primary:#017E84;--t-block:#017E84}
 html[data-tema="odoo"][data-color="morado"]{--o-brand:#714B67;--o-brand-2:#5E3F56;--o-primary:#714B67;--o-primary-2:#5E3F56;--o-brand-soft:#F4EEF3;--o-brand-line:#DCCAD7;--o-ring:rgba(113,75,103,.18);--navy:#714B67;--navy2:#5E3F56;--t-primary:#714B67;--t-block:#714B67}
-html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header{background:#fff;color:#212529;border-bottom:1px solid #DEE2E6;box-shadow:none}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header h1{color:#212529}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header h1 .logo{background:var(--o-primary)}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header nav .grp{color:#374151}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header nav .grp:hover,html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header nav .grp.abierto{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header nav .grp.act{background:#E9ECEF;color:#111827}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header button{color:#374151}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header button:hover{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header .sub,html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header .saved{color:#6C757D}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) #busg-host input{background:#F2F3F4;border:1px solid #DEE2E6}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) #navBtn{color:#374151}html[data-tema="odoo"][data-barra="clara"] .kpi.tarj .v{color:var(--o-primary)}html[data-tema="odoo"][data-barra="clara"] .o-statusbar .st.on{background:var(--o-primary)}
-@media (max-width:860px){html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) header nav{background:#fff}}   /* 12-oct (revisión del 08-oct, S6): la barra clara de «Como Odoo» solo en claro; en oscuro toma var(--o-brand) con la letra clara de siempre */
+html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header{background:#fff;color:#212529;border-bottom:1px solid #DEE2E6;box-shadow:none}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header h1{color:#212529}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header h1 .logo{background:var(--o-primary)}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header nav .grp{color:#374151}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header nav .grp:hover,html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header nav .grp.abierto{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header nav .grp.act{background:#E9ECEF;color:#111827}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header button{color:#374151}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header button:hover{background:#F2F3F4;color:#111827}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header .sub,html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header .saved{color:#6C757D}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) #busg-host input{background:#F2F3F4;border:1px solid #DEE2E6}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) #navBtn{color:#374151}html[data-tema="odoo"][data-barra="clara"] .kpi.tarj .v{color:var(--o-primary)}html[data-tema="odoo"][data-barra="clara"] .o-statusbar .st.on{background:var(--o-primary)}
+@media (max-width:860px){html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) header nav{background:#fff}}   /* 12-oct (revisión del 08-oct, S6): la barra clara de «Como Odoo» solo en claro; en oscuro toma var(--o-brand) con la letra clara de siempre */
 
 /* ---- buscador como Odoo (24-sep-2026): campo con etiquetas + Filtros · Agrupar por · Favoritos ---- */
 .o-search{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 12px}
@@ -688,7 +688,7 @@ html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-colu
 .modo-sw button.on{background:rgba(255,255,255,.18)!important;opacity:1}
 .modo-sw svg{width:16px;height:16px}
 html:not([data-tema="odoo"]) .modo-sw{border-color:var(--rule)}html:not([data-tema="odoo"]) .modo-sw button.on{background:var(--field)!important}
-html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) .modo-sw{border-color:var(--rule)}html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) .modo-sw button.on{background:var(--field)!important}
+html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) .modo-sw{border-color:var(--rule)}html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) .modo-sw button.on{background:var(--field)!important}
 /* ===== Revisión «para dummies» (02-oct-2026): un lugar por lote de trabajo ===== */
 /* ux:B0a */
 /* B0a · disposición (02-oct-2026, revisión «para dummies»). Todo lo de forma que vale para muchas pantallas. */
@@ -698,7 +698,7 @@ header #version{display:none}
 html[data-tema="odoo"] #quien{flex:0 0 auto;margin:0 2px}
 html[data-tema="odoo"] #quien .q-nom{display:none}
 html[data-tema="odoo"] #quien .q-ini{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:12px;font-weight:600;letter-spacing:.02em;cursor:default}
-html[data-tema="odoo"][data-barra="clara"]:not([data-modo="oscuro"]) #quien .q-ini{background:var(--o-brand-soft);color:var(--ink)}
+html[data-tema="odoo"][data-barra="clara"]:where(:not([data-modo="oscuro"])) #quien .q-ini{background:var(--o-brand-soft);color:var(--ink)}
 html[data-tema="odoo"] header .saved{flex:0 0 auto;max-width:240px;overflow:hidden;text-overflow:ellipsis;margin-right:6px}
 html[data-tema="odoo"] #busg-host #busg-wrap{min-width:0!important}
 @media (min-width:861px) and (max-width:1180px){html[data-tema="odoo"] header .saved:not(.err){display:none}html[data-tema="odoo"] header nav .grp{padding:0 7px;font-size:13px}html[data-tema="odoo"] header nav .grp .car{display:none}}
@@ -2329,6 +2329,10 @@ html[data-modo="oscuro"][data-estilo="tablero"][data-sobrio] .res-dia-t .hoyt,ht
 html[data-modo="oscuro"][data-estilo="tablero"][data-sobrio] .res-dia:not(.hoy){background:var(--tb-card)!important;color:var(--tb-ink2)!important}
 html[data-modo="oscuro"][data-estilo="tablero"][data-sobrio] .res-dia.hoy{color:var(--tb-ink2)!important}
 html[data-modo="oscuro"][data-estilo="tablero"][data-sobrio] .warn:not(.kpi):not(.tarj){background:var(--tb-amber-soft)!important;border-color:var(--tb-amber-line)!important;color:var(--tb-amber-ink)!important}
+/* 12-oct (revisión del 08-oct): los avisos del módulo de Ingeniería (.iom-aviso) con los tonos suaves de la paleta, no una mezcla calculada que queda fuera de ella */
+html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso{background:var(--tb-amber-soft)}
+html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.mal{background:var(--tb-red-soft)}
+html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.ok{background:var(--tb-green-soft)}
 /* · */
 </style>
 </head>
@@ -3089,7 +3093,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 15:13';
+const APP_BUILD='2026-10-12 15:41';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -7447,7 +7451,8 @@ function celdaLibProd(o){const v=LIBV[o.id]||{};const puedeF=puede('programa')||
 function frenosFilaLibHTML(o,et,falta){
   const fr=falta.filter(x=>!noFrenaLib(x,et));
   const chips=fr.map(x=>{const f=FRENO_LIB[x]||{};const ok=frenoLinkOk(f);const esRuta=x==='falta confirmar ruta';const clic=ok?(esRuta?'irRutaDeOrden(\''+o.id+'\')':f.ir):'';
-    return {txt:x+(clic?' →':''),cls:'t-aviso',title:esRuta&&ok?'ir a Órdenes → Rutas y confirmar la ruta de su referencia':(f.donde||x)+(f.ir&&!ok?' (lo arregla otra persona)':''),onclick:clic}});
+    /* 12-oct (FRENA-MEZCLA): con un solo freno a la vista, el «+N» dice en su tooltip CUÁL es cada freno que esconde y dónde se arregla */
+    return {txt:x+(clic?' →':''),cls:'t-aviso',title:esRuta&&ok?'falta confirmar ruta: ir a Órdenes → Rutas y confirmar la ruta de su referencia':x+(f.donde&&f.donde!==x?': '+f.donde:'')+(f.ir&&!ok?' (lo arregla otra persona)':''),onclick:clic}});
   if(fr.length<falta.length)chips.push({txt:'color sin Pantone · no frena',cls:'t-mut',title:'el Pantone no impide liberar a producción'});
   const ed=puedeEditarRuta()?'<a class="lib-ruta-ed" onclick="mRutaCentro(\''+o.id+'\')" title="revisar y corregir la ruta aquí">✎ ruta</a>':'';
   const rev=et==='corte'?revGeneralTagHTML(o):rutaCtrlLib(o);
@@ -10724,7 +10729,8 @@ let NIVSAL={q:''};
 function saldoNivReabrir(){try{if(typeof NIVUI!=='undefined'&&NIVUI.saldoAbierto&&document.querySelector('#veil.on .niv-saldo')){const sc=document.querySelector('#veil.on .niv-saldo .scroll');const y=sc?sc.scrollTop:0;irSaldoCentro(NIVUI.saldoAbierto);const sc2=document.querySelector('#veil.on .niv-saldo .scroll');if(sc2)sc2.scrollTop=y}}catch(e){}}
 function irSaldoCentro(sel){sel=sel||{};if(!nivUIArea(sel.area))return;const {a,base,uDe,uTot}=saldoNivSel(sel);NIVUI.saldoAbierto=sel;
   const selTxt=[(sel.meses||[]).map(m=>mesCortoTxt(m)).join(', ')||'todos los meses',sel.fam?'familia '+sel.fam:'',sel.hija?'tipo '+sel.hija:'',sel.cli?'cliente '+sel.cli:'',sel.txt||''].filter(Boolean).map(esc).join(' · ');
-  const g=grpSt('nivsal');if(!g.niveles.length&&!g.defNivsal){g.niveles=['fam'];g.defNivsal=true}
+  /* la primera vez agrupa por familia con los grupos ABIERTOS (se abrió para ver las órdenes: todoAbierto invierte el colapso, como en la cola del centro) */
+  const g=grpSt('nivsal');if(!g.niveles.length&&!g.defNivsal){g.niveles=['fam'];g.todoAbierto=true;g.defNivsal=true}
   const qn=normTxt(NIVSAL.q||'');const filt=qn||(FOD['NIVSAL.q']&&((FOD['NIVSAL.q'].rap||[]).length||(FOD['NIVSAL.q'].pers||[]).length))?base.filter(o=>matchBusq(o,qn,'NIVSAL.q')):base;
   const fila=o=>`<tr><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(uDe(o),0)}</td><td>${fmtFecha(fechaMetaDe(o))}</td><td><a style="cursor:pointer" onclick="cerrar();irEstadoOrden('${o.id}')">ver dónde está →</a></td></tr>`;
   abrir(`<h3>Saldo por procesar en ${esc(a.n)} <span class="note">${selTxt} · <b>${num(base.length)}</b> órdenes · <b>${num(uTot,0)}</b> prendas${filt.length!==base.length?' · <b>'+num(filt.length)+'</b> con el buscador':''}</span></h3><div class="body niv-saldo">
