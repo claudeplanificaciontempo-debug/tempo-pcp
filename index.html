@@ -3089,7 +3089,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:10';
+const APP_BUILD='2026-10-12 08:14';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -6065,7 +6065,7 @@ const TEMA_COLORES=[['petroleo','Gris cálido con acento petróleo (por defecto 
 function temaColorDef(){return esTablero()?'petroleo':'marino'}
 function temaColor(){const c=(S&&S.params)?S.params.temaColor:null;return TEMA_COLORES.some(x=>x[0]===c)?c:temaColorDef()}
 function paletaBarraClara(c){return !!(TEMA_COLORES.find(x=>x[0]===c)||[])[2]}
-function paletaSobria(c){return !!(TEMA_COLORES.find(x=>x[0]===c)||[])[3]}   /* por defecto azul marino: lo eligió la usuaria el 24-sep (antes: «tampoco quiero ese morado») */
+function paletaSobria(c){return !!(TEMA_COLORES.find(x=>x[0]===c)||[])[3]}
 function setTemaColor(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=temaColor();if(!TEMA_COLORES.some(x=>x[0]===v)||v===antes)return;
   S.params.temaColor=v;bitacora('Color de la pantalla: '+(TEMA_COLORES.find(x=>x[0]===antes)||[,antes])[1]+' → '+(TEMA_COLORES.find(x=>x[0]===v)||[,v])[1]+' ('+quienFirma()+')');save();render()}
 /* 01-oct: modo claro / oscuro, preferencia de cada persona en este navegador (no es configuración de la planta) */
