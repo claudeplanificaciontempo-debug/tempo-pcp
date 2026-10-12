@@ -2988,7 +2988,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:30';
+const APP_BUILD='2026-10-12 08:38';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -13327,7 +13327,7 @@ function matrizCapacidad(){if(CAPM)return CAPM;
     if(a==='tej')PA.tej.forEach(x=>{if(!x.dia)return;const m=x.dia.slice(0,7);const pm=porMes[m]=porMes[m]||{h:0,ops:{}};pm.h+=x.h||0;if(!x.cambio)pm.ops[x.op]=(pm.ops[x.op]||0)+(x.h||0)});
     else PA.banos.filter(b=>!b.error&&b.dia).forEach(b=>{const m=b.dia.slice(0,7);const pm=porMes[m]=porMes[m]||{h:0,banos:[]};pm.h+=b.horas||0;pm.banos.push(b)});
     Object.entries(porMes).forEach(([m,pm])=>{if(!pm.h)return;if(!meses.includes(m))meses.push(m);const cap=capMesRecs(recs,m);
-      const det=a==='tej'?Object.entries(pm.ops).map(([op,h])=>{const o=ords.find(z=>z.op===op);return o?{o,min:h,lib:liberada(o,'tela')}:null}).filter(Boolean).sort((x,y)=>y.min-x.min):[];
+      const det=a==='tej'?Object.entries(pm.ops).map(([op,h])=>{const o=todas.find(z=>z.op===op);   /* lo que el programa tejió: cualquier abierta que tenga (el filtro de lanzadas es para la carga por Proyecto) */return o?{o,min:h,lib:liberada(o,'tela')}:null}).filter(Boolean).sort((x,y)=>y.min-x.min):[];
       const noLib=det.filter(x=>!x.lib);
       celdas[a+'|'+m]={c:a,m,u:'h',carga:pm.h,cap,pct:cap?pm.h/cap*100:null,det,banos:(pm.banos||[]).slice().sort((x,y)=>(y.horas||0)-(x.horas||0)),noLib:noLib.length,minNoLib:noLib.reduce((x,y)=>x+y.min,0),base:'programa'}})});
   meses.sort((a,b)=>a==='venc'?-1:b==='venc'?1:a<b?-1:1);
