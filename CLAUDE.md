@@ -1305,7 +1305,9 @@ tres sub-pestañas) y **Salud de los datos** (`vSalud`, sin cabecera propia); se
 «Auditoría de replanificación» (Dirección) y «Salud del sistema» (Configuración). **Migración única** `migMenuL5_08()` (la llama `perfilesDef`;
 banderas `migTextil08`, `migImprimir08`, `migAuditoria08`; bitácora; nunca desde el piso): quien tenía Stock o Macro recibe Tejeduría; quien tenía
 Programa del día, Tintorería / su centro / Hoy (si programa); quien tenía Salud, Auditoría; no se le quita nada a nadie (las entradas viejas que
-queden en su lista solo redirigen). Pruebas TEX1–TEX9, TEX-IMP1–TEX-IMP8 y AUD1–AUD5. Donde este archivo hable de las páginas «Stock de tela cruda»,
+queden en su lista solo redirigen). El despachador de `render()` ya no conoce `stock`, `macro`, `imprimir` ni `salud` (las lleva `redirigirPagina`), los
+perfiles por defecto ya no traen «imprimir» ni «stock», y el recorrido de páginas del simulador ya no incluye «imprimir» (repetía Hoy y cambiaba la pestaña de
+Configuración que pulsa la fase de botones). En «Por tejer ahora» la línea «Otras cuentas de tela» va una sola vez. Pruebas TEX1–TEX9, TEX-IMP1–TEX-IMP8 y AUD1–AUD5. Donde este archivo hable de las páginas «Stock de tela cruda»,
 «Macro del mes», «Programa del día», «Auditoría de replanificación» o «Salud del sistema» como entradas del menú, es historia.
 
 **Auditoría de simplificación (23-sep-2026, PROPUESTA — nada movido todavía):** `AUDITORIA_SIMPLIFICACION_23SEP.md`.
