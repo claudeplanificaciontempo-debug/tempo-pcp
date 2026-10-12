@@ -11308,7 +11308,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const oL=mk('WH/LBN-LISTA',500,false),oF=mk('WH/LBN-FRENA',300,false),oY=mk('WH/LBN-YA',200,true);confirmarRuta(oL,'persona','prueba');confirmarRuta(oY,'persona','prueba');   /* oF sin ruta confirmada: frenada */
    const mios=[oL,oF,oY];PLAN=null;PLAN_ALL=null;LIB.ym=new Set([ym]);
    const p=partesLib('tela',LIB.ym);const base=baseLiberacion('tela',LIB.ym);
-   __check("LBN1: la base del mes se parte en listas, frenadas y ya liberadas sin repetir ni perder ninguna",p.listas.length+p.frenadas.length+p.liberadas.length===base.length&&new Set(p.listas.concat(p.frenadas,p.liberadas).map(o=>o.id)).size===base.length&&p.listas.includes(oL)&&p.frenadas.includes(oF)&&p.liberadas.includes(oY),JSON.stringify({l:p.listas.length,f:p.frenadas.length,y:p.liberadas.length,base:base.length,oL:puedeLiberarA(oL,'tela')}));
+   __check("LBN1: la base del mes se parte en listas, frenadas y ya liberadas (y, aparte, las de diseño sin WH: 08-oct) sin repetir ni perder ninguna",p.listas.length+p.frenadas.length+p.liberadas.length+p.diseno.length===base.length&&new Set(p.listas.concat(p.frenadas,p.liberadas,p.diseno).map(o=>o.id)).size===base.length&&p.listas.includes(oL)&&p.frenadas.includes(oF)&&p.liberadas.includes(oY),JSON.stringify({l:p.listas.length,f:p.frenadas.length,y:p.liberadas.length,base:base.length,oL:puedeLiberarA(oL,'tela')}));
    render();let h=document.getElementById('p-liberacion').innerHTML;
    const valTarj=k=>{const m=h.match(new RegExp('data-t="lib-v-'+k+'"[^>]*><div class="v">([\\d.]+)</div>'));return m?+m[1].replace(/\./g,''):null};
    __check("LBN2: las tres tarjetas dicen cuántas hay listas, frenadas y ya liberadas (las mismas cuentas)",valTarj('listas')===p.listas.length&&valTarj('frenadas')===p.frenadas.length&&valTarj('liberadas')===p.liberadas.length,JSON.stringify([valTarj('listas'),valTarj('frenadas'),valTarj('liberadas')]));
@@ -11362,7 +11362,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     LIB.et='tela';LIB.vista=null;render()}
    /* liberar desde Listas: la orden pasa a Ya liberadas y las tarjetas se mueven */
    {LIB.vista='listas';LIB.sel=new Set([oL.id]);render();liberarA([...LIB.sel],'tela');const p2=partesLib('tela',LIB.ym);
-    __check("LBN6: liberar las marcadas pasa la orden de Listas a Ya liberadas (el total no cambia)",liberada(oL,'tela')&&!p2.listas.includes(oL)&&p2.liberadas.includes(oL)&&p2.listas.length+p2.frenadas.length+p2.liberadas.length===base.length)}
+    __check("LBN6: liberar las marcadas pasa la orden de Listas a Ya liberadas (el total no cambia)",liberada(oL,'tela')&&!p2.listas.includes(oL)&&p2.liberadas.includes(oL)&&p2.listas.length+p2.frenadas.length+p2.liberadas.length+p2.diseno.length===base.length)}
    /* ya liberadas: un solo botón para quitar la liberación, con motivo; lo que libera la fase de Odoo se dice así */
    {LIB.vista='liberadas';render();const h4=document.getElementById('p-liberacion').innerHTML;
     __check("LBN7: en Ya liberadas cada una trae UN botón para deshacer (desliberar o revertir) y el de fase; el buscador es el de arriba",(h4.includes("mDesliberar(['"+oY.id+"']")!==h4.includes("mRetirarLib('"+oY.id+"'"))&&h4.includes("mCambiarFase('"+oY.id+"')")&&!/data-q="LIB.q4"/.test(h4)&&/data-q="LIB.q"/.test(h4));
