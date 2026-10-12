@@ -664,7 +664,7 @@ html[data-modo="oscuro"] .o-chk,html[data-modo="oscuro"] .o-dd .o-ico{color:var(
 .b3-linea{font-size:var(--fs-m);margin:14px 0 6px}.b3-esp{font-size:22px;color:var(--ok);font-weight:800}.b3-usd{color:var(--ok);font-weight:800}.b3-det{margin:8px 0;font-size:var(--fs-s);line-height:1.6}.b3-det li{margin-bottom:6px}.b3-det .mut{font-size:var(--fs-xs)}.b3-falta{color:var(--aviso)}
 @media (max-width:860px){.b3-franja{grid-template-columns:1fr}}
 /* Planta en vivo */
-.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;align-items:start}
+.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:12px;margin-top:12px;align-items:start}
 .env-reloj{font-size:20px;font-weight:700;color:var(--alerta);letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-right:14px;white-space:nowrap}
 html.envivo-tv .env-reloj{font-size:34px}
 .env-sem{display:inline-flex;gap:3px;align-items:center;padding:2px 4px;border-radius:8px;background:#22272E;vertical-align:middle;margin-right:6px}
@@ -680,7 +680,8 @@ html.envivo-tv .env-sem i{width:13px;height:13px}
 .env-bar{height:8px;border-radius:4px;background:var(--field);margin-top:4px;overflow:hidden}.env-bar i{display:block;height:8px;border-radius:4px}
 .env-now{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule2);font-size:var(--fs-s);color:var(--ink2)}
 html.envivo-tv header,html.envivo-tv nav,html.envivo-tv #nav,html.envivo-tv .atras{display:none!important}
-html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}html.envivo-tv .env-t{font-size:16px}html.envivo-tv .env-h{font-size:22px}html.envivo-tv .env-l{font-size:17px}html.envivo-tv .env-kpis .v{font-size:40px}html.envivo-tv .lede{display:none}
+html.envivo-tv #app{grid-template-rows:minmax(0,1fr)!important}   /* 12-oct (VIVO-TV): sin la cabecera, la página ocupa toda la altura (antes quedaba en la primera fila, de 64 px) */
+html.envivo-tv #p-envivo{font-size:18px}html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}html.envivo-tv .env-t{font-size:16px}html.envivo-tv .env-h{font-size:22px}html.envivo-tv .env-l{font-size:17px}html.envivo-tv .env-kpis .v{font-size:40px}html.envivo-tv .lede{display:none}
 /* el interruptor sol / luna */
 .modo-sw{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden;margin:0 6px;height:30px}
 .modo-sw button{background:transparent!important;border:0!important;height:30px!important;width:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;color:inherit;opacity:.65;cursor:pointer}
@@ -838,9 +839,9 @@ html[data-modo="oscuro"] body .kpis>.kpi.tarj.bad .v{color:var(--alerta)!importa
 .ed-grid .ed-prio{grid-column:span 2}.prio-chips{flex-wrap:nowrap;max-width:none}.prio-chips .chip{white-space:nowrap}
 /* pulido V1: las tarjetas vuelven a la grilla, en el orden del proceso leído por filas (con columnas tipo mosaico Estampado quedaba debajo de Corte);
    align-items:start evita que las cortas se estiren */
-.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start;column-width:auto}   /* 08-oct: auto-fit (no auto-fill): con 5 áreas las tarjetas se estiran y ocupan todo el ancho (antes quedaba un hueco a la derecha) */
+.env-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));align-items:start;column-width:auto}   /* 12-oct (VIVO-CORTE): 400 px de mínimo: la tabla de cada área (Hechas · Avance · Eficiencia · Ahora) entra sin cortarse */   /* 08-oct: auto-fit (no auto-fill): con 5 áreas las tarjetas se estiran y ocupan todo el ancho (antes quedaba un hueco a la derecha) */
 .env-g>.env-c{margin:0}
-html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+html.envivo-tv .env-g{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
 #p-envivo .env-t{font-size:15px}#p-envivo .env-h{font-size:18px}#p-envivo .env-l{font-size:15px}   /* 08-oct: es para una pantalla grande: letra más grande también fuera del modo pantalla */
 .env-sem.apagado{background:var(--field);box-shadow:inset 0 0 0 1px var(--rule)}.env-sem.apagado i{background:var(--rule)}
 .kpi input[type=number].env-meta{width:64px;min-width:0;display:inline-block;padding:1px 4px;font-size:var(--fs-xs);vertical-align:baseline}   /* pulido V1: le gana a input[type=number]{width:100%;min-width:92px} y al aspecto Odoo: «meta [85] %» en una línea */
@@ -982,7 +983,7 @@ details.det-agr>summary .note{font-weight:400}
 #p-tejeduria [data-tej-tab]:not(.on){display:none}
 .pagehead .tej-tabs,.pagehead .aud-vistas{max-width:none;margin-right:10px}
 .pagehead .tej-tabs .chip,.pagehead .aud-vistas .chip{font-size:var(--fs-s)}
-p.tej-base{font-size:var(--fs-s);margin:0 0 10px;color:var(--ink2)}
+p.tej-base,p.tej-cuenta{font-size:var(--fs-s);margin:0 0 10px;color:var(--ink2)}
 p.tej-cuenta{margin:-4px 0 14px}
 .row.tej-fila{align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
 h4.tej-sec{margin:22px 0 8px;font-size:var(--fs-m)}
@@ -3087,7 +3088,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 15:04';
+const APP_BUILD='2026-10-12 15:10';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -6061,8 +6062,11 @@ function audCenTxt(t){return String(t==null?'':t).split(' → ').map(x=>{const i
 function audGrupoTxt(e,n){const a=AUD_AUTO.find(([rx])=>rx.test(e.motivo||''));if(a)return num(n)+' '+a[1];
   const q=textoPlano(audQueTxt(e));const pl={'ruta confirmada':'rutas confirmadas','ruta desconfirmada':'rutas desconfirmadas','cambio de ruta':'cambios de ruta','cambio de fase':'cambios de fase','devolución de fase':'devoluciones de fase','reversión de liberación':'reversiones de liberación','cierre en un centro':'cierres en un centro','cierre reabierto':'cierres reabiertos','corrección de tramo':'correcciones de tramo','mandada a maquila':'mandadas a maquila','vuelve a planta (confección)':'vuelven a planta (confección)','orden de la cola':'cambios en el orden de la cola','cambio de categoría':'cambios de categoría'}[q];
   return num(n)+' '+(pl||'registros de «'+esc(q)+'»')}
+/* 12-oct (revisión del 08-oct, AUD-PERSONAS): «Cambios de las personas» muestra primero lo que hizo una persona; lo automático (rutas rehechas o estimadas
+   por el sistema, AUD_AUTO) va en su propio grupo plegado debajo */
 function auditoriaCambiosHTML(filtro){
-  const L=auditoriaTodo().filter(e=>!filtro||(filtro==='ruta'?e.tipo==='ruta':e.tipo!=='ruta')).slice().reverse();
+  const Ltodo=auditoriaTodo().filter(e=>!filtro||(filtro==='ruta'?e.tipo==='ruta':e.tipo!=='ruta')).slice().reverse();const esAuto=e=>AUD_AUTO.some(([rx])=>rx.test(e.motivo||''));
+  const L=Ltodo.filter(e=>!esAuto(e)),LA=Ltodo.filter(esAuto);
   const clave=e=>[e.tipo,e.u||'',e.motivo||'',String(e.ts||'').slice(0,16)].join('|');
   const filas=[];for(let i=0;i<L.length;){let j=i+1;if(!L[i].dev)while(j<L.length&&!L[j].dev&&clave(L[j])===clave(L[i]))j++;
     if(j-i>=5)filas.push({g:L.slice(i,j)});else for(let t=i;t<j;t++)filas.push({e:L[t]});i=j}
@@ -6075,7 +6079,10 @@ function auditoriaCambiosHTML(filtro){
      <div class="aud-grupo-l"><table><thead><tr><th>OP · fase</th><th>Antes</th><th>Después</th></tr></thead><tbody>${g.slice(0,topeG).map(x=>{const o=byId[x.oid];return `<tr><td style="white-space:nowrap">${o?whCell(o,36):esc(x.op||'')}</td><td>${txtAD(x,x.antes)}</td><td>${txtAD(x,x.despues)}</td></tr>`}).join('')}${g.length>topeG?`<tr><td colspan="3" class="mut">Se muestran ${topeG} de ${num(g.length)}.</td></tr>`:''}</tbody></table></div></details></td></tr>`};
   const tit=filtro==='ruta'?'Cambios y confirmaciones de ruta':'Cambios de fase y reversiones de liberación, cierres y otros';
   const ayuda=filtro==='ruta'?'Cada vez que una ruta se confirma, se desconfirma o cambia (a mano, en lote, desde un archivo o porque el sistema la rehízo al cambiar la categoría o su hoja de operaciones) queda aquí: quién, cuándo, cómo estaba antes y cómo quedó. Los registros seguidos de la misma persona, con el mismo motivo y en el mismo minuto van juntos en una fila: ábrela para ver las órdenes.':'Las devoluciones de fase y las reversiones de liberación piden un motivo de la lista de motivos (Configuración general → Órdenes, fases y archivos de Odoo). Cada fila dice quién, cuándo, cómo estaba antes y cómo quedó. Los registros seguidos iguales (misma persona, mismo motivo, mismo minuto) van juntos en una fila plegable.';
-  return `<div class="panel aud-cambios"><h3>${tit} ${ayudaTipHTML(ayuda)}<span class="note">${num(L.length)} ${L.length===1?'registro':'registros'}</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table>${(filas.length&&filas.slice(0,tope).every(f=>f.g))?'':'<thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP · fase</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead>'}<tbody>${filas.slice(0,tope).map(f=>f.g?grupo(f.g):fila(f.e)).join('')||'<tr><td colspan="7" class="mut">Todavía no hay registros.</td></tr>'}${filas.length>tope?`<tr><td colspan="7" class="mut">Se muestran ${tope} de ${num(filas.length)} filas: las más recientes.</td></tr>`:''}</tbody></table></div></div></div>`}
+  /* lo automático: agrupado igual (misma sesión, mismo motivo, mismo minuto), plegado */
+  const filasA=[];for(let i=0;i<LA.length;){let j=i+1;while(j<LA.length&&clave(LA[j])===clave(LA[i]))j++;filasA.push(j-i>=2?{g:LA.slice(i,j)}:{e:LA[i]});i=j}
+  const auto=LA.length?`<details class="aud-auto" style="margin-top:10px"><summary class="mut" style="cursor:pointer">Cambios automáticos del sistema (${num(LA.length)}) · rutas rehechas o puestas por el sistema al cambiar la categoría o su hoja de operaciones</summary><div class="scroll" style="max-height:320px"><table><tbody>${filasA.slice(0,tope).map(f=>f.g?grupo(f.g):fila(f.e)).join('')}</tbody></table></div></details>`:'';
+  return `<div class="panel aud-cambios"><h3>${tit} ${ayudaTipHTML(ayuda)}<span class="note">${num(L.length)} ${L.length===1?'registro':'registros'} de personas${LA.length?' · '+num(LA.length)+' automáticos aparte':''}</span></h3><div class="body"><div class="scroll" style="max-height:420px"><table>${(filas.length&&filas.slice(0,tope).every(f=>f.g))?'':'<thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>OP · fase</th><th>Antes</th><th>Después</th><th>Motivo</th></tr></thead>'}<tbody>${filas.slice(0,tope).map(f=>f.g?grupo(f.g):fila(f.e)).join('')||'<tr><td colspan="7" class="mut">'+(LA.length?'Ninguna persona cambió nada en este período.':'Todavía no hay registros.')+'</td></tr>'}${filas.length>tope?`<tr><td colspan="7" class="mut">Se muestran ${tope} de ${num(filas.length)} filas: las más recientes.</td></tr>`:''}</tbody></table></div>${auto}</div></div>`}
 /* f) Navegación: "← atrás" cuando se llega a una pantalla desde un clic en otra; vuelve con filtros y scroll */
 let NAVH=[];let NAV_PROG=false;
 function navRefs(){return estadosPantalla()}   // un solo mapa de estados para todo el sistema
@@ -7419,7 +7426,7 @@ function opLibHTML(o){const ep=enPlanMes(o);const hayF=hayFotosOrdenes();const p
 /* la marca «ruta revisada en general» de producción: se queda hasta que la usuaria decida si la usa (no frena ni libera; la que manda es la ruta confirmada) */
 function revGeneralTagHTML(o){const rg=o.rutaRevGeneral;
   return rg?'<span class="tag t-ok" title="ruta revisada en la liberación general · '+esc(rg.u||'')+' · '+fmtDiaTs(rg.ts)+'">ruta revisada en general</span>'
-    :'<span class="tag t-mut" title="marca de la liberación general: nadie la ha marcado todavía. Es solo una marca: no frena ni libera (la que manda es la ruta confirmada)">ruta sin revisar en general</span>'}
+    :'<span class="tag t-mut" title="marca de la liberación general: nadie la ha marcado todavía. Es solo una marca: no frena ni libera (la que manda es la ruta confirmada)">ruta estimada, sin revisar</span>'}
 /* Listas de la liberación textil: la ruta en letra chica (la de Órdenes, con lo hecho en gris) y la casilla «revisada» */
 function rutaLibHTML(o){const ed=puedeEditarRuta();
   return '<span class="lib-ruta'+(ed?' clic':'')+'" '+(ed?'onclick="mRutaCentro(\''+o.id+'\')" title="clic: revisar o corregir la ruta"':'title="la ruta de producción de la orden"')+'>'+rutaCeldaHTML(o)+'</span> '+rutaCtrlLib(o)}
@@ -7433,15 +7440,16 @@ function celdaLibProd(o){const v=LIBV[o.id]||{};const puedeF=puede('programa')||
 /* «Qué la frena» en la fila, igual en las dos liberaciones: arriba, SOLO si la meta venció, «🔴 Meta vencida» (el rojo es solo para eso); abajo, un chip
    ámbar por freno con las MISMAS palabras de la tabla «Qué las frena» (faltaLiberarA) y, si el perfil puede ir, la flecha que lleva adonde se arregla
    (FRENO_LIB / frenoLinkOk; la ruta, a Órdenes → Rutas con su referencia). A lo sumo cuatro a la vista y «+N». «✎ ruta» la corrige aquí mismo. */
-function frenosFilaLibHTML(o,et,falta){let venc=false;try{venc=esMetaVencida(o,PLAN||programar())}catch(e){}
+/* 12-oct (revisión del 08-oct, FRENA-MEZCLA): «Qué la frena» lleva SOLO frenos: el primero a la vista y los demás en «+N» (regla del 02-oct: estado + fase + como
+   mucho una etiqueta); el semáforo (meta vencida, va tarde…) va en su propia columna «Estado» y «color sin Pantone · no frena» entra en el «+N» */
+function frenosFilaLibHTML(o,et,falta){
   const fr=falta.filter(x=>!noFrenaLib(x,et));
   const chips=fr.map(x=>{const f=FRENO_LIB[x]||{};const ok=frenoLinkOk(f);const esRuta=x==='falta confirmar ruta';const clic=ok?(esRuta?'irRutaDeOrden(\''+o.id+'\')':f.ir):'';
     return {txt:x+(clic?' →':''),cls:'t-aviso',title:esRuta&&ok?'ir a Órdenes → Rutas y confirmar la ruta de su referencia':(f.donde||x)+(f.ir&&!ok?' (lo arregla otra persona)':''),onclick:clic}});
-  const pant=fr.length<falta.length?'<span class="tag t-mut" title="el Pantone no impide liberar a producción">color sin Pantone · no frena</span>':'';
+  if(fr.length<falta.length)chips.push({txt:'color sin Pantone · no frena',cls:'t-mut',title:'el Pantone no impide liberar a producción'});
   const ed=puedeEditarRuta()?'<a class="lib-ruta-ed" onclick="mRutaCentro(\''+o.id+'\')" title="revisar y corregir la ruta aquí">✎ ruta</a>':'';
   const rev=et==='corte'?revGeneralTagHTML(o):rutaCtrlLib(o);
-  return (venc?'<div class="lib-venc"><span class="sem sem-rojo" title="la fecha meta ya pasó y la orden no está terminada">'+semEmojiHTML('rojo')+' Meta vencida</span></div>':'')
-   +'<div class="lib-chips">'+[tagsCompactasHTML(chips,4),pant].filter(Boolean).join(' ')+'</div>'
+  return '<div class="lib-chips">'+tagsCompactasHTML(chips,1)+'</div>'
    /* pulido V2: la acción («✎ ruta») y la marca de ruta revisada (decisión LIB-3, se queda) van en su propia línea, separadas de los frenos */
    +((ed||rev)?'<div class="lib-sub">'+[ed,rev].filter(Boolean).join(' · ')+'</div>':'')}
 function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const lista=puedeLiberarA(o,et);const falta=lista?[]:faltaLiberarA(o,et);
@@ -7450,6 +7458,7 @@ function filaLibB1(o,et){const puedeF=puede('programa')||puede('liberar');const 
    <td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td style="white-space:nowrap">${dotColor(o.color)}${esc((C(o.color)||{}).n||'')}</td>
    <td class="num">${num(o.cant)}</td><td>${fmtFecha(o.fecha)}</td>
    ${et==='tela'?`<td class="lib-tela${lista?'':' lib-fr'}">${chipsFaltaTela(o)||'<span class="mut">—</span>'}</td>`:''}
+   <td class="lib-est">${estadoSemaforoHTML(o,PLAN||programar())}</td>
    <td class="lib-ult${lista?'':' lib-fr'}">${!lista?frenosFilaLibHTML(o,et,falta):(et==='corte'?celdaLibProd(o):rutaLibHTML(o))}</td></tr>`}
 /* ---------- la lista del bloque 1 de Liberación, a su propia función (16-sep-2026, punto 2a) ----------
    Es EXACTAMENTE la plantilla que vivía dentro de bloqueLibB1: se movió, no se cambió. Recibe en `ctx`
@@ -7579,7 +7588,7 @@ function avanceLibHTML(p,et){const pzs=xs=>xs.reduce((a,o)=>a+(+o.cant||0),0);co
    fila o varias a la vez con «Liberar las marcadas»; la casilla sale a quien libera en lote o pone el lavado (selLibProdOk). */
 function cabLib(et,vista,todas){const ult=vista==='listas'?(et==='corte'?'Verificado en bodega':'Ruta'):'Qué la frena';
   const chk=(vista==='listas'&&(et==='corte'?selLibProdOk():(puede('programa')||puede('liberar'))))?`<input type="checkbox" title="marcar todas las que ves" ${todas?'checked':''} onchange="if(this.checked)marcarTodasLib('${et}');else ningunaLib()">`:'';
-  return `<thead><tr><th style="width:26px">${chk}</th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th title="propuesta del catálogo: confírmala tela por tela">Tela · qué le falta</th>':''}<th${et==='corte'&&vista==='listas'?' title="tu firma: la materia prima y los insumos están en bodega"':''}>${ult}</th></tr></thead>`}
+  return `<thead><tr><th style="width:26px">${chk}</th><th>OP · fase</th><th>Cliente</th><th>Color</th><th class="num">Prendas</th><th>Entrega</th>${et==='tela'?'<th title="propuesta del catálogo: confírmala tela por tela">Tela · qué le falta</th>':''}<th title="el semáforo de la orden: meta vencida, va tarde o lo que le falta (la misma columna de Órdenes)">Estado</th><th${et==='corte'&&vista==='listas'?' title="tu firma: la materia prima y los insumos están en bodega"':''}>${ult}</th></tr></thead>`}
 function filaLiberadaLib(o,et){const reg=libRegistroDe(o,et);const puedeF=puede('programa')||puede('liberar');
   const quitar=reg?(puedeDesliberar()?`<button class="btn ghost sm" onclick="mDesliberar(['${o.id}'],'${et}')" title="desliberar: vuelve a la lista de pendientes, pide motivo, queda en auditoría y avisa si ya tiene avance">desliberar</button> `
     :(puedeF?`<button class="btn ghost sm" onclick="mRetirarLib('${o.id}','${et}')" title="revertir la liberación: pide motivo de la tabla 15 y queda en auditoría">revertir</button> `:'')):'';
@@ -7597,7 +7606,7 @@ function listaVistaLibHTML(et,ym,vista,p0){const p=p0||partesLib(et,ym);let h=''
   else{const fr=LIB.freno&&vista==='frenadas'?p.frenadas.filter(o=>faltaLiberarA(o,et).includes(LIB.freno)):p.frenadas;
     const xs=vista==='listas'?p.listas:fr;
     h=listaLibB1HTML(et,{detalle:xs,titulo:vista==='listas'?'Listas para liberar':(LIB.freno&&vista==='frenadas'?'Frenadas por «'+LIB.freno+'»':'Frenadas'),
-      vacio:vista==='listas'?'Ninguna lista para liberar con estos filtros.':'Ninguna frenada con estos filtros.',cab:cabLib(et,vista,vista==='listas'&&xs.length>0&&xs.every(o=>LIB.sel.has(o.id))),nCols:et==='tela'?8:7});
+      vacio:vista==='listas'?'Ninguna lista para liberar con estos filtros.':'Ninguna frenada con estos filtros.',cab:cabLib(et,vista,vista==='listas'&&xs.length>0&&xs.every(o=>LIB.sel.has(o.id))),nCols:et==='tela'?9:8});
     const tapadas=vista==='frenadas'&&LIB.freno?p.frenadas.length-fr.length:0;
     if(tapadas>0)h=`<p class="lib-otras" style="font-size:var(--fs-s);margin:0 0 8px">Hay ${num(tapadas)} ${tapadas===1?'frenada más':'frenadas más'} por otros motivos · <a style="cursor:pointer;text-decoration:underline" onclick="LIB.freno=null;LIB.scroll=0;render()">ver todas las frenadas</a></p>`+h}
   if(String(LIB.q||'').trim()){const otras=LIB_VISTAS.filter(([k])=>k!==vista&&p[k].length);
@@ -8997,7 +9006,7 @@ function samMandaHTML(){const ok=puedeIngTabla('categorias');const l=samMandaLis
    ${dif.n?`<div class="warn ops-aviso-tiempos" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${num(dif.ordenes)} ${dif.ordenes===1?'orden abierta todavía no tiene':'órdenes abiertas todavía no tienen'} los tiempos de hoy</b> <span class="mut" title="${num(dif.n)} pasos guardados con otro tiempo: ${num(dif.antesH,0)} h hoy → ${num(dif.despuesH,0)} h con los tiempos de hoy. ${sesionTocaOrdenes()?'Normalmente no pasa: cada cambio aquí, en Centros o en Calendario y parámetros se aplica solo a todo lo abierto.':'Los cambios que hace el perfil Ingeniería no los aplica su perfil (no cambia órdenes): los aplica planificación con este botón, y a ella le sale en Hoy.'}">· ${num(dif.n)} pasos</span></span><button class="btn sm" data-ver="1" onclick="mAplicarTiempos()">Ver y aplicar los tiempos de hoy</button></div>`:'<p class="lede"><b>Todo lo abierto ya tiene estos tiempos.</b> Cualquier cambio aquí (o en el minuto de un centro, ojales y botones, etiquetas o el minuto estimado) se aplica al momento a todas las órdenes abiertas y queda en bitácora con las horas antes/después; lo cerrado no se toca.</p>'}
    <div class="row" style="margin:0 0 8px"><label style="margin:0;font-weight:400"><input type="checkbox" data-ver="1" ${OPV.samTodos?'checked':''} onchange="OPV.samTodos=this.checked;render()"> ver todos los tipos de producto (${num(cats.length)})</label>${OPV.samTodos?'':` <span class="mut" style="font-size:var(--fs-xs)">se ven ${num(visibles.length)}: los que ya tienen un tiempo aquí y las camisetas</span>`}</div>
    <div class="scroll" style="max-height:420px"><table style="font-size:var(--fs-s)"><thead><tr><th>Tipo de producto</th>${SAM_MANDA_CENTROS.map(c=>'<th class="num">'+esc(nCen(c))+'</th>').join('')}${conOrigen?'<th>Origen</th>':''}<th></th></tr></thead><tbody>
-   ${visibles.map(k=>{const sm=k.samManda||{};return `<tr><td><b>${esc(nombreCat(k))}</b></td>${SAM_MANDA_CENTROS.map(c=>{const v=sm[c];const h=hojaDe(k,c);return '<td class="num"><input type="number" step="0.01" style="width:84px" value="'+(v&&v.min!=null?v.min:'')+'" placeholder="'+(h!=null?'hoja '+num(h,2):(c==='modulos'&&minEstimadoConf(k)!=null?'estimado '+num(minEstimadoConf(k),2):'—'))+'" title="'+(h!=null?'vacío = la hoja de operaciones guardada: '+num(h,2)+' min':(c==='modulos'&&minEstimadoConf(k)!=null?'vacío = el minuto estimado: '+num(minEstimadoConf(k),2)+' min':'vacío = lo que sigue en el orden de mando; sin nada, el paso va en 0 y sale en la bandeja'))+'" '+(ok?'':'disabled')+' onchange="setSamManda(\''+k.id+'\',\''+c+'\',this.value)"></td>'}).join('')}${conOrigen?`<td style="font-size:var(--fs-xs)">${[...new Set(Object.values(sm).map(v=>ingTxtVisible(v.fuente)))].map(esc).join(' · ')}${Object.values(sm).some(v=>v.pendiente)?' <span class="tag t-aviso">por confirmar</span>':(Object.keys(sm).length?' <span class="tag t-ok">confirmado</span>':'')}</td>`:''}<td>${ok&&Object.values(sm).some(v=>v.pendiente)?Object.keys(sm).filter(c=>sm[c].pendiente).map(c=>'<button class="btn ghost sm" onclick="confirmarSamManda(\''+k.id+'\',\''+c+'\')">✓ '+esc(nCen(c))+'</button>').join(' '):''}</td></tr>`}).join('')}</tbody></table></div>
+   ${visibles.map(k=>{const sm=k.samManda||{};return `<tr><td><b>${esc(nombreCat(k))}</b></td>${SAM_MANDA_CENTROS.map(c=>{const v=sm[c];const h=hojaDe(k,c);return '<td class="num"><input type="number" step="0.01" style="width:84px" value="'+(v&&v.min!=null?v.min:'')+'" placeholder="'+(h!=null?num(h,2):(c==='modulos'&&minEstimadoConf(k)!=null?num(minEstimadoConf(k),2):'—'))+'" title="'+(h!=null?'vacío = la hoja de operaciones guardada: '+num(h,2)+' min':(c==='modulos'&&minEstimadoConf(k)!=null?'vacío = el minuto estimado: '+num(minEstimadoConf(k),2)+' min':'vacío = lo que sigue en el orden de mando; sin nada, el paso va en 0 y sale en la bandeja'))+'" '+(ok?'':'disabled')+' onchange="setSamManda(\''+k.id+'\',\''+c+'\',this.value)"></td>'}).join('')}${conOrigen?`<td style="font-size:var(--fs-xs)">${[...new Set(Object.values(sm).map(v=>ingTxtVisible(v.fuente)))].map(esc).join(' · ')}${Object.values(sm).some(v=>v.pendiente)?' <span class="tag t-aviso">por confirmar</span>':(Object.keys(sm).length?' <span class="tag t-ok">confirmado</span>':'')}</td>`:''}<td>${ok&&Object.values(sm).some(v=>v.pendiente)?Object.keys(sm).filter(c=>sm[c].pendiente).map(c=>'<button class="btn ghost sm" onclick="confirmarSamManda(\''+k.id+'\',\''+c+'\')">✓ '+esc(nCen(c))+'</button>').join(' '):''}</td></tr>`}).join('')}</tbody></table></div>
    <p class="lede">Vacío = lo que sigue en el orden de mando (el minuto estimado de confección o el minuto del centro); sin ninguno, el paso va en 0 y sale en la bandeja. En gris dentro de la caja, lo que se usaría. Origen «Estudio de tiempos anterior · Santiago» = cargado el 21-sep desde el listado de tiempos estándar (mediana de los estilos propios de cada tipo); se confirma aquí con ✓.</p></div></div>`}
 /* --- antes/después: qué cambia en las órdenes cargadas si se aplican los tiempos de hoy (tiempoPaso con samPorCentro) --- */
 function tiempoEsperadoPaso(o,p,k,spc){if(p.centro==='modulos'&&o.opsSam&&!(k.samManda&&k.samManda.modulos&&k.samManda.modulos.min!=null)){const t=samConfeccionOrden(o);if(t!=null)return {centro:'modulos',t:+t.toFixed(4)}}return tiempoPaso({centro:p.centro,t:p.t},k,spc,+o.puntadas||0)}
@@ -14479,7 +14488,7 @@ const TEJ_BASE={
   ahora:'Base: <b>órdenes abiertas con tela propia que todavía no se teje</b>; la tabla «Telas por tejer» cuenta las que ya tienen la tela liberada y el stock se compara con lo que entra a corte en el mes. Kilos <b>en crudo, sin merma</b>.',
   mano:'Base: <b>lo que la persona de tejeduría programa a mano</b> por máquina y día, y lo que ya marcó como tejido. El sistema no asigna máquinas. Kilos <b>en crudo, sin merma</b>.',
   viene:'Lo que van a pedir <b>las órdenes que todavía no llegan a Planificación</b>, liberadas o no (la macro del mes; la base exacta y el mes del Proyecto van justo abajo). Kilos <b>en crudo con la merma de tintura sumada</b>: por eso no se suman con «Por tejer ahora».'};
-function tejBaseHTML(k){return `<p class="base-linea tej-base">${TEJ_BASE[k]}</p>${k==='ahora'?porTejerLineaHTML():''}`}
+function tejBaseHTML(k){return `<p class="base-linea tej-base">${TEJ_BASE[k]}</p>${k==='ahora'?porTejerLineaHTML():''}`}   /* 12-oct (TEJ-BASES): UNA línea de base por pestaña (la cuenta de «por tejer» va con su propia clase) */
 /* V15 (08-oct): «órdenes con tela propia por tejer» = UNA cuenta para Tejeduría y Avance por área. Abiertas que pasan por tejeduría y todavía tienen
    kilos de tela propia sin tejer (kgPendiente > 0: las tejidas, tinturadas o listas dan 0; antes se contaban también las que no tienen ni un kilo de
    tela propia). Las de diseño (sin WH) van aparte. «Liberadas» = con la tela liberada (liberada(o,'tela'), la regla de Liberación). Kilos en crudo, sin merma. */
@@ -14487,7 +14496,7 @@ function porTejerCuenta(){const ab=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej
   const kg=xs=>xs.reduce((a,o)=>a+kgPendiente(o),0);const lib=con.filter(o=>liberada(o,'tela'));
   return {ords:con,n:con.length,lib:lib.length,kg:kg(con),kgLib:kg(lib),disenoN:dis.length,kgDiseno:kg(dis)}}
 function porTejerLineaHTML(c){c=c||porTejerCuenta();
-  return `<p class="tej-base tej-cuenta" title="órdenes abiertas que pasan por tejeduría y todavía tienen kilos de tela propia sin tejer; la misma cuenta de Avance por área → Tejeduría">Por tejer en total: <b>${num(c.n)} ${c.n===1?'orden':'órdenes'} con tela propia</b> (${num(c.lib)} con la tela liberada) · ${num(c.kg)} kg en crudo${c.disenoN?` · además ${num(c.disenoN)} ${c.disenoN===1?'orden':'órdenes'} de diseño sin WH (${num(c.kgDiseno)} kg)`:''}.</p>`}
+  return `<p class="tej-cuenta" title="órdenes abiertas que pasan por tejeduría y todavía tienen kilos de tela propia sin tejer; la misma cuenta de Avance por área → Tejeduría">Por tejer en total: <b>${num(c.n)} ${c.n===1?'orden':'órdenes'} con tela propia</b> (${num(c.lib)} con la tela liberada) · ${num(c.kg)} kg en crudo${c.disenoN?` · además ${num(c.disenoN)} ${c.disenoN===1?'orden':'órdenes'} de diseño sin WH (${num(c.kgDiseno)} kg)`:''}.</p>`}
 function vTej(el){
   const P=S.ordenes.length?programar():{tej:[]};const tab=tejTabActual();
   const pest=TEJ_TABS.map(([k,n])=>`<span class="chip ${tab===k?'on':''}" role="tab" aria-selected="${tab===k}" data-tej-chip="${k}" onclick="verTejTab('${k}')">${n}</span>`).join('');
@@ -15004,11 +15013,11 @@ function tagArm(kg,cap,telas){if(kg<=1e-6)return'';const PP=S.params;const tol=1
   if(kg>=(prm('granOk',180))-1e-6)return' <span class="tag t-aviso" title="Se puede soltar con aprobación">previo aprobación</span>';
   if(chica&&kg<=chica*tol+1e-6)return' <span class="tag" title="Sin más volumen del color: no se fragmenta, va directo a la máquina pequeña">pendiente · va a máquina pequeña ('+num(chica)+' kg)</span>';
   const falta=cap?Math.max(0,cap*(prm('pctBueno',90))/100-kg):0;   /* 02-oct (TIN-4): no es un error; dice cuánto falta para que corra solo */
-  return cap&&falta>0?' <span class="tag" title="un baño corre solo desde el '+num(prm('pctBueno',90))+' % de la capacidad de su máquina">pendiente · faltan '+num(falta)+' kg para llenar</span>':' <span class="tag">pendiente · bajo mínimo</span>'}
+  return cap&&falta>0?' <span class="tag" title="un baño corre solo desde el '+num(prm('pctBueno',90))+' % de la capacidad de su máquina">pendiente · faltan '+num(falta)+' kg para llegar al '+num(prm('pctBueno',90))+' % ('+num(Math.round(cap*prm('pctBueno',90)/100))+' kg)</span>':' <span class="tag">pendiente · bajo mínimo</span>'}
 /* 02-oct (TXT-2): Stock de tela cruda, Tejeduría y Macro del mes cuentan «cuánto hay que tejer» sobre bases distintas; cada una dice la suya a la
    vista y enlaza a las otras dos con su base en una línea, para que tres números distintos no parezcan un error */
 /* 08-oct: las tres están en Tejeduría (pestañas «Por tejer ahora» y «Lo que viene»); el enlace cambia de pestaña y lleva al recuadro */
-function cuentasTelaHTML(aqui){const l=[['tejeduria','ahora','Telas por tejer','liberado y sin tejer, en crudo'],['stock','ahora','Stock en bodega','lo que entra a corte en el mes, en crudo'],['macro','viene','Lo que viene','las órdenes antes de Planificación, liberadas o no, con merma']];
+function cuentasTelaHTML(aqui){if(typeof page!=='undefined'&&page==='tejeduria')return '';   /* 12-oct (TEJ-BASES): dentro de Tejeduría las pestañas ya son esas cuentas */const l=[['tejeduria','ahora','Telas por tejer','liberado y sin tejer, en crudo'],['stock','ahora','Stock en bodega','lo que entra a corte en el mes, en crudo'],['macro','viene','Lo que viene','las órdenes antes de Planificación, liberadas o no, con merma']];
   return '<p class="base-otras mut">Otras cuentas de tela: '+l.map(([p,t,n,q])=>p===aqui?'<b>'+n+'</b> ('+q+', aquí)':'<a style="cursor:pointer" onclick="verTejTab(\''+t+'\',\'tej-'+p+'\')">'+n+'</a> ('+q+')').join(' · ')+'.</p>'}
 /* 02-oct (TEJ-2): UNA tabla «Telas por tejer» en lugar de dos que daban el mismo número («Resumen por tipo de tela» y «Cargas por tela · pedido vs
    cargado»). No calcula nada nuevo: junta lo que ya sumaba esta función (kg cargados, liberados, tejidos, por tejer, órdenes y colores abiertos)
@@ -15027,7 +15036,7 @@ function resumenTelasHTML(P){P=P||(S.ordenes.length?programar():{tej:[]});const 
   const opsTot=new Set(todas.flatMap(x=>[...(x.c.ords||[])])).size;
   const total=`<tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${num(sum(todas,x=>x.r.kg))}</td><td class="num">${num(sum(todas,x=>x.r.lib))}</td><td class="num">${num(sum(todas,x=>x.r.tej))}</td><td class="num">${num(sum(todas,x=>x.r.pend))}</td><td class="num">${num(opsTot)}</td><td class="num">${num(Math.round(sum(todas,x=>x.c.stock)))}</td><td class="num">${num(sum(todas,x=>x.c.cargado))}</td><td class="num">${num(Math.round(sum(todas,x=>x.c.estimado)))}</td><td colspan="2"></td></tr>`;
   return `<div class="panel"><h3>Telas por tejer <span class="note">resumen por tipo de tela · pedido vs cargado · kg crudo</span></h3><div class="body">
-   <p class="base-linea">Base: <b>órdenes abiertas</b> · <b>Por tejer</b> = liberado a tela y todavía no tejido.</p>${cuentasTelaHTML('tejeduria')}
+   <p class="lede">Base: <b>órdenes abiertas</b> · <b>Por tejer</b> = liberado a tela y todavía no tejido.</p>${cuentasTelaHTML('tejeduria')}
    <div class="tej-tabla"><table>${cab}<tbody>${conPend.map(fila).join('')||'<tr><td colspan="11" class="mut">Nada liberado por tejer.</td></tr>'}${total}</tbody></table></div>
    ${sinPend.length?`<details class="tej-cero"><summary class="mut">Telas sin nada por tejer (${num(sinPend.length)})</summary><div class="tej-tabla"><table>${cab}<tbody>${sinPend.map(fila).join('')}</tbody></table></div></details>`:''}
    <p class="lede">Se teje por volumen, no orden por orden: esta tabla suma los kilos por tela de todas las órdenes abiertas para proyectar las corridas. «Por tejer» = liberado a tela y todavía no tejido; para cubrirlo, primero se usa el stock de tela cruda, después lo programado a mano, y lo que falta lo estima el sistema (corrida automática). Pasa el mouse sobre el nombre de una tela para ver cuántas órdenes abiertas y colores la llevan. El total suma también las telas sin nada por tejer.</p></div></div>`}
@@ -15679,7 +15688,7 @@ function iomIdFamNuevo(nombre,def){let b=(iomSlug(nombre)||def||'familia').slice
   let id=b,i=2;while(usado(id)&&i<1000)id=b+'-'+(i++);return id}
 function iomFsam(x){return (Math.round((+x||0)*100)/100).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function iomFmtT(t){return t==null||t===''?'—':String(+(+t).toFixed(3)).replace('.',',')}   /* revisión 06-oct («para dummies»): coma decimal, como el resto de la app */
-function iomPl(n,a,b){return n+' '+(n===1?a:b)}
+function iomPl(n,a,b){return (typeof num==='function'&&typeof n==='number'?num(n):n)+' '+(n===1?a:b)}   /* 12-oct (FORMATOS): «1.000 órdenes», con el punto de miles */
 function iomAhora(){return new Date().toISOString()}
 /* un texto guardado que va como argumento de un onclick: JSON (comillas y barras escapadas) y después esc() para el atributo. Nunca «'…'» a mano:
    el navegador convierte &#39; en comilla ANTES de correr el onclick, así que escapar la comilla simple no protege (revisión de código del 06-oct) */
@@ -17123,7 +17132,14 @@ function iblStgModulo(){const P=IBL.P;if(!P)return;const tiene=iblSubsDe(iblFuen
 function iblAplicarModulo(){const P=IBL.P,r=iblModuloSel();if(!P||!r)return;IBLM.rec=r.id;const x=iblValoresModulo(r);
   ['nops','min','trn','eff'].forEach(k=>{P[k]=x.v[k]});if(x.v.meta!=null)P.meta=x.v.meta;IBLM.firma=iblFirmaModulo(r);iblStgModulo()}
 function iblEntrarModulo(rec){const P=IBL.P;if(!P)return;if(IBLM.modo!=='modulo')IBLM.ideal={meta:P.meta,nops:P.nops,min:P.min,trn:P.trn,eff:P.eff,stg:Object.assign({},P.stg)};
-  IBLM.modo='modulo';if(rec&&iblModulos().some(r=>r.id===rec))IBLM.rec=rec;IBLM.oid=null;iblAplicarModulo()}
+  IBLM.modo='modulo';if(rec&&iblModulos().some(r=>r.id===rec))IBLM.rec=rec;IBLM.oid=null;iblAplicarModulo();iblFamDelModulo()}
+/* 12-oct (BAL-MENSAJES): al entrar a «Módulo real», si la familia elegida no está entre lo que el módulo tiene programado, se elige la de su primera orden
+   programada que tenga secuencia (lo mismo que «Balancear esta», sin redibujar); si ninguna tiene secuencia, se queda la elegida y el bloque lo dice */
+function iblFamDelModulo(){try{const P=IBL.P,r=iblModuloSel();if(!P||!r||typeof ING==='undefined'||ING.estado!=='si'||IOM.leido!=='si'||!S.ordenes.length)return;
+  const P0=programar();const h=hoy();const byOp=new Map(S.ordenes.map(o=>[o.op,o]));
+  const ords=[...new Set((P0.pro||[]).filter(x=>x.rec===r.id&&x.centro==='modulos'&&x.dia&&x.dia>=h).sort((a,b)=>a.dia.localeCompare(b.dia)).map(x=>x.op))].map(op=>byOp.get(op)).filter(Boolean);
+  const secs=ords.map(o=>({o,s:iomSecuenciaDe(o)})).filter(x=>x.s&&x.s.ok);if(!secs.length||secs.some(x=>x.s.fam.id===P.fid))return;
+  const {o,s}=secs[0];P.fid=s.fam.id;P.rid=s.via==='referencia'?s.ref.cod:null;IBL.baseOk=false;IBLM.oid=o.id;if(iblValido('orden',+o.cant))P.orden=+o.cant;iblCargar(false);iblGuardarP()}catch(e){}}
 function iblSalirModulo(){const P=IBL.P;if(P&&IBLM.ideal)Object.assign(P,{meta:IBLM.ideal.meta,nops:IBLM.ideal.nops,min:IBLM.ideal.min,trn:IBLM.ideal.trn,eff:IBLM.ideal.eff,stg:Object.assign({},IBLM.ideal.stg)});
   IBLM.modo='ideal';IBLM.ideal=null;IBLM.oid=null;IBLM.firma=null;if(P)iblCargar(true)}
 /* al arrancar: lo pedido por un enlace (Planificación de producción → Balanceo), si no lo que la persona dejó y, la primera vez, «Módulo real» para quien tenía ese Balanceo */
@@ -17151,7 +17167,7 @@ function iblModuloHTML(r){if(!r)return '';const x=iblValoresModulo(r);const ob=x
   const puedeObj=puede('programa')||puedeCentro('modulos');const guarda=sesionGuardaTabla('recursos');const porQue=!puedeObj?'Tu perfil no fija el objetivo (lo fijan planificación o la supervisora de Confección).':!guarda?OBJETIVO_NO_GUARDA:'';
   const val=(k,lbl,txt)=>`<div class="ibl-mv" data-k="${k}"><span class="ibl-mv-k">${esc(lbl)}</span><b>${txt}</b><small>${esc(x.o[k])}</small></div>`;
   const hist=(r.objetivoHist||[]).length?`<details class="ibl-objhist"><summary>historial (${num(r.objetivoHist.length)})</summary>${r.objetivoHist.slice().reverse().map(h=>'<div>'+fechaHoraLocal(h.ts)+' · '+esc(h.u||'')+' · '+(h.antes==null?'—':esc(String(h.antes)))+' → '+(h.v==null?'—':esc(String(h.v)))+(h.motivo?' · '+esc(h.motivo):'')+'</div>').join('')}</details>`:'';
-  return `<section class="panel ibl-card ibl-mod"><h3><i class="iom-i">0</i> ${esc(r.n)}: su gente, su eficiencia y su meta</h3>
+  return `<section class="panel ibl-card ibl-mod"><h3>${esc(r.n)}: su gente, su eficiencia y su meta</h3>
    <div class="ibl-mvals">${val('nops','Operarios',x.v.nops!=null?num(x.v.nops):'—')}${val('min','Minutos al día',x.v.min!=null?num(x.v.min):'—')}${val('eff','Eficiencia',x.v.eff!=null?num(x.v.eff)+' %':'—')}
     <div class="ibl-mv ibl-obj"><span class="ibl-mv-k">Objetivo (prendas por hora)</span><input type="number" min="0" step="0.1" value="${ob?esc(ob.v):''}" placeholder="sin fijar" aria-label="Objetivo de prendas por hora" ${porQue?'disabled title="'+esc(porQue)+'"':'data-ver="1"'} onchange="setObjetivoHora(${iomJs(r.id)},this.value)"><small>${ob?'fijado por '+esc(ob.u||'')+' el '+fechaHoraLocal(ob.ts)+(ob.antes!=null?' · antes '+esc(String(ob.antes)):''):'lo fija la supervisora; queda quién, cuándo y por qué'}${porQue?' · '+esc(porQue):''}</small>${hist}</div>
     ${val('meta','Meta del día',x.v.meta!=null?num(x.v.meta)+' unidades':'—')}</div>
@@ -17168,8 +17184,8 @@ function iblOrdenesModuloHTML(r){const P0=S.ordenes.length?programar():{pro:[]};
     const sec=!s?'<span class="mut">…</span>':!s.ok?'<span class="tag t-falta">'+esc(s.motivo==='sinFamilia'?'tipo sin familia en Ingeniería':((s.fam?s.fam.nombre:'la familia')+' sin secuencia'))+'</span>':s.via==='referencia'?'ref. '+esc(s.ref.cod):'<span class="mut">base de '+esc(s.fam.nombre)+'</span>';
     const no=!s?'la secuencia todavía se está leyendo':!s.ok?(s.motivo==='sinFamilia'?'su tipo de producto no tiene familia en Ingeniería (Máquinas y personas → Configurar: Listas y reglas → Familias)':'su familia todavía no tiene secuencia (Crear referencia)'):'';
     return `<tr${IBLM.oid===o.id?' class="on"':''}><td>${whCell(o)}</td><td>${esc(nombreCat(K(o.cat)))}</td><td class="num">${num(Math.round(e.pz))}</td><td>${fmtFecha(e.ini)}${e.fin!==e.ini?' – '+fmtFecha(e.fin):''}</td><td>${sec}</td><td><button type="button" class="btn ghost sm" data-ver="1" ${no?'disabled title="'+esc(no)+'"':''} onclick="iblElegirOrden(${iomJs(o.id)})">Balancear esta</button></td></tr>`};
-  const pz=l.reduce((a,e)=>a+e.pz,0);
-  return `<div class="ibl-modord"><h4 class="iom-h4">Lo programado en ${esc(r.n)} <select data-ver="1" aria-label="Mes" onchange="IBLM.mes=this.value;render()">${meses.map(m=>`<option value="${m}"${m===ym?' selected':''}>${esc(mesCortoTxt(m))}</option>`).join('')}</select> <span class="mut">${iomPl(l.length,'orden','órdenes')} · ${num(Math.round(pz))} prendas en el mes</span></h4>
+  const pz=l.reduce((a,e)=>a+e.pz,0);const ningunaSec=listo&&l.length&&!l.some(e=>{const s=iomSecuenciaDe(e.o);return s&&s.ok});
+  return `<div class="ibl-modord">${ningunaSec?`<p class="iom-aviso ibl-sinsec">Ninguna orden programada en ${esc(r.n)} tiene secuencia en Ingeniería: el balanceo sigue con la familia elegida arriba (su secuencia se carga o se crea en Crear referencia).</p>`:''}<h4 class="iom-h4">Lo programado en ${esc(r.n)} <select data-ver="1" aria-label="Mes" onchange="IBLM.mes=this.value;render()">${meses.map(m=>`<option value="${m}"${m===ym?' selected':''}>${esc(mesCortoTxt(m))}</option>`).join('')}</select> <span class="mut">${iomPl(l.length,'orden','órdenes')} · ${num(Math.round(pz))} prendas en el mes</span></h4>
    <p class="ing-sig">«Balancear esta» elige su familia y su referencia (la secuencia de Ingeniería) y pone su cantidad como orden de producción.</p>
    <div class="scroll"><table class="ibl-modord-t"><thead><tr><th>Orden</th><th>Tipo de producto</th><th class="num">Prendas</th><th>Días</th><th>Secuencia</th><th></th></tr></thead><tbody>${l.slice(0,TOPE).map(fila).join('')}</tbody></table></div>
    ${l.length>TOPE?'<p class="mut">y '+iomPl(l.length-TOPE,'orden más','órdenes más')+' (las de días más lejanos).</p>':''}</div>`}
@@ -17278,9 +17294,9 @@ function iblTopHTML(){const P=IBL.P,x=iblFuente(),f=x&&x.f;const tiene=iblSubsDe
   const faltan=iblFaltan();
   return `<section class="panel ibl-card" id="ibl-c1"><h3><i class="iom-i">1</i> Familia y subprocesos de la línea</h3>${iblC1TxtHTML()}
     <div class="ibl-r2"><div class="ibl-fld"><label>Familia de producto</label>${iomComboHTML('balFam','Busca una familia…')}</div><div class="ibl-fld"><label>Referencia (modelo)</label>${iomComboHTML('balRef','Toda la familia · base general')}<div class="iom-refnota" id="ibl-rnote">${esc(iblRefNota(f))}${x&&x.sinPropias?' La referencia aún no tiene operaciones propias: se balancea con la base de la familia.':''}</div></div><div><span class="ibl-lbl">Subprocesos que entran en la línea</span><div class="ibl-pills" id="ibl-stg">${pills}</div></div></div></section>
-   <section class="panel ibl-card" id="ibl-c2"><h3><i class="iom-i">2</i> Meta y recursos</h3><p class="ing-sig">${IBLM.modo==='modulo'?'Los valores vienen del módulo (arriba dice de dónde sale cada uno). Si cambias uno aquí es solo para mirar, en tu pantalla: el módulo no cambia.':'Indica cuántas unidades se van a producir por día y, si quieres, cuántos operarios tienes. El balanceo arma los puestos sin mezclar máquinas: cada puesto es un módulo con una sola máquina.'}</p>
+   <section class="panel ibl-card" id="ibl-c2"><h3><i class="iom-i">2</i> Meta y recursos</h3><p class="ing-sig">${IBLM.modo==='modulo'?((()=>{try{return iblValoresModulo(iblModuloSel()).v.meta==null}catch(e){return false}})()?'Los valores vienen del módulo (arriba dice de dónde sale cada uno), salvo la meta: el módulo no tiene objetivo, así que se usa la del Balanceo ideal. Si cambias uno aquí es solo para mirar, en tu pantalla: el módulo no cambia.':'Los valores vienen del módulo (arriba dice de dónde sale cada uno). Si cambias uno aquí es solo para mirar, en tu pantalla: el módulo no cambia.'):'Indica cuántas unidades se van a producir por día y, si quieres, cuántos operarios tienes. El balanceo arma los puestos sin mezclar máquinas: cada puesto es un módulo con una sola máquina.'}</p>
     <div id="ibl-partida">${iblPartidaDifHTML()}</div>${faltan.length?`<div class="iom-aviso mal">Faltan valores para calcular: ${esc(faltan.join(', '))}. Escríbelos aquí; el valor de partida se pone en Configurar: Listas y reglas → Valores del balanceo de línea.</div>`:''}
-    <div class="ibl-r5">${fld('meta','Unidades a producir por día',false,'',true)}${fld('nops','Operarios disponibles',true,'Sin límite',true)}${fld('min','Minutos por turno')}${fld('trn','Turnos')}${fld('eff','Eficiencia esperada %')}${fld('tol','Tolerancia sobre el takt %')}</div>
+    <div class="ibl-r5">${fld('meta',(IBLM.modo==='modulo'&&(()=>{try{return iblValoresModulo(iblModuloSel()).v.meta==null}catch(e){return false}})())?'Unidades a producir por día (del Balanceo ideal; el módulo no tiene objetivo)':'Unidades a producir por día',false,'',true)}${fld('nops','Operarios disponibles',true,'Sin límite',true)}${fld('min','Minutos por turno')}${fld('trn','Turnos')}${fld('eff','Eficiencia esperada %')}${fld('tol','Tolerancia sobre el takt %')}</div>
     <div class="ibl-orden">${fld('orden','Orden de producción',true,'Cantidad de la orden, ej. 200')}<div class="ibl-ordres" id="ibl-ord">${iblOrdenHTML(IBL.M)}</div></div>
     <div class="ibl-autobar"><button type="button" class="btn" data-ver="1" onclick="iblMejor()">Calcular el mejor balanceo</button><span class="mut">Sin operarios indicados, usa el menor número posible para la meta; con operarios indicados, arma exactamente un puesto por operario. Siempre con la carga más pareja, respetando la secuencia y sin mezclar máquinas. Descarta los ajustes manuales.</span></div>
     <div class="ibl-der" id="ibl-der">${iblDerivadosHTML()}</div></section>`}
@@ -17356,7 +17372,7 @@ function iblSetParam(k,el){const s=String(el.value).trim();const P=IBL.P;
   const a=document.getElementById('ibl-av-'+k);if(a)a.textContent='';iblGuardarP();if(k!=='orden')iblRecalcular();iblPintar(false)}
 /* al salir del campo: lo que no se aplicó vuelve a su valor (el aviso dice por qué) */
 function iblParamFin(k,el){const P=IBL.P;const s=String(el.value).trim();const ok=((k==='nops'||k==='orden')&&s==='')||iblValido(k,s);if(!ok){el.value=P[k]==null?'':P[k];setTimeout(()=>{IBL.aviso[k]='';const a=document.getElementById('ibl-av-'+k);if(a)a.textContent=''},4000)}}
-function iblMejor(){iblRecalcular();iblPintar(false);iblToast('Mejor balanceo calculado');const o=document.getElementById('ibl-out');if(o&&o.scrollIntoView)o.scrollIntoView({behavior:'smooth',block:'start'})}
+function iblMejor(){iblRecalcular();iblPintar(false);if(!((IBL.st||[]).length)){iblToast('Elige una referencia en el paso 1, o balancea con la base de la familia');return}iblToast('Mejor balanceo calculado');   /* 12-oct (BAL-MENSAJES): sin nada que balancear no dice «calculado» */const o=document.getElementById('ibl-out');if(o&&o.scrollIntoView)o.scrollIntoView({behavior:'smooth',block:'start'})}
 function iblRecalcAuto(){iblRecalcular();iblPintar(false);iblToast('Balanceo recalculado')}
 function iblMover(id,tg){id=+id;const o=IBL.ops.find(x=>x.id===id);if(!o)return;IBL.st.forEach(s=>{const k=s.ids.indexOf(id);if(k>=0)s.ids.splice(k,1)});o.ex=false;IBL.fl=-1;
   if(tg==='ex')o.ex=true;else if(tg==='un'){}else if(tg==='new'){IBL.st.push({ids:[id],w:1,auto:true});IBL.fl=IBL.st.length-1}else{const s=IBL.st[+tg];if(s){s.ids.push(id);IBL.fl=+tg}}
@@ -19350,7 +19366,7 @@ function sembrarRequerimientoAntesPlan(){if(S.params.reqAntesPlan)return false;c
 /* qué fases entran hoy, dicho en pantalla y con el enlace a donde se cambia */
 function requerimientoBaseHTML(){const fs2=fasesRequerimiento();const fp=fasePlanificacion();
   /* 02-oct (TXT-2): la base va a la vista en una línea corta (con el enlace a la tabla 1 por irAjuste); la explicación larga, al «?» */
-  return '<p class="base-linea">Base: <b>todo lo anterior a '+(fp?'«'+esc(faseNombre(fp))+'»':'Planificación')+'</b>'+(fs2.length?' ('+num(fs2.length)+' '+(fs2.length===1?'fase':'fases')+')':' · <b>ninguna fase marcada: la macro sale vacía</b>')+', liberado o no · <a style="cursor:pointer" title="columna «requerimiento» de la tabla de fases" onclick="irAjuste(\'1 · Fase del archivo → fase del sistema\')">cambiar →</a></p>'+
+  return '<p class="base-linea">Fases que cuentan: <b>todo lo anterior a '+(fp?'«'+esc(faseNombre(fp))+'»':'Planificación')+'</b>'+(fs2.length?' ('+num(fs2.length)+' '+(fs2.length===1?'fase':'fases')+')':' · <b>ninguna fase marcada: la macro sale vacía</b>')+', liberado o no · <a style="cursor:pointer" title="columna «requerimiento» de la tabla de fases" onclick="irAjuste(\'1 · Fase del archivo → fase del sistema\')">cambiar →</a></p>'+
    '<p class="lede">Lo que ya está en planificación o después ya tiene la tela (decisión del 22-sep). '+
    (fs2.length?'Hoy son '+fs2.length+' fases: '+fs2.map(f=>esc(faseNombre(f))).join(' · ')+'.':'<b>Ninguna fase está marcada</b>: la macro sale vacía.')+
    ' Se cambia marcando la columna «requerimiento» en Configuración general → Órdenes, fases y archivos de Odoo → tabla 1.</p>'+
@@ -19545,7 +19561,7 @@ function macroHTML(){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(
   const plana=(mac.planas&&mac.planas.length)?(()=>{const ors=[...new Set(mac.planas.map(t=>t.origen||''))];const unOr=ors.length===1;
     return pleg('mac-plana','Tela plana · METROS','en metros, aparte de los kilos de punto · '+num(rep.lineasPlana)+' líneas · '+num(rep.mPlana)+' m'+(unOr&&ors[0]?' · origen '+esc(cap1(ors[0]))+' en todas':''),`<p class="lede">Aparte de los kilos: no se suman con las telas de punto. Merma de plana 12–15 % (referencia de la usuaria; no se calcula aquí).</p>
    <table><thead><tr><th>Tela</th><th>Pantone / color</th><th class="num">Metros</th><th class="num">Órdenes</th>${unOr?'':'<th>Origen</th>'}</tr></thead><tbody>${mac.planas.map(t=>`<tr><td>${esc(cap1(t.corta))}</td><td>${esc(t.pantone)}</td><td class="num">${num(t.m)}</td><td class="num">${num(t.ords.size)}</td>${unOr?'':`<td class="mut">${esc(t.origen||'')}</td>`}</tr>`).join('')}</tbody></table>`)})():'';
-  return `<h4 class="tej-sec">Macro del mes <span class="mut">· la tela propia que van a pedir las órdenes que todavía no llegan a Planificación</span></h4>
+  return `<h4 class="tej-sec">Lo que viene · ${MAC.mes?esc(MAC.mes):'todos los meses'} <span class="mut">· la tela propia que van a pedir las órdenes que todavía no llegan a Planificación (la macro del mes)</span></h4>
   <div class="row tej-fila"><div class="row" style="align-items:center;margin:0"><label style="margin:0">Mes del Proyecto</label><select onchange="MAC.mes=this.value;render()"><option value="">Todos los meses</option>${meses.map(m=>`<option value="${esc(m)}" ${MAC.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
     ${puede('ordenes')?`<button class="btn ghost" title="Las facturas de compra dicen qué telas se compran y a quién (resuelven las «sin clasificar»)" onclick="mFacturas()">Cargar facturas de compra</button>`:''}</div>
   ${requerimientoBaseHTML()}${cuentasTelaHTML('macro')}
