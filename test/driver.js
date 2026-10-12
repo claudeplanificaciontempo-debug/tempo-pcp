@@ -12024,12 +12024,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
           if([...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))anota(st.color,v,e,'letra');if(st.backgroundColor!=='rgba(0, 0, 0, 0)')anota(st.backgroundColor,v,e,'fondo');
           ['Top','Right','Bottom','Left'].forEach(s=>{if(parseFloat(st['border'+s+'Width'])>0&&st['border'+s+'Style']!=='none'&&st['border'+s+'Color']!==st.color)anota(st['border'+s+'Color'],v,e,'borde')})})};
         const vista=(n,f)=>{try{f();render();barre(onP(),n)}catch(err){malos['error '+n]={n:1,ej:[String(err).slice(0,120)]}}};
-        [...new Set([...document.querySelectorAll('nav a[data-p]')].map(a=>a.dataset.p))].forEach(p=>vista(p,()=>{page=p}));
-        vista('Órdenes · Rutas',()=>{page='ordenes';ORDF.tab='rutas'});ORDF.tab='ord';
-        ['tela','corte'].forEach(et=>['listas','frenadas','liberadas'].forEach(v=>vista('Liberación '+et+' · '+v,()=>{page='liberacion';LIB.et=et;LIB.vista=v})));
-        S.centros.filter(c=>c.area==='pro').forEach(c=>vista('centro '+c.id,()=>{page='centro';CEN.id=c.id;CEN.solo='';CEN.rec=''}));
-        TIN_TABS.forEach(([k])=>vista('Tintorería · '+k,()=>{page='tintoreria';TIN.tab=k}));[1,2].forEach(n=>vista('Planificar el mes · '+n,()=>{page='plan';PM.paso=n}));
-        CONF_TABS.forEach(([k])=>vista('Configuración · '+k,()=>{page='config';CONF.tab=k;render();cfgAbrirTodo(true)}));
+        const vs=[];[...new Set([...document.querySelectorAll('nav a[data-p]')].map(a=>a.dataset.p))].forEach(p=>vs.push([p,()=>{page=p}]));
+        vs.push(['Órdenes · Rutas',()=>{page='ordenes';ORDF.tab='rutas'}]);
+        ['tela','corte'].forEach(et=>['listas','frenadas','liberadas'].forEach(v=>vs.push(['Liberación '+et+' · '+v,()=>{page='liberacion';ORDF.tab='ord';LIB.et=et;LIB.vista=v}])));
+        S.centros.filter(c=>c.area==='pro').forEach(c=>vs.push(['centro '+c.id,()=>{page='centro';CEN.id=c.id;CEN.solo='';CEN.rec=''}]));
+        TIN_TABS.forEach(([k])=>vs.push(['Tintorería · '+k,()=>{page='tintoreria';TIN.tab=k}]));[1,2].forEach(n=>vs.push(['Planificar el mes · '+n,()=>{page='plan';PM.paso=n}]));
+        CONF_TABS.forEach(([k])=>vs.push(['Configuración · '+k,()=>{page='config';CONF.tab=k;render();cfgAbrirTodo(true)}]));
+        for(const [n,f] of vs){vista(n,f);await __p(5)}ORDF.tab='ord';
         const oF2=S.ordenes.find(x=>abiertaDe(x)&&(x.ruta||[]).length>1)||S.ordenes[0];if(oF2){abrirFichaOrden(oF2.id);barre(document.getElementById('modal'),'ficha');cerrar();mOrden(oF2.id);barre(document.getElementById('modal'),'ficha para editar');cerrar()}
         page='ordenes';render();document.querySelectorAll('header nav .grp').forEach(g=>{navToggle(g);barre(document.querySelector('nav .gbody.abierto'),'menú '+g.textContent.trim().slice(0,14))});navCerrarTodo();
         page='ordenes';render();document.querySelectorAll('#p-ordenes details.o-dd').forEach(d=>{d.open=true;barre(d,'Órdenes · '+((d.querySelector('summary')||{}).textContent||'').trim());d.open=false});barre(document.querySelector('header'),'barra de arriba');
@@ -12049,7 +12050,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
           const f=rgba(st.color);if(!f||f.a===0)return;const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);const r=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);n++;
           if(r<4.5)mal.push(nm+': '+Math.round(r*100)/100+' «'+(e.textContent||'').trim().slice(0,22)+'» '+st.color+' sobre rgb('+[b.r,b.g,b.b].map(Math.round).join(',')+')')})};
         for(const modo of ['claro','oscuro']){setModo(modo);
-          PAGS.forEach(([nm,f])=>{const el=dibuja(f);medir(el,modo+' · '+nm)});
+          for(const [nm,f] of PAGS){const el=dibuja(f);medir(el,modo+' · '+nm);await __p(5)}
           page='ordenes';ORDF.tab='ord';render();medir(document.querySelector('header'),modo+' · barra');
           document.querySelectorAll('header nav .grp').forEach(g=>{navToggle(g);medir(document.querySelector('nav .gbody.abierto'),modo+' · menú '+g.textContent.trim().slice(0,12))});navCerrarTodo();
           page='ordenes';render();document.querySelectorAll('#p-ordenes details.o-dd').forEach(d=>{d.open=true;medir(d,modo+' · filtro');d.open=false});
