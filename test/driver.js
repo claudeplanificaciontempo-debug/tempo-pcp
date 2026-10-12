@@ -860,11 +860,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {CAPD.sel=null;render();const h=html();
     __check('CAP5: una decisión dada por resuelta no cuenta como «sin decisión», y la fila dice que sigue sin alcanzar',/resuelta · sigue sin alcanzar/.test(h)&&(()=>{const esp=Object.values(matrizCapacidad().celdas).filter(z=>estadoCel(z)==='rojo'&&!(S.params.capDecisiones||[]).some(dd=>dd.c===z.c&&dd.m===z.m)).length;return h.includes('<div class="v">'+esp+'</div><div class="k">Sin decisión')})(),h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)&&h.match(/<div class="v">\d+<\/div><div class="k">Sin decisión/)[0]);
     {const medirKW=()=>{const kw=document.querySelector('#p-capacidad .kpis:not(.tarj-row)>.kpi.warn');const sib=kw&&[...kw.parentElement.children].find(z=>z!==kw&&!z.classList.contains('warn')&&!z.classList.contains('bad'));
-      return {ok:!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&(aspectoVisual()==='tablero'?getComputedStyle(kw).backgroundColor!==getComputedStyle(sib).backgroundColor:getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor)),
+      const sob=document.documentElement.hasAttribute('data-sobrio'),ik=kw&&kw.querySelector(':scope>.kpi-ico'),is=sib&&sib.querySelector(':scope>.kpi-ico');
+      return {ok:!kw||!sib||(Math.abs(kw.getBoundingClientRect().height-sib.getBoundingClientRect().height)<=1&&getComputedStyle(kw).marginBottom==='0px'&&(aspectoVisual()==='tablero'?(sob?getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor&&(!ik||!is||getComputedStyle(ik).backgroundColor!==getComputedStyle(is).backgroundColor):getComputedStyle(kw).backgroundColor!==getComputedStyle(sib).backgroundColor):getComputedStyle(kw).backgroundColor===getComputedStyle(sib).backgroundColor)),
        det:aspectoVisual()+': '+(kw?kw.getBoundingClientRect().height+' / '+(sib?sib.getBoundingClientRect().height:'—')+' · '+getComputedStyle(kw).backgroundColor+' vs '+(sib?getComputedStyle(sib).backgroundColor:'—'):'sin tarjeta de aviso')}};
      /* 05-oct (cierre del Tablero): se mide en el aspecto que sale por defecto (Tablero) Y en «Como Odoo»: así la rama de Odoo no queda sin correr */
-     const rT=medirKW();const bakTe=S.params.tema;S.params.tema='odoo';render();const rO=medirKW();if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();
-     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto que sus vecinas, sin margen debajo; el fondo es el de sus vecinas (aviso = número en ámbar y franja) salvo en el aspecto Tablero, donde se tiñe de ámbar suave (decisión de la usuaria del 04-oct); se mide en el Tablero y en «Como Odoo»",rT.ok&&rO.ok,rT.det+' | '+rO.det)}
+     const rT=medirKW();const bakTc=S.params.temaColor;S.params.temaColor='marino';render();const rM=medirKW();if(bakTc===undefined)delete S.params.temaColor;else S.params.temaColor=bakTc;const bakTe=S.params.tema;S.params.tema='odoo';render();const rO=medirKW();if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();
+     __check("UX-B0a_sistemico_disposicion: la tarjeta de aviso («Sin decisión») tiene el mismo alto que sus vecinas, sin margen debajo; el fondo es el de sus vecinas (aviso = número en ámbar y franja) salvo en el aspecto Tablero con una paleta de color (azul marino), donde se tiñe de ámbar suave (04-oct); con la paleta sobria (petróleo, por defecto desde el 08-oct) es blanca como sus vecinas y el estado va en el círculo del ícono; se mide en el Tablero (petróleo y azul marino) y en «Como Odoo»",rT.ok&&rM.ok&&rO.ok,rT.det+' | '+rM.det+' | '+rO.det)}
      {const td=document.querySelector('#p-capacidad table.ajustada');__check("UX-B0a_sistemico_disposicion: «Dónde no alcanza» es una tabla ajustada a su contenido (el dato cerca de su nombre), no estirada a todo el ancho",!/Dónde no alcanza · qué hay que decidir/.test(html())||(!!td&&getComputedStyle(td).width!=='100%'))}
     CAPD.sel=x.c+'|'+x.m;render();const h2=html();const iDet=h2.indexOf('id="cap-detalle"'),iMat=h2.indexOf('Uso de capacidad por centro y mes');
     __check('CAP6: el detalle de la celda elegida sale ARRIBA (junto a «qué hay que decidir», antes de la tabla) y tiene «cerrar»',iDet>0&&iDet<iMat&&/CAPD.sel=null;render\(\)/.test(h2));
@@ -7382,7 +7383,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       cerrar();}
      ORDF.edicion="porEditar";}
     /* foto: tamaño y zoom */
-    {const oF=S.ordenes.find(o=>fotoDe(o));__check("UI19: la foto chica es más grande (60 px desde el 08-oct, parámetro) y lleva data-zoom",!!oF&&/width="60" height="60"/.test(fotoMini(oF))&&/data-zoom="/.test(fotoMini(oF))&&/width="60"/.test(fotoMini(oF,60)));
+    {const oF=S.ordenes.find(o=>fotoDe(o));__check("UI19: la foto chica es más grande (60 px desde el 08-oct, el parámetro fotoMiniPx de Configuración → Calendario y reglas) y lleva data-zoom; la de las listas lleva la marca data-lista (en el teléfono, como mucho 44 px) y la que pide su tamaño no",!!oF&&fotoMiniPx()===60&&/width="60" height="60"/.test(fotoMini(oF))&&/data-zoom="/.test(fotoMini(oF))&&/data-lista="1"/.test(fotoMini(oF))&&/width="60"/.test(fotoMini(oF,60))&&!/data-lista/.test(fotoMini(oF,60)));
      fotoZoomInit();const z=document.getElementById("foto-zoom");page="ordenes";ORDF.edicion="todas";ORDF.estado="plan";GRP={};grpSt("ord").niveles=[];render();let im=document.getElementById("p-ordenes").querySelector("img[data-zoom]");if(!im&&oF){mOrden(oF.id);im=document.getElementById("modal").querySelector("img[data-zoom]")}
      if(im){im.dispatchEvent(new MouseEvent("mouseover",{bubbles:true,clientX:100,clientY:100}));const on=z.style.display==="block"&&z.querySelector("img").src===im.getAttribute("data-zoom");im.dispatchEvent(new MouseEvent("mouseout",{bubbles:true}));
       __check("UI19: al pasar el mouse por una foto se abre el zoom con esa imagen y al salir se cierra",on&&z.style.display==="none");cerrar();}else __check("UI19: hay una foto para probar el zoom",false);
@@ -8239,8 +8240,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cfgH=(()=>{page='config';CONF.tab='cal';render();return (document.getElementById('p-config')||{}).innerHTML||''})();
     __check('OD6: el aspecto se elige en Configuración → Calendario y parámetros',/Aspecto de la pantalla/.test(cfgH)&&/setTema\(/.test(cfgH));
     /* colores (24-sep: «tampoco quiero ese morado»): por defecto verde azulado, se elige en Configuración y queda en bitácora */
-    {const bc=S.params.temaColor;delete S.params.temaColor;render();const def=document.documentElement.dataset.color;const nB2=S.bitacora.length;setTemaColor('azul');
-     __check('OD7: el color por defecto es el azul marino que eligió la usuaria (no el morado) y se cambia en Configuración, con bitácora',def==='marino'&&document.documentElement.dataset.color==='azul'&&S.bitacora.length>nB2&&/Color de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''),JSON.stringify({def,ahora:document.documentElement.dataset.color}));
+    {const bc=S.params.temaColor;delete S.params.temaColor;render();const def=document.documentElement.dataset.color;const defT=(()=>{const t0=S.params.tema;delete S.params.tema;render();const v=document.documentElement.dataset.color;S.params.tema=t0;render();return v})();const nB2=S.bitacora.length;setTemaColor('azul');
+     __check('OD7: el color por defecto es el azul marino que eligió la usuaria (no el morado) en «Como Odoo» y el gris cálido con acento petróleo en el Tablero (08-oct); se cambia en Configuración, con bitácora',def==='marino'&&defT==='petroleo'&&document.documentElement.dataset.color==='azul'&&S.bitacora.length>nB2&&/Color de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''),JSON.stringify({def,defT,ahora:document.documentElement.dataset.color}));
      __check('OD8: el color cambia de verdad la barra de arriba',getComputedStyle(document.querySelector('header')).backgroundColor==='rgb(21, 101, 192)',getComputedStyle(document.querySelector('header')).backgroundColor);
      if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc}
     if(bak===undefined)delete S.params.tema;else S.params.tema=bak;page='ordenes';render();PERFIL=adminP}
@@ -12075,20 +12076,24 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     try{
      ponTema(undefined);setModo('claro');page='panorama';render();
      const hdr=document.querySelector('header'),nav=document.getElementById('nav');
-     __check("ASP1: por defecto el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris claro y la letra es Inter",
-       aspectoVisual()==='tablero'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='tablero'&&nav.parentElement===hdr&&cs(document.body,'backgroundColor')==='rgb(244, 246, 250)'&&/^Inter/.test(cs(document.body,'fontFamily'))&&!document.querySelector('aside,.sidebar'),
+     __check("ASP1: por defecto el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris cálido (paleta petróleo, 08-oct) y la letra es Inter",
+       aspectoVisual()==='tablero'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='tablero'&&nav.parentElement===hdr&&cs(document.body,'backgroundColor')==='rgb(246, 245, 242)'&&/^Inter/.test(cs(document.body,'fontFamily'))&&!document.querySelector('aside,.sidebar'),
        cs(document.body,'backgroundColor')+' · '+cs(document.body,'fontFamily').slice(0,30));
-     /* tarjetas: ícono en un círculo de color, el «›» en las que se tocan y el fondo teñido según la clase de estado */
-     const tinte={vacia:sonda('var(--tb-grey-soft)'),bad:sonda('var(--tb-red-soft)'),warn:sonda('var(--tb-amber-soft)'),ok:sonda('var(--tb-green-soft)'),'':sonda('var(--paper)')};
+     /* tarjetas: ícono en un círculo, el «›» en las que se tocan. Con la paleta sobria (petróleo, la de por defecto desde el 08-oct) la tarjeta es blanca y el
+        estado va en el círculo del ícono (verde suave = ok, ámbar suave = warn, rojo suave = bad, gris sin estado); con las demás paletas (azul marino) el
+        fondo de la tarjeta se tiñe según la clase de estado, como desde el 04-oct. Las dos se miden. */
      const icoEsp={'Hoy':6,'Resumen gerencial':5,'Planta en vivo':5,'Liberación':3,'Planificar el mes · 2':5,'Resumen del centro':4};
-     const malT=[],malI=[];let nTarj=0,nTenidas=0;
-     PAGS.forEach(([n,f])=>{const el=dibuja(f);if(!el)return;
-       el.querySelectorAll('.kpis>.kpi').forEach(k=>{if(!k.offsetParent)return;nTarj++;const cl=k.classList.contains('bad')?'bad':k.classList.contains('warn')?'warn':k.classList.contains('ok')?'ok':'';if(cl)nTenidas++;
-         if(cs(k,'backgroundColor')!==(k.classList.contains('vacia')?tinte.vacia:tinte[cl]))malT.push(n+' «'+((k.querySelector('.k')||k).textContent||'').trim().slice(0,30)+'» '+cl+' '+cs(k,'backgroundColor'));
+     const malT=[],malI=[];let nTarj=0,nTenidas=0,nIcoEst=0;
+     const revisaT=(sobria,et)=>{const tinte={vacia:sonda('var(--tb-grey-soft)'),bad:sonda('var(--tb-red-soft)'),warn:sonda('var(--tb-amber-soft)'),ok:sonda('var(--tb-green-soft)'),'':sonda('var(--paper)')};
+      PAGS.forEach(([n,f])=>{const el=dibuja(f);if(!el)return;
+       el.querySelectorAll('.kpis>.kpi').forEach(k=>{if(!k.offsetParent)return;nTarj++;const cl=k.classList.contains('bad')?'bad':k.classList.contains('warn')?'warn':k.classList.contains('ok')?'ok':'';if(cl)nTenidas++;const vac=k.classList.contains('vacia');
+         if(cs(k,'backgroundColor')!==(vac?tinte.vacia:sobria?tinte['']:tinte[cl]))malT.push(et+' · '+n+' «'+((k.querySelector('.k')||k).textContent||'').trim().slice(0,30)+'» '+cl+' '+cs(k,'backgroundColor'));
+         const ic=k.querySelector(':scope>.kpi-ico');if(sobria&&ic&&!vac){if(cl)nIcoEst++;if(cs(ic,'backgroundColor')!==(cl?tinte[cl]:tinte.vacia))malT.push(et+' · '+n+' ícono de «'+((k.querySelector('.k')||k).textContent||'').trim().slice(0,30)+'» '+cl+' '+cs(ic,'backgroundColor'))}
          if(parseFloat(cs(k,'borderTopLeftRadius'))<10)malT.push(n+': esquina '+cs(k,'borderTopLeftRadius'))});
-       const nIco=el.querySelectorAll('.kpi-ico').length;if(icoEsp[n]!=null&&nIco<icoEsp[n])malI.push(n+': '+nIco+' íconos (se esperaban '+icoEsp[n]+')');
-       el.querySelectorAll('.kpi-ico').forEach(i=>{const r=i.getBoundingClientRect();if(i.offsetParent&&(Math.abs(r.width-r.height)>1||parseFloat(cs(i,'borderTopLeftRadius'))<r.width/2-1))malI.push(n+': ícono que no es un círculo')})});
-     __check("ASP2: en las pantallas principales cada tarjeta de cifras es una tarjeta redondeada con el fondo teñido por la clase de estado que ya tenía (rojo suave = bad, ámbar suave = warn, verde suave = ok, blanca la informativa, gris la de una pestaña vacía de Liberación)",nTarj>20&&nTenidas>0&&!malT.length,nTarj+' tarjetas · '+nTenidas+' teñidas · '+malT.slice(0,4).join(' | '));
+       if(sobria){const nIco=el.querySelectorAll('.kpi-ico').length;if(icoEsp[n]!=null&&nIco<icoEsp[n])malI.push(n+': '+nIco+' íconos (se esperaban '+icoEsp[n]+')');
+        el.querySelectorAll('.kpi-ico').forEach(i=>{const r=i.getBoundingClientRect();if(i.offsetParent&&(Math.abs(r.width-r.height)>1||parseFloat(cs(i,'borderTopLeftRadius'))<r.width/2-1))malI.push(n+': ícono que no es un círculo')})}})};
+     revisaT(true,'petróleo');{const bc0=S.params.temaColor;S.params.temaColor='marino';render();revisaT(false,'azul marino');if(bc0===undefined)delete S.params.temaColor;else S.params.temaColor=bc0;render()}
+     __check("ASP2: en las pantallas principales cada tarjeta de cifras es una tarjeta redondeada; con la paleta sobria (petróleo, por defecto desde el 08-oct) es blanca y su estado va en el círculo del ícono (verde suave = ok, ámbar suave = warn, rojo suave = bad, gris sin estado); con el azul marino el fondo se tiñe por la clase de estado; la de una pestaña vacía de Liberación, gris",nTarj>40&&nTenidas>0&&nIcoEst>0&&!malT.length,nTarj+' tarjetas · '+nTenidas+' con estado · '+nIcoEst+' íconos con estado · '+malT.slice(0,4).join(' | '));
      __check("ASP3: las tarjetas de Hoy, Resumen gerencial, Planta en vivo, Liberación, Planificar el mes y el Resumen del centro llevan su ícono en un círculo (campo ico)",!malI.length,malI.slice(0,4).join(' | '));
      {const el=dibuja(PAGS[0][1]);const k=el.querySelector('.kpi.tarj.clic');const m=k&&k.querySelector('.kpi-mas');const tv=k&&k.querySelector('.tarj-ver');
       const h2=el.querySelector('.pagehead h2');
@@ -12111,8 +12116,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("ASP7: con «Clásico» vuelve el aspecto anterior: sin data-tema odoo ni data-estilo, el menú en su propia barra, tarjetas sin ícono",de.dataset.tema==='clasico'&&!de.hasAttribute('data-estilo')&&nav.parentElement!==hdr&&!pg('panorama').querySelector('.kpi-ico,.kpi-mas')&&!!kC&&[...kC.children].map(c=>c.className).join(',')==='v,k',de.dataset.tema+' · '+(kC?[...kC.children].map(c=>c.className).join(','):'-'));
      ponTema(undefined);
      /* la paleta de la barra (Configuración) sigue mandando en el Tablero */
-     {const bc=S.params.temaColor;S.params.temaColor='azul';render();const bgA=cs(hdr,'backgroundColor');delete S.params.temaColor;render();const bgM=cs(hdr,'backgroundColor');if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc;render();
-      __check("ASP8: en el Tablero la barra de arriba sigue la paleta de Configuración (azul → azul; por defecto el azul marino oscuro)",bgA==='rgb(21, 101, 192)'&&bgM==='rgb(19, 38, 74)',bgA+' · '+bgM)}
+     {const bc=S.params.temaColor;S.params.temaColor='azul';render();const bgA=cs(hdr,'backgroundColor');S.params.temaColor='marino';render();const bgM=cs(hdr,'backgroundColor');delete S.params.temaColor;render();const bgP=cs(hdr,'backgroundColor');
+      setModo('oscuro');const bgPo=cs(hdr,'backgroundColor');setModo('claro');if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc;render();
+      __check("ASP8: en el Tablero la barra de arriba sigue la paleta de Configuración (azul → azul; azul marino → azul marino oscuro) y por defecto (paleta petróleo, 08-oct) es clara: blanca en claro y del color del papel en oscuro",bgA==='rgb(21, 101, 192)'&&bgM==='rgb(19, 38, 74)'&&bgP==='rgb(255, 255, 255)'&&bgPo==='rgb(29, 33, 37)',bgA+' · '+bgM+' · '+bgP+' · '+bgPo)}
      /* todo el CSS del Tablero va bajo [data-estilo="tablero"]: así Odoo y Clásico no pueden cambiar */
      {const st=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');const a=st.indexOf('/* ux:tablero */');const css=a>=0?st.slice(a).replace(/\/\*[\s\S]*?\*\//g,''):'';const sels=[];
       css.replace(/([^{}]+)\{/g,(m,x)=>{x=x.trim();if(!x.startsWith('@media'))x.split(',').forEach(y=>sels.push(y.trim()));return m});
@@ -12187,7 +12193,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        __check("PUL4: rojo solo para lo grave — «fecha pasada» de un baño, «sin liberar», «por debajo del plan» y «Revisar ruta» en ámbar; «En proceso» en azul; «sin tela» y «sin capacidad» como dato que falta",!mal.length,mal.join(', '))}
       /* 5 · la pantalla de ingreso ya sale con el aspecto que manda (antes de entrar salía con el clásico y botón ilegible en oscuro) */
       {const pag=await (await fetch(location.href.split('?')[0])).text();const src=[...document.querySelectorAll('script')].map(s=>s.textContent).filter(x=>x.includes('function aplicarTema(')&&!x.includes('__check(')).join('\n');
-       __check("PUL5: la pantalla de ingreso sale con el Tablero: el <html> trae data-tema/estilo/color por defecto e iniciar() aplica el aspecto antes de mostrar el ingreso",/<html lang="es" data-tema="odoo" data-estilo="tablero" data-color="marino">/.test(pag)&&/async function iniciar\(\)\{try\{aplicarTema\(\)\}/.test(src)&&de.dataset.estilo==='tablero')}
+       __check("PUL5: la pantalla de ingreso sale con el Tablero: el <html> trae data-tema/estilo/color por defecto e iniciar() aplica el aspecto antes de mostrar el ingreso",/<html lang="es" data-tema="odoo" data-estilo="tablero" data-color="petroleo" data-barra="clara" data-sobrio="1">/.test(pag)&&/async function iniciar\(\)\{try\{aplicarTema\(\)\}/.test(src)&&de.dataset.estilo==='tablero')}
       /* 6 · Planificar el mes, bloque 3: la meta del mes y sus vecinas miden lo mismo (extiende la prueba DISEÑO a .b3-franja) */
       {const el=dibuja(()=>{page='plan';PM.paso=2});const f=el&&el.querySelector('.b3-franja');const hs=f?[...f.querySelectorAll('.kpi')].filter(k=>k.offsetParent).map(k=>Math.round(k.getBoundingClientRect().height)):[];
        __check("PUL6: Planificar el mes · bloque 3 — «Meta del mes» y sus vecinas (Liberadas, Por liberar, Total del plan) tienen el mismo alto",!f||(hs.length>=2&&Math.max(...hs)-Math.min(...hs)<=2),hs.join('/'))}
@@ -12260,6 +12266,118 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
          __check("CIE5: lo nuevo de main toma el aspecto Tablero — en Liberación a producción «Liberar las marcadas» y «Marcar todas las listas» son botones del Tablero (esquina redondeada, Inter) y las tres tarjetas llevan su ícono; en el Resumen de Corte la pestaña «Por liberar a producción» se dibuja como las demás pestañas",okB&&icoL>=3&&igual,JSON.stringify({b:!!b,g:!!g,boton:radB,icoL,pl:!!pl,igual}))}
        }finally{setModo('claro');Object.assign(LIB,bakLIB);if(bakB===undefined)delete BUSQ['LIB.q'];else BUSQ['LIB.q']=bakB;Object.assign(CEN,bakCEN)}}
      }
+     /* PAL · paleta «petróleo» y aspecto sobrio (08-oct-2026, lote L1, decisiones A1–A4; usuaria: «cámbiale todo el sistema, el tema de mi captura»,
+        aprobación total). Se DIBUJAN las pantallas y se mide con getComputedStyle: los tokens de la paleta, que ningún color visible quede fuera de
+        ella (salvo fotos y puntos de color de tela), el contraste en claro y en oscuro (barra, menús abiertos, filtros, ficha), las etiquetas neutras,
+        y que con otra paleta, con «Como Odoo» y con «Clásico» Hoy se vea igual que sin el CSS nuevo (la vuelta atrás). AF: tamaño de las fotos. */
+     {const de2=document.documentElement;const cs2=(e,p)=>e?getComputedStyle(e)[p]:'';const pg2=p=>document.getElementById('p-'+p);const onP=()=>document.querySelector('.page.on');
+      const col=v=>{const d=document.createElement('div');d.style.color=v;document.body.appendChild(d);const c=getComputedStyle(d).color;d.remove();return c};
+      const reset=()=>{delete S.params.tema;delete S.params.temaColor;setModo('claro');render()};
+      const bakT2=S.params.tema,bakC2=S.params.temaColor,bakF2=S.params.fotoMiniPx;const bakORDF={tab:ORDF.tab},bakLIB2={et:LIB.et,vista:LIB.vista},bakCEN2={id:CEN.id,solo:CEN.solo,rec:CEN.rec},bakTIN={tab:TIN.tab},bakPM={paso:PM.paso},bakCONF={tab:CONF.tab};
+      const al2=window.alert;
+      try{
+       /* PAL1 · tokens calculados de la paleta, en claro y en oscuro; lo guardado manda; en «Como Odoo» el azul marino de siempre */
+       reset();page='panorama';render();
+       const claro={attrs:[de2.dataset.color,de2.dataset.barra,de2.dataset.sobrio].join('/'),bg:cs2(document.body,'backgroundColor'),paper:col('var(--paper)'),acento:col('var(--o-primary)'),tinta:col('var(--tb-ink)'),linea:col('var(--tb-line)'),barra:cs2(document.querySelector('header'),'backgroundColor')};
+       setModo('oscuro');render();
+       const osc={bg:cs2(document.body,'backgroundColor'),paper:col('var(--paper)'),boton:col('var(--o-primary)'),acento:col('var(--t-primary)'),barra:cs2(document.querySelector('header'),'backgroundColor')};
+       setModo('claro');S.params.temaColor='marino';render();
+       const mar={attrs:[de2.dataset.color,de2.hasAttribute('data-barra'),de2.hasAttribute('data-sobrio')].join('/'),barra:cs2(document.querySelector('header'),'backgroundColor')};
+       S.params.tema='odoo';delete S.params.temaColor;render();const odoo={color:de2.dataset.color,barra:de2.hasAttribute('data-barra')};reset();
+       __check("PAL1: por defecto el Tablero usa la paleta «petróleo» del prototipo de la usuaria (fondo gris cálido 246,245,242, tarjetas blancas, tinta 31,36,40, acento 15,107,92, barra de arriba blanca; en oscuro fondo 21,24,27, papel 29,33,37, botón 19,128,110 y acento 79,194,172); un «azul marino» guardado se respeta (barra oscura, sin barra clara ni sobrio) y «Como Odoo» sigue con su azul marino",
+         claro.attrs==='petroleo/clara/1'&&claro.bg==='rgb(246, 245, 242)'&&claro.paper==='rgb(255, 255, 255)'&&claro.acento==='rgb(15, 107, 92)'&&claro.tinta==='rgb(31, 36, 40)'&&claro.linea==='rgb(226, 224, 218)'&&claro.barra==='rgb(255, 255, 255)'
+         &&osc.bg==='rgb(21, 24, 27)'&&osc.paper==='rgb(29, 33, 37)'&&osc.boton==='rgb(19, 128, 110)'&&osc.acento==='rgb(79, 194, 172)'&&osc.barra==='rgb(29, 33, 37)'
+         &&mar.attrs==='marino/false/false'&&mar.barra==='rgb(19, 38, 74)'&&odoo.color==='marino'&&!odoo.barra,JSON.stringify({claro,osc,mar,odoo}));
+       /* PAL2 · barrido de colores: ningún elemento visible usa un color fuera de la paleta (salvo fotos, íconos y los puntos de color de tela) */
+       {reset();const TOK=['--tb-bg','--tb-card','--tb-line','--tb-line2','--tb-thead','--tb-hover','--tb-search','--field','--tb-ink','--tb-ink2','--tb-ink3','--ink','--ink2','--ink3','--bg','--paper','--rule','--rule2',
+          '--o-brand','--o-brand-2','--o-primary','--o-primary-2','--o-brand-soft','--o-brand-line','--o-sec','--o-sec-2','--t-primary','--t-accent','--t-accent-soft','--navy','--navy2','--medio','--t-block',
+          '--tb-blue','--tb-blue-soft','--tb-blue-line','--tb-blue-ink','--tb-teal-soft','--tb-teal-ink','--tb-green','--tb-green-soft','--tb-green-line','--tb-green-ink','--tb-amber','--tb-amber-soft','--tb-amber-line','--tb-amber-ink',
+          '--tb-red','--tb-red-soft','--tb-red-line','--tb-red-ink','--tb-grey-soft','--tb-grey-ink','--ok','--aviso','--alerta','--tb-bar-act','--tb-bar-hover','--tb-btn-ok','--tb-btn-aviso','--tb-bar-plan','--tb-st-hover','--tb-ico-ink','--t-card','--t-thead','--t-ink'];
+        const ok=new Set(['rgba(0, 0, 0, 0)','rgb(255, 255, 255)']);TOK.forEach(t=>ok.add(col('var('+t+')')));const malos={};let nEl=0,nVistas=0;
+        const anota=(c,v,e,prop)=>{if(ok.has(c))return;const m=malos[c]=malos[c]||{n:0,ej:[]};m.n++;if(m.ej.length<2){const cl=(typeof e.className==='string'?e.className:'')||'';m.ej.push(v+' · '+e.tagName.toLowerCase()+(cl?'.'+cl.trim().split(/\s+/).slice(0,3).join('.'):'')+' · '+prop+' «'+(e.textContent||'').trim().slice(0,24)+'»')}};
+        const barre=(root,v)=>{if(!root)return;nVistas++;root.querySelectorAll('*').forEach(e=>{if(e.closest('svg,img,.foto-mini,.dot,.env-dot,option'))return;const st=getComputedStyle(e);if(st.display==='none'||st.visibility==='hidden'||!e.getClientRects().length)return;nEl++;
+          if([...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))anota(st.color,v,e,'letra');if(st.backgroundColor!=='rgba(0, 0, 0, 0)')anota(st.backgroundColor,v,e,'fondo');
+          ['Top','Right','Bottom','Left'].forEach(s=>{if(parseFloat(st['border'+s+'Width'])>0&&st['border'+s+'Style']!=='none'&&st['border'+s+'Color']!==st.color)anota(st['border'+s+'Color'],v,e,'borde')})})};
+        const vista=(n,f)=>{try{f();render();barre(onP(),n)}catch(err){malos['error '+n]={n:1,ej:[String(err).slice(0,120)]}}};
+        const vs=[];[...new Set([...document.querySelectorAll('nav a[data-p]')].map(a=>a.dataset.p))].forEach(p=>vs.push([p,()=>{page=p}]));
+        vs.push(['Órdenes · Rutas',()=>{page='ordenes';ORDF.tab='rutas'}]);
+        ['tela','corte'].forEach(et=>['listas','frenadas','liberadas'].forEach(v=>vs.push(['Liberación '+et+' · '+v,()=>{page='liberacion';ORDF.tab='ord';LIB.et=et;LIB.vista=v}])));
+        S.centros.filter(c=>c.area==='pro').forEach(c=>vs.push(['centro '+c.id,()=>{page='centro';CEN.id=c.id;CEN.solo='';CEN.rec=''}]));
+        TIN_TABS.forEach(([k])=>vs.push(['Tintorería · '+k,()=>{page='tintoreria';TIN.tab=k}]));[1,2].forEach(n=>vs.push(['Planificar el mes · '+n,()=>{page='plan';PM.paso=n}]));
+        CONF_TABS.forEach(([k])=>vs.push(['Configuración · '+k,()=>{page='config';CONF.tab=k;render();cfgAbrirTodo(true)}]));
+        for(const [n,f] of vs){vista(n,f);await __p(5)}ORDF.tab='ord';
+        const oF2=S.ordenes.find(x=>abiertaDe(x)&&(x.ruta||[]).length>1)||S.ordenes[0];if(oF2){abrirFichaOrden(oF2.id);barre(document.getElementById('modal'),'ficha');cerrar();mOrden(oF2.id);barre(document.getElementById('modal'),'ficha para editar');cerrar()}
+        page='ordenes';render();document.querySelectorAll('header nav .grp').forEach(g=>{navToggle(g);barre(document.querySelector('nav .gbody.abierto'),'menú '+g.textContent.trim().slice(0,14))});navCerrarTodo();
+        page='ordenes';render();document.querySelectorAll('#p-ordenes details.o-dd').forEach(d=>{d.open=true;barre(d,'Órdenes · '+((d.querySelector('summary')||{}).textContent||'').trim());d.open=false});barre(document.querySelector('header'),'barra de arriba');
+        const lista=Object.entries(malos);
+        __check("PAL2: barrido de colores en todas las páginas del menú, sus pestañas, la ficha de la orden, los menús abiertos y los filtros: ningún elemento visible usa un color fuera de la paleta petróleo (las excepciones son fotos, íconos y los puntos de color de tela)",
+          nVistas>40&&nEl>5000&&!lista.length,nVistas+' vistas · '+nEl+' elementos · '+lista.slice(0,6).map(([c,m])=>c+' ×'+m.n+' ('+m.ej.join(' | ')+')').join(' ;; '))}
+       /* PAL3 · contraste ≥ 4,5 en claro y en oscuro: pantallas principales, la barra de arriba, los menús abiertos, los filtros y la ficha */
+       {reset();const rgba=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}};
+        const sobre=(f,b)=>({r:f.r*f.a+b.r*(1-f.a),g:f.g*f.a+b.g*(1-f.a),b:f.b*f.a+b.b*(1-f.a),a:1});
+        const lum=c=>{const t=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*t(c.r)+0.7152*t(c.g)+0.0722*t(c.b)};
+        const fondo=e=>{const capas=[];let p=e;while(p&&p.nodeType===1){const c=rgba(getComputedStyle(p).backgroundColor);if(c&&c.a>0)capas.push(c);if(c&&c.a>=1)break;p=p.parentElement}
+          let b={r:255,g:255,b:255,a:1};if(!capas.length||capas[capas.length-1].a<1){const hb=rgba(getComputedStyle(document.body).backgroundColor);if(hb&&hb.a>0)b=sobre(hb,b)}for(let i=capas.length-1;i>=0;i--)b=sobre(capas[i],b);return b};
+        const mal=[];let n=0;
+        const medir=(root,nm)=>{if(!root)return;root.querySelectorAll('*').forEach(e=>{if(e.closest('svg,select,input,textarea,.foto-mini,.ayuda-txt,.sem-e,option'))return;
+          if(![...e.childNodes].some(x=>x.nodeType===3&&x.textContent.trim()))return;const st=getComputedStyle(e);if(st.visibility==='hidden'||st.display==='none'||!e.getClientRects().length||parseFloat(st.opacity)<1)return;
+          let dd=e.closest('details');while(dd){if(!dd.open&&!e.closest('summary'))return;dd=dd.parentElement&&dd.parentElement.closest('details')}
+          const f=rgba(st.color);if(!f||f.a===0)return;const b=fondo(e);const fg=f.a<1?sobre(f,b):f;const L1=lum(fg),L2=lum(b);const r=(Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);n++;
+          if(r<4.5)mal.push(nm+': '+Math.round(r*100)/100+' «'+(e.textContent||'').trim().slice(0,22)+'» '+st.color+' sobre rgb('+[b.r,b.g,b.b].map(Math.round).join(',')+')')})};
+        for(const modo of ['claro','oscuro']){setModo(modo);
+          for(const [nm,f] of PAGS){const el=dibuja(f);medir(el,modo+' · '+nm);await __p(5)}
+          page='ordenes';ORDF.tab='ord';render();medir(document.querySelector('header'),modo+' · barra');
+          document.querySelectorAll('header nav .grp').forEach(g=>{navToggle(g);medir(document.querySelector('nav .gbody.abierto'),modo+' · menú '+g.textContent.trim().slice(0,12))});navCerrarTodo();
+          page='ordenes';render();document.querySelectorAll('#p-ordenes details.o-dd').forEach(d=>{d.open=true;medir(d,modo+' · filtro');d.open=false});
+          const oC=S.ordenes.find(x=>abiertaDe(x)&&(x.ruta||[]).length>1)||S.ordenes[0];if(oC){abrirFichaOrden(oC.id);medir(document.getElementById('modal'),modo+' · ficha');cerrar()}}
+        setModo('claro');render();
+        __check("PAL3: contraste ≥ 4,5 con la paleta petróleo en CLARO y en OSCURO: pantallas principales, la barra de arriba, los menús abiertos, los filtros de Órdenes y la ficha de la orden (medido con getComputedStyle)",n>2000&&!mal.length,n+' textos · '+mal.length+' bajo 4,5 · '+mal.slice(0,5).join(' | '))}
+       /* PAL4 · etiquetas neutras (solo lo cumplido, el riesgo y el atraso tienen color), semáforo como punto, tarjetas blancas con el estado en el ícono */
+       {const res={};for(const modo of ['claro','oscuro']){reset();setModo(modo);page='panorama';render();const caja=document.createElement('div');caja.className='panel pal4';
+          caja.innerHTML='<div class="body"><span class="tag t-medio">m</span> <span class="tag t-hoy">h</span> <span class="tag t-mut">u</span> <span class="tag t-lavado">l</span> <span class="tag fase-mini">f</span> <span class="tag t-falta">x</span> <span class="chip">c</span> <span class="tag t-ok">ok</span> <span class="tag t-aviso">av</span> <span class="tag t-alerta">al</span>'
+            +['verde','ambar','rojo','gris'].map(c=>'<span class="sem sem-'+c+'">'+semEmojiHTML(c)+' '+c+'</span>').join(' ')
+            +'<div class="kpis tarj-row"><div class="kpi tarj warn"><div class="v">3</div><div class="k">aviso</div>'+kpiIcoHTML('alert')+'</div><div class="kpi tarj bad"><div class="v">2</div><div class="k">mal</div>'+kpiIcoHTML('clock')+'</div><div class="kpi tarj"><div class="v">4</div><div class="k">info</div>'+kpiIcoHTML('flag')+'</div></div></div>';
+          onP().appendChild(caja);const q=s=>caja.querySelector(s);const bg=s=>cs2(q(s),'backgroundColor'),fg=s=>cs2(q(s),'color');const gris=col('var(--tb-grey-soft)'),t2=col('var(--tb-ink2)');
+          const neutras=['.t-medio','.t-hoy','.t-mut','.t-lavado','.fase-mini'].filter(s=>bg(s)!==gris||fg(s)!==t2);
+          const conColor=bg('.t-ok')===col('var(--tb-green-soft)')&&bg('.t-aviso')===col('var(--tb-amber-soft)')&&bg('.t-alerta')===col('var(--tb-red-soft)');
+          const falta=bg('.t-falta')==='rgba(0, 0, 0, 0)'&&cs2(q('.t-falta'),'borderTopStyle')==='dashed'&&fg('.t-falta')===t2;const chip=bg('.chip')===col('var(--paper)');
+          const pt=c=>getComputedStyle(q('.sem-'+c),'::before').backgroundColor;
+          const sem=cs2(q('.sem-e'),'display')==='none'&&pt('verde')===col('var(--tb-green)')&&pt('ambar')===col('var(--tb-amber)')&&pt('rojo')===col('var(--tb-red)')&&fg('.sem-rojo')===t2&&/^🟢 /.test(q('.sem-verde').textContent);
+          const ks=[...caja.querySelectorAll('.kpi')];const ico=k=>cs2(k.querySelector('.kpi-ico'),'backgroundColor');
+          const kpi=ks.every(k=>cs2(k,'backgroundColor')===col('var(--paper)')&&cs2(k.querySelector('.v'),'color')===col('var(--tb-ink)'))&&ico(ks[0])===col('var(--tb-amber-soft)')&&ico(ks[1])===col('var(--tb-red-soft)')&&ico(ks[2])===gris;
+          res[modo]={neutras,conColor,falta,chip,sem,kpi};caja.remove()}
+        setModo('claro');render();const okM=m=>!m.neutras.length&&m.conColor&&m.falta&&m.chip&&m.sem&&m.kpi;
+        __check("PAL4: aspecto sobrio, en claro y en oscuro — t-medio, t-hoy, t-mut, t-lavado y la fase van en gris neutro; «falta un dato» con borde punteado; solo t-ok (verde), t-aviso (ámbar) y t-alerta (rojo) tienen fondo de color; el semáforo es un punto del color del estado con el texto en tinta (el emoji queda en el texto, oculto); las tarjetas de cifras son blancas con la cifra en tinta y el estado en el círculo del ícono",okM(res.claro)&&okM(res.oscuro),JSON.stringify(res));
+        const src=vUsuarios.toString()+mRutaCentro.toString()+rutasHTML.toString()+nivParamsHTML.toString()+calendarioNivHTML.toString()+vConfig.toString()+vAuditoria.toString()+vCapacidad.toString();
+        __check("PAL4: fase 2, solo los casos obvios — las etiquetas verdes que no son «cumplido» pasan a neutras: tú, por defecto, persona (quién confirmó la ruta), real, calendario, trabaja (excepción), siempre (tabla 14), general (qué liberación fue, en Auditoría) y decisión (historial de Capacidad)",['t-mut">general<','t-mut">decisión<','t-mut">tú<','t-mut" title="marcado en Configuración general → Centros','t-mut">persona<','t-mut">real<','t-mut">calendario<','t-mut">trabaja<','t-mut" style="font-size:9px;padding:0 4px">siempre<'].every(x=>src.includes(x))&&!/t-ok">(tú|persona|real|calendario|trabaja|general|decisión)</.test(src))}
+       /* PAL5 · la vuelta atrás: con el azul marino guardado (Tablero), con «Como Odoo» y con «Clásico», el estilo calculado de Hoy es idéntico con y sin el CSS nuevo */
+       {const firma=async quitar=>{page='panorama';render();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());
+          if(quitar)cl.querySelectorAll('style').forEach(s=>{let t=s.textContent;const a=t.indexOf('/* ux:simp08-L1 · global'),b=t.indexOf('/* ux:tablero */');if(a>=0&&b>a)t=t.slice(0,a)+t.slice(b);const c=t.indexOf('/* ux:simp08-L1 */');if(c>=0)t=t.slice(0,c);s.textContent=t});
+          const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:1520px;height:900px;border:0;visibility:hidden';document.body.appendChild(fr);
+          try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(60);const d=fr.contentDocument,w=fr.contentWindow;
+            const P=['color','backgroundColor','borderTopColor','borderLeftColor','borderBottomColor','borderTopWidth','borderTopStyle','fontFamily','fontSize','fontWeight','borderTopLeftRadius','boxShadow','paddingTop','paddingLeft','display','outlineColor'];const r=[];
+            [d.querySelector('header'),d.querySelector('.page.on')].forEach(root=>{if(!root)return;[root,...root.querySelectorAll('*')].forEach(e=>{if(e.closest('.sem-e'))return;const st=w.getComputedStyle(e);r.push(e.tagName+'|'+P.map(p=>st[p]).join('|'))})});return r}finally{fr.remove()}};
+        const casos=[['Tablero · azul marino guardado',()=>{reset();S.params.temaColor='marino';render()}],['Tablero · azul marino guardado · oscuro',()=>{reset();S.params.temaColor='marino';setModo('oscuro');render()}],
+          ['Como Odoo',()=>{reset();S.params.tema='odoo';render()}],['Clásico',()=>{reset();S.params.tema='clasico';render()}]];const res=[];
+        for(const [nm,f] of casos){f();const attrs=!de2.hasAttribute('data-barra')&&!de2.hasAttribute('data-sobrio')&&de2.dataset.color==='marino';const a=await firma(false),b=await firma(true);
+          let dif=-1;for(let i=0;i<Math.max(a.length,b.length);i++)if(a[i]!==b[i]){dif=i;break}res.push({nm,attrs,n:a.length,igual:dif<0&&a.length===b.length,ej:dif<0?'':String(a[dif]).slice(0,160)+' ≠ '+String(b[dif]).slice(0,160)})}
+        reset();
+        __check("PAL5: la vuelta atrás — con la paleta azul marino guardada (en claro y oscuro), con «Como Odoo» y con «Clásico» (que siguen por defecto en azul marino) el estilo calculado de Hoy (barra y página) es idéntico con y sin el CSS nuevo, y el <html> no lleva barra clara ni sobrio",res.every(x=>x.attrs&&x.igual&&x.n>200),JSON.stringify(res))}
+       /* AF · tamaño de las fotos en las listas: un parámetro visible y editable, con bitácora; en el teléfono como mucho 44 px */
+       {reset();const nb=S.bitacora.length;const oF=S.ordenes.find(o=>fotoDe(o));CONF.tab='cal';page='config';render();cfgAbrirTodo(true);
+        const inp=[...pg2('config').querySelectorAll('input')].find(x=>/setFotoMiniPx\(/.test(x.getAttribute('onchange')||''));const e=CONF_CATALOGO.find(x=>x.titulo==='Tamaño de las fotos en las listas');
+        const u=e&&[...pg2('config').querySelectorAll('.cfg-unit')].find(x=>x.getAttribute('data-cfg-key')===cfgNorm(e.titulo));
+        __check("AF1: Configuración general → Calendario y reglas tiene «Tamaño de las fotos en las listas» (60 px por defecto) en su propia tabla, con su fila en el catálogo y el buscador la encuentra («fotos»)",!!inp&&inp.value==='60'&&!!e&&e.tab==='cal'&&!!u&&u.contains(inp)&&cfgResultados('fotos').some(r=>CONF_CATALOGO[r.i]===e)&&CONF_GRUPOS.some(g=>g[0]===e.grupo),JSON.stringify({inp:inp&&inp.value,e:!!e,u:!!u}));
+        const als=[];window.alert=m=>als.push(String(m));setFotoMiniPx('7');const malGuardo=S.params.fotoMiniPx!==bakF2;setFotoMiniPx('72');window.alert=al2;const h=oF?fotoMini(oF):'';const src=opLibHTML.toString();
+        __check("AF2: cambiar el tamaño (72) se guarda, queda en la bitácora (60 → 72) y lo usan las fotos de las listas y el hueco de Liberación (una sola definición); un tamaño fuera de 24–160 avisa y no se guarda",S.params.fotoMiniPx===72&&!malGuardo&&als.length===1&&S.bitacora.slice(nb).some(b=>/Tamaño de las fotos en las listas: 60 → 72 px/.test(b.t||''))&&(!oF||(/width="72" height="72"/.test(h)&&/data-lista="1"/.test(h)&&!/data-lista/.test(fotoMini(oF,64))))&&/fotoMiniPx\(\)/.test(src)&&!/prm\('fotoMiniPx'/.test(src),JSON.stringify({v:S.params.fotoMiniPx,als,oF:!!oF}));
+        if(bakF2===undefined)delete S.params.fotoMiniPx;else S.params.fotoMiniPx=bakF2;
+        page='ordenes';render();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());const px='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        const m=cl.querySelector('main');if(m){const d=document.createElement('div');d.id='af3';d.innerHTML='<img class="foto-mini" data-lista="1" width="60" height="60" src="'+px+'"><img class="foto-mini otra" width="64" height="64" src="'+px+'">';m.prepend(d)}
+        const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:390px;height:844px;border:0;visibility:hidden';document.body.appendChild(fr);let w3={};
+        try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});await __p(60);const d=fr.contentDocument;const a=d.querySelector('#af3 img[data-lista]'),b=d.querySelector('#af3 img.otra');w3={lista:a?a.getBoundingClientRect().width:null,otra:b?b.getBoundingClientRect().width:null}}finally{fr.remove()}
+        __check("AF3: en el teléfono (390 px) la foto de las listas se ve como mucho de 44 px; una foto con su propio tamaño (Mi centro, la ficha) no cambia",w3.lista!=null&&w3.lista<=44.5&&w3.otra===64,JSON.stringify(w3))}
+      }finally{window.alert=al2;if(bakT2===undefined)delete S.params.tema;else S.params.tema=bakT2;if(bakC2===undefined)delete S.params.temaColor;else S.params.temaColor=bakC2;if(bakF2===undefined)delete S.params.fotoMiniPx;else S.params.fotoMiniPx=bakF2;
+       Object.assign(ORDF,bakORDF);Object.assign(LIB,bakLIB2);Object.assign(CEN,bakCEN2);Object.assign(TIN,bakTIN);Object.assign(PM,bakPM);Object.assign(CONF,bakCONF);navCerrarTodo();setModo('claro');page='panorama';render()}}
     }finally{if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);window.confirm=cf0;PERFIL=bakP;page='ordenes';render()}
     __check("ASP sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* LPL · Liberación a producción EN LOTE (04-oct-2026, usuaria: «debería permitir liberar en masivo»). Se DIBUJA la pantalla de producción
