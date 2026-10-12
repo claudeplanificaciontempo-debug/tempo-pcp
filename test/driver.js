@@ -2473,7 +2473,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bakMetas=JSON.stringify(S.params.metas||null);
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
    const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
-   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=(()=>{const d=new Date(+ym.slice(0,4),+ym.slice(5,7),0);return ym+'-'+String(d.getDate()).padStart(2,'0')})();o.precio=100;o.cant=10;   /* entrega el último día del mes del plan (antes hoy+20: desde el día 12 caía en el mes siguiente y salía del plan) */o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
    const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
    {const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);oCand.fecha=sig+'-10';oNoCand.fecha=ym+'-28';}   /* candidata = entrega el mes siguiente (excepción); no candidata = entrega en el mes (ya en la base) */
    PLAN=null;PLAN_ALL=null;const P=programar();
