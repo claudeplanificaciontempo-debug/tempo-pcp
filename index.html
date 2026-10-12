@@ -2988,7 +2988,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 09:12';
+const APP_BUILD='2026-10-12 09:28';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -15194,7 +15194,7 @@ function liberarA(ids,et){if(!(puede('programa')||puede('liberar'))){alert('Tu p
   ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;if(!puedeLiberarA(o,et)){no.push(o.op+' ('+faltaLiberarA(o,et).join(', ')+')');return}
     if(et==='corte'){registrarLibProd(o,quienFirma(),new Date().toISOString());n++;return}   /* 08-oct: una sola forma de liberar a producción (la de la fila y la del lote) */
     o.lib=o.lib||{};o.lib[et]={ok:true,u:quienFirma(),ts:new Date().toISOString()};
-    o.histLib=(o.histLib||[]).concat([{ts:o.lib[et].ts,u:o.lib[et].u,et,accion:'liberada'}]);if(et==='corte'){if(!S.avance[o.id])S.avance[o.id]={};S.avance[o.id].lista=true}n++});
+    o.histLib=(o.histLib||[]).concat([{ts:o.lib[et].ts,u:o.lib[et].u,et,accion:'liberada'}]);n++});
   if(n)bitacora('Liberadas a '+et_n+': '+n+' órdenes');if(n&&page==='liberacion'){LIB.aviso={n,et};if(LIB.vista!=='liberadas')LIB.vista='listas';LIB.sel=new Set()}save();render();if(no.length)alert('No se liberaron '+no.length+': '+no.slice(0,6).join('; ')+(no.length>6?'…':''))}
 function retirarLib(id,et,motivo){const o=S.ordenes.find(x=>x.id===id);if(!o||!o.lib)return;motivo=String(motivo||'').trim();if(!motivoValido('liberacion',motivo)){alert('Para revertir una liberación elige el motivo de la tabla 15 (Motivos, uso «reversión de liberación»); no hay texto libre.');return}const antes='liberada '+(et==='tela'?'textil':'a producción');if(et==='tela'){delete o.lib.tela;delete o.lib.tej;delete o.lib.tin}else delete o.lib[et];registrarAuditoria('liberacion',o,antes,'sin liberar',motivo);bitacora('Reversión de liberación '+et+' '+o.op+' · '+motivo+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();try{cerrar()}catch(e){}render()}
 function puedeLiberar(o){const a=S.avance[o.id]||{};const fe=faseEstado(o.fase,o);const et=etapas(o);const telaOk=et.provStep?!!(a.lista||a.tinturada):!!(a.lista||a.calidadOk||fe.lista);return telaOk&&(o.telas||[]).length>0}

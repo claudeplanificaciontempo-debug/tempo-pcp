@@ -11778,7 +11778,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("LIBU4: una orden con WH que todavía no pasa el paso 1 no está en la pestaña 2: está en la 1 («por liberar») y entre las que «esperan el paso 1»",!!fPrevio&&!base2.includes(oP1)&&porLiberarLib('tela',null).includes(oP1)&&esperanPaso1Lib(null).includes(oP1),JSON.stringify({fase:oP1.fase,tela:liberada(oP1,'tela')}));
     limpiaLib();fijarPestanaLib('corte');page='liberacion';render();
     {const l=pgL().querySelector('.lib-paso1');const n=esperanPaso1Lib(null).length;
-     __check("LIBU4: la pestaña 2 dice cuántas órdenes con WH esperan el paso 1 (la misma función) y lleva a la pestaña 1",!!l&&nV(tx(l.querySelector('b')))===n&&/setPestanaLib\('tela'\)/.test(l.innerHTML),l?tx(l).slice(0,120):'sin línea');
+     __check("LIBU4: la pestaña 2 dice cuántas órdenes con WH esperan el paso 1 (la misma función) y lleva a la pestaña 1",!!l&&+((tx(l.querySelector('b')).match(/^[0-9.]+/)||['-1'])[0].replace(/[.]/g,''))===n&&/setPestanaLib\('tela'\)/.test(l.innerHTML),l?tx(l).slice(0,120):'sin línea');
      const lk=l&&l.querySelector('a');if(lk)lk.click();__check("LIBU4: el enlace abre la pestaña 1 sin salir de la página",page==='liberacion'&&LIB.et==='tela')}
     __check("LIBU4: en la pestaña 2 «Qué las frena» ya no trae «falta la liberación textil» (esas órdenes están en la pestaña 1)",!frenosLib(partesLib('corte',null).frenadas,'corte').some(([x])=>x==='falta la liberación textil'));
     {LIB.et='tela';irLibProdOrden(oP1.id);const okA=page==='liberacion'&&LIB.et==='tela'&&LIB.q===oP1.op;
@@ -11809,8 +11809,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      oP1.lib={tela:{ok:true,u:'prueba',ts:new Date().toISOString()}};mDesliberar([oP1.id],'tela');const m2=tx(document.getElementById('modal'));cerrar();delete oP1.lib;
      __check("LIBU8: desliberar dice la verdad: de producción, «el programa la sigue fechando, pero el centro no puede empezarla»; de la tela, «sale del programa»",/el programa la sigue fechando/.test(m1)&&!/sale del programa/.test(m1)&&/sale del programa/.test(m2),m1.slice(0,160)+' || '+m2.slice(0,160))}
     /* 9 · migración única de perfiles (nunca desde el piso, con bitácora) */
-    {const flag=S.params.migLiberacionUnica08;delete S.params.migLiberacionUnica08;const pf=PERFIL;const prueba={id:'libu-perf',n:'Prueba LIBU',permisos:[],centros:[],paginas:['libprod','ordenes']};perfilesDef().push(prueba);
-     PERFIL={id:'u-t',rol:'tablet',nombre:'Tablet'};perfilesDef();const okPiso=!S.params.migLiberacionUnica08&&prueba.paginas.includes('libprod');
+    {const flag=S.params.migLiberacionUnica08;delete S.params.migLiberacionUnica08;const pf=PERFIL;const prueba={id:'libu-perf',n:'Prueba LIBU',permisos:[],centros:[],paginas:['libprod','ordenes']};S.params.perfilesDef.push(prueba);   /* directo al catálogo: perfilesDef() aquí ya correría la migración (sin bandera) desde la sesión de administrador */
+     PERFIL={id:'u-p',rol:'piso',area:'tej',nombre:'Piso tejeduría'};perfilesDef();const okPiso=!S.params.migLiberacionUnica08&&prueba.paginas.includes('libprod');
      PERFIL=adminP0();const nb=S.bitacora.length;perfilesDef();const okAdm=!!S.params.migLiberacionUnica08&&!prueba.paginas.includes('libprod')&&prueba.paginas.includes('liberacion')&&/Liberación \(08-oct\)/.test(JSON.stringify(S.bitacora.slice(nb)));
      prueba.paginas=['libprod'];const nb2=S.bitacora.length;perfilesDef();const okUna=S.bitacora.length===nb2&&prueba.paginas.includes('libprod');
      __check("LIBU9: la migración de perfiles corre una sola vez (bandera y bitácora), nunca desde el piso, y deja la página «liberacion» a quien tenía un enlace viejo",okPiso&&okAdm&&okUna,JSON.stringify({okPiso,okAdm,okUna}));
