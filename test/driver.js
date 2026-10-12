@@ -1762,7 +1762,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
 
   demo();await __p(100);
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
-  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','imprimir','control','categorias','operaciones','ingops','ingref','ingtipos','ingmaq','ingrev','config','usuarios','albaran','avancearea','salud'];
+  /* 08-oct (L5): «imprimir» ya no es una página (Programa del día salió del menú: «Imprimir el día» es una ventana) y su enlace viejo lleva a Hoy, que ya está en la lista:
+     dejarla repetía Hoy en el recorrido y en la fase de botones. «salud» abre Configuración → Auditoría → Salud de los datos */
+  const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','control','categorias','operaciones','ingops','ingref','ingtipos','ingmaq','ingrev','config','usuarios','albaran','avancearea','salud'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
     for(const ch of chips){try{localStorage.__fase='chip '+p+': '+(ch.getAttribute('onclick')||'').slice(0,80)}catch(e){}try{ch.click()}catch(e){__R.errors.push({page:p,msg:'chip: '+e.message})}}
@@ -2476,7 +2478,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const bakMetas=JSON.stringify(S.params.metas||null);
    const nomMes=m=>Object.keys(MESES_ES).find(k=>MESES_ES[k]===+m.slice(5,7))+' '+m.slice(0,4);
    const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
-   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
+   const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=(()=>{const f=dsum(hoy(),20);return f.slice(0,7)===ym?f:ym+'-28'})();o.precio=100;o.cant=10;   /* la entrega cae DENTRO del mes del plan (el plan va por entrega): con hoy()+20 a secas, desde el día 11 de un mes de 31 días la orden caía en el mes siguiente y B3-2 fallaba según la fecha */o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
    const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
    {const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);oCand.fecha=sig+'-10';oNoCand.fecha=ym+'-28';}   /* candidata = entrega el mes siguiente (excepción); no candidata = entrega en el mes (ya en la base) */
    PLAN=null;PLAN_ALL=null;const P=programar();
