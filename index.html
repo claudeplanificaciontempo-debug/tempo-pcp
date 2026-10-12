@@ -1620,6 +1620,7 @@ nav .grp .grp-c{display:none}
 .cen2-unidad{gap:4px;margin:0 0 0 8px}
 .cen2-unidad .chip{font-size:var(--fs-xs);padding:3px 10px}
 .cen2-dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.cen2-sub.res-cong{margin-top:3px}
 .cen2-dia{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;background:var(--paper);cursor:pointer;min-width:0}
 .cen2-dia:hover{border-color:var(--ink3)}
 .cen2-dia.hoy{border-color:var(--t-primary);box-shadow:inset 0 0 0 1px var(--t-primary)}
@@ -2887,7 +2888,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:26';
+const APP_BUILD='2026-10-12 10:33';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -11931,7 +11932,7 @@ function planTarjetasCENHTML(cens,P,dias,recs,nombre){const h=hoy();const rec=CE
   const cumplV=sinRegs?'sin registros':((pctC==null||aunNo)?'—':pctC+' %');
   const cumplCls=sinRegs?'warn':(congUsa?'':(a.hechas<debia?'bad':(a.hechas>0?'ok':'')));
   const cp=L.reduce((s,x)=>s+prodTurnoFueraDia(recs,x.d),0);const fueraFoto=congUsa?hechoFueraDeFotoCEN(cens,dias[0],dias[dias.length-1]):0;
-  const cumplK=(congUsa?`Cumplimiento · de la foto congelada · <b>${num(a.cong.hechas)}</b> de ${num(a.cong.pzProg)} prendas`:`Cumplimiento · de la semana · <b>${sinRegs?'—':num(a.hechas)}</b> ${a.hechas===1?'prenda hecha':'prendas hechas'}`)
+  const cumplK=(congUsa?`Cumplimiento · de la foto congelada<span class="cen2-sub res-cong" title="prendas hechas desde que se congeló la semana, de las prendas que tenía la foto (no de lo que el programa tiene ahora)"><b>${num(a.cong.hechas)}</b> de ${num(a.cong.pzProg)} prendas de la foto</span>`:`Cumplimiento · de la semana · <b>${sinRegs?'—':num(a.hechas)}</b> ${a.hechas===1?'prenda hecha':'prendas hechas'}`)
     +(!congUsa&&debia?`<span class="cen2-sub" title="la carga programada de los días que ya pasaron">▲ al cierre de ayer debía llevar ${num(debia)}</span>`:(!congUsa&&a.pz&&!a.hechas?'<span class="cen2-sub">aún no toca: nada programado antes de hoy</span>':''))
     +(sr.sinReg.length?`<span class="cen2-sub" title="días laborables ya pasados con carga y sin ningún registro (avance, tramo, turno ni paro): si se trabajó y no se registró, el avance real es mayor">${num(sr.sinReg.length)} ${sr.sinReg.length===1?'día':'días'} sin registrar (${esc(sr.sinReg.map(d=>fmtDia(d).split(',')[0]).join(', '))})</span>`:'')
     +(fueraFoto?`<span class="cen2-sub">además ${num(fueraFoto)} de órdenes que entraron después de congelar</span>`:'')
@@ -12009,7 +12010,7 @@ function genteParosCENHTML(cens,dias,recs,nombre,h){const planta=(recs||[]).filt
 /* ---------- Plan · carga futura (lo que viene y el plan del mes congelado): se calcula solo al abrirlo (corre el programa con toda la cartera) ---------- */
 function cargaFuturaCENHTML(cens,nombre,P,abrir){const pref=cenPleg('viene',false);const ab=!!abrir||pref;
   const cuerpo=ab?cargaQueVieneHTML(cens,nombre,P,o=>faseOkCEN(o)&&matchBusq(o,normTxt(CEN.q||''),'CEN.q')):'<p class="mut">Ábrelo para ver lo que va a llegar a '+esc(nombre)+' y el plan del mes congelado.</p>';
-  return `<details class="panel cen-pleg cen2-pleg" id="cen-viene" ${ab?'open ':''}${ab&&!pref?'data-auto="1" ':''}${ab?'':'data-vacio="1" '}ontoggle="cenPlegTog(this,'viene');if(this.open&&this.dataset.vacio)render()"><summary>Carga futura <span class="mut">· lo que va a llegar a ${esc(nombre)} (de cualquier mes) y el plan del mes congelado</span>${ayudaTipHTML(cargaQueVieneNota(nombre))}</summary><div class="body">${cuerpo}</div></details>`}
+  return `<details class="panel cen-pleg cen2-pleg" id="cen-viene" ${ab?'open ':''}${ab&&!pref?'data-auto="1" ':''}${ab?'':'data-vacio="1" '}ontoggle="cenPlegTog(this,'viene');if(this.open&&this.dataset.vacio)render()"><summary>Lo que va a llegar <span class="mut">· a ${esc(nombre)} (de cualquier mes) y el plan del mes congelado</span>${ayudaTipHTML(cargaQueVieneNota(nombre))}</summary><div class="body">${cuerpo}</div></details>`}
 function planCentroHTML(x){const {cid,cens,nombre,P,dias,lun,dom,h,recs,filasCentro,sec}=x;const secAbre=CEN.sec;
   const semTxt=semanaLabTxtCEN(cens,lun,dom);
   const partes=subAreasSemanaHTML(cid,cens,P,dias,semTxt)+(sec?'<div id="cen-mods">'+modKPIsHTML(sec.mods,P,dias,'Confección por módulo')+modKPIsHTML(sec.maq,P,dias,'Maquila (aparte de los módulos)')+'</div>':'');
