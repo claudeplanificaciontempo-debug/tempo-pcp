@@ -253,9 +253,8 @@ agregadas; `cargaPlanCentros` y `congelarPlan` usan el total; "Agregar" solo gru
 `addProgTej` (avisa sin impedir: tela fuera de `kgTela` o kg del día > `kgDiaTela`; `p.aviso`, bitácora CON AVISO)`/setProgTejRow/delProgTejRow`, `cargasTejPorTela` pedido vs cargado). Bandeja Hoy `sinMesProyecto`. Programa del día ya no imprime tejeduría; Stock de tela
 cruda es la primera entrada de Planificación textil. Ver `OBSERVACIONES_PLAN_TEJEDURIA_REPORTE.md`.
 
-**Liberación:** son dos páginas distintas por menú (misma `vLiberacion`, sin
-pestañas): "Liberación" (Dirección, `LIB.et='tela'`, la principal) y "Liberación
-a producción" (Planificación de producción, `LIB.et='corte'`).
+**Liberación:** desde el 08-oct es UNA página «Liberación» (una sola entrada, en Dirección) con dos pestañas: «1 · Tela» (`LIB.et='tela'`) y
+«2 · Producción» (`LIB.et='corte'`). Ver «Liberación única y cifras de cartera que cuadran» más abajo.
 
 **Operaciones (desde el 12-sep-2026):** se cargan desde la hoja LMO de
 OPERACIONES.xlsx con `mCargarLMO()`/`planLMO()`/`aplicarLMO()`; el centro
@@ -1844,6 +1843,42 @@ su motivo (`faltaLiberarA`) y registra lo MISMO que la fila con **`registrarLibP
 fechaVerif}` + `avance.lista` + `o.histLib` con `et:'corte'`), más `o.lib.corte.lote` (LP-AAAAMMDD-xxxxx) y una sola línea de bitácora. Permiso = el de la
 fila (`puedeLibProdLote`, nunca desde el piso); deshacer sigue siendo por orden (desliberar). La fila individual no cambió. Pruebas LPL0–LPL10. Donde este
 archivo diga que producción se libera «una por una», es historia.
+
+**Liberación única y cifras de cartera que cuadran (08-oct-2026, lote L3 de la simplificación; usuaria: «analiza si necesitamos dos liberaciones»,
+«que los valores CUADREN en todas las pantallas»).** **Liberación** es UNA entrada del menú (Dirección) y UNA página con dos pestañas en la franja del
+título (`LIB_PESTANAS`, `libPestanasHTML`, `setPestanaLib`/`fijarPestanaLib`; cada una con su número de «por liberar»): **1 · Tela (entra al programa)** =
+`o.lib.tela` (sin ella el motor no teje, no tiñe ni da fechas; Odoo la da sola por la columna «libera tela» de la tabla 5, así que la pestaña sirve para
+adelantarse) y **2 · Producción (puede empezar a cortarse)** = la firma de bodega `o.lib.corte`, cuya base son SOLO las que ya pasaron el paso 1
+(`paso1Hecho`); lo que todavía espera la tela es la línea «N esperan el paso 1 →» (`esperanPaso1Lib`), así «Qué las frena» muestra solo frenos de
+producción. Se conservan las dos firmas (las hacen personas distintas). `irLib('tela'|'corte')` es la forma de abrir una pestaña desde otra pantalla;
+`ir('libtela'|'libprod')` y `PAGINAS_REDIRIGIDAS.libtela/libprod` (con `redirigirPagina`) llevan a la que toca; `irLibProdOrden` abre la 1 si a la orden le
+falta el paso 1; el menú abre la pestaña en la que se quedó. Migración única `migLiberacionUnica08` (bandera, bitácora, nunca desde el piso).
+**«Por liberar» = `porLiberarLib(et,ym)`** (con WH): las de diseño sin WH van aparte (`disenoSinWHLib`, `esDisenoSinWH`, «no se pueden liberar»); la usan
+Liberación, Hoy y el plan. `liberarCorte` y `liberarA(…,'corte')` pasan por `registrarLibProd` (una sola forma de liberar a producción) y piden el permiso
+dentro de la función. Salud (`auditoriaSistema`, regla `libCorteLista`) avisa cuando `o.lib.corte` y `avance.lista` no coinciden (no corrige). Lo que la
+fase de Odoo ya pasó no entra en la base y la barra lo dice («además N ya pasaron esta etapa»); «Liberadas por la fase de Odoo» dice cuántas están cerradas.
+Textos que decían lo contrario del motor, corregidos: desliberar de producción = «el programa la sigue fechando, pero el centro no puede empezarla»;
+`BASES_CARTERA.liberadas` = «pueden empezar a cortarse»; semáforo «falta liberar a producción»; calidad y tela de proveedor = «o cuando Odoo pasa la orden a
+planificación». **Plan del mes en cuatro estados** (`ESTADOS_PLAN`, `estadoPlanOrden`, `planMesEstados(ym)`, `tagEstadoPlanHTML`): liberadas a producción ·
+tela liberada · por liberar (con WH) · sin WH (diseño, aparte, nunca «liberadas»); una sola función para el Bloque 3, «Qué entra al plan» y la tarjeta
+Facturación del Resumen gerencial (`facturacionPlanMes`). Facturan en el mes las liberadas o con la tela liberada cuyo `finPro` cae en el mes; «salen el mes
+siguiente» solo con fecha de fin; las que no la tienen van en su línea. Los enlaces abren la pestaña que toca (`irLibPlan`). **Precio fuera de rango** (la
+bandeja de Órdenes, `S.params.tareaCarga.precioRaro`): no suma en ningún total en $ con UNA regla, `valorUSD(o)` (la llama `usdOrden`; `valorUSDBruto`,
+`precioFueraRango`); cada total dice «sin N órdenes con precio fuera de rango ($ X) →» (`avisoPrecioRaroHTML`, `irPrecioRaro`); nada se corrige aquí.
+**«¿Alcanza el mes?» = la Nivelación**: Hoy («Mes en curso · ¿alcanza?», `alcanzaMesHTML`) y la tarjeta del Resumen gerencial usan `alcanzaMesGER` +
+`veredictoAlcanza`; «Capacidad del mes por área» y «Por centro» salieron de Planificar el mes (la Guía sale de la Nivelación; la Estructura de módulos queda
+como configuración). La base de planta son las **lanzadas (con WH)** en `saldoProceso` (Nivelación) y `matrizCapacidad` (Capacidad y decisiones), con
+«además, en diseño (sin WH): X h» aparte (`nivUIDisenoHTML`, `.cap-base`); Capacidad no cuenta el recurso de maquila (`esMaquilaRec`) ni la confección que va
+a maquila (`vaAMaquila`); `pctCapTxt` escribe «menos de 1%», no «0%». Las horas de confección del Bloque 2 son `minPendCentro(o,'modulos')` de las lanzadas.
+**Producto en proceso = `enWIPGerencia`** (con WH, fase «en proceso», sin terminar): la página abre con la base `proceso` (`WIP_BASES`; «Cartera por fase» =
+todas las abiertas) y Hoy suma lo mismo (tejeduría, tintorería y terminadas van aparte en la tira). **Hoy**: una sola tarjeta de entregas (`hoy-en7`,
+próximos 7 días por `fechaMetaDe`, «hasta el …») y una de vencidas (`hoy-venc`, «· N de diseño sin WH»); salieron `hb-en7`, `hb-venc` y `hd-noll`; la bandeja
+«Va tarde según el programa» es `esOrdenVaTarde`; la insignia de Órdenes son las abiertas. **Metas semanales**: filas «De meses anteriores (pendiente)» y
+«Otras», cada semana dice hasta qué día cuenta (`filasEntregasPlan`) y el Mes es la suma. Avance por área → Tejeduría cuenta las órdenes con
+`kgPendiente>0` (y cuántas liberadas); Avance → Mes dice «lo programado en el mes». Pruebas LIBU1–LIBU10 y **CUADRE1–CUADRE11** (las mismas cifras de
+cartera leídas de la pantalla en Hoy, Resumen gerencial, Planificar el mes, Liberación, Producto en proceso y Capacidad). **Para la usuaria**: conservar o
+retirar la pestaña 1 (la firma textil nadie la usa: la da la fase de Odoo); si alguna fase textil debe marcar la tela lista; separar el permiso de cada
+firma; y un solo «mes de la orden» (Liberación y Capacidad van por mes de Proyecto, el plan por fecha meta).
 
 **Hora de Ecuador (04/05-oct-2026, decisión de la usuaria: «a la hora de Ecuador»).** Hasta el 04-oct `hoy()` era el día de la hora UTC: desde las 19:00 de Ecuador el sistema ya creía que era mañana (el domingo 04 en la noche mostró la semana del lunes 05). Ahora hay UNA definición del día y de la hora de la planta: la zona sale de `S.params.zonaHoraria` (sembrada `America/Guayaquil`, `ZONA_HORARIA_DEF`; Configuración general → Calendario y reglas → Días de trabajo por área, `zonaHorariaHTML`/`setZonaHoraria` con permiso `config` y bitácora con el día de antes y el de después; vacío = la hora del equipo; una zona que no existe no se acepta y, si quedara guardada, sale en «Falta completar» y se usa la del equipo). Funciones únicas: `hoy()` (caché hasta la medianoche de la planta, `HOY_CACHE`), `diaLocalDeTs(ts)` (un día o una hora sin zona no se mueven), `horaLocalDeTs`, `msDeLocal`/`tsDeLocal(día,'HH:MM')`, `inputLocalDeTs`/`tsDeInputLocal` (campos datetime-local) y `opZona(op)` para todo `toLocale*String`; `diaLocalDe` es un alias. **Las marcas de tiempo guardadas siguen en ISO UTC: no se migró nada.** Quien necesite el día de un ts usa `diaLocalDeTs`; nunca `String(ts).slice(0,10)` ni `toISOString().slice(0,10)` sobre «ahora». Los descansos (tabla 18) se descuentan en la hora de la planta. `programar()` NO usa `hoy()`: arranca en «Inicio del programa» (`S.params.inicio`). Medido con el volcado real y el reloj simulado: a las 10:00 no cambia nada; a las 20:30 lo hecho del día, el turno, «Hechas hoy», «sin registros», la eficiencia y Planta en vivo quedan en el día de la planta (antes en el siguiente), y las órdenes con meta ese mismo día dejan de salir vencidas (65 en el volcado). Pruebas ZH1–ZH7. **Pendiente en el servidor:** la función `mover_fase` de Supabase (16-sep) todavía sella `terminadaF` con el día UTC (`SUPABASE_MOVER_FASE.sql`, `to_char(now() at time zone 'utc', …)`): un supervisor que pasa una orden a fase 8 entre las 19:00 y las 24:00 deja el día siguiente; arreglarlo es SQL nuevo en producción (decisión de la usuaria). Las pruebas que arman horas usan `tsDeLocal`, nunca `new Date(y,m,d,h)` (depende de la zona del equipo).
 
