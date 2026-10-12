@@ -1090,7 +1090,8 @@ details.det-agr>summary .note{font-weight:400}
 #p-tintoreria [data-tin-tab]:not(.on){display:none}
 .pagehead .tin-tabs{max-width:none;margin-right:10px}
 .pagehead .tin-tabs .chip{font-size:var(--fs-s)}
-/* ux:simp08-L5 — Tejeduría en tres pestañas (todas dibujadas, una visible, como Tintorería), Auditoría en dos e Imprimir el día (08-oct-2026).
+/* ux:simp08-L5 */
+/* Tejeduría en tres pestañas (todas dibujadas, una visible, como Tintorería), Auditoría en dos e Imprimir el día (08-oct-2026).
    Solo variables: valen en claro, oscuro y en los tres aspectos */
 #p-tejeduria [data-tej-tab]:not(.on){display:none}
 .pagehead .tej-tabs,.pagehead .aud-vistas{max-width:none;margin-right:10px}
@@ -2969,7 +2970,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:15';
+const APP_BUILD='2026-10-12 09:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -13994,7 +13995,7 @@ function verTejTab(k,irA){verTejTabSin(k);const root=document.getElementById('p-
 const TEJ_BASE={
   ahora:'Base: <b>órdenes abiertas con tela propia que todavía no se teje</b>; la tabla «Telas por tejer» cuenta las que ya tienen la tela liberada y el stock se compara con lo que entra a corte en el mes. Kilos <b>en crudo, sin merma</b>.',
   mano:'Base: <b>lo que la persona de tejeduría programa a mano</b> por máquina y día, y lo que ya marcó como tejido. El sistema no asigna máquinas. Kilos <b>en crudo, sin merma</b>.',
-  viene:'Base: <b>las órdenes en fases antes de Planificación</b>, liberadas o no, del mes del Proyecto que elijas abajo (es la macro del mes). Kilos <b>en crudo con la merma de tintura sumada</b>: por eso no se suman con «Por tejer ahora».'};
+  viene:'Lo que van a pedir <b>las órdenes que todavía no llegan a Planificación</b>, liberadas o no (la macro del mes; la base exacta y el mes del Proyecto van justo abajo). Kilos <b>en crudo con la merma de tintura sumada</b>: por eso no se suman con «Por tejer ahora».'};
 function tejBaseHTML(k){return `<p class="base-linea tej-base">${TEJ_BASE[k]}</p>${k==='ahora'?porTejerLineaHTML():''}`}
 /* V15 (08-oct): «órdenes con tela propia por tejer» = UNA cuenta para Tejeduría y Avance por área. Abiertas que pasan por tejeduría y todavía tienen
    kilos de tela propia sin tejer (kgPendiente > 0: las tejidas, tinturadas o listas dan 0; antes se contaban también las que no tienen ni un kilo de
@@ -18645,7 +18646,7 @@ function stockTelaHTML(){const req=requeridoTela();const st=stockTela();const me
   return `<h4 class="tej-sec" id="tej-stock">Stock de tela cruda en bodega <span class="mut">· lo escribes aquí y el programa de tejeduría lo descuenta${dis?' · solo tejeduría y planificación lo cambian':''}</span></h4>
     <div class="row tej-fila"><label style="margin:0">Mes en que entra a corte</label><select onchange="STK.mes=this.value;render()">${(meses.length?meses:[mes]).map(m=>`<option value="${m}" ${m===mes?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div>
   <p class="lede">Kilos crudos que piden las órdenes <b>liberadas a tela</b> que entran a corte con <b>${ant} semana${ant===1?'':'s'} de anticipación</b> (parámetro en Configuración general → Calendario y reglas). Escribe el stock que tienes por tela; "a tejer" = requerido − stock, nunca negativo. Si no escribes el stock, el programa cuenta 0 en bodega.</p>
-  <p class="base-linea">Base: <b>órdenes liberadas a tela, sin tejer</b>, que entran a corte en <b>${esc(fmtMesEG(mes))}</b> (con ${num(ant)} ${ant===1?'semana':'semanas'} de anticipación).</p>${cuentasTelaHTML('stock')}
+  <p class="base-linea">Base: <b>órdenes liberadas a tela, sin tejer</b>, que entran a corte en <b>${esc(fmtMesEG(mes))}</b> (con ${num(ant)} ${ant===1?'semana':'semanas'} de anticipación).</p>
   <div class="panel"><h3>Stock de tela cruda · ${esc(fmtMesEG(mes))} <span class="note">${num(filas.length)} ${filas.length===1?'tela':'telas'} · requerido ${num(filas.reduce((a,f)=>a+f.req,0))} kg</span></h3><div class="body">
    ${filas.length?`<table class="stk-tabla"><thead><tr><th>Tela</th><th class="num">Requerido (kg)</th><th class="num">Órdenes</th><th class="num">Stock en bodega (kg)</th><th>Actualizado</th><th class="num">A tejer (kg)</th></tr></thead><tbody>
    ${sinStock.length?grp('Telas sin stock registrado ('+num(sinStock.length)+')','· requerido '+num(reqSin)+' kg · sin stock escrito, el programa las teje enteras (cuenta 0 en bodega)')+sinStock.map(trSin).join(''):''}
