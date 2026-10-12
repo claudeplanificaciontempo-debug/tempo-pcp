@@ -2988,7 +2988,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:10';
+const APP_BUILD='2026-10-12 08:30';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5626,8 +5626,8 @@ const REPORTES=[
   {p:'avancearea',n:'Avance por área',desc:'cómo va el programa de cada área: la semana (programadas, hechas, cumplimiento, atrasadas; cada ingeniero ve su área) o el mes contra el plan congelado'},
   {p:'ordtrabajo',n:'Órdenes de trabajo',desc:'como la lista de Odoo: cada orden en cada centro con inicio, personas, duración real, producción, estado y si va retrasada; por área o todas juntas'}];   /* 03-oct (usuaria: «borra lo que no debe ir»): Cumplimiento de facturación salió como página y Avance del mes se fundió en Avance por área (vista Mes) */
 /* páginas retiradas el 21-sep: los enlaces viejos (perfiles, marcadores, bandejas) caen en la pantalla que las reemplaza */
-const PAGINAS_REDIRIGIDAS={operaciones:'ingops',ingref:'ingops',vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro',familias:'gerencia',cumplimiento:'gerencia',avance:'avancearea'};   /* compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep · cumplimiento y avance (Avance del mes, ahora vista Mes de Avance por área): el 03-oct */
-function redirigirPagina(p){if(p==='avance')AVA.vista='mes';if(p==='ingref'){try{ING_V.ops='secuencia'}catch(e){}}   /* 06-oct: «Por referencia» abre la Secuencia de operaciones */
+const PAGINAS_REDIRIGIDAS={operaciones:'ingops',ingref:'ingops',vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro',familias:'gerencia',cumplimiento:'gerencia',avance:'avancearea',libtela:'liberacion',libprod:'liberacion'};   /* 08-oct: «Liberación textil» y «Liberación a producción» son las pestañas 1 y 2 de la única «Liberación» (redirigirPagina fija la pestaña) */   /* compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep · cumplimiento y avance (Avance del mes, ahora vista Mes de Avance por área): el 03-oct */
+function redirigirPagina(p){if(p==='avance')AVA.vista='mes';if(PESTANA_LIB[p])fijarPestanaLib(PESTANA_LIB[p]);if(p==='ingref'){try{ING_V.ops='secuencia'}catch(e){}}   /* 06-oct: «Por referencia» abre la Secuencia de operaciones */
   const q=PAGINAS_REDIRIGIDAS[p]||p;return (q==='gerencia'&&!veFacturacion())?'avancearea':q}   /* 04-oct: sin «Ver valores en $», el Resumen gerencial y sus enlaces viejos (cumplimiento, familias) llevan a Avance por área */   /* un enlace viejo a «Avance del mes» abre la vista Mes (sin cambiar la vista que la persona dejó recordada) */
 function reporteriaBarraHTML(){const vis=REPORTES.filter(r=>vePagina(r.p)&&permPaginaOk(r.p));if(vis.length<2)return '';const fac=veFacturacion();
   return `<div class="o-notebook rep-barra no-print"><span class="rep-barra-t">Reportería:</span>${vis.map(r=>`<a class="${page===r.p?'on':''}" title="${esc((!fac&&r.descSin)||r.desc||'')}" onclick="ir('${r.p}')">${esc(r.n)}</a>`).join('')}</div>`}   /* pestañas como las de sub-áreas, en una línea, dentro de la franja del título (02-oct) */
@@ -6177,7 +6177,7 @@ function vPanorama(el){
     ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mActualizarDatos(1)">Actualizar datos</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button></div>`:''}</div></div>
   </div>`;
 }
-function ir(p){if(PESTANA_LIB[p]){fijarPestanaLib(PESTANA_LIB[p]);p='liberacion'}p=redirigirPagina(p);const a=document.querySelector('nav a[data-p="'+p+'"]');if(!a)return;   /* 08-oct: Liberación es UNA entrada del menú; la pestaña la fija LIB.et (irLib) */if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
+function ir(p){p=redirigirPagina(p);const a=document.querySelector('nav a[data-p="'+p+'"]');if(!a)return;   /* 08-oct: Liberación es UNA entrada del menú; la pestaña la fija LIB.et (irLib) */if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
 function irLib(et){fijarPestanaLib(et);LIB.sel=new Set();ir('liberacion')}   /* desde cualquier pantalla: la pestaña correcta de Liberación (1 · Tela o 2 · Producción) */
 /* desde la cola, el Resumen o el buscador de un centro: Liberación a producción acotada a ESA orden (04-oct). Si los filtros de la
    pantalla la esconderían se limpian; si el mes del Proyecto elegido no la incluye, se ven todos los meses. Solo navega: no libera nada. */
@@ -13361,7 +13361,7 @@ function resolverDecisionCap(id){if(!puede('programa'))return;const d=(S.params.
 function setCapAmbar(v){if(!puede('config')){alert('Solo configuración puede cambiar el umbral.');return}const n=+v;if(!(n>=0&&n<=100)){alert('Umbral entre 0 y 100.');return}const antes=S.params.capAmbar;S.params.capAmbar=n;bitacora('Capacidad · umbral ámbar: '+(antes===undefined?'—':antes)+'% → '+n+'%');save();render()}
 /* 25-sep: textos de Capacidad y decisiones que se repiten en la tabla, las celdas y el detalle */
 function fmMesCap(m){return m==='venc'?'Proyectos de meses pasados':fmtMesEG(m)}   /* no «vencido»: vencida es otra cosa (fecha meta pasada) */
-function pctCapTxt(x){if(!x||!x.cap||x.pct==null)return '';return (x.pct>100&&x.pct<101)?num(x.pct,1)+'%':Math.round(x.pct)+'%'}   /* 100,3 % no se escribe «100%» en rojo */
+function pctCapTxt(x){if(!x||!x.cap||x.pct==null)return '';if(x.pct>0&&x.pct<0.5)return 'menos de 1%';   /* 08-oct: unos minutos contra un mes de capacidad no se escriben «0%» */return (x.pct>100&&x.pct<101)?num(x.pct,1)+'%':Math.round(x.pct)+'%'}   /* 100,3 % no se escribe «100%» en rojo */
 function libCapTxt(x,largo){if(x.c==='tin'&&!(x.det||[]).length)return largo?'<span class="mut" title="tintorería se mide por baños: aquí no se cuenta la liberación por orden">—</span>':'por baños';
   return x.noLib?(num(x.noLib)+(largo?' órdenes · '+fmtCarga(x.minNoLib,x.u):' sin liberar')):(largo?'<span class="mut">todo liberado</span>':'todo liberado')}
 /* lleva la pantalla al detalle de la celda elegida (el detalle va arriba, junto a «qué hay que decidir») */
@@ -20520,7 +20520,7 @@ iniciar();
 document.querySelectorAll('nav .grp').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation();navToggle(g)}));
 document.querySelectorAll('nav .gbody a').forEach(a=>a.addEventListener('click',()=>navCerrarTodo()));
 document.addEventListener('click',e=>{if(!e.target.closest('nav'))navCerrarTodo()});
-document.querySelectorAll('nav a[data-lib]').forEach(a=>a.addEventListener('click',()=>{if(LIB.et!==a.dataset.lib){LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.scroll=0}LIB.et=a.dataset.lib;LIB.sel=new Set();setTimeout(render,0)},true));
+
 document.querySelectorAll('nav a[data-conf]').forEach(a=>a.addEventListener('click',()=>{CONF.tab=a.dataset.conf;setTimeout(render,0)},true));
 document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.target.closest('nav a[data-cen]');if(!a)return;
   if(a.dataset.sub){CEN.id=a.dataset.padre;CEN.solo=a.dataset.cen}else{CEN.id=a.dataset.cen;CEN.solo=''}
