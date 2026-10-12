@@ -2474,7 +2474,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
    const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
    const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
-   [oDentro,oFuera].forEach(o=>{o.fecha=ym+'-28';delete o.fechaCompromiso});   /* 08-oct: entrega dentro del mes, así las dos están en el plan (antes el «después» salía de órdenes sin fecha del programa, que no terminan en ningún mes) */
+   [oDentro,oFuera].forEach(o=>{o.fecha=ym+'-28';delete o.fechaCompromiso});delete oNoCand.lib;   /* la bloqueada del mes queda SIN liberar (por liberar, con WH): es la que sale en «Qué liberar primero» */   /* 08-oct: entrega dentro del mes, así las dos están en el plan (antes el «después» salía de órdenes sin fecha del programa, que no terminan en ningún mes) */
    {const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);oCand.fecha=sig+'-10';oNoCand.fecha=ym+'-28';}   /* candidata = entrega el mes siguiente (excepción); no candidata = entrega en el mes (ya en la base) */
    PLAN=null;PLAN_ALL=null;const P=programar();
    // fuerza escenarios (finPro dentro/fuera del mes, bloqueada) sin tocar el motor: solo ajusta el resultado ya calculado para esta orden de prueba
@@ -8767,9 +8767,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const meses=nivUIMeses();const r=nivUICalcular("corte");
     const ords=S.ordenes.filter(o=>abiertaDe(o)&&meses.includes(mesEntregaNiv(o)));
     const cg=cargaUnica("abiertas",{ordenes:ords}).centros.corte||{pz:0,n:0,total:0};
-    const propio=ords.filter(o=>(o.ruta||[]).some(p=>p.centro==="corte")&&!pasoHecho(o,"corte")).reduce((a,o)=>a+pendCentroUnid(o,"corte"),0);
+    const porCortar=o=>(o.ruta||[]).some(p=>p.centro==="corte")&&!pasoHecho(o,"corte")&&pendCentroUnid(o,"corte")>0;
+    const propio=ords.filter(o=>lanzada(o)&&porCortar(o)).reduce((a,o)=>a+pendCentroUnid(o,"corte"),0);   /* 08-oct (V5): la base de la planta son las lanzadas (con WH) */
+    const propioDis=ords.filter(o=>!lanzada(o)&&porCortar(o)).reduce((a,o)=>a+pendCentroUnid(o,"corte"),0);
+    __check("N5 (08-oct): lo de diseño sin WH va aparte en el saldo (disenoUnid), sin sumar al saldo de la planta",(r.saldo.disenoUnid||0)===propioDis,(r.saldo.disenoUnid||0)+' vs '+propioDis);
     __R.nivUI.coherencia={cuadritoConSAM:r.saldo.unid,cuadritoSinSAM:r.saldo.unidSinSAM,cuadritoTotal:r.saldo.unid+r.saldo.unidSinSAM,cargaGeneralPz:cg.pz,cargaGeneralN:cg.n,cargaGeneralMin:Math.round(cg.total),propio};
-    __check("N5: el saldo de Corte (con SAM + sin SAM) coincide con la suma de órdenes por cortar de la misma base",r.saldo.unid+r.saldo.unidSinSAM===propio,JSON.stringify(__R.nivUI.coherencia));
+    __check("N5: el saldo de Corte (con SAM + sin SAM) coincide con la suma de órdenes lanzadas por cortar de la misma base",r.saldo.unid+r.saldo.unidSinSAM===propio,JSON.stringify(__R.nivUI.coherencia));
     __check("N5: y contra Carga general (misma base y meses) coincide o la diferencia es solo cantCentro/sin SAM",Math.abs((r.saldo.unid)-cg.pz)<=r.saldo.unidSinSAM+ords.reduce((a,o)=>a+Math.max(0,(+o.cant||0)-cantCentro(o,"corte")),0),JSON.stringify(__R.nivUI.coherencia));}
    /* N6 · escribir recalcula al instante y no guarda; guardar exige motivo y permiso programa */
    {const bakNiv=JSON.stringify(S.params.nivelacion||null);const nb=S.bitacora.length;const r0=nivUICalcular("corte");

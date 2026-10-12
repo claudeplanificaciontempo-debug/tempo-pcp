@@ -2988,7 +2988,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:38';
+const APP_BUILD='2026-10-12 09:12';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -7265,7 +7265,7 @@ const LIB_PESTANAS=[['tela','1 · Tela','entra al programa'],['corte','2 · Prod
 const PESTANA_LIB={libtela:'tela',libprod:'corte'};   /* los enlaces a cada liberación de antes (dos entradas del menú): ir('libprod') abre la pestaña 2 */
 function fijarPestanaLib(et){et=et==='corte'?'corte':'tela';if(LIB.et!==et){LIB.vista=null;LIB.freno=null;LIB.aviso=null;LIB.scroll=0;LIB.sel=new Set()}LIB.et=et}
 function setPestanaLib(et){fijarPestanaLib(et);render()}
-function libPestanasHTML(et){return `<div class="o-notebook lib-pestanas no-print" role="tablist">${LIB_PESTANAS.map(([k,n,d])=>{let c=0;try{c=partesLib(k,LIB.ym,'').pend.length}catch(e){}   /* el número no depende de la búsqueda (la franja no se repinta al escribir) */
+function libPestanasHTML(et){return `<div class="o-notebook lib-pestanas no-print" role="tablist">${LIB_PESTANAS.map(([k,n,d])=>{let c=0;try{c=porLiberarLib(k,LIB.ym).filter(okFiltrosB1).length}catch(e){}   /* = «Listas + Frenadas» de esa pestaña (partesLib) sin la búsqueda: la franja no se repinta al escribir */
   return `<a class="${et===k?'on':''}" role="tab" aria-selected="${et===k}" data-et="${k}" onclick="setPestanaLib('${k}')" title="${esc(n+': '+d+' · '+num(c)+' por liberar (con WH) con el mes y los filtros puestos, sin la búsqueda')}">${esc(n)} <span class="lib-pest-d">(${esc(d)})</span>${c?' <span class="lib-pest-n">'+num(c)+'</span>':''}</a>`}).join('')}</div>`}
 /* debajo de las tarjetas: en la pestaña 1, las de diseño sin WH (aparte); en la pestaña 2, cuántas esperan el paso 1 */
 function disenoLibHTML(p,et){const xs=p.diseno||[];if(et!=='tela'||!xs.length)return '';const pz=xs.reduce((a,o)=>a+(+o.cant||0),0);
@@ -20474,7 +20474,7 @@ function demo(){if(!puede('ordenes'))return;if(S.ordenes.length){alert('El ejemp
    ['OP-1003','POLO PIQUÉ','Polo Basica','CADET NAVY',600,30,2,mk('propia',0,['botones'],polo),[{tela:'t8',kg:156},{tela:'t11',kg:18}]],
    ['OP-1004','HOODIE','Hoodies','DARK BLACK',450,33,3,mk('propia',0,['bordado'],hood),[{tela:'t3',kg:261},{tela:'t5',kg:22}]],
    ['OP-1005','JEAN','Jeans','DARK BLACK',300,35,1,mk('externa',10,['lavado','plancha'],{corte:2.5,modulos:28.5,lavado:120,plancha:1.2,empaque:1.5}),[{tela:'t12',kg:240}]]]
-  .forEach(([op,ref,cat,c,cant,d,prio,ruta,telas])=>S.ordenes.push({id:uid(),op,ref,cat:hija(cat).id,color:col(c).id,cant,fecha:dsum(hoy(),d),prio,telas,ruta,estado:'plan',demo:true}));  /* demo:true — no cuentan como cartera abierta */
+  .forEach(([op,ref,cat,c,cant,d,prio,ruta,telas])=>S.ordenes.push({id:uid(),op,ref,cat:hija(cat).id,color:col(c).id,cant,fecha:dsum(hoy(),d),prio,telas,ruta,estado:'plan',estadoOP:'confirmed',demo:true}));  /* demo:true — no cuentan como cartera abierta · 08-oct: con su Estado OP, como toda orden con WH que viene de Odoo (si no, no son «lanzadas» y la planta no las cuenta) */
   save();render()}
 
 /* ---------- modales y datos ---------- */
