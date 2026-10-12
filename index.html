@@ -2496,11 +2496,11 @@ function paginasPerfilIngenieria(){return PAGINAS_DEF.map(x=>x[0]).filter(p=>!PA
 function defPerfiles(){return [
   {id:'admin',n:'Administrador',permisos:['*'],centros:['*'],paginas:['*'],desc:'Todo. Una es planificación, la otra para pruebas.'},
   {id:'planificacion',n:'Planificación',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos'],centros:['*'],paginas:['*'],desc:'Órdenes, programa, liberaciones, rutas; sin Configuración ni usuarios.'},
-  {id:'tintoreria',n:'Tintorería',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','avancearea','wip','imprimir'],desc:'Registra kilos hechos, faltantes y reprocesos; por ahora también hace calidad (rechaza → reproceso; aprueba → cola de producción). Ve solo tintorería.'},
+  {id:'tintoreria',n:'Tintorería',permisos:['avance','calidadTin'],centros:['tin'],paginas:['tintoreria','control','avancearea','wip'],desc:'Registra kilos hechos, faltantes y reprocesos; por ahora también hace calidad (rechaza → reproceso; aprueba → cola de producción). Ve solo tintorería.'},
   {id:'liberacion',n:'Liberación',permisos:['liberar'],centros:[],paginas:['liberacion','ordenes','wip'],desc:'Libera de la cola solo cuando los insumos están completos. Ve la cola de liberación y la ruta de cada orden.'},
-  {id:'corte',n:'Corte, estampado y bordado',permisos:['avance','reprogramar','ruta'],centros:['corte','estampado','bordado','etiquetas'],paginas:['centro','control','tablet','avancearea','wip','imprimir'],desc:'Ve y programa esas áreas, con etiquetas dentro de estampado (serigrafía).'},
-  {id:'modulos',n:'Módulos (confección)',permisos:['avance','reprogramar','ruta'],centros:['modulos'],paginas:['centro','control','tablet','avancearea','wip','imprimir','balanceo','costura'],desc:'Las dos personas ven los once módulos; no se reparten por módulo.'},
-  {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','avancearea','wip','imprimir'],desc:'Ojales y botones, lavado, plancha y empaque: los procesos finales antes de facturar.'},
+  {id:'corte',n:'Corte, estampado y bordado',permisos:['avance','reprogramar','ruta'],centros:['corte','estampado','bordado','etiquetas'],paginas:['centro','control','tablet','avancearea','wip'],desc:'Ve y programa esas áreas, con etiquetas dentro de estampado (serigrafía).'},
+  {id:'modulos',n:'Módulos (confección)',permisos:['avance','reprogramar','ruta'],centros:['modulos'],paginas:['centro','control','tablet','avancearea','wip','balanceo','costura'],desc:'Las dos personas ven los once módulos; no se reparten por módulo.'},
+  {id:'terminado',n:'Producto terminado',permisos:['avance','reprogramar','ruta'],centros:['botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','avancearea','wip'],desc:'Ojales y botones, lavado, plancha y empaque: los procesos finales antes de facturar.'},
   {id:'consulta',n:'Consulta',permisos:[],centros:['*'],paginas:['*'],desc:'Ve todo, no cambia nada.'}]}
 /* ¿la sesión es de piso? para una migración de perfiles: la definición única (perfilSoloPiso). perfilSoloPiso → perfilDe → perfilesDef vuelve a
    entrar aquí; mientras se pregunta, la vuelta responde «de piso» y no migra nada. 03-oct: antes se buscaba PERFIL.rol en el catálogo, y un perfil
@@ -2536,8 +2536,8 @@ function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.
   if(!S.params.perfilesDef.some(x=>x.id==='tablet'))S.params.perfilesDef.push({id:'tablet',n:'Tablet de centro (operarios)',permisos:['avance'],centros:[],paginas:['tablet'],desc:'Ve solo su centro o módulo (Mi centro), registra hecho y usa el cronómetro. El centro y el recurso se asignan por usuario en la columna Tablet.'});return S.params.perfilesDef}
 /* perfiles viejos (rol piso/carga con área y sub-área) se traducen al catálogo sin tocar la tabla */
 function perfilDe(p){if(!p)return null;const cat=perfilesDef();let d=cat.find(x=>x.id===p.rol);if(d){if(d.id==='tablet'){const t=(S.params.tablets||{})[p.id]||{};return Object.assign({},d,{centros:t.centro?[t.centro]:[]})}return d}
-  if(p.rol==='piso'){if(p.area==='tin')return cat.find(x=>x.id==='tintoreria')||null;if(p.area==='tej')return{id:'piso_tej',n:'Piso tejeduría',permisos:['avance'],centros:['tej'],paginas:['tejeduria','stock','control','avancearea','wip']};   /* 04-oct: sin «gerencia»: el Resumen gerencial pide «Ver valores en $» */
-    const sub=p.subarea&&SUBAREAS[p.subarea];return{id:'piso',n:'Piso',permisos:['avance'],centros:sub?sub.centros.slice():['corte','estampado','bordado','modulos','etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','avancearea','wip','imprimir']}}
+  if(p.rol==='piso'){if(p.area==='tin')return cat.find(x=>x.id==='tintoreria')||null;if(p.area==='tej')return{id:'piso_tej',n:'Piso tejeduría',permisos:['avance'],centros:['tej'],paginas:['tejeduria','control','avancearea','wip']};   /* 08-oct: «Stock de tela cruda» es la pestaña «Por tejer ahora» de Tejeduría */   /* 04-oct: sin «gerencia»: el Resumen gerencial pide «Ver valores en $» */
+    const sub=p.subarea&&SUBAREAS[p.subarea];return{id:'piso',n:'Piso',permisos:['avance'],centros:sub?sub.centros.slice():['corte','estampado','bordado','modulos','etiquetas','botones','lavado','plancha','empaque'],paginas:['centro','control','tablet','avancearea','wip']}}   /* 08-oct: «Programa del día» salió del menú (se imprime desde el centro y Tintorería) */
   if(p.rol==='carga')return{id:'carga',n:'Carga de órdenes',permisos:['ordenes'],centros:['*'],paginas:['ordenes']};
   return cat.find(x=>x.id==='consulta')||null}
 const ROLES=new Proxy({},{get:(t,k)=>{const d=(typeof S!=='undefined'&&S&&S.params)?perfilesDef().find(x=>x.id===k):null;return d?d.n:k}});
@@ -2969,7 +2969,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:10';
+const APP_BUILD='2026-10-12 08:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5977,7 +5977,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
   try{cierresMesEnRender()}catch(e){try{console.error('cierresMesEnRender',e)}catch(x){}}   /* la historia de la cartera se toma sola */
   if(PAGINAS_ING.includes(page))try{ingReprobar()}catch(e){}   /* 06-oct: una pestaña abierta antes de correr SUPABASE_INGENIERIA.sql se cura sola */
   const el=document.getElementById('p-'+page);el.classList.add('on');
-  const _vista=({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,albaran:vAlbaran,tablet:vTablet,costura:vCostura,balanceo:vBalanceo,imprimir:vImprimir,ordenes:vOrdenes,tejeduria:vTej,stock:vStock,macro:vMacro,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,envivo:vEnVivo,salud:vSalud,produccion:vPro,control:vControl,categorias:vCategorias,ingops:vIngOps,ingref:vIngRef,ingtipos:vIngTipos,ingmaq:vIngMaq,ingrev:vIngRev,config:vConfig,usuarios:vUsuarios}[page]);MEMO=new Map();try{_vista(el)}finally{MEMO=null}
+  const _vista=({nivelacion:vNivelacion,panorama:vPanorama,gerencia:vGerencia,plan:vPlan,liberacion:vLiberacion,centro:vCentro,wip:vWIP,entregas:vEntregas,auditoria:vAuditoria,capacidad:vCapacidad,albaran:vAlbaran,tablet:vTablet,costura:vCostura,balanceo:vBalanceo,ordenes:vOrdenes,tejeduria:vTej,tintoreria:vTin,avancearea:vAvanceArea,ordtrabajo:vOrdTrabajo,ordconsulta:vOrdConsulta,envivo:vEnVivo,produccion:vPro,control:vControl,categorias:vCategorias,ingops:vIngOps,ingref:vIngRef,ingtipos:vIngTipos,ingmaq:vIngMaq,ingrev:vIngRev,config:vConfig,usuarios:vUsuarios}[page]);MEMO=new Map();try{_vista(el)}finally{MEMO=null}
   if(REPORTES.some(r=>r.p===page)){const ph=el.querySelector('.pagehead');if(ph)ph.insertAdjacentHTML('beforeend',reporteriaBarraHTML());else el.insertAdjacentHTML('afterbegin',reporteriaBarraHTML())}   /* dentro de la franja del título, debajo de él (order 40: antes del panel de búsqueda) */
   if(NAVH.length)el.insertAdjacentHTML('afterbegin',atrasHTML());
   /* Auditoría: los cambios de fase, liberación y ruta van DENTRO de vAuditoria, en sus pestañas (02-oct, B4) */
@@ -13156,7 +13156,7 @@ function quitarAjusteOp(oid,opId){const o=S.ordenes.find(x=>x.id===oid);if(!o||!
 /* al recargar órdenes (Parte 2), los ajustes por referencia viajan con la OP */
 function conservarAjustes(prevMap){S.ordenes.forEach(o=>{const a=prevMap[normTxt(o.op)];if(a&&!o.opsSam){o.opsSam=a;aplicarSamOrden(o)}})}
 /* ---------- Auditoría de replanificación (Dirección): solo lee ---------- */
-let AUD={rec:'',u:'',cat:'',mes:'',tab:''};
+let AUD={rec:'',u:'',cat:'',mes:'',tab:'',vista:'cambios'};   /* vista (08-oct): 'cambios' | 'salud', las dos pestañas de Configuración → Auditoría */
 function entradasAuditoria(){const out=replanLog().map(e=>Object.assign({},e));
   S.recursos.filter(r=>r.centro==='modulos').forEach(r=>(r.objetivoHist||[]).forEach((h,i)=>out.push({id:r.id+'_obj_'+i,tipo:'objetivo',ts:h.ts,u:h.u,centro:'modulos',rec:r.id,op:'',cat:'',cant:null,antes:h.antes,despues:h.v,motivo:h.motivo||''})));
   return out.sort((a,b)=>a.ts<b.ts?1:-1)}
@@ -13307,7 +13307,7 @@ function vAuditoria(el){
    <div class="aud-cuerpo" data-aud-cuerpo="${v}"></div>`;
   const cu=el.querySelector('.aud-cuerpo');if(v==='salud')vSalud(cu);else vAudCambios(cu)}
 function vAudCambios(el){
-  if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría de replanificación</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
+  if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
   const todas=entradasAuditoria();const recs=[...new Set(todas.map(e=>e.rec).filter(Boolean))].map(id=>[id,nRec(id)]).sort((a,b)=>a[1].localeCompare(b[1]));
   const us=[...new Set(todas.map(e=>e.u).filter(Boolean))].sort();const cats=[...new Set(todas.map(e=>e.cat).filter(Boolean))].sort();const meses=[...new Set(todas.map(e=>diaLocalDeTs(e.ts).slice(0,7)))].sort().reverse();
   const L=todas.filter(e=>(!AUD.rec||e.rec===AUD.rec)&&(!AUD.u||e.u===AUD.u)&&(!AUD.cat||e.cat===AUD.cat)&&(!AUD.mes||diaLocalDeTs(e.ts).startsWith(AUD.mes)));
@@ -13679,7 +13679,6 @@ function imprimirDiaTodasHTML(){if(!puede('programa')||!S.ordenes.length)return 
   return `<div class="row no-print hoy-imp"><button class="btn ghost sm" onclick="mImprimirDia(null)">Imprimir el día de todas las áreas</button><span class="mut">tintorería y cada centro de producción, una hoja por área, para anotar lo real y firmar</span></div>`}
 /* un enlace o un perfil viejo a «Programa del día»: planificación cae en Hoy (ahí imprime todas las áreas); un perfil de centro, en su centro; tintorería, en Tintorería */
 function destinoImprimirDia(){try{if(typeof PERFIL==='undefined'||!PERFIL)return 'panorama';if(puede('programa')&&vePagina('panorama'))return 'panorama';if(vePagina('centro'))return 'centro';if(vePagina('tintoreria'))return 'tintoreria'}catch(e){}return 'panorama'}
-function vImprimir(el){ir(destinoImprimirDia())}
 /* ---------- Migración del menú (08-oct-2026, simplificación · lote L5) ----------
    Stock de tela cruda y Macro del mes son pestañas de Tejeduría; Programa del día salió del menú («Imprimir el día» en Tintorería, en cada centro y,
    para planificación, en Hoy); Salud del sistema (Configuración) y Auditoría de replanificación (Dirección) son las dos pestañas de Configuración →
@@ -14018,9 +14017,6 @@ function vTej(el){
    ${tablaCarga('tej','Carga estimada por el sistema por máquina <span class="mut" style="font-weight:400">(no es lo programado a mano)</span>')}${comparaTejHTML()}</details>`)}
   ${blq('viene',`${tejBaseHTML('viene')}<div id="tej-macro">${macroHTML()}</div>`)}`;
 }
-/* las páginas viejas siguen existiendo solo como nombre (el despachador de render las conoce): llevan a su pestaña */
-function vStock(el){verTejTabSin('ahora');vTej(el)}
-function vMacro(el){verTejTabSin('viene');vTej(el)}
 /* ---------- Tintorería ---------- */
 /* 02-oct («para dummies», TIN-1): la página eran 13 paneles apilados (~14.000 px) y lo diario (mover la fase, «Hecho → calidad») quedaba al final,
    debajo de «Armar baños». Ahora va en pestañas: Hoy · Armar baños · Tela plana · Reportes. Todo se sigue dibujando (los id y las pruebas no
