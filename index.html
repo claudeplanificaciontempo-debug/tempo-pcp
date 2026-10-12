@@ -1080,10 +1080,6 @@ tr.aud-grupo summary{cursor:pointer}
 details.det-agr{padding:0}
 details.det-agr>summary{cursor:pointer;padding:12px 16px;font-weight:600}
 details.det-agr>summary .note{font-weight:400}
-.imp table.imp-pro{table-layout:fixed;width:100%}
-.imp table.imp-pro td{overflow-wrap:anywhere}
-.imp-aviso{margin:0 0 12px}
-.imp-sintec{color:var(--aviso);cursor:help}
 #cv-g-sinlib{scroll-margin-top:80px}
 /* · */
 /* · */
@@ -1094,6 +1090,20 @@ details.det-agr>summary .note{font-weight:400}
 #p-tintoreria [data-tin-tab]:not(.on){display:none}
 .pagehead .tin-tabs{max-width:none;margin-right:10px}
 .pagehead .tin-tabs .chip{font-size:var(--fs-s)}
+/* ux:simp08-L5 — Tejeduría en tres pestañas (todas dibujadas, una visible, como Tintorería), Auditoría en dos e Imprimir el día (08-oct-2026).
+   Solo variables: valen en claro, oscuro y en los tres aspectos */
+#p-tejeduria [data-tej-tab]:not(.on){display:none}
+.pagehead .tej-tabs,.pagehead .aud-vistas{max-width:none;margin-right:10px}
+.pagehead .tej-tabs .chip,.pagehead .aud-vistas .chip{font-size:var(--fs-s)}
+p.tej-base{font-size:var(--fs-s);margin:0 0 10px;color:var(--ink2)}
+p.tej-cuenta{margin:-4px 0 14px}
+.row.tej-fila{align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+h4.tej-sec{margin:22px 0 8px;font-size:var(--fs-m)}
+h4.tej-sec .mut{font-weight:400;font-size:var(--fs-s)}
+.row.hoy-imp{align-items:center;gap:10px;margin:0 0 10px}
+.row.hoy-imp .mut{font-size:var(--fs-xs)}
+.impd-fija{padding:6px 0}
+.warn.impd-sint{margin-top:10px}
 details.tx-pleg{padding:0}
 details.tx-pleg>summary{cursor:pointer;list-style:none}
 details.tx-pleg>summary::-webkit-details-marker{display:none}
@@ -2255,14 +2265,11 @@ html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][
       <a data-p="plan">Planificar el mes</a>
       <a data-p="liberacion" data-lib="tela">Liberación textil</a>
       <a data-p="entregas">Entregas</a>
-      <a data-p="auditoria" data-perm="programa">Auditoría de replanificación</a>
       <a data-p="capacidad" data-perm="programa">Capacidad y decisiones</a>
     </div>
     <div class="grp" data-g="tex" title="Planificación textil"><span class="grp-l">Planificación textil</span><span class="grp-c">Textil</span> <span class="car">▾</span></div>
     <div class="gbody" data-g="tex">
-      <a data-p="stock">Stock de tela cruda</a>
       <a data-p="tejeduria">Tejeduría</a>
-      <a data-p="macro">Macro del mes</a>
       <a data-p="tintoreria">Tintorería <span class="n" id="n-ban"></span></a>
     </div>
     <div class="grp" data-g="prod" title="Planificación de producción"><span class="grp-l">Planificación de producción</span><span class="grp-c">Producción</span> <span class="car">▾</span></div>
@@ -2275,7 +2282,6 @@ html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][
       <a data-p="centro" data-cen="bordado">Bordado</a>
       <a data-p="centro" data-cen="terminados">Terminados</a>
       <a data-p="balanceo">Balanceo</a>
-      <a data-p="imprimir">Programa del día</a>
     </div>
     <div class="grp" data-g="rep">Reportería <span class="car">▾</span></div>
     <div class="gbody" data-g="rep">
@@ -2302,7 +2308,7 @@ html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][
       <a data-p="categorias" data-perm="categorias">Categorías</a>
       <a data-p="config" data-perm="config|configVer">Configuración general</a>
       <a data-p="usuarios" data-perm="usuarios">Usuarios</a>
-      <a data-p="salud" data-perm="programa">Salud del sistema</a>
+      <a data-p="auditoria" data-perm="programa">Auditoría</a>
     </div>
   </nav>
 
@@ -2322,17 +2328,13 @@ html[data-tema="odoo"][data-estilo="tablero"] .ordc-t th,html[data-tema="odoo"][
     <section class="page" id="p-avancearea"></section>
     <section class="page" id="p-ordtrabajo"></section>
     <section class="page" id="p-ordconsulta"></section>
-    <section class="page" id="p-salud"></section>
     <section class="page on" id="p-ordenes"></section>
     <section class="page" id="p-tejeduria"></section>
-    <section class="page" id="p-stock"></section>
-    <section class="page" id="p-macro"></section>
 <section class="page" id="p-tintoreria"></section>
     <section class="page" id="p-produccion"></section>
     <section class="page" id="p-control"></section>
     <section class="page" id="p-costura"></section>
     <section class="page" id="p-balanceo"></section>
-    <section class="page" id="p-imprimir"></section>
     <section class="page" id="p-categorias"></section>
     <section class="page" id="p-ingops"></section>
     <section class="page" id="p-ingtipos"></section>
@@ -2479,7 +2481,7 @@ const SUPABASE_KEY='sb_publishable_vycjn9icoWKANY9DPOiUDA_fXhCQG33';
    Permisos: config · usuarios · ordenes · programa · categorias · avance (registrar en piso) · liberar · calidadTin · reprogramar · ruta.
    centros: lista de centros que ve y donde registra ('*' = todos). paginas: qué entradas del menú ve ('*' = todas). */
 const PERMISOS_DEF=[['config','Configuración (centros, recursos, telas, parámetros, tablas)'],['usuarios','Usuarios y perfiles'],['ordenes','Crear, editar y cargar órdenes'],['armarBanos','Armar y confirmar baños de tintorería'],['programa','Correr el programa general, liberar y mover baños'],['categorias','Categorías y rutas (las operaciones y los tiempos están en Ingeniería)'],['avance','Registrar en control de piso (sus centros)'],['liberar','Liberar órdenes de la cola (tela y producción)'],['calidadTin','Aprobar o rechazar calidad de tintorería'],['reprogramar','Reprogramar y cambiar prioridades en sus centros'],['ruta','Editar la ruta de sus centros (agregar/quitar pasos)'],['configVer','Ver la configuración sin poder cambiarla (recursos, personas, capacidades, tablas)'],['facturacion','Ver valores en $ (facturación, precios, montos)'],['ingenieria','Ingeniería: cambiar operaciones, tiempos por tipo de producto, técnicas de estampado, máquinas y operarias (verla no lo pide)']];   /* 04-oct: facturacion es de MIRAR (veFacturacion); los demás, de hacer */
-const PAGINAS_DEF=[['panorama','Hoy'],['envivo','Planta en vivo'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['auditoria','Auditoría de replanificación'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría'],['stock','Stock de tela cruda'],['macro','Macro del mes'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['salud','Salud del sistema'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['imprimir','Programa del día'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['ingops','Ingeniería · Operaciones'],['ingtipos','Ingeniería · Tipos de producto'],['ingmaq','Ingeniería · Máquinas y operarias'],['ingrev','Ingeniería · Por revisar'],['categorias','Categorías'],['config','Configuración general'],['usuarios','Usuarios']];
+const PAGINAS_DEF=[['panorama','Hoy'],['envivo','Planta en vivo'],['gerencia','Resumen gerencial'],['ordenes','Órdenes'],['liberacion','Liberación (las dos)'],['wip','Producto en proceso'],['entregas','Entregas'],['plan','Plan mensual'],['auditoria','Auditoría (cambios de las personas y salud de los datos)'],['capacidad','Capacidad y decisiones'],['tejeduria','Tejeduría (por tejer, programa a mano y lo que viene)'],['tintoreria','Tintorería'],['avancearea','Avance por área (Reportería)'],['ordtrabajo','Órdenes de trabajo (Reportería)'],['ordconsulta','Órdenes de producción (Reportería, consulta)'],['produccion','Carga general'],['centro','Centros de producción (los suyos)'],['costura','Costura: secuencia y rebalanceo'],['balanceo','Balanceo'],['control','Control de piso'],['tablet','Mi centro (tablet)'],['ingops','Ingeniería · Operaciones'],['ingtipos','Ingeniería · Tipos de producto'],['ingmaq','Ingeniería · Máquinas y operarias'],['ingrev','Ingeniería · Por revisar'],['categorias','Categorías'],['config','Configuración general'],['usuarios','Usuarios']];
 /* ---------- INGENIERÍA (05-oct-2026, usuaria: «un módulo de ingeniería … las operaciones no van en configuración: pertenecen a ingeniería») ----------
    Configuración = cuánta capacidad hay y cómo se planifica · Ingeniería = cómo se hace la prenda, con qué máquina y cuánto tarda.
    VER una página de Ingeniería: tenerla en el menú del perfil O tener el permiso «ingenieria» (vePagina). EDITAR: solo puedeIng() (permiso «ingenieria»;
@@ -2509,6 +2511,7 @@ function perfilesDef(){if(!S.params.perfilesDef||!S.params.perfilesDef.length)S.
   if(!S.params.migReporteria3&&typeof PERFIL!=='undefined'&&PERFIL&&!sesionDePisoMig()){let n=0;const pro=new Set((S.centros||[]).filter(c=>c.area==='pro').map(c=>c.id));S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!d.paginas.includes('avancearea'))return;if(!(d.centros||[]).some(c=>c==='*'||pro.has(c)))return;if(!d.paginas.includes('ordtrabajo')){d.paginas.push('ordtrabajo');n++}});S.params.migReporteria3=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (24-sep): «Órdenes de trabajo» agregada a '+n+' perfiles que ya veían «Avance por área»')}
   if(!S.params.migEnVivo01&&typeof PERFIL!=='undefined'&&PERFIL&&!sesionDePisoMig()){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['panorama','avancearea'].some(p=>d.paginas.includes(p)))return;if(!d.paginas.includes('envivo')){d.paginas.push('envivo');n++}});S.params.migEnVivo01=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Planta en vivo (01-oct): agregada a '+n+' perfiles que ya veían Hoy o Avance por área')}
   if(!S.params.migReporteria4&&typeof PERFIL!=='undefined'&&PERFIL&&!sesionDePisoMig()){let n=0;S.params.perfilesDef.forEach(d=>{if(!Array.isArray(d.paginas)||d.paginas.includes('*'))return;if(!['wip','avancearea','ordenes'].some(p=>d.paginas.includes(p)))return;if(!d.paginas.includes('ordconsulta')){d.paginas.push('ordconsulta');n++}});S.params.migReporteria4=new Date().toISOString();if(n&&typeof bitacora==='function')bitacora('Reportería (25-sep): «Órdenes de producción» (consulta) agregada a '+n+' perfiles que ya veían reportes u Órdenes')}
+  migMenuL5_08();   /* 08-oct: Stock y Macro → Tejeduría, Programa del día → Imprimir el día, Salud del sistema → Auditoría (una sola vez, con bitácora, nunca desde el piso) */
   if(!S.params.perfilesJefatura){   /* 22-sep (usuaria): «que pueda hacer todo menos configuraciones; que pueda ver cómo están los recursos, las personas y las capacidades, pero no editarlas» */
     if(!S.params.perfilesDef.some(x=>x.id==='jefatura'))S.params.perfilesDef.push({id:'jefatura',n:'Jefatura (todo menos configurar)',permisos:['ordenes','programa','categorias','avance','liberar','reprogramar','ruta','armarBanos','calidadTin','configVer'],centros:['*'],paginas:['*'],desc:'Hace todo lo operativo: órdenes, programa, liberaciones, rutas, baños y piso. Ve la Configuración completa (recursos, personas, capacidades, tablas) pero NO la edita, y no crea usuarios.'});
     S.params.perfilesJefatura=new Date().toISOString();if(typeof bitacora==='function')bitacora('Perfil «Jefatura (todo menos configurar)» agregado al catálogo: todo lo operativo, ve la configuración sin editarla (decisión de la usuaria, 22-sep). Editable en Configuración → Usuarios.')}
@@ -2556,7 +2559,7 @@ function veFacturacion(){if(!PERFIL)return false;return perfilVeFacturacion(perf
 /* un permiso del menú o de una página: los de mirar (facturacion) no dependen de modo:'ver'; el resto es puede() */
 function tienePerm(x){return x==='facturacion'?veFacturacion():puede(x)}
 /* qué permiso pide cada página además de estar en el menú del perfil: lo usan render(), puedeAbrirPagina() y la barra de Reportería ('a|b' = cualquiera) */
-const PERM_PAGINA={categorias:'categorias',config:'config|configVer',usuarios:'usuarios',salud:'programa',gerencia:'facturacion'};   /* Ingeniería (05-oct) no pide permiso extra para VER: basta su página en el menú o el permiso «ingenieria» (vePagina); EDITAR pide puedeIng() */
+const PERM_PAGINA={categorias:'categorias',config:'config|configVer',usuarios:'usuarios',auditoria:'programa',gerencia:'facturacion'};   /* Ingeniería (05-oct) no pide permiso extra para VER: basta su página en el menú o el permiso «ingenieria» (vePagina); EDITAR pide puedeIng() */
 function permPaginaOk(p){const need=PERM_PAGINA[p];return !need||String(need).split('|').some(tienePerm)}
 /* ---------- quién EDITA Ingeniería y si lo que edita se GUARDA (05-oct-2026) ----------
    puedeIng(): el permiso «ingenieria» (o «config», Administración), nunca desde el piso ni con «solo ve».
@@ -2966,7 +2969,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-07 15:36';
+const APP_BUILD='2026-10-12 08:10';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3327,7 +3330,7 @@ const ICO={sync:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 1
   truck:'<svg viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>',cash:'<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/></svg>',
   flag:'<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',bolt:'<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
   play:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></svg>',pause:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>'};
-const ICO_NAV={envivo:'factory',nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',salud:'eye',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',ordenes:'box',tejeduria:'knit',stock:'layers',macro:'sheet',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',imprimir:'print',control:'eye',categorias:'cat',ingops:'ops',ingref:'tag',ingtipos:'clock',ingmaq:'needle',ingrev:'alert',config:'gear',usuarios:'users',wip:'layers',entregas:'box',auditoria:'doc',capacidad:'scale'};
+const ICO_NAV={envivo:'factory',nivelacion:'scale',ordtrabajo:'ops',ordconsulta:'box',tablet:'factory',avancearea:'chart',liberacion:'check',centro:'factory',panorama:'home',gerencia:'chart',plan:'cal',ordenes:'box',tejeduria:'knit',tintoreria:'drop',produccion:'factory',costura:'thread',balanceo:'scale',control:'eye',categorias:'cat',ingops:'ops',ingref:'tag',ingtipos:'clock',ingmaq:'needle',ingrev:'alert',config:'gear',usuarios:'users',wip:'layers',entregas:'box',auditoria:'doc',capacidad:'scale'};
 function decorarNav(){document.querySelectorAll('nav a[data-p]').forEach(a=>{if(a.querySelector('svg'))return;const k=ICO_NAV[a.dataset.p];if(k&&ICO[k]){const sp=document.createElement('span');sp.className='ic';sp.innerHTML=ICO[k];a.insertBefore(sp,a.firstChild)}});
   const b=document.getElementById('brand');if(b&&!b.querySelector('svg'))b.insertAdjacentHTML('afterbegin','<span class="logo">'+ICO.factory+'</span>')}
 const faseNum=f=>{const t=String(f||'').trim();if(/^factur/i.test(t))return 9;return parseInt(t[0])||0};
@@ -3547,8 +3550,8 @@ function pendientesHoyCalc(){const ab=S.ordenes.filter(abierta);const items=[];c
   add('sinWH','Órdenes sin WH por emparejar',ab.filter(o=>o.sinLanzar).length,'cabeceras sin lanzar en Odoo; entran como nuevas cuando tengan WH','Órdenes',"ir('ordenes')",'odoo');
   add('precioRaro','Precio por prenda fuera de rango',((S.params.tareaCarga||{}).precioRaro||[]).length,'el precio por prenda es 10 veces o más el precio típico del archivo (la mediana); se corrige en Odoo','Órdenes',"ir('ordenes')",'odoo');
   let mac=null;try{mac=macroMes('')}catch(e){}
-  add('telaSinClasif','Telas sin clasificar (origen)',mac?Object.keys(mac.rep.sinClasificar).length:0,'falta decir si la tela es propia o externa (tabla 3, por categoría)','Macro del mes',"ir('macro')",'config');
-  add('telaSinMerma','Telas sin merma de tintura configurada',mac?Object.keys(mac.rep.sinMerma).length:0,'falta el % de merma de tintura de esa tela (tabla 10 o el encogimiento de la tela)','Macro del mes',"ir('macro')",'config');
+  add('telaSinClasif','Telas sin clasificar (origen)',mac?Object.keys(mac.rep.sinClasificar).length:0,'falta decir si la tela es propia o externa (tabla 3, por categoría)','Tejeduría → Lo que viene',"ir('macro')",'config');
+  add('telaSinMerma','Telas sin merma de tintura configurada',mac?Object.keys(mac.rep.sinMerma).length:0,'falta el % de merma de tintura de esa tela (tabla 10 o el encogimiento de la tela)','Tejeduría → Lo que viene',"ir('macro')",'config');
   add('provSinDias','Proveedores con días de entrega estimados sin confirmar',diasProveedor().filter(r=>r.estimado).length,'15 laborables sembrados; confírmalos uno por uno','Configuración general → Órdenes, fases y archivos de Odoo',"irAjuste('Días de entrega por proveedor')",'config');
   const sinT={};ab.forEach(o=>(o.ruta||[]).forEach(p=>{const c=CE(p.centro);if(c&&c.area==='pro'&&!(p.t>0)){const k=nombreCat(K(o.cat))||'(sin categoría)';sinT[k]=(sinT[k]||0)+1}}));
   if(puede('programa')){let td=null;try{td=tiemposRutasDif()}catch(e){}
@@ -5357,7 +5360,7 @@ function vTablet(el){
    ${cuerpo}`;
 }
 /* ---------- B · PDF del programa por centro (para operarios; sin datos internos) ---------- */
-function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
+function imprimirProgramaCentro(cid,dia,rec,soloHTML){const cens=censDeGrupo(cid);const nombre=CENTROS_PROD_N[cid]||nCen(cid);const P=programar();const h=hoy();const lun=dia?lunesDe(dia):lunesDe(dsum(h,CEN.sem*7)),dom=dsum(lun,6);
   /* 06-oct (segunda revisión): la hoja va en el MISMO orden y con el MISMO número (#) que la lista de la pantalla (ordenTrabajoCentro sobre la cola
      entera del centro, el lugar que reordena moverEnCola); antes iba por orden de llegada y llamaba «Puesto» al número de la cola. «Puesto» es la
      máquina o el módulo. Con un puesto elegido en la pantalla, la hoja es solo de ese puesto y # es su lugar dentro de él */
@@ -5365,21 +5368,23 @@ function imprimirProgramaCentro(cid){const cens=censDeGrupo(cid);const nombre=CE
      listas, afuera— y lo que llega esta semana y la siguiente; con «toda la cola», todo), sin lo que no se puede empezar (por liberar a producción) ni
      lo que ya salió de aquí, que se cuentan al pie. Antes dejaba fuera órdenes «en proceso aquí» con inicio después del domingo. # es el de la pantalla
      («—» en lo que todavía no se trabaja) y no se imprimen las sub-áreas sin órdenes */
-  const filas=filasDeCentros(cens,P,lun,dom,'',true);const recSel=CEN.rec||'';const hastaV=dsum(dom,7);const fueraHoja={porLiberar:0,anomalia:0};
-  const cabT=`<thead><tr><th class="n">#</th><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">Unidades</th><th class="n">Min. totales</th></tr></thead>`;
+  /* 08-oct (Imprimir el día, imprimirDia): con «dia» la hoja es de ESE día: las órdenes a las que el programa les puso carga ese día en este centro, con
+     las prendas y los minutos de ese día (cargaDelDiaPro), en el mismo orden y con el mismo # de la lista, agrupadas por puesto, y columnas en blanco
+     «Real» y «Firma»; el puesto llega como «rec» (sin él, todos). Con «soloHTML» devuelve {n,html,vacia} para juntar varias áreas en una ventana */
+  const filas=filasDeCentros(cens,P,lun,dom,'',true);const recSel=dia?(rec||''):(CEN.rec||'');const hastaV=dsum(dom,7);const fueraHoja={porLiberar:0,anomalia:0};const delDia=dia?cargaDelDiaPro(P,dia,recSel):null;
+  const cabT=`<thead><tr><th class="n">#</th><th>Puesto</th><th>Foto</th><th>Orden de producción</th><th>Cliente</th><th>Tipo de producto</th><th>Color</th><th class="n">Min. estándar / prenda</th><th class="n">${dia?'Prendas del día':'Unidades'}</th><th class="n">${dia?'Min. del día':'Min. totales'}</th>${dia?'<th class="n firma">Real</th><th class="firma">Firma</th>':''}</tr></thead>`;
   const secsL=cens.map(c=>{const ordT=ordenTrabajoCentro(c,colaCentro(c,filas));const gDe=new Map(ordT.map(f=>[f,grupoListaCEN(f)]));
     const lugarG=new Map(ordT.map((f,i)=>[f.o.id,i+1]));const lugarR=recSel?new Map(ordT.filter(f=>recDeFila(f)===recSel&&GRUPOS_TRABAJO_CEN.includes(gDe.get(f))).map((f,i)=>[f.o.id,i+1])):null;
-    const enV=ordT.filter(f=>(!recSel||recDeFila(f)===recSel)&&enPlantaParaCentro(f.o)&&enVentanaCEN(f,hastaV,gDe.get(f)));
-    const cola=enV.filter(f=>{const g=gDe.get(f);if(g==='porLiberar'||g==='anomalia'){fueraHoja[g]++;return false}return true});
+    const enV=ordT.filter(f=>enPlantaParaCentro(f.o)&&(dia?!!delDia[c+'|'+f.o.op]:((!recSel||recDeFila(f)===recSel)&&enVentanaCEN(f,hastaV,gDe.get(f)))));
+    const cola=enV.filter(f=>{const g=gDe.get(f);if(g==='porLiberar'||g==='anomalia'){fueraHoja[g]++;return false}return true});if(dia)cola.sort((a,b)=>cmpRecImp(delDia[c+'|'+a.o.op].rec,delDia[c+'|'+b.o.op].rec));   /* el día va por puesto (Módulo 1 … 11, Maquila al final) y dentro de cada uno en el orden de # */
     if(!cola.length)return '';
-    return `<h2>${esc(nCen(c))}${recSel?' · '+esc(nRec(recSel)):''} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)} · ${cola.length} ${cola.length===1?'orden':'órdenes'}: ${CEN.todo?'toda la cola':'lo que se trabaja ya y lo que llega esta semana y la siguiente'} · se trabaja en el orden de #</small></h2><table>${cabT}<tbody>
-    ${cola.map(f=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const u=Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);const rp=recDeFila(f);const g=gDe.get(f);const lug=lugarR?lugarR.get(o.id):lugarG.get(o.id);const conNum=!!lug&&(puestoDe(o,c)>0||GRUPOS_TRABAJO_CEN.includes(g));return `<tr><td class="n"><b>${conNum?lug:'—'}</b></td><td>${rp?esc(nRec(rp)):'—'}</td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${mp>0?num(mp,1):'sin minutos por prenda'}</td><td class="n">${num(u)}</td><td class="n">${mp>0?num(mp*u):'—'}</td></tr>`}).join('')}</tbody></table>`});
+    return `<h2>${esc(nCen(c))}${recSel?' · '+esc(nRec(recSel)):''} <small>· ${dia?fmtDia(dia):'semana '+fmtDia(lun)+' – '+fmtDia(dom)} · ${cola.length} ${cola.length===1?'orden':'órdenes'}: ${dia?'lo que el programa pone este día':CEN.todo?'toda la cola':'lo que se trabaja ya y lo que llega esta semana y la siguiente'} · se trabaja en el orden de #</small></h2><table>${cabT}<tbody>
+    ${cola.map(f=>{const o=f.o;const p=(o.ruta||[]).find(x=>x.centro===c)||{};const mp=minPrenda(c,p.t);const dd=dia?delDia[c+'|'+o.op]:null;const u=dd?Math.round(dd.pz):Math.max(0,o.cant-f.hechas);const foto=fotoDe(o);const rp=dd?dd.rec:recDeFila(f);const g=gDe.get(f);const lug=lugarR?lugarR.get(o.id):lugarG.get(o.id);const conNum=!!lug&&(puestoDe(o,c)>0||GRUPOS_TRABAJO_CEN.includes(g));return `<tr><td class="n"><b>${conNum?lug:'—'}</b></td><td>${rp?esc(nRec(rp)):'—'}</td><td>${foto?`<img src="${esc(foto)}">`:''}</td><td><b>${esc(o.op)}</b></td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td>${esc((C(o.color)||{}).n||'')}</td><td class="n">${mp>0?num(mp,1):'sin minutos por prenda'}</td><td class="n">${num(u)}</td><td class="n">${dd?num(dd.min):mp>0?num(mp*u):'—'}</td>${dd?'<td></td><td></td>':''}</tr>`}).join('')}</tbody></table>`});
   const secsV=secsL.filter(Boolean);
   const noVan=[fueraHoja.porLiberar?num(fueraHoja.porLiberar)+' por liberar a producción (no se pueden empezar)':'',fueraHoja.anomalia?num(fueraHoja.anomalia)+' que ya salieron de aquí':''].filter(Boolean).join(' y ');
-  const secs=(secsV.length?secsV.join(''):`<h2>${esc(nombre)}${recSel?' · '+esc(nRec(recSel)):''} <small>· semana ${fmtDia(lun)} – ${fmtDia(dom)}</small></h2><table>${cabT}<tbody><tr><td colspan="10">Sin órdenes para trabajar.</td></tr></tbody></table>`)+(noVan?`<p class="nota">No van en la hoja: ${noVan}.</p>`:'');
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Programa ${esc(nombre)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:14px 0 6px}small{font-weight:400;color:#555}table{width:100%;border-collapse:collapse}tr{page-break-inside:avoid}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:middle}th{background:#eee}td.n,th.n{text-align:right}img{width:70px;height:70px;object-fit:cover;border-radius:4px}p.nota{color:#555;margin:10px 0 0}</style></head><body><h1>${esc(nombre)} · programa</h1><div style="color:#555">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div>${secs}<script>window.onload=function(){window.print()}<\/script></body></html>`;
-  const w=window.open('','_blank');if(!w){alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');return}
-  w.document.write(html);w.document.close()}
+  const secs=(secsV.length?secsV.join(''):`<h2>${esc(nombre)}${recSel?' · '+esc(nRec(recSel)):''} <small>· ${dia?fmtDia(dia):'semana '+fmtDia(lun)+' – '+fmtDia(dom)}</small></h2><table>${cabT}<tbody><tr><td colspan="${dia?12:10}">${dia?'Nada programado este día.':'Sin órdenes para trabajar.'}</td></tr></tbody></table>`)+(noVan?`<p class="nota">No van en la hoja: ${noVan}.</p>`:'');
+  if(soloHTML)return {n:nombre,html:secs,vacia:!secsV.length};
+  abrirHojaImprimir(hojaImprimirHTML('Programa '+nombre+(dia?' · '+fmtDia(dia):''),`<h1>${esc(nombre)} · ${dia?'programa del '+fmtDia(dia):'programa'}</h1><div class="gen">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div>${secs}`))}
 /* ---------- C · Cambio de fases centralizado (Control de piso → Fases) y desde cualquier etiqueta de fase ---------- */
 let CTLF={fase:null,sel:new Set(),q:'',nueva:'',motivo:''};
 /* 24-sep (usuaria): los operarios NO cambian la fase, ni la piden: marcan INICIO, FIN y las unidades hechas. La mueven el supervisor o planificación. */
@@ -5604,8 +5609,9 @@ const REPORTES=[
   {p:'avancearea',n:'Avance por área',desc:'cómo va el programa de cada área: la semana (programadas, hechas, cumplimiento, atrasadas; cada ingeniero ve su área) o el mes contra el plan congelado'},
   {p:'ordtrabajo',n:'Órdenes de trabajo',desc:'como la lista de Odoo: cada orden en cada centro con inicio, personas, duración real, producción, estado y si va retrasada; por área o todas juntas'}];   /* 03-oct (usuaria: «borra lo que no debe ir»): Cumplimiento de facturación salió como página y Avance del mes se fundió en Avance por área (vista Mes) */
 /* páginas retiradas el 21-sep: los enlaces viejos (perfiles, marcadores, bandejas) caen en la pantalla que las reemplaza */
-const PAGINAS_REDIRIGIDAS={operaciones:'ingops',ingref:'ingops',vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro',familias:'gerencia',cumplimiento:'gerencia',avance:'avancearea'};   /* compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep · cumplimiento y avance (Avance del mes, ahora vista Mes de Avance por área): el 03-oct */
+const PAGINAS_REDIRIGIDAS={operaciones:'ingops',ingref:'ingops',vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'tejeduria',familias:'gerencia',cumplimiento:'gerencia',avance:'avancearea',stock:'tejeduria',macro:'tejeduria',salud:'auditoria',imprimir:'panorama'};   /* 08-oct: stock y macro (pestañas de Tejeduría), salud (pestaña de Auditoría) e imprimir (Imprimir el día) · compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep · cumplimiento y avance (Avance del mes, ahora vista Mes de Avance por área): el 03-oct */
 function redirigirPagina(p){if(p==='avance')AVA.vista='mes';if(p==='ingref'){try{ING_V.ops='secuencia'}catch(e){}}   /* 06-oct: «Por referencia» abre la Secuencia de operaciones */
+  if(p==='stock'||p==='macro'||p==='compras'){try{verTejTabSin(p==='stock'?'ahora':'viene')}catch(e){}}if(p==='salud'){try{AUD.vista='salud'}catch(e){}}if(p==='imprimir')return destinoImprimirDia();   /* 08-oct: Stock y Macro son pestañas de Tejeduría, Salud del sistema es una pestaña de Auditoría y Programa del día salió del menú (Imprimir el día, destinoImprimirDia) */
   const q=PAGINAS_REDIRIGIDAS[p]||p;return (q==='gerencia'&&!veFacturacion())?'avancearea':q}   /* 04-oct: sin «Ver valores en $», el Resumen gerencial y sus enlaces viejos (cumplimiento, familias) llevan a Avance por área */   /* un enlace viejo a «Avance del mes» abre la vista Mes (sin cambiar la vista que la persona dejó recordada) */
 function reporteriaBarraHTML(){const vis=REPORTES.filter(r=>vePagina(r.p)&&permPaginaOk(r.p));if(vis.length<2)return '';const fac=veFacturacion();
   return `<div class="o-notebook rep-barra no-print"><span class="rep-barra-t">Reportería:</span>${vis.map(r=>`<a class="${page===r.p?'on':''}" title="${esc((!fac&&r.descSin)||r.desc||'')}" onclick="ir('${r.p}')">${esc(r.n)}</a>`).join('')}</div>`}   /* pestañas como las de sub-áreas, en una línea, dentro de la franja del título (02-oct) */
@@ -6129,7 +6135,7 @@ function vPanorama(el){
     </div></div>`})()}
 
   ${seccionHoy('Bandejas del día','cada tarjeta abre su lista agrupada por familia; cada orden lleva a la pantalla donde se resuelve su estado',hoyBandejasHTML(P,ords,h))}
-  ${seccionHoy('En máquinas hoy','lo que está corriendo en tejeduría, tintorería y planta','')}
+  ${seccionHoy('En máquinas hoy','lo que está corriendo en tejeduría, tintorería y planta',imprimirDiaTodasHTML())}
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
    <div class="panel"><h3>Tejeduría hoy <span class="spacer"></span><a class="mut" style="font-size:var(--fs-xs);cursor:pointer" onclick="ir('tejeduria')">ver programa</a></h3><div class="body" style="font-size:var(--fs-s)">
     ${recsT.map(r=>{const xs=dTej.filter(x=>x.rec===r.id);const pt={};xs.forEach(x=>{pt[x.tela]=(pt[x.tela]||0)+x.kg});const th=xs.reduce((a,x)=>a+(x.h||0),0);
@@ -13287,7 +13293,20 @@ function vCapacidad(el){
     ${hist.length?`<table><thead><tr><th>Cuándo</th><th>Tipo</th><th>Centro</th><th>Mes</th><th>Quién</th><th>Qué</th><th>Estado</th></tr></thead><tbody>${hist.slice(0,200).map(h=>`<tr><td style="white-space:nowrap">${fmTs(h.ts)}</td><td>${h.tipo==='problema'?'<span class="tag t-alerta">problema</span>':'<span class="tag t-ok">decisión</span>'}</td><td>${esc(nombreCentroCap(h.c))}</td><td>${esc(fmMesCap(h.m))}</td><td>${esc(h.u)}</td><td>${esc(h.txt)}</td><td>${h.estado}${h.tipo==='problema'&&!h.visto&&!/cerrado/.test(h.estado)?' <span class="tag t-aviso">sin ver</span>':''}</td></tr>`).join('')}</tbody></table>`:'<span class="mut">Todavía no hay problemas registrados ni decisiones.</span>'}
    </div></details>
    <details class="panel" style="padding:0" ${CAPD.cmp?'open':''} ontoggle="if(!this.open&&CAPD.cmp){CAPD.cmp=false}"><summary style="cursor:pointer;padding:12px 16px;font-weight:600">Comparar el motor de programación <span class="note">técnico · carga por centro y mes con el motor de siempre (adelante) y el nuevo (hacia atrás)</span></summary><div class="body">${CAPD.cmp?motorComparaHTML():`<p class="mut" style="margin:0 0 8px">Calcula la carga por centro y mes, las órdenes a fecha, los cambios de mes y las 10 órdenes que más se mueven con cada motor. Tarda unos segundos.</p><button class="btn sm" onclick="CAPD.cmp=true;render()">Comparar</button>`}</div></details>`}
+/* ---------- Auditoría (08-oct-2026, simplificación M7): UNA entrada en Configuración con dos pestañas ----------
+   «Cambios de las personas» = lo que antes era Dirección → Auditoría de replanificación (vAudCambios: tiempos y objetivos, rutas, fases y
+   liberaciones; quién, cuándo, qué y por qué); «Salud de los datos» = lo que antes era Configuración → Salud del sistema (vSalud: las revisiones
+   automáticas). Las dos piden el permiso «programa», como antes. Se dibuja solo la pestaña elegida (la de salud corre todas las revisiones); el
+   enlace viejo «salud» abre la segunda (redirigirPagina). Las dos solo leen. */
+const AUD_VISTAS=[['cambios','Cambios de las personas'],['salud','Salud de los datos']];
 function vAuditoria(el){
+  if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
+  const v=AUD.vista==='salud'?'salud':'cambios';
+  el.innerHTML=`<div class="pagehead"><h2>Auditoría</h2><span class="spacer"></span><div class="chips aud-vistas" role="tablist">${AUD_VISTAS.map(([k,n])=>`<span class="chip ${v===k?'on':''}" role="tab" aria-selected="${v===k}" data-aud-vista="${k}" onclick="AUD.vista='${k}';render()">${esc(n)}</span>`).join('')}</div></div>
+   <p class="lede">Dos pestañas, las dos solo leen: <b>Cambios de las personas</b> (quién cambió un tiempo, una ruta, una fase o una liberación, cuándo y por qué; antes era «Auditoría de replanificación», en Dirección) y <b>Salud de los datos</b> (las revisiones automáticas: rutas, fases, correcciones automáticas, registros del piso y de dónde sale cada cifra; antes era «Salud del sistema»).</p>
+   <div class="aud-cuerpo" data-aud-cuerpo="${v}"></div>`;
+  const cu=el.querySelector('.aud-cuerpo');if(v==='salud')vSalud(cu);else vAudCambios(cu)}
+function vAudCambios(el){
   if(!puede('programa')){el.innerHTML='<div class="pagehead"><h2>Auditoría de replanificación</h2></div><div class="panel"><div class="empty">Solo administrador y planificación.</div></div>';return}
   const todas=entradasAuditoria();const recs=[...new Set(todas.map(e=>e.rec).filter(Boolean))].map(id=>[id,nRec(id)]).sort((a,b)=>a[1].localeCompare(b[1]));
   const us=[...new Set(todas.map(e=>e.u).filter(Boolean))].sort();const cats=[...new Set(todas.map(e=>e.cat).filter(Boolean))].sort();const meses=[...new Set(todas.map(e=>diaLocalDeTs(e.ts).slice(0,7)))].sort().reverse();
@@ -13326,8 +13345,7 @@ function vAuditoria(el){
   <h4 style="margin:16px 0 8px">Cambios, del más reciente al más antiguo <span class="mut" style="font-weight:400">· ${num(L.length)}${filtrado?' de '+num(todas.length)+' (con filtros)':''}</span></h4>${L.slice(0,200).map(cuadro).join('')||'<div class="panel"><div class="empty">Sin cambios con estos filtros.</div></div>'}${L.length>200?`<p class="mut">Se muestran 200 de ${num(L.length)}.</p>`:''}`;
   const tablaRe=`<div class="panel"><h3>Auditoría de ruta ${ayudaTipHTML('Ediciones de ruta hechas a mano por una persona: desde las dos liberaciones, desde un centro o desde la ficha de la orden. Quién, cuándo, qué cambió y por qué.')}<span class="note">${num(re.length)} ${re.length===1?'edición a mano':'ediciones a mano'}</span></h3><div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>Cuándo</th><th>Dónde</th><th>OP · fase</th><th>Categoría</th><th>Cambio de ruta</th><th>Motivo</th><th>Quién</th></tr></thead><tbody>${re.slice(0,300).map(e=>`<tr><td style="white-space:nowrap">${fechaHoraLocal(e.ts,false)}</td><td>${e.etapa==='liberación general'?'<span class="tag t-ok">general</span>':e.etapa==='liberación a producción'?'<span class="tag t-aviso">producción</span>':'<span class="mut">centro</span>'}</td><td style="white-space:nowrap">${whCell(e.o)}</td><td><span class="t2" title="${esc(e.cat)}">${esc(e.cat)}</span></td><td>${esc(e.cambio)}</td><td>${esc(e.motivo)}</td><td>${esc(e.u||'')}</td></tr>`).join('')}${re.length>300?`<tr><td colspan="7" class="mut">Se muestran 300 de ${num(re.length)}: las más recientes.</td></tr>`:''}</tbody></table></div></div>`;
   const secRutas=(re.length||audRuta.length)?(re.length?tablaRe:'')+(audRuta.length?auditoriaCambiosHTML('ruta'):''):`<div class="panel"><div class="empty">Todavía no hay cambios ni confirmaciones de ruta registrados.</div></div>`;
-  el.innerHTML=`<div class="pagehead"><h2>Auditoría de replanificación</h2></div>
-  <p class="lede">Quién cambió qué, cuándo y por qué, en tres pestañas: <b>Tiempos y objetivos</b> (cuando un centro cambia en Balanceo el tiempo de una operación <b>para una referencia</b>, o el objetivo de prendas por hora de un módulo: plan original y replanificación lado a lado; esos cambios no tocan la hoja de operaciones ni el estándar de la categoría, que corrige Ingeniería en su menú), <b>Rutas</b> (ediciones a mano, confirmaciones y rutas rehechas) y <b>Fases, liberaciones, cierres y otros</b>. Se abre la pestaña con el cambio más reciente. Esta pantalla solo lee.</p>
+  el.innerHTML=`<p class="lede">Quién cambió qué, cuándo y por qué, en tres pestañas: <b>Tiempos y objetivos</b> (cuando un centro cambia en Balanceo el tiempo de una operación <b>para una referencia</b>, o el objetivo de prendas por hora de un módulo: plan original y replanificación lado a lado; esos cambios no tocan la hoja de operaciones ni el estándar de la categoría, que corrige Ingeniería en su menú), <b>Rutas</b> (ediciones a mano, confirmaciones y rutas rehechas) y <b>Fases, liberaciones, cierres y otros</b>. Se abre la pestaña con el cambio más reciente. Esta pantalla solo lee.</p>
   <div class="chips aud-tabs" role="tablist">${tabs.map(([k,n,c])=>`<span class="chip ${tab===k?'on':''}" role="tab" aria-selected="${tab===k}" data-aud-tab="${k}" onclick="AUD.tab='${k}';render()">${esc(n)} · ${num(c)}</span>`).join('')}</div>
   <div class="aud-sec" data-aud-sec="tiempos" ${tab==='tiempos'?'':'hidden'}>${secTiempos}</div>
   <div class="aud-sec" data-aud-sec="rutas" ${tab==='rutas'?'':'hidden'}>${secRutas}</div>
@@ -13591,68 +13609,94 @@ function vBalanceo(el){
     ${!(S.maquinas||[]).some(m=>m.rec===rec.id&&maqOperativa(m))?`<p class="mut bal-sin-maq" style="font-size:var(--fs-xs);margin-top:8px">Este módulo no tiene máquinas operativas registradas${(S.maquinas||[]).some(m=>m.rec===rec.id)?' (las que tiene están dadas de baja, paradas, en mantenimiento o por revisar: no cuentan)':''}; regístralas o revisa su estado en Ingeniería → Máquinas y operarias → Máquinas de confección para comparar el inventario.</p>`:''}</div>
   </div></section>`}
 
-/* ---------- Programa del día para imprimir ---------- */
-let IMP={dia:null,area:'todas'};
-function vImprimir(el){
-  if(!S.ordenes.length){el.innerHTML=`<div class="pagehead"><h2>Programa del día</h2></div><div class="panel"><div class="empty">Sin órdenes cargadas.</div></div>`;return}
-  /* pulido V2: los días salen solo de lo que esta página dibuja (baños y producción); antes sumaba tejeduría y ofrecía sábados con «Nada que mostrar» */
-  const P=programar();const dias=[...new Set([...P.banos.filter(b=>b.dia&&!b.error).map(b=>b.dia),...P.pro.map(x=>x.dia).filter(Boolean)])].sort();
-  if(!IMP.dia||!dias.includes(IMP.dia))IMP.dia=dias.find(d=>d>=hoy())||dias[0];
-  const d=IMP.dia,byOp={};S.ordenes.forEach(o=>byOp[o.op]=o);
-  const cab=(area)=>`<div class="imp-cab"><div><b>${AREAS[area]}</b> · Programa del ${new Date(d+'T12:00:00').toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div><div class="mut">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div></div>`;
-  const infoOp=op=>{const o=byOp[op];return o?`${esc(op)} · ${esc(nombreCat(K(o.cat)))} · ${esc((C(o.color)||{}).n||'')} · ${num(o.cant)} pz`:esc(op)};
-  // tejeduría
-  const recsT=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');
-  const tej=`<section class="imp">${cab('tej')}<table><thead><tr><th>Máquina</th><th>Tela</th><th class="num">Kg crudo</th><th>Órdenes</th><th style="width:90px">Real kg</th><th style="width:110px">Firma</th></tr></thead><tbody>
-    ${recsT.map(r=>{const xs=P.tej.filter(x=>x.rec===r.id&&x.dia===d);if(!xs.length)return`<tr><td>${esc(r.n)}</td><td colspan="5" class="mut">sin carga</td></tr>`;
-      const porTela={};xs.forEach(x=>{if(!porTela[x.tela])porTela[x.tela]={kg:0,ops:[]};porTela[x.tela].kg+=x.kg;if(!porTela[x.tela].ops.includes(x.op))porTela[x.tela].ops.push(x.op)});
-      return Object.entries(porTela).map(([t,v],i)=>`<tr><td>${i===0?esc(r.n):''}</td><td>${esc(nTela(t))}</td><td class="num">${num(v.kg)}</td><td style="font-size:var(--fs-xs)">${v.ops.map(infoOp).join('<br>')}</td><td></td><td></td></tr>`).join('')}).join('')}
-  </tbody></table></section>`;
-  // tintorería · 02-oct (B4): sin ningún baño ese día, una línea (también impresa) en vez de 13 columnas vacías
-  const recsD=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');
-  const banosDia=r=>P.banos.filter(b=>!b.error&&b.rec===r.id&&b.dia===d);
-  const tin=!recsD.some(r=>banosDia(r).length)?`<section class="imp">${cab('tin')}<p class="mut" style="margin:6px 0">Tintorería: sin baños programados para este día.</p></section>`:`<section class="imp">${cab('tin')}<table><thead><tr><th>Máquina</th><th>#</th><th>Color</th><th>Telas</th><th class="num">Kg crudo</th><th class="num">Llenado</th><th class="num">Sale (kg)</th><th class="num">Horas</th><th>Estado</th><th>Órdenes</th><th style="width:70px">Inicio</th><th style="width:70px">Fin</th><th style="width:60px">OK</th></tr></thead><tbody>
-    ${recsD.map(r=>{const bs=banosDia(r).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
-      if(!bs.length)return`<tr><td>${esc(r.n)}</td><td colspan="12" class="mut">sin baños</td></tr>`;
-      return bs.map((b,i)=>`<tr><td>${i===0?esc(r.n):''}</td><td>${i+1}</td><td><b>${esc(b.colorN)}</b>${b.completado?' <span class="mut">(completado)</span>':''}<br><span class="mut" style="font-size:var(--fs-xs)">${esc((C(b.color)||{}).cod||'')} · ${FAMS[b.fam]||''}</span></td>
-        <td>${b.telas.map(nTela).map(esc).join(' + ')}</td><td class="num">${num(b.kg)}</td><td class="num">${Math.round(b.fill*100)}%</td><td class="num mut">${num(banoAcabado(b))}</td><td class="num">${b.horas}</td>
-        <td>${b.est==='ok'?'':b.est==='aprob'?'<span class="tag t-aviso">aprobación</span>':'<span class="tag t-alerta">bajo</span>'}</td>
-        <td style="font-size:var(--fs-xs)">${(b.oids||[]).map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?whCell(o,24):''}).join(' ')||b.ops.map(esc).join(', ')}</td><td></td><td></td><td></td></tr>`).join('')}).join('')}
-  </tbody></table></section>`;
-  // producción
-  const cens=[...new Set(P.pro.filter(x=>x.dia===d).map(x=>x.centro))].sort((a,b)=>ordenPaso(a)-ordenPaso(b));
-  /* 02-oct (B4): pasos sin tiempo estándar DE ESTE DÍA (no de toda la cartera): el programa les dio fecha (ro.pasos, sinTiempo, la misma lectura de la
-     bandeja de Hoy) pero no ocupan capacidad ni salen en la hoja. El aviso va ARRIBA de la hoja y no se imprime. */
-  const sinT={};S.ordenes.filter(abierta).forEach(o=>((P.ordenes[o.id]||{}).pasos||[]).forEach(x=>{const c=CE(x.centro);if(c&&c.area==='pro'&&x.sinTiempo&&!x.error&&x.ini===d)(sinT[x.centro]=sinT[x.centro]||[]).includes(o)||sinT[x.centro].push(o)}));
-  const cenSinT=Object.keys(sinT).sort((a,b)=>ordenPaso(a)-ordenPaso(b));const nSinT=new Set(cenSinT.flatMap(c=>sinT[c].map(o=>o.id))).size;
-  const prov=S.ordenes.some(o=>o.samProv)?`<p class="mut" style="font-size:var(--fs-s);margin:6px 0 0">Tiempos por prenda provisionales por familia (corte, confección, empaque); se reemplazan cuando se cargue la hoja de operaciones.</p>`:'';
-  const aviso=nSinT?`<details class="warn warn-pl no-print imp-aviso"><summary>Este día (${fmtDia(d)}) hay <b>${num(nSinT)} ${nSinT===1?'orden':'órdenes'} con un paso sin tiempo estándar</b>: ${nSinT===1?'tiene fecha en el programa pero no sale':'tienen fecha en el programa pero no salen'} en esta hoja (${cenSinT.map(c=>esc(nCen(c))+' '+num(sinT[c].length)).join(' · ')}) <span class="mut warn-pl-ver">· ver cuáles</span></summary>
-    <div class="warn-pl-cuerpo">${cenSinT.map(c=>`<div style="margin:4px 0"><b>${esc(nCen(c))}</b>: ${sinT[c].slice(0,60).map(o=>'<span class="bal-ord">'+whCell(o,22)+'</span>').join(' ')}${sinT[c].length>60?' <span class="mut">y '+num(sinT[c].length-60)+' más</span>':''}</div>`).join('')}
-    <div style="margin-top:6px">Falta el SAM (minutos por prenda), la técnica o las puntadas de la orden, según el centro.${puedeAbrirPagina('ingtipos')?` <a style="cursor:pointer;text-decoration:underline" onclick="ir('ingtipos')">Ir a Ingeniería → Tipos de producto</a>`:''}</div>${prov}</div></details>`:(prov?`<div class="mut no-print" style="margin:0 0 10px">${prov}</div>`:'');
-  /* 02-oct (B4): columnas de ancho fijo (Recurso, Orden, Color, Prendas, Minutos) para que caigan en el mismo lugar en todos los centros; los recursos en
-     orden (Módulo 1 … 11 y Maquila al final, como los botoncitos del centro); si el centro tiene un solo recurso que se llama como el centro, la celda va
-     vacía; en Estampado, «sin técnica» va UNA vez bajo el título y en la fila solo un ⚠ */
-  const cmpRec=(a,b)=>{const ra=R(a)||{id:a,n:String(a||'')},rb=R(b)||{id:b,n:String(b||'')};return ordenRecChip(ra)-ordenRecChip(rb)||String(ra.n||'').localeCompare(String(rb.n||''),'es',{numeric:true})};
-  const pro=`<section class="imp">${cab('pro')}${cens.length?cens.map(c=>{const recs=[...new Set(P.pro.filter(x=>x.dia===d&&x.centro===c).map(x=>x.rec))].sort(cmpRec);const punt=(CE(c)||{}).medida==='puntadas';
-    const recCelda=rid=>(recs.length===1&&normTxt(nRec(rid))===normTxt(nCen(c)))?'':esc(nRec(rid));
-    const sinTec=c==='estampado'?[...new Set(P.pro.filter(x=>x.dia===d&&x.centro===c).map(x=>x.op))].filter(op=>{const o=byOp[op];return o&&!TEC(o.tecnica)}).length:0;
-    return `<h4 style="margin:14px 0 6px">${esc(nCen(c))}</h4>${sinTec?`<p class="mut" style="font-size:var(--fs-s);margin:0 0 6px">⚠ ${num(sinTec)} ${sinTec===1?'orden de este día no tiene técnica':'órdenes de este día no tienen técnica'}: su tiempo es el estándar (hoja de la categoría o del centro), no el de la técnica.</p>`:''}<table class="imp-pro"><colgroup><col style="width:10%"><col style="width:15%"><col><col style="width:12%"><col style="width:7%">${punt?'<col style="width:8%"><col style="width:9%">':''}<col style="width:7%"><col style="width:90px"><col style="width:110px"></colgroup><thead><tr><th>Recurso</th><th>Orden</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th>${punt?'<th class="num">Puntadas/pz</th><th class="num">Puntadas total</th>':''}<th class="num">Minutos</th><th>Real pz</th><th>Firma</th></tr></thead><tbody>
-    ${recs.map(rid=>{const xs=P.pro.filter(x=>x.dia===d&&x.centro===c&&x.rec===rid);const porOp={};xs.forEach(x=>{if(!porOp[x.op])porOp[x.op]={pz:0,min:0};porOp[x.op].pz+=x.pz||0;porOp[x.op].min+=x.min});
-      return Object.entries(porOp).map(([op,v],i)=>{const o=byOp[op]||{};const paso=(o.ruta||[]).find(p=>p.centro===c)||{};
-        return `<tr><td>${i===0?recCelda(rid):''}</td><td>${o.id?fotoMini(o,54):''}${esc(op)}</td><td>${esc(nombreCat(K(o.cat)))}${c==='estampado'&&o.id&&!TEC(o.tecnica)?' <span class="imp-sintec" title="sin técnica: su tiempo es el estándar (hoja de la categoría o del centro), no el de la técnica">⚠</span>':''}</td><td>${esc((C(o.color)||{}).n||'')}</td><td class="num">${num(v.pz)}</td>${punt?`<td class="num">${num(paso.t)}</td><td class="num">${num((paso.t||0)*v.pz)}</td>`:''}<td class="num">${num(v.min)}</td><td></td><td></td></tr>`}).join('')}).join('')}
-    </tbody></table>`}).join(''):'<p class="mut">Sin carga de producción este día.</p>'}</section>`;
-  const partes={tej,tin,pro};
-  const ordsDia=[...new Set(P.pro.filter(x=>x.dia===d).map(x=>x.op))].map(op=>byOp[op]).filter(Boolean);
-  el.innerHTML=`<div class="pagehead no-print"><h2>Programa del día</h2><span class="spacer"></span>
-    <div class="row" style="margin:0;align-items:center">
-      <div><label>Día</label><select onchange="IMP.dia=this.value;render()">${dias.map(x=>`<option value="${x}" ${x===d?'selected':''}>${fmtDia(x)}</option>`).join('')}</select></div>
-      <div><label>Área</label><select onchange="IMP.area=this.value;render()">${[['todas','Todas'],['tin','Tintorería'],['pro','Producción']].map(([k,v])=>`<option value="${k}" ${IMP.area===k?'selected':''}>${v}</option>`).join('')}</select></div>
-      <div><label>&nbsp;</label><button class="btn" onclick="window.print()">Imprimir</button></div></div></div>
-  <p class="lede no-print">Programa de un día por área, tal como sale impreso: con columnas en blanco («Real pz», «Firma») para anotar lo real y firmar. Cada área sale en su propia hoja al imprimir.</p>
-  ${IMP.area==='tin'?'':aviso}
-  <div id="hoja">${IMP.area==='todas'?tin+pro:partes[IMP.area]}</div>
-  ${detalleAgrupableHTML('imp',ordsDia,'Detalle del día','la hoja impresa mantiene centro y recurso; esto es para mirarlo en pantalla',null,(ordsDia.length===1?'Ver la orden':'Ver las '+num(ordsDia.length)+' órdenes')+' del día en lista (cliente, ODC, agrupables)')}`;
-}
+/* ---------- Imprimir el día (08-oct-2026, simplificación M6): la página «Programa del día» salió del menú ----------
+   UNA forma de imprimir el programa de un día: imprimirDia(centro, dia, rec).
+   · centro = 'tin' (tintorería: los baños del día por máquina), un ítem de producción (corte, modulos, estampado, bordado, terminados… con sus
+     sub-áreas: censDeGrupo) o un centro de producción suelto; null = TODAS las áreas (tintorería y cada ítem de producción con algo ese día), una
+     hoja por área en la misma ventana.
+   · dia = 'AAAA-MM-DD' (sin él, hoy). rec = un puesto (módulo o máquina) para imprimir solo lo suyo; sin él, todos (con null se ignora).
+   La hoja de producción ES la de imprimirProgramaCentro con el día elegido: las mismas órdenes en el mismo orden y con el mismo # de la lista del
+   centro, con las prendas y los minutos que el programa puso ESE día (agrupadas por puesto) y columnas en blanco «Real» y «Firma». Tejeduría no
+   tiene hoja: se programa a mano (Tejeduría → Programa a mano); la hoja de tejeduría que la página vieja armaba y nunca mostraba se quitó.
+   mImprimirDia(centro, rec) abre una ventana para elegir el día (y el área, si el perfil puede programar) y avisa de los pasos sin tiempo estándar de
+   ese día (tienen fecha pero no salen en la hoja). La usan: Tintorería (cabecera, «Imprimir el día»), Hoy → «En máquinas hoy» («Imprimir el día de
+   todas las áreas», solo planificación) y la Programación de cada centro (lote L2: mImprimirDia('<ítem>',CEN.rec), o imprimirDia('<ítem>',día,CEN.rec)
+   para imprimir directo). Un enlace viejo a «imprimir» lleva a Hoy (planificación), al centro o a Tintorería (destinoImprimirDia). */
+const CSS_HOJA_IMP='@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:14px 0 6px}small{font-weight:400;color:#555}table{width:100%;border-collapse:collapse}tr{page-break-inside:avoid}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:middle}th{background:#eee}td.n,th.n{text-align:right}img{width:70px;height:70px;object-fit:cover;border-radius:4px}p.nota{color:#555;margin:10px 0 0}.gen{color:#555}th.firma{width:80px}section.hoja+section.hoja{page-break-before:always}';
+/* el documento que se imprime (una ventana aparte, A4 horizontal); lo comparten la hoja de la semana del centro y la del día */
+function hojaImprimirHTML(titulo,cuerpo){return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>${CSS_HOJA_IMP}</style></head><body>${cuerpo}<script>window.onload=function(){window.print()}<\/script></body></html>`}
+function abrirHojaImprimir(html){const w=window.open('','_blank');if(!w){alert('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio.');return false}w.document.write(html);w.document.close();return true}
+/* lo que el programa puso UN día en cada centro de producción, por orden: {'centro|op': {pz, min, rec}} (rec = el puesto con más minutos ese día);
+   con rec, solo ese puesto. Lee P.pro tal cual (no calcula nada nuevo) */
+function cargaDelDiaPro(P,dia,rec){const m={};(P.pro||[]).forEach(x=>{if(x.dia!==dia||(rec&&x.rec!==rec))return;const k=x.centro+'|'+x.op;const r=m[k]=m[k]||{pz:0,min:0,porRec:{}};r.pz+=x.pz||0;r.min+=x.min||0;r.porRec[x.rec]=(r.porRec[x.rec]||0)+(x.min||0)});
+  Object.values(m).forEach(r=>{r.rec=Object.keys(r.porRec).sort((a,b)=>r.porRec[b]-r.porRec[a])[0]||''});return m}
+/* puestos en el orden de los botoncitos del centro (Módulo 1 … 11 y Maquila al final) */
+function cmpRecImp(a,b){const ra=R(a)||{id:a,n:String(a||'')},rb=R(b)||{id:b,n:String(b||'')};return ordenRecChip(ra)-ordenRecChip(rb)||String(ra.n||'').localeCompare(String(rb.n||''),'es',{numeric:true})}
+/* la hoja de tintorería de un día: los baños confirmados por máquina, con columnas en blanco para el inicio, el fin y el visto bueno */
+function hojaTinDiaHTML(P,dia){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');
+  const banosDia=r=>(P.banos||[]).filter(b=>!b.error&&b.rec===r.id&&b.dia===dia).sort((a,b)=>ORDEN_FAM[a.fam]-ORDEN_FAM[b.fam]);
+  if(!recs.some(r=>banosDia(r).length))return {n:'Tintorería',html:'<p class="nota">Tintorería: sin baños programados para este día.</p>',vacia:true};
+  const ords=b=>(b.oids||[]).map(id=>{const o=S.ordenes.find(x=>x.id===id);return o?esc(opVisibleTxt(o,true)):''}).filter(Boolean).join('<br>')||esc((b.ops||[]).join(', '));
+  const est=b=>b.est==='ok'?'':b.est==='aprob'?'pide aprobación':'bajo el mínimo';
+  return {n:'Tintorería',vacia:false,html:`<table><thead><tr><th>Máquina</th><th class="n">#</th><th>Color</th><th>Telas</th><th class="n">Kg crudo</th><th class="n">Llenado</th><th class="n">Sale (kg)</th><th class="n">Horas</th><th>Estado</th><th>Órdenes</th><th class="firma">Inicio</th><th class="firma">Fin</th><th class="firma">OK</th></tr></thead><tbody>
+   ${recs.map(r=>{const bs=banosDia(r);if(!bs.length)return `<tr><td>${esc(r.n)}</td><td colspan="12">sin baños</td></tr>`;
+     return bs.map((b,i)=>`<tr><td>${i===0?esc(r.n):''}</td><td class="n">${i+1}</td><td><b>${esc(b.colorN||'')}</b>${b.cod?'<br><small>'+esc(b.cod)+'</small>':''}${b.completado?' <small>(completado)</small>':''}</td><td>${(b.telas||[]).map(nTela).map(esc).join(' + ')}</td><td class="n">${num(b.kg)}</td><td class="n">${Math.round((b.fill||0)*100)} %</td><td class="n">${num(banoAcabado(b))}</td><td class="n">${num(b.horas,(b.horas%1)?1:0)}</td><td>${est(b)}</td><td>${ords(b)}</td><td></td><td></td><td></td></tr>`).join('')}).join('')}</tbody></table>`}}
+let IMPD={area:null,dia:null,rec:'',fija:false};
+function areasImprimirDia(){return [{k:'tin',n:'Tintorería'},...itemsPlanProd().map(x=>({k:x.g,n:x.n}))]}
+function nAreaImp(k){if(k==null)return 'Todas las áreas';if(k==='tin')return 'Tintorería';return CENTROS_PROD_N[k]||nCen(k)||String(k)}
+/* los días que tienen algo para imprimir en esa área (null = cualquier área), del primero al último que tiene el programa */
+function diasImprimirDia(P,k,rec){const s=new Set();if(k==null||k==='tin')(P.banos||[]).forEach(b=>{if(!b.error&&b.dia)s.add(b.dia)});
+  if(k!=='tin'){const cs=k==null?null:new Set(censDeGrupo(k));(P.pro||[]).forEach(x=>{if(x.dia&&(!cs||cs.has(x.centro))&&(!rec||x.rec===rec))s.add(x.dia)})}
+  return [...s].sort()}
+/* pasos sin tiempo estándar con fecha ESE día (ro.pasos, sinTiempo: la misma lectura de la bandeja de Hoy): tienen fecha pero no salen en la hoja */
+function pasosSinTiempoDia(P,dia,k){const cs=k==null?null:new Set(censDeGrupo(k));const out={};
+  S.ordenes.filter(abierta).forEach(o=>((P.ordenes[o.id]||{}).pasos||[]).forEach(x=>{const c=CE(x.centro);if(c&&c.area==='pro'&&(!cs||cs.has(x.centro))&&x.sinTiempo&&!x.error&&x.ini===dia){const l=out[x.centro]=out[x.centro]||[];if(!l.includes(o))l.push(o)}}));return out}
+function mImprimirDia(centro,rec){if(!S.ordenes.length){alert('Todavía no hay órdenes cargadas: no hay programa que imprimir.');return}
+  IMPD={area:centro==null?null:centro,dia:null,rec:rec||'',fija:centro!=null&&!puede('programa')};pintarImprimirDia()}
+function pintarImprimirDia(){const P=programar();const k=IMPD.area;const dias=diasImprimirDia(P,k,IMPD.rec);
+  if(!IMPD.dia||!dias.includes(IMPD.dia))IMPD.dia=dias.find(d=>d>=hoy())||dias[dias.length-1]||null;
+  const d=IMPD.dia;const sinT=d&&k!=='tin'?pasosSinTiempoDia(P,d,k):{};const cenS=Object.keys(sinT).sort((a,b)=>ordenPaso(a)-ordenPaso(b));const nS=new Set(cenS.flatMap(c=>sinT[c].map(o=>o.id))).size;
+  const selA=IMPD.fija?`<div><label>Área</label><div class="impd-fija"><b>${esc(nAreaImp(k))}</b>${IMPD.rec?' · '+esc(nRec(IMPD.rec)):''}</div></div>`
+    :`<div><label>Área</label><select id="impd-area" onchange="IMPD.area=this.value==='*'?null:this.value;IMPD.rec='';IMPD.dia=null;pintarImprimirDia()"><option value="*" ${k==null?'selected':''}>Todas las áreas</option>${areasImprimirDia().map(a=>`<option value="${esc(a.k)}" ${k===a.k?'selected':''}>${esc(a.n)}</option>`).join('')}</select></div>`;
+  abrir(`<h3>Imprimir el día</h3><div class="body">
+   <p class="mut" style="margin-top:0">Una hoja por área con lo que el programa pone ese día: en tintorería, los baños por máquina; en producción, las órdenes en el orden de la lista del centro (#), con las prendas y los minutos de ese día. Lleva columnas en blanco para anotar lo real y firmar.</p>
+   <div class="row">${selA}<div><label>Día</label>${dias.length?`<select id="impd-dia" onchange="IMPD.dia=this.value;pintarImprimirDia()">${dias.map(x=>`<option value="${x}" ${x===d?'selected':''}>${fmtDia(x)}${x===hoy()?' · hoy':''}</option>`).join('')}</select>`:'<div class="mut impd-fija">nada programado</div>'}</div></div>
+   ${nS?`<div class="warn impd-sint">Ese día hay <b>${num(nS)} ${nS===1?'orden':'órdenes'} con un paso sin tiempo estándar</b>: ${nS===1?'tiene':'tienen'} fecha en el programa pero no ${nS===1?'sale':'salen'} en la hoja (${cenS.map(c=>esc(nCen(c))+' '+num(sinT[c].length)).join(' · ')}). Falta el SAM (minutos por prenda), la técnica o las puntadas de la orden.${puedeAbrirPagina('ingtipos')?` <a style="cursor:pointer;text-decoration:underline" onclick="cerrar();ir('ingtipos')">Ir a Ingeniería → Tipos de producto</a>`:''}</div>`:''}
+   ${dias.length?'':`<p class="mut">${k==='tin'?'No hay baños confirmados en el programa: se confirman en Tintorería → Armar baños.':'El programa no tiene nada en '+esc(nAreaImp(k))+'.'}</p>`}
+  </div><div class="foot"><button class="btn ghost" onclick="cerrar()">Cancelar</button><button class="btn" ${d?'':'disabled'} onclick="cerrar();imprimirDia(IMPD.area,IMPD.dia,IMPD.rec)">Imprimir</button></div>`)}
+function imprimirDia(centro,dia,rec){if(!S.ordenes.length){alert('Todavía no hay órdenes cargadas: no hay programa que imprimir.');return null}
+  const P=programar();dia=dia||hoy();const todas=centro==null;
+  const lista=todas?['tin',...itemsPlanProd().map(x=>x.g)]:[centro];
+  const partes=[],vacias=[];
+  lista.forEach(a=>{const r=a==='tin'?hojaTinDiaHTML(P,dia):imprimirProgramaCentro(a,dia,todas?'':(rec||''),true);if(todas&&r.vacia)vacias.push(r.n);else partes.push(r)});
+  const gen=`<div class="gen">TEMPOCODECA · generado ${fechaHoraLocal(Date.now())}</div>`;
+  const cuerpo=(partes.length?partes.map(x=>`<section class="hoja"><h1>${esc(x.n)} · programa del ${fmtDia(dia)}</h1>${gen}${x.html}</section>`).join('')
+    :`<section class="hoja"><h1>Programa del ${fmtDia(dia)}</h1>${gen}<p class="nota">Nada programado este día.</p></section>`)+(vacias.length?`<p class="nota">Sin nada programado este día: ${vacias.map(esc).join(' · ')}.</p>`:'');
+  abrirHojaImprimir(hojaImprimirHTML((todas?'Programa del día':'Programa '+((partes[0]||{}).n||nAreaImp(centro)))+' · '+fmtDia(dia),cuerpo));
+  return {areas:partes.map(x=>x.n),vacias}}
+/* Hoy → «En máquinas hoy»: la entrada de planificación para imprimir el día de todas las áreas */
+function imprimirDiaTodasHTML(){if(!puede('programa')||!S.ordenes.length)return '';
+  return `<div class="row no-print hoy-imp"><button class="btn ghost sm" onclick="mImprimirDia(null)">Imprimir el día de todas las áreas</button><span class="mut">tintorería y cada centro de producción, una hoja por área, para anotar lo real y firmar</span></div>`}
+/* un enlace o un perfil viejo a «Programa del día»: planificación cae en Hoy (ahí imprime todas las áreas); un perfil de centro, en su centro; tintorería, en Tintorería */
+function destinoImprimirDia(){try{if(typeof PERFIL==='undefined'||!PERFIL)return 'panorama';if(puede('programa')&&vePagina('panorama'))return 'panorama';if(vePagina('centro'))return 'centro';if(vePagina('tintoreria'))return 'tintoreria'}catch(e){}return 'panorama'}
+function vImprimir(el){ir(destinoImprimirDia())}
+/* ---------- Migración del menú (08-oct-2026, simplificación · lote L5) ----------
+   Stock de tela cruda y Macro del mes son pestañas de Tejeduría; Programa del día salió del menú («Imprimir el día» en Tintorería, en cada centro y,
+   para planificación, en Hoy); Salud del sistema (Configuración) y Auditoría de replanificación (Dirección) son las dos pestañas de Configuración →
+   Auditoría. Una sola vez por bandera, con bitácora y nunca desde una sesión de piso: a cada perfil que tenía la página vieja se le da la que la
+   reemplaza (no se le quita nada; la entrada vieja que quede en su lista solo redirige). La llama perfilesDef(). */
+function migMenuL5_08(){const P=S.params,D=P&&P.perfilesDef;if(!Array.isArray(D)||(P.migTextil08&&P.migImprimir08&&P.migAuditoria08))return;
+  if(typeof PERFIL==='undefined'||!PERFIL||sesionDePisoMig())return;
+  const ts=()=>new Date().toISOString();const lista=d=>Array.isArray(d.paginas)&&!d.paginas.includes('*');const dar=(d,p)=>{if(d.paginas.includes(p))return 0;d.paginas.push(p);return 1};
+  const bit=t=>{if(typeof bitacora==='function')bitacora(t)};const pl=(n,u,v)=>n+' '+(n===1?u:v);
+  if(!P.migTextil08){let n=0;D.forEach(d=>{if(lista(d)&&['stock','macro'].some(p=>d.paginas.includes(p)))n+=dar(d,'tejeduria')});P.migTextil08=ts();
+    bit('Menú (08-oct): «Stock de tela cruda» y «Macro del mes» ahora son pestañas de Tejeduría («Por tejer ahora» y «Lo que viene»): '+(n?pl(n,'perfil que las tenía recibe','perfiles que las tenían reciben')+' «Tejeduría»':'ningún perfil necesitó cambios')+'. No se le quitó nada a nadie.')}
+  if(!P.migImprimir08){let n=0;D.forEach(d=>{if(!lista(d)||!d.paginas.includes('imprimir'))return;const cs=d.centros||[];const todo=cs.includes('*');
+      const veTin=todo||cs.some(c=>c==='tin'||((CE(c)||{}).area==='tin'));const vePro=todo||cs.some(c=>(CE(c)||{}).area==='pro');const prog=Array.isArray(d.permisos)&&(d.permisos.includes('*')||d.permisos.includes('programa'));
+      if(veTin)n+=dar(d,'tintoreria');if(vePro)n+=dar(d,'centro');if(prog)n+=dar(d,'panorama')});P.migImprimir08=ts();
+    bit('Menú (08-oct): «Programa del día» salió del menú; se imprime con «Imprimir el día» en Tintorería, en la Programación de cada centro y, para planificación, en Hoy («Imprimir el día de todas las áreas»): '+(n?pl(n,'entrada de menú agregada','entradas de menú agregadas')+' a los perfiles que lo tenían (la pantalla donde ahora está el botón)':'ningún perfil necesitó cambios')+'. No se le quitó nada a nadie.')}
+  if(!P.migAuditoria08){let n=0;D.forEach(d=>{if(lista(d)&&d.paginas.includes('salud'))n+=dar(d,'auditoria')});P.migAuditoria08=ts();
+    bit('Menú (08-oct): «Salud del sistema» (Configuración) y «Auditoría de replanificación» (Dirección) se juntaron en Configuración → Auditoría, con dos pestañas: «Cambios de las personas» y «Salud de los datos» (pide el permiso «programa», como antes): '+(n?pl(n,'perfil que tenía Salud recibe','perfiles que tenían Salud reciben')+' «Auditoría»':'ningún perfil necesitó cambios')+'. No se le quitó nada a nadie.')}}
 
 /* ---------- Órdenes ---------- */
 let ORDF={estado:'plan',q:'',grupo:null,abiertas:null,fases:null,tab:'ord',edicion:'porEditar'};
@@ -13930,19 +13974,53 @@ async function ejecutarBorrado(){if(!puede('config')){alert('Solo el administrad
   catch(e){bitacora('BORRADO: error inesperado ('+String((e&&e.message)||e)+') ('+quienFirma()+')');try{await saveBorrado()}catch(x){}alert('El borrado se detuvo por un error inesperado: '+String((e&&e.message)||e)+'. Revisa el panel de Borrado: si quedó una marca de borrado en curso o incompleto, dice qué hacer.');return fin(false)}
   finally{if(BORRANDO)fin(false)}}
 
-/* ---------- Tejeduría ---------- */
+/* ---------- Tejeduría (08-oct-2026, simplificación M5): UNA entrada del menú con tres pestañas ----------
+   «Por tejer ahora» = lo liberado que falta tejer («Telas por tejer») y el stock de tela cruda en bodega, que se escribe aquí (antes era la página
+   «Stock de tela cruda»); «Programa a mano» = qué máquina teje qué tela cada día (progTej) y lo técnico plegado; «Lo que viene» = lo que piden las
+   órdenes antes de Planificación (antes era la página «Macro del mes»). Cada pestaña dice su base y si los kilos llevan merma. Las tres se dibujan y
+   la pestaña solo muestra u oculta, sin volver a calcular (como Tintorería); se recuerda la última de cada usuario. Los enlaces viejos (stock, macro,
+   compras) abren la pestaña que corresponde (redirigirPagina). No se calcula nada nuevo: son las mismas funciones de las tres páginas de antes. */
+const TEJ_TABS=[['ahora','Por tejer ahora'],['mano','Programa a mano'],['viene','Lo que viene']];
+let TEJ={tab:null,usr:null};
+function tejTabClave(){return '__tejtab_'+claveUsr()}
+function tejTabActual(){const u=claveUsr();if(TEJ.usr!==u){TEJ.usr=u;let t=null;try{t=localStorage[tejTabClave()]||null}catch(e){}TEJ.tab=t}return TEJ_TABS.some(x=>x[0]===TEJ.tab)?TEJ.tab:'ahora'}
+/* elige la pestaña sin dibujar (la usa redirigirPagina antes de render) */
+function verTejTabSin(k){if(!TEJ_TABS.some(x=>x[0]===k))return;TEJ.tab=k;TEJ.usr=claveUsr();try{localStorage[tejTabClave()]=k}catch(e){}}
+/* cambia de pestaña sin redibujar; irA = id de un recuadro de esa pestaña al que se lleva la pantalla */
+function verTejTab(k,irA){verTejTabSin(k);const root=document.getElementById('p-tejeduria');if(!root)return;
+  root.querySelectorAll('[data-tej-tab]').forEach(x=>x.classList.toggle('on',x.getAttribute('data-tej-tab')===k));
+  root.querySelectorAll('[data-tej-chip]').forEach(x=>{const on=x.getAttribute('data-tej-chip')===k;x.classList.toggle('on',on);x.setAttribute('aria-selected',on?'true':'false')});
+  if(irA){const e=document.getElementById(irA);if(e){if(e.tagName==='DETAILS')e.open=true;if(e.scrollIntoView)e.scrollIntoView({behavior:'smooth',block:'start'})}}}
+/* la base de cada pestaña y si los kilos llevan merma, en una línea a la vista */
+const TEJ_BASE={
+  ahora:'Base: <b>órdenes abiertas con tela propia que todavía no se teje</b>; la tabla «Telas por tejer» cuenta las que ya tienen la tela liberada y el stock se compara con lo que entra a corte en el mes. Kilos <b>en crudo, sin merma</b>.',
+  mano:'Base: <b>lo que la persona de tejeduría programa a mano</b> por máquina y día, y lo que ya marcó como tejido. El sistema no asigna máquinas. Kilos <b>en crudo, sin merma</b>.',
+  viene:'Base: <b>las órdenes en fases antes de Planificación</b>, liberadas o no, del mes del Proyecto que elijas abajo (es la macro del mes). Kilos <b>en crudo con la merma de tintura sumada</b>: por eso no se suman con «Por tejer ahora».'};
+function tejBaseHTML(k){return `<p class="base-linea tej-base">${TEJ_BASE[k]}</p>${k==='ahora'?porTejerLineaHTML():''}`}
+/* V15 (08-oct): «órdenes con tela propia por tejer» = UNA cuenta para Tejeduría y Avance por área. Abiertas que pasan por tejeduría y todavía tienen
+   kilos de tela propia sin tejer (kgPendiente > 0: las tejidas, tinturadas o listas dan 0; antes se contaban también las que no tienen ni un kilo de
+   tela propia). Las de diseño (sin WH) van aparte. «Liberadas» = con la tela liberada (liberada(o,'tela'), la regla de Liberación). Kilos en crudo, sin merma. */
+function porTejerCuenta(){const ab=S.ordenes.filter(o=>abierta(o)&&etapas(o).tej&&kgPendiente(o)>0);const con=ab.filter(o=>!sinWHde(o)),dis=ab.filter(o=>sinWHde(o));
+  const kg=xs=>xs.reduce((a,o)=>a+kgPendiente(o),0);const lib=con.filter(o=>liberada(o,'tela'));
+  return {ords:con,n:con.length,lib:lib.length,kg:kg(con),kgLib:kg(lib),disenoN:dis.length,kgDiseno:kg(dis)}}
+function porTejerLineaHTML(c){c=c||porTejerCuenta();
+  return `<p class="tej-base tej-cuenta" title="órdenes abiertas que pasan por tejeduría y todavía tienen kilos de tela propia sin tejer; la misma cuenta de Avance por área → Tejeduría">Por tejer en total: <b>${num(c.n)} ${c.n===1?'orden':'órdenes'} con tela propia</b> (${num(c.lib)} con la tela liberada) · ${num(c.kg)} kg en crudo${c.disenoN?` · además ${num(c.disenoN)} ${c.disenoN===1?'orden':'órdenes'} de diseño sin WH (${num(c.kgDiseno)} kg)`:''}.</p>`}
 function vTej(el){
-  const P=S.ordenes.length?programar():{tej:[]};
-  /* 02-oct («para dummies», TEJ-2/TEJ-3): primero «Telas por tejer» (una sola tabla: resumen por tipo de tela + pedido vs cargado), después la
-     programación manual (lo que se trabaja aquí) y «Tejido sin confirmar» si hay algo; lo técnico (carga estimada por el sistema por máquina y
-     la comparación antes/después) va plegado en «Más detalle». La grilla automática Máquina × día dejó de dibujarse el 15-sep (no se calcula). */
-  el.innerHTML=`<div class="pagehead"><h2>Programa de tejeduría</h2><span class="spacer"></span>${puedeArea('tej')||puede('programa')?`<button class="btn tint to" onclick="mParada('tej')">Reportar novedad</button>`:''}</div>
-  <p class="lede">Tejeduría se programa <b>a mano</b>: el sistema muestra cuántos kilos por tela están liberados por tejer (pedido) y la persona de tejeduría decide qué máquina hace qué tela cada día. No hay asignación automática de máquinas; el motor solo estima la fecha de tela lista para el resto del programa (la carga estimada por máquina está en «Más detalle», al final). Los kilos son en crudo.</p>
-  ${resumenTelasHTML(P)}${progTejPanelHTML(P)}${tejEstrictoPanelHTML()}
+  const P=S.ordenes.length?programar():{tej:[]};const tab=tejTabActual();
+  const pest=TEJ_TABS.map(([k,n])=>`<span class="chip ${tab===k?'on':''}" role="tab" aria-selected="${tab===k}" data-tej-chip="${k}" onclick="verTejTab('${k}')">${n}</span>`).join('');
+  const blq=(k,html)=>`<div data-tej-tab="${k}" class="${tab===k?'on':''}">${html}</div>`;
+  const resumen=resumenTelasHTML(P)||'<div class="panel"><div class="empty">Ninguna orden abierta trae tela propia para tejer.</div></div>';
+  el.innerHTML=`<div class="pagehead"><h2>Tejeduría</h2><span class="spacer"></span><div class="chips tej-tabs" role="tablist">${pest}</div>${puedeArea('tej')||puede('programa')?`<button class="btn tint to" onclick="mParada('tej')">Reportar novedad</button>`:''}</div>
+  <p class="lede">Tejeduría en tres pestañas: <b>Por tejer ahora</b> (lo liberado que falta tejer y el stock de tela cruda que hay en bodega, que se escribe ahí), <b>Programa a mano</b> (qué máquina teje qué tela cada día: el sistema no asigna máquinas, solo estima la fecha de tela lista para el resto del programa) y <b>Lo que viene</b> (lo que van a pedir las órdenes que todavía no llegan a Planificación). Cada pestaña dice de qué órdenes sale su cuenta y si los kilos llevan merma.</p>
+  ${blq('ahora',`${tejBaseHTML('ahora')}<div id="tej-tejeduria">${resumen}</div>${stockTelaHTML()}`)}
+  ${blq('mano',`${tejBaseHTML('mano')}${progTejPanelHTML(P)}${tejEstrictoPanelHTML()}
   <details class="tx-mas"><summary>Más detalle <span class="mut">· carga estimada por el sistema por máquina · antes y después de usar el stock y lo programado a mano</span></summary>
-   ${tablaCarga('tej','Carga estimada por el sistema por máquina <span class="mut" style="font-weight:400">(no es lo programado a mano)</span>')}${comparaTejHTML()}</details>`;
+   ${tablaCarga('tej','Carga estimada por el sistema por máquina <span class="mut" style="font-weight:400">(no es lo programado a mano)</span>')}${comparaTejHTML()}</details>`)}
+  ${blq('viene',`${tejBaseHTML('viene')}<div id="tej-macro">${macroHTML()}</div>`)}`;
 }
-
+/* las páginas viejas siguen existiendo solo como nombre (el despachador de render las conoce): llevan a su pestaña */
+function vStock(el){verTejTabSin('ahora');vTej(el)}
+function vMacro(el){verTejTabSin('viene');vTej(el)}
 /* ---------- Tintorería ---------- */
 /* 02-oct («para dummies», TIN-1): la página eran 13 paneles apilados (~14.000 px) y lo diario (mover la fase, «Hecho → calidad») quedaba al final,
    debajo de «Armar baños». Ahora va en pestañas: Hoy · Armar baños · Tela plana · Reportes. Todo se sigue dibujando (los id y las pruebas no
@@ -13990,7 +14068,7 @@ function vTin(el){
     {id:'tin-tarde',ico:'alert',v:num(tarde.length),k:'Fuera de fecha',cls:tarde.length?'warn':'',title:'baños confirmados que salen después de la fecha en que se necesita la tela'}]);
   const pest=TIN_TABS.filter(([k])=>k!=='armar'||arma).map(([k,n])=>`<span class="chip ${tab===k?'on':''}" data-tin-chip="${k}" onclick="verTinTab('${k}')">${n}${k==='armar'&&nCol?' · '+num(nCol)+' '+(nCol===1?'color':'colores'):''}${k==='plana'&&nPlana?' · '+num(nPlana)+' '+(nPlana===1?'pendiente':'pendientes'):''}</span>`).join('');
   const blq=(k,html)=>`<div data-tin-tab="${k}" class="${tab===k?'on':''}">${html}</div>`;
-  el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span><div class="chips tin-tabs">${pest}</div>${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn ghost" title="Guarda una copia del programa de hoy en «Programas guardados» (pestaña Reportes). Los cambios se guardan solos." onclick="congelar()">Guardar copia del programa</button>':''}</div>
+  el.innerHTML=`<div class="pagehead"><h2>Programa de tintorería</h2><span class="spacer"></span><div class="chips tin-tabs">${pest}</div><button class="btn ghost" title="Una hoja con los baños de un día por máquina, para anotar el inicio, el fin y el visto bueno" onclick="mImprimirDia('tin')">Imprimir el día</button> ${puedeArea('tin')||puede('programa')?`<button class="btn tint to" onclick="mParada('tin')">Reportar novedad</button> `:''}${puede('programa')?'<button class="btn ghost" title="Guarda una copia del programa de hoy en «Programas guardados» (pestaña Reportes). Los cambios se guardan solos." onclick="congelar()">Guardar copia del programa</button>':''}</div>
   <p class="lede">Los baños se arman por color: las familias A y B se mezclan entre sí; las de baño propio van solas, y si no llenan se completan con lo que haya del mismo color (marcado "completado"). Empiezan cuando la tela está tejida y se ordenan de claro a oscuro en el día. La página va en pestañas: <b>Hoy</b> (lo del día: mover la fase, calidad, faltantes y el programa por máquina), ${arma?'<b>Armar baños</b>, ':''}<b>Tela plana</b> y <b>Reportes</b>.</p>
   ${errs.length?`<div class="warn">${errs.map(b=>`<b>${esc(b.colorN)}</b> en ${b.telas.map(nTela).map(esc).join(' + ')}: no hay máquina activa apta para esa tela.`).join('<br>')}</div>`:''}
   ${blq('hoy',`${tarj}
@@ -14497,8 +14575,8 @@ function avanceTextilHTML(P,dias){const lun=dias[0];const ords=S.ordenes.filter(
   const capSem=r=>dias.reduce((a,d)=>a+(labR(d,r)?capDia(r,d):0),0);const cargaSem=r=>dias.reduce((a,d)=>a+(((P.carga||{})[r.id]||{})[d]||0),0);
   const pct=(a,b)=>b?Math.round(a/b*100):0;const kpi=(v,k,cls,ico)=>`<div class="kpi ${cls||''}">${kpiIcoHTML(ico)}<div class="v">${v}</div><div class="k">${k}</div></div>`;
   const tabla=(recs,extra)=>recs.length?`<table style="font-size:var(--fs-s)"><thead><tr><th>Máquina</th><th class="num">Horas programadas</th><th class="num">Capacidad (h)</th><th class="num">Ocupación</th><th>Esta semana</th></tr></thead><tbody>${recs.map(r=>{const c=cargaSem(r),k=capSem(r),p=pct(c,k);return `<tr><td>${esc(r.n)}</td><td class="num">${num(c)}</td><td class="num">${num(k)}</td><td class="num" style="${p>102?'color:var(--alerta);font-weight:600':''}">${k?p+' %':'<span class="mut" title="sin capacidad esta semana (máquina sin días laborables o sin horas)">sin capacidad</span>'}</td><td class="mut" style="font-size:var(--fs-xs)">${extra(r)}</td></tr>`}).join('')}</tbody></table>`:'<div class="mut">Sin máquinas activas.</div>';
-  if(veArea('tej')){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const porTejer=ords.filter(o=>etapas(o).tej&&!((S.avance[o.id]||{}).tejida||faseEstado(o.fase,o).tejida));const kgPorTejer=porTejer.reduce((a,o)=>a+(o.telas||[]).filter(t=>!t.ext&&t.kg>0).reduce((s,t)=>s+kgCrudo(t.tela,t.kg),0),0);const kgTej=(P.tej||[]).filter(x=>!x.cambio&&dias.includes(x.dia));const tejSem=ords.filter(o=>{const a=S.avance[o.id]||{};return a.tejida&&a.tejidaF&&lunesDe(a.tejidaF)===lun});
-    out.push(`<div class="panel"><h3>Tejeduría <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dias[dias.length-1])}</span></h3><div class="body"><div class="kpis">${kpi(porTejer.length,'Órdenes por tejer','','knit')}${kpi(num(kgPorTejer)+' kg','Kg crudo por tejer <span class="mut">(abiertas, liberadas o no)</span>','','layers')}${kpi(num(kgTej.reduce((a,x)=>a+x.kg,0))+' kg','Programado esta semana','','cal')}${kpi(tejSem.length,'Órdenes tejidas esta semana','','check')}</div>${tabla(recs,r=>num(kgTej.filter(x=>x.rec===r.id).reduce((a,x)=>a+x.kg,0))+' kg')}</div></div>`)}
+  if(veArea('tej')){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tej');const pt=porTejerCuenta();   /* V15 (08-oct): la misma cuenta de Tejeduría → Por tejer ahora (kilos de tela propia sin tejer; las de diseño aparte) */const kgTej=(P.tej||[]).filter(x=>!x.cambio&&dias.includes(x.dia));const tejSem=ords.filter(o=>{const a=S.avance[o.id]||{};return a.tejida&&a.tejidaF&&lunesDe(a.tejidaF)===lun});
+    out.push(`<div class="panel"><h3>Tejeduría <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dias[dias.length-1])}</span></h3><div class="body"><div class="kpis">${kpi(num(pt.n),'Órdenes con tela propia por tejer · '+num(pt.lib)+' '+(pt.lib===1?'liberada':'liberadas')+(pt.disenoN?' <span class="mut">· además '+num(pt.disenoN)+' de diseño sin WH</span>':''),'','knit')}${kpi(num(pt.kg)+' kg','Kg crudo por tejer <span class="mut">(con WH, liberadas o no; sin merma)</span>','','layers')}${kpi(num(kgTej.reduce((a,x)=>a+x.kg,0))+' kg','Programado esta semana','','cal')}${kpi(tejSem.length,'Órdenes tejidas esta semana','','check')}</div>${tabla(recs,r=>num(kgTej.filter(x=>x.rec===r.id).reduce((a,x)=>a+x.kg,0))+' kg')}</div></div>`)}
   if(veArea('tin')){const recs=S.recursos.filter(r=>r.activa&&CE(r.centro)&&CE(r.centro).area==='tin');const banos=(P.banos||[]).filter(b=>!b.error);const bSem=banos.filter(b=>dias.includes(b.dia));const sal=(S.salidas_tin||[]).filter(s=>s.d&&lunesDe(s.d)===lun);const enCal=ords.filter(enCalidad).length;const reproc=ords.filter(o=>(S.avance[o.id]||{}).reproc).length;
     out.push(`<div class="panel"><h3>Tintorería <span class="note">semana ${fmtDia(lun)} – ${fmtDia(dias[dias.length-1])}</span></h3><div class="body"><div class="kpis">${kpi(num(bSem.length)+' '+(bSem.length===1?'baño':'baños'),'Programados esta semana · '+num(bSem.reduce((a,b)=>a+b.kg,0))+' kg','','drop')}${kpi(num(sal.length)+' '+(sal.length===1?'baño':'baños'),'Salidos esta semana · '+num(sal.reduce((a,s)=>a+(s.kgReal||0),0))+' kg','','check')}${kpi(enCal,'En calidad',enCal?'warn':'','eye')}${kpi(reproc,'Reprocesos en plan',reproc?'warn':'','sync')}</div>${tabla(recs,r=>{const bs=bSem.filter(b=>b.rec===r.id);return bs.length+' baños · '+num(bs.reduce((a,b)=>a+b.kg,0))+' kg'})}</div></div>`)}
   return out.join('')}
@@ -14802,8 +14880,7 @@ function vSalud(el){if(!puede('programa')){el.innerHTML='<div class="pagehead"><
     {id:'estimadas',t:'Rutas estimadas',hay:re.sinRevisar.length>0||pre.n>0,cls:(re.sinRevisar.length||pre.n)?'warn':'ok',v:num(re.sinRevisar.length),sub:'sin revisar'+(pre.n?' · '+plu(pre.n,'sin ninguna ruta','sin ninguna ruta'):''),html:()=>rutasEstimadasResumenHTML(re,pre)},
     {id:'secuencia',t:'Rutas sin secuencia',hay:rss.total>0,cls:rss.repetido.length?'bad':rss.total?'warn':'ok',v:num(rss.total),sub:'órdenes'+(rss.repetido.length?' · '+plu(rss.repetido.length,'con un centro repetido','con un centro repetido'):''),html:()=>rutasSinSecuenciaHTML(rss)},...ingSaludREV(plu)];
   const conAlgo=REV.filter(x=>x.hay),bien=REV.filter(x=>!x.hay);
-  el.innerHTML=`<div class="pagehead"><h2>Salud del sistema</h2></div>
-   <p class="lede">Revisiones automáticas sobre los datos vivos: la auditoría de reglas, las correcciones automáticas (las que corren una sola vez), el registro de producción por centro y día, cuántas órdenes hay y de dónde sale cada cifra, categorías sin hoja, órdenes sin fecha, rutas que no terminan en Empaque, rutas estimadas, fases sin secuencia y, de la secuencia de operaciones de Ingeniería, los tipos de producto sin familia y las referencias sin secuencia propia. Arriba, un resumen: toca una tarjeta para ir a su recuadro. Solo se muestran los recuadros que tienen algo. No corrige nada: dice qué hay y dónde se arregla.</p>
+  el.innerHTML=`<p class="lede">Revisiones automáticas sobre los datos vivos: la auditoría de reglas, las correcciones automáticas (las que corren una sola vez), el registro de producción por centro y día, cuántas órdenes hay y de dónde sale cada cifra, categorías sin hoja, órdenes sin fecha, rutas que no terminan en Empaque, rutas estimadas, fases sin secuencia y, de la secuencia de operaciones de Ingeniería, los tipos de producto sin familia y las referencias sin secuencia propia. Arriba, un resumen: toca una tarjeta para ir a su recuadro. Solo se muestran los recuadros que tienen algo. No corrige nada: dice qué hay y dónde se arregla.</p>
    ${tarjetasResumenHTML(REV.map(x=>({id:'salud-t-'+x.id,v:x.v,k:esc(x.t)+'<br><span class="mut" style="font-size:var(--fs-xs)">'+esc(x.sub)+'</span>',cls:x.cls,onclick:x.hay?"irSalud('"+x.id+"')":'',title:x.hay?'ir al recuadro':'sin problemas'})))}
    ${bien.length?`<p class="salud-bien"><span class="tag t-ok">sin problemas</span> ${bien.map(x=>esc(x.t)).join(' · ')}</p>`:''}
    ${conAlgo.map(x=>`<div id="salud-${x.id}">${x.html()}</div>`).join('')}
@@ -14834,8 +14911,9 @@ function tagArm(kg,cap,telas){if(kg<=1e-6)return'';const PP=S.params;const tol=1
   return cap&&falta>0?' <span class="tag" title="un baño corre solo desde el '+num(prm('pctBueno',90))+' % de la capacidad de su máquina">pendiente · faltan '+num(falta)+' kg para llenar</span>':' <span class="tag">pendiente · bajo mínimo</span>'}
 /* 02-oct (TXT-2): Stock de tela cruda, Tejeduría y Macro del mes cuentan «cuánto hay que tejer» sobre bases distintas; cada una dice la suya a la
    vista y enlaza a las otras dos con su base en una línea, para que tres números distintos no parezcan un error */
-function cuentasTelaHTML(aqui){const l=[['macro','Macro del mes','lo que viene, liberado o no'],['tejeduria','Tejeduría','liberado por tejer'],['stock','Stock de tela cruda','lo que entra a corte este mes']];
-  return '<p class="base-otras mut">Otras cuentas de tela: '+l.map(([p,n,q])=>p===aqui?'<b>'+n+'</b> ('+q+', esta pantalla)':'<a style="cursor:pointer" onclick="ir(\''+p+'\')">'+n+'</a> ('+q+')').join(' · ')+'.</p>'}
+/* 08-oct: las tres están en Tejeduría (pestañas «Por tejer ahora» y «Lo que viene»); el enlace cambia de pestaña y lleva al recuadro */
+function cuentasTelaHTML(aqui){const l=[['tejeduria','ahora','Telas por tejer','liberado y sin tejer, en crudo'],['stock','ahora','Stock en bodega','lo que entra a corte en el mes, en crudo'],['macro','viene','Lo que viene','las órdenes antes de Planificación, liberadas o no, con merma']];
+  return '<p class="base-otras mut">Otras cuentas de tela: '+l.map(([p,t,n,q])=>p===aqui?'<b>'+n+'</b> ('+q+', aquí)':'<a style="cursor:pointer" onclick="verTejTab(\''+t+'\',\'tej-'+p+'\')">'+n+'</a> ('+q+')').join(' · ')+'.</p>'}
 /* 02-oct (TEJ-2): UNA tabla «Telas por tejer» en lugar de dos que daban el mismo número («Resumen por tipo de tela» y «Cargas por tela · pedido vs
    cargado»). No calcula nada nuevo: junta lo que ya sumaba esta función (kg cargados, liberados, tejidos, por tejer, órdenes y colores abiertos)
    con cargasTejPorTela (órdenes por tejer, stock, programado a mano, estimado por el sistema y las fechas del programa). «Falta cargar» se quitó:
@@ -17783,7 +17861,7 @@ function cfgPorCompletar(){const out=[];const ir=t=>{const t0=cfgNorm(t);let i=C
   return out}
 function configInicioHTML(){const pc=cfgPorCompletar();
   const porGrupo=CONF_GRUPOS.map(([g,n,nota])=>({g,n,nota,l:CONF_CATALOGO.map((e,i)=>({e,i})).filter(({e})=>e.grupo===g&&cfgVisible(e)).sort((x,y)=>(CONF_TABS.findIndex(t=>t[0]===x.e.tab)-CONF_TABS.findIndex(t=>t[0]===y.e.tab))||(x.i-y.i))})).filter(x=>x.l.length);
-  const otras=[['categorias','Categorías','las familias y tipos de producto de Odoo y su hoja de operaciones'],['ingops','Ingeniería','operaciones, tiempos por tipo de producto, técnicas de estampado, máquinas y operarias: cómo se hace cada prenda'],['usuarios','Usuarios','quién entra, con qué perfil y qué ve cada perfil'],['salud','Salud del sistema','revisión automática de datos: rutas, fases, siembras, registros']].filter(([p])=>puedeAbrirPagina(p));
+  const otras=[['categorias','Categorías','las familias y tipos de producto de Odoo y su hoja de operaciones'],['ingops','Ingeniería','operaciones, tiempos por tipo de producto, técnicas de estampado, máquinas y operarias: cómo se hace cada prenda'],['usuarios','Usuarios','quién entra, con qué perfil y qué ve cada perfil'],['auditoria','Auditoría','quién cambió qué (tiempos, rutas, fases) y la salud de los datos: revisión automática de rutas, fases, siembras y registros']].filter(([p])=>puedeAbrirPagina(p));
   /* cada ajuste: nombre con «›» (se toca), y la explicación en dos líneas con el texto entero al pasar el mouse */
   const it=(accion,nom,desc)=>`<a href="#" class="cfg-card-it" title="${esc(desc)}" onclick="${accion};return false"><span class="cfg-card-nom"><b>${esc(nom)}</b><span class="cfg-flecha" aria-hidden="true">›</span></span><span class="mut cfg-card-desc">${esc(desc)}</span></a>`;
   return `${pc.length?`<div class="panel cfg-falta" style="border-left:4px solid var(--aviso)"><h3>Falta completar <span class="note">sin esto, algo no se calcula bien o no se puede hacer</span></h3><div class="body">${pc.map(x=>`<div class="cfg-falta-fila"><span class="tag t-aviso cfg-falta-n">${x.n!=null?num(x.n):'!'}</span><div class="cfg-falta-txt"><b>${esc(x.t||x.txt)}</b>${x.det?`<span class="mut">${esc(x.det)}</span>`:''}</div>${x.i>=0?`<button class="btn sm" data-ver="1" onclick="cfgIr(${x.i})">Completar →</button>`:''}</div>`).join('')}</div></div>`:''}
@@ -18024,7 +18102,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 
   ${(()=>{sembrarDiasProveedor();const t=diasProveedor();const est=t.filter(r=>r.estimado).length;const sinDef=t.filter(r=>r.dias===''||r.dias==null).length;return `<div class="panel"><h3>Días de entrega por proveedor <span class="note">${t.length} proveedores · ${est} con estimado de ${DIAS_PROV_EST} laborables (pendientes de confirmar)${sinDef?` · ${sinDef} sin definir`:``} · usados en el motor como espera de la tela comprada</span><span class="spacer"></span><button class="btn ghost sm" onclick="addDiasProvRow()">Agregar</button></h3><div class="body"><p class="mut" style="font-size:var(--fs-xs);margin:0 0 8px">Se siembran con ${DIAS_PROV_EST} días LABORABLES como estimado inicial (marcado "estimado"). Cuando confirmas un proveedor, se quita la marca. Los días son laborables (calendario del sistema), no corridos. La pantalla de Compras usa estos días para la fecha límite y el motor para la espera de tela externa (en la próxima recarga).</p><div class="scroll" style="max-height:360px"><table class="ajustada" style="font-size:var(--fs-s)"><thead><tr><th>Proveedor</th><th class="num" style="width:120px">Días de entrega</th><th></th></tr></thead><tbody>${t.slice().map((r,i)=>({r,i})).sort((a,b)=>(a.r.prov||'').localeCompare(b.r.prov||'','es')).map(({r,i})=>`<tr><td><input type="text" style="width:280px" value="${esc(r.prov)}" onchange="setDiasProvRow(${i},'prov',this.value)"></td><td class="num"><input type="number" min="0" style="width:90px" value="${r.dias===''||r.dias==null?'':r.dias}" placeholder="—" onchange="setDiasProvRow(${i},'dias',this.value)">${r.estimado?' <span class="tag t-aviso" title="estimado inicial; confírmalo">estimado</span>':(r.dias===''||r.dias==null)?' <span class="tag t-alerta">sin definir</span>':' <span class="tag t-ok">confirmado</span>'}</td><td><button class="btn ghost sm" onclick="delDiasProvRow(${i})">×</button></td></tr>`).join('')}</tbody></table></div></div></div>`})()}
   <div class="panel"><h3>1 · Fase del archivo → fase del sistema <span class="note">BLOQUES A, B, E — tabla definitiva (v${FASE_MAPEO_VER})</span><span class="spacer"></span><button class="btn ghost sm" onclick="addFaseMapeoRow()">+ Fase</button></h3>
-   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en el requerimiento: Macro del mes (tela propia) y Compras del mes (lo externo). Sembrado con todas las fases anteriores a Planificación (decisión 22-sep); editable">requerimiento</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración general → Calendario y reglas → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
+   <div class="body"><div class="scroll"><table style="font-size:var(--fs-xs)"><thead><tr><th>Fase (archivo)</th><th>Grupo del sistema</th><th title="orden real de la secuencia de fases: una fase con secuencia menor es una devolución (pide motivo); dos fases con el mismo número son paralelas; vacío = se usa el grupo de la tabla 5">secuencia</th><th title="fases CD: el centro siguiente aún no empezó, carga completo">es cola</th><th title="prenda terminada / cerrada: cuenta como demanda, cero minutos">sin carga</th><th title="falta material: carga igual, marcada">bloqueo</th><th title="centros que NO carga aunque estén pendientes (coma)">excluye</th><th title="a qué proceso de «Nivelación» cuenta esta fase (tela / maquila)">Nivelación</th><th title="grupo desde el que empieza a cargar, si no es el propio">carga desde</th><th title="solo grupo textil: estado de la tela en esa fase">tela</th><th title="entra en el requerimiento: Tejeduría → Lo que viene (tela propia). Sembrado con todas las fases anteriores a Planificación (decisión 22-sep); editable">requerimiento</th><th title="la fase ya tiene todo hecho pero le queda un paso corto en un centro; el SAM (minutos por prenda) sale de Configuración general → Calendario y reglas → parámetro">paso extra</th><th title="la fase tiene carga real que NO está medida: carga cero y sale en la bandeja 'sin medir'">sin medir</th><th></th><th></th></tr></thead><tbody>
     ${faseMapeo().map((r,i)=>`<tr><td><input type="text" style="width:190px" value="${esc(r.fase)}" onchange="setFaseMapeoRow(${i},'fase',this.value)"><input type="text" style="width:190px;display:block;margin-top:2px;font-size:var(--fs-xs)" value="${esc(r.que||'')}" placeholder="qué significa esta fase" title="qué significa la fase (lo dictó la usuaria el 19-sep; editable)" onchange="setFaseMapeoRow(${i},'que',this.value)"></td>
       <td><select onchange="setFaseMapeoRow(${i},'sistema',this.value)">${gruposOrdenados().map(s=>`<option ${r.sistema===s?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
       <td><input type="number" step="1" style="width:60px" value="${r.secuencia===''||r.secuencia==null?'':r.secuencia}" placeholder="—" title="iguales = paralelas; vacío = se usa el grupo de la tabla 5" onchange="setFaseMapeoRow(${i},'secuencia',this.value)"></td><td style="text-align:center"><input type="checkbox" ${r.esCola?'checked':''} onchange="setFaseMapeoRow(${i},'esCola',this.checked)"></td>
@@ -18532,8 +18610,11 @@ function setCal(a,v){if(!S.params.cal)S.params.cal={};const antes=S.params.cal[a
 /* ---------- Stock de tela cruda (Planificación textil): requerido por tela y mes de las órdenes liberadas, stock a mano, a tejer ---------- */
 let STK={mes:null};
 function stockTela(){if(!S.params.stockTela)S.params.stockTela={};return S.params.stockTela}
-function setStockTela(tid,v){const st=stockTela();const s=String(v==null?'':v).trim();
+/* quién escribe el stock (08-oct): tejeduría o planificación, nunca la tablet del operario; el cambio mueve el programa de tejeduría y va a la bitácora */
+function puedeEditarStock(){return !esVistaOperario()&&(puedeArea('tej')||puede('programa'))}
+function setStockTela(tid,v){if(typeof PERFIL!=='undefined'&&PERFIL&&!puedeEditarStock()){alert('Tu perfil no cambia el stock de tela cruda: lo escriben tejeduría o planificación.');render();return}const st=stockTela();const s=String(v==null?'':v).trim();const antes=st[tid]?st[tid].kg:null;
   if(s===''){delete st[tid]}else{st[tid]={kg:+s.replace(',','.')||0,ts:new Date().toISOString(),u:(PERFIL&&(PERFIL.nombre||PERFIL.email))||''}}
+  if(typeof bitacora==='function'&&(antes!=null||st[tid]))bitacora('Stock de tela cruda · '+nTela(tid)+': '+(antes==null?'sin dato':num(antes,1)+' kg')+' → '+(st[tid]?num(st[tid].kg,1)+' kg':'sin dato')+' ('+quienFirma()+')');
   save();render()}
 /* fecha en que la orden entra a corte: la programada si el motor la tiene; si no, estimada = entrega − lead (la misma regla que
    usa el motor para la fecha requerida de tela), y se marca como estimada */
@@ -18546,27 +18627,27 @@ function requeridoTela(){const P=S.ordenes.length?programar():null;const ant=prm
     const fc=fechaCorte(o,P);if(!fc)return;const mes=dsum(fc.f,-ant).slice(0,7);
     (o.telas||[]).filter(t=>!t.ext&&t.kg>0&&T(t.tela)).forEach(t=>{const k=out[t.tela]=out[t.tela]||{};const m=k[mes]=k[mes]||{kg:0,ords:new Set(),est:0};m.kg+=kgCrudo(t.tela,t.kg);m.ords.add(o.id);if(fc.est)m.est++})});
   return out}
-function vStock(el){const req=requeridoTela();const st=stockTela();const meses=[...new Set(Object.values(req).flatMap(k=>Object.keys(k)))].sort();
+function stockTelaHTML(){const req=requeridoTela();const st=stockTela();const meses=[...new Set(Object.values(req).flatMap(k=>Object.keys(k)))].sort();
   const mes=STK.mes||(meses.includes(hoy().slice(0,7))?hoy().slice(0,7):(meses[0]||hoy().slice(0,7)));
   const ant=prm('tejAnticipSem',2);const hoyMs=Date.now();
   const filas=S.telas.filter(t=>req[t.id]&&req[t.id][mes]).map(t=>{const r=req[t.id][mes];const s=st[t.id];const dias=s?Math.floor((hoyMs-new Date(s.ts).getTime())/864e5):null;
     return{t,req:r.kg,ords:r.ords.size,est:r.est,stock:s?s.kg:null,ts:s?s.ts:null,dias,u:s?s.u:'',aTejer:s?Math.max(0,r.kg-s.kg):null}}).sort((a,b)=>b.req-a.req);
   const conStock=filas.filter(f=>f.stock!=null),sinStock=filas.filter(f=>f.stock==null);
-  const fmtTs=ts=>fechaHoraLocal(ts,false);
+  const fmtTs=ts=>fechaHoraLocal(ts,false);const dis=puedeEditarStock()?'':' disabled';
   /* 02-oct («para dummies», STK-1 · TXT-1 · TXT-2): una sola tabla (primero las telas sin stock, después las que lo tienen), la base a la vista, el mes
      en palabras y los textos corregidos: desde el 15-sep el programa de tejeduría SÍ descuenta este stock, y una tela sin stock escrito cuenta 0 en bodega */
   const aprox=f=>f.est?` <span class="tag t-mut" title="${num(f.est)} ${f.est===1?'orden':'órdenes'} sin fecha de corte programada: se estimó con la entrega">aprox.</span>`:'';
   const kgMes=v=>(v>0&&v<0.5)?'<1':num(v);
   const grp=(t,extra)=>`<tr class="grp-row"><td colspan="6">${t}${extra?' <span class="mut">'+extra+'</span>':''}</td></tr>`;
   const trSin=f=>`<tr><td>${esc(f.t.n)}</td><td class="num">${num(f.req)}${aprox(f)}</td><td class="num">${num(f.ords)}</td>
-     <td class="num"><input type="number" step="0.1" class="stk-in" placeholder="desconocido" title="escribe el stock en bodega, en kg crudos" onchange="setStockTela('${f.t.id}',this.value)"></td><td class="mut">—</td><td class="num"><span class="mut" title="escribe el stock para calcular">—</span></td></tr>`;
+     <td class="num"><input type="number" step="0.1" class="stk-in" placeholder="desconocido" title="escribe el stock en bodega, en kg crudos"${dis} onchange="setStockTela('${f.t.id}',this.value)"></td><td class="mut">—</td><td class="num"><span class="mut" title="escribe el stock para calcular">—</span></td></tr>`;
   const trCon=f=>`<tr><td>${esc(f.t.n)}</td><td class="num">${num(f.req)}${aprox(f)}</td><td class="num">${num(f.ords)}</td>
-     <td class="num"><input type="number" step="0.1" class="stk-in" value="${f.stock}" onchange="setStockTela('${f.t.id}',this.value)"></td>
+     <td class="num"><input type="number" step="0.1" class="stk-in" value="${f.stock}"${dis} onchange="setStockTela('${f.t.id}',this.value)"></td>
      <td class="mut" style="font-size:var(--fs-xs)">${fmtTs(f.ts)}${f.u?' · '+esc(f.u):''}${f.dias>7?` <span class="tag t-aviso" title="Stock registrado hace ${f.dias} días: conviene actualizarlo">dato viejo · ${f.dias} días</span>`:''}</td>
      <td class="num"><b>${num(f.aTejer)}</b></td></tr>`;
   const reqSin=sinStock.reduce((a,f)=>a+f.req,0),tejCon=conStock.reduce((a,f)=>a+f.aTejer,0);
-  el.innerHTML=`<div class="pagehead"><h2>Stock de tela cruda</h2><span class="spacer"></span>
-    <div class="row" style="align-items:center"><label style="margin:0">Mes</label><select onchange="STK.mes=this.value;render()">${(meses.length?meses:[mes]).map(m=>`<option value="${m}" ${m===mes?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div></div>
+  return `<h4 class="tej-sec" id="tej-stock">Stock de tela cruda en bodega <span class="mut">· lo escribes aquí y el programa de tejeduría lo descuenta${dis?' · solo tejeduría y planificación lo cambian':''}</span></h4>
+    <div class="row tej-fila"><label style="margin:0">Mes en que entra a corte</label><select onchange="STK.mes=this.value;render()">${(meses.length?meses:[mes]).map(m=>`<option value="${m}" ${m===mes?'selected':''}>${esc(fmtMesEG(m))}</option>`).join('')}</select></div>
   <p class="lede">Kilos crudos que piden las órdenes <b>liberadas a tela</b> que entran a corte con <b>${ant} semana${ant===1?'':'s'} de anticipación</b> (parámetro en Configuración general → Calendario y reglas). Escribe el stock que tienes por tela; "a tejer" = requerido − stock, nunca negativo. Si no escribes el stock, el programa cuenta 0 en bodega.</p>
   <p class="base-linea">Base: <b>órdenes liberadas a tela, sin tejer</b>, que entran a corte en <b>${esc(fmtMesEG(mes))}</b> (con ${num(ant)} ${ant===1?'semana':'semanas'} de anticipación).</p>${cuentasTelaHTML('stock')}
   <div class="panel"><h3>Stock de tela cruda · ${esc(fmtMesEG(mes))} <span class="note">${num(filas.length)} ${filas.length===1?'tela':'telas'} · requerido ${num(filas.reduce((a,f)=>a+f.req,0))} kg</span></h3><div class="body">
@@ -19234,7 +19315,7 @@ function xlsPortada(wb,titulo,lineas){const ws=wb.addWorksheet('Qué es esto');w
   return ws}
 let MAC={mes:''};
 
-function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o=>String(o.proyecto||'').trim()).filter(Boolean))].sort();
+function macroHTML(){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o=>String(o.proyecto||'').trim()).filter(Boolean))].sort();
   const mac=macroMes(MAC.mes);const bj=banosJaspe(mac);const rep=mac.rep;
   /* 02-oct («para dummies», MAC-1 · MAC-2 · TXT-1 · TXT-2): arriba la base y lo que falta para calcular (con el enlace a la tabla donde se arregla);
      después la respuesta, «Qué hay que tejer», con el nombre de la tela del catálogo (las telas cortas de Odoo que suma, en gris); lo demás plegado.
@@ -19267,7 +19348,7 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
       return nomT+(otras.length?` <span class="mut" style="font-size:var(--fs-xs)" title="telas de Odoo que se suman en esta fila">${otras.map(c=>esc(cap1(c))).join(' · ')}</span>`:'')};
     const tipo=p=>{const ks=Object.keys(p.tipos||{});return ks.includes('JASPE')?` <span class="tag t-mut">${ks.length>1?'llano y jaspe':'jaspe'}</span>`:''};
     return `<div class="panel" style="border:2px solid var(--t-accent)"><h3>Qué hay que tejer <span class="note">requerido menos el stock de tela cruda · ${num(tejT)} kg</span></h3><div class="body">
-     <p class="lede" style="margin-top:0">Esta es la cuenta de la macro: <b>lo que piden las órdenes de la base menos lo que ya hay en bodega</b>, en kilos crudos con la merma de tintura sumada. El stock sale de <a href="#" onclick="ir('stock');return false">Planificación textil → Stock de tela cruda</a> y se descuenta por tela (no por color ni por tipo). Cada fila es una tela del catálogo; si suma varias telas de Odoo (por ejemplo cuellos y puños), salen en gris junto al nombre.</p>
+     <p class="lede" style="margin-top:0">Esta es la cuenta de la macro: <b>lo que piden las órdenes de la base menos lo que ya hay en bodega</b>, en kilos crudos con la merma de tintura sumada. El stock sale de <a href="#" onclick="verTejTab('ahora','tej-stock');return false">Por tejer ahora → Stock de tela cruda en bodega</a> y se descuenta por tela (no por color ni por tipo). Cada fila es una tela del catálogo; si suma varias telas de Odoo (por ejemplo cuellos y puños), salen en gris junto al nombre.</p>
      <table><thead><tr><th>Tela</th><th class="num">Requerido (kg + merma)</th><th class="num">En stock</th><th class="num">Por tejer</th><th class="num">Órdenes</th></tr></thead><tbody>
      ${pt.map(p=>`<tr><td>${nom(p)}${tipo(p)}</td>
        <td class="num">${num(p.kgMerma)}</td>
@@ -19275,7 +19356,7 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
        <td class="num"><b>${num(p.porTejer)}</b>${p.sobra?' <span class="tag t-ok" title="el stock alcanza y sobra">sobra '+num(p.sobra)+'</span>':''}</td>
        <td class="num">${num(p.ords.size)}</td></tr>`).join('')}
      <tr style="font-weight:600;background:var(--field)"><td>Total</td><td class="num">${num(reqT)}</td><td class="num">${num(stT)}</td><td class="num">${num(tejT)}</td><td></td></tr></tbody></table>
-     ${sinStock?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinStock} ${sinStock===1?'tela no tiene':'telas no tienen'} stock cargado: se toman como <b>0 en bodega</b>, no se estima nada. Cárgalo en <a href="#" onclick="ir('stock');return false">Stock de tela cruda</a>.</p>`:''}
+     ${sinStock?`<p class="mut" style="font-size:var(--fs-xs);margin-top:8px">${sinStock} ${sinStock===1?'tela no tiene':'telas no tienen'} stock cargado: se toman como <b>0 en bodega</b>, no se estima nada. Cárgalo en <a href="#" onclick="verTejTab('ahora','tej-stock');return false">Por tejer ahora → Stock de tela cruda en bodega</a>.</p>`:''}
      ${rep.externas?`<p class="mut" style="font-size:var(--fs-xs)">${num(rep.externas)} ${rep.externas===1?'línea':'líneas'} de tela de proveedores externos${(rep.externasKg||rep.externasM)?' ('+[rep.externasKg?num(rep.externasKg)+' kg':'',rep.externasM?num(rep.externasM)+' m':''].filter(Boolean).join(' · ')+')':''} no entran: esta macro es solo de tela propia. Se ven en Órdenes → ficha de cada orden → Materia prima.</p>`:''}
      </div></div>`})();
   const porTipo=mac.tej.length?pleg('mac-tipo','Por tipo de tela (llano / jaspe)','total '+num(totTej)+' kg con merma',`<table><thead><tr><th>Tela de Odoo</th><th>Tipo</th><th class="num">kg crudos</th><th class="num">kg + merma</th><th class="num">Órdenes</th><th>Tela del catálogo</th></tr></thead><tbody>
@@ -19288,8 +19369,8 @@ function vMacro(el){const meses=[...new Set(S.ordenes.filter(ordenMontada).map(o
   const plana=(mac.planas&&mac.planas.length)?(()=>{const ors=[...new Set(mac.planas.map(t=>t.origen||''))];const unOr=ors.length===1;
     return pleg('mac-plana','Tela plana · METROS','en metros, aparte de los kilos de punto · '+num(rep.lineasPlana)+' líneas · '+num(rep.mPlana)+' m'+(unOr&&ors[0]?' · origen '+esc(cap1(ors[0]))+' en todas':''),`<p class="lede">Aparte de los kilos: no se suman con las telas de punto. Merma de plana 12–15 % (referencia de la usuaria; no se calcula aquí).</p>
    <table><thead><tr><th>Tela</th><th>Pantone / color</th><th class="num">Metros</th><th class="num">Órdenes</th>${unOr?'':'<th>Origen</th>'}</tr></thead><tbody>${mac.planas.map(t=>`<tr><td>${esc(cap1(t.corta))}</td><td>${esc(t.pantone)}</td><td class="num">${num(t.m)}</td><td class="num">${num(t.ords.size)}</td>${unOr?'':`<td class="mut">${esc(t.origen||'')}</td>`}</tr>`).join('')}</tbody></table>`)})():'';
-  el.innerHTML=`<div class="pagehead"><h2>Macro del mes · tela que hay que tejer</h2><span class="spacer"></span>
-    <div class="row" style="align-items:center"><label style="margin:0">Mes del Proyecto</label><select onchange="MAC.mes=this.value;render()"><option value="">Todos los meses</option>${meses.map(m=>`<option value="${esc(m)}" ${MAC.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+  return `<h4 class="tej-sec">Macro del mes <span class="mut">· la tela propia que van a pedir las órdenes que todavía no llegan a Planificación</span></h4>
+  <div class="row tej-fila"><div class="row" style="align-items:center;margin:0"><label style="margin:0">Mes del Proyecto</label><select onchange="MAC.mes=this.value;render()"><option value="">Todos los meses</option>${meses.map(m=>`<option value="${esc(m)}" ${MAC.mes===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
     ${puede('ordenes')?`<button class="btn ghost" title="Las facturas de compra dicen qué telas se compran y a quién (resuelven las «sin clasificar»)" onclick="mFacturas()">Cargar facturas de compra</button>`:''}</div>
   ${requerimientoBaseHTML()}${cuentasTelaHTML('macro')}
   ${reqSinMaterialesHTML(MAC.mes)}

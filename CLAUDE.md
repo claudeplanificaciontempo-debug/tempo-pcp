@@ -1281,6 +1281,33 @@ La pantalla abre con el bloque «Que hay que tejer» (requerido - stock), dice d
 textil -> Stock de tela cruda), marca las telas sin stock como 0 en bodega sin estimar nada, y dice que lo externo esta
 en Compras del mes. El detalle por tela y tipo y la tintoreria siguen, solo con tela propia. Pruebas MT.
 
+**Tejeduría en tres pestañas, «Imprimir el día» y Auditoría en dos (08-oct-2026, simplificación · lote L5; aprobación total de la usuaria).**
+(1) **Tejeduría = UNA entrada del menú** con tres pestañas (`TEJ_TABS`; `TEJ.tab` se recuerda por usuario; `verTejTab` cambia sin redibujar y
+`verTejTabSin` elige sin dibujar; las tres se dibujan y la pestaña solo muestra u oculta, como Tintorería): **Por tejer ahora** = «Telas por tejer»
+(`resumenTelasHTML`) + el stock de tela cruda en bodega que se escribe ahí (`stockTelaHTML`, lo que era la página Stock; `setStockTela` pide
+`puedeEditarStock()` = tejeduría o planificación, nunca la tablet, y deja bitácora); **Programa a mano** = `progTejPanelHTML` + lo técnico plegado;
+**Lo que viene** = la macro (`macroHTML`, lo que era Macro del mes). Cada pestaña dice su base y si los kilos llevan merma (`TEJ_BASE`): «Por tejer
+ahora» y «Programa a mano» en crudo sin merma, «Lo que viene» con la merma de tintura. «Stock de tela cruda» y «Macro del mes» salieron del menú;
+`stock`, `macro` y `compras` redirigen a su pestaña. **V15**: `porTejerCuenta()` es la ÚNICA cuenta de «órdenes con tela propia por tejer» (abiertas
+que pasan por tejeduría con `kgPendiente>0`; las de diseño sin WH aparte; «liberadas» = `liberada(o,'tela')`); la usan la pestaña y Avance por área →
+Tejeduría (antes contaba también órdenes sin un solo kilo de tela propia). (2) **Programa del día salió del menú**: una sola forma de imprimir,
+`imprimirDia(centro|null, dia, rec)` — centro = `'tin'`, un ítem de producción (con sus sub-áreas) o `null` = todas las áreas en UNA ventana, una hoja
+por área — que usa `imprimirProgramaCentro(cid, dia, rec, soloHTML)` con el día elegido (mismo # y orden de la lista del centro, agrupado por puesto,
+prendas y minutos de ese día con `cargaDelDiaPro`, columnas en blanco «Real» y «Firma») y `hojaTinDiaHTML` para tintorería (baños por máquina con
+Inicio / Fin / OK). `mImprimirDia(centro, rec)` abre la ventana para elegir el día (y el área, si el perfil puede programar) y avisa los pasos sin tiempo
+estándar de ese día (no salen en la hoja). Está en la cabecera de Tintorería y en Hoy → «En máquinas hoy» («Imprimir el día de todas las áreas», solo
+`programa`); **el botón de la Programación de cada centro lo pone el lote L2** con `mImprimirDia('<ítem>',CEN.rec)` (o `imprimirDia` directo).
+La hoja de tejeduría que la página vieja armaba y nunca mostraba se quitó (tejeduría se programa a mano). `imprimir` redirige con
+`destinoImprimirDia()`: Hoy (planificación), el centro o Tintorería. La hoja de la semana del centro no cambió; el documento impreso es común
+(`hojaImprimirHTML`, `CSS_HOJA_IMP`, `abrirHojaImprimir`). (3) **Auditoría = una entrada en Configuración** (página `auditoria`, `PERM_PAGINA.auditoria =
+'programa'`) con dos pestañas (`AUD.vista`, `AUD_VISTAS`): **Cambios de las personas** (`vAudCambios`, la Auditoría de replanificación de antes con sus
+tres sub-pestañas) y **Salud de los datos** (`vSalud`, sin cabecera propia); se dibuja solo la elegida; `salud` redirige a la segunda. Salieron
+«Auditoría de replanificación» (Dirección) y «Salud del sistema» (Configuración). **Migración única** `migMenuL5_08()` (la llama `perfilesDef`;
+banderas `migTextil08`, `migImprimir08`, `migAuditoria08`; bitácora; nunca desde el piso): quien tenía Stock o Macro recibe Tejeduría; quien tenía
+Programa del día, Tintorería / su centro / Hoy (si programa); quien tenía Salud, Auditoría; no se le quita nada a nadie (las entradas viejas que
+queden en su lista solo redirigen). Pruebas TEX1–TEX9, TEX-IMP1–TEX-IMP8 y AUD1–AUD5. Donde este archivo hable de las páginas «Stock de tela cruda»,
+«Macro del mes», «Programa del día», «Auditoría de replanificación» o «Salud del sistema» como entradas del menú, es historia.
+
 **Auditoría de simplificación (23-sep-2026, PROPUESTA — nada movido todavía):** `AUDITORIA_SIMPLIFICACION_23SEP.md`.
 Lo medido: el motor (`programar`) es el **1,7 %** del sistema y la interfaz **278 piezas** (191 `…HTML` + 34 pantallas +
 53 modales); **44 clicables** en el menú sobre 29 páginas, **19 de 32 solo las ve la usuaria**; 4 pantallas contestan
