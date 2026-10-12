@@ -9148,7 +9148,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     {const el=abrir('modulos');const h=el.innerHTML;
      __check("CU9: palabras para el supervisor: «Sacar una máquina del programa» (antes «Reportar novedad»), «Secuencia por módulo →» (antes «Costura →»), «Debía llevar hoy» / «Le faltan» (antes «Plan a hoy» / «Desv.»), «lo elige el programa» / «· programa» (antes «sin asignar · automático»), «puede ir antes o después» (antes «ojo»), «Puesto» = máquina o módulo y # = el lugar en la cola",/Sacar una máquina del programa/.test(h)&&!/Reportar novedad/.test(h)&&/Secuencia por módulo/.test(h)&&!/>Costura →</.test(h)&&!/>Desv\.</.test(h)&&!/>Plan a hoy</.test(h)&&!/sin asignar · automático/.test(h)&&!/>ojo</.test(h)&&/<th[^>]*>Puesto<\/th>/.test(h)&&/<th[^>]*>#<\/th>/.test(h))}
     /* 13 · la fila que se acaba de cambiar se marca */
-    {const el=abrir('corte');const tr=el.querySelector('.panel.cola tbody tr[draggable]');if(tr){const oid=oidDe(tr);CEN.resaltar=oid+'|corte';CEN.resaltarHasta=0;render();await __p(160);const t2=document.getElementById('cola-corte-'+oid);
+    {abrir('corte');await __p(30);const el=pc();const tr=el.querySelector('.panel.cola tbody tr[draggable]');if(tr){const oid=oidDe(tr);CEN.resaltar=oid+'|corte';CEN.resaltarHasta=0;render();await __p(160);const t2=document.getElementById('cola-corte-'+oid);
       __check("CU9: después de cambiar el lugar, el puesto o el arranque, la fila de esa orden se marca un momento y se trae a la vista",!!t2&&t2.classList.contains('cola-resaltada'));CEN.resaltar=null;CEN.resaltarHasta=0}}
     /* 14 · eficiencia con Maquila */
     {const mq=S.recursos.find(r=>r.activa&&r.centro==='modulos'&&ordenRecChip(r));if(mq){abrir('modulos',{pest:'plan'});setRecResumen(mq.id);__check("CU9: con Maquila elegida, la eficiencia dice «No aplica» (lo de afuera no mide eficiencia)",/No aplica/.test(txt(pc().querySelector('#cen-gente'))));CEN.rec='';render()}}
@@ -9228,9 +9228,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        if(/^[▾▸]?\s*(En proceso aquí|Listas para empezar)/.test(g)&&esAf)malP.push(o.op);if(/Afuera: en maquila/.test(g))enAf.push(esAf)});
      __check("CU10: en Confección lo que está en maquila (o por salir) no llena «En proceso aquí» ni «Listas»: va en «Afuera: en maquila o por salir», después de las listas",!malP.length&&enAf.every(Boolean),JSON.stringify({malP:malP.slice(0,3),enAf:enAf.length}))}
     /* 12 · la fila recién cambiada se trae a la vista aunque caiga después de las primeras de su grupo */
-    {abrir('modulos');const tope=Math.max(1,+prm('filasResumenCentro',8)||8);const lis=ordC('modulos').filter(f=>grupoListaCEN(f)==='listas');
-     if(lis.length>tope+3){const f=lis[tope+2];CEN.resaltar=f.o.id+'|modulos';CEN.resaltarHasta=0;render();await __p(120);const tr=document.getElementById('cola-modulos-'+f.o.id);
-       __check("CU10: después de cambiar el puesto o el arranque, si la orden cae después de las primeras filas de su grupo, el grupo la muestra y la marca (antes quedaba escondida detrás de «Ver las N restantes»)",!!tr,f.o.op);CEN.resaltar=null;CEN.resaltarHasta=0}
+    {abrir('modulos');await __p(30);const tope=Math.max(1,+prm('filasResumenCentro',8)||8);const lis=ordC('modulos').filter(f=>grupoListaCEN(f)==='listas');
+     if(lis.length>tope+3){const f=lis[tope+2];CEN.resaltar=f.o.id+'|modulos';CEN.resaltarHasta=0;render();const enSync=!!document.getElementById('cola-modulos-'+f.o.id);await __p(120);const tr=document.getElementById('cola-modulos-'+f.o.id);
+       __check("CU10: después de cambiar el puesto o el arranque, si la orden cae después de las primeras filas de su grupo, el grupo la muestra y la marca (antes quedaba escondida detrás de «Ver las N restantes»)",!!tr,f.o.op+' · '+JSON.stringify({enSync,pest:CEN.pest,res:CEN.resaltar,g:grupoListaCEN(f)}));CEN.resaltar=null;CEN.resaltarHasta=0}
      else __check("CU10: la fila cambiada se ve",true,'grupo corto en esta base')}
     /* 13 · el PDF va en el mismo orden y con el mismo # que la lista */
     {const el=abrir('corte');let cap='';const w0=window.open;window.open=()=>({document:{write:x=>{cap+=x},close(){}}});try{imprimirProgramaCentro('corte')}finally{window.open=w0}
