@@ -2887,7 +2887,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 08:16';
+const APP_BUILD='2026-10-12 08:19';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5534,7 +5534,8 @@ const REPORTES=[
 const PAGINAS_REDIRIGIDAS={produccion:'centro',operaciones:'ingops',ingref:'ingops',vistaordenes:'wip',asignacion:'wip',reporteria:'avancearea',compras:'macro',familias:'gerencia',cumplimiento:'gerencia',avance:'avancearea'};   /* compras: pantalla retirada el 24-sep · familias (Demanda agregada): el 25-sep · cumplimiento y avance (Avance del mes, ahora vista Mes de Avance por área): el 03-oct */
 function redirigirPagina(p){if(p==='avance')AVA.vista='mes';
   /* 08-oct (M1): Carga general se retiró; un enlace o un perfil viejo abre la vista «Plan» del primer centro que el perfil ve, o Capacidad y decisiones */
-  if(p==='produccion'){let ve=false;try{ve=(!PERFIL||vePagina('centro'))&&S.centros.some(c=>c.area==='pro'&&veCentro(c.id))}catch(e){}if(ve){CEN.pest='plan';return 'centro'}return 'capacidad'}if(p==='ingref'){try{ING_V.ops='secuencia'}catch(e){}}   /* 06-oct: «Por referencia» abre la Secuencia de operaciones */
+  if(p==='produccion'){let pri=null;try{if(!PERFIL||vePagina('centro'))pri=S.centros.filter(c=>c.area==='pro'&&c.activo!==false&&veCentro(c.id)).sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id))[0]||null}catch(e){}
+    if(pri){CEN.pest='plan';try{if(!censDeGrupo(CEN.id).some(veCentro)){CEN.id=grupoPlanDe(pri.id);CEN.solo=''}}catch(e){}return 'centro'}return 'capacidad'}if(p==='ingref'){try{ING_V.ops='secuencia'}catch(e){}}   /* 06-oct: «Por referencia» abre la Secuencia de operaciones */
   const q=PAGINAS_REDIRIGIDAS[p]||p;return (q==='gerencia'&&!veFacturacion())?'avancearea':q}   /* 04-oct: sin «Ver valores en $», el Resumen gerencial y sus enlaces viejos (cumplimiento, familias) llevan a Avance por área */   /* un enlace viejo a «Avance del mes» abre la vista Mes (sin cambiar la vista que la persona dejó recordada) */
 function reporteriaBarraHTML(){const vis=REPORTES.filter(r=>vePagina(r.p)&&permPaginaOk(r.p));if(vis.length<2)return '';const fac=veFacturacion();
   return `<div class="o-notebook rep-barra no-print"><span class="rep-barra-t">Reportería:</span>${vis.map(r=>`<a class="${page===r.p?'on':''}" title="${esc((!fac&&r.descSin)||r.desc||'')}" onclick="ir('${r.p}')">${esc(r.n)}</a>`).join('')}</div>`}   /* pestañas como las de sub-áreas, en una línea, dentro de la franja del título (02-oct) */
@@ -6088,7 +6089,7 @@ function vPanorama(el){
     ${puede('ordenes')?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="mActualizarDatos(1)">Actualizar datos</button> <button class="btn ghost sm" onclick="mReporteOT()">Reporte OT</button></div>`:''}</div></div>
   </div>`;
 }
-function ir(p){p=redirigirPagina(p);const a=(p==='liberacion'&&document.querySelector('nav a[data-p="liberacion"][data-lib="'+LIB.et+'"]'))||document.querySelector('nav a[data-p="'+p+'"]');if(!a)return;if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
+function ir(p){p=redirigirPagina(p);const a=(p==='liberacion'&&document.querySelector('nav a[data-p="liberacion"][data-lib="'+LIB.et+'"]'))||(p==='centro'&&[...document.querySelectorAll('nav a[data-p="centro"]')].find(x=>x.style.display!=='none'))||document.querySelector('nav a[data-p="'+p+'"]');   /* 08-oct: «centro» abre el primer centro que el perfil ve (irCentro fija el suyo después de navegar) */if(!a)return;if(p!==page){NAVH.push(navSnap());if(NAVH.length>20)NAVH.shift()}NAV_PROG=true;try{a.click()}finally{NAV_PROG=false}}
 function irLib(et){if(LIB.et!==et){LIB.vista=null;LIB.freno=null;LIB.aviso=null}LIB.et=et;LIB.sel=new Set();ir('liberacion')}
 /* desde la cola, el Resumen o el buscador de un centro: Liberación a producción acotada a ESA orden (04-oct). Si los filtros de la
    pantalla la esconderían se limpian; si el mes del Proyecto elegido no la incluye, se ven todos los meses. Solo navega: no libera nada. */
@@ -7822,7 +7823,7 @@ function jeansHTML(){const d=diagJeans();const ya=!!S.params.jeansUnificado;
 /* una sola siembra que corre con las demás */
 function sembrarMaquilaPorDescarte(){if(S.params.maquilaDescarteSembrado||S.params.maquilaPorDescarte!=null)return;if(!(S.ordenes||[]).length)return;
   let antes=null,despues=null;try{S.params.maquilaPorDescarte=0;PLAN=null;PLAN_ALL=null;const A=programar();S.params.maquilaPorDescarte=1;PLAN=null;PLAN_ALL=null;const B=programar();
-    const enMaq=P=>{const ops=new Set((P.pro||[]).filter(e=>e.centro==='modulos'&&e.rec==='maquila').map(e=>e.op));return {n:ops.size,min:(P.pro||[]).filter(e=>e.centro==='modulos'&&e.rec==='maquila').reduce((a,e)=>a+e.min,0)}};antes=enMaq(A);despues=enMaq(B)}catch(e){antes=null}
+    const enMaq=P=>{const ops=new Set((P.pro||[]).filter(e=>e.centro==='modulos'&&idsMaquila().has(e.rec)).map(e=>e.op));return {n:ops.size,min:(P.pro||[]).filter(e=>e.centro==='modulos'&&idsMaquila().has(e.rec)).reduce((a,e)=>a+e.min,0)}};antes=enMaq(A);despues=enMaq(B)}catch(e){antes=null}
   S.params.maquilaPorDescarte=1;S.params.maquilaDescarteSembrado=new Date().toISOString();PLAN=null;PLAN_ALL=null;
   bitacora('Maquila por descarte ACTIVADO (decisión de la usuaria, 20-sep): la maquila solo recibe lo marcado'+(antes?' · antes el motor mandaba solo a maquila '+antes.n+' órdenes ('+num(antes.min/60,0)+' h); ahora '+despues.n+' ('+num(despues.min/60,0)+' h, las marcadas)':'')+'. Se apaga en Configuración general → Nivelación.');save()}
 const TIEMPOS21_FUENTE='Estudio de tiempos anterior · Santiago · 21-sep-2026 (mediana de los estilos propios; por confirmar)';
@@ -9818,7 +9819,7 @@ function erroresGruposMod(){const out=[];
     if(!(g.fams||[]).length)out.push({g:g.id,txt:'El grupo «'+(g.n||'sin nombre')+'» no tiene ninguna familia'})});
   return out}
 /* sugerencia a partir de la polivalencia que ya existe; el usuario confirma o edita */
-function sugerirGruposMod(){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
+function sugerirGruposMod(){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&!esMaquilaRec(r));
   const fams=S.categorias.filter(k=>!k.padre);
   const porFam={};
   fams.forEach(f=>{const l=mods.filter(r=>poliPct(r,{padre:f.id})>0&&(r.poli||{})[f.id]!=null);
@@ -10060,7 +10061,7 @@ function validarGruposMod(){const errs=erroresGruposMod().slice();
   famsCatalogo().forEach(f=>{if(!vistas[f])errs.push({aviso:true,txt:'La familia «'+f+'» no está en ningún grupo: su saldo no entra en ningún grupo de módulos de «Nivelación»'})});
   return errs}
 function gruposModHTML(){const ok=puede('programa');const errs=validarGruposMod();
-  const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');
+  const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&!esMaquilaRec(r));
   const fams=famsCatalogo();
   const dur=errs.filter(e=>!e.aviso),avi=errs.filter(e=>e.aviso);
   return `<div class="panel" id="bloque-grupos-mod"><h3>Grupos de módulos <span class="note">para «Nivelación» · la tabla nace vacía y cada grupo queda «sugerido» hasta que alguien lo confirme</span></h3><div class="body">
@@ -10126,7 +10127,7 @@ function calendarioNivHTML(){const ms=[...new Set([hoy().slice(0,7)].concat(mese
    peor va primero); lo confirma una persona y desde entonces es lo configurado. Familias nuevas se agregan al final. */
 function famIdDe(o){const k=K(o&&o.cat);if(!k)return null;const p=K(k.padre);return (p||k).id}
 function familiasPadre(){return S.categorias.filter(k=>!k.padre&&!k.unificadaEn&&k.inactiva!==true)}   /* la misma regla que famsCatalogo: JEANS unificada en DENIM no cuenta */
-function poliPromedioFam(fid){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila');const vs=mods.map(r=>(r.poli||{})[fid]).filter(v=>v!=null&&v!=='').map(Number);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null}
+function poliPromedioFam(fid){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&!esMaquilaRec(r));const vs=mods.map(r=>(r.poli||{})[fid]).filter(v=>v!=null&&v!=='').map(Number);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null}
 function maquilaOrden(){if(!Array.isArray(S.params.maquilaOrden)){const fams=familiasPadre().map(k=>({fam:k.id,poli:poliPromedioFam(k.id)})).sort((a,b)=>(a.poli==null?101:a.poli)-(b.poli==null?101:b.poli)||String((K(a.fam)||{}).n||'').localeCompare(String((K(b.fam)||{}).n||'')));
     S.params.maquilaOrden=fams.map(x=>({fam:x.fam,noMandar:false,sugerido:true,poli:x.poli}));S.params.maquilaOrdenMeta={sembrado:new Date().toISOString(),origen:'polivalencia de los módulos (menor primero)'}}
   const l=S.params.maquilaOrden;const ids=new Set(l.map(x=>x.fam));familiasPadre().forEach(k=>{if(!ids.has(k.id))l.push({fam:k.id,noMandar:false,sugerido:true,poli:poliPromedioFam(k.id),nuevo:true})});
@@ -10203,10 +10204,10 @@ function tamborModulosHTML(recId){const r=nivUICalcular('modulos');if(!r||!r.sal
   const cab=`<div class="panel"><h3>Qué lleva cada módulo <span class="note">el tambor: horas de confección programadas por módulo y familia para las órdenes de estos meses · sale del programa (no de la nivelación) · el color de fondo es la polivalencia del módulo en esa familia</span></h3><div class="body">`;
   if(!fams.length)return cab+'<p class="mut">El programa no tiene carga de confección para las órdenes de estos meses.</p></div></div>';
   const dias=(r.calc&&r.calc.diasDisp!=null)?r.calc.diasDisp+(r.adic||0):null;
-  const sinDato=[];const celda=(m,fid)=>{const c=(M[m.id]||{})[fid];if(!c)return '<td class="num mut">·</td>';const pv=m.id==='maquila'?undefined:(m.poli||{})[(K(fid)||{}).id];const pol=(pv==null||pv==='')?null:+pv;if(m.id!=='maquila'&&pol==null)sinDato.push(m.n+' · '+nom(fid));const bg=pol==null?'':pol>=80?'#E8F3ED':pol>=50?'#FAEBCB':'#F8DCD6';return `<td class="num" style="background:${bg}" title="${esc(nom(fid))} en ${esc(m.n)}: ${num(c.min/60,1)} h · ${num(c.pz,0)} u${m.id==='maquila'?'':(pol==null?' · polivalencia: sin dato':' · polivalencia '+num(pol)+' %')}">${num(c.min/60,0)}<br><small class="mut">${num(c.pz,0)} u</small></td>`};
+  const sinDato=[];const celda=(m,fid)=>{const c=(M[m.id]||{})[fid];if(!c)return '<td class="num mut">·</td>';const pv=esMaquilaRec(m)?undefined:(m.poli||{})[(K(fid)||{}).id];const pol=(pv==null||pv==='')?null:+pv;if(!esMaquilaRec(m)&&pol==null)sinDato.push(m.n+' · '+nom(fid));const bg=pol==null?'':pol>=80?'#E8F3ED':pol>=50?'#FAEBCB':'#F8DCD6';return `<td class="num" style="background:${bg}" title="${esc(nom(fid))} en ${esc(m.n)}: ${num(c.min/60,1)} h · ${num(c.pz,0)} u${esMaquilaRec(m)?'':(pol==null?' · polivalencia: sin dato':' · polivalencia '+num(pol)+' %')}">${num(c.min/60,0)}<br><small class="mut">${num(c.pz,0)} u</small></td>`};
   const capRec={};(r.cap&&r.cap.detalle||[]).forEach(x=>{capRec[x.rec]=x.cap});   /* el mismo promedio por día hábil (con ajustes y escenario) que usa la nivelación */
   const filas=mods.filter(m=>modTot[m.id]).map(m=>{const cap=(dias!=null&&capRec[m.id]!=null)?capRec[m.id]*dias:null;const tot=modTot[m.id]||0;const pct=cap?Math.round(tot/cap*100):null;
-    return `<tr><td><b>${esc(m.n)}</b>${m.id==='maquila'?' <span class="mut" style="font-size:var(--fs-xs)">(marcadas o en fase de maquila)</span>':''}</td>${fams.map(fid=>celda(m,fid)).join('')}<td class="num"><b>${num(tot/60,0)}</b> h</td><td class="num">${cap==null?'<span class="mut">—</span>':num(cap/60,0)+' h'}</td><td>${pct==null?'':'<span class="tag '+(pct>100?'t-alerta':pct>=90?'t-aviso':'t-ok')+'">'+pct+' %</span>'}</td></tr>`}).join('');
+    return `<tr><td><b>${esc(m.n)}</b>${esMaquilaRec(m)?' <span class="mut" style="font-size:var(--fs-xs)">(marcadas o en fase de maquila)</span>':''}</td>${fams.map(fid=>celda(m,fid)).join('')}<td class="num"><b>${num(tot/60,0)}</b> h</td><td class="num">${cap==null?'<span class="mut">—</span>':num(cap/60,0)+' h'}</td><td>${pct==null?'':'<span class="tag '+(pct>100?'t-alerta':pct>=90?'t-aviso':'t-ok')+'">'+pct+' %</span>'}</td></tr>`}).join('');
   const totFam=`<tr><td><b>Total</b></td>${fams.map(fid=>'<td class="num"><b>'+num(famTot[fid]/60,0)+'</b></td>').join('')}<td class="num"><b>${num(Object.values(famTot).reduce((a,b)=>a+b,0)/60,0)}</b> h</td><td></td><td></td></tr>`;
   return cab+`<div class="scroll"><table style="font-size:var(--fs-s)"><thead><tr><th>Módulo</th>${fams.map(fid=>'<th class="num">'+esc(nom(fid))+'</th>').join('')}<th class="num">Programado</th><th class="num">Capacidad ${dias!=null?'('+dias+' días)':''}</th><th>Uso</th></tr></thead><tbody>${filas}${totFam}</tbody></table></div>
    <p class="mut" style="font-size:var(--fs-xs);margin:8px 0 0">Fondo verde = polivalencia ≥ 80 % (la planta hace bien esa familia) · ámbar 50–79 · rojo &lt; 50 · sin fondo = sin dato de polivalencia${sinDato.length?' ('+sinDato.length+' celdas: '+esc(sinDato.slice(0,4).join(', '))+(sinDato.length>4?'…':'')+' — se carga en Configuración general → Centros y máquinas)':''}. Capacidad = promedio por día hábil del módulo (con ajustes y escenario, el mismo de la nivelación) × días del período. Lo que va a maquila solo aparece si está marcado.</p></div></div>`}
@@ -10274,7 +10275,7 @@ function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null
     return {cap,unidad:'u/día',detalle:[],nota:(plan===''||plan==null)?(t.suficiente?('promedio real de '+t.dias+' días hábiles ('+t.conDato+' con registro)'):('sin avance suficiente: '+t.conDato+' de '+t.dias+' días con registro')):('valor planificado en Configuración')}}
   if(a.tipo==='maquila')return {cap:null,unidad:'u/día',detalle:[],nota:'la maquila no tiene capacidad propia en la planta: dato faltante (se cuenta por fase; sus unidades entran como «Maquila» en el área que las recibe)'};
   if(a.porDias)return {cap:null,unidad:'min/día',detalle:[],nota:'por días, sin capacidad: '+nCen(a.id)+' no consume capacidad (columna «Por días» de Configuración general → Centros). Para nivelarlo harían falta: SAM (minutos por prenda) en la hoja de operaciones o un mínimo estimado por categoría, y un recurso con personas, minutos y eficiencia (o una capacidad en unidades por día); hoy solo tiene un plazo de espera'};
-  const d=hoy();const recs=S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila');
+  const d=hoy();const recs=S.recursos.filter(r=>r.activa&&r.centro===a.id&&!esMaquilaRec(r));
   /* días hábiles del horizonte (meses elegidos): la capacidad por día es el promedio ahí, así cuentan los ajustes de semana y el escenario (SIM) */
   const meses=(typeof nivUIMeses==='function')?nivUIMeses():[];const diasH=[];meses.forEach(ym=>{const [y,m]=ym.split('-').map(Number);if(!(y>0&&m>0))return;const nd=new Date(y,m,0).getDate();for(let k=1;k<=nd;k++)diasH.push(ym+'-'+String(k).padStart(2,'0'))});
   const capProm=r=>{const ds=diasH.filter(x=>x>=d&&labR(x,r));if(!ds.length)return capDia(r,d);return ds.reduce((x,y)=>x+capDia(r,y),0)/ds.length};   /* solo días hábiles de hoy en adelante: lo pasado no se planifica */
@@ -10285,7 +10286,7 @@ function nivUICapacidad(areaId){const a=nivUIArea(areaId);if(!a)return {cap:null
   return {cap,unidad:'min/día',detalle,nota:recs.length?(recs.length+(recs.length===1?' recurso activo':' recursos activos')+' · personas × minutos × eficiencia · promedio por día hábil de '+(meses.length?meses.map(fmtMesEG).join(', '):'hoy')+(escOn?' · INCLUYE el escenario sin confirmar':'')+' · personas según: '+[...new Set(detalle.map(x=>x.fuente))].join(', ')):'sin recursos activos en el centro: dato faltante'}}
 /* --- lo que se escribe: inicio y compromiso (los del Paso 1), días adicionales y maquila (nuevos) --- */
 /* fechas del horizonte cuando el área no tiene fechas propias: el mes (o meses) elegido, con los días hábiles del área */
-function nivUIFechasDelMes(areaId){const meses=nivUIMeses();if(!meses.length)return null;const a=nivUIArea(areaId);const recs=a&&a.tipo==='centro'?S.recursos.filter(r=>r.activa&&r.centro===a.id&&r.id!=='maquila'):[];const r0=recs[0]||null;
+function nivUIFechasDelMes(areaId){const meses=nivUIMeses();if(!meses.length)return null;const a=nivUIArea(areaId);const recs=a&&a.tipo==='centro'?S.recursos.filter(r=>r.activa&&r.centro===a.id&&!esMaquilaRec(r)):[];const r0=recs[0]||null;
   const lab=d=>r0?labR(d,r0):!!labR(d,{centro:'corte'});const dias=[];meses.slice().sort().forEach(ym=>{const [y,m]=ym.split('-').map(Number);if(!(y>0&&m>0))return;const nd=new Date(y,m,0).getDate();for(let k=1;k<=nd;k++)dias.push(ym+'-'+String(k).padStart(2,'0'))});
   const habiles=dias.filter(lab);if(!habiles.length)return null;const h=hoy();const ini=habiles.find(d=>d>=h)||null;const fin=habiles[habiles.length-1];if(!ini||fin<ini)return null;return {inicio:ini,compromiso:fin,txt:'del mes ('+meses.map(fmtMesEG).join(', ')+')'}}
 function nivUIEsc(areaId){const g=((S.params.nivelacion||{}).escenarios||{})[areaId]||{};const s=NIVUI.esc[areaId]||{};const fm=nivUIFechasDelMes(areaId);
@@ -10381,7 +10382,7 @@ function nivUIGruposAreas(){const areas=nivUIAreas();const gs=[];const de=g=>gs.
   areas.forEach(a=>{const g=a.tipo==='centro'?grupoPlanDe(a.id):(a.tipo==='maquila'&&CE('modulos')?grupoPlanDe('modulos'):a.id);let x=de(g);if(!x){x={id:g,n:a.tipo==='centro'?(CENTROS_PROD_N[g]||nCen(g)||g):a.n,areas:[],orden:a.tipo==='tela'?-1e9:a.tipo==='maquila'?1e9:(CE(g)?ordenPaso(g):ordenPaso(a.id))};gs.push(x)}x.areas.push(a)});   /* la maquila vive en la bandeja de Confección: confeccionan los dos */
   return gs.sort((a,b)=>a.orden-b.orden)}
 /* botoncitos por módulo dentro de Confección (Todos · Módulo 1 · …): acotan personas/horas y el tambor, no el saldo (que es del centro) */
-function nivModChipsHTML(){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&r.id!=='maquila').sort((a,b)=>String(a.n).localeCompare(String(b.n),undefined,{numeric:true}));if(mods.length<2)return '';
+function nivModChipsHTML(){const mods=S.recursos.filter(r=>r.activa&&r.centro==='modulos'&&!esMaquilaRec(r)).sort((a,b)=>String(a.n).localeCompare(String(b.n),undefined,{numeric:true}));if(mods.length<2)return '';
   const sel=NIVUI.rec&&mods.some(m=>m.id===NIVUI.rec)?NIVUI.rec:null;
   return `<div class="chips" style="max-width:none;margin:6px 0 8px;align-items:center"><span class="mut" style="font-size:var(--fs-xs);margin-right:4px">Módulo:</span><span class="chip ${sel?'':'on'}" onclick="NIVUI.rec=null;render()">Todos</span>${mods.map(m=>`<span class="chip ${sel===m.id?'on':''}" onclick="NIVUI.rec='${m.id}';render()">${esc(m.n)}</span>`).join('')}${sel?'<span class="mut" style="font-size:var(--fs-xs);margin-left:6px">viendo solo '+esc((R(sel)||{}).n||sel)+' en personas/horas y en el tambor; el saldo es de todo Confección</span>':''}</div>`}
 function nivUIPillHTML(est,r,a,vacia){const e=NIVUI_ESTADO[est]||NIVUI_ESTADO.faltante;const k=est==='faltante'?'faltante':est;
