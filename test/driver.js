@@ -12016,6 +12016,72 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    finally{S.ordenes=S.ordenes.filter(o=>!tmp.includes(o));if(bakTC===undefined)delete S.params.tareaCarga;else S.params.tareaCarga=bakTC;
     Object.assign(LIB,bakLIB);LIB.sel=new Set();Object.assign(WIP,bakWIP);WIPL.q=bakWQ||'';if(bakFod)FOD['WIPL.q']=bakFod;else delete FOD['WIPL.q'];PM.mes=bakPM.mes;PM.paso=bakPM.paso;TARJ.exp=bakTA;PERFIL=bakP;PLAN=null;PLAN_ALL=null;CAPM=null;page='ordenes';render()}
    __check("CUADRE sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* VER08-D · revisión del 08-oct (12-oct-2026): migraciones que no esconden lo que dan (H1) y que solo corren donde se guarda la configuración (H6/S3),
+     Salud que se actualiza sola (H3), textos sin pantallas viejas (H4), el saldo de la Nivelación con agrupar y buscar (H5), el stock de tela que solo
+     escribe quien lo guarda (S1), problemas de capacidad cerrados por el cambio de cuenta (S2), dibujar no crea tallasCat (S4) y la barra de «Como Odoo»
+     en oscuro (S6) */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const a0=window.alert,c0=window.confirm;const al=[];window.alert=m=>al.push(String(m));window.confirm=()=>true;
+   const bakCat=JSON.stringify(S.params.perfilesDef||[]);const FL=['migTextil08','migImprimir08','migAuditoria08','migCargaGeneral08','migLiberacionUnica08','migIngUnica08'];const bakFl={};FL.forEach(k=>bakFl[k]=S.params[k]);
+   const bakBit=S.bitacora.length;const bakCap=JSON.stringify(S.params.capProblemas||null);const bakStock=JSON.stringify(S.params.stockTela||null);const bakTC=S.params.tallasCat;const bakTema=[S.params.tema,S.params.temaColor];
+   const tx=e=>((e&&e.innerText)||'').replace(/\s+/g,' ');
+   try{
+    /* H1 · lo que la migración da queda a la vista (o la bitácora dice que no) */
+    {const prue=[{id:'s_stock',n:'Prueba stock',permisos:[],centros:[],paginas:['stock']},{id:'s_macro_ord',n:'Prueba macro',permisos:['ordenes'],centros:[],paginas:['macro','ordenes']},
+       {id:'s_prod_tin',n:'Prueba carga tin',permisos:['avance'],centros:['tin'],paginas:['produccion']},{id:'s_prod_prog',n:'Prueba carga prog',permisos:['programa'],centros:[],paginas:['produccion']},
+       {id:'s_imp',n:'Prueba imprimir',permisos:[],centros:[],paginas:['imprimir','ordenes']}];
+     S.params.perfilesDef=JSON.parse(bakCat).concat(prue);FL.forEach(k=>delete S.params[k]);const nb=S.bitacora.length;perfilesDef();const lin=S.bitacora.slice(nb).map(b=>b.t).join(' || ');
+     const D=id=>S.params.perfilesDef.find(x=>x.id===id);const vis=(id,p)=>{PERFIL={id:'u-'+id,rol:id,nombre:id};aplicarNavPerfil();const a=document.querySelector('nav a[data-p="'+p+'"]');const v=!!a&&a.style.display!=='none';PERFIL=adminP0();aplicarNavPerfil();return v};
+     __check("VER08-MIG: quien tenía Stock o Macro sigue viendo Tejeduría en el menú (aunque no vea el área de tejeduría)",vis('s_stock','tejeduria')&&vis('s_macro_ord','tejeduria'),lin.slice(0,200));
+     __check("VER08-MIG: Carga general → Capacidad y decisiones solo a quien tiene «programa»; quien ve tintorería recibe Avance por área; Capacidad pide «programa» también por enlace",D('s_prod_prog').paginas.includes('capacidad')&&!D('s_prod_tin').paginas.includes('capacidad')&&D('s_prod_tin').paginas.includes('avancearea')&&paginaVisibleParaPerfil(D('s_prod_tin'),'avancearea')&&(()=>{PERFIL={id:'u-x',rol:'s_prod_tin',nombre:'x'};const r=puedeAbrirPagina('capacidad')===false;PERFIL=adminP0();return r})(),JSON.stringify({prog:D('s_prod_prog').paginas,tin:D('s_prod_tin').paginas}));
+     __check("VER08-MIG: el perfil que imprimía y no ve ningún centro ni Tintorería queda nombrado en la bitácora como «sin pantalla donde imprimir el día»",/sin pantalla donde imprimir el día[^|]*Prueba imprimir/.test(lin),lin.slice(0,300))}
+    /* H6 / S3 · sin poder guardar la configuración, las migraciones del 08-oct no corren ni escriben; el menú se ve igual (PAGINAS_VIEJAS_DE) */
+    {S.params.perfilesDef=JSON.parse(bakCat).concat([{id:'s_stock2',n:'Prueba stock 2',permisos:[],centros:['tej'],paginas:['stock']}]);FL.forEach(k=>delete S.params[k]);
+     PERFIL={id:'u-pl',rol:'planificacion',nombre:'Planificación'};const nb=S.bitacora.length;perfilesDef();perfilesDef();const lin=S.bitacora.slice(nb).filter(b=>/08-oct/.test(b.t||''));
+     const flags=FL.filter(k=>S.params[k]);
+     PERFIL={id:'u-s2',rol:'s_stock2',nombre:'s2'};const ve=vePagina('tejeduria');
+     PERFIL=adminP0();const nb2=S.bitacora.length;perfilesDef();const lin2=S.bitacora.slice(nb2).filter(b=>/08-oct/.test(b.t||'')).length;const nb3=S.bitacora.length;perfilesDef();const lin3=S.bitacora.slice(nb3).filter(b=>/08-oct/.test(b.t||'')).length;
+     __check("VER08-MIG: una sesión que no guarda la configuración no corre las migraciones del 08-oct ni escribe en la bitácora; el perfil con Stock sigue viendo Tejeduría; Administración las corre UNA vez",!lin.length&&!flags.length&&ve&&FL.every(k=>S.params[k])&&lin3===0,JSON.stringify({lin:lin.length,flags,ve,lin2,lin3}))}
+    /* H3 · Salud se actualiza sola al llegar la secuencia de operaciones */
+    {const bakLe=IOM.leido;IOM.leido=null;IOM._memo={};page='auditoria';AUD.vista='salud';render();const t0=Date.now();while(IOM.leido!=='si'&&Date.now()-t0<4000)await __p(50);await __p(80);
+     const t=tx(document.getElementById('p-auditoria'));__check("VER08-SAL: Auditoría → Salud de los datos se redibuja sola cuando llega la secuencia de operaciones (no se queda en «leyendo…»)",IOM.leido!=='si'||!/leyendo la secuencia/.test(t),t.slice(0,120));if(IOM.leido!=='si')IOM.leido=bakLe}
+    /* H4 · ningún texto visible nombra una pantalla que ya no está en el menú */
+    {const malo=/Salud del sistema|Carga general|Programa del día|Auditoría de replanificación|Ingeniería → Tipos de producto|en Liberación a producción|cola de Liberación a producción/;const hall=[];
+     const limpia=s=>String(s||'').replace(/antes (era|eran|se llamaba|llamad[ao]s?)[^.;)»]*(«[^»]*»)?/gi,'').replace(/«[^»]*» \(antes[^)]*\)/g,'');
+     const mira=(n,root)=>{if(!root)return;root.querySelectorAll('.bitacora,.bit-lin').forEach(x=>x.setAttribute('data-ignora','1'));const t=limpia(tx(root));const tt=[...root.querySelectorAll('[title]')].filter(e=>!e.closest('[data-ignora]')).map(e=>limpia(e.getAttribute('title'))).join(' ');const m=(t+' '+tt).match(malo);if(m)hall.push(n+': '+m[0])};
+     const ps=[...new Set([...document.querySelectorAll('nav a[data-p]')].map(a=>a.dataset.p))];for(const p of ps){page=p;try{render()}catch(e){}mira(p,document.getElementById('p-'+p));await __p(2)}
+     for(const v of ['cambios','salud']){page='auditoria';AUD.vista=v;render();mira('auditoria '+v,document.getElementById('p-auditoria'))}
+     for(const k of (typeof ING_OPS_TABS!=='undefined'?ING_OPS_TABS.map(x=>x[0]||x):[])){page='ingops';ING_V.ops=k;try{render()}catch(e){}mira('ingeniería '+k,document.getElementById('p-ingops'))}
+     try{mImprimirDia(null);mira('imprimir el día',document.getElementById('modal'));cerrar()}catch(e){}
+     __check("VER08-TXT: ningún texto visible (pantallas del menú, pestañas de Auditoría e Ingeniería, la ventana «Imprimir el día») nombra pantallas que salieron del menú",!hall.length,hall.slice(0,6).join(' | '))}
+    /* H5 · el saldo de la Nivelación agrupa y busca */
+    {const ym=hoy().slice(0,7);const sel={area:'corte',meses:mesesNivPlan(ym)};const {base}=saldoNivSel(sel);if(base.length){NIVSAL.q='';irSaldoCentro(sel);const m=document.getElementById('modal');
+      const okSel=!!m.querySelector('.niv-saldo-filtros select')&&!!m.querySelector('.niv-saldo tr.grp-row');NIVSAL.q=base[0].op;render();const m2=document.getElementById('modal');const filas=[...m2.querySelectorAll('.niv-saldo tbody tr:not(.grp-row)')];
+      grpSt('nivsal').todoAbierto=true;render();const filas2=[...document.querySelectorAll('#modal .niv-saldo tbody tr:not(.grp-row)')];grpSt('nivsal').todoAbierto=false;
+      __check("VER08-NIVS: «ver órdenes» del saldo de la Nivelación agrupa por familia (Agrupar por) y busca; el título conserva el total",okSel&&filas2.length>=1&&filas2.length<=base.filter(o=>matchBusq(o,normTxt(base[0].op),'NIVSAL.q')).length&&/con el buscador|órdenes/.test(m2.querySelector('h3').textContent)&&m2.querySelector('h3').textContent.includes(num(base.length)),JSON.stringify({okSel,n:filas2.length}));
+      NIVSAL.q='';cerrar();__check("VER08-NIVS: al cerrar, la ventana se olvida",NIVUI.saldoAbierto===null)}}
+    /* S1 · el stock de tela cruda solo lo escribe quien guarda la configuración */
+    {const t=(S.telas||[])[0];if(t){const k0=JSON.stringify(stockTela()[t.id]||null);PERFIL={id:'u-pt',rol:'piso',area:'tej',nombre:'Piso tej'};page='tejeduria';TEJ.tab='ahora';render();
+      const ins=[...document.querySelectorAll('#p-tejeduria input.stk-in')];const nb=S.bitacora.length;al.length=0;setStockTela(t.id,'77');
+      __check("VER08-STK: el piso de tejeduría no cambia el stock de tela cruda (vive en la configuración, que su perfil no guarda): los campos salen apagados con el porqué y no cambia nada ni deja bitácora",ins.every(i=>i.disabled)&&JSON.stringify(stockTela()[t.id]||null)===k0&&S.bitacora.length===nb&&al.some(m=>/configuración general/.test(m)),JSON.stringify({n:ins.length,al:al.slice(0,1)}));
+      PERFIL=adminP0();__check("VER08-STK: Administración sí lo cambia",puedeEditarStock());}}
+    /* S2 · un problema de capacidad abierto con la cuenta de antes que ya no está en rojo se cierra diciendo que cambió la cuenta */
+    {const M=matrizCapacidad();const roja=Object.values(M.celdas).find(x=>estadoCel(x)==='rojo');const okc=Object.values(M.celdas).find(x=>estadoCel(x)==='ok');
+     if(roja&&okc){S.params.capProblemas=[{id:'p1',c:roja.c,m:roja.m,detectado:'2026-10-01T10:00:00.000Z',pct:120,falta:10,u:'min',visto:null},{id:'p2',c:okc.c,m:okc.m,detectado:'2026-10-01T10:00:00.000Z',pct:120,falta:10,u:'min',visto:null},{id:'p3',c:okc.c,m:okc.m,detectado:'2026-10-02T10:00:00.000Z',pct:120,falta:10,u:'min',visto:null,base:'lanzadas'}];
+      const nb=S.bitacora.length;revisarProblemasCap();const ps=S.params.capProblemas;const lin=S.bitacora.slice(nb).map(b=>b.t);
+      __check("VER08-CAPB: el problema viejo en una celda que ya no está en rojo se cierra «por el cambio de cuenta del 08-oct» (no «ya alcanza»); el que sigue en rojo queda abierto con la base nueva; uno con la base nueva sí «ya alcanza»",ps[1].cerrado&&ps[1].cierre==='cambioBase08'&&lin.some(t=>/08-oct/.test(t)&&!/ya alcanza/.test(t))&&!ps[0].cerrado&&ps[0].base==='lanzadas'&&ps[2].cerrado&&!ps[2].cierre&&lin.some(t=>/ya alcanza/.test(t)),JSON.stringify(ps.map(p=>[p.id,!!p.cerrado,p.cierre||'',p.base||''])))}}
+    /* S4 · dibujar Control de piso no crea tallasCat */
+    {delete S.params.tallasCat;PERFIL={id:'u-co',rol:'corte',nombre:'Corte'};page='control';try{render()}catch(e){}const sigue=S.params.tallasCat===undefined;PERFIL=adminP0();page='control';try{render()}catch(e){}
+     __check("VER08-TCAT: dibujar Control de piso (piso o Administración) no crea S.params.tallasCat",sigue&&S.params.tallasCat===undefined);if(bakTC!==undefined)S.params.tallasCat=bakTC}
+    /* S6 · «Como Odoo» con barra clara en oscuro: la barra es oscura y se lee */
+    {const lum=c=>{const m=String(c).match(/[0-9.]+/g)||[0,0,0];const f=v=>{v=+v/255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*f(m[0])+0.7152*f(m[1])+0.0722*f(m[2])};const contr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05)};
+     const res=[];for(const col of ['petroleo','blanco']){S.params.tema='odoo';S.params.temaColor=col;setModo('oscuro');render();const hd=document.querySelector('header');const bgO=getComputedStyle(hd).backgroundColor;const g=document.querySelector('header nav .grp');let cO=99;if(g){g.classList.add('abierto');const st=getComputedStyle(g);const mix=(fg,bg)=>{const f=String(fg).match(/[0-9.]+/g).map(Number),b=String(bg).match(/[0-9.]+/g).map(Number);const al=f.length>3?f[3]:1;return 'rgb('+[0,1,2].map(i=>Math.round(f[i]*al+b[i]*(1-al))).join(',')+')'};const bgG=mix(st.backgroundColor,bgO);cO=contr(st.color,bgG);g.classList.remove('abierto')}
+       setModo('claro');render();const bgC=getComputedStyle(document.querySelector('header')).backgroundColor;res.push({col,oscuro:lum(bgO),cO:Math.round(cO*10)/10,claro:bgC})}
+     setModo('claro');S.params.tema=bakTema[0];S.params.temaColor=bakTema[1];if(bakTema[0]===undefined)delete S.params.tema;if(bakTema[1]===undefined)delete S.params.temaColor;render();
+     __check("VER08-PAL6: «Como Odoo» con barra clara (petróleo y blanco): en oscuro la barra es oscura y su menú abierto se lee (contraste ≥ 4,5); en claro sigue blanca",res.every(r=>r.oscuro<0.1&&r.cO>=4.5&&r.claro==='rgb(255, 255, 255)'),JSON.stringify(res))}
+   }catch(e){__R.errors.push({page:'driver VER08-D',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{S.params.perfilesDef=JSON.parse(bakCat);FL.forEach(k=>{if(bakFl[k]===undefined)delete S.params[k];else S.params[k]=bakFl[k]});{const c=JSON.parse(bakCap);if(c)S.params.capProblemas=c;else delete S.params.capProblemas}{const s=JSON.parse(bakStock);if(s)S.params.stockTela=s;else delete S.params.stockTela}
+    if(bakTC!==undefined)S.params.tallasCat=bakTC;NIVSAL.q='';try{cerrar()}catch(e){}window.alert=a0;window.confirm=c0;PERFIL=bakP;aplicarNavPerfil();CAPM=null;PLAN=null;PLAN_ALL=null;page='ordenes';render()}
+   __check("VER08-D sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* VER08-C · revisión del 08-oct (12-oct-2026), lo registrado se corrige por LÍNEA (H1/H2: deshacer la línea que se ve, de hoy o de días anteriores, con
      motivo; no se borra), el cierre automático no salta sin tiempo (H5) y lo hecho antes sin cubo de tallas no se pierde (H6) */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const a0=window.alert,c0=window.confirm;const al=[];window.alert=m=>al.push(String(m));window.confirm=()=>true;
