@@ -2988,7 +2988,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-12 09:28';
+const APP_BUILD='2026-10-12 09:50';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -20474,7 +20474,7 @@ function demo(){if(!puede('ordenes'))return;if(S.ordenes.length){alert('El ejemp
    ['OP-1003','POLO PIQUÉ','Polo Basica','CADET NAVY',600,30,2,mk('propia',0,['botones'],polo),[{tela:'t8',kg:156},{tela:'t11',kg:18}]],
    ['OP-1004','HOODIE','Hoodies','DARK BLACK',450,33,3,mk('propia',0,['bordado'],hood),[{tela:'t3',kg:261},{tela:'t5',kg:22}]],
    ['OP-1005','JEAN','Jeans','DARK BLACK',300,35,1,mk('externa',10,['lavado','plancha'],{corte:2.5,modulos:28.5,lavado:120,plancha:1.2,empaque:1.5}),[{tela:'t12',kg:240}]]]
-  .forEach(([op,ref,cat,c,cant,d,prio,ruta,telas])=>S.ordenes.push({id:uid(),op,ref,cat:hija(cat).id,color:col(c).id,cant,fecha:dsum(hoy(),d),prio,telas,ruta,estado:'plan',estadoOP:'confirmed',demo:true}));  /* demo:true — no cuentan como cartera abierta · 08-oct: con su Estado OP, como toda orden con WH que viene de Odoo (si no, no son «lanzadas» y la planta no las cuenta) */
+  .forEach(([op,ref,cat,c,cant,d,prio,ruta,telas])=>S.ordenes.push({id:uid(),op,ref,cat:hija(cat).id,color:col(c).id,cant,fecha:dsum(hoy(),d),prio,telas,ruta,estado:'plan',demo:true}));  /* demo:true — no cuentan como cartera abierta */
   save();render()}
 
 /* ---------- modales y datos ---------- */

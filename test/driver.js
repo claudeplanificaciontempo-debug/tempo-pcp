@@ -2474,7 +2474,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    const baseO=S.ordenes.find(x=>abierta(x)&&(x.ruta||[]).some(p=>CE(p.centro)&&CE(p.centro).area==='pro'))||S.ordenes.find(abierta);
    const mk=(op,fase)=>{const o=JSON.parse(JSON.stringify(baseO));o.id=uid();o.op=op;o.proyecto=nomMes(ym);o.estado='plan';o.fase=fase;o.fecha=dsum(hoy(),20);o.precio=100;o.cant=10;o.lib={tela:{ok:true},corte:{ok:true}};delete o.programa;S.ordenes.push(o);return o};
    const oDentro=mk('WH/TEST-B3-DENTRO','4CD Ensamble'),oFuera=mk('WH/TEST-B3-FUERA','4CD Ensamble'),oCand=mk('WH/TEST-B3-CAND','0Ord Compras'),oNoCand=mk('WH/TEST-B3-NOCAND','4CD Ensamble');
-   [oDentro,oFuera].forEach(o=>{o.fecha=ym+'-28';delete o.fechaCompromiso});delete oNoCand.lib;   /* la bloqueada del mes queda SIN liberar (por liberar, con WH): es la que sale en «Qué liberar primero» */   /* 08-oct: entrega dentro del mes, así las dos están en el plan (antes el «después» salía de órdenes sin fecha del programa, que no terminan en ningún mes) */
+   [oDentro,oFuera].forEach(o=>{o.fecha=ym+'-28';delete o.fechaCompromiso});delete oNoCand.lib;delete oNoCand.fechaCompromiso;oNoCand.fase='0Ord Compras';   /* la bloqueada del mes queda SIN liberar (antes de textil, con WH: «por liberar»): es la que sale en «Qué liberar primero» */   /* 08-oct: entrega dentro del mes, así las dos están en el plan (antes el «después» salía de órdenes sin fecha del programa, que no terminan en ningún mes) */
    {const dN=new Date(ym+'-15T12:00:00');dN.setMonth(dN.getMonth()+1);const sig=dN.toISOString().slice(0,7);oCand.fecha=sig+'-10';oNoCand.fecha=ym+'-28';}   /* candidata = entrega el mes siguiente (excepción); no candidata = entrega en el mes (ya en la base) */
    PLAN=null;PLAN_ALL=null;const P=programar();
    // fuerza escenarios (finPro dentro/fuera del mes, bloqueada) sin tocar el motor: solo ajusta el resultado ya calculado para esta orden de prueba
@@ -6321,7 +6321,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     Object.keys(BUSQ).forEach(k=>delete BUSQ[k]);Object.assign(BUSQ,bak);}
 
    /* ---------- 2a · FOCO: escribir carácter por carácter en cada buscador ---------- */
-   {const PANT=[
+   {let capOP=null;const PANT=[
      ["ORDF.q","Órdenes","ordenes",()=>{ORDF.q="";ORDF.tab="lista"}],
      ["RUT.q","Órdenes → Rutas","ordenes",()=>{RUT.q="";ORDF.tab="rutas"}],
      ["LIB.q","Liberación","liberacion",()=>{LIB.q="";LIB.et="tela";LIB.verLista=true}],
@@ -6333,10 +6333,12 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ["GER.q","Resumen gerencial","gerencia",()=>{GER.q=""}],
      ["EG.q","Entregas","entregas",()=>{EG.q=""}],
      ["COS.q","Costura","costura",()=>{COS.q=""}],
-     ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q="";/* el buscador vive en el detalle de una celda: se abre la primera que tenga órdenes */CAPD.sel=null;page="capacidad";render();const M=(typeof CAPM!=="undefined"&&CAPM)||null;if(M&&M.celdas){const k=Object.keys(M.celdas).find(k=>((M.celdas[k]||{}).det||[]).length);if(k)CAPD.sel=k}}],
+     ["CAPD.q","Capacidad y decisiones","capacidad",()=>{CAPD.q="";/* el buscador vive en el detalle de una celda: se abre la primera que tenga órdenes */CAPD.sel=null;
+       /* 08-oct (V5): Capacidad cuenta solo las lanzadas (con Estado OP de Odoo); las 5 de ejemplo no lo traen: mientras se escribe aquí lo llevan, y la segunda llamada lo devuelve */
+       if(capOP){capOP.forEach(o=>delete o.estadoOP);capOP=null}else{capOP=S.ordenes.filter(o=>abierta(o)&&!o.estadoOP&&!sinWHde(o));capOP.forEach(o=>o.estadoOP='confirmed')}CAPM=null;PLAN=null;PLAN_ALL=null;page="capacidad";render();const M=(typeof CAPM!=="undefined"&&CAPM)||null;if(M&&M.celdas){const k=Object.keys(M.celdas).find(k=>((M.celdas[k]||{}).det||[]).length);if(k)CAPD.sel=k}}],
      ["TAB.q","Mi centro (tablet)","tablet",()=>{TAB.q="";TAB.centro="corte"}]];
     const inp=id=>document.querySelector('input[data-q="'+id+'"]');
-    for(const [id,pant,pag,prep] of PANT){
+    for(const [id,pant,pag,prep] of PANT){if(capOP&&id!=="CAPD.q"){capOP.forEach(o=>delete o.estadoOP);capOP=null;CAPM=null}
       try{prep()}catch(e){}
       page=pag;FILT[pag]=true;/* para Dummies: el buscador vive plegado bajo «Filtrar»; el usuario lo abre antes de escribir */render();
       let el=inp(id);
