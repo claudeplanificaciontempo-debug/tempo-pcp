@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="es" data-tema="odoo" data-estilo="tablero" data-color="petroleo" data-barra="clara" data-sobrio="1">
+<html lang="es" data-tema="odoo" data-estilo="marino" data-color="marino">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* 14-oct-2026 (tema Marino): el modo claro/oscuro se pone ANTES de cargar el CSS, así no parpadea al abrir en oscuro. Misma clave que modoVisual()
+   (tempo.modo = la última elección en este navegador; al entrar, la de la persona manda). Sin elección guardada: claro, como siempre. */
+(function(){var m='claro';try{if(localStorage.getItem('tempo.modo')==='oscuro')m='oscuro'}catch(e){}document.documentElement.setAttribute('data-modo',m)})();</script>
 <title>Planificación y control — TEMPO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2396,6 +2399,117 @@ html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso{background:var(--tb-amb
 html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.mal{background:var(--tb-red-soft)}
 html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.ok{background:var(--tb-green-soft)}
 /* · */
+/* ux:marino */
+/* ================= Tema «Marino» (como nova) · etapa 1 (14-oct-2026, usuaria: «el mismo formato que mi otra aplicación, nova»). Aspecto por defecto, ENCIMA
+   del aspecto Odoo (data-tema="odoo" + data-estilo="marino"). Todo selector de este bloque lleva [data-estilo="marino"] (prueba MAR1): Tablero, Como Odoo y
+   Clásico no cambian. Etapa 1 = las variables del tema (y los tokens de siempre tomados de ellas), la cabecera en dos filas y el control «Claro | Oscuro».
+   Los únicos colores escritos aquí fuera de las variables son los rgba de la barra de marca y del control (permitidos por la especificación). ================= */
+html[data-estilo="marino"],html[data-estilo="marino"][data-tema][data-color]{
+  --brand:#1b2a4a;--brand-fg:#ffffff;
+  --bg:#f3f4f6;--surface:#ffffff;--surface-2:#eceef2;--border:#d9dce3;
+  --fg:#1a1f2b;--fg-muted:#5d6473;
+  --accent:#1f5fbf;--accent-fg:#ffffff;--accent-soft:#dfe9fb;
+  --ok:#2e7d32;--ok-soft:#e3f2e5;--ok-fg:#1b5e20;
+  --warn:#e0a526;--warn-soft:#fdf1d2;--warn-fg:#7a5200;
+  --danger:#c62828;--danger-soft:#fde3e1;
+  --neutral-strong:#1f2a3d;
+  /* los tokens de siempre salen de las variables Marino: la app entera toma el fondo, las superficies, el texto y el acento (en claro y en oscuro) */
+  --paper:var(--surface);--t-card:var(--surface);--field:var(--surface-2);--rule:var(--border);--rule2:var(--surface-2);
+  --ink:var(--fg);--t-ink:var(--fg);--ink2:var(--fg-muted);--ink3:var(--fg-muted);--mut:var(--fg-muted);
+  --t-primary:var(--accent);--t-accent:var(--accent);--t-accent-soft:var(--accent-soft);--t-block:var(--brand);--t-thead:var(--surface-2);
+  --navy:var(--neutral-strong);--navy2:var(--neutral-strong);--navy3:var(--fg-muted);--cobre:var(--accent);--cobre2:var(--accent);--medio:var(--accent);
+  --o-brand:var(--brand);--o-brand-2:var(--brand);--o-brand-soft:var(--accent-soft);--o-brand-line:var(--accent);--o-primary:var(--accent);--o-primary-2:var(--accent);
+  --o-sec:var(--surface-2);--o-sec-2:var(--border);--o-ring:color-mix(in srgb,var(--accent) 28%,transparent);
+  --aviso:var(--warn-fg);--aviso-graf:var(--warn);--alerta:var(--danger);--r:8px}
+html[data-estilo="marino"][data-modo="oscuro"],html[data-estilo="marino"][data-modo="oscuro"][data-tema][data-color]{
+  --brand:#141f38;--brand-fg:#e8edf7;
+  --bg:#111419;--surface:#181c24;--surface-2:#20252f;--border:#2d3340;
+  --fg:#e6e9f0;--fg-muted:#9aa2b2;
+  --accent:#7aa6f2;--accent-fg:#0b1226;--accent-soft:#1d2f55;
+  --ok:#4fcf86;--ok-soft:#163a26;--ok-fg:#8fe6b4;
+  --warn:#f0b43c;--warn-soft:#3a2d10;--warn-fg:#f6d27c;
+  --danger:#f07070;--danger-soft:#3d1b1b;
+  --neutral-strong:#c9d1dc}
+html[data-tema][data-estilo="marino"] body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg)}
+html[data-tema][data-estilo="marino"] :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html[data-tema="odoo"][data-estilo="marino"] #app{grid-template-rows:auto auto 1fr}
+/* ---- fila 1 · barra de marca ---- */
+html[data-tema="odoo"][data-estilo="marino"] header{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto auto auto auto auto;grid-template-rows:auto auto;align-items:center;column-gap:0;row-gap:0;
+  height:auto;min-height:56px;padding:10px 22px;background:var(--brand);color:var(--brand-fg);border:0;box-shadow:none;position:relative;z-index:30}
+html[data-tema="odoo"][data-estilo="marino"] header>#navBtn{grid-column:1;grid-row:1/3;margin-right:12px;color:var(--brand-fg);height:auto;padding:4px 8px}
+html[data-tema="odoo"][data-estilo="marino"] header h1#brand{grid-column:2;grid-row:1;position:relative;display:block;margin:0;padding-left:46px;font-size:16px;font-weight:700;line-height:20px;letter-spacing:0;color:var(--brand-fg);white-space:nowrap}
+html[data-tema="odoo"][data-estilo="marino"] header h1#brand .logo{position:absolute;left:0;top:1px;width:34px;height:34px;margin:0;border-radius:8px;background:rgba(255,255,255,.14);display:inline-flex;align-items:center;justify-content:center}
+html[data-tema="odoo"][data-estilo="marino"] header h1#brand .logo svg{stroke:var(--brand-fg)}
+html[data-tema="odoo"][data-estilo="marino"] header>.sub:first-of-type{display:block;grid-column:2;grid-row:2;padding-left:46px;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;line-height:16px;color:color-mix(in srgb,var(--brand-fg) 78%,transparent);white-space:nowrap}
+html[data-tema="odoo"][data-estilo="marino"] header>.spacer{grid-column:3;grid-row:1/3}
+html[data-tema="odoo"][data-estilo="marino"] header>#saved{grid-column:4;grid-row:1/3;min-width:0;max-width:240px;margin:0 0 0 12px;font-size:12px;color:color-mix(in srgb,var(--brand-fg) 78%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-tema="odoo"][data-estilo="marino"] header>#version{grid-column:5;grid-row:1/3;margin-left:12px;font-size:11.5px;color:color-mix(in srgb,var(--brand-fg) 78%,transparent)}
+html[data-tema="odoo"][data-estilo="marino"] header>#quien{grid-column:6;grid-row:1/3;margin-left:12px;display:inline-flex;align-items:center;max-width:300px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.14);color:var(--brand-fg);font-size:13px;white-space:nowrap;overflow:hidden}
+html[data-tema="odoo"][data-estilo="marino"] header>#quien .q-ini{display:none}
+html[data-tema="odoo"][data-estilo="marino"] header>#quien .q-nom{display:inline;overflow:hidden;text-overflow:ellipsis}
+html[data-tema="odoo"][data-estilo="marino"] header>#modo-sw{display:none}
+html[data-tema="odoo"][data-estilo="marino"] header>.mode{grid-column:8;grid-row:1/3;margin-left:12px}
+html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir{grid-column:9;grid-row:1/3;margin-left:10px;height:auto;padding:5px 12px;background:transparent;color:var(--brand-fg);border:1px solid rgba(255,255,255,.4);border-radius:6px;font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap}
+html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir:hover{background:rgba(255,255,255,.14);color:var(--brand-fg)}
+html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir:focus-visible,html[data-tema="odoo"][data-estilo="marino"] header>#navBtn:focus-visible{outline:2px solid var(--brand-fg);outline-offset:2px}
+/* control «Claro | Oscuro» (punto 8, HTML y CSS de la especificación); fuera de Marino no se ve y queda el sol/luna de siempre */
+html:not([data-estilo="marino"]) header>.mode{display:none}
+html[data-tema="odoo"][data-estilo="marino"] header .mode{display:inline-flex;padding:3px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.10)}
+html[data-tema="odoo"][data-estilo="marino"] header .mode button{border:0;background:transparent;color:var(--brand-fg);opacity:.8;font:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer;line-height:1.2;height:auto}
+html[data-tema="odoo"][data-estilo="marino"] header .mode button:hover{opacity:1;background:transparent;color:var(--brand-fg)}
+html[data-tema="odoo"][data-estilo="marino"] header .mode button[aria-pressed="true"]{background:var(--brand-fg);color:var(--brand);opacity:1}
+html[data-tema="odoo"][data-estilo="marino"] header .mode button:focus-visible{outline:2px solid var(--brand-fg);outline-offset:2px}
+/* ---- fila 2 · el menú como pestañas, con el buscador a la derecha ---- */
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;min-height:46px;padding:0 22px;background:var(--surface);border-bottom:1px solid var(--border);position:relative;z-index:29}
+html:not([data-estilo="marino"]) .marino-fila2,html[data-estilo="marino"] #app.cargando .marino-fila2,html.envivo-tv[data-estilo="marino"] .marino-fila2{display:none!important}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav{flex:1 1 auto;min-width:0;display:flex;align-items:stretch;gap:2px;height:46px;padding:0;margin:0;background:transparent;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;position:static}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{flex:none;display:flex;align-items:center;height:46px;padding:0 14px;margin:0;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:var(--fg-muted);font-size:14px;font-weight:400;letter-spacing:0;text-transform:none;white-space:nowrap;cursor:pointer}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:hover{color:var(--accent);background:transparent}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp.abierto{color:var(--fg);background:var(--surface-2)}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp.act{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;box-shadow:none}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp .car{color:inherit;opacity:.7}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;box-shadow:0 8px 20px color-mix(in srgb,var(--fg) 14%,transparent);padding:4px 0;min-width:260px}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody a{color:var(--fg);background:transparent;border-radius:0;padding:7px 16px;margin:0;font-size:14px;box-shadow:none}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody a:hover{background:var(--surface-2);color:var(--fg)}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody a.on{background:var(--accent-soft);color:var(--accent);font-weight:600;box-shadow:none}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody a .ic svg{stroke:var(--fg-muted)}html[data-tema="odoo"][data-estilo="marino"] nav .gbody a.on .ic svg{stroke:var(--accent)}
+html[data-tema="odoo"][data-estilo="marino"] nav a .n{display:inline-block;margin-left:auto;min-width:18px;padding:0 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:600;line-height:18px;text-align:center}
+html[data-tema="odoo"][data-estilo="marino"] nav a .n:empty{display:none}
+html[data-tema="odoo"][data-estilo="marino"] nav a .n.n-atr{background:var(--danger-soft);color:var(--danger)}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host{flex:0 1 340px!important;min-width:180px!important;max-width:360px;margin-left:auto;justify-content:flex-end!important}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--fg)}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input::placeholder{color:var(--fg-muted);opacity:1}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focus{border-color:var(--accent);box-shadow:0 0 0 .15rem var(--o-ring);outline:0}
+@media (min-width:861px){
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .gbody{position:fixed;top:104px;margin:0;border-top:0;max-height:calc(100vh - 130px);overflow:auto;z-index:60}
+}
+@media (min-width:861px) and (max-width:1100px){
+  html[data-tema="odoo"][data-estilo="marino"] header>#version{display:none}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{padding:0 10px}
+}
+/* ---- teléfono y tableta angosta: la barra se acomoda en filas y el menú ☰ abre las pestañas en columna ---- */
+@media (max-width:860px){
+  html[data-tema="odoo"][data-estilo="marino"] header{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:6px;padding:8px 12px}
+  html[data-tema="odoo"][data-estilo="marino"] header>#navBtn{margin-right:0}
+  html[data-tema="odoo"][data-estilo="marino"] header>.sub:first-of-type,html[data-tema="odoo"][data-estilo="marino"] header>#version,html[data-tema="odoo"][data-estilo="marino"] header>#quien{display:none}
+  html[data-tema="odoo"][data-estilo="marino"] header h1#brand{padding-left:40px;line-height:30px}
+  html[data-tema="odoo"][data-estilo="marino"] header h1#brand .logo{top:0;width:30px;height:30px}
+  html[data-tema="odoo"][data-estilo="marino"] header>.spacer{flex:1}
+  html[data-tema="odoo"][data-estilo="marino"] header>.mode,html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir{margin-left:0}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2{flex-wrap:wrap;gap:6px;padding:6px 12px}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host{order:-1;flex:1 1 100%!important;max-width:none;min-width:0!important;margin:0;justify-content:stretch!important}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav{display:none;flex:1 1 100%;flex-direction:column;align-items:stretch;height:auto;overflow:visible}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav.abierto{display:flex}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{height:auto;padding:10px 4px;border-bottom:0}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp.act{box-shadow:inset 3px 0 0 var(--accent);padding-left:10px}
+}
+@media (max-width:520px){
+  html[data-tema="odoo"][data-estilo="marino"] header h1#brand{font-size:14px}
+  html[data-tema="odoo"][data-estilo="marino"] header .mode button{padding:5px 9px}
+}
+/* texto sobre el acento (botón principal, pestaña y chip elegidos, contador del filtro): --accent-fg (blanco en claro; tinta en oscuro, donde el acento es claro) */
+html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]),html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]):hover,
+html[data-tema="odoo"][data-estilo="marino"] .tab-pest button.on,html[data-tema="odoo"][data-estilo="marino"] .filt-btn .filt-n{color:var(--accent-fg)}
 </style>
 </head>
 <body>
@@ -2408,6 +2522,10 @@ html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.ok{background:var(--tb-
     <span class="sub" id="version" style="white-space:nowrap" title="Versión publicada que está cargada en este navegador. Si hay una más nueva, aparece un aviso para recargar. Los datos se revisan cada 3 minutos: si otra sesión guardó algo, aparece un aviso para actualizar."></span>
     <span class="sub" id="quien"></span>
     <span class="modo-sw" id="modo-sw" title="Modo claro u oscuro (se guarda para ti en este navegador)"><button data-m="claro" onclick="setModo('claro')" aria-label="Modo claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button data-m="oscuro" onclick="setModo('oscuro')" aria-label="Modo oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></span>
+    <div class="mode" role="group" aria-label="Modo de color">
+      <button type="button" data-mode="light" id="mode-light" onclick="setModo('claro')" aria-pressed="true">Claro</button>
+      <button type="button" data-mode="dark" id="mode-dark" onclick="setModo('oscuro')" aria-pressed="false">Oscuro</button>
+    </div>
     <button id="btn-salir" onclick="logout()">Salir</button>
   </header>
 
@@ -3155,7 +3273,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-13 18:26';
+const APP_BUILD='2026-10-14 12:50';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3720,7 +3838,10 @@ function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="
   </div></div>`}
 /* ---------- menú horizontal: un grupo abierto a la vez; clic fuera lo cierra ---------- */
 function navCerrarTodo(){document.querySelectorAll('nav .gbody.abierto').forEach(b=>b.classList.remove('abierto'));document.querySelectorAll('nav .grp.abierto').forEach(g=>g.classList.remove('abierto'))}
-function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto')}}
+function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto');colocarMenuMarino(g,b)}}
+/* 14-oct · Marino: las pestañas se desplazan de lado dentro de su fila, así el desplegable va fijo a la pantalla, debajo de su pestaña (si no, la fila lo cortaría) */
+function colocarMenuMarino(g,b){if(!b)return;if(document.documentElement.dataset.estilo!=='marino'||getComputedStyle(b).position!=='fixed'){if(b.style.top)b.style.top='';return}
+  const r=g.getBoundingClientRect(),W=document.documentElement.clientWidth||innerWidth;b.style.top=Math.round(r.bottom)+'px';b.style.left=Math.round(Math.max(8,Math.min(r.left,W-8-b.offsetWidth)))+'px'}
 /* ---------- Hoy · una sola lista de pendientes (índice; las bandejas siguen donde están) ---------- */
 function esOdcPendiente(o){const v=normFase(String(o.odc||'').trim());return !v||v.includes('pendiente')}
 function pendPospuestos(){if(!S.params.pendPospuestos||typeof S.params.pendPospuestos!=='object')S.params.pendPospuestos={};return S.params.pendPospuestos}
@@ -6185,8 +6306,13 @@ let LISTO=false; // no se dibuja nada hasta tener el perfil del usuario
    la barra arriba») | 'odoo' (24-sep-2026, «como están acostumbrados a Odoo») | 'clasico'. El Tablero se construye ENCIMA del aspecto Odoo: el <html>
    lleva data-tema="odoo" (menú en la barra, buscador de Odoo) y además data-estilo="tablero"; por eso temaVisual() sigue diciendo 'odoo' para los dos
    y todo lo que dependía del aspecto Odoo sigue igual. aspectoVisual() es la elección completa. Solo cambia el aspecto, nunca una cuenta. */
-const ASPECTOS=[['tablero','Tablero (nuevo)'],['odoo','Como Odoo'],['clasico','Clásico (el anterior)']];
-function aspectoVisual(){const t=(S&&S.params)?S.params.tema:null;return ASPECTOS.some(x=>x[0]===t)?t:'tablero'}
+/* 14-oct-2026 (usuaria: «el mismo formato que mi otra aplicación, nova»): «Marino» es el aspecto por defecto. Va ENCIMA del aspecto Odoo (data-tema="odoo" +
+   data-estilo="marino": buscador, filtros y barra de fases de Odoo siguen igual) con su propio bloque CSS (ux:marino); la cabecera va en dos filas: la barra de
+   marca y, debajo, el menú como pestañas con el buscador a la derecha (#marino-fila2, que arma aplicarTema y deshace al cambiar de aspecto). */
+const ASPECTOS=[['marino','Marino (como nova)'],['tablero','Tablero (nuevo)'],['odoo','Como Odoo'],['clasico','Clásico (el anterior)']];
+const ASPECTO_DEF='marino';
+function aspectoVisual(){const t=(S&&S.params)?S.params.tema:null;return ASPECTOS.some(x=>x[0]===t)?t:ASPECTO_DEF}
+function esMarino(){return aspectoVisual()==='marino'}
 function nombreAspecto(k){return (ASPECTOS.find(x=>x[0]===k)||[,k])[1]}
 function esTablero(){return aspectoVisual()==='tablero'}
 function temaVisual(){return aspectoVisual()==='clasico'?'clasico':'odoo'}
@@ -6208,17 +6334,22 @@ function setTemaColor(v){if(!puede('config')){alert('Tu perfil no cambia la conf
 /* 01-oct: modo claro / oscuro, preferencia de cada persona en este navegador (no es configuración de la planta) */
 let MODO_MEM=null;   /* lo elegido en esta sesión manda aunque el navegador no deje guardar (ventana privada, almacenamiento bloqueado) */
 function modoVisual(){if(MODO_MEM)return MODO_MEM;let m=null;try{m=localStorage.getItem('tempo.modo.'+claveUsr())||localStorage.getItem('tempo.modo')}catch(e){}return m==='oscuro'?'oscuro':'claro'}
-function pintarModo(){const m=modoVisual();const de=document.documentElement;if(de.dataset.modo!==m)de.dataset.modo=m;document.querySelectorAll('#modo-sw button').forEach(b=>b.classList.toggle('on',b.dataset.m===m))}
+function pintarModo(){const m=modoVisual();const de=document.documentElement;if(de.dataset.modo!==m)de.dataset.modo=m;document.querySelectorAll('#modo-sw button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.querySelectorAll('.mode button[data-mode]').forEach(b=>{const v=(b.dataset.mode==='dark')===(m==='oscuro')?'true':'false';if(b.getAttribute('aria-pressed')!==v)b.setAttribute('aria-pressed',v)})}   /* 14-oct: el control «Claro | Oscuro» del tema Marino marca el activo con aria-pressed */
 function setModo(m){m=m==='oscuro'?'oscuro':'claro';MODO_MEM=m;try{localStorage.setItem('tempo.modo',m);localStorage.setItem('tempo.modo.'+claveUsr(),m)}catch(e){}pintarModo()}
-function aplicarTema(){try{pintarModo()}catch(e){}const t=temaVisual();const de=document.documentElement;if(de.dataset.tema!==t)de.dataset.tema=t;{const c=temaColor();if(de.dataset.color!==c)de.dataset.color=c;
+function aplicarTema(){try{pintarModo()}catch(e){}const t=temaVisual();const de=document.documentElement;if(de.dataset.tema!==t)de.dataset.tema=t;{const c=esMarino()?'marino':temaColor();   /* 14-oct: Marino trae sus propios colores (sin barra clara ni aspecto sobrio) */if(de.dataset.color!==c)de.dataset.color=c;
    /* 08-oct: la barra clara y el aspecto sobrio son de la paleta (petróleo, los dos; «blanco», solo la barra) */
    if(paletaBarraClara(c)){if(de.dataset.barra!=='clara')de.dataset.barra='clara'}else if(de.hasAttribute('data-barra'))de.removeAttribute('data-barra');
    if(paletaSobria(c)){if(de.dataset.sobrio!=='1')de.dataset.sobrio='1'}else if(de.hasAttribute('data-sobrio'))de.removeAttribute('data-sobrio')}
-  if(esTablero()){if(de.dataset.estilo!=='tablero')de.dataset.estilo='tablero'}else if(de.hasAttribute('data-estilo'))de.removeAttribute('data-estilo');   /* 04-oct: el Tablero va encima del aspecto Odoo */
+  {const es=esTablero()?'tablero':esMarino()?'marino':'';if(es){if(de.dataset.estilo!==es)de.dataset.estilo=es}else if(de.hasAttribute('data-estilo'))de.removeAttribute('data-estilo')}   /* 04-oct: el Tablero va encima del aspecto Odoo; 14-oct: Marino también */
   const h=document.querySelector('header'),nav=document.getElementById('nav');if(!h||!nav)return;
+  {const bh=document.getElementById('busg-host');let f2=document.getElementById('marino-fila2');   /* 14-oct · Marino: fila 2 = el menú como pestañas + el buscador a la derecha */
+   if(esMarino()){if(!f2){f2=document.createElement('div');f2.id='marino-fila2';f2.className='marino-fila2';h.after(f2);nav.addEventListener('scroll',()=>{if(document.documentElement.dataset.estilo==='marino')navCerrarTodo()},{passive:true})}
+     if(nav.parentElement!==f2)f2.insertBefore(nav,f2.firstChild);if(bh&&bh.parentElement!==f2)f2.appendChild(bh);return}
+   if(f2){if(bh&&bh.parentElement===f2)h.insertBefore(bh,h.querySelector('.spacer'));if(nav.parentElement===f2)f2.before(nav);f2.remove()}}
   if(t==='odoo'&&nav.parentElement!==h)h.insertBefore(nav,document.getElementById('busg-host')||h.querySelector('.spacer'));   /* Odoo: los menús van en la barra de arriba */
   else if(t!=='odoo'&&nav.parentElement===h)h.after(nav)}
-function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=aspectoVisual();v=ASPECTOS.some(x=>x[0]===v)?v:'tablero';if(v===antes)return;
+function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=aspectoVisual();v=ASPECTOS.some(x=>x[0]===v)?v:ASPECTO_DEF;if(v===antes)return;
   S.params.tema=v;bitacora('Aspecto de la pantalla: '+nombreAspecto(antes)+' → '+nombreAspecto(v)+' ('+quienFirma()+')');save();render()}
 function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typeof sembrarFasesCentro==='function'&&sembrarFasesCentro())save()}catch(e){}   /* idempotente: solo siembra los centros que aún no tienen lista */
   if(!LISTO){const ap=document.getElementById('app');if(ap)ap.classList.add('cargando');return}
@@ -18774,7 +18905,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 <div><label>Nivelación: «falta un dato» si lo sin SAM llega al (%)</label><input type="number" min="0" max="100" step="1" value="${pctSinSAMDato()==null?'':esc(String(pctSinSAMDato()))}" placeholder="vacío = solo aviso" onchange="setPctSinSAMDato(this.value)" ${puede('config')||puede('programa')?'':'disabled'}><div class="mut" style="font-size:var(--fs-xs)">las prendas pendientes sin minuto por prenda (SAM) no suman al saldo de la Nivelación: siempre se dicen al lado de «llega» (Hoy, Resumen gerencial, Planificar el mes). Con un valor, un área cuyo saldo sin SAM llega a ese % sale «? falta un dato» en vez de «✓ llega» (un déficit siempre se muestra). <b>Vacío = solo el aviso</b> (decisión pendiente de la usuaria).</div></div>
 <div><label>Corregir registros de prendas: hasta (días hábiles atrás)</label><input type="number" min="0" step="1" value="${esc(String(diasCorregirRegistro()))}" onchange="setDiasCorregirRegistro(this.value)" ${puede('config')||puede('programa')?'':'disabled'}><div class="mut" style="font-size:var(--fs-xs)">hasta cuántos días hábiles atrás se puede deshacer un registro de prendas equivocado (ficha de la orden → Registros, o Programación del centro → «Registros recientes»), con motivo; el registro no se borra. <b>0 = solo hoy</b></div></div>
 <div><label>Capacidad: «justo» desde (%)</label><input type="number" min="0" max="100" step="any" value="${esc(String(prm('capAmbar',85)))}" onchange="setCapAmbar(this.value)" ${puede('config')?'':'disabled title="solo configuración cambia el umbral"'}><div class="mut" style="font-size:var(--fs-xs)">desde qué % de uso un centro sale en ámbar («justo») en Capacidad y decisiones y en la «Capacidad disponible» del Plan de cada centro. Más de 100 % siempre es rojo («no alcanza»).</div></div>
-<div><label>Aspecto de la pantalla</label><select onchange="setTema(this.value)">${ASPECTOS.map(([k,n])=>`<option value="${k}" ${aspectoVisual()===k?'selected':''}>${esc(n)}${k==='tablero'?' · por defecto':''}</option>`).join('')}</select>
+<div><label>Aspecto de la pantalla</label><select onchange="setTema(this.value)">${ASPECTOS.map(([k,n])=>`<option value="${k}" ${aspectoVisual()===k?'selected':''}>${esc(n)}${k===ASPECTO_DEF?' · por defecto':''}</option>`).join('')}</select>
    <label style="margin-top:8px">Color</label><select onchange="setTemaColor(this.value)" ${temaVisual()==='clasico'?'disabled title="el color vale para los aspectos Tablero y Odoo"':''}>${TEMA_COLORES.map(([k,n])=>`<option value="${k}" ${temaColor()===k?'selected':''}>${esc(n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)"><b>Tablero</b> (por defecto desde el 04-oct, el ejemplo que mandó la usuaria): fondo gris claro, todo en tarjetas blancas, cifras con ícono y fondo según su estado; el menú sigue en la barra de arriba. <b>Color</b>: «Gris cálido con acento petróleo» (por defecto en el Tablero desde el 08-oct) lleva la barra de arriba blanca y es <b>sobrio</b>: solo lo cumplido (verde), el riesgo (ámbar) y el atraso (rojo) tienen color; las tarjetas de cifras son blancas con el estado en el círculo del ícono y el estado de cada orden es un punto chico. Para volver al azul marino, elígelo aquí. <b>Como Odoo</b> es el aspecto del 24-sep («que se vea como Odoo, porque la gente ya está acostumbrada») y <b>Clásico</b> el anterior. Solo cambia el aspecto; las pantallas, los números y los botones son los mismos. Vale para todos los usuarios y queda en la bitácora. El modo claro u oscuro lo elige cada persona con el sol y la luna de arriba.</div></div>
 <div><label>Orden terminada desde la fase</label><input type="number" min="1" max="9" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
 <div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>

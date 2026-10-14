@@ -10,6 +10,9 @@ function adminP0(){return {id:"u-adm",rol:"admin",nombre:"Admin",modo:"editar"}}
 function __libProdPrueba(o){o.lib=Object.assign({},o.lib||{},{corte:{ok:true,u:'prueba',ts:'2026-09-01T12:00:00.000Z'}});return o}
 async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
+  /* 14-oct-2026: el aspecto por defecto pasó a «Marino (como nova)». Las pruebas de siempre se escribieron y se miden con el Tablero: se lo pone a mano aquí
+     (como lo elegiría la usuaria en Configuración) y MAR1, al final, mira Marino por defecto y que los otros tres no cambien. */
+  if(!/captura=/.test(location.search))S.params.tema='tablero';
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
   S.colores.forEach((c,i)=>{c.cod=['19-4005','11-0601','17-4402','19-3921','19-1758'][i]+' TCX'});
   const mkCat=(p,hs)=>{const P={id:uid(),n:p,padre:null,recursos:[]};S.categorias.push(P);hs.forEach(h=>S.categorias.push({id:uid(),n:h,padre:P.id,recursos:[]}))};
@@ -2219,10 +2222,10 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B0b_sistemico_contenido: DISEÑO — una fecha en pantalla es «vie, 02 oct» (el año solo si no es el año en curso) y la fecha con hora va en 24 h y sin segundos",(()=>{const y=+hoy().slice(0,4);const otro=(y+1)+'-01-22',este=y+'-03-04';const f1=fmtDia(otro),f2=fmtDia(este);const fh=fechaHoraLocal(tsDeLocal(y+'-10-02','16:54:33'));const fe=fmtFecha(este);
       return f1.endsWith(' '+(y+1))&&!/[0-9]{4}/.test(f2)&&/16:54/.test(fh)&&!/:33|p\. m\.|a\. m\./.test(fh)&&!new RegExp(String(y)).test(fh)&&/class="fecha"/.test(fe)&&fe.includes('title="'+este+'"')&&fmtFecha('')==='—'&&mesCortoTxt(y+'-06')===('jun '+y)&&mesesCortoTxt([y+'-06',y+'-07',y+'-08'])===('jun – ago '+y)})(),fmtDia((+hoy().slice(0,4)+1)+'-01-22')+' · '+fechaHoraLocal(Date.now()));
     __check("UX-V4: la fecha con hora sin día de la semana se escribe como fmtDia («02 oct, 20:08», no «02-oct»)",(()=>{const y=+hoy().slice(0,4);const s=fechaHoraLocal(new Date(y,9,2,20,8).toISOString(),false);return /^02 oct/.test(s)&&!/[0-9]-[a-z]/i.test(s)})(),fechaHoraLocal(Date.now(),false))}
-   {const malos=[];const bakTe=S.params.tema;if(window.innerWidth>=1000)[undefined,'odoo'].forEach(te=>{if(te===undefined)delete S.params.tema;else S.params.tema=te;['capacidad','tintoreria','entregas','gerencia'].forEach(p=>{page=p;try{render()}catch(e){return}const el=document.getElementById('p-'+p);if(!el)return;
+   {const malos=[];const bakTe=S.params.tema;if(window.innerWidth>=1000)['tablero','odoo','marino'].forEach(te=>{S.params.tema=te;['capacidad','tintoreria','entregas','gerencia'].forEach(p=>{page=p;try{render()}catch(e){return}const el=document.getElementById('p-'+p);if(!el)return;
       el.querySelectorAll('.kpis:not(.tarj-row)').forEach(g=>{const ks=[...g.children].filter(x=>x.classList.contains('kpi')&&x.offsetParent!==null);if(ks.length<2)return;const r=ks.map(x=>x.getBoundingClientRect());if(!r.every(z=>Math.abs(z.top-r[0].top)<=1))return;
         if(!r.every(z=>Math.abs(z.height-r[0].height)<=1))malos.push((te||'tablero')+' · '+p+': '+r.map(z=>Math.round(z.height)).join('/'))})})});if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;   /* 05-oct: también en «Como Odoo» */
-    __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja), en el Tablero y en «Como Odoo»",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
+    __check("UX-B0b_sistemico_contenido: DISEÑO — en una franja de cifras todas las tarjetas miden lo mismo (una de aviso no queda más alta ni más baja), en el Tablero, en «Como Odoo» y en Marino (14-oct)",!malos.length,window.innerWidth<1000?'(ventana angosta: no se mide)':malos.join(' | '))}
    window.alert=a0;PLAN=null;PLAN_ALL=null;page='ordenes';render();
    __check("VC sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)));PERFIL=adminP;}
   /* ZH · HORA DE ECUADOR (04-oct-2026, decisión de la usuaria): hoy() y el día de cada marca de tiempo salen de la zona de Configuración
@@ -8226,9 +8229,9 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      ords.forEach(o=>{S.ordenes=S.ordenes.filter(x=>x!==o);delete S.avance[o.id]});window.confirm=cf;window.alert=al;PERFIL=adminP;PLAN=null;PLAN_ALL=null}
     else __check('MT0: hay recurso Maquila marcado como afuera en la tabla de Tramos paralelos',false)}
    /* OD · aspecto Odoo (usuaria, 24-sep: «como están acostumbrados a Odoo»): por defecto, con los menús en la barra de arriba; el clásico se elige en Configuración */
-   {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;delete S.params.tema;page='ordenes';render();
+   {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;S.params.tema='tablero';page='ordenes';render();
     const nav=document.getElementById('nav'),hdr=document.querySelector('header');
-    __check('OD1: por defecto: Tablero encima de Odoo (data-tema=odoo + data-estilo=tablero) y los menús van dentro de la barra de arriba',document.documentElement.dataset.tema==='odoo'&&document.documentElement.dataset.estilo==='tablero'&&aspectoVisual()==='tablero'&&nav.parentElement===hdr&&temaVisual()==='odoo');
+    __check('OD1: con «Tablero» elegido (por defecto hasta el 13-oct; desde el 14-oct lo es Marino, MAR1): Tablero encima de Odoo (data-tema=odoo + data-estilo=tablero) y los menús van dentro de la barra de arriba',document.documentElement.dataset.tema==='odoo'&&document.documentElement.dataset.estilo==='tablero'&&aspectoVisual()==='tablero'&&nav.parentElement===hdr&&temaVisual()==='odoo');
     const cf=window.confirm;window.confirm=()=>true;const nB=S.bitacora.length;setTema('clasico');
     __check('OD2: en Configuración se vuelve al aspecto clásico (queda en la bitácora) y los menús regresan a su barra',document.documentElement.dataset.tema==='clasico'&&nav.parentElement!==hdr&&S.bitacora.length>nB&&/Aspecto de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''));
     setTema('odoo');window.confirm=cf;
@@ -8242,13 +8245,13 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const cfgH=(()=>{page='config';CONF.tab='cal';render();return (document.getElementById('p-config')||{}).innerHTML||''})();
     __check('OD6: el aspecto se elige en Configuración → Calendario y parámetros',/Aspecto de la pantalla/.test(cfgH)&&/setTema\(/.test(cfgH));
     /* colores (24-sep: «tampoco quiero ese morado»): por defecto verde azulado, se elige en Configuración y queda en bitácora */
-    {const bc=S.params.temaColor;delete S.params.temaColor;render();const def=document.documentElement.dataset.color;const defT=(()=>{const t0=S.params.tema;delete S.params.tema;render();const v=document.documentElement.dataset.color;S.params.tema=t0;render();return v})();const nB2=S.bitacora.length;setTemaColor('azul');
+    {const bc=S.params.temaColor;delete S.params.temaColor;render();const def=document.documentElement.dataset.color;const defT=(()=>{const t0=S.params.tema;S.params.tema='tablero';render();const v=document.documentElement.dataset.color;S.params.tema=t0;render();return v})();const nB2=S.bitacora.length;setTemaColor('azul');
      __check('OD7: el color por defecto es el azul marino que eligió la usuaria (no el morado) en «Como Odoo» y el gris cálido con acento petróleo en el Tablero (08-oct); se cambia en Configuración, con bitácora',def==='marino'&&defT==='petroleo'&&document.documentElement.dataset.color==='azul'&&S.bitacora.length>nB2&&/Color de la pantalla/.test(S.bitacora[S.bitacora.length-1].t||''),JSON.stringify({def,defT,ahora:document.documentElement.dataset.color}));
      __check('OD8: el color cambia de verdad la barra de arriba',getComputedStyle(document.querySelector('header')).backgroundColor==='rgb(21, 101, 192)',getComputedStyle(document.querySelector('header')).backgroundColor);
      if(bc===undefined)delete S.params.temaColor;else S.params.temaColor=bc}
     if(bak===undefined)delete S.params.tema;else S.params.tema=bak;page='ordenes';render();PERFIL=adminP}
    /* OB · buscador como Odoo (usuaria, 24-sep: «así son las búsquedas, ¿podemos copiarlos?»): campo con etiquetas + Filtros · Agrupar por · Favoritos */
-   {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;delete S.params.tema;const cf=window.confirm;window.confirm=()=>true;const pg=p=>document.getElementById('p-'+p);
+   {const adminP=PERFIL;PERFIL=adminP0();const bak=S.params.tema;S.params.tema='tablero';const cf=window.confirm;window.confirm=()=>true;const pg=p=>document.getElementById('p-'+p);
     grpSt('ord').niveles=[];ORDF.q='';ORDF.fases=null;ORDF.tab='ord';page='ordenes';render();let el=pg('ordenes');let pn=el.querySelector('.o-search');
     __check('OB1: Órdenes tiene el buscador de Odoo arriba (en la franja del título), con el campo y los botones Filtros, Agrupar por y Favoritos',!!pn&&!!pn.closest('.pagehead')&&!!pn.querySelector('.o-sbox .busq input')&&['Filtros','Agrupar por','Favoritos'].every(x=>[...pn.querySelectorAll('.o-dd>summary')].some(s=>s.textContent.includes(x))),pn?[...pn.querySelectorAll('.o-dd>summary')].map(s=>s.textContent).join('|'):'sin panel');
     __check('OB2: no queda el botón «Filtrar» ni controles ocultos que el usuario no pueda abrir',!el.querySelector('.filt-btn')&&[...el.querySelectorAll('[data-filt-oculto]')].every(x=>x.getAttribute('data-filt-tipo')==='grp'));
@@ -11048,7 +11051,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check('IMO-I4: Tipos de producto ya no habla del promedio de las referencias (lo de antes)',(ING_V.ops='tiempos',page='ingops',render(),!/promedio de sus referencias/.test($i('p-ingops').innerHTML)&&!document.querySelector('#p-ingops .ing-prom-t')));
       __check('IMO-I4: la GUARDIA: las funciones nuevas del balanceo no son de borrar (quitar una estación vacía no confirma porque no se pierde nada; vaciar sí)',typeof iblSacarEstacion==='function'&&typeof iblSinVacios==='function'&&/confirm\(/.test(String(iblVaciarEstaciones)))}
      /* IMO-I5 · aspecto: Tablero, Odoo y Clásico; las seis cifras del mismo alto; sin desborde dentro de la pantalla */
-     {await iomLeer(true);const bakTe=S.params.tema;const res=[];for(const te of [undefined,'odoo','clasico']){if(te===undefined)delete S.params.tema;else S.params.tema=te;page='ingops';ING_V.ops='balanceo';render();const ks=[...document.querySelectorAll('#ibl-root .ibl-kpis .kpi')];const r=ks.map(x=>x.getBoundingClientRect());const filas={};r.forEach(z=>{const k=Math.round(z.top);(filas[k]=filas[k]||[]).push(Math.round(z.height))});
+     {await iomLeer(true);const bakTe=S.params.tema;const res=[];for(const te of ['tablero','odoo','clasico']){S.params.tema=te;page='ingops';ING_V.ops='balanceo';render();const ks=[...document.querySelectorAll('#ibl-root .ibl-kpis .kpi')];const r=ks.map(x=>x.getBoundingClientRect());const filas={};r.forEach(z=>{const k=Math.round(z.top);(filas[k]=filas[k]||[]).push(Math.round(z.height))});
         res.push({te:te||'tablero',n:ks.length,parejas:Object.values(filas).every(h=>h.every(x=>Math.abs(x-h[0])<=1)),bars:document.querySelectorAll('#ibl-root .ibl-bar').length,puestos:document.querySelectorAll('#ibl-root .ibl-est').length})}
       if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render();
       __check('IMO-I5: el Balanceo de línea se dibuja igual en el Tablero, «Como Odoo» y el clásico: seis cifras del mismo alto por fila, una barra por estación',res.every(x=>x.n===6&&x.parejas&&x.bars>0&&x.bars===x.puestos),JSON.stringify(res))}
@@ -12055,11 +12058,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   /* 01-oct (usuaria: sol y luna «para los dos modos»): modo claro / oscuro, preferencia de cada persona */
   {const antes=__R.errors.length;page='ordenes';render();const sw=document.getElementById('modo-sw');
    __check("MO1: la cabecera tiene el interruptor sol / luna con dos botones",!!sw&&sw.querySelectorAll('button').length===2);
-   for(const te of [undefined,'odoo']){const bakTe=S.params.tema;if(te===undefined)delete S.params.tema;else S.params.tema=te;render();   /* 05-oct: la barra se mide en el Tablero y en «Como Odoo» */
+   for(const te of ['tablero','odoo']){const bakTe=S.params.tema;S.params.tema=te;render();   /* 05-oct: la barra se mide en el Tablero y en «Como Odoo» */
    {pintarQuien();const q=document.getElementById('quien'),ini=q&&q.querySelector('.q-ini'),ver=document.getElementById('version'),sal=document.getElementById('btn-salir'),st=document.getElementById('saved');const odoo=document.documentElement.dataset.tema==='odoo';
-    __check("UX-B0a_sistemico_disposicion: la barra de arriba no escribe la versión (va al pasar el mouse sobre quien entró y sobre «Salir»); en el aspecto Odoo quien entró es un círculo con sus iniciales; «Guardado» sin la hora pegada (la hora va al pasar el mouse) · "+(te?'Como Odoo':'Tablero'),!!ini&&/^\S{1,2}$/.test(ini.textContent)&&q.title.includes(APP_BUILD)&&!!sal&&sal.title.includes(APP_BUILD)&&sal.getAttribute('onclick')==='logout()'&&!!ver&&getComputedStyle(ver).display==='none'&&(!odoo||getComputedStyle(ini).display!=='none')&&!!st&&!/^Guardado [0-9]/.test(st.textContent)&&(st.textContent!=='✓ Guardado'||/^Guardado a las [0-9]{1,2}:[0-9]{2}/.test(st.title)),q?q.outerHTML.slice(0,160)+' · '+(st&&st.textContent):'sin #quien')
+    __check("UX-B0a_sistemico_disposicion: la barra de arriba no escribe la versión (va al pasar el mouse sobre quien entró y sobre «Salir»); en el aspecto Odoo quien entró es un círculo con sus iniciales; «Guardado» sin la hora pegada (la hora va al pasar el mouse) · "+(te==='odoo'?'Como Odoo':'Tablero'),!!ini&&/^\S{1,2}$/.test(ini.textContent)&&q.title.includes(APP_BUILD)&&!!sal&&sal.title.includes(APP_BUILD)&&sal.getAttribute('onclick')==='logout()'&&!!ver&&getComputedStyle(ver).display==='none'&&(!odoo||getComputedStyle(ini).display!=='none')&&!!st&&!/^Guardado [0-9]/.test(st.textContent)&&(st.textContent!=='✓ Guardado'||/^Guardado a las [0-9]{1,2}:[0-9]{2}/.test(st.title)),q?q.outerHTML.slice(0,160)+' · '+(st&&st.textContent):'sin #quien')
     const nv=document.querySelector('header nav'),bh=document.getElementById('busg-host');
-    __check("UX-B0a_sistemico_disposicion: en el aspecto Odoo el menú de arriba no se encoge (el buscador es lo único que cede, con un mínimo) y la página nunca es más ancha que la pantalla (medido desde 1.280 px) · "+(te?'Como Odoo':'Tablero'),(!odoo||(!!nv&&getComputedStyle(nv).flexShrink==='0'&&!!bh&&parseFloat(getComputedStyle(bh).minWidth)>=120))&&(innerWidth<1280||document.documentElement.scrollWidth<=innerWidth+1),innerWidth+' px · scrollWidth '+document.documentElement.scrollWidth)}
+    __check("UX-B0a_sistemico_disposicion: en el aspecto Odoo el menú de arriba no se encoge (el buscador es lo único que cede, con un mínimo) y la página nunca es más ancha que la pantalla (medido desde 1.280 px) · "+(te==='odoo'?'Como Odoo':'Tablero'),(!odoo||(!!nv&&getComputedStyle(nv).flexShrink==='0'&&!!bh&&parseFloat(getComputedStyle(bh).minWidth)>=120))&&(innerWidth<1280||document.documentElement.scrollWidth<=innerWidth+1),innerWidth+' px · scrollWidth '+document.documentElement.scrollWidth)}
    if(bakTe===undefined)delete S.params.tema;else S.params.tema=bakTe;render()}
    setModo('oscuro');const bgO=getComputedStyle(document.body).backgroundColor;const okO=document.documentElement.dataset.modo==='oscuro'&&sw.querySelector('button.on').dataset.m==='oscuro';
    let guardado=null;try{guardado=localStorage.getItem('tempo.modo.'+claveUsr())}catch(e){}
@@ -12541,7 +12544,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      setModo('claro');S.params.tema=bakTema[0];S.params.temaColor=bakTema[1];if(bakTema[0]===undefined)delete S.params.tema;if(bakTema[1]===undefined)delete S.params.temaColor;render();
      __check("VER08-PAL6: «Como Odoo» con barra clara (petróleo y blanco): en oscuro la barra es oscura y su menú abierto se lee (contraste ≥ 4,5); en claro sigue blanca",res.every(r=>r.oscuro<0.1&&r.cO>=4.5&&r.claro==='rgb(255, 255, 255)'),JSON.stringify(res));
      /* el arreglo de «Como Odoo» en oscuro no le gana al Tablero: la entrada elegida del menú sigue con el fondo de la paleta (:where no suma especificidad) */
-     {const bkT=[S.params.tema,S.params.temaColor];delete S.params.tema;S.params.temaColor='petroleo';setModo('claro');render();const ga=document.querySelector('header nav .grp.act')||document.querySelector('header nav .grp');const bgA=ga?getComputedStyle(ga).backgroundColor:'';const esp=getComputedStyle(document.documentElement).getPropertyValue('--tb-bar-act-bg').trim();
+     {const bkT=[S.params.tema,S.params.temaColor];S.params.tema='tablero';S.params.temaColor='petroleo';setModo('claro');render();const ga=document.querySelector('header nav .grp.act')||document.querySelector('header nav .grp');const bgA=ga?getComputedStyle(ga).backgroundColor:'';const esp=getComputedStyle(document.documentElement).getPropertyValue('--tb-bar-act-bg').trim();
       if(bkT[0]===undefined)delete S.params.tema;else S.params.tema=bkT[0];if(bkT[1]===undefined)delete S.params.temaColor;else S.params.temaColor=bkT[1];render();
       __check("VER08-PAL6b: en el Tablero petróleo (claro) la entrada elegida del menú lleva el fondo de la paleta, no el gris de «Como Odoo» (233,236,239)",!!ga&&bgA!=='rgb(233, 236, 239)'&&(esp!=='transparent'||bgA==='rgba(0, 0, 0, 0)'),JSON.stringify({bgA,esp}))}}
    }catch(e){__R.errors.push({page:'driver VER08-D',msg:e.message,stack:(e.stack||'').slice(0,300)})}
@@ -12835,7 +12838,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       Las pruebas DIBUJAN las pantallas y miden con getComputedStyle. */
    {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema,bakC=S.params.temaColor;const bakM=modoVisual();const cf0=window.confirm;window.confirm=()=>true;
     const de=document.documentElement;const pg=p=>document.getElementById('p-'+p);const cs=(e,p)=>e?getComputedStyle(e)[p]:'';
-    const ponTema=v=>{if(v===undefined)delete S.params.tema;else S.params.tema=v;render()};
+    const ponTema=v=>{S.params.tema=v===undefined?'tablero':v;render()};   /* 14-oct: «sin elegir» era el Tablero; desde hoy el de por defecto es Marino (MAR1), aquí se pone el Tablero a mano */
     const sonda=v=>{const d=document.createElement('div');d.style.background=v;document.body.appendChild(d);const c=getComputedStyle(d).backgroundColor;d.remove();return c};
     /* las pantallas principales (las de la imagen de la usuaria y las que ella usa a diario) */
     const PAGS=[['Hoy',()=>{page='panorama'}],['Resumen gerencial',()=>{page='gerencia'}],['Planta en vivo',()=>{page='envivo'}],['Órdenes',()=>{page='ordenes';ORDF.tab='ord'}],
@@ -12845,7 +12848,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     try{
      ponTema(undefined);setModo('claro');page='panorama';render();
      const hdr=document.querySelector('header'),nav=document.getElementById('nav');
-     __check("ASP1: por defecto el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris cálido (paleta petróleo, 08-oct) y la letra es Inter",
+     __check("ASP1: con «Tablero» elegido (el de por defecto hasta el 13-oct) el aspecto es «Tablero», encima del aspecto Odoo (data-tema=odoo + data-estilo=tablero): el menú sigue en la barra de arriba (sin barra lateral), el fondo es gris cálido (paleta petróleo, 08-oct) y la letra es Inter",
        aspectoVisual()==='tablero'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='tablero'&&nav.parentElement===hdr&&cs(document.body,'backgroundColor')==='rgb(246, 245, 242)'&&/^Inter/.test(cs(document.body,'fontFamily'))&&!document.querySelector('aside,.sidebar'),
        cs(document.body,'backgroundColor')+' · '+cs(document.body,'fontFamily').slice(0,30));
      /* tarjetas: ícono en un círculo, el «›» en las que se tocan. Con la paleta sobria (petróleo, la de por defecto desde el 08-oct) la tarjeta es blanca y el
@@ -12870,7 +12873,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      /* el selector en Configuración y la bitácora */
      {const cfgH=(()=>{const ct=CONF.tab;CONF.tab='cal';page='config';render();const h=(pg('config')||{}).innerHTML||'';CONF.tab=ct;return h})();
       const sel=[...(pg('config')||document).querySelectorAll('select')].find(s=>/setTema\(/.test(s.getAttribute('onchange')||''));
-      __check("ASP5: Configuración general → Calendario y reglas ofrece «Tablero (nuevo)» (por defecto, elegido), «Como Odoo» y «Clásico»",!!sel&&[...sel.options].map(o=>o.value).join(',')==='tablero,odoo,clasico'&&sel.value==='tablero'&&/Tablero \(nuevo\) · por defecto/.test(cfgH),sel?[...sel.options].map(o=>o.value+(o.selected?'*':'')).join(','):'sin selector')}
+      __check("ASP5: Configuración general → Calendario y reglas ofrece «Marino (como nova)» (por defecto desde el 14-oct), «Tablero (nuevo)» (elegido), «Como Odoo» y «Clásico»",!!sel&&[...sel.options].map(o=>o.value).join(',')==='marino,tablero,odoo,clasico'&&sel.value==='tablero'&&/Marino \(como nova\) · por defecto/.test(cfgH)&&!/Tablero \(nuevo\) · por defecto/.test(cfgH),sel?[...sel.options].map(o=>o.value+(o.selected?'*':'')).join(','):'sin selector')}
      /* Odoo y Clásico: como antes (mismo HTML que antes de pasar por el Tablero, sin ícono ni «›» ni data-estilo, y los estilos de siempre) */
      const nB=S.bitacora.length;setTema('odoo');
      const okBit=S.bitacora.length>nB&&/^Aspecto de la pantalla: Tablero \(nuevo\) → Como Odoo/.test(S.bitacora[S.bitacora.length-1].t||'');
@@ -12962,7 +12965,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        __check("PUL4: rojo solo para lo grave — «fecha pasada» de un baño, «sin liberar», «por debajo del plan» y «Revisar ruta» en ámbar; «En proceso» en azul; «sin tela» y «sin capacidad» como dato que falta",!mal.length,mal.join(', '))}
       /* 5 · la pantalla de ingreso ya sale con el aspecto que manda (antes de entrar salía con el clásico y botón ilegible en oscuro) */
       {const pag=await (await fetch(location.href.split('?')[0])).text();const src=[...document.querySelectorAll('script')].map(s=>s.textContent).filter(x=>x.includes('function aplicarTema(')&&!x.includes('__check(')).join('\n');
-       __check("PUL5: la pantalla de ingreso sale con el Tablero: el <html> trae data-tema/estilo/color por defecto e iniciar() aplica el aspecto antes de mostrar el ingreso",/<html lang="es" data-tema="odoo" data-estilo="tablero" data-color="petroleo" data-barra="clara" data-sobrio="1">/.test(pag)&&/async function iniciar\(\)\{try\{aplicarTema\(\)\}/.test(src)&&de.dataset.estilo==='tablero')}
+       __check("PUL5: la pantalla de ingreso sale con el aspecto por defecto (Marino desde el 14-oct; antes el Tablero): el <html> trae data-tema/estilo/color por defecto e iniciar() aplica el aspecto antes de mostrar el ingreso (y con el Tablero elegido, el Tablero)",/<html lang="es" data-tema="odoo" data-estilo="marino" data-color="marino">/.test(pag)&&/async function iniciar\(\)\{try\{aplicarTema\(\)\}/.test(src)&&de.dataset.estilo==='tablero')}
       /* 6 · Planificar el mes, bloque 3: la meta del mes y sus vecinas miden lo mismo (extiende la prueba DISEÑO a .b3-franja) */
       {const el=dibuja(()=>{page='plan';PM.paso=2});const f=el&&el.querySelector('.b3-franja');const hs=f?[...f.querySelectorAll('.kpi')].filter(k=>k.offsetParent).map(k=>Math.round(k.getBoundingClientRect().height)):[];
        __check("PUL6: Planificar el mes · bloque 3 — «Meta del mes» y sus vecinas (Liberadas, Por liberar, Total del plan) tienen el mismo alto",!f||(hs.length>=2&&Math.max(...hs)-Math.min(...hs)<=2),hs.join('/'))}
@@ -13012,7 +13015,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
            const ay=h2&&h2.querySelector(':scope>.ayuda-cab');const ctx=h2&&h2.querySelector(':scope>.ctx');const ra=ay&&ay.querySelector('.ayuda')?ay.querySelector('.ayuda').getBoundingClientRect():null,rc=ctx?ctx.getBoundingClientRect():null;
            res[nm]={dentro:!!ay,antes:!!(ay&&ctx&&(ay.compareDocumentPosition(ctx)&Node.DOCUMENT_POSITION_FOLLOWING)),arriba:!!(ra&&rc&&ra.bottom<=rc.top+2)}}
          S.params.tema='odoo';const elO=dibuja(()=>{page='panorama'});const h2O=elO&&elO.querySelector('.pagehead h2');const odooAlLado=!!h2O&&!h2O.querySelector('.ayuda-cab')&&!!(h2O.nextElementSibling&&h2O.nextElementSibling.classList.contains('ayuda-cab'));
-         delete S.params.tema;render();
+         S.params.tema='tablero';render();
          __check("CIE3: en el Tablero el «?» de la cabecera va junto al título (dentro del h2, antes de la línea de contexto, en la línea del título) en Hoy y Planificar el mes; en «Como Odoo» sigue al lado del h2, como antes",Object.values(res).every(r=>r.dentro&&r.antes&&r.arriba)&&odooAlLado,JSON.stringify(res)+' · odoo al lado: '+odooAlLado)}
         /* 4 · Hoy: el panel de la sección «Necesita decisión» se llama igual con tarjetas y sin ellas */
         /* (se DIBUJA: con los datos del simulador el panel siempre trae tarjetas, así que el vacío se arma llamando a hoyDecisionHTML con un programa sin baños,
@@ -13041,7 +13044,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
         y que con otra paleta, con «Como Odoo» y con «Clásico» Hoy se vea igual que sin el CSS nuevo (la vuelta atrás). AF: tamaño de las fotos. */
      {const de2=document.documentElement;const cs2=(e,p)=>e?getComputedStyle(e)[p]:'';const pg2=p=>document.getElementById('p-'+p);const onP=()=>document.querySelector('.page.on');
       const col=v=>{const d=document.createElement('div');d.style.color=v;document.body.appendChild(d);const c=getComputedStyle(d).color;d.remove();return c};
-      const reset=()=>{delete S.params.tema;delete S.params.temaColor;setModo('claro');render()};
+      const reset=()=>{S.params.tema='tablero';delete S.params.temaColor;setModo('claro');render()};
       const bakT2=S.params.tema,bakC2=S.params.temaColor,bakF2=S.params.fotoMiniPx;const bakORDF={tab:ORDF.tab},bakLIB2={et:LIB.et,vista:LIB.vista},bakCEN2={id:CEN.id,solo:CEN.solo,rec:CEN.rec},bakTIN={tab:TIN.tab},bakPM={paso:PM.paso},bakCONF={tab:CONF.tab};
       const al2=window.alert;
       try{
@@ -13403,6 +13406,122 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    finally{window.alert=a0;window.confirm=c0;PERFIL=bakP;TAB=JSON.parse(bakTAB);Object.assign(CTL,JSON.parse(bakCTL));Object.assign(AVA,JSON.parse(bakAVA));try{cerrar()}catch(e){}
     CEN.sem=0;CEN.rec='';CEN.dia=null;CEN.tab='';CEN.vista='';CEN.sec='';CEN.q='';delete BUSQ['CEN.q'];CEN.todo=false;CEN.id='corte';CEN.solo='';CEN.pest='plan';CEN.unidad='min';PLAN=null;PLAN_ALL=null;page='ordenes';render()}
    __check("CEN2 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+
+  /* MAR1 · Tema «Marino» (como nova) · etapa 1 (14-oct-2026): aspecto por defecto encima de «Como Odoo», las variables exactas de la especificación en claro y
+     en oscuro, la cabecera en dos filas (barra de marca + pestañas con el buscador a la derecha), el control «Claro | Oscuro» y el script del <head> que pone
+     el modo antes del CSS. El resto del simulador corre con «Tablero» puesto a mano (como antes de hoy); aquí se mira Marino y que los otros tres no cambien. */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema,bakC=S.params.temaColor;const bakM=modoVisual();const cf0=window.confirm,al0=window.alert;window.confirm=()=>true;window.alert=()=>{};
+   const bakPg=page,bakORDF=ORDF.tab;const de=document.documentElement;const cs=(e,p)=>e?getComputedStyle(e)[p]:'';
+   const col=v=>{const d=document.createElement('div');d.style.color=v;document.body.appendChild(d);const c=getComputedStyle(d).color;d.remove();return c};
+   const rgba=s=>{s=String(s||'');let m=s.match(/^rgba?\(([^)]+)\)/);if(m){const p=m[1].split(/[ ,/]+/).filter(Boolean).map(Number);return [p[0],p[1],p[2],p.length>3?p[3]:1]}
+     m=s.match(/^color\(srgb ([^)]+)\)/);if(m){const p=m[1].split(/[ /]+/).filter(Boolean).map(Number);return [p[0]*255,p[1]*255,p[2]*255,p.length>3?p[3]:1]}return null};
+   const sobre=(c,f)=>{const a=c[3];return [c[0]*a+f[0]*(1-a),c[1]*a+f[1]*(1-a),c[2]*a+f[2]*(1-a),1]};
+   const lum=c=>{const t=c.slice(0,3).map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)});return 0.2126*t[0]+0.7152*t[1]+0.0722*t[2]};
+   const contraste=(a,b)=>{const l1=lum(a),l2=lum(b);return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05)};
+   /* fondo efectivo de un elemento: sube por los padres juntando las capas semitransparentes */
+   const fondoDe=e=>{const capas=[];let x=e;while(x&&x.nodeType===1){const c=rgba(cs(x,'backgroundColor'));if(c&&c[3]>0){capas.push(c);if(c[3]>=1)break}x=x.parentElement}let f=[255,255,255,1];for(let i=capas.length-1;i>=0;i--)f=capas[i][3]>=1?capas[i]:sobre(capas[i],f);return f};
+   const ratioDe=e=>{const f=fondoDe(e);let t=rgba(cs(e,'color'));if(!t)return 0;const op=parseFloat(cs(e,'opacity'));if(op<1)t=[t[0],t[1],t[2],t[3]*op];return contraste(sobre(t,f),f)};
+   const ponTema=v=>{if(v===undefined)delete S.params.tema;else S.params.tema=v;render()};
+   try{
+    /* 1 · por defecto */
+    delete S.params.tema;delete S.params.temaColor;setModo('claro');page='ordenes';ORDF.tab='ord';render();
+    const hdr=document.querySelector('header'),nav=document.getElementById('nav'),f2=document.getElementById('marino-fila2'),bh=document.getElementById('busg-host');
+    __check("MAR1: por defecto el aspecto es «Marino (como nova)», encima de «Como Odoo» (data-tema=odoo + data-estilo=marino + data-color=marino, sin barra clara ni aspecto sobrio); la cabecera va en dos filas: el menú y el buscador pasan a la fila 2 (#marino-fila2, justo debajo de la barra de marca); letra Segoe UI; los cuatro aspectos se eligen en Configuración",
+      aspectoVisual()==='marino'&&temaVisual()==='odoo'&&de.dataset.tema==='odoo'&&de.dataset.estilo==='marino'&&de.dataset.color==='marino'&&!de.hasAttribute('data-barra')&&!de.hasAttribute('data-sobrio')&&!!f2&&nav.parentElement===f2&&!!bh&&bh.parentElement===f2&&hdr.nextElementSibling===f2&&!hdr.contains(nav)
+      &&/^"?Segoe UI/.test(cs(document.body,'fontFamily'))&&ASPECTOS.map(a=>a[0]).join(',')==='marino,tablero,odoo,clasico',JSON.stringify({est:de.dataset.estilo,color:de.dataset.color,f:cs(document.body,'fontFamily').slice(0,30)}));
+    {S.params.temaColor='petroleo';render();const a=[de.dataset.color,de.hasAttribute('data-barra'),de.hasAttribute('data-sobrio')].join('/');delete S.params.temaColor;render();
+     __check("MAR1: con una paleta guardada en Configuración (petróleo) Marino conserva sus colores: data-color=marino, sin barra clara ni sobrio",a==='marino/false/false',a)}
+    {const pg0=(()=>{const ct=CONF.tab;CONF.tab='cal';page='config';render();const h=(document.getElementById('p-config')||{}).innerHTML||'';CONF.tab=ct;return h})();
+     const sel=[...document.querySelectorAll('#p-config select')].find(s=>/setTema\(/.test(s.getAttribute('onchange')||''));page='ordenes';render();
+     __check("MAR1: Configuración general → Calendario y reglas ofrece «Marino (como nova)» (por defecto, elegido), «Tablero (nuevo)», «Como Odoo» y «Clásico»",!!sel&&[...sel.options].map(o=>o.value).join(',')==='marino,tablero,odoo,clasico'&&sel.value==='marino'&&/Marino \(como nova\) · por defecto/.test(pg0),sel?[...sel.options].map(o=>o.value+(o.selected?'*':'')).join(','):'sin selector')}
+    /* 2 · las variables EXACTAS de la especificación, leídas con getComputedStyle, en claro y en oscuro; y los tokens de siempre salen de ellas */
+    const VARS=['--brand','--brand-fg','--bg','--surface','--surface-2','--border','--fg','--fg-muted','--accent','--accent-fg','--accent-soft','--ok','--ok-soft','--ok-fg','--warn','--warn-soft','--warn-fg','--danger','--danger-soft','--neutral-strong'];
+    const ESP={claro:['#1b2a4a','#ffffff','#f3f4f6','#ffffff','#eceef2','#d9dce3','#1a1f2b','#5d6473','#1f5fbf','#ffffff','#dfe9fb','#2e7d32','#e3f2e5','#1b5e20','#e0a526','#fdf1d2','#7a5200','#c62828','#fde3e1','#1f2a3d'],
+      oscuro:['#141f38','#e8edf7','#111419','#181c24','#20252f','#2d3340','#e6e9f0','#9aa2b2','#7aa6f2','#0b1226','#1d2f55','#4fcf86','#163a26','#8fe6b4','#f0b43c','#3a2d10','#f6d27c','#f07070','#3d1b1b','#c9d1dc']};
+    const malV=[];const tok={};
+    for(const m of ['claro','oscuro']){setModo(m);render();const st=getComputedStyle(de);VARS.forEach((v,i)=>{const x=st.getPropertyValue(v).trim().toLowerCase();if(x!==ESP[m][i])malV.push(m+' '+v+'='+x)});
+     tok[m]={body:cs(document.body,'backgroundColor'),paper:col('var(--paper)'),ink:col('var(--ink)'),rule:col('var(--rule)'),prim:col('var(--o-primary)'),barra:cs(document.querySelector('header'),'backgroundColor'),aviso:col('var(--aviso)'),alerta:col('var(--alerta)')};
+     ['paper:--surface','ink:--fg','rule:--border','prim:--accent','barra:--brand','aviso:--warn-fg','alerta:--danger'].forEach(p=>{const [k,v]=p.split(':');if(tok[m][k]!==col('var('+v+')'))malV.push(m+' '+k+' '+tok[m][k]+' ≠ '+v)});
+     if(tok[m].body!==col('var(--bg)'))malV.push(m+' fondo '+tok[m].body)}
+    setModo('claro');render();
+    __check("MAR1: las variables del tema son EXACTAMENTE las de la especificación en claro y en oscuro (20 cada una, getComputedStyle sobre <html>), y los tokens de siempre salen de ellas: fondo = --bg, papel = --surface, texto = --fg, línea = --border, botón = --accent, barra = --brand, ámbar de texto = --warn-fg, rojo = --danger",!malV.length&&tok.claro.body==='rgb(243, 244, 246)'&&tok.oscuro.body==='rgb(17, 20, 25)',malV.slice(0,6).join(' | ')+' · '+JSON.stringify(tok.claro));
+    /* 3 · la cabecera en dos filas */
+    {page='ordenes';render();const h=document.querySelector('header'),f=document.getElementById('marino-fila2'),rh=h.getBoundingClientRect(),rf=f.getBoundingClientRect();const act=document.querySelector('#marino-fila2 #nav .grp.act');
+     const h1=document.getElementById('brand'),sub=h.querySelector(':scope>.sub'),q=document.getElementById('quien'),sal=document.getElementById('btn-salir'),md=h.querySelector('.mode'),rb=document.getElementById('busg-host').getBoundingClientRect(),rn=document.getElementById('nav').getBoundingClientRect();
+     const d={h:cs(h,'backgroundColor'),f:cs(f,'backgroundColor'),fb:cs(f,'borderBottomWidth')+' '+cs(f,'borderBottomColor'),act:act?[cs(act,'color'),cs(act,'borderBottomColor'),cs(act,'borderBottomWidth'),cs(act,'fontWeight')].join(' / '):'-',
+       h1:cs(h1,'fontWeight')+' '+cs(h1,'color'),sub:sub?[sub.textContent,cs(sub,'textTransform'),cs(sub,'letterSpacing'),cs(sub,'display')].join(' / '):'-',q:cs(q,'backgroundColor')+' '+cs(q,'borderTopLeftRadius'),sal:cs(sal,'borderTopColor'),pad:cs(h,'paddingTop')+' '+cs(h,'paddingLeft')};
+     __check("MAR1: fila 1 = barra de marca (fondo --brand, texto --brand-fg, padding 10px 22px): «Planificación y control» en negrita y debajo TEMPOCODECA en mayúsculas pequeñas con letter-spacing; el chip «usuario · rol» (rgba(255,255,255,.14), radio 999px) y «Salir» con borde rgba(255,255,255,.4); fila 2 debajo = fondo --surface con borde inferior 1px --border; la pestaña activa en --accent con subrayado de 2px y peso 600; el buscador a la derecha de las pestañas",
+       d.h===col('#1b2a4a')&&d.f==='rgb(255, 255, 255)'&&d.fb==='1px '+col('#d9dce3')&&d.act===[col('#1f5fbf'),col('#1f5fbf'),'2px','600'].join(' / ')&&+cs(h1,'fontWeight')>=700&&cs(h1,'color')==='rgb(255, 255, 255)'
+       &&!!sub&&sub.textContent.trim()==='TEMPOCODECA'&&cs(sub,'textTransform')==='uppercase'&&parseFloat(cs(sub,'letterSpacing'))>0&&cs(sub,'display')!=='none'&&sub.getBoundingClientRect().top>=h1.getBoundingClientRect().bottom-1
+       &&cs(q,'backgroundColor')==='rgba(255, 255, 255, 0.14)'&&parseFloat(cs(q,'borderTopLeftRadius'))>=100&&/ · /.test(q.textContent)&&cs(sal,'borderTopColor')==='rgba(255, 255, 255, 0.4)'&&!!md&&md.getBoundingClientRect().right<=sal.getBoundingClientRect().left+1
+       &&d.pad==='10px 22px'&&rf.top>=rh.bottom-1&&rb.left>=rn.right-1&&!document.getElementById('modo-sw').offsetParent,JSON.stringify(d))}
+    /* desplegable: fijo debajo de su pestaña, fondo --surface, ítem activo --accent-soft / --accent, contador como badge pequeño */
+    {const g=document.querySelector('#marino-fila2 #nav .grp[data-g="dir"]');navToggle(g);const b=document.querySelector('nav .gbody[data-g="dir"]');const rb=b.getBoundingClientRect(),rg=g.getBoundingClientRect();const on=b.querySelector('a.on');const n=document.getElementById('n-ord');
+     const d={pos:cs(b,'position'),top:Math.round(rb.top)+'/'+Math.round(rg.bottom),left:Math.round(rb.left)+'/'+Math.round(rg.left),bg:cs(b,'backgroundColor'),on:on?cs(on,'backgroundColor')+' '+cs(on,'color'):'-',n:n&&n.textContent?cs(n,'borderTopLeftRadius')+' '+cs(n,'fontSize'):'vacío'};navCerrarTodo();
+     __check("MAR1: el desplegable de una pestaña se abre fijo justo debajo de ella (la fila de pestañas puede desplazarse de lado sin cortarlo), con fondo --surface; el ítem activo en --accent-soft con texto --accent; los contadores son badges redondos pequeños",d.pos==='fixed'&&Math.abs(rb.top-rg.bottom)<=1&&Math.abs(rb.left-rg.left)<=1&&d.bg==='rgb(255, 255, 255)'&&(!on||d.on===col('#dfe9fb')+' '+col('#1f5fbf'))&&(d.n==='vacío'||(parseFloat(cs(n,'borderTopLeftRadius'))>=9&&parseFloat(cs(n,'fontSize'))<=11.5)),JSON.stringify(d))}
+    /* 4 · el control «Claro | Oscuro» */
+    {const md=document.querySelector('header .mode'),bl=document.getElementById('mode-light'),bd=document.getElementById('mode-dark');const ku='tempo.modo.'+claveUsr();
+     const forma=!!md&&md.getAttribute('role')==='group'&&md.getAttribute('aria-label')==='Modo de color'&&!!bl&&!!bd&&bl.tagName==='BUTTON'&&bd.tagName==='BUTTON'&&bl.type==='button'&&bd.type==='button'&&bl.dataset.mode==='light'&&bd.dataset.mode==='dark'&&bl.textContent.trim()==='Claro'&&bd.textContent.trim()==='Oscuro'&&parseFloat(cs(md,'borderTopLeftRadius'))>=100;
+     const a0=[bl.getAttribute('aria-pressed'),bd.getAttribute('aria-pressed')].join('/');
+     bd.click();const tras=[de.dataset.modo,localStorage.getItem('tempo.modo'),localStorage.getItem(ku),bl.getAttribute('aria-pressed'),bd.getAttribute('aria-pressed')].join('/');
+     const pres=document.getElementById('mode-dark');const sel=[cs(pres,'backgroundColor'),cs(pres,'color')].join(' ');
+     bd.blur();bl.focus();const foco=document.activeElement===bl&&bl.tabIndex===0;bl.click();const vuelta=[de.dataset.modo,localStorage.getItem('tempo.modo'),localStorage.getItem(ku),bl.getAttribute('aria-pressed'),bd.getAttribute('aria-pressed')].join('/');
+     MODO_MEM=null;localStorage.setItem('tempo.modo','oscuro');localStorage.setItem(ku,'oscuro');render();const recuerda=de.dataset.modo==='oscuro'&&document.getElementById('mode-dark').getAttribute('aria-pressed')==='true';setModo('claro');
+     const cssFoco=[...document.styleSheets].some(s=>{try{return [...s.cssRules].some(r=>/data-estilo="marino"\] header \.mode button:focus-visible/.test(r.selectorText||'')&&/solid/.test(r.style.outline||r.style.outlineStyle||''))}catch(e){return false}});
+     __check("MAR1: el control «Claro | Oscuro» tiene el HTML de la especificación (div.mode role=group aria-label «Modo de color» con dos <button type=button> mode-light / mode-dark, píldora) y va en la barra de marca junto a «Salir»; el activo se marca con aria-pressed; el clic cambia data-modo y lo guarda en tempo.modo y tempo.modo.<usuario> (setModo); al recargar se recuerda; con teclado: son botones nativos que toman el foco (Tab, Enter y Espacio) y llevan foco visible",
+       forma&&a0==='true/false'&&tras==='oscuro/oscuro/oscuro/false/true'&&vuelta==='claro/claro/claro/true/false'&&foco&&recuerda&&cssFoco&&sel===col('#e8edf7')+' '+col('#141f38'),JSON.stringify({forma,a0,tras,vuelta,foco,recuerda,cssFoco,sel}))}
+    /* 5 · el script del <head>: va ANTES del CSS y pone data-modo con lo guardado en tempo.modo (sin parpadeo al abrir en oscuro) */
+    {const pag=await (await fetch(location.href.split('?')[0])).text();const iS=pag.indexOf('<style>'),iH=pag.indexOf('<html ');const scr=(pag.slice(0,iS).match(/<script>([\s\S]*?)<\/script>/)||[])[1]||'';
+     const corre=v=>{const attr={};try{new Function('document','localStorage',scr)({documentElement:{setAttribute:(k,x)=>attr[k]=x}},{getItem:k=>k==='tempo.modo'?v:null})}catch(e){attr.err=e.message}return attr['data-modo']||attr.err};
+     __check("MAR1: el <head> trae, ANTES del CSS, un script que pone data-modo desde tempo.modo (oscuro → oscuro; nada guardado o claro → claro); el <html> de la pantalla de ingreso arranca con data-tema=odoo data-estilo=marino data-color=marino",
+       iS>0&&!!scr&&/tempo\.modo/.test(scr)&&corre('oscuro')==='oscuro'&&corre(null)==='claro'&&corre('claro')==='claro'&&/<html lang="es" data-tema="odoo" data-estilo="marino" data-color="marino">/.test(pag.slice(iH,iH+120)),scr.slice(0,120))}
+    /* 6 · 1.366 y 1.920 px (y 1.100, 860 y 390): la página no se desplaza a los lados; nada se corta en la barra; a 1.366 y 1.920 entran todas las pestañas sin desplazarse */
+    {const malA=[];page='panorama';render();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());['n-ord','n-ban','n-atr'].forEach(i=>{const e=cl.querySelector('#'+i);if(e)e.textContent='1157'});
+     const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:1366px;height:900px;border:0;visibility:hidden';document.body.appendChild(fr);
+     try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;await __p(120);
+      for(const W of [1920,1366,1280,1100,861,860,390]){fr.style.width=W+'px';await __p(40);const sw=d.documentElement.scrollWidth,cw=d.documentElement.clientWidth;const h=d.querySelector('header'),nv=d.getElementById('nav');
+       if(sw>W)malA.push(W+': la página mide '+sw);
+       [...h.children].filter(x=>x.offsetParent&&x.getBoundingClientRect().width>0).forEach(x=>{const r=x.getBoundingClientRect();if(r.left<-0.5||r.right>Math.min(W,cw)+0.5||x.scrollWidth>x.clientWidth+1&&x.id!=='quien'&&x.id!=='saved')malA.push(W+': '+(x.id||x.className||x.tagName)+' cortado ('+Math.round(r.left)+'–'+Math.round(r.right)+' · '+x.scrollWidth+'/'+x.clientWidth+')')});
+       if(W>=861){const fb=d.getElementById('busg-host').getBoundingClientRect();if(fb.right>Math.min(W,cw)+0.5||fb.width<150)malA.push(W+': buscador '+Math.round(fb.left)+'–'+Math.round(fb.right));
+        if((W===1366||W===1920)&&nv.scrollWidth>nv.clientWidth+1)malA.push(W+': las pestañas no entran ('+nv.scrollWidth+'/'+nv.clientWidth+')');
+        if(nv.scrollWidth>nv.clientWidth+1&&cs(nv,'overflowX')!=='auto')malA.push(W+': las pestañas no se desplazan dentro de su fila');
+        if(Math.abs(h.getBoundingClientRect().bottom-d.getElementById('marino-fila2').getBoundingClientRect().top)>1)malA.push(W+': las dos filas no van una debajo de la otra')}
+       else{const s=d.getElementById('btn-salir').getBoundingClientRect(),b=d.getElementById('navBtn');if(!b||!b.offsetParent||s.right>W+0.5)malA.push(W+': el menú ☰ o «Salir» no se ven ('+Math.round(s.right)+')')}}}
+     finally{fr.remove()}
+     __check("MAR1: a 1.920, 1.366, 1.280, 1.100, 861, 860 y 390 px la página no se desplaza a los lados y nada de la barra de marca queda cortado; el buscador entra a la derecha de la fila 2; a 1.366 y 1.920 entran todas las pestañas (contadores con 4 cifras); en más angosto las pestañas se desplazan DENTRO de su fila y en el teléfono vuelven el menú ☰ y «Salir»",!malA.length,malA.slice(0,6).join(' | '))}
+    /* 7 · contraste AA (≥ 4,5) de los textos de la cabecera y de las pestañas (también abiertas, el ítem activo y los contadores), en claro y en oscuro */
+    {const malC=[];let n=0;for(const m of ['claro','oscuro']){setModo(m);page='panorama';render();const g=document.querySelector('#marino-fila2 #nav .grp[data-g="dir"]');navToggle(g);
+      const els=[document.getElementById('brand'),document.querySelector('header>.sub'),document.getElementById('saved'),document.querySelector('#quien .q-nom'),document.getElementById('btn-salir'),...document.querySelectorAll('header .mode button'),
+        ...document.querySelectorAll('#marino-fila2 #nav .grp'),...document.querySelectorAll('nav .gbody[data-g="dir"] a'),...[...document.querySelectorAll('nav a .n')].filter(x=>x.textContent.trim()),document.querySelector('#busg-host input')].filter(x=>x&&x.offsetParent);
+      els.forEach(e=>{n++;const r=ratioDe(e);if(r<4.5)malC.push(m+' «'+(e.textContent||e.placeholder||e.id).trim().slice(0,24)+'» '+r.toFixed(2))});navCerrarTodo()}setModo('claro');render();
+     __check("MAR1: contraste AA (≥ 4,5) en claro y en oscuro de los textos de la barra de marca (título, TEMPOCODECA, guardado, chip del usuario, Salir, Claro/Oscuro en los dos estados) y de las pestañas (normales, la activa, el desplegable abierto, el ítem activo, los contadores y el buscador)",n>=30&&!malC.length,n+' textos · '+malC.slice(0,6).join(' | '))}
+    /* 8 · los otros tres aspectos no cambian: el mismo HTML de la barra, del menú y de Hoy, y los mismos estilos calculados antes y después de pasar por Marino;
+       sin la fila 2 ni el control (el sol/luna de siempre); el buscador vuelve a su lugar de la barra */
+    {const foto=()=>{page='panorama';render();const h=document.querySelector('header'),nv=document.getElementById('nav');const els=[h,nv,document.body,document.getElementById('brand'),document.getElementById('busg-host'),document.getElementById('btn-salir'),document.getElementById('modo-sw'),document.querySelector('#p-panorama .pagehead'),document.querySelector('#p-panorama .kpi'),...nv.querySelectorAll('.grp')].filter(Boolean);
+       const P=['backgroundColor','color','fontFamily','fontSize','fontWeight','height','width','display','borderBottomWidth','borderTopLeftRadius','paddingLeft','paddingTop','position'];
+       return JSON.stringify({estilo:de.dataset.estilo||'',tema:de.dataset.tema,color:de.dataset.color,f2:!!document.getElementById('marino-fila2'),nav:(nv.parentElement||{}).tagName,bhPar:(document.getElementById('busg-host').parentElement||{}).tagName,
+         modoSw:cs(document.getElementById('modo-sw'),'display'),mode:cs(document.querySelector('header .mode'),'display'),hdr:h.innerHTML.replace(/<div class="mode"[\s\S]*?<\/div>/,'').length,cssv:els.map(e=>P.map(p=>cs(e,p)).join(',')),hoy:document.getElementById('p-panorama').innerHTML.length})};
+     const mal=[];for(const te of ['tablero','odoo','clasico']){ponTema(te);const a=foto();ponTema(undefined);foto();ponTema(te);const b=foto();if(a!==b)mal.push(te);
+      const o=JSON.parse(b);if(o.f2||o.mode!=='none'||o.modoSw==='none'||o.estilo===(te==='tablero'?'':'marino'))mal.push(te+' '+JSON.stringify({f2:o.f2,mode:o.mode,modoSw:o.modoSw,estilo:o.estilo}));
+      if((te!=='clasico')!==(o.nav==='HEADER')||o.bhPar!=='HEADER')mal.push(te+': el menú o el buscador no vuelven a su lugar ('+o.nav+' · '+o.bhPar+')')}
+     __check("MAR1: «Tablero», «Como Odoo» y «Clásico» se ven igual antes y después de pasar por Marino (mismo HTML de la barra y de Hoy, mismos estilos calculados de la barra, el menú, el título, el buscador, la cabecera de la pantalla y las tarjetas): sin la fila 2 ni el control «Claro | Oscuro» (el sol/luna de siempre) y con el menú y el buscador de vuelta en su lugar",!mal.length,mal.join(' | '))}
+    /* 9 · las pantallas principales dibujan en Marino sin errores y sin salirse a los lados (ventana del simulador) */
+    {ponTema(undefined);const malP=[];const e0=__R.errors.length;const PAGS=['panorama','envivo','ordenes','plan','liberacion','entregas','capacidad','tejeduria','tintoreria','gerencia','ordconsulta','wip','avancearea','ordtrabajo','control','tablet','ingops','config','usuarios','auditoria'];
+     for(const m of ['claro','oscuro']){setModo(m);for(const p of PAGS){page=p;try{render()}catch(e){malP.push(m+' '+p+': '+e.message);continue}if(document.documentElement.scrollWidth>innerWidth+1)malP.push(m+' '+p+': '+document.documentElement.scrollWidth+'/'+innerWidth)}}
+     {page='centro';CEN.id='corte';CEN.solo='';CEN.pest='plan';CEN.rec='';try{render()}catch(e){malP.push('centro: '+e.message)}}setModo('claro');
+     __check("MAR1: las pantallas principales (Hoy, Planta en vivo, Órdenes, Planificar el mes, Liberación, Entregas, Capacidad, Tejeduría, Tintorería, Reportería, Control de piso, Mi centro, Ingeniería, Configuración, Usuarios, Auditoría y un centro) se dibujan en Marino, claro y oscuro, sin errores y sin salirse a los lados",!malP.length&&__R.errors.length===e0,malP.slice(0,5).join(' | ')+JSON.stringify(__R.errors.slice(e0,e0+2)))}
+    /* 10 · todo el CSS de Marino va bajo [data-estilo="marino"]; fuera de los bloques de variables solo se escriben los rgba de la barra de marca y del control */
+    {const src=([...document.querySelectorAll('style')].find(s=>s.textContent.includes('/* ux:marino */'))||{}).textContent||'';const a=src.indexOf('/* ux:marino */');const css=a>=0?src.slice(a).replace(/\/\*[\s\S]*?\*\//g,''):'';
+     const reglas=[];css.replace(/([^{}]+)\{([^{}]*)\}/g,(m0,sel,body)=>{sel=sel.trim();if(!sel||sel.startsWith('@'))return m0;reglas.push([sel,body]);return m0});
+     const fuera=reglas.filter(([s])=>s.split(',').some(x=>!x.includes('[data-estilo="marino"]'))).map(r=>r[0].slice(0,60));
+     const aMano=[];reglas.forEach(([s,b],i)=>{if(i<2)return;b.replace(/([a-z-]+)\s*:\s*([^;]+)/g,(m0,p,v)=>{if(p.startsWith('--'))return m0;const v2=v.replace(/rgba\(255,255,255,\.[0-9]+\)/g,'');if(/#[0-9a-f]{3,8}\b|rgba?\(/i.test(v2))aMano.push(s.slice(0,40)+' '+p+':'+v.slice(0,30));return m0})});
+     __check("MAR1: todo el CSS de Marino va bajo [data-estilo=\"marino\"] (así los otros aspectos no cambian) y fuera de los dos bloques de variables no escribe colores a mano (solo los rgba(255,255,255,…) de la barra de marca y del control)",a>=0&&reglas.length>40&&!fuera.length&&!aMano.length,reglas.length+' reglas · fuera: '+fuera.slice(0,3).join(' | ')+' · a mano: '+aMano.slice(0,3).join(' | '))}
+    /* 11 · solo aspecto: el programa no cambia al pasar por los cuatro aspectos */
+    {PLAN=null;PLAN_ALL=null;const h0=JSON.stringify(programar().pro);for(const te of ['tablero','odoo','clasico',undefined])ponTema(te);PLAN=null;PLAN_ALL=null;const h1=JSON.stringify(programar().pro);
+     __check("MAR1-HUELLA: cambiar de aspecto (Marino, Tablero, Como Odoo, Clásico) no cambia el programa (P.pro idéntico)",h0===h1&&h0.length>100,h0.length+' / '+h1.length)}
+   }catch(e){__R.errors.push({page:'driver MAR1',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.confirm=cf0;window.alert=al0;PERFIL=bakP;try{navCerrarTodo()}catch(e){}if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);page=bakPg;ORDF.tab=bakORDF;render()}
+   __check("MAR1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   __R.done=true;console.log('__RESULTADO__ '+JSON.stringify({errores:__R.errors.length,fallos:__R.checks.filter(c=>!c.ok).length,checks:__R.checks.length}));
 }
 __run().catch(e=>{__R.errors.push({page:'driver',msg:e.message,stack:(e.stack||'').slice(0,300)});__R.done=true});
