@@ -9,3 +9,17 @@ node test/build.js
 node test/server.js
 ```
 Abre la URL y en la consola: `__R.done`, `__R.errors`, `__R.checks.filter(c=>!c.ok)`.
+
+## Descargas que deja el simulador
+
+Las pruebas de Ingeniería (IMO14, IMO-V2 y afines) pulsan los botones «Descargar Excel» de
+Secuencia y Balanceo con datos inventados («Prueba guion» · T9-A, «Camiseta 4240»). Si el
+simulador se corre en un Chrome normal, cada corrida deja en la carpeta de descargas del equipo
+archivos como `Secuencia_Prueba_guion (N).xlsx` o `Balanceo_Camiseta_Camiseta_4240 (N).xlsx`.
+No tienen datos de planta y se pueden borrar. Para evitarlo, correr el simulador con Chrome
+headless apuntando las descargas a una carpeta temporal, por ejemplo:
+
+```
+chrome --headless --window-size=1520,1000 --user-data-dir=/tmp/tempo-sim \
+  --download-default-directory=/tmp/tempo-sim/descargas http://127.0.0.1:8765/
+```
