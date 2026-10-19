@@ -3404,7 +3404,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-19 15:00';
+const APP_BUILD='2026-10-19 17:00';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3685,6 +3685,29 @@ function sembrarPasosPolo01(){if(!S||!S.params||S.params.pasosPolo01||(typeof pe
   ['7907','4164'].forEach(ref=>{if(!t.some(r=>normFase(r.cat||'')===normFase('Polo Basica')&&String(r.ref||'').trim()===ref&&r.centro==='bordado')){t.push({cat:'Polo Basica',ref,centro:'bordado',fuente:'usuaria 01-oct'});add.push(ref)}});
   S.params.pasosCategoria=t;S.params.pasosPolo01={ts:new Date().toISOString(),agregadas:add};
   if(add.length)bitacora('Pasos que lleva siempre una categoría: Polo Basica estilos '+add.join(' y ')+' → Bordado (usuaria, 01-oct). Las Level 2 no llevan regla: se deciden una por una');return true}
+/* 19-oct (usuaria: «las camisas siempre botones y las polos igual»): con la hoja de Odoo borrada el 07-oct, Botones ya no entraba por la hoja. Regla por familia: CAMISAS y POLOS → Botones (una vez, editable). */
+function sembrarPasosBotones19(){if(!S||!S.params||S.params.pasosBotones19||(typeof perfilSoloPiso==='function'&&perfilSoloPiso()))return false;if(!(puede('config')||puede('programa')))return false;
+  const t=pasosCategoria().map(r=>Object.assign({},r));const add=[];
+  ['CAMISAS','POLOS','Polo Tejida'].forEach(cat=>{if(!t.some(r=>normFase(r.cat||'')===normFase(cat)&&!String(r.ref||'').trim()&&r.centro==='botones')){t.push({cat,centro:'botones',fuente:'usuaria 19-oct'});add.push(cat)}});
+  S.params.pasosCategoria=t;S.params.pasosBotones19={ts:new Date().toISOString(),agregadas:add};
+  if(add.length)bitacora('Pasos que lleva siempre una categoría: '+add.join(' y ')+' → Botones (usuaria, 19-oct: «las camisas siempre botones y las polos igual»)');return true}
+/* 19-oct (usuaria: «las camisas ¿siempre Plancha? si Odoo lo tiene, sí»): a una CAMISA con la ruta confirmada a la que Odoo le trae orden de trabajo de
+   Plancha se le agrega Plancha (solo agrega, la confirmación se mantiene). Corre al entrar y tras cada carga de OT; escribe solo si agrega algo. Si con eso la
+   ruta ya trae todo lo que pide la OT, la marca «revisar: Odoo trae…» se quita. */
+function esCamisaOrden(o){const k=K(o&&o.cat);return !!k&&catCalzaEtq(k,'CAMISAS')}
+function planchaOdooCamisas(){if(!S||!S.ordenes||!S.ordenes.length||!S.centros.some(c=>c.id==='plancha'))return 0;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return 0;if(!puedeEditarRuta())return 0;
+  const ts=new Date().toISOString(),u=quienFirma();const ej=[];let n=0,quit=0;
+  S.ordenes.forEach(o=>{if(!abiertaDe(o)||rutaNoAplica(o)||!rutaConfirmada(o)||!esCamisaOrden(o))return;const cen=centrosOdooDe(o)||[];if(!cen.includes('plancha'))return;
+    if(pasosProCompleta(o).includes('plancha'))return;const mas=agregarPasosARuta(o,['plancha'],'Odoo trae orden de trabajo de Plancha en una camisa (decisión de la usuaria, 19-oct)',ts,u);if(!mas.length)return;n++;if(ej.length<6)ej.push(o.op)});
+  S.ordenes.forEach(o=>{const rv=o.rutaRevisar;if(!rv||rv.tipo!=='ot'||!Array.isArray(rv.odoo))return;const tiene=pasosProCompleta(o);if(rv.odoo.every(c=>tiene.includes(c))){delete o.rutaRevisar;quit++}});
+  if(n){PLAN=null;PLAN_ALL=null;bitacora('Plancha agregada a '+n+' camisas con ruta confirmada porque Odoo trae su orden de trabajo de Plancha (p. ej. '+ej.join(', ')+'). Solo se agregó; la confirmación se mantiene ('+u+')')}
+  return n+quit}
+/* 19-oct: las órdenes que ya quedaron con bordado en 0 y puntadas en la orden toman su tiempo (lo mismo que hace ahora la recarga). No toca un tiempo escrito a mano. */
+function bordadoConPuntadasAlDia(){if(!S||!S.ordenes||!S.ordenes.length)return 0;if(typeof perfilSoloPiso==='function'&&perfilSoloPiso())return 0;if(!puedeEditarRuta())return 0;const ej=[];let n=0;
+  S.ordenes.forEach(o=>{if(!abiertaDe(o)||!(+o.puntadas>0))return;const tB=+((tiempoPaso({centro:'bordado',t:0},K(o.cat),{},+o.puntadas||0)||{}).t)||0;if(!tB)return;let cambio=false;
+    (o.rutaCompleta||[]).concat(o.ruta||[]).forEach(p=>{if(p.centro==='bordado'&&!p.tManual&&!(+p.t>0)){p.tAntes=+p.t||0;p.t=tB;cambio=true}});if(cambio){n++;if(ej.length<6)ej.push(o.op)}});
+  if(n){PLAN=null;PLAN_ALL=null;bitacora('Bordado al día con las puntadas de la orden en '+n+' órdenes que tenían 0 en la ruta (p. ej. '+ej.join(', ')+')')}return n}
+function sembrarCorreccionPasosConfirmadas19(){return correccionPasosConfirmadas('correccionPasos19','corrección del 19-oct: camisas y polos llevan Botones (decisión de la usuaria)')}
 function guardarPasosCategoria(t,txt){S.params.pasosCategoria=t;bitacora('Pasos que lleva siempre una categoría · '+txt+' ('+quienFirma()+')');PLAN=null;PLAN_ALL=null;save();render()}
 function setPasoCategoriaRow(i,k,v){if(!insumoRutaEditable())return;const t=pasosCategoria().map(r=>Object.assign({},r));const r=t[i];if(!r)return;const antes=r[k];r[k]=String(v||'').trim();if(antes===r[k])return;
   guardarPasosCategoria(t,'fila '+(i+1)+' · '+k+': «'+(antes==null?'':antes)+'» → «'+r[k]+'»')}
@@ -6528,6 +6551,7 @@ function render(){try{aplicarTema()}catch(e){}try{if(S&&S.centros&&S.params&&typ
   try{if(sembrarEtiquetasAlEntrar())save();if(sembrarEtiquetaSobrante01())save()}catch(e){try{console.error('sembrarEtiquetasAlEntrar',e)}catch(x){}}   /* 01-oct: los ajustes de etiqueta (16-sep y 30-sep) al entrar, antes de corregir rutas */
   try{if(sembrarCorreccionPasosConfirmadas01())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01',e)}catch(x){}}   /* 01-oct: una sola vez */
   try{if(sembrarMaquinasAlEntrar())save()}catch(e){try{console.error('sembrarMaquinasAlEntrar',e)}catch(x){}}   /* 03-oct: tipos de máquina (una tabla, 19 tipos) y máquinas de ejemplo de baja, una sola vez */
+  try{if(sembrarPasosBotones19())save();if(S.params.pasosBotones19&&sembrarCorreccionPasosConfirmadas19())save();if(planchaOdooCamisas())save();if(bordadoConPuntadasAlDia())save()}catch(e){try{console.error('sembrarPasosBotones19',e)}catch(x){}}
   try{if(sembrarPasosPolo01())save();if(S.params.pasosPolo01&&sembrarCorreccionPasosConfirmadas01b())save()}catch(e){try{console.error('sembrarCorreccionPasosConfirmadas01b',e)}catch(x){}}   /* 01-oct (2): Polo Basica 7907/4164 → Bordado */   /* 30-sep: la tabla 1 completa (fases y secuencia) aunque nadie abra ciertas pantallas */
   const _scroll=tomarScroll();
   {const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando')}
@@ -21324,7 +21348,9 @@ function aplicarTarea(){if(!TAREA)return;const p=TAREA;const ts=new Date().toISO
             noCalzan.push({op:o.op,tipo:'rutaTextil',decision:'el tramo de tela se rehace con el archivo: '+(txAntes||'(ninguno)')+' → '+(txAhora||'(ninguno)'),motivo:'el origen de la tela lo trae el archivo; la confirmación de la ruta es de los pasos de producción'})}
           const pB=(o.rutaCompleta||[]).find(p=>p.centro==='bordado');   /* el minuto de bordado son las puntadas de la orden, no el catálogo: si el archivo las corrige, se avisa y la ruta confirmada no se toca */
           if(pB){const tB=+((tiempoPaso({centro:'bordado',t:0},K(o.cat),{},+o.puntadas||0)||{}).t)||0;
-            if(tB&&Math.abs((+pB.t||0)-tB)>1e-6)noCalzan.push({op:o.op,tipo:'tiempo',decision:'bordado con '+num(+pB.t||0)+' puntadas en la ruta confirmada',motivo:'el archivo trae '+num(tB)+': revisa si la ruta necesita el tiempo nuevo'})}
+            if(tB&&Math.abs((+pB.t||0)-tB)>1e-6){   /* 19-oct (usuaria: «no entiendo qué tengo que hacer»): las puntadas son un dato de la orden, no una decisión de ruta; el tiempo se pone solo (salvo uno escrito a mano) */
+              if(pB.tManual)noCalzan.push({op:o.op,tipo:'tiempo',decision:'bordado con '+num(+pB.t||0)+' escrito a mano en la ruta',motivo:'el archivo trae '+num(tB)+' puntadas: si el tiempo a mano ya no vale, bórralo en la ficha'});
+              else{pB.tAntes=+pB.t||0;pB.t=tB;(o.ruta||[]).forEach(q=>{if(q.centro==='bordado'&&!q.tManual)q.t=tB});cons.bordadoAlDia=(cons.bordadoAlDia||0)+1}}}
           const soloPro=t=>String(t||'').split(' → ').filter(c=>c&&!['tej','tin','proveedor'].includes(c)).join(' → ');
           const cat=soloPro(rutaCatalogo),ahora=soloPro(cenRutaTxt(o));   /* se compara contra lo que armó el CATÁLOGO, no contra lo que dejaron la OT o la edición a mano */
           if(cat!==ahora){cons.rutaConservada=(cons.rutaConservada||0)+1;

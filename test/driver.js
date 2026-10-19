@@ -8605,7 +8605,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       const p3=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2c.xlsx');TAREA=p3;aplicarTarea();await __p(80);
       const oI=S.ordenes.find(x=>x.id===id3);const pB=(oI.rutaCompleta||[]).find(pp=>pp.centro==='bordado');
       const rc=S.params.tareaCarga.recarga||{};
-      __check('RC2: si el archivo trae otras puntadas, el bordado de la ruta confirmada no se pisa y la diferencia sale en «no calzan»',!!pB&&Math.abs((+pB.t||0)-((+oI.puntadas||0)+5000))<1e-6&&(rc.noCalzan||[]).some(x=>x.op===oI.op&&x.tipo==='tiempo'),JSON.stringify({t:pB&&pB.t,punt:oI.puntadas,aviso:(rc.noCalzan||[]).filter(x=>x.tipo==='tiempo').length}));}
+      __check('RC2: si el archivo trae otras puntadas, el bordado de la ruta confirmada toma las puntadas nuevas solo (19-oct) y no sale en «no calzan»',!!pB&&Math.abs((+pB.t||0)-(+oI.puntadas||0))<1e-6&&Math.abs((+pB.tAntes||0)-((+oI.puntadas||0)+5000))<1e-6&&!(rc.noCalzan||[]).some(x=>x.op===oI.op&&x.tipo==='tiempo'),JSON.stringify({t:pB&&pB.t,punt:oI.puntadas,aviso:(rc.noCalzan||[]).filter(x=>x.tipo==='tiempo').length}));}
      /* (d) con la fila «Ruta confirmada» desmarcada, la previa avisa que esas rutas se van a rearmar */
      {const t14=camposConservados();const fila=t14.find(r=>r.campo==='rutaConf');const antes=fila.conservar;fila.conservar=false;
       const p4=planTarea(JSON.parse(JSON.stringify(rows0)),'recarga_rc2d.xlsx');
@@ -12155,6 +12155,17 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    __check("RM3: una marca vieja que ya no corresponde se quita sola",!oB.rutaRevisar);
    S.ordenes=S.ordenes.filter(o=>o!==oA&&o!==oB);PERFIL=bakP;PLAN=null;PLAN_ALL=null;
    __check("RM sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
+  /* 19-oct (usuaria: «las camisas siempre botones y las polos igual») */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=JSON.stringify(S.params.pasosCategoria||null),bakF=JSON.stringify(S.params.pasosBotones19||null);
+   const pc={id:'k-bt-c',n:'CAMISAS'},hc={id:'k-bt-mc',n:'Camisas MC',padre:'k-bt-c'},pp={id:'k-bt-p',n:'POLOS'},hp={id:'k-bt-pm',n:'Polo Moda',padre:'k-bt-p'},ot={id:'k-bt-o',n:'Jogger X'};
+   const nk=[pc,hc,pp,hp,ot].filter(k=>!K(k.id));S.categorias.push(...nk);
+   delete S.params.pasosBotones19;sembrarPasosBotones19();const n1=pasosCategoria().length;delete S.params.pasosBotones19;sembrarPasosBotones19();
+   __check('BT19-1: camisas y polos llevan Botones por la tabla; otra categoría no; sembrar dos veces no repite',ordenCentrosAuto({id:'bt1',cat:'k-bt-mc'}).has('botones')&&ordenCentrosAuto({id:'bt2',cat:'k-bt-pm'}).has('botones')&&!ordenCentrosAuto({id:'bt3',cat:'k-bt-o'}).has('botones')&&pasosCategoria().length===n1);
+   {const pt={id:'k-bt-pt',n:'Polo Tejida'};S.categorias.push(pt);const okPT=ordenCentrosAuto({id:'bt4',cat:'k-bt-pt'}).has('botones');S.categorias=S.categorias.filter(k=>k!==pt);
+    __check('BT19-2: Polo Tejida lleva Botones',okPT)}
+   S.params.pasosCategoria=JSON.parse(bakT)||undefined;if(!S.params.pasosCategoria)delete S.params.pasosCategoria;S.params.pasosBotones19=JSON.parse(bakF)||undefined;if(!S.params.pasosBotones19)delete S.params.pasosBotones19;
+   S.categorias=S.categorias.filter(k=>!nk.includes(k));PERFIL=bakP;PLAN=null;PLAN_ALL=null;
+   __check('BT19 sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+2)))}
   /* 01-oct (2) (usuaria: «las Level 2 no: van uno a uno; todas las polos básicas con estilos 7907 y 4164 son bordadas») */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=JSON.stringify(S.params.pasosCategoria||null),bakF=JSON.stringify(S.params.pasosPolo01||null),bakC=JSON.stringify(S.params.correccionPasos01b||null);
    const pad={id:'k-po-p',n:'POLOS'},pb={id:'k-po-b',n:'Polo Basica',padre:'k-po-p'},l2={id:'k-po-l2',n:'Level 2'};const nk=[pad,pb,l2].filter(k=>!K(k.id));S.categorias.push(...nk);
