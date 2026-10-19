@@ -11,7 +11,8 @@ function __libProdPrueba(o){o.lib=Object.assign({},o.lib||{},{corte:{ok:true,u:'
 async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage.__fuzz||'';__R.prevFase=localStorage.__fase||'';localStorage.__fuzz='';localStorage.__fase=''}catch(e){}
   await __esperar(()=>S&&PERFIL&&document.getElementById('login')&&!document.getElementById('login').classList.contains('on'),8000);
   /* 14-oct-2026: el aspecto por defecto pasó a «Marino (como nova)». Las pruebas de siempre se escribieron y se miden con el Tablero: se lo pone a mano aquí
-     (como lo elegiría la usuaria en Configuración) y MAR1, al final, mira Marino por defecto y que los otros tres no cambien. */
+     (como lo elegiría la usuaria en Configuración) y MAR1, al final, mira Marino por defecto y que los otros tres no cambien. 19-oct: el recorrido de páginas,
+     los clics reales de cada entrada del menú (WALK-MARINO) y la fase de botones corren en Marino, el aspecto que ve la planta; lo demás, en el Tablero. */
   if(!/captura=/.test(location.search))S.params.tema='tablero';
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
   S.colores.forEach((c,i)=>{c.cod=['19-4005','11-0601','17-4402','19-3921','19-1758'][i]+' TCX'});
@@ -1735,6 +1736,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   __check('órdenes demo cargadas',S.ordenes.length===5,S.ordenes.length);
   /* 08-oct (L5): «imprimir» ya no es una página (Programa del día salió del menú: «Imprimir el día» es una ventana) y su enlace viejo lleva a Hoy, que ya está en la lista:
      dejarla repetía Hoy en el recorrido y en la fase de botones. «salud» abre Configuración → Auditoría → Salud de los datos */
+  delete S.params.tema;   /* 19-oct: el recorrido de páginas y el de botones van en el aspecto por defecto (Marino) */
   const paginas=['ordenes','panorama','gerencia','liberacion','wip','entregas','plan','cumplimiento','tejeduria','tintoreria','centro','produccion','costura','balanceo','control','categorias','operaciones','ingops','ingref','ingtipos','ingmaq','ingrev','config','usuarios','albaran','avancearea','salud'];
   for(const p of paginas){try{localStorage.__fase='pagina '+p}catch(e){}const antes=__R.errors.length;page=p;try{render()}catch(e){__R.errors.push({page:p,msg:'render: '+e.message,stack:(e.stack||'').split('\n').slice(0,3).join(' | ')})}
     const chips=[...document.querySelectorAll('main .chip[onclick], main .chips .chip')].slice(0,40);
@@ -1743,6 +1745,18 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check('página '+p+' sin errores',__R.errors.length===antes,__R.errors.slice(antes).map(e=>e.msg).join(' || '))}
   for(const a of ['tej','tin','pro']){const antes=__R.errors.length;page='control';CTL.area=a;try{render()}catch(e){__R.errors.push({page:'control/'+a,msg:e.message})}__check('control de piso '+a,__R.errors.length===antes)}
   for(const c of Object.keys(CENTROS_PROD)){for(const tab of ['plan','prog','ejec']){const antes=__R.errors.length;page='centro';CEN.id=c;CEN.tab=tab;try{render()}catch(e){__R.errors.push({page:'centro/'+c+'/'+tab,msg:e.message})}__check('centro '+c+' '+tab,__R.errors.length===antes)}}
+  /* 19-oct · el menú de Marino con clics reales: cada entrada (data-p y data-cen) de la fila 2, abriendo su pestaña si hace falta; después, el Tablero otra vez */
+  {try{localStorage.__fase="menu marino"}catch(e){}const e0=__R.errors.length;const mal=[];page='panorama';render();const f2=document.getElementById('marino-fila2');
+   const ents=[...document.querySelectorAll('#marino-fila2 #nav .gbody a')].map(a=>({p:a.dataset.p,cen:a.dataset.cen||'',g:a.closest('.gbody').dataset.g}));
+   for(const x of ents){const g=document.querySelector('#marino-fila2 #nav .grp[data-g="'+x.g+'"]');if(!g){mal.push('sin pestaña '+x.g);continue}
+     if(!document.querySelector('nav .gbody[data-g="'+x.g+'"]').classList.contains('abierto'))g.click();
+     const sel='#marino-fila2 #nav .gbody[data-g="'+x.g+'"] a[data-p="'+x.p+'"]'+(x.cen?'[data-cen="'+x.cen+'"]':'');const a=document.querySelector(sel);if(!a){mal.push('sin entrada '+sel);continue}
+     const n0=__R.errors.length;try{a.click()}catch(e){mal.push(x.p+'/'+x.cen+': '+e.message)}await __p(0);
+     if(__R.errors.length>n0)mal.push(x.p+'/'+x.cen+': '+__R.errors.slice(n0).map(e=>e.msg).join(' | '));
+     if(!document.getElementById('marino-fila2')||document.getElementById('nav').parentElement!==document.getElementById('marino-fila2'))mal.push(x.p+': el menú salió de la fila 2')}
+   try{navCerrarTodo()}catch(e){}
+   __check('WALK-MARINO: clics reales de cada entrada del menú (data-p y data-cen) en la fila 2 de Marino, abriendo su pestaña, sin errores y con el menú siempre en la fila 2',!!f2&&aspectoVisual()==='marino'&&ents.length>15&&!mal.length&&__R.errors.length===e0,ents.length+' entradas · '+mal.slice(0,5).join(' || '))}
+  S.params.tema='tablero';render();
   try{localStorage.__fase="flujo tintoreria"}catch(e){}
   /* flujo tintorería: armar por color → confirmar → salió → calidad → liberar a corte */
   {const an=analizarRutasOdoo();const abiertas=S.ordenes.filter(abierta).length;
@@ -1851,6 +1865,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check("UX-B9: Operaciones — ojales y botones en UN recuadro: el estándar arriba y la tabla por tipo debajo",!!ob&&/Ojales y botones: estándar/.test(obH)&&/setBotonesEstandar/.test(obH)&&/addTiempoOBRow/.test(obH));
     ING_V.ops='tecnicas';render();__check("UX-B9: Ingeniería — un enlace viejo a «Técnicas de estampado» abre «Tiempos del programa», donde están (y solo se dibuja esa pestaña)",ING_V.ops==='tiempos'&&!!po.querySelector('[data-ops-tab="tiempos"] [data-ing-key="'+cfgNorm('Técnicas de estampado')+'"]')&&po.querySelectorAll('.ops-pest').length===1);ING_V.ops='secuencia';render()}}
   try{localStorage.__fase="fuzz"}catch(e){}
+  delete S.params.tema;   /* 19-oct: la fase de botones va en Marino (el aspecto por defecto) */
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
   window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|restaurarDesde|descargarJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
   for(const p of paginas){page=p;try{render()}catch(e){}
@@ -1863,6 +1878,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       try{cerrar()}catch(e){}n++}
     __check('botones de '+p+' ('+n+') sin errores',true)}
   __check('fase de botones terminada sin errores nuevos',__R.errors.filter(e=>String(e.msg).startsWith('click:')||e.src&&e.src.includes('←')).length===0,__R.errors.filter(e=>e.src&&e.src.includes('←')).map(e=>e.page+': '+e.msg+' ← '+e.src.split('←')[1]).join(' || '));
+  S.params.tema='tablero';
   window.confirm=()=>true;
   try{localStorage.__fase="reporteria admin"}catch(e){}
   /* 7) reportería en sus dos vistas y perfiles por sub-área / solo ver */
@@ -13483,19 +13499,25 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
        menú abierto tiene fondo y empuja la pantalla hacia abajo (antes quedaba transparente encima de ella) */
     {const malA=[];page='panorama';render();const cl=document.documentElement.cloneNode(true);cl.querySelectorAll('script').forEach(s=>s.remove());['n-ord','n-ban','n-atr'].forEach(i=>{const e=cl.querySelector('#'+i);if(e)e.textContent='1157'});
      const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:0;top:0;width:1366px;height:900px;border:0;visibility:hidden';document.body.appendChild(fr);
-     const LARGO='No se guarda: la carga falló en órdenes · recarga la página';const anchos=[1920,1366];for(let w=861;w<=1920;w+=15)anchos.push(w);anchos.push(1919,1100,861,860,600,520,390);let medidas=0;
+     const LARGO='No se guarda: la carga falló en órdenes · recarga la página',LARGO2='No se guarda: la carga falló en subprocesos de ingeniería · recarga la página';const anchos=[1920,1366,1310,1309,1290];for(let w=861;w<=1920;w+=15)anchos.push(w);anchos.push(1919,1100,861,860,600,520,390);let medidas=0;
      try{await new Promise(ok=>{fr.onload=ok;fr.srcdoc='<!doctype html>'+cl.outerHTML});const d=fr.contentDocument;await __p(120);const cs2=(e,p)=>e?d.defaultView.getComputedStyle(e)[p]:'';
-      for(const est of ['','No se guardó',LARGO]){const sv=d.getElementById('saved');sv.textContent=est||'✓ Guardado';sv.title=est||'Guardado a las 10:00';sv.classList.toggle('err',!!est);
-       for(const W of anchos){fr.style.width=W+'px';await __p(0);medidas++;const tag=W+(est?' ['+est.slice(0,14)+']':'');const sw=d.documentElement.scrollWidth,cw=d.documentElement.clientWidth;const h=d.querySelector('header'),nv=d.getElementById('nav');
+      for(const est of ['','No se guardó',LARGO,LARGO2]){const sv=d.getElementById('saved');sv.textContent=est||'✓ Guardado';sv.title=est||'Guardado a las 10:00';sv.classList.toggle('err',!!est);
+       for(const W of anchos){fr.style.width=W+'px';await __p(0);medidas++;const tag=W+(est?' ['+est.slice(0,40)+']':'');const sw=d.documentElement.scrollWidth,cw=d.documentElement.clientWidth;const h=d.querySelector('header'),nv=d.getElementById('nav');
         if(sw>W)malA.push(tag+': la página mide '+sw);
-        [...h.children].filter(x=>x.offsetParent&&x.getBoundingClientRect().width>0).forEach(x=>{const r=x.getBoundingClientRect();if(r.left<-0.5||r.right>Math.min(W,cw)+0.5||x.scrollWidth>x.clientWidth+1&&x.id!=='quien'&&x.id!=='saved')malA.push(tag+': '+(x.id||x.className||x.tagName)+' cortado ('+Math.round(r.left)+'–'+Math.round(r.right)+' · '+x.scrollWidth+'/'+x.clientWidth+')')});
+        [...h.children].filter(x=>x.offsetParent&&x.getBoundingClientRect().width>0).forEach(x=>{const r=x.getBoundingClientRect();if(r.left<-0.5||r.right>Math.min(W,cw)+0.5||(x.scrollWidth>x.clientWidth+1||x.id==='saved'&&x.scrollHeight>x.clientHeight+1)&&x.id!=='quien')malA.push(tag+': '+(x.id||x.className||x.tagName)+' cortado ('+Math.round(r.left)+'–'+Math.round(r.right)+' · '+x.scrollWidth+'/'+x.clientWidth+')')});
         {const sal=d.getElementById('btn-salir'),mo=d.querySelector('header .mode');const rs=sal.getBoundingClientRect(),rm=mo.getBoundingClientRect();if(rs.width<30||rs.right>Math.min(W,cw)+0.5||sal.scrollWidth>sal.clientWidth+1||rm.width<100||rm.right>Math.min(W,cw)+0.5||[...mo.querySelectorAll('button')].some(b=>b.scrollWidth>b.clientWidth+1))malA.push(tag+': «Salir» o «Claro | Oscuro» no se ven enteros')}
         if(est&&(!sv.offsetParent||sv.getBoundingClientRect().width<40||cs2(sv,'display')==='none'))malA.push(tag+': el error de guardado no se ve');
         if(W>=861){const fb=d.getElementById('busg-host').getBoundingClientRect();if(fb.right>Math.min(W,cw)+0.5||fb.width<150)malA.push(tag+': buscador '+Math.round(fb.left)+'–'+Math.round(fb.right));
-         if((W===1366||W===1920)&&nv.scrollWidth>nv.clientWidth+1)malA.push(tag+': las pestañas no entran ('+nv.scrollWidth+'/'+nv.clientWidth+')');
+         if((W>=1101||W===1366||W===1920)&&nv.scrollWidth>nv.clientWidth+1)malA.push(tag+': las pestañas no entran ('+nv.scrollWidth+'/'+nv.clientWidth+')');
+         {const gh=Math.max(...[...nv.querySelectorAll('.grp')].map(x=>x.offsetHeight));if(nv.clientHeight<gh)malA.push(tag+': la barra de desplazamiento tapa el subrayado y el foco de las pestañas ('+nv.clientHeight+' de '+gh+' px)')}
          if(nv.scrollWidth>nv.clientWidth+1&&cs2(nv,'overflowX')!=='auto')malA.push(tag+': las pestañas no se desplazan dentro de su fila');
-         if(Math.abs(h.getBoundingClientRect().bottom-d.getElementById('marino-fila2').getBoundingClientRect().top)>1)malA.push(tag+': las dos filas no van una debajo de la otra')}
+         if(Math.abs(h.getBoundingClientRect().bottom-d.getElementById('marino-fila2').getBoundingClientRect().top)>1)malA.push(tag+': las dos filas no van una debajo de la otra');
+         /* 19-oct: desde 1.310 px los grupos van con su nombre entero («Planificación textil»); más angosto, el corto («Textil»); y caben con cualquier pestaña elegida (en negrita) */
+         {const gl=nv.querySelector('.grp[data-g="tex"] .grp-l'),gc=nv.querySelector('.grp[data-g="tex"] .grp-c');const largo=!!gl&&cs2(gl,'display')!=='none'&&!!gc&&cs2(gc,'display')==='none';if((W>=1310)!==largo)malA.push(tag+': nombres '+(largo?'largos':'cortos')+' (desde 1.310 px van enteros)')}
+         if(!est&&(W===1310||W===1366||W===1920)){const gs=[...nv.querySelectorAll('.grp')];const a0=gs.find(x=>x.classList.contains('act'));for(const g of gs){gs.forEach(x=>x.classList.toggle('act',x===g));if(nv.scrollWidth>nv.clientWidth+1)malA.push(tag+': con «'+g.dataset.g+'» elegida las pestañas no entran ('+nv.scrollWidth+'/'+nv.clientWidth+')')}gs.forEach(x=>x.classList.toggle('act',x===a0))}}
         else{const b=d.getElementById('navBtn');if(!b||!b.offsetParent)malA.push(tag+': no se ve el menú ☰');
+         /* 19-oct: el texto de ayuda del buscador entra entero (el relleno es el del campo; con 0 14px se cortaba a 390 px) */
+         if(!est){const bi=d.querySelector('#busg-host input');const cvs=d.createElement('canvas').getContext('2d');cvs.font=cs2(bi,'font');const util=bi.clientWidth-parseFloat(cs2(bi,'paddingLeft'))-parseFloat(cs2(bi,'paddingRight'));const ph=cvs.measureText(bi.placeholder).width;if(util<ph)malA.push(tag+': el texto de ayuda del buscador se corta ('+Math.round(ph)+' en '+Math.round(util)+' px)')}
          const rh=h.getBoundingClientRect(),rf=d.getElementById('marino-fila2').getBoundingClientRect(),rmn=d.querySelector('main').getBoundingClientRect();
          if(Math.abs(rh.bottom-rf.top)>1||Math.abs(rf.bottom-rmn.top)>1||rf.height>120||rmn.height<200)malA.push(tag+': las filas del teléfono no van una debajo de la otra '+JSON.stringify({h:Math.round(rh.bottom),f2:Math.round(rf.top)+'+'+Math.round(rf.height),main:Math.round(rmn.top)+'+'+Math.round(rmn.height)}))}}}
       /* teléfono con el menú ☰ abierto y Dirección desplegada */
@@ -13503,7 +13525,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       {const f2=d.getElementById('marino-fila2'),mn=d.querySelector('main');const rf=f2.getBoundingClientRect(),rm=mn.getBoundingClientRect();const bg=cs2(nvD,'backgroundColor');const ln=[...gb.querySelectorAll('a')].filter(a=>a.offsetParent).map(a=>cs2(a,'borderBottomWidth'));
        if(!(rf.height>200&&rm.top>=rf.bottom-1&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent'&&ln.every(x=>x==='0px')))malA.push('390 menú abierto: '+JSON.stringify({f2:Math.round(rf.height),main:Math.round(rm.top),bg,ln:ln.join(',')}))}}
      finally{fr.remove()}
-     __check("MAR1: anchos de 861 a 1.920 px (cada 15 px) y 860, 600, 520 y 390, sin error, con «No se guardó» y con el texto largo de la carga incompleta: la página no se desplaza a los lados, nada de la barra de marca queda cortado, «Claro | Oscuro» y «Salir» se ven enteros y el error se ve; el buscador entra a la derecha de la fila 2; a 1.366 y 1.920 entran todas las pestañas (contadores con 4 cifras) y en más angosto se desplazan DENTRO de su fila; en el teléfono vuelve el menú ☰, las tres filas van una debajo de la otra y el menú abierto tiene fondo y empuja la pantalla hacia abajo",!malA.length&&medidas>200,medidas+' medidas · '+malA.slice(0,6).join(' | '))}
+     __check("MAR1: anchos de 861 a 1.920 px (cada 15 px) y 860, 600, 520 y 390, sin error, con «No se guardó» y con el texto largo de la carga incompleta: la página no se desplaza a los lados, nada de la barra de marca queda cortado, «Claro | Oscuro» y «Salir» se ven enteros y el error se ve; el buscador entra a la derecha de la fila 2; a 1.366 y 1.920 entran todas las pestañas (contadores con 4 cifras) y desde 1.101 px también (19-oct: a 1.101 sobraba 1 px y salía una barra); desde 1.310 px con su nombre entero («Planificación textil») y con cualquier pestaña elegida, más angosto con el corto; en más angosto se desplazan DENTRO de su fila y su barra de desplazamiento va debajo de las pestañas, sin tapar el subrayado de la activa ni el foco; el error de guardado se lee ENTERO (también «subprocesos de ingeniería»: baja a dos o tres líneas, nunca «…»); en el teléfono vuelve el menú ☰, las tres filas van una debajo de la otra, el texto de ayuda del buscador entra entero y el menú abierto tiene fondo y empuja la pantalla hacia abajo",!malA.length&&medidas>200,medidas+' medidas · '+malA.slice(0,6).join(' | '))}
     /* 6b · teclado (19-oct): con Marino las pestañas y sus entradas toman el foco (tabindex 0, role button / link, aria-expanded); Enter o Espacio abren la
        pestaña, Esc cierra el desplegable y vuelve a la pestaña, Enter en una entrada abre esa pantalla, salir de la fila con Tab cierra el desplegable; el foco se
        dibuja; al pasar a otro aspecto no queda nada de eso en el menú y al volver a Marino vuelve */
@@ -13514,12 +13536,37 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      const links=[...b.querySelectorAll('a')].filter(a=>a.offsetParent);const lk=links.length>=5&&links.every(a=>a.getAttribute('tabindex')==='0'&&a.getAttribute('role')==='link');
      const ent=links.find(a=>a.dataset.p==='entregas');ent.focus();const fEnt=document.activeElement===ent;tecla(ent,'Escape');const esc1=!b.classList.contains('abierto')&&document.activeElement===g&&g.getAttribute('aria-expanded')==='false';
      tecla(g,' ');const esp=b.classList.contains('abierto');const inp=document.querySelector('#busg-host input');const fo=(el,rel)=>el.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:rel}));const l1=b.querySelector('a');fo(g,l1);const queda=b.classList.contains('abierto');fo(l1,inp);const sale=queda&&!b.classList.contains('abierto');   /* el navegador sin ventana no dispara focusout: se dispara a mano con el destino del foco */
-     navToggle(g);const ent2=[...b.querySelectorAll('a')].find(a=>a.dataset.p==='entregas');ent2.focus();tecla(ent2,'Enter');const fue=page==='entregas'&&!b.classList.contains('abierto');
+     navToggle(g);const ent2=[...b.querySelectorAll('a')].find(a=>a.dataset.p==='entregas');ent2.focus();tecla(ent2,'Enter');const fue=page==='entregas'&&!b.classList.contains('abierto');const focoG=document.activeElement===document.querySelector('#nav .grp[data-g="dir"]');
      const cssF=[...document.styleSheets].some(st=>{try{return [...st.cssRules].some(r=>/data-estilo="marino"\] nav \.gbody a:focus-visible/.test(r.selectorText||'')&&/solid/.test(r.style.outline||r.style.outlineStyle||''))}catch(e){return false}});
      ponTema('odoo');const resto=[...document.querySelectorAll('#nav [tabindex],#nav [data-kb],#nav [aria-expanded],#nav [role]')].length+[...document.querySelectorAll('#nav .gbody')].filter(x=>x.style.top).length;
      ponTema(undefined);const vuelve=document.querySelector('#nav .grp').getAttribute('tabindex')==='0';page='ordenes';render();
-     __check("MAR1: las pestañas se manejan con el teclado: cada pestaña y cada entrada toman el foco (tabindex 0, role button / link, aria-expanded), Enter y Espacio abren la pestaña, Esc cierra el desplegable y vuelve a su pestaña, salir de la fila con Tab lo cierra, Enter en una entrada abre esa pantalla y el foco se dibuja; con «Como Odoo» no queda nada de eso en el menú (ni la posición fija del desplegable) y al volver a Marino vuelve",
-       attrs&&foco0&&abre&&lk&&fEnt&&esc1&&esp&&sale&&fue&&cssF&&resto===0&&vuelve,JSON.stringify({attrs,foco0,abre,lk,fEnt,esc1,esp,sale,fue,cssF,resto,vuelve}))}
+     __check("MAR1: las pestañas se manejan con el teclado: cada pestaña y cada entrada toman el foco (tabindex 0, role button / link, aria-expanded), Enter y Espacio abren la pestaña, Esc cierra el desplegable y vuelve a su pestaña, salir de la fila con Tab lo cierra, Enter en una entrada abre esa pantalla y el foco queda en la pestaña de su grupo (19-oct: no se pierde en <body>), el foco se dibuja; con «Como Odoo» no queda nada de eso en el menú (ni la posición fija del desplegable) y al volver a Marino vuelve",
+       attrs&&foco0&&abre&&lk&&fEnt&&esc1&&esp&&sale&&fue&&focoG&&cssF&&resto===0&&vuelve,JSON.stringify({attrs,foco0,abre,lk,fEnt,esc1,esp,sale,fue,focoG,cssF,resto,vuelve}))}
+    /* 6e · (19-oct) con Tab, la pestaña que recibe el foco se trae entera a la vista (Chrome solo desplaza la fila si la pestaña está oculta del todo); con el
+       mouse o un toque, no. El navegador sin ventana no dispara focusin al dar el foco: se dispara a mano, como el focusout de arriba */
+    {page='ordenes';render();const nv=document.getElementById('nav');const gs=[...nv.querySelectorAll('.grp')].filter(x=>x.offsetParent);const g=gs[gs.length-1];const fl0=nv.style.flex;
+     const r0=nv.getBoundingClientRect(),rg=g.getBoundingClientRect();nv.style.flex='0 0 '+Math.round(rg.left-r0.left+rg.width/2)+'px';await __p(0);
+     const entera=()=>{const a=nv.getBoundingClientRect(),b=g.getBoundingClientRect();return b.left>=a.left-0.5&&b.right<=a.left+nv.clientWidth+0.5};
+     nv.scrollLeft=0;const aMedias=!entera()&&nv.scrollWidth>nv.clientWidth+1;
+     document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));g.focus({preventScroll:true});g.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));await __p(20);const conMouse=nv.scrollLeft===0;g.blur();
+     nv.scrollLeft=0;document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true}));g.focus({preventScroll:true});g.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));await __p(20);const conTab=entera();g.blur();
+     nv.style.flex=fl0;nv.scrollLeft=0;document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));navCerrarTodo();
+     __check("MAR1: con Tab, una pestaña que se ve solo en parte (la fila desplazable) se trae entera a la vista, con su contorno de foco; con el mouse o un toque la fila no se desplaza",aMedias&&conMouse&&conTab,JSON.stringify({aMedias,conMouse,conTab}))}
+    /* 6f · (19-oct) alto contraste de Windows: el botón elegido de «Claro | Oscuro» lleva contorno y solo la pestaña activa queda subrayada */
+    {const rs=[];[...document.styleSheets].forEach(st=>{try{[...st.cssRules].forEach(r=>{if(r.media&&/forced-colors\s*:\s*active/.test(r.media.mediaText))[...r.cssRules].forEach(x=>rs.push(x))})}catch(e){}});
+     const bt=rs.some(x=>/data-estilo="marino"\] header \.mode button\[aria-pressed="true"\]/.test(x.selectorText||'')&&/solid/.test(x.style.outline||x.style.outlineStyle||'')&&parseFloat(x.style.outlineWidth||(x.style.outline||'').match(/[0-9.]+px/))>=2);
+     const gr=rs.some(x=>/data-estilo="marino"\] \.marino-fila2 #nav \.grp:not\(\.act\)/.test(x.selectorText||'')&&/canvas/i.test(x.style.borderBottomColor||''));
+     __check("MAR1: con colores forzados (alto contraste de Windows) el modo elegido de «Claro | Oscuro» se marca con un contorno de 2 px y solo la pestaña activa queda subrayada (las demás, con el color del fondo)",bt&&gr,JSON.stringify({bt,gr,n:rs.length}))}
+    /* 6g · (19-oct) con Tab a OTRA pestaña se cierra el desplegable que quedó abierto (con el mouse, como siempre: lo decide el clic); el ☰ se llama «Menú» (su
+       título), apunta al menú y dice si está abierto; el ▾ de cada pestaña no entra en su nombre; con «Como Odoo» no queda nada de eso */
+    {page='ordenes';render();const gD=document.querySelector('#nav .grp[data-g="dir"]'),gT=document.querySelector('#nav .grp[data-g="tex"]'),bD=document.querySelector('nav .gbody[data-g="dir"]');
+     navToggle(gD);document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true}));gT.focus({preventScroll:true});gT.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const cierra=!bD.classList.contains('abierto');gT.blur();
+     navToggle(gD);document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));gT.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const mouse=bD.classList.contains('abierto');navCerrarTodo();
+     const nb=document.getElementById('navBtn');const nom=!!nb.title&&nb.getAttribute('aria-label')===nb.title&&nb.getAttribute('aria-controls')==='nav';const e0=nb.getAttribute('aria-expanded');nb.click();const e1=nb.getAttribute('aria-expanded');nb.click();const e2=nb.getAttribute('aria-expanded');
+     const car=[...document.querySelectorAll('#nav .grp .car')];const carH=car.length>=5&&car.every(c=>c.getAttribute('aria-hidden')==='true');
+     ponTema('odoo');const resto=['aria-label','aria-controls','aria-expanded','data-kb'].filter(a=>nb.hasAttribute(a)).length+document.querySelectorAll('#nav .car[aria-hidden],#nav .car[data-kb]').length;ponTema(undefined);page='ordenes';render();
+     __check("MAR1: con Tab a otra pestaña se cierra el desplegable que quedó abierto (con el mouse no cambia nada: lo decide el clic); el ☰ se llama «Menú» (su título), apunta al menú y dice si está abierto (aria-expanded); el ▾ de cada pestaña no entra en su nombre; con «Como Odoo» no queda ninguno de esos atributos",
+       cierra&&mouse&&nom&&e0==='false'&&e1==='true'&&e2==='false'&&carH&&resto===0,JSON.stringify({cierra,mouse,nom,e0,e1,e2,carH,resto}))}
     /* 6d · el desplegable FIJO (pantalla ancha) se cierra al desplazar las pestañas de lado o al cambiar el tamaño de la ventana; en el teléfono (desplegable
        dentro de la columna del menú ☰) desplazar el menú hacia abajo o que el navegador cambie de tamaño NO lo cierra */
     {page='ordenes';render();const g=document.querySelector('#marino-fila2 #nav .grp[data-g="dir"]'),b=document.querySelector('nav .gbody[data-g="dir"]'),nv=document.getElementById('nav');const ab=()=>b.classList.contains('abierto');
@@ -13539,6 +13586,58 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       sv.textContent='No se guardó';sv.classList.add('err');n++;{const r=ratioDe(sv);if(r<4.5||cs(sv,'display')==='none')malC.push(m+' error de guardado '+r.toFixed(2))}sv.textContent=sv0[0];sv.title=sv0[1];sv.className=sv0[2]}
      setModo('claro');render();
      __check("MAR1: contraste AA (≥ 4,5) en claro y en oscuro de los textos de la barra de marca (título, TEMPOCODECA, guardado, «No se guardó», chip del usuario, Salir, Claro/Oscuro en los dos estados) y de las pestañas (normales, la activa, el desplegable abierto, el ítem activo, los contadores y el buscador)",n>=30&&!malC.length,n+' textos · '+malC.slice(0,6).join(' | '))}
+    /* 7b · (19-oct) los avisos fijos que arma el código (datos nuevos, versión vieja, freno de borrado, conflicto, latido): se arman con las mismas funciones y se miden en claro y oscuro */
+    {const malF=[];let n=0;const of=window.fetch,omx=maxActualizado,ud=ULT_DATOS,cf=CONFLICTOS;
+     try{CONFLICTOS=[{op:'WH/MO/1',id:'x',choques:['fase']}];avisoConflictos();
+      window.fetch=async(u,o)=>{const s=String(u);if(/revisado\.txt/.test(s))return new Response(String(Math.floor(Date.now()/1000)-86400*3));if(/nocache=/.test(s))return new Response("APP_BUILD='1999-01-01 00:00'");return of(u,o)};await revisarVersion();await revisarLatidoServidor();
+      maxActualizado=async()=>new Date(Date.now()+60000).toISOString();ULT_DATOS=new Date(Date.now()-60000).toISOString();await revisarDatos();
+      const src=[...document.scripts].map(s=>s.textContent).join('\n');const mm=src.match(/b\.id='aviso-freno';b\.style\.cssText='([^']+)'/);const fr=document.createElement('div');fr.id='aviso-freno';fr.style.cssText=mm?mm[1]:'';fr.innerHTML='<b>Se frenó un borrado.</b> <button class="btn sm">Recargar ahora</button>';document.body.appendChild(fr);
+      const ids=['aviso-datos','aviso-version','aviso-freno','aviso-conflicto','aviso-latido'];
+      for(const m of ['claro','oscuro']){setModo(m);ids.forEach(id=>{const dv=document.getElementById(id);if(!dv){malF.push(m+' falta '+id);return}
+        [dv,...dv.querySelectorAll('b,button')].forEach(e=>{n++;const r=ratioDe(e);if(r<4.5)malF.push(m+' '+id+' «'+e.textContent.trim().slice(0,24)+'» '+r.toFixed(2))})})}
+      if(!mm)malF.push('no encuentro el estilo del freno de borrado')}
+     finally{window.fetch=of;maxActualizado=omx;ULT_DATOS=ud;CONFLICTOS=cf;['aviso-datos','aviso-version','aviso-freno','aviso-conflicto','aviso-latido'].forEach(id=>{const dv=document.getElementById(id);if(dv)dv.remove()});setModo('claro');render()}
+     __check("MAR1: contraste AA (≥ 4,5) en claro y en oscuro de los avisos fijos que arma el código (datos nuevos, versión vieja, freno de borrado, conflicto con sus dos botones y latido del servidor)",n>=30&&!malF.length,n+' textos · '+malF.slice(0,6).join(' | '))}
+    /* 7c · (19-oct) la sombra del desplegable oscurece lo de abajo también en oscuro (antes era un halo claro: salía de --fg), y en el ítem elegido el contador
+       sigue siendo un badge (fondo --surface sobre la fila --accent-soft; antes era del mismo color que su fila) */
+    {const mal=[];for(const m of ['claro','oscuro']){setModo(m);page='ordenes';render();const g=document.querySelector('#marino-fila2 #nav .grp[data-g="dir"]');navToggle(g);const b=document.querySelector('nav .gbody[data-g="dir"]');
+      const sh=cs(b,'boxShadow');const c=rgba((sh.match(/(rgba?\([^)]*\)|color\([^)]*\))/)||[])[1]);
+      ['--bg','--surface'].forEach(v=>{const x=rgba(col('var('+v+')'));const cm=c&&x?sobre(c,x):null;if(!cm||lum(cm)>lum(x)&&contraste(cm,x)>=1.05)mal.push(m+' la sombra aclara '+v+' ('+sh.slice(0,40)+')')});
+      const on=b.querySelector('a.on'),n=document.getElementById('n-ord');const t0=n?n.textContent:'';if(n&&!t0.trim())n.textContent='12';
+      if(!on||!n||!on.contains(n))mal.push(m+' sin el ítem Órdenes elegido');else{const fn=cs(n,'backgroundColor'),fa=cs(on,'backgroundColor');if(fn===fa||fn!==col('var(--surface)')||cs(n,'color')!==col('var(--accent)')||ratioDe(n)<4.5)mal.push(m+' contador '+fn+' sobre '+fa+' · '+cs(n,'color'))}
+      if(n)n.textContent=t0;navCerrarTodo()}
+     setModo('claro');render();
+     __check("MAR1: la sombra del desplegable oscurece lo que tiene debajo en claro y en oscuro (no es un halo claro), y en el ítem elegido del desplegable el contador sigue siendo un badge (fondo --surface, texto --accent, contraste ≥ 4,5; el de «Hoy» sigue en rojo)",!mal.length,mal.join(' | '))}
+    /* 7d · (19-oct) con Marino el selector «Color» de Configuración sale deshabilitado (Marino trae sus propios colores; como con «Clásico»); con Tablero se puede elegir */
+    {const ct=CONF.tab;CONF.tab='cal';const selC=()=>{page='config';render();return [...document.querySelectorAll('#p-config select')].find(s=>/setTemaColor\(/.test(s.getAttribute('onchange')||''))};
+     const sm=selC();const enM=!!sm&&sm.disabled&&/Tablero y Odoo/.test(sm.title||'');ponTema('tablero');const st=selC();const enT=!!st&&!st.disabled;ponTema('clasico');const sc=selC();const enC=!!sc&&sc.disabled;ponTema(undefined);CONF.tab=ct;page='ordenes';render();
+     __check("MAR1: con Marino el selector «Color» de Configuración sale deshabilitado con su porqué (no cambia nada en Marino y no deja en la bitácora un cambio que no se ve); con Tablero se puede elegir y con Clásico sigue deshabilitado",enM&&enT&&enC,JSON.stringify({enM,enT,enC}))}
+    /* 7e · (19-oct) la contraseña, el correo, el teléfono y la url tienen el mismo fondo que el campo de texto, en claro y en oscuro (en el ingreso y en cualquier pantalla) */
+    {const mal=[];const lg=document.getElementById('login');const on0=lg.classList.contains('on');const box=document.createElement('div');box.innerHTML=['text','password','email','tel','url'].map(t=>'<input type="'+t+'">').join('');document.querySelector('main').appendChild(box);
+     try{mostrarLogin();for(const m of ['claro','oscuro']){setModo(m);const fe=cs(document.getElementById('l-email'),'backgroundColor'),fp=cs(document.getElementById('l-pass'),'backgroundColor');if(fe!==fp)mal.push(m+' ingreso: correo '+fe+' · contraseña '+fp);
+       const ins=[...box.querySelectorAll('input')];const ft=cs(ins[0],'backgroundColor');ins.slice(1).forEach(x=>{if(cs(x,'backgroundColor')!==ft)mal.push(m+' '+x.type+' '+cs(x,'backgroundColor')+' ≠ texto '+ft)})}}
+     finally{box.remove();if(!on0)lg.classList.remove('on');setModo('claro');render()}
+     __check("MAR1: la contraseña (y los campos de correo, teléfono y url) tienen el mismo fondo que el campo de texto, en claro y en oscuro: en la pantalla de ingreso y en cualquier pantalla",!mal.length,mal.join(' | '))}
+    /* 7f · (19-oct) el buscador de arriba es una píldora y su foco se ve como el del resto de la barra: contorno de 2 px en --accent (≥ 3 de contraste contra la fila)
+       y el borde en --accent (el estilo en línea del campo le ganaba). El navegador sin ventana no aplica :focus: se miran las reglas y los colores que resuelven */
+    {const mal=[];const rs=[];[...document.styleSheets].forEach(st=>{try{const ver=l=>[...l].forEach(r=>{if(r.cssRules&&!r.selectorText)ver(r.cssRules);else rs.push(r)});ver(st.cssRules)}catch(e){}});
+     const R=re=>rs.filter(r=>re.test(r.selectorText||''));
+     const fv=R(/data-estilo="marino"\] \.marino-fila2 #busg-host input:focus-visible/).some(r=>/solid/.test(r.style.outlineStyle||r.style.outline||'')&&parseFloat(r.style.outlineWidth||(r.style.outline||'').match(/[0-9.]+px/))>=2&&/--accent\)/.test(r.style.outlineColor||r.style.outline||''));
+     const fb=R(/data-estilo="marino"\] \.marino-fila2 #busg-host input:focus$/).some(r=>/--accent\)/.test(r.style.borderColor||r.style.borderTopColor||'')&&(r.style.getPropertyPriority('border-color')||r.style.getPropertyPriority('border-top-color'))==='important');
+     if(!fv)mal.push('sin contorno de 2 px en --accent al enfocar con teclado');if(!fb)mal.push('el borde del foco no le gana al estilo en línea');
+     for(const m of ['claro','oscuro']){setModo(m);render();const bi=document.querySelector('#busg-host input'),f2=document.getElementById('marino-fila2');if(parseFloat(cs(bi,'borderTopLeftRadius'))<16)mal.push(m+' radio '+cs(bi,'borderTopLeftRadius'));
+      const ra=contraste(rgba(col('var(--accent)')),fondoDe(f2));if(ra<3)mal.push(m+' contorno '+ra.toFixed(2))}
+     setModo('claro');render();
+     __check("MAR1: el buscador de arriba es una píldora (radio ≥ 16 px aunque el campo traiga su estilo en línea) y con teclado su foco se ve: contorno de 2 px y borde en --accent, con contraste ≥ 3 contra la fila, en claro y en oscuro",!mal.length,mal.join(' | '))}
+    /* 7g · (19-oct) en un navegador compartido «Cargando…» sale en el modo de quien entra y lo deja en tempo.modo (lo lee el <head> la próxima vez): se corre entrar()
+       con la lectura de las tablas cambiada por una que mira el modo y corta ahí */
+    {const ku0='tempo.modo.'+(USER&&USER.id),ls0={g:localStorage.getItem('tempo.modo'),u:localStorage.getItem(ku0)};const bakP2=PERFIL,mm0=MODO_MEM,ct0=cargarTodo,lg=document.getElementById('login'),on0=lg.classList.contains('on');let vio=null;
+     try{localStorage.setItem('tempo.modo','claro');localStorage.setItem(ku0,'oscuro');MODO_MEM=null;de.dataset.modo='claro';
+      cargarTodo=async()=>{vio={modo:de.dataset.modo,ls:localStorage.getItem('tempo.modo'),clave:claveUsr()};throw new Error('corte de la prueba')};
+      try{await entrar(USER)}catch(e){}}
+     finally{cargarTodo=ct0;PERFIL=bakP2;MODO_MEM=mm0;if(ls0.g===null)localStorage.removeItem('tempo.modo');else localStorage.setItem('tempo.modo',ls0.g);if(ls0.u===null)localStorage.removeItem(ku0);else localStorage.setItem(ku0,ls0.u);
+      const ap=document.getElementById('app');if(ap)ap.classList.remove('cargando');if(on0)lg.classList.add('on');setModo('claro');render()}
+     __check("MAR1: al entrar, en cuanto se sabe quién es, la pantalla toma SU modo («Cargando…» ya sale en oscuro si esa persona eligió oscuro, aunque la última elección del navegador fuera claro) y lo copia a tempo.modo, que lee el <head> la próxima vez",!!vio&&vio.modo==='oscuro'&&vio.ls==='oscuro'&&vio.clave===USER.id,JSON.stringify(vio))}
     /* 8 · los otros tres aspectos no cambian: el mismo HTML de la barra, del menú y de Hoy, y los mismos estilos calculados antes y después de pasar por Marino;
        sin la fila 2 ni el control (el sol/luna de siempre); el buscador vuelve a su lugar de la barra */
     {const foto=()=>{page='panorama';render();const h=document.querySelector('header'),nv=document.getElementById('nav');const els=[h,nv,document.body,document.getElementById('brand'),document.getElementById('busg-host'),document.getElementById('btn-salir'),document.getElementById('modo-sw'),document.querySelector('#p-panorama .pagehead'),document.querySelector('#p-panorama .kpi'),...nv.querySelectorAll('.grp')].filter(Boolean);

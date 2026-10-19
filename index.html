@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>/* 14-oct-2026 (tema Marino): el modo claro/oscuro se pone ANTES de cargar el CSS, así no parpadea al abrir en oscuro. Misma clave que modoVisual()
-   (tempo.modo = la última elección en este navegador; al entrar, la de la persona manda). Sin elección guardada: claro, como siempre. */
+   (tempo.modo = el modo de quien entró último en este navegador, o la última elección hecha en el ingreso; al entrar, manda la de la persona y se copia aquí). Sin elección guardada: claro, como siempre. */
 (function(){var m='claro';try{if(localStorage.getItem('tempo.modo')==='oscuro')m='oscuro'}catch(e){}document.documentElement.setAttribute('data-modo',m)})();</script>
 <title>Planificación y control — TEMPO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2462,13 +2462,13 @@ html[data-tema="odoo"][data-estilo="marino"] header .mode button:focus-visible{o
 /* ---- fila 2 · el menú como pestañas, con el buscador a la derecha ---- */
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;min-height:46px;padding:0 22px;background:var(--surface);border-bottom:1px solid var(--border);position:relative;z-index:29}
 html:not([data-estilo="marino"]) .marino-fila2,html[data-estilo="marino"] #app.cargando .marino-fila2,html.envivo-tv[data-estilo="marino"] .marino-fila2{display:none!important}
-html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav{flex:1 1 auto;min-width:0;display:flex;align-items:stretch;gap:2px;height:46px;padding:0;margin:0;background:transparent;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;position:static}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav{flex:1 1 auto;min-width:0;display:flex;align-items:stretch;gap:2px;height:auto;min-height:46px;padding:0;margin:0;background:transparent;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;position:static}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{flex:none;display:flex;align-items:center;height:46px;padding:0 14px;margin:0;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:var(--fg-muted);font-size:14px;font-weight:400;letter-spacing:0;text-transform:none;white-space:nowrap;cursor:pointer}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:hover{color:var(--accent);background:transparent}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp.abierto{color:var(--fg);background:var(--surface-2)}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp.act{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;box-shadow:none}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp .car{color:inherit;opacity:.7}
-html[data-tema="odoo"][data-estilo="marino"] nav .gbody{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;box-shadow:0 8px 20px color-mix(in srgb,var(--fg) 14%,transparent);padding:4px 0;min-width:260px}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;box-shadow:0 8px 20px color-mix(in srgb,var(--brand) 14%,transparent);padding:4px 0;min-width:260px}
 html[data-tema="odoo"][data-estilo="marino"] nav .gbody a{color:var(--fg);background:transparent;border-radius:0;padding:7px 16px;margin:0;font-size:14px;box-shadow:none}
 html[data-tema="odoo"][data-estilo="marino"] nav .gbody a:hover{background:var(--surface-2);color:var(--fg)}
 html[data-tema="odoo"][data-estilo="marino"] nav .gbody a.on{background:var(--accent-soft);color:var(--accent);font-weight:600;box-shadow:none}
@@ -2476,17 +2476,31 @@ html[data-tema="odoo"][data-estilo="marino"] nav .gbody a .ic svg{stroke:var(--f
 html[data-tema="odoo"][data-estilo="marino"] nav a .n{display:inline-block;margin-left:auto;min-width:18px;padding:0 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:600;line-height:18px;text-align:center}
 html[data-tema="odoo"][data-estilo="marino"] nav a .n:empty{display:none}
 html[data-tema="odoo"][data-estilo="marino"] nav a .n.n-atr{background:var(--danger-soft);color:var(--danger)}
+html[data-tema="odoo"][data-estilo="marino"] nav .gbody a.on .n:not(.n-atr){background:var(--surface)}   /* en el ítem elegido (fondo --accent-soft) el contador va sobre --surface: sigue viéndose como badge */
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host{flex:0 1 340px!important;min-width:180px!important;max-width:360px;margin-left:auto;justify-content:flex-end!important}
-html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input{height:32px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--fg)}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input{height:32px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--fg)}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input::placeholder{color:var(--fg-muted);opacity:1}
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focus{border-color:var(--accent);box-shadow:0 0 0 .15rem var(--o-ring);outline:0}
+/* el campo trae su estilo en línea (borde, radio 8 px y relleno de los otros aspectos): el radio y el borde del foco van con !important; el relleno se queda
+   el del campo (con 0 14px se cortaba el texto de ayuda a 390 px). Con teclado el foco se ve como en el resto de la barra: contorno de 2 px en --accent */
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input{border-radius:999px!important}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focus{border-color:var(--accent)!important}
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (min-width:861px){
   html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .gbody{position:fixed;top:104px;margin:0;border-top:0;max-height:calc(100vh - 130px);overflow:auto;z-index:60}
+  /* cuando las pestañas se desplazan (861–1.044 px), su barra de desplazamiento va DEBAJO de ellas (la fila crece) y no tapa el subrayado de la activa ni el foco; el buscador queda centrado con las pestañas */
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host{align-self:flex-start;height:46px;align-items:center}
 }
 @media (min-width:861px) and (max-width:1100px){
   html[data-tema="odoo"][data-estilo="marino"] header>#version{display:none}
-  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{padding:0 10px}
 }
+@media (min-width:861px) and (max-width:1120px){
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp{padding:0 10px}   /* con 14 px las pestañas no entran hasta 1.102 px: hasta 1.120 van con 10 px y no aparece una barra por 1 px */
+}
+/* el menú tiene su propia fila: desde 1.310 px los siete grupos caben con su nombre entero («Planificación textil», «Planificación de producción»); la
+   abreviación de los tres aspectos (hasta 1.366 px) era por falta de lugar en la barra. Medido con Segoe UI: con la pestaña más ancha en negrita sobran
+   24 px a 1.310 (y 4 px a 1.290) */
+@media (min-width:1310px){html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp .grp-l{display:inline}html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp .grp-c{display:none}}
 /* ---- teléfono y tableta angosta: la barra se acomoda en filas y el menú ☰ abre las pestañas en columna ---- */
 @media (max-width:860px){
   html[data-tema="odoo"][data-estilo="marino"] header{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:6px;padding:8px 12px}
@@ -2511,9 +2525,15 @@ html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focu
 html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]),html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]):hover,
 html[data-tema="odoo"][data-estilo="marino"] .tab-pest button.on,html[data-tema="odoo"][data-estilo="marino"] .filt-btn .filt-n{color:var(--accent-fg)}
 /* 19-oct · revisión de la etapa 1 */
-/* un error de guardado se ve: píldora roja suave en la barra de marca (el texto entero va al pasar el mouse, como siempre) */
-html[data-tema="odoo"][data-estilo="marino"] header>#saved.err{max-width:420px;padding:3px 10px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-weight:600}
-@media (min-width:861px) and (max-width:1100px){html[data-tema="odoo"][data-estilo="marino"] header>#saved.err{max-width:220px}}
+/* un error de guardado se ve ENTERO: píldora roja suave en la barra de marca que, si no cabe en una línea, baja a dos o tres (nunca «…»: lo que hay que
+   leer es el final, «recarga la página»; con un tope de 220 o 420 px se cortaba de 861 a 1.100 px, en el teléfono y, con «subprocesos de ingeniería», a todo
+   ancho). Radio 11 px: con una línea sigue siendo píldora; con varias, uno de 999 px recortaba las esquinas del texto. El título lo sigue repitiendo */
+html[data-tema="odoo"][data-estilo="marino"] header>#saved.err{max-width:none;white-space:normal;padding:3px 10px;border-radius:11px;background:var(--danger-soft);color:var(--danger);font-weight:600}
+/* los avisos fijos que arma el código (datos nuevos, versión vieja, freno de borrado, conflicto y latido del servidor) escriben la letra blanca a mano
+   sobre --ink o --alerta, que en oscuro son claros (1,22 y 2,89 de contraste): la letra va con --surface (blanco en claro, igual que antes; tinta en
+   oscuro, como el texto sobre el acento). «Quedarme con lo del servidor» del conflicto (botón gris con la letra blanca a mano) va con --fg */
+html[data-estilo="marino"] #aviso-datos,html[data-estilo="marino"] #aviso-version,html[data-estilo="marino"] #aviso-freno,html[data-estilo="marino"] #aviso-conflicto,html[data-estilo="marino"] #aviso-latido{color:var(--surface)!important}
+html[data-estilo="marino"] #aviso-conflicto .btn.ghost{color:var(--fg)!important;border-color:var(--border)!important}
 /* teclado: las pestañas y sus entradas toman el foco (marinoTeclado) y el foco se dibuja por dentro (la fila de pestañas recorta lo de afuera) */
 html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:focus-visible,html[data-tema="odoo"][data-estilo="marino"] nav .gbody a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 /* lo que «Como Odoo» escribe con grises fijos y en Marino no llegaba a 4,5 de contraste (barrido de las pantallas principales, claro y oscuro): las etiquetas
@@ -2524,11 +2544,12 @@ html[data-tema="odoo"][data-estilo="marino"] .o-facet a{color:var(--fg-muted)}
 html[data-tema="odoo"][data-estilo="marino"] .o-facet a:hover{color:var(--fg)}
 html[data-tema="odoo"][data-estilo="marino"] .o-statusbar .st.hecho:not(.on){color:var(--fg-muted)}
 html[data-tema="odoo"][data-estilo="marino"] .capm td.cel.dias,html[data-tema="odoo"][data-estilo="marino"] .cel-ley.dias{background:var(--surface-2);color:var(--fg-muted)}
-/* pantalla de ingreso: el fondo es el azul de la barra de marca (como el ingreso de nova) y la contraseña tiene el mismo campo que el correo (en «Como Odoo»
-   quedaba con el aspecto del navegador, angosta) */
+/* pantalla de ingreso: el fondo es el azul de la barra de marca (como el ingreso de nova) y la contraseña tiene el mismo campo que el correo, en claro y en
+   oscuro (en «Como Odoo» quedaba con el aspecto del navegador, angosta; en oscuro, el campo de texto va en --field y la contraseña quedaba en --paper) */
 html[data-estilo="marino"] #login{background:var(--brand)!important}
 html[data-tema="odoo"][data-estilo="marino"] input[type=password],html[data-tema="odoo"][data-estilo="marino"] input[type=email],html[data-tema="odoo"][data-estilo="marino"] input[type=tel],html[data-tema="odoo"][data-estilo="marino"] input[type=url]{-webkit-appearance:none;appearance:none;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:4px 8px;color:var(--ink);font:inherit;max-width:100%}
 html[data-tema="odoo"][data-estilo="marino"] #login input[type=password]{width:100%}
+html[data-tema="odoo"][data-modo="oscuro"][data-estilo="marino"] input[type=password],html[data-tema="odoo"][data-modo="oscuro"][data-estilo="marino"] input[type=email],html[data-tema="odoo"][data-modo="oscuro"][data-estilo="marino"] input[type=tel],html[data-tema="odoo"][data-modo="oscuro"][data-estilo="marino"] input[type=url]{background-color:var(--field)}
 /* «Cargando…»: como los botones de la barra, el control «Claro | Oscuro» no se ve (quedaba la píldora vacía) */
 html[data-estilo="marino"] #app.cargando header .mode{display:none!important}
 /* impresión: la fila 2 no se imprime (la barra y el menú tampoco, como siempre) */
@@ -2548,6 +2569,12 @@ html[data-estilo="marino"] #app.cargando header .mode{display:none!important}
   html[data-tema="odoo"][data-estilo="marino"] header>#saved{order:7;flex:1 1 auto;max-width:none}
   html[data-tema="odoo"][data-estilo="marino"] header>.mode{order:8}
   html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir{order:9}
+}
+/* alto contraste de Windows (forced-colors): el relleno del botón elegido y el subrayado transparente se pierden; el elegido se marca con un contorno y solo la
+   pestaña activa queda subrayada */
+@media (forced-colors:active){
+  html[data-tema="odoo"][data-estilo="marino"] header .mode button[aria-pressed="true"]{outline:2px solid ButtonText;outline-offset:-3px}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:not(.act){border-bottom-color:Canvas}
 }
 </style>
 </head>
@@ -3312,7 +3339,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-19 09:15';
+const APP_BUILD='2026-10-19 11:28';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3388,6 +3415,7 @@ async function entrar(user){
   if(USER&&user&&USER.id!==user.id){try{iomSoltarSesion()}catch(e){}}   /* otra persona entra sin recargar: lo de la anterior no queda en pantalla */
   USER=user;const {data}=await sb.from('perfiles').select('*').eq('id',user.id).single();
   PERFIL=data||{rol:'consulta'};
+  try{pintarModo()}catch(e){}try{const m=modoVisual();if(localStorage.getItem('tempo.modo')!==m)localStorage.setItem('tempo.modo',m)}catch(e){}   /* 19-oct · Marino: ya se sabe quién entró → «Cargando…» sale en su modo, y la próxima apertura de este navegador (el <head> lee tempo.modo) arranca en el modo de quien entró último: en un PC o tablet compartido no parpadea */
   document.getElementById('login').classList.remove('on');
   {const ap=document.getElementById('app');if(ap)ap.classList.add('cargando')}   /* 30-sep: «Cargando…» mientras se leen los datos */
   await cargarTodo();
@@ -3878,13 +3906,20 @@ function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="
 /* ---------- menú horizontal: un grupo abierto a la vez; clic fuera lo cierra ---------- */
 function navCerrarTodo(){document.querySelectorAll('nav .gbody.abierto').forEach(b=>b.classList.remove('abierto'));document.querySelectorAll('nav .grp.abierto').forEach(g=>g.classList.remove('abierto'));navAria()}
 /* 19-oct · Marino: las pestañas y sus entradas se manejan con el teclado (Tab llega a cada una, Enter o Espacio la abre, Esc cierra el desplegable y vuelve a
-   su pestaña; salir de la fila con Tab lo cierra). Solo con Marino: al cambiar de aspecto se quitan tabindex, role y aria-expanded (data-kb marca los que
-   se pusieron aquí), así Tablero, Como Odoo y Clásico quedan con el mismo DOM de siempre. Los clics no cambian. */
-let MARINO_EV=false;
-function navAria(){document.querySelectorAll('nav .grp[data-kb]').forEach(g=>{const v=g.classList.contains('abierto')?'true':'false';if(g.getAttribute('aria-expanded')!==v)g.setAttribute('aria-expanded',v)})}
+   su pestaña; salir de la fila con Tab, o pasar a otra pestaña, lo cierra; la pestaña con el foco se ve entera; elegir una pantalla deja el foco en la pestaña
+   de su grupo; el ☰ se llama «Menú» y dice si está abierto; el ▾ no entra en el nombre). Solo con Marino: al cambiar de aspecto se quitan tabindex, role,
+   aria-expanded, aria-hidden, aria-label y aria-controls (data-kb marca los que se pusieron aquí), así Tablero, Como Odoo y Clásico quedan con el mismo DOM de
+   siempre. Los clics no cambian. */
+let MARINO_EV=false,MARINO_KB=false;   /* MARINO_KB: la última interacción fue una tecla (no el mouse ni un toque): la regla de :focus-visible */
+function navAria(){document.querySelectorAll('nav .grp[data-kb]').forEach(g=>{const v=g.classList.contains('abierto')?'true':'false';if(g.getAttribute('aria-expanded')!==v)g.setAttribute('aria-expanded',v)});
+  const nb=document.getElementById('navBtn'),nv=document.getElementById('nav');if(nb&&nv&&nb.hasAttribute('data-kb')){const v=nv.classList.contains('abierto')?'true':'false';if(nb.getAttribute('aria-expanded')!==v)nb.setAttribute('aria-expanded',v)}}
 function marinoTeclado(on){const nav=document.getElementById('nav');if(!nav)return;
   nav.querySelectorAll('.grp, .gbody a').forEach(el=>{if(on){if(!el.hasAttribute('tabindex')){el.setAttribute('tabindex','0');el.setAttribute('role',el.classList.contains('grp')?'button':'link');el.setAttribute('data-kb','1')}}
     else if(el.hasAttribute('data-kb')){el.removeAttribute('tabindex');el.removeAttribute('role');el.removeAttribute('aria-expanded');el.removeAttribute('data-kb')}});
+  /* el ▾ de cada pestaña no entra en su nombre; el ☰ del teléfono se nombra con su título («Menú») y dice si el menú está abierto (aria-expanded) */
+  nav.querySelectorAll('.grp .car').forEach(c=>{if(on){if(!c.hasAttribute('aria-hidden')){c.setAttribute('aria-hidden','true');c.setAttribute('data-kb','1')}}else if(c.hasAttribute('data-kb')){c.removeAttribute('aria-hidden');c.removeAttribute('data-kb')}});
+  {const nb=document.getElementById('navBtn');if(nb){if(on){if(!nb.hasAttribute('data-kb')){nb.setAttribute('aria-label',nb.title||'');nb.setAttribute('aria-controls','nav');nb.setAttribute('data-kb','1')}}
+    else if(nb.hasAttribute('data-kb')){nb.removeAttribute('aria-label');nb.removeAttribute('aria-controls');nb.removeAttribute('aria-expanded');nb.removeAttribute('data-kb')}}}
   if(on)navAria();else nav.querySelectorAll('.gbody').forEach(b=>{if(b.style.top)b.style.top=''});   /* al salir de Marino el desplegable deja de ir fijo: sin su «top» */
   if(!on||MARINO_EV)return;MARINO_EV=true;const esM=()=>document.documentElement.dataset.estilo==='marino';
   /* solo el desplegable FIJO (pantalla ancha) se cierra al desplazar las pestañas de lado o al cambiar el tamaño de la ventana: quedaría suelto. En el teléfono
@@ -3893,9 +3928,20 @@ function marinoTeclado(on){const nav=document.getElementById('nav');if(!nav)retu
   nav.addEventListener('scroll',()=>{if(esM()&&fijo())navCerrarTodo()},{passive:true});
   addEventListener('resize',()=>{if(esM()&&fijo())navCerrarTodo()});
   nav.addEventListener('keydown',e=>{if(!esM())return;const el=e.target&&e.target.closest&&e.target.closest('.grp[data-kb], .gbody a[data-kb]');if(!el)return;
-    if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();el.click()}
+    if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();el.click();
+      /* elegir una pantalla esconde su entrada: el foco vuelve a la pestaña de su grupo (o al ☰ si el menú del teléfono se cerró), no se pierde en <body> */
+      if(el.matches('.gbody a')){const ae=document.activeElement;if((!ae||ae===document.body||ae===el)&&!el.getClientRects().length){const b=el.closest('.gbody'),g=b&&document.querySelector('nav .grp[data-g="'+b.dataset.g+'"]'),nb=document.getElementById('navBtn');if(g&&g.getClientRects().length)g.focus();else if(nb&&nb.getClientRects().length)nb.focus()}}}
     else if(e.key==='Escape'){const b=el.closest('.gbody');const g=b?document.querySelector('nav .grp[data-g="'+b.dataset.g+'"]'):el;const ab=!!document.querySelector('nav .gbody.abierto');navCerrarTodo();if(ab){e.stopPropagation();if(g)g.focus()}}});
-  nav.addEventListener('focusout',e=>{if(esM()&&e.relatedTarget&&!nav.contains(e.relatedTarget))navCerrarTodo()})}
+  nav.addEventListener('focusout',e=>{if(esM()&&e.relatedTarget&&!nav.contains(e.relatedTarget))navCerrarTodo()});
+  /* con Tab, la pestaña que recibe el foco se trae entera a la vista: Chrome solo desplaza la fila si la pestaña queda oculta del todo, y a medias se veía «Co»
+     con el contorno cortado. Solo con el teclado (MARINO_KB, la misma regla que :focus-visible: la última interacción fue una tecla): un clic o un toque no
+     desplaza la fila, como siempre (si la desplazara, el toque abriría el desplegable y el desplazamiento lo volvería a cerrar) */
+  document.addEventListener('keydown',e=>{if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/^(Shift|Control|Alt|Meta|AltGraph|CapsLock)$/.test(e.key||''))MARINO_KB=true},true);
+  document.addEventListener('pointerdown',()=>{MARINO_KB=false},true);
+  /* y si con Tab se pasa a OTRA pestaña, el desplegable que quedó abierto se cierra (el foco ya no está en él) */
+  nav.addEventListener('focusin',e=>{const g=e.target&&e.target.closest&&e.target.closest('.grp[data-kb]');if(!esM()||!g||!MARINO_KB)return;
+    const ab=document.querySelector('nav .gbody.abierto');if(ab&&ab.dataset.g!==g.dataset.g)navCerrarTodo();g.scrollIntoView({block:'nearest',inline:'nearest'})});
+  {const nb=document.getElementById('navBtn');if(nb)nb.addEventListener('click',()=>{if(esM())navAria()})}}
 function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto');colocarMenuMarino(g,b)}navAria()}
 /* 14-oct · Marino: las pestañas se desplazan de lado dentro de su fila, así el desplegable va fijo a la pantalla, debajo de su pestaña (si no, la fila lo cortaría) */
 function colocarMenuMarino(g,b){if(!b)return;if(document.documentElement.dataset.estilo!=='marino'||getComputedStyle(b).position!=='fixed'){if(b.style.top)b.style.top='';return}
@@ -18964,7 +19010,7 @@ ${S.centros.filter(x=>x.area==='pro').sort((a,b)=>ordenPaso(a.id)-ordenPaso(b.id
 <div><label>Corregir registros de prendas: hasta (días hábiles atrás)</label><input type="number" min="0" step="1" value="${esc(String(diasCorregirRegistro()))}" onchange="setDiasCorregirRegistro(this.value)" ${puede('config')||puede('programa')?'':'disabled'}><div class="mut" style="font-size:var(--fs-xs)">hasta cuántos días hábiles atrás se puede deshacer un registro de prendas equivocado (ficha de la orden → Registros, o Programación del centro → «Registros recientes»), con motivo; el registro no se borra. <b>0 = solo hoy</b></div></div>
 <div><label>Capacidad: «justo» desde (%)</label><input type="number" min="0" max="100" step="any" value="${esc(String(prm('capAmbar',85)))}" onchange="setCapAmbar(this.value)" ${puede('config')?'':'disabled title="solo configuración cambia el umbral"'}><div class="mut" style="font-size:var(--fs-xs)">desde qué % de uso un centro sale en ámbar («justo») en Capacidad y decisiones y en la «Capacidad disponible» del Plan de cada centro. Más de 100 % siempre es rojo («no alcanza»).</div></div>
 <div><label>Aspecto de la pantalla</label><select onchange="setTema(this.value)">${ASPECTOS.map(([k,n])=>`<option value="${k}" ${aspectoVisual()===k?'selected':''}>${esc(n)}${k===ASPECTO_DEF?' · por defecto':''}</option>`).join('')}</select>
-   <label style="margin-top:8px">Color</label><select onchange="setTemaColor(this.value)" ${temaVisual()==='clasico'?'disabled title="el color vale para los aspectos Tablero y Odoo"':''}>${TEMA_COLORES.map(([k,n])=>`<option value="${k}" ${temaColor()===k?'selected':''}>${esc(n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)"><b>Tablero</b> (por defecto desde el 04-oct, el ejemplo que mandó la usuaria): fondo gris claro, todo en tarjetas blancas, cifras con ícono y fondo según su estado; el menú sigue en la barra de arriba. <b>Color</b>: «Gris cálido con acento petróleo» (por defecto en el Tablero desde el 08-oct) lleva la barra de arriba blanca y es <b>sobrio</b>: solo lo cumplido (verde), el riesgo (ámbar) y el atraso (rojo) tienen color; las tarjetas de cifras son blancas con el estado en el círculo del ícono y el estado de cada orden es un punto chico. Para volver al azul marino, elígelo aquí. <b>Como Odoo</b> es el aspecto del 24-sep («que se vea como Odoo, porque la gente ya está acostumbrada») y <b>Clásico</b> el anterior. Solo cambia el aspecto; las pantallas, los números y los botones son los mismos. Vale para todos los usuarios y queda en la bitácora. El modo claro u oscuro lo elige cada persona con el sol y la luna de arriba.</div></div>
+   <label style="margin-top:8px">Color</label><select onchange="setTemaColor(this.value)" ${temaVisual()==='clasico'||esMarino()?'disabled title="el color vale para los aspectos Tablero y Odoo"':''}>${TEMA_COLORES.map(([k,n])=>`<option value="${k}" ${temaColor()===k?'selected':''}>${esc(n)}</option>`).join('')}</select><div class="mut" style="font-size:var(--fs-xs)"><b>Tablero</b> (por defecto desde el 04-oct, el ejemplo que mandó la usuaria): fondo gris claro, todo en tarjetas blancas, cifras con ícono y fondo según su estado; el menú sigue en la barra de arriba. <b>Color</b>: «Gris cálido con acento petróleo» (por defecto en el Tablero desde el 08-oct) lleva la barra de arriba blanca y es <b>sobrio</b>: solo lo cumplido (verde), el riesgo (ámbar) y el atraso (rojo) tienen color; las tarjetas de cifras son blancas con el estado en el círculo del ícono y el estado de cada orden es un punto chico. Para volver al azul marino, elígelo aquí. <b>Como Odoo</b> es el aspecto del 24-sep («que se vea como Odoo, porque la gente ya está acostumbrada») y <b>Clásico</b> el anterior. Solo cambia el aspecto; las pantallas, los números y los botones son los mismos. Vale para todos los usuarios y queda en la bitácora. El modo claro u oscuro lo elige cada persona con el sol y la luna de arriba.</div></div>
 <div><label>Orden terminada desde la fase</label><input type="number" min="1" max="9" step="1" value="${esc(String(faseTerminadaMin()))}" onchange="setFaseTerminada(this.value)"><div class="mut" style="font-size:var(--fs-xs)">el número de fase de Odoo desde el que una orden cuenta como <b>terminada</b>: no sale en «Vencidas», cuenta en «Terminadas» del Plan. Decisión de la usuaria (23-sep): <b>8</b>, la fase del final. La cola de cada centro no depende de esto: allí manda si el paso está hecho. Las fechas de terminación ya registradas (Cumplimiento) no se recalculan si se cambia.</div></div>
 <div><label>Cola del centro: «Por llegar» hasta (días hábiles)</label><input type="number" min="0" step="1" value="${esc(String(diasPorLlegar()))}" onchange="setDiasPorLlegar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">una orden con la fase en la lista del centro pero cuya llegada programada supera este número baja a «Todo lo que viene» con la etiqueta «llega en X días». <b>0 = solo lo que llega hoy</b></div></div>
 <div><label>Buscadores: espera al escribir (ms)</label><input type="number" min="0" step="50" value="${esc(String(msBuscar()))}" onchange="setMsBuscar(this.value)"><div class="mut" style="font-size:var(--fs-xs)">cuánto espera el buscador después de la última tecla antes de filtrar. <b>0 = filtrar en cada tecla</b></div></div>${inp('tejBloqueDias','Tejeduría: días mínimos con la misma tela')}${inp('tejCambioHoras','Tejeduría: horas perdidas por cambio de tela')}${inp('tejAnticipSem','Tejeduría: semanas de anticipación (la tela se teje para lo que entra a corte en este plazo)')}</div>
