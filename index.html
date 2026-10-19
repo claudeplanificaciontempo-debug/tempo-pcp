@@ -3404,7 +3404,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-19 13:56';
+const APP_BUILD='2026-10-19 15:00';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -10108,6 +10108,7 @@ function avTipo(a){return AVISO_TIPOS[a&&a.tipo]?a.tipo:'info'}
 function noCalzanVigentes(){const rc=(S.params.tareaCarga||{}).recarga;const nc=(rc&&rc.noCalzan)||[];const por={};S.ordenes.forEach(o=>{por[o.op]=o});
   return nc.filter(x=>{if(!x)return false;if(!x.op)return true;const o=por[x.op];if(!o||!abiertaDe(o)||o.fueraAlcance)return false;
     if(x.tipo==='rutaTextil')return false;
+    if(x.tipo==='ruta')return false;   /* 19-oct (usuaria: «en Rutas no tengo más que esas 6 y me sale ese mensaje»): la ruta que una persona confirmó se conservó tal cual; no hay nada que decidir */
     if(x.tipo==='fase'&&x.archivo!=null&&String(o.fase||'')===String(x.archivo))return false;
     if(x.tipo==='fecha'&&x.archivo!=null&&String(o.fecha||'')===String(x.archivo))return false;
     if(x.tipo==='odc'&&(!o.odcManual||(x.archivo!=null&&String(o.odc||'')===String(x.archivo))))return false;
@@ -10120,7 +10121,7 @@ function avisoTarjetaHTML(id,a){const tipo=avTipo(a),T=AVISO_TIPOS[tipo],k=Strin
     +`<div class="av-cab"><span class="tag ${T.tag} av-marca"${T.tip?` title="${esc(T.tip)}"`:''}>${T.marca}</span></div>`
     +`<div class="av-tit">${pre?`<span class="av-pre">${esc(pre)}<span class="av-sep"> · </span></span>`:''}<span class="av-tit-t">${tit}</span></div>${a.det?`<div class="av-det">${a.det}</div>`:''}`
     +(hay?`<button type="button" class="btn ghost sm av-ver" aria-expanded="${ab}" aria-controls="${tid}" onclick="avVerTodo('${tid}')">${ab?'ocultar ▴':'ver todo ▾'}</button>`:'')+`</div>`
-    +(hay?`<details class="av-todo av-${tipo}" id="${tid}" data-avk="${esc(k)}" ${ab?'open':''} ontoggle="${a.alAbrir?a.alAbrir+';':''}avTodoTog(this,'${jsq(id)}','${jsq(k)}')"><summary class="av-todo-cab"><span class="av-todo-tit">${tit}</span><span class="av-todo-x">ocultar ▴</span></summary><div class="av-todo-cuerpo">${a.todo}</div></details>`:'')}
+    +(hay?`<details class="av-todo av-${tipo}" id="${tid}" data-avk="${esc(k)}" ${ab?'open':''} ontoggle="${a.alAbrir?a.alAbrir+';':''}avTodoTog(this,'${jsq(id)}','${jsq(k)}')"><summary class="av-todo-cab" aria-label="${esc(String(tit).replace(/<[^>]*>/g,''))}"><span class="av-todo-tit">Detalle</span><span class="av-todo-x">ocultar ▴</span></summary><div class="av-todo-cuerpo">${a.todo}</div></details>`:'')}
 function avisosTarjetasHTML(id,tit,avisos){const xs=(avisos||[]).filter(Boolean);if(!xs.length)return '';
   const ord=xs.map((a,i)=>({a,i})).sort((x,y)=>AVISO_TIPOS[avTipo(x.a)].orden-AVISO_TIPOS[avTipo(y.a)].orden||x.i-y.i).map(x=>x.a);   /* lo que pide hacer algo, primero */
   const acc=ord.filter(a=>AVISO_TIPOS[avTipo(a)].marca==='Requiere acción').length,inf=ord.length-acc;

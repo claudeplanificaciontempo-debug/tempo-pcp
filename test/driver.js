@@ -74,17 +74,17 @@ async function __avcComun(nm){
    const tg=[...AV().querySelectorAll('.tag.t-alerta')].find(e=>txt(e)==='en producción sin WH');
    ok('sinWH',l.every(s=>t.includes(s))&&!!tg&&/revisar en Odoo/.test(tg.getAttribute('title')||'')&&t.indexOf(faseNombre('0Diseño')+': 1 orden')<t.indexOf(faseNombre('7Confección')+': 1 orden'),l.filter(s=>!t.includes(s)).join(' | '))}
   /* 5 · decisiones que ya no calzan */
-  {const t=T();const l=['Bandeja · decisiones que ya no calzan con el archivo (37)','recarga del '+fechaHoraLocal(S.params.tareaCarga.fecha),'se conservaron tal cual; revísalas y retíralas a mano si corresponde.',
+  {const t=T();const l=['Bandeja · decisiones que ya no calzan con el archivo (5)','recarga del '+fechaHoraLocal(S.params.tareaCarga.fecha),'se conservaron tal cual; revísalas y retíralas a mano si corresponde.',
      'Fases distintas (3)','1 avanzaron en Odoo y aquí nadie las movió; 2 las moviste aquí (también puedes aceptar la del archivo, caso por caso).',
      'Marcar las 1 de avance normal','Marcar todas (3)','Usar la fase del archivo en las 0 marcadas','Archivo exportado de Odoo:',
      '— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.',
      'Fase en el sistema','Fase del archivo','el archivo es anterior a tu cambio','lo moviste aquí el '+fMovTs('2026-10-12T15:00:00.000Z')+', el archivo se exportó el '+fMovTs('2026-10-12T14:00:00.000Z')+': la del archivo es la vieja, revísala antes de aceptar',
      'movida aquí','por Ana AVC el '+fMovTs('2026-10-12T12:00:00.000Z')+': si la marcas, la del archivo la pisa',
-     'Rutas confirmadas que se conservaron — 32','Tiempos que el archivo trae distintos — 1','Otras (raroAVC) — 1','WH/MO/AVC500 · ruta confirmada 0 → el catálogo arma otra 0','WH/MO/AVC529 · ruta confirmada 29 → el catálogo arma otra 29','… y 2 más',
+     'Tiempos que el archivo trae distintos — 1','Otras (raroAVC) — 1',
      'WH/MO/AVC90 · bordado 2.000 puntadas → el archivo trae 3.000','WH/MO/AVC91 · algo raro → otra cosa'];
    const inp=AV().querySelector('input[type=datetime-local]');const filas=[...AV().querySelectorAll('input[type=checkbox]')].filter(c=>/BND\.sel/.test(c.getAttribute('onchange')||''));
    const det=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));
-   ok('decisiones.textos',l.every(s=>t.includes(s))&&!t.includes('WH/MO/AVC530 ')&&!!inp&&inp.value===isoLocalInput('2026-10-12T14:00:00.000Z')&&/fijarExportTs\(this\.value\)/.test(inp.getAttribute('onchange')||'')&&filas.length===3&&!!det&&btn('Usar la fase del archivo en las 0 marcadas').disabled,l.filter(s=>!t.includes(s)).join(' | ')+' · inp '+(inp&&inp.value)+' filas '+filas.length+' det '+!!det);
+   ok('decisiones.textos',l.every(s=>t.includes(s))&&!t.includes('WH/MO/AVC500 ')&&!t.includes('Rutas confirmadas que se conservaron')&&!!inp&&inp.value===isoLocalInput('2026-10-12T14:00:00.000Z')&&/fijarExportTs\(this\.value\)/.test(inp.getAttribute('onchange')||'')&&filas.length===3&&!!det&&btn('Usar la fase del archivo en las 0 marcadas').disabled,l.filter(s=>!t.includes(s)).join(' | ')+' · inp '+(inp&&inp.value)+' filas '+filas.length+' det '+!!det);
    BND.abierta=false;render();const d0=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));d0.open=true;await __p(40);const ab1=BND.abierta;
    render();const d1=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));const sigue=d1.open;d1.open=false;await __p(40);const ab2=BND.abierta;BND.abierta=true;render();
    btn('Marcar las 1 de avance normal').click();const m1=[...BND.sel].join(',');btn('Marcar todas (3)').click();const m3=BND.sel.size;btn('Ninguna',)&&[...AV().querySelectorAll('button')].filter(b=>txt(b)==='Ninguna').forEach(b=>{if(/BND\.sel/.test(b.getAttribute('onclick')||''))b.click()});const m0=BND.sel.size;
