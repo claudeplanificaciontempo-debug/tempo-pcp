@@ -1801,7 +1801,6 @@ details.avisos>summary:focus-visible{outline:2px solid var(--t-primary);outline-
 .av-tit-t::first-letter,.av-todo-tit::first-letter{text-transform:uppercase}
 .av-det{font-size:var(--fs-s);line-height:1.45;color:var(--ink2);overflow-wrap:anywhere}
 .av-det .mut{color:inherit}
-.av-card.con-todo:not(.abierto) .av-det{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .av-n,.av-det b{color:var(--ink);font-weight:700}
 .av-ver{align-self:flex-start;margin-top:auto}
 .av-wh{font-family:ui-monospace,Consolas,"Cascadia Mono",Menlo,monospace;font-size:.94em;white-space:nowrap}
@@ -1811,7 +1810,7 @@ details.avisos>summary:focus-visible{outline:2px solid var(--t-primary);outline-
 .av-todo>summary::-webkit-details-marker{display:none}
 .av-todo-tit{font-weight:700;color:var(--ink);min-width:0}
 .av-todo-x{margin-left:auto;color:var(--ink2);white-space:nowrap}
-.av-todo-cuerpo{font-size:var(--fs-s);line-height:1.6;color:var(--ink);overflow-x:auto;overflow-wrap:anywhere}
+.av-todo-cuerpo{font-size:var(--fs-s);line-height:1.6;color:var(--ink);overflow-x:auto;max-height:60vh;overflow-y:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
 .av-todo-cuerpo table{min-width:0}
 @media print{details.avisos .av-todo:not([open]){display:none}.av-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* ux:simp08-L1 · global (08-oct-2026): lo de la paleta «petróleo» y de la barra clara que vale fuera del Tablero. Va ANTES del marcador del Tablero
@@ -3393,7 +3392,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-19 12:25';
+const APP_BUILD='2026-10-19 12:35';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -14678,7 +14677,7 @@ function avisosOrdenesHTML(){const L=[];
      const porFase=Object.entries(c).sort((x,y)=>(typeof cmpFases==='function'?cmpFases(x[0],y[0]):0)).map(([f,n])=>{const r=filaFaseDe(f);const prod=r&&r.sistema&&r.sistema!=='previo a producción';if(prod)enProd=true;
        const cual=prod?sl.filter(o=>(o.fase||'(sin fase)')===f).slice(0,5).map(o=>avWH(o.op)+esc((o.cliente?' · '+o.cliente:'')+(o.ref?' · ref '+o.ref:''))).join('; '):'';
        return '<b>'+esc(faseNombre(f))+'</b>: '+num(n)+(n===1?' orden':' órdenes')+(prod?' <span class="tag t-alerta" title="está en una fase de producción pero Odoo todavía no le creó la orden de producción (WH): revisar en Odoo">en producción sin WH</span> ('+cual+')':'')}).join(' · ');
-     L.push({k:'sinWH',tipo:enProd?'accion':'info',tit:`${sl.length} órdenes sin número de WH`,det:`(no lanzadas en Odoo) · ${avN(num(sl.reduce((a,o)=>a+ +o.cant,0)))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.`,todo:`por fase: ${porFase}`})}}
+     L.push({k:'sinWH',tipo:enProd?'accion':'info',tit:`${sl.length} ${sl.length===1?'orden':'órdenes'} sin número de WH`,det:`(no lanzadas en Odoo) · ${avN(num(sl.reduce((a,o)=>a+ +o.cant,0)))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.`,todo:`por fase: ${porFase}`})}}
   /* recarga: decisiones que ya no calzan con el archivo y órdenes que no vinieron y tenían algo decidido por una persona */
   {const rc=(S.params.tareaCarga||{}).recarga;if(rc){const nc=rc.noCalzan||[];
    if(nc.length){const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);const f=o&&(o.fases||[]).filter(f=>f.origen==='app').slice(-1)[0];return f||null};const acept=fs.filter(x=>!movidas(x.op));
@@ -14702,15 +14701,15 @@ function avisosOrdenesHTML(){const L=[];
   /* carga real sin medir y paso extra sin minutos */
   {const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
    const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
-   if(sm.length)L.push({k:'sinMedir',tipo:'info',tit:`Bandeja · carga real sin medir (${sm.length} órdenes)`,det:'fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después.',
-     todo:Object.entries(porF).map(([f,v])=>esc(faseNombre(f))+' ('+v.n+' órdenes · '+num(v.pz)+' prendas)').join(', ')});
-   if(se.length)L.push({k:'pasoExtra',tipo:'falta',tit:`Bandeja · paso extra sin minutos (${se.length} órdenes)`,det:'la fase tiene un paso extra en la tabla 1 pero el parámetro de SAM (minutos por prenda) está vacío o en 0 en Configuración general → Calendario y reglas.'})}
+   if(sm.length)L.push({k:'sinMedir',tipo:'info',tit:`Bandeja · carga real sin medir (${sm.length} ${sm.length===1?'orden':'órdenes'})`,det:'fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después.',
+     todo:Object.entries(porF).map(([f,v])=>esc(faseNombre(f))+' ('+v.n+(v.n===1?' orden · ':' órdenes · ')+num(v.pz)+' prendas)').join(', ')});
+   if(se.length)L.push({k:'pasoExtra',tipo:'falta',tit:`Bandeja · paso extra sin minutos (${se.length} ${se.length===1?'orden':'órdenes'})`,det:'la fase tiene un paso extra en la tabla 1 pero el parámetro de SAM (minutos por prenda) está vacío o en 0 en Configuración general → Calendario y reglas.'})}
   /* fase que no calza con la tabla 1 */
-  {const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);if(sf.length)L.push({k:'faseNoCalza',tipo:'falta',tit:`Bandeja · fase que no calza con la tabla (${sf.length} órdenes)`,
+  {const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);if(sf.length)L.push({k:'faseNoCalza',tipo:'falta',tit:`Bandeja · fase que no calza con la tabla (${sf.length} ${sf.length===1?'orden':'órdenes'})`,
      det:'el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración general → Órdenes, fases y archivos de Odoo → tabla 1.',
      todo:[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")})}
   /* sin velocidad de bordado */
-  {const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));if(sv.length)L.push({k:'sinVel',tipo:'falta',tit:`Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)`,
+  {const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));if(sv.length)L.push({k:'sinVel',tipo:'falta',tit:`Bandeja · sin velocidad de bordado configurada (${sv.length} ${sv.length===1?'orden':'órdenes'}, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)`,
      det:'cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración general → Centros (fila Bordado).',todo:sv.slice(0,25).map(o=>avWH(o.op)).join(", ")+(sv.length>25?" …":"")})}
   return avisosTarjetasHTML('ordenes','sobre las órdenes',L)}
 function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]||{};const pierde=[o.foto?'su foto':'',o.ot?'sus órdenes de trabajo':'',(a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada?'su avance de piso':'',(o.fases||[]).length>1?'su historial de fases':''].filter(Boolean);
