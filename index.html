@@ -2510,6 +2510,45 @@ html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #busg-host input:focu
 /* texto sobre el acento (botón principal, pestaña y chip elegidos, contador del filtro): --accent-fg (blanco en claro; tinta en oscuro, donde el acento es claro) */
 html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]),html[data-tema="odoo"][data-estilo="marino"] .btn:not(.ghost):not(.tint):not(.danger):not([style*="background"]):hover,
 html[data-tema="odoo"][data-estilo="marino"] .tab-pest button.on,html[data-tema="odoo"][data-estilo="marino"] .filt-btn .filt-n{color:var(--accent-fg)}
+/* 19-oct · revisión de la etapa 1 */
+/* un error de guardado se ve: píldora roja suave en la barra de marca (el texto entero va al pasar el mouse, como siempre) */
+html[data-tema="odoo"][data-estilo="marino"] header>#saved.err{max-width:420px;padding:3px 10px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-weight:600}
+@media (min-width:861px) and (max-width:1100px){html[data-tema="odoo"][data-estilo="marino"] header>#saved.err{max-width:220px}}
+/* teclado: las pestañas y sus entradas toman el foco (marinoTeclado) y el foco se dibuja por dentro (la fila de pestañas recorta lo de afuera) */
+html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:focus-visible,html[data-tema="odoo"][data-estilo="marino"] nav .gbody a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* lo que «Como Odoo» escribe con grises fijos y en Marino no llegaba a 4,5 de contraste (barrido de las pantallas principales, claro y oscuro): las etiquetas
+   de los filtros puestos en el buscador, los pasos hechos de la barra de fases de la ficha y «por días» de Capacidad, ahora con las variables del tema */
+html[data-tema="odoo"][data-estilo="marino"] .o-facet{background:var(--accent-soft)!important;color:var(--fg)}
+html[data-tema="odoo"][data-estilo="marino"] .o-facet b{background:var(--accent);color:var(--accent-fg)}
+html[data-tema="odoo"][data-estilo="marino"] .o-facet a{color:var(--fg-muted)}
+html[data-tema="odoo"][data-estilo="marino"] .o-facet a:hover{color:var(--fg)}
+html[data-tema="odoo"][data-estilo="marino"] .o-statusbar .st.hecho:not(.on){color:var(--fg-muted)}
+html[data-tema="odoo"][data-estilo="marino"] .capm td.cel.dias,html[data-tema="odoo"][data-estilo="marino"] .cel-ley.dias{background:var(--surface-2);color:var(--fg-muted)}
+/* pantalla de ingreso: el fondo es el azul de la barra de marca (como el ingreso de nova) y la contraseña tiene el mismo campo que el correo (en «Como Odoo»
+   quedaba con el aspecto del navegador, angosta) */
+html[data-estilo="marino"] #login{background:var(--brand)!important}
+html[data-tema="odoo"][data-estilo="marino"] input[type=password],html[data-tema="odoo"][data-estilo="marino"] input[type=email],html[data-tema="odoo"][data-estilo="marino"] input[type=tel],html[data-tema="odoo"][data-estilo="marino"] input[type=url]{-webkit-appearance:none;appearance:none;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:4px 8px;color:var(--ink);font:inherit;max-width:100%}
+html[data-tema="odoo"][data-estilo="marino"] #login input[type=password]{width:100%}
+/* «Cargando…»: como los botones de la barra, el control «Claro | Oscuro» no se ve (quedaba la píldora vacía) */
+html[data-estilo="marino"] #app.cargando header .mode{display:none!important}
+/* impresión: la fila 2 no se imprime (la barra y el menú tampoco, como siempre) */
+@media print{html[data-estilo="marino"] .marino-fila2{display:none!important}}
+/* teléfono y tableta angosta: el «Como Odoo» fija DOS filas en el #app con !important; aquí son tres (barra, pestañas, pantalla). El menú ☰ abierto
+   lleva fondo y empuja la pantalla hacia abajo (antes quedaba transparente encima de ella) */
+@media (max-width:860px){
+  html[data-tema="odoo"][data-estilo="marino"] #app{grid-template-rows:auto auto minmax(0,1fr)!important}
+  html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav.abierto{background:var(--surface);max-height:calc(100vh - 150px);max-height:calc(100dvh - 150px);overflow-y:auto}
+  html[data-tema="odoo"][data-estilo="marino"] header h1#brand{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  html[data-tema="odoo"][data-estilo="marino"] header>#saved{order:0}   /* «Guardado» antes de «Claro | Oscuro» y «Salir» (el de siempre lo manda al final) */
+  html[data-tema="odoo"][data-estilo="marino"] nav .gbody a{border-bottom:0}   /* sin la raya de color bajo la entrada elegida del menú de teléfono de siempre */
+}
+/* teléfono: la barra en dos líneas ordenadas: ☰ y la marca arriba; «Guardado» a la izquierda y «Claro | Oscuro» y «Salir» a la derecha abajo */
+@media (max-width:520px){
+  html[data-tema="odoo"][data-estilo="marino"] header h1#brand{flex:1 1 calc(100% - 60px)}
+  html[data-tema="odoo"][data-estilo="marino"] header>#saved{order:7;flex:1 1 auto;max-width:none}
+  html[data-tema="odoo"][data-estilo="marino"] header>.mode{order:8}
+  html[data-tema="odoo"][data-estilo="marino"] header>#btn-salir{order:9}
+}
 </style>
 </head>
 <body>
@@ -3273,7 +3312,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-14 12:50';
+const APP_BUILD='2026-10-19 09:15';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -3837,8 +3876,27 @@ function motorComparaHTML(){if(!CAPD.cmp)return `<div class="panel"><div class="
    <p class="mut" style="font-size:var(--fs-xs);margin-top:8px">Días positivos = termina más tarde con el motor hacia atrás (se acerca a su fecha). Nada de esto cambia capacidades ni tiempos: solo el criterio de cuándo se coloca cada paso.</p>
   </div></div>`}
 /* ---------- menú horizontal: un grupo abierto a la vez; clic fuera lo cierra ---------- */
-function navCerrarTodo(){document.querySelectorAll('nav .gbody.abierto').forEach(b=>b.classList.remove('abierto'));document.querySelectorAll('nav .grp.abierto').forEach(g=>g.classList.remove('abierto'))}
-function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto');colocarMenuMarino(g,b)}}
+function navCerrarTodo(){document.querySelectorAll('nav .gbody.abierto').forEach(b=>b.classList.remove('abierto'));document.querySelectorAll('nav .grp.abierto').forEach(g=>g.classList.remove('abierto'));navAria()}
+/* 19-oct · Marino: las pestañas y sus entradas se manejan con el teclado (Tab llega a cada una, Enter o Espacio la abre, Esc cierra el desplegable y vuelve a
+   su pestaña; salir de la fila con Tab lo cierra). Solo con Marino: al cambiar de aspecto se quitan tabindex, role y aria-expanded (data-kb marca los que
+   se pusieron aquí), así Tablero, Como Odoo y Clásico quedan con el mismo DOM de siempre. Los clics no cambian. */
+let MARINO_EV=false;
+function navAria(){document.querySelectorAll('nav .grp[data-kb]').forEach(g=>{const v=g.classList.contains('abierto')?'true':'false';if(g.getAttribute('aria-expanded')!==v)g.setAttribute('aria-expanded',v)})}
+function marinoTeclado(on){const nav=document.getElementById('nav');if(!nav)return;
+  nav.querySelectorAll('.grp, .gbody a').forEach(el=>{if(on){if(!el.hasAttribute('tabindex')){el.setAttribute('tabindex','0');el.setAttribute('role',el.classList.contains('grp')?'button':'link');el.setAttribute('data-kb','1')}}
+    else if(el.hasAttribute('data-kb')){el.removeAttribute('tabindex');el.removeAttribute('role');el.removeAttribute('aria-expanded');el.removeAttribute('data-kb')}});
+  if(on)navAria();else nav.querySelectorAll('.gbody').forEach(b=>{if(b.style.top)b.style.top=''});   /* al salir de Marino el desplegable deja de ir fijo: sin su «top» */
+  if(!on||MARINO_EV)return;MARINO_EV=true;const esM=()=>document.documentElement.dataset.estilo==='marino';
+  /* solo el desplegable FIJO (pantalla ancha) se cierra al desplazar las pestañas de lado o al cambiar el tamaño de la ventana: quedaría suelto. En el teléfono
+     el menú ☰ se desplaza hacia abajo y el navegador cambia el tamaño al esconder su barra: ahí no se cierra nada */
+  const fijo=()=>{const b=document.querySelector('nav .gbody.abierto');return !!b&&getComputedStyle(b).position==='fixed'};
+  nav.addEventListener('scroll',()=>{if(esM()&&fijo())navCerrarTodo()},{passive:true});
+  addEventListener('resize',()=>{if(esM()&&fijo())navCerrarTodo()});
+  nav.addEventListener('keydown',e=>{if(!esM())return;const el=e.target&&e.target.closest&&e.target.closest('.grp[data-kb], .gbody a[data-kb]');if(!el)return;
+    if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();el.click()}
+    else if(e.key==='Escape'){const b=el.closest('.gbody');const g=b?document.querySelector('nav .grp[data-g="'+b.dataset.g+'"]'):el;const ab=!!document.querySelector('nav .gbody.abierto');navCerrarTodo();if(ab){e.stopPropagation();if(g)g.focus()}}});
+  nav.addEventListener('focusout',e=>{if(esM()&&e.relatedTarget&&!nav.contains(e.relatedTarget))navCerrarTodo()})}
+function navToggle(g){const b=document.querySelector('nav .gbody[data-g="'+g.dataset.g+'"]');const abierto=b&&b.classList.contains('abierto');navCerrarTodo();if(b&&!abierto){b.style.left=g.offsetLeft+'px';b.classList.add('abierto');g.classList.add('abierto');colocarMenuMarino(g,b)}navAria()}
 /* 14-oct · Marino: las pestañas se desplazan de lado dentro de su fila, así el desplegable va fijo a la pantalla, debajo de su pestaña (si no, la fila lo cortaría) */
 function colocarMenuMarino(g,b){if(!b)return;if(document.documentElement.dataset.estilo!=='marino'||getComputedStyle(b).position!=='fixed'){if(b.style.top)b.style.top='';return}
   const r=g.getBoundingClientRect(),W=document.documentElement.clientWidth||innerWidth;b.style.top=Math.round(r.bottom)+'px';b.style.left=Math.round(Math.max(8,Math.min(r.left,W-8-b.offsetWidth)))+'px'}
@@ -6344,9 +6402,9 @@ function aplicarTema(){try{pintarModo()}catch(e){}const t=temaVisual();const de=
   {const es=esTablero()?'tablero':esMarino()?'marino':'';if(es){if(de.dataset.estilo!==es)de.dataset.estilo=es}else if(de.hasAttribute('data-estilo'))de.removeAttribute('data-estilo')}   /* 04-oct: el Tablero va encima del aspecto Odoo; 14-oct: Marino también */
   const h=document.querySelector('header'),nav=document.getElementById('nav');if(!h||!nav)return;
   {const bh=document.getElementById('busg-host');let f2=document.getElementById('marino-fila2');   /* 14-oct · Marino: fila 2 = el menú como pestañas + el buscador a la derecha */
-   if(esMarino()){if(!f2){f2=document.createElement('div');f2.id='marino-fila2';f2.className='marino-fila2';h.after(f2);nav.addEventListener('scroll',()=>{if(document.documentElement.dataset.estilo==='marino')navCerrarTodo()},{passive:true})}
-     if(nav.parentElement!==f2)f2.insertBefore(nav,f2.firstChild);if(bh&&bh.parentElement!==f2)f2.appendChild(bh);return}
-   if(f2){if(bh&&bh.parentElement===f2)h.insertBefore(bh,h.querySelector('.spacer'));if(nav.parentElement===f2)f2.before(nav);f2.remove()}}
+   if(esMarino()){if(!f2){f2=document.createElement('div');f2.id='marino-fila2';f2.className='marino-fila2';h.after(f2)}
+     if(nav.parentElement!==f2)f2.insertBefore(nav,f2.firstChild);if(bh&&bh.parentElement!==f2)f2.appendChild(bh);marinoTeclado(true);return}
+   if(f2){if(bh&&bh.parentElement===f2)h.insertBefore(bh,h.querySelector('.spacer'));if(nav.parentElement===f2)f2.before(nav);f2.remove();marinoTeclado(false)}}
   if(t==='odoo'&&nav.parentElement!==h)h.insertBefore(nav,document.getElementById('busg-host')||h.querySelector('.spacer'));   /* Odoo: los menús van en la barra de arriba */
   else if(t!=='odoo'&&nav.parentElement===h)h.after(nav)}
 function setTema(v){if(!puede('config')){alert('Tu perfil no cambia la configuración.');render();return}const antes=aspectoVisual();v=ASPECTOS.some(x=>x[0]===v)?v:ASPECTO_DEF;if(v===antes)return;
