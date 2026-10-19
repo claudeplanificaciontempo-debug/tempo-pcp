@@ -781,20 +781,12 @@ td.cli{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 .t2{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:240px;line-height:1.3}
 @media print{td.cli{white-space:normal;overflow:visible;max-width:none}.t2{display:inline;-webkit-line-clamp:unset;overflow:visible;max-width:none}}
 .op-sinwh{white-space:nowrap}
-/* · aviso amarillo largo plegado en una línea (plegarAvisos) y varios avisos de una lista en un recuadro (avisosPlegadosHTML) */
+/* · aviso amarillo largo plegado en una línea (plegarAvisos); los avisos de una lista van en tarjetas (avisosTarjetasHTML, bloque ux:avisos) */
 details.warn-pl>summary{cursor:pointer;list-style:none}
 details.warn-pl>summary::-webkit-details-marker{display:none}
 details.warn-pl>summary .warn-pl-ver::after{content:' ▸'}
 details.warn-pl[open]>summary .warn-pl-ver::after{content:' ▾'}
 details.warn-pl[open]>summary{margin-bottom:6px}
-details.avisos{border:1px solid var(--rule);border-left:4px solid var(--aviso);border-radius:6px;background:var(--paper);margin:0 0 12px}
-details.avisos>summary{cursor:pointer;padding:9px 12px;list-style:none;font-size:var(--fs-s);color:var(--ink)}
-details.avisos>summary::-webkit-details-marker{display:none}
-details.avisos>summary::after{content:' ▸';color:var(--ink3)}
-details.avisos[open]>summary::after{content:' ▾'}
-details.avisos .av-acc{color:var(--aviso);font-weight:600}
-.avisos-cuerpo{padding:0 12px 2px}
-.avisos-cuerpo>.warn,.avisos-cuerpo>.panel{margin:0 0 10px!important}
 /* · Hoy: dentro de su tarjeta, el panel no repite el título (el conteo ya está en la cabecera de la tarjeta) */
 .tarj .tit-repetido{display:none}
 /* · etiquetas: «+N» con el resto al pasar el mouse; el verbo del semáforo que lleva a resolverlo */
@@ -1774,6 +1766,54 @@ nav .grp .grp-c{display:none}
 .niv-saldo .scroll table{font-size:var(--fs-s)}
 nav .n.n-atr{color:var(--alerta);font-weight:600}
 @media (max-width:860px){.cen2-dias{grid-template-columns:repeat(2,minmax(0,1fr))}.cen2-pest{margin:6px 0 0}.cen2-sw,.cen2-guarda{margin-left:0}}
+/* ux:avisos — avisos en tarjetas (19-oct-2026, usuaria con la captura de Órdenes: «puedes mejorar esto»). Componente común avisosTarjetasHTML: arriba una
+   línea con el resumen (cuántos, cuántos requieren acción y cuántos son informativos) que pliega todo; debajo una tarjeta por aviso (4 por fila en
+   escritorio, 2 en tablet, 1 en el teléfono) con la franja de su caso arriba, la marca, el título y 2–3 líneas de detalle; «ver todo» abre el detalle
+   completo a todo el ancho justo debajo de la fila de su tarjeta (grid-auto-flow:dense rellena la fila). Colores SOLO por variables: cada aspecto (y el
+   tema Marino) cambia --av-accion / --av-info / --av-vencida / --av-cerrada / --av-falta y nada más. Reglas de color de la casa: ámbar = alguien tiene que
+   hacer algo, azul suave (o gris en el aspecto sobrio) = información, rojo = vencido, gris oscuro = cerrada en Odoo, franja punteada = falta un dato de
+   configuración. Las marcas son las etiquetas de siempre (t-aviso, t-medio, t-alerta, t-mut, t-falta), con su versión de cada aspecto y del modo oscuro. */
+details.avisos{--av-accion:var(--aviso);--av-info:var(--medio);--av-vencida:var(--alerta);--av-cerrada:var(--ink2);--av-falta:var(--ink3);--av-r:var(--r,6px);margin:0 0 16px}
+details.avisos>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 12px;border:1px solid var(--rule);border-left:4px solid var(--av-info);border-radius:var(--av-r);background:var(--paper);color:var(--ink);font-size:var(--fs-s);line-height:1.4}
+details.avisos.con-accion>summary{border-left-color:var(--av-accion)}
+details.avisos>summary::-webkit-details-marker{display:none}
+details.avisos>summary::after{content:'ver los avisos ▾';margin-left:auto;padding-left:8px;color:var(--ink2);white-space:nowrap}
+details.avisos[open]>summary{border-color:transparent;background:transparent;padding:2px 0 10px}
+details.avisos[open]>summary::after{content:'plegar ▴'}
+details.avisos .av-sum-t{font-weight:700;color:var(--ink)}
+details.avisos .av-sum-n{white-space:nowrap}
+details.avisos .av-cuales{flex:1 1 220px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+details.avisos[open] .av-cuales{display:none}
+details.avisos>summary:focus-visible{outline:2px solid var(--t-primary);outline-offset:2px}
+.av-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:row dense;gap:12px;align-items:stretch}
+@media (max-width:1100px){.av-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.av-grid{grid-template-columns:minmax(0,1fr)}}
+.av-card,.av-todo{--av-c:var(--av-info);background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-top:4px solid var(--av-c);border-radius:var(--av-r);min-width:0}
+.av-accion{--av-c:var(--av-accion)}.av-vencida{--av-c:var(--av-vencida)}.av-cerrada{--av-c:var(--av-cerrada)}.av-falta{--av-c:var(--av-falta)}
+.av-card.av-falta,.av-todo.av-falta{border-top-style:dashed}
+.av-card{display:flex;flex-direction:column;gap:6px;padding:10px 12px 12px}
+.av-cab{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-right:76px}
+.av-card{position:relative}
+.av-pre{position:absolute;top:13px;right:12px;font-size:var(--fs-xs);line-height:1.4;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.av-sep{display:none}
+.av-tit-t{display:block}
+.av-tit{font-size:calc(var(--fs-m) + 1px);font-weight:700;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.av-tit-t::first-letter,.av-todo-tit::first-letter{text-transform:uppercase}
+.av-det{font-size:var(--fs-s);line-height:1.45;color:var(--ink2);overflow-wrap:anywhere}
+.av-det .mut{color:inherit}
+.av-card.con-todo:not(.abierto) .av-det{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.av-n,.av-det b{color:var(--ink);font-weight:700}
+.av-ver{align-self:flex-start;margin-top:auto}
+.av-wh{font-family:ui-monospace,Consolas,"Cascadia Mono",Menlo,monospace;font-size:.94em;white-space:nowrap}
+.av-todo{grid-column:1/-1;padding:0 16px 14px}
+.av-todo:not([open]){display:none}
+.av-todo>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:12px;padding:10px 0 8px;border-bottom:1px solid var(--rule2);margin-bottom:8px}
+.av-todo>summary::-webkit-details-marker{display:none}
+.av-todo-tit{font-weight:700;color:var(--ink);min-width:0}
+.av-todo-x{margin-left:auto;color:var(--ink2);white-space:nowrap}
+.av-todo-cuerpo{font-size:var(--fs-s);line-height:1.6;color:var(--ink);overflow-x:auto;overflow-wrap:anywhere}
+.av-todo-cuerpo table{min-width:0}
+@media print{details.avisos .av-todo:not([open]){display:none}.av-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* ux:simp08-L1 · global (08-oct-2026): lo de la paleta «petróleo» y de la barra clara que vale fuera del Tablero. Va ANTES del marcador del Tablero
    porque toca también el aspecto «Como Odoo» cuando se elige la paleta petróleo o «blanco», o es una regla general. */
 html[data-tema="odoo"][data-color="petroleo"]{--o-brand:#FFFFFF;--o-brand-2:#F2F1ED;--o-primary:#0F6B5C;--o-primary-2:#0B5548;--o-brand-soft:#E1F0EC;--o-brand-line:#BCDCD3;--o-ring:rgba(15,107,92,.22);--navy:#0F6B5C;--navy2:#0B5548;--t-primary:#0F6B5C;--t-block:#0F6B5C}
@@ -1967,7 +2007,21 @@ html[data-tema="odoo"][data-estilo="tablero"] .lib-frenos>div:first-child>b{colo
 html[data-tema="odoo"][data-estilo="tablero"] .lib-frenos th,html[data-tema="odoo"][data-estilo="tablero"] .lib-frenos table thead th{background:transparent;border-bottom-color:var(--tb-amber-line)}
 html[data-tema="odoo"][data-estilo="tablero"] .lib-frenos td{border-bottom-color:var(--tb-amber-line)}
 html[data-tema="odoo"][data-estilo="tablero"] .lib-frenos td.num:not(.mut){font-weight:700;color:var(--tb-amber-ink)}
-html[data-tema="odoo"][data-estilo="tablero"] details.avisos{background:var(--tb-amber-soft);border:1px solid var(--tb-amber-line);border-radius:var(--tb-r)}
+/* · avisos en tarjetas (19-oct): las franjas con los tonos del Tablero (en el aspecto sobrio lo informativo va en gris); la línea plegada como el panel
+     «Requieren atención» cuando alguno pide hacer algo; las tarjetas blancas con la sombra de las demás */
+html[data-tema="odoo"][data-estilo="tablero"] details.avisos{--av-accion:var(--tb-amber);--av-info:var(--tb-blue);--av-vencida:var(--tb-red);--av-cerrada:var(--tb-ink2);--av-falta:var(--tb-ink3);--av-r:var(--tb-r)}
+html[data-tema="odoo"][data-estilo="tablero"][data-sobrio] details.avisos{--av-info:var(--tb-grey-ink)}
+html[data-tema="odoo"][data-estilo="tablero"] details.avisos:not([open])>summary{border-color:var(--tb-line);border-left-color:var(--av-info);background:var(--tb-card);box-shadow:var(--tb-shadow);padding:11px 16px}
+html[data-tema="odoo"][data-estilo="tablero"] details.avisos.con-accion:not([open])>summary{background:var(--tb-amber-soft);border-color:var(--tb-amber-line);border-left-color:var(--tb-amber)}
+html[data-tema="odoo"][data-estilo="tablero"] details.avisos .av-sum-t{color:var(--tb-ink);font-size:15px}
+html[data-tema="odoo"][data-estilo="tablero"] details.avisos .av-cuales,html[data-tema="odoo"][data-estilo="tablero"] details.avisos>summary::after{color:var(--tb-ink2)}
+html[data-tema="odoo"][data-estilo="tablero"] .av-grid{gap:14px}
+html[data-tema="odoo"][data-estilo="tablero"] .av-card,html[data-tema="odoo"][data-estilo="tablero"] .av-todo{background:var(--tb-card);border-color:var(--tb-line);border-top-color:var(--av-c);box-shadow:var(--tb-shadow)}
+html[data-tema="odoo"][data-estilo="tablero"] .av-card{padding:12px 14px 14px;gap:7px}
+html[data-tema="odoo"][data-estilo="tablero"] .av-todo{padding:0 18px 16px}
+html[data-tema="odoo"][data-estilo="tablero"] .av-todo>summary{border-bottom-color:var(--tb-line2)}
+html[data-tema="odoo"][data-estilo="tablero"] .av-tit,html[data-tema="odoo"][data-estilo="tablero"] .av-todo-tit,html[data-tema="odoo"][data-estilo="tablero"] .av-n,html[data-tema="odoo"][data-estilo="tablero"] .av-det b{color:var(--tb-ink)}
+html[data-tema="odoo"][data-estilo="tablero"] .av-det,html[data-tema="odoo"][data-estilo="tablero"] .av-pre,html[data-tema="odoo"][data-estilo="tablero"] .av-todo-x{color:var(--tb-ink2)}
 /* · Planta en vivo y otras tarjetas propias */
 html[data-tema="odoo"][data-estilo="tablero"] .env-g{gap:16px}
 html[data-tema="odoo"][data-estilo="tablero"] .env-c{border-color:var(--tb-line);border-radius:var(--tb-r);box-shadow:var(--tb-shadow);padding:16px 18px}
@@ -4051,11 +4105,12 @@ function asignarODC(ids,odc){if(!puede('ordenes')){alert('Tu perfil no edita ór
   const u=quienFirma(),ts=new Date().toISOString();let n=0;ids.forEach(id=>{const o=S.ordenes.find(x=>x.id===id);if(!o)return;const antes=String(o.odc||'').trim();if(antes===v)return;o.odc=v;o.odcManual={u,ts,antes};bitacora('ODC asignado a mano '+o.op+': '+(antes||'—')+' → '+v+' ('+u+')');n++;ODCS.sel.delete(id)});
   if(!n)return;PLAN=null;PLAN_ALL=null;save();render();alert(n+(n===1?' orden pasó':' órdenes pasaron')+' a formar la colección ODC '+v+'.')}
 function togSelODC(id,on){if(on)ODCS.sel.add(id);else ODCS.sel.delete(id);render()}
-function panelODCHTML(){const pend=S.ordenes.filter(o=>abierta(o)&&esOdcPendiente(o)).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1);if(!pend.length)return '';const ok=puede('ordenes');const sel=[...ODCS.sel].filter(id=>pend.some(o=>o.id===id));
-  return `<div class="panel"><h3>Asignar ODC <span class="note">${num(pend.length)} ${pend.length===1?'orden':'órdenes'} con «PENDIENTE ODC» o sin ODC</span><span class="lede">al asignarlo forman colección con ese ODC · queda en bitácora</span></h3><div class="body">
-   ${ok?`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>ODC para las marcadas (${sel.length})</label><input type="text" id="odc-bloque" style="width:180px" value="${esc(ODCS.bloque)}" placeholder="p. ej. 3041" oninput="ODCS.bloque=this.value"></div><div><label>&nbsp;</label><button class="btn sm" ${sel.length?'':'disabled title="marca al menos una orden"'} onclick="asignarODC(${JSON.stringify(sel).replace(/"/g,'&quot;')},(document.getElementById('odc-bloque')||{}).value||'')">Asignar a las ${sel.length} marcadas</button></div><div><label>&nbsp;</label><button class="btn ghost sm" onclick="ODCS.sel=new Set(${JSON.stringify(pend.map(o=>o.id)).replace(/"/g,'&quot;')});render()">Marcar todas</button> <button class="btn ghost sm" onclick="ODCS.sel=new Set();render()">Ninguna</button></div></div>`:''}
+function odcPendientes(){return S.ordenes.filter(o=>abierta(o)&&esOdcPendiente(o)).sort((a,b)=>(a.fecha||'9')<(b.fecha||'9')?-1:1)}
+/* el cuerpo de «Asignar ODC» (casillas, uno por uno y en bloque); el título y la nota van en la tarjeta del aviso de Órdenes (19-oct) */
+function odcCuerpoHTML(pend){const ok=puede('ordenes');const sel=[...ODCS.sel].filter(id=>pend.some(o=>o.id===id));
+  return `${ok?`<div class="row" style="align-items:flex-end;margin:0 0 10px"><div><label>ODC para las marcadas (${sel.length})</label><input type="text" id="odc-bloque" style="width:180px" value="${esc(ODCS.bloque)}" placeholder="p. ej. 3041" oninput="ODCS.bloque=this.value"></div><div><label>&nbsp;</label><button class="btn sm" ${sel.length?'':'disabled title="marca al menos una orden"'} onclick="asignarODC(${JSON.stringify(sel).replace(/"/g,'&quot;')},(document.getElementById('odc-bloque')||{}).value||'')">Asignar a las ${sel.length} marcadas</button></div><div><label>&nbsp;</label><button class="btn ghost sm" onclick="ODCS.sel=new Set(${JSON.stringify(pend.map(o=>o.id)).replace(/"/g,'&quot;')});render()">Marcar todas</button> <button class="btn ghost sm" onclick="ODCS.sel=new Set();render()">Ninguna</button></div></div>`:''}
    <div class="scroll" style="max-height:360px"><table style="font-size:var(--fs-s)"><thead><tr><th style="width:26px"></th><th>OP</th><th>Cliente</th><th>Categoría</th><th class="num">Prendas</th><th>Entrega</th><th>ODC hoy</th><th>ODC nuevo</th></tr></thead><tbody>
-   ${pend.map(o=>`<tr><td>${ok?`<input type="checkbox" ${ODCS.sel.has(o.id)?'checked':''} onchange="togSelODC('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="mut">sin fecha</span>'}</td><td class="mut">${esc(o.odc||'—')}</td><td style="white-space:nowrap">${ok?`<input type="text" style="width:110px" id="odc-${o.id}" placeholder="ODC"> <button class="btn ghost sm" onclick="asignarODC(['${o.id}'],(document.getElementById('odc-${o.id}')||{}).value||'')">asignar</button>`:''}</td></tr>`).join('')}</tbody></table></div></div></div>`}
+   ${pend.map(o=>`<tr><td>${ok?`<input type="checkbox" ${ODCS.sel.has(o.id)?'checked':''} onchange="togSelODC('${o.id}',this.checked)">`:''}</td><td style="white-space:nowrap">${whCell(o)}</td><td class="cli" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td><td><span class="t2" title="${esc(nombreCat(K(o.cat)))}">${esc(nombreCat(K(o.cat)))}</span></td><td class="num">${num(o.cant)}</td><td>${o.fecha?fmtFecha(o.fecha):'<span class="mut">sin fecha</span>'}</td><td class="mut">${esc(o.odc||'—')}</td><td style="white-space:nowrap">${ok?`<input type="text" style="width:110px" id="odc-${o.id}" placeholder="ODC"> <button class="btn ghost sm" onclick="asignarODC(['${o.id}'],(document.getElementById('odc-${o.id}')||{}).value||'')">asignar</button>`:''}</td></tr>`).join('')}</tbody></table></div>`}
 /* ---------- Estado de cada orden contra el programa (clasificarAsig): lo usa el detalle de la orden. La pantalla «Asignación por orden» se retiró el 21-sep.
    Solo lee el programa (no toca el motor). Colchón = días de holgura para "llega justo": parámetro visible S.params.colchonDias. */
 function colchonDias(){if(typeof S.params.colchonDias!=='number'||isNaN(S.params.colchonDias)){S.params.colchonDias=3;S.params.colchonEstimado=true}return S.params.colchonDias}
@@ -7404,7 +7459,7 @@ function precioRaroEn(lista){const xs=(lista||[]).filter(precioFueraRango);retur
 /* al lado de cada total en $: «sin N órdenes con precio fuera de rango ($ X) →» (lleva a la bandeja de Órdenes) */
 function avisoPrecioRaroHTML(lista){if(!veFacturacion())return '';const r=precioRaroEn(lista);if(!r.n)return '';
   return ` <a class="aviso-precio-raro" style="cursor:pointer;white-space:nowrap" onclick="event.stopPropagation();irPrecioRaro()" title="El precio por prenda de ${r.n===1?'esta orden':'estas órdenes'} es 10 veces o más el típico del archivo de Odoo: no suma en este total hasta que se corrija en Odoo. Clic: la bandeja en Órdenes.">sin ${num(r.n)} ${r.n===1?'orden':'órdenes'} con precio fuera de rango ($ ${num(r.usd)}) →</a>`}
-function irPrecioRaro(){ir('ordenes');setTimeout(()=>{const e=document.getElementById('ord-precio-raro');if(e&&e.scrollIntoView)e.scrollIntoView({block:'start'})},0)}
+function irPrecioRaro(){ir('ordenes');setTimeout(()=>{const e=document.getElementById('ord-precio-raro');if(!e)return;const d=e.closest('details.avisos');if(d&&!d.open)d.open=true;const b=e.querySelector('.av-ver');const t=b&&document.getElementById(b.getAttribute('aria-controls'));if(t&&!t.open)t.open=true;if(e.scrollIntoView)e.scrollIntoView({block:'start'})},0)}   /* 19-oct: la tarjeta vive en los avisos plegables: se abren */
 function wipGuardarNiveles(n){try{localStorage['__grp_'+claveUsr()+'_wip']=JSON.stringify(n)}catch(e){}}
 function wipNiveles(){const g=grpSt('wip');
   if(Array.isArray(WIPL.niveles)){g.niveles=WIPL.niveles.map(k=>k==='cat'?'hija':k).filter(k=>GRP_CAMPOS.some(z=>z[0]===k)).slice(0,3);g.exp=new Set();WIPL.niveles=null;wipGuardarNiveles(g.niveles)}
@@ -10017,16 +10072,47 @@ function plegarAvisos(root,pg){if(!root||pg==='tablet')return 0;let n=0;
     else{const m=txt.match(/^.{20,120}?[.:;](\s|$)/);res=esc(m?m[0].trim().replace(/[:;]$/,''):txt.slice(0,110).trim()+'…')}   /* pulido V2: sin «:» suelto antes de «· ver detalle» */
     const sm=document.createElement('summary');sm.innerHTML=res+' <span class="mut warn-pl-ver">· ver detalle</span>';
     det.appendChild(sm);det.appendChild(cuerpo);d.replaceWith(det);n++});return n}
-/* Varios avisos sobre una lista, en UN recuadro plegado (02-oct): el resumen dice cuántos y cuáles, y si alguno pide hacer algo.
-   Adentro va lo mismo de siempre; se recuerda abierto o cerrado por usuario. html = los avisos (div.warn / .panel) seguidos. */
-function avisosPlegadosHTML(id,tit,html){const t=document.createElement('div');t.innerHTML=html||'';const xs=[...t.children].filter(c=>c.textContent.trim());if(!xs.length)return '';
-  const corto=s=>{s=String(s||'').replace(/\s+/g,' ').trim().replace(/^Bandeja · /i,'');s=s.split(/ — |: | · /)[0].trim();return s.length>70?s.slice(0,69)+'…':s};
-  const it=xs.map(c=>{let ti='';if(c.matches('.panel')){const h=c.querySelector('h3');if(h){const nt=h.querySelector('.note');const m=nt&&nt.textContent.match(/[0-9][0-9.]*/);ti=[...h.childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join(' ').trim()+(m?' ('+m[0]+')':'')}}
-    else{const b=c.querySelector('b');ti=b?b.textContent:c.textContent}
-    return {t:corto(ti),acc:!!c.querySelector('button,input,select,textarea')}});
+/* ---------- Avisos en tarjetas (19-oct-2026, usuaria con la captura de Órdenes: «puedes mejorar esto»). Reemplaza al recuadro plegado del 02-oct.
+   Cada aviso es UNA tarjeta (4 por fila en escritorio, 2 en tablet, 1 en el teléfono) con una franja arriba del color de su caso, una marca
+   «Requiere acción» o «Informativo», el título (el texto que iba en negrita: no se reescribe; «Bandeja» va como rótulo chico arriba) y 2–3 líneas de
+   detalle con las cifras en negrita y las WH en letra de máquina. Lo largo (listas de WH, la tabla de fases con sus casillas, la tabla de ODC) va en
+   «ver todo», que se abre a TODO el ancho justo debajo de la fila de su tarjeta (no dentro de la tarjeta angosta) y se recuerda mientras dure la
+   sesión. Arriba de las tarjetas, una línea con el resumen y plegar todo (recordado por persona, como antes).
+   Un aviso = {k, tipo, tit, det, todo?, idEl?, abierto?, alAbrir?}. tipo: accion | info | vencida | cerrada | falta (dato de configuración que
+   falta). Los colores salen de variables (--av-accion, --av-info, --av-vencida, --av-cerrada, --av-falta) que cada aspecto puede cambiar.
+   Solo presentación: los textos, cifras, botones y casillas de cada aviso son los de siempre. */
+const AVISO_TIPOS={
+  vencida:{marca:'Requiere acción',tag:'t-alerta',orden:0},
+  accion:{marca:'Requiere acción',tag:'t-aviso',orden:1},
+  falta:{marca:'Requiere acción',tag:'t-falta',orden:2,tip:'falta un dato de configuración'},
+  info:{marca:'Informativo',tag:'t-medio',orden:3},
+  cerrada:{marca:'Informativo',tag:'t-mut',orden:4,tip:'cerrada en Odoo'}};
+const AV_TODO={};   /* «ver todo» abierto (pantalla|aviso), mientras dure la sesión: sobrevive a los redibujos de las casillas y los botones */
+function avN(x){return '<b class="av-n">'+x+'</b>'}
+function avWH(op){return '<span class="av-wh">'+esc(op)+'</span>'}
+function avTipo(a){return AVISO_TIPOS[a&&a.tipo]?a.tipo:'info'}
+function avisoTarjetaHTML(id,a){const tipo=avTipo(a),T=AVISO_TIPOS[tipo],k=String(a.k),tid='avt-'+id+'-'+k;
+  const m=String(a.tit||'').match(/^(Bandeja) · ([\s\S]*)$/);const pre=m?m[1]:'',tit=m?m[2]:String(a.tit||'');
+  const hay=!!a.todo;const ab=hay&&(a.abierto!=null?!!a.abierto:!!AV_TODO[id+'|'+k]);
+  return `<div class="av-card av-${tipo}${hay?' con-todo':''}${ab?' abierto':''}" data-avk="${esc(k)}"${a.idEl?` id="${esc(a.idEl)}"`:''}>`
+    +`<div class="av-cab"><span class="tag ${T.tag} av-marca"${T.tip?` title="${esc(T.tip)}"`:''}>${T.marca}</span></div>`
+    +`<div class="av-tit">${pre?`<span class="av-pre">${esc(pre)}<span class="av-sep"> · </span></span>`:''}<span class="av-tit-t">${tit}</span></div>${a.det?`<div class="av-det">${a.det}</div>`:''}`
+    +(hay?`<button type="button" class="btn ghost sm av-ver" aria-expanded="${ab}" aria-controls="${tid}" onclick="avVerTodo('${tid}')">${ab?'ocultar ▴':'ver todo ▾'}</button>`:'')+`</div>`
+    +(hay?`<details class="av-todo av-${tipo}" id="${tid}" data-avk="${esc(k)}" ${ab?'open':''} ontoggle="${a.alAbrir?a.alAbrir+';':''}avTodoTog(this,'${jsq(id)}','${jsq(k)}')"><summary class="av-todo-cab"><span class="av-todo-tit">${tit}</span><span class="av-todo-x">ocultar ▴</span></summary><div class="av-todo-cuerpo">${a.todo}</div></details>`:'')}
+function avisosTarjetasHTML(id,tit,avisos){const xs=(avisos||[]).filter(Boolean);if(!xs.length)return '';
+  const ord=xs.map((a,i)=>({a,i})).sort((x,y)=>AVISO_TIPOS[avTipo(x.a)].orden-AVISO_TIPOS[avTipo(y.a)].orden||x.i-y.i).map(x=>x.a);   /* lo que pide hacer algo, primero */
+  const acc=ord.filter(a=>AVISO_TIPOS[avTipo(a)].marca==='Requiere acción').length,inf=ord.length-acc;
+  const corto=a=>{let s=String(a.tit||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().replace(/^Bandeja · /i,'');s=s.split(/ — |: | · /)[0].trim();return s.length>70?s.slice(0,69)+'…':s};
   let ab=false;try{ab=localStorage['__avisos_'+claveUsr()+'_'+id]==='1'}catch(e){}
-  return `<details class="avisos" data-av="${esc(id)}" ${ab?'open':''} ontoggle="recordarAvisos('${jsq(id)}',this.open)"><summary><b>⚠ ${xs.length} ${xs.length===1?'aviso':'avisos'} ${esc(tit||'')}</b> <span class="mut">· ${it.map(i=>esc(i.t)+(i.acc?' <b class="av-acc">(requiere acción)</b>':'')).join(' · ')}</span></summary><div class="avisos-cuerpo">${xs.map(c=>c.outerHTML).join('')}</div></details>`}
+  return `<details class="avisos${acc?' con-accion':''}" data-av="${esc(id)}" ${ab?'open':''} ontoggle="recordarAvisos('${jsq(id)}',this.open)"><summary class="av-sum">`
+    +`<b class="av-sum-t">⚠ ${ord.length} ${ord.length===1?'aviso':'avisos'} ${esc(tit||'')}</b>`
+    +(acc?`<span class="tag t-aviso av-sum-n">${acc} ${acc===1?'requiere':'requieren'} acción</span>`:'')+(inf?`<span class="tag t-medio av-sum-n">${inf} ${inf===1?'informativo':'informativos'}</span>`:'')
+    +`<span class="av-cuales">· ${ord.map(a=>esc(corto(a))).join(' · ')}</span></summary>`
+    +`<div class="av-grid">${ord.map(a=>avisoTarjetaHTML(id,a)).join('')}</div></details>`}
 function recordarAvisos(id,ab){try{localStorage['__avisos_'+claveUsr()+'_'+id]=ab?'1':'0'}catch(e){}}
+function avVerTodo(tid){const d=document.getElementById(tid);if(d)d.open=!d.open}
+function avTodoTog(d,id,k){AV_TODO[id+'|'+k]=!!d.open;const g=d.parentElement;const c=g&&[...g.children].find(x=>x.classList.contains('av-card')&&x.getAttribute('data-avk')===k);if(!c)return;
+  c.classList.toggle('abierto',!!d.open);const b=c.querySelector('.av-ver');if(b){b.setAttribute('aria-expanded',String(!!d.open));b.textContent=d.open?'ocultar ▴':'ver todo ▾'}}
 /* ¿está activo un control de filtro? */
 function filtroActivoCtl(el){const tipo=el.getAttribute('data-filt-tipo');
   if(tipo==='busq'||el.classList.contains('busq')){const i=el.querySelector('input');return !!(i&&String(i.value||'').trim())}
@@ -14560,36 +14646,7 @@ function vOrdenes(el){
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>${tabsOrdHTML()}
     ${puede('ordenes')?`<button class="btn" onclick="mActualizarDatos(1)" title="trae de Odoo las tareas, las órdenes de trabajo, las fotos y las tallas: es el camino normal para tener las órdenes al día">${ICO.sync} Actualizar datos</button><button class="btn ghost" onclick="mReporteTarea()">Reporte de la última carga</button><button class="btn ghost" onclick="mOrden()" title="crear una orden a mano (lo normal es que vengan de Odoo con «Actualizar datos»)">${ICO.plus} Nueva orden</button>`:''}</div>
   <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
-  ${avisosPlegadosHTML('ordenes','sobre las órdenes',`${(()=>{const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);
-   /* 02-oct: la bandeja cuenta lo que hay que arreglar —las abiertas sin fecha (las mismas que Hoy) y las que el archivo trae sin fecha ni Proyecto
-      y siguen abiertas en Odoo—; las que el archivo trae sin fecha pero ya están cerradas en Odoo se dicen aparte y no suman (antes: «5 órdenes: 1 y 0») */
-   const abOps=new Set(enPlan.map(o=>o.op));const fuera=sf.filter(x=>!x.entra&&abiertaDe({estadoOP:x.estadoOP,fase:x.fase}));
-   const cerr=sf.filter(x=>x.entra?!abOps.has(x.op):!abiertaDe({estadoOP:x.estadoOP,fase:x.fase}));const n=enPlan.length+fuera.length;if(!n)return '';
-   const txtO=o=>esc(opVisibleTxt(o,true))+' ('+esc(faseNombre(o.fase||''))+(o.proyecto?' · '+esc(o.proyecto):' · sin proyecto')+')';
-   return `<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${num(n)} ${n===1?'orden abierta':'órdenes abiertas'} sin fecha de entrega</b>: ${n===1?'no entra':'no entran'} al plan de ningún mes, no se programan ni se liberan hasta tener fecha (${num(enPlan.length)} con Proyecto, ${num(fuera.length)} sin Proyecto). Ponles fecha en Odoo. ${enPlan.map(txtO).concat(fuera.map(txtO)).join(', ')}${cerr.length?` <span class="mut" title="${esc(cerr.map(x=>opVisibleTxt(x,true)+' ('+faseNombre(x.fase||'')+')').join(', '))}">· Además, ${num(cerr.length)} que el archivo trae sin fecha ya ${cerr.length===1?'está cerrada':'están cerradas'} en Odoo: no cuentan.</span>`:''}</div>`})()}
-  ${panelODCHTML()}
-  ${(()=>{const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);return (pr.length?`<div class="warn" id="ord-precio-raro" style="margin-bottom:12px"><b>Bandeja · precio por prenda fuera de rango (${pr.length})</b>: se reporta, no se corrige (corregir en Odoo)${veFacturacion()?'; mientras tanto no suma en ningún total en $':''}. ${pr.map(x=>esc(opVisibleTxt(x))+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' prendas · '+(veFacturacion()?'$ '+num(x.total)+' = $ '+num(x.precio,2)+' por prenda (mediana $ '+num(x.mediana,2)+')':'precio por prenda '+(x.mediana>0?num(x.precio/x.mediana)+' veces el típico del archivo':'fuera de rango'))).join('<br>')}</div>`:'')+(sl.length?`<div class="warn" style="margin-bottom:12px"><b>${sl.length} órdenes sin número de WH</b> (no lanzadas en Odoo — por fase: ${(()=>{const c={};sl.forEach(o=>{const f=o.fase||'(sin fase)';c[f]=(c[f]||0)+1});return Object.entries(c).sort((x,y)=>(typeof cmpFases==='function'?cmpFases(x[0],y[0]):0)).map(([f,n])=>{const r=filaFaseDe(f);const prod=r&&r.sistema&&r.sistema!=='previo a producción';const cual=prod?sl.filter(o=>(o.fase||'(sin fase)')===f).slice(0,5).map(o=>o.op+(o.cliente?' · '+o.cliente:'')+(o.ref?' · ref '+o.ref:'')).join('; '):'';return '<b>'+esc(faseNombre(f))+'</b>: '+num(n)+(n===1?' orden':' órdenes')+(prod?' <span class="tag t-alerta" title="está en una fase de producción pero Odoo todavía no le creó la orden de producción (WH): revisar en Odoo">en producción sin WH</span> ('+esc(cual)+')':'')}).join(' · ')})()}) · ${num(sl.reduce((a,o)=>a+ +o.cant,0))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.</div>`:'')})()}
-  ${(()=>{const rc=(S.params.tareaCarga||{}).recarga;if(!rc)return '';const nc=rc.noCalzan||[];return (nc.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · decisiones que ya no calzan con el archivo (${nc.length})</b> — recarga del ${fechaHoraLocal(S.params.tareaCarga.fecha)}: se conservaron tal cual; revísalas y retíralas a mano si corresponde. <details ${BND.abierta?'open':''} ontoggle="BND.abierta=this.open"><summary style="cursor:pointer">ver</summary>
-       ${(()=>{const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);const f=o&&(o.fases||[]).filter(f=>f.origen==='app').slice(-1)[0];return f||null};const acept=fs.filter(x=>!movidas(x.op));
-         return fs.length?`<div style="margin:6px 0"><b>Fases distintas (${fs.length})</b>: ${acept.length} avanzaron en Odoo y aquí nadie las movió; ${fs.length-acept.length} las moviste aquí (también puedes aceptar la del archivo, caso por caso). ${puede('ordenes')?`<button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(acept.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar las ${acept.length} de avance normal</button> <button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(fs.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar todas (${fs.length})</button> <button class="btn ghost sm" onclick="BND.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${BND.sel.size?'':'disabled'} onclick="aceptarFasesArchivo()">Usar la fase del archivo en las ${BND.sel.size} marcadas</button>`:''}
-          <div style="margin:6px 0;font-size:var(--fs-xs)">Archivo exportado de Odoo: <input type="datetime-local" value="${isoLocalInput(expTsDe(rc))}" ${puede('ordenes')?'':'disabled'} onchange="fijarExportTs(this.value)"> <span class="mut">— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.</span></div>
-          <table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th></th><th>OP</th><th>Fase en el sistema</th><th>Fase del archivo</th><th></th></tr></thead><tbody>${fs.map(x=>{const mv=movidas(x.op);return `<tr><td><input type="checkbox" ${BND.sel.has(x.op)?'checked':''} onchange="if(this.checked)BND.sel.add('${x.op}');else BND.sel.delete('${x.op}');render()"></td><td>${esc(x.op)}</td><td>${esc(x.sistema)}</td><td>${esc(x.archivo)}</td><td class="mut">${mv?(archivoAnterior(x.op,rc)?'<span class="tag t-alerta">el archivo es anterior a tu cambio</span> lo moviste aquí el '+fMovTs(mv.ts)+', el archivo se exportó el '+fMovTs(expTsDe(rc))+': la del archivo es la vieja, revísala antes de aceptar':'<span class="tag t-aviso">movida aquí</span> por '+esc(mv.u||'')+' el '+fMovTs(mv.ts)+': si la marcas, la del archivo la pisa'):''}</td></tr>`}).join('')}</tbody></table></div>`:''})()}
-       ${(()=>{const otras=nc.filter(x=>x.tipo!=='fase');if(!otras.length)return '';
-          const NOM={ruta:'Rutas confirmadas que se conservaron',rutaTextil:'Tramo de tela rehecho con el archivo',tiempo:'Tiempos que el archivo trae distintos',lib:'Liberaciones',odc:'ODC'};
-          const g={};otras.forEach(x=>{const k=x.tipo||'otras';(g[k]=g[k]||[]).push(x)});
-          const TOPE=30;
-          return Object.entries(g).sort((a,b)=>a[1].length-b[1].length).map(([k,l])=>'<div style="margin-top:6px"><b>'+esc(NOM[k]||('Otras ('+k+')'))+' — '+l.length+'</b><div style="font-size:var(--fs-xs);line-height:1.6">'+
-            l.slice(0,TOPE).map(x=>esc(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')+
-            (l.length>TOPE?'<br><span class="mut">… y '+(l.length-TOPE)+' más</span>':'')+'</div></div>').join('')})()}</details></div>`:'')+
-      (()=>{const l=(rc.eliminadasConDecision||[]).map(op=>S.ordenes.find(o=>o.op===op)).filter(Boolean).map(o=>({o,d:decisionesPersonaDe(o)})).filter(x=>x.d.length);if(!l.length)return '';
-        const porQue=o=>o.fueraAlcance?'cerrada en Odoo o fuera de alcance':'no vino en el archivo';
-        return `<div class="warn" style="margin-bottom:12px"><b>Bandeja · ${l.length} ${l.length===1?'orden que no vino':'órdenes que no vinieron'} en la recarga y ${l.length===1?'tenía':'tenían'} algo decidido por una persona aquí</b> <span class="mut">(no se borran: siguen en el sistema, marcadas; revisa si esa decisión ya no hace falta)</span><div style="font-size:var(--fs-xs);line-height:1.6;margin-top:4px">${l.slice(0,40).map(x=>esc(x.o.op)+' · '+esc(porQue(x.o))+' · '+esc(x.d.join(', '))).join('<br>')}${l.length>40?'<br><span class="mut">… y '+(l.length-40)+' más</span>':''}</div></div>`})()})()}
-  ${(()=>{const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
-    const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
-    return (sm.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · carga real sin medir (${sm.length} órdenes)</b>: fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después. ${Object.entries(porF).map(([f,v])=>esc(faseNombre(f))+' ('+v.n+' órdenes · '+num(v.pz)+' prendas)').join(', ')}</div>`:'')+
-      (se.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · paso extra sin minutos (${se.length} órdenes)</b>: la fase tiene un paso extra en la tabla 1 pero el parámetro de SAM (minutos por prenda) está vacío o en 0 en Configuración general → Calendario y reglas.</div>`:'')})()}
-  ${(()=>{const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);return sf.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · fase que no calza con la tabla (${sf.length} órdenes)</b>: el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración general → Órdenes, fases y archivos de Odoo → tabla 1. ${[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")}</div>`:""})()}
-  ${(()=>{const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));return sv.length?`<div class="warn" style="margin-bottom:12px"><b>Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)</b>: cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración general → Centros (fila Bordado). ${sv.slice(0,25).map(o=>esc(o.op)).join(", ")}${sv.length>25?" …":""}</div>`:""})()}`)}
+  ${avisosOrdenesHTML()}
   ${filtros}
   <div data-lista="ORDF.q">${S.ordenes.length?listaOrdHTML():`<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]||'Órdenes'}</h3><div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div></div>`}</div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas <span class="lede">registro completo en Configuración general → Órdenes, fases y archivos de Odoo</span></h3><div class="body">
@@ -14597,6 +14654,65 @@ function vOrdenes(el){
       ${((c.resumen||{}).alertas||c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--aviso);font-size:var(--fs-s)">${num(((c.resumen||{}).alertas||c.alertas).length)} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${((c.resumen||{}).alertas||c.alertas).map(esc).join('<br>')}</div></details>`:''}</div>`).join('')}
   </div></div>`:''}`;
 }
+/* Los avisos de arriba de Órdenes, en tarjetas (19-oct-2026). Cada uno con su caso: requiere acción (sin fecha, ODC, precio fuera de rango, decisiones que
+   ya no calzan, las que no vinieron con algo decidido; también «sin WH» si alguna ya está en producción sin WH: «revisar en Odoo»), informativo (sin WH,
+   carga sin medir) o falta un dato de configuración (paso extra sin minutos, fase que no calza con la tabla 1, sin velocidad de bordado). Los textos,
+   las cifras, los botones y las casillas son los de antes (solo se reparten en título, detalle y «ver todo»). */
+function avisosOrdenesHTML(){const L=[];
+  /* sin fecha de entrega: las abiertas sin fecha (las mismas que Hoy) y las que el archivo trae sin fecha ni Proyecto y siguen abiertas en Odoo;
+     las que el archivo trae sin fecha pero ya están cerradas en Odoo se dicen aparte y no suman (02-oct) */
+  {const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);
+   const abOps=new Set(enPlan.map(o=>o.op));const fuera=sf.filter(x=>!x.entra&&abiertaDe({estadoOP:x.estadoOP,fase:x.fase}));
+   const cerr=sf.filter(x=>x.entra?!abOps.has(x.op):!abiertaDe({estadoOP:x.estadoOP,fase:x.fase}));const n=enPlan.length+fuera.length;
+   const txtO=o=>avWH(opVisibleTxt(o,true))+' ('+esc(faseNombre(o.fase||''))+(o.proyecto?' · '+esc(o.proyecto):' · sin proyecto')+')';
+   if(n)L.push({k:'sinFecha',tipo:'accion',tit:`Bandeja · ${num(n)} ${n===1?'orden abierta':'órdenes abiertas'} sin fecha de entrega`,
+     det:`${n===1?'no entra':'no entran'} al plan de ningún mes, no se programan ni se liberan hasta tener fecha (${avN(num(enPlan.length))} con Proyecto, ${avN(num(fuera.length))} sin Proyecto). Ponles fecha en Odoo.${cerr.length?` <span class="mut" title="${esc(cerr.map(x=>opVisibleTxt(x,true)+' ('+faseNombre(x.fase||'')+')').join(', '))}">· Además, ${num(cerr.length)} que el archivo trae sin fecha ya ${cerr.length===1?'está cerrada':'están cerradas'} en Odoo: no cuentan.</span>`:''}`,
+     todo:enPlan.map(txtO).concat(fuera.map(txtO)).join(', ')})}
+  /* ODC pendientes */
+  {const pend=odcPendientes();if(pend.length)L.push({k:'odc',tipo:'accion',tit:'Asignar ODC',det:`${avN(num(pend.length))} ${pend.length===1?'orden':'órdenes'} con «PENDIENTE ODC» o sin ODC · al asignarlo forman colección con ese ODC · queda en bitácora`,todo:odcCuerpoHTML(pend)})}
+  /* precio por prenda fuera de rango y órdenes sin WH */
+  {const pr=(S.params.tareaCarga||{}).precioRaro||[];const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);
+   if(pr.length)L.push({k:'precioRaro',tipo:'accion',idEl:'ord-precio-raro',tit:`Bandeja · precio por prenda fuera de rango (${pr.length})`,det:`se reporta, no se corrige (corregir en Odoo)${veFacturacion()?'; mientras tanto no suma en ningún total en $':''}.`,
+     todo:pr.map(x=>avWH(opVisibleTxt(x))+' · '+esc(x.cliente||'')+' · ODC '+esc(x.odc||'')+' · '+esc(x.ref||'')+' · '+esc(x.color||'')+' · '+num(x.cant)+' prendas · '+(veFacturacion()?'$ '+num(x.total)+' = $ '+num(x.precio,2)+' por prenda (mediana $ '+num(x.mediana,2)+')':'precio por prenda '+(x.mediana>0?num(x.precio/x.mediana)+' veces el típico del archivo':'fuera de rango'))).join('<br>')});
+   if(sl.length){const c={};sl.forEach(o=>{const f=o.fase||'(sin fase)';c[f]=(c[f]||0)+1});let enProd=false;
+     const porFase=Object.entries(c).sort((x,y)=>(typeof cmpFases==='function'?cmpFases(x[0],y[0]):0)).map(([f,n])=>{const r=filaFaseDe(f);const prod=r&&r.sistema&&r.sistema!=='previo a producción';if(prod)enProd=true;
+       const cual=prod?sl.filter(o=>(o.fase||'(sin fase)')===f).slice(0,5).map(o=>avWH(o.op)+esc((o.cliente?' · '+o.cliente:'')+(o.ref?' · ref '+o.ref:''))).join('; '):'';
+       return '<b>'+esc(faseNombre(f))+'</b>: '+num(n)+(n===1?' orden':' órdenes')+(prod?' <span class="tag t-alerta" title="está en una fase de producción pero Odoo todavía no le creó la orden de producción (WH): revisar en Odoo">en producción sin WH</span> ('+cual+')':'')}).join(' · ');
+     L.push({k:'sinWH',tipo:enProd?'accion':'info',tit:`${sl.length} órdenes sin número de WH`,det:`(no lanzadas en Odoo) · ${avN(num(sl.reduce((a,o)=>a+ +o.cant,0)))} prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.`,todo:`por fase: ${porFase}`})}}
+  /* recarga: decisiones que ya no calzan con el archivo y órdenes que no vinieron y tenían algo decidido por una persona */
+  {const rc=(S.params.tareaCarga||{}).recarga;if(rc){const nc=rc.noCalzan||[];
+   if(nc.length){const fs=nc.filter(x=>x.tipo==='fase');const movidas=op=>{const o=S.ordenes.find(z=>z.op===op);const f=o&&(o.fases||[]).filter(f=>f.origen==='app').slice(-1)[0];return f||null};const acept=fs.filter(x=>!movidas(x.op));
+     const fasesHTML=fs.length?`<div style="margin:6px 0"><b>Fases distintas (${fs.length})</b>: ${acept.length} avanzaron en Odoo y aquí nadie las movió; ${fs.length-acept.length} las moviste aquí (también puedes aceptar la del archivo, caso por caso). ${puede('ordenes')?`<button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(acept.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar las ${acept.length} de avance normal</button> <button class="btn ghost sm" onclick="BND.sel=new Set(${JSON.stringify(fs.map(x=>x.op)).replace(/"/g,'&quot;')});render()">Marcar todas (${fs.length})</button> <button class="btn ghost sm" onclick="BND.sel=new Set();render()">Ninguna</button> <button class="btn sm" ${BND.sel.size?'':'disabled'} onclick="aceptarFasesArchivo()">Usar la fase del archivo en las ${BND.sel.size} marcadas</button>`:''}
+          <div style="margin:6px 0;font-size:var(--fs-xs)">Archivo exportado de Odoo: <input type="datetime-local" value="${isoLocalInput(expTsDe(rc))}" ${puede('ordenes')?'':'disabled'} onchange="fijarExportTs(this.value)"> <span class="mut">— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.</span></div>
+          <table style="margin-top:6px;font-size:var(--fs-xs)"><thead><tr><th></th><th>OP</th><th>Fase en el sistema</th><th>Fase del archivo</th><th></th></tr></thead><tbody>${fs.map(x=>{const mv=movidas(x.op);return `<tr><td><input type="checkbox" ${BND.sel.has(x.op)?'checked':''} onchange="if(this.checked)BND.sel.add('${x.op}');else BND.sel.delete('${x.op}');render()"></td><td>${avWH(x.op)}</td><td>${esc(x.sistema)}</td><td>${esc(x.archivo)}</td><td class="mut">${mv?(archivoAnterior(x.op,rc)?'<span class="tag t-alerta">el archivo es anterior a tu cambio</span> lo moviste aquí el '+fMovTs(mv.ts)+', el archivo se exportó el '+fMovTs(expTsDe(rc))+': la del archivo es la vieja, revísala antes de aceptar':'<span class="tag t-aviso">movida aquí</span> por '+esc(mv.u||'')+' el '+fMovTs(mv.ts)+': si la marcas, la del archivo la pisa'):''}</td></tr>`}).join('')}</tbody></table></div>`:'';
+     const otrasHTML=(()=>{const otras=nc.filter(x=>x.tipo!=='fase');if(!otras.length)return '';
+          const NOM={ruta:'Rutas confirmadas que se conservaron',rutaTextil:'Tramo de tela rehecho con el archivo',tiempo:'Tiempos que el archivo trae distintos',lib:'Liberaciones',odc:'ODC'};
+          const g={};otras.forEach(x=>{const k=x.tipo||'otras';(g[k]=g[k]||[]).push(x)});
+          const TOPE=30;
+          return Object.entries(g).sort((a,b)=>a[1].length-b[1].length).map(([k,l])=>'<div style="margin-top:6px"><b>'+esc(NOM[k]||('Otras ('+k+')'))+' — '+l.length+'</b><div style="font-size:var(--fs-xs);line-height:1.6">'+
+            l.slice(0,TOPE).map(x=>avWH(x.op)+' · '+esc(x.decision)+' → '+esc(x.motivo)).join('<br>')+
+            (l.length>TOPE?'<br><span class="mut">… y '+(l.length-TOPE)+' más</span>':'')+'</div></div>').join('')})();
+     L.push({k:'noCalzan',tipo:'accion',tit:`Bandeja · decisiones que ya no calzan con el archivo (${nc.length})`,det:`recarga del ${fechaHoraLocal(S.params.tareaCarga.fecha)}: se conservaron tal cual; revísalas y retíralas a mano si corresponde.`,
+       abierto:BND.abierta,alAbrir:'BND.abierta=this.open',todo:fasesHTML+otrasHTML})}
+   const l=(rc.eliminadasConDecision||[]).map(op=>S.ordenes.find(o=>o.op===op)).filter(Boolean).map(o=>({o,d:decisionesPersonaDe(o)})).filter(x=>x.d.length);
+   if(l.length){const porQue=o=>o.fueraAlcance?'cerrada en Odoo o fuera de alcance':'no vino en el archivo';
+     L.push({k:'noVinieron',tipo:'accion',tit:`Bandeja · ${l.length} ${l.length===1?'orden que no vino':'órdenes que no vinieron'} en la recarga y ${l.length===1?'tenía':'tenían'} algo decidido por una persona aquí`,
+       det:'(no se borran: siguen en el sistema, marcadas; revisa si esa decisión ya no hace falta)',
+       todo:`<div style="font-size:var(--fs-xs);line-height:1.6">${l.slice(0,40).map(x=>avWH(x.o.op)+' · '+esc(porQue(x.o))+' · '+esc(x.d.join(', '))).join('<br>')}${l.length>40?'<br><span class="mut">… y '+(l.length-40)+' más</span>':''}</div>`})}}}
+  /* carga real sin medir y paso extra sin minutos */
+  {const sm=S.ordenes.filter(o=>abierta(o)&&(filaFaseDe(o.fase)||{}).sinMedir);const porF={};sm.forEach(o=>{porF[o.fase]=porF[o.fase]||{n:0,pz:0};porF[o.fase].n++;porF[o.fase].pz+=+o.cant||0});
+   const se=S.ordenes.filter(o=>abierta(o)&&(o.ruta||[]).some(p=>p.extra&&!(p.t>0)));
+   if(sm.length)L.push({k:'sinMedir',tipo:'info',tit:`Bandeja · carga real sin medir (${sm.length} órdenes)`,det:'fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después.',
+     todo:Object.entries(porF).map(([f,v])=>esc(faseNombre(f))+' ('+v.n+' órdenes · '+num(v.pz)+' prendas)').join(', ')});
+   if(se.length)L.push({k:'pasoExtra',tipo:'falta',tit:`Bandeja · paso extra sin minutos (${se.length} órdenes)`,det:'la fase tiene un paso extra en la tabla 1 pero el parámetro de SAM (minutos por prenda) está vacío o en 0 en Configuración general → Calendario y reglas.'})}
+  /* fase que no calza con la tabla 1 */
+  {const sf=S.ordenes.filter(o=>abierta(o)&&faseEstado(o.fase,o).sinFila);if(sf.length)L.push({k:'faseNoCalza',tipo:'falta',tit:`Bandeja · fase que no calza con la tabla (${sf.length} órdenes)`,
+     det:'el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración general → Órdenes, fases y archivos de Odoo → tabla 1.',
+     todo:[...new Set(sf.map(o=>o.fase||"(sin fase)"))].map(f=>esc(f)+" ("+sf.filter(o=>(o.fase||"(sin fase)")===f).length+")").join(", ")})}
+  /* sin velocidad de bordado */
+  {const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));if(sv.length)L.push({k:'sinVel',tipo:'falta',tit:`Bandeja · sin velocidad de bordado configurada (${sv.length} órdenes, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)`,
+     det:'cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración general → Centros (fila Bordado).',todo:sv.slice(0,25).map(o=>avWH(o.op)).join(", ")+(sv.length>25?" …":"")})}
+  return avisosTarjetasHTML('ordenes','sobre las órdenes',L)}
 function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]||{};const pierde=[o.foto?'su foto':'',o.ot?'sus órdenes de trabajo':'',(a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada?'su avance de piso':'',(o.fases||[]).length>1?'su historial de fases':''].filter(Boolean);
   if(!confirm('¿Borrar la orden '+o.op+' ('+num(o.cant)+' prendas, '+esc(o.cliente||'')+')?'+(pierde.length?'\nSe pierde también: '+pierde.join(', ')+'.':'')+'\nSi vuelve en la próxima carga de Odoo, entrará como nueva.'))return;
   bitacora('Orden borrada a mano: '+o.op+' · '+num(o.cant)+' prendas · '+(o.cliente||''));S.ordenes=S.ordenes.filter(x=>x.id!==id);save();render()}

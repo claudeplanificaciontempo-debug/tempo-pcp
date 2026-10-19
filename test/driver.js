@@ -4,6 +4,109 @@
 async function __esperar(f,ms){const t0=Date.now();while(!f()){if(Date.now()-t0>ms)throw new Error('timeout esperando');await new Promise(r=>setTimeout(r,50))}}
 function __check(nombre,cond,detalle){__R.checks.push({nombre,ok:!!cond,detalle:detalle===undefined?'':String(detalle)})}
 const __p=ms=>new Promise(r=>setTimeout(r,ms));
+/* AVC · escenario inventado con TODOS los avisos de Órdenes y las comprobaciones que no dependen de cómo se dibujan
+   (textos, cifras, WH, botones, casillas, campo de hora, <details>, plegado recordado). Se corre antes y después del cambio. */
+async function __avcEscenario(){
+  const cat=(S.categorias.find(k=>k.padre)||{}).id,col=(S.colores[0]||{}).id;
+  const fN='4Corte Planta',fPrev='0Diseño',fProd='7Confección',fSM='4Incompletos',fInv='9Fase Inventada AVC';
+  const rSM=filaFaseDe(fSM);const smAntes=rSM?rSM.sinMedir:undefined;if(rSM){rSM.sinMedir=true;FASE_CACHE.ver++}
+  const cb=CE('bordado');const pmAntes=cb?cb.puntMin:undefined,pmpAntes=S.params.puntadasMin;if(cb)cb.puntMin=0;S.params.puntadasMin=null;
+  const R3=[{centro:'corte',t:10},{centro:'modulos',t:20},{centro:'empaque',t:5}];
+  const mk=(id,op,x)=>Object.assign({id,op,cant:100,fase:fN,fecha:'2026-12-15',estado:'plan',estadoOP:'progress',cliente:'Cliente AVC',odc:'3041',ref:'R'+id,cat,color:col,telas:[],proyecto:'DICIEMBRE 2026',ruta:JSON.parse(JSON.stringify(R3))},x||{});
+  const O=[];
+  O.push(mk('avc_a1','WH/MO/AVC01',{fecha:null,proyecto:'OCTUBRE 2026'}));
+  O.push(mk('avc_a2','WH/MO/AVC02',{fecha:null,proyecto:''}));
+  O.push(mk('avc_b1','WH/MO/AVC06',{odc:'PENDIENTE ODC'}));
+  O.push(mk('avc_b2','WH/MO/AVC07',{odc:''}));
+  O.push(mk('avc_c1','SIN WH #avc1',{sinLanzar:true,fase:fPrev,cant:50,estadoOP:''}));
+  O.push(mk('avc_c2','SIN WH #avc2',{sinLanzar:true,fase:fProd,cant:70,ref:'R-C2',estadoOP:''}));
+  O.push(mk('avc_f1','WH/MO/AVC10'));
+  O.push(mk('avc_f2','WH/MO/AVC11',{fases:[{f:fN,ts:'2026-10-12T15:00:00.000Z',origen:'app',u:'Ana AVC'}]}));
+  O.push(mk('avc_f3','WH/MO/AVC12',{fases:[{f:fN,ts:'2026-10-12T12:00:00.000Z',origen:'app',u:'Ana AVC'}]}));
+  for(let i=0;i<42;i++)O.push(mk('avc_d'+i,'WH/MO/AVC2'+String(i).padStart(2,'0'),i===1?{fechaCompromiso:'2026-11-01'}:{prio:1,progCentro:{corte:{pri:1}},fueraAlcance:true}));
+  O.push(mk('avc_e1','WH/MO/AVC30',{fase:fSM}));
+  O.push(mk('avc_e2','WH/MO/AVC31',{ruta:[{centro:'corte',t:10},{centro:'empaque',t:0,extra:true}]}));
+  O.push(mk('avc_e3','WH/MO/AVC32',{fase:fInv}));
+  for(let i=0;i<26;i++)O.push(mk('avc_g'+i,'WH/MO/AVC4'+String(i).padStart(2,'0'),{ruta:[{centro:'corte',t:10},{centro:'bordado',t:0},{centro:'empaque',t:5}]}));
+  const noCalzan=[{op:'WH/MO/AVC10',tipo:'fase',sistema:fN,archivo:fProd,decision:'fase en el sistema: '+fN,motivo:'el archivo trae '+fProd},
+    {op:'WH/MO/AVC11',tipo:'fase',sistema:fN,archivo:fProd,decision:'fase en el sistema: '+fN,motivo:'el archivo trae '+fProd},
+    {op:'WH/MO/AVC12',tipo:'fase',sistema:fN,archivo:fProd,decision:'fase en el sistema: '+fN,motivo:'el archivo trae '+fProd}];
+  for(let i=0;i<32;i++)noCalzan.push({op:'WH/MO/AVC5'+String(i).padStart(2,'0'),tipo:'ruta',decision:'ruta confirmada '+i,motivo:'el catálogo arma otra '+i});
+  noCalzan.push({op:'WH/MO/AVC90',tipo:'tiempo',decision:'bordado 2.000 puntadas',motivo:'el archivo trae 3.000'});
+  noCalzan.push({op:'WH/MO/AVC91',tipo:'raroAVC',decision:'algo raro',motivo:'otra cosa'});
+  const tc={archivo:'avc.xlsx',fecha:'2026-10-12T14:13:00.000Z',hoy:'2026-10-12',
+    sinFecha:[{op:'WH/MO/AVC01',entra:true,estadoOP:'progress',fase:fN,proyecto:'OCTUBRE 2026'},{op:'WH/MO/AVC03',entra:false,estadoOP:'progress',fase:fN,proyecto:''},{op:'WH/MO/AVC04',entra:false,estadoOP:'done',fase:fN,proyecto:''}],
+    precioRaro:[{op:'WH/MO/AVC05',cliente:'Cliente AVC',odc:'77',ref:'R-AVC5',color:'NEGRO',cant:10,total:1000,precio:100,mediana:5}],
+    recarga:{noCalzan,eliminadasConDecision:O.filter(o=>/^avc_d/.test(o.id)).map(o=>o.op).concat(['WH/MO/NOEXISTE']),exportTs:'2026-10-12T14:00:00.000Z'}};
+  const restaurar=()=>{if(rSM){if(smAntes===undefined)delete rSM.sinMedir;else rSM.sinMedir=smAntes;FASE_CACHE.ver++}if(cb){if(pmAntes===undefined)delete cb.puntMin;else cb.puntMin=pmAntes}if(pmpAntes===undefined)delete S.params.puntadasMin;else S.params.puntadasMin=pmpAntes};
+  return {O,tc,restaurar,f:{fN,fPrev,fProd,fSM,fInv}}}
+/* las comprobaciones que valen antes y después: ver = una función que devuelve el contenedor de los avisos */
+async function __avcComun(nm){
+  const txt=e=>(e&&e.textContent||'').replace(/\s+/g,' ').trim();const AV=()=>document.querySelector('#p-ordenes [data-av="ordenes"]');const T=()=>txt(AV());
+  const res={};const ok=(k,c,d)=>{res[k]={ok:!!c,d:d===undefined?'':String(d)}};
+  const btn=lbl=>[...AV().querySelectorAll('button')].find(b=>txt(b)===lbl||(lbl instanceof RegExp&&lbl.test(txt(b))));
+  const rc=S.params.tareaCarga.recarga;const o=id=>S.ordenes.find(x=>x.id===id);
+  ok('contenedor',!!AV()&&/⚠ ?10 avisos sobre las órdenes/.test(txt(AV().querySelector('summary'))),AV()&&txt(AV().querySelector('summary')).slice(0,200));
+  /* 1 · sin fecha */
+  {const t=T();const l=['Bandeja · 3 órdenes abiertas sin fecha de entrega','no entran al plan de ningún mes, no se programan ni se liberan hasta tener fecha (2 con Proyecto, 1 sin Proyecto). Ponles fecha en Odoo.',
+     'WH/MO/AVC01 ('+faseNombre('4Corte Planta')+' · OCTUBRE 2026)','WH/MO/AVC02 ('+faseNombre('4Corte Planta')+' · sin proyecto)','WH/MO/AVC03 ('+faseNombre('4Corte Planta')+' · sin proyecto)',
+     '· Además, 1 que el archivo trae sin fecha ya está cerrada en Odoo: no cuentan.'];
+   const cerr=[...AV().querySelectorAll('[title]')].find(e=>/Además, 1 que el archivo/.test(txt(e)));
+   ok('sinFecha',l.every(s=>t.includes(s))&&!!cerr&&cerr.getAttribute('title')==='WH/MO/AVC04 ('+faseNombre('4Corte Planta')+')',l.filter(s=>!t.includes(s)).join(' | ')+(cerr?' · title='+cerr.getAttribute('title'):' · sin title'))}
+  /* 2 · ODC */
+  {const t=T();const l=['Asignar ODC','2 órdenes con «PENDIENTE ODC» o sin ODC','al asignarlo forman colección con ese ODC · queda en bitácora','ODC para las marcadas (0)','Asignar a las 0 marcadas','Marcar todas','Ninguna','ODC hoy','ODC nuevo','PENDIENTE ODC'];
+   const inB=AV().querySelector('#odc-bloque');const chk=[...AV().querySelectorAll('input[type=checkbox]')].filter(c=>/togSelODC/.test(c.getAttribute('onchange')||''));
+   const asg=[...AV().querySelectorAll('button')].filter(b=>/asignarODC\(\['avc_b[12]'\]/.test(b.getAttribute('onclick')||''));
+   ok('odc.textos',l.every(s=>t.includes(s))&&!!inB&&/ODCS\.bloque=this\.value/.test(inB.getAttribute('oninput')||'')&&chk.length===2&&asg.length===2&&!!AV().querySelector('#odc-avc_b1')&&!!AV().querySelector('#odc-avc_b2')&&btn('Asignar a las 0 marcadas').disabled,l.filter(s=>!t.includes(s)).join(' | ')+' · chk '+chk.length+' asg '+asg.length);
+   btn('Marcar todas').click();const s1=[...ODCS.sel].sort().join(',');const b2=btn('Asignar a las 2 marcadas');
+   btn('Ninguna').click();const s2=ODCS.sel.size;
+   const c1=[...AV().querySelectorAll('input[type=checkbox]')].find(c=>/togSelODC\('avc_b1'/.test(c.getAttribute('onchange')||''));c1.checked=true;c1.dispatchEvent(new Event('change'));const s3=[...ODCS.sel].join(',');
+   AV().querySelector('#odc-bloque').value='8881';AV().querySelector('#odc-bloque').dispatchEvent(new Event('input'));btn('Asignar a las 1 marcadas').click();const v1=o('avc_b1').odc;
+   AV().querySelector('#odc-avc_b2').value='8882';[...AV().querySelectorAll('button')].find(b=>/asignarODC\(\['avc_b2'\]/.test(b.getAttribute('onclick')||'')).click();const v2=o('avc_b2').odc;
+   ok('odc.botones',s1==='avc_b1,avc_b2'&&!!b2&&!b2.disabled&&s2===0&&s3==='avc_b1'&&v1==='8881'&&v2==='8882',JSON.stringify({s1,b2:!!b2,s2,s3,v1,v2}));
+   o('avc_b1').odc='PENDIENTE ODC';delete o('avc_b1').odcManual;o('avc_b2').odc='';delete o('avc_b2').odcManual;ODCS.sel=new Set();ODCS.bloque='';render()}
+  /* 3 · precio fuera de rango */
+  {const t=T();const l=['Bandeja · precio por prenda fuera de rango (1)','se reporta, no se corrige (corregir en Odoo); mientras tanto no suma en ningún total en $.','WH/MO/AVC05 · Cliente AVC · ODC 77 · R-AVC5 · NEGRO · 10 prendas · $ '+num(1000)+' = $ '+num(100,2)+' por prenda (mediana $ '+num(5,2)+')'];
+   ok('precioRaro',l.every(s=>t.includes(s))&&!!AV().querySelector('#ord-precio-raro')&&txt(AV().querySelector('#ord-precio-raro')).includes('precio por prenda fuera de rango'),l.filter(s=>!t.includes(s)).join(' | '))}
+  /* 4 · sin WH */
+  {const t=T();const l=['2 órdenes sin número de WH','no lanzadas en Odoo','por fase:',faseNombre('0Diseño')+': 1 orden',faseNombre('7Confección')+': 1 orden','en producción sin WH','SIN WH #avc2 · Cliente AVC · ref R-C2','120 prendas: cuentan en Plan mensual y Entregas; no se liberan ni se programan hasta que Odoo les dé WH.'];
+   const tg=[...AV().querySelectorAll('.tag.t-alerta')].find(e=>txt(e)==='en producción sin WH');
+   ok('sinWH',l.every(s=>t.includes(s))&&!!tg&&/revisar en Odoo/.test(tg.getAttribute('title')||'')&&t.indexOf(faseNombre('0Diseño')+': 1 orden')<t.indexOf(faseNombre('7Confección')+': 1 orden'),l.filter(s=>!t.includes(s)).join(' | '))}
+  /* 5 · decisiones que ya no calzan */
+  {const t=T();const l=['Bandeja · decisiones que ya no calzan con el archivo (37)','recarga del '+fechaHoraLocal(S.params.tareaCarga.fecha),'se conservaron tal cual; revísalas y retíralas a mano si corresponde.',
+     'Fases distintas (3)','1 avanzaron en Odoo y aquí nadie las movió; 2 las moviste aquí (también puedes aceptar la del archivo, caso por caso).',
+     'Marcar las 1 de avance normal','Marcar todas (3)','Usar la fase del archivo en las 0 marcadas','Archivo exportado de Odoo:',
+     '— si moviste una fase aquí DESPUÉS de esta hora, el archivo trae la versión vieja: te lo marco en rojo abajo. Ajusta la hora a la real del export.',
+     'Fase en el sistema','Fase del archivo','el archivo es anterior a tu cambio','lo moviste aquí el '+fMovTs('2026-10-12T15:00:00.000Z')+', el archivo se exportó el '+fMovTs('2026-10-12T14:00:00.000Z')+': la del archivo es la vieja, revísala antes de aceptar',
+     'movida aquí','por Ana AVC el '+fMovTs('2026-10-12T12:00:00.000Z')+': si la marcas, la del archivo la pisa',
+     'Rutas confirmadas que se conservaron — 32','Tiempos que el archivo trae distintos — 1','Otras (raroAVC) — 1','WH/MO/AVC500 · ruta confirmada 0 → el catálogo arma otra 0','WH/MO/AVC529 · ruta confirmada 29 → el catálogo arma otra 29','… y 2 más',
+     'WH/MO/AVC90 · bordado 2.000 puntadas → el archivo trae 3.000','WH/MO/AVC91 · algo raro → otra cosa'];
+   const inp=AV().querySelector('input[type=datetime-local]');const filas=[...AV().querySelectorAll('input[type=checkbox]')].filter(c=>/BND\.sel/.test(c.getAttribute('onchange')||''));
+   const det=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));
+   ok('decisiones.textos',l.every(s=>t.includes(s))&&!t.includes('WH/MO/AVC530 ')&&!!inp&&inp.value===isoLocalInput('2026-10-12T14:00:00.000Z')&&/fijarExportTs\(this\.value\)/.test(inp.getAttribute('onchange')||'')&&filas.length===3&&!!det&&btn('Usar la fase del archivo en las 0 marcadas').disabled,l.filter(s=>!t.includes(s)).join(' | ')+' · inp '+(inp&&inp.value)+' filas '+filas.length+' det '+!!det);
+   BND.abierta=false;render();const d0=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));d0.open=true;await __p(40);const ab1=BND.abierta;
+   render();const d1=[...AV().querySelectorAll('details')].find(d=>/BND\.abierta=this\.open/.test(d.getAttribute('ontoggle')||''));const sigue=d1.open;d1.open=false;await __p(40);const ab2=BND.abierta;BND.abierta=true;render();
+   btn('Marcar las 1 de avance normal').click();const m1=[...BND.sel].join(',');btn('Marcar todas (3)').click();const m3=BND.sel.size;btn('Ninguna',)&&[...AV().querySelectorAll('button')].filter(b=>txt(b)==='Ninguna').forEach(b=>{if(/BND\.sel/.test(b.getAttribute('onclick')||''))b.click()});const m0=BND.sel.size;
+   const cF=[...AV().querySelectorAll('input[type=checkbox]')].find(c=>/BND\.sel\.add\('WH\/MO\/AVC11'\)/.test(c.getAttribute('onchange')||''));cF.checked=true;cF.dispatchEvent(new Event('change'));const m11=[...BND.sel].join(',');
+   let msg='';const cp=window.confirm;window.confirm=m=>{msg=String(m);return false};btn('Usar la fase del archivo en las 1 marcadas').click();window.confirm=cp;
+   const nb=S.bitacora.length;const i2=AV().querySelector('input[type=datetime-local]');i2.value='2026-10-12T08:30';i2.dispatchEvent(new Event('change'));const exp2=rc.exportTs;const bit=S.bitacora.slice(nb).some(b=>/hora de exportación del archivo/.test(b.t));
+   rc.exportTs='2026-10-12T14:00:00.000Z';BND.sel=new Set();render();
+   ok('decisiones.botones',ab1===true&&sigue===true&&ab2===false&&m1==='WH/MO/AVC10'&&m3===3&&m0===0&&m11==='WH/MO/AVC11'&&/Usar la fase del archivo en 1 órdenes/.test(msg)&&/DESPUÉS de exportar/.test(msg)&&exp2===tsDeInputLocal('2026-10-12T08:30')&&bit,JSON.stringify({ab1,sigue,ab2,m1,m3,m0,m11,msg:msg.slice(0,80),exp2,bit}))}
+  /* 6 · no vinieron con decisión */
+  {const t=T();const l=['Bandeja · 42 órdenes que no vinieron en la recarga y tenían algo decidido por una persona aquí','(no se borran: siguen en el sistema, marcadas; revisa si esa decisión ya no hace falta)',
+     'WH/MO/AVC200 · cerrada en Odoo o fuera de alcance · urgente, puesto o fecha fijados en la cola','WH/MO/AVC201 · no vino en el archivo · fecha compromiso','WH/MO/AVC239 · cerrada en Odoo o fuera de alcance','… y 2 más'];
+   ok('noVinieron',l.every(s=>t.includes(s))&&!t.includes('WH/MO/AVC240 ')&&!t.includes('NOEXISTE'),l.filter(s=>!t.includes(s)).join(' | '))}
+  /* 7–10 · sin medir, paso extra, fase que no calza, sin velocidad de bordado */
+  {const t=T();const l=['Bandeja · carga real sin medir (1 órdenes)','fases marcadas "sin medir" en la tabla 1: cargan cero minutos porque nadie ha medido ese trabajo; el hueco se ve aquí para medirlo después.',faseNombre('4Incompletos')+' (1 órdenes · 100 prendas)',
+     'Bandeja · paso extra sin minutos (1 órdenes)','la fase tiene un paso extra en la tabla 1 pero el parámetro de SAM (minutos por prenda) está vacío o en 0 en Configuración general → Calendario y reglas.',
+     'Bandeja · fase que no calza con la tabla (1 órdenes)','el sistema no da nada por hecho ni por liberado en ellas hasta que la fase esté en Configuración general → Órdenes, fases y archivos de Odoo → tabla 1.','9Fase Inventada AVC (1)',
+     'Bandeja · sin velocidad de bordado configurada (26 órdenes, 2.600 prendas)','cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración general → Centros (fila Bordado).','WH/MO/AVC400, WH/MO/AVC401','WH/MO/AVC424 …'];
+   ok('resto',l.every(s=>t.includes(s))&&!t.includes('WH/MO/AVC425'),l.filter(s=>!t.includes(s)).join(' | '))}
+  /* plegar y recordar, por persona */
+  {const k='__avisos_'+claveUsr()+'_ordenes';const lsA=localStorage[k];localStorage[k]='0';render();const c0=AV().open;AV().open=true;await __p(40);const g1=localStorage[k];render();const c1=AV().open;AV().open=false;await __p(40);const g0=localStorage[k];render();const c2=AV().open;
+   if(lsA===undefined)delete localStorage[k];else localStorage[k]=lsA;
+   ok('plegar',c0===false&&g1==='1'&&c1===true&&g0==='0'&&c2===false,JSON.stringify({c0,g1,c1,g0,c2}))}
+  return res}
 function adminP0(){return {id:"u-adm",rol:"admin",nombre:"Admin",modo:"editar"}}
 /* 04-oct-2026: en su PRIMER centro de producción una orden solo se puede empezar (INICIO, «Hecho», terminar) si está liberada a producción.
    Las pruebas que arman una orden de planta para registrar en ese centro la liberan con esta firma de prueba (la misma marca que deja liberarA). */
@@ -2017,7 +2120,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      __check("ODC: 'PENDIENTE ODC' y vacío cuentan como pendientes",esOdcPendiente(o)&&esOdcPendiente(o2)&&pendientesHoy().find(i=>i.k==='sinOdc').n>=2);
      page='ordenes';ORDF.tab='ord';render();const ho=()=>document.getElementById('p-ordenes').innerHTML;__check("ODC: panel Asignar ODC en Órdenes con casillas, uno por uno y en bloque",ho().includes('Asignar ODC')&&ho().includes("asignarODC(['"+o.id+"']")&&ho().includes('Asignar a las'));
      {const pe=document.getElementById('p-ordenes');const av=pe.querySelector('details.avisos[data-av="ordenes"]');const sm=av?av.querySelector('summary').textContent:'';const sueltos=[...pe.querySelectorAll('.warn')].filter(w=>!w.closest('details.avisos')&&!w.closest('[data-lista]')&&!w.matches('[id^="aviso-"]'));const lista=pe.querySelector('[data-lista="ORDF.q"]');
-      __check("UX-B0b_sistemico_contenido: en Órdenes los avisos de arriba (Asignar ODC y las bandejas) van en UN recuadro plegado que dice cuántos y cuáles, y marca «requiere acción»; nada suelto empuja la lista",!!av&&/⚠ [0-9]+ avisos? sobre las órdenes/.test(sm)&&/Asignar ODC/.test(sm)&&/requiere acción/.test(sm)&&av.innerHTML.includes('Asignar ODC')&&!sueltos.length&&!!lista&&!!(av.compareDocumentPosition(lista)&Node.DOCUMENT_POSITION_FOLLOWING),sm.slice(0,200)+' · sueltos: '+sueltos.length);}
+      __check("UX-B0b_sistemico_contenido: en Órdenes los avisos de arriba (Asignar ODC y las bandejas) van en UN recuadro plegado que dice cuántos y cuáles, y marca «requiere acción»; nada suelto empuja la lista",!!av&&/⚠ [0-9]+ avisos? sobre las órdenes/.test(sm)&&/Asignar ODC/.test(sm)&&/requieren? acción/.test(sm)&&av.innerHTML.includes('Asignar ODC')&&!sueltos.length&&!!lista&&!!(av.compareDocumentPosition(lista)&Node.DOCUMENT_POSITION_FOLLOWING),sm.slice(0,200)+' · sueltos: '+sueltos.length);}
      const ap=window.alert;window.alert=()=>{};const nb=S.bitacora.length;asignarODC([o.id],'9999');__check("ODC: de a una: queda el ODC, quién/cuándo/antes, bitácora, y forma colección",o.odc==='9999'&&o.odcManual&&o.odcManual.antes==='PENDIENTE ODC'&&o.odcManual.u&&S.bitacora.slice(-3).some(b=>/ODC asignado a mano/.test(b.t)&&b.t.includes(o.op))&&claveColeccion(o)==='ODC 9999');
      asignarODC([o2.id],'  ');__check("ODC: vacío no se asigna",o2.odc==='');
      ODCS.sel=new Set([o2.id]);asignarODC([o2.id],'9999');__check("ODC: en bloque: las marcadas toman el mismo ODC y quedan en la misma colección",o2.odc==='9999'&&claveColeccion(o2)===claveColeccion(o)&&!ODCS.sel.has(o2.id));window.alert=ap;
