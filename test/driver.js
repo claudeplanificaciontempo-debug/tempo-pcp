@@ -8458,6 +8458,29 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       S.avance[oB.id].tramos[0].persManual=3;const kB2=calcTramo(S.avance[oB.id].tramos[0],oB);
       __check('TS-REP: lo escrito a mano manda sobre el reparto',kB2.pers===3&&kB2.persFuente==='declarada',kB2.persFuente);
       S.turnos=bakT;S.params.horarios=bakH;delete S.avance[oA.id];delete S.avance[oB.id]}}
+    /* CM · Control de módulos, etapa 1 (20-oct-2026): puntos de control en la tablet y «Módulos en vivo» en Ingeniería, con órdenes inventadas */
+    {const rm=modulosPlanta().filter(r=>r.activa)[0];if(rm){const d=hoy();const mk=k=>({id:'cm_'+k,op:'WH/MO/CM'+k,cant:500,cat:(S.categorias[0]||{}).id,ruta:[{centro:'modulos',t:5}],rutaCompleta:[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}],estado:'abierta',fecha:d});
+      const oA=mk('A');S.ordenes.push(oA);S.avance[oA.id]={tramos:[{id:'cmA',centro:c,rec:rm.id,ini:tsDeLocal(d,'07:50'),paros:[],tallas:{M:120}}]};
+      const bakT=S.turnos,bakH=S.params.horarios,bakM=S.params.minSinMovModulo,bakC=S.params.controlModulo,bakE=S.params.metaEficienciaModulo;S.turnos=[{rec:rm.id,d,pers:10}];S.params.horarios={};delete S.params.minSinMovModulo;delete S.params.controlModulo;delete S.params.metaEficienciaModulo;
+      const ps=puntosControlDe(oA,c);
+      __check('CM1: los puntos de control por defecto son Subensamble → Ensamble → Pulido (el último es la salida) y solo en el centro de esos subprocesos',ps.map(x=>x.k).join(',')==='SUBENSAMBLE,ENSAMBLE,PULIDO'&&ps[2].salida&&!ps[0].salida&&puntosControlDe(oA,'corte').length===0,JSON.stringify(ps));
+      setPuntoTramo('cmA',oA.id,'SUBENSAMBLE',200);setPuntoTramo('cmA',oA.id,'ENSAMBLE',150);const t=S.avance[oA.id].tramos[0];
+      __check('CM2: registrar por punto suma en t.puntos, deja log y ultMov; la salida es lo de «Este tramo» (t.tallas), nada se anota dos veces',pasadoPunto(t,ps[0])===200&&pasadoPunto(t,ps[1])===150&&pasadoPunto(t,ps[2])===120&&t.puntosLog.length===2&&!!t.ultMov,JSON.stringify(t.puntos));
+      const html=puntosControlTabletHTML(oA,t,c);
+      __check('CM3: la tablet dibuja los tres puntos con el WIP en medio (50 y 30); sin curva de tallas la salida se registra ahí mismo como total',/Subensamble/.test(html)&&/50 en medio/.test(html)&&/30 en medio/.test(html)&&(html.match(/class="ctl-pt"/g)||[]).length===2&&/setTallaTramo\(/.test(html),html.slice(0,160));
+      const D=datosModuloVivo(rm,c,d);const x=D.ords[0];
+      __check('CM4: Módulos en vivo: salida 120, faltan 380, ritmo real > 0, objetivo = personas × 60 ÷ SAM × meta, WIP por punto, fin estimado con el ritmo real y eficiencia en curso',x&&x.salida===120&&x.faltan===380&&x.ritmo>0&&Math.abs(x.objetivo-10*60/5*metaEficienciaModulo(rm.id)/100)<0.01&&x.wip.join(',')===',50,30'&&x.etaMs>Date.now()&&x.ritmoBase==='real'&&x.efCurso>0,JSON.stringify(x&&{salida:x.salida,faltan:x.faltan,ritmo:x.ritmo,obj:x.objetivo,wip:x.wip,ef:x.efCurso}));
+      t.ultMov=new Date(Date.now()-45*6e4).toISOString();const D2=datosModuloVivo(rm,c,d);S.params.minSinMovModulo=0;const D3=datosModuloVivo(rm,c,d);delete S.params.minSinMovModulo;
+      __check('CM5: la alerta «sin movimiento» sale pasados los minutos configurados (30 por defecto) y con 0 no sale',D2.alertas.some(a=>a.k==='quieta')&&!D3.alertas.some(a=>a.k==='quieta'),JSON.stringify(D2.alertas.map(a=>a.k)));
+      const pg0=page,tab0=ING_V.ops;ING_V.ops='vivo';page='ingops';render();const el=document.getElementById('p-ingops');const txt=el?el.innerText:'';
+      __check('CM6: la pestaña «Módulos en vivo» de Ingeniería dibuja cada módulo, la orden en curso y el flujo, con el reloj y la relectura activos',/Módulos en vivo/.test(txt)&&txt.includes(rm.n)&&txt.includes('WH/MO/CMA')&&/Ritmo/.test(txt)&&/fin estimado/.test(txt)&&enVivoActivo()&&!!document.getElementById('env-reloj')&&!!el.querySelector('.iom-pest.on'),txt.slice(0,160));
+      const nb=S.bitacora.length;setMetaEficienciaModulo(rm.id,'90');const m90=metaEficienciaModulo(rm.id);setMetaEficienciaModulo(rm.id,'');
+      __check('CM7: la meta de eficiencia por módulo se escribe con bitácora y vacía vuelve a la general',m90===90&&metaEficienciaModulo(rm.id)===metaEficiencia()&&S.bitacora.length>nb);
+      togPuntoControl('ENSAMBLE');const q1=puntosControlCfg().join(',');togPuntoControl('ENSAMBLE');
+      __check('CM8: quitar un punto de control deja Subensamble → Pulido (configurable, con bitácora)',q1==='SUBENSAMBLE,PULIDO'&&puntosControlCfg().join(',')==='SUBENSAMBLE,ENSAMBLE,PULIDO');
+      const tc0=TAB.centro,tr0=TAB.rec;TAB.centro=c;TAB.rec=rm.id;page='tablet';render();const tel=document.getElementById('p-tablet');const ttxt=tel?tel.innerText:'';
+      __check('CM9: Mi centro muestra los puntos de control en la orden en curso del módulo',/Puntos de control/.test(ttxt)&&/Subensamble/.test(ttxt)&&/en medio/.test(ttxt),ttxt.slice(0,120));
+      TAB.centro=tc0;TAB.rec=tr0;page=pg0;ING_V.ops=tab0;S.ordenes=S.ordenes.filter(o=>o.id!==oA.id);delete S.avance[oA.id];S.turnos=bakT;S.params.horarios=bakH;if(bakM!==undefined)S.params.minSinMovModulo=bakM;if(bakC!==undefined)S.params.controlModulo=bakC;if(bakE!==undefined)S.params.metaEficienciaModulo=bakE;render()}}
     /* el líder puede decir cuántas personas van en una orden concreta */
     const nb=S.bitacora.length;setPersonasTramo(ab[0].t.id,ab[0].o.id,6);
     const k0=calcTramo(Object.assign({},tramosAbiertosDe(c,rec)[0].t,{fin:new Date(Date.now()+3600000).toISOString()}),ab[0].o);
