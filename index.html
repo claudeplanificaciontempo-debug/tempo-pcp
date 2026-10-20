@@ -3444,7 +3444,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-20 14:28';
+const APP_BUILD='2026-10-20 15:16';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -6955,7 +6955,7 @@ function alcanzaMesGER(ym){const bak=Object.assign({},NIVUI);const simOn=SIM.on;
      12-oct (H10): con su desglose por área (disenoNivDesglose: Bordado en horas de máquina, aparte) */
   {const D=disenoNivDesglose(out.areas.filter(x=>x.r&&x.r.saldo&&x.r.enMin).map(x=>({a:x.a,s:x.r.saldo})));out.diseno=D;out.disenoMin=D.min;out.disenoN=D.n;out.disenoPorArea=D.porArea}
   /* 12-oct (SAM-OCULTO/CUA-8/VC6): las prendas pendientes SIN SAM de cada área (no suman minutos): se dicen al lado de «llega» en Hoy y en el Resumen gerencial */
-  out.areas.forEach(x=>{const s=x.r&&x.r.saldo;x.sinSAM=(s&&x.r.enMin&&s.unidSinSAM>0)?{u:s.unidSinSAM,n:(s.sinSAM||[]).length}:null;x.est=(s&&x.r.enMin&&(s.est||[]).length)?{n:s.est.length,min:s.minEst}:null});   /* est: 20-oct, lo que suma con el tiempo estimado */
+  out.areas.forEach(x=>{const s=x.r&&x.r.saldo;x.sinSAM=(s&&x.r.enMin&&s.unidSinSAM>0)?{u:s.unidSinSAM,n:(s.sinSAM||[]).length}:null;x.tEstim=(s&&x.r.enMin&&(s.est||[]).length)?{n:s.est.length,min:s.minEst}:null});   /* tEstim: 20-oct, lo que suma con el tiempo estimado (NO «est»: ese campo es el estado del área) */
   out.sinSAMareas=out.areas.filter(x=>x.sinSAM&&!x.vacia);out.sinSAMu=out.sinSAMareas.reduce((a,x)=>a+x.sinSAM.u,0);
   out.peor=out.deficit[0]||out.riesgo[0]||out.faltante[0]||null;
   out.color=out.deficit.length?'rojo':out.riesgo.length?'ambar':out.faltante.length?'gris':(out.ok.length?'verde':'gris');
@@ -6982,7 +6982,7 @@ function alcanzaMesHTML(ym){let A;try{A=alcanzaMesGER(ym)}catch(e){return '<span
   const lnk=x=>{const d=x.est==='faltante'?dondeFalta(x.r):null;return d&&typeof puedeAbrirPagina==='function'&&puedeAbrirPagina(d.p)?` <a style="cursor:pointer" onclick="${d.js}">ir →</a>`:''};
   /* 12-oct (VC6/CUA-8): las prendas sin SAM del área no suman minutos: se dicen al lado de «llega», con el mismo número del recuadro de la Nivelación */
   const sSAM=x=>x.sinSAM?` <span class="alc-sinsam" title="esas órdenes no tienen minuto por prenda (SAM): su trabajo no se cuenta en el saldo; lo de arriba se mide solo con las que sí tienen">· sin contar <b>+${num(x.sinSAM.u,0)} u sin SAM</b> (${num(x.sinSAM.n)} ${x.sinSAM.n===1?'orden':'órdenes'})</span>${typeof puedeAbrirPagina==='function'&&puedeAbrirPagina('plan')?` <a style="cursor:pointer" onclick="NIVUI.area='${esc(x.a.id)}';NIVUI.verSinSAM=true;irNivelacionPlan('${ym}')">ver cuáles →</a>`:''}`:'';
-  const sEst=x=>x.est?` <span class="mut alc-est" title="${esc('pasos sin SAM propio que el programa carga con el tiempo estimado ('+tiempoEstNombre()+' de las órdenes con dato): suman, pero falta el dato real')}">· incluye <b>${num(x.est.min/60,0)} h con tiempo estimado</b> (${num(x.est.n)} ${x.est.n===1?'orden':'órdenes'})</span>`:'';   /* 20-oct */
+  const sEst=x=>x.tEstim?` <span class="mut alc-est" title="${esc('pasos sin SAM propio que el programa carga con el tiempo estimado ('+tiempoEstNombre()+' de las órdenes con dato): suman, pero falta el dato real')}">· incluye <b>${num(x.tEstim.min/60,0)} h con tiempo estimado</b> (${num(x.tEstim.n)} ${x.tEstim.n===1?'orden':'órdenes'})</span>`:'';   /* 20-oct */
   const vis=A.areas.filter(x=>!x.vacia);
   return `<p class="alc-mes" style="margin:0 0 8px"><b>¿Alcanza ${esc(mesN)}?</b> <b class="alc-v" data-v="${esc(V.v)}">${esc(V.v)}</b> · ${esc(V.det)}${A.deficit.length>1?' ('+esc(V.cuenta)+')':''} <span class="mut" style="font-size:var(--fs-xs)">· según la Nivelación de Planificar el mes (saldo con entrega hasta ${esc(mesCortoTxt(ym))} y lo pendiente de meses anteriores, órdenes con WH)</span>${typeof puedeAbrirPagina==='function'&&puedeAbrirPagina('plan')?` · <a style="cursor:pointer" onclick="irNivelacionPlan('${ym}')">ver la Nivelación →</a>`:''}</p>
    ${vis.length?`<table class="alc-t"><thead><tr><th>Área</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>${vis.map(x=>`<tr data-area="${esc(x.a.id)}"><td>${esc(x.a.n)}</td><td>${nivUIEstadoHTML(x.est,true,x.r)}</td><td class="mut" style="font-size:var(--fs-xs)">${esc(det(x))}${lnk(x)}${sSAM(x)}${sEst(x)}</td></tr>`).join('')}</tbody></table>`:'<span class="mut">Ningún área con saldo en estos meses.</span>'}

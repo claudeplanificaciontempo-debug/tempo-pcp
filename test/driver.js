@@ -14089,6 +14089,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    }catch(e){__R.errors.push({page:'driver TE',msg:e.message,stack:(e.stack||'').slice(0,300)})}
    finally{window.save=sv;S.ordenes=bakOrd;S.categorias=bakCat;
     bakRutasTE.forEach((j,o)=>{const x=JSON.parse(j);['r','c','ta'].forEach((k,i)=>{const p=['ruta','rutaCompleta','tiemposAplicados'][i];if(k in x)o[p]=x[k];else delete o[p]})});{const ta=JSON.parse(bakTA);if(ta===null)delete S.params.tiemposAplicados;else S.params.tiemposAplicados=ta}S.tecnicas=S.tecnicas.filter(t=>t.id!=='tec-te');S.params.tiempoEstimado=JSON.parse(bakCfg)||{activo:false,metodo:'mediana',base:'tipo'};PERFIL=bakP;page=bakPg;PLAN=null;PLAN_ALL=null;render()}
+   {const A=alcanzaMesGER(hoy().slice(0,7));const malE=A.areas.filter(x=>!x.vacia&&typeof x.est!=='string').map(x=>x.a.id+':'+JSON.stringify(x.est));
+    __check('TE40: «¿alcanza el mes?» conserva el estado de cada área (est = ok/riesgo/déficit/falta un dato) aunque haya tiempo estimado; lo estimado va en su propio campo (tEstim)',!malE.length&&A.areas.every(x=>x.tEstim===null||x.tEstim===undefined||(x.tEstim.n>0&&x.tEstim.min>=0)),malE.slice(0,4).join(' | '))}
    __check('TE sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* MAR2 · Tema Marino · etapa 2 (20-oct-2026): en Órdenes, la línea «Hoy dd/mm/aaaa · …», seis indicadores con las MISMAS cifras de la pantalla (chips, contador
      del menú, aviso «sin número de WH», cabecera de los avisos) y la leyenda de colores; solo con Marino (Tablero, Como Odoo y Clásico no cambian). */
