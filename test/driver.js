@@ -3406,8 +3406,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     iniciarTramo(o2.id,'modulos',rec);window.confirm=c0;
     __check("TR: otra orden en el mismo puesto se empieza sin cerrar la anterior y sin preguntar nada (varias referencias a la vez)",!preguntó&&tramosDe(o2.id).length===1&&tramosAbiertosDe('modulos',rec).length===nAntes+1,JSON.stringify({preguntó,abiertos:tramosAbiertosDe('modulos',rec).length}));
     /* y el tiempo del puesto se reparte entre las dos, en vez de contarse dos veces */
-    const dos=tramosAbiertosDe('modulos',rec).map(x=>calcTramo(Object.assign({},x.t,{fin:new Date(Date.now()+3600000).toISOString()}),x.o));
-    __check("TR: con dos órdenes a la vez, las personas del puesto se reparten (la capacidad no se duplica)",Math.abs(dos.reduce((a,k)=>a+k.pers,0)-personasRec(rec,'modulos').pers)<0.01,JSON.stringify(dos.map(k=>+k.pers.toFixed(2))));
+    /* 20-oct: el reparto es por TIEMPO: las abiertas del puesto empezaron hace 1 h y siguen (antes la prueba les ponía un fin en el futuro, que con el reparto por
+       tiempo deja a cada una sola en esa hora); y en el instante de INICIO, sin tiempo todavía, se reparten entre las abiertas de ese momento */
+    const abT=tramosAbiertosDe('modulos',rec);const ini0=abT.map(x=>x.t.ini);
+    const hace=new Date(Date.now()-3600000).toISOString();abT.forEach(x=>{x.t.ini=hace});const dos=abT.map(x=>calcTramo(x.t,x.o));abT.forEach((x,i)=>{x.t.ini=ini0[i]});
+    __check("TR: con dos órdenes a la vez, las personas del puesto se reparten (la capacidad no se duplica)",abT.length>=2&&Math.abs(dos.reduce((a,k)=>a+k.pers,0)-personasRec(rec,'modulos').pers)<0.01,JSON.stringify(dos.map(k=>+k.pers.toFixed(2))));
     const tr2=tramosDe(o2.id);tr2.splice(0,tr2.length);
     S.ordenes=S.ordenes.filter(x=>x!==o2)}
    // paro con motivo de la tabla 15
@@ -8444,10 +8447,11 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     __check('TS: un puesto puede tener varias órdenes corriendo a la vez, sin cerrar la anterior',ab.length===3&&!avisos.length,JSON.stringify({abiertos:ab.length,avisos:avisos.length}));
     /* el tiempo NO se cuenta entero en cada orden: se reparte entre las que corren juntas */
     const pers=personasRec(rec,c).pers;
-    const cal=ab.map(x=>calcTramo(Object.assign({},x.t,{fin:new Date(Date.now()+3600000).toISOString()}),x.o));
+    const ini0=ab.map(x=>x.t.ini);const hace=new Date(Date.now()-3600000).toISOString();ab.forEach(x=>{x.t.ini=hace});   /* 20-oct: las tres empezaron hace 1 h y siguen (reparto por tiempo; antes: un fin en el futuro) */
+    const cal=ab.map(x=>calcTramo(x.t,x.o));ab.forEach((x,i)=>{x.t.ini=ini0[i]});
     const suma=cal.reduce((a,k)=>a+k.pers,0);
     __check('TS: las personas del puesto se reparten entre las órdenes que corren juntas: no se cuenta la capacidad dos ni tres veces',Math.abs(suma-pers)<0.01&&cal.every(k=>k.persFuente==='repartida'),JSON.stringify({personasDelPuesto:pers,suma:+suma.toFixed(2),porOrden:cal.map(k=>+k.pers.toFixed(2))}));
-    __check('TS: y la pantalla dice que están repartidas, no lo esconde',/repartidas entre/.test(cal[0].persTxt||''),String(cal[0].persTxt||'').slice(0,70));
+    __check('TS: y la pantalla dice que están repartidas, no lo esconde',/se reparten minuto a minuto entre las órdenes/.test(cal[0].persTxt||''),String(cal[0].persTxt||'').slice(0,70));
     /* TS-REP (20-oct): el reparto es por TIEMPO. A corre 07:50–16:20 (10 personas), B entra 15:20–16:20: A = 10×450 + 5×60 = 4.800 min-persona (9,4 en promedio), B = 5×60 = 300 */
     {const oA=cand[3],oB=cand[4];if(oA&&oB&&rec){const d=hoy();S.avance[oA.id]={tramos:[{id:'tsrepA',centro:c,rec,ini:tsDeLocal(d,'07:50'),fin:tsDeLocal(d,'16:20'),paros:[],tallas:{}}]};
       S.avance[oB.id]={tramos:[{id:'tsrepB',centro:c,rec,ini:tsDeLocal(d,'15:20'),fin:tsDeLocal(d,'16:20'),paros:[],tallas:{}}]};
@@ -8458,8 +8462,39 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       S.avance[oB.id].tramos[0].persManual=3;const kB2=calcTramo(S.avance[oB.id].tramos[0],oB);
       __check('TS-REP: lo escrito a mano manda sobre el reparto',kB2.pers===3&&kB2.persFuente==='declarada',kB2.persFuente);
       S.turnos=bakT;S.params.horarios=bakH;delete S.avance[oA.id];delete S.avance[oB.id]}}
+    /* TS-REP2 (20-oct, revisión con el volcado real): el reparto se integra sobre el tiempo TRABAJADO de cada orden: el almuerzo del centro (salvo que la orden lo
+       marcó como paro) y los paros con hora de la propia orden no cuentan; una orden en paro sigue abierta para las demás (su gente queda parada). Se compara con
+       una cuenta hecha aparte, minuto a minuto, y con la regla del puesto: sin paros, las órdenes suman personas × minutos trabajados del puesto. */
+    {const os=[0,1,2].map(i=>({id:'tsr2o'+i,op:'WH/MO/TSR2'+i,cant:500,cat:(S.categorias[0]||{}).id,ruta:[{centro:c,t:5}],rutaCompleta:[{centro:c,t:5}],estado:'plan'}));S.ordenes.push(...os);const rec=(S.recursos.find(r=>r.centro===c&&r.activa&&r.id!=='maquila'&&!todosTramos().some(x=>x.t.centro===c&&x.t.rec===r.id&&!os.includes(x.o)))||{}).id;   /* un puesto sin otras órdenes abiertas (las de TS siguen abiertas en el suyo) */
+      if(os.length===3&&rec){const d=hoy();const bakT=S.turnos,bakH=S.params.horarios;S.turnos=[{rec,d,pers:10}];
+      const alm=(motivosParo().find(m=>m.esAlmuerzo)||{}).motivo||'Almuerzo';const ts=h=>tsDeLocal(d,h),ms=h=>msDeLocal(d,h);const malos=[];
+      const caso=(nombre,trs,vent,sumaPuesto)=>{S.params.horarios=vent?{[c]:{ventanas:vent}}:{};
+        os.forEach((o,i)=>{if(trs[i])S.avance[o.id]={tramos:[Object.assign({id:'tsr2'+i,centro:c,rec,paros:[],tallas:{}},trs[i])]};else delete S.avance[o.id]});
+        const k=os.map((o,i)=>trs[i]?calcTramo(S.avance[o.id].tramos[0],o):null);
+        /* la cuenta aparte, minuto a minuto */
+        const iv=trs.map(t=>[+new Date(t.ini),+new Date(t.fin)]);const lo=Math.min(...iv.map(x=>x[0])),hi=Math.max(...iv.map(x=>x[1]));const esp=trs.map(()=>0);let puesto=0;
+        const vw=(vent||[]).map(v=>[ms(v.ini),ms(v.fin)]);
+        for(let s=lo;s<hi;s+=60000){const ab=iv.map((x,i)=>x[0]<=s&&s<x[1]?i:-1).filter(i=>i>=0);if(!ab.length)continue;let alguno=false;
+          ab.forEach(i=>{const t=trs[i];const enParo=(t.paros||[]).some(p=>+new Date(p.ini)<=s&&s<+new Date(p.fin));const marcoAlm=(t.paros||[]).some(p=>p.motivo===alm);
+            const enDesc=!marcoAlm&&vw.some(w=>w[0]<=s&&s<w[1]);if(enParo||enDesc)return;esp[i]+=10/ab.length;alguno=true});if(alguno)puesto+=10}
+        k.forEach((x,i)=>{if(x&&Math.abs(x.minPersona-esp[i])>0.6)malos.push(nombre+' · orden '+(i+1)+': '+num(x.minPersona,1)+' ≠ '+num(esp[i],1))});
+        if(sumaPuesto){const s=k.reduce((a,x)=>a+(x?x.minPersona:0),0);if(Math.abs(s-sumaPuesto)>0.6||Math.abs(s-puesto)>0.6)malos.push(nombre+' · suma '+num(s,1)+' ≠ '+num(sumaPuesto)+' (puesto '+num(puesto)+')')}
+        return k};
+      const al=[{ini:'12:30',fin:'13:00'}];
+      caso('A 07:50–16:20 y B 15:20–16:20 con almuerzo',[{ini:ts('07:50'),fin:ts('16:20')},{ini:ts('15:20'),fin:ts('16:20')}],al,10*480);
+      caso('A 07:50–12:00 y B 11:00–16:20 (B cruza sola el almuerzo)',[{ini:ts('07:50'),fin:ts('12:00')},{ini:ts('11:00'),fin:ts('16:20')}],al,10*480);
+      caso('tres a la vez con almuerzo 11:30–12:00',[{ini:ts('08:00'),fin:ts('12:00')},{ini:ts('09:00'),fin:ts('11:00')},{ini:ts('10:00'),fin:ts('12:00')}],[{ini:'11:30',fin:'12:00'}],10*210);
+      caso('B en paro 09:30–10:00 mientras A y C siguen',[{ini:ts('08:00'),fin:ts('12:00')},{ini:ts('09:00'),fin:ts('11:00'),paros:[{ini:ts('09:30'),fin:ts('10:00'),motivo:'Fallo de máquina'}]},{ini:ts('10:00'),fin:ts('12:00')}],null,null);
+      caso('A marcó el almuerzo como paro 12:00–12:30; B corre 11:00–14:00 y descuenta su ventana',[{ini:ts('07:50'),fin:ts('16:20'),paros:[{ini:ts('12:00'),fin:ts('12:30'),motivo:alm}]},{ini:ts('11:00'),fin:ts('14:00')}],al,null);
+      __check('TS-REP2: el reparto se integra sobre el tiempo trabajado: con el almuerzo y con paros, cada orden da lo mismo que la cuenta hecha minuto a minuto, y sin paros las órdenes de un puesto suman personas × minutos trabajados del puesto (con almuerzo, A + B = 4.800, no 4.817,6)',!malos.length,malos.slice(0,6).join(' | '));
+      {const k1=caso('una sola orden, sin solape, con almuerzo',[{ini:ts('07:50'),fin:ts('16:20')}],al,10*480)[0];
+       __check('TS-REP2: una orden que no se cruza con otra da lo mismo que antes del cambio (personas × tiempo trabajado: 10 × 480)',k1&&k1.persFuente!=='repartida'&&Math.abs(k1.minPersona-k1.pers*k1.trabajado)<0.01&&Math.abs(k1.minPersona-4800)<0.6,k1?JSON.stringify({p:k1.pers,tr:k1.trabajado,mp:k1.minPersona,f:k1.persFuente}):'—')}
+      {S.params.horarios={[c]:{ventanas:al}};os.forEach((o,i)=>{if(i<2)S.avance[o.id]={tramos:[{id:'tsr2m'+i,centro:c,rec,paros:[],tallas:{},ini:ts(i?'15:20':'07:50'),fin:ts('16:20'),persManual:i?3:undefined}]};else delete S.avance[o.id]});
+       const kM=calcTramo(S.avance[os[1].id].tramos[0],os[1]);
+       __check('TS-REP2: lo escrito a mano sigue mandando: B con 3 personas = 3 × sus minutos trabajados',kM.persFuente==='declarada'&&Math.abs(kM.minPersona-3*kM.trabajado)<0.01,JSON.stringify({f:kM.persFuente,mp:kM.minPersona,tr:kM.trabajado}))}
+      S.turnos=bakT;S.params.horarios=bakH;os.forEach(o=>delete S.avance[o.id])}S.ordenes=S.ordenes.filter(o=>!os.includes(o))}
     /* CM · Control de módulos, etapa 1 (20-oct-2026): puntos de control en la tablet y «Módulos en vivo» en Ingeniería, con órdenes inventadas */
-    {const rm=modulosPlanta().filter(r=>r.activa)[0];if(rm){const d=hoy();const mk=k=>({id:'cm_'+k,op:'WH/MO/CM'+k,cant:500,cat:(S.categorias[0]||{}).id,ruta:[{centro:'modulos',t:5}],rutaCompleta:[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}],estado:'abierta',fecha:d});
+    {const rm=modulosPlanta().filter(r=>r.activa&&!tramosAbiertosDe(c,r.id).length)[0]||modulosPlanta().filter(r=>r.activa)[0];if(rm){   /* 20-oct: un módulo sin otras órdenes abiertas (las de TS siguen abiertas en el suyo) */const d=hoy();const mk=k=>({id:'cm_'+k,op:'WH/MO/CM'+k,cant:500,cat:(S.categorias[0]||{}).id,ruta:[{centro:'modulos',t:5}],rutaCompleta:[{centro:'corte',t:1},{centro:'modulos',t:5},{centro:'empaque',t:1}],estado:'abierta',fecha:d});
       const oA=mk('A');S.ordenes.push(oA);S.avance[oA.id]={tramos:[{id:'cmA',centro:c,rec:rm.id,ini:tsDeLocal(d,'07:50'),paros:[],tallas:{M:120}}]};
       const bakT=S.turnos,bakH=S.params.horarios,bakM=S.params.minSinMovModulo,bakC=S.params.controlModulo,bakE=S.params.metaEficienciaModulo;S.turnos=[{rec:rm.id,d,pers:10}];S.params.horarios={};delete S.params.minSinMovModulo;delete S.params.controlModulo;delete S.params.metaEficienciaModulo;
       const ps=puntosControlDe(oA,c);
@@ -8468,7 +8503,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       __check('CM2: registrar por punto suma en t.puntos, deja log y ultMov; la salida es lo de «Este tramo» (t.tallas), nada se anota dos veces',pasadoPunto(t,ps[0])===200&&pasadoPunto(t,ps[1])===150&&pasadoPunto(t,ps[2])===120&&t.puntosLog.length===2&&!!t.ultMov,JSON.stringify(t.puntos));
       const html=puntosControlTabletHTML(oA,t,c);
       __check('CM3: la tablet dibuja los tres puntos con el WIP en medio (50 y 30); sin curva de tallas la salida se registra ahí mismo como total',/Subensamble/.test(html)&&/50 en medio/.test(html)&&/30 en medio/.test(html)&&(html.match(/class="ctl-pt"/g)||[]).length===2&&/setTallaTramo\(/.test(html),html.slice(0,160));
-      const D=datosModuloVivo(rm,c,d);const x=D.ords[0];
+      const D=datosModuloVivo(rm,c,d);const x=D.ords.find(y=>y.o.id===oA.id);
       __check('CM4: Módulos en vivo: salida 120, faltan 380, ritmo real > 0, objetivo = personas × 60 ÷ SAM × meta, WIP por punto, fin estimado con el ritmo real y eficiencia en curso',x&&x.salida===120&&x.faltan===380&&x.ritmo>0&&Math.abs(x.objetivo-10*60/5*metaEficienciaModulo(rm.id)/100)<0.01&&x.wip.join(',')===',50,30'&&x.etaMs>Date.now()&&x.ritmoBase==='real'&&x.efCurso>0,JSON.stringify(x&&{salida:x.salida,faltan:x.faltan,ritmo:x.ritmo,obj:x.objetivo,wip:x.wip,ef:x.efCurso}));
       t.ultMov=new Date(Date.now()-45*6e4).toISOString();const D2=datosModuloVivo(rm,c,d);S.params.minSinMovModulo=0;const D3=datosModuloVivo(rm,c,d);delete S.params.minSinMovModulo;
       __check('CM5: la alerta «sin movimiento» sale pasados los minutos configurados (30 por defecto) y con 0 no sale',D2.alertas.some(a=>a.k==='quieta')&&!D3.alertas.some(a=>a.k==='quieta'),JSON.stringify(D2.alertas.map(a=>a.k)));
@@ -10809,8 +10844,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      al.length=0;await setIomFam('polo','lmo','X');__check('IMO16: y el setter mismo se niega',iomFam('polo').lmo==='POLO'&&al.some(m=>/permiso «Ingeniería»/.test(m)));PERFIL=adminP0()}
     /* IMO1 · las pestañas: tres grandes en la entrega 2 (dos ahora), la línea chica, una sola dibujada, la de cada persona, «todavía no mandan» */
     {lsIom().forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});ING_V.ops=null;page='ingops';render();const el=$i('p-ingops');const big=[...el.querySelectorAll('.iom-pest')].map(b=>T(b.querySelector('b')));const subt=[...el.querySelectorAll('.iom-pest small')].map(T);
-     __check('IMO1: cada pestaña grande dice debajo para qué es (como el prototipo; revisión «para dummies»)',JSON.stringify(subt)===JSON.stringify(['Nueva referencia o categoría','Consulta por familia y referencia','Estaciones, operarios y capacidad','Tipos de producto, técnicas y Excel','Tipos, inventario y operarias']),JSON.stringify(subt));
-     __check('IMO1: Ingeniería abre en Crear referencia para quien edita; cinco pestañas grandes (Crear referencia · Secuencia de operaciones · Balanceo · Tiempos del programa · Máquinas y personas), sin línea chica de pestañas, y el contador «por revisar» en la cabecera',ING_V.ops==='crear'&&JSON.stringify(big)===JSON.stringify(['Crear referencia','Secuencia de operaciones','Balanceo','Tiempos del programa','Máquinas y personas'])&&!el.querySelector('.iom-sec2')&&!!el.querySelector('.pagehead .ing-rev-cont'),JSON.stringify(big));
+     __check('IMO1: cada pestaña grande dice debajo para qué es (como el prototipo; revisión «para dummies»)',JSON.stringify(subt)===JSON.stringify(['Nueva referencia o categoría','Consulta por familia y referencia','Estaciones, operarios y capacidad','Tipos de producto, técnicas y Excel','Tipos, inventario y operarias','Cada módulo ahora: flujo, ritmo y eficiencia']),JSON.stringify(subt));
+     __check('IMO1: Ingeniería abre en Crear referencia para quien edita; seis pestañas grandes (Crear referencia · Secuencia de operaciones · Balanceo · Tiempos del programa · Máquinas y personas · Módulos en vivo, 20-oct), sin línea chica de pestañas, y el contador «por revisar» en la cabecera',ING_V.ops==='crear'&&JSON.stringify(big)===JSON.stringify(['Crear referencia','Secuencia de operaciones','Balanceo','Tiempos del programa','Máquinas y personas','Módulos en vivo'])&&!el.querySelector('.iom-sec2')&&!!el.querySelector('.pagehead .ing-rev-cont'),JSON.stringify(big));
      __check('IMO1: se dibuja SOLO la pestaña elegida (no van las demás escondidas) y la línea «todavía no mandan» está a la vista',el.querySelectorAll('.ops-pest').length===1&&el.querySelector('.ops-pest').getAttribute('data-ops-tab')==='crear'&&/todavía no mandan en el programa/.test(T(el.querySelector('.iom-nomanda'))));
      iomTab('secuencia');ING_V.ops=null;render();let g1=null;try{g1=localStorage.getItem('iom.tab.'+claveUsr())}catch(e){}
      __check('IMO1: la pestaña elegida se recuerda por persona (localStorage con su clave)',ING_V.ops==='secuencia'&&g1==='secuencia');

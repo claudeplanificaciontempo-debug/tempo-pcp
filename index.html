@@ -3443,7 +3443,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-20 10:43';
+const APP_BUILD='2026-10-20 12:16';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5370,12 +5370,33 @@ function solapesTramo(t){if(!t||!t.ini)return [];const ini=+new Date(t.ini),fin=
    en algún momento. Si A corre de 07:50 a 16:20 y B entra a las 15:20, A tiene 10 personas 7,5 h y 5 la última hora (9,4 en promedio),
    no 5 todo el día. Devuelve el promedio ponderado por el tiempo, cuántas órdenes llegaron a correr juntas y si hubo solape. */
 function personasRepartidas(t,persBase){const ini=t.ini?+new Date(t.ini):NaN,fin=t.fin?+new Date(t.fin):Date.now();
-  const otros=solapesTramo(t);if(!otros.length||!(fin>ini))return {pers:persBase,max:1,solapa:false};
-  const pts=[ini,fin];otros.forEach(x=>{pts.push(Math.max(ini,x.a),Math.min(fin,x.b))});
+  if(!(fin>ini)){   /* recién empezado (inicio = ahora, sin tiempo todavía): las personas se reparten entre las órdenes del puesto abiertas en este instante */
+    const n=1+(TT_FIJO?(TT_FIJO[t.centro+'|'+(t.rec||'')]||[]):todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null)))
+      .filter(x=>x.t.id!==t.id&&x.t.ini&&+new Date(x.t.ini)<=ini&&(x.t.fin?+new Date(x.t.fin):Date.now())>=ini).length;
+    return {pers:persBase/n,max:n,solapa:n>1,minPersona:0,trabajado:0}}
+  const otros=solapesTramo(t);if(!otros.length)return {pers:persBase,max:1,solapa:false};
+  /* 20-oct (revisión con el volcado real): el reparto se integra sobre el tiempo TRABAJADO de esta orden. Antes se promediaba sobre el tiempo bruto y
+     después se multiplicaba por el trabajado: con el almuerzo, A (07:50–16:20) + B (15:20–16:20) en un puesto de 10 sumaban 4.817,6 min-persona y no los
+     4.800 del puesto (10 × 480). Ahora se saltan el descanso del centro (salvo que la orden marcó el almuerzo como paro) y los paros con hora de esta orden;
+     una orden en paro sigue contando como abierta para las demás (su gente queda parada, no pasa a las otras). Con un paro viejo sin hora (solo minutos)
+     se usa la cuenta de antes. */
+  const huecos=(t.paros||[]).some(p=>!p.ini)?null:huecosTramo(t,ini,fin);
+  const pts=[ini,fin];otros.forEach(x=>{pts.push(Math.max(ini,x.a),Math.min(fin,x.b))});if(huecos)huecos.forEach(h=>pts.push(h[0],h[1]));
   const cortes=pts.filter(p=>p>=ini&&p<=fin).sort((a,b)=>a-b).filter((p,i,arr)=>!i||p!==arr[i-1]);
-  let acum=0,max=1;for(let i=0;i+1<cortes.length;i++){const a=cortes[i],b=cortes[i+1],mid=(a+b)/2;
-    const n=1+otros.filter(x=>x.a<=mid&&x.b>mid).length;if(n>max)max=n;acum+=(b-a)*persBase/n}
-  return {pers:acum/(fin-ini),max,solapa:max>1}}
+  let acum=0,trab=0,max=1;for(let i=0;i+1<cortes.length;i++){const a=cortes[i],b=cortes[i+1],mid=(a+b)/2;
+    if(huecos&&huecos.some(h=>h[0]<=mid&&h[1]>mid))continue;
+    const n=1+otros.filter(x=>x.a<=mid&&x.b>mid).length;if(n>max)max=n;acum+=(b-a)*persBase/n;trab+=b-a}
+  if(!huecos){const pers=acum/(trab||1);return {pers,max,solapa:max>1}}
+  return {pers:trab>0?acum/trab:persBase,max,solapa:max>1,minPersona:acum/6e4,trabajado:trab/6e4}}
+/* lo que esta orden NO trabaja dentro de su tramo, en ms: sus paros con hora y, si no marcó el almuerzo como paro, las ventanas de descanso de su centro */
+function huecosTramo(t,ini,fin){const h=[];(t.paros||[]).forEach(p=>{if(!p.ini)return;const a=+new Date(p.ini),b=p.fin?+new Date(p.fin):fin;if(b>a)h.push([Math.max(a,ini),Math.min(b,fin)])});
+  if(!(t.paros||[]).some(p=>motivoParoEs(p.motivo,'esAlmuerzo')))ventanasEn(ini,fin,t.centro).forEach(v=>h.push(v));return h.filter(x=>x[1]>x[0])}
+/* las ventanas de descanso del centro que caen dentro de [ini,fin] (ms), en la hora de la planta: la misma regla de minutosVentana */
+function ventanasEn(ini,fin,c){const vs=ventanasCentro(c);const out=[];if(!vs.length||!(fin>ini))return out;
+  for(let d=diaLocalDeTs(new Date(ini)),db=diaLocalDeTs(new Date(fin)),g=0;d<=db&&g++<400;d=dsum(d,1)){
+    vs.forEach(v=>{const[h1,m1]=String(v.ini).split(':').map(Number);const[h2,m2]=String(v.fin).split(':').map(Number);if(isNaN(h1)||isNaN(h2))return;
+      const a=Math.max(ini,msDeLocal(d,h1+':'+(m1||0))),b=Math.min(fin,msDeLocal(d,h2+':'+(m2||0)));if(b>a)out.push([a,b])})}
+  return out}
 function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
 /* personas del tramo: primero la asistencia real del día, después las del recurso, y solo si no hay, 1 */
 function personasTramo(rec,c,dia){const d=dia||hoy();const r=rec?R(rec):null;
@@ -5429,8 +5450,8 @@ function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new
   let pr=personasRec(t.rec,t.centro,t.ini?diaLocalDeTs(t.ini):null);
   /* varias referencias a la vez en el mismo puesto (23-sep); desde el 20-oct el reparto es por TIEMPO, no por cuántas se cruzaron */
   if(t.persManual>0)pr={pers:+t.persManual,fuente:'declarada',txt:'personas puestas a mano en esta orden',falta:false};
-  else{const rp=personasRepartidas(t,pr.pers);if(rp.solapa)pr={pers:rp.pers,fuente:'repartida',txt:num(rp.pers,rp.pers%1?1:0)+' en promedio: las '+num(pr.pers,pr.pers%1?1:0)+' del puesto se reparten minuto a minuto entre las órdenes que corrían a la vez (hasta '+rp.max+' juntas; se puede escribir cuántas van en cada una)',falta:pr.falta,juntas:rp.max}}
-  const minPersona=trabajado*pr.pers;
+  else{const rp=personasRepartidas(t,pr.pers);if(rp.solapa)pr={pers:rp.pers,fuente:'repartida',txt:num(rp.pers,rp.pers%1?1:0)+' en promedio: las '+num(pr.pers,pr.pers%1?1:0)+' del puesto se reparten minuto a minuto entre las órdenes que corrían a la vez (hasta '+rp.max+' juntas; se puede escribir cuántas van en cada una)',falta:pr.falta,juntas:rp.max,minPersona:rp.minPersona}}
+  const minPersona=(pr.fuente==='repartida'&&pr.minPersona!=null)?pr.minPersona:trabajado*pr.pers;   /* 20-oct: con reparto, los minutos-persona integrados minuto a minuto */
   const u=sumaCurva(t.tallas||{});const seg=sumaCurva(t.segundas||{});const uTot=u+seg;
   const minPrendaReal=u>0?minPersona/u:null;const minPrendaTot=uTot>0?minPersona/uTot:null;
   const paso=o?((o.ruta||[]).find(p=>p.centro===t.centro)||{}):{};
@@ -14578,7 +14599,7 @@ function delOperaria(i){if(ingNoEdita('ingcfg'))return;const r=operarias()[i];if
   operarias().splice(i,1);bitacora('Operaria quitada: '+(r.n||'sin nombre')+' ('+quienFirma()+')');save();render()}
 function operariasDe(rec){return operarias().filter(o=>o.rec===rec&&o.activa!==false)}
 function operariasPanelHTML(){const mods=S.recursos.filter(r=>r.centro==='modulos'&&r.activa);const tipos=tiposMaqActivos();const l=operarias();
-  return `<div class="panel"><h3>Operarias y especialidades <span class="note">nombre, módulo y qué máquina maneja cada una · ${l.length} operarias · llenar no es obligatorio: sin nombres, el balanceo numera a los operarios (Op. 1, Op. 2…)</span><span class="spacer"></span>${mods.length?`<select id="op-mod-nueva" title="módulo de la operaria nueva" style="width:auto">${mods.map(m=>`<option value="${m.id}">${esc(m.n)}</option>`).join('')}</select> <button class="btn ghost sm" onclick="addOperaria(document.getElementById('op-mod-nueva').value)">Agregar operaria</button>`:''}</h3>
+  return `<div class="panel"><h3>Operarias y especialidades <span class="note">nombre, módulo y qué máquina maneja cada una · ${l.length} operarias · llenar no es obligatorio: sin nombres, el balanceo numera a los operarios (Op. 1, Op. 2…)</span><span class="spacer"></span>${mods.length?`<select id="op-mod-nueva" title="módulo de la operaria nueva" style="width:auto">${mods.map(m=>`<option value="${m.id}">${esc(m.n)}</option>`).join('')}</select> <button class="btn ghost sm" onclick="addOperaria((this.previousElementSibling||{}).value)">Agregar operaria</button>`:''}</h3>
    <div class="body"><div class="scroll" style="max-height:460px"><table style="font-size:var(--fs-s)"><thead><tr><th>Nombre</th><th>Módulo</th><th>Especialidades (nivel por máquina)</th><th>Activa</th><th></th></tr></thead><tbody>
    ${l.map((r,i)=>`<tr><td><input type="text" style="width:180px" value="${esc(r.n||'')}" placeholder="sin nombre (operario numerado)" onchange="setOperaria(${i},'n',this.value)"></td>
      <td><select onchange="setOperaria(${i},'rec',this.value)"><option value="">—</option>${mods.map(m=>`<option value="${m.id}" ${r.rec===m.id?'selected':''}>${esc(m.n)}</option>`).join('')}</select></td>
