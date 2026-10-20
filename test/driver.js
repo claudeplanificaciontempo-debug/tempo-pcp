@@ -13796,6 +13796,86 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    }catch(e){__R.errors.push({page:'driver MAR1',msg:e.message,stack:(e.stack||'').slice(0,300)})}
    finally{window.confirm=cf0;window.alert=al0;PERFIL=bakP;try{navCerrarTodo()}catch(e){}if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);page=bakPg;ORDF.tab=bakORDF;render()}
    __check("MAR1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* MAR2 · Tema Marino · etapa 2 (20-oct-2026): en Órdenes, la línea «Hoy dd/mm/aaaa · …», seis indicadores con las MISMAS cifras de la pantalla (chips, contador
+     del menú, aviso «sin número de WH», cabecera de los avisos) y la leyenda de colores; solo con Marino (Tablero, Como Odoo y Clásico no cambian). */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema;const bakM=modoVisual();const bakPg=page,bakTab=ORDF.tab,bakE=ORDF.estado,bakEd=ORDF.edicion;
+   const cs=(e,p)=>e?getComputedStyle(e)[p]:'';
+   const col=v=>{const d=document.createElement('div');d.style.color=v;document.body.appendChild(d);const c=getComputedStyle(d).color;d.remove();return c};
+   const bgv=v=>{const d=document.createElement('div');d.style.backgroundColor=v;document.body.appendChild(d);const c=getComputedStyle(d).backgroundColor;d.remove();return c};
+   const rgba=s=>{s=String(s||'');let m=s.match(/^rgba?\(([^)]+)\)/);if(m){const p=m[1].split(/[ ,/]+/).filter(Boolean).map(Number);return [p[0],p[1],p[2],p.length>3?p[3]:1]}
+     m=s.match(/^color\(srgb ([^)]+)\)/);if(m){const p=m[1].split(/[ /]+/).filter(Boolean).map(Number);return [p[0]*255,p[1]*255,p[2]*255,p.length>3?p[3]:1]}return null};
+   const sobre=(c,f)=>{const a=c[3];return [c[0]*a+f[0]*(1-a),c[1]*a+f[1]*(1-a),c[2]*a+f[2]*(1-a),1]};
+   const lum=c=>{const t=c.slice(0,3).map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)});return 0.2126*t[0]+0.7152*t[1]+0.0722*t[2]};
+   const contraste=(a,b)=>{const l1=lum(a),l2=lum(b);return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05)};
+   const fondoDe=e=>{const capas=[];let x=e;while(x&&x.nodeType===1){const c=rgba(cs(x,'backgroundColor'));if(c&&c[3]>0){capas.push(c);if(c[3]>=1)break}x=x.parentElement}let f=[255,255,255,1];for(let i=capas.length-1;i>=0;i--)f=capas[i][3]>=1?capas[i]:sobre(capas[i],f);return f};
+   const ratioDe=e=>{const f=fondoDe(e);let t=rgba(cs(e,'color'));if(!t)return 0;const op=parseFloat(cs(e,'opacity'));if(op<1)t=[t[0],t[1],t[2],t[3]*op];return contraste(sobre(t,f),f)};
+   const nn=t=>+String(t||'').replace(/[^0-9]/g,'');
+   try{
+    delete S.params.tema;setModo('claro');page='ordenes';ORDF.tab='ord';ORDF.estado='plan';ORDF.edicion='porEditar';render();
+    let pg=document.getElementById('p-ordenes');let cards=[...pg.querySelectorAll('.ord-kpis .kpi.tarj')];
+    const lab=()=>cards.map(c=>((c.querySelector('.k')||{}).textContent||'').trim());
+    const tarj=k=>cards.find(x=>((x.querySelector('.k')||{}).textContent||'').trim()===k);
+    const val=k=>{const c=tarj(k);return c?nn(c.querySelector('.v').textContent):NaN};
+    const chip=t=>{const c=[...pg.querySelectorAll('.chip')].find(x=>x.textContent.trim().startsWith(t));return c?nn((c.querySelector('.mut')||{}).textContent):NaN};
+    __check('MAR2: Órdenes con Marino lleva seis indicadores en este orden: Abiertas, Por definir ruta, Vencidas, Sin número de WH, Con ruta confirmada, Avisos que requieren acción',
+      lab().join('|')==='Abiertas|Por definir ruta|Vencidas|Sin número de WH|Con ruta confirmada|Avisos que requieren acción',lab().join('|'));
+    const P=programar();const venc=carteraDe('abiertas',o=>esMetaVencida(o,P)).length;const sw=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar).length;
+    const sumAcc=(()=>{const t=pg.querySelector('details.avisos .av-sum-n.t-aviso');return t?nn(t.textContent):0})();
+    const swTxt=[...pg.querySelectorAll('.av-card')].map(c=>c.textContent).find(t=>/sin número de WH/.test(t))||'';
+    const menuV=(()=>{const r=contadorAtrasoMenu(P);const m=String(r.txt||'').match(/([0-9.]+) vencidas?/);return m?nn(m[1]):0})();
+    const v0={ab:[val('Abiertas'),chip('Abiertas')],def:[val('Por definir ruta'),chip('Por definir ruta')],conf:[val('Con ruta confirmada'),chip('Ruta confirmada')],venc:[val('Vencidas'),venc,menuV],sw:[val('Sin número de WH'),sw],acc:[val('Avisos que requieren acción'),sumAcc]};
+    __check('MAR2: cada cifra es la de un lugar que ya existe: Abiertas = chip «Abiertas»; Por definir ruta y Con ruta confirmada = sus chips con el estado Abiertas; Vencidas = el contador «vencidas» del menú; Sin número de WH = el aviso; Avisos que requieren acción = la cabecera de los avisos',
+      v0.ab[0]===v0.ab[1]&&v0.def[0]===v0.def[1]&&v0.conf[0]===v0.conf[1]&&v0.venc[0]===venc&&v0.venc[0]===menuV&&v0.sw[0]===sw&&(!sw||swTxt.includes(num(sw)))&&v0.acc[0]===sumAcc,JSON.stringify(v0));
+    {ORDF.estado='cerrada';render();pg=document.getElementById('p-ordenes');cards=[...pg.querySelectorAll('.ord-kpis .kpi.tarj')];const ab2=val('Abiertas'),d2=val('Por definir ruta');ORDF.estado='plan';render();pg=document.getElementById('p-ordenes');cards=[...pg.querySelectorAll('.ord-kpis .kpi.tarj')];
+     __check('MAR2: los indicadores miran siempre las abiertas (no cambian al elegir otro estado en los chips; la sub-línea dice «de las abiertas»)',ab2===v0.ab[0]&&d2===v0.def[0]&&/de las abiertas/.test(tarj('Por definir ruta').textContent),ab2+'/'+d2)}
+    {const h=pg.querySelector('.ord-hoy');const dh=String(hoy()).split('-');const t=h?h.textContent:'';const pk=pg.querySelector('.ord-kpis');
+     __check('MAR2: bajo el título va la línea «Hoy dd/mm/aaaa · N órdenes cargadas · …» (dd/mm/aaaa del día de la planta, solo en esta línea) antes de los indicadores',
+       !!h&&t.startsWith('Hoy '+dh[2]+'/'+dh[1]+'/'+dh[0]+' · '+num(S.ordenes.length)+' ')&&/órdenes? cargadas?/.test(t)&&!!pk&&!!(h.compareDocumentPosition(pk)&Node.DOCUMENT_POSITION_FOLLOWING),t.slice(0,120))}
+    const LEY=[['Por definir ruta','--warn'],['Ruta confirmada','--ok'],['Vencida','--danger'],['Cerrada en Odoo','--neutral-strong']];
+    for(const m of ['claro','oscuro']){setModo(m);render();pg=document.getElementById('p-ordenes');cards=[...pg.querySelectorAll('.ord-kpis .kpi.tarj')];
+     const lg=[...pg.querySelectorAll('.ord-leyenda .lg')];const malL=[];
+     LEY.forEach(([t,v],i)=>{const e=lg[i];if(!e||e.textContent.trim()!==t){malL.push(i+' texto '+(e?e.textContent:'-'));return}const sq=e.querySelector('.lg-c');const r=sq?sq.getBoundingClientRect():{width:0,height:0};
+       if(cs(sq,'backgroundColor')!==bgv('var('+v+')'))malL.push(t+' '+cs(sq,'backgroundColor'));if(Math.round(r.width)!==11||Math.round(r.height)!==11)malL.push(t+' '+r.width+'x'+r.height)});
+     const av=pg.querySelector('details.avisos'),ly=pg.querySelector('.ord-leyenda');
+     __check('MAR2 ('+m+'): la leyenda va bajo las tarjetas (indicadores y avisos), con un cuadrito de 11 px por color: Por definir ruta = --warn, Ruta confirmada = --ok, Vencida = --danger, Cerrada en Odoo = --neutral-strong',
+       lg.length===4&&!malL.length&&!!ly&&(!av||!!(av.compareDocumentPosition(ly)&Node.DOCUMENT_POSITION_FOLLOWING)),malL.join('; ')||String(lg.length));
+     const malC=[];const esp={'Vencidas':'--danger','Avisos que requieren acción':'--danger','Por definir ruta':'--warn-fg','Con ruta confirmada':'--ok'};
+     Object.entries(esp).forEach(([k,v])=>{const c=tarj(k);if(!c)return;const n=nn(c.querySelector('.v').textContent);const want=n?col('var('+v+')'):col('var(--fg)');const got=cs(c.querySelector('.v'),'color');if(got!==want)malC.push(k+' '+got+' ≠ '+want)});
+     ['Abiertas','Sin número de WH'].forEach(k=>{const c=tarj(k);if(!c)return;const got=cs(c.querySelector('.v'),'color');if(c.classList.contains('warn')){if(got!==col('var(--warn-fg)'))malC.push(k+' '+got)}else if(got!==col('var(--fg)'))malC.push(k+' '+got)});
+     cards.forEach(c=>{if(cs(c,'backgroundColor')!==bgv('var(--surface)'))malC.push('fondo '+cs(c,'backgroundColor'));if(cs(c,'borderTopColor')!==col('var(--border)'))malC.push('borde '+cs(c,'borderTopColor'));if(cs(c,'borderTopLeftRadius')!=='8px')malC.push('radio '+cs(c,'borderTopLeftRadius'))});
+     const v1=cards[0]&&cards[0].querySelector('.v'),k1=cards[0]&&cards[0].querySelector('.k'),s1=cards[0]&&cards[0].querySelector('.kpi-sub');
+     const f=[cs(v1,'fontSize'),cs(v1,'fontWeight'),cs(v1,'fontVariantNumeric'),cs(k1,'fontSize'),cs(s1,'fontSize'),cs(cards[0],'paddingTop'),cs(cards[0],'paddingLeft')].join(' ');
+     __check('MAR2 ('+m+'): las tarjetas son --surface con borde 1 px --border y radio 8 px, padding 14/16; cifra 24 px peso 800 con números tabulares, etiqueta 13 px, sub-línea 12,5 px; la cifra va en --danger si es un problema (vencidas, avisos que requieren acción), en --ok si es un «listo» (ruta confirmada), en --warn-fg lo que está por definir, y en --fg si es 0',
+       !malC.length&&f==='24px 800 tabular-nums 13px 12.5px 14px 16px',malC.join('; ')+' | '+f);
+     const bajo=[];[...pg.querySelectorAll('.ord-hoy,.ord-kpis .v,.ord-kpis .k,.ord-kpis .kpi-sub,.ord-leyenda .lg')].forEach(e=>{const r=ratioDe(e);if(r<4.5)bajo.push((e.className||e.tagName)+' '+r.toFixed(2)+' «'+e.textContent.trim().slice(0,20)+'»')});
+     __check('MAR2 ('+m+'): contraste ≥ 4,5 en la línea «Hoy», los indicadores y la leyenda',!bajo.length,bajo.slice(0,6).join('; '));
+     const hs=cards.map(c=>Math.round(c.getBoundingClientRect().height)),ts=cards.map(c=>Math.round(c.getBoundingClientRect().top)),vs=cards.map(c=>Math.round(c.querySelector('.v').getBoundingClientRect().top));
+     const filas={};cards.forEach((c,i)=>{const k=Object.keys(filas).find(x=>Math.abs(+x-ts[i])<=1)||String(ts[i]);(filas[k]=filas[k]||[]).push(i)});
+     const filaOk=Object.values(filas).every(ix=>{const h=ix.map(i=>hs[i]),v=ix.map(i=>vs[i]);return Math.max(...h)-Math.min(...h)<=1&&Math.max(...v)-Math.min(...v)<=1});
+     __check('MAR2 ('+m+'): las tarjetas de una misma fila tienen el mismo alto y la cifra a la misma altura (aunque una etiqueta se parta en dos líneas); en una pantalla ancha (más de 1.180 px) van las seis en una sola fila',cards.length===6&&filaOk&&(window.innerWidth<=1180||Object.keys(filas).length===1),hs.join(',')+' / '+ts.join(',')+' / '+vs.join(','));
+     {const ac=[...pg.querySelectorAll('.av-card')];const malB=[];const VC={'av-accion':'--warn','av-info':'--ok','av-vencida':'--danger','av-cerrada':'--neutral-strong','av-falta':'--fg-muted'};
+      const prueba=document.createElement('div');prueba.innerHTML=avisosTarjetasHTML('mar2prueba','de prueba',Object.keys(VC).map(k=>({k:'x'+k,tipo:k.slice(3),tit:'Prueba '+k,det:'detalle'})));pg.appendChild(prueba);prueba.querySelector('details').open=true;
+      [...ac,...prueba.querySelectorAll('.av-card')].forEach(c=>{const k=Object.keys(VC).find(x=>c.classList.contains(x));if(!k)return;if(cs(c,'borderTopColor')!==col('var('+VC[k]+')'))malB.push(k+' franja '+cs(c,'borderTopColor'));if(cs(c,'borderTopWidth')!=='4px')malB.push(k+' ancho '+cs(c,'borderTopWidth'));
+        const mk=c.querySelector('.av-marca');const want=k==='av-info'?['--ok-soft','--ok-fg']:k==='av-vencida'?['--danger-soft','--danger']:k==='av-cerrada'?['--surface-2','--neutral-strong']:k==='av-falta'?['--surface-2','--fg-muted']:['--warn-soft','--warn-fg'];
+        if(mk&&(cs(mk,'backgroundColor')!==bgv('var('+want[0]+')')||cs(mk,'color')!==col('var('+want[1]+')')))malB.push(k+' marca '+cs(mk,'backgroundColor')+'/'+cs(mk,'color'))});
+      [...pg.querySelectorAll('details.avisos .av-sum-n')].forEach(x=>{const want=x.classList.contains('t-medio')?['--ok-soft','--ok-fg']:['--warn-soft','--warn-fg'];if(cs(x,'backgroundColor')!==bgv('var('+want[0]+')')||cs(x,'color')!==col('var('+want[1]+')'))malB.push('cabecera '+x.textContent.trim()+' '+cs(x,'backgroundColor')+'/'+cs(x,'color'))});
+      prueba.remove();
+      __check('MAR2 ('+m+'): cada tarjeta de aviso lleva arriba la franja de 4 px del color de su caso (requiere acción --warn, informativo --ok, vencida --danger, cerrada --neutral-strong, falta un dato --fg-muted) y su marca y los conteos de la cabecera con los colores de la especificación («Requiere acción» --warn-soft/--warn-fg, «Informativo» --ok-soft/--ok-fg)',!malB.length,malB.slice(0,6).join('; '))}}
+    setModo('claro');
+    {const malA=[];for(const te of ['tablero','odoo','clasico']){S.params.tema=te;render();const p=document.getElementById('p-ordenes');if(p.querySelector('.ord-kpis,.ord-hoy,.ord-leyenda,.kpi-sub'))malA.push(te)}
+     delete S.params.tema;render();
+     __check('MAR2: con Tablero, Como Odoo y Clásico, Órdenes no lleva la línea «Hoy», los indicadores ni la leyenda (la etapa 2 es solo de Marino)',!malA.length,malA.join(','))}
+    {const cnt0=[...document.querySelectorAll('#p-ordenes .kpi-sub')].length;const otros=[];for(const pgn of ['panorama','liberacion','plan','gerencia']){page=pgn;try{render()}catch(e){}const n=[...document.querySelectorAll('.page.on .kpi-sub')].length;if(n)otros.push(pgn+' '+n)}page='ordenes';render();
+     __check('MAR2: la sub-línea de las tarjetas (kpi-sub) solo sale donde se pasa (Órdenes con Marino): con Marino, Hoy, Liberación, Planificar el mes y el Resumen gerencial no la llevan',cnt0===6&&!otros.length,cnt0+' / '+otros.join(','))}
+    __check('MAR2: el porcentaje de una parte nunca dice «0 %» si hay alguna ni «100 %» si falta alguna (la regla de pctCapTxt)',pctDeTxt(3,1079)==='menos de 1 %'&&pctDeTxt(1076,1079)==='más de 99 %'&&pctDeTxt(0,1079)==='0 %'&&pctDeTxt(1079,1079)==='100 %'&&pctDeTxt(540,1079)==='50 %'&&pctDeTxt(5,0)==='—',[pctDeTxt(3,1079),pctDeTxt(1076,1079),pctDeTxt(0,1079),pctDeTxt(1079,1079),pctDeTxt(540,1079),pctDeTxt(5,0)].join(' | '));
+    {const P2=programar();const vl=carteraDe('abiertas',o=>esMetaVencida(o,P2));const vSW=vl.filter(sinWHde).length;const c=tarj('Vencidas');const sub=c?c.querySelector('.kpi-sub').textContent:'';
+     const prev=page;page='panorama';render();const hv=document.querySelector('[data-t="hoy-venc"]');const hvt=hv?hv.textContent:'';page='ordenes';render();pg=document.getElementById('p-ordenes');cards=[...pg.querySelectorAll('.ord-kpis .kpi.tarj')];
+     __check('MAR2: «Vencidas» dice cuántas son de diseño sin WH, con la misma cifra de la tarjeta de Hoy (y nada si no hay)',vSW?(sub.includes(num(vSW)+' de diseño sin WH')&&(!hv||hvt.includes(num(vSW)))):!/diseño/.test(sub),sub+' | Hoy: '+hvt.slice(0,80))}
+    {const h=pg.querySelector('.ord-hoy');const t=h?h.textContent:'';const cerr=S.ordenes.filter(o=>matchEstadoOrd(o,'cerrada')).length;const u=ultimaCargaOdoo().u;const pzAb=S.ordenes.filter(o=>matchEstadoOrd(o,'plan')).reduce((a,o)=>a+(+o.cant||0),0);
+     __check('MAR2: la línea «Hoy» no repite las prendas de la tarjeta Abiertas, dice las cerradas del chip y la última carga de Odoo (la de ultimaCargaOdoo, la misma de Hoy)',!t.includes(num(pzAb)+' prendas')&&(!cerr||t.includes('('+num(cerr)+' '+(cerr===1?'cerrada':'cerradas')+' en Odoo)'))&&(u?t.includes('última carga de Odoo: '+fechaHoraLocal(u.ts)):t.includes('sin cargas de Odoo')),t)}
+   }catch(e){__R.errors.push({page:'driver MAR2',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{PERFIL=bakP;if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;setModo(bakM);page=bakPg;ORDF.tab=bakTab;ORDF.estado=bakE;ORDF.edicion=bakEd;render()}
+   __check('MAR2 sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* AVC · avisos de Órdenes en tarjetas (19-oct-2026): escenario inventado con los diez avisos; lo de siempre (textos, cifras, WH, botones, casillas,
      campo de hora, <details>, plegado recordado) sigue y funciona, y ahora va en tarjetas con su caso, su marca y «ver todo» a todo el ancho */
   {const antes=__R.errors.length;const bak={ord:S.ordenes,tc:S.params.tareaCarga,page,tab:ORDF.tab,perfil:PERFIL,bnd:{sel:new Set(BND.sel),abierta:BND.abierta},odcs:{sel:new Set(ODCS.sel),bloque:ODCS.bloque}};

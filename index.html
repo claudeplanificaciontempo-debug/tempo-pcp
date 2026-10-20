@@ -2455,16 +2455,18 @@ html[data-tema="odoo"][data-estilo="tablero"] .iom-aviso.ok{background:var(--tb-
 /* ux:marino */
 /* avisos en tarjetas con Marino (19-oct): franja y marca con los semánticos de la especificación — requiere acción = --warn, informativo = --ok, vencida = --danger, cerrada en Odoo = --neutral-strong; falta un dato = --fg-muted */
 html[data-estilo="marino"] details.avisos{--av-accion:var(--warn);--av-info:var(--ok);--av-vencida:var(--danger);--av-cerrada:var(--neutral-strong);--av-falta:var(--fg-muted)}
-html[data-estilo="marino"] .av-card{background:var(--surface);border-color:var(--border);border-radius:8px}
+html[data-estilo="marino"] .av-card{background:var(--surface);border-color:var(--border);border-top-color:var(--av-c);border-radius:8px}   /* 20-oct: el atajo border-color pisaba la franja de 4 px del caso */
 html[data-estilo="marino"] .av-tit{color:var(--fg);font-size:15px;font-weight:800}
 html[data-estilo="marino"] .av-det,html[data-estilo="marino"] .av-pre,html[data-estilo="marino"] .av-todo-x{color:var(--fg-muted)}
 html[data-estilo="marino"] .av-det b{color:var(--fg)}
-html[data-estilo="marino"] .av-card .av-marca{background:var(--warn-soft);color:var(--warn-fg);border-color:transparent}
-html[data-estilo="marino"] .av-card.av-info .av-marca{background:var(--ok-soft);color:var(--ok-fg)}
-html[data-estilo="marino"] .av-card.av-vencida .av-marca{background:var(--danger-soft);color:var(--danger)}
-html[data-estilo="marino"] .av-card.av-cerrada .av-marca{background:var(--surface-2);color:var(--neutral-strong)}
-html[data-estilo="marino"] .av-card.av-falta .av-marca{background:var(--surface-2);color:var(--fg-muted)}
+html[data-estilo="marino"] .av-card .av-marca{background:var(--warn-soft)!important;color:var(--warn-fg)!important;border-color:transparent!important}
+html[data-estilo="marino"] .av-card.av-info .av-marca{background:var(--ok-soft)!important;color:var(--ok-fg)!important}
+html[data-estilo="marino"] .av-card.av-vencida .av-marca{background:var(--danger-soft)!important;color:var(--danger)!important}
+html[data-estilo="marino"] .av-card.av-cerrada .av-marca{background:var(--surface-2)!important;color:var(--neutral-strong)!important}
+html[data-estilo="marino"] .av-card.av-falta .av-marca{background:var(--surface-2)!important;color:var(--fg-muted)!important}   /* !important: en oscuro las reglas generales de las etiquetas lo llevan */
 html[data-estilo="marino"] .av-wh{font-family:Consolas,"Cascadia Mono",monospace}
+html[data-estilo="marino"] details.avisos .av-sum-n.t-aviso{background:var(--warn-soft)!important;color:var(--warn-fg)!important;border-color:transparent!important}
+html[data-estilo="marino"] details.avisos .av-sum-n.t-medio{background:var(--ok-soft)!important;color:var(--ok-fg)!important;border-color:transparent!important}   /* etapa 2: los conteos de la cabecera de los avisos con las mismas marcas de las tarjetas */
 /* ================= Tema «Marino» (como nova) · etapa 1 (14-oct-2026, usuaria: «el mismo formato que mi otra aplicación, nova»). Aspecto por defecto, ENCIMA
    del aspecto Odoo (data-tema="odoo" + data-estilo="marino"). Todo selector de este bloque lleva [data-estilo="marino"] (prueba MAR1): Tablero, Como Odoo y
    Clásico no cambian. Etapa 1 = las variables del tema (y los tokens de siempre tomados de ellas), la cabecera en dos filas y el control «Claro | Oscuro».
@@ -2641,6 +2643,27 @@ html[data-estilo="marino"] #app.cargando header .mode{display:none!important}
   html[data-tema="odoo"][data-estilo="marino"] header .mode button[aria-pressed="true"]{outline:2px solid ButtonText;outline-offset:-3px}
   html[data-tema="odoo"][data-estilo="marino"] .marino-fila2 #nav .grp:not(.act){border-bottom-color:Canvas}
 }
+/* etapa 2 (20-oct-2026): Órdenes — título, la línea «Hoy dd/mm/aaaa · …», los seis indicadores y la leyenda (§4 de la especificación). Con #p-ordenes delante:
+   las demás pantallas toman estos componentes en la etapa 4. */
+html[data-estilo="marino"] #p-ordenes .pagehead h2{font-size:22px;font-weight:800;color:var(--fg)}
+html[data-estilo="marino"] #p-ordenes .ord-hoy{color:var(--fg-muted);font-size:13px;margin:0 0 12px;font-variant-numeric:tabular-nums}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis.tarj-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:0 0 14px}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--fg)!important;border-radius:8px;padding:14px 16px;box-shadow:none;min-width:0;margin:0;display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:2px}   /* subgrid: etiqueta, cifra y sub-línea alineadas en toda la fila */
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--fg)!important;line-height:1.15;order:1}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj .k{font-size:13px;color:var(--fg-muted)!important;font-weight:400;order:0;text-transform:none;letter-spacing:0}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj .kpi-sub{font-size:12.5px;color:var(--fg-muted)!important;order:2}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj.bad .v{color:var(--danger)!important}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj.ok .v{color:var(--ok)!important}
+html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis>.kpi.tarj.warn .v{color:var(--warn-fg)!important}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--fg-muted);font-size:12.5px;margin:0 0 14px}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg{display:inline-flex;align-items:center;gap:6px}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg-c{display:inline-block;width:11px;height:11px;border-radius:2px;flex:none}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg-warn{background:var(--warn)}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg-ok{background:var(--ok)}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg-danger{background:var(--danger)}
+html[data-estilo="marino"] #p-ordenes .ord-leyenda .lg-neutral{background:var(--neutral-strong)}
+@media (max-width:1180px){html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis.tarj-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:620px){html[data-estilo="marino"] #p-ordenes .ord-kpis .kpis.tarj-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -3404,7 +3427,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-19 17:00';
+const APP_BUILD='2026-10-20 10:10';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -6398,7 +6421,7 @@ function tarjetasResumenHTML(cards){const tb=esTablero();const ab=cards.find(c=>
     const por={};its.forEach(o=>{const f=famDeOrden(o);(por[f]=por[f]||[]).push(o)});
     return Object.keys(por).sort((a,b)=>por[b].length-por[a].length||a.localeCompare(b,'es')).map(f=>{const xs=por[f];
       return `<tr class="grp-row" style="background:var(--field);font-weight:700"><td colspan="7" style="border-top:2px solid var(--rule)">${esc(f)}<span style="float:right">${num(xs.length)} ${xs.length===1?'orden':'órdenes'} · ${num(xs.reduce((a,o)=>a+ +o.cant,0))} prendas</span></td></tr>`+xs.map(filaOrd).join('')}).join('')};
-  return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut'+(tb?' tarj-ver':'')+'" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div>${kpiIcoHTML(c.ico)}${tb&&clic?kpiMasHTML(c.items&&c.items.length?(TARJ.exp[c.id]?'cerrar la lista':'ver la lista'):'abrir'):''}</div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(ab.titulo||String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${num(ab.items.length)} órdenes${ab.porFam?' · agrupadas por familia':''}</span>${ab.enlace?' '+ab.enlace:''}</h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>${esc(ab.fechaTit||'Entrega')}</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
+  return `<div class="kpis tarj-row">${cards.map(c=>{const clic=c.onclick||(c.items&&c.items.length?`togTarj('${c.id}')`:'');return `<div class="kpi tarj ${c.cls||''} ${clic?'clic':''} ${TARJ.exp[c.id]&&c.items?'abierta':''}" data-t="${c.id}" ${clic?`onclick="${clic}"`:''} ${c.title?`title="${esc(c.title)}"`:''}><div class="v">${c.v}</div><div class="k">${c.k}${c.items&&c.items.length?' <span class="mut'+(tb?' tarj-ver':'')+'" style="font-size:var(--fs-xs)">'+(TARJ.exp[c.id]?'▾ cerrar':'▸ ver lista')+'</span>':''}</div>${c.subLinea?'<div class="kpi-sub">'+c.subLinea+'</div>':''}${kpiIcoHTML(c.ico)}${tb&&clic?kpiMasHTML(c.items&&c.items.length?(TARJ.exp[c.id]?'cerrar la lista':'ver la lista'):'abrir'):''}</div>`}).join('')}</div>${ab?`<div class="panel tarj-lista"><h3>${esc(ab.titulo||String(ab.k).replace(/<[^>]+>/g,''))} <span class="note">${num(ab.items.length)} órdenes${ab.porFam?' · agrupadas por familia':''}</span>${ab.enlace?' '+ab.enlace:''}</h3><div class="scroll" style="max-height:380px"><table><thead><tr><th>OP · fase</th><th>Cliente</th><th>Categoría</th><th>Color</th><th class="num">Prendas</th><th>${esc(ab.fechaTit||'Entrega')}</th><th></th></tr></thead><tbody>${cuerpo(ab)}${ab.items.length>400?`<tr><td colspan="7" class="mut">… y ${ab.items.length-400} más</td></tr>`:''}</tbody></table></div></div>`:''}`}
 /* e) Devolver/revertir: el motivo sale de la tabla 15 (lista cerrada, sin texto libre) */
 const USOS_MOTIVO=[['fase','devolver a un área (fase o reabrir un paso)'],['liberacion','reversión de liberación'],['reproceso','reproceso de tintorería'],['piso','observación de piso'],['paro','paro en el piso'],['cierre','cierre con faltante'],['cierreSinTiempo','cierre sin tiempo'],['correccion','corrección de un registro de prendas']];
 function motivos(){if(!Array.isArray(S.params.motivos))S.params.motivos=[];migrarMotivosReproceso();return S.params.motivos}
@@ -14689,11 +14712,12 @@ function vOrdenes(el){
      +`<div class="scroll alto" data-grp-scroll="ord"><table>${cabT(l2)}<tbody>${filasGRP('ord',corta?l2.slice(0,600):l2,filaOrden,NC)||'<tr><td colspan="'+NC+'" class="mut">Ninguna orden con estos filtros.</td></tr>'}</tbody></table></div></div>`
      +avisoFueraDeBaseHTML('ORDF.q',l2,'el estado elegido ('+(ESTADOS_ORD[ORDF.estado]||ORDF.estado)+'), la edición ('+(EDICION_ORD[ORDF.edicion]||'todas')+') y el filtro de fases')};
   listaRegistrar('ORDF.q',listaOrdHTML);
+  const Lav=avisosOrdenesLista();const MAR=esMarino()?ordenesMarino(P,Lav):null;   /* tema Marino · etapa 2: línea «Hoy», indicadores y leyenda (solo con Marino) */
   el.innerHTML=`
   <div class="pagehead"><h2>Órdenes de producción</h2><span class="spacer"></span>${tabsOrdHTML()}
     ${puede('ordenes')?`<button class="btn" onclick="mActualizarDatos(1)" title="trae de Odoo las tareas, las órdenes de trabajo, las fotos y las tallas: es el camino normal para tener las órdenes al día">${ICO.sync} Actualizar datos</button><button class="btn ghost" onclick="mReporteTarea()">Reporte de la última carga</button><button class="btn ghost" onclick="mOrden()" title="crear una orden a mano (lo normal es que vengan de Odoo con «Actualizar datos»)">${ICO.plus} Nueva orden</button>`:''}</div>
-  <p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
-  ${avisosOrdenesHTML()}
+  ${MAR?MAR.hoy:''}<p class="lede">Cada orden trae sus telas con kilos y su ruta. Al guardarla, el sistema la teje, la tintura y la produce sobre la capacidad disponible y te dice cuándo saldría.</p>
+  ${MAR?MAR.kpis:''}${avisosOrdenesHTML(Lav)}${MAR?MAR.leyenda:''}
   ${filtros}
   <div data-lista="ORDF.q">${S.ordenes.length?listaOrdHTML():`<div class="panel"><h3>${ESTADOS_ORD[ORDF.estado]||'Órdenes'}</h3><div class="empty"><p>Todavía no hay órdenes.</p>${puede('ordenes')?`<button class="btn" onclick="mOrden()">Nueva orden</button> <button class="btn ghost" onclick="demo()" title="Carga 5 órdenes ficticias de prueba; pide confirmación">Cargar ejemplo (datos ficticios)</button>`:''}</div></div>`}</div>
   ${(S.cargas||[]).length?`<div class="panel"><h3>Últimas cargas <span class="lede">registro completo en Configuración general → Órdenes, fases y archivos de Odoo</span></h3><div class="body">
@@ -14701,11 +14725,36 @@ function vOrdenes(el){
       ${((c.resumen||{}).alertas||c.alertas||[]).length?`<details><summary style="cursor:pointer;color:var(--aviso);font-size:var(--fs-s)">${num(((c.resumen||{}).alertas||c.alertas).length)} puntos para revisar</summary><div style="font-size:var(--fs-xs);margin:4px 0 0 12px;line-height:1.6">${((c.resumen||{}).alertas||c.alertas).map(esc).join('<br>')}</div></details>`:''}</div>`).join('')}
   </div></div>`:''}`;
 }
+/* Tema Marino · etapa 2 (20-oct-2026, especificación de la usuaria §4): en Órdenes, bajo el título la línea «Hoy dd/mm/aaaa · …», la fila de seis indicadores
+   y la leyenda de colores. Solo con Marino: los otros aspectos no cambian. Ninguna cifra es propia: cada una es la de un lugar que ya existe en pantalla (los chips
+   «Abiertas», «Por definir ruta» y «Ruta confirmada» con el estado Abiertas, el contador «vencidas» del menú, el aviso «sin número de WH» y la cabecera de los
+   avisos), y el title de cada tarjeta dice de cuál sale. El formato dd/mm/aaaa va SOLO en esta línea (decisión de la usuaria); el resto sigue con fmtDia. */
+/* porcentaje de una parte: nunca «0 %» si hay alguna ni «100 %» si falta alguna (la misma regla de pctCapTxt, 08-oct) */
+function pctDeTxt(n,tot){if(!(tot>0))return '—';const p=n*100/tot;return (p>0&&p<0.5?'menos de 1':(p<100&&p>=99.5?'más de 99':num(Math.round(p))))+' %'}
+function ordenesMarino(P,L){L=L||[];
+  const ab=S.ordenes.filter(o=>matchEstadoOrd(o,'plan'));const pz=ab.reduce((a,o)=>a+(+o.cant||0),0);
+  const porDef=ab.filter(o=>matchEdicionOrd(o,'porEditar')).length,conf=ab.filter(o=>matchEdicionOrd(o,'editadas')).length;
+  let vl=[];try{vl=P?carteraDe('abiertas',o=>esMetaVencida(o,P)):[]}catch(e){vl=[]}const venc=vl.length,vSW=vl.filter(sinWHde).length;   /* las de diseño sin WH se dicen, como en Hoy */
+  const sl=S.ordenes.filter(o=>abierta(o)&&o.sinLanzar);const avSW=L.find(a=>a&&a.k==='sinWH');
+  const acc=L.filter(a=>AVISO_TIPOS[avTipo(a)].marca==='Requiere acción').length;
+  const pct=n=>pctDeTxt(n,ab.length);
+  const dh=String(hoy()).split('-');const ult=ultimaCargaOdoo().u;const cerr=S.ordenes.filter(o=>matchEstadoOrd(o,'cerrada')).length;   /* «cerradas» = el chip «Cerradas en Odoo / facturadas / stand by» */
+  const hoyTxt='<div class="ord-hoy">Hoy '+dh[2]+'/'+dh[1]+'/'+dh[0]+' · '+num(S.ordenes.length)+' '+(S.ordenes.length===1?'orden cargada':'órdenes cargadas')+(cerr?' ('+num(cerr)+' '+(cerr===1?'cerrada':'cerradas')+' en Odoo)':'')+(ult?' · última carga de Odoo: '+fechaHoraLocal(ult.ts):' · sin cargas de Odoo registradas')+'</div>';
+  const cards=[
+    {id:'ordk-ab',k:'Abiertas',v:num(ab.length),subLinea:num(pz)+' prendas',title:'Las mismas del chip «Abiertas» de abajo: abiertas en Odoo y aquí.'},
+    {id:'ordk-def',k:'Por definir ruta',v:num(porDef),cls:porDef?'warn':'',subLinea:pct(porDef)+' de las abiertas',title:'Las mismas del chip «Por definir ruta» con el estado Abiertas: falta confirmar su ruta.'},
+    {id:'ordk-venc',k:'Vencidas',v:num(venc),cls:venc?'bad':'',subLinea:'fecha meta ya pasada'+(vSW?' · '+num(vSW)+' de diseño sin WH':''),title:'Las mismas del contador «vencidas» del menú y de la tarjeta de Hoy: abiertas con la fecha meta pasada y sin terminar (también las de diseño sin WH).'},
+    {id:'ordk-sinwh',k:'Sin número de WH',v:num(sl.length),cls:avSW&&avTipo(avSW)==='accion'?'warn':'',subLinea:num(sl.reduce((a,o)=>a+(+o.cant||0),0))+' prendas · no lanzadas en Odoo',title:'Las mismas del aviso «sin número de WH» de abajo.'},
+    {id:'ordk-conf',k:'Con ruta confirmada',v:num(conf),cls:conf?'ok':'',subLinea:pct(conf)+' de las abiertas',title:'Las mismas del chip «Ruta confirmada» con el estado Abiertas.'},
+    {id:'ordk-acc',k:'Avisos que requieren acción',v:num(acc),cls:acc?'bad':'',subLinea:'de '+num(L.length)+' '+(L.length===1?'aviso':'avisos'),title:'Los mismos de la cabecera de los avisos de abajo («requieren acción»).'}];
+  const ley=[['warn','Por definir ruta'],['ok','Ruta confirmada'],['danger','Vencida'],['neutral','Cerrada en Odoo']];
+  return {hoy:hoyTxt,kpis:'<div class="ord-kpis">'+tarjetasResumenHTML(cards)+'</div>',
+    leyenda:'<div class="ord-leyenda" role="list" aria-label="Qué significa cada color">'+ley.map(([c,t])=>'<span class="lg" role="listitem"><i class="lg-c lg-'+c+'" aria-hidden="true"></i>'+t+'</span>').join('')+'</div>'}}
 /* Los avisos de arriba de Órdenes, en tarjetas (19-oct-2026). Cada uno con su caso: requiere acción (sin fecha, ODC, precio fuera de rango, decisiones que
    ya no calzan, las que no vinieron con algo decidido; también «sin WH» si alguna ya está en producción sin WH: «revisar en Odoo»), informativo (sin WH,
    carga sin medir) o falta un dato de configuración (paso extra sin minutos, fase que no calza con la tabla 1, sin velocidad de bordado). Los textos,
    las cifras, los botones y las casillas son los de antes (solo se reparten en título, detalle y «ver todo»). */
-function avisosOrdenesHTML(){const L=[];
+function avisosOrdenesLista(){const L=[];
   /* sin fecha de entrega: las abiertas sin fecha (las mismas que Hoy) y las que el archivo trae sin fecha ni Proyecto y siguen abiertas en Odoo;
      las que el archivo trae sin fecha pero ya están cerradas en Odoo se dicen aparte y no suman (02-oct) */
   {const sf=(S.params.tareaCarga||{}).sinFecha||[];const enPlan=S.ordenes.filter(o=>abierta(o)&&!o.fecha);
@@ -14759,7 +14808,8 @@ function avisosOrdenesHTML(){const L=[];
   /* sin velocidad de bordado */
   {const sv=S.ordenes.filter(o=>abierta(o)&&sinVelBordado(o));if(sv.length)L.push({k:'sinVel',tipo:'falta',tit:`Bandeja · sin velocidad de bordado configurada (${sv.length} ${sv.length===1?'orden':'órdenes'}, ${num(sv.reduce((a,o)=>a+o.cant,0))} prendas)`,
      det:'cargan 0 minutos en Bordado hasta que se escriba "Puntadas/min" en Configuración general → Centros (fila Bordado).',todo:sv.slice(0,25).map(o=>avWH(o.op)).join(", ")+(sv.length>25?" …":"")})}
-  return avisosTarjetasHTML('ordenes','sobre las órdenes',L)}
+  return L}
+function avisosOrdenesHTML(L){return avisosTarjetasHTML('ordenes','sobre las órdenes',L||avisosOrdenesLista())}
 function delOrden(id){const o=S.ordenes.find(x=>x.id===id);if(!o)return;const a=S.avance[id]||{};const pierde=[o.foto?'su foto':'',o.ot?'sus órdenes de trabajo':'',(a.centros&&Object.keys(a.centros).length)||a.tejida||a.tinturada?'su avance de piso':'',(o.fases||[]).length>1?'su historial de fases':''].filter(Boolean);
   if(!confirm('¿Borrar la orden '+o.op+' ('+num(o.cant)+' prendas, '+esc(o.cliente||'')+')?'+(pierde.length?'\nSe pierde también: '+pierde.join(', ')+'.':'')+'\nSi vuelve en la próxima carga de Odoo, entrará como nueva.'))return;
   bitacora('Orden borrada a mano: '+o.op+' · '+num(o.cant)+' prendas · '+(o.cliente||''));S.ordenes=S.ordenes.filter(x=>x.id!==id);save();render()}
