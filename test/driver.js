@@ -118,6 +118,8 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
      (como lo elegiría la usuaria en Configuración) y MAR1, al final, mira Marino por defecto y que los otros tres no cambien. 19-oct: el recorrido de páginas,
      los clics reales de cada entrada del menú (WALK-MARINO) y la fase de botones corren en Marino, el aspecto que ve la planta; lo demás, en el Tablero. */
   if(!/captura=/.test(location.search))S.params.tema='tablero';
+  S.params.tiempoEstimado={activo:false,metodo:'mediana',base:'tipo'};S.params.tiempoEst20={ts:'prueba'};   /* 20-oct: las pruebas de siempre miden pasos SIN tiempo; el tiempo estimado (mediana) se prueba aparte en TE */
+  try{tiemposEstimadosAlDia()}catch(e){}   /* 20-oct (revisión 2): la pasada completa ya no corre en cada dibujo (solo al leer del servidor o por un cambio de esta sesión): se apaga y se quita aquí lo que la siembra de la primera entrada hubiera puesto */
   const sd=seed();['centros','recursos','telas','colores'].forEach(t=>S[t]=sd[t]);
   S.colores.forEach((c,i)=>{c.cod=['19-4005','11-0601','17-4402','19-3921','19-1758'][i]+' TCX'});
   const mkCat=(p,hs)=>{const P={id:uid(),n:p,padre:null,recursos:[]};S.categorias.push(P);hs.forEach(h=>S.categorias.push({id:uid(),n:h,padre:P.id,recursos:[]}))};
@@ -13864,6 +13866,230 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    }catch(e){__R.errors.push({page:'driver MAR1',msg:e.message,stack:(e.stack||'').slice(0,300)})}
    finally{window.confirm=cf0;window.alert=al0;PERFIL=bakP;try{navCerrarTodo()}catch(e){}if(bakT===undefined)delete S.params.tema;else S.params.tema=bakT;if(bakC===undefined)delete S.params.temaColor;else S.params.temaColor=bakC;setModo(bakM);page=bakPg;ORDF.tab=bakORDF;render()}
    __check("MAR1 sin errores",__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* TE · Tiempo estimado cuando falta el dato (20-oct-2026, usuaria: «¿puedes usar un tiempo promedio?» → «Mediana» y «del mismo tipo, si no del paso»).
+     El resto del simulador corre con el estimado APAGADO (las pruebas de siempre miden pasos sin tiempo); aquí se enciende con órdenes inventadas. */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakCfg=JSON.stringify(S.params.tiempoEstimado||null);const bakOrd=S.ordenes.slice();const bakPg=page;const bakCat=S.categorias.slice();
+   const sv=window.save;window.save=()=>{};
+   /* «aplicar los tiempos de hoy» (TE7/TE8) y la pasada del estimado tocan TODAS las órdenes abiertas del volcado: se guardan sus rutas y se devuelven al final,
+      así el resto del simulador las ve como estaban */
+   const bakRutasTE=new Map(S.ordenes.map(o=>[o,JSON.stringify({r:o.ruta,c:o.rutaCompleta,ta:o.tiemposAplicados})]));const bakTA=JSON.stringify(S.params.tiemposAplicados===undefined?null:S.params.tiemposAplicados);
+   try{
+    const kX={id:'k-te-x',n:'TE Tipo X'},kY={id:'k-te-y',n:'TE Tipo Y'};S.categorias.push(kX,kY);
+    if(!S.tecnicas.some(t=>t.id==='tec-te'))S.tecnicas.push({id:'tec-te',n:'TE técnica',t:0.8});
+    const mk=(id,cat,ruta,extra)=>Object.assign({id,op:'WH/MO/TE'+id,cat,cant:100,estado:'plan',fase:'3Corte',fecha:dsum(hoy(),20),color:(S.colores[0]||{}).id,telas:[],ruta:ruta.map(p=>Object.assign({},p)),rutaCompleta:ruta.map(p=>Object.assign({},p))},extra||{});
+    const oA1=mk('a1','k-te-x',[{centro:'modulos',t:10}]),oA2=mk('a2','k-te-x',[{centro:'modulos',t:12}]),oB=mk('b','k-te-x',[{centro:'modulos',t:0}]),oC=mk('c','k-te-y',[{centro:'modulos',t:0}]);
+    const oE=mk('e','k-te-y',[{centro:'estampado',t:0}]),oE2=mk('e2','k-te-y',[{centro:'estampado',t:0}],{tecnica:'tec-te'}),oBo=mk('bo','k-te-y',[{centro:'bordado',t:0}]);
+    const oM=mk('m','k-te-y',[{centro:'empaque',t:0,tManual:{u:'x',ts:'2026-10-01T00:00:00Z',regla:0}}]);
+    const nuevas=[oA1,oA2,oB,oC,oE,oE2,oBo,oM];S.ordenes=S.ordenes.concat(nuevas);
+    S.params.tiempoEstimado={activo:true,metodo:'mediana',base:'tipo'};const b0=S.bitacora.length;
+    const E0=estimadosTiempo();const n1=tiemposEstimadosAlDia();const n2=tiemposEstimadosAlDia();const pB=oB.ruta[0],pC=oC.ruta[0];
+    __check('TE1: un paso sin tiempo toma la mediana de las órdenes del MISMO tipo (10 y 12 → 11, base tipo, 2 órdenes) y queda marcado; una segunda pasada no cambia nada',
+      Math.abs(pB.t-11)<1e-9&&pB.tEst&&pB.tEst.base==='tipo'&&(typeof nEstimado==='function'?nEstimado(pB.tEst,'modulos',oB.cat):pB.tEst.n)===2&&pB.tEst.metodo==='mediana'&&oB.rutaCompleta[0].tEst&&n1>0&&n2===0,JSON.stringify({pB,n1,n2}));
+    __check('TE2: si el tipo no tiene ninguna orden con dato, toma la mediana de TODO el paso',!!pC.tEst&&pC.tEst.base==='paso'&&Math.abs(pC.t-E0.paso.modulos.t)<1e-9,JSON.stringify({pC,paso:E0.paso.modulos}));
+    __check('TE3: estampado sin técnica se estima; con técnica (que tiene tiempo) no; bordado sin puntadas toma la mediana de las puntadas; un tiempo puesto a mano no se toca',
+      !!oE.ruta[0].tEst&&oE.ruta[0].t>0&&!oE2.ruta[0].tEst&&!!oBo.ruta[0].tEst&&Number.isInteger(oBo.ruta[0].t)&&oBo.ruta[0].t>0&&!oM.ruta[0].tEst&&oM.ruta[0].t===0,JSON.stringify({e:oE.ruta[0],e2:oE2.ruta[0],bo:oBo.ruta[0],m:oM.ruta[0]}));
+    {const E1=estimadosTiempo();__check('TE4: las medianas salen solo de datos reales: después de estimar no cambian (un estimado no cuenta como dato)',JSON.stringify(E1.paso)===JSON.stringify(E0.paso)&&JSON.stringify(E1.tipo)===JSON.stringify(E0.tipo))}
+    __check('TE5: el programa usa el estimado (el paso deja de estar «sin tiempo») y la ruta de la lista lo dice («tiempo estimado: Confección»)',!pasoSinTiempo(oB,'modulos')&&minPrenda('modulos',oB.ruta[0].t)>0&&/tiempo estimado: Confección/.test(rutaCeldaHTML(oB)),rutaCeldaHTML(oB).slice(-200));
+    __check('TE6: queda en la bitácora con el método, la base y cuántos pasos',S.bitacora.slice(b0).some(b=>/Tiempo estimado cuando falta el dato \(mediana de las órdenes del mismo tipo de producto, o del paso\): puesto en [0-9]+ pasos/.test(b.t)),S.bitacora.slice(b0).map(b=>b.t.slice(0,120)).join(' | '));
+    {const np=propagarTiempos('prueba TE');__check('TE7: «aplicar los tiempos de hoy» no deshace un estimado mientras el catálogo no tenga el dato',!!oB.ruta[0].tEst&&Math.abs(oB.ruta[0].t-11)<1e-9&&!!oC.ruta[0].tEst,JSON.stringify({np,b:oB.ruta[0]}))}
+    {kX.samManda={modulos:{min:9,fuente:'prueba TE'}};propagarTiempos('prueba TE · real');tiemposEstimadosAlDia();oBo.puntadas=3000;oE.tecnica='tec-te';tiemposEstimadosAlDia();
+     __check('TE8: cuando llega el dato real manda el real y la marca sale sola: el tipo con SAM (9), el bordado con puntadas (3.000) y el estampado con técnica',!oB.ruta[0].tEst&&Math.abs(oB.ruta[0].t-9)<1e-9&&!oBo.ruta[0].tEst&&oBo.ruta[0].t===3000&&!oE.ruta[0].tEst&&!pasosEstimadosDe(oB).length,JSON.stringify({b:oB.ruta[0],bo:oBo.ruta[0],e:oE.ruta[0]}))}
+    {const r=armarRuta('propia',15,['modulos'],[{centro:'modulos',t:oC.ruta[0].t,tEst:oC.ruta[0].tEst}],'k-te-y').find(p=>p.centro==='modulos');
+     __check('TE9: al rearmar la ruta en la ficha el estimado sigue marcado (si no, guardar lo volvería «tiempo a mano» y no se actualizaría más)',!!(r&&r.tEst)&&Math.abs(r.t-oC.ruta[0].t)<1e-9,JSON.stringify(r))}
+    {const v0=oC.ruta[0].t;S.params.tiempoEstimado.metodo='promedio';const nc=tiemposEstimadosAlDia();const E2=estimadosTiempo();S.params.tiempoEstimado.metodo='mediana';tiemposEstimadosAlDia();
+     __check('TE10: con «promedio» se usa el promedio y el paso se actualiza; al volver a la mediana vuelve a su valor',nc>0&&Math.abs(E2.paso.modulos.t-(+E2.paso.modulos.t))<1e-9&&Math.abs(oC.ruta[0].t-v0)<1e-9&&oC.ruta[0].tEst.metodo==='mediana',JSON.stringify({nc,v0,t:oC.ruta[0].t}))}
+    {const pend=pendientesHoy().find(i=>i.k==='tiempoEstimado');page='ingops';irIng('ingops','Tiempo estimado cuando falta el dato');const pn=[...document.querySelectorAll('.page.on .panel')].find(x=>/Tiempo estimado cuando falta el dato/.test(x.textContent));
+     __check('TE11: Hoy → Pendientes dice cuántos pasos van con tiempo estimado y lleva a Ingeniería → Tiempos del programa, donde está el panel con su mediana por paso y por tipo',!!pend&&pend.n>0&&/Ingeniería → Tiempos del programa/.test(pend.pagina)&&!!pn&&/Mediana del paso/.test(pn.textContent)&&/TE Tipo Y/.test(pn.textContent),pend?JSON.stringify({n:pend.n,p:pend.pagina}):'sin pendiente')}
+    {const bakQ=PERFIL;PERFIL={id:'u-piso',rol:'tablet',nombre:'Piso'};let r=-1;try{r=tiemposEstimadosAlDia()}catch(e){r='err'}PERFIL=bakQ;
+     __check('TE12: desde un perfil de piso no corre (no guarda órdenes)',r===0,String(r))}
+    {S.params.tiempoEstimado.activo=false;tiemposEstimadosAlDia();__check('TE13: apagado, se quitan los estimados (vuelven a 0) y ninguna orden queda marcada',!nuevas.some(o=>pasosEstimadosDe(o).length)&&oC.ruta[0].t===0,JSON.stringify(oC.ruta[0]))}
+    __check('TE14: en Configuración, el buscador de ajustes conoce «Tiempo estimado cuando falta el dato» y lo guarda también como ajuste de Ingeniería',CONF_CATALOGO.some(x=>x.titulo==='Tiempo estimado cuando falta el dato'&&x.ing==='ingops'&&x.ingTab==='tiempos')&&ING_CFG_CLAVES.includes('tiempoEstimado'));
+    /* TE15–TE28 · revisión del 20-oct (17 hallazgos de la revisión adversarial; decisiones: el estimado sirve para PROGRAMAR, no para MEDIR; la marca no se pierde
+       nunca; un 0 configurado es un 0 confirmado; la marca guarda solo {t,base,metodo}; la siembra solo la hace la sesión que guarda la configuración; «tiempo
+       estimado» se ve donde se usa el tiempo). Cada prueba falló con el código de antes; cada una va en su propio try (con el código de antes las funciones nuevas
+       no existen y una prueba no debe tumbar a las demás). Órdenes y tipos inventados. */
+    {const teT=(nom,fn)=>{let r=null;try{r=fn()}catch(e){__check(nom,false,'EXC '+e.message+' '+String(e.stack||'').slice(0,200));return}if(Array.isArray(r))__check(nom,!!r[0],r[1]||'');else __check(nom,!!r,'')};
+     const cf1=window.confirm,al1=window.alert;const alertas=[];window.confirm=()=>true;window.alert=m=>alertas.push(String(m));
+     const ceMod=CE('modulos');const meMod=ceMod?ceMod.minEstandar:undefined;const bakEst=S.params.tiempoEstimado;
+     const nAdv=(S.params.advertencias||[]).length,nCar=(S.cargas||[]).length;   /* lo que dejan las pruebas de ruta (aviso de fecha, registro de cargas) se devuelve al final */
+     try{
+      S.params.tiempoEstimado={activo:true,metodo:'mediana',base:'tipo'};
+      const padre=(S.categorias.find(k=>!k.padre&&!/^k-te/.test(k.id))||{}).id||null;
+      const kW={id:'k-te-w',n:'TE Tipo W',padre},kZ={id:'k-te-z',n:'TE Tipo Z',padre,samManda:{modulos:{min:0,fuente:'prueba TE'}}};S.categorias.push(kW,kZ);
+      if(!S.tecnicas.some(t=>t.id==='tec-te0'))S.tecnicas.push({id:'tec-te0',n:'TE técnica en 0',t:0});
+      const mk2=(id,cat,ruta,extra)=>mk('te2'+id,cat,ruta,Object.assign({estadoOP:'confirmed'},extra||{}));
+      const oF=mk2('f','k-te-w',[{centro:'modulos',t:0}]),oG=mk2('g','k-te-w',[{centro:'modulos',t:0}]),oBo2=mk2('bo2','k-te-w',[{centro:'bordado',t:0}]),oN=mk2('n',null,[{centro:'modulos',t:0}]);
+      const oZ=mk2('z','k-te-z',[{centro:'modulos',t:0}]),oZ2=mk2('z2','k-te-z',[{centro:'modulos',t:5,tEst:{t:5,base:'paso',metodo:'mediana'}}]);
+      const oT0=mk2('t0','k-te-w',[{centro:'estampado',t:0}],{tecnica:'tec-te0'});
+      const oH=mk2('h','k-te-w',[{centro:'estampado',t:0},{centro:'modulos',t:0}]);
+      const oR=mk2('r','k-te-w',[{centro:'modulos',t:0}]),oX=mk2('x','k-te-w',[{centro:'modulos',t:0}]),oK=mk2('k','k-te-w',[{centro:'modulos',t:0}]),oL=mk2('l','k-te-w',[{centro:'modulos',t:0}]);
+      S.avance[oH.id]={cierres:{estampado:{pz:100,cant:100,faltan:0,u:'prueba TE',ts:'2026-10-01T12:00:00.000Z'}}};   /* Estampado de H ya está cerrado (hecho) */
+      const nuevas2=[oF,oG,oBo2,oN,oZ,oZ2,oT0,oH,oR,oX,oK,oL];S.ordenes=S.ordenes.concat(nuevas2);
+      if(ceMod)ceMod.minEstandar=0;   /* sin minuto del centro: en Z manda solo el 0 de «Tiempos por tipo de producto» */
+      tiemposEstimadosAlDia();const E=estimadosTiempo();
+      teT('TE15: abrir la ficha y guardarla sin tocar nada NO vuelve «real» un tiempo estimado: la marca sigue, sigue a la mediana y no entra en ella como dato',()=>{
+        const n0=E.paso.modulos.n;mOrden(oG.id);guardarOrden(oG.id);const p=(oG.ruta||[]).find(x=>x.centro==='modulos');const E2=estimadosTiempo();
+        return [!!(p&&p.tEst)&&Math.abs(p.t-E.paso.modulos.t)<1e-9&&E2.paso.modulos.n===n0&&!E2.tipo['modulos|k-te-w'],JSON.stringify({p,n0,n1:E2.paso.modulos.n})]});
+      teT('TE16: un número escrito a mano en la ficha sobre un paso estimado se respeta (bordado sin puntadas y una orden sin tipo de producto): queda «a mano», sin la marca, también en la ruta completa, y el dibujo siguiente no lo pisa con la mediana',()=>{
+        const escribe=(o,c,v)=>{mOrden(o.id);const i=ED.ruta.findIndex(x=>x.centro===c);ED.ruta[i].t=v;guardarOrden(o.id)};
+        const tb0=!!(oBo2.ruta.find(x=>x.centro==='bordado')||{}).tEst,tn0=!!(oN.ruta.find(x=>x.centro==='modulos')||{}).tEst;escribe(oBo2,'bordado',5000);escribe(oN,'modulos',7.5);render();tiemposEstimadosAlDia();
+        const b=oBo2.ruta.find(x=>x.centro==='bordado'),bc=oBo2.rutaCompleta.find(x=>x.centro==='bordado'),n=oN.ruta.find(x=>x.centro==='modulos'),nc=oN.rutaCompleta.find(x=>x.centro==='modulos');
+        return [tb0&&tn0&&b.t===5000&&!b.tEst&&!!b.tManual&&bc.t===5000&&!bc.tEst&&n.t===7.5&&!n.tEst&&!!n.tManual&&nc.t===7.5&&!nc.tEst,JSON.stringify({tb0,tn0,b,bc,n,nc})]});
+      teT('TE17: cuando la ruta se rehace sola (cambia su firma: aquí la orden gana una técnica) el paso estimado sigue marcado en la ruta y en la completa; y la ruta nueva de «completar hasta Empaque» y de la «ruta por defecto» (pasosProNuevos) también lleva la marca',()=>{
+        sellarRuta(oR);const t0=!!(oR.ruta[0]||{}).tEst;oR.tecnica='tec-te';const r=recalcularRutas('prueba TE');const m=oR.ruta.find(x=>x.centro==='modulos'),mc=(oR.rutaCompleta||[]).find(x=>x.centro==='modulos');
+        const nv=pasosProNuevos(oF,['modulos','empaque'],{});const nm=nv.find(x=>x.centro==='modulos');
+        return [t0&&r.n>=1&&oR.ruta.some(x=>x.centro==='estampado')&&!!(m&&m.tEst)&&!!(mc&&mc.tEst)&&!!(nm&&nm.tEst)&&Math.abs(nm.t-oF.ruta[0].t)<1e-9,JSON.stringify({t0,n:r.n,ruta:oR.ruta,nm})]});
+      teT('TE18: exportar las rutas escribe 0 en un paso estimado (y lo dice en su columna aparte); cargar un archivo exportado antes, con el estimado escrito, no lo vuelve «real»: sigue estimado',()=>{
+        const f=filasRutasExport().find(x=>x.WH===oX.op);const tx=oX.ruta[0].t;
+        RUTAS_ARCH=planRutasArchivo([['WH','Ruta (códigos)','Tiempos (min/prenda)'],[oX.op,'modulos',String(tx)]],'prueba_te.csv');aplicarRutasArchivo();tiemposEstimadosAlDia();
+        const m=oX.rutaCompleta.find(x=>x.centro==='modulos'),mr=oX.ruta.find(x=>x.centro==='modulos');
+        return [!!f&&f['Tiempos (min/prenda)']==='0'&&/Confección/.test(f['Tiempo estimado (no se vuelve a cargar)']||'')&&!!(m&&m.tEst)&&!!(mr&&mr.tEst)&&pasosEstimadosDe(oX).includes('modulos'),JSON.stringify({f:f&&{t:f['Tiempos (min/prenda)'],e:f['Tiempo estimado (no se vuelve a cargar)']},m,mr})]});
+      teT('TE19: la marca guarda solo {t, base, método} (sin «de cuántas órdenes» ni la hora): un dato nuevo que no cambia la mediana no reescribe nada ni escribe en la bitácora, y dos pasadas sobre lo mismo con relojes distintos dan la misma fila',()=>{
+        const keys=Object.keys((oF.ruta[0]||{}).tEst||{}).sort().join(',');const todas=S.ordenes;const kV={id:'k-te-v',n:'TE Tipo V'};S.categorias.push(kV);
+        const v1=mk2('v1','k-te-v',[{centro:'modulos',t:10}]),v2=mk2('v2','k-te-v',[{centro:'modulos',t:12}]),v3=mk2('v3','k-te-v',[{centro:'modulos',t:0}]);let ok=false,det='';
+        try{S.ordenes=[v1,v2,v3];const snap=JSON.stringify(v3);tiemposEstimadosAlDia();const j1=JSON.stringify(v3);Object.keys(v3).forEach(k=>delete v3[k]);Object.assign(v3,JSON.parse(snap));
+          const t0=Date.now();while(Date.now()-t0<4){}tiemposEstimadosAlDia();const j2=JSON.stringify(v3);
+          const b0=S.bitacora.length;S.ordenes.push(mk2('v4','k-te-v',[{centro:'modulos',t:11}]));const n=tiemposEstimadosAlDia();
+          ok=keys==='base,metodo,t'&&j1===j2&&n===0&&S.bitacora.length===b0&&Math.abs(v3.ruta[0].t-11)<1e-9&&!!v3.ruta[0].tEst;det=JSON.stringify({keys,igual:j1===j2,n,bit:S.bitacora.length-b0,p:v3.ruta[0]})}
+        finally{S.ordenes=todas;S.categorias=S.categorias.filter(k=>k.id!=='k-te-v')}
+        return [ok,det]});
+      teT('TE20: un 0 escrito en «Tiempos por tipo de producto» es un 0 confirmado: el paso queda en 0 sin estimar y un estimado que ya tenía se quita; una técnica en 0 sí es un dato que falta (se estima)',()=>{
+        const z=oZ.ruta[0],z2=oZ2.ruta[0],t=oT0.ruta[0];return [z.t===0&&!z.tEst&&z2.t===0&&!z2.tEst&&!!t.tEst&&t.t>0,JSON.stringify({z,z2,t})]});
+      teT('TE21: el estimado es para programar, no para medir al piso: un tramo sobre un paso estimado no tiene SAM estándar ni semáforo, cerrarlo no marca «tiempo bajo» (sin estándar) y la eficiencia de Planta en vivo lo cuenta «sin SAM»',()=>{
+        const d=hoy();const tr={id:'te-tr1',centro:'modulos',rec:null,ini:tsDeLocal(d,'08:00'),fin:tsDeLocal(d,'08:40'),tallas:{'(total)':50},paros:[]};
+        const ef0=eficienciaHoy(['modulos'],d);S.avance[oF.id]={tramos:[tr],centros:{modulos:50}};let c,pc,ef1,sr,me;
+        try{c=calcTramo(tr,oF);pc=puedeCerrarPaso(oF.id,'modulos');ef1=eficienciaHoy(['modulos'],d);sr=samRutaCompleta(oF,'modulos');me=minEstandarOrden(oF,'modulos')}finally{delete S.avance[oF.id]}
+        return [!!oF.ruta[0].tEst&&c.estandar===0&&c.sem===''&&!!pc.ok&&!pc.tiempoBajo&&!!pc.sinEstandar&&ef1.sinSAM===ef0.sinSAM+1&&ef1.gan===ef0.gan&&sr===0&&me===0,JSON.stringify({c:{e:c.estandar,s:c.sem,u:c.u,m:c.minPersona},pc,ef0,ef1,sr,me})]});
+      teT('TE22: la siembra solo la hace la sesión que guarda la configuración (Administración): planificación no siembra ni escribe en la bitácora en cada entrada; el panel dice «lo activa Administración al entrar»; y marcar la casilla con la configuración sin sembrar la deja guardada',()=>{
+        const bakC=S.params.tiempoEstimado,bak20=S.params.tiempoEst20,bakQ=PERFIL;let r1,r2,r3,html,act,b0,b1;
+        try{delete S.params.tiempoEstimado;delete S.params.tiempoEst20;b0=S.bitacora.length;PERFIL={id:'u-te-pl',rol:'planificacion',nombre:'Plan TE',modo:'editar'};r1=sembrarTiempoEst20();r2=sembrarTiempoEst20();b1=S.bitacora.length;
+          PERFIL=bakQ;html=tiempoEstimadoHTML();setTiempoEst('activo',true);act=!!(S.params.tiempoEstimado&&S.params.tiempoEstimado.activo===true);
+          delete S.params.tiempoEstimado;delete S.params.tiempoEst20;r3=sembrarTiempoEst20()}
+        finally{PERFIL=bakQ;S.params.tiempoEstimado=bakC;if(bak20===undefined)delete S.params.tiempoEst20;else S.params.tiempoEst20=bak20}
+        return [r1===false&&r2===false&&b1===b0&&/lo activa Administración al entrar/.test(html)&&act&&r3===true,JSON.stringify({r1,r2,bit:b1-b0,act,r3,panel:/lo activa Administración/.test(html)})]});
+      teT('TE23: al agregar un paso sin tiempo desde «Ruta» con el estimado encendido, el paso lo toma al momento y el aviso lo separa («con tiempo estimado… cargan», no «no cargan»), también en la bitácora; el editor de la ruta marca el estimado en la columna SAM',()=>{
+        alertas.length=0;mRutaCentro(oK.id);const md=(document.getElementById('modal')||{}).innerHTML||'';const cb=document.getElementById('rc-empaque'),mo=document.getElementById('rc-motivo');
+        if(!cb||!mo)return [false,'sin el editor de ruta'];cb.checked=true;mo.value='prueba TE';const b0=S.bitacora.length;guardarRutaCentro(oK.id);
+        const e=oK.ruta.find(x=>x.centro==='empaque');const al=alertas.join(' | ');const bit=S.bitacora.slice(b0).map(b=>b.t).join(' | ');
+        return [/tiempo estimado/.test(md)&&!!(e&&e.tEst)&&/con tiempo estimado/.test(al)&&/Empaque/.test(al)&&!/no cargan hasta/.test(al)&&/CON TIEMPO ESTIMADO: [^|]*Empaque/.test(bit)&&!/SIN TIEMPO/.test(bit),JSON.stringify({md:/tiempo estimado/.test(md),e,al,bit:bit.slice(0,300)})]});
+      teT('TE24: la ruta en lote separa igual los pasos que quedan con el tiempo estimado (cargan) de los que siguen en 0, en el aviso y en la bitácora',()=>{
+        alertas.length=0;RLOTE=RLOTE0();RLOTE.ids=[oL.id];RLOTE.cens=['modulos','empaque'];RLOTE.motivo='prueba TE';RLOTE.palabra='APLICAR';const b0=S.bitacora.length;
+        const n=aplicarRutaLote(true);const e=oL.ruta.find(x=>x.centro==='empaque');const al=alertas.join(' | ');const bit=S.bitacora.slice(b0).map(b=>b.t).join(' | ');
+        return [n===1&&!!(e&&e.tEst)&&/con tiempo estimado/.test(al)&&/Empaque \(1 orden\)/.test(al)&&!/no cargan hasta/.test(al)&&/CON TIEMPO ESTIMADO: Empaque \(1\)/.test(bit),JSON.stringify({n,e,al,bit:bit.slice(0,400)})]});
+      teT('TE25: «tiempo estimado» se ve donde se usa el tiempo (cola del centro, tablet, ficha, ficha de solo lectura, la línea de la cola) con su porqué (de qué salió y de cuántas órdenes); la ruta de la lista dice el método elegido',()=>{
+        const tg=mandaColaTags(oF,'modulos',false).find(x=>x.k==='est');const tab=filaColaTabletHTML({o:oF,hechas:0},'modulos',null,'disponible');
+        const bakED=typeof ED!=='undefined'?ED:null;ED={cat:oF.cat,ruta:JSON.parse(JSON.stringify(oF.ruta)),tecnica:null,puntadas:0};let ed='';try{ed=edTiemposHTML()}finally{ED=bakED}
+        abrirFichaOrden(oF.id);const fi=(document.getElementById('modal')||{}).innerHTML||'';cerrar();
+        const rc=rutaCeldaHTML(oF);S.params.tiempoEstimado.metodo='promedio';tiemposEstimadosAlDia();const rcP=rutaCeldaHTML(oF);S.params.tiempoEstimado.metodo='mediana';tiemposEstimadosAlDia();
+        const st=sinTiempoListaHTML([{o:oF,c:'modulos'}],{ordenes:{}});
+        return [!!tg&&tg.cls==='t-falta'&&/mediana de [0-9.]+ órdenes de todo el paso/.test(tg.title)&&/tiempo estimado/.test(tab)&&/tiempo estimado/.test(ed)&&/tag t-falta[^>]*>tiempo estimado</.test(fi)&&/mediana de [0-9.]+ órdenes de todo el paso/.test(rc)&&/promedio de [0-9.]+ órdenes/.test(rcP)&&/con tiempo estimado/.test(st),
+          JSON.stringify({tg,tab:/tiempo estimado/.test(tab),ed:/tiempo estimado/.test(ed),fi:/tag t-falta[^>]*>tiempo estimado</.test(fi),rc:rc.slice(-260),rcP:/promedio de/.test(rcP),st})]});
+      teT('TE26: los textos dicen lo que pasa con el estimado encendido: «Categorías sin hoja» dice «usa el tiempo estimado» (no «carga 0»), «Tiempos por tipo» y el orden de mando lo nombran, el buscador de ajustes no fija «(mediana)», y apagado el panel dice que los pasos quedan sin tiempo; en bordado lo que falta son las puntadas de la orden',()=>{
+        const h=categoriasSinHojaHTML();const fila=(h.split('<tr>').find(r=>r.includes('TE Tipo W'))||'');const sm=samMandaHTML(),hub=tiemposHubHTML();const cat=CONF_CATALOGO.find(x=>x.titulo==='Tiempo estimado cuando falta el dato')||{};
+        S.params.tiempoEstimado.activo=false;let off='';try{off=tiempoEstimadoHTML()}finally{S.params.tiempoEstimado.activo=true}
+        return [/usa el tiempo estimado/.test(fila)&&!/carga 0/.test(fila)&&/el paso usa el tiempo estimado/.test(sm)&&!/el paso va en 0/.test(sm)&&/tiempo estimado/.test(hub)&&cat.nombre==='Tiempo estimado cuando falta el dato'&&/Apagado:<\/b> los pasos sin dato quedan sin tiempo/.test(off)&&/Tomado de/.test(off)&&faltaRealTxt('bordado')==='las puntadas de la orden',
+          JSON.stringify({fila:fila.slice(0,240),sm:/el paso usa/.test(sm),hub:/tiempo estimado/.test(hub),cat:cat.nombre,off:/Apagado/.test(off)})]});
+      teT('TE27: la Nivelación dice cuánto de su saldo va con tiempo estimado («de esto, N con tiempo estimado en el programa»), con el enlace al panel',()=>{
+        const s=saldoProceso('confeccion',[mesEntregaNiv(oF)]);const t=nivEstTxtHTML(s);
+        return [!!s&&s.est.includes(oF)&&s.minEst>0&&/de esto, [0-9.]+ órdenes? con tiempo estimado en el programa/.test(t)&&/Tiempo estimado cuando falta el dato/.test(t),JSON.stringify({n:s&&s.est.length,min:s&&s.minEst,t})]});
+      teT('TE28: un paso ya hecho no se estima; Hoy, el panel y la etiqueta cuentan los mismos pasos (los que no están hechos); la bitácora no dice más órdenes que pasos (un paso ya hecho que pierde su marca se dice aparte, en singular)',()=>{
+        const e0=oH.ruta.find(x=>x.centro==='estampado'),m0=oH.ruta.find(x=>x.centro==='modulos');const pend=pendientesHoy().find(i=>i.k==='tiempoEstimado');
+        const suma=S.ordenes.filter(abierta).reduce((a,o)=>a+pasosEstimadosDe(o).length,0);
+        const todas=S.ordenes;const oD=mk2('d','k-te-w',[{centro:'modulos',t:5,tEst:{t:5,base:'paso',metodo:'mediana'}}]);S.avance[oD.id]={cierres:{modulos:{pz:100,cant:100,faltan:0,u:'prueba TE',ts:'2026-10-01T12:00:00.000Z'}}};
+        let lin='';try{S.ordenes=[oD];S.params.tiempoEstimado.activo=false;const b0=S.bitacora.length;tiemposEstimadosAlDia();lin=(S.bitacora[b0]||{}).t||''}finally{S.ordenes=todas;S.params.tiempoEstimado.activo=true;delete S.avance[oD.id]}
+        return [e0.t===0&&!e0.tEst&&!!m0.tEst&&pasosEstimadosDe(oH).join()==='modulos'&&!!pend&&pend.n===suma&&/quitado en 1 paso ya hecho/.test(lin)&&!/· [0-9]+ (orden|órdenes) \(/.test(lin),JSON.stringify({e0,m0,pend:pend&&pend.n,suma,lin})]});
+      /* TE30–TE39 · segunda revisión del 20-oct (10 hallazgos): cada prueba falló con el código de antes. Órdenes inventadas (se quitan al final de cada una) */
+      teT('TE30: los minutos estándar del turno (los que mide el Andon de Confección) salen de la misma regla que la eficiencia: un registro «Hecho» o un tramo sobre un paso con tiempo estimado no suman minutos estándar, el Andon dice «—», y deshacer resta lo que se sumó (no queda corrido ni negativo aunque el paso tenga después otro tiempo)',()=>{
+        const rec=(modulosPlanta().find(r=>r.activa!==false)||{}).id;if(!rec)return [false,'sin módulos de planta'];
+        const h=hoy();const bakT=JSON.stringify(S.turnos||[]);const oA=__libProdPrueba(mk2('an','k-te-w',[{centro:'modulos',t:0}]));S.ordenes.push(oA);estimarAhora([oA]);
+        oA.progCentro={modulos:{rec}};PLAN=null;PLAN_ALL=null;let ok=false,det='';const bakPr=window.prompt;window.prompt=()=>'prueba TE';
+        try{S.turnos=(S.turnos||[]).filter(t=>!(t.rec===rec&&t.d===h));const tu=()=>(S.turnos||[]).find(t=>t.id===rec+'|'+h)||{};
+          const est0=!!(oA.ruta[0]||{}).tEst;registrarPrendasCentro(oA.id,'modulos',20,'prueba TE');const s1=+(tu().std||0);
+          const tr={id:'te-tr-an',centro:'modulos',rec,ini:tsDeLocal(h,'08:00'),fin:tsDeLocal(h,'09:00'),tallas:{'(total)':30},paros:[],u:'prueba TE'};tramosDe(oA.id).push(tr);TRAMO={paso:'tallas',id:tr.id,oid:oA.id};{const t0=Date.now();while(Date.now()-t0<3){}}guardarTramo(tr.id,oA.id);   /* otra hora que la del registro: deshacer busca la línea por su hora */
+          const s2=+(tu().std||0),pz2=+(tu().pz||0);
+          const el=document.createElement('div');COS.tab='andon';vCostura(el,true);const card=[...el.querySelectorAll('.panel')].find(p=>{const b=p.querySelector('b');return b&&b.textContent.trim()===nRec(rec)&&/Eficiencia hoy/.test(p.textContent)});
+          const txt=card?card.textContent.replace(/\s+/g,' '):'';const efTxt=(txt.match(/Eficiencia hoy\s*([^\s/]+)/)||[])[1];
+          /* después llega el dato real (9 min) y otras órdenes suman 100 min estándar a ese turno: deshacer resta lo que sumó cada registro, no lo del tiempo nuevo */
+          [oA.ruta,oA.rutaCompleta].forEach(l=>(l||[]).forEach(p=>{if(p.centro==='modulos'){p.t=9;delete p.tEst}}));tu().std=100;
+          const lnT=((S.avance[oA.id]||{}).tallasLog||[]).find(x=>x.tramo===tr.id&&!x.deshecho);const mot=(motivosDe('correccion')[0]||{}).motivo||'prueba TE';
+          const d1=lnT?deshacerLineaCentro(oA.id,'modulos',lnT.ts,lnT.talla,mot):null;const s3=+(tu().std||0);
+          deshacerHechoCentro(oA.id,'modulos');const s4=+(tu().std||0),pz4=+(tu().pz||0);
+          ok=est0&&s1===0&&s2===0&&pz2===50&&efTxt==='—'&&!!lnT&&lnT.stdSum===0&&d1===true&&s3===100&&s4===100&&pz4===0;det=JSON.stringify({est0,s1,s2,pz2,efTxt,stdSum:lnT&&lnT.stdSum,d1,s3,s4,pz4,card:txt.slice(0,160)})}
+        finally{window.prompt=bakPr;S.turnos=JSON.parse(bakT);delete S.avance[oA.id];S.ordenes=S.ordenes.filter(o=>o!==oA);TRAMO={paso:null,id:null,oid:null};PLAN=null;PLAN_ALL=null}
+        return [ok,det]});
+      teT('TE31: elegir en la ficha una técnica que vale 0 sobre un estampado con tiempo estimado no lo deja «a mano» en 0: sigue estimado y, cuando la técnica tiene tiempo, manda el real',()=>{
+        const oT=mk2('t1','k-te-w',[{centro:'estampado',t:0}]);S.ordenes.push(oT);estimarAhora([oT]);const e0=Object.assign({},oT.ruta[0]);const tec=S.tecnicas.find(t=>t.id==='tec-te0');let ok=false,det='';
+        try{mOrden(oT.id);const sel=[...document.querySelectorAll('select')].find(s=>[...s.options].some(op=>op.value==='tec-te0')&&/ED\.ruta\[/.test(s.getAttribute('onchange')||''));
+          if(!sel)return [false,'sin el selector de técnica del paso'];sel.value='tec-te0';sel.dispatchEvent(new Event('change',{bubbles:true}));guardarOrden(oT.id);
+          const pe=()=>Object.assign({},oT.ruta.find(x=>x.centro==='estampado'));const p1=pe();TE_TRAS_CARGA=false;render();const p2=pe();
+          tec.t=0.9;tiemposEstimadosAlDia({soloReal:true});const p3=pe();
+          ok=!!e0.tEst&&oT.tecnica==='tec-te0'&&!!p1.tEst&&!p1.tManual&&Math.abs(p1.t-e0.t)<1e-9&&!!p2.tEst&&!p2.tManual&&!p3.tEst&&!p3.tManual&&Math.abs(p3.t-0.9)<1e-9;det=JSON.stringify({e0,p1,p2,p3})}
+        finally{if(tec)tec.t=0;S.ordenes=S.ordenes.filter(o=>o!==oT);try{cerrar()}catch(e){}}
+        return [ok,det]});
+      teT('TE32: si un centro pasa a «por días», sus pasos pierden la marca y el valor estimado (quedan con el dato real o en 0) y la ruta deja de decir «tiempo estimado»; cuando vuelve a llevar tiempo por prenda, se vuelve a estimar',()=>{
+        const oP=mk2('pd','k-te-w',[{centro:'modulos',t:0}]);S.ordenes.push(oP);estimarAhora([oP]);const e0=Object.assign({},oP.ruta[0]);const orig=centroPorDias;let ok=false,det='';
+        try{centroPorDias=c=>c==='modulos'||orig(c);tiemposEstimadosAlDia();const p1=Object.assign({},oP.ruta[0]),pc1=Object.assign({},oP.rutaCompleta[0]);const cel=rutaCeldaHTML(oP);const pe=pasosEstimadosDe(oP,true);
+          centroPorDias=orig;tiemposEstimadosAlDia();const p2=Object.assign({},oP.ruta[0]);
+          ok=!!e0.tEst&&!p1.tEst&&p1.t===0&&!pc1.tEst&&pc1.t===0&&!/tiempo estimado/.test(cel)&&!pe.length&&!!p2.tEst&&Math.abs(p2.t-e0.t)<1e-9;det=JSON.stringify({e0,p1,pc1,p2,pe,cel:cel.slice(-160)})}
+        finally{centroPorDias=orig;S.ordenes=S.ordenes.filter(o=>o!==oP)}
+        return [ok,det]});
+      teT('TE33: una orden que se cierra (Odoo la da por terminada, o no vino en el archivo) pierde la marca y el valor estimado en el dibujo siguiente, también con el estimado encendido; su ruta y su ficha ya no dicen «tiempo estimado»',()=>{
+        const oC2=mk2('cl','k-te-w',[{centro:'modulos',t:0}]);S.ordenes.push(oC2);estimarAhora([oC2]);const e0=Object.assign({},oC2.ruta[0]);let ok=false,det='';
+        try{oC2.estadoOP='done';const ab=abiertaDe(oC2);const tag0=tagEstPasoHTML(oC2,'modulos');TE_TRAS_CARGA=false;render();const p1=Object.assign({},oC2.ruta[0]),pc1=Object.assign({},oC2.rutaCompleta[0]);const cel=rutaCeldaHTML(oC2);
+          abrirFichaOrden(oC2.id);const fi=(document.getElementById('modal')||{}).innerHTML||'';try{cerrar()}catch(e){}
+          ok=!!e0.tEst&&!ab&&!tag0&&!p1.tEst&&p1.t===0&&!pc1.tEst&&pc1.t===0&&!/tiempo estimado/.test(cel)&&!/>tiempo estimado</.test(fi);det=JSON.stringify({e0,ab,p1,pc1,cel:cel.slice(-120),fi:/tiempo estimado/.test(fi)})}
+        finally{S.ordenes=S.ordenes.filter(o=>o!==oC2)}
+        return [ok,det]});
+      teT('TE34: la hoja impresa marca el tiempo estimado («≈» y «estimado» en el minuto por prenda, «≈» en los minutos del día y una nota al pie) y la ventana de «Imprimir el día» dice cuántas órdenes salen así',()=>{
+        const oI=__libProdPrueba(mk2('imp','k-te-w',[{centro:'modulos',t:0}]));oI.lib.tela={ok:true,u:'prueba TE',ts:'2026-09-01T12:00:00.000Z'};S.avance[oI.id]={lista:true};   /* liberada y con la tela lista: el programa le pone carga */
+        S.ordenes.push(oI);estimarAhora([oI]);PLAN=null;PLAN_ALL=null;let ok=false,det='';
+        try{const P=programar();const byOp=new Map(S.ordenes.map(o=>[o.op,o]));const pr=(P.pro||[]).filter(x=>{const o=byOp.get(x.op);return o&&estVisible(o,x.centro)});
+          const x=pr.find(z=>z.op===oI.op)||pr[0];if(!x)return [false,'ninguna orden con tiempo estimado tiene carga en el programa'];
+          const g=itemsPlanProd().map(i=>i.g).find(gg=>censDeGrupo(gg).includes(x.centro));const r=imprimirProgramaCentro(g,x.dia,null,true);const d=document.createElement('div');d.innerHTML=r.html;
+          const tr=[...d.querySelectorAll('tbody tr')].find(t=>t.textContent.includes(x.op));const celdas=tr?[...tr.children].map(td=>td.textContent):[];
+          IMPD={area:g,dia:x.dia,rec:'',fija:false};pintarImprimirDia();const md=(document.getElementById('modal')||{}).innerHTML||'';try{cerrar()}catch(e){}
+          ok=!!tr&&/≈/.test(celdas[7]||'')&&/estimado/.test(celdas[7]||'')&&/≈/.test(celdas[9]||'')&&/≈ = tiempo estimado/.test(r.html)&&r.nEst>=1&&/(sale|salen) en la hoja con tiempo estimado/.test(md);
+          det=JSON.stringify({op:x.op,laDePrueba:x.op===oI.op,c:x.centro,dia:x.dia,g,celdas,nEst:r.nEst,modal:/con tiempo estimado/.test(md)})}
+        finally{S.ordenes=S.ordenes.filter(o=>o!==oI);delete S.avance[oI.id];PLAN=null;PLAN_ALL=null}
+        return [ok,det]});
+      teT('TE35: «¿Se puede confiar en estas cifras?» del Resumen gerencial dice cuántos pasos van con tiempo estimado (la misma cuenta de Hoy → Pendientes), con su enlace al panel',()=>{
+        const P=programar();const h=confianzaGERHTML(P);const n=contarPasosEstimados().n;const pend=pendientesHoy().find(i=>i.k==='tiempoEstimado');const m=h.match(/data-c="estimado">([0-9.]+) pasos? con tiempo estimado/);
+        return [n>0&&!!m&&+m[1].replace(/\./g,'')===n&&!!pend&&pend.n===n&&/Tiempo estimado cuando falta el dato/.test(h),JSON.stringify({n,m:m&&m[1],pend:pend&&pend.n})]});
+      teT('TE36: Ingeniería dice que el minuto de confección de la orden es un tiempo estimado (de qué sale y qué falta), no «el paso de confección de la orden»; Módulos en vivo dice que el programa usa un estimado',()=>{
+        const pr=ingSamProgOrden(oF);const h=ingSamCompararOrdenHTML(oF,10.5);const rec=modulosPlanta()[0];let al=null;
+        if(rec){const a=S.avance[oF.id]=S.avance[oF.id]||{};a.tramos=a.tramos||[];const tr={id:'te-mv',centro:'modulos',rec:rec.id,ini:new Date(Date.now()-60*6e4).toISOString(),u:'prueba TE',paros:[],tallas:{}};a.tramos.push(tr);
+          try{TT_FIJO=null;const dm=datosModuloVivo(rec,'modulos');al=(dm.alertas.find(x=>x.k==='sam'&&x.t.includes(oF.op))||{}).t||null}finally{a.tramos=a.tramos.filter(t=>t!==tr);TT_FIJO=null}}
+        return [!!pr&&pr.est===true&&/tiempo estimado: mediana/.test(pr.de)&&/tiempo estimado: mediana/.test(h)&&!/el paso de confección de la orden/.test(h)&&!!al&&/usa un tiempo estimado/.test(al),JSON.stringify({pr,h:h.replace(/<[^>]+>/g,'').slice(0,240),al})]});
+      teT('TE37: una pestaña abierta desde antes no vuelve a poner, en cada dibujo, el estimado que otra sesión quitó: la pasada completa corre solo justo después de leer del servidor (o por un cambio de esta sesión)',()=>{
+        const oS=mk2('st','k-te-w',[{centro:'modulos',t:0}]);S.ordenes.push(oS);estimarAhora([oS]);const e0=!!oS.ruta[0].tEst;let ok=false,det='';
+        try{/* otra sesión apagó el estimado y quitó la marca; al guardar, la fusión le trajo a esta pestaña la ruta del servidor (sin marca) */
+          [oS.ruta[0],oS.rutaCompleta[0]].forEach(p=>{p.t=0;delete p.tEst});TE_TRAS_CARGA=false;render();render();const sigue=!oS.ruta[0].tEst&&oS.ruta[0].t===0&&!oS.rutaCompleta[0].tEst;
+          TE_TRAS_CARGA=true;render();const vuelve=!!oS.ruta[0].tEst&&TE_TRAS_CARGA===false;   /* justo después de leer del servidor, la pasada completa sí corre */
+          ok=e0&&sigue&&vuelve;det=JSON.stringify({e0,sigue,vuelve,p:oS.ruta[0]})}
+        finally{TE_TRAS_CARGA=false;S.ordenes=S.ordenes.filter(o=>o!==oS)}
+        return [ok,det]});
+      {let m=null,ok=false;const db=sb.__DB||{};const arr=db.ing_subprocesos=db.ing_subprocesos||[];const row={id:'icfg|zzPruebaTE',data:{clave:'zzPruebaTE',v:1},actualizado:'2999-01-01T00:00:00.000Z'};
+       try{arr.push(row);m=await maxActualizado();ok=m==='2999-01-01T00:00:00.000Z'}catch(e){m='EXC '+e.message}finally{const i=arr.indexOf(row);if(i>=0)arr.splice(i,1)}
+       __check('TE38: el aviso «datos nuevos» también mira lo de Ingeniería que vive en la configuración (filas icfg|, como el tiempo estimado): lo que cambia el perfil Ingeniería en otra sesión se avisa',ok,String(m))}
+      teT('TE39: cuando una ruta se rehace sola en un dibujo, el paso que entra sin tiempo sale con el tiempo estimado en ese MISMO dibujo (y lo dice la bitácora del rehecho)',()=>{
+        const oR2=mk2('r2','k-te-w',[{centro:'modulos',t:0}]);S.ordenes.push(oR2);estimarAhora([oR2]);sellarRuta(oR2);const e0=!!oR2.ruta[0].tEst;let ok=false,det='';
+        try{/* la orden gana una técnica que todavía vale 0: la regla le agrega Estampado y la ruta se rehace sola en el dibujo; el paso nuevo no tiene tiempo */
+          oR2.tecnica='tec-te0';TE_TRAS_CARGA=false;const b0=S.bitacora.length;render();
+          const m=(oR2.ruta||[]).find(x=>x.centro==='estampado'),mc=(oR2.rutaCompleta||[]).find(x=>x.centro==='estampado');const bit=S.bitacora.slice(b0).map(b=>b.t).join(' | ');
+          ok=e0&&!!(m&&m.tEst)&&m.t>0&&!!(mc&&mc.tEst)&&/Rutas rehechas: [0-9]+ actualizadas \([0-9]+ con tiempo estimado/.test(bit);det=JSON.stringify({e0,m,mc,ruta:(oR2.ruta||[]).map(p=>p.centro),bit:bit.slice(0,300)})}
+        finally{S.ordenes=S.ordenes.filter(o=>o!==oR2)}
+        return [ok,det]});
+     }catch(e){__R.errors.push({page:'driver TE15+',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+     finally{window.confirm=cf1;window.alert=al1;if(ceMod){if(meMod===undefined)delete ceMod.minEstandar;else ceMod.minEstandar=meMod}
+       /* como TE13: se apaga y se quitan los estimados de TODAS las órdenes (también las del volcado), así el resto del simulador sigue sin estimados */
+       S.params.tiempoEstimado={activo:false,metodo:'mediana',base:'tipo'};try{tiemposEstimadosAlDia()}catch(e){}S.params.tiempoEstimado=bakEst;
+       if(S.params.advertencias&&S.params.advertencias.length>nAdv)S.params.advertencias.length=nAdv;if(S.cargas&&S.cargas.length>nCar)S.cargas.length=nCar;
+       ['h','d','f'].forEach(x=>{delete S.avance['te2'+x]});S.categorias=S.categorias.filter(k=>!['k-te-w','k-te-z'].includes(k.id));S.tecnicas=S.tecnicas.filter(t=>t.id!=='tec-te0');try{cerrar()}catch(e){}}
+     __check('TE29: al terminar las pruebas del tiempo estimado ninguna orden queda con la marca (las demás pruebas del simulador corren sin estimados)',!S.ordenes.some(o=>((o.ruta||[]).concat(o.rutaCompleta||[])).some(p=>p&&p.tEst)),S.ordenes.filter(o=>((o.ruta||[]).concat(o.rutaCompleta||[])).some(p=>p&&p.tEst)).slice(0,5).map(o=>o.op).join(', '))}
+   }catch(e){__R.errors.push({page:'driver TE',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.save=sv;S.ordenes=bakOrd;S.categorias=bakCat;
+    bakRutasTE.forEach((j,o)=>{const x=JSON.parse(j);['r','c','ta'].forEach((k,i)=>{const p=['ruta','rutaCompleta','tiemposAplicados'][i];if(k in x)o[p]=x[k];else delete o[p]})});{const ta=JSON.parse(bakTA);if(ta===null)delete S.params.tiemposAplicados;else S.params.tiemposAplicados=ta}S.tecnicas=S.tecnicas.filter(t=>t.id!=='tec-te');S.params.tiempoEstimado=JSON.parse(bakCfg)||{activo:false,metodo:'mediana',base:'tipo'};PERFIL=bakP;page=bakPg;PLAN=null;PLAN_ALL=null;render()}
+   __check('TE sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* MAR2 · Tema Marino · etapa 2 (20-oct-2026): en Órdenes, la línea «Hoy dd/mm/aaaa · …», seis indicadores con las MISMAS cifras de la pantalla (chips, contador
      del menú, aviso «sin número de WH», cabecera de los avisos) y la leyenda de colores; solo con Marino (Tablero, Como Odoo y Clásico no cambian). */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema;const bakM=modoVisual();const bakPg=page,bakTab=ORDF.tab,bakE=ORDF.estado,bakEd=ORDF.edicion;
