@@ -1974,6 +1974,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
   try{localStorage.__fase="fuzz"}catch(e){}
   delete S.params.tema;   /* 19-oct: la fase de botones va en Marino (el aspecto por defecto) */
   /* 6) pulsar todos los botones y enlaces con onclick de cada página (confirm→false para no borrar nada) */
+  const __bakFuzz=JSON.stringify({e:S.params.esperasPaso,f:S.params.fasesCentro,m:S.params.faseMapeo});   /* 20-oct: los clics de la fase de botones (agregar fila de espera, mover fases de la cola) no deben dejar la configuración cambiada para las pruebas que siguen; qué se pulsa depende de cuántos botones tiene cada página */
   window.confirm=()=>false;const omit=/logout|exportJSON|importJSON|restaurarDesde|descargarJSON|demo\(|print\(|location\.|window\.open|borrarTodo|resetear|delOrden\(/; // delOrden borra sin confirmar: fuera del fuzz
   for(const p of paginas){page=p;try{render()}catch(e){}
     const ctrls=[...document.querySelectorAll('#p-'+page+' [onclick], #p-'+page+' button')].filter(el=>!omit.test(el.getAttribute('onclick')||'')).slice(0,120);
@@ -1984,6 +1985,7 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
       await __p(0);if(__R.errors.length>antes){__R.errors.slice(antes).forEach(x=>x.src=(x.src||'')+' ← '+oc)}
       try{cerrar()}catch(e){}n++}
     __check('botones de '+p+' ('+n+') sin errores',true)}
+  {const k=JSON.parse(__bakFuzz);[['esperasPaso',k.e],['fasesCentro',k.f],['faseMapeo',k.m]].forEach(([n,v])=>{if(v===undefined)delete S.params[n];else S.params[n]=v});PLAN=null;PLAN_ALL=null}
   __check('fase de botones terminada sin errores nuevos',__R.errors.filter(e=>String(e.msg).startsWith('click:')||e.src&&e.src.includes('←')).length===0,__R.errors.filter(e=>e.src&&e.src.includes('←')).map(e=>e.page+': '+e.msg+' ← '+e.src.split('←')[1]).join(' || '));
   S.params.tema='tablero';
   window.confirm=()=>true;
@@ -14092,6 +14094,263 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
    {const A=alcanzaMesGER(hoy().slice(0,7));const malE=A.areas.filter(x=>!x.vacia&&typeof x.est!=='string').map(x=>x.a.id+':'+JSON.stringify(x.est));
     __check('TE40: «¿alcanza el mes?» conserva el estado de cada área (est = ok/riesgo/déficit/falta un dato) aunque haya tiempo estimado; lo estimado va en su propio campo (tEstim)',!malE.length&&A.areas.every(x=>x.tEstim===null||x.tEstim===undefined||(x.tEstim.n>0&&x.tEstim.min>=0)),malE.slice(0,4).join(' | '))}
    __check('TE sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
+  /* CMP · Paquetes por orden desde Corte (control de módulos · etapa 2, 20-oct-2026; usuaria: un paquete por talla, sin partir, por defecto, y el QR en la hoja
+     de Corte). Órdenes inventadas que se quitan al final: los paquetes salen al cerrar Corte (cerrarCentro), con curva de corte, con pedido, sin curva, con
+     tamaño general y por tipo de producto; el re-cierre conserva lo ya marcado y guarda la historia; «Hacer paquetes» para un Corte que cerró Odoo; la hoja
+     con QR (con y sin la librería, que se carga solo en la ventana de impresión); el perfil de piso solo escribe avance; HUELLA del programa. */
+  {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const sv=window.save,rd0=window.render;window.save=()=>{};const cf=window.confirm,al=window.alert;window.confirm=()=>true;const avisos=[];window.alert=m=>{avisos.push(String(m))};
+   const bakH=S.params.horarios,bakPz=S.params.pzPaquete,bakPzC=S.params.pzPaqueteCat,bakPg=page,bakConf=CONF.tab;const nAud=(S.params.auditoriaCambios||[]).length;
+   S.params.horarios={};delete S.params.pzPaquete;delete S.params.pzPaqueteCat;
+   const huella=()=>{PLAN=null;PLAN_ALL=null;CAPM=null;const P=programar();const f3=v=>(+v||0).toFixed(3);
+     return Object.keys(P.ordenes).sort().map(id=>{const r=P.ordenes[id];return id+'|'+[r.finPro,r.telaLista,r.atraso].join('|')+'|'+(r.pasos||[]).map(p=>[p.centro,p.ini,p.fin,p.rec,f3(p.min)].join(':')).join(',')}).join('\n')+'\n#\n'+(P.pro||[]).map(x=>[x.op,x.centro,x.rec,x.dia,f3(x.min),f3(x.pz)].join(':')).sort().join('\n')};
+   const h0=huella();
+   const kP={id:'k-cmp',n:'CMP Tipo',padre:(S.categorias.find(k=>!k.padre)||{}).id};S.categorias.push(kP);
+   const recC=(S.recursos.find(r=>r.activa&&r.centro==='corte')||{}).id||null;const d=hoy();const ids=[];
+   const mk=(k,extra)=>{const o=Object.assign({id:'cmp_'+k,op:'WH/MO/CMP'+k,cant:100,cat:'k-cmp',estado:'abierta',fase:'3Corte',fecha:dsum(d,20),color:(S.colores[0]||{}).id,telas:[],
+       ruta:[{centro:'corte',t:0.5},{centro:'modulos',t:5},{centro:'empaque',t:0.5}],rutaCompleta:[{centro:'corte',t:0.5},{centro:'modulos',t:5},{centro:'empaque',t:0.5}]},extra||{});S.ordenes.push(o);ids.push(o.id);return o};
+   const tramo=k=>({id:'cmpt'+k,centro:'corte',rec:recC,ini:new Date(Date.now()-90*6e4).toISOString(),fin:new Date(Date.now()-10*6e4).toISOString(),paros:[],tallas:{}});
+   const firma=l=>(l||[]).map(p=>p.n+':'+p.talla+':'+p.pz).join(',');
+   const capImp=f=>{let s='';const w0=window.open;window.open=()=>({document:{write:x=>{s+=x},close(){}}});try{f()}finally{window.open=w0}return s};
+   const bitDe=op=>S.bitacora.filter(b=>typeof b.t==='string'&&b.t.indexOf('Paquetes de '+op+':')===0);
+   try{
+    /* CM10 · con curva de corte: un paquete por talla, en el orden del pedido aunque el corte se anotó en otro orden */
+    const o1=mk('1',{tallasPedido:{S:30,M:50,L:20}});S.avance[o1.id]={tramos:[tramo('1')],tallas:{corte:{L:20,S:30,M:50}},centros:{corte:100}};
+    const ok1=cerrarCentro(o1.id,'corte','');const p1=paquetesDe(o1.id);const b1=bitDe(o1.op);
+    __check('CM10: al cerrar Corte salen los paquetes de la orden, uno por talla (sin partir), con lo cortado y en el orden de las tallas del pedido; cada uno con n, talla, prendas, cuándo, quién y origen «corte», y una línea en la bitácora',
+      ok1&&firma(p1)==='1:S:30,2:M:50,3:L:20'&&p1.every(p=>p.ts&&p.u&&p.origen==='corte')&&b1.length===1&&/3 paquetes \(S 30 · M 50 · L 20 prendas\) desde el corte/.test(b1[0].t)&&/uno por talla/.test(b1[0].t),firma(p1)+' | '+(b1[0]||{}).t);
+    /* CM11 · Corte sin curva por talla: la curva del pedido */
+    const o2=mk('2',{cant:22,tallasPedido:{S:10,M:12}});S.avance[o2.id]={tramos:[tramo('2')],tallas:{corte:{[TALLA_TOTAL]:22}},centros:{corte:22}};
+    cerrarCentro(o2.id,'corte','');const p2=paquetesDe(o2.id);const m2=S.avance[o2.id].paquetesMeta||{};
+    __check('CM11: si Corte no registró tallas, los paquetes salen de la curva del pedido (origen «pedido») y lo dicen',firma(p2)==='1:S:10,2:M:12'&&p2.every(p=>p.origen==='pedido')&&/curva del pedido/.test(m2.txt||'')&&/curva del pedido/.test((bitDe(o2.op)[0]||{}).t||''),firma(p2)+' | '+m2.txt);
+    /* CM12 · sin ninguna curva: un solo paquete «(total)» con lo que salió */
+    const o3=mk('3',{cant:96});S.avance[o3.id]={tramos:[tramo('3')],tallas:{corte:{[TALLA_TOTAL]:96}},centros:{corte:96}};
+    cerrarCentro(o3.id,'corte','');const p3=paquetesDe(o3.id);
+    __check('CM12: sin curva de tallas (ni cortada ni pedida) sale un solo paquete «(total)» con las prendas que salieron de Corte',firma(p3)==='1:'+TALLA_TOTAL+':96'&&p3[0].origen==='corte',firma(p3));
+    /* CM13 · tamaño: general, por tipo de producto (0 = uno por talla aunque el general tenga número) y vacío */
+    const o4=mk('4',{tallasPedido:{S:30,M:50,L:20}});S.avance[o4.id]={tramos:[tramo('4')],tallas:{corte:{S:30,M:50,L:20}},centros:{corte:100}};
+    const f0=pzPaqueteDe(o4).fuente;S.params.pzPaquete=20;const pg=planPaquetes(o4).final,fg=pzPaqueteDe(o4).fuente;
+    S.params.pzPaqueteCat={'k-cmp':0};const pc0=planPaquetes(o4).final,fc0=pzPaqueteDe(o4).fuente;
+    S.params.pzPaqueteCat={'k-cmp':25};const pc25=planPaquetes(o4).final;
+    cerrarCentro(o4.id,'corte','');const p4=paquetesDe(o4.id);const m4=S.avance[o4.id].paquetesMeta||{};
+    delete S.params.pzPaquete;delete S.params.pzPaqueteCat;
+    __check('CM13: vacío = uno por talla; con 20 prendas cada talla se parte de a 20 (el último con el resto); el tipo de producto manda sobre el general (0 = uno por talla, 25 = de a 25) y queda dicho de dónde salió el tamaño',
+      f0==='defecto'&&fg==='general'&&fc0==='tipo'&&firma(pg)==='1:S:20,2:S:10,3:M:20,4:M:20,5:M:10,6:L:20'&&firma(pc0)==='1:S:30,2:M:50,3:L:20'&&firma(pc25)==='1:S:25,2:S:5,3:M:25,4:M:25,5:L:20'&&firma(p4)===firma(pc25)&&m4.tam===25&&m4.fuenteTam==='tipo'&&/de a 25 prendas/.test((bitDe(o4.op)[0]||{}).t||''),
+      JSON.stringify({f0,fg,fc0,pg:firma(pg),pc0:firma(pc0),pc25:firma(pc25),p4:firma(p4)}));
+    /* CM14 · re-cierre: lo ya marcado en el módulo conserva su número, el resto toma el número de su talla, lo anterior va a la historia; cerrar igual no rehace */
+    const ts1=p1[0].ts;S.avance[o1.id].tramos.push({id:'cmpm1',centro:'modulos',ini:new Date(Date.now()-30*6e4).toISOString(),paros:[],tallas:{},paquetes:{SUBENSAMBLE:[1]}});
+    S.avance[o1.id].tallas.corte={S:35,M:45,L:20};S.avance[o1.id].centros.corte=100;
+    cerrarCentro(o1.id,'corte','');const p1b=paquetesDe(o1.id);const hist=S.avance[o1.id].paquetesHist||[];const b1b=bitDe(o1.op);
+    const nh=hist.length,nbt=b1b.length;cerrarCentro(o1.id,'corte','');
+    __check('CM14: si Corte se vuelve a cerrar con otras cantidades, el paquete ya marcado (1 · S · 30) se queda igual (mismo número, misma hora), los demás toman el número de su talla (2 · M · 45, 3 · L · 20), lo que sobra de S es el 4; lo anterior queda en la historia (nada se borra) y la bitácora lo dice; cerrar otra vez con lo mismo no rehace nada',
+      firma(p1b)==='1:S:30,2:M:45,3:L:20,4:S:5'&&p1b[0].ts===ts1&&nh===1&&firma(hist[0].paquetes)==='1:S:30,2:M:50,3:L:20'&&(hist[0].conservados||[]).join(',')==='1'&&nbt===2&&/se conserva 1 paquete ya marcado/.test(b1b[1].t)&&(S.avance[o1.id].paquetesHist||[]).length===1&&bitDe(o1.op).length===2,
+      firma(p1b)+' | hist '+nh+' | '+((b1b[1]||{}).t||''));
+    /* CM15 · Corte que cerró Odoo (la OT lo da por hecho, sin cerrarCentro): «Hacer paquetes» en Confección, solo para supervisor o planificación */
+    const o6=mk('6',{cant:20,tallasPedido:{XS:8,S:12}});S.avance[o6.id]={centros:{corte:20},centrosOT:{corte:true}};
+    const accM=accionesColaHTML({o:o6,c:'modulos'},{},false),accE=accionesColaHTML({o:o6,c:'empaque'},{},false),tabS=hacerPaquetesTabHTML(o6,'modulos');
+    PERFIL={id:'u-opq',rol:'tablet',nombre:'Operario de prueba'};const accOp=accionesColaHTML({o:o6,c:'modulos'},{},false),tabOp=hacerPaquetesTabHTML(o6,'modulos');const nOp=avisos.length;const rOp=hacerPaquetes(o6.id);PERFIL=adminP0();
+    const sinAntes=!paquetesDe(o6.id).length&&faltanPaquetes(o6);const rH=hacerPaquetes(o6.id);const p6=paquetesDe(o6.id);
+    __check('CM15: una orden cuyo Corte lo dio por hecho Odoo (sin cerrarCentro) muestra «Hacer paquetes» en el ⋯ de Confección y en la tablet del módulo para el supervisor o planificación (no al operario, no en otros centros); al hacerlos salen con la misma regla (curva del pedido) y quedan en la bitácora',
+      pasoHecho(o6,'corte')&&sinAntes&&/hacerPaquetes\('cmp_6'\)/.test(accM)&&!/hacerPaquetes\(/.test(accE)&&/Hacer paquetes/.test(tabS)&&!/hacerPaquetes\(/.test(accOp)&&!tabOp&&rOp===false&&avisos.length>nOp&&rH===true&&firma(p6)==='1:XS:8,2:S:12'&&!faltanPaquetes(o6)&&!hacerPaquetesTabHTML(o6,'modulos')&&/Hacer paquetes/.test((bitDe(o6.op)[0]||{}).t||''),
+      JSON.stringify({accM:/hacerPaquetes/.test(accM),tabS:!!tabS,accOp:/hacerPaquetes/.test(accOp),tabOp:!!tabOp,rOp,rH,p6:firma(p6)}));
+    /* CM16 · sin QR (usuaria, 20-oct: «no se va a generar ningún QR»): la etiqueta de cada paquete es solo texto, la hoja no carga ninguna librería */
+    const capS=capImp(()=>imprimirPaquetes(o1.id));
+    __check('CM16: «Imprimir paquetes» trae una etiqueta de texto por paquete («WH · paquete 1 de 4 · talla S · 30 prendas»), sin QR, sin código PQ| y sin cargar ninguna librería; la ventana imprime al abrir',
+      /WH\/MO\/CMP1<\/b> · paquete 1 de 4 · talla S · 30 prendas/.test(capS)&&(capS.match(/class="pq"/g)||[]).length===4&&!/QR|data-qr|PQ\||<svg|qrcode|jsdelivr/i.test(capS)&&capS.includes('window.onload=function(){window.print()}'),
+      capS.slice(capS.indexOf('pq-ord'),capS.indexOf('pq-ord')+300));
+    /* CM17 · no queda nada del QR ni del campo de código en la app: ni funciones, ni constantes, ni el campo en la tablet */
+    const restos=['QR_LIB_URL','QR_ESPERA_MS','qrSVGde','qrPintarHoja','scriptQRHoja','escanearPaquete','leerCodigoPaquete','codigoPaquete','PQSCAN'].filter(n=>{try{return typeof eval(n)!=='undefined'}catch(e){return false}});
+    __check('CM17: sin QR ni campo «Código del paquete»: no existe ninguna función ni constante del QR o del escaneo y la hoja de impresión no tiene guion de QR',
+      !restos.length&&!/data-qr|scriptQRHoja/.test(hojaImprimirHTML('x','<p>y</p>')),JSON.stringify(restos));
+    /* CM18 · previstos: antes de cortar la hoja trae los paquetes desde la curva del pedido, con el mismo número y talla que tendrán al cerrar */
+    const o7=mk('7',{cant:30,tallasPedido:{S:10,M:20}});S.avance[o7.id]={tramos:[tramo('7')]};
+    const hp=paquetesParaHoja(o7);const capP=capImp(()=>imprimirPaquetes(o7.id));
+    S.avance[o7.id].tallas={corte:{M:20,S:10}};S.avance[o7.id].centros={corte:30};cerrarCentro(o7.id,'corte','');const hr=paquetesParaHoja(o7);
+    __check('CM18: antes de cortar, la hoja trae los paquetes PREVISTOS desde la curva del pedido (marcados «previsto»); al cerrar Corte con lo pedido los reales tienen el mismo número y talla (la etiqueta impresa sigue valiendo)',
+      hp.previsto&&firma(hp.lista)==='1:S:10,2:M:20'&&/previsto/.test(capP)&&!hr.previsto&&firma(hr.lista)===firma(hp.lista),firma(hp.lista)+' → '+firma(hr.lista));
+    /* CM19 · la hoja del programa de Corte (volcado real) y la del día traen los paquetes con QR por orden, sin estorbar a la tabla de siempre */
+    PLAN=null;PLAN_ALL=null;const capC=capImp(()=>imprimirProgramaCentro('corte'));const filasC=(capC.match(/<td class="n"><b>/g)||[]).length;const nOrdC=(capC.match(/class="pq-ord"/g)||[]).length;
+    const P=programar();const dC=((P.pro||[]).find(x=>x.centro==='corte'&&x.dia>=d)||(P.pro||[]).find(x=>x.centro==='corte')||{}).dia;const capD=dC?capImp(()=>imprimirDia('corte',dC)):'';
+    __check('CM19: la hoja de Corte (semana y día) trae, después de la tabla, «Paquetes de Corte» con un bloque por orden y una etiqueta de texto por paquete (sin QR); la tabla no cambia (# · Puesto · …) y la hoja sigue sin datos internos',
+      filasC>0&&nOrdC>0&&nOrdC<=filasC&&/<h2>Paquetes de Corte/.test(capC)&&/class="pq"/.test(capC)&&!/QR|data-qr|PQ\|/.test(capC)&&/<th class="n">#<\/th><th>Puesto<\/th>/.test(capC)&&!/eficiencia|módulo|costo/i.test(capC)&&(!dC||(/Paquetes de Corte/.test(capD)&&!/data-qr/.test(capD))),
+      JSON.stringify({filasC,nOrdC,dC,dia:/Paquetes de Corte/.test(capD)}));
+    /* CM20 · el ⋯ de la cola de Corte y de Confección y la ficha de la orden: «Imprimir paquetes» y las fichas «n · talla · prendas» */
+    const accC=accionesColaHTML({o:o7,c:'corte'},{},false),accM2=accionesColaHTML({o:o1,c:'modulos'},{},false),accE2=accionesColaHTML({o:o1,c:'empaque'},{},false);
+    abrirFichaOrden(o1.id);const fic=document.getElementById('modal').innerHTML;cerrar();
+    __check('CM20: «Imprimir paquetes» en el ⋯ de la cola de Corte y de Confección (no en otros centros) y en la ficha, que muestra los paquetes como fichas «1 · S · 30» y cuántas veces se rehicieron',
+      /imprimirPaquetes\('cmp_7'\)/.test(accC)&&/imprimirPaquetes\('cmp_1'\)/.test(accM2)&&!/imprimirPaquetes\(/.test(accE2)&&/Paquetes de Corte/.test(fic)&&fic.includes('1 · S · 30')&&fic.includes('4 · S · 5')&&/imprimirPaquetes\('cmp_1'\)/.test(fic)&&/se volvieron a hacer 1 vez/.test(fic),fic.slice(fic.indexOf('pq-ficha'),fic.indexOf('pq-ficha')+200));
+    /* CM21 · el perfil de piso (supervisor de Corte) cierra Corte: los paquetes van en avance (y la bitácora), sin tocar la configuración ni la orden */
+    const o8=mk('8',{cant:40,tallasPedido:{M:40}});S.avance[o8.id]={tramos:[tramo('8')],tallas:{corte:{M:40}},centros:{corte:40}};
+    window.render=()=>{};PERFIL={id:'u-pqc',rol:'corte',nombre:'Corte de prueba'};const esPiso=perfilSoloPiso();const pJ=JSON.stringify(S.params),oJ=JSON.stringify(o8);const nb8=S.bitacora.length;
+    const ok8=cerrarCentro(o8.id,'corte','');const p8=paquetesDe(o8.id);const pJ2=JSON.stringify(S.params),oJ2=JSON.stringify(o8);
+    const nPz=avisos.length;setPzPaquete('30');const cfgPiso=S.params.pzPaquete===undefined&&avisos.length>nPz;PERFIL=adminP0();window.render=rd0;
+    __check('CM21: desde un perfil de piso, cerrar Corte deja los paquetes en avance y la línea en la bitácora, sin escribir en la configuración ni en la orden (el piso solo escribe avance, bitácora, turnos y paros); el piso no cambia el tamaño de los paquetes',
+      esPiso&&ok8&&firma(p8)==='1:M:40'&&p8[0].u==='Corte de prueba'&&pJ===pJ2&&oJ===oJ2&&S.bitacora.length>nb8&&cfgPiso,JSON.stringify({esPiso,ok8,p8:firma(p8),params:pJ===pJ2,orden:oJ===oJ2,cfgPiso}));
+    /* CM22 · configuración: general y por tipo, con bitácora, en Configuración general → Calendario y reglas y en el catálogo de ajustes */
+    const nb22=S.bitacora.length;setPzPaquete('40');const g40=S.params.pzPaquete;setPzPaquete('abc');const gMal=S.params.pzPaquete;setPzPaquete('');const gV=S.params.pzPaquete;
+    setPzPaqueteCat('k-cmp','0');const c0=(S.params.pzPaqueteCat||{})['k-cmp'];setPzPaqueteCat('k-cmp','');const cV=(S.params.pzPaqueteCat||{})['k-cmp'];
+    const bit22=S.bitacora.slice(nb22).filter(b=>/^Paquetes de Corte · prendas por paquete/.test(b.t||''));
+    page='config';CONF.tab='cal';render();const pc=document.getElementById('cfg-paquetes');const ent=cfgEntradaDe('Paquetes que salen de Corte');
+    __check('CM22: el tamaño se edita (todas y por tipo de producto; vacío = uno por talla, un 0 se respeta, lo que no es número se rechaza), queda en la bitácora y vive en Configuración general → Calendario y reglas con su fila en el catálogo de ajustes',
+      g40===40&&gMal===40&&gV===undefined&&c0===0&&cV===undefined&&bit22.length===4&&/uno por talla \(sin partir\) → de a 40 prendas/.test(bit22[0].t)&&!!pc&&/Paquetes que salen de Corte/.test(pc.textContent)&&pc.querySelectorAll('input').length>1&&!!ent&&ent.tab==='cal'&&!!pc.closest('.cfg-unit'),
+      JSON.stringify({g40,gMal,gV,c0,cV,bit:bit22.map(b=>b.t.slice(0,80)),pc:!!pc,ent:!!ent}));
+    page=bakPg;CONF.tab=bakConf;
+    /* CM23 · Módulos en vivo → Configurar dice cómo salen los paquetes y dónde se cambia */
+    const vivo=modulosEnVivoHTML();
+    __check('CM23: «Módulos en vivo → Configurar» dice cómo salen los paquetes (uno por talla) y dónde se cambia',/Paquetes que salen de Corte: <b>uno por talla \(sin partir\)<\/b>/.test(vivo)&&/irAjuste\('Paquetes que salen de Corte'\)/.test(vivo),'');
+    /* CM25–CM32 · la tablet del módulo marca paquetes por punto (sección C) y Módulos en vivo los cuenta (sección E) */
+    const bakMov=S.params.minSinMovModulo;const recM=S.recursos.find(r=>r.activa!==false&&r.centro==='modulos'&&!esMaquilaRec(r))||{id:null};
+    const o9=mk('9',{cant:30,tallasPedido:{S:10,M:20},fase:'7Confección'});S.avance[o9.id]={tramos:[tramo('9')],tallas:{corte:{S:10,M:20}},centros:{corte:30}};cerrarCentro(o9.id,'corte','');
+    const tm9={id:'cmpm9',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-120*6e4).toISOString(),paros:[],tallas:{}};S.avance[o9.id].tramos.push(tm9);
+    const ps9=puntosControlDe(o9,'modulos');const kS=ps9.length?ps9[ps9.length-1].k:null;const pp=(i,o,t)=>pasadoPunto(t||tm9,ps9[i],o||o9);
+    window.render=()=>{};
+    const h25=puntosControlTabletHTML(o9,tm9,'modulos');const nA=avisos.length;const salto=togPaquetePunto(tm9.id,o9.id,ps9[1].k,1);const avSalto=avisos.length>nA;
+    const okM=togPaquetePunto(tm9.id,o9.id,ps9[0].k,1);const lg=(tm9.puntosLog||[]).slice(-1)[0]||{};
+    __check('CM25: con paquetes, cada punto muestra los paquetes de la orden como fichas «1 · S · 10»; un paquete no pasa un punto sin haber pasado el anterior (avisa y no marca); al tocarlo queda en el tramo (t.paquetes), en el registro {k, n, ts, u, accion «pasa»} y como último movimiento, y el total del punto es la suma de sus prendas',
+      ps9.length>=2&&(h25.match(/class="pq-f[ "]/g)||[]).length===2*ps9.length&&h25.includes('1 · S · 10')&&h25.includes('2 · M · 20')&&salto===false&&avSalto&&!paqPasadosPunto(o9.id,'modulos',ps9[1].k).size&&okM&&(tm9.paquetes[ps9[0].k]||[]).join()==='1'&&lg.k===ps9[0].k&&lg.n===1&&lg.accion==='pasa'&&!!lg.ts&&!!lg.u&&tm9.ultMov===lg.ts&&pp(0)===10&&pp(1)===0,
+      JSON.stringify({ps:ps9.map(p=>p.k),fichas:(h25.match(/class="pq-f[ "]/g)||[]).length,salto,okM,lg,p0:pp(0)}));
+    /* CM26 · la salida escribe la talla una sola vez; quitar la resta; no se quita de un punto si ya pasó el siguiente */
+    for(let i=1;i<ps9.length;i++)togPaquetePunto(tm9.id,o9.id,ps9[i].k,1);const talS=(tm9.tallas||{}).S,sal1=pp(ps9.length-1);
+    const nB=avisos.length;const quitaMedio=ps9.length>2?togPaquetePunto(tm9.id,o9.id,ps9[1].k,1):false;const avMedio=avisos.length>nB;
+    let pidio='';window.confirm=m=>{pidio=String(m);return true};const quitaSal=togPaquetePunto(tm9.id,o9.id,kS,1);window.confirm=()=>true;const talS0=(tm9.tallas||{}).S;
+    togPaquetePunto(tm9.id,o9.id,kS,1);const talS1=(tm9.tallas||{}).S;
+    __check('CM26: al pasar la salida el paquete escribe su talla en «Este tramo» UNA vez (S = 10, no 20); quitarlo de la salida pide confirmación y resta sus prendas; no se quita de un punto si ya pasó el siguiente',
+      talS===10&&sal1===10&&quitaMedio===false&&(ps9.length<=2||avMedio)&&quitaSal===true&&/Quitar el paquete/.test(pidio)&&!talS0&&talS1===10,JSON.stringify({talS,sal1,quitaMedio,quitaSal,talS0,talS1}));
+    /* CM27 · lo marcado cuenta en TODOS los tramos de la orden en el centro (un paquete marcado en un trabajo anterior sigue marcado) */
+    tm9.fin=new Date(Date.now()-5*6e4).toISOString();const tm9b={id:'cmpm9b',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-4*6e4).toISOString(),paros:[],tallas:{}};S.avance[o9.id].tramos.push(tm9b);
+    const h27=puntosControlTabletHTML(o9,tm9b,'modulos');const nC=avisos.length;const quitaOtro=togPaquetePunto(tm9b.id,o9.id,kS,1);const avOtro=avisos.length>nC;
+    __check('CM27: un paquete marcado en un trabajo anterior sigue marcado en el siguiente (✓ en la ficha, cuenta en el total del punto) y desde el nuevo no se puede quitar (avisa)',
+      h27.includes('✓ 1 · S · 10')&&pasadoPunto(tm9b,ps9[0],o9)===10&&quitaOtro===false&&avOtro&&paqPasadosPunto(o9.id,'modulos',kS).has(1),JSON.stringify({quitaOtro,p:pasadoPunto(tm9b,ps9[0],o9)}));
+    /* CM28 · sin campo de código: la tarjeta de la tablet no tiene «Código del paquete»; los paquetes se marcan tocándolos */
+    const h28=puntosControlTabletHTML(o9,tm9b,'modulos');const okT=togPaquetePunto(tm9b.id,o9.id,ps9[0].k,2);
+    __check('CM28: en la tablet no hay campo «Código del paquete» ni nada de QR: el paquete se marca tocándolo (pasa por el primer punto)',
+      !/Código del paquete|pq-scan|pqs-|QR|escane/i.test(h28)&&/class="pq-f/.test(h28)&&okT&&paqPasadosPunto(o9.id,'modulos',ps9[0].k).has(2),JSON.stringify({okT}));
+    /* CM29 · sin paquetes todo sigue como antes; con paquetes, lo manual queda plegado en «corregir a mano» y se suma al total */
+    const o10=mk('10',{cant:40,fase:'7Confección'});const tm10={id:'cmpm10',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-30*6e4).toISOString(),paros:[],tallas:{}};S.avance[o10.id]={tramos:[tm10]};
+    const h29=puntosControlTabletHTML(o10,tm10,'modulos');setPuntoTramo(tm9b.id,o9.id,ps9[0].k,3);const p29=pasadoPunto(tm9b,ps9[0],o9);const h29b=puntosControlTabletHTML(o9,tm9b,'modulos');
+    __check('CM29: una orden sin paquetes se registra como antes (botones − + de cantidad, sin fichas ni campo de código); con paquetes la cantidad a mano queda plegada en «corregir a mano» y lo corregido se suma al total del punto y se dice («+3 a mano»)',
+      !/pq-f|pqs-/.test(h29)&&/setPuntoTramo\('cmpm10'/.test(h29)&&/<details class="pq-man"><summary>corregir a mano<\/summary>/.test(h29b)&&p29===33&&h29b.includes('+3 a mano'),JSON.stringify({p29}));
+    setPuntoTramo(tm9b.id,o9.id,ps9[0].k,-3);
+    /* CM30 · Módulos en vivo: por punto, paquetes pasados / total y los detenidos (pasaron el anterior y no este hace más de minSinMovModulo() minutos) */
+    S.params.minSinMovModulo=30;const lgOld=(tm9.puntosLog||[]).find(e=>e.k===ps9[0].k&&e.n===1&&e.accion==='pasa');
+    const o11=mk('11',{cant:20,tallasPedido:{S:10,M:10},fase:'7Confección'});S.avance[o11.id]={tramos:[tramo('11')],tallas:{corte:{S:10,M:10}},centros:{corte:20}};cerrarCentro(o11.id,'corte','');
+    const tm11={id:'cmpm11',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-90*6e4).toISOString(),paros:[],tallas:{}};S.avance[o11.id].tramos.push(tm11);
+    togPaquetePunto(tm11.id,o11.id,ps9[0].k,1);togPaquetePunto(tm11.id,o11.id,ps9[0].k,2);tm11.puntosLog.find(e=>e.n===1).ts=new Date(Date.now()-50*6e4).toISOString();
+    const D=recM.id?datosModuloVivo(recM,'modulos',hoy()):{ords:[],alertas:[]};const x11=D.ords.find(x=>x.o.id===o11.id)||{};const al=D.alertas.filter(a=>a.k==='det');
+    const page0=page;const viv=recM.id?modulosEnVivoHTML():'';
+    __check('CM30: Módulos en vivo cuenta, por punto, paquetes pasados / total (2/2 en el primero, 0/2 en el siguiente) y los detenidos: el paquete 1 pasó el primer punto hace 50 min y no el siguiente (más de 30 = minSinMovModulo) → alerta «1 paquete detenido antes de …»; el 2 recién pasó y no cuenta',
+      !!recM.id&&!!x11.pq&&x11.pq.N===2&&x11.pq.pasN[0]===2&&x11.pq.pasN[1]===0&&x11.pq.det[1].length===1&&+x11.pq.det[1][0].n===1&&al.some(a=>a.t.includes(o11.op)&&/1 paquete detenido antes de/.test(a.t))&&/2\/2 paq\./.test(viv)&&/1 detenidos/.test(viv)&&/\(en paquetes\)/.test(viv),
+      JSON.stringify({rec:recM.id,pq:x11.pq&&{N:x11.pq.N,pasN:x11.pq.pasN,det:x11.pq.det.map(l=>l.length)},al:al.map(a=>a.t)}));
+    /* CM31 · desde la tablet (perfil de piso) marcar paquetes solo escribe en avance (y no en la configuración ni en las órdenes) */
+    PERFIL={id:'u-opq2',rol:'tablet',nombre:'Operario de prueba'};const pJ31=JSON.stringify(S.params),oJ31=JSON.stringify(S.ordenes.filter(o=>ids.includes(o.id)));
+    const ok31=togPaquetePunto(tm11.id,o11.id,ps9[1].k,2);const pJ31b=JSON.stringify(S.params),oJ31b=JSON.stringify(S.ordenes.filter(o=>ids.includes(o.id)));PERFIL=adminP0();
+    __check('CM31: desde la tablet del operario marcar un paquete queda solo en el avance (el tramo), sin tocar la configuración ni las órdenes',ok31&&pJ31===pJ31b&&oJ31===oJ31b&&paqPasadosPunto(o11.id,'modulos',ps9[1].k).has(2),JSON.stringify({ok31,params:pJ31===pJ31b,ords:oJ31===oJ31b}));
+    if(bakMov===undefined)delete S.params.minSinMovModulo;else S.params.minSinMovModulo=bakMov;
+    /* CM37 · la etiqueta impresa ANTES de cortar sigue valiendo: los reales se numeran contra lo previsto (la parte que no salió deja su número sin usar; lo que sobra va al final)
+       y el código lleva la talla: una etiqueta vieja cuya talla ya no coincide no marca nada */
+    const o14=mk('14',{cant:50,tallasPedido:{S:30,M:50,L:20},fase:'7Confección'});S.avance[o14.id]={tramos:[tramo('14')]};const prv14=paquetesParaHoja(o14);
+    S.avance[o14.id].tallas={corte:{S:30,L:20}};S.avance[o14.id].centros={corte:50};cerrarCentro(o14.id,'corte','');const p14=paquetesDe(o14.id);const ns14=((S.avance[o14.id].paquetesMeta||{}).noSalio||[]).map(x=>x.n+x.talla).join();
+    const tm14={id:'cmpm14',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-20*6e4).toISOString(),paros:[],tallas:{}};S.avance[o14.id].tramos.push(tm14);
+    const e3=togPaquetePunto(tm14.id,o14.id,ps9[0].k,3);const pas3=paqPasadosPunto(o14.id,'modulos',ps9[0].k);
+    S.params.pzPaquete=20;const o15=mk('15',{cant:105,tallasPedido:{S:40,M:60},fase:'7Confección'});S.avance[o15.id]={tramos:[tramo('15')]};const prv15=paquetesParaHoja(o15);
+    S.avance[o15.id].tallas={corte:{S:45,M:60}};S.avance[o15.id].centros={corte:105};cerrarCentro(o15.id,'corte','');const p15=paquetesDe(o15.id);
+    const tm15={id:'cmpm15',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-20*6e4).toISOString(),paros:[],tallas:{}};S.avance[o15.id].tramos.push(tm15);
+    const e15=togPaquetePunto(tm15.id,o15.id,ps9[0].k,3);const m15=paqPasadosPunto(o15.id,'modulos',ps9[0].k);
+    delete S.params.pzPaquete;
+    /* re-cierre sin nada marcado: los números de antes (y los que no salieron) se conservan */
+    const o16=mk('16',{cant:50,tallasPedido:{S:30,M:50,L:20}});S.avance[o16.id]={tramos:[tramo('16')],tallas:{corte:{S:30,L:20}},centros:{corte:50}};cerrarCentro(o16.id,'corte','');
+    S.avance[o16.id].tallas={corte:{S:30,M:50,L:20}};S.avance[o16.id].centros={corte:100};generarPaquetes(o16.id,{});const p16=paquetesDe(o16.id);
+    __check('CM37: la etiqueta impresa antes de cortar sigue valiendo: si la M no se cortó, los reales son 1 · S y 3 · L (el 2 queda «no salió» y no se reusa), tocar el 3 marca la L; partiendo de a 20 con S 45 los previstos S1 S2 M3 M4 M5 quedan iguales y el resto de S es el 6; al volver a cerrar sin nada marcado los números no cambian (la M recupera el 2)',
+      firma(prv14.lista)==='1:S:30,2:M:50,3:L:20'&&firma(p14)==='1:S:30,3:L:20'&&ns14==='2M'&&e3===true&&pas3.has(3)&&!pas3.has(2)&&
+      firma(prv15.lista)==='1:S:20,2:S:20,3:M:20,4:M:20,5:M:20'&&firma(p15)==='1:S:20,2:S:20,3:M:20,4:M:20,5:M:20,6:S:5'&&e15===true&&m15.has(3)&&firma(p16)==='1:S:30,2:M:50,3:L:20',
+      JSON.stringify({prv14:firma(prv14.lista),p14:firma(p14),ns14,e3,p15:firma(p15),e15,p16:firma(p16)}));
+    /* CM38 · Corte cerrado con faltante y sin curva de corte: la curva del pedido se reparte en lo que salió; y la salida del módulo no pasa de lo que entró sin preguntar */
+    const o17=mk('17',{cant:80,tallasPedido:{S:50,M:50}});S.avance[o17.id]={tramos:[tramo('17')],tallas:{corte:{[TALLA_TOTAL]:80}},centros:{corte:80}};cerrarCentro(o17.id,'corte','');const p17=paquetesDe(o17.id);
+    const o18=mk('18',{cant:20,tallasPedido:{S:10,M:10},fase:'7Confección'});S.avance[o18.id]={tramos:[tramo('18')],tallas:{corte:{S:10,M:10}},centros:{corte:20}};cerrarCentro(o18.id,'corte','');
+    S.avance[o18.id].centros.modulos=15;const tm18={id:'cmpm18',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-20*6e4).toISOString(),paros:[],tallas:{}};S.avance[o18.id].tramos.push(tm18);
+    for(let i=0;i<ps9.length-1;i++)togPaquetePunto(tm18.id,o18.id,ps9[i].k,1);let pid38='';window.confirm=m=>{pid38=String(m);return false};const r38=togPaquetePunto(tm18.id,o18.id,kS,1);window.confirm=()=>true;const noMarco38=!paqPasadosPunto(o18.id,'modulos',kS).has(1)&&!(tm18.tallas||{}).S;
+    const r38b=togPaquetePunto(tm18.id,o18.id,kS,1);
+    __check('CM38: con Corte cerrado con 80 de 100 y sin tallas, los paquetes salen del pedido repartido en lo que salió (S 40 + M 40 = 80, no 100) y lo dicen; en la salida, un paquete que pasa de lo que entró al centro pide confirmación (cancelar no marca ni anota la talla; aceptar sí)',
+      firma(p17)==='1:S:40,2:M:40'&&/repartida en las 80 prendas/.test((S.avance[o17.id].paquetesMeta||{}).txt||'')&&r38===false&&/entraron/.test(pid38)&&noMarco38&&r38b===true&&(tm18.tallas||{}).S===10,
+      JSON.stringify({p17:firma(p17),txt:(S.avance[o17.id].paquetesMeta||{}).txt,r38,pid38,r38b,t:tm18.tallas}));
+    window.render=rd0;
+    /* CM32–CM36 · puntos de control POR REFERENCIA (sección D): los marca Ingeniería en el Balanceo, se guardan en la referencia y la tablet los lee una vez */
+    {const bakLe=IOM.leido,bakPC={estado:PCREF.estado,filas:PCREF.filas,error:PCREF.error},bakLTI=window.leerTablaIng,bakGF=window.iomGuardarFila,bakNE=window.ingNoEdita,bakIF=window.iblFuente,bakPI=window.puedeIng,bakOps=IBL.ops,bakSt=IBL.st,bakVer=IBL.ver,bakIP=window.iblPintar;window.iblPintar=()=>{};
+     try{
+      const ksM=IOM_K.filter(k=>centroSubIng(k)==='modulos');const kA=ksM[0],kB=ksM[1]||ksM[0];
+      const fila={id:'mref|CMP9',cod:'CMP9',fam:'cmpfam',nombre:'CMP9',activa:true,refsOdoo:['CMP9'],stages:[{k:kA,ops:[{u:'o1',op:'UNIR HOMBROS',t:0.3},{u:'o2',op:'PEGAR CUELLO',t:0.4}]},{k:kB,ops:[{u:'o3',op:'CERRAR COSTADOS',t:0.5},{u:'o4',op:'BASTAR',t:0.4},{u:'o5',op:'ATRACAR',t:0.2}]}],
+        puntosControl:[{op:'BASTAR',u:'o4',k:kB,n:'BASTAR'},{op:'PEGAR CUELLO',u:'o2',k:kA,n:'PEGAR CUELLO'}]};
+      IOM.leido=null;PCREF.estado='si';PCREF.filas=[fila];PCREF.error=null;
+      const o12=mk('12',{cant:30,ref:'CMP9-P',tallasPedido:{S:10,M:20},fase:'7Confección'});const sinRef=mk('13',{cant:10,ref:'OTRA',fase:'7Confección'});
+      const ps12=puntosControlDe(o12,'modulos');const psCfg=puntosControlDe(sinRef,'modulos');
+      fila.puntosControl.push({op:'ATRACAR',u:'o5',k:kB,n:'ATRACAR'});const psFin=puntosControlDe(o12,'modulos');fila.puntosControl.pop();
+      __check('CM32: con puntos marcados en la referencia (CMP9, también para la orden de la variante CMP9-P) mandan esos, en el orden de la secuencia aunque se marcaron en otro orden; si la última operación del centro no está marcada se agrega «Salida del módulo», y si está marcada es la salida; una orden cuya referencia no tiene puntos usa los de siempre',
+        ps12.map(p=>p.n).join('>')==='PEGAR CUELLO>BASTAR>Salida del módulo'&&ps12[2].salida&&!ps12[1].salida&&psFin.map(p=>p.n).join('>')==='PEGAR CUELLO>BASTAR>ATRACAR'&&psFin[2].salida&&psCfg.length&&psCfg.every(p=>!p.porRef)&&psCfg.map(p=>p.k).join()===puntosControlCfg().filter(k=>centroSubIng(k)==='modulos').join(),
+        JSON.stringify({ps12:ps12.map(p=>p.n),psFin:psFin.map(p=>p.n),cfg:psCfg.map(p=>p.k)}));
+      /* CM33 · los paquetes (A y B) siguen funcionando con los puntos de la referencia */
+      S.avance[o12.id]={tramos:[tramo('12')],tallas:{corte:{S:10,M:20}},centros:{corte:30}};cerrarCentro(o12.id,'corte','');
+      const tm12={id:'cmpm12',centro:'modulos',rec:recM.id,ini:new Date(Date.now()-60*6e4).toISOString(),paros:[],tallas:{}};S.avance[o12.id].tramos.push(tm12);
+      const h33=puntosControlTabletHTML(o12,tm12,'modulos');window.render=()=>{};
+      ps12.forEach(p=>togPaquetePunto(tm12.id,o12.id,p.k,1));const talS=(tm12.tallas||{}).S;const okEsc=togPaquetePunto(tm12.id,o12.id,ps12[0].k,2);const pas2=paqPasadosPunto(o12.id,'modulos',ps12[0].k).has(2);
+      const D33=recM.id?datosModuloVivo(recM,'modulos',hoy()):{ords:[]};const x33=D33.ords.find(x=>x.o.id===o12.id)||{};window.render=rd0;
+      __check('CM33: con los puntos de la referencia los paquetes siguen igual: fichas por punto (incluida «Salida del módulo»), un paquete pasa punto por punto y al salir escribe su talla una vez, tocar otro paquete lo pasa por el primer punto y Módulos en vivo cuenta los paquetes por esos puntos',
+        paquetesDe(o12.id).length===2&&h33.includes('Salida del módulo')&&h33.includes('PEGAR CUELLO')&&(h33.match(/class="pq-f[ "]/g)||[]).length===2*ps12.length&&talS===10&&okEsc&&pas2&&(!recM.id||(x33.pq&&x33.pq.pasN.length===ps12.length&&x33.pq.pasN[ps12.length-1]===1)),
+        JSON.stringify({n:paquetesDe(o12.id).length,talS,okEsc,pas2,pq:x33.pq&&x33.pq.pasN}));
+      /* CM34 · la tablet lee SOLO las filas mref| de las referencias de su cola, una vez por sesión; si falla usa los de siempre y lo dice */
+      const pedidos=[];window.leerTablaIng=async(t,ids)=>{pedidos.push([t,ids]);return {data:[{id:'mref|CMP9',data:sinId(fila)}]}};
+      PCREF.estado=null;PCREF.filas=[];PCREF.pedidos=new Set();PCREF.ts=0;const pg0=page;page='otra';pcAsegurarTablet('modulos',[o12,sinRef]);await __p(20);const est1=PCREF.estado,n1=PCREF.filas.length;pcAsegurarTablet('modulos',[o12]);await __p(20);
+      const unaVez=pedidos.length===1&&pedidos[0][0]==='ing_referencias'&&pedidos[0][1].every(id=>/^mref\|/.test(id))&&pedidos[0][1].includes('mref|CMP9')&&pedidos[0][1].includes('mref|OTRA');
+      window.leerTablaIng=async()=>({error:{message:'sin red'}});PCREF.estado=null;PCREF.filas=[];PCREF.pedidos=new Set();PCREF.ts=0;pcAsegurarTablet('modulos',[o12]);await __p(20);page=pg0;
+      const psErr=puntosControlDe(o12,'modulos');const avErr=pcAvisoTabletHTML();const hErr=puntosControlTabletHTML(o12,tm12,'modulos');
+      __check('CM34: la tablet lee solo las filas mref| de las referencias de su cola (una lectura por sesión, a la tabla de referencias); si la lectura falla usa los puntos de siempre y la tarjeta lo dice',
+        unaVez&&est1==='si'&&n1===1&&PCREF.estado==='error'&&psErr.every(p=>!p.porRef)&&/se usan los de siempre/.test(avErr)&&hErr.includes('se usan los de siempre'),JSON.stringify({pedidos,est1,n1,est:PCREF.estado}));
+      /* CM35 · el Balanceo: la casilla por estación (solo quien edita Ingeniería), se guarda en la referencia por el guardado de siempre, con bitácora, y NO rehace el balanceo */
+      PCREF.estado='si';PCREF.filas=[fila];const guardados=[];
+      window.iblFuente=()=>({r:fila,fila,f:{id:'cmpfam'}});window.ingNoEdita=()=>false;
+      window.iomGuardarFila=async(t,f,que,extra)=>{guardados.push({t,f,que,extra});Object.assign(fila,f);return {ok:true}};
+      IBL.ops=[{id:1,u:'o1',k:kA,op:'UNIR HOMBROS'},{id:2,u:'o2',k:kA,op:'PEGAR CUELLO'},{id:3,u:'o3',k:kB,op:'CERRAR COSTADOS'},{id:4,u:'o4',k:kB,op:'BASTAR'},{id:5,u:'o5',k:kB,op:'ATRACAR'}];
+      IBL.st=[{ids:[2,1]},{ids:[3,5]}];const stAntes=JSON.stringify(IBL.st);
+      const hE0=iblPuntoHTML(IBL.st[0],0),hE1=iblPuntoHTML(IBL.st[1],1);
+      await iblTogPuntoControl(1,true);const g1=guardados[0]||{};
+      await iblTogPuntoControl(0,false);const g2=guardados[1]||{};
+      window.puedeIng=()=>false;const hVer=iblPuntoHTML(IBL.st[1],1);window.puedeIng=bakPI;
+      const enEst=String(iblEstacionHTML).includes('iblPuntoHTML(s,i)');
+      __check('CM35: en el Balanceo cada estación trae la casilla «punto de control al salir de esta estación» con su última operación; marcarla guarda en la referencia (puntosControl) por el guardado de siempre, con su versión y una línea en la bitácora, y las estaciones no cambian; quien no edita Ingeniería no ve la casilla, solo la marca',
+        enEst&&/type="checkbox" checked/.test(hE0)&&/PEGAR CUELLO/.test(hE0)&&!/type=.checkbox. checked/.test(hE1)&&/ATRACAR/.test(hE1)&&g1.t==='ing_referencias'&&g1.que==='puntos de control'&&/puntos de control del módulo/.test((g1.extra||{}).bitacora||'')&&g1.f.id==='mref|CMP9'&&
+        g1.f.puntosControl.map(p=>p.u).join()==='o2,o4,o5'&&g1.f.puntosControl[2].fin===true&&g2.f.puntosControl.map(p=>p.u).join()==='o4,o5'&&JSON.stringify(IBL.st)===stAntes&&!/checkbox/.test(hVer)&&/punto de control al salir/.test(hVer),
+        JSON.stringify({enEst,c0:/type=.checkbox. checked/.test(hE0),e0:/PEGAR CUELLO/.test(hE0),e1:!/type=.checkbox. checked/.test(hE1)&&/ATRACAR/.test(hE1),t:g1.t,que:g1.que,bit:(g1.extra||{}).bitacora,id:g1.f&&g1.f.id,st:JSON.stringify(IBL.st)===stAntes,g2:g2.f&&g2.f.puntosControl.map(p=>p.u)}));
+      /* CM36 · una fila guardada con puntos de control mal formados no se usa (Por revisar) */
+      const raro=iomFilaRara('ing_referencias',Object.assign({},fila,{puntosControl:[{n:'x'}]}));const bien=iomFilaRara('ing_referencias',fila);
+      __check('CM36: una referencia con puntos de control que no tienen su forma sale como fila que no se reconoce; la buena no',/puntos de control/.test(raro)&&!/puntos de control/.test(bien||''),JSON.stringify({raro,bien}));
+      /* CM39 · la tablet lee lo que entra a la cola, vuelve a leer cada 10 min y reintenta un fallo una vez por minuto */
+      {const ped=[];const filaZ={id:'mref|CMPZ',cod:'CMPZ',fam:'cmpfam',nombre:'CMPZ',activa:true,stages:fila.stages,puntosControl:[{op:'PEGAR CUELLO',u:'o2',k:kA,n:'PEGAR CUELLO'}]};
+       let falla=false;window.leerTablaIng=async(t,l)=>{ped.push(l.slice());if(falla)return {error:{message:'sin red'}};return {data:[fila,filaZ].filter(f=>l.includes(f.id)).map(f=>({id:f.id,data:sinId(f)}))}};
+       const pg1=page;page='otra';PCREF.estado=null;PCREF.filas=[];PCREF.pedidos=new Set();PCREF.ts=0;const oZ=mk('19',{cant:10,ref:'CMPZ',fase:'7Confección'});
+       pcAsegurarTablet('modulos',[o12]);await __p(20);const n1=ped.length;const sinZ=puntosControlDe(oZ,'modulos').every(p=>!p.porRef);
+       pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const soloZ=ped.length===2&&ped[1].join()==='mref|CMPZ';const conZ=puntosControlDe(oZ,'modulos').some(p=>p.porRef);const sigue12=puntosControlDe(o12,'modulos').some(p=>p.porRef);
+       pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const nada=ped.length===2;
+       PCREF.ts=Date.now()-11*6e4;pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const relee=ped.length===3&&ped[2].includes('mref|CMPZ')&&ped[2].includes('mref|CMP9');
+       falla=true;PCREF.ts=Date.now()-11*6e4;pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const err=PCREF.estado==='error';pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const noYa=ped.length===4;
+       falla=false;PCREF.ts=Date.now()-61e3;pcAsegurarTablet('modulos',[o12,oZ]);await __p(20);const reint=ped.length===5&&PCREF.estado==='si';page=pg1;
+       __check('CM39: la tablet lee solo las referencias que entran a la cola (CMPZ llegó después: se lee solo esa y sus puntos mandan, sin perder los de CMP9); no repite lecturas; a los 10 min vuelve a leer todo para ver los cambios de Ingeniería; si falla, reintenta una vez por minuto (no en cada dibujo)',
+         n1===1&&sinZ&&soloZ&&conZ&&sigue12&&nada&&relee&&err&&noYa&&reint,JSON.stringify({ped,n1,sinZ,soloZ,conZ,sigue12,nada,relee,err,noYa,reint,est:PCREF.estado}))}
+      /* CM40 · cambiar los puntos de una referencia con paquetes ya marcados en una orden abierta avisa antes de guardar (con cuántas y cuáles); cancelar no guarda */
+      {PCREF.estado='si';PCREF.filas=[fila];const nG=guardados.length;let pid40='';window.confirm=m=>{pid40=String(m);return false};const r40=await iblTogPuntoControl(0,true);window.confirm=()=>true;const noGuardo=guardados.length===nG;
+       const r40b=await iblTogPuntoControl(0,true);
+       __check('CM40: si una orden abierta de la referencia ya tiene paquetes marcados en los puntos (CMP12), cambiar un punto en el Balanceo pide confirmación nombrando la orden y diciendo que lo marcado deja de contar; cancelar no guarda nada; aceptar guarda',
+         r40===false&&noGuardo&&pid40.includes(o12.op)&&/deja de contar/.test(pid40)&&r40b===true&&guardados.length===nG+1,JSON.stringify({r40,noGuardo,pid40:pid40.slice(0,160),r40b}))}
+     }finally{IOM.leido=bakLe;PCREF.pedidos=new Set();PCREF.ts=0;PCREF.estado=bakPC.estado;PCREF.filas=bakPC.filas;PCREF.error=bakPC.error;window.leerTablaIng=bakLTI;window.iomGuardarFila=bakGF;window.ingNoEdita=bakNE;window.iblFuente=bakIF;window.puedeIng=bakPI;IBL.ops=bakOps;IBL.st=bakSt;IBL.ver=bakVer;window.iblPintar=bakIP;window.render=rd0}}
+    /* CM24 · HUELLA: los paquetes no tocan el programa (con y sin ellos, mismas fechas y P.pro) */
+    const conPq=huella();const guard={};ids.forEach(id=>{const a=S.avance[id];if(a){guard[id]=[a.paquetes,a.paquetesMeta,a.paquetesHist];delete a.paquetes;delete a.paquetesMeta;delete a.paquetesHist}});const sinPq=huella();
+    ids.forEach(id=>{const a=S.avance[id],g=guard[id];if(a&&g){if(g[0])a.paquetes=g[0];if(g[1])a.paquetesMeta=g[1];if(g[2])a.paquetesHist=g[2]}});
+    __check('CM24: HUELLA: el programa es el mismo con los paquetes y sin ellos (programar() no los lee)',conPq===sinPq&&conPq.length>10,conPq===sinPq?'':'difiere');
+   }catch(e){__R.errors.push({page:'driver CMP',msg:e.message,stack:(e.stack||'').slice(0,300)})}
+   finally{window.save=sv;window.render=rd0;window.confirm=cf;window.alert=al;PERFIL=bakP;try{cerrar()}catch(e){}
+    S.ordenes=S.ordenes.filter(o=>!ids.includes(o.id));ids.forEach(id=>{delete S.avance[id]});S.categorias=S.categorias.filter(k=>k.id!=='k-cmp');
+    S.params.horarios=bakH;if(bakPz===undefined)delete S.params.pzPaquete;else S.params.pzPaquete=bakPz;if(bakPzC===undefined)delete S.params.pzPaqueteCat;else S.params.pzPaqueteCat=bakPzC;
+    if(S.params.auditoriaCambios&&S.params.auditoriaCambios.length>nAud)S.params.auditoriaCambios.length=nAud;page=bakPg;CONF.tab=bakConf;PLAN=null;PLAN_ALL=null}
+   {const h1=huella();__check('CMP: HUELLA idéntica antes y después de las pruebas de paquetes (no queda nada de las órdenes inventadas en el programa)',h1===h0,h1===h0?'':'difiere')}
+   render();
+   __check('CMP sin errores',__R.errors.length===antes,JSON.stringify(__R.errors.slice(antes,antes+3)))}
   /* MAR2 · Tema Marino · etapa 2 (20-oct-2026): en Órdenes, la línea «Hoy dd/mm/aaaa · …», seis indicadores con las MISMAS cifras de la pantalla (chips, contador
      del menú, aviso «sin número de WH», cabecera de los avisos) y la leyenda de colores; solo con Marino (Tablero, Como Odoo y Clásico no cambian). */
   {const antes=__R.errors.length;const bakP=PERFIL;PERFIL=adminP0();const bakT=S.params.tema;const bakM=modoVisual();const bakPg=page,bakTab=ORDF.tab,bakE=ORDF.estado,bakEd=ORDF.edicion;
