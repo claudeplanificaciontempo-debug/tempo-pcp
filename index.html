@@ -3427,7 +3427,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-20 10:10';
+const APP_BUILD='2026-10-20 10:34';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -5345,6 +5345,21 @@ function tramosSolapados(t){if(!t||!t.ini)return 1;const ini=+new Date(t.ini),fi
   const l=(TT_FIJO?(TT_FIJO[t.centro+'|'+(t.rec||'')]||[]):todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null))).filter(x=>x.t.id!==t.id&&x.t.ini)
     .filter(x=>{const a=+new Date(x.t.ini),b=x.t.fin?+new Date(x.t.fin):Date.now();return a<fin&&b>ini});
   return 1+l.length}
+/* las OTRAS órdenes que corrieron en el mismo puesto mientras duró este tramo, con su [inicio, fin] en ms (un tramo abierto termina «ahora») */
+function solapesTramo(t){if(!t||!t.ini)return [];const ini=+new Date(t.ini),fin=t.fin?+new Date(t.fin):Date.now();
+  return (TT_FIJO?(TT_FIJO[t.centro+'|'+(t.rec||'')]||[]):todosTramos().filter(x=>x.t.centro===t.centro&&(x.t.rec||null)===(t.rec||null)))
+    .filter(x=>x.t.id!==t.id&&x.t.ini).map(x=>({a:+new Date(x.t.ini),b:x.t.fin?+new Date(x.t.fin):Date.now()})).filter(x=>x.a<fin&&x.b>ini)}
+/* personas de un tramo cuando el puesto corrió varias órdenes a la vez (20-oct-2026, corrige la regla del 23-sep):
+   las personas del puesto se reparten MINUTO A MINUTO entre las órdenes abiertas en ese minuto, no entre todas las que se cruzaron
+   en algún momento. Si A corre de 07:50 a 16:20 y B entra a las 15:20, A tiene 10 personas 7,5 h y 5 la última hora (9,4 en promedio),
+   no 5 todo el día. Devuelve el promedio ponderado por el tiempo, cuántas órdenes llegaron a correr juntas y si hubo solape. */
+function personasRepartidas(t,persBase){const ini=t.ini?+new Date(t.ini):NaN,fin=t.fin?+new Date(t.fin):Date.now();
+  const otros=solapesTramo(t);if(!otros.length||!(fin>ini))return {pers:persBase,max:1,solapa:false};
+  const pts=[ini,fin];otros.forEach(x=>{pts.push(Math.max(ini,x.a),Math.min(fin,x.b))});
+  const cortes=pts.filter(p=>p>=ini&&p<=fin).sort((a,b)=>a-b).filter((p,i,arr)=>!i||p!==arr[i-1]);
+  let acum=0,max=1;for(let i=0;i+1<cortes.length;i++){const a=cortes[i],b=cortes[i+1],mid=(a+b)/2;
+    const n=1+otros.filter(x=>x.a<=mid&&x.b>mid).length;if(n>max)max=n;acum+=(b-a)*persBase/n}
+  return {pers:acum/(fin-ini),max,solapa:max>1}}
 function tramoAbiertoDe(c,rec){return todosTramos().find(x=>x.t.centro===c&&(x.t.rec||null)===(rec||null)&&!x.t.fin)}
 /* personas del tramo: primero la asistencia real del día, después las del recurso, y solo si no hay, 1 */
 function personasTramo(rec,c,dia){const d=dia||hoy();const r=rec?R(rec):null;
@@ -5396,9 +5411,9 @@ function calcTramo(t,o){const ini=t.ini?new Date(t.ini):null;const fin=t.fin?new
   const avisoAlmuerzo=!almMarcado&&vent.min>0;
   const trabajado=Math.max(0,brutoMin-paros-(des.min||0));
   let pr=personasRec(t.rec,t.centro,t.ini?diaLocalDeTs(t.ini):null);
-  const juntas=tramosSolapados(t);   /* varias referencias a la vez en el mismo puesto (23-sep) */
+  /* varias referencias a la vez en el mismo puesto (23-sep); desde el 20-oct el reparto es por TIEMPO, no por cuántas se cruzaron */
   if(t.persManual>0)pr={pers:+t.persManual,fuente:'declarada',txt:'personas puestas a mano en esta orden',falta:false};
-  else if(juntas>1){const p=pr.pers/juntas;pr={pers:p,fuente:'repartida',txt:'repartidas entre '+juntas+' órdenes que corrían a la vez en este puesto (se puede escribir cuántas van en cada una)',falta:pr.falta};}
+  else{const rp=personasRepartidas(t,pr.pers);if(rp.solapa)pr={pers:rp.pers,fuente:'repartida',txt:num(rp.pers,rp.pers%1?1:0)+' en promedio: las '+num(pr.pers,pr.pers%1?1:0)+' del puesto se reparten minuto a minuto entre las órdenes que corrían a la vez (hasta '+rp.max+' juntas; se puede escribir cuántas van en cada una)',falta:pr.falta,juntas:rp.max}}
   const minPersona=trabajado*pr.pers;
   const u=sumaCurva(t.tallas||{});const seg=sumaCurva(t.segundas||{});const uTot=u+seg;
   const minPrendaReal=u>0?minPersona/u:null;const minPrendaTot=uTot>0?minPersona/uTot:null;

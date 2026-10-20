@@ -8448,6 +8448,16 @@ async function __run(){try{LISTO=true;}catch(e){}try{__R.prevFuzz=localStorage._
     const suma=cal.reduce((a,k)=>a+k.pers,0);
     __check('TS: las personas del puesto se reparten entre las órdenes que corren juntas: no se cuenta la capacidad dos ni tres veces',Math.abs(suma-pers)<0.01&&cal.every(k=>k.persFuente==='repartida'),JSON.stringify({personasDelPuesto:pers,suma:+suma.toFixed(2),porOrden:cal.map(k=>+k.pers.toFixed(2))}));
     __check('TS: y la pantalla dice que están repartidas, no lo esconde',/repartidas entre/.test(cal[0].persTxt||''),String(cal[0].persTxt||'').slice(0,70));
+    /* TS-REP (20-oct): el reparto es por TIEMPO. A corre 07:50–16:20 (10 personas), B entra 15:20–16:20: A = 10×450 + 5×60 = 4.800 min-persona (9,4 en promedio), B = 5×60 = 300 */
+    {const oA=cand[3],oB=cand[4];if(oA&&oB&&rec){const d=hoy();S.avance[oA.id]={tramos:[{id:'tsrepA',centro:c,rec,ini:tsDeLocal(d,'07:50'),fin:tsDeLocal(d,'16:20'),paros:[],tallas:{}}]};
+      S.avance[oB.id]={tramos:[{id:'tsrepB',centro:c,rec,ini:tsDeLocal(d,'15:20'),fin:tsDeLocal(d,'16:20'),paros:[],tallas:{}}]};
+      const bakT=S.turnos,bakH=S.params.horarios;S.turnos=[{rec,d,pers:10}];S.params.horarios={};
+      const kA=calcTramo(S.avance[oA.id].tramos[0],oA),kB=calcTramo(S.avance[oB.id].tramos[0],oB);
+      __check('TS-REP: la orden que corrió sola 7,5 h y acompañada 1 h tiene 9,4 personas en promedio y 4.800 minutos-persona (antes 5 todo el día = 2.550)',Math.abs(kA.pers-9.4118)<0.01&&Math.abs(kA.minPersona-4800)<1&&kA.persFuente==='repartida'&&/promedio/.test(kA.persTxt),JSON.stringify({pers:+kA.pers.toFixed(2),minP:Math.round(kA.minPersona),txt:kA.persTxt}));
+      __check('TS-REP: la que entró a las 15:20 tiene 5 personas y 300 minutos-persona; las dos suman lo que el puesto tenía (10 × 510 = 5.100)',Math.abs(kB.pers-5)<0.01&&Math.abs(kB.minPersona-300)<1&&Math.abs(kA.minPersona+kB.minPersona-5100)<1,JSON.stringify({persB:kB.pers,minPB:Math.round(kB.minPersona),suma:Math.round(kA.minPersona+kB.minPersona)}));
+      S.avance[oB.id].tramos[0].persManual=3;const kB2=calcTramo(S.avance[oB.id].tramos[0],oB);
+      __check('TS-REP: lo escrito a mano manda sobre el reparto',kB2.pers===3&&kB2.persFuente==='declarada',kB2.persFuente);
+      S.turnos=bakT;S.params.horarios=bakH;delete S.avance[oA.id];delete S.avance[oB.id]}}
     /* el líder puede decir cuántas personas van en una orden concreta */
     const nb=S.bitacora.length;setPersonasTramo(ab[0].t.id,ab[0].o.id,6);
     const k0=calcTramo(Object.assign({},tramosAbiertosDe(c,rec)[0].t,{fin:new Date(Date.now()+3600000).toISOString()}),ab[0].o);
