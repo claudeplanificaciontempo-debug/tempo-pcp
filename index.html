@@ -1187,14 +1187,14 @@ table.wip-plegado thead tr:first-child th:nth-child(n+2):nth-child(-n+9){font-si
 .cfg-falta-txt{flex:1;min-width:0}
 .cfg-falta-txt .mut{display:block;font-size:var(--fs-xs)}
 .cfg-falta-fila .btn{white-space:nowrap}
-.cfg-portada{display:block;columns:4 300px;column-gap:12px}
+.cfg-portada{display:block;columns:3 300px;column-gap:12px}
 .cfg-portada .panel{break-inside:avoid;page-break-inside:avoid;margin:0 0 12px}
 .cfg-card-it{padding:7px 6px;border-radius:6px}
 .cfg-card-it:hover{background:var(--field)}
 .cfg-card-nom{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .cfg-flecha{color:var(--ink3);font-weight:700}
 .cfg-card-it:hover .cfg-flecha{color:var(--ink)}
-.cfg-card-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cfg-card-desc{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}.cfg-mas-g{margin-top:4px}.cfg-mas-g .panel{margin:0 0 8px}.cfg-mas>summary{cursor:pointer;padding:11px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}.cfg-mas-nota{font-size:var(--fs-xs)}.cfg-mas-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));column-gap:16px;padding-top:0}
 /* Categorías: buscador, filas de una línea */
 .cat-buscar{margin:0 0 10px}
 .cat-buscar input{width:320px;max-width:100%}
@@ -3468,7 +3468,7 @@ async function _save(){
 }
 
 /* ---------- versión cargada vs publicada: nunca mirar números de una copia vieja sin saberlo ---------- */
-const APP_BUILD='2026-10-20 17:49';
+const APP_BUILD='2026-11-05 17:11';
 function verBotonesAdmin(){const ok=puede('config');['btn-respaldo','btn-restaurar'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=ok?'':'none'})}
 function verVersion(){const e=document.getElementById('version');if(e)e.textContent='v '+APP_BUILD;pintarQuien()}   /* #version ya no se ve: la versión va al pasar el mouse (quien entró, «Salir» y el título) */
 /* quien entró (02-oct): en el aspecto Odoo un círculo con las iniciales, como Odoo; nombre · perfil · versión al pasar el mouse y en «Salir» */
@@ -19689,14 +19689,30 @@ function cfgPorCompletar(){const out=[];const ir=t=>{const t0=cfgNorm(t);let i=C
   /* la nota guardada de una espera sin regla puede traer una pregunta para quien programa («dime cómo…»): aquí se muestra solo su nombre (lo de antes de « — ») */
   try{const sr=(typeof esperasPaso==='function'?esperasPaso():[]).filter(r=>r.sinRegla);if(sr.length){const nom=r=>String(r.nota||r.paso||'').split(' — ')[0].trim();out.push({txt:sr.length+' '+pl(sr.length,'espera del programa sin regla','esperas del programa sin regla')+' (no se aplican): '+sr.map(nom).join(' · '),i:ir('Motor de programación'),n:sr.length,t:pl(sr.length,'espera del programa sin regla','esperas del programa sin regla'),det:sr.map(nom).join(' · ')+' — falta decidir a qué órdenes se aplica; mientras tanto no se aplica'})}}catch(e){}
   return out}
-function configInicioHTML(){const pc=cfgPorCompletar();
-  const porGrupo=CONF_GRUPOS.map(([g,n,nota])=>({g,n,nota,l:CONF_CATALOGO.map((e,i)=>({e,i})).filter(({e})=>e.grupo===g&&cfgVisible(e)).sort((x,y)=>(CONF_TABS.findIndex(t=>t[0]===x.e.tab)-CONF_TABS.findIndex(t=>t[0]===y.e.tab))||(x.i-y.i))})).filter(x=>x.l.length);
+/* 05-nov-2026, usuaria con captura de esta portada: «mira, con muchas confunden». A la vista solo lo que cambia cuando cambia la planta (15); lo demás
+   se pliega, sin borrar nada y sin mover ninguna tabla de su pestaña. Una tabla nueva sin clasificar cae sola en «Ajustes avanzados». Lo de Ingeniería ya no se
+   lista aquí (vive en su menú): lo sigue encontrando el buscador de ajustes. */
+const CONF_PORTADA=[['Centros y máquinas','lo que hay en la planta',['Centros','Recursos de producción','Máquinas de tejeduría','Máquinas de tintorería','Máquinas de bordado y estampado','Tejeduría: kg/día por máquina y tela']],
+  ['Telas y colores','el catálogo y cuánto se pierde',['Telas','9 · Parámetros por tela','10 · Merma de tintura por tela corta × tipo','Colores']],
+  ['Días, proveedores y listas','cuándo se trabaja y con qué motivos',['Días de trabajo por área','18 · Descansos por centro','Días de entrega por proveedor','15 · Motivos','16 · Tallas']]];
+const CONF_ODOO_T=['1 · Fase del archivo → fase del sistema','5 · Grupos de fase: orden de flujo y liberación','4 · Centro TEMPO → etapa del flujo','6 · Centro de trabajo de Odoo → centro TEMPO','7 · Estado de la orden de trabajo → significado','2 · Segundo nivel de categoría de material → clasificación','3 · Tercer nivel de MP → origen de tela','8 · Categoría de Odoo → tela corta → tela del catálogo','11 · Palabras que marcan JASPE en el nombre del producto','13 · Qué le falta a la tela: por palabras del producto y, si no, por origen','12 · Catálogo de productos','14 · Qué se conserva al recargar la Parte 2','Alcance de las cargas','Nombres de columna del archivo de tareas'];
+const CONF_HIST_T=['Registro de cargas','Respaldo y restauración','Borrar datos de prueba'];
+let CFG_MAS=new Set();   /* grupos plegados que se dejaron abiertos, mientras dure la sesión */
+function cfgMasTog(d){const k=d.getAttribute('data-k');if(d.open)CFG_MAS.add(k);else CFG_MAS.delete(k)}
+function cfgPortadaGrupos(){const vis=CONF_CATALOGO.map((e,i)=>({e,i})).filter(({e})=>!e.ing&&cfgVisible(e));const de=t=>vis.filter(x=>t.includes(x.e.titulo)).sort((a,b)=>t.indexOf(a.e.titulo)-t.indexOf(b.e.titulo));
+  const usados=new Set([...CONF_PORTADA.flatMap(x=>x[2]),...CONF_ODOO_T,...CONF_HIST_T]);
+  return {vista:CONF_PORTADA.map(([n,nota,t])=>({n,nota,l:de(t)})).filter(x=>x.l.length),
+    mas:[{k:'odoo',n:'Conexión con Odoo',nota:'cómo se leen los archivos y qué significa lo que trae Odoo: se llena una vez y casi nunca se toca',l:de(CONF_ODOO_T)},
+      {k:'avanzado',n:'Ajustes avanzados',nota:'detalles finos del programa y de la pantalla: casi nunca hacen falta',l:vis.filter(x=>!usados.has(x.e.titulo))},
+      {k:'hist',n:'Historial y copias',nota:'qué archivos se cargaron y las copias de seguridad',l:de(CONF_HIST_T)}].filter(x=>x.l.length)}}
+function configInicioHTML(){const pc=cfgPorCompletar();const G=cfgPortadaGrupos();
   const otras=[['categorias','Categorías','las familias y tipos de producto de Odoo y su hoja de operaciones'],['ingops','Ingeniería','operaciones, tiempos por tipo de producto, técnicas de estampado, máquinas y operarias: cómo se hace cada prenda'],['usuarios','Usuarios','quién entra, con qué perfil y qué ve cada perfil'],['auditoria','Auditoría','quién cambió qué (tiempos, rutas, fases) y la salud de los datos: revisión automática de rutas, fases, siembras y registros']].filter(([p])=>puedeAbrirPagina(p));
-  /* cada ajuste: nombre con «›» (se toca), y la explicación en dos líneas con el texto entero al pasar el mouse */
+  /* cada ajuste: nombre con «›» (se toca), y la explicación en una línea con el texto entero al pasar el mouse */
   const it=(accion,nom,desc)=>`<a href="#" class="cfg-card-it" title="${esc(desc)}" onclick="${accion};return false"><span class="cfg-card-nom"><b>${esc(nom)}</b><span class="cfg-flecha" aria-hidden="true">›</span></span><span class="mut cfg-card-desc">${esc(desc)}</span></a>`;
+  const plegado=(k,n,nota,items)=>`<details class="panel cfg-mas" data-k="${k}" ${CFG_MAS.has(k)?'open':''} ontoggle="cfgMasTog(this)"><summary><b>${esc(n)}</b> <span class="tag t-mut">${items.length}</span> <span class="mut cfg-mas-nota">${esc(nota)}</span></summary><div class="body cfg-mas-l">${items.join('')}</div></details>`;
   return `${pc.length?`<div class="panel cfg-falta" style="border-left:4px solid var(--aviso)"><h3>Falta completar <span class="note">sin esto, algo no se calcula bien o no se puede hacer</span></h3><div class="body">${pc.map(x=>`<div class="cfg-falta-fila"><span class="tag t-aviso cfg-falta-n">${x.n!=null?num(x.n):'!'}</span><div class="cfg-falta-txt"><b>${esc(x.t||x.txt)}</b>${x.det?`<span class="mut">${esc(x.det)}</span>`:''}</div>${x.i>=0?`<button class="btn sm" data-ver="1" onclick="cfgIr(${x.i})">Completar →</button>`:''}</div>`).join('')}</div></div>`:''}
-   <div class="cfg-portada">${porGrupo.map(x=>`<div class="panel cfg-card"><h3>${esc(x.n)}</h3><div class="body"><div class="mut" style="font-size:var(--fs-xs);margin:-4px 0 8px">${esc(x.nota)}</div>${x.l.map(({e,i})=>it('cfgIr('+i+')',e.nombre,e.desc)).join('')}${x.g==='ingenieria'&&puedeAbrirPagina('ingops')?it("ir('ingops')",'Abrir Ingeniería','operaciones, tiempos, técnicas, máquinas y operarias viven allá'):''}</div></div>`).join('')}
-    ${otras.length?`<div class="panel cfg-card"><h3>En otras pantallas</h3><div class="body">${otras.map(([p,n,d])=>it("ir('"+p+"')",n,d)).join('')}</div></div>`:''}</div>`}
+   <div class="cfg-portada">${G.vista.map(x=>`<div class="panel cfg-card"><h3>${esc(x.n)}</h3><div class="body"><div class="mut" style="font-size:var(--fs-xs);margin:-4px 0 8px">${esc(x.nota)}</div>${x.l.map(({e,i})=>it('cfgIr('+i+')',e.nombre,e.desc)).join('')}</div></div>`).join('')}</div>
+   <div class="cfg-mas-g">${G.mas.map(x=>plegado(x.k,x.n,x.nota,x.l.map(({e,i})=>it('cfgIr('+i+')',e.nombre,e.desc)))).join('')}${otras.length?plegado('otras','En otras pantallas','tienen su propia entrada en el menú',otras.map(([p,n,d])=>it("ir('"+p+"')",n,d))):''}</div>`}
 /* después de dibujar una pestaña: agrupa sus tablas por tema, las pliega y les pone su línea de explicación. No cambia ninguna tabla por dentro. */
 function organizarConfig(el){const chips=el.querySelector('.cfg-tabs');if(!chips)return;const hijos=[...el.children];const ini=hijos.indexOf(chips);if(ini<0)return;
   const unidades=[];let actual=null;const sueltos=[];

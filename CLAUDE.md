@@ -2397,6 +2397,8 @@ Las 606 operaciones reales **no están en el código**: entran con `test/.out/ex
 
 **Simplificación · Fase 0 (29-oct-2026, solo lectura):** inventario en `SIMPLIFICACION_FASE0_INVENTARIO.md`. Desde el 01-oct solo entraron 2 cuentas de Administración (el piso no entra desde septiembre); la firma textil, el congelado semanal y las solicitudes de fase del piso NUNCA se usaron; Órdenes (541 ms), Hoy (418), Órdenes de trabajo (320) y Tejeduría (316) pasan de 300 ms. Las fases 1–5 esperan que la usuaria marque QUITAR / FUNDIR / DEJAR.
 
+**Configuración: portada corta (05-nov-2026, usuaria con captura de Inicio: «mira, con muchas confunden»).** La portada listaba 70 ajustes (46 de Configuración + 24 de Ingeniería). `configInicioHTML` deja a la vista 15 en tres tarjetas (`CONF_PORTADA`) y pliega el resto: Conexión con Odoo 14 (`CONF_ODOO_T`), Ajustes avanzados 14 (lo no clasificado cae aquí solo), Historial y copias 3 (`CONF_HIST_T`) y En otras pantallas 4 (`cfgPortadaGrupos`, `CFG_MAS`/`cfgMasTog`). Lo de Ingeniería ya no se lista en la portada, pero el buscador de ajustes lo sigue encontrando. Ninguna tabla se borró ni cambió de pestaña. Una tabla nueva: su fila en `CONF_CATALOGO` y, si va a la vista o en Odoo, su título en esas listas. Pruebas CFG14–CFG20. Las 8 pestañas siguen iguales (Fase 3). Ver `CONFIGURACION_PORTADA_CORTA.md`.
+
 ## Principio general (decisión de la usuaria, 13-sep-2026) — aplica a TODO lo nuevo
 1. Ningún valor de negocio en el código: todo sale de una configuración visible y editable (tablas y
    parámetros en Configuración). Lo que la usuaria dicta es siembra inicial, idempotente: lo editado no se pisa.
